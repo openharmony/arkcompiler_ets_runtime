@@ -15,7 +15,17 @@
 2
 foo
 bar
+[trace] Opcode: MONO_STORE_PROPERTY Count:2
+[trace] Opcode: LOAD_PROPERTY Count:2
+[trace] Opcode: STORE_PROPERTY Count:1
+[trace] Opcode: MONO_LOAD_PROPERTY_ON_PROTO Count:2
+false
 undefined
 bar
+[trace] Opcode: MONO_STORE_PROPERTY Count:1
+false
 1
+[trace] Check Type: InconsistentHClass6
 1
+[trace] Opcode: LOAD_PROPERTY Count:1
+true

@@ -160,7 +160,7 @@ HWTEST_F_L0(JSNApiTests, GetGlobalObject)
     LocalScope scope(vm_);
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm_);
     ASSERT_FALSE(globalObject.IsEmpty());
-    ASSERT_TRUE(globalObject->IsObject());
+    ASSERT_TRUE(globalObject->IsObject(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, ThreadIdCheck)
@@ -196,11 +196,11 @@ HWTEST_F_L0(JSNApiTests, GetProperty)
     LocalScope scope(vm_);
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm_);
     ASSERT_FALSE(globalObject.IsEmpty());
-    ASSERT_TRUE(globalObject->IsObject());
+    ASSERT_TRUE(globalObject->IsObject(vm_));
 
     Local<ObjectRef> key = StringRef::NewFromUtf8(vm_, "Number");
     Local<ObjectRef> property = globalObject->Get(vm_, key);
-    ASSERT_TRUE(property->IsFunction());
+    ASSERT_TRUE(property->IsFunction(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, SetProperty)
@@ -208,7 +208,7 @@ HWTEST_F_L0(JSNApiTests, SetProperty)
     LocalScope scope(vm_);
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm_);
     ASSERT_FALSE(globalObject.IsEmpty());
-    ASSERT_TRUE(globalObject->IsObject());
+    ASSERT_TRUE(globalObject->IsObject(vm_));
 
     Local<ArrayRef> property = ArrayRef::New(vm_, 3); // 3 : length
     ASSERT_TRUE(property->IsArray(vm_));
@@ -235,17 +235,17 @@ HWTEST_F_L0(JSNApiTests, JsonParser)
     LocalScope scope(vm_);
     Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm_);
     ASSERT_FALSE(globalObject.IsEmpty());
-    ASSERT_TRUE(globalObject->IsObject());
+    ASSERT_TRUE(globalObject->IsObject(vm_));
 
     const char * const test { R"({"orientation": "portrait"})" };
     Local<ObjectRef> jsonString = StringRef::NewFromUtf8(vm_, test);
 
     Local<JSValueRef> result = JSON::Parse(vm_, jsonString);
-    ASSERT_TRUE(result->IsObject());
+    ASSERT_TRUE(result->IsObject(vm_));
 
     Local<ObjectRef> keyString = StringRef::NewFromUtf8(vm_, "orientation");
     Local<JSValueRef> property = Local<ObjectRef>(result)->Get(vm_, keyString);
-    ASSERT_TRUE(property->IsString());
+    ASSERT_TRUE(property->IsString(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, StrictEqual)
@@ -301,8 +301,8 @@ HWTEST_F_L0(JSNApiTests, Symbol)
     Local<StringRef> description = StringRef::NewFromUtf8(vm_, "test");
     Local<SymbolRef> symbol = SymbolRef::New(vm_, description);
 
-    ASSERT_FALSE(description->IsSymbol());
-    ASSERT_TRUE(symbol->IsSymbol());
+    ASSERT_FALSE(description->IsSymbol(vm_));
+    ASSERT_TRUE(symbol->IsSymbol(vm_));
 }
 
 /**
@@ -322,7 +322,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_001)
 
     EXPECT_EQ(testString->Utf8Length(vm_), 12);       // 12 : length of testString("Hello World")
     char buffer[12];                                  // 12 : length of testString
-    EXPECT_EQ(testString->WriteUtf8(buffer, 12), 12); // 12 : length of testString("Hello World")
+    EXPECT_EQ(testString->WriteUtf8(vm_, buffer, 12), 12); // 12 : length of testString("Hello World")
     std::string res(buffer);
     ASSERT_EQ(res, test);
 }
@@ -344,7 +344,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_002)
 
     EXPECT_EQ(testString->Utf8Length(vm_), 4);      // 4 : length of testString("年")
     char buffer[4];                                 // 4 : length of testString
-    EXPECT_EQ(testString->WriteUtf8(buffer, 4), 4); // 4 : length of testString("年")
+    EXPECT_EQ(testString->WriteUtf8(vm_, buffer, 4), 4); // 4 : length of testString("年")
     std::string res(buffer);
     ASSERT_EQ(res, test);
 }
@@ -360,7 +360,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_003)
     Local<StringRef> testString1 = StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
     EXPECT_EQ(testString1->Utf8Length(vm_), 5);
     char buffer1[4];
-    testString1->WriteUtf8(buffer1, 4, false);
+    testString1->WriteUtf8(vm_, buffer1, 4, false);
     EXPECT_EQ(buffer1[0], 'a');
     EXPECT_EQ(buffer1[1], '\xC0');
     EXPECT_EQ(buffer1[2], '\x80');
@@ -370,7 +370,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_003)
     Local<StringRef> testString2 = StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
     EXPECT_EQ(testString2->Utf8Length(vm_), 5);
     char buffer2[4];
-    testString2->WriteUtf8(buffer2, 4, true);
+    testString2->WriteUtf8(vm_, buffer2, 4, true);
     EXPECT_EQ(buffer2[0], 'a');
     EXPECT_EQ(buffer2[1], '\0');
     EXPECT_EQ(buffer2[2], 'b');
@@ -393,7 +393,7 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_001)
 
     EXPECT_EQ(testString->Length(), 1U);
     char buffer[1];
-    EXPECT_EQ(testString->WriteLatin1(buffer, 1), 1);
+    EXPECT_EQ(testString->WriteLatin1(vm_, buffer, 1), 1);
 
     EXPECT_EQ(buffer[0], '-'); // '-' == 0x2D
 }
@@ -415,7 +415,7 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_002)
 
     EXPECT_EQ(testString->Length(), 5U);
     char buffer[5];
-    EXPECT_EQ(testString->WriteLatin1(buffer, 5), 5);
+    EXPECT_EQ(testString->WriteLatin1(vm_, buffer, 5), 5);
 
     EXPECT_EQ(buffer[0], 'E');
     EXPECT_EQ(buffer[1], 'n');
@@ -441,7 +441,7 @@ HWTEST_F_L0(JSNApiTests, ToType)
     ASSERT_EQ(toString->ToNumber(vm_)->Value(), -123.3); // -123 : test case of input
     ASSERT_EQ(toString->ToBoolean(vm_)->Value(), true);
     ASSERT_EQ(toValue->ToString(vm_)->ToString(), "-123.3");
-    ASSERT_TRUE(toValue->ToObject(vm_)->IsObject());
+    ASSERT_TRUE(toValue->ToObject(vm_)->IsObject(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, TypeValue)
@@ -561,11 +561,11 @@ HWTEST_F_L0(JSNApiTests, GetProtoType)
     LocalScope scope(vm_);
     Local<FunctionRef> function = FunctionRef::New(vm_, nullptr);
     Local<JSValueRef> protoType = function->GetPrototype(vm_);
-    ASSERT_TRUE(protoType->IsObject());
+    ASSERT_TRUE(protoType->IsObject(vm_));
 
     Local<FunctionRef> object = ObjectRef::New(vm_);
     protoType = object->GetPrototype(vm_);
-    ASSERT_TRUE(protoType->IsObject());
+    ASSERT_TRUE(protoType->IsObject(vm_));
 
     auto info = CreateNativeBindingInfo(reinterpret_cast<void *>(Attach), reinterpret_cast<void *>(Detach));
     size_t nativeBindingSize = 7 * sizeof(void *); // 7 : params num
@@ -579,7 +579,7 @@ HWTEST_F_L0(JSNApiTests, GetProtoType)
     bool result = object->ConvertToNativeBindingObject(vm_, nativeInfo);
     ASSERT_TRUE(result);
     protoType = object->GetPrototype(vm_);
-    ASSERT_TRUE(protoType->IsObject());
+    ASSERT_TRUE(protoType->IsObject(vm_));
 }
 
 /*
@@ -596,7 +596,7 @@ void CheckReject(JsiRuntimeCallInfo *info)
 {
     ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> reason = info->GetCallArgRef(0);
-    ASSERT_TRUE(reason->IsString());
+    ASSERT_TRUE(reason->IsString(info->GetVM()));
     ASSERT_EQ(Local<StringRef>(reason)->ToString(), "Reject");
 }
 
@@ -615,8 +615,8 @@ HWTEST_F_L0(JSNApiTests, PromiseCatch)
     Local<PromiseRef> promise = capability->GetPromise(vm_);
     Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
     Local<PromiseRef> catchPromise = promise->Catch(vm_, reject);
-    ASSERT_TRUE(promise->IsPromise());
-    ASSERT_TRUE(catchPromise->IsPromise());
+    ASSERT_TRUE(promise->IsPromise(vm_));
+    ASSERT_TRUE(catchPromise->IsPromise(vm_));
 
     Local<StringRef> reason = StringRef::NewFromUtf8(vm_, "Reject");
     ASSERT_TRUE(capability->Reject(vm_, reason));
@@ -632,8 +632,8 @@ HWTEST_F_L0(JSNApiTests, PromiseCatchUintPtr)
     Local<PromiseRef> promise = capability->GetPromise(vm_);
     Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
     Local<PromiseRef> catchPromise = promise->Catch(vm_, reject);
-    ASSERT_TRUE(promise->IsPromise());
-    ASSERT_TRUE(catchPromise->IsPromise());
+    ASSERT_TRUE(promise->IsPromise(vm_));
+    ASSERT_TRUE(catchPromise->IsPromise(vm_));
 
     Local<StringRef> reason = StringRef::NewFromUtf8(vm_, "Reject");
     ASSERT_TRUE(capability->Reject(vm_, reinterpret_cast<uintptr_t>(*reason)));
@@ -675,8 +675,8 @@ HWTEST_F_L0(JSNApiTests, PromiseThen)
     Local<FunctionRef> resolve = FunctionRef::New(vm_, ResolvedCallback);
     Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
     Local<PromiseRef> thenPromise = promise->Then(vm_, resolve, reject);
-    ASSERT_TRUE(promise->IsPromise());
-    ASSERT_TRUE(thenPromise->IsPromise());
+    ASSERT_TRUE(promise->IsPromise(vm_));
+    ASSERT_TRUE(thenPromise->IsPromise(vm_));
 
     Local<StringRef> value = NumberRef::New(vm_, 300.3); // 300.3 : test case of input
     ASSERT_TRUE(capability->Resolve(vm_, value));
@@ -692,8 +692,8 @@ HWTEST_F_L0(JSNApiTests, PromiseThenUintPtr)
     Local<FunctionRef> resolve = FunctionRef::New(vm_, ResolvedCallback);
     Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
     Local<PromiseRef> thenPromise = promise->Then(vm_, resolve, reject);
-    ASSERT_TRUE(promise->IsPromise());
-    ASSERT_TRUE(thenPromise->IsPromise());
+    ASSERT_TRUE(promise->IsPromise(vm_));
+    ASSERT_TRUE(thenPromise->IsPromise(vm_));
 
     Local<StringRef> value = NumberRef::New(vm_, 300.3); // 300.3 : test case of input
     ASSERT_TRUE(capability->Resolve(vm_, reinterpret_cast<uintptr_t>(*value)));
@@ -718,7 +718,7 @@ HWTEST_F_L0(JSNApiTests, Constructor_IsObject)
     Local<JSValueRef> argv[1];
     argv[0] = NumberRef::New(vm_, 1.3); // 1.3 : test case of input
     Local<JSValueRef> result = numberConstructor->Constructor(vm_, argv, 1);
-    ASSERT_TRUE(result->IsObject());
+    ASSERT_TRUE(result->IsObject(vm_));
     ASSERT_EQ(result->ToNumber(vm_)->Value(), 1.3); // 1.3 : size of arguments
 }
 
@@ -735,9 +735,9 @@ HWTEST_F_L0(JSNApiTests, ArrayBuffer)
     LocalScope scope(vm_);
     const int32_t length = 15;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
     ASSERT_EQ(arrayBuffer->ByteLength(vm_), length);
-    ASSERT_NE(arrayBuffer->GetBuffer(), nullptr);
+    ASSERT_NE(arrayBuffer->GetBuffer(vm_), nullptr);
     JSNApi::TriggerGC(vm_);
 }
 
@@ -761,9 +761,9 @@ HWTEST_F_L0(JSNApiTests, ArrayBufferWithBuffer)
         LocalScope scope(vm_);
         uint8_t *buffer = new uint8_t[length]();
         Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, buffer, length, deleter, data);
-        ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+        ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
         ASSERT_EQ(arrayBuffer->ByteLength(vm_), length);
-        ASSERT_EQ(arrayBuffer->GetBuffer(), buffer);
+        ASSERT_EQ(arrayBuffer->GetBuffer(vm_), buffer);
     }
     JSNApi::TriggerGC(vm_, JSNApi::TRIGGER_GC_TYPE::FULL_GC);
     ASSERT_TRUE(isFree);
@@ -775,12 +775,12 @@ HWTEST_F_L0(JSNApiTests, DataView)
     const int32_t length = 15;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
     JSNApi::TriggerGC(vm_);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 5 : offset of byte, 7 : length
     Local<DataViewRef> dataView = DataViewRef::New(vm_, arrayBuffer, 5, 7);
-    ASSERT_TRUE(dataView->IsDataView());
-    ASSERT_EQ(dataView->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_TRUE(dataView->IsDataView(vm_));
+    ASSERT_EQ(dataView->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
     ASSERT_EQ(dataView->ByteLength(), 7U); // 7 : size of arguments
     ASSERT_EQ(dataView->ByteOffset(), 5U); // 5 : size of arguments
 
@@ -803,15 +803,15 @@ HWTEST_F_L0(JSNApiTests, Int8Array)
     LocalScope scope(vm_);
     const int32_t length = 15;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 5 : offset of byte, 6 : length
     Local<Int8ArrayRef> typedArray = Int8ArrayRef::New(vm_, arrayBuffer, 5, 6);
-    ASSERT_TRUE(typedArray->IsInt8Array());
+    ASSERT_TRUE(typedArray->IsInt8Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 6U);  // 6 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 5U);  // 5 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 /**
@@ -828,15 +828,15 @@ HWTEST_F_L0(JSNApiTests, Uint8Array)
     LocalScope scope(vm_);
     const int32_t length = 15;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 5 : offset of byte, 6 : length
     Local<Uint8ArrayRef> typedArray = Uint8ArrayRef::New(vm_, arrayBuffer, 5, 6);
-    ASSERT_TRUE(typedArray->IsUint8Array());
+    ASSERT_TRUE(typedArray->IsUint8Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 6U);  // 6 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 5U);  // 5 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 /**
@@ -851,15 +851,15 @@ HWTEST_F_L0(JSNApiTests, Uint8ClampedArray)
     LocalScope scope(vm_);
     const int32_t length = 15;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 5 : offset of byte, 6 : length
     Local<Uint8ClampedArrayRef> typedArray = Uint8ClampedArrayRef::New(vm_, arrayBuffer, 5, 6);
-    ASSERT_TRUE(typedArray->IsUint8ClampedArray());
+    ASSERT_TRUE(typedArray->IsUint8ClampedArray(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 6U);  // 6 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 5U);  // 5 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 /**
@@ -874,15 +874,15 @@ HWTEST_F_L0(JSNApiTests, Int16Array)
     LocalScope scope(vm_);
     const int32_t length = 30;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 4 : offset of byte, 6 : length
     Local<Int16ArrayRef> typedArray = Int16ArrayRef::New(vm_, arrayBuffer, 4, 6);
-    ASSERT_TRUE(typedArray->IsInt16Array());
+    ASSERT_TRUE(typedArray->IsInt16Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 12U); // 12 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 /**
@@ -897,15 +897,15 @@ HWTEST_F_L0(JSNApiTests, Uint16Array)
     LocalScope scope(vm_);
     const int32_t length = 30;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 4 : offset of byte, 6 : length
     Local<Uint16ArrayRef> typedArray = Uint16ArrayRef::New(vm_, arrayBuffer, 4, 6);
-    ASSERT_TRUE(typedArray->IsUint16Array());
+    ASSERT_TRUE(typedArray->IsUint16Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 12U); // 12 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 /*
@@ -921,15 +921,15 @@ HWTEST_F_L0(JSNApiTests, Uint32Array)
     LocalScope scope(vm_);
     const int32_t length = 30;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 4 : offset of byte, 6 : length
     Local<Uint32ArrayRef> typedArray = Uint32ArrayRef::New(vm_, arrayBuffer, 4, 6);
-    ASSERT_TRUE(typedArray->IsUint32Array());
+    ASSERT_TRUE(typedArray->IsUint32Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 24U); // 24 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 /**
@@ -944,15 +944,15 @@ HWTEST_F_L0(JSNApiTests, Int32Array)
     LocalScope scope(vm_);
     const int32_t length = 30;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 4 : offset of byte, 6 : length
     Local<Int32ArrayRef> typedArray = Int32ArrayRef::New(vm_, arrayBuffer, 4, 6);
-    ASSERT_TRUE(typedArray->IsInt32Array());
+    ASSERT_TRUE(typedArray->IsInt32Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 24U); // 24 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, Float32Array)
@@ -960,15 +960,15 @@ HWTEST_F_L0(JSNApiTests, Float32Array)
     LocalScope scope(vm_);
     const int32_t length = 30;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 4 : offset of byte, 6 : length
     Local<Float32ArrayRef> typedArray = Float32ArrayRef::New(vm_, arrayBuffer, 4, 6);
-    ASSERT_TRUE(typedArray->IsFloat32Array());
+    ASSERT_TRUE(typedArray->IsFloat32Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 24U); // 24 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 4U);  // 4 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, Float64Array)
@@ -976,15 +976,15 @@ HWTEST_F_L0(JSNApiTests, Float64Array)
     LocalScope scope(vm_);
     const int32_t length = 57;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 8 : offset of byte, 6 : length
     Local<Float64ArrayRef> typedArray = Float64ArrayRef::New(vm_, arrayBuffer, 8, 6);
-    ASSERT_TRUE(typedArray->IsFloat64Array());
+    ASSERT_TRUE(typedArray->IsFloat64Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 48U); // 48 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);  // 8 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, BigInt64Array)
@@ -992,15 +992,15 @@ HWTEST_F_L0(JSNApiTests, BigInt64Array)
     LocalScope scope(vm_);
     const int32_t length = 57;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 8 : offset of byte, 6 : length
     Local<BigInt64ArrayRef> typedArray = BigInt64ArrayRef::New(vm_, arrayBuffer, 8, 6);
-    ASSERT_TRUE(typedArray->IsBigInt64Array());
+    ASSERT_TRUE(typedArray->IsBigInt64Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 48U); // 48 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);  // 8 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 /**
@@ -1015,15 +1015,15 @@ HWTEST_F_L0(JSNApiTests, BigUint64Array)
     LocalScope scope(vm_);
     const int32_t length = 57;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
 
     // 8 : offset of byte, 6 : length
     Local<BigUint64ArrayRef> typedArray = BigUint64ArrayRef::New(vm_, arrayBuffer, 8, 6);
-    ASSERT_TRUE(typedArray->IsBigUint64Array());
+    ASSERT_TRUE(typedArray->IsBigUint64Array(vm_));
     ASSERT_EQ(typedArray->ByteLength(vm_), 48U); // 48 : length of bytes
     ASSERT_EQ(typedArray->ByteOffset(vm_), 8U);  // 8 : offset of byte
     ASSERT_EQ(typedArray->ArrayLength(vm_), 6U); // 6 : length of array
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 
 /**
@@ -1041,7 +1041,7 @@ HWTEST_F_L0(JSNApiTests, Error_ThrowException_HasPendingException)
     LocalScope scope(vm_);
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
     Local<JSValueRef> error = Exception::Error(vm_, message);
-    ASSERT_TRUE(error->IsError());
+    ASSERT_TRUE(error->IsError(vm_));
 
     JSNApi::ThrowException(vm_, error);
     ASSERT_TRUE(thread_->HasPendingException());
@@ -1052,7 +1052,7 @@ HWTEST_F_L0(JSNApiTests, RangeError)
     LocalScope scope(vm_);
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
     Local<JSValueRef> error = Exception::RangeError(vm_, message);
-    ASSERT_TRUE(error->IsError());
+    ASSERT_TRUE(error->IsError(vm_));
 
     JSNApi::ThrowException(vm_, error);
     ASSERT_TRUE(thread_->HasPendingException());
@@ -1071,7 +1071,7 @@ HWTEST_F_L0(JSNApiTests, TypeError)
     LocalScope scope(vm_);
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
     Local<JSValueRef> error = Exception::TypeError(vm_, message);
-    ASSERT_TRUE(error->IsError());
+    ASSERT_TRUE(error->IsError(vm_));
 
     JSNApi::ThrowException(vm_, error);
     ASSERT_TRUE(thread_->HasPendingException());
@@ -1082,7 +1082,7 @@ HWTEST_F_L0(JSNApiTests, ReferenceError)
     LocalScope scope(vm_);
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
     Local<JSValueRef> error = Exception::ReferenceError(vm_, message);
-    ASSERT_TRUE(error->IsError());
+    ASSERT_TRUE(error->IsError(vm_));
 
     JSNApi::ThrowException(vm_, error);
     ASSERT_TRUE(thread_->HasPendingException());
@@ -1093,7 +1093,7 @@ HWTEST_F_L0(JSNApiTests, SyntaxError)
     LocalScope scope(vm_);
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
     Local<JSValueRef> error = Exception::SyntaxError(vm_, message);
-    ASSERT_TRUE(error->IsError());
+    ASSERT_TRUE(error->IsError(vm_));
 
     JSNApi::ThrowException(vm_, error);
     ASSERT_TRUE(thread_->HasPendingException());
@@ -1112,7 +1112,7 @@ HWTEST_F_L0(JSNApiTests, OOMError)
     LocalScope scope(vm_);
     Local<StringRef> message = StringRef::NewFromUtf8(vm_, "ErrorTest");
     Local<JSValueRef> error = Exception::OOMError(vm_, message);
-    ASSERT_TRUE(error->IsError());
+    ASSERT_TRUE(error->IsError(vm_));
 
     JSNApi::ThrowException(vm_, error);
     ASSERT_TRUE(thread_->HasPendingException());
@@ -1457,7 +1457,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_New_Uint64)
 {
     uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
     Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
-    EXPECT_TRUE(maxBigintUint64->IsBigInt());
+    EXPECT_TRUE(maxBigintUint64->IsBigInt(vm_));
 
     JSHandle<BigInt> maxBigintUint64Val(thread_, JSNApiHelper::ToJSTaggedValue(*maxBigintUint64));
     EXPECT_EQ(maxBigintUint64Val->GetDigit(0), static_cast<uint32_t>(maxUint64 & 0xffffffff));
@@ -1465,7 +1465,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_New_Uint64)
 
     uint64_t minUint64 = std::numeric_limits<uint64_t>::min();
     Local<BigIntRef> minBigintUint64 = BigIntRef::New(vm_, minUint64);
-    EXPECT_TRUE(minBigintUint64->IsBigInt());
+    EXPECT_TRUE(minBigintUint64->IsBigInt(vm_));
 
     JSHandle<BigInt> minBigintUint64Val(thread_, JSNApiHelper::ToJSTaggedValue(*minBigintUint64));
     EXPECT_EQ(minBigintUint64Val->GetDigit(0), static_cast<uint32_t>(minUint64 & 0xffffffff));
@@ -1476,7 +1476,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_New_Int64)
 {
     int64_t maxInt64 = std::numeric_limits<int64_t>::max();
     Local<BigIntRef> maxBigintInt64 = BigIntRef::New(vm_, maxInt64);
-    EXPECT_TRUE(maxBigintInt64->IsBigInt());
+    EXPECT_TRUE(maxBigintInt64->IsBigInt(vm_));
 
     JSHandle<BigInt> maxBigintInt64Val(thread_, JSNApiHelper::ToJSTaggedValue(*maxBigintInt64));
     EXPECT_EQ(maxBigintInt64Val->GetDigit(0), static_cast<uint32_t>(maxInt64 & 0xffffffff));
@@ -1484,7 +1484,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_New_Int64)
 
     int64_t minInt64 = std::numeric_limits<int64_t>::min();
     Local<BigIntRef> minBigintInt64 = BigIntRef::New(vm_, minInt64);
-    EXPECT_TRUE(minBigintInt64->IsBigInt());
+    EXPECT_TRUE(minBigintInt64->IsBigInt(vm_));
 
     JSHandle<BigInt> minBigintInt64Val(thread_, JSNApiHelper::ToJSTaggedValue(*minBigintInt64));
     EXPECT_EQ(minBigintInt64Val->GetSign(), true);
@@ -1511,7 +1511,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_CreateBigWords_GetWordsArray_GetWordsArraySiz
         std::numeric_limits<uint64_t>::max(),
     };
     Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm_, sign, size, words);
-    EXPECT_TRUE(bigWords->IsBigInt());
+    EXPECT_TRUE(bigWords->IsBigInt(vm_));
 
     Local<BigIntRef> bigWordsRef(bigWords);
     EXPECT_EQ(bigWordsRef->GetWordsArraySize(), size);
@@ -1544,11 +1544,11 @@ HWTEST_F_L0(JSNApiTests, DateRef_New_ToString_GetTime)
 {
     double time = 1.1;
     Local<DateRef> data = DateRef::New(vm_, time);
-    EXPECT_TRUE(data->IsDate());
+    EXPECT_TRUE(data->IsDate(vm_));
 
     Local<StringRef> tostring = data->ToString(vm_);
     Local<JSValueRef> toValue(tostring);
-    EXPECT_TRUE(tostring->IsString());
+    EXPECT_TRUE(tostring->IsString(vm_));
     double dou = data->GetTime();
     EXPECT_EQ(dou, 1.1);
 }
@@ -1561,14 +1561,14 @@ HWTEST_F_L0(JSNApiTests, PromiseRef_Finally)
     Local<PromiseRef> promise = capability->GetPromise(vm_);
     Local<FunctionRef> reject = FunctionRef::New(vm_, RejectCallback);
     Local<PromiseRef> catchPromise = promise->Finally(vm_, reject);
-    ASSERT_TRUE(promise->IsPromise());
-    ASSERT_TRUE(catchPromise->IsPromise());
+    ASSERT_TRUE(promise->IsPromise(vm_));
+    ASSERT_TRUE(catchPromise->IsPromise(vm_));
     Local<PromiseRef> catchPromise1 = promise->Then(vm_, reject, reject);
-    ASSERT_TRUE(catchPromise1->IsPromise());
+    ASSERT_TRUE(catchPromise1->IsPromise(vm_));
     Local<FunctionRef> callback = FunctionRef::New(vm_, FunctionCallback);
     ASSERT_TRUE(!callback.IsEmpty());
     Local<PromiseRef> catchPromise2 = promise->Then(vm_, callback);
-    ASSERT_TRUE(catchPromise2->IsPromise());
+    ASSERT_TRUE(catchPromise2->IsPromise(vm_));
 }
 
 /*
@@ -1695,9 +1695,9 @@ HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
     size_t nativeBindingsize = 15;
     Local<FunctionRef> res =
         FunctionRef::NewClassFunction(vm_, FunctionCallback, deleter, cb, callNative, nativeBindingsize);
-    ASSERT_TRUE(res->IsFunction());
+    ASSERT_TRUE(res->IsFunction(vm_));
     Local<JSValueRef> res1 = res->GetFunctionPrototype(vm_);
-    ASSERT_TRUE(res->IsFunction());
+    ASSERT_TRUE(res->IsFunction(vm_));
     ASSERT_TRUE(!res1->IsArray(vm_));
     Local<StringRef> origin = StringRef::NewFromUtf8(vm_, "1");
     res->SetName(vm_, origin);
@@ -1709,7 +1709,7 @@ HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
 HWTEST_F_L0(JSNApiTests, JSNApi_SetAssetPath_GetAssetPath)
 {
     LocalScope scope(vm_);
-    std::string str = "11";
+    std::string str = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
     JSNApi::SetAssetPath(vm_, str);
     std::string res = JSNApi::GetAssetPath(vm_);
     ASSERT_EQ(str, res);
@@ -1735,9 +1735,9 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_ToNativePointer)
     ASSERT_EQ(toString->ToNumber(vm_)->Value(), -123.3); // -123 : test case of input
     ASSERT_EQ(toString->ToBoolean(vm_)->Value(), true);
     ASSERT_EQ(toValue->ToString(vm_)->ToString(), "-123.3");
-    ASSERT_TRUE(toValue->ToObject(vm_)->IsObject());
+    ASSERT_TRUE(toValue->ToObject(vm_)->IsObject(vm_));
     Local<NativePointerRef> res = toValue->ToNativePointer(vm_);
-    ASSERT_TRUE(res->IsString());
+    ASSERT_TRUE(res->IsString(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, GeneratorObjectRef_IsGenerator)
@@ -1761,7 +1761,7 @@ HWTEST_F_L0(JSNApiTests, GeneratorObjectRef_IsGenerator)
     JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
     Local<GeneratorObjectRef> genObjectRef = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
     Local<JSValueRef> res = genObjectRef->GetGeneratorFunction(vm_);
-    ASSERT_TRUE(res->IsGeneratorFunction());
+    ASSERT_TRUE(res->IsGeneratorFunction(vm_));
 }
 
 /**
@@ -1777,7 +1777,7 @@ HWTEST_F_L0(JSNApiTests, BigIntToInt64)
     LocalScope scope(vm_);
     uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
     Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
-    EXPECT_TRUE(maxBigintUint64->IsBigInt());
+    EXPECT_TRUE(maxBigintUint64->IsBigInt(vm_));
     int64_t num = -11;
     int64_t num1 = num;
     bool lossless = true;
@@ -1798,7 +1798,7 @@ HWTEST_F_L0(JSNApiTests, BigIntToUint64)
     LocalScope scope(vm_);
     uint64_t maxUint64 = std::numeric_limits<uint64_t>::max();
     Local<BigIntRef> maxBigintUint64 = BigIntRef::New(vm_, maxUint64);
-    EXPECT_TRUE(maxBigintUint64->IsBigInt());
+    EXPECT_TRUE(maxBigintUint64->IsBigInt(vm_));
     uint64_t num = -11;
     uint64_t num1 = num;
     bool lossless = true;
@@ -2128,7 +2128,7 @@ HWTEST_F_L0(JSNApiTests, IsNativePointer)
     void *vp1 = static_cast<void *>(new std::string("test"));
     void *vp2 = static_cast<void *>(new std::string("test"));
     Local<NativePointerRef> res = NativePointerRef::New(vm_, vp1, callBack, vp2, 0);
-    ASSERT_TRUE(res->IsNativePointer());
+    ASSERT_TRUE(res->IsNativePointer(vm_));
 }
 
 /*
@@ -2151,7 +2151,7 @@ HWTEST_F_L0(JSNApiTests, ToType_ToBoolean_ToString_ToObject)
     ASSERT_EQ(toString->ToNumber(vm_)->Value(), -1.3);
     ASSERT_EQ(toString->ToBoolean(vm_)->Value(), true);
     ASSERT_EQ(toValue->ToString(vm_)->ToString(), "-1.3");
-    ASSERT_TRUE(toValue->ToObject(vm_)->IsObject());
+    ASSERT_TRUE(toValue->ToObject(vm_)->IsObject(vm_));
 }
 
 /**
@@ -2169,16 +2169,16 @@ HWTEST_F_L0(JSNApiTests, IsTypedArray)
     char buffer[4];
     memset_s(buffer, sizeof(buffer), 0, sizeof(buffer));
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
-    EXPECT_EQ(testString->WriteUtf8(buffer, 4), 4);
+    EXPECT_EQ(testString->WriteUtf8(vm_, buffer, 4), 4);
     // testString 是一个字符串，而不是类型化数组
-    ASSERT_FALSE(testString->IsTypedArray());
+    ASSERT_FALSE(testString->IsTypedArray(vm_));
     const int32_t length = 30;
     Local<ArrayBufferRef> arrayBuffer = ArrayBufferRef::New(vm_, length);
-    ASSERT_TRUE(arrayBuffer->IsArrayBuffer());
+    ASSERT_TRUE(arrayBuffer->IsArrayBuffer(vm_));
     Local<Uint32ArrayRef> typedArray = Uint32ArrayRef::New(vm_, arrayBuffer, 4, 6);
     // 是否是类型化数组
-    ASSERT_TRUE(typedArray->IsTypedArray());
+    ASSERT_TRUE(typedArray->IsTypedArray(vm_));
     ASSERT_FALSE(typedArray->IsUndefined());
-    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(), arrayBuffer->GetBuffer());
+    ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
 }
 }  // namespace panda::test

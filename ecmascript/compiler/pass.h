@@ -71,7 +71,7 @@ public:
     PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassContext *ctx, CompilerLog *log,
              std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
-             uint32_t methodOffset = 0, const CallMethodFlagMap *callMethodFlagMap = nullptr,
+             uint32_t methodOffset = 0, CallMethodFlagMap *callMethodFlagMap = nullptr,
              const CVector<AbcFileInfo> &fileInfos = CVector<AbcFileInfo>{}, NativeAreaAllocator *allocator = nullptr,
              PGOProfilerDecoder *decoder = nullptr, PassOptions *passOptions = nullptr,
              std::string optBCRange = "")
@@ -189,8 +189,8 @@ public:
     {
         return optBCRange_;
     }
-    
-    const CallMethodFlagMap *GetCallMethodFlagMap() const
+
+    CallMethodFlagMap *GetCallMethodFlagMap()
     {
         return callMethodFlagMap_;
     }
@@ -200,32 +200,11 @@ public:
         return fileInfos_;
     }
 
-    bool IsTypeAbort() const
-    {
-        if (hasTypes_) {
-            // A ts method which has low type percent and not marked as a resolved method
-            // should be skipped from full compilation.
-            if (methodInfo_->IsTypeInferAbort() && !methodInfo_->IsResolvedMethod()) {
-                return true;
-            }
-        }
-        // when a method will be full compiled, we should confirm its TypeInferAbortBit to be false
-        // maybe it used to be true in the first round of compilation.
-        methodInfo_->SetTypeInferAbort(false);
-        log_->AddCompiledMethod(methodName_, recordName_);
-        return false;
-    }
-
     void AbortCompilation()
     {
         ctx_->GetBytecodeInfo().AddSkippedMethod(methodOffset_);
         methodInfo_->SetIsCompiled(false);
         log_->RemoveCompiledMethod(methodName_, recordName_);
-    }
-
-    void MarkAsTypeAbort()
-    {
-        methodInfo_->SetTypeInferAbort(true);
     }
 
 private:
@@ -240,7 +219,7 @@ private:
     const CString &recordName_;
     MethodLiteral *methodLiteral_ {nullptr};
     uint32_t methodOffset_;
-    const CallMethodFlagMap *callMethodFlagMap_ {nullptr};
+    CallMethodFlagMap *callMethodFlagMap_ {nullptr};
     const CVector<AbcFileInfo> &fileInfos_;
     NativeAreaAllocator *allocator_ {nullptr};
     PGOProfilerDecoder *decoder_ {nullptr};
@@ -475,7 +454,7 @@ public:
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         NTypeHCRLowering lowering(data->GetCircuit(), &visitor, data->GetPassContext(),
-                                  data->GetRecordName(), &chunk);
+                                  data->GetRecordName(), data->GetMethodLiteral(), &chunk);
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("NTypeHCRLowering");
@@ -495,7 +474,8 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
-        MCRLowering lowering(data->GetCircuit(), &visitor, data->GetCompilerConfig(), &chunk);
+        MCRLowering lowering(data->GetPassContext()->GetCompilationEnv(), data->GetCircuit(), &visitor,
+                             data->GetCompilerConfig(), &chunk);
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("MCRLowering");
@@ -514,10 +494,11 @@ public:
         TimeScope timescope("TSInlineLoweringPass", data->GetMethodName(), data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         TSInlineLowering inlining(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
-                                  data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset());
+                                  data->GetNativeAreaAllocator(), passOptions, data->GetMethodOffset(),
+                                  data->GetCallMethodFlagMap());
         inlining.RunTSInlineLowering();
+        Chunk chunk(data->GetNativeAreaAllocator());
         if (passOptions->EnableLexenvSpecialization()) {
-            Chunk chunk(data->GetNativeAreaAllocator());
             {
                 CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
                 GetEnvSpecializationPass getEnvSpecializationPass(data->GetCircuit(), &visitor, &chunk);
@@ -538,7 +519,7 @@ public:
 
         if (passOptions->EnableInlineNative()) {
             NativeInlineLowering nativeInline(data->GetCircuit(), data->GetCompilerConfig(), data->GetPassContext(),
-                                              enableLog, data->GetMethodName());
+                                              enableLog, data->GetMethodName(), &chunk);
             nativeInline.RunNativeInlineLowering();
         }
         return true;
@@ -775,8 +756,9 @@ public:
                             data->GetMethodOffset(), data->GetLog());
         Chunk chunk(data->GetNativeAreaAllocator());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        StateSplitLinearizer(data->GetCircuit(), nullptr, data->GetCompilerConfig(),
-            enableLog, data->GetMethodName(), &chunk).Run();
+        StateSplitLinearizer(data->GetPassContext()->GetCompilationEnv(), data->GetCircuit(), nullptr,
+                             data->GetCompilerConfig(), enableLog, data->GetMethodName(), &chunk)
+            .Run();
         return true;
     }
 };
@@ -822,7 +804,8 @@ public:
         CreateCodeGen(module, enableLog);
         CodeGenerator codegen(cgImpl_, data->GetMethodName());
         codegen.Run(data->GetCircuit(), data->GetConstScheduleResult(), data->GetCompilerConfig(),
-                    data->GetMethodLiteral(), data->GetJSPandaFile(), enableOptInlining, enableOptBranchProfiling);
+                    data->GetMethodLiteral(), data->GetJSPandaFile(), data->GetCircuit()->GetFrameType(),
+                    enableOptInlining, enableOptBranchProfiling);
         return true;
     }
 private:

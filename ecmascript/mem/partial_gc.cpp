@@ -48,17 +48,17 @@ void PartialGC::RunPhases()
         + ";TotalCommit" + std::to_string(heap_->GetCommittedSize()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
-
+    bool mainThreadInForeground = heap_->GetJSThread()->IsMainThreadFast() && !heap_->IsInBackground();
+    if (mainThreadInForeground) {
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::STW);
+    }
     markingInProgress_ = heap_->CheckOngoingConcurrentMarking();
 
     LOG_GC(DEBUG) << "markingInProgress_" << markingInProgress_;
     Initialize();
     Mark();
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
-        // verify mark
-        LOG_ECMA(DEBUG) << "start verify mark";
-        Verification(heap_, heap_->IsFullMark() ?
-            VerifyKind::VERIFY_MARK_FULL : VerifyKind::VERIFY_MARK_YOUNG).VerifyAll();
+        Verification::VerifyMark(heap_);
     }
     Sweep();
     Evacuate();
@@ -66,12 +66,12 @@ void PartialGC::RunPhases()
         heap_->GetSweeper()->PostTask();
     }
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
-        // verify evacuate and sweep
-        LOG_ECMA(DEBUG) << "start verify evacuate and sweep";
-        Verification(heap_, heap_->IsConcurrentFullMark() ?
-            VerifyKind::VERIFY_EVACUATE_OLD : VerifyKind::VERIFY_EVACUATE_YOUNG).VerifyAll();
+        Verification::VerifyEvacuate(heap_);
     }
     Finish();
+    if (mainThreadInForeground) {
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
+    }
     if (heap_->IsConcurrentFullMark()) {
         heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());
     }
@@ -132,7 +132,17 @@ void PartialGC::Mark()
     heap_->GetNonMovableMarker()->MarkRoots(MAIN_THREAD_INDEX);
     if (heap_->IsConcurrentFullMark()) {
         heap_->GetNonMovableMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
-    } else {
+    } else if (heap_->IsEdenMark()) {
+        {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessOldToNew");
+            heap_->GetNonMovableMarker()->ProcessOldToNew(MAIN_THREAD_INDEX);
+        }
+        {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessNewToEden");
+            heap_->GetNonMovableMarker()->ProcessNewToEden(MAIN_THREAD_INDEX);
+        }
+        heap_->GetNonMovableMarker()->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
+    } else if (heap_->IsYoungMark()) {
         {
             ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessOldToNew");
             heap_->GetNonMovableMarker()->ProcessOldToNew(MAIN_THREAD_INDEX);
@@ -140,6 +150,8 @@ void PartialGC::Mark()
         heap_->GetNonMovableMarker()->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
     }
     heap_->WaitRunningTaskFinished();
+    // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
+    heap_->GetNonMovableMarker()->MarkJitCodeMap(MAIN_THREAD_INDEX);
 }
 
 void PartialGC::Sweep()
@@ -159,14 +171,17 @@ void PartialGC::ProcessNativeDelete()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::ProcessNativeDelete");
     TRACE_GC(GCStats::Scope::ScopeId::ClearNativeObject, heap_->GetEcmaVM()->GetEcmaGCStats());
-    WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
+    WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         ASSERT(!objectRegion->InSharedHeap());
-        if (!objectRegion->InYoungSpaceOrCSet() && !heap_->IsConcurrentFullMark()) {
+        if (heap_->IsEdenMark() && !objectRegion->InEdenSpace()) {
+            return header;
+        }
+        if (!objectRegion->InGeneralNewSpaceOrCSet() && heap_->IsYoungMark()) {
             return header;
         }
         if (!objectRegion->Test(header)) {
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
         return header;
     };

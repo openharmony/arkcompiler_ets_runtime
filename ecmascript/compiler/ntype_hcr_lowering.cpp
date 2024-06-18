@@ -90,8 +90,8 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     uint32_t constPoolIndex = static_cast<uint32_t>(acc_.GetConstantValue(index));
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
-    GateRef constpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::CONST_POOL);
-    GateRef literialElements = LoadFromConstPool(constpool, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
+    GateRef unsharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
+    GateRef literialElements = LoadFromConstPool(unsharedConstpool, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
     uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
     JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
     if (arr.IsUndefined()) {
@@ -120,6 +120,21 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 
+GateRef NTypeHCRLowering::NewActualArgv(GateRef gate, GateRef glue)
+{
+    ArgumentAccessor argAcc(circuit_);
+    auto funcIdx = static_cast<size_t>(CommonArgIdx::FUNC);
+    size_t length = argAcc.ArgsCount() - funcIdx;
+    GateRef array = CreateElementsWithLength(gate, glue, length);
+    for (size_t i = funcIdx; i < argAcc.ArgsCount(); i++) {
+        GateRef value = argAcc.ArgsAt(i);
+        builder_.StoreToTaggedArray(array, i - funcIdx, value);
+    }
+    GateRef argv = builder_.PtrAdd(builder_.TaggedCastToIntPtr(array),
+                                   builder_.IntPtr(TaggedArray::DATA_OFFSET));
+    return argv;
+}
+
 void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
 {
     CreateArgumentsAccessor accessor = acc_.GetCreateArgumentsAccessor(gate);
@@ -127,20 +142,33 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     Environment env(gate, circuit_, &builder_);
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
-    GateRef actualArgc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC);
+    GateRef actualArgc = builder_.TruncInt64ToInt32(argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGC));
+    GateRef expectedArgc = builder_.Int32(methodLiteral_->GetNumArgs());
+    GateRef argv = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGV);
+    DEFVALUE(actualArgv, (&builder_), VariableType::NATIVE_POINTER(), argv);
     GateRef startIdx = acc_.GetValueIn(gate, 0);
-
+    GateRef check = builder_.BoolAnd(builder_.Equal(actualArgc, expectedArgc),
+        builder_.Equal(builder_.IntPtr(0), *actualArgv));
+    Label calcActualArgv(&builder_);
+    Label exit(&builder_);
+    BRANCH_CIR(check, &calcActualArgv, &exit);
+    builder_.Bind(&calcActualArgv);
+    {
+        actualArgv = NewActualArgv(gate, glue);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
     switch (mode) {
         case CreateArgumentsAccessor::Mode::REST_ARGUMENTS: {
             GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::CopyRestArgs,
-                { glue, startIdx, builder_.TruncInt64ToInt32(actualArgc) });
-            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+                { glue, *actualArgv, startIdx, actualArgc });
+            ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), newGate);
             break;
         }
         case CreateArgumentsAccessor::Mode::UNMAPPED_ARGUMENTS: {
-            GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::GetUnmapedArgs,
-                { glue, builder_.TruncInt64ToInt32(actualArgc) });
-            acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), newGate);
+            GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::GetUnmappedArgs,
+                { glue, *actualArgv, actualArgc });
+            ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), newGate);
             break;
         }
         default: {
@@ -150,12 +178,11 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     }
 }
 
-GateRef NTypeHCRLowering::LoadFromConstPool(GateRef constpool, size_t index, size_t valVecType)
+GateRef NTypeHCRLowering::LoadFromConstPool(GateRef unsharedConstpool, size_t index, size_t valVecType)
 {
-    GateRef constPool = builder_.GetUnsharedConstpool(constpool);
-    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(constPool);
+    GateRef constPoolSize = builder_.GetLengthOfTaggedArray(unsharedConstpool);
     GateRef valVecIndex = builder_.Int32Sub(constPoolSize, builder_.Int32(valVecType));
-    GateRef valVec = builder_.GetValueFromTaggedArray(constPool, valVecIndex);
+    GateRef valVec = builder_.GetValueFromTaggedArray(unsharedConstpool, valVecIndex);
     return builder_.LoadFromTaggedArray(valVec, index);
 }
 

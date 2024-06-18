@@ -74,7 +74,8 @@ static RangeSet g_regexpIdentifyContinue({
 
 void RegExpParser::Parse()
 {
-    // dynbuffer head init [size,capture_count,statck_count,flags]
+    // dynbuffer head init [size,capture_count,statck_count,flags,prefilter]
+    buffer_.EmitU32(0);
     buffer_.EmitU32(0);
     buffer_.EmitU32(0);
     buffer_.EmitU32(0);
@@ -100,11 +101,24 @@ void RegExpParser::Parse()
     saveEndOp.EmitOpCode(&buffer_, captureIndex);
     MatchEndOpCode matchEndOp;
     matchEndOp.EmitOpCode(&buffer_, 0);
+
+    uint32_t ptr = RegExpParser::OP_START_OFFSET;
+    ptr += static_cast<uint32_t>(RegExpOpCode::GetRegExpOpCode(RegExpOpCode::OP_SAVE_START)->GetSize());
+    uint8_t opCode = buffer_.GetU8(ptr);
+    uint16_t expectedChar = 0;
+    if (opCode == RegExpOpCode::OP_CHAR && !IsIgnoreCase()) {
+        expectedChar = buffer_.GetU16(ptr + 1);
+        if (expectedChar > UINT8_MAX) {
+            expectedChar = 0;
+        }
+    }
+    
     // dynbuffer head assignments
     buffer_.PutU32(0, buffer_.size_);
     buffer_.PutU32(NUM_CAPTURE__OFFSET, captureCount_);
     buffer_.PutU32(NUM_STACK_OFFSET, stackCount_);
     buffer_.PutU32(FLAGS_OFFSET, flags_);
+    buffer_.PutU32(PREFILTER_OFFSET, expectedChar);
 #ifndef _NO_DEBUG_
     RegExpOpCode::DumpRegExpOpCode(std::cout, buffer_);
 #endif
@@ -125,6 +139,7 @@ void RegExpParser::ParseDisjunction(bool isBackward)
     if (isError_) {
         return;
     }
+    uint32_t para = 0;
     do {
         if (c0_ == '|') {
             SplitNextOpCode splitOp;
@@ -132,12 +147,82 @@ void RegExpParser::ParseDisjunction(bool isBackward)
             GotoOpCode gotoOp;
             splitOp.InsertOpCode(&buffer_, start, len + gotoOp.GetSize());
             uint32_t pos = gotoOp.EmitOpCode(&buffer_, 0) - gotoOp.GetSize();
+            gotoOp.UpdateOpPara(&buffer_, pos, para);
             Advance();
             ParseAlternative(isBackward);
+            para = buffer_.size_ - pos - gotoOp.GetSize();
+            if (c0_ != '|') {
+                uint16_t cnt = 0;
+                uint32_t opCharSize =
+                    static_cast<uint32_t>(RegExpOpCode::GetRegExpOpCode(RegExpOpCode::OP_CHAR)->GetSize());
+                uint32_t opSplitSize =
+                    static_cast<uint32_t>(RegExpOpCode::GetRegExpOpCode(RegExpOpCode::OP_SPLIT_NEXT)->GetSize());
+                std::vector<uint16_t> chars;
+                std::vector<uint32_t> offsets;
+                std::set<uint16_t> checkSet;
+                uint32_t ptr = start;
+                bool isSparseable = true;
+                do {
+                    uint8_t opCode = buffer_.GetU8(ptr);
+                    uint32_t offset = 0;
+                    uint32_t branch = ptr;
+                    bool isLastBranch = false;
+                    if (opCode == RegExpOpCode::OP_SPLIT_NEXT) {
+                        offset = buffer_.GetU32(ptr + 1);
+                        branch = ptr + offset + opSplitSize;
+                    } else {
+                        isLastBranch = true;
+                    }
+                    uint8_t opCodeChar = buffer_.GetU8(branch);
+                    if (opCodeChar == RegExpOpCode::OP_CHAR) {
+                        chars.push_back(buffer_.GetU16(branch + 1));
+                        offsets.push_back(offset);
+                        if (checkSet.find(chars[cnt]) != checkSet.end()) {
+                            isSparseable = false;
+                            break;
+                        }
+                        checkSet.insert(chars[cnt]);
+                    } else {
+                        isSparseable = false;
+                        break;
+                    }
+                    cnt++;
+                    if (isLastBranch) {
+                        break;
+                    }
+                    ptr += opSplitSize;
+                } while (true);
+
+                if (isSparseable) {
+                    uint32_t sparseLen = SPARSE_HEAD_OFFSET + static_cast<uint32_t>(cnt) * SPARSE_MAX_OFFSET;
+                    uint32_t splitsLen = static_cast<uint32_t>(cnt - 1) * opSplitSize;
+                    ptr = start;
+                    buffer_.Insert(start, sparseLen - splitsLen);
+                    pos += sparseLen - splitsLen;
+                    buffer_.PutU8(ptr, RegExpOpCode::OP_SPARSE);
+                    buffer_.PutU16(ptr + 1, cnt);
+                    ptr += SPARSE_HEAD_OFFSET;
+                    for (int32_t i = static_cast<int32_t>(chars.size() - 1); i >= 0; i--) {
+                        buffer_.PutU16(ptr, chars[i]);
+                        offsets[i] += opCharSize - opSplitSize * std::max(0, cnt - i -2);
+                        buffer_.PutU32(ptr + SPARSE_OFF_OFFSET, offsets[i]);
+                        ptr += SPARSE_MAX_OFFSET;
+                    }
+                }
+                bool isEnd = false;
+                do {
+                    uint32_t paraTmp = buffer_.GetU32(pos + 1);
+                    if (paraTmp == 0) {
+                        isEnd = true;
+                    }
+                    buffer_.PutU32(pos + 1, para);
+                    para += paraTmp + gotoOp.GetSize();
+                    pos -= paraTmp + gotoOp.GetSize();
+                } while (!isEnd);
+            }
             if (isError_) {
                 return;
             }
-            gotoOp.UpdateOpPara(&buffer_, pos, buffer_.size_ - pos - gotoOp.GetSize());
         }
     } while (c0_ != KEY_EOF && c0_ != ')');
 }
@@ -758,11 +843,12 @@ void RegExpParser::ParseQuantifier(size_t atomBcStart, int captureStart, int cap
         ParseError("nothing to repeat");
         return;
     }
-    if (min != -1 && max != -1 && !isEmpty_) {
-        stackCount_++;
-        PushOpCode pushOp;
-        pushOp.InsertOpCode(&buffer_, atomBcStart);
-        atomBcStart += pushOp.GetSize();
+
+    if (max == 0) {
+        buffer_.size_ = atomBcStart; // Drop all unnecessary bytecode
+    } else if (min != -1 && max != -1 && !isEmpty_) {
+        bool isLoopOp = false;
+        size_t checkCharPara = SIZE_MAX;
 
         if (captureStart != 0) {
             SaveResetOpCode saveResetOp;
@@ -770,21 +856,44 @@ void RegExpParser::ParseQuantifier(size_t atomBcStart, int captureStart, int cap
         }
 
         // zero advance check
-        if (max == INT32_MAX) {
+        uint8_t firstOp = buffer_.GetU8(atomBcStart);
+        if (max == INT32_MAX && firstOp != RegExpOpCode::OP_CHAR && firstOp != RegExpOpCode::OP_CHAR32 &&
+                                firstOp != RegExpOpCode::OP_RANGE && firstOp != RegExpOpCode::OP_RANGE32 &&
+                                firstOp != RegExpOpCode::OP_ALL && firstOp != RegExpOpCode::OP_DOTS &&
+                                firstOp != RegExpOpCode::OP_SPARSE) {
             stackCount_++;
             PushCharOpCode pushCharOp;
             pushCharOp.InsertOpCode(&buffer_, atomBcStart);
             CheckCharOpCode checkCharOp;
+            checkCharPara = buffer_.GetSize() + 1;
             // NOLINTNEXTLINE(readability-magic-numbers)
-            checkCharOp.EmitOpCode(&buffer_, RegExpOpCode::GetRegExpOpCode(RegExpOpCode::OP_LOOP)->GetSize());
+            checkCharOp.EmitOpCode(&buffer_, 0);
         }
 
-        if (isGreedy) {
-            LoopGreedyOpCode loopOp;
-            loopOp.EmitOpCode(&buffer_, atomBcStart - buffer_.GetSize() - loopOp.GetSize(), min, max);
-        } else {
-            LoopOpCode loopOp;
-            loopOp.EmitOpCode(&buffer_, atomBcStart - buffer_.GetSize() - loopOp.GetSize(), min, max);
+        if (min <= 1 && max == INT32_MAX) {
+            if (checkCharPara != SIZE_MAX) {
+                buffer_.PutU32(checkCharPara, RegExpOpCode::GetRegExpOpCode(RegExpOpCode::OP_SPLIT_NEXT)->GetSize());
+            }
+            if (isGreedy) {
+                SplitFirstOpCode splitOp;
+                splitOp.EmitOpCode(&buffer_, atomBcStart - buffer_.GetSize() - splitOp.GetSize());
+            } else {
+                SplitNextOpCode splitOp;
+                splitOp.EmitOpCode(&buffer_, atomBcStart - buffer_.GetSize() - splitOp.GetSize());
+            }
+        } else if (max > 1) {
+            if (checkCharPara != SIZE_MAX) {
+                buffer_.PutU32(checkCharPara, RegExpOpCode::GetRegExpOpCode(RegExpOpCode::OP_LOOP)->GetSize());
+            }
+            if (isGreedy) {
+                LoopGreedyOpCode loopOp;
+                loopOp.EmitOpCode(&buffer_, atomBcStart - buffer_.GetSize() - loopOp.GetSize(), min, max);
+                isLoopOp = true;
+            } else {
+                LoopOpCode loopOp;
+                loopOp.EmitOpCode(&buffer_, atomBcStart - buffer_.GetSize() - loopOp.GetSize(), min, max);
+                isLoopOp = true;
+            }
         }
 
         if (min == 0) {
@@ -796,9 +905,13 @@ void RegExpParser::ParseQuantifier(size_t atomBcStart, int captureStart, int cap
                 splitFirstOp.InsertOpCode(&buffer_, atomBcStart, buffer_.GetSize() - atomBcStart);
             }
         }
-
-        PopOpCode popOp;
-        popOp.EmitOpCode(&buffer_);
+        if (isLoopOp) {
+            stackCount_++;
+            PushOpCode pushOp;
+            pushOp.InsertOpCode(&buffer_, atomBcStart);
+            PopOpCode popOp;
+            popOp.EmitOpCode(&buffer_);
+        }
     }
     isEmpty_ = false;
 }

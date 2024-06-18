@@ -93,6 +93,28 @@ host_unittest_action("Containers_003_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("Containers_004_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "containers_bitvector_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
 
@@ -101,6 +123,7 @@ group("unittest") {
     ":Containers_001_Test",
     ":Containers_002_Test",
     ":Containers_003_Test",
+    ":Containers_004_Test",
   ]
 }
 

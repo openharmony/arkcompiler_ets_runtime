@@ -32,6 +32,7 @@ enum MemSpaceType {
     NON_MOVABLE,
     MACHINE_CODE_SPACE,
     HUGE_OBJECT_SPACE,
+    EDEN_SPACE,
     SEMI_SPACE,
     SNAPSHOT_SPACE,
     COMPRESS_SPACE,
@@ -80,6 +81,8 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "machine code space";
         case HUGE_OBJECT_SPACE:
             return "huge object space";
+        case EDEN_SPACE:
+            return "eden space";
         case SEMI_SPACE:
             return "semi space";
         case SNAPSHOT_SPACE:
@@ -288,8 +291,14 @@ public:
 
     void InvokeAllocationInspector(Address object, size_t objectSize);
 
+#ifdef ENABLE_JITFORT
+protected:
+    static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
+private:
+#else
 private:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
+#endif
     EcmaList<Region> hugeNeedFreeList_ {};
 };
 
@@ -297,6 +306,10 @@ class HugeMachineCodeSpace : public HugeObjectSpace {
 public:
     HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                          size_t maximumCapacity);
+#ifdef ENABLE_JITFORT
+    uintptr_t Allocate(size_t objectSize, JSThread *thread, size_t instructionsSize, uintptr_t &instructionsAddr,
+        AllocateEventType allocType = AllocateEventType::NORMAL);
+#endif
 };
 
 }  // namespace panda::ecmascript

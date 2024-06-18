@@ -11,10 +11,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-TypeError
-dynamicImport Json
-{}
-full name :  Tyrion
-Lion
 full name :  Tywin
 Lion
+full name :  Tyrion
+undefined
+{}
+TypeError
+dynamicImport Json
+

@@ -18,7 +18,6 @@
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
-#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/ecma_vm.h"
 #include "macros.h"
 #include "ecmascript/compiler/aot_compilation_env.h"
@@ -43,9 +42,12 @@ public:
     bool IsFastCall(CString fileDesc, uint32_t methodOffset) const;
     void SetIsAotCompile(CString fileDesc, uint32_t methodOffset, bool isAotCompile);
     bool IsAotCompile(CString fileDesc, uint32_t methodOffset) const;
+    void SetIsJitCompile(CString fileDesc, uint32_t methodOffset, bool isAotCompile);
+    bool IsJitCompile(CString fileDesc, uint32_t methodOffset) const;
 private:
     std::map<std::pair<CString, uint32_t>, bool> abcIdMethodIdToIsFastCall_ {};
     std::map<std::pair<CString, uint32_t>, bool> abcIdMethodIdToIsAotCompile_ {};
+    std::map<std::pair<CString, uint32_t>, bool> abcIdMethodIdToIsJitCompile_ {};
 };
 
 struct CompilationOptions {
@@ -66,26 +68,27 @@ struct CompilationOptions {
     std::string profilerIn_;
     std::string optBCRange_;
     bool needMerge_ {false};
-    bool isEnableArrayBoundsCheckElimination_;
-    bool isEnableTypeLowering_;
-    bool isEnableEarlyElimination_;
-    bool isEnableLaterElimination_;
-    bool isEnableValueNumbering_;
-    bool isEnableOptInlining_;
-    bool isEnableOptString_;
-    bool isEnableOptPGOType_;
-    bool isEnableOptTrackField_;
-    bool isEnableOptLoopPeeling_;
-    bool isEnableOptLoopInvariantCodeMotion_;
-    bool isEnableOptConstantFolding_;
-    bool isEnableLexenvSpecialization_;
-    bool isEnableNativeInline_;
+    bool isEnableArrayBoundsCheckElimination_ {false};
+    bool isEnableTypeLowering_ {true};
+    bool isEnableEarlyElimination_ {true};
+    bool isEnableLaterElimination_ {true};
+    bool isEnableValueNumbering_ {true};
+    bool isEnableOptInlining_ {true};
+    bool isEnableOptString_ {true};
+    bool isEnableOptPGOType_ {true};
+    bool isEnableOptTrackField_ {true};
+    bool isEnableOptLoopPeeling_ {true};
+    bool isEnableOptLoopInvariantCodeMotion_ {false};
+    bool isEnableOptConstantFolding_ {true};
+    bool isEnableLexenvSpecialization_ {false};
+    bool isEnableNativeInline_ {true};
     bool isEnablePGOHCRLowering_ {false};
-    bool isEnableLoweringBuiltin_;
-    bool isEnableOptBranchProfiling_;
-    bool isEnableEscapeAnalysis_;
-    bool isEnableInductionVariableAnalysis_;
-    bool isEnableVerifierPass_;
+    bool isEnableLoweringBuiltin_ {true};
+    bool isEnableOptBranchProfiling_ {true};
+    bool isEnableEscapeAnalysis_ {false};
+    bool isEnableInductionVariableAnalysis_ {false};
+    bool isEnableVerifierPass_ {true};
+    bool isEnableBaselinePgo_ {false};
     std::map<std::string, std::vector<std::string>> optionSelectMethods_;
     std::map<std::string, std::vector<std::string>> optionSkipMethods_;
 };
@@ -173,7 +176,7 @@ public:
     {
         return pkgsArgs_;
     }
-    const CallMethodFlagMap *GetCallMethodFlagMap()
+    CallMethodFlagMap *GetCallMethodFlagMap()
     {
         return &callMethodFlagMap_;
     }
@@ -186,8 +189,6 @@ public:
         return str;
     }
 
-    void CreateEmptyFile(const std::string& fileName);
-
 private:
     NO_COPY_SEMANTIC(AotCompilerPreprocessor);
     NO_MOVE_SEMANTIC(AotCompilerPreprocessor);
@@ -198,6 +199,14 @@ private:
     void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
 
     void RecordArrayElement(const CompilationOptions &cOptions);
+
+    bool OutCompiledMethodsRange() const
+    {
+        static uint32_t compiledMethodsCount = 0;
+        ++compiledMethodsCount;
+        return compiledMethodsCount < runtimeOptions_.GetCompilerMethodsRange().first ||
+            runtimeOptions_.GetCompilerMethodsRange().second <= compiledMethodsCount;
+    }
 
     EcmaVM *vm_;
     JSRuntimeOptions &runtimeOptions_;

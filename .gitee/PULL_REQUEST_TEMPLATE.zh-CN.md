@@ -29,6 +29,9 @@
 #### debug pgo-aot test262 本地执行（compiler/aot/isa/stub/ic/对象布局等修改必须执行）
 - [ ] 已通过
 - [ ] 不涉及，无需验证
+#### jit-workload 本地执行（compiler/jit/isa/stub/ic/对象布局等修改必须执行）
+- [ ] 已通过
+- [ ] 不涉及，无需验证
 #### regress测试套 本地执行（解释器/builtins/异常处理/对象布局/IC等修改必须执行）
 - [ ] 已通过
 - [ ] 不涉及，无需验证

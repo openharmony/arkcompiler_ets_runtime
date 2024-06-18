@@ -31,6 +31,8 @@ namespace kungfu {
     class ArkStackMapParser;
 };
 
+static constexpr int64_t BASELINEJIT_PC_FLAG = static_cast<int64_t>(std::numeric_limits<uint64_t>::max());
+
 // Here list all scenarios of calling between Runtime/CInterpreter/ASMInterpreter/AOTCompiler/CBuiltin/ASMBuitlin.
 // Please note that the "[]" means a must frame while "<>" means an optional frame. Each case is from top to down.
 //
@@ -115,6 +117,8 @@ enum class FrameType: uintptr_t {
     OPTIMIZED_ENTRY_FRAME,
     OPTIMIZED_JS_FUNCTION_FRAME,
     OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME,
+    FASTJIT_FUNCTION_FRAME,
+    FASTJIT_FAST_CALL_FUNCTION_FRAME,
     ASM_BRIDGE_FRAME,
     LEAVE_FRAME,
     LEAVE_FRAME_WITH_ARGV,
@@ -166,6 +170,7 @@ enum class JSCallMode : uintptr_t {
     DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV,
     CALL_GETTER,
     CALL_SETTER,
+    CALL_THIS_ARG2_WITH_RETURN,
     CALL_THIS_ARG3_WITH_RETURN,
     CALL_THIS_ARGV_WITH_RETURN,
     CALL_ENTRY,
@@ -202,6 +207,7 @@ public:
     {
         return type;
     }
+
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -235,15 +241,15 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedFrame), OptimizedFrame::SizeArch32, Optimi
 // * BaselineBuiltinFrame layout as the following:
 //               +--------------------------+ ---------
 //               |       . . . . .          |         ^
-//               |--------------------------|         |
+// callerSP ---> |--------------------------|         |
 //               |       returnAddr         |         |
 //               |--------------------------|   BuiltinBuiltinFrame
 //               |       callsiteFp         |         |
-//               |--------------------------|         |
+//       fp ---> |--------------------------|         |
 //               |       frameType          |         v
 //               +--------------------------+ ---------
 //               |        . . . .           |
-//               +--------------------------+
+// calleeSP ---> +--------------------------+
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct BaselineBuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
@@ -274,6 +280,12 @@ public:
     {
         return type;
     }
+
+    uintptr_t GetReturnAddr() const
+    {
+        return returnAddr;
+    }
+
 private:
     enum class Index : size_t {
         TypeIndex = 0,
@@ -291,10 +303,6 @@ private:
     inline JSTaggedType* GetPrevFrameFp()
     {
         return prevFp;
-    }
-    uintptr_t GetReturnAddr() const
-    {
-        return returnAddr;
     }
 
     alignas(EAS) FrameType type {0};
@@ -359,15 +367,15 @@ private:
 STATIC_ASSERT_EQ_ARCH(sizeof(AsmBridgeFrame), AsmBridgeFrame::SizeArch32, AsmBridgeFrame::SizeArch64);
 
 // * OptimizedUnfoldArgVFrame layout description as the following:
-//      sp ----> |--------------------------| ---------------
+// callerSP ---> |--------------------------| ---------------
 //               |       returnAddr         |               ^
-//  currentFp--> |--------------------------|               |
+//               |--------------------------|               |
 //               |       prevFp             |               |
-//               |--------------------------|   OptimizedUnfoldArgVFrame
+//       fp ---> |--------------------------|   OptimizedUnfoldArgVFrame
 //               |       frameType          |               |
 //               |--------------------------|               |
 //               |       currentFp          |               v
-//               +--------------------------+ ---------------
+// calleESP ---> +--------------------------+ ---------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionUnfoldArgVFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
@@ -439,7 +447,7 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionUnfoldArgVFrame),
 //  sp ---> +--------------------------+ -----------------
 //          |                          |                 ^
 //          |        prevFP            |                 |
-//          |--------------------------|    OptimizedJSFunctionArgsConfigFrame
+//  fp ---> |--------------------------|    OptimizedJSFunctionArgsConfigFrame
 //          |       frameType          |                 |
 //          |                          |                 V
 //          +--------------------------+ -----------------
@@ -491,31 +499,33 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionArgConfigFrame),
                       OptimizedJSFunctionArgConfigFrame::SizeArch64);
 
 // * OptimizedJSFunctionFrame layout description as the following:
-//               +--------------------------+
-//               |        arg[N-1]          |
-//               +--------------------------+
-//               |       ...                |
-//               +--------------------------+
-//               |       arg[1]             |
-//               +--------------------------+
-//               |       arg[0]             |
-//               +--------------------------+
-//               |       this               |
-//               +--------------------------+
-//               |       new-target         |
-//               +--------------------------+
-//               |       call-target        |
-//               |--------------------------|
-//               |       argc               |
-//      sp ----> |--------------------------| ---------------
-//               |       returnAddr         |               ^
-//               |--------------------------|               |
-//               |       callsiteFp         |               |
-//               |--------------------------|   OptimizedJSFunctionFrame
-//               |       frameType          |               |
-//               |--------------------------|               |
-//               |       call-target        |               v
-//               +--------------------------+ ---------------
+//                 +----------------------------------------+
+//                 |     arg[N-1]                           |
+//                 +----------------------------------------+
+//                 |     ...                                |
+//                 +----------------------------------------+
+//                 |     arg[1]                             |
+//                 +----------------------------------------+
+//                 |     arg[0]                             |
+//                 +----------------------------------------+
+//                 |     this                               |
+//                 +----------------------------------------+
+//                 |     new-target [not exist in fastcall] |
+//                 +----------------------------------------+
+//                 |     call-target                        |
+//       argv ---> +----------------------------------------+
+//                 |     argv   [not exist in fastcall]     |
+//                 |----------------------------------------|
+//                 |     argc   [not exist in fastcall]     |
+//   callerSp ---> |----------------------------------------|----------------
+//                 |     returnAddr                         |               ^
+//                 |----------------------------------------|               |
+//                 |     callsiteFp                         |               |
+//         fp ---> |----------------------------------------|   OptimizedJSFunctionFrame
+//                 |     frameType                          |               |
+//                 |----------------------------------------|               |
+//                 |     call-target                        |               v
+//   calleeSP ---> +----------------------------------------+----------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedJSFunctionFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
@@ -546,7 +556,8 @@ public:
 
     JSTaggedType* GetArgv(uintptr_t *preFrameSp) const
     {
-        return reinterpret_cast<JSTaggedType *>(preFrameSp + sizeof(uint64_t) / sizeof(uintptr_t));
+        const size_t offset = 2;    // 2: skip argc and argv.
+        return reinterpret_cast<JSTaggedType *>(preFrameSp + offset * sizeof(uint64_t) / sizeof(uintptr_t));
     }
 
     size_t GetArgc(uintptr_t *preFrameSp) const
@@ -635,15 +646,15 @@ STATIC_ASSERT_EQ_ARCH(sizeof(OptimizedJSFunctionFrame),
 static_assert((OptimizedJSFunctionFrame::GetFunctionDeltaReturnAddr() % 2) == 1);
 
 // * The JSFunctionEntry Frame's structure is illustrated as the following:
-//          +--------------------------+
-//          |      . . . . . .         |
-//  sp ---> +--------------------------+ -----------------
-//          |        prevFP            |                 ^
-//          |--------------------------|                 |
-//          |       frameType          |      JSFunctionEntryFrame
-//          |--------------------------|                 |
-//          |    preLeaveFrameFp       |                 v
-//          +--------------------------+ -----------------
+//              +--------------------------+
+//              |      . . . . . .         |
+// callerSP --> +--------------------------+ -----------------
+//              |        prevFP            |                 ^
+//       fp --> |--------------------------|                 |
+//              |       frameType          |      JSFunctionEntryFrame
+//              |--------------------------|                 |
+//              |    preLeaveFrameFp       |                 v
+// calleeSP --> +--------------------------+ -----------------
 
 struct OptimizedEntryFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
                                                         base::AlignedPointer,
@@ -1273,23 +1284,23 @@ struct AsmInterpretedBridgeFrame : public base::AlignedStruct<base::AlignedPoint
 };
 
 // * Optimized-leaved-frame layout as the following:
-//         +--------------------------+
-//         |       argv[N-1]          |
-//         |--------------------------|
-//         |       . . . . .          |
-//         |--------------------------|
-//         |       argv[0]            |
-//         +--------------------------+-------------
-//         |       argc               |            ^
-//         |--------------------------|            |
-//         |       RuntimeId          |            |
-//  sp --> |--------------------------|   OptimizedLeaveFrame
-//         |       ret-addr           |            |
-//         |--------------------------|            |
-//         |       prevFp             |            |
-//         |--------------------------|            |
-//         |       frameType          |            v
-//         +--------------------------+-------------
+//               +--------------------------+
+//               |       argv[N-1]          |
+//               |--------------------------|
+//               |       . . . . .          |
+//               |--------------------------|
+//               |       argv[0]            |
+//               +--------------------------+-------------
+//               |       argc               |            ^
+//               |--------------------------|            |
+//               |       RuntimeId          |            |
+//  callerSP --> |--------------------------|   OptimizedLeaveFrame
+//               |       ret-addr           |            |
+//               |--------------------------|            |
+//               |       prevFp             |            |
+//        fp --> |--------------------------|            |
+//               |       frameType          |            v
+//  calleeSP --> +--------------------------+-------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedLeaveFrame {
@@ -1335,19 +1346,19 @@ struct OptimizedLeaveFrame {
 };
 
 // * Optimized-leaved-frame-with-argv layout as the following:
-//         +--------------------------+
-//         |       argv[]             |
-//         +--------------------------+-------------
-//         |       argc               |            ^
-//         |--------------------------|            |
-//         |       RuntimeId          |   OptimizedWithArgvLeaveFrame
-//  sp --> |--------------------------|            |
-//         |       returnAddr         |            |
-//         |--------------------------|            |
-//         |       callsiteFp         |            |
-//         |--------------------------|            |
-//         |       frameType          |            v
-//         +--------------------------+-------------
+//               +--------------------------+
+//               |       argv[]             |
+//               +--------------------------+-------------
+//               |       argc               |            ^
+//               |--------------------------|            |
+//               |       RuntimeId          |   OptimizedWithArgvLeaveFrame
+//  callerSP --> |--------------------------|            |
+//               |       returnAddr         |            |
+//               |--------------------------|            |
+//               |       callsiteFp         |            |
+//        fp --> |--------------------------|            |
+//               |       frameType          |            v
+//  calleeSP --> +--------------------------+-------------
 
 struct OptimizedWithArgvLeaveFrame {
     FrameType type;
@@ -1391,25 +1402,25 @@ struct OptimizedWithArgvLeaveFrame {
 };
 
 // * OptimizedBuiltinLeaveFrame layout as the following:
-//         +--------------------------+
-//         |       argv[N-1]          |
-//         |--------------------------|
-//         |       . . . . .          |
-//         |--------------------------|
-//         |       argv[0]            |
-//         +--------------------------+-------------
-//         |       argc               |            ^
-//         |--------------------------|            |
-//         |       thread             |            |
-//         +--------------------------+            |
-//         |       ret-addr           |            |
-//  sp --> |--------------------------|   OptimizedBuiltinLeaveFrame
-//         |       prevFp             |            |
-//         |--------------------------|            |
-//         |       frameType          |            |
-//         |--------------------------|            |
-//         |       align byte         |            v
-//         +--------------------------+-------------
+//               +--------------------------+
+//               |       argv[N-1]          |
+//               |--------------------------|
+//               |       . . . . .          |
+//               |--------------------------|
+//               |       argv[0]            |
+//               +--------------------------+-------------
+//               |       argc               |            ^
+//               |--------------------------|            |
+//               |       thread             |            |
+//  callerSP --> +--------------------------+            |
+//               |       ret-addr           |            |
+//               |--------------------------|   OptimizedBuiltinLeaveFrame
+//               |       prevFp             |            |
+//        fp --> |--------------------------|            |
+//               |       frameType          |            |
+//               |--------------------------|            |
+//               |       align byte         |            v
+//  calleeSP --> +--------------------------+-------------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct OptimizedBuiltinLeaveFrame {
@@ -1422,7 +1433,7 @@ public:
 
     uintptr_t GetCallSiteSp() const
     {
-        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, argc);
+        return ToUintPtr(this) + MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, thread);
     }
 
     inline JSTaggedType* GetPrevFrameFp() const
@@ -1486,13 +1497,13 @@ private:
 //               |       argc               |         ^
 //               |--------------------------|         |
 //               |       thread             |         |
-//               |--------------------------|         |
+//  callerSP --> |--------------------------|         |
 //               |       returnAddr         |     BuiltinFrame
 //               |--------------------------|         |
 //               |       callsiteFp         |         |
-//               |--------------------------|         |
+//        fp --> |--------------------------|         |
 //               |       frameType          |         v
-//               +--------------------------+ ---------
+//  calleeSP --> +--------------------------+ ---------
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
@@ -1595,11 +1606,11 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
 // * BuiltinWithArgvFrame layout as the following:
 //               +--------------------------+ ---------
 //               |       . . . . .          |         ^
-//               |--------------------------|         |
+//  callerSP --> |--------------------------|         |
 //               |       returnAddr         |         |
 //               |--------------------------|         |
 //               |       callsiteFp         |   BuiltinWithArgvFrame
-//               |--------------------------|         |
+//        fp --> |--------------------------|         |
 //               |       frameType          |         |
 //               +--------------------------+         |
 //               |        argc              |         v
@@ -1609,7 +1620,7 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
 //               |        argV[1]           |
 //               +--------------------------+
 //               |        . . . .           |
-//               +--------------------------+
+//  calleeSP --> +--------------------------+
 //
 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
 struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
@@ -1684,6 +1695,167 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
     alignas(EAS) FrameType type;
     alignas(EAS) JSTaggedType *prevFp;
     alignas(EAS) uintptr_t returnAddr;
+};
+
+// * FASTJITFunctionFrame layout description as the following:
+//               +--------------------------+
+//               |        arg[N-1]          |
+//               +--------------------------+
+//               |       ...                |
+//               +--------------------------+
+//               |       arg[1]             |
+//               +--------------------------+
+//               |       arg[0]             |
+//               +--------------------------+
+//               |       this               |
+//               +--------------------------+
+//               |       new-target         |
+//               +--------------------------+
+//               |       call-target        |
+//               |--------------------------|
+//               |       argc               |
+// callerSp ---> |--------------------------| ---------------
+//               |       returnAddr         |               ^
+//               |--------------------------|               |
+//               |       callsiteFp         |               |
+//               |--------------------------|               |
+//               |       frameType          |    FASTJITFunctionFrame
+//               |--------------------------|               |
+//               |       call-target        |               |
+//               |--------------------------|               |
+//               |       pc(bytecode pc)    |               v
+// calleeSP ---> +--------------------------+ ---------------
+//
+// NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
+struct FASTJITFunctionFrame : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
+                                                             JSTaggedValue,
+                                                             JSTaggedValue,
+                                                             base::AlignedPointer,
+                                                             base::AlignedPointer,
+                                                             base::AlignedPointer> {
+public:
+    using ConstInfo = kungfu::LLVMStackMapType::ConstInfo;
+    enum class Index : size_t {
+        PcIndex = 0,
+        JSFuncIndex,
+        TypeIndex,
+        PrevFpIndex,
+        ReturnAddrIndex,
+        NumOfMembers
+    };
+    static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
+
+    static constexpr size_t GetFunctionDeltaReturnAddr()
+    {
+        return static_cast<size_t>(Index::ReturnAddrIndex) - static_cast<size_t>(Index::JSFuncIndex);
+    }
+
+    inline JSTaggedType* GetPrevFrameFp()
+    {
+        return prevFp;
+    }
+
+    JSTaggedType* GetArgv(uintptr_t *preFrameSp) const
+    {
+        const size_t offset = 2;    // 2: skip argc and argv.
+        return reinterpret_cast<JSTaggedType *>(preFrameSp + offset * sizeof(uint64_t) / sizeof(uintptr_t));
+    }
+
+    size_t GetArgc(uintptr_t *preFrameSp) const
+    {
+        return *preFrameSp;
+    }
+
+    JSTaggedType* GetArgv(const FrameIterator &it) const;
+
+    uintptr_t GetReturnAddr() const
+    {
+        return returnAddr;
+    }
+
+    void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
+        const RootBaseAndDerivedVisitor &derivedVisitor, FrameType frameType) const;
+    void CollectPcOffsetInfo(const FrameIterator &it, ConstInfo &info) const;
+
+    inline JSTaggedValue GetFunction() const
+    {
+        return jsFunc;
+    }
+
+    static uintptr_t ComputeArgsConfigFrameSp(JSTaggedType *fp)
+    {
+        const size_t offset = 2;  // 2: skip prevFp and return address.
+        return reinterpret_cast<uintptr_t>(fp) + offset * sizeof(uintptr_t);
+    }
+
+    static size_t GetTypeOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::TypeIndex)>(isArch32);
+    }
+
+    static size_t GetPcOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::PcIndex)>(isArch32);
+    }
+
+    static size_t GetPrevOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
+    }
+
+    static size_t GetFunctionOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::JSFuncIndex)>(isArch32);
+    }
+
+    static size_t ComputeReservedJSFuncOffset(size_t slotSize)
+    {
+        size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::JSFuncIndex);
+        return slotSize * slotOffset;
+    }
+
+    static size_t ComputeReservedPcOffset(size_t slotSize)
+    {
+        size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::PcIndex);
+        return slotSize * slotOffset;
+    }
+
+    FrameType GetType() const
+    {
+        return type;
+    }
+
+    inline const uint8_t *GetPc() const
+    {
+        return pc;
+    }
+
+    friend class FrameIterator;
+    friend class FrameHandler;
+    void GetDeoptBundleInfo(const FrameIterator &it, std::vector<kungfu::ARKDeopt>& deopts) const;
+    void GetFuncCalleeRegAndOffset(
+        const FrameIterator &it, kungfu::CalleeRegAndOffsetVec &ret) const;
+    uintptr_t* ComputePrevFrameSp(const FrameIterator &it) const;
+
+private:
+    static FASTJITFunctionFrame* GetFrameFromSp(const JSTaggedType *sp)
+    {
+        return reinterpret_cast<FASTJITFunctionFrame *>(reinterpret_cast<uintptr_t>(sp) -
+            MEMBER_OFFSET(FASTJITFunctionFrame, prevFp));
+    }
+
+    static uintptr_t GetFuncAddrFromSp(const JSTaggedType *sp)
+    {
+        return reinterpret_cast<uintptr_t>(sp) - MEMBER_OFFSET(FASTJITFunctionFrame, type);
+    }
+
+    // dynamic callee saveregisters for x86-64
+    alignas(EAS) const uint8_t *pc {nullptr};
+    alignas(EAS) JSTaggedValue jsFunc {JSTaggedValue::Undefined()};
+    alignas(EAS) FrameType type {0};
+    alignas(EAS) JSTaggedType *prevFp {nullptr};
+    alignas(EAS) uintptr_t returnAddr {0};
+    // dynamic callee saveregisters for arm64
 };
 
 enum class GCVisitedFlag : bool {
@@ -1783,7 +1955,7 @@ public:
     bool IsJSFrame() const
     {
         FrameType type = GetFrameType();
-        return IsInterpretedFrame(type) || IsOptimizedJSFunctionFrame(type);
+        return IsInterpretedFrame(type) || IsOptimizedJSFunctionFrame(type) || IsFastJitFunctionFrame(type);
     }
 
     bool IsOptimizedJSFunctionFrame(FrameType type) const
@@ -1796,6 +1968,23 @@ public:
     {
         FrameType type = GetFrameType();
         return IsOptimizedJSFunctionFrame(type);
+    }
+
+    bool IsFastJitFunctionFrame(FrameType type) const
+    {
+        return type == FrameType::FASTJIT_FUNCTION_FRAME ||
+            type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
+    }
+
+    bool IsFastJitFunctionFrame() const
+    {
+        FrameType type = GetFrameType();
+        return IsFastJitFunctionFrame(type);
+    }
+
+    bool IsAotOrJitFunctionFrame() const
+    {
+        return IsOptimizedJSFunctionFrame() || IsFastJitFunctionFrame();
     }
 
 private:

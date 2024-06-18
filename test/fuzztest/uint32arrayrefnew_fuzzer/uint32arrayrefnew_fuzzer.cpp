@@ -46,7 +46,7 @@ namespace OHOS {
         }
         Local<ArrayBufferRef> ref = ArrayBufferRef::New(vm, input);
         Local<Uint32ArrayRef> uint32ArrayRef = Uint32ArrayRef::New(vm, ref, (int32_t)size, (int32_t)size);
-        uint32ArrayRef->IsUint32Array();
+        uint32ArrayRef->IsUint32Array(vm);
         JSNApi::DestroyJSVM(vm);
     }
 }

@@ -118,7 +118,7 @@ public:
         return false;
     }
 
-    void AddEnableListCount(const std::string &pgoPath) const
+    void AddEnableListCount(const std::string &pgoPath = "") const
     {
         ohos::AotRuntimeInfo aotRuntimeInfo;
         aotRuntimeInfo.BuildCompileRuntimeInfo(

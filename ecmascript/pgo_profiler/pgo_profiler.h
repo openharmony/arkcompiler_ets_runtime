@@ -95,8 +95,9 @@ public:
 
     JSTaggedValue TryFindKeyInPrototypeChain(TaggedObject *currObj, JSHClass *currHC, JSTaggedValue key);
 
-    void InsertSkipCtorMethodId(EntityId ctorMethodId)
+    void InsertSkipCtorMethodIdSafe(EntityId ctorMethodId)
     {
+        LockHolder lock(skipCtorMethodIdMutex_);
         skipCtorMethodId_.insert(ctorMethodId.GetOffset());
     }
 
@@ -138,12 +139,13 @@ private:
 
     State GetState();
     void SetState(State state);
-    void NotifyGC();
+    void NotifyGC(std::string tag = "");
+    void NotifyAll(std::string tag = "");
     void WaitingPGODump();
     void StopPGODump();
     void StartPGODump();
-    bool IfGCWaitingThenNotifyGCWithLock();
-    bool IfGCWaitingThenNotifyGC();
+    bool IsGCWaitingWithLock();
+    bool IsGCWaiting();
     void DispatchPGODumpTask();
 
     void DumpICByName(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
@@ -179,9 +181,14 @@ private:
                          uint32_t slotId, ProfileTypeInfo *profileTypeInfo);
 
     void UpdateLayout(JSHClass *hclass);
-    void UpdateTranstionLayout(JSHClass *parent, JSHClass *child);
-    bool AddTranstionObjectInfo(ProfileType recordType, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
-        JSHClass *hold, JSHClass *holdTra, PGOSampleType accessorMethod);
+    void UpdateTransitionLayout(JSHClass* parent, JSHClass* child);
+    bool AddTransitionObjectInfo(ProfileType recordType,
+                                 EntityId methodId,
+                                 int32_t bcOffset,
+                                 JSHClass* receiver,
+                                 JSHClass* hold,
+                                 JSHClass* holdTra,
+                                 PGOSampleType accessorMethod);
     void UpdatePrototypeChainInfo(JSHClass *receiver, JSHClass *holder, PGOObjectInfo &info);
 
     bool AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
@@ -193,7 +200,7 @@ private:
         JSHClass *receiver, JSHClass *hold);
     void AddBuiltinsInfo(
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
-        JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
+        JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE, bool everOutOfBounds = false);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,
                                int32_t bcOffset, GlobalIndex globalId);
 
@@ -467,10 +474,11 @@ private:
     ProfileType GetRecordProfileType(const std::shared_ptr<JSPandaFile> &pf, ApEntityId abcId,
                                      const CString &recordName);
 
-    bool IsSkippableObjectType(ProfileType type)
+    bool IsSkippableObjectTypeSafe(ProfileType type)
     {
         if (type.IsClassType() || type.IsConstructor() || type.IsPrototype()) {
             uint32_t ctorId = type.GetId();
+            LockHolder lock(skipCtorMethodIdMutex_);
             return skipCtorMethodId_.find(ctorId) != skipCtorMethodId_.end();
         }
         return false;
@@ -492,6 +500,7 @@ private:
     CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     CUnorderedSet<uint32_t> skipCtorMethodId_;
+    Mutex skipCtorMethodIdMutex_;
     JITProfiler *jitProfiler_ {nullptr};
     friend class PGOProfilerManager;
 };

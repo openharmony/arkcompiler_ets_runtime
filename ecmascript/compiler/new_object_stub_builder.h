@@ -55,6 +55,7 @@ public:
     void NewJSObject(Variable *result, Label *exit, GateRef hclass,
                      MemoryOrder order = MemoryOrder::Default());
     GateRef NewJSObject(GateRef glue, GateRef hclass, MemoryOrder order = MemoryOrder::Default());
+    GateRef NewJSProxy(GateRef glue, GateRef target, GateRef handler);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArray(GateRef glue, GateRef len);
@@ -70,6 +71,7 @@ public:
                        FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind,
                               FunctionKind getKind = FunctionKind::LAST_FUNCTION_KIND);
+    GateRef NewJSBoundFunction(GateRef glue, GateRef target, GateRef boundThis, GateRef args);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
@@ -102,6 +104,7 @@ public:
     GateRef NewTaggedSubArray(GateRef glue, GateRef srcTypedArray, GateRef elementSize, GateRef newLength,
         GateRef beginIndex, GateRef arrayCls, GateRef buffer);
     GateRef NewTypedArray(GateRef glue, GateRef srcTypedArray, GateRef srcType, GateRef length);
+    GateRef NewTypedArrayFromCtor(GateRef glue, GateRef ctor, GateRef length, Label *slowPath);
     void NewByteArray(Variable *result, Label *exit, GateRef elementSize, GateRef length);
     GateRef NewProfileTypeInfoCell(GateRef glue, GateRef value);
     GateRef GetElementSizeFromType(GateRef glue, GateRef type);

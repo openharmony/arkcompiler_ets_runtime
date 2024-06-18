@@ -64,6 +64,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableEscapeAnalysis_ = runtimeOptions.IsEnableEscapeAnalysis();
     isEnableInductionVariableAnalysis_ = runtimeOptions.IsEnableInductionVariableAnalysis();
     isEnableVerifierPass_ = !runtimeOptions.IsTargetCompilerMode();
+    isEnableBaselinePgo_ = runtimeOptions.IsEnableBaselinePgo();
 
     std::string optionSelectMethods = runtimeOptions.GetCompilerSelectMethods();
     std::string optionSkipMethods = runtimeOptions.GetCompilerSkipMethods();
@@ -322,6 +323,19 @@ bool CallMethodFlagMap::IsAotCompile(CString fileDesc, uint32_t methodOffset) co
     return abcIdMethodIdToIsAotCompile_.at(std::pair<CString, uint32_t>(fileDesc, methodOffset));
 }
 
+void CallMethodFlagMap::SetIsJitCompile(CString fileDesc, uint32_t methodOffset, bool isAotCompile)
+{
+    abcIdMethodIdToIsJitCompile_[std::pair<CString, uint32_t>(fileDesc, methodOffset)] = isAotCompile;
+}
+
+bool CallMethodFlagMap::IsJitCompile(CString fileDesc, uint32_t methodOffset) const
+{
+    if (!abcIdMethodIdToIsJitCompile_.count(std::pair<CString, uint32_t>(fileDesc, methodOffset))) {
+        return false;
+    }
+    return abcIdMethodIdToIsJitCompile_.at(std::pair<CString, uint32_t>(fileDesc, methodOffset));
+}
+
 
 bool AotCompilerPreprocessor::FilterOption(const std::map<std::string, std::vector<std::string>> &optionMap,
     const std::string &recordName, const std::string &methodName) const
@@ -346,6 +360,10 @@ bool AotCompilerPreprocessor::IsSkipMethod(const JSPandaFile *jsPandaFile, const
 {
     if (methodPCInfo.methodsSize > bytecodeInfo.GetMaxMethodSize() ||
         !profilerDecoder_.Match(jsPandaFile, recordName, methodLiteral->GetMethodId())) {
+        return true;
+    }
+
+    if (OutCompiledMethodsRange()) {
         return true;
     }
 
@@ -392,21 +410,5 @@ void AotCompilerPreprocessor::GenerateMethodMap(CompilationOptions &cOptions)
 std::string AotCompilerPreprocessor::GetMainPkgArgsAppSignature() const
 {
     return GetMainPkgArgs() == nullptr ? "" : GetMainPkgArgs()->GetAppSignature();
-}
-
-void AotCompilerPreprocessor::CreateEmptyFile(const std::string& fileName)
-{
-    std::string realPath;
-    if (!RealPath(fileName, realPath, false)) {
-        LOG_COMPILER(ERROR) << "failed to create empty file: " << fileName;
-        return;
-    }
-    const char* filePath = realPath.c_str();
-    if (FileExist(filePath)) {
-        LOG_COMPILER(DEBUG) << fileName << " file already exist, skip creating empty file";
-        return;
-    }
-    std::ofstream file(filePath);
-    file.close();
 }
 } // namespace panda::ecmascript::kungfu

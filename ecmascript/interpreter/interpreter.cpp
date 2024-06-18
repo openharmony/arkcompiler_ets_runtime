@@ -38,11 +38,12 @@ namespace panda::ecmascript {
 //   +--------------------------+
 EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfoBase(
     JSThread *thread, JSTaggedType func, JSTaggedType thisObj, JSTaggedType newTarget,
-    uint32_t numArgs, bool needCheckStack)
+    uint32_t numArgs, StackCheck needCheckStack)
 {
     JSTaggedType *prevSp = const_cast<JSTaggedType *>(thread->GetCurrentSPFrame());
     JSTaggedType *newSp = GetInterpreterFrameEnd(thread, prevSp);
-    if (needCheckStack && UNLIKELY(thread->DoStackOverflowCheck(newSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
+    if (needCheckStack == StackCheck::YES &&
+        UNLIKELY(thread->DoStackOverflowCheck(newSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
         return nullptr;
     }
 
@@ -68,7 +69,7 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfoBase(
 
 EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
     JSThread *thread, JSTaggedValue func, JSTaggedValue thisObj, JSTaggedValue newTarget,
-    uint32_t numArgs, bool needCheckStack)
+    uint32_t numArgs, StackCheck needCheckStack)
 {
     return NewRuntimeCallInfoBase(thread, func.GetRawData(), thisObj.GetRawData(), newTarget.GetRawData(),
         numArgs, needCheckStack);
@@ -76,14 +77,14 @@ EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
 
 EcmaRuntimeCallInfo* EcmaInterpreter::NewRuntimeCallInfo(
     JSThread *thread, JSHandle<JSTaggedValue> func, JSHandle<JSTaggedValue> thisObj,
-    JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, bool needCheckStack)
+    JSHandle<JSTaggedValue> newTarget, uint32_t numArgs, StackCheck needCheckStack)
 {
     return NewRuntimeCallInfoBase(thread, func.GetTaggedType(), thisObj.GetTaggedType(), newTarget.GetTaggedType(),
         numArgs, needCheckStack);
 }
 
 EcmaRuntimeCallInfo* EcmaInterpreter::ReBuildRuntimeCallInfo(JSThread *thread, EcmaRuntimeCallInfo* info,
-    uint32_t numArgs, bool needCheckStack)
+    int numArgs, StackCheck needCheckStack)
 {
     JSTaggedValue func = info->GetFunctionValue();
     JSTaggedValue newTarget = info->GetNewTargetValue();
@@ -93,26 +94,27 @@ EcmaRuntimeCallInfo* EcmaInterpreter::ReBuildRuntimeCallInfo(JSThread *thread, E
     InterpretedEntryFrame *currentEntryState = InterpretedEntryFrame::GetFrameFromSp(currentSp);
     JSTaggedType *prevSp = currentEntryState->base.prev;
 
-    uint32_t actualArgc = info->GetArgsNumber();
+    int actualArgc = static_cast<int>(info->GetArgsNumber());
     std::vector<JSTaggedType> args(actualArgc);
-    for (uint32_t i = 0; i < actualArgc; i++) {
+    for (int i = 0; i < actualArgc; i++) {
         args[i] = info->GetCallArgValue(actualArgc - i - 1).GetRawData();
     }
     currentSp += (info->GetArgsNumber() + NUM_MANDATORY_JSFUNC_ARGS + 2); // 2: include thread_ and numArgs_
-    if (needCheckStack && UNLIKELY(thread->DoStackOverflowCheck(currentSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
+    if (needCheckStack == StackCheck::YES &&
+        UNLIKELY(thread->DoStackOverflowCheck(currentSp - numArgs - NUM_MANDATORY_JSFUNC_ARGS))) {
         return nullptr;
     }
-    ASSERT(numArgs > actualArgc);
-    for (uint32_t i = 0; i < (numArgs - actualArgc); i++) {
+    ASSERT(numArgs != actualArgc);
+    for (int i = 0; i < (numArgs - actualArgc); i++) {
         *(--currentSp) = JSTaggedValue::VALUE_UNDEFINED;
     }
-    for (uint32_t i = 0; i < actualArgc; i++) {
+    for (int i = 0; i < actualArgc; i++) {
         *(--currentSp) = args[i];
     }
     *(--currentSp) = thisObj.GetRawData();
     *(--currentSp) = newTarget.GetRawData();
     *(--currentSp) = func.GetRawData();
-    *(--currentSp) = numArgs + NUM_MANDATORY_JSFUNC_ARGS;
+    *(--currentSp) = numArgs + static_cast<int>(NUM_MANDATORY_JSFUNC_ARGS);
     *(--currentSp) = ToUintPtr(thread);
     EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = reinterpret_cast<EcmaRuntimeCallInfo *>(currentSp);
 

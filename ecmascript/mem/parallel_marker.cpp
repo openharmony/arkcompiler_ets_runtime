@@ -35,6 +35,50 @@ void Marker::MarkRoots(uint32_t threadId)
     workManager_->PushWorkNodeToGlobal(threadId, false);
 }
 
+void Marker::ProcessNewToEden(uint32_t threadId)
+{
+    heap_->EnumerateNewSpaceRegions(std::bind(&Marker::HandleNewToEdenRSet, this, threadId, std::placeholders::_1));
+    ProcessMarkStack(threadId);
+}
+
+void Marker::ProcessNewToEdenNoMarkStack(uint32_t threadId)
+{
+    heap_->EnumerateNewSpaceRegions(std::bind(&Marker::HandleNewToEdenRSet, this, threadId, std::placeholders::_1));
+}
+
+void Marker::MarkJitCodeMap(uint32_t threadId)
+{
+    // To keep MachineCode objects alive (for dump) before JsError object be free, we have to know which JsError is
+    // alive first. So this method must be call after all other mark work finish.
+    TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkJitCodeMap");
+    ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(),
+        std::bind(&Marker::HandleVisitJitCodeMap, this, threadId, std::placeholders::_1));
+    ProcessMarkStack(threadId);
+}
+
+void Marker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeMap *> &jitCodeMaps)
+{
+    auto it = jitCodeMaps.begin();
+    while (it != jitCodeMaps.end()) {
+        JSTaggedType jsError = it->first;
+        Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
+        if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
+            delete it->second;
+            it = jitCodeMaps.erase(it);
+            continue;
+        }
+        for (auto jitCodeMap : *(it->second)) {
+            auto jitCode = jitCodeMap.first;
+            Region *jitCodeRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jitCode));
+            if (!jitCodeRegion->Test(jitCode)) {
+                MarkObject(threadId, jitCode);
+            }
+        }
+        it++;
+    }
+}
+
 void Marker::ProcessOldToNew(uint32_t threadId)
 {
     heap_->EnumerateOldSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1));
@@ -74,7 +118,7 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
     auto visitor = [this, threadId, isFullMark, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                                     VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
-        bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
+        bool needBarrier = isFullMark && !rootRegion->InGeneralNewSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end, needBarrier, cb)) {
                 return;
@@ -87,14 +131,53 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
     TaggedObject *obj = nullptr;
     while (true) {
         obj = nullptr;
-        if (!workManager_->Pop(threadId, &obj)) {
+        if (!workManager_->Pop(threadId, &obj) && !workManager_->PopPendingObject(threadId, &obj)) {
             break;
         }
 
         JSHClass *jsHclass = obj->SynchronizedGetClass();
+        Region *region = Region::ObjectAddressToRange(obj);
+        auto size = jsHclass->SizeFromJSHClass(obj);
+        region->IncreaseAliveObjectSafe(size);
         MarkObject(threadId, jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
     }
+}
+
+void NonMovableMarker::ProcessMarkStackConcurrent(uint32_t threadId)
+{
+    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
+    bool isFullMark = heap_->IsConcurrentFullMark();
+    auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
+        MarkValue(threadId, s, rootRegion, needBarrier);
+    };
+    auto visitor = [this, threadId, isFullMark, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                                    VisitObjectArea area) {
+        Region *rootRegion = Region::ObjectAddressToRange(root);
+        bool needBarrier = isFullMark && !rootRegion->InGeneralNewSpaceOrCSet();
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end, needBarrier, cb)) {
+                return;
+            }
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            MarkValue(threadId, slot, rootRegion, needBarrier);
+        }
+    };
+    TaggedObject *obj = nullptr;
+    while (workManager_->Pop(threadId, &obj)) {
+        if (heap_->GetNewSpace()->IsNewAllocatedObject(reinterpret_cast<uintptr_t>(obj))) {
+            workManager_->PushPendingObject(threadId, obj);
+        } else {
+            JSHClass *jsHclass = obj->SynchronizedGetClass();
+            Region *region = Region::ObjectAddressToRange(obj);
+            auto size = jsHclass->SizeFromJSHClass(obj);
+            region->IncreaseAliveObjectSafe(size);
+            MarkObject(threadId, jsHclass);
+            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
+        }
+    }
+    workManager_->PushPendingNodeToGlobal(threadId);
 }
 
 void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t markStepSize)
@@ -109,7 +192,7 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
                                                                    VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
         visitAddrNum += end.SlotAddress() - start.SlotAddress();
-        bool needBarrier = isFullMark && !rootRegion->InYoungSpaceOrCSet();
+        bool needBarrier = isFullMark && !rootRegion->InGeneralNewSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end, needBarrier, cb)) {
                 return;
@@ -134,6 +217,9 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
         }
 
         JSHClass *jsHclass = obj->GetClass();
+        Region *region = Region::ObjectAddressToRange(obj);
+        auto size = jsHclass->SizeFromJSHClass(obj);
+        region->IncreaseAliveObjectSafe(size);
         MarkObject(threadId, jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
         if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark() && visitAddrNum >= markStepSize) {

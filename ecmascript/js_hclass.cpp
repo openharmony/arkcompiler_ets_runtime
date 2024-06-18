@@ -447,6 +447,18 @@ JSHandle<JSTaggedValue> JSHClass::SetPrototypeWithNotification(const JSThread *t
     return JSHandle<JSTaggedValue>(newClass);
 }
 
+void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject> &object,
+                                      const JSHandle<JSTaggedValue> &proto)
+{
+    JSHandle<JSHClass> hclass(thread, object->GetJSHClass());
+    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
+    JSHClass::NotifyHclassChanged(thread, hclass, newClass);
+    object->SynchronizedSetClass(thread, *newClass);
+    JSHClass::TryRestoreElementsKind(thread, newClass, object);
+    thread->NotifyStableArrayElementsGuardians(object, StableArrayChangeKind::PROTO);
+    ObjectOperator::UpdateDetectorOnSetPrototype(thread, object.GetTaggedValue());
+}
+
 void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto)
 {
     // Because the heap-space of hclass is non-movable, this function can be non-static.
@@ -689,7 +701,7 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
     return false;
 }
 
-std::tuple<bool, bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
+TransitionResult JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
     const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
     PropertyAttributes &attr)
 {
@@ -704,30 +716,28 @@ std::tuple<bool, bool, JSTaggedValue> JSHClass::ConvertOrTransitionWithRep(const
     if (oldRep == Representation::DOUBLE) {
         if (value->IsInt()) {
             double doubleValue = value->GetInt();
-            return std::tuple<bool, bool, JSTaggedValue>(false, false,
-                JSTaggedValue(bit_cast<JSTaggedType>(doubleValue)));
+            return {false, false, JSTaggedValue(bit_cast<JSTaggedType>(doubleValue))};
         } else if (value->IsObject()) {
             // Is Object
             attr.SetRepresentation(Representation::TAGGED);
             // Transition
             JSHClass::TransitionForRepChange(thread, receiver, key, attr);
-            return std::tuple<bool, bool, JSTaggedValue>(true, true, value.GetTaggedValue());
+            return {true, true, value.GetTaggedValue()};
         } else {
             // Is TaggedDouble
-            return std::tuple<bool, bool, JSTaggedValue>(false, false,
-                JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble())));
+            return {false, false, JSTaggedValue(bit_cast<JSTaggedType>(value->GetDouble()))};
         }
     } else if (oldRep == Representation::INT) {
         if (value->IsInt()) {
             int intValue = value->GetInt();
-            return std::tuple<bool, bool, JSTaggedValue>(false, false, JSTaggedValue(static_cast<JSTaggedType>(intValue)));
+            return {false, false, JSTaggedValue(static_cast<JSTaggedType>(intValue))};
         } else {
             attr.SetRepresentation(Representation::TAGGED);
             JSHClass::TransitionForRepChange(thread, receiver, key, attr);
-            return std::tuple<bool, bool, JSTaggedValue>(true, true, value.GetTaggedValue());
+            return {true, true, value.GetTaggedValue()};
         }
     }
-    return std::tuple<bool, bool, JSTaggedValue>(true, false, value.GetTaggedValue());
+    return {true, false, value.GetTaggedValue()};
 }
 
 JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
@@ -1389,6 +1399,7 @@ PropertyLookupResult JSHClass::LookupPropertyInBuiltinHClass(const JSThread *thr
 
 JSHandle<JSHClass> JSHClass::CreateSHClass(JSThread *thread,
                                            const std::vector<PropertyDescriptor> &descs,
+                                           const JSHClass *parentHClass,
                                            bool isFunction)
 {
     EcmaVM *vm = thread->GetEcmaVM();
@@ -1397,18 +1408,22 @@ JSHandle<JSHClass> JSHClass::CreateSHClass(JSThread *thread,
     uint32_t length = descs.size();
     uint32_t maxInline = isFunction ? JSSharedFunction::MAX_INLINE : JSSharedObject::MAX_INLINE;
 
+    if (parentHClass) {
+        if (parentHClass->IsDictionaryMode()) {
+            auto dict = reinterpret_cast<NameDictionary *>(parentHClass->GetLayout().GetTaggedObject());
+            length += static_cast<uint32_t>(dict->EntriesCount());
+        } else {
+            length += parentHClass->NumberOfProps();
+        }
+    }
+
     JSHandle<JSHClass> hclass =
         isFunction ? factory->NewSEcmaHClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION, length)
                    : factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, length);
     if (LIKELY(length <= maxInline)) {
-        auto layout = CreateSInlinedLayout(thread, descs);
-        hclass->SetLayout(thread, layout);
-        hclass->SetNumberOfProps(length);
+        CreateSInlinedLayout(thread, descs, hclass, parentHClass);
     } else {
-        auto layout = CreateSDictLayout(thread, descs);
-        hclass->SetLayout(thread, layout);
-        hclass->SetNumberOfProps(0);
-        hclass->SetIsDictionaryMode(true);
+        CreateSDictLayout(thread, descs, hclass, parentHClass);
     }
 
     return hclass;
@@ -1416,7 +1431,7 @@ JSHandle<JSHClass> JSHClass::CreateSHClass(JSThread *thread,
 
 JSHandle<JSHClass> JSHClass::CreateSConstructorHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs)
 {
-    auto hclass = CreateSHClass(thread, descs, true);
+    auto hclass = CreateSHClass(thread, descs, nullptr, true);
     hclass->SetClassConstructor(true);
     hclass->SetConstructor(true);
     return hclass;
@@ -1430,15 +1445,22 @@ JSHandle<JSHClass> JSHClass::CreateSPrototypeHClass(JSThread *thread, const std:
     return hclass;
 }
 
-JSHandle<LayoutInfo> JSHClass::CreateSInlinedLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs)
+void JSHClass::CreateSInlinedLayout(JSThread *thread,
+                                    const std::vector<PropertyDescriptor> &descs,
+                                    const JSHandle<JSHClass> &hclass,
+                                    const JSHClass *parentHClass)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
 
+    uint32_t parentLength{0};
+    if (parentHClass) {
+        parentLength = parentHClass->NumberOfProps();
+    }
     auto length = descs.size();
-    auto layout = factory->CreateSLayoutInfo(length);
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    auto layout = factory->CreateSLayoutInfo(length + parentLength);
 
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < length; ++i) {
         key.Update(descs[i].GetKey());
         PropertyAttributes attr =
@@ -1453,16 +1475,50 @@ JSHandle<LayoutInfo> JSHClass::CreateSInlinedLayout(JSThread *thread, const std:
         layout->AddKey(thread, i, key.GetTaggedValue(), attr);
     }
 
-    return layout;
+    auto index = length;
+    if (parentHClass) {
+        JSHandle<LayoutInfo> old(thread, parentHClass->GetLayout());
+        for (uint32_t i = 0; i < parentLength; i++) {
+            key.Update(old->GetKey(i));
+            auto entry = layout->FindElementWithCache(thread, *hclass, key.GetTaggedValue(), index);
+            if (entry != -1) {
+                continue;
+            }
+            auto attr = PropertyAttributes(old->GetAttr(i));
+            attr.SetOffset(index);
+            layout->AddKey(thread, index, old->GetKey(i), attr);
+            ++index;
+        }
+    }
+
+    hclass->SetLayout(thread, layout);
+    hclass->SetNumberOfProps(index);
+    auto inlinedPropsLength = hclass->GetInlinedProperties();
+    if (inlinedPropsLength > index) {
+        uint32_t duplicatedSize = (inlinedPropsLength - index) * JSTaggedValue::TaggedTypeSize();
+        hclass->SetObjectSize(hclass->GetObjectSize() - duplicatedSize);
+    }
 }
 
-JSHandle<NameDictionary> JSHClass::CreateSDictLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs)
+void JSHClass::CreateSDictLayout(JSThread *thread,
+                                 const std::vector<PropertyDescriptor> &descs,
+                                 const JSHandle<JSHClass> &hclass,
+                                 const JSHClass *parentHClass)
 {
+    uint32_t parentLength{0};
+    if (parentHClass) {
+        if (parentHClass->IsDictionaryMode()) {
+            parentLength = static_cast<uint32_t>(
+                reinterpret_cast<NameDictionary *>(parentHClass->GetLayout().GetTaggedObject())->EntriesCount());
+        } else {
+            parentLength = parentHClass->NumberOfProps();
+        }
+    }
     auto length = descs.size();
     JSMutableHandle<NameDictionary> dict(
-        thread, NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(length)));
+        thread,
+        NameDictionary::CreateInSharedHeap(thread, NameDictionary::ComputeHashTableSize(length + parentLength)));
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     JSHandle<JSTaggedValue> value = globalConst->GetHandledUndefined();
 
@@ -1476,7 +1532,30 @@ JSHandle<NameDictionary> JSHClass::CreateSDictLayout(JSThread *thread, const std
         dict.Update(newDict);
     }
 
-    return dict;
+    if (parentHClass) {
+        if (parentHClass->IsDictionaryMode()) {
+            JSHandle<NameDictionary> old(thread, parentHClass->GetLayout());
+            std::vector<int> indexOrder = old->GetEnumerationOrder();
+            for (uint32_t i = 0; i < parentLength; i++) {
+                key.Update(old->GetKey(indexOrder[i]));
+                JSHandle<NameDictionary> newDict = NameDictionary::Put(
+                    thread, dict, key, value, PropertyAttributes(old->GetAttributes(indexOrder[i])));
+                dict.Update(newDict);
+            }
+        } else {
+            JSHandle<LayoutInfo> old(thread, parentHClass->GetLayout());
+            for (uint32_t i = 0; i < parentLength; i++) {
+                key.Update(old->GetKey(i));
+                JSHandle<NameDictionary> newDict =
+                    NameDictionary::Put(thread, dict, key, value, PropertyAttributes(old->GetAttr(i)));
+                dict.Update(newDict);
+            }
+        }
+    }
+
+    hclass->SetLayout(thread, dict);
+    hclass->SetNumberOfProps(0);
+    hclass->SetIsDictionaryMode(true);
 }
 
 }  // namespace panda::ecmascript

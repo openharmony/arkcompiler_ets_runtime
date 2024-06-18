@@ -50,6 +50,39 @@ void BuiltinsNumberStubBuilder::ParseFloat(Variable *result, Label *exit, Label 
     }
 }
 
+void BuiltinsNumberStubBuilder::ParseInt(Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label msgIsString(env);
+    Label radixIsSpecial(env);
+    Label radixIsSpecialInt(env);
+
+    DEFVARIABLE(radix, VariableType::INT32(), Int32(0));
+    GateRef msg = GetCallArg0(numArgs_);
+    GateRef arg2 = GetCallArg1(numArgs_);
+    // ToString maybe throw exception.
+    Branch(TaggedIsString(msg), &msgIsString, slowPath);
+    Bind(&msgIsString);
+    Branch(TaggedIsUndefined(arg2), &radixIsSpecialInt, &radixIsSpecial);
+
+    Bind(&radixIsSpecial);
+    {
+        Label radixIsInt(env);
+        // ToInt maybe throw exception.
+        Branch(TaggedIsInt(arg2), &radixIsInt, slowPath);
+        Bind(&radixIsInt);
+        {
+            radix = GetInt32OfTInt(arg2);
+            Jump(&radixIsSpecialInt);
+        }
+    }
+    Bind(&radixIsSpecialInt);
+    {
+        *result = CallNGCRuntime(glue_, RTSTUB_ID(StringToNumber), { msg, *radix });
+        Jump(exit);
+    }
+}
+
 void BuiltinsNumberStubBuilder::GenNumberConstructor(GateRef nativeCode, GateRef func, GateRef newTarget)
 {
     auto env = GetEnvironment();

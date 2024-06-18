@@ -263,6 +263,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitOthers(gate, GateType::UndefinedType());
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
             return VisitOthersWithoutConvert(gate);
+        case OpCode::NUMBER_PARSE_INT:
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
         case OpCode::PRIMITIVE_TYPE_CHECK:
@@ -285,6 +286,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TYPE_OF_CHECK:
         case OpCode::ARRAY_CONSTRUCTOR:
         case OpCode::OBJECT_CONSTRUCTOR:
+        case OpCode::BOOLEAN_CONSTRUCTOR:
         case OpCode::LD_LOCAL_MODULE_VAR:
         case OpCode::STORE_MODULE_VAR:
         case OpCode::STRING_FROM_SINGLE_CHAR_CODE:
@@ -302,6 +304,21 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::SET_ADD:
         case OpCode::LOAD_BUILTIN_OBJECT:
         case OpCode::CREATE_ARRAY:
+        case OpCode::OBJECT_IS:
+        case OpCode::OBJECT_GET_PROTOTYPE_OF:
+        case OpCode::OBJECT_CREATE:
+        case OpCode::OBJECT_IS_PROTOTYPE_OF:
+        case OpCode::OBJECT_HAS_OWN_PROPERTY:
+        case OpCode::REFLECT_GET_PROTOTYPE_OF:
+        case OpCode::REFLECT_GET:
+        case OpCode::REFLECT_HAS:
+        case OpCode::REFLECT_CONSTRUCT:
+        case OpCode::REFLECT_APPLY:
+        case OpCode::FUNCTION_PROTOTYPE_APPLY:
+        case OpCode::FUNCTION_PROTOTYPE_BIND:
+        case OpCode::FUNCTION_PROTOTYPE_CALL:
+        case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
+        case OpCode::HEAP_OBJECT_CHECK:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -819,6 +836,32 @@ GateRef NumberSpeculativeRetype::VisitFrameState(GateRef gate)
 {
     if (IsRetype()) {
         return SetOutputType(gate, GateType::AnyType());
+    }
+    GateRef frameValue = acc_.GetFrameValue(gate);
+    size_t numValueIn = acc_.GetNumValueIn(frameValue);
+    for (size_t i = 0; i < numValueIn; i++) {
+        GateRef val = acc_.GetValueIn(frameValue, i);
+        TypeInfo output = GetOutputTypeInfo(val);
+        // The convert of char type needs to be converted into ecmastring, and other types of variables are converted
+        // in the ir builder stage. Because the typeinfo::char information will be lost after passing this pass.
+        switch (output) {
+            case TypeInfo::CHAR:
+                acc_.ReplaceValueIn(frameValue, ConvertToTagged(val), i);
+                break;
+            case TypeInfo::NONE:
+            case TypeInfo::INT1:
+            case TypeInfo::INT32:
+            case TypeInfo::UINT32:
+            case TypeInfo::FLOAT64:
+            case TypeInfo::TAGGED:
+                break;
+            default:
+                // Other new types are intercepted here. Please confirm that the new types will not allocate heap
+                // objects after ConvertToTagged occurs. This check is skipped after confirmation.
+                LOG_ECMA(FATAL) << "Please check new kind of TypeInfo";
+                UNREACHABLE();
+                break;
+        }
     }
     return Circuit::NullGate();
 }
@@ -1623,15 +1666,16 @@ GateRef NumberSpeculativeRetype::VisitNumberIsInteger(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
     auto type = GetNumberInputTypeInfo(input);
-    if (type == TypeInfo::FLOAT64) {
-        GateRef result = builder_.TaggedFalse();
-        ResizeAndSetTypeInfo(result, TypeInfo::TAGGED);
+    if (type == TypeInfo::INT32) {
+        GateRef result = builder_.True();
+        ResizeAndSetTypeInfo(result, TypeInfo::INT1);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         return Circuit::NullGate();
     }
-    input = CheckAndConvertToInt32(input, GateType::NumberType());
+    ASSERT(type == TypeInfo::FLOAT64);
+    input = ConvertToTagged(input);
     acc_.ReplaceValueIn(gate, input, 0);
-    ResizeAndSetTypeInfo(input, TypeInfo::INT32);
+    ResizeAndSetTypeInfo(input, TypeInfo::TAGGED);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();
@@ -1641,6 +1685,15 @@ GateRef NumberSpeculativeRetype::VisitNumberParseFloat(GateRef gate)
 {
     if (IsRetype()) {
         return SetOutputType(gate, GateType::DoubleType());
+    }
+    ASSERT(IsConvert());
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitNumberParseInt(GateRef gate)
+{
+    if (IsRetype()) {
+        return SetOutputType(gate, GateType::IntType());
     }
     ASSERT(IsConvert());
     return Circuit::NullGate();
@@ -1875,12 +1928,6 @@ GateRef NumberSpeculativeRetype::VisitDataViewGet(GateRef gate)
         }
     }
     ASSERT(IsConvert());
-    Environment env(gate, circuit_, &builder_);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef input = CheckBoundAndConvertToInt32(index, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
-    acc_.ReplaceValueIn(gate, input, 1);
-    acc_.ReplaceStateIn(gate, builder_.GetState());
-    acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();
 }
 
@@ -1929,12 +1976,9 @@ GateRef NumberSpeculativeRetype::VisitDataViewSet(GateRef gate)
     }
     ASSERT(IsConvert());
     Environment env(gate, circuit_, &builder_);
-    GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef inputIndex = CheckBoundAndConvertToInt32(index, ConvertSupport::ENABLE, OpType::SHIFT_AND_LOGICAL);
     GateRef value = acc_.GetValueIn(gate, 2);
     GateRef inputValue = CheckAndConvertToFloat64(value, acc_.GetGateType(value), ConvertToNumber::BOOL_ONLY);
-    acc_.ReplaceValueIn(gate, inputIndex, 1); // replace index of dataview to Int32
-    acc_.ReplaceValueIn(gate, inputValue, 2); // replace input value to Double64
+    acc_.ReplaceValueIn(gate, inputValue, 2); // 2: replace input value to Double64
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();

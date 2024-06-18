@@ -53,6 +53,9 @@ enum ArkProperties {
     ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21,
     // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
     DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
+    ENABLE_NATIVE_MODULE_ERROR = 1 << 23,
+    ENABLE_ESM_TRACE = 1 << 24,
+    ENABLE_MODULE_LOG = 1 << 25
 };
 
 // asm interpreter control parsed option
@@ -133,6 +136,7 @@ enum CommandValues {
     OPTION_ENABLE_PGO_PROFILER,
     OPTION_PRINT_EXECUTE_TIME,
     OPTION_SPLIT_ONE,
+    OPTION_ENABLE_EDEN_GC,
     OPTION_COMPILER_DEVICE_STATE,
     OPTION_COMPILER_VERIFY_VTABLE,
     OPTION_COMPILER_SELECT_METHODS,
@@ -190,6 +194,7 @@ enum CommandValues {
     OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN,
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
+    OPTION_COMPILER_BASELINE_PGO,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -343,6 +348,16 @@ public:
         enableForceGc_ = value;
     }
 
+    bool EnableEdenGC() const
+    {
+        return enableEdenGC_;
+    }
+
+    void SetEnableEdenGC(bool value)
+    {
+        enableEdenGC_ = value;
+    }
+
     bool ForceFullGC() const
     {
         return forceFullGc_;
@@ -456,6 +471,11 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
     }
 
+    bool EnableNativeModuleError() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_NATIVE_MODULE_ERROR) != 0;
+    }
+
     bool EnableSharedConcurrentMark() const
     {
         // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
@@ -561,19 +581,19 @@ public:
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MICROJOB_TRACE) != 0;
     }
 
+    bool EnableESMTrace() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_ESM_TRACE) != 0;
+    }
+
     bool EnableInitOldSocketSession() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_INIT_OLD_SOCKET_SESSION) != 0;
     }
 
-    void DisableReportModuleResolvingFailure()
+    bool EnableModuleLog() const
     {
-        reportModuleResolvingFailure_ = false;
-    }
-
-    bool EnableReportModuleResolvingFailure() const
-    {
-        return reportModuleResolvingFailure_;
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_LOG) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const
@@ -614,6 +634,16 @@ public:
     void SetAsmOpcodeDisableRange(std::string value)
     {
         asmOpcodeDisableRange_ = std::move(value);
+    }
+
+    void SetDisableCodeSign(bool value)
+    {
+        disableCodeSign_ = value;
+    }
+
+    bool GetDisableCodeSign() const
+    {
+        return disableCodeSign_;
     }
 
     void ParseAsmInterOption()
@@ -1028,6 +1058,16 @@ public:
         return pgoProfilerPath_;
     }
 
+    void SetEnableBaselinePgo(bool value)
+    {
+        enableBaselinePgo_ = value;
+    }
+
+    bool IsEnableBaselinePgo() const
+    {
+        return enableBaselinePgo_;
+    }
+
     void SetPGOProfilerPath(const std::string& value)
     {
         pgoProfilerPath_ = panda::os::file::File::GetExtendedFilePath(value);
@@ -1117,6 +1157,16 @@ public:
     bool IsEnableAPPJIT() const
     {
         return enableAPPJIT_;
+    }
+
+    void SetEnableJitFrame(bool value)
+    {
+        enableJitFrame_ = value;
+    }
+
+    bool IsEnableJitFrame() const
+    {
+        return enableJitFrame_;
     }
 
     bool IsEnableJitDfxDump() const
@@ -1784,6 +1834,7 @@ private:
     std::string compilerExternalPkgInfo_ {};
     bool compilerEnableExternalPkg_ {true};
     bool enableForceGc_ {true};
+    bool enableEdenGC_ {false};
     bool forceFullGc_ {true};
     uint32_t forceSharedGc_ {1};
     int arkProperties_ = GetDefaultProperties();
@@ -1858,7 +1909,6 @@ private:
     bool enableAOTPGO_ {true};
     bool enableProfileDump_ {true};
     bool enableFrameworkAOT_ {true};
-    bool reportModuleResolvingFailure_ {true};
     uint32_t pgoHotnessThreshold_ {1};
     std::string pgoProfilerPath_ {""};
     uint32_t pgoSaveMinInterval_ {30};
@@ -1904,6 +1954,9 @@ private:
     bool enableMemoryAnalysis_ {true};
     bool checkPgoVersion_ {false};
     bool enableJitFastCompile_ {false};
+    bool enableJitFrame_{false};
+    bool disableCodeSign_{false};
+    bool enableBaselinePgo_{false};
 };
 }  // namespace panda::ecmascript
 

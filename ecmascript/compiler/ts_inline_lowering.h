@@ -43,8 +43,9 @@ private:
 class TSInlineLowering {
 public:
     static constexpr size_t MAX_INLINE_CALL_ALLOWED = 6;
-    TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string& name,
-                     NativeAreaAllocator* nativeAreaAllocator, PassOptions *options, uint32_t methodOffset)
+    TSInlineLowering(Circuit *circuit, PassContext *ctx, bool enableLog, const std::string &name,
+                     NativeAreaAllocator *nativeAreaAllocator, PassOptions *options, uint32_t methodOffset,
+                     CallMethodFlagMap *callMethodFlagMap)
         : circuit_(circuit),
           compilationEnv_(ctx->GetCompilationEnv()),
           acc_(circuit),
@@ -63,7 +64,8 @@ public:
           chunk_(circuit->chunk()),
           inlinedCallMap_(circuit->chunk()),
           argAcc_(circuit),
-          initMethodOffset_(methodOffset) {}
+          initMethodOffset_(methodOffset),
+          callMethodFlagMap_(callMethodFlagMap) {}
 
     ~TSInlineLowering() = default;
 
@@ -136,6 +138,8 @@ private:
     GateRef GetFrameState(InlineTypeInfoAccessor &info);
     void SetInitCallTargetAndConstPoolId(InlineTypeInfoAccessor &info);
     uint32_t GetAccessorConstpoolId(InlineTypeInfoAccessor &info);
+    bool CalleePFIProcess(uint32_t methodOffset);
+    void UpdateCallMethodFlagMap(uint32_t methodOffset, const MethodLiteral *method);
 
     Circuit *circuit_ {nullptr};
     CompilationEnv *compilationEnv_ {nullptr};
@@ -160,6 +164,7 @@ private:
     uint32_t initMethodOffset_ {0};
     uint32_t initConstantPoolId_ {0};
     GateRef initCallTarget_ {Circuit::NullGate()};
+    CallMethodFlagMap *callMethodFlagMap_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_TS_INLINE_LOWERING_H

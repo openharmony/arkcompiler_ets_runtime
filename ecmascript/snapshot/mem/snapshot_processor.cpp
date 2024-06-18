@@ -1304,7 +1304,6 @@ void SnapshotProcessor::DeserializeSpaceObject(uintptr_t beginAddr, Space* space
 
         if (space->GetSpaceType() != MemSpaceType::SNAPSHOT_SPACE) {
             auto sparseSpace = reinterpret_cast<SparseSpace *>(space);
-            region->InitializeFreeObjectSets();
             sparseSpace->FreeLiveRange(region, region->GetHighWaterMark(), region->GetEnd(), true);
             sparseSpace->IncreaseLiveObjectSize(liveObjectSize);
             sparseSpace->IncreaseAllocatedSize(liveObjectSize);
@@ -1333,7 +1332,11 @@ void SnapshotProcessor::DeserializeHugeSpaceObject(uintptr_t beginAddr, HugeObje
         uint64_t snapshotData = fileRegion->GetSnapshotData();
         // high 32 bits storage huge object size
         size_t objSize = SnapshotHelper::GetHugeObjectSize(snapshotData);
-        size_t alignedHugeRegionSize = AlignUp(objSize + sizeof(Region), PANDA_POOL_ALIGNMENT_IN_BYTES);
+        // region is consist of region head, mark bitset, and object data.
+        // Mark bitset size of HugeObjectSpace is always BYTE_PER_WORD
+        size_t regionHeaderSize = AlignUp(sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION)) +
+                                  AlignUp(GCBitset::BYTE_PER_WORD, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+        size_t alignedHugeRegionSize = AlignUp(objSize + regionHeaderSize, PANDA_POOL_ALIGNMENT_IN_BYTES);
         Region *region = vm_->GetHeapRegionAllocator()->AllocateAlignedRegion(
             space, alignedHugeRegionSize, vm_->GetAssociatedJSThread(), const_cast<Heap *>(vm_->GetHeap()));
         // low 32 bits storage regionIndex
@@ -1694,7 +1697,7 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
         Region *rootRegion = Region::ObjectAddressToRange(ToUintPtr(root));
         uintptr_t taggedObjectAddr = TaggedObjectEncodeBitToAddr(encodeBit);
         Region *valueRegion = Region::ObjectAddressToRange(taggedObjectAddr);
-        if (!rootRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+        if (rootRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
             // Should align with '8' in 64 and 32 bit platform
             ASSERT((ToUintPtr(value) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
             rootRegion->InsertOldToNewRSet((uintptr_t)value);

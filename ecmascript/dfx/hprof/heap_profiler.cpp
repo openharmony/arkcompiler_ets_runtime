@@ -15,6 +15,7 @@
 
 #include <sys/wait.h>
 #include <sys/prctl.h>
+#include <sys/syscall.h>
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
@@ -34,6 +35,15 @@
 #endif
 
 namespace panda::ecmascript {
+static pid_t ForkBySyscall(void)
+{
+#ifdef SYS_fork
+    return syscall(SYS_fork);
+#else
+    return syscall(SYS_clone, SIGCHLD, 0);
+#endif
+}
+
 std::pair<bool, uint32_t> EntryIdMap::FindId(JSTaggedType addr)
 {
     auto it = idMap_.find(addr);
@@ -211,6 +221,55 @@ bool HeapProfiler::DoDump(DumpFormat dumpFormat, Stream *stream, Progress *progr
     }
 }
 
+void HeapProfiler::FillIdMap()
+{
+    EntryIdMap* newEntryIdMap = GetChunk()->New<EntryIdMap>();
+    // Iterate SharedHeap Object
+    SharedHeap* sHeap = SharedHeap::GetInstance();
+    if (sHeap != nullptr) {
+        sHeap->IterateOverObjects([newEntryIdMap](TaggedObject *obj) {
+            JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
+            auto [idExist, sequenceId] = newEntryIdMap->FindId(addr);
+            if (!idExist) {
+                newEntryIdMap->InsertId(addr, sequenceId);
+            }
+        });
+    }
+
+    // Iterate LocalHeap Object
+    auto heap = vm_->GetHeap();
+    if (heap != nullptr) {
+        heap->IterateOverObjects([newEntryIdMap](TaggedObject *obj) {
+            JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
+            auto [idExist, sequenceId] = newEntryIdMap->FindId(addr);
+            if (!idExist) {
+                newEntryIdMap->InsertId(addr, sequenceId);
+            }
+        });
+    }
+
+    // copy entryIdMap
+    CUnorderedMap<JSTaggedType, uint32_t>* idMap = entryIdMap_->GetIdMap();
+    CUnorderedMap<JSTaggedType, uint32_t>* newIdMap = newEntryIdMap->GetIdMap();
+    if (entryIdMap_->GetIdCount() == 0) {
+        *idMap = *newIdMap;
+        entryIdMap_->SetId(newEntryIdMap->GetId());
+    } else {
+        CUnorderedMap<JSTaggedType, uint32_t> tempIdMap;
+        for (auto it : *newIdMap) {
+            auto addr = it.first;
+            auto newIt = idMap->find(addr);
+            if (newIt != idMap->end()) {
+                tempIdMap.emplace(addr, newIt->second);
+            }
+        }
+        idMap->clear();
+        *idMap = tempIdMap;
+    }
+
+    GetChunk()->Delete(newEntryIdMap);
+}
+
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
                                     bool isVmMode, bool isPrivate, bool captureNumericValue,
                                     bool isFullGC, bool isSimplify, bool isSync)
@@ -231,31 +290,34 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
             DISALLOW_GARBAGE_COLLECTION;
             const_cast<Heap *>(vm_->GetHeap())->Prepare();
         }
-        if (isSync) {
+        Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+            ASSERT(!thread->IsInRunningState());
+            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
+        });
+        FillIdMap();
+        // fork
+        if ((pid = ForkBySyscall()) < 0) {
+            LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
+            return false;
+        }
+        if (pid == 0) {
             vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
             res = DoDump(dumpFormat, stream, progress, isVmMode, isPrivate, captureNumericValue, isFullGC, isSimplify);
-        } else {
-            // fork
-            if ((pid = fork()) < 0) {
-                LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
-                return false;
-            }
-            if (pid == 0) {
-                vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
-                prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
-                res = DoDump(dumpFormat, stream, progress, isVmMode, isPrivate,
-                             captureNumericValue, isFullGC, isSimplify);
-                _exit(0);
-            }
+            _exit(0);
         }
     }
 
-    if (pid != 0 && !isSync) {
-        std::thread thread(&WaitProcess, pid);
-        thread.detach();
+    if (pid != 0) {
+        if (isSync) {
+            WaitProcess(pid);
+        } else {
+            std::thread thread(&WaitProcess, pid);
+            thread.detach();
+        }
         stream->EndOfStream();
     }
+    isProfiling_ = true;
     return res;
 }
 

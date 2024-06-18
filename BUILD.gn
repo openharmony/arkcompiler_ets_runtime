@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+# Copyright (c) 2021-2024 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -64,7 +64,7 @@ group("ark_js_host_mac_tools_packages") {
   }
 }
 
-group("ark_js_host_linux_tools_packages") {
+ohos_static_library("ark_js_host_linux_tools_packages") {
   deps = []
 
   deps += [
@@ -79,6 +79,8 @@ group("ark_js_host_linux_tools_packages") {
       "ecmascript/pgo_profiler/prof_dump:profdump(${host_toolchain})",
     ]
   }
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 group("ark_js_unittest") {
@@ -149,7 +151,7 @@ group("ark_unittest") {
   }
 }
 
-group("ark_runtime_host_unittest") {
+ohos_static_library("ark_runtime_host_unittest") {
   testonly = true
   deps = []
 
@@ -188,6 +190,8 @@ group("ark_runtime_host_unittest") {
       deps -= [ "$js_root/test/moduletest:ark_asm_test" ]
     }
   }
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
 }
 
 config("ark_jsruntime_public_config") {
@@ -260,6 +264,9 @@ config("hiviewdfx_config") {
   if (enable_hisysevent) {
     defines += [ "ENABLE_HISYSEVENT" ]
   }
+  if (enable_unwinder) {
+    defines += [ "ENABLE_UNWINDER" ]
+  }
 
   include_dirs = [ "$hilog_root/include" ]
 }
@@ -268,6 +275,14 @@ config("ark_jsruntime_common_config") {
   configs = [ ":hiviewdfx_config" ]
 
   defines = [ "PANDA_ENABLE_LTO" ]
+  if (enable_jit_fort) {
+    defines += [ "ENABLE_JITFORT" ]
+  }
+
+  if (ark_standalone_build) {
+    defines += [ "STANDALONE_MODE" ]
+  }
+
   cflags_cc = [
     "-Wall",
     "-Wshadow",
@@ -287,10 +302,10 @@ config("ark_jsruntime_common_config") {
   ]
 
   if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64")) {
-    if (js_runtime_feature_enable_pgo) {
+    if (ets_runtime_feature_enable_pgo) {
       cflags = [
         "-fprofile-use=" + rebase_path(
-                "${js_runtime_feature_pgo_path}/libark_jsruntime.profdata",
+                "${ets_runtime_feature_pgo_path}/libark_jsruntime.profdata",
                 root_build_dir),
         "-Wno-error=backend-plugin",
         "-Wno-profile-instr-out-of-date",
@@ -305,6 +320,10 @@ config("ark_jsruntime_common_config") {
 
   if (build_public_version) {
     defines += [ "IS_PUBLIC_VERSION" ]
+  }
+
+  if (target_os == "android") {
+    defines += [ "ANDROID_PLATFORM" ]
   }
 
   if (ark_compile_mode != "release") {
@@ -556,6 +575,7 @@ ecma_source = [
   "ecmascript/base/json_stringifier.cpp",
   "ecmascript/base/number_helper.cpp",
   "ecmascript/base/path_helper.cpp",
+  "ecmascript/base/sort_helper.cpp",
   "ecmascript/base/string_helper.cpp",
   "ecmascript/base/typed_array_helper.cpp",
   "ecmascript/base/utf_helper.cpp",
@@ -576,6 +596,7 @@ ecma_source = [
   "ecmascript/builtins/builtins_errors.cpp",
   "ecmascript/builtins/builtins_finalization_registry.cpp",
   "ecmascript/builtins/builtins_function.cpp",
+  "ecmascript/builtins/builtins_gc.cpp",
   "ecmascript/builtins/builtins_generator.cpp",
   "ecmascript/builtins/builtins_global.cpp",
   "ecmascript/builtins/builtins_iterator.cpp",
@@ -773,6 +794,7 @@ ecma_source = [
   "ecmascript/linked_hash_table.cpp",
   "ecmascript/log.cpp",
   "ecmascript/message_string.cpp",
+  "ecmascript/mem/assert_scope.cpp",
   "ecmascript/mem/barriers.cpp",
   "ecmascript/mem/c_string.cpp",
   "ecmascript/mem/chunk.cpp",
@@ -887,6 +909,10 @@ ecma_source = [
   "ecmascript/require/js_require_manager.cpp",
 ]
 
+if (enable_jit_fort) {
+  ecma_source += [ "ecmascript/mem/jit_fort.cpp" ]
+}
+
 hitrace_scope_source = []
 if (is_ohos && is_standard_system && enable_hitrace) {
   hitrace_scope_source += [ "ecmascript/jobs/hitrace_scope.cpp" ]
@@ -945,6 +971,7 @@ ecma_platform_source = []
 ecma_platform_source += [
   "ecmascript/platform/common/map.cpp",
   "ecmascript/platform/common/mutex.cpp",
+  "ecmascript/platform/common/filesystem.cpp",
 ]
 
 config("include_llvm") {
@@ -1180,14 +1207,15 @@ ohos_source_set("libark_jsruntime_static") {
 
   public_configs = [ "$js_root:ark_jsruntime_public_config" ]
 
-  if ((current_cpu == "amd64" || current_cpu == "x64" ||
-       current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
-      !is_mac && target_os != "ios") {
-    deps += [ "ecmascript/compiler:libark_stub_set" ]
-  } else {
-    deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
+  if (!is_ohos) {
+    if ((current_cpu == "amd64" || current_cpu == "x64" ||
+         current_cpu == "x86_64" || current_cpu == "arm64") && !is_mingw &&
+        !is_mac && target_os != "ios") {
+      deps += [ "ecmascript/compiler:libark_stub_set" ]
+    } else {
+      deps += [ "$js_root/ecmascript/compiler:libark_mock_stub_set" ]
+    }
   }
-
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -1296,7 +1324,11 @@ ohos_shared_library("libark_jsruntime_test") {
 
 ohos_prebuilt_etc("app_aot_enable_list") {
   relative_install_dir = "ark"
-  source = "$js_root/ecmascript/ohos/app_aot_enable_list.conf"
+  if (js_runtime_feature_enable_list) {
+    source = "$js_root/ecmascript/ohos/app_aot_enable_list.conf"
+  } else {
+    source = "$js_root/ecmascript/ohos/app_aot_enable_list_default.conf"
+  }
 
   # Set the subsystem name
   part_name = "ets_runtime"
@@ -1305,7 +1337,11 @@ ohos_prebuilt_etc("app_aot_enable_list") {
 
 ohos_prebuilt_etc("app_aot_disable_list") {
   relative_install_dir = "ark"
-  source = "$js_root/ecmascript/ohos/app_aot_disable_list.conf"
+  if (js_runtime_feature_enable_list) {
+    source = "$js_root/ecmascript/ohos/app_aot_disable_list.conf"
+  } else {
+    source = "$js_root/ecmascript/ohos/app_aot_disable_list_default.conf"
+  }
 
   # Set the subsystem name
   part_name = "ets_runtime"
@@ -1314,7 +1350,11 @@ ohos_prebuilt_etc("app_aot_disable_list") {
 
 ohos_prebuilt_etc("app_jit_enable_list") {
   relative_install_dir = "ark"
-  source = "$js_root/ecmascript/ohos/app_jit_enable_list.conf"
+  if (js_runtime_feature_enable_list) {
+    source = "$js_root/ecmascript/ohos/app_jit_enable_list.conf"
+  } else {
+    source = "$js_root/ecmascript/ohos/app_jit_enable_list_default.conf"
+  }
 
   # Set the subsystem name
   part_name = "ets_runtime"

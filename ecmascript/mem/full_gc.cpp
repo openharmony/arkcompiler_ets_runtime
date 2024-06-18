@@ -112,6 +112,8 @@ void FullGC::Mark()
     heap_->GetCompressGCMarker()->MarkRoots(MAIN_THREAD_INDEX);
     heap_->GetCompressGCMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningTaskFinished();
+    // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.
+    heap_->GetCompressGCMarker()->MarkJitCodeMap(MAIN_THREAD_INDEX);
 }
 
 void FullGC::Sweep()
@@ -153,25 +155,25 @@ void FullGC::Sweep()
         }
     }
 
-    WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) {
+    WeakRootVisitor gcUpdateWeak = [this](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
-        if (!objectRegion) {
+        if (UNLIKELY(objectRegion == nullptr)) {
             LOG_GC(ERROR) << "FullGC updateWeakReference: region is nullptr, header is " << header;
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
         if (!HasEvacuated(objectRegion)) {
             // The weak object in shared heap is always alive during fullGC.
             if (objectRegion->InSharedHeap() || objectRegion->Test(header)) {
                 return header;
             }
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
 
         MarkWord markWord(header);
         if (markWord.IsForwardingAddress()) {
             return markWord.ToForwardingAddress();
         }
-        return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+        return nullptr;
     };
     heap_->GetEcmaVM()->GetJSThread()->IterateWeakEcmaGlobalStorage(gcUpdateWeak);
     heap_->GetEcmaVM()->ProcessReferences(gcUpdateWeak);

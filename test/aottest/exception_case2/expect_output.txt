@@ -12,6 +12,6 @@
 # limitations under the License.
 
 ReferenceError: b is not defined
-exception_case2.js:18:18
+exception_case2.js:18:1
 exception_case2.js:20:1
 

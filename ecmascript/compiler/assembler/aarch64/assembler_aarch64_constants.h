@@ -198,6 +198,7 @@ enum LogicShiftOpCode {
     LSL_Reg = 0x1AC02000,
     LSR_Reg = 0x1AC02400,
     UBFM    = 0x53000000,
+    BFM     = 0xB3400000,
 };
 
 enum NopOpCode {

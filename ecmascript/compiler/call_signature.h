@@ -388,9 +388,10 @@ private:
     V(TryStoreICByName)                         \
     V(TryStoreICByValue)                        \
     V(SetValueWithBarrier)                      \
+    V(SetValueWithEdenBarrier)                  \
     V(NewLexicalEnv)                            \
     V(CopyRestArgs)                             \
-    V(GetUnmapedArgs)                           \
+    V(GetUnmappedArgs)                          \
     V(NewThisObjectChecked)                     \
     V(ConstructorCheck)                         \
     V(CreateEmptyArray)                         \
@@ -417,8 +418,10 @@ private:
     V(CallThisRangeAndCheckToBaseline)          \
     V(GeneratorReEnterAsmInterp)                \
     V(CallRuntimeWithArgv)                      \
-    V(OptimizedCallAndPushUndefined)            \
-    V(OptimizedFastCallAndPushUndefined)        \
+    V(OptimizedCallAndPushArgv)                 \
+    V(OptimizedFastCallAndPushArgv)             \
+    V(AOTCallToAsmInterBridge)                  \
+    V(FastCallToAsmInterBridge)                 \
     V(PushCallArg0AndDispatch)                  \
     V(PushCallArgsAndDispatchNative)            \
     V(PushCallArg1AndDispatch)                  \
@@ -437,13 +440,15 @@ private:
     V(PushSuperCallAndDispatch)                 \
     V(CallGetter)                               \
     V(CallSetter)                               \
+    V(CallContainersArgs2)                      \
     V(CallContainersArgs3)                      \
     V(JSCallWithArgV)                           \
     V(JSFastCallWithArgV)                       \
-    V(JSFastCallWithArgVAndPushUndefined)       \
-    V(JSCallWithArgVAndPushUndefined)           \
+    V(JSFastCallWithArgVAndPushArgv)            \
+    V(JSCallWithArgVAndPushArgv)                \
     V(ResumeRspAndDispatch)                     \
     V(ResumeRspAndReturn)                       \
+    V(ResumeRspAndReturnBaseline)               \
     V(ResumeCaughtFrameAndDispatch)             \
     V(ResumeUncaughtFrameAndReturn)             \
     V(ResumeRspAndRollback)                     \
@@ -464,6 +469,7 @@ private:
     V(FatalPrint)                               \
     V(FatalPrintCustom)                         \
     V(GetActualArgvNoGC)                        \
+    V(InsertNewToEdenRSet)                      \
     V(InsertOldToNewRSet)                       \
     V(InsertLocalToShareRSet)                   \
     V(SetBitAtomic)                             \
@@ -499,6 +505,7 @@ private:
     V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
     V(MarkingBarrier)                           \
+    V(MarkingBarrierWithEden)                   \
     V(SharedGCMarkingBarrier)                   \
     V(StoreBarrier)                             \
     V(CallArg0)                                 \
@@ -550,7 +557,7 @@ private:
     V(NumberHelperStringToDouble)               \
     V(GetStringToListCacheArray)                \
     V(FastArraySort)                            \
-    V(LocaleCompareNoGc)                        \
+    V(StringToNumber)                           \
     V(StringGetStart)                           \
     V(StringGetEnd)                             \
     V(ArrayTrim)                                \
@@ -580,7 +587,9 @@ private:
     V(CallRangeAndCheckToBaselineFromBaseline)       \
     V(CallNewAndCheckToBaselineFromBaseline)         \
     V(SuperCallAndCheckToBaselineFromBaseline)       \
-    V(CallThisRangeAndCheckToBaselineFromBaseline)
+    V(CallThisRangeAndCheckToBaselineFromBaseline)   \
+    V(SameValue)                                     \
+    V(GetBaselineBuiltinFp)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

@@ -95,7 +95,8 @@ class JitThread;
 using NativePtrGetter = void* (*)(void* info);
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
-using ResolveBufferCallback = std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)>;
+using ResolveBufferCallback =
+    std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)>;
 using UnloadNativeModuleCallback = std::function<bool(const std::string &moduleKey)>;
 using RequestAotCallback =
     std::function<int32_t(const std::string &bundleName, const std::string &moduleName, int32_t triggerMode)>;
@@ -201,6 +202,21 @@ public:
                                     << " currentThread:" << JSThread::GetCurrentThreadId();
         }
         return thread_;
+    }
+
+    bool CheckSingleThread() const
+    {
+        if (thread_ == nullptr) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+            return false;
+        }
+        if (thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
+            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                            << " thread:" << thread_->GetThreadId()
+                            << " currentThread:" << JSThread::GetCurrentThreadId();
+            return false;
+        }
+        return true;
     }
 
     ARK_INLINE JSThread *GetJSThread() const
@@ -498,11 +514,6 @@ public:
     void StopHeapTracking();
 #endif
 
-    bool EnableReportModuleResolvingFailure() const
-    {
-        return options_.EnableReportModuleResolvingFailure();
-    }
-
     void SetAssetPath(const CString &assetPath)
     {
         assetPath_ = assetPath;
@@ -596,6 +607,8 @@ public:
         if (uncatchableErrorHandler_ != nullptr) {
             panda::TryCatch trycatch(this);
             uncatchableErrorHandler_(trycatch);
+        } else {
+            LOG_ECMA_MEM(FATAL) << "Out of Memory";
         }
     }
 
@@ -648,6 +661,11 @@ public:
         return workerList_;
     }
 
+    int GetProcessStartRealtime() const
+    {
+        return processStartRealtime_;
+    }
+
     Jit *GetJit() const;
     bool PUBLIC_API IsEnableFastJit() const;
     bool PUBLIC_API IsEnableBaselineJit() const;
@@ -661,16 +679,6 @@ public:
     void SetEnableOsr(bool state)
     {
         isEnableOsr_ = state;
-    }
-
-    bool isOverLimit() const
-    {
-        return overLimit_;
-    }
-
-    void SetOverLimit(bool state)
-    {
-        overLimit_ = state;
     }
 
     AOTFileManager *GetAOTFileManager() const
@@ -714,6 +722,8 @@ public:
     }
 
     static void InitializeIcuData(const JSRuntimeOptions &options);
+
+    static int InitializeStartRealTime();
 
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
     {
@@ -795,6 +805,16 @@ public:
     }
 #endif
 
+    bool GetEnableJitLogSkip() const
+    {
+        return enableJitLogSkip_;
+    }
+
+    void SetEnableJitLogSkip(bool flag)
+    {
+        enableJitLogSkip_ = flag;
+    }
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -805,6 +825,7 @@ private:
 
     // For Internal Native MethodLiteral.
     void GenerateInternalNativeMethods();
+    void CacheToGlobalConstants(JSTaggedValue value, ConstantIndex constant);
 
     NO_MOVE_SEMANTIC(EcmaVM);
     NO_COPY_SEMANTIC(EcmaVM);
@@ -915,7 +936,11 @@ private:
     Mutex mutex_;
     bool isEnableOsr_ {false};
     bool isJitCompileVM_ {false};
-    bool overLimit_ {false};
+
+    // process StartRealTime
+    int processStartRealtime_ = 0;
+
+    bool enableJitLogSkip_ = true;
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks

@@ -26,7 +26,6 @@
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/mem/c_containers.h"
-#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 
 namespace panda::ecmascript::job {
 class PendingJob final : public Record {
@@ -41,14 +40,7 @@ public:
     {
         [[maybe_unused]] EcmaHandleScope handleScope(thread);
         EXECUTE_JOB_HITRACE(pendingJob);
-
-        [[maybe_unused]] uint64_t jobId = 0;
-#if defined(ENABLE_HITRACE)
-        jobId = pendingJob->GetJobId();
-#endif
-        std::string strTrace = "PendingJob::ExecutePendingJob: jobId: " + std::to_string(jobId);
-        strTrace += ", threadId: " + std::to_string(thread->GetThreadId());
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, strTrace);
+        EXECUTE_JOB_TRACE(thread, pendingJob);
 
         JSHandle<JSTaggedValue> job(thread, pendingJob->GetJob());
         ASSERT(job->IsCallable());

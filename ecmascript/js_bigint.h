@@ -116,8 +116,10 @@ public:
     static JSTaggedValue AsintN(JSThread *thread, JSTaggedNumber &bits, JSHandle<BigInt> bigint);
     static JSTaggedNumber BigIntToNumber(JSHandle<BigInt> bigint);
     static ComparisonResult CompareWithNumber(JSHandle<BigInt> bigint, JSHandle<JSTaggedValue> number);
-    static JSHandle<BigInt> GetUint64MaxBigint(JSThread *thread);
-    static JSHandle<BigInt> GetInt64MaxBigint(JSThread *thread);
+    static JSHandle<BigInt> CreateUint64MaxBigInt(JSThread *thread);
+    static JSHandle<BigInt> CreateInt64MaxBigInt(JSThread *thread);
+    static JSHandle<BigInt> GetUint64MaxBigInt(JSThread *thread);
+    static JSHandle<BigInt> GetInt64MaxBigInt(JSThread *thread);
     static inline size_t ComputeSize(uint32_t length)
     {
         return DATA_OFFSET + sizeof(uint32_t) * length;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -107,6 +107,10 @@ private:
     void InitializeSymbolWithRealm(const JSHandle<GlobalEnv> &realm, const JSHandle<JSHClass> &objFuncInstanceHClass);
 
     void InitializeArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSTaggedValue> &objFuncPrototypeVal) const;
+
+    JSHandle<JSObject> InitializeArrayPrototype(JSHandle<JSHClass> &arrBaseFuncInstanceHClass) const;
+    
+    JSHandle<JSHClass> InitializeArrayPrototypeHClass(const JSHandle<JSObject> &arrFuncPrototype) const;
 
     void InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjIHClass,
                                JSHandle<JSFunction> &sFuncPrototype) const;
@@ -377,6 +381,7 @@ private:
     void SetGetter(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                    const JSHandle<JSTaggedValue> &getter) const;
     JSHandle<JSObject> InitializeArkTools(const JSHandle<GlobalEnv> &env) const;
+    JSHandle<JSObject> InitializeGcBuiltins(const JSHandle<GlobalEnv> &env) const;
     void InitializeGlobalRegExp(JSHandle<JSObject> &obj) const;
     // Using to initialize jsapi container
     JSHandle<JSObject> InitializeArkPrivate(const JSHandle<GlobalEnv> &env) const;

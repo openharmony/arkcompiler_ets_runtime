@@ -56,6 +56,13 @@ private:
     const aarch64::Register LOCAL_SCOPE_REGISTER = aarch64::Register(aarch64::X11);
     const aarch64::Register RETURN_REGISTER = aarch64::Register(aarch64::X0);
     void MovParameterIntoParamReg(MacroParameter param, aarch64::Register paramReg);
+    void PickLoadStoreInsn(aarch64::Register reg, aarch64::MemoryOperand memOpnd, bool isLoad = true);
+    bool IsMoveWidableImmediate(uint64_t val, uint32_t bitLen);
+    bool IsBitmaskImmediate(uint64_t val, uint32_t bitLen);
+    bool BetterUseMOVZ(uint64_t val);
+    bool IsSingleInstructionMovable(uint64_t imm, uint32_t size);
+    void CopyImm(aarch64::Register destReg, int64_t imm, uint32_t size);
+    void CopyImmSize64(aarch64::Register destReg, uint64_t srcVal);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_AARCH64_MACRO_ASSEMBLER_AARCH64_H

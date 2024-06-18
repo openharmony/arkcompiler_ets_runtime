@@ -35,7 +35,11 @@ SharedSparseSpace::SharedSparseSpace(SharedHeap *heap,
       liveObjectSize_(0)
 {
     triggerLocalFullMarkLimit_ = maximumCapacity * LIVE_OBJECT_SIZE_RATIO;
+#ifdef ENABLE_JITFORT
+    allocator_ = new FreeListAllocator<FreeObject>(heap);
+#else
     allocator_ = new FreeListAllocator(heap);
+#endif
 }
 
 void SharedSparseSpace::Reset()
@@ -140,7 +144,6 @@ bool SharedSparseSpace::Expand(JSThread *thread)
     if (region == nullptr) {
         LOG_ECMA(FATAL) << "SharedSparseSpace::Expand:region is nullptr";
     }
-    region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
     return true;
@@ -152,7 +155,6 @@ Region *SharedSparseSpace::AllocateDeserializeRegion(JSThread *thread)
     if (region == nullptr) {
         LOG_ECMA(FATAL) << "SharedSparseSpace::AllocateDeserializeRegion:region is nullptr";
     }
-    region->InitializeFreeObjectSets();
     return region;
 }
 

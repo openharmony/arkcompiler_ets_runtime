@@ -1393,7 +1393,7 @@ void BuiltinsArrayStubBuilder::Sort(GateRef glue, GateRef thisValue,
     Bind(&notCOWArray);
 
     GateRef callbackFnHandle = GetCallArg0(numArgs);
-    Branch(TaggedIsUndefined(callbackFnHandle), &argUndefined, slowPath);
+    BRANCH(TaggedIsUndefined(callbackFnHandle), &argUndefined, slowPath);
     Bind(&argUndefined);
     result->WriteVariable(DoSort(glue, thisValue, Boolean(false), result, exit, slowPath));
     Jump(exit);
@@ -1812,6 +1812,50 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     DEFVARIABLE(i, VariableType::INT64(), Int64(0));
     DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(thisArrLen, Int64(1)));
 
+    GateRef hclass = LoadHClass(thisValue);
+    GateRef kind = GetElementsKindFromHClass(hclass);
+    Label isInt(env);
+    Label isNotInt(env);
+    Label notFastKind(env);
+    GateRef elementsKindIntLB = Int32GreaterThanOrEqual(kind,
+                                                        Int32(static_cast<int32_t>(ElementsKind::INT)));
+    GateRef elementsKindIntUB = Int32LessThanOrEqual(kind,
+                                                     Int32(static_cast<int32_t>(ElementsKind::HOLE_INT)));
+    GateRef checkIntKind = BoolAnd(elementsKindIntLB, elementsKindIntUB);
+    GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
+    BRANCH(BoolAnd(checkIntKind, isElementsKindEnabled), &isInt, &isNotInt);
+    Bind(&isInt);
+    {
+        FastReverse(glue, thisValue, thisArrLen, ElementsKind::INT, result, exit);
+    }
+    Bind(&isNotInt);
+    {
+        Label isNumber(env);
+        Label isNotNumber(env);
+        GateRef elementsKindNumberLB = Int32GreaterThanOrEqual(kind,
+                                                               Int32(static_cast<int32_t>(ElementsKind::NUMBER)));
+        GateRef elementsKindNumberUB = Int32LessThanOrEqual(kind,
+                                                            Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER)));
+        GateRef checkNumberKind = BoolAnd(elementsKindNumberLB, elementsKindNumberUB);
+        BRANCH(BoolAnd(checkNumberKind, isElementsKindEnabled), &isNumber, &isNotNumber);
+        Bind(&isNumber);
+        {
+            FastReverse(glue, thisValue, thisArrLen, ElementsKind::NUMBER, result, exit);
+        }
+        Bind(&isNotNumber);
+        {
+            FastReverse(glue, thisValue, thisArrLen, ElementsKind::TAGGED, result, exit);
+        }
+    }
+}
+
+void BuiltinsArrayStubBuilder::FastReverse(GateRef glue, GateRef thisValue, GateRef len,
+    ElementsKind kind, Variable *result, Label *exit)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(j, VariableType::INT64(),  Int64Sub(len, Int64(1)));
+    GateRef elements = GetElementsArray(thisValue);
     Label loopHead(env);
     Label loopEnd(env);
     Label next(env);
@@ -1824,13 +1868,19 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
         BRANCH(Int64LessThan(*i, *j), &next, &loopExit);
         Bind(&next);
         {
-            GateRef lower = GetTaggedValueWithElementsKind(thisValue, *i);
-            GateRef upper = GetTaggedValueWithElementsKind(thisValue, *j);
-            SetValueWithElementsKind(glue, thisValue, upper, *i, Boolean(false),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-            SetValueWithElementsKind(glue, thisValue, lower, *j, Boolean(false),
-                                     Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-            Jump(&loopEnd);
+            if (kind == ElementsKind::INT || kind == ElementsKind::NUMBER) {
+                GateRef lower = GetValueFromMutantTaggedArray(elements, *i);
+                GateRef upper = GetValueFromMutantTaggedArray(elements, *j);
+                FastSetValueWithElementsKind(glue, elements, upper, *i, kind);
+                FastSetValueWithElementsKind(glue, elements, lower, *j, kind);
+                Jump(&loopEnd);
+            } else {
+                GateRef lower = GetValueFromTaggedArray(elements, *i);
+                GateRef upper = GetValueFromTaggedArray(elements, *j);
+                FastSetValueWithElementsKind(glue, elements, upper, *i, kind);
+                FastSetValueWithElementsKind(glue, elements, lower, *j, kind);
+                Jump(&loopEnd);
+            }
         }
     }
     Bind(&loopEnd);
@@ -4790,6 +4840,35 @@ void BuiltinsArrayStubBuilder::FlatMap(GateRef glue, GateRef thisValue, GateRef 
         LoopEnd(&loopHead2);
         Bind(&loopExit2);
         result->WriteVariable(newArray);
+        Jump(exit);
+    }
+}
+
+void BuiltinsArrayStubBuilder::IsArray([[maybe_unused]] GateRef glue, [[maybe_unused]] GateRef thisValue,
+    GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    GateRef obj = GetCallArg0(numArgs);
+    Label isHeapObj(env);
+    Label notHeapObj(env);
+    BRANCH(TaggedIsHeapObject(obj), &isHeapObj, &notHeapObj);
+    Bind(&isHeapObj);
+    {
+        Label isJSArray(env);
+        Label notJSArray(env);
+        GateRef objectType = GetObjectType(LoadHClass(obj));
+        BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARRAY))), &isJSArray, &notJSArray);
+        Bind(&isJSArray);
+        {
+            result->WriteVariable(TaggedTrue());
+            Jump(exit);
+        }
+        Bind(&notJSArray);
+        BRANCH(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_PROXY))), slowPath, &notHeapObj);
+    }
+    Bind(&notHeapObj);
+    {
+        result->WriteVariable(TaggedFalse());
         Jump(exit);
     }
 }

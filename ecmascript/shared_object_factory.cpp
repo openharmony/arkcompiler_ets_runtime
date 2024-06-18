@@ -192,7 +192,7 @@ JSHandle<Method> ObjectFactory::NewSMethod(const JSPandaFile *jsPandaFile, Metho
         auto aotFileManager = thread_->GetEcmaVM()->GetAOTFileManager();
         aotFileManager->SetAOTFuncEntry(jsPandaFile, nullptr, *method, entryIndex, canFastCall);
     } else {
-        method->ClearAOTFlagsWhenInit();
+        method->InitInterpreterStatusForCompiledMethod(thread_);
     }
     return method;
 }
@@ -442,6 +442,7 @@ JSHandle<ProfileTypeInfoCell> ObjectFactory::NewSEmptyProfileTypeInfoCell()
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
     JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
     profileTypeInfoCell->SetValue(thread_, JSTaggedValue::Undefined());
+    profileTypeInfoCell->SetMachineCode(thread_, JSTaggedValue::Hole());
     return profileTypeInfoCell;
 }
 

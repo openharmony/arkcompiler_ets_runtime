@@ -69,6 +69,7 @@ template<typename Derived, typename HashObject>
 JSHandle<Derived> LinkedHashTable<Derived, HashObject>::InsertWeakRef(const JSThread *thread,
     const JSHandle<Derived> &table, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
+    ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     ASSERT(IsKey(key.GetTaggedValue()));
     int hash = LinkedHash::Hash(thread, key.GetTaggedValue());
     int entry = table->FindElement(thread, key.GetTaggedValue());

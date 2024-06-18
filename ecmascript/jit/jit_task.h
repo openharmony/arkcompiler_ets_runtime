@@ -67,6 +67,8 @@ public:
     {
         Taskpool::Initialize(0, [](os::thread::native_handle_type thread) {
             os::thread::SetThreadName(thread, "OS_JIT_Thread");
+            constexpr int32_t priorityVal = 5; // 5: The priority can be set within range [-20, 19]
+            os::thread::SetPriority(os::thread::GetCurrentThreadId(), priorityVal);
             auto jitVm = JitVM::Create();
             JitTaskpool::GetCurrentTaskpool()->SetCompilerVm(jitVm);
         }, []([[maybe_unused]] os::thread::native_handle_type thread) {
@@ -102,6 +104,9 @@ public:
     void SetHClassInfoForPGO(JSHandle<Method> &methodHandle);
     void InstallCode();
     void InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj);
+    void InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCode,
+        JSHandle<Method> &methodHandle, JSHandle<Method> &newMethodHandle);
+
     MachineCodeDesc &GetMachineCodeDesc()
     {
         return codeDesc_;

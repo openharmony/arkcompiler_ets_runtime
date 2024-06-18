@@ -80,17 +80,31 @@ void Runner::ForEachTask(const std::function<void(Task*)> &f)
     }
 }
 
-void Runner::SetQosPriority([[maybe_unused]] bool isForeground)
+void Runner::SetQosPriority([[maybe_unused]] PriorityMode mode)
 {
 #ifdef ENABLE_QOS
-    if (isForeground) {
-        for (uint32_t threadId : gcThreadId_) {
-            OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, threadId);
+    switch (mode) {
+        case PriorityMode::STW: {
+            for (uint32_t threadId : gcThreadId_) {
+                OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INTERACTIVE, threadId);
+            }
+            return;
         }
-    } else {
-        for (uint32_t threadId : gcThreadId_) {
-            OHOS::QOS::ResetQosForOtherThread(threadId);
+        case PriorityMode::FOREGROUND: {
+            for (uint32_t threadId : gcThreadId_) {
+                OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, threadId);
+            }
+            return;
         }
+        case PriorityMode::BACKGROUND: {
+            for (uint32_t threadId : gcThreadId_) {
+                OHOS::QOS::ResetQosForOtherThread(threadId);
+            }
+            return;
+        }
+        default:
+            UNREACHABLE();
+            break;
     }
 #endif
 }

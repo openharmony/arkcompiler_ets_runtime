@@ -67,6 +67,21 @@
         }                                                                                         \
     } while (false)
 
+#define SINGLE_THREAD_CHECK_WITH_RETURN(vm, result)                                              \
+    [[maybe_unused]] JSThread *thread = (vm)->GetJSThreadNoCheck();                              \
+    do {                                                                                         \
+        if (thread->HasPendingException()) {                                                     \
+            LOG_ECMA(DEBUG) << "Pending exception before " << __FUNCTION__ << " called in line:" \
+                            << __LINE__ << ", exception details as follows:";                    \
+            JSNApi::PrintExceptionInfo(vm);                                                      \
+            return result;                                                                       \
+        }                                                                                        \
+        if (!(vm)->CheckSingleThread()) {                                                        \
+            LOG_ECMA(DEBUG) << "cross thread to call " << __FUNCTION__ << "is not supported";    \
+            return result;                                                                       \
+        }                                                                                        \
+    } while (false)
+
 #define DCHECK_SPECIAL_VALUE(jsValueRef)                                                     \
     do {                                                                                     \
         auto val = reinterpret_cast<JSTaggedValue *>(jsValueRef);                            \

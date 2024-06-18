@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MEM_BARRIERS_H
 
 #include "ecmascript/common.h"
+#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/mem_common.h"
 
@@ -44,7 +45,7 @@ public:
         return oldValue;
     }
 
-    template<bool need_write_barrier = true>
+    template<bool needWriteBarrier = true>
     static void SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
 
     static void SynchronizedSetClass(const JSThread *thread, void *obj, JSTaggedType value);
@@ -61,6 +62,9 @@ public:
     static void PUBLIC_API Update(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
                                   TaggedObject *value, Region *valueRegion,
                                   WriteBarrierType writeType = WriteBarrierType::NORMAL);
+    static void PUBLIC_API UpdateWithoutEden(const JSThread *thread, uintptr_t slotAddr, Region *objectRegion,
+                                             TaggedObject *value, Region *valueRegion,
+                                             WriteBarrierType writeType = WriteBarrierType::NORMAL);
 
     static void PUBLIC_API UpdateShared(const JSThread *thread, TaggedObject *value, Region *valueRegion);
 };

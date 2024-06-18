@@ -15,11 +15,15 @@ group("ark_jit_ts_test") {
   testonly = true
   test_list = [
     "create_arguments",
+    "ldobjbyname",
     "for_loop",
     "typed_array",
     "while_loop",
     "exception",
+    "construct_with_normal_function",
     "addition_assignment",
+    "catch_with_osr",
+    "ts_inline",
   ]
 
   deps = []

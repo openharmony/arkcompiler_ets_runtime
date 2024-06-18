@@ -40,7 +40,7 @@ class GeneratorContext;
 struct EcmaRuntimeCallInfo;
 
 using JSFunctionEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
-                                              uintptr_t prevFp, bool needPushUndefined);
+                                              uintptr_t prevFp, bool needPushArgv);
 using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, const JSTaggedType argV[],
                                               uintptr_t prevFp);
 
@@ -71,11 +71,13 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(PushCallThisRangeAndDispatch)          \
     V(ResumeRspAndDispatch)                  \
     V(ResumeRspAndReturn)                    \
+    V(ResumeRspAndReturnBaseline)            \
     V(ResumeCaughtFrameAndDispatch)          \
     V(ResumeUncaughtFrameAndReturn)          \
     V(ResumeRspAndRollback)                  \
     V(CallSetter)                            \
     V(CallGetter)                            \
+    V(CallContainersArgs2)                   \
     V(CallContainersArgs3)                   \
     V(CallReturnWithArgv)
 
@@ -115,7 +117,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallRangeAndCheckToBaselineFromBaseline)        \
     V(CallNewAndCheckToBaselineFromBaseline)          \
     V(SuperCallAndCheckToBaselineFromBaseline)        \
-    V(CallThisRangeAndCheckToBaselineFromBaseline)
+    V(CallThisRangeAndCheckToBaselineFromBaseline)    \
+    V(GetBaselineBuiltinFp)
 
 #define JS_CALL_TRAMPOLINE_LIST(V)           \
     V(CallRuntime)                           \
@@ -123,18 +126,20 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(JSFunctionEntry)                       \
     V(JSCall)                                \
     V(JSCallWithArgV)                        \
-    V(JSCallWithArgVAndPushUndefined)        \
+    V(JSCallWithArgVAndPushArgv)             \
     V(JSProxyCallInternalWithArgV)           \
-    V(OptimizedCallAndPushUndefined)         \
+    V(OptimizedCallAndPushArgv)              \
     V(DeoptHandlerAsm)                       \
     V(JSCallNew)                             \
-    V(CallOptimized)
+    V(CallOptimized)                         \
+    V(AOTCallToAsmInterBridge)               \
+    V(FastCallToAsmInterBridge)
 
 #define FAST_CALL_TRAMPOLINE_LIST(V)         \
     V(OptimizedFastCallEntry)                \
-    V(OptimizedFastCallAndPushUndefined)     \
+    V(OptimizedFastCallAndPushArgv)          \
     V(JSFastCallWithArgV)                    \
-    V(JSFastCallWithArgVAndPushUndefined)
+    V(JSFastCallWithArgVAndPushArgv)
 
 
 #define RUNTIME_STUB_WITHOUT_GC_LIST(V)        \
@@ -152,8 +157,10 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(GetActualArgvNoGC)                       \
     V(InsertOldToNewRSet)                      \
     V(InsertLocalToShareRSet)                  \
+    V(InsertNewToEdenRSet)                     \
     V(SetBitAtomic)                            \
     V(MarkingBarrier)                          \
+    V(MarkingBarrierWithEden)                  \
     V(SharedGCMarkingBarrier)                  \
     V(StoreBarrier)                            \
     V(DoubleToInt)                             \
@@ -198,7 +205,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(NumberHelperStringToDouble)              \
     V(GetStringToListCacheArray)               \
     V(FastArraySort)                           \
-    V(LocaleCompareNoGc)                       \
+    V(StringToNumber)                          \
     V(StringGetStart)                          \
     V(StringGetEnd)                            \
     V(ArrayTrim)                               \
@@ -248,7 +255,6 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(UpdateLayOutAndAddTransition)       \
     V(CopyAndUpdateObjLayout)             \
     V(UpdateHClassForElementsKind)        \
-    V(IsElementsKindSwitchOn)             \
     V(SetValueWithElementsKind)           \
     V(UpdateArrayHClassAndMigrateArrayWithKind) \
     V(MigrateArrayWithKind)               \
@@ -328,6 +334,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(PGOPreDump)                         \
     V(JitCompile)                         \
     V(CountInterpExecFuncs)               \
+    V(JitReuseCompiledFunc)               \
     V(BaselineJitCompile)                 \
     V(UpdateHotnessCounterWithProf)       \
     V(GetModuleNamespaceByIndex)          \
@@ -465,6 +472,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(JSObjectGrowElementsCapacity)       \
     V(HClassCloneWithAddProto)            \
     V(LocaleCompareWithGc)                \
+    V(ParseInt)                           \
+    V(LocaleCompareCacheable)             \
     V(ArrayForEachContinue)               \
     V(NumberDictionaryPut)                \
     V(ThrowRangeError)                    \
@@ -475,7 +484,15 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(DumpObject)                         \
     V(TryGetInternString)                 \
     V(TryToElementsIndexOrFindInStringTable) \
-    V(BigIntConstructor)
+    V(BigIntConstructor)                  \
+    V(ObjectPrototypeHasOwnProperty)      \
+    V(ReflectHas)                         \
+    V(ReflectConstruct)                   \
+    V(ReflectApply)                       \
+    V(FunctionPrototypeApply)             \
+    V(FunctionPrototypeBind)              \
+    V(FunctionPrototypeCall)              \
+    V(SetPrototypeTransition)
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \
@@ -532,11 +549,14 @@ public:
     static void FatalPrintCustom(uintptr_t fmt, ...);
     static void MarkingBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
+    static void MarkingBarrierWithEden([[maybe_unused]] uintptr_t argGlue,
+        uintptr_t object, size_t offset, TaggedObject *value);
     static void SharedGCMarkingBarrier([[maybe_unused]] uintptr_t argGlue, TaggedObject *value);
     static void StoreBarrier([[maybe_unused]] uintptr_t argGlue,
         uintptr_t object, size_t offset, TaggedObject *value);
     static JSTaggedType CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc, JSTaggedValue *argvPtr);
     static JSTaggedType GetActualArgvNoGC(uintptr_t argGlue);
+    static void InsertNewToEdenRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertOldToNewRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void InsertLocalToShareRSet([[maybe_unused]] uintptr_t argGlue, uintptr_t object, size_t offset);
     static void SetBitAtomic(GCBitset::GCBitsetWord *word, GCBitset::GCBitsetWord mask,
@@ -579,8 +599,7 @@ public:
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
     static JSTaggedValue GetStringToListCacheArray(uintptr_t argGlue);
     static int FastArraySort(JSTaggedType x, JSTaggedType y);
-    static JSTaggedValue LocaleCompareNoGc(uintptr_t argGlue, JSTaggedType locales, EcmaString *thisHandle,
-                                           EcmaString *thatHandle);
+    static JSTaggedValue StringToNumber(JSTaggedType numberString, int32_t radix);
     static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);
     static double TimeClip(double time);
     static double SetDateValues(double year, double month, double day);
@@ -595,7 +614,7 @@ public:
     static void ClearJitCompiledCodeFlags(Method *method);
     static void CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *targetArray, int32_t srcStartPos,
                                      int32_t tarStartPos, int32_t count, int32_t elementSize);
-
+    static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
     static void PrintHeapReginInfo(uintptr_t argGlue);

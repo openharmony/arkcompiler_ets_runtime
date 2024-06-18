@@ -169,7 +169,7 @@ private:
     void LowerToJSCall(GateRef hirGate, const std::vector<GateRef> &args, const std::vector<GateRef> &argsFastCall);
     void LowerFastCall(GateRef gate, GateRef glue, GateRef func, GateRef argc, const std::vector<GateRef> &args,
         const std::vector<GateRef> &fastCallArgs, Variable *result, Label *exit, bool isNew);
-    void LowerNewFastCall(GateRef gate, GateRef glue, GateRef func, bool needPushUndefined,
+    void LowerNewFastCall(GateRef gate, GateRef glue, GateRef func, bool needPushArgv,
         const std::vector<GateRef> &args, const std::vector<GateRef> &fastCallArgs,
         Variable *result, Label *exit);
     void LowerCallArg0(GateRef gate);
@@ -243,6 +243,13 @@ private:
     void LowerSuperCall(GateRef gate);
     void LowerSuperCallArrow(GateRef gate);
     void LowerSuperCallSpread(GateRef gate);
+    void LowerSuperCallSpreadSlowPath(GateRef gate, GateRef func, GateRef array);
+    void LowerSuperCallSpreadFastPath(GateRef gate, GateRef func, GateRef array);
+    GateRef IsSuperFuncValid(GateRef superFunc);
+    GateRef IsAotOrFastCall(GateRef method, CircuitBuilder::JudgeMethodType type);
+    void GenerateSuperCall(const std::vector<GateRef> &args, Variable *result, Label *exit);
+    void SuperCallSpreadWithArgV(const std::vector<GateRef> &args, GateRef id, GateRef actualArgc, GateRef expectedNum,
+                                 Variable *result);
     void LowerIsTrueOrFalse(GateRef gate, bool flag);
     void LowerNewObjRange(GateRef gate);
     void LowerConditionJump(GateRef gate, bool isEqualJump);
@@ -303,6 +310,7 @@ private:
     void LowerWideLdPatchVar(GateRef gate);
     void LowerWideStPatchVar(GateRef gate);
     void LowerLdThisByName(GateRef gate);
+    bool IsFastCallArgs(size_t index);
     void LowerConstruct(GateRef gate);
     void LowerCallNew(GateRef gate);
     void LowerTypedCall(GateRef gate);
@@ -325,7 +333,8 @@ private:
     void DeleteLoopExit(GateRef gate);
     void DeleteLoopExitValue(GateRef gate);
     void LowerLdStr(GateRef gate);
-    void LowerGetConstPool(GateRef gate);
+    void LowerGetSharedConstPool(GateRef gate);
+    void LowerGetUnsharedConstPool(GateRef gate);
 
     CompilationEnv *compilationEnv_;
     const MethodLiteral *methodLiteral_ {nullptr};
@@ -339,6 +348,7 @@ private:
     bool stressDeopt_ {false};
     std::string methodName_;
     GateRef glue_ {Circuit::NullGate()};
+    CVector<GateRef> unsharedCP_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_SLOWPATH_LOWERING_H

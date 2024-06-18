@@ -54,7 +54,7 @@ public:
 
     static void JSFunctionEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedCallAndPushUndefined(ExtendedAssembler *assembler);
+    static void OptimizedCallAndPushArgv(ExtendedAssembler *assembler);
 
     static void JSProxyCallInternalWithArgV(ExtendedAssembler *assembler);
 
@@ -66,7 +66,11 @@ public:
 
     static void JSCallWithArgV(ExtendedAssembler *assembler);
 
-    static void JSCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
+    static void JSCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
+
+    static void AOTCallToAsmInterBridge(ExtendedAssembler *assembler);
+
+    static void FastCallToAsmInterBridge(ExtendedAssembler *assembler);
 
     static void DeoptHandlerAsm(ExtendedAssembler *assembler);
 
@@ -74,7 +78,7 @@ public:
 
     static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
 
-    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needAddExpectedArgs);
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needPushArgv);
 private:
     static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsFuncReg,
@@ -93,9 +97,11 @@ private:
     static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
     static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
-    static void CallBuiltinTrampoline(ExtendedAssembler *assembler);
+    static void CallBuiltinTrampoline(ExtendedAssembler *assembler, Register temp);
+    static void PopAsmBridgeFrame(ExtendedAssembler *assembler);
     static void CallBuiltinConstructorStub(ExtendedAssembler *assembler, Register builtinStub, Register argv,
                                            Register glue, Register temp);
+    static void RemoveArgv(ExtendedAssembler *assembler, Register temp);
 
     friend class OptimizedFastCall;
 };
@@ -104,11 +110,11 @@ class OptimizedFastCall : public CommonCall {
 public:
     static void OptimizedFastCallEntry(ExtendedAssembler *assembler);
 
-    static void OptimizedFastCallAndPushUndefined(ExtendedAssembler *assembler);
+    static void OptimizedFastCallAndPushArgv(ExtendedAssembler *assembler);
 
     static void JSFastCallWithArgV(ExtendedAssembler *assembler);
 
-    static void JSFastCallWithArgVAndPushUndefined(ExtendedAssembler *assembler);
+    static void JSFastCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 };
 
 class AsmInterpreterCall : public CommonCall {
@@ -157,9 +163,13 @@ public:
 
     static void ResumeRspAndReturn([[maybe_unused]] ExtendedAssembler *assembler);
 
+    static void ResumeRspAndReturnBaseline([[maybe_unused]] ExtendedAssembler *assembler);
+
     static void CallGetter(ExtendedAssembler *assembler);
 
     static void CallSetter(ExtendedAssembler *assembler);
+
+    static void CallContainersArgs2(ExtendedAssembler *assembler);
 
     static void CallContainersArgs3(ExtendedAssembler *assembler);
 
@@ -199,7 +209,7 @@ private:
     static void CallNativeEntry(ExtendedAssembler *assemblSer);
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
     static void CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode);
-    static void PushBuiltinFrame(ExtendedAssembler *assembler, Register glue, FrameType type);
+    static bool PushBuiltinFrame(ExtendedAssembler *assembler, Register glue, FrameType type);
     static void JSCallCommonEntry(ExtendedAssembler *assembler, JSCallMode mode, FrameTransitionType type);
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
     static void JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
@@ -249,6 +259,8 @@ public:
     static void CallNewAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
     static void SuperCallAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
     static void CallThisRangeAndCheckToBaselineFromBaseline(ExtendedAssembler *assembler);
+    /* get baselineBuiltinFp when baselineBuiltin call the others */
+    static void GetBaselineBuiltinFp(ExtendedAssembler *assembler);
 };
 
 class JsFunctionArgsConfigFrameScope {

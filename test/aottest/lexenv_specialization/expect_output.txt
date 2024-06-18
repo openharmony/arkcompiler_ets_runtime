@@ -11,6 +11,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: f@lexenv_specialization caller function name: func_main_0@lexenv_specialization
+[trace] aot inline function name: #*#f@lexenv_specialization caller function name: func_main_0@lexenv_specialization
 2
 0

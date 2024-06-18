@@ -33,7 +33,8 @@ BUILTINS_WITH_FUNCTION_STUB_BUILDER(DECLARE_BUILTINS_FUNCTION_STUB_BUILDER)
 
     GateRef BuildArgumentsListFastElements(GateRef glue, GateRef arrayObj);
 private:
-    GateRef MakeArgListWithHole(GateRef argv, GateRef length);
+    GateRef MakeArgListWithHole(GateRef glue, GateRef argv, GateRef length);
+    GateRef NewTaggedArrayFromArgs(GateRef glue, GateRef startIndex, GateRef length, GateRef numArgs);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_FUNCTION_STUB_BUILDER_H

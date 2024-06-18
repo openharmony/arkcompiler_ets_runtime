@@ -443,14 +443,14 @@ JSTaggedValue BuiltinsArkTools::CheckDeoptStatus(EcmaRuntimeCallInfo *info)
     // check status after deopt
     if (isAotCompiled ||
         method->IsFastCall() ||
-        method->GetDeoptType() != kungfu::DeoptType::NOTCHECK ||
+        method->GetDeoptType() != kungfu::DeoptType::NONE ||
         method->GetCodeEntryOrLiteral() == 0) {
         return JSTaggedValue(false);
     }
     return JSTaggedValue(true);
 }
 
-JSTaggedValue BuiltinsArkTools::PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo *info)
+JSTaggedValue BuiltinsArkTools::PrintTypedOpProfiler(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
@@ -460,7 +460,20 @@ JSTaggedValue BuiltinsArkTools::PrintTypedOpProfilerAndReset(EcmaRuntimeCallInfo
     std::string opStr = EcmaStringAccessor(opStrVal.GetTaggedValue()).ToStdString();
     TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
     if (profiler != nullptr) {
-        profiler->PrintAndReset(opStr);
+        profiler->Print(opStr);
+    }
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::ClearTypedOpProfiler(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
+    if (profiler != nullptr) {
+        profiler->Clear();
     }
     return JSTaggedValue::Undefined();
 }

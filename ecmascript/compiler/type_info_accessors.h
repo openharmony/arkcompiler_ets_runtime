@@ -50,6 +50,18 @@ public:
     static bool IsTrustedStringType(
         const CompilationEnv *env, Circuit *circuit, Chunk *chunk, GateAccessor acc, GateRef gate);
 
+    static inline bool IsTrustedBooleanOrNumberOrStringType(const CompilationEnv *env, Circuit *circuit,
+                                                            Chunk *chunk, GateAccessor acc, GateRef gate)
+    {
+        return IsTrustedBooleanType(acc, gate) || IsTrustedNumberType(acc, gate) ||
+               IsTrustedStringType(env, circuit, chunk, acc, gate);
+    }
+
+    static bool IsTrustedNotSameType(const CompilationEnv *env, Circuit *circuit, Chunk *chunk,
+                                     GateAccessor acc, GateRef left, GateRef right);
+
+    static constexpr uint32_t INVALID_LEN = std::numeric_limits<uint32_t>::max();
+
 protected:
     ParamType PGOSampleTypeToParamType() const;
     static ParamType PGOBuiltinTypeToParamType(ProfileType pgoType);
@@ -100,6 +112,14 @@ public:
             return false;
         }
         return pgoType_.IsString();
+    }
+
+    inline bool IsNumberOrStringType() const
+    {
+        if (LeftOrRightIsUndefinedOrNull()) {
+            return false;
+        }
+        return pgoType_.IsNumberOrString();
     }
 
     inline bool LeftOrRightIsUndefinedOrNull() const
@@ -320,7 +340,7 @@ public:
     uint32_t GetFunctionTypeLength() const
     {
         if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
-            return false;
+            return INVALID_LEN;
         }
         auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
         bool haveProfileType = !profileType->IsNone();
@@ -329,7 +349,7 @@ public:
             MethodLiteral *targetMethodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
             return targetMethodLiteral->GetNumArgsWithCallField();
         }
-        return 0;
+        return INVALID_LEN;
     }
 
     bool IsNoGC() const
@@ -350,7 +370,7 @@ public:
     int GetMethodIndex() const
     {
         if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
-            return false;
+            return -1;
         }
         auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
         bool haveProfileType = !profileType->IsNone();
@@ -363,7 +383,7 @@ public:
                 ConstantPool::Cast(compilationEnv_->FindConstpool(jsPandaFile_, cpId).GetTaggedObject());
             return constpoolHandle->GetMethodIndexByEntityId(panda_file::File::EntityId(methodId));
         }
-        return 0;
+        return -1;
     }
 
     bool MethodOffsetIsVaild() const
@@ -382,8 +402,9 @@ public:
         if (haveProfileType) {
             CString fileDesc = jsPandaFile_->GetNormalizedFileDesc();
             uint32_t methodId = profileType->GetProfileType().GetId();
-            return callMethodFlagMap_->IsAotCompile(fileDesc, methodId) &&
-                callMethodFlagMap_->IsFastCall(fileDesc, methodId);
+            return (callMethodFlagMap_->IsAotCompile(fileDesc, methodId) ||
+                    callMethodFlagMap_->IsJitCompile(fileDesc, methodId)) &&
+                   callMethodFlagMap_->IsFastCall(fileDesc, methodId);
         }
         return false;
     }
@@ -544,6 +565,11 @@ public:
     GateRef GetArg0() const
     {
         return a0_;
+    }
+
+    std::vector<GateRef> GetArgs()
+    {
+        return { thisObj_, a0_ };
     }
 
     bool Arg0IsNumberType() const
@@ -1106,6 +1132,12 @@ public:
     bool IsBuiltinsTypeArray() const
     {
         return types_[0].IsBuiltinsTypeArray();
+    }
+
+    bool IsStoreOutOfBounds() const
+    {
+        ASSERT(types_.size() > 0);
+        return types_[0].IsEverOutOfBounds();
     }
 
     JSType GetBuiltinsJSType() const

@@ -56,6 +56,18 @@ public:
     {
         return idMap_.size();
     }
+    CUnorderedMap<JSTaggedType, uint32_t>* GetIdMap()
+    {
+        return &idMap_;
+    }
+    uint32_t GetId()
+    {
+        return nextId_;
+    }
+    void SetId(uint32_t id)
+    {
+        nextId_ = id;
+    }
 
 private:
     uint32_t nextId_ {3U};  // 1 Reversed for SyntheticRoot
@@ -127,6 +139,7 @@ private:
     CString GetTimeStamp();
     void UpdateHeapObjects(HeapSnapshot *snapshot);
     void ClearSnapshot();
+    void FillIdMap();
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;

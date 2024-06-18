@@ -174,6 +174,7 @@ private:
     CallExceptionKind GetCallExceptionKind(size_t index, OpCode op) const;
     maple::litecg::Expr GetRTStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetCoStubOffset(maple::litecg::Expr glue, int index) const;
+    maple::litecg::Expr GetBaselineStubOffset(maple::litecg::Expr glue, int index) const;
     maple::litecg::Expr GetCallee(maple::litecg::BB &bb, const std::vector<GateRef> &inList,
                                   const CallSignature *signature, const std::string &realName);
     maple::litecg::Expr CanonicalizeToPtr(maple::litecg::Expr expr, maple::litecg::Type *type);
@@ -205,6 +206,8 @@ private:
     void CollectExraCallSiteInfo(std::unordered_map<int, maple::litecg::LiteCGValue> &deoptBundleInfo,
                                  maple::litecg::Expr pcOffset, GateRef frameArgs);
     void GenPrologue(maple::litecg::Function &function);
+    void AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType, maple::litecg::Function &function);
+    void SaveByteCodePcOnOptJSFuncFrame(maple::litecg::Var &value);
     void SaveJSFuncOnOptJSFuncFrame(maple::litecg::Var &value);
     void SaveFrameTypeOnFrame(FrameType frameType);
     bool IsInterpreted() const;

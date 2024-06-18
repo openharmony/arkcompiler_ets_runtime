@@ -51,7 +51,6 @@ print(Math.sign(-Infinity)) //: -1
 print(Math.sign(Infinity)) //: 1
 
 // Replace, no deopt
-//aot: [trace] Check Type: NotJSCallTarget4
 let trueSign = Math.sign
 Math.sign = replace
 print(Math.sign(-12)) //: -12
@@ -72,17 +71,17 @@ function printSign(a: any)
 }
 
 // Check:
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(1) //: 1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(Math.PI) //: 1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(-Math.PI) //: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(NaN) //: NaN
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(-1.5) //: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(Infinity) //: 1
 
 if (ArkTools.isAOTCompiled(printSign)) {
@@ -102,19 +101,19 @@ printSign(-Math.PI)  //pgo: -1
 Math.sign = trueSign
 let obj = {};
 obj.valueOf = (() => { return -23; })
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 //aot: [trace] Check Type: NotNumber2
 printSign(obj);      //: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(-1.5)      //: -1
-//aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(Infinity)  //: 1
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+    //aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
     printSign(-12) //: -1
-    //aot: [trace] aot inline builtin: Math.sign, caller function name:doSign@builtinMathSign
+    //aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
     //aot: [trace] Check Type: NotNumber2
     printSign("-12") //: -1
 } catch (e) {
@@ -148,19 +147,20 @@ function tryCatchTest(obj: any, v : number)
 
 // Test try-catch-deopt 1
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
-//aot: [trace] Check Type: InconsistentHClass6
-//aot: [trace] Check Type: InconsistentHClass6
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //: -1
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //pgo: 0
 //aot: 1
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //: 0
 
 // Test try-catch-deopt 2
 throwingObj.value = 14
 tryCatchTest(throwingObj, ArkTools.isAOTCompiled(tryCatchTest) * 1)
-//aot: [trace] Check Type: InconsistentHClass6
-//aot: [trace] Check Type: InconsistentHClass6
 //: Error: exception
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //pgo: 0
 //aot: -1
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#*#tryCatchTest@builtinMathSign
 //: 0

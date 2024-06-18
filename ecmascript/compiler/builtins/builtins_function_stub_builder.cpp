@@ -88,7 +88,7 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                         GateRef PropertyInlinedPropsOffset = IntPtr(JSArguments::LENGTH_INLINE_PROPERTY_INDEX);
                         GateRef result = GetPropertyInlinedProps(arrayObj, hClass, PropertyInlinedPropsOffset);
                         GateRef length = TaggedGetInt(result);
-                        GateRef argsLength = MakeArgListWithHole(elements, length);
+                        GateRef argsLength = MakeArgListWithHole(glue, elements, length);
                         GateRef elementArgv = PtrAdd(elements, IntPtr(TaggedArray::DATA_OFFSET));
                         res->WriteVariable(JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
                             JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg }));
@@ -97,7 +97,7 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                     Bind(&taggedNotStableJsArg);
                     {
                         GateRef length = GetArrayLength(arrayObj);
-                        GateRef argsLength = MakeArgListWithHole(elements, length);
+                        GateRef argsLength = MakeArgListWithHole(glue, elements, length);
                         GateRef elementArgv = PtrAdd(elements, IntPtr(TaggedArray::DATA_OFFSET));
                         res->WriteVariable(JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
                             JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg }));
@@ -105,6 +105,123 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                     }
                 }
             }
+        }
+    }
+}
+
+void BuiltinsFunctionStubBuilder::PrototypeBind(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label targetIsHeapObject(env);
+    Label targetIsCallable(env);
+    Label targetIsJSFunctionOrBound(env);
+    Label targetNameAndLengthNotChange(env);
+
+    // 1. Let Target be the this value.
+    GateRef target = thisValue;
+    // 2. If IsCallable(Target) is false, throw a TypeError exception.
+    BRANCH(TaggedIsHeapObject(target), &targetIsHeapObject, slowPath);
+    Bind(&targetIsHeapObject);
+    BRANCH(IsCallable(target), &targetIsCallable, slowPath);
+    Bind(&targetIsCallable);
+    BRANCH(BoolOr(IsJSFunction(target), IsBoundFunction(target)), &targetIsJSFunctionOrBound, slowPath);
+    Bind(&targetIsJSFunctionOrBound);
+    {
+        GateRef hclass = LoadHClass(target);
+        GateRef nameProperty = GetPropertyInlinedProps(target, hclass,
+                                                       Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX));
+        GateRef lengthProperty = GetPropertyInlinedProps(target, hclass,
+                                                         Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
+        GateRef nameAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                      ConstantIndex::FUNCTION_NAME_ACCESSOR);
+        GateRef lengthAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                        ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+        BRANCH(BoolAnd(IntPtrEqual(nameProperty, nameAccessor), IntPtrEqual(lengthProperty, lengthAccessor)),
+               &targetNameAndLengthNotChange, slowPath);
+        Bind(&targetNameAndLengthNotChange);
+        {
+            Label numArgsMoreThan1(env);
+            Label createTaggedArray(env);
+            GateRef thisArg = GetCallArg0(numArgs);
+            DEFVARIABLE(argsLength, VariableType::INT32(), Int32(0));
+            BRANCH(Int64GreaterThan(numArgs, Int64(1)), &numArgsMoreThan1, &createTaggedArray);
+            Bind(&numArgsMoreThan1);
+            {
+                argsLength = Int32Sub(TruncInt64ToInt32(numArgs), Int32(1));
+                Jump(&createTaggedArray);
+            }
+            Bind(&createTaggedArray);
+            // 3. Let args be a new (possibly empty) List consisting of all of the argument
+            //    values provided after thisArg in order.
+            GateRef argsArray = NewTaggedArrayFromArgs(glue, Int32(1), *argsLength, numArgs);
+            // 4. Let F be BoundFunctionCreate(Target, thisArg, args).
+            NewObjectStubBuilder newBuilder(this);
+            GateRef boundFunction = newBuilder.NewJSBoundFunction(glue, target, thisArg, argsArray);
+            // use default name and length property because they are not changed
+            res->WriteVariable(boundFunction);
+            Jump(exit);
+        }
+    }
+}
+
+void BuiltinsFunctionStubBuilder::PrototypeCall(GateRef glue, GateRef thisValue,
+    GateRef numArgs, Variable* res, Label *exit, Label *slowPath)
+{
+    auto env = GetEnvironment();
+    Label funcIsHeapObject(env);
+    Label funcIsCallable(env);
+
+    // 1. If IsCallable(func) is false, throw a TypeError exception.
+    GateRef func = thisValue;
+    BRANCH(TaggedIsHeapObject(func), &funcIsHeapObject, slowPath);
+    Bind(&funcIsHeapObject);
+    BRANCH(IsCallable(func), &funcIsCallable, slowPath);
+    Bind(&funcIsCallable);
+    {
+        Label call0(env);
+        Label moreThan0(env);
+        Label call1(env);
+        Label moreThan1(env);
+        Label call2(env);
+        Label moreThan2(env);
+        Label createTaggedArray(env);
+        GateRef thisArg = GetCallArg0(numArgs);
+        // 2. Let argList be an empty List.
+        // 3. If this method was called with more than one argument then in left to right order,
+        //    starting with the second argument, append each argument as the last element of argList.
+        // 5. Return Call(func, thisArg, argList).
+        BRANCH(Int64LessThanOrEqual(numArgs, Int64(1)), &call0, &moreThan0);  // 1: thisArg
+        Bind(&call0);
+        {
+            res->WriteVariable(JSCallDispatch(glue, func, Int32(0), 0, Circuit::NullGate(),  // 0: call 0
+                JSCallMode::CALL_GETTER, { thisArg }));
+            Jump(exit);
+        }
+        Bind(&moreThan0);
+        BRANCH(Int64Equal(numArgs, Int64(2)), &call1, &moreThan1);  // 2: thisArg + 1 arg
+        Bind(&call1);
+        {
+            res->WriteVariable(JSCallDispatch(glue, func, Int32(1), 0, Circuit::NullGate(),  // 1: call 1
+                JSCallMode::CALL_SETTER, { thisArg, GetCallArg1(numArgs) }));
+            Jump(exit);
+        }
+        Bind(&moreThan1);
+        BRANCH(Int64Equal(numArgs, Int64(3)), &call2, &moreThan2);  // 3: thisArg + 2 args
+        Bind(&call2);
+        {
+            res->WriteVariable(JSCallDispatch(glue, func, Int32(2), 0, Circuit::NullGate(),  // 2: call 2
+                JSCallMode::CALL_THIS_ARG2_WITH_RETURN, { thisArg, GetCallArg1(numArgs), GetCallArg2(numArgs) }));
+            Jump(exit);
+        }
+        Bind(&moreThan2);
+        {
+            // currently argv will not be used in builtins IR except constructor
+            GateRef argsLength = Int32Sub(TruncInt64ToInt32(numArgs), Int32(1));  // 1: thisArg
+            GateRef elementArgv = PtrAdd(GetArgv(), IntPtr(JSTaggedValue::TaggedTypeSize()));
+            res->WriteVariable(JSCallDispatch(glue, func, argsLength, 0, Circuit::NullGate(),
+                JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg }));
+            Jump(exit);
         }
     }
 }
@@ -185,41 +302,33 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
             BRANCH(IsStableJSArray(glue, arrayObj), &targetIsStableJSArray, &targetNotStableJSArray);
             Bind(&targetIsStableJSArray);
             {
-                arrayObj = GetElementsArray(arrayObj);
-                DEFVARIABLE(length, VariableType::INT32(), GetLengthOfTaggedArray(arrayObj));
-                res = CallRuntime(glue, RTSTUB_ID(CopyArray),
-                    { arrayObj, IntToTaggedInt(*length), IntToTaggedInt(*length) });
-                Label isMutantTaggedArray(env);
-                BRANCH(IsMutantTaggedArray(*res), &isMutantTaggedArray, &exit);
-                Bind(&isMutantTaggedArray);
+                res = GetElementsArray(arrayObj);
+                NewObjectStubBuilder newBuilder(this);
+                GateRef elementsLength = GetLengthOfTaggedArray(*res);
+                GateRef newTaggedArgList = newBuilder.NewTaggedArray(glue, elementsLength);
+                DEFVARIABLE(index, VariableType::INT32(), Int32(0));
+                Label loopHead(env);
+                Label loopEnd(env);
+                Label afterLoop(env);
+                Label storeValue(env);
+                Jump(&loopHead);
+                LoopBegin(&loopHead);
                 {
-                    NewObjectStubBuilder newBuilder(this);
-                    GateRef elementsLength = GetLengthOfTaggedArray(*res);
-                    GateRef newTaggedArgList = newBuilder.NewTaggedArray(glue, elementsLength);
-                    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
-                    Label loopHead(env);
-                    Label loopEnd(env);
-                    Label afterLoop(env);
-                    Label storeValue(env);
-                    Jump(&loopHead);
-                    LoopBegin(&loopHead);
+                    BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
+                    Bind(&storeValue);
                     {
-                        BRANCH(Int32UnsignedLessThan(*index, elementsLength), &storeValue, &afterLoop);
-                        Bind(&storeValue);
-                        {
-                            GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
-                            SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
-                            index = Int32Add(*index, Int32(1));
-                            Jump(&loopEnd);
-                        }
+                        GateRef value = GetTaggedValueWithElementsKind(arrayObj, *index);
+                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, newTaggedArgList, *index, value);
+                        index = Int32Add(*index, Int32(1));
+                        Jump(&loopEnd);
                     }
-                    Bind(&loopEnd);
-                    LoopEnd(&loopHead);
-                    Bind(&afterLoop);
-                    {
-                        res = newTaggedArgList;
-                        Jump(&exit);
-                    }
+                }
+                Bind(&loopEnd);
+                LoopEnd(&loopHead);
+                Bind(&afterLoop);
+                {
+                    res = newTaggedArgList;
+                    Jump(&exit);
                 }
             }
             Bind(&targetNotStableJSArray);
@@ -235,7 +344,7 @@ GateRef BuiltinsFunctionStubBuilder::BuildArgumentsListFastElements(GateRef glue
     return ret;
 }
 
-GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef argv, GateRef length)
+GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef glue, GateRef argv, GateRef length)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -263,9 +372,94 @@ GateRef BuiltinsFunctionStubBuilder::MakeArgListWithHole(GateRef argv, GateRef l
     }
     Bind(&lengthLessThanArgsLength);
     {
-        Jump(&exit);
+        Label loopHead(env);
+        Label loopEnd(env);
+        Label targetIsHole(env);
+        Label targetNotHole(env);
+        BRANCH(Int32UnsignedLessThan(*i, *res), &loopHead, &exit);
+        LoopBegin(&loopHead);
+        {
+            GateRef value = GetValueFromTaggedArray(argv, *i);
+            BRANCH(TaggedIsHole(value), &targetIsHole, &targetNotHole);
+            Bind(&targetIsHole);
+            {
+                SetValueToTaggedArray(VariableType::JS_ANY(), glue, argv, *i, Undefined());
+                Jump(&targetNotHole);
+            }
+            Bind(&targetNotHole);
+            i = Int32Add(*i, Int32(1));
+            BRANCH(Int32UnsignedLessThan(*i, *res), &loopEnd, &exit);
+        }
+        Bind(&loopEnd);
+        LoopEnd(&loopHead);
     }
     Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsFunctionStubBuilder::NewTaggedArrayFromArgs(GateRef glue, GateRef startIndex, GateRef length,
+                                                            GateRef numArgs)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+    NewObjectStubBuilder newBuilder(this);
+    res = newBuilder.NewTaggedArray(glue, length);
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label afterLoop(env);
+    BRANCH(Int32LessThan(*i, length), &loopHead, &afterLoop);
+    LoopBegin(&loopHead);
+    {
+        Label valueArg0(env);
+        Label valueNotArg0(env);
+        Label valueArg1(env);
+        Label valueNotArg1(env);
+        Label valueArg2(env);
+        Label valueNotArg2(env);
+        Label valueSet(env);
+        GateRef index = Int32Add(*i, startIndex);
+        BRANCH(Int32Equal(index, Int32(0)), &valueArg0, &valueNotArg0);  // 0: get arg0
+        Bind(&valueArg0);
+        {
+            value = GetCallArg0(numArgs);
+            Jump(&valueSet);
+        }
+        Bind(&valueNotArg0);
+        BRANCH(Int32Equal(index, Int32(1)), &valueArg1, &valueNotArg1);  // 1: get arg1
+        Bind(&valueArg1);
+        {
+            value = GetCallArg1(numArgs);
+            Jump(&valueSet);
+        }
+        Bind(&valueNotArg1);
+        BRANCH(Int32Equal(index, Int32(2)), &valueArg2, &valueNotArg2);  // 2: get arg2
+        Bind(&valueArg2);
+        {
+            value = GetCallArg2(numArgs);
+            Jump(&valueSet);
+        }
+        Bind(&valueNotArg2);
+        {
+            // currently argv will not be used in builtins IR except constructor
+            value = GetArgFromArgv(ZExtInt32ToPtr(index));
+            Jump(&valueSet);
+        }
+        Bind(&valueSet);
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, *res, *i, *value);
+        i = Int32Add(*i, Int32(1));
+        BRANCH(Int32LessThan(*i, length), &loopEnd, &afterLoop);
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+
+    Bind(&afterLoop);
     auto ret = *res;
     env->SubCfgExit();
     return ret;

@@ -26,6 +26,7 @@ void SharedGCMarker::MarkRoots(uint32_t threadId, SharedMarkType markType)
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkRoots");
     MarkSerializeRoots(threadId);
     MarkSharedModule(threadId);
+    MarkStringCache(threadId);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
@@ -50,7 +51,9 @@ void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, Shared
     if (localBuffer != nullptr) {
         sWorkManager_->PushLocalBufferToGlobal(localBuffer);
     }
-    ProcessLocalToShareNoMarkStack(threadId, const_cast<Heap*>(localVm->GetHeap()), markType);
+    if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
+        ProcessLocalToShareNoMarkStack(threadId, const_cast<Heap*>(localVm->GetHeap()), markType);
+    }
 }
 
 void SharedGCMarker::MarkSerializeRoots(uint32_t threadId)
@@ -59,6 +62,15 @@ void SharedGCMarker::MarkSerializeRoots(uint32_t threadId)
     auto callback =
         std::bind(&SharedGCMarker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2);
     Runtime::GetInstance()->IterateSerializeRoot(callback);
+}
+
+void SharedGCMarker::MarkStringCache(uint32_t threadId)
+{
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkStringCache");
+    auto cacheStringCallback =
+        std::bind(&SharedGCMarker::HandleLocalRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
+            std::placeholders::_3);
+    Runtime::GetInstance()->IterateCachedStringRoot(cacheStringCallback);
 }
 
 void SharedGCMarker::MarkSharedModule(uint32_t threadId)

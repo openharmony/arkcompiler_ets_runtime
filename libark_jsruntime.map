@@ -51,6 +51,7 @@
       panda::PromiseRejectInfo::*;
       panda::RegExpRef::*;
       panda::SetIteratorRef::*;
+      panda::ExternalStringCache::*;
       panda::SetRef::*;
       panda::SendableTypedArrayRef::*;
       panda::SharedInt8ArrayRef::*;
@@ -116,6 +117,8 @@
       panda::Logger::logger*;
       panda::ecmascript::AnFileInfo::GenerateMethodToEntryIndexMap*;
       panda::ecmascript::AnFileInfo::Save*;
+      panda::ecmascript::AOTFileVersion::GetAOTVersion*;
+      panda::ecmascript::AOTFileVersion::CheckAOTVersion*;
       panda::ecmascript::Barriers::Update*;
       panda::ecmascript::BigInt::SameValue*;
       panda::ecmascript::BindSmallCpuCore*;
@@ -282,6 +285,7 @@
       panda::ecmascript::SubtypingOperator::FillTSInheritInfo*;
       panda::ecmascript::SubtypingOperator::MergeClassField*;
       panda::ecmascript::Unlink*;
+      panda::ecmascript::filesystem::CreateEmptyFile*;
       panda::ecmascript::base::ArrayHelper::GetLength*;
       panda::ecmascript::base::utf_helper::ConvertRegionUtf16ToUtf8*;
       panda::ecmascript::base::NumberHelper::DoubleInRangeInt32*;

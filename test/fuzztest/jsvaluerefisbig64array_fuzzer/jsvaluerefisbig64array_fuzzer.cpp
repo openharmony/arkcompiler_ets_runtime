@@ -46,7 +46,7 @@ void JSValueRefIsBigInt64ArrayFuzzTest(const uint8_t *data, size_t size)
     }
     Local<ArrayBufferRef> ref = ArrayBufferRef::New(vm, input);
     Local<BigInt64ArrayRef> typedArray = BigInt64ArrayRef::New(vm, ref, (int32_t)size, (int32_t)size);
-    typedArray->IsBigInt64Array();
+    typedArray->IsBigInt64Array(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -73,7 +73,7 @@ void JSValueRefIsBigUint64ArrayRefNewFuzzTest(const uint8_t *data, size_t size)
     }
     Local<ArrayBufferRef> ref = ArrayBufferRef::New(vm, input);
     Local<BigUint64ArrayRef> typedArray = BigUint64ArrayRef::New(vm, ref, (int32_t)size, (int32_t)size);
-    typedArray->IsBigUint64Array();
+    typedArray->IsBigUint64Array(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

@@ -18,123 +18,6 @@
 
 namespace panda::ecmascript::kungfu {
 
-template <typename T, typename = typename std::enable_if<std::is_integral<T>::value>::type>
-inline constexpr int WhichPowerOfTwo(T value)
-{
-    // Ensure the size of the integer is no more than 8 bytes (64 bits).
-    static_assert(sizeof(T) <= 8);
-    // Use __builtin_ctzll for 8 bytes (64 bits) and __builtin_ctz for 32-bit integers.
-    return sizeof(T) == 8 ? __builtin_ctzll(static_cast<uint64_t>(value)) : __builtin_ctz(static_cast<uint32_t>(value));
-}
-
-
-int32_t SignedDiv32(int32_t lhs, int32_t rhs)
-{
-    if (rhs == 0) {
-        return 0;
-    }
-    if (rhs == -1) {
-        return lhs == std::numeric_limits<int32_t>::min() ? lhs : -lhs;
-    }
-    return lhs / rhs;
-}
-
-int64_t SignedDiv64(int64_t lhs, int64_t rhs)
-{
-    if (rhs == 0) {
-        return 0;
-    }
-    if (rhs == -1) {
-        return lhs == std::numeric_limits<int64_t>::min() ? lhs : -lhs;
-    }
-    return lhs / rhs;
-}
-
-int32_t SignedMod32(int32_t lhs, int32_t rhs)
-{
-    if (rhs == 0 || rhs == -1) {
-        return 0;
-    }
-    return lhs % rhs;
-}
-
-
-inline bool SignedAddOverflow32(int32_t lhs, int32_t rhs, int32_t *val)
-{
-    uint32_t res = static_cast<uint32_t>(lhs) + static_cast<uint32_t>(rhs);
-    *val = base::bit_cast<int32_t>(res);
-    // Check for overflow by examining the sign bit.(bit 31 in a 32-bit integer)
-    return ((res ^ static_cast<uint32_t>(lhs)) & (res ^ static_cast<uint32_t>(rhs)) & (1U << 31)) != 0;
-}
-
-
-inline bool SignedSubOverflow32(int32_t lhs, int32_t rhs, int32_t *val)
-{
-    uint32_t res = static_cast<uint32_t>(lhs) - static_cast<uint32_t>(rhs);
-    *val = base::bit_cast<int32_t>(res);
-    // Check for overflow by examining the sign bit.(bit 31 in a 32-bit integer)
-    return ((res ^ static_cast<uint32_t>(lhs)) & (res ^ ~static_cast<uint32_t>(rhs)) & (1U << 31)) != 0;
-}
-
-inline bool SignedMulOverflow32(int32_t lhs, int32_t rhs, int32_t *val)
-{
-    int64_t result = int64_t{lhs} * int64_t{rhs};
-    *val = static_cast<int32_t>(result);
-    using limits = std::numeric_limits<int32_t>;
-    return result < limits::min() || result > limits::max();
-}
-
-
-// Returns the quotient x/y, avoiding C++ undefined behavior if y == 0.
-template <typename T> inline T Divide(T x, T y)
-{
-    if (y != 0) {
-        return x / y;
-    }
-    if (x == 0 || x != x) {
-        return std::numeric_limits<T>::quiet_NaN();
-    }
-    if ((x >= 0) == (std::signbit(y) == 0)) {
-        return std::numeric_limits<T>::infinity();
-    }
-    return -std::numeric_limits<T>::infinity();
-}
-
-// Helpers for performing overflowing arithmetic operations without relying
-// on C++ undefined behavior.
-#define ASSERT_SIGNED_INTEGER_TYPE(Type)                                                                               \
-    static_assert(std::is_integral<Type>::value && std::is_signed<Type>::value, "use this for signed integer types")
-#define OP_WITH_WRAPAROUND(Name, OP)                                                                                   \
-    template <typename signed_type> inline signed_type Name##WithWraparound(signed_type a, signed_type b)              \
-    {                                                                                                                  \
-        ASSERT_SIGNED_INTEGER_TYPE(signed_type);                                                                       \
-        using unsigned_type = typename std::make_unsigned<signed_type>::type;                                          \
-        unsigned_type a_unsigned = static_cast<unsigned_type>(a);                                                      \
-        unsigned_type b_unsigned = static_cast<unsigned_type>(b);                                                      \
-        unsigned_type result = a_unsigned OP b_unsigned;                                                               \
-        return static_cast<signed_type>(result);                                                                       \
-    }
-
-OP_WITH_WRAPAROUND(Add, +)
-OP_WITH_WRAPAROUND(Sub, -)
-OP_WITH_WRAPAROUND(Mul, *)
-
-template <typename signed_type> inline signed_type ShlWithWraparound(signed_type a, signed_type b)
-{
-    using unsigned_type = typename std::make_unsigned<signed_type>::type;
-    const unsigned_type kMask = (sizeof(a) * 8) - 1;
-    return static_cast<signed_type>(static_cast<unsigned_type>(a) << (b & kMask));
-}
-
-template <typename signed_type> inline signed_type NegateWithWraparound(signed_type a)
-{
-    ASSERT_SIGNED_INTEGER_TYPE(signed_type);
-    if (a == std::numeric_limits<signed_type>::min()) {
-        return a;
-    }
-    return -a;
-}
-
 GateRef InstructionCombine::ReplaceOld(GateRef gate, GateRef newGate)
 {
     acc_.UpdateAllUses(gate, newGate);
@@ -334,7 +217,7 @@ GateRef InstructionCombine::VisitICMP(GateRef gate)
                 Int64BinopMatcher orOp(andOp.Left().Gate(), circuit_);
                 auto constant2 = andOp.Right().ResolvedValue();
                 auto constant1 = orOp.Right().HasResolvedValue() ? orOp.Right().ResolvedValue() : 0;
-                bool flag = ((constant1 & constant2) != 0);
+                bool flag = (constant1 & constant2) != 0;
                 result = flag ? builder_.False() : Circuit::NullGate();
             }
         }
@@ -532,7 +415,7 @@ GateRef InstructionCombine::VisitExtractValue(GateRef gate)
             {
                 Int32BinopMatcher m(n.Left().Gate(), circuit_);
                 if (m.IsFoldable()) {
-                    bool ovf = SignedAddOverflow32(m.Left().ResolvedValue(), m.Right().ResolvedValue(), &val);
+                    bool ovf = base::SignedAddOverflow32(m.Left().ResolvedValue(), m.Right().ResolvedValue(), &val);
                     return index == 0 ? builder_.Int32(val) : builder_.Boolean(ovf);
                 }
                 if (m.Right().Is(0)) {
@@ -544,7 +427,7 @@ GateRef InstructionCombine::VisitExtractValue(GateRef gate)
             {
                 Int32BinopMatcher m(n.Left().Gate(), circuit_);
                 if (m.IsFoldable()) {
-                    bool ovf = SignedSubOverflow32(m.Left().ResolvedValue(), m.Right().ResolvedValue(), &val);
+                    bool ovf = base::SignedSubOverflow32(m.Left().ResolvedValue(), m.Right().ResolvedValue(), &val);
                     return index == 0 ? builder_.Int32(val) : builder_.Boolean(ovf);
                 }
                 if (m.Right().Is(0)) {
@@ -556,7 +439,7 @@ GateRef InstructionCombine::VisitExtractValue(GateRef gate)
             {
                 Int32BinopMatcher m(n.Left().Gate(), circuit_);
                 if (m.IsFoldable()) {
-                    bool ovf = SignedMulOverflow32(m.Left().ResolvedValue(), m.Right().ResolvedValue(), &val);
+                    bool ovf = base::SignedMulOverflow32(m.Left().ResolvedValue(), m.Right().ResolvedValue(), &val);
                     return index == 0 ? builder_.Int32(val) : builder_.Boolean(ovf);
                 }
                 if (m.Right().Is(0)) {
@@ -582,7 +465,7 @@ GateRef InstructionCombine::ReduceInt64Add(GateRef gate)
     }
 
     if (m.IsFoldable()) {
-        return builder_.Int64(AddWithWraparound(m.Right().ResolvedValue(), m.Left().ResolvedValue()));
+        return builder_.Int64(base::AddWithWraparound(m.Right().ResolvedValue(), m.Left().ResolvedValue()));
     }
 
     // (x + Int64Constant(a)) + Int64Constant(b) => x + Int64Constant(a + b)
@@ -590,8 +473,8 @@ GateRef InstructionCombine::ReduceInt64Add(GateRef gate)
         Int64BinopMatcher mLeft(m.Left().Gate(), circuit_);
         if (mLeft.Right().HasResolvedValue() && m.OwnsInput(m.Left().Gate())) {
             acc_.ReplaceValueIn(gate, mLeft.Left().Gate(), 0);
-            acc_.ReplaceValueIn(
-                gate, builder_.Int64(AddWithWraparound(m.Right().ResolvedValue(), mLeft.Right().ResolvedValue())), 1);
+            acc_.ReplaceValueIn(gate, builder_.Int64(base::AddWithWraparound(
+                m.Right().ResolvedValue(), mLeft.Right().ResolvedValue())), 1);
             return gate;
         }
     }
@@ -608,7 +491,7 @@ GateRef InstructionCombine::ReduceInt32Add(GateRef gate)
     }
 
     if (m.IsFoldable()) {
-        return builder_.Int32(AddWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int32(base::AddWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
 
     if (m.Left().IsmInt32Sub()) {
@@ -633,8 +516,8 @@ GateRef InstructionCombine::ReduceInt32Add(GateRef gate)
         Int32BinopMatcher mleft(m.Left().Gate(), circuit_);
         if (mleft.Right().HasResolvedValue() && m.OwnsInput(m.Left().Gate())) {
             acc_.ReplaceValueIn(gate, mleft.Left().Gate(), 0);
-            acc_.ReplaceValueIn(
-                gate, builder_.Int32(AddWithWraparound(mleft.Right().ResolvedValue(), m.Right().ResolvedValue())), 1);
+            acc_.ReplaceValueIn(gate, builder_.Int32(base::AddWithWraparound(
+                mleft.Right().ResolvedValue(), m.Right().ResolvedValue())), 1);
             return gate;
         }
     }
@@ -649,7 +532,7 @@ GateRef InstructionCombine::ReduceInt64Sub(GateRef gate)
         return (m.Left().Gate());
     }
     if (m.IsFoldable()) {
-        return builder_.Int64(SubWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int64(base::SubWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
     // x - x => 0
     if (m.LeftEqualsRight()) {
@@ -658,7 +541,7 @@ GateRef InstructionCombine::ReduceInt64Sub(GateRef gate)
     // x - K => x + -K
     if (m.Right().HasResolvedValue()) {
         auto newGate =
-            builder_.Int64Add(m.Left().Gate(), builder_.Int64(NegateWithWraparound(m.Right().ResolvedValue())));
+            builder_.Int64Add(m.Left().Gate(), builder_.Int64(base::NegateWithWraparound(m.Right().ResolvedValue())));
         return ReplaceOld(gate, newGate);
     }
     return Circuit::NullGate();
@@ -672,7 +555,7 @@ GateRef InstructionCombine::ReduceInt32Sub(GateRef gate)
         return (m.Left().Gate());
     }
     if (m.IsFoldable()) {
-        return builder_.Int32(SubWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int32(base::SubWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
     // x - x => 0
     if (m.LeftEqualsRight()) {
@@ -681,7 +564,7 @@ GateRef InstructionCombine::ReduceInt32Sub(GateRef gate)
     // x - K => x + -K
     if (m.Right().HasResolvedValue()) {
         auto newGate =
-            builder_.Int32Add(m.Left().Gate(), builder_.Int32(NegateWithWraparound(m.Right().ResolvedValue())));
+            builder_.Int32Add(m.Left().Gate(), builder_.Int32(base::NegateWithWraparound(m.Right().ResolvedValue())));
         return ReplaceOld(gate, newGate);
     }
     return Circuit::NullGate();
@@ -700,7 +583,7 @@ GateRef InstructionCombine::ReduceInt64Mul(GateRef gate)
     }
     // K * K => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int64(MulWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int64(base::MulWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
     // x * -1 => 0 - x
     if (m.Right().Is(-1)) {
@@ -709,7 +592,8 @@ GateRef InstructionCombine::ReduceInt64Mul(GateRef gate)
     }
     // x * 2^n => x << n
     if (m.Right().IsPowerOf2()) {
-        auto newGate = builder_.Int64LSL(m.Left().Gate(), builder_.Int64(WhichPowerOfTwo(m.Right().ResolvedValue())));
+        auto newGate = builder_.Int64LSL(m.Left().Gate(), builder_.Int64(
+            base::WhichPowerOfTwo(m.Right().ResolvedValue())));
         return ReplaceOld(gate, newGate);
     }
 
@@ -719,7 +603,7 @@ GateRef InstructionCombine::ReduceInt64Mul(GateRef gate)
         if (n.Right().HasResolvedValue() && m.OwnsInput(m.Left().Gate())) {
             acc_.ReplaceValueIn(gate, n.Left().Gate(), 0);
             acc_.ReplaceValueIn(
-                gate, builder_.Int64(MulWithWraparound(n.Right().ResolvedValue(), m.Right().ResolvedValue())), 1);
+                gate, builder_.Int64(base::MulWithWraparound(n.Right().ResolvedValue(), m.Right().ResolvedValue())), 1);
             return gate;
         }
     }
@@ -740,7 +624,7 @@ GateRef InstructionCombine::ReduceInt32Mul(GateRef gate)
     }
     // K * K => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int32(MulWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int32(base::MulWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
     // x * -1 => 0 - x
     if (m.Right().Is(-1)) {
@@ -749,7 +633,8 @@ GateRef InstructionCombine::ReduceInt32Mul(GateRef gate)
     }
     // x * 2^n => x << n
     if (m.Right().IsPowerOf2()) {
-        auto newGate = builder_.Int32LSL(m.Left().Gate(), builder_.Int32(WhichPowerOfTwo(m.Right().ResolvedValue())));
+        auto newGate = builder_.Int32LSL(m.Left().Gate(), builder_.Int32(
+            base::WhichPowerOfTwo(m.Right().ResolvedValue())));
         return ReplaceOld(gate, newGate);
     }
 
@@ -759,7 +644,7 @@ GateRef InstructionCombine::ReduceInt32Mul(GateRef gate)
         if (n.Right().HasResolvedValue() && m.OwnsInput(m.Left().Gate())) {
             acc_.ReplaceValueIn(gate, n.Left().Gate(), 0);
             acc_.ReplaceValueIn(
-                gate, builder_.Int32(MulWithWraparound(n.Right().ResolvedValue(), m.Right().ResolvedValue())), 1);
+                gate, builder_.Int32(base::MulWithWraparound(n.Right().ResolvedValue(), m.Right().ResolvedValue())), 1);
             return gate;
         }
     }
@@ -785,7 +670,7 @@ GateRef InstructionCombine::ReduceInt64Div(GateRef gate)
     }
     // K / K => K
     if (m.IsFoldable()) {
-        return builder_.Int64(SignedDiv64(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int64(base::SignedDiv64(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
     // x / -1 => 0 - x
     if (m.Right().Is(-1)) {
@@ -822,7 +707,7 @@ GateRef InstructionCombine::ReduceInt32Div(GateRef gate)
     }
     // K / K => K
     if (m.IsFoldable()) {
-        return builder_.Int32(SignedDiv32(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int32(base::SignedDiv32(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
     // x / -1 => 0 - x
     if (m.Right().Is(-1)) {
@@ -908,7 +793,7 @@ GateRef InstructionCombine::ReduceDoubleDiv(GateRef gate)
         return builder_.NanValue();
     }
     if (m.IsFoldable()) { // K / K => K  (K stands for arbitrary constants)
-        return builder_.Double(Divide(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Double(base::Divide(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
 
     return Circuit::NullGate();
@@ -939,7 +824,7 @@ GateRef InstructionCombine::ReduceInt32Mod(GateRef gate)
     }
     // K % K => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int32(SignedMod32(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int32(base::SignedMod32(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
 
     return Circuit::NullGate();
@@ -1113,8 +998,7 @@ GateRef InstructionCombine::ReduceWord64Xor(GateRef gate)
     }
     // K ^ K => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int64(static_cast<uint64_t>(m.Left().ResolvedValue()) ^
-            static_cast<uint64_t>(m.Right().ResolvedValue()));
+        return builder_.Int64(m.Left().ResolvedValue() ^ m.Right().ResolvedValue());
     }
     if (m.LeftEqualsRight()) {
         return builder_.Int64(0); // x ^ x => 0
@@ -1138,8 +1022,7 @@ GateRef InstructionCombine::ReduceWord32Xor(GateRef gate)
     }
     // K ^ K => K  (K stands for arbitrary constants)
     if (m.IsFoldable()) {
-        return builder_.Int32(static_cast<uint32_t>(m.Left().ResolvedValue()) ^
-            static_cast<uint32_t>(m.Right().ResolvedValue()));
+        return builder_.Int32(m.Left().ResolvedValue() ^ m.Right().ResolvedValue());
     }
     if (m.LeftEqualsRight()) {
         return builder_.Int32(0); // x ^ x => 0
@@ -1162,7 +1045,7 @@ GateRef InstructionCombine::ReduceWord64Lsr(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        // The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
+        // 63: The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
         return builder_.Int64(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 63));
     }
     return Circuit::NullGate();
@@ -1176,7 +1059,7 @@ GateRef InstructionCombine::ReduceWord32Lsr(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        // The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
+        // 31: The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
         return builder_.Int32(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 31));
     }
     // (m >>> s) == 0 implies ((x & m) >>> s) == 0
@@ -1201,7 +1084,7 @@ GateRef InstructionCombine::ReduceWord64Asr(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        // The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
+        // 63: The '63' here is used as a mask to limit the shift amount to 0-63 bits, preventing overflow.
         return builder_.Int64(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 63));
     }
     return Circuit::NullGate();
@@ -1215,7 +1098,7 @@ GateRef InstructionCombine::ReduceWord32Asr(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        // The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
+        // 31: The '31' here is used as a mask to limit the shift amount to 0-31 bits, preventing overflow.
         return builder_.Int32(m.Left().ResolvedValue() >> (m.Right().ResolvedValue() & 31));
     }
     if (m.Left().IsmInt32LSL()) {
@@ -1245,7 +1128,7 @@ GateRef InstructionCombine::ReduceWord64Lsl(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        return builder_.Int64(ShlWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int64(base::ShlWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
     // Check if the right shift amount is in the range of 1 to 63 bits (inclusive).
     if (m.Right().IsInRange(1, 63) && (m.Left().IsmInt64ASR() || m.Left().IsmInt64LSR())) {
@@ -1268,7 +1151,7 @@ GateRef InstructionCombine::ReduceWord32Lsl(GateRef gate)
         return m.Left().Gate();
     }
     if (m.IsFoldable()) {
-        return builder_.Int32(ShlWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
+        return builder_.Int32(base::ShlWithWraparound(m.Left().ResolvedValue(), m.Right().ResolvedValue()));
     }
 
     // Check if the right shift amount is in the range of 1 to 31 bits (inclusive).

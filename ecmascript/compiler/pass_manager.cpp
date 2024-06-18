@@ -48,19 +48,16 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
     lOptions_ = new LOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
     cmpDriver_ = new JitCompilationDriver(profilerDecoder_,
                                           collector_,
-                                          compilationEnv_->GetJSOptions().GetCompilerSelectMethods(),
-                                          compilationEnv_->GetJSOptions().GetCompilerSkipMethods(),
                                           &gen,
                                           fileName,
                                           triple_,
                                           lOptions_,
                                           log_,
                                           log_->OutputASM(),
-                                          maxMethodsInModule_,
-                                          compilationEnv_->GetJSOptions().GetCompilerMethodsRange());
+                                          maxMethodsInModule_);
     cmpDriver_->CompileMethod(jsPandaFile, methodLiteral, profileTypeInfo, pcStart, header, abcId,
                               [this, &fileName, &osrOffset] (
-                                const CString recordName,
+                                const CString &recordName,
                                 const std::string &methodName,
                                 MethodLiteral *methodLiteral,
                                 JSHandle<ProfileTypeInfo> &profileTypeInfo,
@@ -91,19 +88,26 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         if (UNLIKELY(!hasTypes)) {
             LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
         }
-
         if (compilationEnv_->GetJSOptions().IsEnableJITPGO()) {
-            Jit::JitLockHolder lock(compilationEnv_, "PGO ProfileBytecode");
             jitProfiler_ = compilationEnv_->GetPGOProfiler()->GetJITProfile();
-            LOG_COMPILER(INFO) << "GetPGOProfiler(): " << static_cast<void *>(compilationEnv_->GetPGOProfiler().get());
-            jitProfiler_->ProfileBytecode(profileTypeInfo, methodLiteral->GetMethodId(), abcId, pcStart,
+            static_cast<JitCompilationEnv*>(compilationEnv_)->SetProfileTypeInfo(profileTypeInfo);
+            jitProfiler_->SetCompilationEnv(compilationEnv_);
+            jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo, nullptr,
+                                          methodLiteral->GetMethodId(), abcId, pcStart,
                                           methodLiteral->GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),
                                           header);
         } else {
             jitProfiler_ = nullptr;
         }
-        circuit_ = new Circuit(compilationEnv_->GetNativeAreaAllocator(), ctx_->GetAOTModule()->GetDebugInfo(),
-            fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+
+        if (compilationEnv_->GetJSOptions().IsEnableJitFrame()) {
+            circuit_ = new Circuit(compilationEnv_->GetNativeAreaAllocator(), ctx_->GetAOTModule()->GetDebugInfo(),
+                fullName.c_str(), cmpCfg->Is64Bit(), FrameType::FASTJIT_FUNCTION_FRAME);
+        } else {
+            circuit_ = new Circuit(compilationEnv_->GetNativeAreaAllocator(), ctx_->GetAOTModule()->GetDebugInfo(),
+                fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+        }
+
         PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
 
         builder_ = new BytecodeCircuitBuilder(jsPandaFile, methodLiteral, methodPCInfo,
@@ -115,8 +119,9 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             builder_->BytecodeToCircuit();
         }
 
+        CallMethodFlagMap methodFlagMap;
         data_ = new PassData(builder_, circuit_, ctx_, log_, fullName, &methodInfo, hasTypes, recordName,
-            methodLiteral, methodOffset, nullptr, CVector<AbcFileInfo> {},
+            methodLiteral, methodOffset, &methodFlagMap, CVector<AbcFileInfo> {},
             compilationEnv_->GetNativeAreaAllocator(), decoder, passOptions_);
         PassRunner<PassData> pipeline(data_);
 
@@ -227,18 +232,15 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
     LOptions lOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
     CompilationDriver cmpDriver(profilerDecoder_,
                                 &collector,
-                                compilationEnv_->GetJSOptions().GetCompilerSelectMethods(),
-                                compilationEnv_->GetJSOptions().GetCompilerSkipMethods(),
                                 &gen,
                                 fileName,
                                 triple_,
                                 &lOptions,
                                 log_,
                                 log_->OutputASM(),
-                                maxMethodsInModule_,
-                                compilationEnv_->GetJSOptions().GetCompilerMethodsRange());
+                                maxMethodsInModule_);
 
-    cmpDriver.Run([this, &fileName, &collector](const CString recordName,
+    cmpDriver.Run(*callMethodFlagMap_, [this, &fileName, &collector](const CString recordName,
                                                 const std::string &methodName,
                                                 MethodLiteral *methodLiteral,
                                                 uint32_t methodOffset,

@@ -52,6 +52,7 @@ class GlobalIndexMap;
 class SustainingJSHandleList;
 class SustainingJSHandle;
 enum class PromiseRejectionEvent : uint8_t;
+enum class CompareStringsOption : uint8_t;
 
 template<typename T>
 class JSHandle;
@@ -91,6 +92,9 @@ using HostPromiseRejectionTracker = void (*)(const EcmaVM* vm,
                                              PromiseRejectionEvent operation,
                                              void* data);
 using PromiseRejectCallback = void (*)(void* info);
+#if defined(ANDROID_PLATFORM)
+using JsAotReaderCallback = std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)>;
+#endif
 class EcmaContext {
 public:
     static EcmaContext *CreateAndInitialize(JSThread *thread);
@@ -303,6 +307,46 @@ public:
         return typedOpProfiler_;
     }
 
+    void SetDefaultLocale(const std::string& locale)
+    {
+        defaultLocale_ = locale;
+    }
+
+    const std::string& GetDefaultLocale() const
+    {
+        return defaultLocale_;
+    }
+
+    void InitializeDefaultLocale()
+    {
+        defaultLocale_ = "";
+    }
+
+    void ClearDefaultLocale()
+    {
+        defaultLocale_.clear();
+    }
+
+    void SetDefaultCompareStringsOption(const CompareStringsOption csOption)
+    {
+        defaultComapreStringsOption_ = csOption;
+    }
+
+    const std::optional<CompareStringsOption> GetDefaultCompareStringsOption() const
+    {
+        return defaultComapreStringsOption_;
+    }
+
+    void InitializeDefaultCompareStringsOption()
+    {
+        defaultComapreStringsOption_ = std::nullopt;
+    }
+
+    void ClearDefaultComapreStringsOption()
+    {
+        defaultComapreStringsOption_ = std::nullopt;
+    }
+
     // For icu objects cache
     void SetIcuFormatterToCache(IcuFormatterType type, const std::string &locale, void *icuObj,
                                 NativePointerCallback deleteEntry = nullptr)
@@ -342,7 +386,7 @@ public:
     void DumpAOTInfo() const DUMP_API_ATTR;
 
     JSTaggedValue ExecuteAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp,
-                             bool needPushUndefined);
+                             bool needPushArgv);
     void LoadStubFile();
 
     JSTaggedType *GetHandleScopeStorageNext() const
@@ -370,6 +414,7 @@ public:
         return currentHandleStorageIndex_;
     }
 
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     void HandleScopeCountAdd()
     {
         handleScopeCount_++;
@@ -379,6 +424,17 @@ public:
     {
         handleScopeCount_--;
     }
+
+    void PrimitiveScopeCountAdd()
+    {
+        primitiveScopeCount_++;
+    }
+
+    void PrimitiveScopeCountDec()
+    {
+        primitiveScopeCount_--;
+    }
+#endif
 
     void SetLastHandleScope(EcmaHandleScope *scope)
     {
@@ -413,16 +469,6 @@ public:
     int GetCurrentPrimitiveStorageIndex() const
     {
         return currentPrimitiveStorageIndex_;
-    }
-
-    void PrimitiveScopeCountAdd()
-    {
-        primitiveScopeCount_++;
-    }
-
-    void PrimitiveScopeCountDec()
-    {
-        primitiveScopeCount_--;
     }
 
     void SetLastPrimitiveScope(EcmaHandleScope *scope)
@@ -519,27 +565,6 @@ public:
         cachedPatchModules_.clear();
     }
 
-    void AddJitMachineCode(panda_file::File::EntityId id, std::pair<JSTaggedType, JSTaggedType> machineCode)
-    {
-        // replace the old one from some abcfile with the latest one
-        jitMachineCodeCache_.at(GetJitMachineCodeHash(id)) = machineCode;
-    }
-    bool MatchJitMachineCode(panda_file::File::EntityId id, const Method *method) const
-    {
-        auto methodCode = jitMachineCodeCache_.at(GetJitMachineCodeHash(id));
-        if (methodCode.first == 0) {
-            return false;
-        }
-        ASSERT(method != nullptr);
-        Method *methodCache = Method::Cast(JSTaggedValue(methodCode.first).GetTaggedObject());
-        return method == methodCache;
-    }
-    std::pair<JSTaggedType, JSTaggedType> GetJitMachineCode(panda_file::File::EntityId id) const
-    {
-        ASSERT(jitMachineCodeCache_.at(GetJitMachineCodeHash(id)).first != 0);
-        return jitMachineCodeCache_.at(GetJitMachineCodeHash(id));
-    }
-
     StageOfHotReload GetStageOfHotReload() const
     {
         return stageOfHotReload_;
@@ -582,12 +607,13 @@ public:
 
     void AddSustainingJSHandle(SustainingJSHandle*);
     void RemoveSustainingJSHandle(SustainingJSHandle*);
-private:
-    void IterateJitMachineCodeCache(const RootVisitor &v);
-    uint32_t GetJitMachineCodeHash(panda_file::File::EntityId id) const
+    void ClearKeptObjects();
+    void AddToKeptObjects(JSHandle<JSTaggedValue> value);
+    inline bool HasKeptObjects() const
     {
-        return id.GetOffset() % JIT_MACHINE_CODE_CACHE_SIZE;
+        return hasKeptObjects_;
     }
+private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
     JSTaggedValue InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc, JSHandle<JSTaggedValue> &thisArg,
@@ -599,7 +625,12 @@ private:
         const JSPandaFile *jsPandaFile, std::string_view entryPoint, bool executeFromJob);
     Expected<JSTaggedValue, bool> CommonInvokeEcmaEntrypoint(const JSPandaFile *jsPandaFile,
         std::string_view entryPoint, JSHandle<JSFunction> &func, bool executeFromJob);
+    bool LoadAOTFilesInternal(const std::string& aotFileName);
     bool LoadAOTFiles(const std::string &aotFileName);
+#if defined(ANDROID_PLATFORM)
+    bool LoadAOTFiles(const std::string &aotFileName,
+                      std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
+#endif
     void RelocateConstantString(const JSPandaFile *jsPandaFile);
     JSTaggedValue FindConstpoolFromContextCache(const JSPandaFile *jsPandaFile, int32_t index);
 
@@ -665,6 +696,9 @@ private:
     // opt code loop hoist
     TypedOpProfiler *typedOpProfiler_ {nullptr};
 
+    std::string defaultLocale_;
+    std::optional<CompareStringsOption> defaultComapreStringsOption_;
+
     // For icu objects cache
     struct IcuFormatter {
         std::string locale;
@@ -684,7 +718,10 @@ private:
     JSTaggedType *handleScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> handleStorageNodes_ {};
     int32_t currentHandleStorageIndex_ {-1};
+#ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
     int32_t handleScopeCount_ {0};
+    int32_t primitiveScopeCount_ {0};
+#endif
     EcmaHandleScope *lastHandleScope_ {nullptr};
     // PrimitveScope
     static constexpr int32_t MIN_PRIMITIVE_STORAGE_SIZE = 2;
@@ -692,7 +729,6 @@ private:
     JSTaggedType *primitiveScopeStorageEnd_ {nullptr};
     std::vector<std::array<JSTaggedType, NODE_BLOCK_SIZE> *> primitiveStorageNodes_ {};
     int32_t currentPrimitiveStorageIndex_ {-1};
-    int32_t primitiveScopeCount_ {0};
     EcmaHandleScope *lastPrimitiveScope_ {nullptr};
 
     // Frame pointer
@@ -713,8 +749,8 @@ private:
 
     // SustainingJSHandleList for jit compile hold ref
     SustainingJSHandleList *sustainingJSHandleList_ {nullptr};
-    static constexpr uint32_t JIT_MACHINE_CODE_CACHE_SIZE = 263;
-    std::array<std::pair<JSTaggedType, JSTaggedType>, JIT_MACHINE_CODE_CACHE_SIZE> jitMachineCodeCache_ {};
+
+    bool hasKeptObjects_ {false};
 
     friend class EcmaHandleScope;
     friend class JSPandaFileExecutor;

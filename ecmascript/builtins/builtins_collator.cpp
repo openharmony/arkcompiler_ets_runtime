@@ -141,7 +141,7 @@ JSTaggedValue BuiltinsCollator::AnonymousCollator(EcmaRuntimeCallInfo *argv)
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
     // 7. Return CompareStrings(collator, X, Y).
     icu::Collator *icuCollator = (JSHandle<JSCollator>::Cast(collator))->GetIcuCollator();
-    return JSCollator::CompareStrings(icuCollator, xValue, yValue);
+    return JSCollator::CompareStrings(thread, icuCollator, xValue, yValue);
 }
 
 // 11.3.4 Intl.Collator.prototype.resolvedOptions ()

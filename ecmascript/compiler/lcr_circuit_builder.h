@@ -64,6 +64,11 @@ GateRef CircuitBuilder::IntPtrNot(GateRef x)
     return env_->Is32Bit() ? Int32Not(x) : Int64Not(x);
 }
 
+GateRef CircuitBuilder::IntPtrEqual(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32Equal(x, y) : Int64Equal(x, y);
+}
+
 GateRef CircuitBuilder::IntPtrLSR(GateRef x, GateRef y)
 {
     auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
@@ -74,6 +79,16 @@ GateRef CircuitBuilder::IntPtrLSL(GateRef x, GateRef y)
 {
     auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
     return BinaryArithmetic(circuit_->Lsl(), ptrSize, x, y);
+}
+
+GateRef CircuitBuilder::DoubleTrunc(GateRef gate, GateRef value, const char* comment)
+{
+    if (GetCompilationConfig()->IsAArch64()) {
+        return DoubleTrunc(value, comment);
+    }
+
+    GateRef glue = acc_.GetGlueFromArgList();
+    return CallNGCRuntime(glue, RTSTUB_ID(FloatTrunc), Gate::InvalidGateRef, {value}, gate, comment);
 }
 
 GateRef CircuitBuilder::Int16ToBigEndianInt16(GateRef x)
@@ -146,8 +161,7 @@ GateRef CircuitBuilder::GetInt32OfTInt(GateRef x)
 
 GateRef CircuitBuilder::TaggedCastToIntPtr(GateRef x)
 {
-    ASSERT(cmpCfg_ != nullptr);
-    return cmpCfg_->Is32Bit() ? GetInt32OfTInt(x) : GetInt64OfTInt(x);
+    return env_->Is32Bit() ? GetInt32OfTInt(x) : GetInt64OfTInt(x);
 }
 
 GateRef CircuitBuilder::GetDoubleOfTInt(GateRef x)
@@ -354,6 +368,13 @@ GateRef CircuitBuilder::DoubleToTaggedDoublePtr(GateRef x)
 {
     GateRef val = CastDoubleToInt64(x);
     return Int64ToTaggedPtr(Int64Add(val, Int64(JSTaggedValue::DOUBLE_ENCODE_OFFSET)));
+}
+
+GateRef CircuitBuilder::DoubleIsImpureNaN(GateRef x)
+{
+    GateRef impureNaN = Int64(JSTaggedValue::TAG_INT - JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+    GateRef val = CastDoubleToInt64(x);
+    return Int64UnsignedGreaterThanOrEqual(val, impureNaN);
 }
 
 GateRef CircuitBuilder::BooleanToTaggedBooleanPtr(GateRef x)

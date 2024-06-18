@@ -23,7 +23,40 @@
 #include "ecmascript/compiler/ecma_opcode_des.h"
 
 namespace panda::ecmascript::kungfu {
-static constexpr uint32_t AccRegisterID = 0xFFFFFFFF;
+
+class BytecodeNativePcOffsetTable {
+public:
+    BytecodeNativePcOffsetTable() = default;
+    ~BytecodeNativePcOffsetTable() = default;
+
+    void AddPosition(uint64_t nativePc)
+    {
+        ASSERT(nativePc - prevNativePc < 256); // 256: the max number can be presented by uint8_t
+        auto nativePcDiff = static_cast<uint8_t>(nativePc - prevNativePc);
+        nativePcDiffInfo.emplace_back(static_cast<uint8_t>(nativePcDiff));
+        prevNativePc = nativePc;
+    }
+
+    uint8_t *GetData()
+    {
+        return nativePcDiffInfo.data();
+    }
+
+    size_t GetSize() const
+    {
+        return nativePcDiffInfo.size();
+    }
+
+    uint64_t GetPrevNativePc() const
+    {
+        return prevNativePc;
+    }
+
+private:
+    uint64_t prevNativePc = 0;
+    std::vector<uint8_t> nativePcDiffInfo;
+};
+
 class BaselineCompiler {
 public:
     explicit BaselineCompiler(EcmaVM *inputVM)
@@ -63,6 +96,10 @@ private:
 #undef BYTECODE_BASELINE_HANDLER
     const uint8_t *pfHeaderAddr = nullptr;
     const uint8_t *firstPC = nullptr;
+    static constexpr uint32_t ONE_BYTE_SIZE = 8;
+    static constexpr uint32_t TWO_BYTE_SIZE = 16;
+    static constexpr uint32_t THREE_BYTE_SIZE = 24;
+    BytecodeNativePcOffsetTable nativePcOffsetTable;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BASELINE_BASELINE_COMPILER_H

@@ -154,57 +154,11 @@ bool JSTaggedValue::IsZero() const
 bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, const JSHandle<JSTaggedValue> &y)
 {
     if (x->IsNumber()) {
-        if (y->IsNumber()) {
-            return StrictNumberEquals(x->ExtractNumber(), y->ExtractNumber());
-        }
-        if (y->IsString()) {
-            JSTaggedNumber yNumber = ToNumber(thread, y);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return StrictNumberEquals(x->ExtractNumber(), yNumber.GetNumber());
-        }
-        if (y->IsBoolean()) {
-            JSTaggedNumber yNumber = ToNumber(thread, y);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return StrictNumberEquals(x->ExtractNumber(), yNumber.GetNumber());
-        }
-        if (y->IsBigInt()) {
-            return Equal(thread, y, x);
-        }
-        if (y->IsHeapObject() && !y->IsSymbol()) {
-            JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x, yPrimitive);
-        }
-        return false;
+        return EqualNumber(thread, x, y);
     }
 
     if (x->IsString()) {
-        if (y->IsString()) {
-            return EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(),
-                                                       JSHandle<EcmaString>(x),
-                                                       JSHandle<EcmaString>(y));
-        }
-        if (y->IsNumber()) {
-            JSTaggedNumber xNumber = ToNumber(thread, x);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return StrictNumberEquals(xNumber.GetNumber(), y->ExtractNumber());
-        }
-        if (y->IsBoolean()) {
-            JSTaggedNumber xNumber = ToNumber(thread, x);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            JSTaggedNumber yNumber = ToNumber(thread, y);
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return StrictNumberEquals(xNumber.GetNumber(), yNumber.GetNumber());
-        }
-        if (y->IsBigInt()) {
-            return Equal(thread, y, x);
-        }
-        if (y->IsHeapObject() && !y->IsSymbol()) {
-            JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x, yPrimitive);
-        }
-        return false;
+        return EqualString(thread, x, y);
     }
 
     if (x->IsBoolean()) {
@@ -214,97 +168,163 @@ bool JSTaggedValue::Equal(JSThread *thread, const JSHandle<JSTaggedValue> &x, co
     }
 
     if (x->IsSymbol()) {
-        if (y->IsSymbol()) {
-            return x.GetTaggedValue() == y.GetTaggedValue();
-        }
-        if (y->IsBigInt() || y->IsString()) {
-            return false;
-        }
-        if (y->IsHeapObject()) {
-            JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x, yPrimitive);
-        }
-        return false;
+        return EqualSymbol(thread, x, y);
     }
 
     if (x->IsBigInt()) {
-        if (y->IsBigInt()) {
-            return BigInt::Equal(x.GetTaggedValue(), y.GetTaggedValue());
-        }
-        if (y->IsString()) {
-            JSHandle<JSTaggedValue> yNumber(thread, base::NumberHelper::StringToBigInt(thread, y));
-            if (!yNumber->IsBigInt()) {
-                return false;
-            }
-            return BigInt::Equal(x.GetTaggedValue(), yNumber.GetTaggedValue());
-        }
-        if (y->IsBoolean()) {
-            JSHandle<JSTaggedValue> yNumber(thread, ToBigInt(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return BigInt::Equal(x.GetTaggedValue(), yNumber.GetTaggedValue());
-        }
-        if (y->IsNumber()) {
-            JSHandle<BigInt> bigint = JSHandle<BigInt>::Cast(x);
-            return BigInt::CompareWithNumber(bigint, y) == ComparisonResult::EQUAL;
-        }
-        if (y->IsHeapObject() && !y->IsSymbol()) {
-            JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, x, yPrimitive);
-        }
-        return false;
+        return EqualBigInt(thread, x, y);
     }
 
     if (x->IsHeapObject()) {
-        if (y->IsHeapObject()) {
-            // if same type, must call Type::StrictEqual()
-            JSType xType = x.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType();
-            JSType yType = y.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType();
-            if (xType == yType) {
-                return StrictEqual(thread, x, y);
-            }
-        }
-        if (y->IsNumber() || y->IsStringOrSymbol() || y->IsBoolean() || y->IsBigInt()) {
-            JSHandle<JSTaggedValue> xPrimitive(thread, ToPrimitive(thread, x));
+        return EqualHeapObject(thread, x, y);
+    }
+
+    return EqualNullOrUndefined(x, y);
+}
+
+bool JSTaggedValue::EqualNumber(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y)
+{
+    if (y->IsNumber()) {
+        return StrictNumberEquals(x->ExtractNumber(), y->ExtractNumber());
+    }
+    if (y->IsString()) {
+            JSTaggedNumber yNumber = ToNumber(thread, y);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-            return Equal(thread, xPrimitive, y);
-        }
-        return false;
+            return StrictNumberEquals(x->ExtractNumber(), yNumber.GetNumber());
     }
-
-    if (x->IsNull() && y->IsNull()) {
-        return true;
+    if (y->IsBoolean()) {
+        JSTaggedNumber yNumber = ToNumber(thread, y);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return StrictNumberEquals(x->ExtractNumber(), yNumber.GetNumber());
     }
-
-    if (x->IsUndefined() && y->IsUndefined()) {
-        return true;
+    if (y->IsBigInt()) {
+        return Equal(thread, y, x);
     }
-
-    if (x->IsNull() && y->IsUndefined()) {
-        return true;
+    if (y->IsHeapObject() && !y->IsSymbol()) {
+        JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, x, yPrimitive);
     }
-
-    if (x->IsUndefined() && y->IsNull()) {
-        return true;
-    }
-
     return false;
 }
 
-uint32_t CountLeadingZeros(uint32_t value, uint32_t bits)
+bool JSTaggedValue::EqualString(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y)
 {
-    if (bits == 1) {
-        return value ^ 1;
+    if (y->IsString()) {
+        return EcmaStringAccessor::StringsAreEqual(thread->GetEcmaVM(),
+                                                   JSHandle<EcmaString>(x),
+                                                   JSHandle<EcmaString>(y));
     }
-    uint32_t upper_half = value >> (bits / 2); // 2 : half
-    uint32_t nextValue = upper_half != 0 ? upper_half : value;
-    uint32_t add = upper_half != 0 ? 0 : (bits / 2); // 2 : half
-    uint32_t nextBits = bits == 1 ? 1 : bits / 2; // 2 : half
-    return CountLeadingZeros(nextValue, nextBits) + add;
+    if (y->IsNumber()) {
+        JSTaggedNumber xNumber = ToNumber(thread, x);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return StrictNumberEquals(xNumber.GetNumber(), y->ExtractNumber());
+    }
+    if (y->IsBoolean()) {
+        JSTaggedNumber xNumber = ToNumber(thread, x);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        JSTaggedNumber yNumber = ToNumber(thread, y);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return StrictNumberEquals(xNumber.GetNumber(), yNumber.GetNumber());
+    }
+    if (y->IsBigInt()) {
+        return Equal(thread, y, x);
+    }
+    if (y->IsHeapObject() && !y->IsSymbol()) {
+        JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, x, yPrimitive);
+    }
+    return false;
 }
 
-const uint32_t kPowersOf10[] = {
+bool JSTaggedValue::EqualSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y)
+{
+    if (y->IsSymbol()) {
+        return x.GetTaggedValue() == y.GetTaggedValue();
+    }
+    if (y->IsBigInt() || y->IsString()) {
+        return false;
+    }
+    if (y->IsHeapObject()) {
+        JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, x, yPrimitive);
+    }
+    return false;
+}
+
+bool JSTaggedValue::EqualBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y)
+{
+    if (y->IsBigInt()) {
+        return BigInt::Equal(x.GetTaggedValue(), y.GetTaggedValue());
+    }
+    if (y->IsString()) {
+        JSHandle<JSTaggedValue> yNumber(thread, base::NumberHelper::StringToBigInt(thread, y));
+        if (!yNumber->IsBigInt()) {
+            return false;
+        }
+        return BigInt::Equal(x.GetTaggedValue(), yNumber.GetTaggedValue());
+    }
+    if (y->IsBoolean()) {
+        JSHandle<JSTaggedValue> yNumber(thread, ToBigInt(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return BigInt::Equal(x.GetTaggedValue(), yNumber.GetTaggedValue());
+    }
+    if (y->IsNumber()) {
+        JSHandle<BigInt> bigint = JSHandle<BigInt>::Cast(x);
+        return BigInt::CompareWithNumber(bigint, y) == ComparisonResult::EQUAL;
+    }
+    if (y->IsHeapObject() && !y->IsSymbol()) {
+        JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, x, yPrimitive);
+    }
+    return false;
+}
+
+bool JSTaggedValue::EqualHeapObject(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                    const JSHandle<JSTaggedValue> &y)
+{
+    if (y->IsHeapObject()) {
+        // if same type, must call Type::StrictEqual()
+        JSType xType = x.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType();
+        JSType yType = y.GetTaggedValue().GetTaggedObject()->GetClass()->GetObjectType();
+        if (xType == yType) {
+            return StrictEqual(thread, x, y);
+        }
+    }
+    if (y->IsNumber() || y->IsStringOrSymbol() || y->IsBoolean() || y->IsBigInt()) {
+        JSHandle<JSTaggedValue> xPrimitive(thread, ToPrimitive(thread, x));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+        return Equal(thread, xPrimitive, y);
+    }
+    return false;
+}
+
+bool JSTaggedValue::EqualNullOrUndefined(const JSHandle<JSTaggedValue> &x,
+                                         const JSHandle<JSTaggedValue> &y)
+{
+    if (x->IsNull() && y->IsNull()) {
+        return true;
+    }
+    if (x->IsUndefined() && y->IsUndefined()) {
+        return true;
+    }
+    if (x->IsNull() && y->IsUndefined()) {
+        return true;
+    }
+    if (x->IsUndefined() && y->IsNull()) {
+        return true;
+    }
+    return false;
+}
+
+static const uint32_t POWERS_OF_10[] = {
     1,
     10,
     100,
@@ -338,17 +358,16 @@ int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
         if (xValue > 0) {
             return 1;
         }
-        unsignedX = static_cast<uint32_t>(-xValue);
-        unsignedY = static_cast<uint32_t>(-yValue);
+        unsignedX = static_cast<uint32_t>(base::NegateWithWraparound(xValue));
+        unsignedY = static_cast<uint32_t>(base::NegateWithWraparound(yValue));
     }
-    uint32_t bits = sizeof(uint32_t) * 8; // 8 : bits
-    int xLog2 = 31 - CountLeadingZeros(unsignedX, bits); // 31 : Algorithm implementation
+    int xLog2 = 31 - __builtin_clz(unsignedX);
     int xDigit = ((xLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation
-    xDigit -= unsignedX < kPowersOf10[xDigit];
+    xDigit -= unsignedX < POWERS_OF_10[xDigit];
 
-    int yLog2 = 31 - CountLeadingZeros(unsignedY, bits); // 31 : Algorithm implementation
+    int yLog2 = 31 - __builtin_clz(unsignedY);
     int yDigit = ((yLog2 + 1) * 1233) >> 12; // 1233 、12 : Algorithm implementation
-    yDigit -= unsignedY < kPowersOf10[yDigit];
+    yDigit -= unsignedY < POWERS_OF_10[yDigit];
 
     int res = 0;
     if (xDigit > yDigit) {
@@ -358,12 +377,12 @@ int JSTaggedValue::IntLexicographicCompare(JSTaggedValue x, JSTaggedValue y)
         // smallest power and scale down Y to drop one digit. It is OK to
         // drop one digit from the longer integer since the final digit is
         // past the length of the shorter integer.
-        unsignedY *= kPowersOf10[xDigit - yDigit - 1];
+        unsignedY *= POWERS_OF_10[xDigit - yDigit - 1];
         unsignedX /= 10; // 10 : Decimal
         res = 1;
     }
     if (yDigit > xDigit) {
-        unsignedX *= kPowersOf10[yDigit - xDigit - 1];
+        unsignedX *= POWERS_OF_10[yDigit - xDigit - 1];
         unsignedY /= 10; // 10 : Decimal
         res = -1;
     }
@@ -427,11 +446,23 @@ ComparisonResult JSTaggedValue::Compare(JSThread *thread, const JSHandle<JSTagge
         }
         return res;
     }
-    JSTaggedNumber xNumber = ToNumber(thread, x);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-    JSTaggedNumber yNumber = ToNumber(thread, y);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-    return StrictNumberCompare(xNumber.GetNumber(), yNumber.GetNumber());
+    double resultX = 0;
+    double resultY = 0;
+    if (primX->IsNumber()) {
+        resultX = primX->GetNumber();
+    } else {
+        JSTaggedNumber xNumber = ToNumber(thread, x);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+        resultX = xNumber.GetNumber();
+    }
+    if (primY->IsNumber()) {
+        resultY = primY->GetNumber();
+    } else {
+        JSTaggedNumber yNumber = ToNumber(thread, y);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+        resultY = yNumber.GetNumber();
+    }
+    return StrictNumberCompare(resultX, resultY);
 }
 
 bool JSTaggedValue::IsSameTypeOrHClass(JSTaggedValue x, JSTaggedValue y)

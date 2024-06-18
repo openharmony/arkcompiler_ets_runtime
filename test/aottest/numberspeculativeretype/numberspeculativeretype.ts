@@ -27,3 +27,8 @@ class A {
   }
 }
 print("compiler succ")
+
+const v1 = [-10];
+const v2 = [v1];
+v2[0] = -1.1;
+print("compiler succ")

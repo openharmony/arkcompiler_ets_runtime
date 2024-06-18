@@ -21,8 +21,10 @@
  */
 import data from "./1.json"
 import { fun } from "./cjsImportJson";
-import {a} from './moduleCircularCheck'
+import {a} from './moduleCircularCheck';
+import {chinese} from './中文路径';
 
 print(data.name);
 fun();
 print(a);
+print(chinese);

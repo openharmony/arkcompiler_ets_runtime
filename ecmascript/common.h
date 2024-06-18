@@ -30,6 +30,7 @@ enum BarrierMode { SKIP_BARRIER, WRITE_BARRIER, READ_BARRIER };
  * For example, SemiSpace GC for young generation GC, Mark-Sweep-Compact for full GC, etc.
  */
 enum TriggerGCType {
+    EDEN_GC,
     // GC is expected to cover young space only;
     YOUNG_GC,
     // GC is expected to cover young space and necessary old spaces;
@@ -72,17 +73,26 @@ enum class RequestAotMode : uint8_t {
     V(UpdateReference)                   \
     V(EvacuateSpace)                     \
     V(SuspendAll)                        \
-    V(ResumeAll)
+    V(ResumeAll)                         \
+    V(ProceeWorkload)                    \
+    V(UpdateRoot)                        \
+    V(UpdateWeekRef)                     \
+    V(EvacuateRegion)                    \
+    V(WaitFinish)
 
 #define RECORD_DATA(V)                   \
     V(START_OBJ_SIZE)                    \
     V(END_OBJ_SIZE)                      \
     V(START_COMMIT_SIZE)                 \
     V(END_COMMIT_SIZE)                   \
+    V(START_EDEN_OBJ_SIZE)               \
     V(START_YOUNG_OBJ_SIZE)              \
     V(SEMI_ALIVE_SIZE)                   \
     V(SEMI_COMMIT_SIZE)                  \
     V(SEMI_PROMOTE_SIZE)                 \
+    V(EDEN_ALIVE_SIZE)                   \
+    V(EDEN_COMMIT_SIZE)                  \
+    V(EDEN_PROMOTE_SIZE)                 \
     V(YOUNG_ALIVE_SIZE)                  \
     V(YOUNG_COMMIT_SIZE)                 \
     V(YOUNG_PROMOTE_SIZE)                \
@@ -101,6 +111,9 @@ enum class RequestAotMode : uint8_t {
     V(SEMI_MIN_PAUSE)                    \
     V(SEMI_MAX_PAUSE)                    \
     V(SEMI_TOTAL_PAUSE)                  \
+    V(EDEN_MIN_PAUSE)                    \
+    V(EDEN_MAX_PAUSE)                    \
+    V(EDEN_TOTAL_PAUSE)                  \
     V(YOUNG_MIN_PAUSE)                   \
     V(YOUNG_MAX_PAUSE)                   \
     V(YOUNG_TOTAL_PAUSE)                 \
@@ -121,6 +134,10 @@ enum class RequestAotMode : uint8_t {
     V(SEMI_TOTAL_PROMOTE)
 
 #define PARTIAL_RECORD_DATA(V)           \
+    V(EDEN_COUNT)                        \
+    V(EDEN_TOTAL_ALIVE)                  \
+    V(EDEN_TOTAL_COMMIT)                 \
+    V(EDEN_TOTAL_PROMOTE)                \
     V(YOUNG_COUNT)                       \
     V(YOUNG_TOTAL_ALIVE)                 \
     V(YOUNG_TOTAL_COMMIT)                \
@@ -145,6 +162,9 @@ enum class RequestAotMode : uint8_t {
     V(UPDATE_REFERENCE_SPEED)            \
     V(OLD_CLEAR_NATIVE_OBJ_SPEED)        \
     V(OLD_EVACUATE_SPACE_SPEED)          \
+    V(EDEN_CLEAR_NATIVE_OBJ_SPEED)       \
+    V(EDEN_UPDATE_REFERENCE_SPEED)       \
+    V(EDEN_EVACUATE_SPACE_SPEED)         \
     V(YOUNG_CLEAR_NATIVE_OBJ_SPEED)      \
     V(YOUNG_UPDATE_REFERENCE_SPEED)      \
     V(YOUNG_EVACUATE_SPACE_SPEED)        \

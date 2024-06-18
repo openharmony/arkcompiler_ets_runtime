@@ -101,3 +101,7 @@ function func8() {
 }
 res = lineString2.replace(re2, func8);
 print(res)
+
+let v5 = String.fromCharCode(0).replaceAll(/(?<a>.)/ug);
+print("undefinedss".replace(undefined,v5));
+print("undefinedss".replaceAll(undefined,v5));

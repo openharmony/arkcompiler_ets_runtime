@@ -107,9 +107,8 @@ inline void SharedGCMarker::ProcessLocalToShareNoMarkStack(uint32_t threadId, He
         localHeap->EnumerateRegions(std::bind(&SharedGCMarker::HandleLocalToShareRSet, this, threadId,
                                               std::placeholders::_1));
     } else {
-        bool isRemark = markType == SharedMarkType::CONCURRENT_MARK_REMARK;
         localHeap->EnumerateRegions(std::bind(&SharedGCMarker::ConcurrentMarkHandleLocalToShareRSet,
-                                              this, threadId, isRemark, std::placeholders::_1));
+                                              this, threadId, std::placeholders::_1));
     }
 }
 
@@ -122,7 +121,7 @@ inline void SharedGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedType 
 inline void SharedGCMarker::HandleLocalToShareRSet(uint32_t threadId, Region *region)
 {
     // If the mem does not point to a shared object, the related bit in localToShareRSet will be cleared.
-    region->AtomicIterateAllLocalToShareBits([this, threadId](void *mem) -> bool {
+    region->IterateAllLocalToShareBits([this, threadId](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());
         if (value.IsInSharedSweepableSpace()) {
@@ -139,21 +138,14 @@ inline void SharedGCMarker::HandleLocalToShareRSet(uint32_t threadId, Region *re
     });
 }
 
-inline void SharedGCMarker::ConcurrentMarkHandleLocalToShareRSet(uint32_t threadId, bool isRemark, Region *region)
+inline void SharedGCMarker::ConcurrentMarkHandleLocalToShareRSet(uint32_t threadId, Region *region)
 {
     // If the mem does not point to a shared object, the related bit in localToShareRSet will be cleared.
-    region->AtomicIterateAllLocalToShareBits([this, threadId, isRemark](void *mem) -> bool {
+    region->IterateAllLocalToShareBits([this, threadId](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());
         if (value.IsInSharedSweepableSpace()) {
-            if (value.IsWeakForHeapObject()) {
-                if (isRemark) {
-                    RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem));
-                }
-            } else {
-                // In Remark, also need to mark object created by deserialize.
-                MarkObject(threadId, value.GetTaggedObject());
-            }
+            MarkObject(threadId, value.GetHeapObject());
             return true;
         } else {
             // clear bit.

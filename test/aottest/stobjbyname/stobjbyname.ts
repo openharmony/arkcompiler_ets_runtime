@@ -23,3 +23,23 @@ obj.a = 100;
 obj.b = "helloworld";
 print(obj.a)
 print(obj.b);
+
+class A{};
+function foo(x: any) {
+    try {
+        x.constructor = 0;
+        print(x.constructor);
+    } catch (e) {
+        print("foo");
+    }
+}
+
+
+let a = new A();
+foo(a);
+if (ArkTools.isAOTCompiled(foo)) {
+    let a = new A();
+    foo(a);
+    let b = 1;
+    foo(b);
+}

@@ -81,7 +81,7 @@ public:
         return std::make_tuple(addrBeforeText, sizeBeforeText, addrAfterText, sizeAfterText);
     }
 
-    void RunAssembler(const CompilerLog &log, bool fastCompileMode);
+    void RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit = false);
 
     void DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset, const CompilerLog &log,
                           const MethodLogList &logList, std::ostringstream &codeStream);
@@ -191,7 +191,7 @@ public:
     Module* AddModule(const std::string &name, const std::string &triple, LOptions option, bool logDebug,
         bool isJit = false);
 
-    void CompileLatestModuleThenDestroy();
+    void CompileLatestModuleThenDestroy(bool isJit = false);
 
     void DestroyCollectedStackMapInfo();
 
@@ -229,6 +229,7 @@ private:
     // MethodID->EntryIndex
     std::map<uint32_t, uint32_t> methodToEntryIndexMap_ {};
     const bool useLiteCG_;
+    CodeInfo::CodeSpaceOnDemand jitCodeSpace_ {};
 };
 
 enum class StubFileKind {
@@ -270,6 +271,7 @@ private:
     StubFileInfo stubInfo_;
     AssemblerModule asmModule_;
     CompilationConfig cfg_;
+    CodeInfo::CodeSpaceOnDemand jitCodeSpace_ {};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_FILE_GENERATORS_H

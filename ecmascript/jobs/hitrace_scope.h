@@ -18,6 +18,7 @@
 
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_thread.h"
 
 #if defined(ENABLE_HITRACE)
 #include "hitrace/hitraceid.h"
@@ -45,6 +46,24 @@ private:
     HiTraceId saveId_;
     HiTraceId hitraceId_;
 #endif
+};
+
+class EnqueueJobTrace {
+public:
+    EnqueueJobTrace(JSThread *thread, const JSHandle<PendingJob> &pendingJob);
+    ~EnqueueJobTrace();
+
+private:
+    bool isMicroJobTraceEnable_ {false};
+};
+
+class ExecuteJobTrace {
+public:
+    ExecuteJobTrace(JSThread *thread, const JSHandle<PendingJob> &pendingJob);
+    ~ExecuteJobTrace();
+
+private:
+    bool isMicroJobTraceEnable_ {false};
 };
 }  // namespace panda::ecmascript::job
 #endif  // ECMASCRIPT_JOBS_HIREACE_SCOPE_H

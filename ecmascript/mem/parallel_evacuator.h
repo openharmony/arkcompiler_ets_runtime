@@ -44,6 +44,10 @@ public:
         return promotedSize_;
     }
 
+    size_t GetEdenToYoungSize() const
+    {
+        return edenToYoungSize_;
+    }
 private:
     class EvacuationTask : public Task {
     public:
@@ -101,8 +105,18 @@ private:
 
     class UpdateRSetWorkload : public Workload {
     public:
-        UpdateRSetWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
+        UpdateRSetWorkload(ParallelEvacuator *evacuator, Region *region, bool isEdenGC)
+            : Workload(evacuator, region), isEdenGC_(isEdenGC) {}
         ~UpdateRSetWorkload() override = default;
+        bool Process(bool isMain) override;
+    private:
+        bool isEdenGC_;
+    };
+
+    class UpdateNewToEdenRSetWorkload : public Workload {
+    public:
+        UpdateNewToEdenRSetWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
+        ~UpdateNewToEdenRSetWorkload() override = default;
         bool Process(bool isMain) override;
     };
 
@@ -135,13 +149,16 @@ private:
     void EvacuateSpace();
     bool EvacuateSpace(TlabAllocator *allocation, uint32_t threadIndex, bool isMain = false);
     void EvacuateRegion(TlabAllocator *allocator, Region *region, std::unordered_set<JSTaggedType> &trackSet);
+    template<bool SetEdenObject>
     inline void SetObjectFieldRSet(TaggedObject *object, JSHClass *cls);
+    template<bool SetEdenObject>
     inline void SetObjectRSet(ObjectSlot slot, Region *region);
 
     inline void UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls);
     inline void SetLocalToShareRSet(ObjectSlot slot, Region *region);
 
     inline bool IsWholeRegionEvacuate(Region *region);
+    inline bool WholeRegionEvacuate(Region *region);
     void VerifyValue(TaggedObject *object, ObjectSlot slot);
     void VerifyHeapObject(TaggedObject *object);
 
@@ -149,14 +166,19 @@ private:
     void UpdateRoot();
     void UpdateWeakReference();
     void UpdateRecordWeakReference();
+    template<bool IsEdenGC>
     void UpdateRSet(Region *region);
+    void UpdateNewToEdenRSetReference(Region *region);
     void UpdateNewRegionReference(Region *region);
     void UpdateAndSweepNewRegionReference(Region *region);
     void UpdateNewObjectField(TaggedObject *object, JSHClass *cls);
 
     template<typename Callback>
     inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end, Callback callback);
+    inline bool UpdateForwardedOldToNewObjectSlot(TaggedObject *object, ObjectSlot &slot, bool isWeak);
+    template<bool IsEdenGC>
     inline bool UpdateOldToNewObjectSlot(ObjectSlot &slot);
+    inline bool UpdateNewToEdenObjectSlot(ObjectSlot &slot);
     inline void UpdateObjectSlot(ObjectSlot &slot);
     inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);
 
@@ -177,6 +199,7 @@ private:
     Mutex mutex_;
     ConditionVariable condition_;
     std::atomic<size_t> promotedSize_ = 0;
+    std::atomic<size_t> edenToYoungSize_ = 0;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_EVACUATOR_H

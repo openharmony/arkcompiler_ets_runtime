@@ -27,6 +27,9 @@
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
+#ifdef ENABLE_JITFORT
+#include "ecmascript/mem/machine_code.h"
+#endif
 
 namespace panda::ecmascript {
 class ConcurrentMarker;
@@ -58,6 +61,7 @@ class ThreadLocalAllocationBuffer;
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
 using GCListenerId = std::vector<std::pair<FinishGCListener, void *>>::const_iterator;
+using Clock = std::chrono::high_resolution_clock;
 
 enum class IdleTaskType : uint8_t {
     NO_TASK,
@@ -67,6 +71,7 @@ enum class IdleTaskType : uint8_t {
 };
 
 enum class MarkType : uint8_t {
+    MARK_EDEN,
     MARK_YOUNG,
     MARK_FULL
 };
@@ -92,6 +97,8 @@ enum AppSensitiveStatus : uint8_t {
 enum class VerifyKind {
     VERIFY_PRE_GC,
     VERIFY_POST_GC,
+    VERIFY_MARK_EDEN,
+    VERIFY_EVACUATE_EDEN,
     VERIFY_MARK_YOUNG,
     VERIFY_EVACUATE_YOUNG,
     VERIFY_MARK_FULL,
@@ -153,9 +160,24 @@ public:
 
     virtual bool ObjectExceedMaxHeapSize() const = 0;
 
+    MarkType GetMarkType() const
+    {
+        return markType_;
+    }
+
     void SetMarkType(MarkType markType)
     {
         markType_ = markType;
+    }
+
+    bool IsEdenMark() const
+    {
+        return markType_ == MarkType::MARK_EDEN;
+    }
+
+    bool IsYoungMark() const
+    {
+        return markType_ == MarkType::MARK_YOUNG;
     }
 
     bool IsFullMark() const
@@ -239,6 +261,18 @@ public:
         return heapAliveSizeAfterGC_;
     }
 
+    bool ShouldCheckIdleGC() const
+    {
+        return lastIdleGCTimestamp_ == Clock::time_point::min() ||
+            std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - lastIdleGCTimestamp_).count() >=
+            IDLE_GC_MIN_INTERVAL;
+    }
+
+    void updateIdleGCTimePoint()
+    {
+        lastIdleGCTimestamp_ = Clock::now();
+    }
+
     // Whether should verify heap during gc.
     bool ShouldVerifyHeap() const
     {
@@ -251,6 +285,11 @@ public:
     uint32_t GetMaxMarkTaskCount() const
     {
         return maxMarkTaskCount_;
+    }
+
+    bool InSensitiveStatus() const
+    {
+        return GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE || OnStartupEvent();
     }
 
     void OnAllocateEvent(EcmaVM *ecmaVm, TaggedObject* address, size_t size);
@@ -266,12 +305,6 @@ public:
     void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
 
 protected:
-    bool InSensitiveStatus() const
-    {
-        return GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE ||
-               OnStartupEvent();
-    }
-
     void FatalOutOfMemoryError(size_t size, std::string functionName);
 
     enum class HeapType {
@@ -302,6 +335,7 @@ protected:
     };
 
     static constexpr double TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE = 0.75;
+    static constexpr int IDLE_GC_MIN_INTERVAL = 100; // ms
 
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
@@ -329,6 +363,7 @@ protected:
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
+    Clock::time_point lastIdleGCTimestamp_;
     int32_t recursionDepth_ {0};
 };
 
@@ -658,6 +693,8 @@ private:
 
     void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
 
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread);
+
     struct SharedHeapSmartGCStats {
         /**
          * For SmartGC.
@@ -721,6 +758,15 @@ public:
     void CompactHeapBeforeFork();
     void DisableParallelGC();
     void EnableParallelGC();
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    void SetJsDumpThresholds(size_t thresholds) const;
+#endif
+
+    EdenSpace *GetEdenSpace() const
+    {
+        return edenSpace_;
+    }
+
     // fixme: Rename NewSpace to YoungSpace.
     // This is the active young generation space that the new objects are allocated in
     // or copied into (from the other semi space) during semi space GC.
@@ -880,6 +926,7 @@ public:
      */
 
     // Young
+    inline TaggedObject *AllocateInGeneralNewSpace(size_t size);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass);
     inline TaggedObject *AllocateYoungOrHugeObject(JSHClass *hclass, size_t size);
     inline TaggedObject *AllocateReadOnlyOrHugeObject(JSHClass *hclass);
@@ -897,7 +944,11 @@ public:
     // Huge
     inline TaggedObject *AllocateHugeObject(JSHClass *hclass, size_t size);
     // Machine code
+#ifdef ENABLE_JITFORT
+    inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size, MachineCodeDesc &desc);
+#else
     inline TaggedObject *AllocateMachineCodeObject(JSHClass *hclass, size_t size);
+#endif
     // Snapshot
     inline uintptr_t AllocateSnapshotSpace(size_t size);
 
@@ -913,6 +964,7 @@ public:
      */
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
     bool CheckAndTriggerOldGC(size_t size = 0);
+    void CheckAndTriggerGCForIdle(int idletime);
     bool CheckAndTriggerHintGC();
     TriggerGCType SelectGCType() const;
     /*
@@ -963,6 +1015,9 @@ public:
     void EnumerateNonNewSpaceRegionsWithRecord(const Callback &cb) const;
 
     template<class Callback>
+    void EnumerateEdenSpaceRegions(const Callback &cb) const;
+
+    template<class Callback>
     void EnumerateNewSpaceRegions(const Callback &cb) const;
 
     template<class Callback>
@@ -1010,6 +1065,10 @@ public:
     size_t GetPromotedSize() const
     {
         return promotedSize_;
+    }
+    size_t GetEdenToYoungSize() const
+    {
+        return edenToYoungSize_;
     }
 
     size_t GetArrayBufferSize() const;
@@ -1125,8 +1184,6 @@ public:
     }
 #endif
     void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
-    void AddToKeptObjects(JSHandle<JSTaggedValue> value) const;
-    void ClearKeptObjects() const;
 
     // add allocationInspector to each space
     void AddAllocationInspectorToAllSpaces(AllocationInspector *inspector);
@@ -1184,6 +1241,7 @@ public:
 
     void IncreaseNativeBindingSize(size_t size);
     void IncreaseNativeBindingSize(JSNativePointer *object);
+    void DecreaseNativeBindingSize(size_t size);
     void ResetNativeBindingSize()
     {
         nativeBindingSize_ = 0;
@@ -1204,6 +1262,12 @@ public:
         return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
     }
 
+    bool GlobalNativeSizeLargerThanLimitForIdle() const
+    {
+        return GetGlobalNativeSize() >= static_cast<size_t>(globalSpaceNativeLimit_ *
+            IDLE_SPACE_SIZE_LIMIT_RATE);
+    }
+
     void TryTriggerFullMarkByNativeSize();
 
     void TryTriggerFullMarkBySharedSize(size_t size);
@@ -1220,26 +1284,50 @@ public:
         return thread_->IsReadyToConcurrentMark();
     }
 
+    bool IsEdenGC() const
+    {
+        return gcType_ == TriggerGCType::EDEN_GC;
+    }
+
     bool IsYoungGC() const
     {
         return gcType_ == TriggerGCType::YOUNG_GC;
     }
 
+    bool IsGeneralYoungGC() const
+    {
+        return gcType_ == TriggerGCType::YOUNG_GC || gcType_ == TriggerGCType::EDEN_GC;
+    }
+
+    void EnableEdenGC();
+
+    void TryEnableEdenGC();
+
     void CheckNonMovableSpaceOOM();
+    void ReleaseEdenAllocator();
+    void InstallEdenAllocator();
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 
     PUBLIC_API GCListenerId AddGCListener(FinishGCListener listener, void *data);
     PUBLIC_API void RemoveGCListener(GCListenerId listenerId);
 private:
     inline TaggedObject *AllocateHugeObject(size_t size);
+#ifdef ENABLE_JITFORT
+    inline TaggedObject *AllocateHugeMachineCodeObject(size_t size, MachineCodeDesc &desc);
+#else
     inline TaggedObject *AllocateHugeMachineCodeObject(size_t size);
+#endif
 
+    static constexpr int MIN_JSDUMP_THRESHOLDS = 85;
+    static constexpr int MAX_JSDUMP_THRESHOLDS = 95;
     static constexpr int IDLE_TIME_LIMIT = 10;  // if idle time over 10ms we can do something
     static constexpr int ALLOCATE_SIZE_LIMIT = 100_KB;
     static constexpr int IDLE_MAINTAIN_TIME = 500;
     static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
     // Threadshold that HintGC will actually trigger GC.
     static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
+    static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8;
+    static constexpr double IDLE_SHARED_SIZE_LIMIT_RATE = 1.2;
     static constexpr size_t NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT = DEFAULT_SHARED_HEAP_SIZE / 10; // 10 : ten times.
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
@@ -1336,6 +1424,7 @@ private:
      * Young generation spaces where most new objects are allocated.
      * (only one of the spaces is active at a time in semi space GC).
      */
+    EdenSpace *edenSpace_ {nullptr};
     SemiSpace *activeSemiSpace_ {nullptr};
     SemiSpace *inactiveSemiSpace_ {nullptr};
 
@@ -1418,6 +1507,7 @@ private:
      * which is used for GC heuristics.
      */
     MemController *memController_ {nullptr};
+    size_t edenToYoungSize_ {0};
     size_t promotedSize_ {0};
     size_t semiSpaceCopiedSize_ {0};
     size_t nativeBindingSize_{0};
@@ -1444,6 +1534,7 @@ private:
     std::vector<std::pair<FinishGCListener, void *>> gcListeners_;
 
     bool hasOOMDump_ {false};
+    bool enableEdenGC_ {false};
 };
 }  // namespace panda::ecmascript
 

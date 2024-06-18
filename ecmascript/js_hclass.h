@@ -366,6 +366,12 @@ enum class EnumCacheKind : uint8_t {
 
 }  // namespace EnumCache
 
+struct TransitionResult {
+    bool isTagged;
+    bool isTransition;
+    JSTaggedValue value;
+};
+
 class JSHClass : public TaggedObject {
 public:
     static constexpr int TYPE_BITFIELD_NUM = 8;
@@ -455,7 +461,7 @@ public:
     static bool PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
                                                  const JSHandle<JSTaggedValue> &value,
                                                  ElementsKind kind = ElementsKind::NONE);
-    static std::tuple<bool, bool, JSTaggedValue> PUBLIC_API ConvertOrTransitionWithRep(const JSThread *thread,
+    static TransitionResult PUBLIC_API ConvertOrTransitionWithRep(const JSThread *thread,
         const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes &attr);
 
@@ -1960,6 +1966,8 @@ public:
     static JSHandle<JSTaggedValue> SetPrototypeWithNotification(const JSThread *thread,
                                                                 const JSHandle<JSTaggedValue> &hclass,
                                                                 const JSHandle<JSTaggedValue> &proto);
+    static void SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject> &object,
+                                       const JSHandle<JSTaggedValue> &proto);
     void SetPrototype(const JSThread *thread, JSTaggedValue proto);
     void PUBLIC_API SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
     static void OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
@@ -1997,13 +2005,20 @@ public:
 
     static JSHandle<JSHClass> CreateSHClass(JSThread *thread,
                                             const std::vector<PropertyDescriptor> &descs,
+                                            const JSHClass *parentHClass = nullptr,
                                             bool isFunction = false);
     static JSHandle<JSHClass> CreateSConstructorHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
     static JSHandle<JSHClass> CreateSPrototypeHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
 
 private:
-    static JSHandle<LayoutInfo> CreateSInlinedLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
-    static JSHandle<NameDictionary> CreateSDictLayout(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
+    static void CreateSInlinedLayout(JSThread *thread,
+                                     const std::vector<PropertyDescriptor> &descs,
+                                     const JSHandle<JSHClass> &hclass,
+                                     const JSHClass *parentHClass = nullptr);
+    static void CreateSDictLayout(JSThread *thread,
+                                  const std::vector<PropertyDescriptor> &descs,
+                                  const JSHandle<JSHClass> &hclass,
+                                  const JSHClass *parentHClass = nullptr);
     static inline void AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent,
                                       const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                       PropertyAttributes attr);

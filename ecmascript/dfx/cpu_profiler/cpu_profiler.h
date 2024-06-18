@@ -109,6 +109,8 @@ private:
     void SetProfileStart(uint64_t nowTimeStamp);
     void GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo);
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
+    bool RegisterGetStackSignal();
+
     bool isProfiling_ = false;
     bool outToFile_ = false;
     std::string fileName_ = "";
@@ -120,6 +122,7 @@ private:
     std::atomic_bool isBuildNapiStack_ {false};
     bool enableVMTag_ {false};
     RunParams *params_ = nullptr;
+    stack_t segvStack_ {nullptr, 0, 0};
 };
 
 class CallNapiScope {

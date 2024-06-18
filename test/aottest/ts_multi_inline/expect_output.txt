@@ -11,15 +11,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] aot inline function name: foo1@ts_multi_inline caller function name: func_main_0@ts_multi_inline
+[trace] aot inline function name: #*#foo1@ts_multi_inline caller function name: func_main_0@ts_multi_inline
 foo1
-[trace] aot inline function name: foo2@ts_multi_inline caller function name: foo1@ts_multi_inline
+[trace] aot inline function name: #*#foo2@ts_multi_inline caller function name: #*#foo1@ts_multi_inline
 foo2
-[trace] aot inline function name: foo3@ts_multi_inline caller function name: foo2@ts_multi_inline
+[trace] aot inline function name: #*#foo3@ts_multi_inline caller function name: #*#foo2@ts_multi_inline
 foo3
-[trace] aot inline function name: foo4@ts_multi_inline caller function name: foo3@ts_multi_inline
+[trace] aot inline function name: #*#foo4@ts_multi_inline caller function name: #*#foo3@ts_multi_inline
 foo4
-[trace] aot inline function name: foo5@ts_multi_inline caller function name: foo4@ts_multi_inline
+[trace] aot inline function name: #*#foo5@ts_multi_inline caller function name: #*#foo4@ts_multi_inline
 foo5
-[trace] aot inline function name: foo6@ts_multi_inline caller function name: foo5@ts_multi_inline
+[trace] aot inline function name: #*#foo6@ts_multi_inline caller function name: #*#foo5@ts_multi_inline
 foo6

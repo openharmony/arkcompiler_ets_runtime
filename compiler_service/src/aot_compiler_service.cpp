@@ -16,7 +16,7 @@
 #include "aot_compiler_service.h"
 #include "aot_compiler_error_utils.h"
 #include "aot_compiler_impl.h"
-#include "hilog/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "iservice_registry.h"
 #include "ipc_skeleton.h"
 #include "iremote_object.h"
@@ -53,18 +53,18 @@ AotCompilerService::~AotCompilerService()
 
 void AotCompilerService::OnStart()
 {
-    HiviewDFX::HiLog::Info(LABEL, "aot compiler service is onStart");
+    LOG_SA(INFO) << "aot compiler service is onStart";
     if (state_ == ServiceRunningState::STATE_RUNNING) {
-        HiviewDFX::HiLog::Info(LABEL, "aot compiler service has already started");
+        LOG_SA(INFO) << "aot compiler service has already started";
         return;
     }
     if (!Init()) {
-        HiviewDFX::HiLog::Info(LABEL, "init aot compiler service failed");
+        LOG_SA(INFO) << "init aot compiler service failed";
         return;
     }
     bool ret = Publish(this);
     if (!ret) {
-        HiviewDFX::HiLog::Error(LABEL, "publish service failed");
+        LOG_SA(ERROR) << "publish service failed";
         return;
     }
     state_ = ServiceRunningState::STATE_RUNNING;
@@ -82,16 +82,16 @@ bool AotCompilerService::Init()
 
 void AotCompilerService::DelayUnloadTask()
 {
-    auto task = [this]() {
+    auto task = []() {
         sptr<ISystemAbilityManager> samgr =
             SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
         if (samgr == nullptr) {
-            HiviewDFX::HiLog::Error(LABEL, "fail to get system ability manager");
+            LOG_SA(ERROR) << "fail to get system ability manager";
             return;
         }
         int32_t ret = samgr->UnloadSystemAbility(AOT_COMPILER_SERVICE_ID);
         if (ret != ERR_OK) {
-            HiviewDFX::HiLog::Error(LABEL, "remove system ability failed");
+            LOG_SA(ERROR) << "remove system ability failed";
             return;
         }
     };
@@ -101,7 +101,7 @@ void AotCompilerService::DelayUnloadTask()
 
 void AotCompilerService::OnStop()
 {
-    HiviewDFX::HiLog::Info(LABEL, "aot compiler service has been onStop");
+    LOG_SA(INFO) << "aot compiler service has been onStop";
     state_ = ServiceRunningState::STATE_NOT_START;
     UnRegisterPowerDisconnectedListener();
 }
@@ -109,17 +109,37 @@ void AotCompilerService::OnStop()
 int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                                         std::vector<int16_t> &sigData)
 {
-    HiviewDFX::HiLog::Debug(LABEL, "begin to call aot compiler");
+    LOG_SA(DEBUG) << "begin to call aot compiler";
     unLoadHandler_->RemoveTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().EcmascriptAotCompiler(argsMap, sigData);
-    HiviewDFX::HiLog::Debug(LABEL, "finish aot compiler");
+    LOG_SA(DEBUG) << "finish aot compiler";
+    DelayUnloadTask();
+    return ret;
+}
+
+int32_t AotCompilerService::GetAOTVersion(std::string& sigData)
+{
+    LOG_SA(DEBUG) << "begin to get AOT version";
+    unLoadHandler_->RemoveTask(TASK_ID);
+    int32_t ret = AotCompilerImpl::GetInstance().GetAOTVersion(sigData);
+    LOG_SA(DEBUG) << "finish get AOT Version";
+    DelayUnloadTask();
+    return ret;
+}
+
+int32_t AotCompilerService::NeedReCompile(const std::string& args, bool& sigData)
+{
+    LOG_SA(DEBUG) << "begin to check need to re-compile version";
+    unLoadHandler_->RemoveTask(TASK_ID);
+    int32_t ret = AotCompilerImpl::GetInstance().NeedReCompile(args, sigData);
+    LOG_SA(DEBUG) << "finish check need re-compile";
     DelayUnloadTask();
     return ret;
 }
 
 int32_t AotCompilerService::StopAotCompiler()
 {
-    HiviewDFX::HiLog::Debug(LABEL, "stop aot compiler service");
+    LOG_SA(DEBUG) << "stop aot compiler service";
     unLoadHandler_->RemoveTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().StopAotCompiler();
     DelayUnloadTask();
@@ -128,31 +148,31 @@ int32_t AotCompilerService::StopAotCompiler()
 
 void AotCompilerService::RegisterPowerDisconnectedListener()
 {
-    HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::RegisterPowerDisconnectedListener");
+    LOG_SA(INFO) << "AotCompilerService::RegisterPowerDisconnectedListener";
     EventFwk::MatchingSkills matchingSkills;
     matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED);
     EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
     powerDisconnectedListener_ = std::make_shared<PowerDisconnectedListener>(subscribeInfo);
     if (!EventFwk::CommonEventManager::SubscribeCommonEvent(powerDisconnectedListener_)) {
-        HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::RegisterPowerDisconnectedListener failed");
+        LOG_SA(INFO) << "AotCompilerService::RegisterPowerDisconnectedListener failed";
         powerDisconnectedListener_ = nullptr;
     } else {
-        HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::RegisterPowerDisconnectedListener success");
+        LOG_SA(INFO) << "AotCompilerService::RegisterPowerDisconnectedListener success";
         isPowerEventSubscribered_ = true;
     }
 }
 
 void AotCompilerService::UnRegisterPowerDisconnectedListener()
 {
-    HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::UnRegisterPowerDisconnectedListener");
+    LOG_SA(INFO) << "AotCompilerService::UnRegisterPowerDisconnectedListener";
     if (!isPowerEventSubscribered_) {
         return;
     }
     if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(powerDisconnectedListener_)) {
-        HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::UnRegisterPowerDisconnectedListener failed");
+        LOG_SA(INFO) << "AotCompilerService::UnRegisterPowerDisconnectedListener failed";
     }
     powerDisconnectedListener_ = nullptr;
     isPowerEventSubscribered_ = false;
-    HiviewDFX::HiLog::Info(LABEL, "AotCompilerService::UnRegisterPowerDisconnectedListener done");
+    LOG_SA(INFO) << "AotCompilerService::UnRegisterPowerDisconnectedListener done";
 }
 } // namespace OHOS::ArkCompiler

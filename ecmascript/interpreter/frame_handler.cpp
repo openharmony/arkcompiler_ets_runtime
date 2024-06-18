@@ -43,6 +43,9 @@ ARK_INLINE void FrameHandler::AdvanceToJSFrame()
     FrameIterator it(sp_, thread_);
     for (; !it.Done(); it.Advance()) {
         FrameType t = it.GetFrameType();
+        if (IsBaselineBuiltinFrame(t)) {
+            FindAndSetBaselineNativePc(it);
+        }
         if (IsJSFrame(t) || IsJSEntryFrame(t)) {
             break;
         }
@@ -54,6 +57,9 @@ ARK_INLINE void FrameHandler::PrevJSFrame()
 {
     if (!thread_->IsAsmInterpreter()) {
         FrameIterator it(sp_, thread_);
+        if (IsBaselineBuiltinFrame(it.GetFrameType())) {
+            FindAndSetBaselineNativePc(it);
+        }
         it.Advance();
         sp_ = it.GetSp();
         return;
@@ -110,6 +116,13 @@ void FrameHandler::SetVRegValue(size_t index, JSTaggedValue value)
     ASSERT(IsInterpretedFrame());
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     sp_[index] = value.GetRawData();
+}
+
+void FrameHandler::FindAndSetBaselineNativePc(FrameIterator it)
+{
+    ASSERT(IsBaselineBuiltinFrame(it.GetFrameType()));
+    auto *frame = it.GetFrame<BaselineBuiltinFrame>();
+    baselineNativePc_ = frame->GetReturnAddr();
 }
 
 JSTaggedValue FrameHandler::GetAcc() const
@@ -214,6 +227,11 @@ JSTaggedValue FrameHandler::GetFunction() const
             case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
             case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
                 auto *frame = OptimizedJSFunctionFrame::GetFrameFromSp(sp_);
+                return frame->GetFunction();
+            }
+            case FrameType::FASTJIT_FUNCTION_FRAME:
+            case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+                auto *frame = FASTJITFunctionFrame::GetFrameFromSp(sp_);
                 return frame->GetFunction();
             }
             case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME :
@@ -420,6 +438,12 @@ void FrameHandler::IterateFrameChain(JSTaggedType *start, const RootVisitor &vis
                 isBaselineFrame = true;
                 auto frame = it.GetFrame<BaselineBuiltinFrame>();
                 frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor);
+                break;
+            }
+            case FrameType::FASTJIT_FUNCTION_FRAME:
+            case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+                auto frame = it.GetFrame<FASTJITFunctionFrame>();
+                frame->GCIterate(it, visitor, rangeVisitor, derivedVisitor, type);
                 break;
             }
             case FrameType::ASM_INTERPRETER_FRAME:

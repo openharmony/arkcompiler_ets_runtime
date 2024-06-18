@@ -51,7 +51,6 @@ len = Math.acos(10);
 print(len); //: NaN
 
 // Replace standart builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_acos = Math.acos
 Math.acos = replace
 len = Math.acos(111);
@@ -59,5 +58,7 @@ print(len); //: 111
 
 // Call standart builtin with non-number param
 Math.acos = true_acos
-len = Math.acos("NaN"); // deopt
+len = Math.acos("NaN");
+//aot: [trace] aot inline builtin: Math.acos, caller function name:func_main_0@builtinMathAcos
+//aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -35,6 +35,7 @@
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/builtins/builtins_finalization_registry.h"
 #include "ecmascript/builtins/builtins_function.h"
+#include "ecmascript/builtins/builtins_gc.h"
 #include "ecmascript/builtins/builtins_generator.h"
 #include "ecmascript/builtins/builtins_global.h"
 #include "ecmascript/builtins/builtins_iterator.h"
@@ -501,6 +502,8 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
     SetFunction(env, globalObject, "unescape", Global::Unescape, FunctionLength::ONE);
     SetFunction(env, globalObject, "decodeURIComponent", Global::DecodeURIComponent, FunctionLength::ONE);
     SetFunction(env, globalObject, "encodeURIComponent", Global::EncodeURIComponent, FunctionLength::ONE);
+    SetFunction(env, globalObject, "__getCurrentModuleName__", Global::GetCurrentModuleName, FunctionLength::ZERO);
+    SetFunction(env, globalObject, "__getCurrentBundleName__", Global::GetCurrentBundleName, FunctionLength::ZERO);
 
     // Global object property
     SetGlobalThis(globalObject, "globalThis", JSHandle<JSTaggedValue>::Cast(globalObject));
@@ -645,7 +648,8 @@ void Builtins::InitializeFunctionPrototype(const JSHandle<GlobalEnv> &env, JSHan
     SetInlineFunction(env, funcFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
                       Function::FunctionPrototypeToString, fieldIndex++, FunctionLength::ZERO);
     SetInlineFunction(env, funcFuncPrototypeObj, "[Symbol.hasInstance]",
-                      Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE);
+                      Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE,
+                      BUILTINS_STUB_ID(FunctionPrototypeHasInstance));
 }
 
 void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
@@ -719,6 +723,9 @@ void Builtins::InitializeObject(const JSHandle<GlobalEnv> &env, const JSHandle<J
     JSHandle<JSTaggedValue> protoGetter = CreateGetter(env, Object::ProtoGetter, "__proto__", FunctionLength::ZERO);
     JSHandle<JSTaggedValue> protoSetter = CreateSetter(env, Object::ProtoSetter, "__proto__", FunctionLength::ONE);
     SetAccessor(objFuncPrototype, protoKey, protoGetter, protoSetter);
+
+    GlobalEnvConstants *globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
+    globalConst->SetConstant(ConstantIndex::OBJECT_GET_PROTO_INDEX, protoGetter);
 
     GlobalIndex globalIndex;
     globalIndex.UpdateGlobalEnvId(static_cast<size_t>(GlobalEnvField::OBJECT_FUNCTION_INDEX));
@@ -1021,6 +1028,7 @@ void Builtins::InitializeBoolean(const JSHandle<GlobalEnv> &env, const JSHandle<
                 Boolean::BooleanPrototypeValueOf, FunctionLength::ZERO);
 
     env->SetBooleanFunction(thread_, booleanFunction);
+    env->SetBooleanPrototype(thread_, booleanFuncPrototype);
 }
 
 void Builtins::InitializeProxy(const JSHandle<GlobalEnv> &env)
@@ -1037,7 +1045,8 @@ JSHandle<JSFunction> Builtins::InitializeExoticConstructor(const JSHandle<Global
                                                            std::string_view name, int length)
 {
     JSHandle<JSFunction> ctor =
-        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_PROXY_CONSTRUCTOR);
+        factory_->NewJSFunction(env, reinterpret_cast<void *>(ctorFunc), FunctionKind::BUILTIN_PROXY_CONSTRUCTOR,
+                                BUILTINS_STUB_ID(ProxyConstructor));
 
     JSFunction::SetFunctionLength(thread_, ctor, JSTaggedValue(length));
     JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(name));
@@ -1118,7 +1127,7 @@ void Builtins::InitializeAllTypeError(const JSHandle<GlobalEnv> &env, const JSHa
     InitializeError(env, errorNativeFuncInstanceHClass, JSType::JS_TERMINATION_ERROR);
 
     JSHandle<EcmaString> handleMsg = factory_->NewFromUtf8ReadOnly("Default oom error");
-    JSHandle<JSObject> oomError = factory_->NewJSError(ErrorType::OOM_ERROR, handleMsg, true);
+    JSHandle<JSObject> oomError = factory_->NewJSError(ErrorType::OOM_ERROR, handleMsg, StackCheck::YES);
     env->SetOOMErrorObject(thread_, oomError);
 }
 
@@ -1857,7 +1866,7 @@ void Builtins::InitializeIterator(const JSHandle<GlobalEnv> &env, const JSHandle
 
     thread_->SetInitialBuiltinHClass(BuiltinTypeId::ITERATOR, nullptr,
         *iteratorFuncClass, iteratorPrototype->GetJSHClass());
-    
+
     // iteratorPrototype hclass
     JSHandle<JSHClass> iteratorPrototypeHClass(thread_, iteratorPrototype->GetJSHClass());
 
@@ -3663,7 +3672,19 @@ JSHandle<JSObject> Builtins::InitializeArkTools(const JSHandle<GlobalEnv> &env) 
         SetFunction(env, tools, entry.GetName(), entry.GetEntrypoint(),
                     entry.GetLength(), entry.GetBuiltinStubId());
     }
+    JSHandle<JSTaggedValue> gcBuiltins(InitializeGcBuiltins(env));
+    SetConstantObject(tools, "GC", gcBuiltins);
     return tools;
+}
+
+JSHandle<JSObject> Builtins::InitializeGcBuiltins(const JSHandle<GlobalEnv> &env) const
+{
+    JSHandle<JSObject> builtins = factory_->NewEmptyJSObject();
+    for (const base::BuiltinFunctionEntry &entry: builtins::BuiltinsGc::GetGcFunctions()) {
+        SetFunction(env, builtins, entry.GetName(), entry.GetEntrypoint(),
+                    entry.GetLength(), entry.GetBuiltinStubId());
+    }
+    return builtins;
 }
 
 void Builtins::InitializeGlobalRegExp(JSHandle<JSObject> &obj) const
@@ -3776,7 +3797,7 @@ void Builtins::InitializeNativeModuleError(const JSHandle<GlobalEnv> &env,
     JSHandle<JSObject> nativeModuleErrorPrototype = factory_->NewJSObjectWithInit(objFuncClass);
     JSHandle<JSTaggedValue> nativeModuleErrorPrototypeValue(nativeModuleErrorPrototype);
 
-    //  NativeModuleError.prototype_or_hclass
+    // NativeModuleError.prototype_or_hclass
     JSHandle<JSHClass> nativeModuleErrorHClass =
         factory_->NewEcmaHClass(NativeModuleError::SIZE, JSType::NATIVE_MODULE_ERROR, nativeModuleErrorPrototypeValue);
     nativeModuleErrorHClass->SetPrototype(thread_, JSTaggedValue::Null());

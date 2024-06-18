@@ -44,7 +44,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeInvokeSelf([[maybe_unused]] Ecm
     return JSTaggedValue::Undefined();
 }
 namespace {
-static size_t MakeArgListWithHole(TaggedArray *argv, int length)
+static size_t MakeArgListWithHole(JSThread *thread, TaggedArray *argv, int length)
 {
     if (length <= 0) {
         return 0;
@@ -53,6 +53,12 @@ static size_t MakeArgListWithHole(TaggedArray *argv, int length)
     size_t arryLength = argv->GetLength();
     if (newlength > arryLength) {
         length = static_cast<int>(arryLength);
+    }
+    for (size_t index = 0; index < newlength; ++index) {
+        JSTaggedValue value = argv->Get(thread, index);
+        if (value.IsHole()) {
+            argv->Set(thread, index, JSTaggedValue::Undefined());
+        }
     }
     return length;
 }
@@ -75,31 +81,27 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
             return std::make_pair(nullptr, 0);
         }
         auto length = result.GetInt();
-        size_t res = MakeArgListWithHole(elements, length);
+        size_t res = MakeArgListWithHole(thread, elements, length);
         return std::make_pair(elements, res);
     } else if (arrayObj->IsStableJSArray(thread)) {
         JSHandle<JSArray> argList = JSHandle<JSArray>::Cast(arrayObj);
         TaggedArray *elements = nullptr;
-        if (argList->GetElements().IsMutantTaggedArray()) {
-            JSHandle<JSObject> obj(arrayObj);
-            int elementsLength = static_cast<int>(ElementAccessor::GetElementsLength(obj));
-            JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->
-                                                NewTaggedArray(elementsLength, JSTaggedValue::Undefined());
-            for (int i = 0; i < elementsLength; ++i) {
-                JSTaggedValue value = ElementAccessor::Get(obj, i);
-                newElements->Set(thread, i, value);
-            }
-            elements = *newElements;
-        } else {
-            elements = TaggedArray::Cast(argList->GetElements().GetTaggedObject());
+        JSHandle<JSObject> obj(arrayObj);
+        int elementsLength = static_cast<int>(ElementAccessor::GetElementsLength(obj));
+        JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->
+                                            NewTaggedArray(elementsLength, JSTaggedValue::Undefined());
+        for (int i = 0; i < elementsLength; ++i) {
+            JSTaggedValue value = ElementAccessor::Get(obj, i);
+            newElements->Set(thread, i, value);
         }
+        elements = *newElements;
         size_t length = argList->GetArrayLength();
         if (elements->GetLength() == 0 && length != 0) {
             JSHandle<TaggedArray> array =
                 thread->GetEcmaVM()->GetFactory()->NewTaggedArray(length, JSTaggedValue::Undefined());
             return std::make_pair(*array, length);
         }
-        size_t res = MakeArgListWithHole(elements, length);
+        size_t res = MakeArgListWithHole(thread, elements, length);
         return std::make_pair(elements, res);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -116,22 +118,30 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeApply(EcmaRuntimeCallInfo *argv
     BUILTINS_API_TRACE(thread, Function, PrototypeApply);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
+    JSHandle<JSTaggedValue> func = GetThis(argv);
+    JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 0);
+    JSHandle<JSTaggedValue> arrayObj = GetCallArg(argv, 1);
+    return FunctionPrototypeApplyInternal(thread, func, thisArg, arrayObj);
+}
+
+JSTaggedValue BuiltinsFunction::FunctionPrototypeApplyInternal(JSThread *thread, JSHandle<JSTaggedValue> func,
+                                                               JSHandle<JSTaggedValue> thisArg,
+                                                               JSHandle<JSTaggedValue> arrayObj)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // 1. If IsCallable(func) is false, throw a TypeError exception.
-    if (!GetThis(argv)->IsCallable()) {
+    if (!func->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "apply target is not callable", JSTaggedValue::Exception());
     }
 
-    JSHandle<JSTaggedValue> func = GetThis(argv);
-    JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 0);
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     // 2. If argArray is null or undefined, then
-    if (GetCallArg(argv, 1)->IsUndefined()) {  // null will also get undefined
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    if (arrayObj->IsUndefined()) {  // null will also get undefined
         // a. Return Call(func, thisArg).
         EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, func, thisArg, undefined, 0);
         return JSFunction::Call(info);
     }
     // 3. Let argList be CreateListFromArrayLike(argArray).
-    JSHandle<JSTaggedValue> arrayObj = GetCallArg(argv, 1);
     std::pair<TaggedArray*, size_t> argumentsList = BuildArgumentsListFast(thread, arrayObj);
     if (!argumentsList.first) {
         JSHandle<JSTaggedValue> num = JSObject::CreateListFromArrayLike(thread, arrayObj);
@@ -164,10 +174,6 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 1. Let Target be the this value.
     JSHandle<JSTaggedValue> target = GetThis(argv);
-    // 2. If IsCallable(Target) is false, throw a TypeError exception.
-    if (!target->IsCallable()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "bind target is not callable", JSTaggedValue::Exception());
-    }
 
     JSHandle<JSTaggedValue> thisArg = GetCallArg(argv, 0);
     uint32_t argsLength = 0;
@@ -181,6 +187,22 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
     for (uint32_t index = 0; index < argsLength; ++index) {
         argsArray->Set(thread, index, GetCallArg(argv, index + 1));
     }
+
+    return FunctionPrototypeBindInternal(thread, target, thisArg, argsArray);
+}
+
+JSTaggedValue BuiltinsFunction::FunctionPrototypeBindInternal(JSThread *thread, JSHandle<JSTaggedValue> target,
+                                                              JSHandle<JSTaggedValue> thisArg,
+                                                              JSHandle<TaggedArray> argsArray)
+{
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // 2. If IsCallable(Target) is false, throw a TypeError exception.
+    if (!target->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "bind target is not callable", JSTaggedValue::Exception());
+    }
+
     // 4. Let F be BoundFunctionCreate(Target, thisArg, args).
     JSHandle<JSBoundFunction> boundFunction = factory->NewJSBoundFunction(target, thisArg, argsArray);
     // 5. ReturnIfAbrupt(F)
@@ -224,7 +246,7 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeBind(EcmaRuntimeCallInfo *argv)
                 // argv include thisArg
                 lengthValue =
                     std::max(0.0, JSTaggedValue::ToNumber(thread, targetLen).GetNumber() -
-                             static_cast<double>(argsLength));
+                             static_cast<double>(argsArray->GetLength()));
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
         }

@@ -72,7 +72,7 @@ namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
 using namespace llvm;
 
-CodeInfo::CodeInfo()
+CodeInfo::CodeInfo(CodeSpaceOnDemand &codeSpaceOnDemand) : codeSpaceOnDemand_(codeSpaceOnDemand)
 {
     secInfos_.fill(std::make_pair(nullptr, 0));
 }
@@ -135,6 +135,40 @@ uint8_t *CodeInfo::CodeSpace::Alloca(uintptr_t size, bool isReq, size_t alignSiz
     return addr;
 }
 
+uint8_t *CodeInfo::CodeSpaceOnDemand::Alloca(uintptr_t size, [[maybe_unused]] bool isReq, size_t alignSize)
+{
+    // Always apply for an aligned memory block here.
+    auto alignedSize = alignSize > 0 ? AlignUp(size, alignSize) : size;
+    // Verify the size and temporarily use REQUIREd_SECS.LIMITED as the online option, allowing for adjustments.
+    if (alignedSize > SECTION_LIMIT) {
+        LOG_COMPILER(FATAL) << std::hex << "invalid memory size: " << alignedSize;
+        return nullptr;
+    }
+    uint8_t *addr = static_cast<uint8_t *>(malloc(alignedSize));
+    if (addr == nullptr) {
+        LOG_COMPILER(FATAL) << "malloc section failed.";
+        return nullptr;
+    }
+    sections_.push_back({addr, alignedSize});
+    return addr;
+}
+
+CodeInfo::CodeSpaceOnDemand::~CodeSpaceOnDemand()
+{
+    // release all used memory.
+    for (auto &section : sections_) {
+        if ((section.first != nullptr) && (section.second != 0)) {
+            free(section.first);
+        }
+    }
+    sections_.clear();
+}
+
+uint8_t *CodeInfo::AllocaOnDemand(uintptr_t size, size_t alignSize)
+{
+    return codeSpaceOnDemand_.Alloca(size, true, alignSize);
+}
+
 uint8_t *CodeInfo::AllocaInReqSecBuffer(uintptr_t size, size_t alignSize)
 {
     return CodeSpace::GetInstance()->Alloca(size, true, alignSize);
@@ -145,19 +179,20 @@ uint8_t *CodeInfo::AllocaInNotReqSecBuffer(uintptr_t size, size_t alignSize)
     return CodeSpace::GetInstance()->Alloca(size, false, alignSize);
 }
 
-uint8_t *CodeInfo::AllocaCodeSection(uintptr_t size, const char *sectionName)
+uint8_t *CodeInfo::AllocaCodeSectionImp(uintptr_t size, const char *sectionName,
+                                        AllocaSectionCallback allocaInReqSecBuffer)
 {
     uint8_t *addr = nullptr;
     auto curSec = ElfSection(sectionName);
     if (curSec.isValidAOTSec()) {
         if (!alreadyPageAlign_) {
-            addr = AllocaInReqSecBuffer(size, AOTFileInfo::PAGE_ALIGN);
+            addr = (this->*allocaInReqSecBuffer)(size, AOTFileInfo::PAGE_ALIGN);
             alreadyPageAlign_ = true;
         } else {
-            addr = AllocaInReqSecBuffer(size, AOTFileInfo::TEXT_SEC_ALIGN);
+            addr = (this->*allocaInReqSecBuffer)(size, AOTFileInfo::TEXT_SEC_ALIGN);
         }
     } else {
-        addr = AllocaInReqSecBuffer(size);
+        addr = (this->*allocaInReqSecBuffer)(size, 0);
     }
     codeInfo_.push_back({addr, size});
     if (curSec.isValidAOTSec()) {
@@ -166,7 +201,19 @@ uint8_t *CodeInfo::AllocaCodeSection(uintptr_t size, const char *sectionName)
     return addr;
 }
 
-uint8_t *CodeInfo::AllocaDataSection(uintptr_t size, const char *sectionName)
+uint8_t *CodeInfo::AllocaCodeSection(uintptr_t size, const char *sectionName)
+{
+    return AllocaCodeSectionImp(size, sectionName, &CodeInfo::AllocaInReqSecBuffer);
+}
+
+uint8_t *CodeInfo::AllocaCodeSectionOnDemand(uintptr_t size, const char *sectionName)
+{
+    return AllocaCodeSectionImp(size, sectionName, &CodeInfo::AllocaOnDemand);
+}
+
+uint8_t *CodeInfo::AllocaDataSectionImp(uintptr_t size, const char *sectionName,
+                                        AllocaSectionCallback allocaInReqSecBuffer,
+                                        AllocaSectionCallback allocaInNotReqSecBuffer)
 {
     uint8_t *addr = nullptr;
     auto curSec = ElfSection(sectionName);
@@ -174,20 +221,32 @@ uint8_t *CodeInfo::AllocaDataSection(uintptr_t size, const char *sectionName)
     if (curSec.InRodataSection()) {
         size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
         if (!alreadyPageAlign_) {
-            addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size, AOTFileInfo::PAGE_ALIGN)
-                                               : AllocaInNotReqSecBuffer(size, AOTFileInfo::PAGE_ALIGN);
+            addr = curSec.isSequentialAOTSec() ? (this->*allocaInReqSecBuffer)(size, AOTFileInfo::PAGE_ALIGN)
+                                               : (this->*allocaInNotReqSecBuffer)(size, AOTFileInfo::PAGE_ALIGN);
             alreadyPageAlign_ = true;
         } else {
-            addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size, AOTFileInfo::DATA_SEC_ALIGN)
-                                               : AllocaInNotReqSecBuffer(size, AOTFileInfo::DATA_SEC_ALIGN);
+            addr = curSec.isSequentialAOTSec() ? (this->*allocaInReqSecBuffer)(size, AOTFileInfo::DATA_SEC_ALIGN)
+                                               : (this->*allocaInNotReqSecBuffer)(size, AOTFileInfo::DATA_SEC_ALIGN);
         }
     } else {
-        addr = curSec.isSequentialAOTSec() ? AllocaInReqSecBuffer(size) : AllocaInNotReqSecBuffer(size);
+        addr = curSec.isSequentialAOTSec() ? (this->*allocaInReqSecBuffer)(size, 0)
+                                           : (this->*allocaInNotReqSecBuffer)(size, 0);
     }
     if (curSec.isValidAOTSec()) {
         secInfos_[curSec.GetIntIndex()] = std::make_pair(addr, size);
     }
     return addr;
+
+}
+
+uint8_t *CodeInfo::AllocaDataSection(uintptr_t size, const char *sectionName)
+{
+    return AllocaDataSectionImp(size, sectionName, &CodeInfo::AllocaInReqSecBuffer, &CodeInfo::AllocaInNotReqSecBuffer);
+}
+
+uint8_t *CodeInfo::AllocaDataSectionOnDemand(uintptr_t size, const char *sectionName)
+{
+    return AllocaDataSectionImp(size, sectionName, &CodeInfo::AllocaOnDemand, &CodeInfo::AllocaOnDemand);
 }
 
 void CodeInfo::SaveFunc2Addr(std::string funcName, uint32_t address)
@@ -284,10 +343,10 @@ void LLVMIRGeneratorImpl::GenerateCodeForStub(Circuit *circuit, const ControlFlo
 void LLVMIRGeneratorImpl::GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                                        const panda::ecmascript::MethodLiteral *methodLiteral,
                                        const JSPandaFile *jsPandaFile, const std::string &methodName,
-                                       bool enableOptInlining, bool enableOptBranchProfiling)
+                                       const FrameType frameType, bool enableOptInlining, bool enableOptBranchProfiling)
 {
     auto function = module_->AddFunc(methodLiteral, jsPandaFile);
-    circuit->SetFrameType(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    circuit->SetFrameType(frameType);
     CallSignature::CallConv conv;
     if (methodLiteral->IsFastCall()) {
         conv = CallSignature::CallConv::CCallConv;
@@ -307,12 +366,27 @@ static uint8_t *RoundTripAllocateCodeSection(void *object, uintptr_t size, [[may
     return state.AllocaCodeSection(size, sectionName);
 }
 
+static uint8_t *RoundTripAllocateCodeSectionOnDemand(void *object, uintptr_t size, [[maybe_unused]] unsigned alignment,
+                                                     [[maybe_unused]] unsigned sectionID, const char *sectionName)
+{
+    struct CodeInfo& state = *static_cast<struct CodeInfo*>(object);
+    return state.AllocaCodeSectionOnDemand(size, sectionName);
+}
+
 static uint8_t *RoundTripAllocateDataSection(void *object, uintptr_t size, [[maybe_unused]] unsigned alignment,
                                              [[maybe_unused]] unsigned sectionID, const char *sectionName,
                                              [[maybe_unused]] LLVMBool isReadOnly)
 {
     struct CodeInfo& state = *static_cast<struct CodeInfo*>(object);
     return state.AllocaDataSection(size, sectionName);
+}
+
+static uint8_t *RoundTripAllocateDataSectionOnDemand(void *object, uintptr_t size, [[maybe_unused]] unsigned alignment,
+                                                     [[maybe_unused]] unsigned sectionID, const char *sectionName,
+                                                     [[maybe_unused]] LLVMBool isReadOnly)
+{
+    struct CodeInfo& state = *static_cast<struct CodeInfo*>(object);
+    return state.AllocaDataSectionOnDemand(size, sectionName);
 }
 
 static LLVMBool RoundTripFinalizeMemory([[maybe_unused]] void *object, [[maybe_unused]] char **errMsg)
@@ -325,12 +399,13 @@ static void RoundTripDestroy([[maybe_unused]] void *object)
     return;
 }
 
-void LLVMAssembler::UseRoundTripSectionMemoryManager()
+void LLVMAssembler::UseRoundTripSectionMemoryManager(bool isJit)
 {
     auto sectionMemoryManager = std::make_unique<llvm::SectionMemoryManager>();
-    options_.MCJMM =
-        LLVMCreateSimpleMCJITMemoryManager(&codeInfo_, RoundTripAllocateCodeSection,
-            RoundTripAllocateDataSection, RoundTripFinalizeMemory, RoundTripDestroy);
+    options_.MCJMM = LLVMCreateSimpleMCJITMemoryManager(
+        &codeInfo_, isJit ? RoundTripAllocateCodeSectionOnDemand : RoundTripAllocateCodeSection,
+        isJit ? RoundTripAllocateDataSectionOnDemand : RoundTripAllocateDataSection, RoundTripFinalizeMemory,
+        RoundTripDestroy);
 }
 
 bool LLVMAssembler::BuildMCJITEngine()
@@ -401,8 +476,8 @@ void LLVMAssembler::BuildAndRunPassesFastMode()
     LLVMDisposePassManager(modPass);
 }
 
-LLVMAssembler::LLVMAssembler(LLVMModule *lm, LOptions option)
-    : Assembler(),
+LLVMAssembler::LLVMAssembler(LLVMModule *lm, CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand, LOptions option)
+    : Assembler(codeSpaceOnDemand),
       llvmModule_(lm),
       module_(llvmModule_->GetModule()),
       listener_(this)
@@ -427,7 +502,7 @@ LLVMAssembler::~LLVMAssembler()
     error_ = nullptr;
 }
 
-void LLVMAssembler::Run(const CompilerLog &log, bool fastCompileMode)
+void LLVMAssembler::Run(const CompilerLog &log, bool fastCompileMode, bool isJit)
 {
     char *error = nullptr;
     std::string originName = llvm::unwrap(module_)->getModuleIdentifier() + ".ll";
@@ -439,7 +514,7 @@ void LLVMAssembler::Run(const CompilerLog &log, bool fastCompileMode)
     }
     LLVMVerifyModule(module_, LLVMAbortProcessAction, &error);
     LLVMDisposeMessage(error);
-    UseRoundTripSectionMemoryManager();
+    UseRoundTripSectionMemoryManager(isJit);
     if (!BuildMCJITEngine()) {
         return;
     }

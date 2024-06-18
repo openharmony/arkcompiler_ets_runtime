@@ -19,14 +19,14 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
+#include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/compiler/gate_accessor.h"
-
 
 namespace panda::ecmascript::kungfu {
 class MCRLowering : public PassVisitor {
 public:
-    MCRLowering(Circuit *circuit, RPOVisitor *visitor, CompilationConfig *cmpCfg, Chunk *chunk)
-        : PassVisitor(circuit, chunk, visitor), circuit_(circuit), acc_(circuit),
+    MCRLowering(CompilationEnv* env, Circuit *circuit, RPOVisitor *visitor, CompilationConfig *cmpCfg, Chunk *chunk)
+        : PassVisitor(circuit, chunk, visitor), env_(env), circuit_(circuit), acc_(circuit),
           builder_(circuit, cmpCfg), glue_(acc_.GetGlueFromArgList())
     {
     }
@@ -48,7 +48,7 @@ private:
     void LowerGetConstPool(GateRef gate);
     void LowerGetUnsharedConstpool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);
-    void LowerLoadHClassFromUnsharedConstpool(GateRef gate);
+    void LowerLoadHClassFromConstpool(GateRef gate);
     void LowerStoreConstOffset(GateRef gate);
     void LowerConvertHoleAsUndefined(GateRef gate);
     void LowerCheckAndConvert(GateRef gate);
@@ -105,7 +105,7 @@ private:
     void HeapAllocateInSOld(GateRef gate);
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef glue, GateRef value,
                                     GateRef start, GateRef end);
-
+    CompilationEnv *env_;
     Circuit *circuit_;
     GateAccessor acc_;
     CircuitBuilder builder_;

@@ -71,13 +71,33 @@ inline void NonMovableMarker::MarkValue(uint32_t threadId, ObjectSlot &slot, Reg
 inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
-    if ((!heap_->IsConcurrentFullMark() && !objectRegion->InYoungSpace()) ||
-        objectRegion->InSharedHeap()) {
+
+    if (objectRegion->InSharedHeap()) {
         return;
     }
 
+    if (heap_->IsYoungMark() && objectRegion->InGeneralOldSpace()) {
+        return;
+    }
+    
+    if (heap_->IsEdenMark() && !objectRegion->InEdenSpace()) {
+        return;
+    }
+#ifdef ENABLE_JITFORT
+    if (objectRegion->InMachineCodeSpace()) {
+        LOG_JIT(DEBUG) << "MarkObject MachineCode " << object
+            << " instructionsAddr " << (void *)((MachineCode*)object)->GetInstructionsAddr()
+            << " end " << (void *)(((MachineCode*)object)->GetInstructionsAddr() +
+                                   ((MachineCode*)object)->GetInstructionsSize())
+            << " size " <<((MachineCode *)object)->GetInstructionsSize();
+    }
+#else
+    if (objectRegion->InMachineCodeSpace()) {
+        LOG_JIT(DEBUG) << "MarkObject MachineCode " << object;
+    }
+#endif
     if (objectRegion->AtomicMark(object)) {
-        workManager_->Push(threadId, object, objectRegion);
+        workManager_->Push(threadId, object);
     }
 }
 
@@ -110,9 +130,10 @@ inline void NonMovableMarker::HandleDerivedRoots([[maybe_unused]] Root type, [[m
     // It is only used to update the derived value. The mark of partial GC does not need to update slot
 }
 
-inline void NonMovableMarker::HandleOldToNewRSet(uint32_t threadId, Region *region)
+inline void NonMovableMarker::HandleNewToEdenRSet(uint32_t threadId, Region *region)
 {
-    region->IterateAllOldToNewBits([this, threadId, &region](void *mem) -> bool {
+    ASSERT(region->InYoungSpace());
+    region->IterateAllNewToEdenBits([this, threadId, region](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());
         if (value.IsHeapObject()) {
@@ -126,11 +147,41 @@ inline void NonMovableMarker::HandleOldToNewRSet(uint32_t threadId, Region *regi
     });
 }
 
+inline void NonMovableMarker::HandleOldToNewRSet(uint32_t threadId, Region *region)
+{
+    bool isEdenMark = heap_->IsEdenMark();
+    region->IterateAllOldToNewBits([this, threadId, &region, isEdenMark](void *mem) -> bool {
+        ObjectSlot slot(ToUintPtr(mem));
+        JSTaggedValue value(slot.GetTaggedType());
+        if (!value.IsHeapObject()) {
+            return true;
+        }
+        if (value.IsWeakForHeapObject()) {
+            RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem), region);
+        } else {
+            auto object = value.GetTaggedObject();
+            Region *objectRegion = Region::ObjectAddressToRange(object);
+            if (isEdenMark) {
+                if (objectRegion->InEdenSpace()) {
+                    MarkObject(threadId, value.GetTaggedObject());
+                }
+            } else {
+                MarkObject(threadId, value.GetTaggedObject());
+            }
+        }
+        return true;
+    });
+}
+
 inline void NonMovableMarker::RecordWeakReference(uint32_t threadId, JSTaggedType *ref, Region *objectRegion)
 {
     auto value = JSTaggedValue(*ref);
     Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedWeakRef());
-    if (!objectRegion->InYoungSpaceOrCSet() && !valueRegion->InYoungSpaceOrCSet()) {
+    if (heap_->IsEdenMark()) {
+        // only record object may be sweep, but no object will be sweep in EdenGC
+        return;
+    }
+    if (!objectRegion->InGeneralNewSpaceOrCSet() && !valueRegion->InGeneralNewSpaceOrCSet()) {
         workManager_->PushWeakReference(threadId, ref);
     }
 }
@@ -184,6 +235,25 @@ inline void MovableMarker::HandleDerivedRoots([[maybe_unused]] Root type, Object
     if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
         derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
     }
+}
+
+inline void MovableMarker::HandleNewToEdenRSet(uint32_t threadId, Region *region)
+{
+    region->IterateAllNewToEdenBits([this, threadId, &region](void *mem) -> bool {
+        ObjectSlot slot(ToUintPtr(mem));
+        JSTaggedValue value(slot.GetTaggedType());
+        if (value.IsHeapObject()) {
+            if (value.IsWeakForHeapObject()) {
+                RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem), region);
+                return true;
+            }
+            auto slotStatus = MarkObject(threadId, value.GetTaggedObject(), slot);
+            if (slotStatus == SlotStatus::CLEAR_SLOT) {
+                return false;
+            }
+        }
+        return true;
+    });
 }
 
 inline void MovableMarker::HandleOldToNewRSet(uint32_t threadId, Region *region)
@@ -302,7 +372,7 @@ inline void SemiGCMarker::MarkValue(uint32_t threadId, TaggedObject *root, Objec
             return;
         }
         auto slotStatus = MarkObject(threadId, value.GetTaggedObject(), slot);
-        if (!rootRegion->InYoungSpace() && slotStatus == SlotStatus::KEEP_SLOT) {
+        if (rootRegion->InGeneralOldSpace() && slotStatus == SlotStatus::KEEP_SLOT) {
             SlotNeedUpdate waitUpdate(reinterpret_cast<TaggedObject *>(root), slot);
             workManager_->PushSlotNeedUpdate(threadId, waitUpdate);
         }
@@ -312,7 +382,7 @@ inline void SemiGCMarker::MarkValue(uint32_t threadId, TaggedObject *root, Objec
 inline SlotStatus SemiGCMarker::MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot slot)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
-    if (!objectRegion->InYoungSpace()) {
+    if (objectRegion->InGeneralOldSpace()) {
         return SlotStatus::CLEAR_SLOT;
     }
 

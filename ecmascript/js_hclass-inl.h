@@ -73,6 +73,7 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
                                    const JSHandle<JSHClass> &child, const JSHandle<JSTaggedValue> &key,
                                    const JSHandle<JSTaggedValue> &proto)
 {
+    ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
     UpdateRootHClass(thread, parent, child);
     JSTaggedValue transitions = parent->GetTransitions();
     JSMutableHandle<TransitionsDictionary> dict(thread, JSTaggedValue::Undefined());

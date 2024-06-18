@@ -179,11 +179,6 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     if (JsStackInfo::options == nullptr) {
         JsStackInfo::options = &(vm->GetJSOptions());
     }
-#if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
-    if (SetThreadInfoCallback != nullptr) {
-        SetThreadInfoCallback(CrashCallback);
-    }
-#endif
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     vm->GetJSOptions().SetArkProperties(arkProperties);
@@ -225,10 +220,7 @@ void EcmaVM::PostFork()
     DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
-    if (ohos::EnableAotListHelper::GetInstance()->IsDisableBlackList(bundleName)) {
-        options_.SetEnablePGOProfiler(false);
-        PGOProfilerManager::GetInstance()->SetDisableAot(true);
-    } else if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+    if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
     if (ohos::EnableAotListHelper::GetInstance()->IsAotCompileSuccessOnce()) {
@@ -241,7 +233,9 @@ void EcmaVM::PostFork()
     }
     ResetPGOProfiler();
 
-    bool jitEscapeDisable = panda::ecmascript::ohos::GetJitEscapeEanble();
+    options_.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());
+    processStartRealtime_ = InitializeStartRealTime();
+    bool jitEscapeDisable = ohos::JitTools::GetJitEscapeDisable();
     if (jitEscapeDisable || !JSNApi::IsJitEscape()) {
         if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName)) {
             bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
@@ -275,6 +269,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
     SetEnableOsr(options_.IsEnableOSR() && options_.IsEnableJIT() && options_.GetEnableAsmInterpreter());
+    processStartRealtime_ = InitializeStartRealTime();
 }
 
 // for jit
@@ -322,9 +317,6 @@ bool EcmaVM::IsEnablePGOProfiler() const
 
 bool EcmaVM::IsEnableElementsKind() const
 {
-    if (options_.IsWorker()) {
-        return false;
-    }
     return options_.GetEnableAsmInterpreter() && options_.IsEnableElementsKind();
 }
 
@@ -340,16 +332,20 @@ bool EcmaVM::IsEnableBaselineJit() const
 
 void EcmaVM::EnableJit()
 {
-    // check enable aot pgo, if have enable aot pgo, thread installed pgo stubs
-    if (!IsEnablePGOProfiler() && pgoProfiler_ != nullptr) {
-        // only jit enable pgo, disable aot pgo dump
-        options_.SetEnableProfileDump(false);
-        Jit::GetInstance()->SetProfileNeedDump(false);
-        // enable pgo profile
-        options_.SetEnablePGOProfiler(true);
-        ResetPGOProfiler();
-    }
-    if (pgoProfiler_ != nullptr) {
+    if (!options_.IsEnableJITPGO() || pgoProfiler_ == nullptr) {
+        thread_->SwitchJitProfileStubs(false);
+    } else {
+        // if not enable aot pgo
+        if (!PGOProfilerManager::GetInstance()->IsEnable()) {
+            // disable dump
+            options_.SetEnableProfileDump(false);
+            Jit::GetInstance()->SetProfileNeedDump(false);
+            // enable profiler
+            options_.SetEnablePGOProfiler(true);
+            pgoProfiler_->Reset(true);
+            // switch pgo stub
+            thread_->SwitchJitProfileStubs(true);
+        }
         pgoProfiler_->InitJITProfiler();
     }
     bool isApp = Jit::GetInstance()->IsAppJit();
@@ -357,13 +353,21 @@ void EcmaVM::EnableJit()
     bool profileNeedDump = Jit::GetInstance()->IsProfileNeedDump();
     options_.SetEnableProfileDump(profileNeedDump);
 
-    GetJSThread()->SwitchJitProfileStubs();
-    bool jitEnableLitecg = panda::ecmascript::ohos::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
-    LOG_JIT(INFO) << "jit enable litecg: " << jitEnableLitecg;
+    bool jitEnableLitecg = ohos::JitTools::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
     options_.SetCompilerEnableLiteCG(jitEnableLitecg);
-    uint8_t jitCallThreshold = panda::ecmascript::ohos::GetJitCallThreshold(options_.GetJitCallThreshold());
-    LOG_JIT(INFO) << "jit call threshold: " << std::to_string(jitCallThreshold);
+    uint8_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options_.GetJitCallThreshold());
     options_.SetJitCallThreshold(jitCallThreshold);
+
+    uint32_t jitHotnessThreshold = ohos::JitTools::GetJitHotnessThreshold(options_.GetJitHotnessThreshold());
+    options_.SetJitHotnessThreshold(jitHotnessThreshold);
+    LOG_JIT(INFO) << "jit enable litecg:" << jitEnableLitecg << ", call threshold:" <<
+        static_cast<int>(jitCallThreshold) << ", hotness threshold:" << jitHotnessThreshold;
+
+    bool jitDisableCodeSign = ohos::JitTools::GetCodeSignDisable();
+    options_.SetDisableCodeSign(jitDisableCodeSign);
+    LOG_JIT(INFO) << "jit disable codesigner:" << jitDisableCodeSign;
+
+    SetEnableJitLogSkip(ohos::JitTools::GetSkipJitLogEnable());
 }
 
 Jit *EcmaVM::GetJit() const
@@ -406,6 +410,9 @@ bool EcmaVM::Initialize()
     quickFixManager_ = new QuickFixManager();
     if (options_.GetEnableAsmInterpreter()) {
         thread_->GetCurrentEcmaContext()->LoadStubFile();
+    }
+    if (options_.EnableEdenGC()) {
+        heap_->EnableEdenGC();
     }
 
     callTimer_ = new FunctionCallTimer();
@@ -628,7 +635,8 @@ void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) cons
 
 void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
 {
-    if (!heap_->IsYoungGC()) {
+    // ProcessNativeDelete should be limited to OldGC or FullGC only
+    if (!heap_->IsGeneralYoungGC()) {
         auto iter = nativePointerList_.begin();
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
         while (iter != nativePointerList_.end()) {
@@ -681,7 +689,8 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
     if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
         thread_->GetCurrentEcmaContext()->GetRegExpParserCache()->Clear();
     }
-    if (!heap_->IsYoungGC()) {
+    // process native ref should be limited to OldGC or FullGC only
+    if (!heap_->IsGeneralYoungGC()) {
         heap_->ResetNativeBindingSize();
         // array buffer
         auto iter = nativePointerList_.begin();
@@ -807,6 +816,9 @@ void EcmaVM::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (pgoProfiler_ != nullptr) {
         pgoProfiler_->Iterate(v);
     }
+    if (aotFileManager_) {
+        aotFileManager_->Iterate(v);
+    }
 }
 
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
@@ -891,6 +903,19 @@ void EcmaVM::GenerateInternalNativeMethods()
         method->SetFunctionKind(FunctionKind::NORMAL_FUNCTION);
         internalNativeMethods_.emplace_back(method.GetTaggedValue());
     }
+    // cache to global constants shared because context may change
+    CacheToGlobalConstants(GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_BOUND_FUNCTION),
+                           ConstantIndex::BOUND_FUNCTION_METHOD_INDEX);
+    CacheToGlobalConstants(GetMethodByIndex(MethodIndex::BUILTINS_GLOBAL_CALL_JS_PROXY),
+                           ConstantIndex::PROXY_METHOD_INDEX);
+}
+
+void EcmaVM::CacheToGlobalConstants(JSTaggedValue value, ConstantIndex idx)
+{
+    auto thread = GetJSThread();
+    auto context = thread->GetCurrentEcmaContext();
+    auto constants = const_cast<GlobalEnvConstants *>(context->GlobalConstants());
+    constants->SetConstant(idx, value);
 }
 
 JSTaggedValue EcmaVM::GetMethodByIndex(MethodIndex idx)
@@ -914,7 +939,7 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
         auto status = promise->GetPromiseState();
         if (status == PromiseState::PENDING) {
             result = JSHandle<JSTaggedValue>::Cast(factory_->GetJSError(
-                ErrorType::ERROR, "Can't return Promise in pending state")).GetTaggedValue();
+                ErrorType::ERROR, "Can't return Promise in pending state", StackCheck::NO)).GetTaggedValue();
         } else {
             result = promise->GetPromiseResult();
         }
@@ -1027,8 +1052,8 @@ std::pair<std::string, std::string> EcmaVM::GetCurrentModuleInfo(bool needRecord
 {
     std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread_);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, std::make_pair("", ""));
-    CString recordName = ConvertToString(moduleInfo.first);
-    CString fileName = ConvertToString(moduleInfo.second);
+    CString recordName = ModulePathHelper::Utf8ConvertToString(moduleInfo.first);
+    CString fileName = ModulePathHelper::Utf8ConvertToString(moduleInfo.second);
     LOG_FULL(INFO) << "Current recordName is " << recordName <<", current fileName is " << fileName;
     if (needRecordName) {
         if (fileName.length() > ModulePathHelper::BUNDLE_INSTALL_PATH_LEN &&
@@ -1100,5 +1125,26 @@ void EcmaVM::InitializeIcuData(const JSRuntimeOptions &options)
             u_setDataDirectory(absPath.c_str());
         }
     }
+}
+
+// Initialize Process StartRealTime
+int EcmaVM::InitializeStartRealTime()
+{
+    int startRealTime = 0;
+    struct timespec timespro = {0, 0};
+    struct timespec timessys = {0, 0};
+    auto res = clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &timespro);
+    if (res) {
+        return startRealTime;
+    }
+    auto res1 = clock_gettime(CLOCK_MONOTONIC, &timessys);
+    if (res1) {
+        return startRealTime;
+    }
+
+    int whenpro = int(timespro.tv_sec * 1000) + int(timespro.tv_nsec / 1000000);
+    int whensys = int(timessys.tv_sec * 1000) + int(timessys.tv_nsec / 1000000);
+    startRealTime = (whensys - whenpro);
+    return startRealTime;
 }
 }  // namespace panda::ecmascript

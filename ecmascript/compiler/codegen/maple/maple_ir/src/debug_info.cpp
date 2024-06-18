@@ -259,12 +259,8 @@ void DebugInfo::SetupCU()
 {
     compUnit->SetWithChildren(true);
     /* Add the Producer (Compiler) Information */
-    const char *producer = strdup((std::string("Maple Version ") + Version::GetVersionStr()).c_str());
-    CHECK_FATAL(producer != nullptr, "strdup failed");
-    GStrIdx strIdx = module->GetMIRBuilder()->GetOrCreateStringIndex(producer);
-    delete producer;
-    producer = nullptr;
-    ASSERT_NOT_NULL(producer);
+    std::string producer = std::string("Maple Version ") + Version::GetVersionStr();
+    GStrIdx strIdx = module->GetMIRBuilder()->GetOrCreateStringIndex(producer.c_str());
     compUnit->AddAttr(DW_AT_producer, DW_FORM_strp, strIdx.GetIdx());
 
     /* Source Languate  */

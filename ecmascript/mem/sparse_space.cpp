@@ -30,14 +30,17 @@ SparseSpace::SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, 
       localHeap_(heap),
       liveObjectSize_(0)
 {
+#ifdef ENABLE_JITFORT
+    allocator_ = new FreeListAllocator<FreeObject>(heap);
+#else
     allocator_ = new FreeListAllocator(heap);
+#endif
 }
 
 void SparseSpace::Initialize()
 {
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
-    region->InitializeFreeObjectSets();
     AddRegion(region);
 
     allocator_->Initialize(region);
@@ -98,7 +101,6 @@ bool SparseSpace::Expand()
     }
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
-    region->InitializeFreeObjectSets();
     AddRegion(region);
     allocator_->AddFree(region);
     return true;
@@ -123,6 +125,10 @@ void SparseSpace::PrepareSweeping()
     liveObjectSize_ = 0;
     EnumerateRegions([this](Region *current) {
         if (!current->InCollectSet()) {
+            if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
+                current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) {
+                LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << current;
+            }
             IncreaseLiveObjectSize(current->AliveObject());
             current->ResetWasted();
             current->SwapOldToNewRSetForCS();
@@ -143,7 +149,6 @@ void SparseSpace::AsyncSweep(bool isMain)
         // Main thread sweeping region is added;
         if (!isMain) {
             AddSweptRegionSafe(current);
-            current->SetSwept();
         } else {
             current->MergeOldToNewRSetForCS();
             current->MergeLocalToShareRSetForCS();
@@ -215,6 +220,7 @@ void SparseSpace::AddSweptRegionSafe(Region *region)
 {
     LockHolder holder(lock_);
     sweptList_.emplace_back(region);
+    region->SetSwept();
 }
 
 Region *SparseSpace::GetSweptRegionSafe()
@@ -379,7 +385,6 @@ Region *OldSpace::TrySweepToGetSuitableRegion(size_t size)
             return availableRegion;
         } else {
             AddSweptRegionSafe(availableRegion);
-            availableRegion->SetSwept();
         }
     }
     return nullptr;
@@ -566,15 +571,17 @@ void LocalSpace::FreeBumpPoint()
 
 void LocalSpace::Stop()
 {
+    Region *currentRegion = GetCurrentRegion();
     if (GetCurrentRegion() != nullptr) {
-        GetCurrentRegion()->SetHighWaterMark(allocator_->GetTop());
+        // Do not use allocator_->GetTop(), because it may point to freeObj from other regions.
+        currentRegion->SetHighWaterMark(currentRegion->GetBegin() + currentRegion->AliveObject());
     }
 }
 
 uintptr_t NonMovableSpace::CheckAndAllocate(size_t size)
 {
     if (maximumCapacity_ == committedSize_ && GetHeapObjectSize() > MAX_NONMOVABLE_LIVE_OBJ_SIZE &&
-        !localHeap_->GetOldGCRequested()) {
+        !localHeap_->GetOldGCRequested() && !localHeap_->NeedStopCollection()) {
         localHeap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
     }
     return Allocate(size);
@@ -617,5 +624,113 @@ uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
 MachineCodeSpace::MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, MemSpaceType::MACHINE_CODE_SPACE, initialCapacity, maximumCapacity)
 {
+#ifdef ENABLE_JITFORT
+    jitFort_ = JitFort::GetInstance();
+#endif
 }
+
+#ifdef ENABLE_JITFORT
+inline void MachineCodeSpace::RecordLiveJitCode(MachineCode *obj)
+{
+    jitFort_->RecordLiveJitCode(obj->GetInstructionsAddr(), obj->GetInstructionsSize());
+}
+
+// Non concurrent Sweep.
+void MachineCodeSpace::Sweep()
+{
+    liveObjectSize_ = 0;
+    allocator_->RebuildFreeList();
+    jitFort_->RebuildFreeList();
+    EnumerateRegions([this](Region *current) {
+        if (!current->InCollectSet()) {
+            IncreaseLiveObjectSize(current->AliveObject());
+            current->ResetWasted();
+            FreeRegion(current);
+        }
+    });
+    jitFort_->UpdateFreeSpace();
+}
+
+// Concurrent Sweep.
+void MachineCodeSpace::PrepareSweeping()
+{
+    liveObjectSize_ = 0;
+    EnumerateRegions([this](Region *current) {
+        if (!current->InCollectSet()) {
+            IncreaseLiveObjectSize(current->AliveObject());
+            current->ResetWasted();
+            current->SwapOldToNewRSetForCS();
+            current->SwapLocalToShareRSetForCS();
+            AddSweepingRegion(current);
+        }
+    });
+    SortSweepingRegion();
+    sweepState_ = SweepState::SWEEPING;
+    allocator_->RebuildFreeList();
+    jitFort_->RebuildFreeList();
+}
+
+// Record info on JitFort mem allocated to live MachineCode objects
+void MachineCodeSpace::FreeRegion(Region *current, bool isMain)
+{
+    uintptr_t freeStart = current->GetBegin();
+    current->IterateAllMarkedBits([this, &current, &freeStart, isMain](void *mem) {
+        ASSERT(current->InRange(ToUintPtr(mem)));
+        auto header = reinterpret_cast<TaggedObject *>(mem);
+        auto klass = header->GetClass();
+        auto size = klass->SizeFromJSHClass(header);
+
+        uintptr_t freeEnd = ToUintPtr(mem);
+        if (freeStart != freeEnd) {
+            FreeLiveRange(current, freeStart, freeEnd, isMain);
+        }
+        freeStart = freeEnd + size;
+        RecordLiveJitCode(reinterpret_cast<MachineCode *>(mem));
+    });
+    uintptr_t freeEnd = current->GetEnd();
+    if (freeStart != freeEnd) {
+        FreeLiveRange(current, freeStart, freeEnd, isMain);
+    }
+}
+
+uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc &desc, bool allowGC)
+{
+#if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
+    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) {
+        LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
+        UNREACHABLE();
+    }
+#endif
+    // Include JitFort allocation size in Space LiveObjectSize and Region AliveObject size
+    // in CHECK_AND_INC_OBJ_SIZE. Could be a problem with InvokeAllocationInspectr with
+    // instruction separated from Machine Code object into Jit FortSpace.
+
+    auto object = allocator_->Allocate(size);
+    CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc.instructionsSize);
+
+    if (sweepState_ == SweepState::SWEEPING) {
+        object = AllocateAfterSweepingCompleted(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc.instructionsSize);
+    }
+
+    // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
+    if (allowGC && localHeap_->CheckAndTriggerOldGC()) {
+        object = allocator_->Allocate(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc.instructionsSize);
+    }
+
+    if (Expand()) {
+        object = allocator_->Allocate(size);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc.instructionsSize);
+    }
+
+    if (allowGC) {
+        localHeap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+        object = Allocate(size, desc, false);
+        // Size is already increment
+    }
+    return object;
+}
+#endif // ENABLE_JITFORT
+
 }  // namespace panda::ecmascript

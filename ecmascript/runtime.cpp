@@ -57,6 +57,8 @@ Runtime::~Runtime()
         iter++;
     }
     globalSharedConstpools_.clear();
+    delete externalRegisteredStringTable_;
+    externalRegisteredStringTable_ = nullptr;
 }
 
 void Runtime::CreateIfFirstVm(const JSRuntimeOptions &options)
@@ -100,6 +102,7 @@ void Runtime::InitializeIfFirstVm(EcmaVM *vm)
 void Runtime::PreInitialization(const EcmaVM *vm)
 {
     mainThread_ = vm->GetAssociatedJSThread();
+    mainThread_->SetMainThread();
     nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
     heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
     stringTable_ = std::make_unique<EcmaStringTable>();

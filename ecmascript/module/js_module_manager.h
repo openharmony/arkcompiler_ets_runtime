@@ -65,8 +65,8 @@ public:
 
     bool IsEvaluatedModule(JSTaggedValue referencing);
 
-    JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequestName, const CString &baseFileName,
-        ModuleTypes moduleType);
+    JSHandle<JSTaggedValue> ResolveNativeModule(const JSHandle<JSTaggedValue> moduleRequest,
+        const CString &baseFileName, ModuleTypes moduleType);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const CString &referencingModule,
         bool executeFromJob = false);
@@ -117,9 +117,6 @@ private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
 
-    JSHandle<JSTaggedValue> ResolveModuleInMergedABC(JSThread *thread, const JSPandaFile *jsPandaFile,
-        const CString &recordName, bool executeFromJob = false);
-    JSHandle<JSTaggedValue> CreateEmptyModule();
     JSTaggedValue GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   int32_t index, JSTaggedValue value);
@@ -134,10 +131,10 @@ private:
         bool executeFromJob = false);
 
     JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-        const CString &recordName, bool executeFromJob = false);
+        const JSHandle<EcmaString> recordName, bool executeFromJob = false);
 
     JSHandle<JSTaggedValue> CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
-        const CString &recordName, bool executeFromJob = false);
+        const JSHandle<EcmaString> recordName, bool executeFromJob = false);
 
     void AddToInstantiatingSModuleList(const CString &record);
 
@@ -153,7 +150,6 @@ private:
 
     EcmaVM *vm_ {nullptr};
     JSTaggedValue resolvedModules_ {JSTaggedValue::Hole()};
-    JSTaggedValue cachedEmptyModule_ {JSTaggedValue::Hole()};
     bool isExecuteBuffer_ {false};
     CVector<CString> InstantiatingSModuleList_;
 

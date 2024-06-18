@@ -1495,14 +1495,15 @@ void RuntimeStubs::RuntimeThrowPatternNonCoercible(JSThread *thread)
 {
     JSHandle<EcmaString> msg(thread->GlobalConstants()->GetHandledObjNotCoercibleString());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, false).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread,
+        factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, StackCheck::NO).GetTaggedValue());
 }
 
 void RuntimeStubs::RuntimeThrowDeleteSuperProperty(JSThread *thread)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> info = factory->NewFromASCII("Can not delete super property");
-    JSHandle<JSObject> errorObj = factory->NewJSError(base::ErrorType::REFERENCE_ERROR, info,  false);
+    JSHandle<JSObject> errorObj = factory->NewJSError(base::ErrorType::REFERENCE_ERROR, info,  StackCheck::NO);
     THROW_NEW_ERROR_AND_RETURN(thread, errorObj.GetTaggedValue());
 }
 
@@ -1512,8 +1513,8 @@ void RuntimeStubs::RuntimeThrowUndefinedIfHole(JSThread *thread, const JSHandle<
     JSHandle<EcmaString> info = factory->NewFromASCII(" is not initialized");
 
     JSHandle<EcmaString> msg = factory->ConcatFromString(obj, info);
-    THROW_NEW_ERROR_AND_RETURN(thread,
-                               factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, false).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::REFERENCE_ERROR,
+        msg, StackCheck::NO).GetTaggedValue());
 }
 
 void RuntimeStubs::RuntimeThrowIfNotObject(JSThread *thread)
@@ -1528,7 +1529,8 @@ void RuntimeStubs::RuntimeThrowConstAssignment(JSThread *thread, const JSHandle<
     JSHandle<EcmaString> info = factory->NewFromASCII("Assignment to const variable ");
 
     JSHandle<EcmaString> msg = factory->ConcatFromString(info, value);
-    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR, msg, false).GetTaggedValue());
+    THROW_NEW_ERROR_AND_RETURN(thread, factory->NewJSError(base::ErrorType::TYPE_ERROR,
+                                                           msg, StackCheck::NO).GetTaggedValue());
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdGlobalRecord(JSThread *thread, JSTaggedValue key)
@@ -1582,8 +1584,8 @@ JSTaggedValue RuntimeStubs::RuntimeThrowReferenceError(JSThread *thread, const J
     JSHandle<EcmaString> info = factory->NewFromUtf8(desc);
     JSHandle<EcmaString> msg = factory->ConcatFromString(propName, info);
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread,
-                                     factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, false).GetTaggedValue(),
-                                     JSTaggedValue::Exception());
+        factory->NewJSError(base::ErrorType::REFERENCE_ERROR, msg, StackCheck::NO).GetTaggedValue(),
+        JSTaggedValue::Exception());
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdGlobalVarFromProto(JSThread *thread, const JSHandle<JSTaggedValue> &globalObj,
@@ -2802,10 +2804,10 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
     JSTaggedValue resultValue;
     if (isAotMethod && ctor->IsClassConstructor()) {
         uint32_t numArgs = ctor->GetCallTarget()->GetNumArgsWithCallField();
-        bool needPushUndefined = numArgs > size;
+        bool needPushArgv = numArgs != size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
         if (ctor->GetCallTarget()->IsFastCall()) {
-            if (needPushUndefined) {
+            if (needPushArgv) {
                 values.reserve(numArgs + NUM_MANDATORY_JSFUNC_ARGS - 1);
                 for (uint32_t i = size; i < numArgs; i++) {
                     values.emplace_back(JSTaggedValue::VALUE_UNDEFINED);
@@ -2814,7 +2816,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
             }
             resultValue = thread->GetEcmaVM()->FastCallAot(size, values.data(), prevFp);
         } else {
-            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushUndefined);
+            resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushArgv);
         }
     } else {
         ctor->GetCallTarget()->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot
@@ -2848,7 +2850,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     CVector<JSTaggedType> values;
     Method *method = ctor->GetCallTarget();
     bool isAotMethod = method->IsAotWithCallField();
-    if (isAotMethod && ctor->IsClassConstructor()) {
+    if (!thread->IsWorker() && isAotMethod && ctor->IsClassConstructor()) {
         if (method->IsFastCall()) {
             values.reserve(size + NUM_MANDATORY_JSFUNC_ARGS - 1);
             values.emplace_back(ctor.GetTaggedValue().GetRawData());
@@ -2954,9 +2956,14 @@ JSTaggedType *RuntimeStubs::GetActualArgv(JSThread *thread)
     FrameIterator it(current, thread);
     ASSERT(it.IsLeaveFrame());
     it.Advance<GCVisitedFlag::VISITED>();
-    ASSERT(it.IsOptimizedJSFunctionFrame());
-    auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
-    return optimizedJSFunctionFrame->GetArgv(it);
+    ASSERT(it.IsAotOrJitFunctionFrame());
+    if (it.IsFastJitFunctionFrame()) {
+        auto optimizedJSJITFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
+        return optimizedJSJITFunctionFrame->GetArgv(it);
+    } else {
+        auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
+        return optimizedJSFunctionFrame->GetArgv(it);
+    }
 }
 
 JSTaggedType *RuntimeStubs::GetActualArgvFromStub(JSThread *thread)
@@ -2967,7 +2974,11 @@ JSTaggedType *RuntimeStubs::GetActualArgvFromStub(JSThread *thread)
     it.Advance<GCVisitedFlag::VISITED>();
     ASSERT(it.IsOptimizedFrame());
     it.Advance<GCVisitedFlag::VISITED>();
-    ASSERT(it.IsOptimizedJSFunctionFrame());
+    ASSERT(it.IsAotOrJitFunctionFrame());
+    if (it.IsFastJitFunctionFrame()) {
+        auto optimizedJSJITFunctionFrame = it.GetFrame<FASTJITFunctionFrame>();
+        return optimizedJSJITFunctionFrame->GetArgv(it);
+    }
     auto optimizedJSFunctionFrame = it.GetFrame<OptimizedJSFunctionFrame>();
     return optimizedJSFunctionFrame->GetArgv(it);
 }
@@ -3277,6 +3288,45 @@ JSTaggedType RuntimeStubs::RuntimeTryGetInternString(uintptr_t argGlue, const JS
         return JSTaggedValue::Hole().GetRawData();
     }
     return JSTaggedValue::Cast(static_cast<void *>(str));
+}
+
+uint32_t RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc)
+{
+    // Compute current bytecodePc according to nativePc of returnAddress
+    LOG_BASELINEJIT(DEBUG) << "nativePc address: " << std::hex << nativePc;
+    const MachineCode *machineCode = MachineCode::Cast(func->GetBaselineCode().GetTaggedObject());
+    const uintptr_t nativePcStart = machineCode->GetFuncAddr();
+    LOG_BASELINEJIT(DEBUG) << "baselineCode nativeStart address: " << std::hex << nativePcStart;
+    const Method *thisMethod = Method::Cast(func->GetMethod().GetTaggedObject());
+    const uint8_t *bytecodeStart = thisMethod->GetBytecodeArray();
+    const uint8_t *bytecodeEnd = bytecodeStart + thisMethod->GetCodeSize();
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc start: " << reinterpret_cast<uintptr_t>(bytecodeStart);
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc end: " << reinterpret_cast<uintptr_t>(bytecodeEnd);
+    const uint8_t *offsetTableAddr = machineCode->GetStackMapOrOffsetTableAddress();
+    const uint32_t offsetTableSize = machineCode->GetStackMapOrOffsetTableSize();
+    uintptr_t nativePcEnd = nativePcStart;
+    uint32_t pcOffsetIndex = 0;
+    auto opcode = kungfu::Bytecodes::GetOpcode(bytecodeStart);
+    while (nativePcEnd < nativePc && pcOffsetIndex < offsetTableSize) {
+        nativePcEnd += static_cast<uintptr_t>(offsetTableAddr[pcOffsetIndex++]);
+        opcode = kungfu::Bytecodes::GetOpcode(bytecodeStart);
+        bytecodeStart += BytecodeInstruction::Size(opcode);
+    }
+    // Since the nativePc is returnAddress, we need to take the previous bytecode
+    bytecodeStart -= BytecodeInstruction::Size(opcode);
+    if (nativePcEnd < nativePc) {
+        LOG_ECMA(FATAL) <<
+            "invalid nativePc or pcOffsetTable for getting bytecode pc in baseline code, the nativePcEnd is " <<
+            std::hex << nativePcEnd;
+    }
+    if (bytecodeStart > bytecodeEnd) {
+        LOG_ECMA(FATAL) <<
+            "out of bytecodeArray range for getting bytecode pc in baseline code, the bytecodePc is " <<
+            reinterpret_cast<uintptr_t>(bytecodeStart);
+    }
+    auto bytecodePcOffset = static_cast<uint32_t>(bytecodeStart - thisMethod->GetBytecodeArray());
+    LOG_BASELINEJIT(DEBUG) << "current bytecodePc offset: " << bytecodePcOffset;
+    return bytecodePcOffset;
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H

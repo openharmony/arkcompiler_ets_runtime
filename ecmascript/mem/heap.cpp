@@ -25,12 +25,12 @@
 #include "ecmascript/free_object.h"
 #include "ecmascript/js_finalization_registry.h"
 #include "ecmascript/js_native_pointer.h"
-#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/mem/incremental_marker.h"
+#include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/native_area_allocator.h"
@@ -49,6 +49,7 @@
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/ohos/ohos_params.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -69,10 +70,44 @@ static size_t g_threshold = OHOS::system::GetUintParameter<size_t>("persist.dfx.
 static uint64_t g_lastHeapDumpTime = 0;
 static bool g_debugLeak = OHOS::system::GetBoolParameter("debug.dfx.tags.enableleak", false);
 static constexpr uint64_t HEAP_DUMP_REPORT_INTERVAL = 24 * 3600 * 1000;
+static bool g_betaVersion = OHOS::system::GetParameter("const.logsystem.versiontype", "unknown") == "beta";
+static bool g_developMode = (OHOS::system::GetParameter("persist.hiview.leak_detector", "unknown") == "enable") ||
+                            (OHOS::system::GetParameter("persist.hiview.leak_detector", "unknown") == "true");
 #endif
 
 namespace panda::ecmascript {
 SharedHeap *SharedHeap::instance_ = nullptr;
+
+std::string FormatCmdLine(const std::string& cmdLine)
+{
+    std::string::size_type startPos = 0;
+    std::string::size_type endPos = cmdLine.size();
+    for (std::string::size_type i = 0; i < cmdLine.size(); i++) {
+        if (cmdLine[i] == '/') {
+            startPos = i + 1;
+        } else if (cmdLine[i] == '\0') {
+            endPos = i;
+            break;
+        }
+    }
+    ASSERT(endPos >= startPos);
+    return cmdLine.substr(startPos, endPos - startPos);
+}
+
+std::string GetProcessName(int32_t pid)
+{
+    std::ifstream cmdLineFile("/proc/" + std::to_string(pid) + "/cmdline");
+    std::string processName;
+    if (cmdLineFile) {
+        std::getline(cmdLineFile, processName);
+        cmdLineFile.close();
+        processName = FormatCmdLine(processName);
+        return processName;
+    } else {
+        LOG_ECMA(ERROR) << " GetProcessName failed";
+        return "";
+    }
+}
 
 void SharedHeap::CreateNewInstance()
 {
@@ -294,6 +329,7 @@ void SharedHeap::WaitGCFinished(JSThread *thread)
     ASSERT(thread->GetThreadId() != dThread_->GetThreadId());
     ASSERT(thread->IsInRunningState());
     ThreadSuspensionScope scope(thread);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::WaitGCFinished");
     LockHolder lock(waitGCFinishedMutex_);
     while (!gcFinished_) {
         waitGCFinishedCV_.Wait(&waitGCFinishedMutex_);
@@ -424,7 +460,7 @@ void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
     if (auto workThreadNum = sWorkManager_->GetTotalThreadNum();
         workThreadNum != totalThreadNum + 1) {
         LOG_ECMA_MEM(ERROR) << "TheadNum mismatch, totalThreadNum(sWorkerManager): " << workThreadNum << ", "
-                            << "totalThreadNum(taskpool): " << totalThreadNum + 1;
+                            << "totalThreadNum(taskpool): " << (totalThreadNum + 1);
         delete sWorkManager_;
         sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
         UpdateWorkManager(sWorkManager_);
@@ -487,6 +523,31 @@ bool SharedHeap::NeedStopCollection()
     return false;
 }
 
+void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[maybe_unused]]JSThread *thread)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    EcmaVM *vm = thread->GetEcmaVM();
+    if (vm->GetHeapProfile() != nullptr) {
+        LOG_FULL(INFO) << "GetHeapProfile nullptr";
+        return;
+    }
+    // Filter appfreeze when dump.
+    LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
+    base::BlockHookScope blockScope;
+    HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(vm);
+    int32_t pid = getpid();
+    std::string propertyName = "hiviewdfx.freeze.filter." + GetProcessName(pid);
+    if (!SetParameter(propertyName.c_str(), std::to_string(pid).c_str())) {
+        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, propertyName:" << propertyName
+            << " value:" << std::to_string(pid);
+    }
+    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true, true);
+    HeapProfilerInterface::Destroy(vm);
+#endif // ENABLE_DUMP_IN_FAULTLOG
+#endif // ECMASCRIPT_SUPPORT_SNAPSHOT
+}
+
 Heap::Heap(EcmaVM *ecmaVm)
     : BaseHeap(ecmaVm->GetEcmaParamConfiguration()),
       ecmaVm_(ecmaVm), thread_(ecmaVm->GetJSThread()), sHeap_(SharedHeap::GetInstance()) {}
@@ -499,9 +560,13 @@ void Heap::Initialize()
     size_t maxHeapSize = config_.GetMaxHeapSize();
     size_t minSemiSpaceCapacity = config_.GetMinSemiSpaceSize();
     size_t maxSemiSpaceCapacity = config_.GetMaxSemiSpaceSize();
+    size_t edenSpaceCapacity = 2_MB;
+    edenSpace_ = new EdenSpace(this, edenSpaceCapacity, edenSpaceCapacity);
+    edenSpace_->Restart();
     activeSemiSpace_ = new SemiSpace(this, minSemiSpaceCapacity, maxSemiSpaceCapacity);
     activeSemiSpace_->Restart();
     activeSemiSpace_->SetWaterLine();
+
     auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
     auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
     thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
@@ -610,6 +675,11 @@ void Heap::Destroy()
     if (workManager_ != nullptr) {
         delete workManager_;
         workManager_ = nullptr;
+    }
+    if (edenSpace_ != nullptr) {
+        edenSpace_->Destroy();
+        delete edenSpace_;
+        edenSpace_ = nullptr;
     }
     if (activeSemiSpace_ != nullptr) {
         activeSemiSpace_->Destroy();
@@ -735,6 +805,18 @@ void Heap::GetHeapPrepare()
 
 void Heap::Resume(TriggerGCType gcType)
 {
+    if (edenSpace_->ShouldTryEnable()) {
+        TryEnableEdenGC();
+    }
+    if (enableEdenGC_) {
+        edenSpace_->ReclaimRegions(edenSpace_->GetInitialCapacity());
+        edenSpace_->Restart();
+        if (IsEdenMark()) {
+            activeSemiSpace_->SetWaterLine();
+            return;
+        }
+    }
+
     if (mode_ != HeapMode::SPAWN &&
         activeSemiSpace_->AdjustCapacity(inactiveSemiSpace_->GetAllocatedSizeSinceGC(), thread_)) {
         // if activeSpace capacity changes， oldSpace maximumCapacity should change, too.
@@ -768,6 +850,7 @@ void Heap::ResumeForAppSpawn()
     sweeper_->WaitAllTaskFinished();
     hugeObjectSpace_->ReclaimHugeRegion();
     hugeMachineCodeSpace_->ReclaimHugeRegion();
+    edenSpace_->ReclaimRegions();
     inactiveSemiSpace_->ReclaimRegions();
     oldSpace_->Reset();
     auto cb = [] (Region *region) {
@@ -845,15 +928,14 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
 #endif
         RecursionScope recurScope(this, HeapType::LOCAL_HEAP);
-        if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent() ||
-            (InSensitiveStatus() && !ObjectExceedMaxHeapSize())) {
+        if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent()) {
             ProcessGCListeners();
             return;
         }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
         [[maybe_unused]] GcStateScope scope(thread_);
 #endif
-        CHECK_NO_GC
+        CHECK_NO_GC;
         if (UNLIKELY(ShouldVerifyHeap())) {
             // pre gc heap verify
             LOG_ECMA(DEBUG) << "pre gc heap verify";
@@ -872,18 +954,32 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         oldGCRequested_ = false;
         oldSpace_->AdjustOvershootSize();
 
-        size_t originalNewSpaceSize = activeSemiSpace_->GetHeapObjectSize();
-        memController_->StartCalculationBeforeGC();
-        StatisticHeapObject(gcType);
+        size_t originalNewSpaceSize = IsEdenMark() ? edenSpace_->GetHeapObjectSize() :
+                (activeSemiSpace_->GetHeapObjectSize() + edenSpace_->GetHeapObjectSize());
         if (!GetJSThread()->IsReadyToConcurrentMark() && markType_ == MarkType::MARK_FULL) {
             GetEcmaGCStats()->SetGCReason(reason);
         } else {
             GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, reason);
         }
+        memController_->StartCalculationBeforeGC();
+        StatisticHeapObject(gcType);
         gcType_ = gcType;
         {
             pgo::PGODumpPauseScope pscope(GetEcmaVM()->GetPGOProfiler());
             switch (gcType) {
+                case TriggerGCType::EDEN_GC:
+                    if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
+                        SetMarkType(MarkType::MARK_EDEN);
+                    }
+                    if (markType_ == MarkType::MARK_YOUNG) {
+                        gcType_ = TriggerGCType::YOUNG_GC;
+                    }
+                    if (markType_ == MarkType::MARK_FULL) {
+                        // gcType_ must be sure. Functions ProcessNativeReferences need to use it.
+                        gcType_ = TriggerGCType::OLD_GC;
+                    }
+                    partialGC_->RunPhases();
+                    break;
                 case TriggerGCType::YOUNG_GC:
                     // Use partial GC for young generation.
                     if (!concurrentMarker_->IsEnabled() && !incrementalMarker_->IsTriggeredIncrementalMark()) {
@@ -915,7 +1011,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                     if (fullConcurrentMarkRequested && idleTask_ == IdleTaskType::NO_TASK) {
                         LOG_ECMA(INFO)
                             << "Trigger old gc here may cost long time, trigger full concurrent mark instead";
-                        oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
+                        oldSpace_->SetOvershootSize(config_.GetOldSpaceStepOvershootSize());
                         TriggerConcurrentMarking();
                         oldGCRequested_ = true;
                         ProcessGCListeners();
@@ -1009,7 +1105,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     ProcessGCListeners();
 
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-    if (!hasOOMDump_) {
+    if (!hasOOMDump_ && (g_betaVersion || g_developMode)) {
         ThresholdReachedDump();
     }
 #endif
@@ -1047,7 +1143,7 @@ void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std
 
     EcmaVM *ecmaVm = thread->GetEcmaVM();
     ObjectFactory *factory = ecmaVm->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::OOM_ERROR, oss.str().c_str());
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::OOM_ERROR, oss.str().c_str(), StackCheck::NO);
     thread->SetException(error.GetTaggedValue());
 }
 
@@ -1090,16 +1186,21 @@ void Heap::CheckNonMovableSpaceOOM()
 
 void Heap::AdjustBySurvivalRate(size_t originalNewSpaceSize)
 {
+    promotedSize_ = GetEvacuator()->GetPromotedSize();
+    edenToYoungSize_ = GetEvacuator()->GetEdenToYoungSize();
     if (originalNewSpaceSize <= 0) {
         return;
     }
-    semiSpaceCopiedSize_ = activeSemiSpace_->GetHeapObjectSize();
+    semiSpaceCopiedSize_ = IsEdenMark() ? edenToYoungSize_ : activeSemiSpace_->GetHeapObjectSize();
     double copiedRate = semiSpaceCopiedSize_ * 1.0 / originalNewSpaceSize;
-    promotedSize_ = GetEvacuator()->GetPromotedSize();
     double promotedRate = promotedSize_ * 1.0 / originalNewSpaceSize;
     double survivalRate = std::min(copiedRate + promotedRate, 1.0);
     OPTIONAL_LOG(ecmaVm_, INFO) << " copiedRate: " << copiedRate << " promotedRate: " << promotedRate
                                 << " survivalRate: " << survivalRate;
+    if (IsEdenMark()) {
+        memController_->AddEdenSurvivalRate(survivalRate);
+        return;
+    }
     if (!oldSpaceLimitAdjusted_) {
         memController_->AddSurvivalRate(survivalRate);
         AdjustOldSpaceLimit();
@@ -1220,37 +1321,6 @@ void BaseHeap::OnAllocateEvent([[maybe_unused]] EcmaVM *ecmaVm, [[maybe_unused]]
 #endif
 }
 
-std::string FormatCmdLine(const std::string& cmdLine)
-{
-    std::string::size_type startPos = 0;
-    std::string::size_type endPos = cmdLine.size();
-    for (std::string::size_type i = 0; i < cmdLine.size(); i++) {
-        if (cmdLine[i] == '/') {
-            startPos = i + 1;
-        } else if (cmdLine[i] == '\0') {
-            endPos = i;
-            break;
-        }
-    }
-    ASSERT(endPos >= startPos);
-    return cmdLine.substr(startPos, endPos - startPos);
-}
-
-std::string GetProcessName(int32_t pid)
-{
-    std::ifstream cmdLineFile("/proc/" + std::to_string(pid) + "/cmdline");
-    std::string processName;
-    if (cmdLineFile) {
-        std::getline(cmdLineFile, processName);
-        cmdLineFile.close();
-        processName = FormatCmdLine(processName);
-        return processName;
-    } else {
-        LOG_ECMA(ERROR) << " GetProcessName failed";
-        return "";
-    }
-}
-
 void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
@@ -1291,20 +1361,6 @@ void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] Tagg
 #endif
 }
 
-void Heap::AddToKeptObjects(JSHandle<JSTaggedValue> value) const
-{
-    JSHandle<GlobalEnv> env = ecmaVm_->GetGlobalEnv();
-    JSHandle<LinkedHashSet> linkedSet;
-    if (env->GetWeakRefKeepObjects()->IsUndefined()) {
-        linkedSet = LinkedHashSet::Create(thread_);
-    } else {
-        linkedSet =
-            JSHandle<LinkedHashSet>(thread_, LinkedHashSet::Cast(env->GetWeakRefKeepObjects()->GetTaggedObject()));
-    }
-    linkedSet = LinkedHashSet::Add(thread_, linkedSet, value);
-    env->SetWeakRefKeepObjects(thread_, linkedSet);
-}
-
 void Heap::AdjustSpaceSizeForAppSpawn()
 {
     SetHeapMode(HeapMode::SPAWN);
@@ -1336,17 +1392,13 @@ void Heap::AddAllocationInspectorToAllSpaces(AllocationInspector *inspector)
 
 void Heap::ClearAllocationInspectorFromAllSpaces()
 {
+    edenSpace_->ClearAllocationInspector();
     activeSemiSpace_->ClearAllocationInspector();
     oldSpace_->ClearAllocationInspector();
     nonMovableSpace_->ClearAllocationInspector();
     machineCodeSpace_->ClearAllocationInspector();
     hugeObjectSpace_->ClearAllocationInspector();
     hugeMachineCodeSpace_->ClearAllocationInspector();
-}
-
-void Heap::ClearKeptObjects() const
-{
-    ecmaVm_->GetGlobalEnv()->SetWeakRefKeepObjects(thread_, JSTaggedValue::Undefined());
 }
 
 void Heap::RecomputeLimits()
@@ -1386,17 +1438,67 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
     bool isFullMarking = IsConcurrentFullMark() && GetJSThread()->IsMarking();
     bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimit();
     if (isFullMarking && oldSpace_->GetOvershootSize() == 0) {
-        oldSpace_->SetOvershootSize(config_.GetOldSpaceOvershootSize());
+        oldSpace_->SetOvershootSize(config_.GetOldSpaceStepOvershootSize());
     }
     if ((isNativeSizeLargeTrigger || OldSpaceExceedLimit() || OldSpaceExceedCapacity(size) ||
         GetHeapObjectSize() > globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize()) &&
         !NeedStopCollection()) {
+        if (isFullMarking && oldSpace_->GetOvershootSize() < config_.GetOldSpaceMaxOvershootSize()) {
+            oldSpace_->IncreaseOvershootSize(config_.GetOldSpaceStepOvershootSize());
+            return false;
+        }
         CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
         if (!oldGCRequested_) {
             return true;
         }
     }
     return false;
+}
+
+void Heap::CheckAndTriggerGCForIdle(int idleTime)
+{
+    if (idleTime != 0) {
+        return;
+    }
+    // idleTime equal 0, This means that the next few frames are idle
+    if (ShouldCheckIdleGC()) {
+        if (GetHeapObjectSize() < GetCommittedSize() * IDLE_SPACE_SIZE_LIMIT_RATE && !NeedStopCollection()) {
+            CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+            updateIdleGCTimePoint();
+        } else {
+            //check for oldGC
+            bool isFullMarking = IsConcurrentFullMark() && GetJSThread()->IsMarking();
+            bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimitForIdle();
+
+            size_t idleSizeLimit = static_cast<size_t>(oldSpace_->GetInitialCapacity() *
+                                                        IDLE_SPACE_SIZE_LIMIT_RATE);
+            size_t currentSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
+
+            size_t maxCapacity = oldSpace_->GetMaximumCapacity() + oldSpace_->GetOvershootSize() +
+                                oldSpace_->GetOutOfMemoryOvershootSize();
+            size_t currentCapacity = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize();
+            size_t idleCapacityLimit = static_cast<size_t>(maxCapacity * IDLE_SPACE_SIZE_LIMIT_RATE);
+
+            size_t oldSpaceAllocLimit = globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize();
+            size_t idleOldSpaceAllocLimit = static_cast<size_t>(oldSpaceAllocLimit * IDLE_SPACE_SIZE_LIMIT_RATE);
+
+            bool needOldGC = currentSize >= idleSizeLimit || isNativeSizeLargeTrigger ||
+                currentCapacity >= idleCapacityLimit || GetHeapObjectSize() > idleOldSpaceAllocLimit;
+            if (needOldGC && !NeedStopCollection()) {
+                CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
+                updateIdleGCTimePoint();
+            }
+        }
+    }
+
+    size_t sharedSizeAfterLastOldGC = sHeap_->GetEcmaGCStats()->GetRecordData(RecordData::END_OBJ_SIZE);
+    if (sHeap_->ShouldCheckIdleGC() && sharedSizeAfterLastOldGC != 0) {
+        size_t expectSizeLimit = sharedSizeAfterLastOldGC * IDLE_SHARED_SIZE_LIMIT_RATE;
+        if (sHeap_->GetHeapObjectSize() >  expectSizeLimit && !NeedStopCollection()) {
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::IDLE>(thread_);
+            sHeap_->updateIdleGCTimePoint();
+        }
+    }
 }
 
 bool Heap::CheckAndTriggerHintGC()
@@ -1427,7 +1529,7 @@ bool Heap::CheckOngoingConcurrentMarking()
             WaitConcurrentMarkingFinished();
         }
         WaitRunningTaskFinished();
-        memController_->RecordAfterConcurrentMark(IsConcurrentFullMark(), concurrentMarker_);
+        memController_->RecordAfterConcurrentMark(markType_, concurrentMarker_);
         return true;
     }
     return false;
@@ -1470,21 +1572,24 @@ void Heap::TryTriggerIdleCollection()
 
 void Heap::CalculateIdleDuration()
 {
-    // update reference duration
-    idlePredictDuration_ = 0.0f;
-    size_t updateReferenceSpeed = markType_ == MarkType::MARK_YOUNG ?
-        GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_UPDATE_REFERENCE_SPEED) :
-        GetEcmaGCStats()->GetGCSpeed(SpeedData::UPDATE_REFERENCE_SPEED);
-    if (updateReferenceSpeed != 0) {
-        idlePredictDuration_ += (float)GetHeapObjectSize() / updateReferenceSpeed;
-    }
-
+    size_t updateReferenceSpeed = 0;
     // clear native object duration
     size_t clearNativeObjSpeed = 0;
-    if (markType_ == MarkType::MARK_YOUNG) {
+    if (markType_ == MarkType::MARK_EDEN) {
+        updateReferenceSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::EDEN_UPDATE_REFERENCE_SPEED);
+        clearNativeObjSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::EDEN_CLEAR_NATIVE_OBJ_SPEED);
+    } else if (markType_ == MarkType::MARK_YOUNG) {
+        updateReferenceSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_UPDATE_REFERENCE_SPEED);
         clearNativeObjSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_CLEAR_NATIVE_OBJ_SPEED);
     } else if (markType_ == MarkType::MARK_FULL) {
+        updateReferenceSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::UPDATE_REFERENCE_SPEED);
         clearNativeObjSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_CLEAR_NATIVE_OBJ_SPEED);
+    }
+
+    // update reference duration
+    idlePredictDuration_ = 0.0f;
+    if (updateReferenceSpeed != 0) {
+        idlePredictDuration_ += (float)GetHeapObjectSize() / updateReferenceSpeed;
     }
 
     if (clearNativeObjSpeed != 0) {
@@ -1492,13 +1597,17 @@ void Heap::CalculateIdleDuration()
     }
 
     // sweep and evacuate duration
+    size_t edenEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::EDEN_EVACUATE_SPACE_SPEED);
     size_t youngEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::YOUNG_EVACUATE_SPACE_SPEED);
-    size_t sweepSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::SWEEP_SPEED);
-    size_t oldEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_EVACUATE_SPACE_SPEED);
     double survivalRate = GetEcmaGCStats()->GetAvgSurvivalRate();
-    if (markType_ == MarkType::MARK_YOUNG && youngEvacuateSpeed != 0) {
-        idlePredictDuration_ += survivalRate * activeSemiSpace_->GetHeapObjectSize() / youngEvacuateSpeed;
+    if (markType_ == MarkType::MARK_EDEN && edenEvacuateSpeed != 0) {
+        idlePredictDuration_ += survivalRate * edenSpace_->GetHeapObjectSize() / edenEvacuateSpeed;
+    } else if (markType_ == MarkType::MARK_YOUNG && youngEvacuateSpeed != 0) {
+        idlePredictDuration_ += (activeSemiSpace_->GetHeapObjectSize() + edenSpace_->GetHeapObjectSize()) *
+            survivalRate / youngEvacuateSpeed;
     } else if (markType_ == MarkType::MARK_FULL) {
+        size_t sweepSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::SWEEP_SPEED);
+        size_t oldEvacuateSpeed = GetEcmaGCStats()->GetGCSpeed(SpeedData::OLD_EVACUATE_SPACE_SPEED);
         if (sweepSpeed != 0) {
             idlePredictDuration_ += (float)GetHeapObjectSize() / sweepSpeed;
         }
@@ -1631,6 +1740,48 @@ void Heap::TryTriggerConcurrentMarking()
         markType_ = MarkType::MARK_YOUNG;
         TriggerConcurrentMarking();
         OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger semi mark";
+        return;
+    }
+
+    if (!enableEdenGC_ || IsInBackground()) {
+        return;
+    }
+
+    double edenSurvivalRate = memController_->GetAverageEdenSurvivalRate();
+    double survivalRate = memController_->GetAverageSurvivalRate();
+    constexpr double expectMaxSurvivalRate = 0.4;
+    if ((edenSurvivalRate == 0 || edenSurvivalRate >= expectMaxSurvivalRate) && survivalRate >= expectMaxSurvivalRate) {
+        return;
+    }
+
+    double edenSpaceAllocSpeed = memController_->GetEdenSpaceAllocationThroughputPerMS();
+    double edenSpaceConcurrentMarkSpeed = memController_->GetEdenSpaceConcurrentMarkSpeedPerMS();
+    if (edenSpaceConcurrentMarkSpeed == 0 || edenSpaceAllocSpeed == 0) {
+        auto &config = ecmaVm_->GetEcmaParamConfiguration();
+        if (edenSpace_->GetCommittedSize() >= config.GetEdenSpaceTriggerConcurrentMark()) {
+            markType_ = MarkType::MARK_EDEN;
+            TriggerConcurrentMarking();
+            OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger the first eden mark " << fullGCRequested_;
+        }
+        return;
+    }
+
+    auto &config = ecmaVm_->GetEcmaParamConfiguration();
+    size_t edenCommittedSize = edenSpace_->GetCommittedSize();
+    triggerMark = edenCommittedSize >= config.GetEdenSpaceTriggerConcurrentMark();
+    if (!triggerMark && edenSpaceAllocSpeed != 0 && edenSpaceConcurrentMarkSpeed != 0 &&
+            edenSpace_->GetHeapObjectSize() > 0) {
+        double edenSpaceLimit = edenSpace_->GetInitialCapacity();
+        double edenSpaceAllocToLimitDuration = (edenSpaceLimit - edenCommittedSize) / edenSpaceAllocSpeed;
+        double edenSpaceMarkDuration = edenSpace_->GetHeapObjectSize() / edenSpaceConcurrentMarkSpeed;
+        double edenSpaceRemainSize = (edenSpaceAllocToLimitDuration - edenSpaceMarkDuration) * newSpaceAllocSpeed;
+        triggerMark = edenSpaceRemainSize < DEFAULT_REGION_SIZE;
+    }
+
+    if (triggerMark) {
+        markType_ = MarkType::MARK_EDEN;
+        TriggerConcurrentMarking();
+        OPTIONAL_LOG(ecmaVm_, INFO) << "Trigger eden mark";
     }
 }
 
@@ -1693,6 +1844,12 @@ void Heap::IncreaseNativeBindingSize(size_t size)
     nativeBindingSize_ += size;
 }
 
+void Heap::DecreaseNativeBindingSize(size_t size)
+{
+    ASSERT(size <= nativeBindingSize_);
+    nativeBindingSize_ -= size;
+}
+
 void Heap::PrepareRecordRegionsForReclaim()
 {
     activeSemiSpace_->SetRecordRegion();
@@ -1740,17 +1897,18 @@ void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
 
 void Heap::ChangeGCParams(bool inBackground)
 {
+    const double doubleOne = 1.0;
     inBackground_ = inBackground;
     if (inBackground) {
         LOG_GC(INFO) << "app is inBackground";
         if (GetHeapObjectSize() - heapAliveSizeAfterGC_ > BACKGROUND_GROW_LIMIT &&
             GetCommittedSize() >= MIN_BACKGROUNG_GC_LIMIT &&
-            GetHeapObjectSize() / GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
+            doubleOne * GetHeapObjectSize() / GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
             CollectGarbage(TriggerGCType::FULL_GC, GCReason::SWITCH_BACKGROUND);
         }
         if (sHeap_->GetHeapObjectSize() - sHeap_->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT &&
             sHeap_->GetCommittedSize() >= MIN_BACKGROUNG_GC_LIMIT &&
-            sHeap_->GetHeapObjectSize() / sHeap_->GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
+            doubleOne * sHeap_->GetHeapObjectSize() / sHeap_->GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
             sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::SWITCH_BACKGROUND>(thread_);
         }
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
@@ -1761,7 +1919,7 @@ void Heap::ChangeGCParams(bool inBackground)
         sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
         maxMarkTaskCount_ = 1;
         maxEvacuateTaskCount_ = 1;
-        Taskpool::GetCurrentTaskpool()->SetThreadPriority(false);
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::BACKGROUND);
     } else {
         LOG_GC(INFO) << "app is not inBackground";
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
@@ -1773,7 +1931,7 @@ void Heap::ChangeGCParams(bool inBackground)
         maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
             Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1);
         maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-        Taskpool::GetCurrentTaskpool()->SetThreadPriority(true);
+        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
     }
 }
 
@@ -1859,7 +2017,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
     int64_t semiRemainSize =
         static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
     int64_t overshootSize =
-        static_cast<int64_t>(config_.GetOldSpaceOvershootSize()) - semiRemainSize;
+        static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
     // overshoot size should be larger than 0.
     GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
     GetNewSpace()->SetWaterLineWithoutGC();
@@ -1868,6 +2026,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         markType_ = MarkType::MARK_FULL;
         TriggerConcurrentMarking();
     }
+    GetEdenSpace()->AllowTryEnable();
 }
 
 void Heap::NotifyFinishColdStartSoon()
@@ -1898,7 +2057,7 @@ void Heap::HandleExitHighSensitiveEvent()
         int64_t semiRemainSize =
             static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
         int64_t overshootSize =
-            static_cast<int64_t>(config_.GetOldSpaceOvershootSize()) - semiRemainSize;
+            static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
         GetNewSpace()->SetWaterLineWithoutGC();
@@ -1915,7 +2074,7 @@ void Heap::HandleExitHighSensitiveEvent()
 bool Heap::ObjectExceedMaxHeapSize() const
 {
     size_t configMaxHeapSize = config_.GetMaxHeapSize();
-    size_t overshootSize = config_.GetOldSpaceOvershootSize();
+    size_t overshootSize = config_.GetOldSpaceStepOvershootSize();
     return GetHeapObjectSize() > configMaxHeapSize - overshootSize;
 }
 
@@ -1959,7 +2118,7 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
             heap_->GetCompressGCMarker()->ProcessMarkStack(threadIndex);
             break;
         case ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK:
-            heap_->GetNonMovableMarker()->ProcessMarkStack(threadIndex);
+            heap_->GetNonMovableMarker()->ProcessMarkStackConcurrent(threadIndex);
             break;
         case ParallelGCTaskPhase::CONCURRENT_HANDLE_OLD_TO_NEW_TASK:
             heap_->GetNonMovableMarker()->ProcessOldToNew(threadIndex);
@@ -1996,7 +2155,7 @@ void Heap::CleanCallBack()
 
     auto &asyncCallbacks = this->GetEcmaVM()->GetAsyncNativePointerCallbacks();
     NativePointerTaskCallback asyncTaskCb = thread_->GetAsyncCleanTaskCallback();
-    if (asyncTaskCb != nullptr) {
+    if (asyncTaskCb != nullptr && this->GetJSThread()->IsMainThreadFast()) {
         asyncTaskCb(asyncCallbacks);
     } else {
         for (auto iter : asyncCallbacks) {
@@ -2088,19 +2247,19 @@ void Heap::PrintHeapInfo(TriggerGCType gcType) const
                                 << ";OnHighSensitive:" << static_cast<int>(GetSensitiveStatus())
                                 << ";ConcurrentMark Status:" << static_cast<int>(thread_->GetMarkStatus());
     OPTIONAL_LOG(ecmaVm_, INFO) << "Heap::CollectGarbage, gcType(" << gcType << "), Concurrent Mark("
-                                << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsConcurrentFullMark() << ")";
-    OPTIONAL_LOG(ecmaVm_, INFO) << "ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize()
-                   << "/" << activeSemiSpace_->GetInitialCapacity() << "), NonMovable("
-                   << nonMovableSpace_->GetHeapObjectSize() << "/" << nonMovableSpace_->GetCommittedSize()
-                   << "/" << nonMovableSpace_->GetInitialCapacity() << "), Old("
-                   << oldSpace_->GetHeapObjectSize() << "/" << oldSpace_->GetCommittedSize()
-                   << "/" << oldSpace_->GetInitialCapacity() << "), HugeObject("
-                   << hugeObjectSpace_->GetHeapObjectSize() << "/" << hugeObjectSpace_->GetCommittedSize()
-                   << "/" << hugeObjectSpace_->GetInitialCapacity() << "), ReadOnlySpace("
-                   << readOnlySpace_->GetCommittedSize() << "/" << readOnlySpace_->GetInitialCapacity()
-                   << "), AppspawnSpace(" << appSpawnSpace_->GetHeapObjectSize() << "/"
-                   << appSpawnSpace_->GetCommittedSize() << "/" << appSpawnSpace_->GetInitialCapacity()
-                   << "), GlobalLimitSize(" << globalSpaceAllocLimit_ << ").";
+                                << concurrentMarker_->IsEnabled() << "), Full Mark(" << IsConcurrentFullMark()
+                                << ") Eden Mark(" << IsEdenMark() << ")";
+    OPTIONAL_LOG(ecmaVm_, INFO) << "Eden(" << edenSpace_->GetHeapObjectSize() << "/" << edenSpace_->GetInitialCapacity()
+                 << "), ActiveSemi(" << activeSemiSpace_->GetHeapObjectSize() << "/"
+                 << activeSemiSpace_->GetInitialCapacity() << "), NonMovable(" << nonMovableSpace_->GetHeapObjectSize()
+                 << "/" << nonMovableSpace_->GetCommittedSize() << "/" << nonMovableSpace_->GetInitialCapacity()
+                 << "), Old(" << oldSpace_->GetHeapObjectSize() << "/" << oldSpace_->GetCommittedSize() << "/"
+                 << oldSpace_->GetInitialCapacity() << "), HugeObject(" << hugeObjectSpace_->GetHeapObjectSize() << "/"
+                 << hugeObjectSpace_->GetCommittedSize() << "/" << hugeObjectSpace_->GetInitialCapacity()
+                 << "), ReadOnlySpace(" << readOnlySpace_->GetCommittedSize() << "/"
+                 << readOnlySpace_->GetInitialCapacity() << "), AppspawnSpace(" << appSpawnSpace_->GetHeapObjectSize()
+                 << "/" << appSpawnSpace_->GetCommittedSize() << "/" << appSpawnSpace_->GetInitialCapacity()
+                 << "), GlobalLimitSize(" << globalSpaceAllocLimit_ << ").";
 }
 
 void Heap::StatisticHeapObject(TriggerGCType gcType) const
@@ -2193,7 +2352,8 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
     }
 
     if (code == nullptr ||
-        code->GetPayLoadSizeInBytes() == code->GetInstructionsSize()) { // baseline code
+        (code->GetPayLoadSizeInBytes() ==
+         code->GetInstructionsSize() + code->GetStackMapOrOffsetTableSize())) { // baseline code
         return {};
     }
     return code->CalCallSiteInfo(retAddr);
@@ -2217,6 +2377,15 @@ uint64_t Heap::GetCurrentTickMillseconds()
 {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
     std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+void Heap::SetJsDumpThresholds(size_t thresholds) const
+{
+    if (thresholds < MIN_JSDUMP_THRESHOLDS || thresholds > MAX_JSDUMP_THRESHOLDS) {
+        LOG_GC(INFO) << "SetJsDumpThresholds thresholds is invaild" << thresholds;
+        return;
+    }
+    g_threshold = thresholds;
 }
 
 void Heap::ThresholdReachedDump()
@@ -2286,6 +2455,42 @@ void BaseHeap::WaitClearTaskFinished()
     LockHolder holder(waitClearTaskFinishedMutex_);
     while (!clearTaskFinished_) {
         waitClearTaskFinishedCV_.Wait(&waitClearTaskFinishedMutex_);
+    }
+}
+
+void Heap::ReleaseEdenAllocator()
+{
+    auto topAddress = activeSemiSpace_->GetAllocationTopAddress();
+    auto endAddress = activeSemiSpace_->GetAllocationEndAddress();
+    if (!topAddress || !endAddress) {
+        return;
+    }
+    thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
+}
+
+void Heap::InstallEdenAllocator()
+{
+    if (!enableEdenGC_) {
+        return;
+    }
+    auto topAddress = edenSpace_->GetAllocationTopAddress();
+    auto endAddress = edenSpace_->GetAllocationEndAddress();
+    if (!topAddress || !endAddress) {
+        return;
+    }
+    thread_->ReSetNewSpaceAllocationAddress(topAddress, endAddress);
+}
+
+void Heap::EnableEdenGC()
+{
+    enableEdenGC_ = true;
+    thread_->EnableEdenGCBarriers();
+}
+
+void Heap::TryEnableEdenGC()
+{
+    if (ohos::OhosParams::IsEdenGCEnable()) {
+        EnableEdenGC();
     }
 }
 }  // namespace panda::ecmascript

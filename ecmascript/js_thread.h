@@ -35,9 +35,11 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
+#include "ecmascript/mem/machine_code.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "ffrt.h"
+#include "c/executor_task.h"
 #endif
 
 namespace panda::ecmascript {
@@ -261,6 +263,8 @@ public:
     void Iterate(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
         const RootBaseAndDerivedVisitor &derivedVisitor);
 
+    void IterateJitCodeMap(const JitCodeMapVisitor &updater);
+
     void IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor);
 
     uintptr_t* PUBLIC_API ExpandHandleStorage();
@@ -423,7 +427,7 @@ public:
 
     void PUBLIC_API CheckSwitchDebuggerBCStub();
     void CheckOrSwitchPGOStubs();
-    void SwitchJitProfileStubs();
+    void SwitchJitProfileStubs(bool isEnablePgo);
 
     ThreadId GetThreadId() const
     {
@@ -447,6 +451,8 @@ public:
     }
 
     void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
+
+    void UpdateJitCodeMapReference(const WeakRootVisitor &visitor);
 
     PUBLIC_API PropertiesCache *GetPropertiesCache() const;
 
@@ -577,6 +583,16 @@ public:
     bool GetRuntimeState() const
     {
         return runtimeState_;
+    }
+
+    bool SetMainThread()
+    {
+        return isMainThread_ = true;
+    }
+
+    bool IsMainThreadFast() const
+    {
+        return isMainThread_;
     }
 
     void SetCpuProfileName(std::string &profileName)
@@ -842,20 +858,29 @@ public:
         glueData_.isDebugMode_ = false;
     }
 
+    bool IsWorker()
+    {
+        return glueData_.isWorker_;
+    }
+
+    void SetWorker(bool isWorker)
+    {
+        glueData_.isWorker_ = isWorker;
+    }
+
     template<typename T, typename V>
     void SetInterruptValue(V value)
     {
         volatile auto interruptValue =
             reinterpret_cast<volatile std::atomic<uint64_t> *>(&glueData_.interruptVector_);
         uint64_t oldValue = interruptValue->load(std::memory_order_relaxed);
-        uint64_t oldValueBeforeCAS;
+        auto newValue = oldValue;
         do {
-            auto newValue = oldValue;
+            newValue = oldValue;
             T::Set(value, &newValue);
-            oldValueBeforeCAS = oldValue;
-            std::atomic_compare_exchange_strong_explicit(interruptValue, &oldValue, newValue,
-                std::memory_order_release, std::memory_order_relaxed);
-        } while (oldValue != oldValueBeforeCAS);
+        } while (!std::atomic_compare_exchange_strong_explicit(interruptValue, &oldValue, newValue,
+                                                               std::memory_order_release,
+                                                               std::memory_order_relaxed));
     }
 
     void InvokeWeakNodeFreeGlobalCallBack();
@@ -897,6 +922,22 @@ public:
         return glueData_.taskInfo_;
     }
 
+    void SetJitCodeMap(JSTaggedType exception,  MachineCode* machineCode, std::string &methodName)
+    {
+        auto it = jitCodeMaps_.find(exception);
+        if (it != jitCodeMaps_.end()) {
+            it->second->emplace(machineCode, methodName);
+        } else {
+            JitCodeMap *jitCode = new JitCodeMap {{machineCode, methodName}};
+            jitCodeMaps_.emplace(exception, jitCode);
+        }
+    }
+
+    std::map<JSTaggedType, JitCodeMap*> &GetJitCodeMaps()
+    {
+        return jitCodeMaps_;
+    }
+
     struct GlueData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),
                                                  BCStubEntries,
                                                  JSTaggedValue,
@@ -928,6 +969,7 @@ public:
                                                  JSTaggedValue,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
+                                                 base::AlignedBool,
                                                  base::AlignedUint32,
                                                  JSTaggedValue,
                                                  base::AlignedPointer,
@@ -936,9 +978,10 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
-                                                 base::AlignedUint32> {
+                                                 base::AlignedUint32,
+                                                 base::AlignedBool> {
         enum class Index : size_t {
-            BCStubEntriesIndex = 0,
+            BcStubEntriesIndex = 0,
             ExceptionIndex,
             GlobalObjIndex,
             StableArrayElementsGuardiansIndex,
@@ -955,7 +998,7 @@ public:
             COStubEntriesIndex,
             BuiltinsStubEntriesIndex,
             BuiltinHClassEntriesIndex,
-            BCDebuggerStubEntriesIndex,
+            BcDebuggerStubEntriesIndex,
             BaselineStubEntriesIndex,
             StateBitFieldIndex,
             FrameBaseIndex,
@@ -967,16 +1010,18 @@ public:
             InterruptVectorIndex,
             IsStartHeapSamplingIndex,
             IsDebugModeIndex,
+            IsWorkerIndex,
             IsFrameDroppedIndex,
             PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
             CurrentContextIndex,
             BuiltinEntriesIndex,
             IsTracingIndex,
-            unsharedConstpoolsIndex,
+            UnsharedConstpoolsIndex,
             RandomStatePtrIndex,
-            stateAndFlagsIndex,
+            StateAndFlagsIndex,
             TaskInfoIndex,
+            IsEnableElementsKindIndex,
             NumOfMembers
         };
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
@@ -1053,7 +1098,7 @@ public:
 
         static size_t GetBCStubEntriesOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::BCStubEntriesIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::BcStubEntriesIndex)>(isArch32);
         }
 
         static size_t GetRTStubEntriesOffset(bool isArch32)
@@ -1064,6 +1109,11 @@ public:
         static size_t GetCOStubEntriesOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::COStubEntriesIndex)>(isArch32);
+        }
+
+        static size_t GetBaselineStubEntriesOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::BaselineStubEntriesIndex)>(isArch32);
         }
 
         static size_t GetBuiltinsStubEntriesOffset(bool isArch32)
@@ -1104,7 +1154,7 @@ public:
 
         static size_t GetBCDebuggerStubEntriesOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::BCDebuggerStubEntriesIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::BcDebuggerStubEntriesIndex)>(isArch32);
         }
 
         static size_t GetFrameBaseOffset(bool isArch32)
@@ -1142,6 +1192,11 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsDebugModeIndex)>(isArch32);
         }
 
+        static size_t GetIsWorkerOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::IsWorkerIndex)>(isArch32);
+        }
+
         static size_t GetIsFrameDroppedOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::IsFrameDroppedIndex)>(isArch32);
@@ -1174,12 +1229,12 @@ public:
 
         static size_t GetUnSharedConstpoolsOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::unsharedConstpoolsIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::UnsharedConstpoolsIndex)>(isArch32);
         }
 
         static size_t GetStateAndFlagsOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::stateAndFlagsIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::StateAndFlagsIndex)>(isArch32);
         }
 
         static size_t GetRandomStatePtrOffset(bool isArch32)
@@ -1192,7 +1247,12 @@ public:
             return GetOffset<static_cast<size_t>(Index::TaskInfoIndex)>(isArch32);
         }
 
-        alignas(EAS) BCStubEntries bcStubEntries_;
+        static size_t GetIsEnableElementsKindOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::IsEnableElementsKindIndex)>(isArch32);
+        }
+
+        alignas(EAS) BCStubEntries bcStubEntries_ {};
         alignas(EAS) JSTaggedValue exception_ {JSTaggedValue::Hole()};
         alignas(EAS) JSTaggedValue globalObject_ {JSTaggedValue::Hole()};
         alignas(EAS) bool stableArrayElementsGuardians_ {true};
@@ -1205,12 +1265,12 @@ public:
         alignas(EAS) const uintptr_t *sOldSpaceAllocationEndAddress_ {nullptr};
         alignas(EAS) const uintptr_t *sNonMovableSpaceAllocationTopAddress_ {nullptr};
         alignas(EAS) const uintptr_t *sNonMovableSpaceAllocationEndAddress_ {nullptr};
-        alignas(EAS) RTStubEntries rtStubEntries_;
-        alignas(EAS) COStubEntries coStubEntries_;
-        alignas(EAS) BuiltinStubEntries builtinStubEntries_;
-        alignas(EAS) BuiltinHClassEntries builtinHClassEntries_;
-        alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_;
-        alignas(EAS) BaselineStubEntries baselineStubEntries_;
+        alignas(EAS) RTStubEntries rtStubEntries_ {};
+        alignas(EAS) COStubEntries coStubEntries_ {};
+        alignas(EAS) BuiltinStubEntries builtinStubEntries_ {};
+        alignas(EAS) BuiltinHClassEntries builtinHClassEntries_ {};
+        alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_ {};
+        alignas(EAS) BaselineStubEntries baselineStubEntries_ {};
         alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};
@@ -1221,16 +1281,18 @@ public:
         alignas(EAS) volatile uint64_t interruptVector_ {0};
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
         alignas(EAS) bool isDebugMode_ {false};
+        alignas(EAS) bool isWorker_ {false};
         alignas(EAS) bool isFrameDropped_ {false};
         alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};
         alignas(EAS) EcmaContext *currentContext_ {nullptr};
-        alignas(EAS) BuiltinEntries builtinEntries_;
+        alignas(EAS) BuiltinEntries builtinEntries_ {};
         alignas(EAS) bool isTracing_ {false};
         alignas(EAS) uintptr_t unsharedConstpools_ {0};
         alignas(EAS) uintptr_t randomStatePtr_ {0};
         alignas(EAS) ThreadStateAndFlags stateAndFlags_ {};
         alignas(EAS) uintptr_t taskInfo_ {0};
+        alignas(EAS) bool isEnableElementsKind_ {false};
     };
     STATIC_ASSERT_EQ_ARCH(sizeof(GlueData), GlueData::SizeArch32, GlueData::SizeArch64);
 
@@ -1363,6 +1425,11 @@ public:
         return &jitMutex_;
     }
 
+    RecursiveMutex &GetProfileTypeAccessorLock()
+    {
+        return profileTypeAccessorLockMutex_;
+    }
+
     void SetMachineCodeLowMemory(bool isLow)
     {
         machineCodeLowMemory_ = isLow;
@@ -1399,6 +1466,14 @@ public:
     bool IsInConcurrentScope()
     {
         return isInConcurrentScope_;
+    }
+
+    void EnableEdenGCBarriers()
+    {
+        auto setValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetValueWithEdenBarrier);
+        SetFastStubEntry(kungfu::CommonStubCSigns::SetValueWithBarrier, setValueStub);
+        auto markStub = GetRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrierWithEden);
+        RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrier, markStub);
     }
 
 #ifndef NDEBUG
@@ -1524,6 +1599,7 @@ private:
 
     bool finalizationCheckState_ {false};
     // Shared heap
+    bool isMainThread_ {false};
     bool fullMarkRequest_ {false};
 
     CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
@@ -1540,6 +1616,7 @@ private:
     ThreadType threadType_ {ThreadType::JS_THREAD};
     RecursiveMutex jitMutex_;
     bool machineCodeLowMemory_ {false};
+    RecursiveMutex profileTypeAccessorLockMutex_;
 
     uint64_t jobId_ {0};
 
@@ -1547,6 +1624,9 @@ private:
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
     std::atomic<bool> launchedSuspendAll_ {false};
 #endif
+    // Collect a map from JsError to MachineCode objects, JsError objects with stack frame generated by jit in the map.
+    // It will be used to keep MachineCode objects alive (for dump) before JsError object be free.
+    std::map<JSTaggedType, JitCodeMap*> jitCodeMaps_;
 
     std::atomic<bool> needTermination_ {false};
     std::atomic<bool> hasTerminated_ {false};

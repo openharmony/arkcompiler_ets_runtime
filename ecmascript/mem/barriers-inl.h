@@ -36,33 +36,46 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     }
 #endif
     uintptr_t slotAddr = ToUintPtr(obj) + offset;
-    if (!objectRegion->InYoungSpace() && valueRegion->InYoungSpace()) {
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
         // Should align with '8' in 64 and 32 bit platform
         ASSERT((slotAddr % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
         objectRegion->InsertOldToNewRSet(slotAddr);
     } else if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
+#ifndef NDEBUG
+        if (UNLIKELY(JSTaggedValue(value).IsWeakForHeapObject())) {
+            CHECK_NO_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
+        }
+#endif
         objectRegion->InsertLocalToShareRSet(slotAddr);
+    } else if (valueRegion->InEdenSpace() && objectRegion->InYoungSpace()) {
+        objectRegion->InsertNewToEdenRSet(slotAddr);
     }
     ASSERT(!objectRegion->InSharedHeap() || valueRegion->InSharedHeap());
     if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
                          valueRegion, writeType);
     }
-    if (writeType != WriteBarrierType::DESERIALIZE &&
-        valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
-        Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
+    if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
+        if (writeType != WriteBarrierType::DESERIALIZE) {
+            Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
+        } else {
+            // In deserialize, will never add references from old object(not allocated by deserialing) to
+            // new object(allocated by deserializing), only two kinds of references(new->old, new->new) will
+            // be added, the old object is considered as serialize_root, and be marked and pushed in
+            // SharedGC::MarkRoots, so just mark all the new object is enough, do not need to push them to
+            // workmanager and recursively visit slots of that.
+            ASSERT(DaemonThread::GetInstance()->IsConcurrentMarkingOrFinished());
+            valueRegion->AtomicMark(JSTaggedValue(value).GetHeapObject());
+        }
     }
 }
 
-/* static */
-// CODECHECK-NOLINTNEXTLINE(C_RULE_ID_COMMENT_LOCATION)
-// default value for need_write_barrier is true
-template<bool need_write_barrier>
+template<bool needWriteBarrier>
 inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
     // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
-    if (need_write_barrier) {
+    if (needWriteBarrier) {
         WriteBarrier(thread, obj, offset, value);
     }
 }
@@ -76,8 +89,8 @@ inline void Barriers::SynchronizedSetClass(const JSThread *thread, void *obj, JS
 inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
                                             bool isPrimitive)
 {
-    reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)
-    ->store(value, std::memory_order_release);
+    reinterpret_cast<volatile std::atomic<JSTaggedType> *>(ToUintPtr(obj) + offset)->store(value,
+        std::memory_order_release);
     if (!isPrimitive) {
         WriteBarrier(thread, obj, offset, value);
     }

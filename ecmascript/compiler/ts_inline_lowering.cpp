@@ -71,6 +71,7 @@ void TSInlineLowering::CandidateInlineCall(GateRef gate, ChunkQueue<InlineTypeIn
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8:
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
         case EcmaOpcode::STTHISBYNAME_IMM16_ID16:
             CandidateAccessor(gate, workList, CallKind::CALL_SETTER);
@@ -121,6 +122,10 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
         return;
     }
     auto &bytecodeInfo = ctx_->GetBytecodeInfo();
+    if (compilationEnv_->IsJitCompiler()) {
+        ctx_->GetBytecodeInfoCollector()->ProcessMethod(inlinedMethod);
+    }
+    ASSERT(bytecodeInfo.GetMethodList().find(methodOffset) != bytecodeInfo.GetMethodList().end());
     auto &methodInfo = bytecodeInfo.GetMethodList().at(methodOffset);
     auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
     auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
@@ -138,6 +143,10 @@ void TSInlineLowering::TryInline(InlineTypeInfoAccessor &info, ChunkQueue<Inline
             if (!noCheck_ && !info.IsCallInit()) {
                 InlineCheck(info);
             }
+            if (!CalleePFIProcess(methodOffset)) {
+                return;
+            }
+            UpdateCallMethodFlagMap(methodOffset, inlinedMethod);
             InlineCall(methodInfo, methodPcInfo, inlinedMethod, info);
             UpdateInlineCounts(frameArgs, inlineCallCounts);
             if (info.IsNormalCall()) {
@@ -209,9 +218,13 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     std::string fullName = methodName + "@" + std::string(recordName) + "@" + fileName;
 
     circuit_->InitRoot();
+    JITProfiler *profiler = nullptr;
+    if (compilationEnv_->IsJitCompiler()) {
+        profiler = compilationEnv_->GetPGOProfiler()->GetJITProfile();
+    }
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    circuit_, ctx_->GetByteCodes(), IsLogEnabled(),
-                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder(), true);
+                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder(), true, profiler);
     {
         if (enableTypeLowering_) {
             BuildFrameStateChain(info, builder);
@@ -274,6 +287,7 @@ void TSInlineLowering::ReplaceCallInput(InlineTypeInfoAccessor &info, GateRef gl
     vec.emplace_back(glue); // glue
     if (!method->IsFastCall()) {
         vec.emplace_back(builder_.Int64(actualArgc)); // argc
+        vec.emplace_back(builder_.IntPtr(0)); // argv
     }
     vec.emplace_back(callTarget);
     if (!method->IsFastCall()) {
@@ -306,6 +320,7 @@ void TSInlineLowering::ReplaceAccessorInput(InlineTypeInfoAccessor &info, GateRe
     vec.emplace_back(glue); // glue
     if (!method->IsFastCall()) {
         vec.emplace_back(builder_.Int64(actualArgc)); // argc
+        vec.emplace_back(builder_.IntPtr(0)); // argv
     }
     vec.emplace_back(callTarget);
     if (!method->IsFastCall()) {
@@ -335,13 +350,13 @@ GateRef TSInlineLowering::BuildAccessor(InlineTypeInfoAccessor &info)
     int holderHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
     ASSERT(ptManager->QueryHClass(holderType.first, holderType.second).IsJSHClass());
     ArgumentAccessor argAcc(circuit_);
-    GateRef constpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
+    GateRef unsharedConstPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
 
     auto currentLabel = env.GetCurrentLabel();
     auto state = currentLabel->GetControl();
     auto depend = currentLabel->GetDepend();
     GateRef holder = circuit_->NewGate(circuit_->LookUpHolder(), MachineType::I64,
-                                       { state, depend, receiver, builder_.Int32(holderHCIndex), constpool},
+                                       { state, depend, receiver, builder_.Int32(holderHCIndex), unsharedConstPool},
                                        GateType::AnyType());
 
     if (info.IsCallGetter()) {
@@ -541,9 +556,9 @@ void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
     auto callDepend = currentLabel->GetDepend();
     auto frameState = acc_.GetFrameState(gate);
     ArgumentAccessor argAcc(circuit_);
-    GateRef constpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
+    GateRef unsharedConstPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
     GateRef ret = circuit_->NewGate(circuit_->PrototypeCheck(receiverHCIndex), MachineType::I1,
-        {callState, callDepend, constpool, frameState}, GateType::NJSValue());
+        {callState, callDepend, unsharedConstPool, frameState}, GateType::NJSValue());
     acc_.ReplaceStateIn(gate, ret);
     acc_.ReplaceDependIn(gate, ret);
 }
@@ -714,4 +729,43 @@ uint32_t TSInlineLowering::GetAccessorConstpoolId(InlineTypeInfoAccessor &info)
     uint32_t inlineMethodOffset = info.GetCallMethodId();
     return ptManager_->GetConstantPoolIDByMethodOffset(inlineMethodOffset);
 }
+
+bool TSInlineLowering::CalleePFIProcess(uint32_t methodOffset)
+{
+    if (!compilationEnv_->IsJitCompiler()) {
+        return true;
+    }
+    auto jitCompilationEnv = static_cast<JitCompilationEnv *>(compilationEnv_);
+    JSFunction *calleeFunc = jitCompilationEnv->GetJsFunctionByMethodOffset(methodOffset);
+    if (!calleeFunc) {
+        return false;
+    }
+    auto calleeMethod = Method::Cast(calleeFunc->GetMethod());
+    ASSERT(calleeMethod->GetMethodId().GetOffset() == methodOffset);
+    auto profileTIVal = calleeFunc->GetProfileTypeInfo();
+    if (profileTIVal.IsUndefined()) {
+        return false;
+    }
+    auto profileTypeInfo = ProfileTypeInfo::Cast(profileTIVal.GetTaggedObject());
+
+    auto calleeLiteral = calleeMethod->GetMethodLiteral();
+    auto calleeFile = calleeMethod->GetJSPandaFile();
+    auto calleeAbcId = PGOProfiler::GetMethodAbcId(calleeFunc);
+    auto calleeCodeSize = calleeLiteral->GetCodeSize(calleeFile, calleeMethod->GetMethodId());
+    compilationEnv_->GetPGOProfiler()->GetJITProfile()->ProfileBytecode(
+        compilationEnv_->GetJSThread(), JSHandle<ProfileTypeInfo>(), profileTypeInfo, calleeMethod->GetMethodId(),
+        calleeAbcId, calleeMethod->GetBytecodeArray(), calleeCodeSize, calleeFile->GetPandaFile()->GetHeader(), true);
+    return true;
+}
+
+void TSInlineLowering::UpdateCallMethodFlagMap(uint32_t methodOffset, const MethodLiteral *method)
+{
+    if (!compilationEnv_->IsJitCompiler()) {
+        return;
+    }
+    CString fileDesc = ctx_->GetJSPandaFile()->GetNormalizedFileDesc();
+    callMethodFlagMap_->SetIsJitCompile(fileDesc, methodOffset, true);
+    callMethodFlagMap_->SetIsFastCall(fileDesc, methodOffset, method->IsFastCall());
+}
+
 }  // namespace panda::ecmascript

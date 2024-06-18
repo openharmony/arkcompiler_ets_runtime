@@ -212,6 +212,12 @@ public:
         return static_cast<int>(value_ & (~TAG_MARK));
     }
 
+    ARK_INLINE uint64_t GetLargeUInt() const
+    {
+        ASSERT_PRINT(IsInt(), "can not convert JSTaggedValue to Int :" << std::hex << value_);
+        return (value_ & (~TAG_MARK));
+    }
+
     ARK_INLINE JSTaggedType GetRawData() const
     {
         return value_;
@@ -733,7 +739,18 @@ private:
                                  const JSHandle<JSTaggedValue> &key,
                                  const JSHandle<JSTaggedValue> &value);
     static JSHandle<EcmaString> NativePointerToString(JSThread *thread, const JSHandle<JSTaggedValue> &tagged);
-
+    static bool EqualNumber(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                            const JSHandle<JSTaggedValue> &y);
+    static bool EqualString(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                            const JSHandle<JSTaggedValue> &y);
+    static bool EqualSymbol(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                            const JSHandle<JSTaggedValue> &y);
+    static bool EqualBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                            const JSHandle<JSTaggedValue> &y);
+    static bool EqualHeapObject(JSThread *thread, const JSHandle<JSTaggedValue> &x,
+                                const JSHandle<JSTaggedValue> &y);
+    static bool EqualNullOrUndefined(const JSHandle<JSTaggedValue> &x,
+                                     const JSHandle<JSTaggedValue> &y);
     static ARK_INLINE JSTaggedValue WrapUint64(uint64_t v)
     {
         return JSTaggedValue(static_cast<JSTaggedType>(v) | TAG_INT);

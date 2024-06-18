@@ -22,6 +22,7 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "file.h"
 #include "jsnapi.h"
@@ -72,28 +73,31 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-            if (vm->EnableReportModuleResolvingFailure()) {
-                LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
-            }
+            LOG_NO_TAG(ERROR) << "[ArkRuntime Log] Importing shared package is not supported in the Previewer.";
 #endif
             LOG_FULL(FATAL) << "resolveBufferCallback is nullptr";
             return nullptr;
         }
         std::string hspPath = ModulePathHelper::ParseHapPath(filename);
         if (hspPath.empty()) {
+            LOG_FULL(ERROR) << ModuleMessageHelper::VmModuleInfoMessage(thread);
+            if (!thread->IsMainThread()) {
+                CString msg = "Invalid input hsp path: " + filename;
+                THROW_TYPE_ERROR_AND_RETURN(thread, msg.c_str(), nullptr);
+            }
             LOG_FULL(FATAL) << "Invalid input hsp path: " << filename;
             return nullptr;
         }
         uint8_t *data = nullptr;
         size_t dataSize = 0;
-        bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize);
+        std::string errorMsg;
+        bool getBuffer = resolveBufferCallback(hspPath, &data, &dataSize, errorMsg);
         if (!getBuffer) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
-            if (vm->EnableReportModuleResolvingFailure()) {
-                LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
-            }
+            LOG_NO_TAG(INFO) << "[ArkRuntime Log] Importing shared package in the Previewer.";
 #endif
-            LOG_FULL(FATAL) << "resolveBufferCallback get hsp buffer failed, hsp path:" << filename;
+            LOG_FULL(FATAL) << "resolveBufferCallback get hsp buffer failed, hsp path:" << filename
+                << ", errorMsg:" << errorMsg;
             return nullptr;
         }
 #if defined(PANDA_TARGET_ANDROID) || defined(PANDA_TARGET_IOS)
@@ -173,6 +177,10 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
 std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread *thread, const CString &filename,
     std::string_view entryPoint, uint8_t *buffer, size_t size, bool needUpdate)
 {
+    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
+    if (enableESMTrace) {
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, "JSPandaFileManager::LoadJSPandaFileSecure");
+    }
     if (buffer == nullptr || size == 0) {
         LOG_FULL(ERROR) << "Input buffer is empty";
         return nullptr;
@@ -210,6 +218,9 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFileSecure(JSThread 
         GetJSPtExtractorAndExtract(jsPandaFile.get());
     }
 #endif
+    if (enableESMTrace) {
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+    }
     return jsPandaFile;
 }
 
@@ -565,9 +576,11 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
         }
         uint8_t *data = nullptr;
         size_t dataSize = 0;
-        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize);
+        std::string errorMsg;
+        bool getBuffer = resolveBufferCallback(ModulePathHelper::ParseHapPath(fileName), &data, &dataSize, errorMsg);
         if (!getBuffer) {
-            LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback get buffer failed";
+            LOG_FULL(ERROR)
+                << "When checking file path, resolveBufferCallback get buffer failed, errorMsg = " << errorMsg;
             return false;
         }
     }

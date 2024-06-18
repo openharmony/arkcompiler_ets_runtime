@@ -1236,6 +1236,19 @@ const uint8_t *EcmaString::GetUtf8DataFlat(const EcmaString *src, CVector<uint8_
     return string->GetDataUtf8();
 }
 
+const uint8_t *EcmaString::GetNonTreeUtf8Data(const EcmaString *src)
+{
+    ASSERT(src->IsUtf8());
+    ASSERT(!src->IsTreeString());
+    EcmaString *string = const_cast<EcmaString *>(src);
+    if (string->IsSlicedString()) {
+        SlicedString *str = SlicedString::Cast(string);
+        return EcmaString::Cast(str->GetParent())->GetDataUtf8() + str->GetStartIndex();
+    }
+    ASSERT(src->IsLineOrConstantString());
+    return string->GetDataUtf8();
+}
+
 const uint16_t *EcmaString::GetUtf16DataFlat(const EcmaString *src, CVector<uint16_t> &buf)
 {
     ASSERT(src->IsUtf16());
@@ -1256,6 +1269,19 @@ const uint16_t *EcmaString::GetUtf16DataFlat(const EcmaString *src, CVector<uint
     return string->GetDataUtf16();
 }
 
+const uint16_t *EcmaString::GetNonTreeUtf16Data(const EcmaString *src)
+{
+    ASSERT(src->IsUtf16());
+    ASSERT(!src->IsTreeString());
+    EcmaString *string = const_cast<EcmaString *>(src);
+    if (string->IsSlicedString()) {
+        SlicedString *str = SlicedString::Cast(string);
+        return EcmaString::Cast(str->GetParent())->GetDataUtf16() + str->GetStartIndex();
+    }
+    ASSERT(src->IsLineOrConstantString());
+    return string->GetDataUtf16();
+}
+
 std::u16string FlatStringInfo::ToU16String(uint32_t len)
 {
     uint32_t length = len > 0 ? len : GetLength();
@@ -1268,12 +1294,6 @@ std::u16string FlatStringInfo::ToU16String(uint32_t len)
         result = base::StringHelper::Utf8ToU16String(data, length);
     }
     return result;
-}
-
-EcmaStringAccessor::EcmaStringAccessor(EcmaString *string)
-{
-    ASSERT(string != nullptr);
-    string_ = string;
 }
 
 EcmaStringAccessor::EcmaStringAccessor(TaggedObject *obj)
@@ -1307,6 +1327,24 @@ std::string EcmaStringAccessor::ToStdString(StringConvertedUsage usage)
         res.push_back(c);
     }
     return res;
+}
+
+CString EcmaStringAccessor::Utf8ConvertToString()
+{
+    if (string_ == nullptr) {
+        return CString("");
+    }
+    if (IsUtf8()) {
+        std::string stdStr;
+        if (IsLineString()) {
+            return base::StringHelper::Utf8ToString(GetDataUtf8(), GetLength()).c_str();
+        }
+        CVector<uint8_t> buf;
+        const uint8_t *data = EcmaString::GetUtf8DataFlat(string_, buf);
+        return base::StringHelper::Utf8ToString(data, GetLength()).c_str();
+    } else {
+        return ToCString();
+    }
 }
 
 std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)

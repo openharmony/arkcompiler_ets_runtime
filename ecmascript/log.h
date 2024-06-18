@@ -59,6 +59,7 @@ enum Component {
     TRACE = 1ULL << 6ULL,
     JIT = 1UL << 7ULL,
     BASELINEJIT = 1UL << 8ULL,
+    SA = 1ULL << 9ULL,
     NO_TAG = 0xFFFFFFFFULL >> 1ULL,
     ALL = 0xFFFFFFFFULL,
 };
@@ -80,7 +81,13 @@ public:
     static void Initialize(const JSRuntimeOptions &options);
     static inline bool LogIsLoggable(Level level, Component component)
     {
-        return (level >= level_) && ((components_ & component) != 0ULL);
+        switch (component)
+        {
+            case Component::SA:
+                return ((components_ & component) != 0ULL);
+            default:
+                return (level >= level_) && ((components_ & component) != 0ULL);
+        }
     }
     static inline std::string GetComponentStr(Component component)
     {
@@ -106,6 +113,8 @@ public:
                 return "[jit] ";
             case Component::BASELINEJIT:
                 return "[baselinejit] ";
+            case Component::SA:
+                return "[sa] ";
             case Component::ALL:
                 return "[default] ";
             default:

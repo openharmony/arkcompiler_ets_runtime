@@ -16,6 +16,7 @@
 #include "ecmascript/js_bigint.h"
 
 #include "ecmascript/base/bit_helper.h"
+#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_number.h"
 
@@ -65,7 +66,7 @@ CString BigIntHelper::Conversion(const CString &num, uint32_t conversionToRadix,
     return res;
 }
 
-JSHandle<BigInt> BigInt::GetUint64MaxBigint(JSThread *thread)
+JSHandle<BigInt> BigInt::CreateUint64MaxBigInt(JSThread *thread)
 {
     JSHandle<BigInt> bigint = CreateBigint(thread, 3); // 3:The number of digits in an object of type BigInt
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
@@ -75,13 +76,23 @@ JSHandle<BigInt> BigInt::GetUint64MaxBigint(JSThread *thread)
     return bigint;
 }
 
-JSHandle<BigInt> BigInt::GetInt64MaxBigint(JSThread *thread)
+JSHandle<BigInt> BigInt::CreateInt64MaxBigInt(JSThread *thread)
 {
     JSHandle<BigInt> bigint = CreateBigint(thread, 2); // 2:The number of digits in an object of type BigInt
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(BigInt, thread);
     bigint->SetDigit(0, 0);
     bigint->SetDigit(1, 0x80000000); // 0x80000000:Int MAX
     return bigint;
+}
+
+JSHandle<BigInt> BigInt::GetUint64MaxBigInt(JSThread *thread)
+{
+    return JSHandle<BigInt>::Cast(thread->GlobalConstants()->GetHandledUint64MaxBigInt());
+}
+
+JSHandle<BigInt> BigInt::GetInt64MaxBigInt(JSThread *thread)
+{
+    return JSHandle<BigInt>::Cast(thread->GlobalConstants()->GetHandledInt64MaxBigInt());
 }
 
 JSHandle<BigInt> BigIntHelper::SetBigInt(JSThread *thread, const CString &numStr, uint32_t currentRadix)
@@ -608,6 +619,11 @@ void BigInt::BigIntToInt64(JSThread *thread, JSHandle<JSTaggedValue> bigint, int
     if (bigint->IsBoolean()) {
         bigint = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, bigint));
         RETURN_IF_ABRUPT_COMPLETION(thread);
+    } else if (!bigint->IsBigInt()) {
+        JSHandle<BigInt> bigInt64(thread, JSTaggedValue::ToBigInt64(thread, bigint));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+        *cValue = bigInt64->ToInt64();
+        return;
     }
     JSHandle<BigInt> bigInt64(thread, JSTaggedValue::ToBigInt64(thread, bigint));
     RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -626,6 +642,11 @@ void BigInt::BigIntToUint64(JSThread *thread, JSHandle<JSTaggedValue> bigint, ui
     if (bigint->IsBoolean()) {
         bigint = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, bigint));
         RETURN_IF_ABRUPT_COMPLETION(thread);
+    } else if (!bigint->IsBigInt()) {
+        JSHandle<BigInt> bigInt64(thread, JSTaggedValue::ToBigUint64(thread, bigint));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
+        *cValue = bigInt64->ToInt64();
+        return;
     }
     JSHandle<BigInt> bigUint64(thread, JSTaggedValue::ToBigUint64(thread, bigint));
     RETURN_IF_ABRUPT_COMPLETION(thread);

@@ -555,7 +555,11 @@ CString PatchLoader::GetRealName(const JSPandaFile *jsPandaFile, EntityId entity
     size_t poiIndex = methodName.find_last_of('#');
     ASSERT(methodName.size() > 0);
     if (poiIndex != std::string::npos && poiIndex < methodName.size() - 1 && className != "default") {
-        methodName = methodName.substr(poiIndex + 1);
+        methodName = methodName.substr(poiIndex + 1);  // #...#functionName
+        if (methodName.find('^') != std::string::npos) {
+            poiIndex = methodName.find_last_of('^');
+            methodName = methodName.substr(0, poiIndex);  // #...#functionName^1
+        }
     }
     return ConvertToString(methodName);
 }

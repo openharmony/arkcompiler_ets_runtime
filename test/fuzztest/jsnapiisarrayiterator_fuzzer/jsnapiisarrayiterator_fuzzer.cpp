@@ -31,7 +31,7 @@ void JSNApiIsArrayIterator_FuzzTest([[maybe_unused]]const uint8_t *data, size_t 
         return;
     }
     Local<ArrayBufferRef> arraybuffer = ArrayBufferRef::New(vm_, (int32_t)size);
-    arraybuffer->IsArrayIterator();
+    arraybuffer->IsArrayIterator(vm_);
     JSNApi::DestroyJSVM(vm_);
 }
 }

@@ -22,6 +22,8 @@
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_number_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_reflect_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
@@ -480,6 +482,12 @@ DECLARE_BUILTINS(NumberConstructor)
 {
     BuiltinsNumberStubBuilder builder(this, glue, thisValue, numArgs);
     builder.GenNumberConstructor(nativeCode, func, newTarget);
+}
+
+DECLARE_BUILTINS(ProxyConstructor)
+{
+    BuiltinsProxyStubBuilder builder(this, glue, thisValue, numArgs);
+    builder.GenProxyConstructor(nativeCode, func, newTarget);
 }
 
 DECLARE_BUILTINS(ArrayConstructor)

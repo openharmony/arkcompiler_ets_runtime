@@ -268,5 +268,12 @@ void BaselineCall::SuperCallAndCheckToBaselineFromBaseline(ExtendedAssembler *as
     AsmInterpreterCall::JSCallCommonEntry(assembler, JSCallMode::SUPER_CALL_WITH_ARGV,
                                           FrameTransitionType::BASELINE_TO_BASELINE_CHECK);
 }
+
+void BaselineCall::GetBaselineBuiltinFp(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(GetBaselineBuiltinFp));
+    __ Movq(rbp, rax);
+    __ Ret();
+}
 #undef __
 }  // namespace panda::ecmascript::x64

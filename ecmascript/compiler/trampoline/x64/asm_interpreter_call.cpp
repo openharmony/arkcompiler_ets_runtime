@@ -578,6 +578,7 @@ Register AsmInterpreterCall::GetThisRegsiter(ExtendedAssembler *assembler, JSCal
         }
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
             return __ CppJSCallAvailableRegister2();
+        case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN: {
             return __ CppJSCallAvailableRegister1();
         }
@@ -739,7 +740,9 @@ void AsmInterpreterCall::PushVregs(ExtendedAssembler *assembler,
             __ Movq(methodRegister, rbx);
         }
         const int32_t pcOffsetFromSP = -24; // -24: 3 slots, frameType, prevFrame, pc
-        __ Movq(Immediate(0), Operand(newSpRegister, pcOffsetFromSP));
+        Register temp3Register = r10;
+        __ Movabs(std::numeric_limits<uint64_t>::max(), temp3Register);
+        __ Movq(temp3Register, Operand(newSpRegister, pcOffsetFromSP));
         __ Movq(newSpRegister, rbp);
         __ Jmp(tempRegister);
 
@@ -834,7 +837,7 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     Label pushThis;
     Label stackOverflow;
 
-    PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV);
+    bool isFrameComplete = PushBuiltinFrame(assembler, glue, FrameType::BUILTIN_FRAME_WITH_ARGV);
 
     __ Push(numArgs);
     __ Cmpq(0, numArgs);
@@ -848,7 +851,8 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     if (callNew) {
         if (hasNewTarget) {
             Register newTarget = r12;
-            __ Movq(Operand(rbp, DOUBLE_SLOT_SIZE), newTarget);
+            // 5: skip frame type, numArgs, func, newTarget and this
+            __ Movq(Operand(rsp, numArgs, Times8, 5 * FRAME_SLOT_SIZE), newTarget);
             __ Pushq(newTarget);
         } else {
             __ Pushq(func);
@@ -857,8 +861,10 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
         __ Pushq(JSTaggedValue::Undefined().GetRawData());
     }
     __ Pushq(func);
-    // 5: 40 means skip frame type, numArgs, func, newTarget and this
-    __ Leaq(Operand(rsp, numArgs, Times8, 5 * FRAME_SLOT_SIZE), rbp);
+    if (!isFrameComplete) {
+        // 5: skip frame type, numArgs, func, newTarget and this
+        __ Leaq(Operand(rsp, numArgs, Times8, 5 * FRAME_SLOT_SIZE), rbp);
+    }
     __ Movq(rsp, stackArgs);
 
     // push argc
@@ -880,12 +886,25 @@ void AsmInterpreterCall::CallNativeWithArgv(ExtendedAssembler *assembler, bool c
     __ Bind(&stackOverflow);
     {
         Label aligneThrow;
-        __ Movq(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME),
-            Operand(rsp, FRAME_SLOT_SIZE));
+        __ Movq(Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)), rsp);
+        __ Pushq(static_cast<int32_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME));  // frame type
         __ Pushq(0);  // argc
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // this
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // newTarget
         __ Pushq(JSTaggedValue::VALUE_UNDEFINED);  // callTarget
+        // 5: skip frame type, argc, this, newTarget and callTarget
+        // +----------------------------------------------------------------+ <---- rbp = rsp + 5 * frame_slot_size
+        // |     FrameType =  BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME |
+        // |----------------------------------------------------------------|
+        // |                               argc = 0                         |
+        // |----------------------------------------------------------------|
+        // |                           this = undefine                      |
+        // |----------------------------------------------------------------|
+        // |                        newTarget = undefined                   |
+        // |----------------------------------------------------------------|
+        // |                        callTarget = undefined                  |
+        // +----------------------------------------------------------------+  <---- rsp
+        __ Leaq(Operand(rsp, 5 * FRAME_SLOT_SIZE), rbp);
 
         __ Testq(0xf, rsp);  // 0xf: 0x1111
         __ Jz(&aligneThrow, Distance::Near);
@@ -979,13 +998,23 @@ void AsmInterpreterCall::PushCallArgsAndDispatchNative(ExtendedAssembler *assemb
     __ Ret();
 }
 
-void AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler,
+bool AsmInterpreterCall::PushBuiltinFrame(ExtendedAssembler *assembler,
                                           Register glue, FrameType type)
 {
     __ Pushq(rbp);
     __ Movq(rsp, Operand(glue, JSThread::GlueData::GetLeaveFrameOffset(false)));
     __ Pushq(static_cast<int32_t>(type));
-    __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);  // 8: skip frame type
+    if (type != FrameType::BUILTIN_FRAME_WITH_ARGV) {
+        __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp);  // 8: skip frame type
+        return true;
+    } else if (type == FrameType::BUILTIN_FRAME_WITH_ARGV) {
+        // this frame push stack args must before update rbp, otherwise cpu profiler maybe visit incomplete stack
+        // BuiltinWithArgvFrame layout please see frames.h
+        return false;
+    } else {
+        LOG_ECMA(FATAL) << "this branch is unreachable";
+        UNREACHABLE();
+    }
 }
 
 void AsmInterpreterCall::CallNativeInternal(ExtendedAssembler *assembler, Register nativeCode)
@@ -1156,6 +1185,22 @@ void AsmInterpreterCall::CallReturnWithArgv(ExtendedAssembler *assembler)
     }
 }
 
+void AsmInterpreterCall::CallContainersArgs2(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs2));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    GetArgvAtStack(assembler);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_OTHER);
+    }
+}
+
 void AsmInterpreterCall::CallContainersArgs3(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs3));
@@ -1190,6 +1235,84 @@ void AsmInterpreterCall::ResumeRspAndReturn(ExtendedAssembler *assembler)
         __ Movq(r13, rax);
         __ Ret();
     }
+}
+
+// ResumeRspAndReturnBaseline(uintptr_t acc)
+// GHC calling convention
+// %r13 - acc
+// %rbp - prevSp
+// %r12 - sp
+// %rbx - jumpSizeAfterCall
+void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndReturnBaseline));
+    Register currentSp = r12;
+    Register fpRegister = r10;
+    intptr_t fpOffset =
+        static_cast<intptr_t>(AsmInterpretedFrame::GetFpOffset(false) - AsmInterpretedFrame::GetSize(false));
+    __ Movq(Operand(currentSp, static_cast<int32_t>(fpOffset)), fpRegister);
+    __ Movq(fpRegister, rsp);
+
+    // Check result
+    Register ret = r13;
+    Register jumpSizeRegister = rbx;
+    Label getThis;
+    Label notUndefined;
+    Label normalReturn;
+    Label newObjectRangeReturn;
+    __ Cmpq(0, jumpSizeRegister);
+    __ Jg(&normalReturn);
+
+    __ Bind(&newObjectRangeReturn);
+    {
+        __ Cmpq(JSTaggedValue::Undefined().GetRawData(), ret);
+        __ Jne(&notUndefined);
+
+        // acc is undefined
+        __ Bind(&getThis);
+        intptr_t thisOffset =
+            static_cast<intptr_t>(AsmInterpretedFrame::GetThisOffset(false) - AsmInterpretedFrame::GetSize(false));
+        __ Movq(Operand(currentSp, static_cast<int32_t>(thisOffset)), ret);
+        __ Jmp(&normalReturn);
+
+        // acc is not undefined
+        __ Bind(&notUndefined);
+        {
+            Register temp = rax;
+            Label notEcmaObject;
+            __ Movabs(JSTaggedValue::TAG_HEAPOBJECT_MASK, temp);
+            __ And(ret, temp);
+            __ Cmpq(0, temp);
+            __ Jne(&notEcmaObject);
+            // acc is heap object
+            __ Movq(Operand(ret, 0), temp);  // hclass
+            __ Movl(Operand(temp, JSHClass::BIT_FIELD_OFFSET), temp);
+            __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST), temp);
+            __ Ja(&notEcmaObject);
+            __ Cmpb(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST), temp);
+            __ Jb(&notEcmaObject);
+            // acc is ecma object
+            __ Jmp(&normalReturn);
+
+            __ Bind(&notEcmaObject);
+            {
+                // load constructor
+                intptr_t funcOffset = static_cast<intptr_t>(
+                    AsmInterpretedFrame::GetFunctionOffset(false) - AsmInterpretedFrame::GetSize(false));
+                __ Movq(Operand(currentSp, static_cast<int32_t>(funcOffset)), temp);
+                __ Movq(Operand(temp, JSFunctionBase::METHOD_OFFSET), temp);
+                __ Movq(Operand(temp, Method::EXTRA_LITERAL_INFO_OFFSET), temp);
+                __ Shr(MethodLiteral::FunctionKindBits::START_BIT, temp);
+                __ Andl((1LU << MethodLiteral::FunctionKindBits::SIZE) - 1, temp);
+                __ Cmpl(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR), temp);
+                __ Jbe(&getThis);  // constructor is base
+                // fall through
+            }
+        }
+    }
+    __ Bind(&normalReturn);
+    __ Movq(ret, rax);
+    __ Ret();
 }
 
 // ResumeCaughtFrameAndDispatch(uintptr_t glue, uintptr_t sp, uintptr_t pc, uintptr_t constantPool,

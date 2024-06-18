@@ -71,6 +71,9 @@ public:
 private:
     void VisitAllObjects(TaggedObject *obj);
     void VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *obj) const;
+    void VerifyHeapObjectSlotLegal(ObjectSlot slot, JSTaggedValue value, TaggedObject *obj) const;
+    void VerifyMarkEden(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
+    void VerifyEvacuateEden(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyMarkYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyEvacuateYoung(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
     void VerifyMarkFull(TaggedObject *obj, ObjectSlot slot, TaggedObject *value) const;
@@ -90,6 +93,8 @@ public:
         : heap_(heap), verifyKind_(verifyKind) {}
     ~Verification() = default;
 
+    static void VerifyMark(Heap *heap);
+    static void VerifyEvacuate(Heap *heap);
     void VerifyAll() const;
 
     size_t VerifyRoot() const;

@@ -374,7 +374,8 @@ void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,
     SetSFunction(env, sFuncPrototypeObj, "apply", Function::FunctionPrototypeApply, fieldIndex++, FunctionLength::TWO,
         BUILTINS_STUB_ID(FunctionPrototypeApply));
     // 19.2.3.2 Function.prototype.bind ( thisArg , ...args)
-    SetSFunction(env, sFuncPrototypeObj, "bind", Function::FunctionPrototypeBind, fieldIndex++, FunctionLength::ONE);
+    SetSFunction(env, sFuncPrototypeObj, "bind", BuiltinsSharedFunction::SharedFunctionPrototypeBind,
+                 fieldIndex++, FunctionLength::ONE);
     // 19.2.3.3 Function.prototype.call (thisArg , ...args)
     SetSFunction(env, sFuncPrototypeObj, "call", Function::FunctionPrototypeCall, fieldIndex++, FunctionLength::ONE);
     // 19.2.3.5 Function.prototype.toString ( )
@@ -863,6 +864,31 @@ BUILTIN_ALL_SYMBOLS(REGISTER_SYMBOL)
 #undef REGISTER_SYMBOL
 }
 
+JSHandle<JSObject> Builtins::InitializeArrayPrototype(JSHandle<JSHClass> &arrBaseFuncInstanceHClass) const
+{
+    JSHandle<JSObject> arrFuncPrototype = factory_->NewSharedOldSpaceJSObjectWithInit(arrBaseFuncInstanceHClass);
+    auto accessor = thread_->GlobalConstants()->GetSharedArrayLengthAccessor();
+    int32_t protoFieldIndex = JSSharedArray::LENGTH_INLINE_PROPERTY_INDEX;
+    static_assert(JSSharedArray::LENGTH_INLINE_PROPERTY_INDEX == 0);
+    arrFuncPrototype->SetPropertyInlinedProps(thread_, protoFieldIndex++, accessor);
+    return arrFuncPrototype;
+}
+
+JSHandle<JSHClass> Builtins::InitializeArrayPrototypeHClass(const JSHandle<JSObject> &arrFuncPrototype) const
+{
+    JSHandle<JSTaggedValue> arrFuncPrototypeValue(arrFuncPrototype);
+    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(1);
+    PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(true, false, false);
+    attributes.SetIsInlinedProps(true);
+    attributes.SetRepresentation(Representation::TAGGED);
+    layout->AddKey(thread_, 0, thread_->GlobalConstants()->GetHandledLengthString().GetTaggedValue(), attributes);
+
+    JSHandle<JSHClass> arrFuncInstanceHClass = factory_->NewSEcmaHClass(
+        JSSharedArray::SIZE, 1, JSType::JS_SHARED_ARRAY, arrFuncPrototypeValue, JSHandle<JSTaggedValue>::Cast(layout));
+    arrFuncInstanceHClass->SetExtensible(false);
+    return arrFuncInstanceHClass;
+}
+
 void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjIHClass,
                                      JSHandle<JSFunction> &sFuncPrototype) const
 {
@@ -872,22 +898,11 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSHClass> arrBaseFuncInstanceHClass = CreateSArrayPrototypeHClass(sObjIHClass);
 
     // Array.prototype
-    JSHandle<JSObject> arrFuncPrototype = factory_->NewSharedOldSpaceJSObjectWithInit(arrBaseFuncInstanceHClass);
-    auto accessor = thread_->GlobalConstants()->GetSharedArrayLengthAccessor();
-    int32_t protoFieldIndex = JSSharedArray::LENGTH_INLINE_PROPERTY_INDEX;  // length
-    static_assert(JSSharedArray::LENGTH_INLINE_PROPERTY_INDEX == 0);
-    arrFuncPrototype->SetPropertyInlinedProps(thread_, protoFieldIndex++, accessor);
-    JSHandle<JSTaggedValue> arrFuncPrototypeValue(arrFuncPrototype);
-
+    JSHandle<JSObject> arrFuncPrototype = InitializeArrayPrototype(arrBaseFuncInstanceHClass);
     // Array.prototype_or_hclass
-    JSHandle<LayoutInfo> layout = factory_->CreateSLayoutInfo(1);
-    PropertyAttributes attributes = PropertyAttributes::DefaultAccessor(true, false, false);
-    attributes.SetIsInlinedProps(true);
-    attributes.SetRepresentation(Representation::TAGGED);
-    layout->AddKey(thread_, 0, thread_->GlobalConstants()->GetHandledLengthString().GetTaggedValue(), attributes);
-    JSHandle<JSHClass> arrFuncInstanceHClass = factory_->NewSEcmaHClass(
-        JSSharedArray::SIZE, 1, JSType::JS_SHARED_ARRAY, arrFuncPrototypeValue, JSHandle<JSTaggedValue>::Cast(layout));
-    arrFuncInstanceHClass->SetExtensible(false);
+    JSHandle<JSHClass> arrFuncInstanceHClass = InitializeArrayPrototypeHClass(arrFuncPrototype);
+    int32_t protoFieldIndex = JSSharedArray::LENGTH_INLINE_PROPERTY_INDEX + 1;
+    
     // SharedArray.hclass
     JSHandle<JSHClass> arrayFuncHClass = CreateSArrayFunctionHClass(sFuncPrototype);
     arrayFuncHClass->SetExtensible(false);

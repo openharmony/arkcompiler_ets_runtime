@@ -41,6 +41,8 @@ ParamType TypeInfoAccessor::PGOSampleTypeToParamType() const
             return ParamType::BooleanType();
         } else if (sample->IsNumber()) {
             return ParamType::NumberType();
+        } else if (sample->IsNumberOrString()) {
+            return ParamType::StringType();
         }
     }
     return ParamType::AnyType();
@@ -221,6 +223,30 @@ bool TypeInfoAccessor::IsTrustedStringType(
                 break;
         }
     }
+    return false;
+}
+
+bool TypeInfoAccessor::IsTrustedNotSameType(const CompilationEnv *env, Circuit *circuit, Chunk *chunk,
+                                            GateAccessor acc, GateRef left, GateRef right)
+{
+    bool leftIsBoolean = IsTrustedBooleanType(acc, left);
+    bool rightIsBoolean = IsTrustedBooleanType(acc, right);
+    bool leftIsNumber = IsTrustedNumberType(acc, left);
+    bool rightIsNumber = IsTrustedNumberType(acc, right);
+    bool leftIsString = IsTrustedStringType(env, circuit, chunk, acc, left);
+    bool rightIsString = IsTrustedStringType(env, circuit, chunk, acc, right);
+    if (leftIsBoolean) {
+        return rightIsNumber || rightIsString;
+    }
+
+    if (leftIsNumber) {
+        return rightIsBoolean || rightIsString;
+    }
+
+    if (leftIsString) {
+        return rightIsBoolean || rightIsNumber;
+    }
+
     return false;
 }
 
@@ -666,6 +692,7 @@ StoreObjByNameTypeInfoAccessor::StoreObjByNameTypeInfoAccessor(const Compilation
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
         case EcmaOpcode::DEFINEFIELDBYNAME_IMM8_ID16_V8:
+        case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
         case EcmaOpcode::STOBJBYNAME_IMM16_ID16_V8: {
             key_ = acc_.GetValueIn(gate, 1); // 1: key

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,6 +25,17 @@
 #include "securec.h"
 
 #include "ecmascript/mem/mem.h"
+#if defined(ENABLE_UNWINDER) && defined(__aarch64__)
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wshadow"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#endif
+#include "fp_unwinder.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+#endif
 
 namespace panda::ecmascript {
 static const std::string LIB_UNWIND_SO_NAME = "libunwind.so";
@@ -36,8 +47,31 @@ using UnwBackTraceFunc = int (*)(void**, int);
 
 static std::map<void *, Dl_info> stackInfoCache;
 
-void Backtrace(std::ostringstream &stack, bool enableCache)
+#if defined(ENABLE_UNWINDER) && defined(__aarch64__)
+static inline ARK_INLINE void GetPcFpRegs([[maybe_unused]] void *regs)
 {
+    asm volatile(
+    "1:\n"
+    "adr x12, 1b\n"
+    "stp x12, x29, [%[base], #0]\n"
+    : [base] "+r"(regs)
+    :
+    : "x12", "memory");
+}
+#endif
+
+bool GetPcs(size_t &size, uintptr_t* pcs)
+{
+#if defined(ENABLE_UNWINDER) && defined(__aarch64__)
+    uintptr_t regs[2] = {0}; // 2: pc and fp reg
+    GetPcFpRegs(regs);
+    uintptr_t pc = regs[0];
+    uintptr_t fp = regs[1];
+    size = OHOS::HiviewDFX::FpUnwinder::GetPtr()->Unwind(pc, fp, pcs, MAX_STACK_SIZE);
+    if (size <= 1) {
+        size = OHOS::HiviewDFX::FpUnwinder::GetPtr()->UnwindSafe(pc, fp, pcs, MAX_STACK_SIZE);
+    }
+#else
     static UnwBackTraceFunc unwBackTrace = nullptr;
     if (!unwBackTrace) {
         void *handle = dlopen(LIB_UNWIND_SO_NAME.c_str(), RTLD_NOW);
@@ -45,34 +79,48 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
             handle = dlopen(LIB_UNWIND_Z_SO_NAME.c_str(), RTLD_NOW);
             if (handle == nullptr) {
                 LOG_ECMA(INFO) << "dlopen libunwind.so failed";
-                return;
+                return false;
             }
         }
         unwBackTrace = reinterpret_cast<UnwBackTraceFunc>(dlsym(handle, "unw_backtrace"));
         if (unwBackTrace == nullptr) {
             LOG_ECMA(INFO) << "dlsym unw_backtrace failed";
-            return;
+            return false;
         }
     }
+    size = unwBackTrace(reinterpret_cast<void**>(pcs), MAX_STACK_SIZE);
+#endif
+    return true;
+}
 
-    void *buffer[MAX_STACK_SIZE] = { nullptr };
-    int level = unwBackTrace(reinterpret_cast<void**>(&buffer), MAX_STACK_SIZE);
+void Backtrace(std::ostringstream &stack, bool enableCache)
+{
+    uintptr_t pcs[MAX_STACK_SIZE] = {0};
+    size_t unwSz = 0;
+    if (!GetPcs(unwSz, pcs)) {
+        return;
+    }
     stack << "=====================Backtrace========================";
-    for (int i = 1; i < level; i++) {
+#if defined(ENABLE_UNWINDER) && defined(__aarch64__)
+    size_t i = 0;
+#else
+    size_t i = 1;
+#endif
+    for (; i < unwSz; i++) {
         Dl_info info;
-        auto iter = stackInfoCache.find(buffer[i]);
+        auto iter = stackInfoCache.find(reinterpret_cast<void *>(pcs[i]));
         if (enableCache && iter != stackInfoCache.end()) {
             info = iter->second;
         } else {
-            if (!dladdr(buffer[i], &info)) {
+            if (!dladdr(reinterpret_cast<void *>(pcs[i]), &info)) {
                 break;
             }
             if (enableCache) {
-                stackInfoCache.emplace(buffer[i], info);
+                stackInfoCache.emplace(reinterpret_cast<void *>(pcs[i]), info);
             }
         }
         const char *file = info.dli_fname ? info.dli_fname : "";
-        uint64_t offset = info.dli_fbase ? ToUintPtr(buffer[i]) - ToUintPtr(info.dli_fbase) : 0;
+        uint64_t offset = info.dli_fbase ? pcs[i] - ToUintPtr(info.dli_fbase) : 0;
         char buf[LOG_BUF_LEN] = {0};
         char frameFormatWithMapName[] = "#%02zu pc %016" PRIx64 " %s";
         int ret = 0;

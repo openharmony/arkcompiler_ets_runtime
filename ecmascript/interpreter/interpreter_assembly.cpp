@@ -226,6 +226,12 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     ASSERT(info);
     JSThread *thread = info->GetThread();
     INTERPRETER_TRACE(thread, AsmExecute);
+    // When the  function is jit-compiled, the Method object is reinstalled.
+    // In this case, the AotWithCall field may be updated.
+    // This causes a Construct that is not a ClassConstructor to call jit code.
+    ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
+    Method *method = callTarget->GetCallTarget();
+    bool isAotWithCallField = method->IsAotWithCallField();
     // check is or not debugger
     thread->CheckSwitchDebuggerBCStub();
     thread->CheckSafepoint();
@@ -233,16 +239,16 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     uintptr_t argv = reinterpret_cast<uintptr_t>(info->GetArgs());
     auto entry = thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AsmInterpreterEntry);
 
-    ECMAObject *callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
-    Method *method = callTarget->GetCallTarget();
-    if (method->IsAotWithCallField()) {
+    callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
+    method = callTarget->GetCallTarget();
+    if (!thread->IsWorker() && isAotWithCallField) {
         JSHandle<JSFunction> func(thread, info->GetFunctionValue());
         if (func->IsClassConstructor()) {
             {
                 EcmaVM *ecmaVm = thread->GetEcmaVM();
                 ObjectFactory *factory = ecmaVm->GetFactory();
-                JSHandle<JSObject> error =
-                    factory->GetJSError(ErrorType::TYPE_ERROR, "class constructor cannot called without 'new'");
+                JSHandle<JSObject> error = factory->GetJSError(ErrorType::TYPE_ERROR,
+                    "class constructor cannot called without 'new'", StackCheck::NO);
                 thread->SetException(error.GetTaggedValue());
             }
             return thread->GetException();
@@ -2960,17 +2966,43 @@ void InterpreterAssembly::HandleIstrue(
     DISPATCH(ISTRUE);
 }
 
+void InterpreterAssembly::HandleCallRuntimeIstruePrefImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    LOG_INST() << "intrinsics::callruntimeistrueprefimm8";
+    if (GET_ACC().ToBoolean()) {
+        SET_ACC(JSTaggedValue::True());
+    } else {
+        SET_ACC(JSTaggedValue::False());
+    }
+    DISPATCH(CALLRUNTIME_ISTRUE_PREF_IMM8);
+}
+
 void InterpreterAssembly::HandleIsfalse(
     JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     LOG_INST() << "intrinsics::isfalse";
-    if (!GET_ACC().ToBoolean()) {
-        SET_ACC(JSTaggedValue::True());
-    } else {
+    if (GET_ACC().ToBoolean()) {
         SET_ACC(JSTaggedValue::False());
+    } else {
+        SET_ACC(JSTaggedValue::True());
     }
     DISPATCH(ISFALSE);
+}
+
+void InterpreterAssembly::HandleCallRuntimeIsfalsePrefImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    LOG_INST() << "intrinsics::callruntimeisfalseprefimm8";
+    if (GET_ACC().ToBoolean()) {
+        SET_ACC(JSTaggedValue::False());
+    } else {
+        SET_ACC(JSTaggedValue::True());
+    }
+    DISPATCH(CALLRUNTIME_ISFALSE_PREF_IMM8);
 }
 
 void InterpreterAssembly::HandleTypeofImm16(
@@ -6013,6 +6045,13 @@ void InterpreterAssembly::HandleDefineFieldByNameImm8Id16V8(
     JSTaggedValue acc, int16_t hotnessCounter)
 {
     DISPATCH(DEFINEFIELDBYNAME_IMM8_ID16_V8);
+}
+
+void InterpreterAssembly::HandleDefinePropertyByNameImm8Id16V8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    DISPATCH(DEFINEPROPERTYBYNAME_IMM8_ID16_V8);
 }
 
 void InterpreterAssembly::HandleCallRuntimeDefineFieldByValuePrefImm8V8V8(

@@ -81,4 +81,42 @@ HWTEST_F_L0(ConcurrentMarkingTest, PerformanceWithoutConcurrentMarking)
     }
     heap->CollectGarbage(TriggerGCType::OLD_GC);
 }
+
+HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithOldSpace)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetFullMarkRequestedState(false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        uint32_t length = 1_KB;
+        for (uint32_t i = 0; i < length * 2; i++) {
+            [[maybe_unused]] auto array =
+                CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        }
+
+        heap->GetOldSpace()->SetInitialCapacity(static_cast<size_t>(length));
+        EXPECT_FALSE(heap->IsConcurrentFullMark());
+        heap->TryTriggerConcurrentMarking();
+        EXPECT_TRUE(heap->IsConcurrentFullMark());
+    }
+}
+
+HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithNewSpace)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetFullMarkRequestedState(false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        uint32_t length = 1_KB;
+        for (uint32_t i = 0; i < length * 2; i++) {
+            [[maybe_unused]] auto array =
+                CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::SEMI_SPACE);
+        }
+
+        heap->GetNewSpace()->SetInitialCapacity(static_cast<size_t>(length));
+        EXPECT_FALSE(heap->IsConcurrentFullMark());
+        heap->TryTriggerConcurrentMarking();
+        EXPECT_TRUE(!heap->IsConcurrentFullMark());
+    }
+}
 }  // namespace panda::test

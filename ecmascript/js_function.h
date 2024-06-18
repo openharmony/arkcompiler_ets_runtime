@@ -138,6 +138,9 @@ public:
     static void SetFunctionPrototypeOrInstanceHClass(const JSThread *thread, const JSHandle<JSFunction> &fun,
                                                      JSTaggedValue protoOrHClass);
 
+    static EcmaString* GetFunctionNameString(JSThread *thread, JSHandle<EcmaString> concatString,
+                                             ObjectFactory *factory, JSHandle<JSTaggedValue> target);
+
     inline bool HasInitialClass() const
     {
         JSTaggedValue protoOrHClass = GetProtoOrHClass();
@@ -233,11 +236,16 @@ public:
                                void *data, size_t nativeBindingsize = 0);
     static void SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
                                    const JSHandle<JSTaggedValue> &value, BarrierMode mode = WRITE_BARRIER);
+    void SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode);
 
     JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;
     JSTaggedValue GetRecordName() const;
-    JSTaggedValue GetProfileTypeInfo() const;
+    JSTaggedValue GetProfileTypeInfo() const
+    {
+        JSTaggedValue raw = GetRawProfileTypeInfo();
+        return ProfileTypeInfoCell::Cast(raw.GetTaggedObject())->GetValue();
+    }
 
     void InitializeForConcurrentFunction(JSThread *thread);
 

@@ -139,8 +139,6 @@ public:
 
     std::string GetFileNameSymbolName(const std::string &fileName) const;
 
-    void SwitchAssertBoundary(StmtNode &stmt, MapleVector<BaseNode *> &argsPrintf);
-
     void LowerAssertBoundary(StmtNode &stmt, BlockNode &block, BlockNode &newBlk, std::vector<StmtNode *> &abortNode);
 
     StmtNode *LowerIntrinsicopDassign(const DassignNode &dassign, IntrinsicopNode &intrinsic, BlockNode &block);
@@ -164,7 +162,6 @@ public:
     BaseNode *LowerArrayDim(ArrayNode &array, int32 dim);
     BaseNode *LowerArrayForLazyBiding(BaseNode &baseNode, BaseNode &offsetNode, const BaseNode &parent);
     BaseNode *LowerArray(ArrayNode &array, const BaseNode &parent);
-    BaseNode *LowerCArray(ArrayNode &array);
 
     DassignNode *SaveReturnValueInLocal(StIdx, uint16);
     BaseNode *NeedRetypeWhenLowerCallAssigned(PrimType pType);
@@ -309,7 +306,6 @@ private:
     }
 
     BaseNode *MergeToCvtType(PrimType dtyp, PrimType styp, BaseNode &src) const;
-    BaseNode *LowerJavascriptIntrinsicop(IntrinsicopNode &intrinNode, const IntrinDesc &desc);
     StmtNode *CreateStmtCallWithReturnValue(const IntrinsicopNode &intrinNode, const MIRSymbol &ret, PUIdx bFunc,
                                             BaseNode *extraInfo = nullptr) const;
     StmtNode *CreateStmtCallWithReturnValue(const IntrinsicopNode &intrinNode, PregIdx retPregIdx, PUIdx bFunc,

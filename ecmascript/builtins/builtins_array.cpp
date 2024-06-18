@@ -1332,6 +1332,10 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
             concatStr.append(sepStr);
         }
         concatStr.append(nextStr);
+        if (concatStr.size() > EcmaString::MAX_STRING_LENGTH) {
+            context->JoinStackPopFastPath(thisHandle);
+            THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+        }
         thread->CheckSafepointIfSuspended();
     }
 
@@ -1734,7 +1738,7 @@ JSTaggedValue BuiltinsArray::Reduce(EcmaRuntimeCallInfo *argv)
     //   c. If kPresent is false, throw a TypeError exception.
     int64_t k = 0;
     JSMutableHandle<JSTaggedValue> accumulator(thread, JSTaggedValue::Undefined());
-    if (argc == 2) {  // 2:2 means the number of parameters
+    if (argc >= 2) {  // 2:2 means the number of parameters
         accumulator.Update(GetCallArg(argv, 1).GetTaggedValue());
     } else {
         bool kPresent = false;
@@ -2646,12 +2650,10 @@ JSTaggedValue BuiltinsArray::ToString(EcmaRuntimeCallInfo *argv)
         callbackFnHandle = JSTaggedValue::GetProperty(thread, objectPrototype, toStringKey).GetValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    const uint32_t argsLength = argv->GetArgsNumber();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisObjVal, undefined, argsLength);
+        EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisObjVal, undefined, 0);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(argsLength, 0, argv, 0);
     return JSFunction::Call(info);
 }
 

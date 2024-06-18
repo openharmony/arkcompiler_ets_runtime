@@ -76,9 +76,10 @@ namespace panda::ecmascript::kungfu {
     V(TryStoreICByName)               \
     V(TryStoreICByValue)              \
     V(SetValueWithBarrier)            \
+    V(SetValueWithEdenBarrier)        \
     V(NewLexicalEnv)                  \
     V(CopyRestArgs)                   \
-    V(GetUnmapedArgs)                 \
+    V(GetUnmappedArgs)                \
     V(NewThisObjectChecked)           \
     V(ConstructorCheck)               \
     V(CreateEmptyArray)               \
@@ -106,7 +107,8 @@ namespace panda::ecmascript::kungfu {
     V(GetSingleCharCodeByIndex)       \
     V(FastStringEqual)                \
     V(FastStringAdd)                  \
-    V(DeleteObjectProperty)
+    V(DeleteObjectProperty)           \
+    V(SameValue)
 
 #define COMMON_STUB_ID_LIST(V)          \
     COMMON_STUB_LIST(V)

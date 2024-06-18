@@ -25,7 +25,7 @@ const INTYPE = {
   other: 5,
 };
 
-class NODE_TYPE_MASK {
+class NodeTypeMask {
   static NONE = 0;
   static CONTROL = 1 << INTYPE.state;
   static DEPEND = 1 << INTYPE.depend;
@@ -55,27 +55,27 @@ class IrToPicture {
     return 'other';
   }
   static nodeTypeMask(ir) {
-    let mask = NODE_TYPE_MASK.NONE;
+    let mask = NodeTypeMask.NONE;
     if (XTools.CONFIG.OpTypeControl.indexOf(ir.op) >= 0) {
-      mask |= NODE_TYPE_MASK.CONTROL;
+      mask |= NodeTypeMask.CONTROL;
     }
     if (ir.in[INTYPE.state].length > 0 && XTools.CONFIG.OpNotControl.indexOf(ir.op) === -1) {
-      mask |= NODE_TYPE_MASK.CONTROL;
+      mask |= NodeTypeMask.CONTROL;
     }
     if (XTools.CONFIG.OpTypeDepend.indexOf(ir.op) >= 0 || ir.in[INTYPE.depend].length > 0) {
-      mask |= NODE_TYPE_MASK.DEPEND;
+      mask |= NodeTypeMask.DEPEND;
     }
     if (XTools.CONFIG.OpTypeValue.indexOf(ir.op) >= 0 || ir.in[INTYPE.value].length > 0) {
-      mask |= NODE_TYPE_MASK.VALUE;
+      mask |= NodeTypeMask.VALUE;
     }
     if (XTools.CONFIG.OpTypeFrameState.indexOf(ir.op) >= 0 || ir.in[INTYPE.framestate].length > 0) {
-      mask |= NODE_TYPE_MASK.FRAMESTATE;
+      mask |= NodeTypeMask.FRAMESTATE;
     }
     if (XTools.CONFIG.OpTypeCircuitRoot.indexOf(ir.op) >= 0 || ir.in[INTYPE.root].length > 0) {
-      mask |= NODE_TYPE_MASK.ROOT;
+      mask |= NodeTypeMask.ROOT;
     }
-    if (mask === NODE_TYPE_MASK.NONE) {
-      mask = NODE_TYPE_MASK.OTHER;
+    if (mask === NodeTypeMask.NONE) {
+      mask = NodeTypeMask.OTHER;
     }
     return mask;
   }

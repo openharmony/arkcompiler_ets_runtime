@@ -54,11 +54,15 @@ public:
     static constexpr uint32_t HEX_VALUE = 16;
     static constexpr uint32_t DECIMAL_DIGITS_ADVANCE = 10;
     static constexpr uint32_t FLAGS_OFFSET = 12;
-    static constexpr uint32_t OP_START_OFFSET = 16;
+    static constexpr uint32_t PREFILTER_OFFSET = 16;
+    static constexpr uint32_t OP_START_OFFSET = 20;
     static constexpr uint32_t UNICODE_HEX_VALUE = 4;
     static constexpr uint32_t UNICODE_HEX_ADVANCE = 2;
     static constexpr uint32_t CAPTURE_CONUT_ADVANCE = 3;
     static constexpr uint32_t UTF8_CHAR_LEN_MAX = 6;
+    static constexpr size_t SPARSE_HEAD_OFFSET = 3;
+    static constexpr size_t SPARSE_OFF_OFFSET = 2;
+    static constexpr size_t SPARSE_MAX_OFFSET = 6;
     static int Canonicalize(int c, bool isUnicode);
     
     explicit RegExpParser(JSThread *thread, Chunk *chunk)

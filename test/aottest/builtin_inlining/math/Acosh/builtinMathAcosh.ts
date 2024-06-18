@@ -51,7 +51,6 @@ len = Math.acosh(10);
 print(len); //: 2.993222846126381
 
 // Replace standart builtin
-//aot: [trace] Check Type: NotJSCallTarget4
 let true_acosh = Math.acosh
 Math.acosh = replace
 len = Math.acosh(111);
@@ -60,4 +59,6 @@ print(len); //: 111
 // Call standart builtin with non-number 
 Math.acosh = true_acosh
 len = Math.acosh("NaN"); // deopt
+//aot: [trace] aot inline builtin: Math.acosh, caller function name:func_main_0@builtinMathAcosh
+//aot: [trace] Check Type: NotNumber1
 print(len); //: NaN

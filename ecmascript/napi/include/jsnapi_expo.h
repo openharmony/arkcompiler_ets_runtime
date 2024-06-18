@@ -384,6 +384,7 @@ class ECMA_PUBLIC_API JSValueRef {
 public:
     static Local<PrimitiveRef> Undefined(const EcmaVM *vm);
     static Local<PrimitiveRef> Null(const EcmaVM *vm);
+    static Local<PrimitiveRef> Hole(const EcmaVM *vm);
     static Local<PrimitiveRef> True(const EcmaVM *vm);
     static Local<PrimitiveRef> False(const EcmaVM *vm);
 
@@ -402,6 +403,7 @@ public:
     Local<BigIntRef> ToBigInt(const EcmaVM *vm);
     Local<StringRef> ToString(const EcmaVM *vm);
     Local<ObjectRef> ToObject(const EcmaVM *vm);
+    Local<ObjectRef> ToEcmaObject(const EcmaVM *vm);
     Local<NativePointerRef> ToNativePointer(const EcmaVM *vm);
 
     bool IsUndefined();
@@ -410,113 +412,114 @@ public:
     bool IsTrue();
     bool IsFalse();
     bool IsNumber();
-    bool IsBigInt();
+    bool IsBigInt(const EcmaVM *vm);
     bool IsInt();
     bool WithinInt32();
     bool IsBoolean();
-    bool IsString();
-    bool IsSymbol();
-    bool IsObject();
+    bool IsString(const EcmaVM *vm);
+    bool IsSymbol(const EcmaVM *vm);
+    bool IsObject(const EcmaVM *vm);
     bool IsArray(const EcmaVM *vm);
     bool IsJSArray(const EcmaVM *vm);
-    bool IsConstructor();
-    bool IsFunction();
-    bool IsJSFunction();
-    bool IsProxy();
-    bool IsPromise();
-    bool IsDataView();
-    bool IsTypedArray();
-    bool IsNativePointer();
-    bool IsDate();
-    bool IsError();
-    bool IsMap();
-    bool IsSet();
-    bool IsWeakRef();
-    bool IsWeakMap();
-    bool IsWeakSet();
-    bool IsRegExp();
-    bool IsArrayIterator();
-    bool IsStringIterator();
-    bool IsSetIterator();
-    bool IsMapIterator();
-    bool IsArrayBuffer();
-    bool IsBuffer();
-    bool IsUint8Array();
-    bool IsInt8Array();
-    bool IsUint8ClampedArray();
-    bool IsInt16Array();
-    bool IsUint16Array();
-    bool IsInt32Array();
-    bool IsUint32Array();
-    bool IsFloat32Array();
-    bool IsFloat64Array();
-    bool IsBigInt64Array();
-    bool IsBigUint64Array();
-    bool IsJSPrimitiveRef();
-    bool IsJSPrimitiveNumber();
-    bool IsJSPrimitiveInt();
-    bool IsJSPrimitiveBoolean();
-    bool IsJSPrimitiveString();
+    bool IsConstructor(const EcmaVM *vm);
+    bool IsFunction(const EcmaVM *vm);
 
-    bool IsJSSharedInt8Array();
-    bool IsJSSharedUint8Array();
-    bool IsJSSharedUint8ClampedArray();
-    bool IsJSSharedInt16Array();
-    bool IsJSSharedUint16Array();
-    bool IsJSSharedInt32Array();
-    bool IsJSSharedUint32Array();
+    bool IsJSFunction(const EcmaVM *vm);
+    bool IsProxy(const EcmaVM *vm);
+    bool IsPromise(const EcmaVM *vm);
+    bool IsDataView(const EcmaVM *vm);
+    bool IsTypedArray(const EcmaVM *vm);
+    bool IsNativePointer(const EcmaVM *vm);
+    bool IsDate(const EcmaVM *vm);
+    bool IsError(const EcmaVM *vm);
+    bool IsMap(const EcmaVM *vm);
+    bool IsSet(const EcmaVM *vm);
+    bool IsWeakRef(const EcmaVM *vm);
+    bool IsWeakMap(const EcmaVM *vm);
+    bool IsWeakSet(const EcmaVM *vm);
+    bool IsRegExp(const EcmaVM *vm);
+    bool IsArrayIterator(const EcmaVM *vm);
+    bool IsStringIterator(const EcmaVM *vm);
+    bool IsSetIterator(const EcmaVM *vm);
+    bool IsMapIterator(const EcmaVM *vm);
+    bool IsArrayBuffer(const EcmaVM *vm);
+    bool IsBuffer(const EcmaVM *vm);
+    bool IsUint8Array(const EcmaVM *vm);
+    bool IsInt8Array(const EcmaVM *vm);
+    bool IsUint8ClampedArray(const EcmaVM *vm);
+    bool IsInt16Array(const EcmaVM *vm);
+    bool IsUint16Array(const EcmaVM *vm);
+    bool IsInt32Array(const EcmaVM *vm);
+    bool IsUint32Array(const EcmaVM *vm);
+    bool IsFloat32Array(const EcmaVM *vm);
+    bool IsFloat64Array(const EcmaVM *vm);
+    bool IsBigInt64Array(const EcmaVM *vm);
+    bool IsBigUint64Array(const EcmaVM *vm);
+    bool IsJSPrimitiveRef(const EcmaVM *vm);
+    bool IsJSPrimitiveNumber(const EcmaVM *vm);
+    bool IsJSPrimitiveInt(const EcmaVM *vm);
+    bool IsJSPrimitiveBoolean(const EcmaVM *vm);
+    bool IsJSPrimitiveString(const EcmaVM *vm);
 
-    bool IsGeneratorObject();
-    bool IsJSPrimitiveSymbol();
+    bool IsJSSharedInt8Array(const EcmaVM *vm);
+    bool IsJSSharedUint8Array(const EcmaVM *vm);
+    bool IsJSSharedUint8ClampedArray(const EcmaVM *vm);
+    bool IsJSSharedInt16Array(const EcmaVM *vm);
+    bool IsJSSharedUint16Array(const EcmaVM *vm);
+    bool IsJSSharedInt32Array(const EcmaVM *vm);
+    bool IsJSSharedUint32Array(const EcmaVM *vm);
 
-    bool IsArgumentsObject();
-    bool IsGeneratorFunction();
-    bool IsAsyncFunction();
-    bool IsConcurrentFunction();
-    bool IsJSLocale();
-    bool IsJSDateTimeFormat();
-    bool IsJSRelativeTimeFormat();
-    bool IsJSIntl();
-    bool IsJSNumberFormat();
-    bool IsJSCollator();
-    bool IsJSPluralRules();
-    bool IsJSListFormat();
-    bool IsAsyncGeneratorFunction();
-    bool IsAsyncGeneratorObject();
+    bool IsGeneratorObject(const EcmaVM *vm);
+    bool IsJSPrimitiveSymbol(const EcmaVM *vm);
 
-    bool IsModuleNamespaceObject();
-    bool IsNativeModuleErrorObject();
-    bool IsSharedArrayBuffer();
-    bool IsSendableArrayBuffer();
+    bool IsArgumentsObject(const EcmaVM *vm);
+    bool IsGeneratorFunction(const EcmaVM *vm);
+    bool IsAsyncFunction(const EcmaVM *vm);
+    bool IsConcurrentFunction(const EcmaVM *vm);
+    bool IsJSLocale(const EcmaVM *vm);
+    bool IsJSDateTimeFormat(const EcmaVM *vm);
+    bool IsJSRelativeTimeFormat(const EcmaVM *vm);
+    bool IsJSIntl(const EcmaVM *vm);
+    bool IsJSNumberFormat(const EcmaVM *vm);
+    bool IsJSCollator(const EcmaVM *vm);
+    bool IsJSPluralRules(const EcmaVM *vm);
+    bool IsJSListFormat(const EcmaVM *vm);
+    bool IsAsyncGeneratorFunction(const EcmaVM *vm);
+    bool IsAsyncGeneratorObject(const EcmaVM *vm);
+
+    bool IsModuleNamespaceObject(const EcmaVM *vm);
+    bool IsNativeModuleErrorObject(const EcmaVM *vm);
+    bool IsSharedArrayBuffer(const EcmaVM *vm);
+    bool IsSendableArrayBuffer(const EcmaVM *vm);
 
     bool IsStrictEquals(const EcmaVM *vm, Local<JSValueRef> value);
     Local<StringRef> Typeof(const EcmaVM *vm);
     bool InstanceOf(const EcmaVM *vm, Local<JSValueRef> value);
 
-    bool IsArrayList();
-    bool IsDeque();
-    bool IsHashMap();
-    bool IsHashSet();
-    bool IsLightWeightMap();
-    bool IsLightWeightSet();
-    bool IsLinkedList();
-    bool IsLinkedListIterator();
-    bool IsList();
-    bool IsPlainArray();
-    bool IsQueue();
-    bool IsStack();
-    bool IsTreeMap();
-    bool IsTreeSet();
-    bool IsVector();
-    bool IsSendableObject();
-    bool IsJSShared();
-    bool IsSharedArray();
-    bool IsSharedTypedArray();
-    bool IsSharedSet();
-    bool IsSharedMap();
+    bool IsArrayList(const EcmaVM *vm);
+    bool IsDeque(const EcmaVM *vm);
+    bool IsHashMap(const EcmaVM *vm);
+    bool IsHashSet(const EcmaVM *vm);
+    bool IsLightWeightMap(const EcmaVM *vm);
+    bool IsLightWeightSet(const EcmaVM *vm);
+    bool IsLinkedList(const EcmaVM *vm);
+    bool IsLinkedListIterator(const EcmaVM *vm);
+    bool IsList(const EcmaVM *vm);
+    bool IsPlainArray(const EcmaVM *vm);
+    bool IsQueue(const EcmaVM *vm);
+    bool IsStack(const EcmaVM *vm);
+    bool IsTreeMap(const EcmaVM *vm);
+    bool IsTreeSet(const EcmaVM *vm);
+    bool IsVector(const EcmaVM *vm);
+    bool IsSendableObject(const EcmaVM *vm);
+    bool IsJSShared(const EcmaVM *vm);
+    bool IsSharedArray(const EcmaVM *vm);
+    bool IsSharedTypedArray(const EcmaVM *vm);
+    bool IsSharedSet(const EcmaVM *vm);
+    bool IsSharedMap(const EcmaVM *vm);
     bool IsHeapObject();
     void *GetNativePointerValue(const EcmaVM *vm, bool &isNativePointer);
-    bool IsDetachedArraybuffer(bool &isArrayBuffer);
+    bool IsDetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
     void DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
     void GetDataViewInfo(const EcmaVM *vm,
                          bool &isDataView,
@@ -685,6 +688,7 @@ public:
         return static_cast<ObjectRef *>(value);
     }
     static Local<ObjectRef> New(const EcmaVM *vm);
+    static uintptr_t NewObject(const EcmaVM *vm);
     static Local<ObjectRef> NewS(const EcmaVM *vm);
     static Local<ObjectRef> NewWithProperties(const EcmaVM *vm, size_t propertyCount, const Local<JSValueRef> *keys,
                                               const PropertyAttribute *attributes);
@@ -844,9 +848,9 @@ public:
     std::string DebuggerToString();
     uint32_t Length();
     int32_t Utf8Length(const EcmaVM *vm);
-    int WriteUtf8(char *buffer, int length, bool isWriteBuffer = false);
-    int WriteUtf16(char16_t *buffer, int length);
-    int WriteLatin1(char *buffer, int length);
+    int WriteUtf8(const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer = false);
+    int WriteUtf16(const EcmaVM *vm, char16_t *buffer, int length);
+    int WriteLatin1(const EcmaVM *vm, char *buffer, int length);
     static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
 };
 
@@ -926,10 +930,6 @@ protected:
     inline LocalScope(const EcmaVM *vm, JSTaggedType value);
 
 private:
-    void OpenLocalScope(EcmaContext *context);
-    void OpenPrimitiveScope(EcmaContext *context);
-    void CloseLocalScope(EcmaContext *context);
-    void ClosePrimitiveScope(EcmaContext *context);
     void *prevNext_ = nullptr;
     void *prevEnd_ = nullptr;
     int prevHandleStorageIndex_ {-1};
@@ -975,10 +975,10 @@ public:
                                      const NativePointerCallback &deleter, void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
-    void *GetBuffer();
+    void *GetBuffer(const EcmaVM *vm);
 
     void Detach(const EcmaVM *vm);
-    bool IsDetach();
+    bool IsDetach(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API SendableArrayBufferRef : public ObjectRef {
@@ -988,10 +988,10 @@ public:
                                              const NativePointerCallback &deleter, void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
-    void *GetBuffer();
+    void *GetBuffer(const EcmaVM *vm);
 
     void Detach(const EcmaVM *vm);
-    bool IsDetach();
+    bool IsDetach(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API DateRef : public ObjectRef {
@@ -1020,7 +1020,6 @@ public:
 class ECMA_PUBLIC_API ArrayRef : public ObjectRef {
 public:
     static Local<ArrayRef> New(const EcmaVM *vm, uint32_t length = 0);
-    static Local<ArrayRef> NewSendable(const EcmaVM *vm, uint32_t length = 0);
     uint32_t Length(const EcmaVM *vm);
     static bool SetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index, Local<JSValueRef> value);
     static Local<JSValueRef> GetValueAt(const EcmaVM *vm, Local<JSValueRef> obj, uint32_t index);
@@ -1186,8 +1185,9 @@ public:
     ECMA_DISALLOW_MOVE(JsiFastNativeScope);
 
 private:
-    JSThread *thread_;
-    uint16_t oldThreadState_;
+    JSThread *thread_ {nullptr};
+    uint16_t oldThreadState_ {0};
+    bool hasSwitchState_ {false};
 };
 
 /**
@@ -1283,7 +1283,7 @@ public:
                                 void *data);
 
     int32_t ByteLength(const EcmaVM *vm);
-    void *GetBuffer();
+    void *GetBuffer(const EcmaVM *vm);
     static ecmascript::JSTaggedValue BufferToStringCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo);
 };
 
@@ -1378,7 +1378,13 @@ public:
     static void RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableErrorHandler &handler);
 
     // aot load
+    static void LoadAotFileInternal(EcmaVM *vm, const std::string &moduleName, std::string &aotFileName);
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
+#if defined(ANDROID_PLATFORM)
+    static void LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleName,
+                            const std::string &moduleName,
+                            std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
+#endif
     static std::string GetPreloadAotFile(EcmaVM *vm, const std::string &moduleName);
     // context
     static EcmaContext *CreateJSContext(EcmaVM *vm);
@@ -1389,6 +1395,8 @@ public:
     static bool ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry,
                                  bool needUpdate = false);
     // JS code
+    static bool ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
+                                       bool needUpdate = false, bool executeFromJob = false);
     static bool Execute(const EcmaVM *vm, const std::string &fileName, const std::string &entry,
                         bool needUpdate = false, bool executeFromJob = false);
     static bool Execute(EcmaVM *vm, const uint8_t *data, int32_t size, const std::string &entry,
@@ -1444,6 +1452,8 @@ public:
     static bool HasPendingJob(const EcmaVM *vm);
     static void EnableUserUncaughtErrorHandler(EcmaVM *vm);
     // prevewer debugger.
+    static bool StartDebuggerCheckParameters(EcmaVM *vm, const DebugOption &option, int32_t instanceId,
+                                             const DebuggerPostTask &debuggerPostTask);
     static bool StartDebugger(EcmaVM *vm, const DebugOption &option, int32_t instanceId = 0,
         const DebuggerPostTask &debuggerPostTask = {});
     // To be compatible with the old process.
@@ -1461,6 +1471,7 @@ public:
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyNativeReturn(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyLoadModule(const EcmaVM *vm);
+    static void NotifyUIIdle(const EcmaVM *vm, int idleTime);
     static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
@@ -1468,10 +1479,10 @@ public:
                                 bool defaultTransfer = false,
                                 bool defaultCloneShared = true);
     static Local<JSValueRef> DeserializeValue(const EcmaVM *vm, void *recoder, void *hint);
-    static void DeleteSerializationData(void *data);
+    static void DeleteSerializationData(const EcmaVM *vm, void *data);
     static void SetHostPromiseRejectionTracker(EcmaVM *vm, void *cb, void* data);
     static void SetHostResolveBufferTracker(EcmaVM *vm,
-        std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize)> cb);
+        std::function<bool(std::string dirPath, uint8_t **buff, size_t *buffSize, std::string &errorMsg)> cb);
     static void SetUnloadNativeModuleCallback(EcmaVM *vm, const std::function<bool(const std::string &moduleKey)> &cb);
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
@@ -1498,6 +1509,7 @@ public:
                         size_t &patchSize)> callBack);
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
+    static bool IsNormalizedOhmUrlPack(EcmaVM *vm);
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list);
@@ -1546,7 +1558,8 @@ public:
     static bool KeyIsNumber(const char* utf8);
 
     static bool IsJitEscape();
-    static bool IsAotEscape();
+    static bool IsAotEscape(const std::string &pgoRealPath = "");
+    static int GetStartRealTime(const EcmaVM *vm);
 private:
     static int vmCount_;
     static bool initialize_;
@@ -1617,6 +1630,17 @@ public:
     static Local<SetIteratorRef> New(const EcmaVM *vm, Local<SetRef> set);
     ecmascript::EcmaRuntimeCallInfo *GetEcmaRuntimeCallInfo(const EcmaVM *vm);
     static Local<ArrayRef> Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo);
+};
+
+/* Attention pls, ExternalStringCache only can be utilized in main thread. Threads of Worker or Taskpool call
+ * functions of this class will cause data race.
+ */
+class ECMA_PUBLIC_API ExternalStringCache final {
+public:
+    static bool RegisterStringCacheTable(const EcmaVM *vm, uint32_t size);
+    static bool SetCachedString(const EcmaVM *vm, const char *name, uint32_t propertyIndex);
+    static bool HasCachedString(const EcmaVM *vm, uint32_t propertyIndex);
+    static Local<StringRef> GetCachedString(const EcmaVM *vm, uint32_t propertyIndex);
 };
 }
 #endif

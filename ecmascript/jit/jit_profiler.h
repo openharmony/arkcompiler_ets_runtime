@@ -18,6 +18,7 @@
 #include <memory>
 #include "ecmascript/common.h"
 #include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
@@ -46,8 +47,11 @@ public:
     JITProfiler(EcmaVM *vm);
 
     virtual ~JITProfiler();
-    void PUBLIC_API ProfileBytecode(JSHandle<ProfileTypeInfo> &profileTypeInfo, EntityId methodId, ApEntityId abcId,
-                                    const uint8_t *pcStart, uint32_t codeSize, const panda_file::File::Header *header);
+    void PUBLIC_API ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeInfo> &profileTypeInfo,
+                                    ProfileTypeInfo *rawProfileTypeInfo,
+                                    EntityId methodId, ApEntityId abcId, const uint8_t *pcStart,
+                                    uint32_t codeSize, const panda_file::File::Header *header,
+                                    bool useRawProfileTypeInfo = false);
 
     std::unordered_map<int32_t, const PGOSampleType *> GetOpTypeMap()
     {
@@ -69,6 +73,10 @@ public:
     }
     void ProcessReferences(const WeakRootVisitor &visitor);
     void UpdateRootProfileType(JSHClass *oldHClass, JSHClass *newHClass);
+    void SetCompilationEnv(CompilationEnv *env)
+    {
+        compilationEnv_ = env;
+    }
 private:
     enum class BCType : uint8_t {
         STORE,
@@ -87,11 +95,36 @@ private:
     // RwOpType
     void ConvertICByName(int32_t bcOffset, uint32_t slotId,  BCType type);
     void ConvertICByNameWithHandler(ApEntityId abcId, int32_t bcOffset, JSHClass *hclass,
-		                    JSTaggedValue secondValue, BCType type);
-    void ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type);
+		                    JSTaggedValue secondValue, BCType type, uint32_t slotId);
+    void HandleLoadType(ApEntityId &abcId, int32_t &bcOffset,
+                        JSHClass *hclass, JSTaggedValue &secondValue, uint32_t slotId);
+    void HandleLoadTypeInt(ApEntityId &abcId, int32_t &bcOffset,
+                           JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleLoadTypePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                        JSHClass *hclass, JSTaggedValue &secondValue, uint32_t slotId);
+    void HandleOtherTypes(ApEntityId &abcId, int32_t &bcOffset,
+                          JSHClass *hclass, JSTaggedValue &secondValue, uint32_t slotId);
+    void HandleTransitionHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                 JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleTransWithProtoHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                     JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleOtherTypesPrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                          JSHClass *hclass, JSTaggedValue &secondValue, uint32_t slotId);
+    void HandleStoreTSHandler(ApEntityId &abcId, int32_t &bcOffset,
+                              JSHClass *hclass, JSTaggedValue &secondValue);
+    void ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type,
+                                 uint32_t slotId);
     void ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType type);
     void ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset, JSHClass *hclass,
 		                     JSTaggedValue secondValue, BCType type);
+    void HandleStoreType(ApEntityId &abcId, int32_t &bcOffset,
+                         JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleTransition(ApEntityId &abcId, int32_t &bcOffset,
+                          JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandleTransWithProto(ApEntityId &abcId, int32_t &bcOffset,
+                              JSHClass *hclass, JSTaggedValue &secondValue);
+    void HandlePrototypeHandler(ApEntityId &abcId, int32_t &bcOffset,
+                                JSHClass *hclass, JSTaggedValue &secondValue);
     void ConvertICByValueWithPoly(ApEntityId abcId, int32_t bcOffset, JSTaggedValue cacheValue, BCType type);
     void ConvertInstanceof(int32_t bcOffset, uint32_t slotId);
 
@@ -103,7 +136,8 @@ private:
     bool AddObjectInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
 		       JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
     void AddBuiltinsInfo(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver,
-                         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE);
+                         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE,
+                         bool everOutOfBounds = false);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, int32_t bcOffset, GlobalIndex globalsId);
     void AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver);
     void AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset, JSHClass *receiver, JSHClass *hold);
@@ -144,15 +178,16 @@ private:
     }
 
     EcmaVM *vm_ { nullptr };
-    kungfu::PGOTypeManager *ptManager_;
-    ProfileTypeInfo* profileTypeInfo_;
-    ApEntityId abcId_;
-    EntityId methodId_;
+    kungfu::PGOTypeManager *ptManager_ { nullptr };
+    ProfileTypeInfo* profileTypeInfo_ { nullptr };
+    ApEntityId abcId_ {};
+    EntityId methodId_ {};
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_{};
-    CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
+    CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_ {};
     RecursiveMutex mutex_;
+    CompilationEnv *compilationEnv_ {nullptr};
 };
 
 }

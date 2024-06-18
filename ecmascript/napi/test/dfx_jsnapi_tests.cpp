@@ -334,6 +334,7 @@ HWTEST_F_L0(DFXJSNApiTests, DFXJSNApiForGCInfo)
         size_t newAllocateSize = DFXJSNApi::GetAccumulatedAllocateSize(vm_);
         EXPECT_TRUE(oldAllocateSize < newAllocateSize);
     }
+    ecmascript::SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     size_t newFreeSize = DFXJSNApi::GetAccumulatedFreeSize(vm_);
     EXPECT_TRUE(oldFreeSize < newFreeSize);
@@ -408,5 +409,33 @@ HWTEST_F_L0(DFXJSNApiTests, GetAllocationProfile)
     DFXJSNApi::StartSampling(vm_, samplingInterval);
     result = DFXJSNApi::GetAllocationProfile(vm_);
     EXPECT_TRUE(result != nullptr);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, NotifyIdleStatusControl)
+{
+    bool receivedValue = false;
+    std::function<void(bool)> cb = [&](bool value) {
+        receivedValue = value;
+    };
+    DFXJSNApi::NotifyIdleStatusControl(vm_, cb);
+    const_cast<ecmascript::Heap *>(vm_->GetHeap())->DisableNotifyIdle();
+    EXPECT_TRUE(receivedValue);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, NotifyIdleTime)
+{
+    auto heap = const_cast<ecmascript::Heap *>(vm_->GetHeap());
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    DFXJSNApi::NotifyIdleTime(vm_, 10);
+    EXPECT_EQ(vm_->GetEcmaGCStats()->GetGCReason(), GCReason::IDLE);
+}
+
+HWTEST_F_L0(DFXJSNApiTests, NotifyHighSensitive)
+{
+    auto heap = const_cast<ecmascript::Heap *>(vm_->GetHeap());
+    DFXJSNApi::NotifyHighSensitive(vm_, true);
+    EXPECT_TRUE(heap->GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    DFXJSNApi::NotifyHighSensitive(vm_, false);
+    EXPECT_TRUE(heap->GetSensitiveStatus() == AppSensitiveStatus::EXIT_HIGH_SENSITIVE);
 }
 } // namespace panda::test

@@ -124,7 +124,7 @@ JSTaggedValue ModuleManagerHelper::GetCJSModuleValue(JSThread *thread, JSTaggedV
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             CString errorMsg = "Loading requireModule" + ConvertToString(cjsModuleName.GetTaggedValue()) + "failed";
             JSHandle<JSObject> syntaxError =
-                factory->GetJSError(base::ErrorType::SYNTAX_ERROR, errorMsg.c_str());
+                factory->GetJSError(base::ErrorType::SYNTAX_ERROR, errorMsg.c_str(), StackCheck::NO);
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), JSTaggedValue::Exception());
         }
         return cjsExports.GetTaggedValue();
@@ -151,7 +151,7 @@ JSTaggedValue ModuleManagerHelper::GetCJSModuleValue(JSThread *thread, JSTaggedV
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
             CString errorMsg = "Loading requireModule" + ConvertToString(cjsModuleName.GetTaggedValue()) + "failed";
             JSHandle<JSObject> syntaxError =
-                factory->GetJSError(base::ErrorType::SYNTAX_ERROR, errorMsg.c_str());
+                factory->GetJSError(base::ErrorType::SYNTAX_ERROR, errorMsg.c_str(), StackCheck::NO);
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, syntaxError.GetTaggedValue(), JSTaggedValue::Exception());
         }
         return cjsExports.GetTaggedValue();

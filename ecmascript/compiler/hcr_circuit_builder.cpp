@@ -56,13 +56,14 @@ GateRef CircuitBuilder::ToLength(GateRef receiver)
 GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                                  const char* comment)
 {
-    const CallSignature *cs = CommonStubCSigns::Get(index);
-    ASSERT(cs->IsCommonStub());
+    const CallSignature *cs = env_->IsBaselineBuiltin() ? BaselineStubCSigns::Get(index) :
+                                                          CommonStubCSigns::Get(index);
+    ASSERT(cs->IsCommonStub() || cs->IsBaselineStub());
     GateRef target = IntPtr(index);
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
     GateRef result;
-    if (GetCircuit()->IsOptimizedJSFunctionFrame()) {
+    if (GetCircuit()->IsOptimizedOrFastJit()) {
         ASSERT(hirGate != Circuit::NullGate());
         result = Call(cs, glue, target, depend, args, hirGate, comment);
     } else {
@@ -73,7 +74,7 @@ GateRef CircuitBuilder::CallStub(GateRef glue, GateRef hirGate, int index, const
 
 GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const std::vector<GateRef> &args, bool isNew)
 {
-    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
+    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     int index = 0;
     if (!isNew) {
         index = static_cast<int>(RTSTUB_ID(PushCallArgsAndDispatchNative));
@@ -94,7 +95,7 @@ GateRef CircuitBuilder::CallBuiltinRuntime(GateRef glue, GateRef depend, const s
 
 GateRef CircuitBuilder::CallBuiltinRuntimeWithNewTarget(GateRef glue, GateRef depend, const std::vector<GateRef> &args)
 {
-    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
+    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     int index = 0;
 
     index = static_cast<int>(RTSTUB_ID(PushNewTargetAndDispatchNative));
@@ -116,7 +117,7 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     std::vector<GateRef> inputs { depend, target, glue };
     inputs.insert(inputs.end(), args.begin(), args.end());
     auto numValuesIn = args.size() + 2; // 2: target & glue
-    if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate != Circuit::NullGate()) {
+    if (GetCircuit()->IsOptimizedOrFastJit() && hirGate != Circuit::NullGate()) {
         AppendFrameArgs(inputs, hirGate);
         numValuesIn += 1;
 
@@ -148,6 +149,8 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
     } else if (cs->IsOptimizedFastCallStub()) {
         bool isNoGC = acc_.GetNoGCFlag(hirGate);
         meta = circuit_->FastCallOptimized(numValuesIn, isNoGC);
+    } else if (cs->IsBaselineStub()) {
+        meta = circuit_->BaselineCall(numValuesIn);
     } else {
         LOG_ECMA(FATAL) << "unknown call operator";
         UNREACHABLE();
@@ -163,7 +166,7 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
 GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::vector<GateRef> &args,
                                       const char* comment)
 {
-    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
+    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     const CallSignature *cs = BytecodeStubCSigns::BCHandler();
     ASSERT(cs->IsBCStub());
     auto label = GetCurrentLabel();
@@ -175,7 +178,7 @@ GateRef CircuitBuilder::CallBCHandler(GateRef glue, GateRef target, const std::v
 GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vector<GateRef> &args,
                                     const char* comment)
 {
-    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
+    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsCSign();
     ASSERT(cs->IsBuiltinsStub());
     auto label = GetCurrentLabel();
@@ -187,7 +190,7 @@ GateRef CircuitBuilder::CallBuiltin(GateRef glue, GateRef target, const std::vec
 GateRef CircuitBuilder::CallBuiltinWithArgv(GateRef glue, GateRef target, const std::vector<GateRef> &args,
                                             const char* comment)
 {
-    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
+    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     const CallSignature *cs = BuiltinsStubCSigns::BuiltinsWithArgvCSign();
     ASSERT(cs->IsBuiltinsWithArgvStub());
     auto label = GetCurrentLabel();
@@ -199,7 +202,7 @@ GateRef CircuitBuilder::CallBuiltinWithArgv(GateRef glue, GateRef target, const 
 GateRef CircuitBuilder::CallBCDebugger(GateRef glue, GateRef target, const std::vector<GateRef> &args,
                                        const char* comment)
 {
-    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
+    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     const CallSignature *cs = BytecodeStubCSigns::BCDebuggerHandler();
     ASSERT(cs->IsBCDebuggerStub());
     auto label = GetCurrentLabel();
@@ -219,7 +222,7 @@ GateRef CircuitBuilder::CallRuntime(GateRef glue, int index, GateRef depend, con
         depend = label->GetDepend();
     }
     GateRef filteredHirGate = Circuit::NullGate();
-    if (GetCircuit()->IsOptimizedJSFunctionFrame()) {
+    if (GetCircuit()->IsOptimizedOrFastJit()) {
         ASSERT(hirGate != Circuit::NullGate());
         filteredHirGate = hirGate;
     }
@@ -229,7 +232,7 @@ GateRef CircuitBuilder::CallRuntime(GateRef glue, int index, GateRef depend, con
 
 GateRef CircuitBuilder::CallRuntimeVarargs(GateRef glue, int index, GateRef argc, GateRef argv, const char* comment)
 {
-    ASSERT(!GetCircuit()->IsOptimizedJSFunctionFrame());
+    ASSERT(!GetCircuit()->IsOptimizedOrFastJit());
     const CallSignature *cs = RuntimeStubCSigns::Get(RTSTUB_ID(CallRuntimeWithArgv));
     GateRef target = IntPtr(index);
     auto label = GetCurrentLabel();
@@ -250,7 +253,7 @@ GateRef CircuitBuilder::CallNGCRuntime(GateRef glue, int index, GateRef depend, 
         depend = label->GetDepend();
     }
     GateRef filteredHirGate = Circuit::NullGate();
-    if (GetCircuit()->IsOptimizedJSFunctionFrame() && RuntimeStubCSigns::IsAsmStub(index)) {
+    if (GetCircuit()->IsOptimizedOrFastJit() && RuntimeStubCSigns::IsAsmStub(index)) {
         ASSERT(hirGate != Circuit::NullGate());
         filteredHirGate = hirGate;
     }
@@ -305,7 +308,7 @@ GateRef CircuitBuilder::FastCallOptimized(GateRef glue, GateRef code, GateRef de
         depend = label->GetDepend();
     }
     GateRef filteredHirGate = Circuit::NullGate();
-    if (GetCircuit()->IsOptimizedJSFunctionFrame()) {
+    if (GetCircuit()->IsOptimizedOrFastJit()) {
         ASSERT(hirGate != Circuit::NullGate());
         filteredHirGate = hirGate;
     }
@@ -323,7 +326,7 @@ GateRef CircuitBuilder::CallOptimized(GateRef glue, GateRef code, GateRef depend
         depend = label->GetDepend();
     }
     GateRef filteredHirGate = Circuit::NullGate();
-    if (GetCircuit()->IsOptimizedJSFunctionFrame()) {
+    if (GetCircuit()->IsOptimizedOrFastJit()) {
         ASSERT(hirGate != Circuit::NullGate());
         filteredHirGate = hirGate;
     }
@@ -433,13 +436,12 @@ GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef ho
 
 GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
 {
-    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE || acc_.GetOpCode(hirGate) == OpCode::REFLECT_CONSTRUCT);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     uint64_t bitfield = args.size();
     uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
-    ASSERT(pcOffset != 0);
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
     AppendFrameArgs(args, hirGate);
@@ -451,7 +453,7 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
 }
 
 GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
-                                     bool needPushUndefined)
+                                bool needPushArgv)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
     auto currentLabel = env_->GetCurrentLabel();
@@ -463,7 +465,7 @@ GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
     args.insert(args.begin(), currentDepend);
     args.insert(args.begin(), currentControl);
     AppendFrameArgs(args, hirGate);
-    auto callGate = GetCircuit()->NewGate(circuit_->CallNew(bitfield, pcOffset, needPushUndefined),
+    auto callGate = GetCircuit()->NewGate(circuit_->CallNew(bitfield, pcOffset, needPushArgv),
                                           MachineType::I64, args.size(), args.data(), GateType::AnyType());
     currentLabel->SetControl(callGate);
     currentLabel->SetDepend(callGate);
@@ -610,6 +612,19 @@ GateRef CircuitBuilder::BuiltinConstructor(BuiltinTypeId id, GateRef gate)
             } else {
                 ASSERT(acc_.GetNumValueIn(gate) >= 2); // 2: num value in
                 newGate = GetCircuit()->NewGate(circuit_->ObjectConstructor(2), MachineType::I64,
+                    { currentControl, currentDepend, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)},
+                    GateType::TaggedValue());
+            }
+            break;
+        }
+        case BuiltinTypeId::BOOLEAN: {
+            if (acc_.GetNumValueIn(gate) == 1) {
+                newGate = GetCircuit()->NewGate(circuit_->BooleanConstructor(1), MachineType::I64,
+                                                { currentControl, currentDepend, acc_.GetValueIn(gate, 0)},
+                                                GateType::TaggedValue());
+            } else {
+                ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: num value in
+                newGate = GetCircuit()->NewGate(circuit_->BooleanConstructor(2), MachineType::I64,
                     { currentControl, currentDepend, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)},
                     GateType::TaggedValue());
             }

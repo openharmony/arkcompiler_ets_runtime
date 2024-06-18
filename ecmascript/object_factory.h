@@ -191,6 +191,7 @@ using base::ErrorType;
 
 enum class RemoveSlots { YES, NO };
 enum class GrowMode { KEEP, GROW };
+enum class StackCheck { YES, NO };
 
 class ObjectFactory {
 public:
@@ -207,10 +208,10 @@ public:
     JSHandle<Program> NewProgram();
 
     JSHandle<JSObject> PUBLIC_API GetJSError(const ErrorType &errorType, const char *data = nullptr,
-        bool needCheckStack = true);
+        StackCheck needCheckStack = StackCheck::YES);
 
     JSHandle<JSObject> NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
-        bool needCheckStack = true);
+        StackCheck needCheckStack = StackCheck::YES);
 
     JSHandle<JSObject> NewJSAggregateError();
 
@@ -556,7 +557,13 @@ public:
 
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
+#ifdef ENABLE_JITFORT
+    TaggedObject *NewMachineCodeObject(size_t length, MachineCodeDesc &desc);
+    JSHandle<MachineCode> SetMachineCodeObjectData(TaggedObject *obj, size_t length,
+        MachineCodeDesc &desc, JSHandle<Method> &method);
+#else
     JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc, JSHandle<Method> &method);
+#endif
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 

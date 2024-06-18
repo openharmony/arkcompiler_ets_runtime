@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/aot_file/elf_checker.h"
+#include "ecmascript/platform/file.h"
 #include <fstream>
 #include <type_traits>
 
@@ -38,7 +39,7 @@ template <typename IntType> static void ByteSwap(IntType& x)
     static constexpr unsigned int iByteMuskOff1 = iByteMuskOff0 << 8;
     static constexpr unsigned int iByteMuskOff2 = iByteMuskOff1 << 8;
     static constexpr unsigned int iByteMuskOff3 = iByteMuskOff2 << 8;
-    static constexpr unsigned long long llByteMuskOff0 = 0xffull;
+    static constexpr unsigned long long llByteMuskOff0 = 0xffuLL;
     static constexpr unsigned long long llByteMuskOff1 = llByteMuskOff0 << 8;
     static constexpr unsigned long long llByteMuskOff2 = llByteMuskOff1 << 8;
     static constexpr unsigned long long llByteMuskOff3 = llByteMuskOff2 << 8;
@@ -88,6 +89,9 @@ ElfChecker::ElfChecker(const void* data, int len) : elfLen_(len), elfErrorCode_(
 
 ElfChecker::ElfChecker(const std::string& path) : elfErrorCode_(0), fromMmap_(false)
 {
+    if (!panda::ecmascript::FileExist(path.c_str())) {
+        return;
+    }
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (file.is_open() == false) {
         elfData_ = nullptr;

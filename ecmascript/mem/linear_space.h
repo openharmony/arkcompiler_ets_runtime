@@ -47,6 +47,12 @@ public:
     }
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
+    bool IsNewAllocatedObject(uintptr_t current)
+    {
+        uintptr_t currentTop = linearTop_.load(std::memory_order_acquire);
+        uintptr_t currentEnd = linearEnd_.load(std::memory_order_relaxed);
+        return currentTop <= current && current < currentEnd;
+    }
 protected:
     Heap *localHeap_;
     BumpPointerAllocator allocator_;
@@ -54,6 +60,59 @@ protected:
     size_t allocateAfterLastGC_ {0};
     size_t survivalObjectSize_ {0};
     uintptr_t waterLine_ {0};
+    std::atomic<uintptr_t> linearTop_ {0};
+    std::atomic<uintptr_t> linearEnd_ {0};
+};
+
+class EdenSpace : public LinearSpace {
+public:
+    EdenSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
+    ~EdenSpace() override;
+    NO_COPY_SEMANTIC(EdenSpace);
+    NO_MOVE_SEMANTIC(EdenSpace);
+
+    void Initialize() override;
+    void Restart();
+
+    uintptr_t AllocateSync(size_t size);
+    uintptr_t Allocate(size_t size);
+    bool Expand();
+    void SetOverShootSize(size_t size);
+
+    uintptr_t GetWaterLine() const
+    {
+        return waterLine_;
+    }
+    uintptr_t GetTop() const
+    {
+        return allocator_.GetTop();
+    }
+    size_t GetHeapObjectSize() const;
+    size_t GetSurvivalObjectSize() const;
+    size_t GetAllocatedSizeSinceGC(uintptr_t top = 0) const;
+    void ReclaimRegions(size_t cachedSize = 0);
+    void AllowTryEnable()
+    {
+        shouldTryEnable_ = true;
+    }
+    bool ShouldTryEnable()
+    {
+        if (shouldTryEnable_) {
+            shouldTryEnable_ = false;
+            return true;
+        }
+        return false;
+    }
+
+private:
+    Region *AllocRegion();
+
+    static constexpr int GROWING_FACTOR = 2;
+    bool isFull_ {true};
+    Mutex lock_;
+    MemMap memMap_;
+    std::deque<MemMap> freeRegions_;
+    bool shouldTryEnable_ {false};
 };
 
 class SemiSpace : public LinearSpace {

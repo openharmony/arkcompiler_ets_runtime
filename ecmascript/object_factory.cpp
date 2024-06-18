@@ -967,7 +967,7 @@ JSHandle<JSArguments> ObjectFactory::NewJSArguments()
     return obj;
 }
 
-JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const char *data, bool needCheckStack)
+JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const char *data, StackCheck needCheckStack)
 {
     ASSERT_PRINT(errorType == ErrorType::ERROR || errorType == ErrorType::EVAL_ERROR ||
                      errorType == ErrorType::RANGE_ERROR || errorType == ErrorType::REFERENCE_ERROR ||
@@ -984,7 +984,7 @@ JSHandle<JSObject> ObjectFactory::GetJSError(const ErrorType &errorType, const c
 }
 
 JSHandle<JSObject> ObjectFactory::NewJSError(const ErrorType &errorType, const JSHandle<EcmaString> &message,
-    bool needCheckStack)
+    StackCheck needCheckStack)
 {
     // if there have exception in thread, then return current exception, no need to new js error.
     if (thread_->HasPendingException()) {
@@ -2049,7 +2049,7 @@ JSHandle<Method> ObjectFactory::NewMethod(const JSPandaFile *jsPandaFile, Method
         thread_->GetEcmaVM()->GetAOTFileManager()->
             SetAOTFuncEntry(jsPandaFile, nullptr, *method, entryIndex, canFastCall);
     } else {
-        method->ClearAOTFlagsWhenInit();
+        method->InitInterpreterStatusForCompiledMethod(thread_);
     }
     return method;
 }
@@ -3374,7 +3374,8 @@ void ObjectFactory::NewObjectHook() const
 {
     CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
-    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized()) {
+    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized()
+        && !heap_->InSensitiveStatus()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
             vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
             vm_->CollectGarbage(TriggerGCType::OLD_GC);
@@ -3819,6 +3820,7 @@ JSHandle<PrototypeHandler> ObjectFactory::NewPrototypeHandler()
     handler->SetHandlerInfo(thread_, JSTaggedValue::Undefined());
     handler->SetProtoCell(thread_, JSTaggedValue::Undefined());
     handler->SetHolder(thread_, JSTaggedValue::Undefined());
+    handler->SetAccessorJSFunction(thread_, JSTaggedValue::Undefined());
     handler->SetAccessorMethodId(0);
     return handler;
 }
@@ -3997,10 +3999,20 @@ uintptr_t ObjectFactory::NewSpaceBySnapshotAllocator(size_t size)
     return heap_->AllocateSnapshotSpace(size);
 }
 
+#ifdef ENABLE_JITFORT
+TaggedObject *ObjectFactory::NewMachineCodeObject(size_t length,
+    MachineCodeDesc &desc)
+#else
 JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
     const MachineCodeDesc &desc, JSHandle<Method> &method)
+#endif
 {
     NewObjectHook();
+#ifdef ENABLE_JITFORT
+    TaggedObject *obj = heap_->AllocateMachineCodeObject(JSHClass::Cast(
+        thread_->GlobalConstants()->GetMachineCodeClass().GetTaggedObject()), length + MachineCode::SIZE, desc);
+    return (obj);
+#else
     TaggedObject *obj = heap_->AllocateMachineCodeObject(JSHClass::Cast(
         thread_->GlobalConstants()->GetMachineCodeClass().GetTaggedObject()), length + MachineCode::SIZE);
     MachineCode *code = MachineCode::Cast(obj);
@@ -4011,7 +4023,23 @@ JSHandle<MachineCode> ObjectFactory::NewMachineCodeObject(size_t length,
     code->SetData(desc, method, length);
     JSHandle<MachineCode> codeObj(thread_, code);
     return codeObj;
+#endif
 }
+
+#ifdef ENABLE_JITFORT
+JSHandle<MachineCode> ObjectFactory::SetMachineCodeObjectData(TaggedObject *obj, size_t length,
+    MachineCodeDesc &desc, JSHandle<Method> &method)
+{
+    MachineCode *code = MachineCode::Cast(obj);
+    if (code == nullptr) {
+        LOG_FULL(FATAL) << "machine code cast failed";
+        UNREACHABLE();
+    }
+    code->SetData(desc, method, length);
+    JSHandle<MachineCode> codeObj(thread_, code);
+    return codeObj;
+}
+#endif
 
 JSHandle<ClassInfoExtractor> ObjectFactory::NewClassInfoExtractor(JSHandle<JSTaggedValue> method)
 {
@@ -4868,6 +4896,7 @@ JSHandle<ProfileTypeInfoCell> ObjectFactory::NewProfileTypeInfoCell(const JSHand
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoCell0Class().GetTaggedObject()));
     JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
     profileTypeInfoCell->SetValue(thread_, value.GetTaggedValue());
+    profileTypeInfoCell->SetMachineCode(thread_, JSTaggedValue::Hole());
     return profileTypeInfoCell;
 }
 

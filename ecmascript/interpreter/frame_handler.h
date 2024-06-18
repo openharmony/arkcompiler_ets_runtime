@@ -93,13 +93,19 @@ public:
 
     bool IsJSFrame(FrameType type) const
     {
-        return IsInterpretedFrame(type) || IsOptimizedJSFunctionFrame(type);
+        return IsInterpretedFrame(type) || IsOptimizedJSFunctionFrame(type) || IsFastJitFunctionFrame(type);
     }
 
     bool IsOptimizedJSFunctionFrame(FrameType type) const
     {
         return type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
             type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
+    }
+
+    bool IsFastJitFunctionFrame(FrameType type) const
+    {
+        return type == FrameType::FASTJIT_FUNCTION_FRAME ||
+            type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
     }
 
     bool IsAsmInterpretedFrame() const
@@ -179,6 +185,17 @@ public:
         return (type == FrameType::LEAVE_FRAME) || (type == FrameType::LEAVE_FRAME_WITH_ARGV);
     }
 
+    bool IsInterpreterBuiltinFrame() const
+    {
+        FrameType type = GetFrameType();
+        return type == FrameType::INTERPRETER_BUILTIN_FRAME;
+    }
+
+    bool IsBaselineBuiltinFrame(FrameType type) const
+    {
+        return (type == FrameType::BASELINE_BUILTIN_FRAME);
+    }
+
     JSTaggedType *GetSp() const
     {
         return sp_;
@@ -189,12 +206,20 @@ public:
         return fp_;
     }
 
+    uintptr_t GetBaselineNativePc() const
+    {
+        return baselineNativePc_;
+    }
+
     void PrevJSFrame();
     JSTaggedType *GetPrevJSFrame();
 
     // for InterpretedFrame.
     JSTaggedValue GetVRegValue(size_t index) const;
     void SetVRegValue(size_t index, JSTaggedValue value);
+
+    // for BaselineBuiltinFrame
+    void FindAndSetBaselineNativePc(FrameIterator it);
 
     JSTaggedValue GetEnv() const;
     JSTaggedValue GetAcc() const;
@@ -245,6 +270,7 @@ private:
 private:
     JSTaggedType *sp_ {nullptr};
     JSTaggedType *fp_ {nullptr};
+    uintptr_t baselineNativePc_ {0}; // For baselineJit upFrame
     const JSThread *thread_ {nullptr};
     const kungfu::ArkStackMapParser *arkStackMapParser_ {nullptr};
 };

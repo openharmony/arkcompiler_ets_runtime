@@ -29,6 +29,9 @@
 #include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
 #include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
 #include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
+#ifdef CODE_SIGN_ENABLE
+#include "ecmascript/compiler/jit_signcode.h"
+#endif
 #endif
 
 namespace panda::ecmascript::kungfu {
@@ -304,9 +307,9 @@ uintptr_t Module::GetSectionAddr(ElfSecName sec) const
     return assembler_->GetSectionAddr(sec);
 }
 
-void Module::RunAssembler(const CompilerLog &log, bool fastCompileMode)
+void Module::RunAssembler(const CompilerLog &log, bool fastCompileMode, bool isJit)
 {
-    assembler_->Run(log, fastCompileMode);
+    assembler_->Run(log, fastCompileMode, isJit);
 }
 
 void Module::DisassemblerFunc(std::map<uintptr_t, std::string> &addr2name, uint64_t textOffset,
@@ -438,7 +441,7 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
 #ifdef COMPILE_MAPLE
     if (useLiteCG_) {
         LMIRModule *irModule = new LMIRModule(compilationEnv_->GetNativeAreaAllocator(), name, logDebug, triple, isJit);
-        LiteCGAssembler *ass = new LiteCGAssembler(*irModule,
+        LiteCGAssembler *ass = new LiteCGAssembler(*irModule, jitCodeSpace_,
             compilationEnv_->GetJSOptions().GetCompilerCodegenOptions());
         modulePackage_.emplace_back(Module(irModule, ass));
         if (stackMapInfo_ == nullptr) {
@@ -448,7 +451,7 @@ Module* AOTFileGenerator::AddModule(const std::string &name, const std::string &
     }
 #endif
     LLVMModule *m = new LLVMModule(compilationEnv_->GetNativeAreaAllocator(), name, logDebug, triple);
-    LLVMAssembler *ass = new LLVMAssembler(m, option);
+    LLVMAssembler *ass = new LLVMAssembler(m, jitCodeSpace_, option);
     modulePackage_.emplace_back(Module(m, ass));
     if (stackMapInfo_ == nullptr) {
         stackMapInfo_ = new LLVMStackMapInfo();
@@ -478,7 +481,7 @@ Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::
             UNREACHABLE();
             break;
     }
-    LLVMAssembler* ass = new LLVMAssembler(m, option);
+    LLVMAssembler* ass = new LLVMAssembler(m, jitCodeSpace_, option);
     modulePackage_.emplace_back(Module(m, ass));
     return &modulePackage_.back();
 }
@@ -507,7 +510,7 @@ void StubFileGenerator::SaveStubFile(const std::string &filename)
     stubInfo_.Save(filename, cfg_.GetTriple());
 }
 
-void AOTFileGenerator::CompileLatestModuleThenDestroy()
+void AOTFileGenerator::CompileLatestModuleThenDestroy(bool isJit)
 {
     Module *latestModule = GetLatestModule();
 #ifdef COMPILE_MAPLE
@@ -528,7 +531,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy()
     {
         TimeScope timescope("LLVMIROpt", const_cast<CompilerLog *>(log_));
         bool fastCompileMode = compilationEnv_->GetJSOptions().GetFastAOTCompileMode();
-        latestModule->RunAssembler(*(log_), fastCompileMode);
+        latestModule->RunAssembler(*(log_), fastCompileMode, isJit);
     }
     {
         TimeScope timescope("LLVMCodeGen", const_cast<CompilerLog *>(log_));
@@ -578,7 +581,7 @@ bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
     }
     std::string path = realPath.substr(0, index);
     if (!panda::ecmascript::ForceCreateDirectory(path)) {
-        LOG_COMPILER(ERROR) << "Fail to make dir:" << path;
+        LOG_COMPILER(ERROR) << "Fail to make dir: " << path;
         return false;
     }
     return panda::ecmascript::SetDirModeAsDefault(path);
@@ -591,7 +594,7 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
         return;
     }
     if (!CreateDirIfNotExist(filename)) {
-        LOG_COMPILER(ERROR) << "Fail to access dir:" << filename;
+        LOG_COMPILER(ERROR) << "Fail to access dir: " << filename;
         return;
     }
     PrintMergedCodeComment();
@@ -641,6 +644,16 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     machineCodeDesc.rodataAddrAfterText = rodataAddrAfterText;
     machineCodeDesc.rodataSizeAfterText = rodataSizeAfterText;
 
+#ifdef CODE_SIGN_ENABLE
+    machineCodeDesc.codeSigner = 0;
+    JitSignCode *singleton = JitSignCode::GetInstance();
+    if (singleton->GetJPtr() != 0) {
+        LOG_JIT(DEBUG) << "In GetMemoryCodeInfos, signer = " << singleton->GetJPtr();
+        LOG_JIT(DEBUG) << "     signTableSize = " << singleton->signTableSize;
+        machineCodeDesc.codeSigner = reinterpret_cast<uintptr_t>(singleton->GetJPtr());
+    }
+#endif
+
     uint64_t stackMapPtr = reinterpret_cast<uint64_t>(moduleSectionDes.GetArkStackMapSharePtr().get());
     size_t stackMapSize = moduleSectionDes.GetArkStackMapSize();
 
@@ -648,8 +661,8 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     machineCodeDesc.codeSize = textSize;
     machineCodeDesc.funcEntryDesAddr = funcEntryAddr;
     machineCodeDesc.funcEntryDesSize = funcEntrySize;
-    machineCodeDesc.stackMapAddr = stackMapPtr;
-    machineCodeDesc.stackMapSize = stackMapSize;
+    machineCodeDesc.stackMapOrOffsetTableAddr = stackMapPtr;
+    machineCodeDesc.stackMapOrOffsetTableSize = stackMapSize;
     machineCodeDesc.codeType = MachineCodeType::FAST_JIT_CODE;
 }
 
@@ -679,6 +692,10 @@ void AOTFileGenerator::SaveSnapshotFile()
     ptManager->GetAOTSnapshot().ResolveSnapshotData(methodToEntryIndexMap);
 
     CString aiPath = snapshotPath + AOTFileManager::FILE_EXTENSION_AI;
+    if (!CreateDirIfNotExist(aiPath.c_str())) {
+        LOG_COMPILER(ERROR) << "Fail to access dir: " << aiPath;
+        return;
+    }
     snapshot.Serialize(aiPath);
     if (!panda::ecmascript::SetFileModeAsDefault(aiPath.c_str())) {
         LOG_COMPILER(ERROR) << "Fail to set ai file mode:" << aiPath;

@@ -68,6 +68,9 @@ void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, JSTaggedValue m
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    if (!moduleManager->IsLocalModuleLoaded(moduleName)) {
+        return;
+    }
     JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule(moduleName);
 
     LoadingTypes type = module->GetLoadingTypes();

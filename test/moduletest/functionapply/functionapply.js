@@ -111,7 +111,6 @@ for (let key in Function.prototype) {
     print(key);
 }
 
-
 var backup_apply = Function.prototype.apply;
 Function.prototype.constructor = 1;
 Function.prototype.apply = 1;
@@ -167,8 +166,8 @@ try{
 } catch(e) {
    print(e);
 }
-Function.prototype.apply = backup_apply;
 
+Function.prototype.apply = backup_apply;
 var next_expected = 0;
 var large_array3 = new Array(100);
 large_array3[0] = 0;

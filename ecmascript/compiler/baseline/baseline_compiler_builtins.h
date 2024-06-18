@@ -123,6 +123,7 @@ namespace panda::ecmascript::kungfu {
     V(BaselineJeqzImm16)                                                   \
     V(BaselineSetobjectwithprotoImm8V8)                                    \
     V(BaselineDelobjpropV8)                                                \
+    V(BaselineSuspendgeneratorV8)                                          \
     V(BaselineAsyncfunctionawaituncaughtV8)                                \
     V(BaselineCopydatapropertiesV8)                                        \
     V(BaselineStarrayspreadV8V8)                                           \
@@ -167,7 +168,6 @@ namespace panda::ecmascript::kungfu {
     V(BaselineStsuperbynameImm16Id16V8)                                    \
     V(BaselineLdlocalmodulevarImm8)                                        \
     V(BaselineStconsttoglobalrecordImm16Id16)                              \
-    \
     V(BaselineJeqzImm32)                                                   \
     V(BaselineJnezImm8)                                                    \
     V(BaselineJnezImm16)                                                   \
@@ -184,9 +184,6 @@ namespace panda::ecmascript::kungfu {
     V(BaselineLdlexvarImm8Imm8)                                            \
     V(BaselineStlexvarImm8Imm8)                                            \
     V(BaselineJnstricteqV8Imm16)                                           \
-    V(BaselineMovV4V4)                                                     \
-    V(BaselineMovV8V8)                                                     \
-    V(BaselineMovV16V16)                                                   \
     V(BaselineAsyncgeneratorrejectV8)                                      \
     V(BaselineNop)                                                         \
     V(BaselineSetgeneratorstateImm8)                                       \
@@ -274,6 +271,7 @@ namespace panda::ecmascript::kungfu {
     V(BaselineDeprecatedDynamicimportPrefV8)                               \
     V(BaselineCallRuntimeNotifyConcurrentResultPrefNone)                   \
     V(BaselineDefineFieldByNameImm8Id16V8)                                 \
+    V(BaselineDefinePropertyByNameImm8Id16V8)                              \
     V(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8)                   \
     V(BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8)                \
     V(BaselineCallRuntimeToPropertyKeyPrefNone)                            \
@@ -282,6 +280,8 @@ namespace panda::ecmascript::kungfu {
     V(BaselineCallRuntimeCallInitPrefImm8V8)                               \
     V(BaselineCallRuntimeDefineSendableClassPrefImm16Id16Id16Imm16V8)      \
     V(BaselineCallRuntimeLdSendableClassPrefImm16)                         \
+    V(BaselineCallRuntimeIstruePrefImm8)                                   \
+    V(BaselineCallRuntimeIsfalsePrefImm8)                                  \
     V(BaselineReturnundefined)                                             \
     V(BaselineExceptionHandler)                                            \
     V(BaselineUpdateHotness)                                               \

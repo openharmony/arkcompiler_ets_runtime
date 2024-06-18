@@ -917,7 +917,7 @@ class IrViewer {
             }
           }
         }, this.findNext.bind(this));
-      }
+      };
       CanvasInput.SetSafeArea(...this.searchInput.pos);
       this.searchInput.Open();
     }

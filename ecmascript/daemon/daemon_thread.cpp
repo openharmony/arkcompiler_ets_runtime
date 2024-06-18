@@ -58,6 +58,9 @@ void DaemonThread::StartRunning()
     thread_ = std::make_unique<std::thread>(&DaemonThread::Run, this);
     // Wait until daemon thread is running.
     while (!IsRunning());
+#ifdef ENABLE_QOS
+    OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, GetThreadId());
+#endif
     ASSERT(GetThreadId() != 0);
 }
 
@@ -112,9 +115,6 @@ void DaemonThread::Run()
     SetThreadId();
     running_.store(true, std::memory_order_release);
     ASSERT(JSThread::GetCurrent() == this);
-#ifdef ENABLE_QOS
-    OHOS::QOS::SetQosForOtherThread(OHOS::QOS::QosLevel::QOS_USER_INITIATED, os::thread::GetCurrentThreadId());
-#endif
     // Load running_ here do not need atomic, because only daemon thread will set it to false
     while (running_.load(std::memory_order_acquire)) {
         ASSERT(!IsInRunningState());

@@ -32,7 +32,7 @@ void JSValueRefIsArrayBufferFuzzerTest([[maybe_unused]]const uint8_t *data, size
         return;
     }
     Local<ArrayBufferRef> arrayBufferRef = ArrayBufferRef::New(vm, (int32_t)size);
-    arrayBufferRef->IsArrayBuffer();
+    arrayBufferRef->IsArrayBuffer(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

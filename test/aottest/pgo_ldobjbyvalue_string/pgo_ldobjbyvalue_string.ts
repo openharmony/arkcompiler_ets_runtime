@@ -30,4 +30,5 @@ function test() {
 }
 
 test();
-ArkTools.printTypedOpProfilerAndReset("LOAD_ELEMENT");
+ArkTools.printTypedOpProfiler("LOAD_ELEMENT");
+ArkTools.clearTypedOpProfiler();

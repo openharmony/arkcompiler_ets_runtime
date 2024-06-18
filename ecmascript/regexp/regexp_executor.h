@@ -30,17 +30,20 @@ public:
     };
 
     enum StateType : uint8_t {
-        STATE_SPLIT = 0,
-        STATE_MATCH_AHEAD,
-        STATE_NEGATIVE_MATCH_AHEAD,
+        STATE_SPLIT = 0, /* Do not re-order. */
+        STATE_NEGATIVE_MATCH_AHEAD, /* OP_NEGATIVE_MATCH_AHEAD  - OP_SPLIT_NEXT */
+        STATE_MATCH_AHEAD, /* OP_MATCH_AHEAD  - OP_SPLIT_NEXT */
+        STATE_SAVE,
+        STATE_PUSH,
+        STATE_POP,
+        STATE_SET,
+        STATE_INVALID,
     };
 
     struct RegExpState {
         StateType type_ = STATE_SPLIT;
         uint32_t currentPc_ = 0;
-        uint32_t currentStack_ = 0;
         const uint8_t *currentPtr_ = nullptr;
-        __extension__ CaptureState *captureResultList_[0];  // NOLINT(modernize-avoid-c-arrays)
     };
 
     explicit RegExpExecutor(RegExpCachedChunk *chunk) : chunk_(chunk)
@@ -64,6 +67,13 @@ public:
                 if (MatchFailed()) {
                     return false;
                 }
+            } else if (prefilter_ && !isWideChar_) {
+                ++currentPtr_;
+                currentPtr_ = (const uint8_t *)memchr(currentPtr_, prefilter_, inputEnd_ - currentPtr_);
+                if (currentPtr_ == nullptr) {
+                    currentPtr_ = inputEnd_;
+                }
+                PushRegExpState(STATE_SPLIT, RegExpParser::OP_START_OFFSET);
             } else {
                 AdvanceCurrentPtr();
                 PushRegExpState(STATE_SPLIT, RegExpParser::OP_START_OFFSET);
@@ -165,6 +175,7 @@ public:
         ASSERT(captureIndex < nCapture_);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         CaptureState *captureState = &captureResultList_[captureIndex];
+        PushRegExpState(STATE_SAVE, captureIndex * 2, reinterpret_cast<uintptr_t>(captureState->captureStart));
         captureState->captureStart = GetCurrentPtr();
         Advance(opCode);
     }
@@ -175,6 +186,7 @@ public:
         ASSERT(captureIndex < nCapture_);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         CaptureState *captureState = &captureResultList_[captureIndex];
+        PushRegExpState(STATE_SAVE, captureIndex * 2 + 1, reinterpret_cast<uintptr_t>(captureState->captureEnd));
         captureState->captureEnd = GetCurrentPtr();
         Advance(opCode);
     }
@@ -186,6 +198,8 @@ public:
         for (uint32_t i = catpureStartIndex; i <= catpureEndIndex; i++) {
             CaptureState *captureState =
                 &captureResultList_[i];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            PushRegExpState(STATE_SAVE, i * 2, reinterpret_cast<uintptr_t>(captureState->captureStart));
+            PushRegExpState(STATE_SAVE, i * 2 + 1, reinterpret_cast<uintptr_t>(captureState->captureEnd));
             captureState->captureStart = nullptr;
             captureState->captureEnd = nullptr;
         }
@@ -235,6 +249,7 @@ public:
         uint32_t loopMax = isGreedy ? quantifyMax : quantifyMin;
 
         uint32_t loopCount = PeekStack();
+        PushRegExpState(StateType::STATE_SET, 0, loopCount);
         SetStackValue(++loopCount);
         if (loopCount < loopMax) {
             // greedy failed, goto next
@@ -302,13 +317,13 @@ public:
             return !MatchFailed();
         }
         uint32_t currentChar = GetCurrentChar();
-        uint32_t currentCharNext = currentChar;
-        if (IsIgnoreCase()) {
-            currentCharNext = static_cast<uint32_t>(RegExpParser::GetcurrentCharNext(currentChar));
-        }
         uint16_t rangeCount = byteCode.GetU16(GetCurrentPC() + 1);
-        if (IsFoundOpRange(GetCurrentPC(), currentChar, byteCode, rangeCount) ||
-            IsFoundOpRange(GetCurrentPC(), currentCharNext, byteCode, rangeCount)) {
+        bool flag = IsFoundOpRange(GetCurrentPC(), currentChar, byteCode, rangeCount);
+        if (IsIgnoreCase() && !flag) {
+            currentChar = static_cast<uint32_t>(RegExpParser::GetcurrentCharNext(currentChar));
+            flag = IsFoundOpRange(GetCurrentPC(), currentChar, byteCode, rangeCount);
+        }
+        if (flag) {
             AdvanceOffset(rangeCount * RANGE32_MAX_HALF_OFFSET + RANGE32_HEAD_OFFSET);
         } else {
             if (MatchFailed()) {
@@ -317,6 +332,29 @@ public:
         }
         return true;
     }
+
+    inline bool HandleOpSparse(const DynChunk &byteCode)
+    {
+        if (IsEOF()) {
+            return !MatchFailed();
+        }
+        uint32_t currentChar = GetCurrentChar();
+        if (IsIgnoreCase()) {
+            currentChar = static_cast<uint32_t>(RegExpParser::Canonicalize(currentChar, IsUtf16()));
+        }
+        uint16_t sparseCount = byteCode.GetU16(GetCurrentPC() + 1);
+        for (uint32_t i = 0; i < sparseCount; i++) {
+            uint32_t sparseChar = byteCode.GetU16(GetCurrentPC() + SPARSE_HEAD_OFFSET + i * SPARSE_MAX_OFFSET);
+            if (currentChar == sparseChar) {
+                uint32_t offset = byteCode.GetU32(GetCurrentPC() + SPARSE_HEAD_OFFSET + i * SPARSE_MAX_OFFSET +
+                    SPARSE_OFF_OFFSET);
+                AdvanceOffset(offset + sparseCount * SPARSE_MAX_OFFSET + SPARSE_HEAD_OFFSET);
+                return true;
+            }
+        }
+        return !MatchFailed();
+    }
+
     inline bool HandleOpBackReference(const DynChunk &byteCode, uint8_t opCode)
     {
         uint32_t captureIndex = byteCode.GetU8(GetCurrentPC() + 1);
@@ -640,8 +678,9 @@ public:
     void GetResult(JSThread *thread);
 
     void PushRegExpState(StateType type, uint32_t pc);
+    void PushRegExpState(StateType type, uint32_t pc, uintptr_t ptr);
 
-    RegExpState *PopRegExpState(bool copyCaptrue = true);
+    StateType PopRegExpState(bool copyCapture = true);
 
     void DropRegExpState()
     {
@@ -653,7 +692,7 @@ public:
         ASSERT(stateStackLen_ >= 1);
         return reinterpret_cast<RegExpState *>(
             stateStack_ +  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            (stateStackLen_ - 1) * stateSize_);
+            (stateStackLen_ - 1) * sizeof(RegExpState));
     }
 
     void ReAllocStack(uint32_t stackLen);
@@ -692,12 +731,16 @@ private:
     static constexpr size_t RANGE32_MAX_HALF_OFFSET = 4;
     static constexpr size_t RANGE32_MAX_OFFSET = 8;
     static constexpr size_t RANGE32_OFFSET = 2;
+    static constexpr size_t SPARSE_HEAD_OFFSET = 3;
+    static constexpr size_t SPARSE_OFF_OFFSET = 2;
+    static constexpr size_t SPARSE_MAX_OFFSET = 6;
     static constexpr uint32_t STACK_MULTIPLIER = 2;
     static constexpr uint32_t MIN_STACK_SIZE = 8;
     static constexpr int TMP_BUF_SIZE = 128;
     uint8_t *input_ = nullptr;
     uint8_t *inputEnd_ = nullptr;
     bool isWideChar_ = false;
+    uint16_t prefilter_ = 0;
 
     uint32_t currentPc_ = 0;
     const uint8_t *currentPtr_ = nullptr;
@@ -711,7 +754,6 @@ private:
     uint32_t flags_ = 0;
     uint32_t stateStackLen_ = 0;
     uint32_t stateStackSize_ = 0;
-    uint32_t stateSize_ = 0;
     uint8_t *stateStack_ = nullptr;
     RegExpCachedChunk *chunk_ = nullptr;
 };

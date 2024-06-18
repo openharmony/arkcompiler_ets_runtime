@@ -27,9 +27,7 @@ class CompilerLog;
 
 struct CodeInfo {
     using sectionInfo = std::pair<uint8_t *, size_t>;
-    CodeInfo();
-
-    ~CodeInfo();
+    typedef uint8_t *(CodeInfo::*AllocaSectionCallback)(uintptr_t size, size_t alignSize);
 
     class CodeSpace {
     public:
@@ -52,19 +50,49 @@ struct CodeInfo {
         size_t unreqBufPos_ {0};
     };
 
+    class CodeSpaceOnDemand {
+    public:
+        CodeSpaceOnDemand() = default;
+
+        uint8_t *Alloca(uintptr_t size, bool isReq, size_t alignSize);
+
+        ~CodeSpaceOnDemand();
+
+    private:
+        static constexpr size_t SECTION_LIMIT = (1 << 29);  // 512M
+
+        // record all memory blocks requested.
+        std::vector<std::pair<uint8_t *, uintptr_t>> sections_;
+    };
+
     struct FuncInfo {
         uint32_t addr = 0;
         int32_t fp2PrevFrameSpDelta = 0;
         kungfu::CalleeRegAndOffsetVec calleeRegInfo;
     };
 
+    CodeInfo(CodeSpaceOnDemand &codeSpaceOnDemand);
+
+    ~CodeInfo();
+
+    uint8_t *AllocaOnDemand(uintptr_t size, size_t alignSize = 0);
+
     uint8_t *AllocaInReqSecBuffer(uintptr_t size, size_t alignSize = 0);
 
     uint8_t *AllocaInNotReqSecBuffer(uintptr_t size, size_t alignSize = 0);
 
+    uint8_t *AllocaCodeSectionImp(uintptr_t size, const char *sectionName, AllocaSectionCallback allocaInReqSecBuffer);
+
     uint8_t *AllocaCodeSection(uintptr_t size, const char *sectionName);
 
+    uint8_t *AllocaCodeSectionOnDemand(uintptr_t size, const char *sectionName);
+
+    uint8_t *AllocaDataSectionImp(uintptr_t size, const char *sectionName, AllocaSectionCallback allocaInReqSecBuffer,
+                                  AllocaSectionCallback allocaInNotReqSecBuffer);
+
     uint8_t *AllocaDataSection(uintptr_t size, const char *sectionName);
+
+    uint8_t *AllocaDataSectionOnDemand(uintptr_t size, const char *sectionName);
 
     void SaveFunc2Addr(std::string funcName, uint32_t address);
 
@@ -108,13 +136,15 @@ private:
     std::map<uint64_t, std::vector<uint64_t>> pc2DeoptInfo;
     std::unordered_map<uint64_t, std::vector<uint64_t>> pc2CallsiteInfo;
     bool alreadyPageAlign_ {false};
+    CodeSpaceOnDemand &codeSpaceOnDemand_;
 };
 
 class Assembler {
 public:
-    explicit Assembler() = default;
+    explicit Assembler(CodeInfo::CodeSpaceOnDemand &codeSpaceOnDemand) : codeInfo_(codeSpaceOnDemand)
+    {}
     virtual ~Assembler() = default;
-    virtual void Run(const CompilerLog &log, bool fastCompileMode) = 0;
+    virtual void Run(const CompilerLog &log, bool fastCompileMode, bool isJit = false) = 0;
 
     uintptr_t GetSectionAddr(ElfSecName sec) const
     {
@@ -137,7 +167,7 @@ public:
         return codeInfo_;
     }
 protected:
-    CodeInfo codeInfo_ {};
+    CodeInfo codeInfo_;
 };
 
 class CodeGeneratorImpl {
@@ -151,7 +181,8 @@ public:
 
     virtual void GenerateCode(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
                               const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile,
-                              const std::string &methodName, bool enableOptInlining, bool enableBranchProfiling) = 0;
+                              const std::string &methodName, const FrameType frameType,
+                              bool enableOptInlining, bool enableBranchProfiling) = 0;
 };
 
 class CodeGenerator {
@@ -174,10 +205,10 @@ public:
     }
 
     void Run(Circuit *circuit, const ControlFlowGraph &graph, const CompilationConfig *cfg,
-             const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile,
+             const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile, const FrameType frameType,
              bool enableOptInlining, bool enableOptBranchProfiling)
     {
-        impl_->GenerateCode(circuit, graph, cfg, methodLiteral, jsPandaFile, methodName_,
+        impl_->GenerateCode(circuit, graph, cfg, methodLiteral, jsPandaFile, methodName_, frameType,
             enableOptInlining, enableOptBranchProfiling);
     }
 

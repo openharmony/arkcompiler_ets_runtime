@@ -31,16 +31,24 @@
 
 #if !defined(ENABLE_BYTRACE)
     #define ECMA_BYTRACE_NAME(tag, name)
+    #define ECMA_BYTRACE_START_TRACE(tag, msg)
+    #define ECMA_BYTRACE_FINISH_TRACE(tag)
 #else
     #define ECMA_BYTRACE_NAME(tag, name) HITRACE_METER_NAME(tag, name)
+    #define ECMA_BYTRACE_START_TRACE(tag, msg) StartTrace(tag, msg)
+    #define ECMA_BYTRACE_FINISH_TRACE(tag) FinishTrace(tag)
 #endif
 
 #if defined(ENABLE_HITRACE)
     #define ENQUEUE_JOB_HITRACE(pendingJob, queueType) job::EnqueueJobScope hitraceScope(pendingJob, queueType)
     #define EXECUTE_JOB_HITRACE(pendingJob) job::ExecuteJobScope hitraceScope(pendingJob)
+    #define ENQUEUE_JOB_TRACE(thread, pendingJob) job::EnqueueJobTrace enqueueJobTrace(thread, pendingJob)
+    #define EXECUTE_JOB_TRACE(thread, pendingJob) job::ExecuteJobTrace executeJobTrace(thread, pendingJob)
 #else
     #define ENQUEUE_JOB_HITRACE(pendingJob, queueType)
     #define EXECUTE_JOB_HITRACE(pendingJob)
+    #define ENQUEUE_JOB_TRACE(thread, pendingJob)
+    #define EXECUTE_JOB_TRACE(thread, pendingJob)
 #endif
 
 /* Note: We can't statically decide the element type is a primitive or heap object, especially for */
@@ -226,6 +234,15 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define RETURN_VALUE_IF_ABRUPT_COMPLETION_WITH_DATA_DELETE(thread, value, flagsStr) \
+    do {                                                                            \
+        if ((thread)->HasPendingException()) {                                      \
+            delete[] flagsStr;                                                      \
+            return (value);                                                         \
+        }                                                                           \
+    } while (false)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread) \
     do {                                              \
         if ((thread)->HasPendingException()) {        \
@@ -328,25 +345,25 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THROW_ERROR(thread, type, message)                                      \
-    do {                                                                        \
-        if ((thread)->HasPendingException()) {                                  \
-            return;                                                             \
-        }                                                                       \
-        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();          \
-        JSHandle<JSObject> _error = _factory->GetJSError(type, message, false); \
-        (thread)->SetException(_error.GetTaggedValue());                        \
-        return;                                                                 \
+#define THROW_ERROR(thread, type, message)                                                              \
+    do {                                                                                                \
+        if ((thread)->HasPendingException()) {                                                          \
+            return;                                                                                     \
+        }                                                                                               \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                  \
+        JSHandle<JSObject> _error = _factory->GetJSError(type, message, StackCheck::NO);                \
+        (thread)->SetException(_error.GetTaggedValue());                                                \
+        return;                                                                                         \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THROW_UNCATCHABLE_ERROR(thread, type, message)                   \
-    do {                                                                 \
-        EcmaVM *_ecmaVm = (thread)->GetEcmaVM();                         \
-        ObjectFactory *_factory = _ecmaVm->GetFactory();                 \
-        JSHandle<JSObject> _error = _factory->GetJSError(type, message); \
-        (thread)->SetException(_error.GetTaggedValue());                 \
-        _ecmaVm->HandleUncatchableError();                               \
+#define THROW_UNCATCHABLE_ERROR(thread, type, message)                                                  \
+    do {                                                                                                \
+        EcmaVM *_ecmaVm = (thread)->GetEcmaVM();                                                        \
+        ObjectFactory *_factory = _ecmaVm->GetFactory();                                                \
+        JSHandle<JSObject> _error = _factory->GetJSError(type, message, StackCheck::NO);                \
+        (thread)->SetException(_error.GetTaggedValue());                                                \
+        _ecmaVm->HandleUncatchableError();                                                              \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -359,27 +376,27 @@
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, errorType, type, message)             \
-    do {                                                                                \
-        if ((thread)->HasPendingException()) {                                          \
-            return JSHandle<type>(thread, JSTaggedValue::Exception());                  \
-        }                                                                               \
-        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                  \
-        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message, false);    \
-        (thread)->SetException(_error.GetTaggedValue());                                \
-        return JSHandle<type>(thread, JSTaggedValue::Exception());                      \
+#define THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, errorType, type, message)                                 \
+    do {                                                                                                    \
+        if ((thread)->HasPendingException()) {                                                              \
+            return JSHandle<type>(thread, JSTaggedValue::Exception());                                      \
+        }                                                                                                   \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                      \
+        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message, StackCheck::NO);               \
+        (thread)->SetException(_error.GetTaggedValue());                                                    \
+        return JSHandle<type>(thread, JSTaggedValue::Exception());                                          \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, errorType, message, value)        \
-    do {                                                                                    \
-        if ((thread)->HasPendingException()) {                                              \
-            return (value);                                                                 \
-        }                                                                                   \
-        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                      \
-        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message, false);        \
-        (thread)->SetException(_error.GetTaggedValue());                                    \
-        return (value);                                                                     \
+#define THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, errorType, message, value)                        \
+    do {                                                                                                    \
+        if ((thread)->HasPendingException()) {                                                              \
+            return (value);                                                                                 \
+        }                                                                                                   \
+        ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                      \
+        JSHandle<JSObject> _error = _factory->GetJSError(errorType, message, ecmascript::StackCheck::NO);   \
+        (thread)->SetException(_error.GetTaggedValue());                                                    \
+        return (value);                                                                                     \
     } while (false)
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
@@ -391,7 +408,8 @@
         ObjectFactory *_factory = (thread)->GetEcmaVM()->GetFactory();                                      \
         CString normalizeStr = ModulePathHelper::ReformatPath(currentRecord);                               \
         CString msg =  "Cannot find module '" + requestStr + "' imported from '" + normalizeStr + "'.";     \
-        JSHandle<JSObject> _error = _factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str(), false);   \
+        JSHandle<JSObject> _error = _factory->GetJSError(ErrorType::REFERENCE_ERROR,                        \
+                                                         msg.c_str(), StackCheck::NO);                      \
         (thread)->SetException(_error.GetTaggedValue());                                                    \
         return (value);                                                                                     \
     } while (false)
@@ -553,11 +571,9 @@
     void VisitObjects(const EcmaObjectRangeVisitor &visitor)                                           \
     {                                                                                                  \
         PARENTCLASS::VisitObjects<visitType>(visitor);                                                 \
-        if ((BEGIN_OFFSET) == (END_OFFSET)) {                                                          \
-            return;                                                                                    \
-        }                                                                                              \
+        static constexpr size_t PARENT_SIZE = PARENTCLASS::SIZE;                                       \
         ObjectBodyIterator<visitType, (BEGIN_OFFSET),                                                  \
-            (END_OFFSET), SIZE>::IterateRefBody(this, visitor, PARENTCLASS::SIZE);                     \
+            (END_OFFSET), SIZE, PARENT_SIZE>::IterateDerivedRefBody(this, visitor);                    \
     }
 
 #if ECMASCRIPT_ENABLE_CAST_CHECK

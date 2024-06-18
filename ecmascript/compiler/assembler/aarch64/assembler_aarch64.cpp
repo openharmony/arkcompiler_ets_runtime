@@ -748,19 +748,27 @@ void AssemblerAarch64::Ubfm(const Register &rd, const Register &rn, unsigned imm
     EmitU32(code);
 }
 
+void AssemblerAarch64::Bfm(const Register &rd, const Register &rn, unsigned immr, unsigned imms)
+{
+    bool sf = !rd.IsW();
+    uint32_t n = (sf << BITWISE_OP_N_LOWBITS) & BITWISE_OP_N_MASK;
+    uint32_t immr_field = (immr << BITWISE_OP_Immr_LOWBITS) & BITWISE_OP_Immr_MASK;
+    uint32_t imms_field = (imms << BITWISE_OP_Imms_LOWBITS) & BITWISE_OP_Imms_MASK;
+    uint32_t code = Sf(sf) | BFM | n | immr_field | imms_field | Rn(rn.GetId()) | Rd(rd.GetId());
+    EmitU32(code);
+}
+
 void AssemblerAarch64::Lsr(const Register &rd, const Register &rn, unsigned shift)
 {
     unsigned imms = 0;
     if (rd.IsW()) {
-        // 31 : 31 32-bit variant Applies when sf == 0 && N == 0 && imms == 011111
+        imms = 31; // 31 : 31 32-bit variant Applies when sf == 0 && N == 0 && imms == 011111
         // LSR <Wd>, <Wn>, #<shift> is equivalent to UBFM <Wd>, <Wn>, #<shift>, #31
         // and is always the preferred disassembly
-        imms = 31;
     } else {
-        // 63 : 63 64-bit variant Applies when sf == 1 && N == 1 && imms == 111111
+        imms = 63; // 63 : 63 64-bit variant Applies when sf == 1 && N == 1 && imms == 111111
         // LSR <Xd>, <Xn>, #<shift> is equivalent to UBFM <Xd>, <Xn>, #<shift>, #63
         // and is always the preferred disassembly
-        imms = 63;
     }
     Ubfm(rd, rn, shift, imms);
 }

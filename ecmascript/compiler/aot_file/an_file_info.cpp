@@ -48,25 +48,12 @@ void AnFileInfo::Save(const std::string &filename, Triple triple)
     file.close();
 }
 
-bool AnFileInfo::Load(const std::string &filename)
+bool AnFileInfo::LoadInternal(const std::string &filename)
 {
-    std::string realPath;
-    if (!RealPath(filename, realPath, false)) {
-        LOG_COMPILER(ERROR) << "Can not load aot file from path [ " << filename << " ], "
-                            << "please execute ark_aot_compiler with options --aot-file.";
-        return false;
-    }
-    if (!FileExist(realPath.c_str())) {
-        LOG_ECMA(WARN) << "File not exist. file: " << realPath;
-        return false;
-    }
-
-    fileMapMem_ = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
     if (fileMapMem_.GetOriginAddr() == nullptr) {
         LOG_ECMA(ERROR) << "File mmap failed";
         return false;
     }
-    PagePreRead(fileMapMem_.GetOriginAddr(), fileMapMem_.GetSize());
 
     moduleNum_ = 1;
     des_.resize(moduleNum_);
@@ -91,6 +78,51 @@ bool AnFileInfo::Load(const std::string &filename)
     isLoad_ = true;
     return true;
 }
+
+bool AnFileInfo::Load(const std::string &filename)
+{
+    std::string realPath;
+    if (!RealPath(filename, realPath, false)) {
+        LOG_COMPILER(ERROR) << "Can not load aot file from path [ " << filename << " ], "
+                            << "please execute ark_aot_compiler with options --aot-file.";
+        return false;
+    }
+    if (!FileExist(realPath.c_str())) {
+        LOG_ECMA(WARN) << "File not exist. file: " << realPath;
+        return false;
+    }
+
+    fileMapMem_ = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+    return LoadInternal(filename);
+}
+
+#if defined(ANDROID_PLATFORM)
+bool AnFileInfo::Load(const std::string &filename, [[maybe_unused]] std::function<bool
+    (std::string fileName, uint8_t **buff, size_t *buffSize)> ReadAOTCallBack)
+{
+    std::string fileName = filename;
+    uint8_t *buff = nullptr;
+    size_t buffSize = 0;
+    size_t found = filename.find_last_of("/");
+    if (found != std::string::npos) {
+        fileName = filename.substr(found + 1);
+    }
+    
+    LOG_ECMA(INFO) << "Call JsAotReader to load: " << fileName;
+    if (ReadAOTCallBack(fileName, &buff, &buffSize)) {
+        void* newBuff = nullptr;
+        if (posix_memalign(&newBuff, sysconf(_SC_PAGESIZE), buffSize) != 0) {
+            LOG_ECMA(ERROR) << "posix_memalign failed!";
+            return false;
+        }
+        std::copy(reinterpret_cast<char*>(buff), reinterpret_cast<char*>(buff) + buffSize,
+                  reinterpret_cast<char*>(newBuff));
+        fileMapMem_ = MemMap(newBuff, buffSize);
+    }
+
+    return LoadInternal(filename);
+}
+#endif
 
 void AnFileInfo::TryRemoveAnFile(const char *filename)
 {

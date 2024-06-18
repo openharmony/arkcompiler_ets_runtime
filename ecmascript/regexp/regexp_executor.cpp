@@ -34,21 +34,24 @@ bool RegExpExecutor::Execute(const uint8_t *input, uint32_t lastIndex, uint32_t 
     nCapture_ = buffer.GetU32(RegExpParser::NUM_CAPTURE__OFFSET);
     nStack_ = buffer.GetU32(RegExpParser::NUM_STACK_OFFSET);
     flags_ = buffer.GetU32(RegExpParser::FLAGS_OFFSET);
+    prefilter_ = buffer.GetU32(RegExpParser::PREFILTER_OFFSET);
     isWideChar_ = isWideChar;
 
     uint32_t captureResultSize = sizeof(CaptureState) * nCapture_;
     uint32_t stackSize = sizeof(uintptr_t) * nStack_;
-    stateSize_ = sizeof(RegExpState) + captureResultSize + stackSize;
     stateStackLen_ = 0;
+    currentStack_ = 0;
 
     if (captureResultSize != 0) {
-        captureResultList_ = chunk_->NewArray<CaptureState>(nCapture_);
+        if (captureResultList_ == nullptr) {
+            captureResultList_ = chunk_->NewArray<CaptureState>(nCapture_);
+        }
         if (memset_s(captureResultList_, captureResultSize, 0, captureResultSize) != EOK) {
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
         }
     }
-    if (stackSize != 0) {
+    if (stackSize != 0 && stack_ == nullptr) {
         stack_ = chunk_->NewArray<uintptr_t>(nStack_);
         if (memset_s(stack_, stackSize, 0, stackSize) != EOK) {
             LOG_FULL(FATAL) << "memset_s failed";
@@ -68,33 +71,16 @@ bool RegExpExecutor::Execute(const uint8_t *input, uint32_t lastIndex, uint32_t 
 
 bool RegExpExecutor::MatchFailed(bool isMatched)
 {
-    while (true) {
-        if (stateStackLen_ == 0) {
-            return true;
-        }
-        RegExpState *state = PeekRegExpState();
-        if (state->type_ == StateType::STATE_SPLIT) {
-            if (!isMatched) {
-                PopRegExpState();
-                return false;
-            }
-        } else {
-            isMatched = (state->type_ == StateType::STATE_MATCH_AHEAD && isMatched) ||
-                        (state->type_ == StateType::STATE_NEGATIVE_MATCH_AHEAD && !isMatched);
-            if (isMatched) {
-                if (state->type_ == StateType::STATE_MATCH_AHEAD) {
-                    PopRegExpState(false);
-                    return false;
-                }
-                if (state->type_ == StateType::STATE_NEGATIVE_MATCH_AHEAD) {
-                    PopRegExpState();
-                    return false;
-                }
-            }
-        }
-        DropRegExpState();
+    if (isMatched) {
+        stateStackLen_ = 0;
+        return true;
     }
-
+    while (stateStackLen_ > 0) {
+        // StateType::STATE_SPLIT or STATE_NEGATIVE_MATCH_AHEAD
+        if (PopRegExpState() <= StateType::STATE_NEGATIVE_MATCH_AHEAD) {
+            return false;
+        }
+    }
     return true;
 }
 
@@ -154,8 +140,18 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
             }
             case RegExpOpCode::OP_MATCH: {
                 // jump to match ahead
-                if (MatchFailed(true)) {
-                    return false;
+                uint32_t ahead = stateStackLen_ - 1;
+                auto stateStack = reinterpret_cast<RegExpState *>(stateStack_);
+                while (ahead != 0 && stateStack[ahead].type_ != StateType::STATE_MATCH_AHEAD &&
+                    stateStack[ahead].type_ != StateType::STATE_NEGATIVE_MATCH_AHEAD) {
+                    --ahead;
+                }
+                bool isNegative = stateStack[ahead].type_ == StateType::STATE_NEGATIVE_MATCH_AHEAD;
+                while (stateStackLen_ > ahead) {
+                    PopRegExpState(isNegative);
+                }
+                if (isNegative) {
+                    MatchFailed(false);
                 }
                 break;
             }
@@ -183,11 +179,17 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
                 HandleOpLoop(byteCode, opCode);
                 break;
             case RegExpOpCode::OP_PUSH_CHAR: {
+                PushRegExpState(StateType::STATE_PUSH, 0, 0);
                 PushStack(reinterpret_cast<uintptr_t>(GetCurrentPtr()));
                 Advance(opCode);
                 break;
             }
             case RegExpOpCode::OP_CHECK_CHAR: {
+                if (stateStackLen_ > 0 && PeekRegExpState()->type_ == StateType::STATE_PUSH) {
+                    DropRegExpState();
+                } else {
+                    PushRegExpState(StateType::STATE_POP, 0, stack_[currentStack_ - 1]);
+                }
                 if (PopStack() != reinterpret_cast<uintptr_t>(GetCurrentPtr())) {
                     Advance(opCode);
                 } else {
@@ -197,11 +199,13 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
                 break;
             }
             case RegExpOpCode::OP_PUSH: {
+                PushRegExpState(StateType::STATE_PUSH, 0, 0);
                 PushStack(0);
                 Advance(opCode);
                 break;
             }
             case RegExpOpCode::OP_POP: {
+                PushRegExpState(StateType::STATE_POP, 0, stack_[currentStack_ - 1]);
                 PopStack();
                 Advance(opCode);
                 break;
@@ -214,6 +218,12 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
             }
             case RegExpOpCode::OP_RANGE: {
                 if (!HandleOpRange(byteCode)) {
+                    return false;
+                }
+                break;
+            }
+            case RegExpOpCode::OP_SPARSE: {
+                if (!HandleOpSparse(byteCode)) {
                     return false;
                 }
                 break;
@@ -292,56 +302,59 @@ void RegExpExecutor::PushRegExpState(StateType type, uint32_t pc)
     ReAllocStack(stateStackLen_ + 1);
     auto state = reinterpret_cast<RegExpState *>(
         stateStack_ +  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        stateStackLen_ * stateSize_);
+        stateStackLen_ * sizeof(RegExpState));
     state->type_ = type;
     state->currentPc_ = pc;
-    state->currentStack_ = currentStack_;
     state->currentPtr_ = GetCurrentPtr();
-    size_t listSize = sizeof(CaptureState) * nCapture_;
-    if (memcpy_s(state->captureResultList_, listSize, GetCaptureResultList(), listSize) != EOK) {
-        LOG_FULL(FATAL) << "memcpy_s failed";
-        UNREACHABLE();
-    }
-    uint8_t *stackStart =
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        reinterpret_cast<uint8_t *>(state->captureResultList_) + sizeof(CaptureState) * nCapture_;
-    if (stack_ != nullptr) {
-        size_t stackSize = sizeof(uintptr_t) * nStack_;
-        if (memcpy_s(stackStart, stackSize, stack_, stackSize) != EOK) {
-            LOG_FULL(FATAL) << "memcpy_s failed";
-            UNREACHABLE();
-        }
-    }
     stateStackLen_++;
 }
 
-RegExpState *RegExpExecutor::PopRegExpState(bool copyCaptrue)
+void RegExpExecutor::PushRegExpState(StateType type, uint32_t pc, uintptr_t ptr)
+{
+    ReAllocStack(stateStackLen_ + 1);
+    auto state = reinterpret_cast<RegExpState *>(
+        stateStack_ + // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        stateStackLen_ * sizeof(RegExpState));
+    state->type_ = type;
+    state->currentPc_ = pc;
+    state->currentPtr_ = reinterpret_cast<const uint8_t *>(ptr);
+    stateStackLen_++;
+}
+
+RegExpExecutor::StateType RegExpExecutor::PopRegExpState(bool copyCapture)
 {
     if (stateStackLen_ != 0) {
         auto state = PeekRegExpState();
-        size_t listSize = sizeof(CaptureState) * nCapture_;
-        if (copyCaptrue) {
-            if (memcpy_s(GetCaptureResultList(), listSize, state->captureResultList_, listSize) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed";
-                UNREACHABLE();
-            }
-        }
-        SetCurrentPtr(state->currentPtr_);
-        SetCurrentPC(state->currentPc_);
-        currentStack_ = state->currentStack_;
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        uint8_t *stackStart = reinterpret_cast<uint8_t *>(state->captureResultList_) + listSize;
-        if (stack_ != nullptr) {
-            size_t stackSize = sizeof(uintptr_t) * nStack_;
-            if (memcpy_s(stack_, stackSize, stackStart, stackSize) != EOK) {
-                LOG_FULL(FATAL) << "memcpy_s failed";
-                UNREACHABLE();
-            }
-        }
         stateStackLen_--;
-        return state;
+        switch (state->type_) {
+            case StateType::STATE_SPLIT:
+            case StateType::STATE_NEGATIVE_MATCH_AHEAD:
+            case StateType::STATE_MATCH_AHEAD:
+                SetCurrentPC(state->currentPc_);
+                SetCurrentPtr(state->currentPtr_);
+                break;
+            case StateType::STATE_SAVE:
+                if (copyCapture) {
+                    *(reinterpret_cast<const uint8_t **>(GetCaptureResultList()) + state->currentPc_) =
+                        state->currentPtr_;
+                }
+                break;
+            case StateType::STATE_PUSH:
+                PopStack();
+                break;
+            case StateType::STATE_POP:
+                PushStack((uintptr_t)state->currentPtr_);
+                break;
+            case StateType::STATE_SET:
+                SetStackValue((uintptr_t)state->currentPtr_);
+                break;
+            default:
+                UNREACHABLE();
+                break;
+        }
+        return state->type_;
     }
-    return nullptr;
+    return StateType::STATE_INVALID;
 }
 
 void RegExpExecutor::ReAllocStack(uint32_t stackLen)
@@ -349,16 +362,16 @@ void RegExpExecutor::ReAllocStack(uint32_t stackLen)
     if (stackLen > stateStackSize_) {
         ASSERT((static_cast<size_t>(stateStackSize_) * 2) <= static_cast<size_t>(UINT32_MAX)); // 2: double the size
         uint32_t newStackSize = std::max(stateStackSize_ * 2, MIN_STACK_SIZE);  // 2: double the size
-        ASSERT((static_cast<size_t>(newStackSize) * static_cast<size_t>(stateSize_)) <=
+        ASSERT((static_cast<size_t>(newStackSize) * static_cast<size_t>(sizeof(RegExpState))) <=
             static_cast<size_t>(UINT32_MAX));
-        uint32_t stackByteSize = newStackSize * stateSize_;
+        uint32_t stackByteSize = newStackSize * sizeof(RegExpState);
         auto newStack = chunk_->NewArray<uint8_t>(stackByteSize);
         if (memset_s(newStack, stackByteSize, 0, stackByteSize) != EOK) {
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
         }
         if (stateStack_ != nullptr) {
-            auto stackSize = stateStackSize_ * stateSize_;
+            auto stackSize = stateStackSize_ * sizeof(RegExpState);
             if (memcpy_s(newStack, stackSize, stateStack_, stackSize) != EOK) {
                 return;
             }

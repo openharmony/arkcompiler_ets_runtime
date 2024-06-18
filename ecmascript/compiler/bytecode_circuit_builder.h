@@ -538,26 +538,31 @@ public:
         return static_cast<int32_t>(indexAccessor.GetHeaderIndex());
     }
 
-    GateRef GetCurrentConstpool(GateRef jsFunc) const
+    void GetCurrentConstpool(GateRef jsFunc, GateRef &sharedConstPool, GateRef &unSharedConstPool)
     {
         int32_t constpoolId = GetCurrentConstpoolId();
         if (gateAcc_.GetOpCode(preFrameArgs_) == OpCode::CIRCUIT_ROOT) {
-            return circuit_->NewGate(circuit_->GetConstPool(constpoolId), MachineType::I64, {jsFunc},
-                                     GateType::AnyType());
+            sharedConstPool = circuit_->NewGate(circuit_->GetSharedConstPool(constpoolId), MachineType::I64, {jsFunc},
+                                                GateType::AnyType());
+            unSharedConstPool = circuit_->NewGate(circuit_->GetUnsharedConstPool(), MachineType::I64,
+                                                  {sharedConstPool}, GateType::AnyType());
         }
         GateRef frameArgs = preFrameArgs_;
-        GateRef preConstpool = Circuit::NullGate();
+        GateRef preSharedConstPool = Circuit::NullGate();
+        GateRef preUnsharedConstPool = Circuit::NullGate();
         int32_t preConstpoolId = 0;
         while (gateAcc_.GetOpCode(frameArgs) != OpCode::CIRCUIT_ROOT) {
-            preConstpool = gateAcc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::CONST_POOL));
-            preConstpoolId = static_cast<int32_t>(gateAcc_.GetConstpoolId(preConstpool));
+            preSharedConstPool = gateAcc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::SHARED_CONST_POOL));
+            preUnsharedConstPool =
+                gateAcc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::UNSHARED_CONST_POOL));
+            preConstpoolId = static_cast<int32_t>(gateAcc_.GetConstpoolId(preSharedConstPool));
             if (preConstpoolId == constpoolId) {
-                return preConstpool;
+                sharedConstPool = preSharedConstPool;
+                unSharedConstPool = preUnsharedConstPool;
+                break;
             }
             frameArgs = gateAcc_.GetFrameState(frameArgs);
         }
-        return circuit_->NewGate(circuit_->GetConstPool(constpoolId), MachineType::I64, {jsFunc},
-                                 GateType::AnyType());
     }
 
     bool IsOSR() const

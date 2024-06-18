@@ -70,18 +70,9 @@ int main(int argc, char **argv)
         // input the file
         if (ismpl || istmpl) {
             maple::MIRParser theparser(*themodule[i]);
-            if (!theparser.ParseMIR()) {
-                theparser.EmitError(themodule[i]->GetFileName().c_str());
-                return 1;
-            }
         } else {
             BinaryMplImport binMplt(*themodule[i]);
             binMplt.SetImported(false);
-            std::string modid = themodule[i]->GetFileName();
-            if (!binMplt.Import(modid, true)) {
-                ERR(kLncErr, "mpldbg: cannot open .mplt or .bpl file: %s", modid.c_str());
-                return 1;
-            }
         }
 
         themodule[i]->GetDbgInfo()->BuildDebugInfo();

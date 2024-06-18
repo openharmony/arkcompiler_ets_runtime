@@ -47,8 +47,8 @@ void SharedGC::RunPhases()
     }
     Sweep();
     if (UNLIKELY(sHeap_->ShouldVerifyHeap())) {
-        // verify mark
-        LOG_ECMA(DEBUG) << "start verify mark";
+        // verify sweep
+        LOG_ECMA(DEBUG) << "start verify sweep";
         SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_SWEEP).VerifySweep(markingInProgress_);
     }
     Finish();
@@ -85,16 +85,16 @@ void SharedGC::Sweep()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Sweep");
     TRACE_GC(GCStats::Scope::ScopeId::Sweep, sHeap_->GetEcmaGCStats());
     UpdateRecordWeakReference();
-    WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) {
+    WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(header);
-        if (!objectRegion) {
+        if (UNLIKELY(objectRegion == nullptr)) {
             LOG_GC(ERROR) << "SharedGC updateWeakReference: region is nullptr, header is " << header;
-            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+            return nullptr;
         }
         if (!objectRegion->InSharedSweepableSpace() || objectRegion->Test(header)) {
             return header;
         }
-        return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
+        return nullptr;
     };
     Runtime::GetInstance()->GetEcmaStringTable()->SweepWeakReference(gcUpdateWeak);
     Runtime::GetInstance()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);

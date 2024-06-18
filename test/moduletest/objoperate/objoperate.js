@@ -74,3 +74,10 @@ print(obj1[str1]);
 
 let key = 1 + {};
 print("abc"[key])
+
+let v3 = /a/;
+let v4=v3.exec(v3);
+for(let i=0;i<5;i++){
+    v4[{}]=print;
+}
+print("set obj by name test success!")

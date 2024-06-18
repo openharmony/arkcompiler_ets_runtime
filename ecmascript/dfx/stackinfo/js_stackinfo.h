@@ -108,7 +108,8 @@ public:
     static std::optional<MethodInfo> ReadMethodInfo(panda_file::MethodDataAccessor &mda);
     static CVector<MethodInfo> ReadAllMethodInfos(std::shared_ptr<JSPandaFile> jsPandaFile);
     static std::optional<CodeInfo> TranslateByteCodePc(uintptr_t realPc, const CVector<MethodInfo> &vec);
-    bool GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t mapBase, uintptr_t loadOffset, JsFunction *jsFunction);
+    bool GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
+                        uintptr_t loadOffset, JsFunction *jsFunction);
     static void Destory(JSStackTrace* trace);
 private:
     bool AddMethodInfos(uintptr_t mapBase);
@@ -154,16 +155,33 @@ private:
 
 class JsStackInfo {
 public:
-    static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets);
-    static std::string BuildJsStackTrace(JSThread *thread, bool needNative);
+    static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets,
+        const FrameType frameType);
+    static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative)
+    {
+        // If jsErrorObj not be pass in, MachineCode object of its stack frame while not be keep alive
+        JSHandle<JSObject> jsErrorObj;
+        return BuildJsStackTrace(thread, needNative, jsErrorObj);
+    }
+    static std::string BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj);
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread, bool currentStack = false);
-    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile = true);
+    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, const FrameType frameType,
+        bool enableStackSourceFile = true);
     static AOTFileManager *loader;
     static JSRuntimeOptions *options;
-    static void BuildCrashInfo(bool isJsCrash, uintptr_t pc = 0);
+    static void BuildCrashInfo(bool isJsCrash, uintptr_t pc = 0, JSThread *thread = nullptr);
+    static inline void BuildCrashInfo(JSThread *thread)
+    {
+        BuildCrashInfo(true, 0, thread); // pc is useless for JsCrash, pass 0 as placeholder
+    }
     static std::unordered_map<EntityId, std::string> nameMap;
+    static std::unordered_map<EntityId, std::vector<uint8>> machineCodeMap;
+    static void DumpJitCode(JSThread *thread);
+
+private:
+    static std::string BuildJsStackTraceInfo(JSThread *thread, Method *method, FrameIterator &it,
+                                             uint32_t pcOffset, const JSHandle<JSObject> &jsErrorObj);
 };
-void CrashCallback(char *buf, size_t len, void *ucontext);
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H
 extern "C" int step_ark_managed_native_frame(
@@ -189,7 +207,7 @@ extern "C" int ark_parse_js_file_info(
     panda::ecmascript::JsFunction *jsFunction);
 extern "C" int get_ark_native_frame_info(
     int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, panda::ecmascript::JsFrame *jsFrame, size_t &size);
-extern "C" int ark_parse_js_frame_info_local(uintptr_t byteCodePc, uintptr_t mapBase,
+extern "C" int ark_parse_js_frame_info_local(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
     uintptr_t loadOffset, panda::ecmascript::JsFunction *jsFunction);
 extern "C" int ark_destory_local();
 // define in dfx_signal_handler.h

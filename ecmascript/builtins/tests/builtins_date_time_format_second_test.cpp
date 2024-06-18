@@ -120,24 +120,16 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, SupportedLocalesOf_002)
 
 static JSTaggedValue JSDateTime(JSThread *thread, JSTaggedValue &formatResult)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     double days = 1665187200000;
-    // jsDate supports zero to eleven, the month should be added with one
     JSHandle<JSFunction> jsFunction(thread, formatResult);
-    JSArray *jsArray =
-        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
-    JSHandle<JSObject> jsObject(thread, jsArray);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<double>(days)));
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(jsFunction), true, true, true);
-    JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
-    JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetFunction(jsFunction.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetThis(JSTaggedValue::Undefined());
     ecmaRuntimeCallInfo2->SetCallArg(0, value.GetTaggedValue());
 
     [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = JSFunction::Call(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev2);
     return result2;
 }

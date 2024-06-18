@@ -55,7 +55,8 @@ namespace OHOS {
         }
         uint8_t* ptr = nullptr;
         ptr = const_cast<uint8_t*>(data);
-        JSNApi::SetHostResolveBufferTracker(vm, [&](std::string, uint8_t **, size_t *) -> bool { return true; });
+        JSNApi::SetHostResolveBufferTracker(vm,
+            [&](std::string, uint8_t **, size_t *, std::string &) -> bool { return true; });
         JSNApi::DestroyJSVM(vm);
     }
 

@@ -152,6 +152,7 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-enable-baselinejit",
     "compiler-baselinejit-hotness-threshold",
     "compiler-force-baselinejit-compile-main",
+    "compiler-baseline-pgo",
 };
 
 enum class ErrOfCompile {

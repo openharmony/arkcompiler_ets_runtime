@@ -91,7 +91,7 @@ myMap.get = replace
 print(myMap.get(2.5)); //: 2.5
 myMap.get = true_get
 
-//aot: [trace] aot inline builtin: Map.get, caller function name:doGet@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#doGet@builtinMapGet
 printGet(-1); //: 1
 // Call standard builtin with non-number param
 //aot: [trace] aot inline builtin: Map.get, caller function name:func_main_0@builtinMapGet
@@ -119,9 +119,9 @@ myMap.get = true_get
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: Map.get, caller function name:doGet@builtinMapGet
+    //aot: [trace] aot inline builtin: Map.get, caller function name:#*#doGet@builtinMapGet
     printGet(2.5); //: -2.5
-    //aot: [trace] aot inline builtin: Map.get, caller function name:doGet@builtinMapGet
+    //aot: [trace] aot inline builtin: Map.get, caller function name:#*#doGet@builtinMapGet
     printGet("abc"); //: undefined
 } catch (e) {
 }
@@ -215,13 +215,13 @@ m[10] = 20
 let m2 = new Map([[1, 2]])
 let m3 = new Map([[1, 2]])
 let m4 = new Map([[1, 2]])
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(m, 10) //: undefined
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(m2, 1) //: 2
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(m3, 1) //: 2
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(m4, 1) //: 2
 
 print("case 0") //: case 0
@@ -231,11 +231,11 @@ if (ArkTools.isAOTCompiled(printGet2)) {
     }
 }
 // Nothing changed
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(m, 10) //: undefined
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(m2, 1) //: 2
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(m3, 1) //: 2
 printGet2(m4, 1) //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
                 //: 2
@@ -247,11 +247,12 @@ if (ArkTools.isAOTCompiled(printGet2)) {
     }
 }
 
+//aot: [trace] aot inline builtin: Object.getPrototypeOf, caller function name:func_main_0@builtinMapGet
 print(Object.getPrototypeOf(m3) === Map.prototype) //: true
 
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(m, 10) //: undefined
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(m2, 1) //: 2
 printGet2(m3, 1) //pgo: 2
                 //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
@@ -262,7 +263,7 @@ let mimicMap = {
     get: trueGet
 }
 let mm = new Map([[1, 2]])
-//aot: [trace] aot inline builtin: Map.get, caller function name:printGet2@builtinMapGet
+//aot: [trace] aot inline builtin: Map.get, caller function name:#*#printGet2@builtinMapGet
 printGet2(mm, 1) //: 2
 if (ArkTools.isAOTCompiled(printGet2)) {
     Object.setPrototypeOf(mm, mimicMap)

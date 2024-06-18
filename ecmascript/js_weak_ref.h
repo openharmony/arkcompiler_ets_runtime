@@ -38,13 +38,14 @@ public:
         // 3. Return undefined.
         JSHandle<JSTaggedValue> target(thread, weakRef->GetFromWeak());
         if (!target->IsUndefined()) {
-            thread->GetEcmaVM()->GetHeap()->AddToKeptObjects(target);
+            thread->GetCurrentEcmaContext()->AddToKeptObjects(target);
         }
         return target.GetTaggedValue();
     }
 
     void SetToWeak(JSThread *thread, JSTaggedValue value)
     {
+        ALLOW_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
         JSTaggedValue weakObj = JSTaggedValue(value.CreateAndGetWeakRef());
         ASSERT(weakObj.IsWeak());
         SetWeakObject(thread, weakObj);

@@ -12,6 +12,6 @@
 # limitations under the License.
 
 SyntaxError: Unexpected Number in JSON Array Or Object
-exception_case11.ts:22:22
+exception_case11.ts:22:1
 exception_case11.ts:25:1
 

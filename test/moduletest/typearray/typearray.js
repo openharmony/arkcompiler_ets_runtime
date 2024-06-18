@@ -581,13 +581,41 @@ try {
 let res6 = arr2.reduceRight(fun1);
 print(res6);
 let res7 = arr1.reduceRight(fun1, undefined);
-print(res3);
+print(res7);
 let res8 = arr2.reduceRight(fun1, undefined);
-print(res4);
+print(res8);
 let res9 = arr1.reduceRight(fun1, null);
-print(res3);
+print(res9);
 let res10 = arr2.reduceRight(fun1, null);
+print(res10);
+
+for (let i = 0; i < 3; i++) {
+  arr2[i] = i + 1;
+}
+res1 = arr1.reduce(fun1, 1, 1);
+print(res1);
+res2 = arr2.reduce(fun1, 1, 1);
+print(res2);
+res3 = arr1.reduce(fun1, 1);
+print(res3);
+res4 = arr2.reduce(fun1, 1);
 print(res4);
+try {
+  let res5 = arr1.reduce(fun1);
+  print(res5);
+} catch (e) {
+  print(e.name);
+}
+res6 = arr2.reduce(fun1);
+print(res6);
+res7 = arr1.reduce(fun1, undefined);
+print(res7);
+res8 = arr2.reduce(fun1, undefined);
+print(res8);
+res9 = arr1.reduce(fun1, null);
+print(res9);
+res10 = arr2.reduce(fun1, null);
+print(res10);
 
 // Test case for findLastIndex()
 [
@@ -676,6 +704,35 @@ function testTypeArrayOf2(ctor) {
     return typedArraysEqual(arr1, arr2);
 }
 
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    if (testTypeArrayOf3(ctor)) {
+        print(ctor.name + " test success !!!")
+    } else {
+        print(ctor.name + " test fail !!!")
+    }
+});
+
+function testTypeArrayOf3(ctor) {
+    try {
+        const arr1 = new ctor();
+        arr1.proto = ctor;
+        Uint8Array.of("m");
+    } catch (e) {
+        return false;
+    }
+    return true;
+}
+
 function typedArraysEqual(typedArr1, typedArr2) {
     if (typedArr1.length !== typedArr2.length) return false;
     for (let i = 0; i < typedArr1.length; i++) {
@@ -762,3 +819,158 @@ function testTypeArrayToReversed2(ctor) {
     }
     return true;
 }
+
+var arr_every = new Uint8Array(["a", "b", "c"]);
+ArkTools.arrayBufferDetach(arr_every.buffer);
+try {
+    arr_every.every(() => true)
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+var arr_forEach = new Uint8Array(["a", "b", "c"]);
+ArkTools.arrayBufferDetach(arr_forEach.buffer);
+try {
+    arr_forEach.forEach(() => true)
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+var typedArrayConstructorsSort = [
+    Uint8Array,
+    Int8Array,
+    Uint16Array,
+    Int16Array,
+    Uint32Array,
+    Int32Array,
+    Uint8ClampedArray,
+    Float32Array,
+    Float64Array
+];
+
+for (var constructor of typedArrayConstructorsSort) {
+    // For arrays of floats, certain handling of +-0/NaN
+    var b = new constructor([1, +0, -0, NaN, -0, NaN, +0, 3, 2])
+    b.sort();
+    print(prettyPrinted(b[0]), prettyPrinted(b[1]), prettyPrinted(b[2]),
+          prettyPrinted(b[3]), prettyPrinted(b[4]), prettyPrinted(b[5]),
+          prettyPrinted(b[6]), prettyPrinted(b[7]), prettyPrinted(b[8]))
+}
+
+function prettyPrinted(value) {
+    let visited = new Set();
+    function prettyPrint(value) {
+        try {
+            switch (typeof value) {
+                case "string":
+                    return JSONStringify(value);
+                case "bigint":
+                    return String(value) + "n";
+                case "number":
+                    if (value === 0 && (1 / value) < 0) return "-0";
+                // FALLTHROUGH.
+                case "boolean":
+                case "undefined":
+                case "function":
+                case "symbol":
+                    return String(value);
+                case "object":
+                    if (value === null) return "null";
+                    // Guard against re-visiting.
+                    if (visited.has(value)) return "<...>";
+                    visited.add(value);
+                    var objectClass = classOf(value);
+                    switch (objectClass) {
+                        case "Number":
+                        case "BigInt":
+                        case "String":
+                        case "Boolean":
+                        case "Date":
+                            return objectClass + "(" + prettyPrint(ValueOf(value)) + ")";
+                        case "RegExp":
+                            return RegExpPrototypeToString.call(value);
+                        case "Array":
+                            var mapped = ArrayPrototypeMap.call(
+                                value, (v, i, array) => {
+                                    if (v === undefined && !(i in array)) return "";
+                                    return prettyPrint(v, visited);
+                                });
+                            var joined = ArrayPrototypeJoin.call(mapped, ",");
+                            return "[" + joined + "]";
+                        case "Int8Array":
+                        case "Uint8Array":
+                        case "Uint8ClampedArray":
+                        case "Int16Array":
+                        case "Uint16Array":
+                        case "Int32Array":
+                        case "Uint32Array":
+                        case "Float32Array":
+                        case "Float64Array":
+                        case "BigInt64Array":
+                        case "BigUint64Array":
+                            var joined = ArrayPrototypeJoin.call(value, ",");
+                            return objectClass + "([" + joined + "])";
+                        case "Object":
+                            break;
+                        default:
+                            return objectClass + "(" + String(value) + ")";
+                    }
+                    // classOf() returned "Object".
+                    var name = value.constructor?.name ?? "Object";
+                    var pretty_properties = [];
+                    for (let [k, v] of Object.entries(value)) {
+                        ArrayPrototypePush.call(
+                            pretty_properties, `${k}:${prettyPrint(v, visited)}`);
+                    }
+                    var joined = ArrayPrototypeJoin.call(pretty_properties, ",");
+                    return `${name}({${joined}})`;
+                default:
+                    return "-- unknown value --";
+            }
+        } catch (e) {
+            // Guard against general exceptions (especially stack overflows).
+            return "<error>"
+        }
+    }
+    return prettyPrint(value);
+}
+
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function(ctor, i) {
+    class C extends ctor{
+
+    }
+    C.of();
+    print("Class extends "+ ctor.name + " test success!")
+});
+
+[
+    Float64Array,
+    Float32Array,
+    Int32Array,
+    Int16Array,
+    Int8Array,
+    Uint32Array,
+    Uint16Array,
+    Uint8Array,
+    Uint8ClampedArray
+].forEach(function (ctor, i) {
+    try {
+        let obj = {
+            __proto__: [1, 2, 3, 4],
+            length: 1n,
+        }
+        new ctor(obj);
+    } catch (e) {
+        print("Test New " + ctor.name + " with Bad_Obj Success!")
+    }
+});

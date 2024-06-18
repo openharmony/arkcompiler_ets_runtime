@@ -299,7 +299,7 @@ public:
 
     static bool IsThirdDigitAlphanum(const std::string &value)
     {
-        return InRange(value[0], '0', '9') && value.length() == 4 &&
+        return InRange(value[0], '0', '9') && value.length() == INTL_INDEX_FOUR &&
                IsAlphanum(value.substr(INTL_INDEX_ONE), INTL_INDEX_THREE, INTL_INDEX_THREE);
     }
 
@@ -407,7 +407,7 @@ public:
 
     static bool IsWellAlphaNumList(const std::string &value)
     {
-        if (value.length() < 3) {
+        if (value.length() < INTL_INDEX_THREE) {
             return false;
         }
         char lastChar = value[value.length() - 1];
@@ -432,8 +432,8 @@ public:
     {
         const char *localeCountry = locale.getCountry();
         const char *localeScript = locale.getScript();
+        std::string removeCountry;
         if (localeCountry[0] != '\0' && localeScript[0] != '\0') {
-            std::string removeCountry;
             removeCountry = locale.getLanguage();
             removeCountry.append("-");
             removeCountry.append(localeScript);

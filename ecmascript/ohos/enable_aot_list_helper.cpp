@@ -18,5 +18,5 @@
 namespace panda::ecmascript::ohos {
 const std::string EnableAotListHelper::ENABLE_LIST_NAME = "/etc/ark/app_aot_enable_list.conf";
 const std::string EnableAotListHelper::DISABLE_LIST_NAME = "/etc/ark/app_aot_disable_list.conf";
-const std::string EnableAotListHelper::JIT_ENABLE_LIST_NAME = "/etc/ark/app_jit_enable_list.conf";
+const std::string EnableAotListHelper::JIT_ENABLE_LIST_NAME = "/etc/ark/app_aot_enable_list.conf";
 }  // namespace panda::ecmascript::ohos

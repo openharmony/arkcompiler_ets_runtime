@@ -34,114 +34,15 @@ struct MethodPcInfo {
     uint32_t methodsSize {0};
 };
 
-// importRecord : ldExternalModuleVar {importIndex} --> {exportRecordName} : stmoduleVar {exportIndex}
-class ImportRecordInfo {
-public:
-    ImportRecordInfo() = default;
-    ~ImportRecordInfo() = default;
-
-    void AddImportIdAndRecord(uint32_t importId, uint32_t bindingId, const CString &importRecord)
-    {
-        records_.insert(importRecord);
-        if (idToRecord_.find(importId) == idToRecord_.end()) {
-            idToRecord_.emplace(importId, std::make_pair(importRecord, bindingId));
-        }
-    }
-
-    const std::set<CString> &GetImportRecords() const
-    {
-        return records_;
-    }
-
-    uint32_t GetImportRecordSize() const
-    {
-        return records_.size();
-    }
-
-    const std::unordered_map<uint32_t, std::pair<CString, uint32_t>> &GetImportIdToExportRecord() const
-    {
-        return idToRecord_;
-    }
-
-private:
-    std::set<CString> records_ {};
-    std::unordered_map<uint32_t, std::pair<CString, uint32_t>> idToRecord_ {};
-};
-
-// exportIndex_ {exportIndex1...}: collect bytecode export index whose type has not been recorded.
-// starExportRecord_ {recordName A...}: collect recordName when there is Forwarding syntax in this record,
-// like "export * from record A, export * from record B"
-class ExportRecordInfo {
-public:
-    ExportRecordInfo() = default;
-    explicit ExportRecordInfo(uint32_t index) : exportIndex_({index}) {}
-    explicit ExportRecordInfo(const CString &starRecord) : starExportRecord_({starRecord}) {}
-
-    ~ExportRecordInfo() = default;
-
-    bool HasExportIndex(uint32_t index) const
-    {
-        return exportIndex_.find(index) != exportIndex_.end();
-    }
-
-    bool HasStarExport() const
-    {
-        return !starExportRecord_.empty();
-    }
-
-    void AddExportIndex(uint32_t index)
-    {
-        exportIndex_.insert(index);
-    }
-
-    void AddStarExport(const CString &starExportRecord)
-    {
-        starExportRecord_.insert(starExportRecord);
-    }
-
-    const std::unordered_set<CString> &GetstarExportRecord() const
-    {
-        return starExportRecord_;
-    }
-
-private:
-    std::unordered_set<uint32_t> exportIndex_ {};
-    std::unordered_set<CString> starExportRecord_ {};
-};
-
 class MethodInfo {
 public:
-    MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, uint32_t outMethodIdx = MethodInfo::DEFAULT_ROOT,
-               uint32_t outMethodOffset = MethodInfo::DEFAULT_OUTMETHOD_OFFSET)
-        : methodInfoIndex_(methodInfoIndex), methodPcInfoIndex_(methodPcInfoIndex), outerMethodId_(outMethodIdx),
-          outerMethodOffset_(outMethodOffset)
-    {
-    }
+    MethodInfo(uint32_t methodInfoIndex, uint32_t methodPcInfoIndex, std::shared_ptr<CString> recordNamePtr)
+        : methodInfoIndex_(methodInfoIndex), methodPcInfoIndex_(methodPcInfoIndex), recordNamePtr_(recordNamePtr) {}
 
     ~MethodInfo() = default;
 
     static constexpr uint32_t DEFAULT_OUTMETHOD_OFFSET = 0;
     static constexpr uint32_t DEFAULT_ROOT = std::numeric_limits<uint32_t>::max();
-
-    inline uint32_t GetOutMethodId() const
-    {
-        return outerMethodId_;
-    }
-
-    inline void SetOutMethodId(uint32_t outMethodId)
-    {
-        outerMethodId_ = outMethodId;
-    }
-
-    inline uint32_t GetOutMethodOffset() const
-    {
-        return outerMethodOffset_;
-    }
-
-    inline void SetOutMethodOffset(uint32_t outMethodOffset)
-    {
-        outerMethodOffset_ = outMethodOffset;
-    }
 
     inline uint32_t GetMethodPcInfoIndex() const
     {
@@ -163,48 +64,19 @@ public:
         methodInfoIndex_ = methodInfoIndex;
     }
 
-    inline void AddInnerMethod(uint32_t offset, bool isConstructor)
+    inline void SetRecordNamePtr(const std::shared_ptr<CString> recordNamePtr)
     {
-        if (isConstructor) {
-            constructorMethods_.emplace_back(offset);
-        } else {
-            innerMethods_.emplace_back(offset);
-        }
+        recordNamePtr_ = recordNamePtr;
     }
 
-    inline void RearrangeInnerMethods()
+    inline const std::shared_ptr<CString> GetRecordNamePtr() const
     {
-        innerMethods_.insert(innerMethods_.begin(), constructorMethods_.begin(), constructorMethods_.end());
+        return recordNamePtr_;
     }
 
-    inline void AddBcToTypeId(int32_t bcIndex, uint32_t innerFuncTypeId)
+    inline const CString &GetRecordName() const
     {
-        bcToFuncTypeId_.emplace(bcIndex, innerFuncTypeId);
-    }
-
-    inline const std::unordered_map<int32_t, uint32_t> &GetBCAndTypes() const
-    {
-        return bcToFuncTypeId_;
-    }
-
-    inline const std::vector<uint32_t> &GetInnerMethods() const
-    {
-        return innerMethods_;
-    }
-
-    inline void AddImportIndex(uint32_t index)
-    {
-        importIndex_.insert(index);
-    }
-
-    inline const std::set<uint32_t> &GetImportIndexes() const
-    {
-        return importIndex_;
-    }
-
-    inline void CopyImportIndex(const std::set<uint32_t> &indexSet)
-    {
-        importIndex_ = indexSet;
+        return *recordNamePtr_;
     }
 
     bool IsPGO() const
@@ -227,26 +99,6 @@ public:
         CompileStateBit::CompiledBit::Set<uint8_t>(isCompiled, &compileState_.value_);
     }
 
-    bool IsTypeInferAbort() const
-    {
-        return CompileStateBit::TypeInferAbortBit::Decode(compileState_.value_);
-    }
-
-    void SetTypeInferAbort(bool halfCompiled)
-    {
-        CompileStateBit::TypeInferAbortBit::Set<uint8_t>(halfCompiled, &compileState_.value_);
-    }
-
-    bool IsResolvedMethod() const
-    {
-        return CompileStateBit::ResolvedMethodBit::Decode(compileState_.value_);
-    }
-
-    void SetResolvedMethod(bool isDeoptResolveNeed)
-    {
-        CompileStateBit::ResolvedMethodBit::Set<uint8_t>(isDeoptResolveNeed, &compileState_.value_);
-    }
-
 private:
     class CompileStateBit {
     public:
@@ -259,8 +111,6 @@ private:
         static constexpr size_t BOOL_FLAG_BIT_LENGTH = 1;
         using PGOBit = panda::BitField<bool, 0, BOOL_FLAG_BIT_LENGTH>;
         using CompiledBit = PGOBit::NextField<bool, BOOL_FLAG_BIT_LENGTH>;
-        using TypeInferAbortBit = CompiledBit::NextField<bool, BOOL_FLAG_BIT_LENGTH>;
-        using ResolvedMethodBit = TypeInferAbortBit::NextField<bool, BOOL_FLAG_BIT_LENGTH>;
 
     private:
         uint8_t value_ {0};
@@ -270,12 +120,7 @@ private:
     uint32_t methodInfoIndex_ { 0 };
     // used to obtain MethodPcInfo from the vector methodPcInfos of struct BCInfo
     uint32_t methodPcInfoIndex_ { 0 };
-    std::vector<uint32_t> innerMethods_ {};
-    std::vector<uint32_t> constructorMethods_ {};
-    std::unordered_map<int32_t, uint32_t> bcToFuncTypeId_ {};
-    uint32_t outerMethodId_ { MethodInfo::DEFAULT_ROOT };
-    uint32_t outerMethodOffset_ { MethodInfo::DEFAULT_OUTMETHOD_OFFSET };
-    std::set<uint32_t> importIndex_ {};
+    std::shared_ptr<CString> recordNamePtr_ {nullptr};
     CompileStateBit compileState_ { 0 };
 };
 
@@ -296,9 +141,14 @@ public:
         return mainMethodIndexes_;
     }
 
-    std::vector<CString>& GetRecordNames()
+    std::vector<std::shared_ptr<CString>>& GetRecordNamePtrs()
     {
-        return recordNames_;
+        return recordNamePtrs_;
+    }
+
+    const CString &GetRecordNameWithIndex(uint32_t index) const
+    {
+        return *recordNamePtrs_[index];
     }
 
     std::vector<MethodPcInfo>& GetMethodPcInfos()
@@ -339,18 +189,6 @@ public:
         if (skippedMethods_.find(methodOffset) != skippedMethods_.end()) {
             skippedMethods_.erase(methodOffset);
         }
-    }
-
-    // for deopt resolve, when we add new resolve method to compile queue, the recordName vector also need to update
-    // for seek, its recordName also need to be set correspondingly
-    void AddRecordName(const CString &recordName)
-    {
-        recordNames_.emplace_back(recordName);
-    }
-
-    CString GetRecordName(uint32_t index) const
-    {
-        return recordNames_[index];
     }
 
     bool FindMethodOffsetToRecordName(uint32_t methodOffset)
@@ -400,68 +238,6 @@ public:
             functionTypeIdToMethodOffset_.emplace(functionTypeId, methodOffset);
         }
     }
-    bool HasExportIndexToRecord(const CString &recordName, uint32_t index) const
-    {
-        auto iter = recordNameToExportInfo_.find(recordName);
-        if (iter != recordNameToExportInfo_.end()) {
-            return iter->second.HasExportIndex(index);
-        }
-        return false;
-    }
-
-    bool HasStarExportToRecord(const CString &recordName) const
-    {
-        auto iter = recordNameToExportInfo_.find(recordName);
-        if (iter != recordNameToExportInfo_.end()) {
-            return iter->second.HasStarExport();
-        }
-        return false;
-    }
-
-    void AddExportIndexToRecord(const CString &recordName, uint32_t index)
-    {
-        auto iter = recordNameToExportInfo_.find(recordName);
-        if (iter != recordNameToExportInfo_.end()) {
-            iter->second.AddExportIndex(index);
-        } else {
-            ExportRecordInfo info(index);
-            recordNameToExportInfo_.emplace(recordName, std::move(info));
-        }
-    }
-
-    void AddStarExportToRecord(const CString &recordName, const CString &starRecord)
-    {
-        auto iter = recordNameToExportInfo_.find(recordName);
-        if (iter != recordNameToExportInfo_.end()) {
-            iter->second.AddStarExport(starRecord);
-        } else {
-            ExportRecordInfo info(starRecord);
-            recordNameToExportInfo_.emplace(recordName, std::move(info));
-        }
-    }
-
-    const std::unordered_set<CString> &GetstarExportToRecord(const CString &recordName) const
-    {
-        return recordNameToExportInfo_.at(recordName).GetstarExportRecord();
-    }
-
-    void AddImportRecordInfoToRecord(const CString &recordName, const CString &importRecord,
-                                     uint32_t importIndex, uint32_t bindingIndex)
-    {
-        auto iter = recordToImportRecordsInfo_.find(recordName);
-        if (iter == recordToImportRecordsInfo_.end()) {
-            ImportRecordInfo info;
-            info.AddImportIdAndRecord(importIndex, bindingIndex, importRecord);
-            recordToImportRecordsInfo_.emplace(recordName, std::move(info));
-        } else {
-            iter->second.AddImportIdAndRecord(importIndex, bindingIndex, importRecord);
-        }
-    }
-
-    const std::unordered_map<CString, ImportRecordInfo> &GetImportRecordsInfos() const
-    {
-        return recordToImportRecordsInfo_;
-    }
 
     FastCallInfo IterateMethodOffsetToFastCallInfo(uint32_t methodOffset, bool *isValid)
     {
@@ -495,7 +271,7 @@ public:
     }
 private:
     std::vector<uint32_t> mainMethodIndexes_ {};
-    std::vector<CString> recordNames_ {};
+    std::vector<std::shared_ptr<CString>> recordNamePtrs_ {};
     std::vector<MethodPcInfo> methodPcInfos_ {};
     std::unordered_map<uint32_t, MethodInfo> methodList_ {};
     std::unordered_map<uint32_t, CString> methodOffsetToRecordName_ {};
@@ -503,8 +279,6 @@ private:
     size_t maxMethodSize_;
     std::unordered_map<uint32_t, uint32_t> classTypeLOffsetToDefMethod_ {};
     std::unordered_map<uint32_t, uint32_t> functionTypeIdToMethodOffset_ {};
-    std::unordered_map<CString, ExportRecordInfo> recordNameToExportInfo_ {};
-    std::unordered_map<CString, ImportRecordInfo> recordToImportRecordsInfo_ {};
     std::unordered_map<uint32_t, FastCallInfo> methodOffsetToFastCallInfos_ {};
 };
 
@@ -586,35 +360,31 @@ public:
         }
     }
 
+    void ProcessMethod(MethodLiteral *methodLiteral);
 private:
-    inline size_t GetMethodInfoID()
+    inline size_t GetNewMethodInfoID()
     {
-        return methodInfoIndex_++;
+        return methodInfoCounts_++;
     }
 
     void ProcessClasses();
-    void ProcessMethod();
-    void RearrangeInnerMethods();
-    void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
-        MethodLiteral *method, const CString &recordName, uint32_t methodOffset,
-        std::vector<panda_file::File::EntityId> &classConstructIndexes);
-    void SetMethodPcInfoIndex(uint32_t methodOffset, const std::pair<size_t, uint32_t> &processedMethodInfo);
-    void CollectInnerMethods(const MethodLiteral *method, uint32_t innerMethodOffset, bool isConstructor = false);
-    void CollectInnerMethods(uint32_t methodId, uint32_t innerMethodOffset, bool isConstructor = false);
-    void CollectInnerMethodsFromLiteral(const MethodLiteral *method, uint64_t index);
-    void CollectInnerMethodsFromNewLiteral(const MethodLiteral *method, panda_file::File::EntityId literalId);
+    void ProcessCurrMethod();
+    void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr, MethodLiteral *method,
+                                uint32_t methodOffset, const std::shared_ptr<CString> recordNamePtr,
+                                std::vector<panda_file::File::EntityId> &classConstructIndexes);
+    void SetMethodPcInfoIndex(uint32_t methodOffset, const std::pair<size_t, uint32_t> &processedMethodInfo,
+                              const std::shared_ptr<CString> recordNamePtr);
+    void CollectMethods(const MethodLiteral *method, const std::shared_ptr<CString> recordNamePtr);
+    void CollectMethods(uint32_t methodId, const std::shared_ptr<CString> recordNamePtr);
+    void CollectInnerMethodsFromLiteral(uint64_t index, const std::shared_ptr<CString> recordNamePtr);
+    void CollectInnerMethodsFromNewLiteral(panda_file::File::EntityId literalId,
+                                           const std::shared_ptr<CString> recordNamePtr);
     void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method, int32_t bcIndex,
+                                 const std::shared_ptr<CString> recordNamePtr,
                                  std::vector<panda_file::File::EntityId> &classConstructIndexes, bool *canFastCall);
-    void CollectModuleInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
-                                 const CString &recordName);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);
-    void CollectImportIndexs(uint32_t methodOffset, uint32_t index);
-    void CollectExportIndexs(const CString &recordName, uint32_t index);
-    void CollectRecordReferenceREL();
-    void CollectRecordImportInfo(const CString &recordName);
-    void CollectRecordExportInfo(const CString &recordName);
 
     CompilationEnv *compilationEnv_ {nullptr};
     JSPandaFile *jsPandaFile_ {nullptr};
@@ -622,9 +392,10 @@ private:
     PGOProfilerDecoder &pfDecoder_;
     PGOBCInfo pgoBCInfo_ {};
     std::unique_ptr<SnapshotConstantPoolData> snapshotCPData_;
-    size_t methodInfoIndex_ {0};
+    size_t methodInfoCounts_ {0};
     std::set<int32_t> classDefBCIndexes_ {};
     Bytecodes bytecodes_;
+    std::set<uint32_t> processedMethod_;
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BYTECODE_INFO_COLLECTOR_H

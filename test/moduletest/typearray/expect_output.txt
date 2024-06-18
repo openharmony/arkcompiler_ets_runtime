@@ -134,16 +134,40 @@ TypeError
 3 2
 5 1
 6
-1
+undefined
 undefined 3
 NaN 2
 NaN 1
-7
-1
+NaN
+null
 null 3
 3 2
 5 1
+6
+1
+1 1
+2 2
+4 3
 7
+1
+1 1
+2 2
+4 3
+7
+TypeError
+1 2
+3 3
+6
+undefined
+undefined 1
+NaN 2
+NaN 3
+NaN
+null
+null 1
+1 2
+3 3
+6
 Float64Array test success !!!
 Float32Array test success !!!
 Int32Array test success !!!
@@ -182,5 +206,43 @@ Uint32Array test success !!!
 Uint16Array test success !!!
 Uint8Array test success !!!
 Uint8ClampedArray test success !!!
+Float64Array test success !!!
+Float32Array test success !!!
+Int32Array test success !!!
+Int16Array test success !!!
+Int8Array test success !!!
+Uint32Array test success !!!
+Uint16Array test success !!!
+Uint8Array test success !!!
+Uint8ClampedArray test success !!!
 BigInt64Array test success !!!
 BigUint64Array test success !!!
+true
+true
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+0 0 0 0 0 0 1 2 3
+-0 -0 0 0 1 2 3 NaN NaN
+-0 -0 0 0 1 2 3 NaN NaN
+Class extends Float64Array test success!
+Class extends Float32Array test success!
+Class extends Int32Array test success!
+Class extends Int16Array test success!
+Class extends Int8Array test success!
+Class extends Uint32Array test success!
+Class extends Uint16Array test success!
+Class extends Uint8Array test success!
+Class extends Uint8ClampedArray test success!
+Test New Float64Array with Bad_Obj Success!
+Test New Float32Array with Bad_Obj Success!
+Test New Int32Array with Bad_Obj Success!
+Test New Int16Array with Bad_Obj Success!
+Test New Int8Array with Bad_Obj Success!
+Test New Uint32Array with Bad_Obj Success!
+Test New Uint16Array with Bad_Obj Success!
+Test New Uint8Array with Bad_Obj Success!
+Test New Uint8ClampedArray with Bad_Obj Success!

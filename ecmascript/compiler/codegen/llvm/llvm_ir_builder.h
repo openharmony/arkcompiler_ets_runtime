@@ -292,6 +292,7 @@ private:
     LLVMValueRef GetCurrentSP();
     LLVMValueRef ReadRegister(LLVMModuleRef &module, LLVMBuilderRef &builder, LLVMMetadataRef meta);
     void GenPrologue();
+    void AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType);
     LLVMBasicBlockRef EnsureLBB(BasicBlock *bb) const;
     BasicBlockImpl *EnsureBBImpl(BasicBlock *bb) const;
     void SetToCfg(BasicBlock *bb) const;
@@ -406,6 +407,7 @@ private:
     LLVMValueRef GetLeaveFrameOffset(LLVMValueRef glue);
     LLVMValueRef GetRTStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetCoStubOffset(LLVMValueRef glue, int index);
+    LLVMValueRef GetBaselineStubOffset(LLVMValueRef glue, int index);
     LLVMValueRef GetBCStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBCDebugStubOffset(LLVMValueRef glue);
     LLVMValueRef GetBuiltinsStubOffset(LLVMValueRef glue);
@@ -414,6 +416,7 @@ private:
     void ComputeArgCountAndExtraInfo(size_t &actualNumArgs, LLVMValueRef &pcOffset, GateRef &frameArgs,
                                     const std::vector<GateRef> &inList, CallExceptionKind kind);
     void SaveLexicalEnvOnOptJSFuncFrame(LLVMValueRef value);
+    void SaveByteCodePcOnOptJSFuncFrame(LLVMValueRef value);
     void SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value);
     void SaveFrameTypeOnFrame(FrameType frameType, LLVMBuilderRef builder);
     void UpdateLeaveFrame(LLVMValueRef glue);

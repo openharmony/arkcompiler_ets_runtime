@@ -30,7 +30,7 @@ void JSNApiSetAssetPathFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     if (size <= 0) {
         return;
     }
-    std::string str = "11";
+    std::string str = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
     JSNApi::SetAssetPath(vm, str);
     JSNApi::DestroyJSVM(vm);
 }

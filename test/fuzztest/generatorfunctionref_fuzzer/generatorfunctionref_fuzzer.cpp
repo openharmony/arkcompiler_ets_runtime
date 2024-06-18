@@ -59,7 +59,7 @@ void IsGeneratorFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     }
     Local<GeneratorObjectRef> genObjectRef = CreateGeneratorObj(vm);
     Local<GeneratorFunctionRef> object = genObjectRef->GetGeneratorFunction(vm);
-    object->IsGenerator();
+    object->IsGenerator(vm);
     JSNApi::DestroyJSVM(vm);
 }
 

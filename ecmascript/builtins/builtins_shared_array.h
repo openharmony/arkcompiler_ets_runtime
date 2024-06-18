@@ -81,7 +81,9 @@
     V("unshift", Unshift, 1, INVALID)                                            \
     V("values", Values, 0, INVALID)                                              \
     V("shrinkTo", ShrinkTo, 0, INVALID)                                          \
-    V("extendTo", ExtendTo, 0, INVALID)
+    V("extendTo", ExtendTo, 0, INVALID)                                          \
+    /* SharedArray.prototype.splice ( start, deleteCount, ...items ) */          \
+    V("splice", Splice, 2, INVALID)
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.prototype.with ( index, value ) */                            \
     // V("with", With, 2, INVALID)                                                  \
@@ -101,8 +103,6 @@
     // V("lastIndexOf", LastIndexOf, 1, INVALID)                                    \
     // /* SharedArray.prototype.some ( callbackfn [ , thisArg ] ) */                \
     // V("some", Some, 1, INVALID)                                                  \
-    // /* SharedArray.prototype.splice ( start, deleteCount, ...items ) */          \
-    // V("splice", Splice, 2, INVALID)                                              \
     // /* SharedArray.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */ \
     // V("toLocaleString", ToLocaleString, 0, INVALID)                              \
     // /* SharedArray.prototype.toReversed ( ) */                                   \
@@ -137,6 +137,7 @@ public:
     static JSTaggedValue Reduce(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Shift(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Slice(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Splice(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Sort(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ToString(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Unshift(EcmaRuntimeCallInfo *argv);

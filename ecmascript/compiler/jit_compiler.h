@@ -30,6 +30,7 @@ PUBLIC_API void *CreateJitCompilerTask(JitTask *jitTask);
 PUBLIC_API bool JitCompile(void *compiler, JitTask *jitTask);
 PUBLIC_API bool JitFinalize(void *compiler, JitTask *jitTask);
 PUBLIC_API void DeleteJitCompile(void *handle);
+PUBLIC_API int JitVerifyAndCopy(void *codeSigner, void *jit_memory, void *tmpBuffer, int size);
 };
 
 struct JitCompilationOptions {
@@ -44,8 +45,6 @@ struct JitCompilationOptions {
     std::string logMethodsList_;
     bool compilerLogTime_;
     bool deviceIsScreenOff_;
-    size_t maxAotMethodSize_;
-    size_t maxMethodsInModule_;
     uint32_t hotnessThreshold_;
     std::string profilerIn_;
     bool isEnableArrayBoundsCheckElimination_;

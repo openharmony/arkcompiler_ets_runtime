@@ -642,6 +642,11 @@ groups:
         prefix: ecma
         format: [pref_op_id_16_v_8]
         properties: [string_id]
+      - sig: ecma.definepropertybyname string_id, v:in:top
+        acc: in:top
+        prefix: ecma
+        format: [pref_op_id_16_v_8]
+        properties: [string_id]
       - sig: ecma.definefieldbyvalue v1:in:top, v2:in:top
         acc: in:top
         prefix: ecma

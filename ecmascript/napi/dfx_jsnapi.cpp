@@ -44,7 +44,6 @@
 #include "uv.h"
 #endif
 
-sem_t g_heapdumpCnt;
 
 namespace panda {
 using ecmascript::CString;
@@ -61,6 +60,7 @@ using ecmascript::FileStream;
 using ecmascript::FileDescriptorStream;
 using ecmascript::CMap;
 using ecmascript::Tracing;
+sem_t g_heapdumpCnt;
 
 void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
                                  [[maybe_unused]] const std::string &path, [[maybe_unused]] bool isVmMode,
@@ -176,6 +176,15 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
+    uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
+    if (loop == nullptr) {
+        LOG_ECMA(ERROR) << "loop nullptr";
+        return;
+    }
+    if (uv_loop_alive(loop) == 0) {
+        LOG_ECMA(ERROR) << "uv_loop_alive dead";
+        return;
+    }
     struct DumpForSnapShotStruct *dumpStruct = new DumpForSnapShotStruct();
     dumpStruct->vm = vm;
     dumpStruct->dumpFormat = dumpFormat;
@@ -186,18 +195,10 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
     uv_work_t *work = new uv_work_t;
     if (work == nullptr) {
         LOG_ECMA(ERROR) << "work nullptr";
+        delete dumpStruct;
         return;
     }
     work->data = static_cast<void *>(dumpStruct);
-    uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
-    if (loop == nullptr) {
-        LOG_ECMA(ERROR) << "loop nullptr";
-        return;
-    }
-    if (uv_loop_alive(loop) == 0) {
-        LOG_ECMA(ERROR) << "uv_loop_alive dead";
-        return;
-    }
 
     uint32_t curTid = vm->GetTid();
     int ret = 0;
@@ -210,6 +211,9 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
             delete dump;
             delete work;
         });
+    } else {
+        delete dumpStruct;
+        delete work;
     }
 
     // dump worker vm
@@ -257,11 +261,6 @@ void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
-    uv_work_t *work = new uv_work_t;
-    if (work == nullptr) {
-        LOG_ECMA(FATAL) << "DFXJSNApi::TriggerGCWithVm:work is nullptr";
-    }
-    work->data = static_cast<void *>(const_cast<EcmaVM *>(vm));
     uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
     if (loop == nullptr) {
         LOG_ECMA(ERROR) << "loop nullptr";
@@ -271,6 +270,12 @@ void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
         LOG_ECMA(ERROR) << "uv_loop_alive dead";
         return;
     }
+    uv_work_t *work = new uv_work_t;
+    if (work == nullptr) {
+        LOG_ECMA(FATAL) << "DFXJSNApi::TriggerGCWithVm:work is nullptr";
+        return;
+    }
+    work->data = static_cast<void *>(const_cast<EcmaVM *>(vm));
     int ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
         EcmaVM *vm = static_cast<EcmaVM *>(work->data);
         ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -475,20 +480,19 @@ size_t DFXJSNApi::GetFullGCLongTimeCount(const EcmaVM *vm)
     return vm->GetEcmaGCStats()->GetFullGCLongTimeCount();
 }
 
-bool DFXJSNApi::isOverLimit(const EcmaVM *vm)
-{
-    return vm->isOverLimit();
-}
-
-void DFXJSNApi::SetOverLimit(EcmaVM *vm, bool state)
-{
-    vm->SetOverLimit(state);
-}
-
 void DFXJSNApi::GetHeapPrepare(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     const_cast<ecmascript::Heap *>(vm->GetHeap())->GetHeapPrepare();
+}
+
+void DFXJSNApi::SetJsDumpThresholds([[maybe_unused]] EcmaVM *vm, [[maybe_unused]] size_t thresholds)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    vm->GetHeap()->SetJsDumpThresholds(thresholds);
+#else
+    LOG_ECMA(ERROR) << "Not support set jsdump thresholds";
+#endif
 }
 
 void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)
@@ -555,6 +559,29 @@ bool DFXJSNApi::StopCpuProfilerForColdStart([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
+#if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+void DFXJSNApi::CpuProfilerAnyTimeMainThread(const EcmaVM *vm)
+{
+    const uint8_t KILL_COUNT_FACTOR = 2;
+    if (killCount % KILL_COUNT_FACTOR == 0) {
+        uint8_t fileCount = killCount / KILL_COUNT_FACTOR + 1;
+        LOG_ECMA(INFO) << "Start CpuProfiler Any Time Main Thread, killCount = " << killCount;
+        std::string fileName = ConvertToStdString(const_cast<EcmaVM *>(vm)->GetBundleName())
+                               + "_" + std::to_string(fileCount) + ".cpuprofile";
+        if (!BuiltinsArkTools::CreateFile(fileName)) {
+            LOG_ECMA(ERROR) << "createFile failed " << fileName;
+        } else {
+            DFXJSNApi::StartCpuProfilerForFile(vm, fileName, CpuProfiler::INTERVAL_OF_INNER_START);
+        }
+    } else {
+        LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Main Thread, killCount = " << killCount;
+        if (vm->GetJSThread()->GetIsProfiling()) {
+            DFXJSNApi::StopCpuProfilerForFile(vm);
+        }
+    }
+}
+#endif
+
 bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
@@ -564,22 +591,7 @@ bool DFXJSNApi::CpuProfilerSamplingAnyTime([[maybe_unused]] const EcmaVM *vm)
     auto &options = const_cast<EcmaVM *>(vm)->GetJSOptions();
     if (options.EnableCpuProfilerAnyTimeMainThread()) {
         success = true;
-        if (killCount % KILL_COUNT_FACTOR == 0) {
-            uint8_t fileCount = killCount / KILL_COUNT_FACTOR + 1;
-            LOG_ECMA(INFO) << "Start CpuProfiler Any Time Main Thread, killCount = " << killCount;
-            std::string fileName = ConvertToStdString(const_cast<EcmaVM *>(vm)->GetBundleName())
-                                    + "_" + std::to_string(fileCount) + ".cpuprofile";
-            if (!BuiltinsArkTools::CreateFile(fileName)) {
-                LOG_ECMA(ERROR) << "createFile failed " << fileName;
-            } else {
-                DFXJSNApi::StartCpuProfilerForFile(vm, fileName, CpuProfiler::INTERVAL_OF_INNER_START);
-            }
-        } else {
-            LOG_ECMA(INFO) << "Stop CpuProfiler Any Time Main Thread, killCount = " << killCount;
-            if (vm->GetJSThread()->GetIsProfiling()) {
-                DFXJSNApi::StopCpuProfilerForFile(vm);
-            }
-        }
+        CpuProfilerAnyTimeMainThread(vm);
     }
 
     if (options.EnableCpuProfilerAnyTimeWorkerThread()) {
@@ -971,5 +983,15 @@ void DFXJSNApi::GetTracingBufferUseage([[maybe_unused]] const EcmaVM *vm, [[mayb
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler tracing";
 #endif
+}
+
+void DFXJSNApi::TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t &line, int32_t &column)
+{
+    auto cb = vm->GetSourceMapTranslateCallback();
+    if (cb == nullptr) {
+        LOG_ECMA(ERROR) << "Translate failed, callback function is nullptr.";
+    } else if (!cb(url, line, column)) {
+        LOG_ECMA(ERROR) << "Translate failed, url: " << url;
+    }
 }
 } // namespace panda

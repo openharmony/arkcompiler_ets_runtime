@@ -320,6 +320,7 @@ namespace panda::ecmascript {
     V(SharedArray, Shift)                     \
     V(SharedArray, Slice)                     \
     V(SharedArray, Sort)                      \
+    V(SharedArray, Splice)                    \
     V(SharedArray, ToString)                  \
     V(SharedArray, Unscopables)               \
     V(SharedArray, Unshift)                   \
@@ -492,6 +493,8 @@ namespace panda::ecmascript {
     V(Global, EncodeURIComponent)             \
     V(Global, Escape)                         \
     V(Global, Unescape)                       \
+    V(Global, GetCurrentModuleName)           \
+    V(Global, GetCurrentBundleName)           \
     V(Intl, GetCanonicalLocales)              \
     V(Iterator, Constructor)                  \
     V(Iterator, Next)                         \

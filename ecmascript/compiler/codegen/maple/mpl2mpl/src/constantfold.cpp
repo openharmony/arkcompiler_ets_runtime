@@ -1135,9 +1135,9 @@ T ConstantFold::CalIntValueFromFloatValue(T value, const MIRType &resultType) co
     DEBUG_ASSERT(kByteSizeOfBit64 >= resultType.GetSize(), "unsupported type");
     size_t shiftNum = (kByteSizeOfBit64 - resultType.GetSize()) * kBitSizePerByte;
     bool isSigned = IsSignedInteger(resultType.GetPrimType());
-    int64 max = std::numeric_limits<int64>::max() >> shiftNum;
+    int64 max = (IntVal(std::numeric_limits<int64>::max(), PTY_i64) >> shiftNum).GetExtValue();
     uint64 umax = std::numeric_limits<uint64>::max() >> shiftNum;
-    int64 min = isSigned ? (std::numeric_limits<int64>::min() >> shiftNum) : 0;
+    int64 min = isSigned ? (IntVal(std::numeric_limits<int64>::min(), PTY_i64) >> shiftNum).GetExtValue() : 0;
     if (isSigned && (value > max)) {
         return static_cast<T>(max);
     } else if (!isSigned && (value > umax)) {
@@ -1178,7 +1178,8 @@ MIRConst *ConstantFold::FoldFloorMIRConst(const MIRConst &cst, PrimType fromType
             return nullptr;
         }
         doubleValue = CalIntValueFromFloatValue(doubleValue, resultType);
-        return GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(doubleValue), resultType);
+        // gcc/clang have bugs convert double to unsigned long, must convert to signed long first;
+        return GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<int64>(doubleValue), resultType);
     }
 }
 

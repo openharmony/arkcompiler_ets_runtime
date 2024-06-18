@@ -102,7 +102,9 @@ JSThread *JSThread::Create(EcmaVM *vm)
 
     jsThread->glueData_.stackLimit_ = GetAsmStackLimit();
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
+    jsThread->glueData_.isEnableElementsKind_ = vm->IsEnableElementsKind();
     jsThread->SetThreadId();
+    jsThread->SetWorker(vm->GetJSOptions().IsWorker());
 
     RegisterThread(jsThread);
     return jsThread;
@@ -377,6 +379,10 @@ void JSThread::Iterate(const RootVisitor &visitor, const RootRangeVisitor &range
         }
     }
 }
+void JSThread::IterateJitCodeMap(const JitCodeMapVisitor &jitCodeMapVisitor)
+{
+    jitCodeMapVisitor(jitCodeMaps_);
+}
 
 void JSThread::IterateHandleWithCheck(const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor)
 {
@@ -483,6 +489,23 @@ void JSThread::IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKi
     }
 }
 
+void JSThread::UpdateJitCodeMapReference(const WeakRootVisitor &visitor)
+{
+    auto it = jitCodeMaps_.begin();
+    while (it != jitCodeMaps_.end()) {
+        auto obj = reinterpret_cast<TaggedObject *>(it->first);
+        auto fwd = visitor(obj);
+        if (fwd == nullptr) {
+            it = jitCodeMaps_.erase(it);
+        } else if (fwd != obj) {
+            jitCodeMaps_.emplace(JSTaggedValue(fwd).GetRawData(), it->second);
+            it = jitCodeMaps_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
 bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -491,7 +514,8 @@ bool JSThread::DoStackOverflowCheck(const JSTaggedType *sp)
         LOG_ECMA(ERROR) << "Stack overflow! Remaining stack size is: " << (sp - glueData_.frameBase_);
         if (!IsCrossThreadExecutionEnable() && LIKELY(!HasPendingException())) {
             ObjectFactory *factory = GetEcmaVM()->GetFactory();
-            JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
+            JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR,
+                                                           "Stack overflow!", StackCheck::NO);
             SetException(error.GetTaggedValue());
         }
         return true;
@@ -506,7 +530,8 @@ bool JSThread::DoStackLimitCheck()
         LOG_ECMA(ERROR) << "Stack overflow! current:" << GetCurrentStackPosition() << " limit:" << GetStackLimit();
         if (!IsCrossThreadExecutionEnable() && LIKELY(!HasPendingException())) {
             ObjectFactory *factory = GetEcmaVM()->GetFactory();
-            JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR, "Stack overflow!", false);
+            JSHandle<JSObject> error = factory->GetJSError(base::ErrorType::RANGE_ERROR,
+                                                           "Stack overflow!", StackCheck::NO);
             SetException(error.GetTaggedValue());
         }
         return true;
@@ -629,21 +654,23 @@ size_t JSThread::GetBuiltinPrototypeHClassOffset(BuiltinTypeId type, bool isArch
 void JSThread::CheckSwitchDebuggerBCStub()
 {
     auto isDebug = GetEcmaVM()->GetJsDebuggerManager()->IsDebugMode();
-    if (isDebug &&
-        glueData_.bcDebuggerStubEntries_.Get(0) == glueData_.bcDebuggerStubEntries_.Get(1)) {
-        for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
-            auto stubEntry = glueData_.bcStubEntries_.Get(i);
-            auto debuggerStubEbtry = glueData_.bcDebuggerStubEntries_.Get(i);
-            glueData_.bcDebuggerStubEntries_.Set(i, stubEntry);
-            glueData_.bcStubEntries_.Set(i, debuggerStubEbtry);
+    if (LIKELY(!isDebug)) {
+        if (glueData_.bcStubEntries_.Get(0) == glueData_.bcStubEntries_.Get(1)) {
+            for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
+                auto stubEntry = glueData_.bcDebuggerStubEntries_.Get(i);
+                auto debuggerStubEbtry = glueData_.bcStubEntries_.Get(i);
+                glueData_.bcStubEntries_.Set(i, stubEntry);
+                glueData_.bcDebuggerStubEntries_.Set(i, debuggerStubEbtry);
+            }
         }
-    } else if (!isDebug &&
-        glueData_.bcStubEntries_.Get(0) == glueData_.bcStubEntries_.Get(1)) {
-        for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
-            auto stubEntry = glueData_.bcDebuggerStubEntries_.Get(i);
-            auto debuggerStubEbtry = glueData_.bcStubEntries_.Get(i);
-            glueData_.bcStubEntries_.Set(i, stubEntry);
-            glueData_.bcDebuggerStubEntries_.Set(i, debuggerStubEbtry);
+    } else {
+        if (glueData_.bcDebuggerStubEntries_.Get(0) == glueData_.bcDebuggerStubEntries_.Get(1)) {
+            for (size_t i = 0; i < BCStubEntries::BC_HANDLER_COUNT; i++) {
+                auto stubEntry = glueData_.bcStubEntries_.Get(i);
+                auto debuggerStubEbtry = glueData_.bcDebuggerStubEntries_.Get(i);
+                glueData_.bcDebuggerStubEntries_.Set(i, stubEntry);
+                glueData_.bcStubEntries_.Set(i, debuggerStubEbtry);
+            }
         }
     }
 }
@@ -651,7 +678,7 @@ void JSThread::CheckSwitchDebuggerBCStub()
 void JSThread::CheckOrSwitchPGOStubs()
 {
     bool isSwitch = false;
-    if (IsPGOProfilerEnable()) {
+    if (!IsWorker() && IsPGOProfilerEnable()) {
         if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
             SetBCStubStatus(BCStubStatus::PROFILE_BC_STUB);
             isSwitch = true;
@@ -673,10 +700,11 @@ void JSThread::CheckOrSwitchPGOStubs()
     }
 }
 
-void JSThread::SwitchJitProfileStubs()
+void JSThread::SwitchJitProfileStubs(bool isEnablePgo)
 {
-    // if jit enable pgo, use pgo stub
-    if (GetEcmaVM()->GetJSOptions().IsEnableJITPGO()) {
+    if (isEnablePgo) {
+        SetPGOProfilerEnable(true);
+        CheckOrSwitchPGOStubs();
         return;
     }
     bool isSwitch = false;
@@ -699,7 +727,8 @@ void JSThread::TerminateExecution()
 {
     // set the TERMINATE_ERROR to exception
     ObjectFactory *factory = GetEcmaVM()->GetFactory();
-    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TERMINATION_ERROR, "Terminate execution!");
+    JSHandle<JSObject> error = factory->GetJSError(ErrorType::TERMINATION_ERROR,
+        "Terminate execution!", StackCheck::NO);
     SetException(error.GetTaggedValue());
 }
 
@@ -765,8 +794,10 @@ bool JSThread::CheckSafepoint()
     // Handle exit app senstive scene
     heap->HandleExitHighSensitiveEvent();
 
+    // After concurrent mark finish, should trigger gc here to avoid create much floating garbage
+    // except in serialize or high sensitive event
     if (IsMarkFinished() && heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()
-        && !heap->GetOnSerializeEvent()) {
+        && !heap->GetOnSerializeEvent() && !heap->InSensitiveStatus()) {
         heap->SetCanThrowOOMError(false);
         heap->GetConcurrentMarker()->HandleMarkingFinished();
         heap->SetCanThrowOOMError(true);
@@ -1146,7 +1177,7 @@ void JSThread::WaitSuspension()
     ThreadState oldState = GetState();
     UpdateState(ThreadState::IS_SUSPENDED);
     {
-        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::WaitSuspension");
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::WaitSuspension");
         LockHolder lock(suspendLock_);
         while (suspendCount_ > 0) {
             suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
@@ -1241,6 +1272,7 @@ void JSThread::StoreRunningState(ThreadState newState)
             PassSuspendBarrier();
         } else if ((oldStateAndFlags.asStruct.flags & ThreadFlag::SUSPEND_REQUEST) != 0) {
             constexpr int TIMEOUT = 100;
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::StoreRunningState");
             LockHolder lock(suspendLock_);
             while (suspendCount_ > 0) {
                 suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);

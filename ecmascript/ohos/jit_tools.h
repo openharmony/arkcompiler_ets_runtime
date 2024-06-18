@@ -21,28 +21,73 @@
 
 namespace panda::ecmascript::ohos {
 
-bool GetJitEscapeEanble()
-{
-#ifdef JIT_ESCAPE_ENABLE
-    return OHOS::system::GetBoolParameter("ark.jit.escape.disable", false);
-#endif
-    return true;
-}
+class JitTools {
+public:
+    static bool GetJitEscapeDisable()
+    {
+    #ifdef JIT_ESCAPE_ENABLE
+        return OHOS::system::GetBoolParameter("ark.jit.escape.disable", false);
+    #endif
+        return true;
+    }
 
-bool IsJitEnableLitecg(bool value)
-{
-#ifdef GET_PARAMETER_FOR_JIT
-    return OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);
-#endif
-    return value;
-}
+    static bool IsJitEnableLitecg(bool value)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetBoolParameter("ark.jit.enable.litecg", true);
+    #endif
+        return value;
+    }
 
-uint8_t GetJitCallThreshold(uint8_t threshold)
-{
-#ifdef GET_PARAMETER_FOR_JIT
-    return OHOS::system::GetUintParameter("ark.jit.call.threshold", static_cast<uint8_t>(0));
-#endif
-    return threshold;
-}
+    static uint32_t GetJitHotnessThreshold([[maybe_unused]] uint32_t threshold)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        uint32_t defaultSize = 150;
+        return OHOS::system::GetUintParameter("ark.jit.hotness.threshold", defaultSize);
+    #endif
+        return threshold;
+    }
+
+    static uint8_t GetJitCallThreshold(uint8_t threshold)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetUintParameter("ark.jit.call.threshold", static_cast<uint8_t>(0));
+    #endif
+        return threshold;
+    }
+
+    static bool GetJitDumpObjEanble()
+    {
+    #ifdef JIT_ESCAPE_ENABLE
+        return OHOS::system::GetBoolParameter("ark.jit.enable.dumpobj", false);
+    #endif
+        return false;
+    }
+
+    static bool GetJitFrameEnable()
+    {
+    #ifdef JIT_ESCAPE_ENABLE
+        return OHOS::system::GetBoolParameter("ark.jit.enable.jitframe", false);
+    #endif
+        return false;
+    }
+
+    static bool GetCodeSignDisable()
+    {
+    #ifdef CODE_SIGN_ENABLE
+        return OHOS::system::GetBoolParameter("ark.jit.codesign.disable", false);
+    #endif
+        return false;
+    }
+
+    static bool GetSkipJitLogEnable()
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetBoolParameter("ark.jit.enable.jitLogSkip", true);
+    #endif
+        // host no need skip jit log
+        return false;
+    }
+};
 }
 #endif  // ECMASCRIPT_JIT_TOOLS_H

@@ -20,6 +20,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
+#include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript {
 void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
@@ -27,6 +28,7 @@ bool(*Jit::jitCompile_)(void*, JitTask*) = nullptr;
 bool(*Jit::jitFinalize_)(void*, JitTask*) = nullptr;
 void*(*Jit::createJitCompilerTask_)(JitTask*) = nullptr;
 void(*Jit::deleteJitCompile_)(void*) = nullptr;
+int (*Jit::jitVerifyAndCopy_)(void*, void*, void*, int) = nullptr;
 void *Jit::libHandle_ = nullptr;
 
 Jit *Jit::GetInstance()
@@ -116,6 +118,7 @@ void Jit::Initialize()
     static const std::string JITCOMPILE = "JitCompile";
     static const std::string JITFINALIZE = "JitFinalize";
     static const std::string DELETEJITCOMPILE = "DeleteJitCompile";
+    static const std::string JITVERIFYANDCOPY = "JitVerifyAndCopy";
     static const std::string LIBARK_JSOPTIMIZER = "libark_jsoptimizer.so";
 
     libHandle_ = LoadLib(LIBARK_JSOPTIMIZER);
@@ -145,6 +148,13 @@ void Jit::Initialize()
         CREATEJITCOMPILETASK.c_str()));
     if (createJitCompilerTask_ == nullptr) {
         LOG_JIT(ERROR) << "jit can't find symbol createJitCompilertask";
+        return;
+    }
+
+    jitVerifyAndCopy_ = reinterpret_cast<int(*)(void*, void*, void*, int)>(
+        FindSymbol(libHandle_, JITVERIFYANDCOPY.c_str()));
+    if (jitVerifyAndCopy_ == nullptr) {
+        LOG_JIT(ERROR) << "jit can't find symbol jitVerifyAndCopy";
         return;
     }
 
@@ -195,36 +205,32 @@ void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
     }
 }
 
-bool Jit::ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &jsFunction)
+// Used for jit machine code reusing of inner functions have the same method to improve performance.
+void Jit::ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &jsFunction)
 {
-    if (!IsEnableFastJit()) {
-        return false;
+    JSHandle<ProfileTypeInfoCell> profCell(thread, jsFunction->GetRawProfileTypeInfo());
+    JSTaggedValue machineCode = profCell->GetMachineCode().GetWeakRawValue();
+    if (machineCode.IsHole()) {
+        return;
     }
-    if (jsFunction->GetMachineCode() != JSTaggedValue::Undefined()) {
-        return false;
+    if (machineCode.IsUndefined()) {
+        LOG_JIT(DEBUG) << "reset fuction jit hotness count";
+        // if old gc triggered, jit hotness cnt need to be recounted
+        ProfileTypeInfo::Cast(profCell->GetValue().GetTaggedObject())->SetJitHotnessCnt(0);
+        profCell->SetMachineCode(thread, JSTaggedValue::Hole());
+        return;
     }
-    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    if (method->GetFunctionKind() != FunctionKind::ARROW_FUNCTION) {
-        return false;
-    }
-    auto id = method->GetMethodId();
-    if (thread->GetCurrentEcmaContext()->MatchJitMachineCode(id, method)) {
-        CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
-        CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
-        LOG_JIT(DEBUG) << "reuse fuction machine code : " << methodName;
-        auto machineCodeObj = thread->GetCurrentEcmaContext()->GetJitMachineCode(id).second;
-        JSHandle<Method> methodHandle(thread, method);
-        JSHandle<Method> newMethodHandle = thread->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
-        jsFunction->SetMethod(thread, newMethodHandle);
-        JSHandle<MachineCode> machineCodeHandle(thread, JSTaggedValue(machineCodeObj).GetTaggedObject());
-        uintptr_t codeAddr = machineCodeHandle->GetFuncAddr();
-        FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes *>(machineCodeHandle->GetFuncEntryDes());
-        jsFunction->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
-        newMethodHandle->SetDeoptThreshold(thread->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
-        jsFunction->SetMachineCode(thread, machineCodeHandle);
-        return true;
-    }
-    return false;
+    JSHandle<MachineCode> machineCodeHandle(thread, machineCode.GetTaggedObject());
+    JSHandle<Method> method(thread, Method::Cast(jsFunction->GetMethod().GetTaggedObject()));
+    LOG_JIT(DEBUG) << "reuse fuction machine code : " << method->GetJSPandaFile()->GetJSPandaFileDesc()
+        << ":" << method->GetRecordNameStr() << "." << CString(method->GetMethodName());
+    JSHandle<Method> newMethodHandle = thread->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(method);
+    jsFunction->SetMethod(thread, newMethodHandle);
+    uintptr_t codeAddr = machineCodeHandle->GetFuncAddr();
+    FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes *>(machineCodeHandle->GetFuncEntryDes());
+    jsFunction->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
+    newMethodHandle->SetDeoptThreshold(thread->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
+    jsFunction->SetMachineCode(thread, machineCodeHandle);
 }
 
 void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
@@ -233,10 +239,6 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     auto jit = Jit::GetInstance();
     if ((!jit->IsEnableBaselineJit() && tier == CompilerTier::BASELINE) ||
         (!jit->IsEnableFastJit() && tier == CompilerTier::FAST)) {
-        return;
-    }
-
-    if (jit->ReuseCompiledFunc(vm->GetJSThread(), jsFunction)) {
         return;
     }
 
@@ -265,9 +267,13 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 
         return;
     }
+    if (vm->IsEnableOsr() && offset != MachineCode::INVALID_OSR_OFFSET && method->HasCatchBlock()) {
+        LOG_JIT(DEBUG) << "skip jit task, as osr does not support catch blocks: " << methodInfo;
+        return;
+    }
 
     CString msg = "compile method:" + methodInfo + ", in work thread";
-    TimeScope scope(msg, tier, true, true);
+    TimeScope scope(vm, msg, tier, true, true);
     if (vm->GetJSThread()->IsMachineCodeLowMemory()) {
         if (tier == CompilerTier::BASELINE) {
             LOG_BASELINEJIT(DEBUG) << "skip jit task, as low code memory:" << methodInfo;
@@ -359,10 +365,11 @@ bool Jit::CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
         return false;
     }
 
-    if (tier == CompilerTier::FAST &&
-        jsFunction->GetMachineCode() != JSTaggedValue::Undefined()) {
-        MachineCode *machineCode = MachineCode::Cast(jsFunction->GetMachineCode().GetTaggedObject());
-        if (machineCode->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {
+    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
+    if (tier == CompilerTier::FAST && method->IsAotWithCallField()) {
+        JSTaggedValue machineCode = jsFunction->GetMachineCode();
+        if (machineCode.IsMachineCodeObject() &&
+            MachineCode::Cast(machineCode.GetTaggedObject())->GetOSROffset() == MachineCode::INVALID_OSR_OFFSET) {
             LOG_JIT(DEBUG) << "skip method, as it has been jit compiled:" << methodName;
             return false;
         }
@@ -405,6 +412,16 @@ void *Jit::CreateJitCompilerTask(JitTask *jitTask)
 {
     ASSERT(createJitCompilerTask_ != nullptr);
     return createJitCompilerTask_(jitTask);
+}
+
+int Jit::JitVerifyAndCopy(void *codeSigner, void *jit_memory, void *tmpBuffer, int size)
+{
+    ASSERT(jitVerifyAndCopy_ != nullptr);
+    LOG_JIT(DEBUG) << "In Jit::JitVerifyAndCopy "
+        << std::hex << (uintptr_t)codeSigner << " "
+        << std::hex << (uintptr_t)jit_memory << " "
+        << std::hex << (uintptr_t)tmpBuffer << " " << std::dec << size;
+    return jitVerifyAndCopy_(codeSigner, jit_memory, tmpBuffer, size);
 }
 
 void Jit::ClearTask(const std::function<bool(Task *task)> &checkClear)
@@ -455,9 +472,9 @@ void Jit::ChangeTaskPoolState(bool inBackground)
 {
     if (fastJitEnable_ || baselineJitEnable_) {
         if (inBackground) {
-            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(false);
+            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::BACKGROUND);
         } else {
-            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(true);
+            JitTaskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
         }
     }
 }
@@ -480,6 +497,10 @@ Jit::TimeScope::~TimeScope()
             return;
         }
         ASSERT(tier_ == CompilerTier::FAST);
+        auto bundleName = vm_->GetBundleName();
+        if (vm_->GetEnableJitLogSkip() && bundleName != "" && message_.find(bundleName) == std::string::npos) {
+            return;
+        }
         LOG_JIT(INFO) << message_ << ": " << TotalSpentTime() << "ms";
     }
 }

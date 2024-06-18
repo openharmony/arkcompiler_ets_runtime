@@ -239,7 +239,7 @@ JSTaggedValue JSAPIBitVector::SetAllBits(
         bitVector.GetTaggedValue().GetTaggedObject());
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
-    int size = elements->size();
+    int size = static_cast<int>(elements->size());
     if (value->IsZero()) {
         for (int index = 0; index < size; index++) {
             (*elements)[index] = std::bitset<BIT_SET_LENGTH>(0);
@@ -428,8 +428,8 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         bitVector.GetTaggedValue().GetTaggedObject());
     int length = bitVector->GetLength().GetInt();
-    uint32_t elementsLength = ((length - 1) >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
-    uint32_t newElementsLength = ((newSize - 1) >> JSAPIBitVector::TAGGED_VALUE_BIT_SIZE) + 1;
+    uint32_t elementsLength = ((length - 1) / BIT_SET_LENGTH) + 1;
+    uint32_t newElementsLength = ((newSize - 1) / BIT_SET_LENGTH) + 1;
 
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
@@ -448,7 +448,7 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
 
 JSHandle<TaggedArray> JSAPIBitVector::OwnKeys(JSThread* thread, const JSHandle<JSAPIBitVector>& obj)
 {
-    uint32_t numOfElements = obj->GetLength().GetInt();
+    uint32_t numOfElements = static_cast<uint32_t>(obj->GetLength().GetInt());
     JSHandle<TaggedArray> keyArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(numOfElements);
 
     if (numOfElements > 0) {

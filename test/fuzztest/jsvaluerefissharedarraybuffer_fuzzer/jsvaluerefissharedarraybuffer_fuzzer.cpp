@@ -42,7 +42,7 @@ void JSValueRefIsWeakMapFuzzerTest([[maybe_unused]]const uint8_t *data, size_t s
         return;
     }
     Local<JSValueRef> sharedArrayBuffer = ArrayBufferRef::New(vm_, (int32_t)size);
-    sharedArrayBuffer->IsSharedArrayBuffer();
+    sharedArrayBuffer->IsSharedArrayBuffer(vm_);
     JSNApi::DestroyJSVM(vm_);
 }
 }

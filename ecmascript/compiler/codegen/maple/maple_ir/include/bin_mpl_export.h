@@ -105,7 +105,6 @@ public:
     void WriteNum(int64 x);
     void Write(uint8 b);
     void OutputType(TyIdx tyIdx);
-    void WriteFunctionBodyField(uint64 contentIdx, std::unordered_set<std::string> *dumpFuncSet);
     void OutputConst(MIRConst *constVal);
     void OutputConstBase(const MIRConst &constVal);
     void OutputTypeBase(const MIRType &type);
@@ -126,7 +125,6 @@ public:
     void OutputPragmaVec(const std::vector<MIRPragma *> &pragmaVec);
     void OutputClassTypeData(const MIRClassType &type);
     void OutputSymbol(MIRSymbol *sym);
-    void OutputFunction(PUIdx puIdx);
     void OutputInterfaceTypeData(const MIRInterfaceType &type);
     void OutputSrcPos(const SrcPosition &pos);
     void OutputAliasMap(MapleMap<GStrIdx, MIRAliasVars> &aliasVarMap);
@@ -138,10 +136,8 @@ public:
     void OutputLocalTypeNameTab(const MIRTypeNameTable *typeNameTab);
     void OutputFormalsStIdx(MIRFunction *func);
     void OutputFuncViaSym(PUIdx puIdx);
-    void OutputExpression(BaseNode *e);
     void OutputBaseNode(const BaseNode *b);
     void OutputReturnValues(const CallReturnVector *retv);
-    void OutputBlockNode(BlockNode *block);
 
     const MIRModule &GetMIRModule() const
     {

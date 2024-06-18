@@ -84,6 +84,7 @@ public:
     static constexpr char PACKAGE_ENTRY_FILE[] = "/index";
     static constexpr char BUNDLE_INSTALL_PATH[] = "/data/storage/el1/bundle/";
     static constexpr char MERGE_ABC_ETS_MODULES[] = "/ets/modules.abc";
+    static constexpr char ABC[] = ".abc";
     static constexpr char MODULE_DEFAULE_ETS[] = "/ets/";
     static constexpr char BUNDLE_SUB_INSTALL_PATH[] = "/data/storage/el1/";
     static constexpr char PREVIEW_OF_ACROSS_HAP_FLAG[] = "[preview]";
@@ -139,7 +140,8 @@ public:
     static CString ParseUrl(EcmaVM *vm, const CString &recordName);
     static CString ParsePrefixBundle(JSThread *thread, const JSPandaFile *jsPandaFile,
         [[maybe_unused]] CString &baseFileName, CString moduleRequestName, [[maybe_unused]] CString recordName);
-    static CString ParseNormalizedOhmUrl(JSThread *thread, CString &baseFileName, CString requestName);
+    static CString ParseNormalizedOhmUrl(JSThread *thread, CString &baseFileName, const CString &recordName,
+                                         CString requestName);
     static CString MakeNewRecord(JSThread *thread, const JSPandaFile *jsPandaFile, CString &baseFileName,
                                  const CString &recordName, const CString &requestName);
     static CString FindOhpmEntryPoint(const JSPandaFile *jsPandaFile, const CString &ohpmPath,
@@ -167,9 +169,9 @@ public:
                                                    CString &baseFileName, const CString &requestName);
     static void ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CString &requestPath);
     static CString ReformatPath(CString requestName);
-    static void TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                [[maybe_unused]] CString &baseFileName, CString recordName,
-                                                CString &requestPath);
+    static CString TranslateExpressionToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                   [[maybe_unused]] CString &baseFileName, const CString &recordName,
+                                                   CString &requestPath);
     static CVector<CString> GetPkgContextInfoListElements(EcmaVM *vm, CString &moduleName,
                                                           CString &packageName);
     static CString TranslateNapiFileRequestPath(JSThread *thread, const CString &modulePath,
@@ -183,27 +185,22 @@ public:
                                                const CString &pkgName, const CString &entryPath,
                                                const CString &version);
     static CString ConcatMergeFileNameToNormalized(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                   CString &baseFileName, CString recordName, CString requestName);
+                                                   CString &baseFileName, const CString &recordName,
+                                                   CString requestName);
     static CVector<CString> SplitNormalizedRecordName(const CString &recordName);
-    static CString ConcatImportFileNormalizedOhmurlWithRecordName(CString &recordName, CString &requestName);
-    static inline bool IsSandboxPath(const CString &moduleFileName)
-    {
-        return base::StringHelper::StringStartWith(moduleFileName, ModulePathHelper::BUNDLE_INSTALL_PATH);
-    }
+    static CString ConcatImportFileNormalizedOhmurlWithRecordName(const CString &recordName, CString &requestName);
+    static void ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile *jsPandaFile,
+                                            [[maybe_unused]] CString &baseFileName, CString &requestPath);
+    static CString ConcatNormalizedOhmurlWithData(CVector<CString> &data, CString &pkgName, CString &entryPath);
+    static CString GetBundleNameWithRecordName(EcmaVM *vm, const CString &recordName);
+    static CString Utf8ConvertToString(JSTaggedValue str);
 
-    static inline bool IsRelativeFilePath(const CString &moduleFileName)
-    {
-        const char relativeFilePath[] = "..";
-        return base::StringHelper::StringStartWith(moduleFileName, relativeFilePath);
-    }
-
-    static bool SkipDefaultBundleFile(JSThread *thread, const CString &moduleFileName);
+    static CString ParseFileNameToVMAName(const CString &filename);
 
     /*
-     * Before: data/storage/el1/bundle/moduleName/ets/modules.abc
+     * Before: /data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName
      */
-    static CString ParseFileNameToVMAName(const CString &filename);
     inline static std::string ParseHapPath(const CString &baseFileName)
     {
         CString bundleSubInstallName(BUNDLE_SUB_INSTALL_PATH);
@@ -352,11 +349,17 @@ public:
         return res[NORMALIZED_IMPORT_PATH_INDEX];
     }
 
-    inline static bool IsShouldRemoveSuffix(const CString &suffix)
+    /*
+     * Before: /data/storage/el1/xxx/xxx/xxx/xxx.abc
+     */
+    inline static bool ValidateAbcPath(const CString &baseFileName)
     {
-        CSet<CString> suffixSet = {EXT_NAME_JS, EXT_NAME_TS, EXT_NAME_ETS, EXT_NAME_JSON, EXT_NAME_MJS};
-        if (suffixSet.find(suffix) != suffixSet.end()) {
-            return true;
+        CString bundleSubInstallName(BUNDLE_SUB_INSTALL_PATH);
+        size_t startStrLen = bundleSubInstallName.length();
+        if (baseFileName.length() > startStrLen && baseFileName.compare(0, startStrLen, bundleSubInstallName) == 0) {
+            if (baseFileName.rfind(ABC) != CString::npos) {
+                return true;
+            }
         }
         return false;
     }

@@ -194,33 +194,17 @@ JSTaggedValue BuiltinsNumber::ParseInt(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> arg2 = GetCallArg(argv, 1);
     int32_t radix = 0;
-    bool negative = false;
 
+    // 1. Let inputString be ToString(string).
+    JSHandle<EcmaString> numberString = JSTaggedValue::ToString(thread, msg);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (!arg2->IsUndefined()) {
         // 7. Let R = ToInt32(radix).
         radix = JSTaggedValue::ToInt32(thread, arg2);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    // 1. Let inputString be ToString(string).
-    JSHandle<EcmaString> numberString = JSTaggedValue::ToString(thread, msg);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if ((radix == base::DECIMAL || radix == 0)) {
-        int32_t elementIndex = 0;
-        if (EcmaStringAccessor(numberString).ToInt(&elementIndex, &negative)) {
-            if (elementIndex == 0 && negative == true) {
-                return JSTaggedValue(-0.0);
-            }
-            return GetTaggedInt(elementIndex);
-        }
-    }
-    CVector<uint8_t> buf;
-    Span<const uint8_t> str = EcmaStringAccessor(numberString).ToUtf8Span(buf);
 
-    JSTaggedValue result = NumberHelper::StringToDoubleWithRadix(str.begin(), str.end(), radix, &negative);
-    if (result.GetNumber() == 0 && negative == true) {
-        return JSTaggedValue(-0.0);
-    }
-    return JSTaggedValue::TryCastDoubleToInt32(result.GetNumber());
+    return NumberHelper::StringToNumber(*numberString, radix);
 }
 
 // prototype
@@ -460,12 +444,13 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
     // 8. If radixNumber = 10, return ToString(x).
     if (radix == base::DECIMAL) {
         JSHandle<NumberToStringResultCache> cacheTable(thread->GetCurrentEcmaContext()->GetNumberToStringResultCache());
-        JSTaggedValue cacheResult =  cacheTable->FindCachedResult(value);
+        int entry = cacheTable->GetNumberHash(value);
+        JSTaggedValue cacheResult =  cacheTable->FindCachedResult(entry, value);
         if (cacheResult != JSTaggedValue::Undefined()) {
             return cacheResult;
         }
         JSHandle<EcmaString> resultJSHandle = value.ToString(thread);
-        cacheTable->SetCachedResult(thread, value, resultJSHandle);
+        cacheTable->SetCachedResult(thread, entry, value, resultJSHandle);
         return resultJSHandle.GetTaggedValue();
     }
 
@@ -527,21 +512,19 @@ JSTaggedValue NumberToStringResultCache::CreateCacheTable(const JSThread *thread
     return JSTaggedValue(table);
 }
 
-JSTaggedValue NumberToStringResultCache::FindCachedResult(JSTaggedValue &number)
+JSTaggedValue NumberToStringResultCache::FindCachedResult(int entry, JSTaggedValue &target)
 {
-    int entry = NumberToStringResultCache::GetNumberHash(number);
     uint32_t index = static_cast<uint32_t>(entry * ENTRY_SIZE);
     JSTaggedValue entryNumber = Get(index + NUMBER_INDEX);
-    if (entryNumber == number) {
+    if (entryNumber == target) {
         return Get(index + RESULT_INDEX);
     }
     return JSTaggedValue::Undefined();
 }
 
-void NumberToStringResultCache::SetCachedResult(const JSThread *thread, JSTaggedValue &number,
+void NumberToStringResultCache::SetCachedResult(const JSThread *thread, int entry, JSTaggedValue &number,
     JSHandle<EcmaString> &result)
 {
-    int entry = NumberToStringResultCache::GetNumberHash(number);
     uint32_t index = static_cast<uint32_t>(entry * ENTRY_SIZE);
     Set(thread, index + NUMBER_INDEX, number);
     Set(thread, index + RESULT_INDEX, result.GetTaggedValue());

@@ -53,90 +53,90 @@ print(n); //: 1
 n = BigInt(1, 2)
 print(typeof n); //: bigint
 print(n); //: 1
-//aot: [trace] aot inline function name: checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline function name: #*#checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(-1); //: -1
-//aot: [trace] aot inline function name: checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline function name: #*#checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(-12345); //: -12345
-//aot: [trace] aot inline function name: checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline function name: #*#checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(1n); //: 1
-//aot: [trace] aot inline function name: checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline function name: #*#checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(-1n); //: -1
-//aot: [trace] aot inline function name: checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline function name: #*#checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(0.0); //: 0
-//aot: [trace] aot inline function name: checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline function name: #*#checkBigInt@builtinBigIntConstructor caller function name: func_main_0@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(-0.0); //: 0
 //aot: [trace] aot inline builtin: BigInt, caller function name:func_main_0@builtinBigIntConstructor
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(BigInt(-1)); //: -1
 
 // test large ints
 // 2^31-1
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(2147483647); //: 2147483647
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(2147483647 << 1); //: -2
 //-(2^32)
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(-2147483648); //: -2147483648
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(Number.MIN_SAFE_INTEGER); //: -9007199254740991
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(Number.MAX_SAFE_INTEGER); //: 9007199254740991
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(Number.MAX_SAFE_INTEGER - 0.5); //: 9007199254740990
 // 1e22
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(10000000000000000000000) //: 10000000000000000000000
 
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(1e23) //: 99999999999999991611392
 // also 1e23
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(100000000000000000000000) //: 99999999999999991611392
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt("100000000000000000000000") //: 100000000000000000000000
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt("-100000000000000000000000") //: -100000000000000000000000
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(100000000000000000000000n) //: 100000000000000000000000
 //aot: [trace] aot inline builtin: BigInt, caller function name:func_main_0@builtinBigIntConstructor
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt(BigInt(100000000000000000000000n)) //: 100000000000000000000000
 
 
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt("0xf") //: 15
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt({ valueOf: () => 1 }); //: 1
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkBigInt@builtinBigIntConstructor
 checkBigInt({ valueOf: () => "-11" }); //: -11
 
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt(1.5); //: RangeError
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt(-20.000001); //: RangeError
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt(Number.EPSILON); //: RangeError
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt(Number.POSITIVE_INFINITY); //: RangeError
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt(Number.NEGATIVE_INFINITY); //: RangeError
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt(NaN); //: RangeError
 
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt(null); //: TypeError
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt(undefined); //: TypeError
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt("f"); //: SyntaxError
-//aot: [trace] aot inline builtin: BigInt, caller function name:checkNotBigInt@builtinBigIntConstructor
+//aot: [trace] aot inline builtin: BigInt, caller function name:#*#checkNotBigInt@builtinBigIntConstructor
 checkNotBigInt({}); //: SyntaxError
 
 try {

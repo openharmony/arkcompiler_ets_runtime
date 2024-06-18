@@ -161,6 +161,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::CALL_OPTIMIZED, &LLVMIRBuilder::HandleCall},
         {OpCode::FAST_CALL_OPTIMIZED, &LLVMIRBuilder::HandleCall},
         {OpCode::CALL, &LLVMIRBuilder::HandleCall},
+        {OpCode::BASELINE_CALL, &LLVMIRBuilder::HandleCall},
         {OpCode::BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::DEBUGGER_BYTECODE_CALL, &LLVMIRBuilder::HandleBytecodeCall},
         {OpCode::BUILTINS_CALL, &LLVMIRBuilder::HandleCall},
@@ -354,6 +355,30 @@ BasicBlockImpl *LLVMIRBuilder::EnsureBBImpl(BasicBlock *bb) const
     return bb->GetImpl<BasicBlockImpl>();
 }
 
+void LLVMIRBuilder::AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType)
+{
+    LLVMAddTargetDependentFunctionAttr(function_, "frame-reserved-slots",
+                                       std::to_string(reservedSlotsSize).c_str());
+    auto ArgList = circuit_->GetArgRoot();
+    auto uses = acc_.Uses(ArgList);
+    for (auto useIt = uses.begin(); useIt != uses.end(); ++useIt) {
+        int argth = static_cast<int>(acc_.TryGetValue(*useIt));
+        LLVMValueRef value = LLVMGetParam(function_, argth);
+        int funcIndex = 0;
+        if (isFastCallAot_) {
+            frameType = FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
+            funcIndex = static_cast<int>(FastCallArgIdx::FUNC);
+        } else {
+            funcIndex = static_cast<int>(CommonArgIdx::FUNC);
+        }
+        if (argth == funcIndex) {
+            SaveByteCodePcOnOptJSFuncFrame(value);
+            SaveJSFuncOnOptJSFuncFrame(value);
+            SaveFrameTypeOnFrame(frameType, builder_);
+        }
+    }
+}
+
 void LLVMIRBuilder::GenPrologue()
 {
     auto frameType = circuit_->GetFrameType();
@@ -394,10 +419,36 @@ void LLVMIRBuilder::GenPrologue()
                 SaveFrameTypeOnFrame(frameType, builder_);
             }
         }
+    } else if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
+        reservedSlotsSize = FASTJITFunctionFrame::ComputeReservedPcOffset(slotSize_);
+        AssistGenPrologue(reservedSlotsSize, frameType);
     } else {
         LOG_COMPILER(FATAL) << "frameType interpret type error !";
         ASSERT_PRINT(static_cast<uintptr_t>(frameType), "is not support !");
     }
+}
+
+void LLVMIRBuilder::SaveByteCodePcOnOptJSFuncFrame(LLVMValueRef value)
+{
+    ASSERT(circuit_->GetFrameType() == FrameType::FASTJIT_FUNCTION_FRAME);
+    // load method
+    LLVMValueRef func = LLVMBuildPtrToInt(builder_, value, slotType_, "cast_to_i64");
+    LLVMValueRef offsetMethod = LLVMConstInt(GetInt64T(), JSFunctionBase::METHOD_OFFSET, false);
+    LLVMValueRef addrMethod = LLVMBuildAdd(builder_, func, offsetMethod, "");
+    LLVMValueRef method = LLVMBuildLoad(builder_, addrMethod, "");
+    // load byteCodePc
+    LLVMValueRef offsetByteCodePc = LLVMConstInt(GetInt64T(), Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, false);
+    LLVMValueRef addrByteCodePc = LLVMBuildAdd(builder_, method, offsetByteCodePc, "");
+    LLVMValueRef byteCodePc = LLVMBuildLoad(builder_, addrByteCodePc, "");
+    // push byteCodePc
+    LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
+    LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
+    size_t reservedOffset = FASTJITFunctionFrame::ComputeReservedPcOffset(slotSize_);
+    LLVMValueRef byteCodePcSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
+        reservedOffset, false), "");
+    LLVMValueRef byteCodePcAddr = LLVMBuildIntToPtr(builder_, byteCodePcSlotAddr,
+        LLVMPointerType(slotType_, 0), "byteCodePc.Addr");
+    LLVMBuildStore(builder_, byteCodePc, byteCodePcAddr);
 }
 
 void LLVMIRBuilder::SaveFrameTypeOnFrame(FrameType frameType, LLVMBuilderRef builder)
@@ -510,7 +561,8 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
     OpCode callOp = acc_.GetOpCode(gate);
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL ||
         callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV ||
-        callOp == OpCode::CALL_OPTIMIZED || callOp == OpCode::FAST_CALL_OPTIMIZED) {
+        callOp == OpCode::CALL_OPTIMIZED || callOp == OpCode::FAST_CALL_OPTIMIZED ||
+        callOp == OpCode::BASELINE_CALL) {
         VisitCall(gate, ins, callOp);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -575,7 +627,8 @@ bool LLVMIRBuilder::IsOptimized() const
 
 bool LLVMIRBuilder::IsOptimizedJSFunction() const
 {
-    return circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME;
+    return circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+        circuit_->GetFrameType() == FrameType::FASTJIT_FUNCTION_FRAME;
 }
 
 void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &inList)
@@ -761,6 +814,13 @@ LLVMValueRef LLVMIRBuilder::GetCoStubOffset(LLVMValueRef glue, int index)
         static_cast<size_t>(index * slotSize_), 0);
 }
 
+LLVMValueRef LLVMIRBuilder::GetBaselineStubOffset(LLVMValueRef glue, int index)
+{
+    LLVMTypeRef glueType = LLVMTypeOf(glue);
+    return LLVMConstInt(glueType, JSThread::GlueData::GetBaselineStubEntriesOffset(compCfg_->Is32Bit()) +
+                        static_cast<size_t>(index * slotSize_), 0);
+}
+
 LLVMValueRef LLVMIRBuilder::GetBCStubOffset(LLVMValueRef glue)
 {
     LLVMTypeRef glueType = LLVMTypeOf(glue);
@@ -918,6 +978,13 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
             kind = CallExceptionKind::NO_PC_OFFSET;
         }
         isNoGC = acc_.IsNoGC(gate);
+    } else if (op == OpCode::BASELINE_CALL) {
+        const size_t index = acc_.GetConstantValue(inList[targetIndex]);
+        calleeDescriptor = BaselineStubCSigns::Get(index);
+        rtoffset = GetBaselineStubOffset(glue, index);
+        rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
+        callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
+        kind = GetCallExceptionKind(index, op);
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         LLVMValueRef opcodeOffset = GetLValue(inList.at(targetIndex));
@@ -1318,10 +1385,15 @@ void LLVMIRBuilder::VisitParameter(GateRef gate)
 
 void LLVMIRBuilder::SaveJSFuncOnOptJSFuncFrame(LLVMValueRef value)
 {
-    ASSERT(circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    ASSERT(IsOptimizedJSFunction());
+    size_t reservedOffset = 0;
     LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
     LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
-    size_t reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    if (circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+        reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    } else {
+        reservedOffset = FASTJITFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    }
     LLVMValueRef frameJSFuncSlotAddr = LLVMBuildSub(builder_, frameAddr, LLVMConstInt(slotType_,
         reservedOffset, false), "");
     LLVMValueRef jsFuncAddr = LLVMBuildIntToPtr(builder_, frameJSFuncSlotAddr,
@@ -2801,18 +2873,18 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         // vreg
         for (size_t i = 0; i < envIndex; i++) {
             GateRef vregValue = acc_.GetValueIn(frameValues, i);
-            if (acc_.IsConstantValue(vregValue, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
+            if (acc_.IsConstantTaggedValue(vregValue, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
                 continue;
             }
             SaveDeoptVregInfo(values, i, curDepth, shift, vregValue);
         }
         // env
-        if (!acc_.IsConstantValue(env, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
+        if (!acc_.IsConstantTaggedValue(env, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
             int32_t specEnvVregIndex = static_cast<int32_t>(SpecVregIndex::ENV_INDEX);
             SaveDeoptVregInfo(values, specEnvVregIndex, curDepth, shift, env);
         }
         // acc
-        if (!acc_.IsConstantValue(acc, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
+        if (!acc_.IsConstantTaggedValue(acc, JSTaggedValue::VALUE_OPTIMIZED_OUT)) {
             int32_t specAccVregIndex = static_cast<int32_t>(SpecVregIndex::ACC_INDEX);
             SaveDeoptVregInfo(values, specAccVregIndex, curDepth, shift, acc);
         }
@@ -2981,7 +3053,9 @@ LLVMValueRef LLVMModule::AddFunc(const panda::ecmascript::MethodLiteral *methodL
     std::vector<LLVMTypeRef> paramTys = { glue };
     if (!methodLiteral->IsFastCall()) {
         LLVMTypeRef actualArgc = NewLType(MachineType::I64, GateType::NJSValue());
+        LLVMTypeRef actualArgv = NewLType(MachineType::I64, GateType::NJSValue());
         paramTys.emplace_back(actualArgc);
+        paramTys.emplace_back(actualArgv);
         auto funcIndex = static_cast<uint32_t>(CommonArgIdx::FUNC);
         auto numOfComArgs = static_cast<uint32_t>(CommonArgIdx::NUM_OF_ARGS);
         paramCount = methodLiteral->GetNumArgsWithCallField() + numOfComArgs;

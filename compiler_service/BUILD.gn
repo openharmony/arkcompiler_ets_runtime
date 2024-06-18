@@ -11,8 +11,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 import("//build/ohos.gni")
 import("//build/ohos/sa_profile/sa_profile.gni")
+
+declare_args() {
+  code_sign_enable = true
+
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.security_code_signature)) {
+    code_sign_enable = false
+  }
+}
 
 config("aot_compiler_service_config") {
   visibility = [ ":*" ]
@@ -24,9 +34,11 @@ config("aot_compiler_service_config") {
 
 ohos_shared_library("libcompiler_service") {
   public_configs = [ ":aot_compiler_service_config" ]
+  configs = [ "$js_root:ark_jsruntime_public_config" ]
   shlib_type = "sa"
   version_script = "libaot_compiler_service.map"
   sources = [
+    "${js_root}/ecmascript/log.cpp",
     "interface/aot_compiler_interface_proxy.cpp",
     "interface/aot_compiler_interface_stub.cpp",
     "src/aot_compiler_client.cpp",
@@ -40,16 +52,25 @@ ohos_shared_library("libcompiler_service") {
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
     "c_utils:utils",
-    "code_signature:liblocal_code_sign_sdk",
     "common_event_service:cesfwk_innerkits",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
     "hisysevent:libhisysevent",
     "hitrace:hitrace_meter",
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
     "ipc:ipc_core",
+    "runtime_core:libarkfile_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
+
+  defines = []
+  if (code_sign_enable) {
+    external_deps += [ "code_signature:liblocal_code_sign_sdk" ]
+    defines += [ "CODE_SIGN_ENABLE" ]
+  }
+
   install_enable = true
   install_images = [ "system" ]
 

@@ -174,3 +174,47 @@ function testCallThis0() {
 }
 
 testCallThis0();
+
+class AA {
+    constructor(owningView, propertyName) {
+        owningView.id__();
+    }
+    id__() {
+        return this.id_;
+    }
+}
+
+class BB extends AA {
+}
+
+class Index {
+    constructor() {
+        // super(parent, __localStorage, elmtId);
+        this.__message = new BB(this, 777);
+        this.__showLazy = new BB(this, 888);
+        this.__showNoLazy = new BB(this, 999);
+    }
+    id__() {
+        return this.id_;
+    }
+}
+
+new Index()
+
+function fooo(a, b, ...args) {
+    arguments.length;
+}
+
+fooo(1);
+fooo(1, 2);
+fooo(1, 2, 3);
+fooo(1, 2, 3, 4, 5);
+
+async function f206(a207, a208, a209) {
+    let v210;
+    try {v210 = a208(a207, a209, 2); } catch (e) { print(e instanceof TypeError) }
+    await v210;
+    return v210;
+}
+// @ts-ignore
+f206(1, f206);

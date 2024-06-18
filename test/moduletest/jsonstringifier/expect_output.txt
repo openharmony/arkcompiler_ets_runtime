@@ -32,3 +32,9 @@ end JSON.stringify(globalThis)
 "\ude0e"
 "\ude0e\"测试"
 "\ude0e\"测试2"
+true
+true
+true
+true
+true
+true

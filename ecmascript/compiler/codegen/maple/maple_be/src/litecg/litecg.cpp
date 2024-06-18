@@ -110,13 +110,15 @@ LiteCG &LiteCG::SetupLiteCGEmitMemoryManager(
     return *this;
 }
 
-void LiteCG::DoCG()
+void LiteCG::DoCG(bool isJit)
 {
     bool timePhases = cgOptions->IsEnableTimePhases();
     MPLTimer timer;
     if (timePhases) {
         timer.Start();
     }
+
+    cgOptions->SetUseJitCodeSign(isJit);
 
     Globals::GetInstance()->SetOptimLevel(cgOptions->GetOptimizeLevel());
 
@@ -150,6 +152,8 @@ void LiteCG::DoCG()
         Globals::GetInstance()->ClearMAD();
         delete mad;
     }
+
+    cgOptions->SetUseJitCodeSign(false);
 }
 
 }  // namespace litecg

@@ -30,24 +30,29 @@ GateRef AccessObjectStubBuilder::LoadObjByName(GateRef glue, GateRef receiver, G
     Label exit(env);
     Label tryFastPath(env);
     Label slowPath(env);
+    Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
-    builder.LoadICByName(&result, &tryFastPath, &slowPath, &exit, callback);
+    builder.LoadICByName(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = GetPropertyByName(glue, receiver, propKey, callback, True());
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
+    Bind(&tryPreDump);
+    {
+        callback.TryPreDump();
+        Jump(&slowPath);
+    }
     Bind(&slowPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        result = CallRuntime(glue, RTSTUB_ID(LoadICByName),
-                             { profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId) });
-        callback.TryPreDump();
+        result =
+            CallRuntime(glue, RTSTUB_ID(LoadICByName), {profileTypeInfo, receiver, propKey, IntToTaggedInt(slotId)});
         Jump(&exit);
     }
     Bind(&exit);
@@ -65,21 +70,26 @@ GateRef AccessObjectStubBuilder::LoadPrivatePropertyByName(
     Label exit(env);
     Label tryFastPath(env);
     Label slowPath(env);
+    Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId);
-    builder.LoadICByName(&result, &tryFastPath, &slowPath, &exit, callback);
+    builder.LoadICByName(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
     {
         result = GetPropertyByName(glue, receiver, key, callback, True());
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
+    Bind(&tryPreDump);
+    {
+        callback.TryPreDump();
+        Jump(&slowPath);
+    }
     Bind(&slowPath);
     {
         result = CallRuntime(glue, RTSTUB_ID(LoadICByName), {profileTypeInfo, receiver, key, IntToTaggedInt(slotId)});
-        callback.TryPreDump();
         Jump(&exit);
     }
     Bind(&exit);
@@ -127,23 +137,28 @@ GateRef AccessObjectStubBuilder::StoreObjByName(GateRef glue, GateRef receiver, 
     Label exit(env);
     Label tryFastPath(env);
     Label slowPath(env);
+    Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
-    builder.StoreICByName(&result, &tryFastPath, &slowPath, &exit);
+    builder.StoreICByName(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
         result = SetPropertyByName(glue, receiver, propKey, value, false, True(), callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
+    Bind(&tryPreDump);
+    {
+        callback.TryPreDump();
+        Jump(&slowPath);
+    }
     Bind(&slowPath);
     {
         GateRef propKey = ResolvePropKey(glue, prop, info);
-        result = CallRuntime(glue, RTSTUB_ID(StoreICByName),
-            { profileTypeInfo, receiver, propKey, value, IntToTaggedInt(slotId) });
-        callback.TryPreDump();
+        result = CallRuntime(
+            glue, RTSTUB_ID(StoreICByName), {profileTypeInfo, receiver, propKey, value, IntToTaggedInt(slotId)});
         Jump(&exit);
     }
 
@@ -167,21 +182,26 @@ GateRef AccessObjectStubBuilder::StorePrivatePropertyByName(GateRef glue,
     Label exit(env);
     Label tryFastPath(env);
     Label slowPath(env);
+    Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, callback);
-    builder.StoreICByName(&result, &tryFastPath, &slowPath, &exit);
+    builder.StoreICByName(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
     {
         result = SetPropertyByName(glue, receiver, key, value, false, True(), callback);
         Branch(TaggedIsHole(*result), &slowPath, &exit);
     }
+    Bind(&tryPreDump);
+    {
+        callback.TryPreDump();
+        Jump(&slowPath);
+    }
     Bind(&slowPath);
     {
         result = CallRuntime(
             glue, RTSTUB_ID(StoreICByName), {profileTypeInfo, receiver, key, value, IntToTaggedInt(slotId)});
-        callback.TryPreDump();
         Jump(&exit);
     }
 
@@ -215,22 +235,26 @@ GateRef AccessObjectStubBuilder::LoadObjByValue(GateRef glue, GateRef receiver, 
     Label exit(env);
     Label tryFastPath(env);
     Label slowPath(env);
+    Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     GateRef value = 0;
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key);
-    builder.LoadICByValue(&result, &tryFastPath, &slowPath, &exit, callback);
+    builder.LoadICByValue(&result, &tryFastPath, &tryPreDump, &exit, callback);
     Bind(&tryFastPath);
     {
         result = GetPropertyByValue(glue, receiver, key, callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
+    Bind(&tryPreDump);
+    {
+        callback.TryPreDump();
+        Jump(&slowPath);
+    }
     Bind(&slowPath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(LoadICByValue),
-            { profileTypeInfo, receiver, key, IntToTaggedInt(slotId) });
-        callback.TryPreDump();
+        result = CallRuntime(glue, RTSTUB_ID(LoadICByValue), {profileTypeInfo, receiver, key, IntToTaggedInt(slotId)});
         Jump(&exit);
     }
     Bind(&exit);
@@ -277,21 +301,26 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     Label exit(env);
     Label tryFastPath(env);
     Label slowPath(env);
+    Label tryPreDump(env);
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, key, callback);
-    builder.StoreICByValue(&result, &tryFastPath, &slowPath, &exit);
+    builder.StoreICByValue(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
     {
         result = SetPropertyByValue(glue, receiver, key, value, false, callback);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
+    Bind(&tryPreDump);
+    {
+        callback.TryPreDump();
+        Jump(&slowPath);
+    }
     Bind(&slowPath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(StoreICByValue),
-            { profileTypeInfo, receiver, key, value, IntToTaggedInt(slotId) });
-        callback.TryPreDump();
+        result = CallRuntime(
+            glue, RTSTUB_ID(StoreICByValue), {profileTypeInfo, receiver, key, value, IntToTaggedInt(slotId)});
         Jump(&exit);
     }
     Bind(&exit);
@@ -309,10 +338,12 @@ GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver,
     Label exit(env);
     Label tryFastPath(env);
     Label slowPath(env);
+    Label tryPreDump(env);
+
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     ICStubBuilder builder(this);
     builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, IntToTaggedPtr(index), callback);
-    builder.StoreICByValue(&result, &tryFastPath, &slowPath, &exit);
+    builder.StoreICByValue(&result, &tryFastPath, &tryPreDump, &exit);
     Bind(&tryFastPath);
     {
         Label isHeapObject(env);
@@ -327,11 +358,16 @@ GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver,
         result = SetPropertyByIndex(glue, receiver, index, value, true);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }
+    Bind(&tryPreDump);
+    {
+        callback.TryPreDump();
+        Jump(&slowPath);
+    }
     Bind(&slowPath);
     {
-        result = CallRuntime(glue, RTSTUB_ID(StoreOwnICByValue),
-            { profileTypeInfo, receiver, IntToTaggedInt(index), value, IntToTaggedInt(slotId) });
-        callback.TryPreDump();
+        result = CallRuntime(glue,
+                             RTSTUB_ID(StoreOwnICByValue),
+                             {profileTypeInfo, receiver, IntToTaggedInt(index), value, IntToTaggedInt(slotId)});
         Jump(&exit);
     }
     Bind(&exit);

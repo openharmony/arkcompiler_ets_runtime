@@ -21,10 +21,13 @@
 #include <string_ex.h>
 #include <cstdint>
 #include <iremote_broker.h>
-#include "hilog/log.h"
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
 
-namespace OHOS {
-namespace ArkCompiler {
+namespace OHOS::ArkCompiler {
 class IAotCompilerInterface : public IRemoteBroker {
 public:
     DECLARE_INTERFACE_DESCRIPTOR(u"OHOS.ArkCompiler.IAotCompilerInterface");
@@ -34,14 +37,12 @@ public:
         std::vector<int16_t>& sigData) = 0;
 
     virtual ErrCode StopAotCompiler() = 0;
+    virtual ErrCode GetAOTVersion(std::string& sigData) = 0;
+    virtual ErrCode NeedReCompile(const std::string& argsString, bool& sigData) = 0;
 protected:
-    static constexpr OHOS::HiviewDFX::HiLogLabel LABEL = {
-        LOG_CORE, 0xD003900, "AotCompilerInterfaceService"
-    };
     const unsigned long vectorMaxSize = 102400;
     const unsigned long mapMaxSize = 102400;
 };
-} // namespace ArkCompiler
-} // namespace OHOS
+} // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_IAOTCOMPILER_INTERFACE_H
 

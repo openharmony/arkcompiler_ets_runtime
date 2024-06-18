@@ -38,6 +38,7 @@ public:
     void ResetWorkManager(SharedGCWorkManager *workManager);
     void MarkRoots(uint32_t threadId, SharedMarkType markType);
     void MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, SharedMarkType markType);
+    void MarkStringCache(uint32_t threadId);
     void MarkSerializeRoots(uint32_t threadId);
     void MarkSharedModule(uint32_t threadId);
     void ProcessMarkStack(uint32_t threadId);
@@ -55,8 +56,8 @@ public:
     inline void ProcessLocalToShareNoMarkStack(uint32_t threadId, Heap *localHeap, SharedMarkType markType);
     inline void HandleLocalToShareRSet(uint32_t threadId, Region *region);
     // For now if record weak references from local to share in marking root, the slots
-    // may be invalid due to LocalGC, so only record these in remark.
-    inline void ConcurrentMarkHandleLocalToShareRSet(uint32_t threadId, bool isRemark, Region *region);
+    // may be invalid due to LocalGC, so just mark them as strong-reference.
+    inline void ConcurrentMarkHandleLocalToShareRSet(uint32_t threadId, Region *region);
     inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref);
 
 private:

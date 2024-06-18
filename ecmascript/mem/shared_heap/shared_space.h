@@ -122,7 +122,11 @@ public:
 
     void ReclaimRegions();
 protected:
+#ifdef ENABLE_JITFORT
+    FreeListAllocator<FreeObject> *allocator_;
+#else
     FreeListAllocator *allocator_;
+#endif
     SweepState sweepState_ = SweepState::NO_SWEEP;
 
 private:

@@ -188,11 +188,6 @@ public:
             GetLiteralType() == AOTLiteralInfo::METHOD_LITERAL_TYPE);
     }
 
-    static bool HasNoFuncEntryValue(JSHandle<AOTLiteralInfo> literalInfo)
-    {
-        return literalInfo->GetObjectFromCache(0).GetInt() == static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE);
-    }
-
     static bool IsAotSymbolInfoExist(JSHandle<TaggedArray> symbolInfo, JSTaggedValue symbol)
     {
         return symbolInfo->GetLength() > 0 && !symbol.IsHole();
@@ -215,9 +210,6 @@ public:
                 sconstpool->SetObjectToCache(thread, i, val);
             } else if (IsAotMethodLiteralInfo(val)) {
                 JSHandle<AOTLiteralInfo> valHandle(thread, val);
-                if (HasNoFuncEntryValue(valHandle)) {
-                    continue;
-                }
                 JSHandle<AOTLiteralInfo> methodLiteral = CopySharedMethodAOTLiteralInfo(vm, valHandle);
                 sconstpool->SetObjectToCache(thread, i, methodLiteral.GetTaggedValue());
             }

@@ -275,6 +275,7 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     // Specials
     SetConstant(ConstantIndex::UNDEFINED_INDEX, JSTaggedValue::Undefined());
     SetConstant(ConstantIndex::NULL_INDEX, JSTaggedValue::Null());
+    SetConstant(ConstantIndex::HOLE_INDEX, JSTaggedValue::Hole());
     SetConstant(ConstantIndex::TRUE_INDEX, JSTaggedValue::True());
     SetConstant(ConstantIndex::FALSE_INDEX, JSTaggedValue::False());
     // Emptys
@@ -284,6 +285,8 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewSEmptyArray());
     SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewSEmptyMutantArray());
     SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->CreateSLayoutInfo(0));
+    SetConstant(ConstantIndex::UINT64_MAX_BIGINT_INDEX, BigInt::CreateUint64MaxBigInt(thread));
+    SetConstant(ConstantIndex::INT64_MAX_BIGINT_INDEX, BigInt::CreateInt64MaxBigInt(thread));
     SetConstant(ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, factory->NewSEmptyProfileTypeInfoCell());
 }
 

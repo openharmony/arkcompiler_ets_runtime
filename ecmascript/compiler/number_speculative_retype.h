@@ -90,6 +90,7 @@ private:
     GateRef VisitNumberShiftAndLogical(GateRef gate);
     GateRef VisitNumberToString(GateRef gate);
     GateRef VisitNumberParseFloat(GateRef gate);
+    GateRef VisitNumberParseInt(GateRef gate);
     GateRef VisitMathDoubleParamsBuiltin(GateRef gate);
     const GateMetaData *GetNewMeta(OpCode op, TypeInfo type);
     GateRef VisitMathTaggedNumberParamsBuiltin(GateRef gate);

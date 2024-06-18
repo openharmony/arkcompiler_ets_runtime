@@ -113,10 +113,8 @@ JSTaggedValue AtomicHelper::AtomicStore(JSThread *thread, const JSHandle<JSTagge
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         bufferTag = JSHandle<JSTaggedValue>(thread, integerValue);
     }
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "The ArrayBuffer of this value is detached buffer.",
-                                    JSTaggedValue::Exception());
-    }
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(typedArray));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     BuiltinsArrayBuffer::SetValueInBuffer(thread, buffer.GetTaggedValue(), indexedPosition, type, bufferTag, true);
     return bufferTag.GetTaggedValue();
 }
@@ -129,10 +127,8 @@ JSTaggedValue AtomicHelper::AtomicLoad(JSThread *thread, const JSHandle<JSTagged
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t indexedPosition = ValidateAtomicAccess(thread, typedArray, index);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "The ArrayBuffer of this value is detached buffer.",
-                                    JSTaggedValue::Exception());
-    }
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(typedArray));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> arrayTypeName(thread,
                                           JSTypedArray::Cast(typedArray->GetTaggedObject())->GetTypedArrayName());
     DataViewType elementType = JSTypedArray::GetTypeFromName(thread, arrayTypeName);

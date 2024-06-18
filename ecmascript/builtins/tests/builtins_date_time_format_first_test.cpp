@@ -110,22 +110,14 @@ JSHandle<EcmaString> FormatCommon(JSThread *thread, std::string_view localeStr, 
     auto result1 =
         AtomicsAlgorithm(thread, jsDateTimeFormat, vals, 6, AlgorithmType::ALGORITHM_FORMAT);  // 6: args length
     JSHandle<JSFunction> jsFunction(thread, result1);
-    JSArray *jsArray =
-        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
-    JSHandle<JSObject> jsObject(thread, jsArray);
-
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<double>(days)));
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(jsFunction), true, true, true);
-    JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
-    JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
-
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetFunction(jsFunction.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetThis(jsFunction.GetTaggedValue());
     ecmaRuntimeCallInfo2->SetCallArg(0, value.GetTaggedValue());
 
     auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = JSFunction::Call(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultStr(thread, result2);
     return resultStr;

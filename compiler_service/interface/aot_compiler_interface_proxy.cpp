@@ -14,13 +14,10 @@
  */
 
 #include "aot_compiler_interface_proxy.h"
-#include "hilog/log.h"
+#include "ecmascript/log_wrapper.h"
 #include "hitrace_meter.h"
 
-using OHOS::HiviewDFX::HiLog;
-
-namespace OHOS {
-namespace ArkCompiler {
+namespace OHOS::ArkCompiler {
 ErrCode AotCompilerInterfaceProxy::AotCompiler(
     const std::unordered_map<std::string, std::string>& argsMap,
     std::vector<int16_t>& sigData)
@@ -31,47 +28,47 @@ ErrCode AotCompilerInterfaceProxy::AotCompiler(
     MessageOption option(MessageOption::TF_SYNC);
 
     if (!data.WriteInterfaceToken(GetDescriptor())) {
-        HiLog::Error(LABEL, "Write interface token failed!");
+        LOG_SA(ERROR) << "Write interface token failed!";
         return ERR_INVALID_VALUE;
     }
 
     if (argsMap.size() > mapMaxSize) {
-        HiLog::Error(LABEL, "The map size exceeds the security limit!");
+        LOG_SA(ERROR) << "The map size exceeds the security limit!";
         return ERR_INVALID_DATA;
     }
 
     data.WriteInt32(argsMap.size());
     for (auto it = argsMap.begin(); it != argsMap.end(); ++it) {
         if (!data.WriteString16(Str8ToStr16((it->first)))) {
-            HiLog::Error(LABEL, "Write [(it->first)] failed!");
+            LOG_SA(ERROR) << "Write [(it->first)] failed!";
             return ERR_INVALID_DATA;
         }
         if (!data.WriteString16(Str8ToStr16((it->second)))) {
-            HiLog::Error(LABEL, "Write [(it->second)] failed!");
+            LOG_SA(ERROR) << "Write [(it->second)] failed!";
             return ERR_INVALID_DATA;
         }
     }
 
     sptr<IRemoteObject> remote = Remote();
     if (remote == nullptr) {
-        HiLog::Error(LABEL, "Remote is nullptr!");
+        LOG_SA(ERROR) << "Remote is nullptr!";
         return ERR_INVALID_DATA;
     }
     int32_t result = remote->SendRequest(COMMAND_AOT_COMPILER, data, reply, option);
     if (FAILED(result)) {
-        HiLog::Error(LABEL, "Send request failed!");
+        LOG_SA(ERROR) << "Send request failed!";
         return result;
     }
 
     ErrCode errCode = reply.ReadInt32();
     if (FAILED(errCode)) {
-        HiLog::Error(LABEL, "Read Int32 failed!");
+        LOG_SA(ERROR) << "Read Int32 failed!";
         return errCode;
     }
 
     int32_t sigDataSize = reply.ReadInt32();
-    if (sigDataSize > vectorMaxSize) {
-        HiLog::Error(LABEL, "The vector/array size exceeds the security limit!");
+    if (static_cast<unsigned long>(sigDataSize) > vectorMaxSize) {
+        LOG_SA(ERROR) << "The vector/array size exceeds the security limit!";
         return ERR_INVALID_DATA;
     }
     for (int32_t i = 0; i < sigDataSize; ++i) {
@@ -89,28 +86,97 @@ ErrCode AotCompilerInterfaceProxy::StopAotCompiler()
     MessageOption option(MessageOption::TF_SYNC);
 
     if (!data.WriteInterfaceToken(GetDescriptor())) {
-        HiLog::Error(LABEL, "Write interface token failed!");
+        LOG_SA(ERROR) << "Write interface token failed!";
         return ERR_INVALID_VALUE;
     }
 
     sptr<IRemoteObject> remote = Remote();
     if (remote == nullptr) {
-        HiLog::Error(LABEL, "Remote is nullptr!");
+        LOG_SA(ERROR) << "Remote is nullptr!";
         return ERR_INVALID_DATA;
     }
     int32_t result = remote->SendRequest(COMMAND_STOP_AOT_COMPILER, data, reply, option);
     if (FAILED(result)) {
-        HiLog::Error(LABEL, "Send request failed!");
+        LOG_SA(ERROR) << "Send request failed!";
         return result;
     }
 
     ErrCode errCode = reply.ReadInt32();
     if (FAILED(errCode)) {
-        HiLog::Error(LABEL, "Read Int32 failed!");
+        LOG_SA(ERROR) << "Read Int32 failed!";
         return errCode;
     }
 
     return ERR_OK;
 }
-} // namespace ArkCompiler
-} // namespace OHOS
+
+ErrCode AotCompilerInterfaceProxy::GetAOTVersion(std::string& sigData)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+
+    if (!data.WriteInterfaceToken(GetDescriptor())) {
+        LOG_SA(ERROR) << "Write interface token failed!";
+        return ERR_INVALID_VALUE;
+    }
+
+    sptr<IRemoteObject> remote = Remote();
+    if (remote == nullptr) {
+        LOG_SA(ERROR) << "Remote is nullptr!";
+        return ERR_INVALID_DATA;
+    }
+    int32_t result = remote->SendRequest(COMMAND_GET_AOT_VERSION, data, reply, option);
+    if (FAILED(result)) {
+        LOG_SA(ERROR) << "Send request failed!";
+        return result;
+    }
+
+    ErrCode errCode = reply.ReadInt32();
+    if (FAILED(errCode)) {
+        LOG_SA(ERROR) << "Read Int32 failed!";
+        return errCode;
+    }
+
+    sigData = Str16ToStr8(reply.ReadString16());
+
+    return ERR_OK;
+}
+
+ErrCode AotCompilerInterfaceProxy::NeedReCompile(const std::string& args, bool& sigData)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    MessageParcel data;
+    MessageParcel reply;
+    MessageOption option(MessageOption::TF_SYNC);
+
+    if (!data.WriteInterfaceToken(GetDescriptor())) {
+        LOG_SA(ERROR) << "Write interface token failed!";
+        return ERR_INVALID_VALUE;
+    }
+
+    data.WriteString16(Str8ToStr16(args));
+
+    sptr<IRemoteObject> remote = Remote();
+    if (remote == nullptr) {
+        LOG_SA(ERROR) << "Remote is nullptr!";
+        return ERR_INVALID_DATA;
+    }
+    int32_t result = remote->SendRequest(COMMAND_NEED_RE_COMPILE, data, reply, option);
+    if (FAILED(result)) {
+        LOG_SA(ERROR) << "Send request failed!";
+        return result;
+    }
+
+    ErrCode errCode = reply.ReadInt32();
+    if (FAILED(errCode)) {
+        LOG_SA(ERROR) << "Read Int32 failed!";
+        return errCode;
+    }
+
+    sigData = reply.ReadBool();
+
+    return ERR_OK;
+}
+} // namespace OHOS::ArkCompiler

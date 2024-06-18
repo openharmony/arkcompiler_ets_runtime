@@ -70,7 +70,7 @@ PropertyAttributes::PropertyAttributes(const PropertyDescriptor &desc)
 
 void ThroughputJSObjectResizingStrategy::UpdateGrowStep(JSThread *thread, uint32_t step)
 {
-    // 2 : double
+    // 2 : multiple double
     thread->SetPropertiesGrowStep(std::min(static_cast<uint32_t>(JSObjectResizingStrategy::PROPERTIES_GROW_SIZE * 2),
                                            step));
 }
@@ -1503,13 +1503,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
         }
     }
     // map transition
-    JSHandle<JSHClass> hclass(thread, obj->GetJSHClass());
-    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
-    JSHClass::NotifyHclassChanged(thread, hclass, newClass);
-    obj->SynchronizedSetClass(thread, *newClass);
-    JSHClass::TryRestoreElementsKind(thread, newClass, obj);
-    thread->NotifyStableArrayElementsGuardians(obj, StableArrayChangeKind::PROTO);
-    ObjectOperator::UpdateDetectorOnSetPrototype(thread, obj.GetTaggedValue());
+    JSHClass::SetPrototypeTransition(thread, obj, proto);
     return true;
 }
 

@@ -75,7 +75,7 @@ print(myMap.clear()); //: replaced
 
 myMap.clear = true_clear
 printClear(); //: 2
-              //aot: [trace] aot inline builtin: Map.clear, caller function name:doClear@builtinMapClear
+              //aot: [trace] aot inline builtin: Map.clear, caller function name:#*#doClear@builtinMapClear
               //: undefined
               //: 0
 
@@ -110,7 +110,7 @@ try {
     myMap.set(0, 0);
     myMap.set(12, 3);
     printClear(); //: 2
-                  //aot: [trace] aot inline builtin: Map.clear, caller function name:doClear@builtinMapClear
+                  //aot: [trace] aot inline builtin: Map.clear, caller function name:#*#doClear@builtinMapClear
                   //: undefined
                   //: 0
 } catch (e) {
@@ -176,22 +176,22 @@ let m3 = new Map([[1, 2]]);
 let m4 = new Map([[1, 2]]);
 
 print(m.size); //: 1
-//aot: [trace] aot inline builtin: Map.clear, caller function name:printClear1@builtinMapClear
+//aot: [trace] aot inline builtin: Map.clear, caller function name:#*#printClear1@builtinMapClear
 printClear1(m) //: undefined
 print(m.size); //: 0
 
 print(m2.size); //: 1
-//aot: [trace] aot inline builtin: Map.clear, caller function name:printClear1@builtinMapClear
+//aot: [trace] aot inline builtin: Map.clear, caller function name:#*#printClear1@builtinMapClear
 printClear1(m2) //: undefined
 print(m2.size); //: 0
 
 print(m3.size); //: 1
-//aot: [trace] aot inline builtin: Map.clear, caller function name:printClear1@builtinMapClear
+//aot: [trace] aot inline builtin: Map.clear, caller function name:#*#printClear1@builtinMapClear
 printClear1(m3) //: undefined
 print(m3.size); //: 0
 
 print(m4.size); //: 1
-//aot: [trace] aot inline builtin: Map.clear, caller function name:printClear1@builtinMapClear
+//aot: [trace] aot inline builtin: Map.clear, caller function name:#*#printClear1@builtinMapClear
 printClear1(m4) //: undefined
 print(m4.size); //: 0
 
@@ -209,17 +209,17 @@ m3.set(10, 20);
 m4.set(10, 20); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
 
 print(m.size); //: 1
-//aot: [trace] aot inline builtin: Map.clear, caller function name:printClear1@builtinMapClear
+//aot: [trace] aot inline builtin: Map.clear, caller function name:#*#printClear1@builtinMapClear
 printClear1(m) //: undefined
 print(m.size); //: 0
 
 print(m2.size); //: 1
-//aot: [trace] aot inline builtin: Map.clear, caller function name:printClear1@builtinMapClear
+//aot: [trace] aot inline builtin: Map.clear, caller function name:#*#printClear1@builtinMapClear
 printClear1(m2) //: undefined
 print(m2.size); //: 0
 
 print(m3.size); //: 1
-//aot: [trace] aot inline builtin: Map.clear, caller function name:printClear1@builtinMapClear
+//aot: [trace] aot inline builtin: Map.clear, caller function name:#*#printClear1@builtinMapClear
 printClear1(m3) //: undefined
 print(m3.size); //: 0
 
@@ -240,7 +240,7 @@ m2.set(10, 20);
 m3.set(10, 20);
 
 print(m.size); //: 1
-//aot: [trace] aot inline builtin: Map.clear, caller function name:printClear1@builtinMapClear
+//aot: [trace] aot inline builtin: Map.clear, caller function name:#*#printClear1@builtinMapClear
 printClear1(m) //: undefined
 print(m.size); //: 0
 
@@ -258,7 +258,7 @@ let mimicMap = {
 let mm = new Map([[1, 2]]);
 
 print(mm.size); //: 1
-//aot: [trace] aot inline builtin: Map.clear, caller function name:printClear1@builtinMapClear
+//aot: [trace] aot inline builtin: Map.clear, caller function name:#*#printClear1@builtinMapClear
 printClear1(mm) //: undefined
 print(m.size);  //: 0
 

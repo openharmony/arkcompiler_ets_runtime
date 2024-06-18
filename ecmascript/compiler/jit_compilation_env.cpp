@@ -16,6 +16,8 @@
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/ic/ic_handler.h"
 
 namespace panda::ecmascript {
 // jit
@@ -162,9 +164,67 @@ JSTaggedValue JitCompilationEnv::GetStringFromConstantPool([[maybe_unused]] cons
     const uint16_t cpIdx) const
 {
     ASSERT(thread_->IsInRunningState());
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    ASSERT(method->GetMethodId().GetOffset() == methodOffset);
-    JSTaggedValue constpool = method->GetConstantPool();
+    JSTaggedValue constpool;
+    Method *currMethod = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    if (methodOffset != currMethod->GetMethodId().GetOffset()) {
+        auto calleeFunc = GetJsFunctionByMethodOffset(methodOffset);
+        if (!calleeFunc) {
+            return JSTaggedValue::Undefined();
+        }
+        constpool = Method::Cast(calleeFunc->GetMethod())->GetConstantPool();
+    } else {
+        constpool = currMethod->GetConstantPool();
+    }
     return ConstantPool::GetStringFromCacheForJit(GetJSThread(), constpool, cpIdx);
+}
+
+JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset) const
+{
+    ASSERT(thread_->IsInRunningState());
+    Method *currMethod = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    auto currMethodOffset = currMethod->GetMethodId().GetOffset();
+    if (methodOffset == currMethodOffset) {
+        return *jsFunction_;
+    }
+    std::vector<std::pair<uint32_t, uint32_t>> funcSlotChain;
+    uint32_t calleeOffset = methodOffset;
+    do {
+        if (functionSlotIdMap_.find(calleeOffset) == functionSlotIdMap_.end()) {
+            return nullptr;
+        }
+        funcSlotChain.push_back({functionSlotIdMap_.at(calleeOffset), callee2CallerMap_.at(calleeOffset)});
+        calleeOffset = callee2CallerMap_.at(calleeOffset);
+    } while (calleeOffset != currMethodOffset);
+    JSFunction *currFunc = *jsFunction_;
+    ProfileTypeInfo *currFuncPTI = *profileTypeInfo_;
+    for (int i = funcSlotChain.size() - 1; i >= 0; --i) {
+        uint32_t slotId = funcSlotChain[i].first;
+        uint32_t callerOffset = funcSlotChain[i].second;
+        if (Method::Cast(currFunc->GetMethod())->GetMethodId().GetOffset() != callerOffset) {
+            return nullptr;
+        }
+        auto slotValue = currFuncPTI->Get(slotId);
+        if (slotValue.IsJSFunction()) {
+            currFunc = JSFunction::Cast(currFuncPTI->Get(slotId).GetTaggedObject());
+        } else if (slotValue.IsPrototypeHandler()) {
+            auto prototypeHandler = PrototypeHandler::Cast(slotValue.GetTaggedObject());
+            auto accessorFunction = prototypeHandler->GetAccessorJSFunction();
+            if (!accessorFunction.IsJSFunction()) {
+                return nullptr;
+            }
+            currFunc = JSFunction::Cast(accessorFunction.GetTaggedObject());
+        } else {
+            return nullptr;
+        }
+        auto profileTypeInfoVal = currFunc->GetProfileTypeInfo();
+        if (profileTypeInfoVal.IsUndefined()) {
+            return nullptr;
+        }
+        currFuncPTI = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
+    }
+    if (Method::Cast(currFunc->GetMethod())->GetMethodId().GetOffset() != methodOffset) {
+        return nullptr;
+    }
+    return currFunc;
 }
 } // namespace panda::ecmascript

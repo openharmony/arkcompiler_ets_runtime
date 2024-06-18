@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/hcr_circuit_builder.h"
 #include "ecmascript/compiler/lcr_circuit_builder.h"
 #include "ecmascript/compiler/mcr_circuit_builder.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
@@ -29,9 +30,11 @@
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_for_in_iterator.h"
 #include "ecmascript/js_function.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/region.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/method.h"
 #include "ecmascript/sendable_env.h"
 
@@ -420,6 +423,12 @@ GateRef CircuitBuilder::NullConstant()
     return GetCircuit()->GetConstantGate(MachineType::I64, JSTaggedValue::VALUE_NULL, type);
 }
 
+GateRef CircuitBuilder::TaggedValueConstant(JSTaggedValue taggedValue)
+{
+    auto type = GateType::TaggedValue();
+    return GetCircuit()->GetConstantGate(MachineType::I64, taggedValue.GetRawData(), type);
+}
+
 GateRef CircuitBuilder::ExceptionConstant()
 {
     auto type = GateType::TaggedValue();
@@ -450,17 +459,6 @@ void CircuitBuilder::AppendFrameArgs(std::vector<GateRef> &args, GateRef hirGate
     } else {
         args.emplace_back(frameArgs);
     }
-}
-
-GateRef CircuitBuilder::GetUnsharedConstpool(GateRef constpool)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentDepend = currentLabel->GetDepend();
-    auto newGate = GetCircuit()->NewGate(circuit_->GetUnsharedConstpool(), MachineType::I64,
-                                         { currentDepend, constpool },
-                                         GateType::AnyType());
-    currentLabel->SetDepend(newGate);
-    return newGate;
 }
 
 GateRef CircuitBuilder::GetGlobalEnv()
@@ -781,8 +779,9 @@ GateRef CircuitBuilder::CheckJSType(GateRef object, JSType jsType)
     return ret;
 }
 
-GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef constPool, GateRef module,
-                                               GateRef index, ConstPoolType type)
+GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef sharedConstPool,
+                                               GateRef unsharedConstPool, GateRef module, GateRef index,
+                                               ConstPoolType type)
 {
     Label entry(env_);
     SubCfgEntry(&entry);
@@ -793,13 +792,12 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Label unshareCpMiss(env_);
 
     // HirGate Can not be a nullGate in Aot
-    if (GetCircuit()->IsOptimizedJSFunctionFrame() && hirGate == Circuit::NullGate()) {
+    if (GetCircuit()->IsOptimizedOrFastJit() && hirGate == Circuit::NullGate()) {
         hirGate = index;
     }
     // Call runtime to create unshared constpool when current context's cache is hole in multi-thread.
     DEFVALUE(cacheValue, env_, VariableType::JS_ANY(), Hole());
     if (type == ConstPoolType::ARRAY_LITERAL || type == ConstPoolType::OBJECT_LITERAL) {
-        GateRef unsharedConstPool = GetUnsharedConstpoolFromGlue(glue, constPool);
         BRANCH_CIR2(TaggedIsNotHole(unsharedConstPool), &unshareCpHit, &unshareCpMiss);
         Bind(&unshareCpHit);
         {
@@ -807,7 +805,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Jump(&unshareCpMiss);
         }
     } else {
-        cacheValue = GetValueFromTaggedArray(constPool, index);
+        cacheValue = GetValueFromTaggedArray(sharedConstPool, index);
         Jump(&unshareCpMiss);
     }
     Bind(&unshareCpMiss);
@@ -817,16 +815,16 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     {
         if (type == ConstPoolType::STRING) {
             result = CallRuntime(glue, RTSTUB_ID(GetStringFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index) }, hirGate);
+                { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
             result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
             result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
         } else {
             result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                { constPool, Int32ToTaggedInt(index) }, hirGate);
+                { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
         }
         Jump(&exit);
     }
@@ -838,7 +836,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index) }, hirGate);
+                    { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
@@ -847,7 +845,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                    { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
@@ -856,7 +854,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
             Bind(&isAOTLiteralInfo);
             {
                 result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
-                    { constPool, Int32ToTaggedInt(index), module }, hirGate);
+                    { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
                 Jump(&exit);
             }
         } else {
@@ -919,9 +917,8 @@ GateRef CircuitBuilder::GetBaselineCodeAddr(GateRef baselineCode)
 GateRef CircuitBuilder::GetHClassGateFromIndex(GateRef gate, int32_t index)
 {
     ArgumentAccessor argAcc(circuit_);
-    GateRef constPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::CONST_POOL);
-    GateRef unsharedConstpool = GetUnsharedConstpool(constPool);
-    return LoadHClassFromUnsharedConstpool(unsharedConstpool, index);
+    GateRef unsharedConstpool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
+    return LoadHClassFromConstpool(unsharedConstpool, index);
 }
 
 GateRef Variable::AddPhiOperand(GateRef val)
@@ -1078,9 +1075,329 @@ GateRef CircuitBuilder::GetPropertiesFromLexicalEnv(GateRef object, GateRef inde
     return GetValueFromTaggedArray(object, valueIndex);
 }
 
+GateRef CircuitBuilder::NewJSPrimitiveRef(GateRef glue, size_t index, GateRef obj)
+{
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env_->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef func = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, index);
+    GateRef protoOrHclass = Load(VariableType::JS_ANY(), func, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    NewObjectStubBuilder newBuilder(env_);
+    GateRef newObj  = newBuilder.NewJSObject(glue, protoOrHclass);
+    GateRef valueOffset = IntPtr(JSPrimitiveRef::VALUE_OFFSET);
+    Store(VariableType::JS_ANY(), glue, newObj, valueOffset, obj);
+    return newObj;
+}
+
+GateRef CircuitBuilder::ToObject(GateRef glue, GateRef obj)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), obj);
+    DEFVALUE(taggedId, env_, VariableType::INT32(), Int32(0));
+    Label isNumber(env_);
+    Label notNumber(env_);
+    Label isBoolean(env_);
+    Label notBoolean(env_);
+    Label isString(env_);
+    Label notString(env_);
+    Label isECMAObject(env_);
+    Label notIsECMAObject(env_);
+    Label isSymbol(env_);
+    Label notSymbol(env_);
+    Label isUndefined(env_);
+    Label notIsUndefined(env_);
+    Label isNull(env_);
+    Label notIsNull(env_);
+    Label isHole(env_);
+    Label notIsHole(env_);
+    Label isBigInt(env_);
+    Label notIsBigInt(env_);
+    Label throwError(env_);
+    BRANCH_CIR2(IsEcmaObject(obj), &isECMAObject, &notIsECMAObject);
+    Bind(&isECMAObject);
+    {
+        result = obj;
+        Jump(&exit);
+    }
+    Bind(&notIsECMAObject);
+    BRANCH_CIR2(TaggedIsNumber(obj), &isNumber, &notNumber);
+    Bind(&isNumber);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::NUMBER_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notNumber);
+    BRANCH_CIR2(TaggedIsBoolean(obj), &isBoolean, &notBoolean);
+    Bind(&isBoolean);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::BOOLEAN_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notBoolean);
+    BRANCH_CIR2(TaggedIsString(obj), &isString, &notString);
+    Bind(&isString);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::STRING_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notString);
+    BRANCH_CIR2(TaggedIsSymbol(obj), &isSymbol, &notSymbol);
+    Bind(&isSymbol);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::SYMBOL_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notSymbol);
+    BRANCH_CIR2(TaggedIsUndefined(obj), &isUndefined, &notIsUndefined);
+    Bind(&isUndefined);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotUndefinedObject));
+        Jump(&throwError);
+    }
+    Bind(&notIsUndefined);
+    BRANCH_CIR2(TaggedIsHole(obj), &isHole, &notIsHole);
+    Bind(&isHole);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotHoleObject));
+        Jump(&throwError);
+    }
+    Bind(&notIsHole);
+    BRANCH_CIR2(TaggedIsNull(obj), &isNull, &notIsNull);
+    Bind(&isNull);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotNullObject));
+        Jump(&throwError);
+    }
+    Bind(&notIsNull);
+    BRANCH_CIR2(TaggedIsBigInt(obj), &isBigInt, &notIsBigInt);
+    Bind(&isBigInt);
+    {
+        result = NewJSPrimitiveRef(glue, GlobalEnv::BIGINT_FUNCTION_INDEX, obj);
+        Jump(&exit);
+    }
+    Bind(&notIsBigInt);
+    {
+        taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotNullObject));
+        Jump(&throwError);
+    }
+    Bind(&throwError);
+    {
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), Gate::InvalidGateRef, { Int32ToTaggedInt(*taggedId) }, glue);
+        result = ExceptionConstant();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::GetPrototype(GateRef glue, GateRef object)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), Hole());
+    Label exit(env_);
+    Label objectIsHeapObject(env_);
+    Label objectIsEcmaObject(env_);
+    Label objectNotEcmaObject(env_);
+
+    BRANCH_CIR2(TaggedIsHeapObject(object), &objectIsHeapObject, &objectNotEcmaObject);
+    Bind(&objectIsHeapObject);
+    BRANCH_CIR2(TaggedObjectIsEcmaObject(object), &objectIsEcmaObject, &objectNotEcmaObject);
+    Bind(&objectNotEcmaObject);
+    {
+        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(CanNotGetNotEcmaObject));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), Gate::InvalidGateRef, { Int32ToTaggedInt(taggedId) }, glue);
+        result = ExceptionConstant();
+        Jump(&exit);
+    }
+    Bind(&objectIsEcmaObject);
+    {
+        Label objectIsJsProxy(env_);
+        Label objectNotIsJsProxy(env_);
+        BRANCH_CIR2(IsJsProxy(object), &objectIsJsProxy, &objectNotIsJsProxy);
+        Bind(&objectIsJsProxy);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(CallGetPrototype), Gate::InvalidGateRef, { object }, glue);
+            Jump(&exit);
+        }
+        Bind(&objectNotIsJsProxy);
+        {
+            result = GetPrototypeFromHClass(LoadHClass(object));
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::GetGlobalConstantValue(VariableType type, GateRef glue, ConstantIndex index)
+{
+    GateRef gConstAddr = Load(VariableType::JS_ANY(), glue,
+                              IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
+    auto constantIndex = IntPtr(JSTaggedValue::TaggedTypeSize() * static_cast<size_t>(index));
+    return Load(type, gConstAddr, constantIndex);
+}
+
+GateRef CircuitBuilder::TransProtoWithoutLayout(GateRef glue, GateRef hClass, GateRef proto)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), Undefined());
+
+    GateRef key = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+        ConstantIndex::PROTOTYPE_STRING_INDEX);
+    GateRef newClass = CallNGCRuntime(glue, RTSTUB_ID(JSHClassFindProtoTransitions), Gate::InvalidGateRef,
+                                      { hClass, key, proto }, glue);
+    Label undef(env_);
+    Label find(env_);
+    BRANCH_CIR2(IntPtrEqual(TaggedCastToIntPtr(newClass), IntPtr(0)), &undef, &find);
+    Bind(&find);
+    {
+        result = newClass;
+        Jump(&exit);
+    }
+    Bind(&undef);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(HClassCloneWithAddProto), Gate::InvalidGateRef,
+                             { hClass, key, proto }, glue);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
+
+GateRef CircuitBuilder::OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), Undefined());
+
+    GateRef hClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                            ConstantIndex::OBJECT_HCLASS_INDEX);
+    GateRef newClass = TransProtoWithoutLayout(glue, hClass, proto);
+    Label exception(env_);
+    Label noexception(env_);
+    BRANCH_CIR2(TaggedIsException(newClass), &exception, &noexception);
+    Bind(&exception);
+    {
+        result = ExceptionConstant();
+        Jump(&exit);
+    }
+    Bind(&noexception);
+    NewObjectStubBuilder newBuilder(env_);
+    GateRef newObj = newBuilder.NewJSObject(glue, newClass);
+    Label exceptionNewObj(env_);
+    Label noexceptionNewObj(env_);
+    BRANCH_CIR2(TaggedIsException(newObj), &exceptionNewObj, &noexceptionNewObj);
+    Bind(&exceptionNewObj);
+    {
+        result = ExceptionConstant();
+        Jump(&exit);
+    }
+    Bind(&noexceptionNewObj);
+    {
+        SetExtensibleToBitfield(glue, newObj, True());
+        result = newObj;
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::GetPropertiesFromSendableEnv(GateRef object, GateRef index)
 {
     GateRef valueIndex = Int32Add(index, Int32(SendableEnv::SENDABLE_RESERVED_ENV_LENGTH));
     return GetValueFromTaggedArray(object, valueIndex);
+}
+
+GateRef CircuitBuilder::GetProfileTypeInfo(GateRef function)
+{
+    GateRef raw = Load(VariableType::JS_POINTER(), function, IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET));
+    return Load(VariableType::JS_POINTER(), raw, IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
+}
+
+void CircuitBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef offset = IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET);
+    Store(VariableType::JS_ANY(), glue, function, offset, value);
+}
+
+void CircuitBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
+                                                         GateRef profileTypeInfo, GateRef slotId)
+{
+    Label subEntry(env_);
+    env_->SubCfgEntry(&subEntry);
+
+    Label profileTypeInfoNotUndefined(env_);
+    Label slotValueUpdate(env_);
+    Label slotValueNotUndefined(env_);
+    Label profileTypeInfoEnd(env_);
+    NewObjectStubBuilder newBuilder(env_);
+    BRANCH_CIR2(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
+    Bind(&profileTypeInfoNotUndefined);
+    {
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        BRANCH_CIR2(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
+        Bind(&slotValueUpdate);
+        {
+            GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
+            SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell);
+            Jump(&profileTypeInfoEnd);
+        }
+        Bind(&slotValueNotUndefined);
+        UpdateProfileTypeInfoCellType(glue, slotValue);
+        SetRawProfileTypeInfoToFunction(glue, function, slotValue);
+        Jump(&profileTypeInfoEnd);
+    }
+    Bind(&profileTypeInfoEnd);
+
+    env_->SubCfgExit();
+}
+
+void CircuitBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell)
+{
+    Label subEntry(env_);
+    env_->SubCfgEntry(&subEntry);
+
+    // ProfileTypeInfoCell0 -> Cell1 -> CellN
+    Label isProfileTypeInfoCell0(env_);
+    Label notProfileTypeInfoCell0(env_);
+    Label isProfileTypeInfoCell1(env_);
+    Label endProfileTypeInfoCellType(env_);
+    GateRef objectType = GetObjectType(LoadHClass(profileTypeInfoCell));
+    BRANCH_CIR2(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_0))),
+                &isProfileTypeInfoCell0, &notProfileTypeInfoCell0);
+    Bind(&isProfileTypeInfoCell0);
+    {
+        auto profileTypeInfoCell1Class = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                ConstantIndex::PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX);
+        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCell1Class);
+        Jump(&endProfileTypeInfoCellType);
+    }
+    Bind(&notProfileTypeInfoCell0);
+    BRANCH_CIR2(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_1))),
+                &isProfileTypeInfoCell1, &endProfileTypeInfoCellType);
+    Bind(&isProfileTypeInfoCell1);
+    {
+        auto profileTypeInfoCellNClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                ConstantIndex::PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX);
+        StoreHClassWithoutBarrier(glue, profileTypeInfoCell, profileTypeInfoCellNClass);
+        Jump(&endProfileTypeInfoCellType);
+    }
+    Bind(&endProfileTypeInfoCellType);
+    env_->SubCfgExit();
 }
 }  // namespace panda::ecmascript::kungfu

@@ -21,7 +21,7 @@
 // NO_TAG means not print any tag
 #define LOG_NO_TAG(level) ARK_LOG(level, Component::NO_TAG)
 #define LOG_ECMA(level) ARK_LOG(level, Component::ECMASCRIPT)
-#define LOG_FULL(level) ARK_LOG(level, Component::ALL) << __func__ << ":" << __LINE__ << " "
+#define LOG_FULL(level) ARK_LOG(level, Component::ALL) << "[" << __func__ << ":" << __LINE__ << "] "
 #define LOG_GC(level) ARK_LOG(level, Component::GC)
 #define LOG_INTERPRETER(level) ARK_LOG(level, Component::INTERPRETER)
 #define LOG_COMPILER(level) ARK_LOG(level, Component::COMPILER)
@@ -30,6 +30,7 @@
 #define LOG_TRACE(level) ARK_LOG(level, Component::TRACE)
 #define LOG_JIT(level) ARK_LOG(level, Component::JIT)
 #define LOG_BASELINEJIT(level) ARK_LOG(level, Component::BASELINEJIT)
+#define LOG_SA(level) ARK_LOG(level, Component::SA)
 #define LOG_ECMA_IF(cond, level) (cond) && ARK_LOG(level, Component::ALL)
 // When the AOT compiler is integrated into the IDE, tag the output error messages for developers
 #define LOG_HOST_TOOL_ERROR ARK_LOG(ERROR, Component::NO_TAG) << "[HostTool] "

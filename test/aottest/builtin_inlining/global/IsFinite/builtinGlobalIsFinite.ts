@@ -73,22 +73,22 @@ print(isFinite(NaN)); //: NaN
 isFinite = true_is_finite
 
 
-//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] aot inline builtin: isFinite, caller function name:#*#doIsFinite@builtinGlobalIsFinite
 printIsFinite(-3);    //: true
-//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] aot inline builtin: isFinite, caller function name:#*#doIsFinite@builtinGlobalIsFinite
 //aot: [trace] Check Type: NotNumber1
 printIsFinite("abc"); //: false
-//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] aot inline builtin: isFinite, caller function name:#*#doIsFinite@builtinGlobalIsFinite
 //aot: [trace] Check Type: NotNumber1
 printIsFinite("abc"); //: false
 
-//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] aot inline builtin: isFinite, caller function name:#*#doIsFinite@builtinGlobalIsFinite
 printIsFinite(-12); //: true
 // Call standard builtin with non-number param
-//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] aot inline builtin: isFinite, caller function name:#*#doIsFinite@builtinGlobalIsFinite
 //aot: [trace] Check Type: NotNumber1
 printIsFinite("abc"); //: false
-//aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+//aot: [trace] aot inline builtin: isFinite, caller function name:#*#doIsFinite@builtinGlobalIsFinite
 //aot: [trace] Check Type: NotNumber1
 printIsFinite("-12"); //: true
 
@@ -107,9 +107,9 @@ isFinite = true_is_finite
 
 // Check IR correctness inside try-block
 try {
-    //aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+    //aot: [trace] aot inline builtin: isFinite, caller function name:#*#doIsFinite@builtinGlobalIsFinite
     printIsFinite(-12); //: true
-    //aot: [trace] aot inline builtin: isFinite, caller function name:doIsFinite@builtinGlobalIsFinite
+    //aot: [trace] aot inline builtin: isFinite, caller function name:#*#doIsFinite@builtinGlobalIsFinite
     //aot: [trace] Check Type: NotNumber1
     printIsFinite("abc"); //: false
 } catch (e) {
