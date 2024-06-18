@@ -51,6 +51,31 @@ enum StackState {
 enum class ArkInternalValueType {None, Entry, Scope, ScopeList};
 class PUBLIC_API DebuggerApi {
 public:
+    class PUBLIC_API DebuggerNativeScope {
+    public:
+        explicit DebuggerNativeScope(const EcmaVM *vm);
+        ~DebuggerNativeScope();
+        ECMA_DISALLOW_COPY(DebuggerNativeScope);
+        ECMA_DISALLOW_MOVE(DebuggerNativeScope);
+
+    private:
+        JSThread *thread_ {nullptr};
+        uint16_t oldThreadState_ {0};
+        bool hasSwitchState_ {false};
+    };
+    class PUBLIC_API DebuggerManagedScope {
+    public:
+        explicit DebuggerManagedScope(const EcmaVM *vm);
+        ~DebuggerManagedScope();
+        ECMA_DISALLOW_COPY(DebuggerManagedScope);
+        ECMA_DISALLOW_MOVE(DebuggerManagedScope);
+
+    private:
+        JSThread *thread_ {nullptr};
+        uint16_t oldThreadState_ {0};
+        bool hasSwitchState_ {false};
+    };
+
     // FrameHandler
     static uint32_t GetStackDepth(const EcmaVM *ecmaVm);
     static std::shared_ptr<FrameHandler> NewFrameHandler(const EcmaVM *ecmaVm);
@@ -132,7 +157,6 @@ public:
 
     static int32_t GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged);
     static void GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className);
-    static void SwitchThreadStateRunningOrNative(const EcmaVM *ecmaVM, ThreadState newState);
     static bool RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url);
 
     // HotReload
