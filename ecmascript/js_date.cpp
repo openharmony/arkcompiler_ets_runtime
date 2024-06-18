@@ -31,6 +31,11 @@ int DateUtils::preSumDays_ = 0;
 int DateUtils::preDays_ = 0;
 int DateUtils::preMonth_ = 0;
 int DateUtils::preYear_ = 0;
+static const std::array<CString, WEEKDAY> WEEK_DAY_NAME = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+static const std::array<CString, MOUTH_PER_YEAR> MONTH_NAME  = {
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+};
 void DateUtils::TransferTimeToDate(int64_t timeMs, std::array<int64_t, DATE_LENGTH> *date)
 {
     (*date)[HOUR] = Mod(timeMs, MS_PER_DAY);                                 // ms from hour, minutes, second, ms
@@ -268,10 +273,6 @@ JSTaggedValue JSDate::LocalParseStringToMs(const CString &str)
     bool isLocal = false;
     CString::size_type indexGmt;
     CString::size_type indexPlus = CString::npos;
-    std::array<CString, MOUTH_PER_YEAR> monthName = {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-        };
     int localTime = 0;
     int localHours = 0;
     int localMinutes = 0;
@@ -280,7 +281,7 @@ JSTaggedValue JSDate::LocalParseStringToMs(const CString &str)
     localSpace = str.find(' ', index);
     CString strMonth = str.substr(localSpace + 1, LENGTH_MONTH_NAME);
     for (int i = 0; i < MOUTH_PER_YEAR; i++) {
-        if (strMonth == monthName[i]) {
+        if (strMonth == MONTH_NAME[i]) {
             month = i;
             break;
         }
@@ -342,14 +343,10 @@ JSTaggedValue JSDate::UtcParseStringToMs(const CString &str)
     int localMinutes = 0;
     int64_t localMs = 0;
     bool isLocal = false;
-    std::array<CString, MOUTH_PER_YEAR> monthName = {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    };
     GetNumFromString(str, len, &index, &date);
     CString strMonth = str.substr(index + 1, LENGTH_MONTH_NAME);
     for (int i = 0; i < MOUTH_PER_YEAR; i++) {
-        if (strMonth == monthName[i]) {
+        if (strMonth == MONTH_NAME[i]) {
             month = i;
             break;
         }
@@ -613,22 +610,46 @@ JSTaggedValue JSDate::GetTime() const
 CString JSDate::StrToTargetLength(const CString &str, int length)
 {
     int len = 0;
+    CString sub;
     if (str[0] == NEG) {
+        sub.reserve(length + 1);
         len = static_cast<int>(str.length() - 1);
+        sub += NEG;
     } else {
+        sub.reserve(length);
         len = static_cast<int>(str.length());
     }
     int dif = length - len;
-    CString sub;
     for (int i = 0; i < dif; i++) {
         sub += '0';
     }
     if (str[0] == NEG) {
-        sub = NEG + sub + str.substr(1, len);
+        sub += str.substr(1, len);
     } else {
-        sub = sub + str;
+        sub += str;
     }
     return sub;
+}
+
+// static
+void JSDate::AppendStrToTargetLength(const CString &str, int length, CString &target)
+{
+    int len = 0;
+    if (str[0] == NEG) {
+        len = static_cast<int>(str.length() - 1);
+        target += NEG;
+    } else {
+        len = static_cast<int>(str.length());
+    }
+    int dif = length - len;
+    for (int i = 0; i < dif; i++) {
+        target += '0';
+    }
+    if (str[0] == NEG) {
+        target += str.substr(1, len);
+    } else {
+        target += str;
+    }
 }
 
 bool JSDate::GetThisDateValues(std::array<int64_t, DATE_LENGTH> *date, bool isLocal) const
@@ -644,18 +665,19 @@ bool JSDate::GetThisDateValues(std::array<int64_t, DATE_LENGTH> *date, bool isLo
 // 20.4.4.35
 JSTaggedValue JSDate::ToDateString(JSThread *thread) const
 {
-    std::array<CString, MOUTH_PER_YEAR> monthName = {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    };
-    std::array<CString, DAY_PER_WEEK> weekdayName = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
     std::array<int64_t, DATE_LENGTH> fields = {0};
     if (!GetThisDateValues(&fields, true)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
-    CString year = StrToTargetLength(ToCString(fields[YEAR]), STR_LENGTH_YEAR);
-    CString day = StrToTargetLength(ToCString(fields[DAYS]), STR_LENGTH_OTHERS);
-    CString str = weekdayName[fields[WEEKDAY]] + SPACE + monthName[fields[MONTH]] + SPACE + day + SPACE + year;
+    CString str;
+    str.reserve(DATE_STRING_LENGTH);
+    str.append(WEEK_DAY_NAME[fields[WEEKDAY]]) // Append weekdy name
+        .append(SPACE_STR) // Append SPACE
+        .append(MONTH_NAME[fields[MONTH]]) // Append mouth name
+        .append(SPACE_STR); // Append SPACE
+    ConvertAndAppend(fields[DAYS], STR_LENGTH_OTHERS, str);
+    str += SPACE;
+    ConvertAndAppend(fields[YEAR], STR_LENGTH_YEAR, str);
     JSHandle<EcmaString> result = thread->GetEcmaVM()->GetFactory()->NewFromASCII(str);
     return result.GetTaggedValue();
 }
@@ -666,11 +688,6 @@ CString JSDate::ToDateString(double timeMs)
     if (std::isnan(timeMs)) {
         return "Invalid Date";
     }
-    std::array<CString, MOUTH_PER_YEAR> monthName = {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    };
-    std::array<CString, DAY_PER_WEEK> weekdayName = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
     std::array<int64_t, DATE_LENGTH> fields = {0};
     GetDateValues(timeMs, &fields, true);
     CString localTime;
@@ -684,16 +701,24 @@ CString JSDate::ToDateString(double timeMs)
     }
     localTime = localTime + StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
     localTime = localTime + StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    CString year = ToCString(fields[YEAR]);
-    year = StrToTargetLength(year, STR_LENGTH_YEAR);
-    CString weekday = weekdayName[fields[WEEKDAY]];
-    CString month = monthName[fields[MONTH]];
-    CString day = StrToTargetLength(ToCString(fields[DAYS]), STR_LENGTH_OTHERS);
-    CString hour = StrToTargetLength(ToCString(fields[HOUR]), STR_LENGTH_OTHERS);
-    CString minute = StrToTargetLength(ToCString(fields[MIN]), STR_LENGTH_OTHERS);
-    CString second = StrToTargetLength(ToCString(fields[SEC]), STR_LENGTH_OTHERS);
-    CString str = weekday + SPACE + month + SPACE + day + SPACE + year + SPACE + hour + COLON + minute + COLON +
-                  second + SPACE + "GMT" + localTime;
+    CString str;
+    str.reserve(DATE_CSTRING_LENGTH);
+    str.append(WEEK_DAY_NAME[fields[WEEKDAY]]) // Append weekday name
+        .append(SPACE_STR)  // Append SPACE
+        .append(MONTH_NAME[fields[MONTH]]) // Append mouth name
+        .append(SPACE_STR); // Append SPACE
+    ConvertAndAppend(fields[DAYS], STR_LENGTH_OTHERS, str);
+    str += SPACE;
+    ConvertAndAppend(fields[YEAR], STR_LENGTH_YEAR, str);
+    str += SPACE;
+    ConvertAndAppend(fields[HOUR], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[MIN], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[SEC], STR_LENGTH_OTHERS, str);
+    str.append(SPACE_STR) // Append SPACE
+        .append("GMT") // Append GMT
+        .append(localTime); // Append localTime
     return str;
 }
 // 20.4.4.36
@@ -711,25 +736,28 @@ JSTaggedValue JSDate::ToISOString(JSThread *thread) const
     } else {
         year = StrToTargetLength(year, STR_LENGTH_YEAR);
     }
-    CString month = StrToTargetLength(ToCString(fields[MONTH] + 1), STR_LENGTH_OTHERS);
-    CString day = StrToTargetLength(ToCString(fields[DAYS]), STR_LENGTH_OTHERS);
-    CString hour = StrToTargetLength(ToCString(fields[HOUR]), STR_LENGTH_OTHERS);
-    CString minute = StrToTargetLength(ToCString(fields[MIN]), STR_LENGTH_OTHERS);
-    CString second = StrToTargetLength(ToCString(fields[SEC]), STR_LENGTH_OTHERS);
-    CString ms = StrToTargetLength(ToCString(fields[MS]), STR_LENGTH_OTHERS + 1);
-    CString str =
-        year + NEG + month + NEG + day + FLAG_TIME + hour + COLON + minute + COLON + second + POINT + ms + FLAG_UTC;
+    CString str;
+    str.reserve(ISO_STRING_LENGTH);
+    str.append(year) // Append year
+        .append(NEG_STR); // Append NEG
+    ConvertAndAppend(fields[MONTH] + 1, STR_LENGTH_OTHERS, str);
+    str += NEG;
+    ConvertAndAppend(fields[DAYS], STR_LENGTH_OTHERS, str);
+    str += FLAG_TIME;
+    ConvertAndAppend(fields[HOUR], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[MIN], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[SEC], STR_LENGTH_OTHERS, str);
+    str += POINT;
+    ConvertAndAppend(fields[MS], STR_LENGTH_OTHERS, str);
+    str += FLAG_UTC;
     return thread->GetEcmaVM()->GetFactory()->NewFromASCII(str).GetTaggedValue();
 }
 
 // 20.4.4.41
 JSTaggedValue JSDate::ToString(JSThread *thread) const
 {
-    std::array<CString, DAY_PER_WEEK> weekdayName = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-    std::array<CString, MOUTH_PER_YEAR> monthName = {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    };
     int localMin = 0;
     std::array<int64_t, DATE_LENGTH> fields = {0};
     if (!GetThisDateValues(&fields, true)) {
@@ -745,16 +773,24 @@ JSTaggedValue JSDate::ToString(JSThread *thread) const
     }
     localTime = localTime + StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
     localTime = localTime + StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    CString year = ToCString(fields[YEAR]);
-    year = StrToTargetLength(year, STR_LENGTH_YEAR);
-    CString weekday = weekdayName[fields[WEEKDAY]];
-    CString month = monthName[fields[MONTH]];
-    CString day = StrToTargetLength(ToCString(fields[DAYS]), STR_LENGTH_OTHERS);
-    CString hour = StrToTargetLength(ToCString(fields[HOUR]), STR_LENGTH_OTHERS);
-    CString minute = StrToTargetLength(ToCString(fields[MIN]), STR_LENGTH_OTHERS);
-    CString second = StrToTargetLength(ToCString(fields[SEC]), STR_LENGTH_OTHERS);
-    CString str = weekday + SPACE + month + SPACE + day + SPACE + year + SPACE + hour + COLON + minute + COLON +
-                  second + SPACE + "GMT" + localTime;
+    CString str;
+    str.reserve(TO_STRING_LENGTH);
+    str.append(WEEK_DAY_NAME[fields[WEEKDAY]]) // Append weekday name
+        .append(SPACE_STR) // Append SPACE
+        .append(MONTH_NAME[fields[MONTH]]) // Append mouth name
+        .append(SPACE_STR); // Append SPACE
+    ConvertAndAppend(fields[DAYS], STR_LENGTH_OTHERS, str);
+    str += SPACE;
+    ConvertAndAppend(fields[YEAR], STR_LENGTH_YEAR, str);
+    str += SPACE;
+    ConvertAndAppend(fields[HOUR], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[MIN], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[SEC], STR_LENGTH_OTHERS, str);
+    str.append(SPACE_STR) // Append SPACE
+        .append("GMT") // Append GMT
+        .append(localTime); // Append localTime
     return thread->GetEcmaVM()->GetFactory()->NewFromASCII(str).GetTaggedValue();
 }
 
@@ -776,36 +812,44 @@ JSTaggedValue JSDate::ToTimeString(JSThread *thread) const
     }
     localTime = localTime + StrToTargetLength(ToCString(localMin / MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
     localTime = localTime + StrToTargetLength(ToCString(localMin % MINUTE_PER_HOUR), STR_LENGTH_OTHERS);
-    CString hour = StrToTargetLength(ToCString(fields[HOUR]), STR_LENGTH_OTHERS);
-    CString minute = StrToTargetLength(ToCString(fields[MIN]), STR_LENGTH_OTHERS);
-    CString second = StrToTargetLength(ToCString(fields[SEC]), STR_LENGTH_OTHERS);
-    CString str = hour + COLON + minute + COLON + second + SPACE + "GMT" + localTime;
+    CString str;
+    str.reserve(TIME_STRING_LENGTH);
+    ConvertAndAppend(fields[HOUR], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[MIN], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[SEC], STR_LENGTH_OTHERS, str);
+    str.append(SPACE_STR) // Append SPACE
+        .append("GMT") // Append GMT
+        .append(localTime); // Append localTime
     return thread->GetEcmaVM()->GetFactory()->NewFromASCII(str).GetTaggedValue();
 }
 
 // 20.4.4.43
 JSTaggedValue JSDate::ToUTCString(JSThread *thread) const
 {
-    std::array<CString, DAY_PER_WEEK> weekdayName = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-    std::array<CString, MOUTH_PER_YEAR> monthName = {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    };
     std::array<int64_t, DATE_LENGTH> fields = {0};
     if (!GetThisDateValues(&fields, false)) {
         return JSTaggedValue(base::NAN_VALUE);
     }
-    CString year = ToCString(fields[YEAR]);
-    year = StrToTargetLength(year, STR_LENGTH_YEAR);
-    CString weekday = weekdayName[fields[WEEKDAY]];
-    CString month = monthName[fields[MONTH]];
-    CString day = StrToTargetLength(ToCString(fields[DAYS]), STR_LENGTH_OTHERS);
-    CString hour = StrToTargetLength(ToCString(fields[HOUR]), STR_LENGTH_OTHERS);
-    CString minute = StrToTargetLength(ToCString(fields[MIN]), STR_LENGTH_OTHERS);
-    CString second = StrToTargetLength(ToCString(fields[SEC]), STR_LENGTH_OTHERS);
-    CString ms = StrToTargetLength(ToCString(fields[MS]), STR_LENGTH_OTHERS);
-    CString str = weekday + COMMA + SPACE + day + SPACE + month + SPACE + year + SPACE + hour + COLON + minute + COLON +
-                  second + SPACE + "GMT";
+    CString str;
+    str.reserve(UTC_STRING_LENGTH);
+    str.append(WEEK_DAY_NAME[fields[WEEKDAY]]) // Append weekday name
+        .append(COMMA_STR) // Append COMMA
+        .append(SPACE_STR); // Append SPACE
+    ConvertAndAppend(fields[DAYS], STR_LENGTH_OTHERS, str);
+    str.append(SPACE_STR) // Append SPACE
+        .append(MONTH_NAME[fields[MONTH]]) // Append mouth name
+        .append(SPACE_STR); // Append SPACE
+    ConvertAndAppend(fields[YEAR], STR_LENGTH_YEAR, str);
+    str += SPACE;
+    ConvertAndAppend(fields[HOUR], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[MIN], STR_LENGTH_OTHERS, str);
+    str += COLON;
+    ConvertAndAppend(fields[SEC], STR_LENGTH_OTHERS, str);
+    str.append(SPACE_STR) // Append SPACE
+        .append("GMT"); // Append GMT
     return thread->GetEcmaVM()->GetFactory()->NewFromASCII(str).GetTaggedValue();
 }
 
