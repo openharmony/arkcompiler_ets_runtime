@@ -307,6 +307,19 @@ function reduce() {
     print(array.reduce<string>((acc: number, currValue: number) => "" + acc + " " + currValue, "10")); // 10, 1, 2, 3, 4
 }
 
+function splice() {
+    print("Start Test splice")
+    const array = new SharedArray<string>('Jan', 'March', 'April', 'June');
+    array.splice(1, 0, 'Feb', 'Oct');
+    print(array); // "Jan", "Feb", "Oct", "March", "April", "June"
+    const removeArray = array.splice(4, 2, 'May');
+    print(array); // "Jan", "Feb", "Oct", "March", "May"
+    print(removeArray); // "April", "June"
+    const removeArray1 = array.splice(2, 3);
+    print(array); // "Jan", "Feb"
+    print(removeArray1); // "Oct", "March", "May"
+}
+
 function staticCreate() {
     print("Start Test staticCreate")
     const array = SharedArray.create<number>(10, 5);
@@ -744,6 +757,7 @@ forEach()
 map()
 filter()
 reduce()
+splice()
 staticCreate()
 readonlyLength()
 shrinkTo()

@@ -320,6 +320,7 @@ namespace panda::ecmascript {
     V(SharedArray, Shift)                     \
     V(SharedArray, Slice)                     \
     V(SharedArray, Sort)                      \
+    V(SharedArray, Splice)                    \
     V(SharedArray, ToString)                  \
     V(SharedArray, Unscopables)               \
     V(SharedArray, Unshift)                   \
