@@ -99,12 +99,14 @@ public:
 
     class TimeScope : public ClockScope {
     public:
-        explicit TimeScope(CString message, CompilerTier tier = CompilerTier::FAST, bool outPutLog = true,
+        explicit TimeScope(EcmaVM *vm, CString message, CompilerTier tier = CompilerTier::FAST, bool outPutLog = true,
             bool isDebugLevel = false)
-            : message_(message), tier_(tier), outPutLog_(outPutLog), isDebugLevel_(isDebugLevel) {}
-        explicit TimeScope() : message_(""), tier_(CompilerTier::FAST), outPutLog_(false), isDebugLevel_(true) {}
+            : vm_(vm), message_(message), tier_(tier), outPutLog_(outPutLog), isDebugLevel_(isDebugLevel) {}
+        explicit TimeScope(EcmaVM *vm)
+            : vm_(vm), message_(""), tier_(CompilerTier::FAST), outPutLog_(false), isDebugLevel_(true) {}
         PUBLIC_API ~TimeScope();
     private:
+        EcmaVM *vm_;
         CString message_;
         CompilerTier tier_;
         bool outPutLog_;
@@ -113,7 +115,7 @@ public:
 
     class JitLockHolder {
     public:
-        explicit JitLockHolder(JSThread *thread) : thread_(nullptr), scope_()
+        explicit JitLockHolder(JSThread *thread) : thread_(nullptr), scope_(thread->GetEcmaVM())
         {
             if (thread->IsJitThread()) {
                 thread_ = static_cast<JitThread*>(thread);
@@ -126,7 +128,8 @@ public:
         }
 
         explicit JitLockHolder(const CompilationEnv *env, CString message) : thread_(nullptr),
-            scope_("Jit Compile Pass: " + message + ", Time:", CompilerTier::FAST, false)
+            scope_(env->GetJSThread()->GetEcmaVM(),
+                "Jit Compile Pass: " + message + ", Time:", CompilerTier::FAST, false)
         {
             if (env->IsJitCompiler()) {
                 JSThread *thread = env->GetJSThread();

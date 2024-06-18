@@ -22,3 +22,4 @@ ark.jit.hotness.threshold = shell:shell:0775
 persist.ark.edengc.enable = shell:shell:0775
 ark.jit.enable.jitframe = shell:shell:0775
 ark.jit.codesign.disable = shell:shell:0775
+ark.jit.enable.jitLogSkip = shell:shell:0775

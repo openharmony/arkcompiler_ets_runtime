@@ -810,6 +810,16 @@ public:
     }
 #endif
 
+    bool GetEnableJitLogSkip() const
+    {
+        return enableJitLogSkip_;
+    }
+
+    void SetEnableJitLogSkip(bool flag)
+    {
+        enableJitLogSkip_ = flag;
+    }
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -934,6 +944,8 @@ private:
 
     // process StartRealTime
     int processStartRealtime_ = 0;
+
+    bool enableJitLogSkip_ = true;
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     // Stats for Thread-State-Transition and String-Table Locks

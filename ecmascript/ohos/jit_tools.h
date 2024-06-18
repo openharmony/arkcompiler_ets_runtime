@@ -79,6 +79,15 @@ public:
     #endif
         return false;
     }
+
+    static bool GetSkipJitLogEnable()
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetBoolParameter("ark.jit.enable.jitLogSkip", true);
+    #endif
+        // host no need skip jit log
+        return false;
+    }
 };
 }
 #endif  // ECMASCRIPT_JIT_TOOLS_H
