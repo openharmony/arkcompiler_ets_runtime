@@ -1312,6 +1312,94 @@ void AsmInterpreterCall::CallContainersArgs3(ExtendedAssembler *assembler)
     }
 }
 
+// c++ calling convention
+// %rdi - glue
+// %rsi - callTarget
+// %rdx - method
+// %rcx - callField
+// %r8 - receiver
+// %r9 - value
+void AsmInterpreterCall::CallGetterToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallGetterToBaseline));
+    Label target;
+
+    PushAsmInterpBridgeFrame(assembler);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_GETTER, FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+}
+
+void AsmInterpreterCall::CallSetterToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallSetterToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER, FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+}
+
+// Input: glue             - %rdi
+//        callTarget       - %rsi
+//        method           - %rdx
+//        callField        - %rcx
+//        arg0(argc)       - %r8
+//        arg1(arglist)    - %r9
+//        argthis          - stack
+void AsmInterpreterCall::CallReturnWithArgvToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallReturnWithArgvToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    Register r13 = __ CppJSCallAvailableRegister1();
+    __ Movq(Operand(rbp, FRAME_SLOT_SIZE), r13);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+void AsmInterpreterCall::CallContainersArgs2ToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs2ToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    GetArgvAtStack(assembler);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+void AsmInterpreterCall::CallContainersArgs3ToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs3ToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    GetArgvAtStack(assembler);
+    __ Callq(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
 // ResumeRspAndReturn(uintptr_t acc)
 // GHC calling convention
 // %r13 - acc

@@ -18,6 +18,7 @@
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
+#include "ecmascript/stubs/runtime_stubs-inl.h"
 
 namespace panda::ecmascript {
 FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current_(sp), thread_(thread)
@@ -25,6 +26,10 @@ FrameIterator::FrameIterator(JSTaggedType *sp, const JSThread *thread) : current
     if (thread != nullptr) {
         arkStackMapParser_ =
             const_cast<JSThread *>(thread)->GetEcmaVM()->GetAOTFileManager()->GetStackMapParser();
+    }
+    if ((current_ != nullptr) && (GetFrameType() == FrameType::BASELINE_BUILTIN_FRAME)) {
+        auto frame = GetFrame<BaselineBuiltinFrame>();
+        baselineNativePc_ = frame->GetReturnAddr();
     }
 }
 
@@ -171,6 +176,7 @@ void FrameIterator::Advance()
                 optimizedCallSiteSp_ = 0;
                 optimizedReturnAddr_ = 0;
             }
+            baselineNativePc_ = frame->GetReturnAddr();
             current_ = frame->GetPrevFrameFp();
             break;
         }
@@ -525,6 +531,18 @@ std::map<uint32_t, uint32_t> FrameIterator::GetInlinedMethodInfo()
     return inlineMethodInfos;
 }
 
+uint32_t FrameIterator::GetBaselineBytecodeOffset() const
+{
+    ASSERT(baselineNativePc_ != 0);
+    LOG_BASELINEJIT(DEBUG) << "current native pc in UpFrame: " << std::hex <<
+        reinterpret_cast<void*>(baselineNativePc_);
+    auto *frame = this->GetFrame<AsmInterpretedFrame>();
+    JSHandle<JSTaggedValue> funcVal = JSHandle<JSTaggedValue>(thread_, frame->function);
+    JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(funcVal);
+    uint32_t curBytecodePcOfst = RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(func, baselineNativePc_);
+    return curBytecodePcOfst;
+}
+
 uint32_t FrameIterator::GetBytecodeOffset() const
 {
     FrameType type = this->GetFrameType();
@@ -532,9 +550,15 @@ uint32_t FrameIterator::GetBytecodeOffset() const
         case FrameType::ASM_INTERPRETER_FRAME:
         case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
             auto *frame = this->GetFrame<AsmInterpretedFrame>();
-            Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
-            auto offset = frame->GetPc() - method->GetBytecodeArray();
-            return static_cast<uint32_t>(offset);
+            auto pc = frame->GetPc();
+            if (reinterpret_cast<uintptr_t>(pc) == std::numeric_limits<uintptr_t>::max()) {
+                // for baselinejit
+                return GetBaselineBytecodeOffset();
+            } else {
+                Method *method = ECMAObject::Cast(frame->function.GetTaggedObject())->GetCallTarget();
+                auto offset = pc - method->GetBytecodeArray();
+                return static_cast<uint32_t>(offset);
+            }
         }
         case FrameType::INTERPRETER_FRAME:
         case FrameType::INTERPRETER_FAST_NEW_FRAME: {

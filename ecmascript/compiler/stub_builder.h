@@ -823,6 +823,8 @@ public:
     void SetBitFieldToFunction(GateRef glue, GateRef function, GateRef value);
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                   MemoryAttribute mAttr = MemoryAttribute::Default());
+    void SetBaselineJitCodeToFunction(GateRef glue, GateRef function, GateRef value,
+                                      MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetTypedArrayName(GateRef glue, GateRef typedArray, GateRef name,
                            MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetContentType(GateRef glue, GateRef typedArray, GateRef type);
@@ -1040,6 +1042,7 @@ public:
     GateRef Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module);
     GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);
     void TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
+    void TryToBaselineJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
     GateRef GetIsFastCall(GateRef machineCode);
     // compute new elementKind from sub elements
     GateRef ComputeTaggedArrayElementKind(GateRef array, GateRef offset, GateRef end);

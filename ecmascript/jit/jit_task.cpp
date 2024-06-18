@@ -329,6 +329,7 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
         ASSERT(compilerTier_.IsBaseLine());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetBaselineCode(hostThread_, machineCodeObj);
+        jsFunction_->SetBaselineJitCodeCache(hostThread_, machineCodeObj);
         LOG_BASELINEJIT(DEBUG) <<"Install baseline jit machine code:" << GetMethodName();
     }
 }
