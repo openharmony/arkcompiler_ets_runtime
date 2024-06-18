@@ -337,19 +337,6 @@ void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &ta
     }
 }
 
-void DebuggerApi::SwitchThreadStateRunningOrNative(const EcmaVM *ecmaVM, ThreadState newState)
-{
-    JSThread *thread = ecmaVM->GetJSThread();
-    if (newState != ThreadState::NATIVE && newState != ThreadState::RUNNING) {
-        return;
-    }
-    if (newState == ThreadState::NATIVE) {
-        ecmascript::ThreadNativeScope nativeScope(thread);
-    } else {
-        ecmascript::ThreadManagedScope managedScope(thread);
-    }
-}
-
 bool DebuggerApi::RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url)
 {
     return debugger->RemoveBreakpointsByUrl(url);
@@ -1339,5 +1326,43 @@ void DebuggerApi::DropLastFrame(const EcmaVM *ecmaVm)
 {
     auto *debuggerMgr = ecmaVm->GetJsDebuggerManager();
     debuggerMgr->DropLastFrame();
+}
+
+DebuggerApi::DebuggerNativeScope::DebuggerNativeScope(const EcmaVM *vm)
+{
+    thread_ = vm->GetAssociatedJSThread();
+    ecmascript::ThreadState oldState = thread_->GetState();
+    if (oldState != ecmascript::ThreadState::RUNNING) {
+        return;
+    }
+    oldThreadState_ = static_cast<uint16_t>(oldState);
+    hasSwitchState_ = true;
+    thread_->UpdateState(ecmascript::ThreadState::NATIVE);
+}
+
+DebuggerApi::DebuggerNativeScope::~DebuggerNativeScope()
+{
+    if (hasSwitchState_) {
+        thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+    }
+}
+
+DebuggerApi::DebuggerManagedScope::DebuggerManagedScope(const EcmaVM *vm)
+{
+    thread_ = vm->GetAssociatedJSThread();
+    ecmascript::ThreadState oldState = thread_->GetState();
+    if (oldState == ecmascript::ThreadState::RUNNING) {
+        return;
+    }
+    oldThreadState_ = static_cast<uint16_t>(oldState);
+    hasSwitchState_ = true;
+    thread_->UpdateState(ecmascript::ThreadState::RUNNING);
+}
+
+DebuggerApi::DebuggerManagedScope::~DebuggerManagedScope()
+{
+    if (hasSwitchState_) {
+        thread_->UpdateState(static_cast<ecmascript::ThreadState>(oldThreadState_));
+    }
 }
 }  // namespace panda::ecmascript::tooling
