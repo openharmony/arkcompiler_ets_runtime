@@ -3382,6 +3382,13 @@ inline void StubBuilder::SetMachineCodeToFunction(GateRef glue, GateRef function
     Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
+inline void StubBuilder::SetBaselineJitCodeToFunction(GateRef glue, GateRef function, GateRef value,
+    MemoryAttribute mAttr)
+{
+    GateRef offset = IntPtr(JSFunction::BASELINECODE_OFFSET);
+    Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
+}
+
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(env_->Is32Bit()));

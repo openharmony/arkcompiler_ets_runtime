@@ -1107,6 +1107,95 @@ void AsmInterpreterCall::CallReturnWithArgv(ExtendedAssembler *assembler)
     }
 }
 
+// c++ calling convention
+// X0 - glue
+// X1 - callTarget
+// X2 - method
+// X3 - callField
+// X4 - receiver
+// X5 - value
+void AsmInterpreterCall::CallGetterToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallGetterToBaseline));
+    Label target;
+
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_GETTER, FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+void AsmInterpreterCall::CallSetterToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallSetterToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_SETTER, FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+void AsmInterpreterCall::CallContainersArgs2ToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs2ToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG2_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+void AsmInterpreterCall::CallContainersArgs3ToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallContainersArgs3ToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_BASELINE_CHECK);
+    }
+}
+
+// c++ calling convention
+// X0 - glue
+// X1 - callTarget
+// X2 - method
+// X3 - callField
+// X4 - arg0(argc)
+// X5 - arg1(arglist)
+// X6 - arg3(argthis)
+void AsmInterpreterCall::CallReturnWithArgvToBaseline(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(CallReturnWithArgvToBaseline));
+    Label target;
+    PushAsmInterpBridgeFrame(assembler);
+    __ Bl(&target);
+    PopAsmInterpBridgeFrame(assembler);
+    __ Ret();
+    __ Bind(&target);
+    {
+        JSCallCommonEntry(assembler, JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
+                          FrameTransitionType::OTHER_TO_OTHER);
+    }
+}
+
 // preserve all the general registers, except x15 and callee saved registers/
 // and call x15
 void AsmInterpreterCall::PreserveMostCall(ExtendedAssembler* assembler)

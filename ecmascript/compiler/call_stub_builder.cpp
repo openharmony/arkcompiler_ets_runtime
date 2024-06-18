@@ -240,16 +240,13 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
         Bind(&funcHasBaselineCode);
         {
             GateRef res = result_->Value();
-            JSCallAsmInterpreter(true, &methodNotAot, exit, noNeedCheckException);
-            if (!isForBaseline_) {
-                ASSERT(CheckResultValueChangedWithReturn(res));
-            }
+            JSCallAsmInterpreter(true, exit, noNeedCheckException);
             (void) res;
         }
 
         Bind(&methodNotAot);
         {
-            JSCallAsmInterpreter(false, &methodNotAot, exit, noNeedCheckException);
+            JSCallAsmInterpreter(false, exit, noNeedCheckException);
         }
     }
 }
@@ -376,7 +373,7 @@ void CallStubBuilder::CallBridge(GateRef code, GateRef expectedNum, Label *exit)
     Jump(exit);
 }
 
-void CallStubBuilder::JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNotAot, Label *exit,
+void CallStubBuilder::JSCallAsmInterpreter(bool hasBaselineCode, Label *exit,
     Label *noNeedCheckException)
 {
     if (jumpSize_ != 0) {
@@ -426,8 +423,6 @@ void CallStubBuilder::JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNo
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             if (isForBaseline_) {
                 *result_ = CallNGCRuntime(glue_, idxForAsmInterpreter, argsForAsmInterpreter);
-            } else if (hasBaselineCode) {
-                Jump(methodNotAot);
             } else {
                 *result_ = CallNGCRuntime(glue_, idxForAsmInterpreter, argsForAsmInterpreter, hir_);
                 Jump(exit);
@@ -437,7 +432,6 @@ void CallStubBuilder::JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNo
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
-
     if (isForBaseline_) {
         if (noNeedCheckException != nullptr) {
             Jump(noNeedCheckException);
@@ -990,15 +984,15 @@ int CallStubBuilder::PrepareIdxForAsmInterpreterForBaselineWithBaselineCode()
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
             return RTSTUB_ID(SuperCallAndCheckToBaselineFromBaseline);
         case JSCallMode::CALL_GETTER:
-            return RTSTUB_ID(CallGetter);
+            return RTSTUB_ID(CallGetterToBaseline);
         case JSCallMode::CALL_SETTER:
-            return RTSTUB_ID(CallSetter);
+            return RTSTUB_ID(CallSetterToBaseline);
         case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
-            return RTSTUB_ID(CallContainersArgs2);
+            return RTSTUB_ID(CallContainersArgs2ToBaseline);
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
-            return RTSTUB_ID(CallContainersArgs3);
+            return RTSTUB_ID(CallContainersArgs3ToBaseline);
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
-            return RTSTUB_ID(CallReturnWithArgv);
+            return RTSTUB_ID(CallReturnWithArgvToBaseline);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -1092,15 +1086,15 @@ int CallStubBuilder::PrepareIdxForAsmInterpreterWithBaselineCode()
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
             return RTSTUB_ID(SuperCallAndCheckToBaseline);
         case JSCallMode::CALL_GETTER:
-            return RTSTUB_ID(CallGetter);
+            return RTSTUB_ID(CallGetterToBaseline);
         case JSCallMode::CALL_SETTER:
-            return RTSTUB_ID(CallSetter);
+            return RTSTUB_ID(CallSetterToBaseline);
         case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
-            return RTSTUB_ID(CallContainersArgs2);
+            return RTSTUB_ID(CallContainersArgs2ToBaseline);
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
-            return RTSTUB_ID(CallContainersArgs3);
+            return RTSTUB_ID(CallContainersArgs3ToBaseline);
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
-            return RTSTUB_ID(CallReturnWithArgv);
+            return RTSTUB_ID(CallReturnWithArgvToBaseline);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

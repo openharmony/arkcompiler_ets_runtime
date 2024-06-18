@@ -983,6 +983,7 @@ GateRef ProfilerStubBuilder::IsCompiledOrTryCompile(GateRef glue, GateRef func, 
     GateRef hotnessCnt = GetJitHotnessCnt(profileTypeInfo);
     GateRef jitCallThreshold = GetJitCallThreshold(profileTypeInfo);
     GateRef jitCallCnt = GetJitCallCnt(profileTypeInfo);
+    GateRef baselineJitHotnessThreshold = GetBaselineJitHotnessThreshold(profileTypeInfo);
 
     Label cmpJitHotnessCnt(env);
     Label checkJitCallThreshold(env);
@@ -992,7 +993,14 @@ GateRef ProfilerStubBuilder::IsCompiledOrTryCompile(GateRef glue, GateRef func, 
     Label incJitCallCnt(env);
     Label setResultAsTrue(env);
     Label exit(env);
+    Label jitCheck(env);
+    Label cmpBaselineJitHotnessCnt(env);
 
+    Branch(Int32Equal(baselineJitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &jitCheck,
+           &cmpBaselineJitHotnessCnt);
+    Bind(&cmpBaselineJitHotnessCnt);
+    BRANCH(Int32GreaterThan(hotnessCnt, baselineJitHotnessThreshold), &jitCheck, &exit);
+    Bind(&jitCheck);
     Branch(Int32Equal(hotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &setResultAsTrue, &cmpJitHotnessCnt);
     Bind(&cmpJitHotnessCnt);
     BRANCH(Int32GreaterThan(hotnessCnt, hotnessThreshold), &setResultAsTrue, &checkJitCallThreshold);

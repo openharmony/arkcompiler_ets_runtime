@@ -717,6 +717,7 @@ void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod(GateRef glue,
 
     SetBitFieldToFunction(glue, func, Int32(0));
     SetMachineCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+    SetBaselineJitCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
     Label hasCompiledStatus(env);
     Label tryInitFuncCodeEntry(env);

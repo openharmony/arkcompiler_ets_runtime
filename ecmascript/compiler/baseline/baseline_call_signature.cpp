@@ -1304,10 +1304,10 @@ DEF_CALL_SIGNATURE(BaselineDefineclasswithbufferImm8Id16Id16Imm16V8)
     std::array<VariableType, 6> params = {
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
-        VariableType::INT16(),
-        VariableType::INT16(),
+        VariableType::INT32(),
         VariableType::INT16(),
         VariableType::INT8(),
+        VariableType::INT32(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
 }
