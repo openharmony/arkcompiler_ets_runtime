@@ -496,6 +496,7 @@ void JSThread::UpdateJitCodeMapReference(const WeakRootVisitor &visitor)
         auto obj = reinterpret_cast<TaggedObject *>(it->first);
         auto fwd = visitor(obj);
         if (fwd == nullptr) {
+            delete it->second;
             it = jitCodeMaps_.erase(it);
         } else if (fwd != obj) {
             jitCodeMaps_.emplace(JSTaggedValue(fwd).GetRawData(), it->second);
