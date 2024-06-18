@@ -45,7 +45,7 @@ CString ModulePathHelper::ConcatFileNameWithMerge(JSThread *thread, const JSPand
         // this branch save for require/dynamic import/old version sdk
         // requestName: requestPkgName
         CString entryPoint = ParseThirdPartyPackage(jsPandaFile, recordName, requestName);
-        if (entryPoint.empty() && thread->GetEcmaVM()->EnableReportModuleResolvingFailure()) {
+        if (entryPoint.empty()) {
             THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, requestName, recordName, entryPoint);
         }
         return entryPoint;
@@ -994,14 +994,6 @@ CVector<CString> ModulePathHelper::SplitNormalizedOhmurl(const CString &ohmurl)
     CString tail = ohmurl.substr(start);
     res.emplace_back(tail);
     return res;
-}
-
-bool ModulePathHelper::SkipDefaultBundleFile(JSThread *thread, const CString &moduleFileName)
-{
-    // relative file path like "../../xxxx" can't be loaded rightly in aot compilation phase
-    // just to skip misunderstanding error log in LoadJSPandaFile when we ignore Module Resolving Failure.
-    return !thread->GetEcmaVM()->EnableReportModuleResolvingFailure() &&
-        (IsSandboxPath(moduleFileName) || IsRelativeFilePath(moduleFileName));
 }
 
 CVector<CString> ModulePathHelper::SplitNormalizedRecordName(const CString &recordName)
