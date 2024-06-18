@@ -297,6 +297,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         case (uint8_t)EncodeFlag::ARRAY_BUFFER:
+        case (uint8_t)EncodeFlag::SENDABLE_ARRAY_BUFFER:
         case (uint8_t)EncodeFlag::JS_REG_EXP: {
             size_t bufferLength = data_->ReadUint32(position_);
             auto nativeAreaAllocator = thread_->GetEcmaVM()->GetNativeAreaAllocator();

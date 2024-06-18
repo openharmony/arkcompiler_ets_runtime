@@ -43,6 +43,7 @@ private:
     void SerializeNativeBindingObject(TaggedObject *object);
     bool SerializeJSArrayBufferPrologue(TaggedObject *object);
     void SerializeJSSharedArrayBufferPrologue(TaggedObject *object);
+    void SerializeJSSendableArrayBufferPrologue(TaggedObject *object);
     void SerializeJSRegExpPrologue(JSRegExp *jsRegExp);
     void InitTransferSet(CUnorderedSet<uintptr_t> transferDataSet);
     bool PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer);

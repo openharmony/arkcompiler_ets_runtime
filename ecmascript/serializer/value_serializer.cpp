@@ -184,6 +184,11 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
             SerializeJSSharedArrayBufferPrologue(object);
             break;
         }
+        case JSType::JS_SENDABLE_ARRAY_BUFFER: {
+            supportJSNativePointer_ = true;
+            SerializeJSSendableArrayBufferPrologue(object);
+            break;
+        }
         case JSType::JS_ARRAY: {
             JSArray *array = reinterpret_cast<JSArray *>(object);
             trackInfo = array->GetTrackInfo();
@@ -211,6 +216,7 @@ void ValueSerializer::SerializeObjectImpl(TaggedObject *object, bool isWeak)
     switch (type) {
         case JSType::JS_ARRAY_BUFFER:
         case JSType::JS_SHARED_ARRAY_BUFFER:
+        case JSType::JS_SENDABLE_ARRAY_BUFFER:
         case JSType::JS_REG_EXP:
             // JSNativePointer supports serialization only during serialize JSArrayBuffer,
             // JSSharedArrayBuffer and JSRegExp
@@ -365,6 +371,31 @@ void ValueSerializer::SerializeJSSharedArrayBufferPrologue(TaggedObject *object)
         }
         data_->WriteEncodeFlag(EncodeFlag::SHARED_ARRAY_BUFFER);
         data_->insertSharedArrayBuffer(reinterpret_cast<uintptr_t>(buffer));
+    }
+}
+
+void ValueSerializer::SerializeJSSendableArrayBufferPrologue(TaggedObject *object)
+{
+    ASSERT(object->GetClass()->IsSendableArrayBuffer());
+    JSSendableArrayBuffer *arrayBuffer = reinterpret_cast<JSSendableArrayBuffer *>(object);
+    if (arrayBuffer->IsDetach()) {
+        LOG_ECMA(ERROR) << "ValueSerialize: don't support serialize detached sendable array buffer";
+        notSupport_ = true;
+        return;
+    }
+    size_t arrayLength = arrayBuffer->GetArrayBufferByteLength();
+    if (arrayLength > 0) {
+        bool nativeAreaAllocated = arrayBuffer->GetWithNativeAreaAllocator();
+        if (!nativeAreaAllocated) {
+            LOG_ECMA(ERROR) << "ValueSerialize: don't support clone sendablearraybuffer has external allocated buffer";
+            notSupport_ = true;
+            return;
+        }
+        data_->WriteEncodeFlag(EncodeFlag::SENDABLE_ARRAY_BUFFER);
+        data_->WriteUint32(arrayLength);
+        JSNativePointer *np =
+            reinterpret_cast<JSNativePointer *>(arrayBuffer->GetArrayBufferData().GetTaggedObject());
+        data_->WriteRawData(static_cast<uint8_t *>(np->GetExternalPointer()), arrayLength);
     }
 }
 
