@@ -4799,7 +4799,7 @@ void JSObject::DumpForSnapshot(std::vector<Reference> &vec) const
     if (jshclass != nullptr) {
         vec.emplace_back(CString("__proto__"), jshclass->GetPrototype());
     }
-    vec.emplace_back(CString("hash"), JSTaggedValue(GetHash()));
+    vec.emplace_back(CString("ArkInternalHash"), JSTaggedValue(GetHash()));
 
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     vec.emplace_back("(object elements)", JSTaggedValue(elements));
