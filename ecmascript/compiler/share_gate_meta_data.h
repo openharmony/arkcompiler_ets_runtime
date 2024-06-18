@@ -132,7 +132,8 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotJSFunction,                   NOTJSFUNCTION)                  \
     V(NotSymbol,                       NOTSYMBOL)                      \
     V(IndexNotInt,                     INDEXNOTINT)                    \
-    V(InitAotFailed,                   INIT_AOT_FAILED)
+    V(InitAotFailed,                   INIT_AOT_FAILED)                \
+    V(NotEcmaObject,                   NOT_ECMA_OBJECT)
 
 enum class DeoptType : uint8_t {
     NONE = 0,

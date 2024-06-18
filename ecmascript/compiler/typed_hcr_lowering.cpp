@@ -211,6 +211,9 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::NUMBER_TO_STRING:
             LowerNumberToString(gate, glue);
             break;
+        case OpCode::ECMA_OBJECT_CHECK:
+            LowerEcmaObjectCheck(gate);
+            break;
         default:
             break;
     }
@@ -3409,5 +3412,15 @@ void TypedHCRLowering::LowerNumberToString(GateRef gate, GateRef glue)
     result = builder_.CallRuntime(glue, RTSTUB_ID(NumberToString),
         Gate::InvalidGateRef, { number }, gate);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedHCRLowering::LowerEcmaObjectCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef value = acc_.GetValueIn(gate, 0);
+    GateRef frameState = acc_.GetFrameState(gate);
+    builder_.HeapObjectCheck(value, frameState);
+    builder_.HeapObjectIsEcmaObjectCheck(value, frameState);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript::kungfu
