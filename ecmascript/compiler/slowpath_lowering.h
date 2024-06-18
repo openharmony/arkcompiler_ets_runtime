@@ -310,6 +310,7 @@ private:
     void LowerLdThisByName(GateRef gate);
     bool IsFastCallArgs(size_t index);
     void LowerConstruct(GateRef gate);
+    void LowerCallInternal(GateRef gate);
     void LowerCallNew(GateRef gate);
     void LowerTypedCall(GateRef gate);
     void LowerTypedFastCall(GateRef gate);

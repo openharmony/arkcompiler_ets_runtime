@@ -122,6 +122,15 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::TypedArrayValues:
                 TryInlineTypedArrayIteratorBuiltin(gate, id, circuit_->TypedArrayValues(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::ArrayValues:
+                TryInlineArrayIterator(gate, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayKeys:
+                TryInlineArrayIterator(gate, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayEntries:
+                TryInlineArrayIterator(gate, id, skipThis);
+                break;
             case BuiltinsStubCSigns::ID::MathAcos:
                 TryInlineMathUnaryBuiltin(gate, argc, id, circuit_->MathAcos(), skipThis);
                 break;
@@ -346,6 +355,39 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 break;
             case BuiltinsStubCSigns::ID::FunctionPrototypeHasInstance:
                 TryInlineFunctionPrototypeHasInstance(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayIndexOf:
+                TryInlineIndexOfIncludes(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayIncludes:
+                TryInlineIndexOfIncludes(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayForEach:
+                TryInlineArrayForEach(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayFind:
+                TryInlineArrayFindOrFindIndex(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayFindIndex:
+                TryInlineArrayFindOrFindIndex(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayFilter:
+                TryInlineArrayFilter(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayMap:
+                TryInlineArrayMap(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArraySome:
+                TryInlineArraySome(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayEvery:
+                TryInlineArrayEvery(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayPop:
+                TryInlineArrayPop(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArraySlice:
+                TryInlineArraySlice(gate, argc, id, skipThis);
                 break;
             default:
                 break;
@@ -1415,5 +1457,322 @@ void NativeInlineLowering::TryInlineFunctionPrototypeHasInstance(GateRef gate, s
     GateRef value = acc_.GetValueIn(gate, 1);
     GateRef ret = builder_.OrdinaryHasInstance(value, function);
     ReplaceGateWithPendingException(gate, ret);
+}
+
+void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc == 0) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisArray = acc_.GetValueIn(gate, 0);
+    GateRef targetElement = acc_.GetValueIn(gate, 1);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisArray);
+    if (!Elements::IsFastElementsKind(kind)) {
+        return;
+    }
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    builder_.BuiltinPrototypeHClassCheck(thisArray, BuiltinTypeId::ARRAY, kind, false);
+    if (!acc_.IsCreateArray(thisArray)) {
+        ArrayMetaDataAccessor::Mode mode = ArrayMetaDataAccessor::Mode::LOAD_ELEMENT;
+        builder_.StableArrayCheck(thisArray, kind, mode);
+    }
+    GateRef ret = Circuit::NullGate();
+    GateRef callID = builder_.Int32(static_cast<int32_t>(id));
+    GateRef arrayKind = builder_.Int32(static_cast<int32_t>(kind));
+    if (argc == 1) {
+        ret = builder_.ArrayIncludesIndexOf(thisArray, builder_.Int32(0), targetElement, callID, arrayKind);
+    } else {
+        GateRef fromIndexHandler = acc_.GetValueIn(gate, 2);
+        builder_.DeoptCheck(builder_.TaggedIsInt(fromIndexHandler), acc_.GetFrameState(gate), DeoptType::INDEXNOTINT);
+        GateRef fromIndex = builder_.TaggedGetInt(fromIndexHandler);
+        ret = builder_.ArrayIncludesIndexOf(thisArray, fromIndex, targetElement, callID, arrayKind);
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArrayIterator(GateRef gate, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    CallThis0TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
+    Environment env(gate, circuit_, &builder_);
+
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, tacc.GetFunc(), builder_.IntPtr(static_cast<int64_t>(id)), {tacc.GetThisObj()});
+    }
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    builder_.EcmaObjectCheck(thisObj);
+    GateRef CallIDRef = builder_.Int32(static_cast<int32_t>(id));
+    GateRef ret = builder_.ArrayIteratorBuiltin(thisObj, CallIDRef);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArrayForEach(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (argc == 0) { // 0: Must have a callBackFn
+        return;
+    }
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    auto pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef ret = Circuit::NullGate();
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    if (Elements::IsHole(kind)) {
+        return;
+    }
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    if (!acc_.IsCreateArray(thisValue)) {
+        builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    }
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    builder_.IsCallableCheck(callBackFn);
+
+    if (argc == 1) {
+        ret = builder_.ArrayForEach(thisValue, callBackFn, builder_.UndefineConstant(), pcOffset);
+    } else {
+        ret = builder_.ArrayForEach(thisValue, callBackFn, acc_.GetValueIn(gate, 2), pcOffset); // 2:provide using This
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArrayFindOrFindIndex(GateRef gate,
+                                                         size_t argc,
+                                                         BuiltinsStubCSigns::ID id,
+                                                         bool skipThis)
+{
+    if (argc == 0) { // 0: Must have a callBackFn
+        return;
+    }
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    if (Elements::IsHole(kind)) {
+        return;
+    }
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    uint32_t pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef ret = Circuit::NullGate();
+
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    if (!acc_.IsCreateArray(thisValue)) {
+        builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    }
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    builder_.IsCallableCheck(callBackFn);
+    GateRef callIDRef = builder_.Int32(static_cast<int32_t>(id));
+
+    if (argc == 1) {
+        ret = builder_.ArrayFindOrFindIndex(thisValue, callBackFn, builder_.UndefineConstant(), callIDRef, pcOffset);
+    } else {
+        ret = builder_.ArrayFindOrFindIndex(
+            thisValue, callBackFn, acc_.GetValueIn(gate, 2), callIDRef, pcOffset); // 2:provide using This
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArrayFilter(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (argc == 0) {
+        return;
+    }
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    if (Elements::IsHole(kind)) {
+        return;
+    }
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    if (!acc_.IsCreateArray(thisValue)) {
+        builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    }
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    builder_.IsCallableCheck(callBackFn);
+    uint32_t pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef ret = Circuit::NullGate();
+    if (argc == 1) {
+        ret = builder_.ArrayFilter(thisValue, callBackFn, builder_.UndefineConstant(), frameState, pcOffset);
+    } else {
+        ret = builder_.ArrayFilter(
+            thisValue, callBackFn, acc_.GetValueIn(gate, 2), frameState, pcOffset); //2: provide usingThis
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArrayMap(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (argc == 0) {
+        return;
+    }
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    if (Elements::IsHole(kind)) {
+        return;
+    }
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    if (!acc_.IsCreateArray(thisValue)) {
+        builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    }
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    builder_.IsCallableCheck(callBackFn);
+    uint32_t pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef ret = Circuit::NullGate();
+    if (argc == 1) {
+        ret = builder_.ArrayMap(thisValue, callBackFn, builder_.UndefineConstant(), frameState, pcOffset);
+    } else {
+        ret = builder_.ArrayMap(
+            thisValue, callBackFn, acc_.GetValueIn(gate, 2), frameState, pcOffset); //2: provide usingThis
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArraySome(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (argc == 0) {
+        return;
+    }
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    if (Elements::IsHole(kind)) {
+        return;
+    }
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    if (!acc_.IsCreateArray(thisValue)) {
+        builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    }
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    builder_.IsCallableCheck(callBackFn);
+    uint32_t pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef ret = Circuit::NullGate();
+    if (argc == 1) {
+        ret = builder_.ArraySome(thisValue, callBackFn, builder_.UndefineConstant(), pcOffset);
+    } else {
+        ret = builder_.ArraySome(thisValue, callBackFn, acc_.GetValueIn(gate, 2), pcOffset); //2: provide usingThis
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArrayEvery(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (argc == 0) {
+        return;
+    }
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    if (Elements::IsHole(kind)) {
+        return;
+    }
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    if (!acc_.IsCreateArray(thisValue)) {
+        builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    }
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    builder_.IsCallableCheck(callBackFn);
+    uint32_t pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef ret = Circuit::NullGate();
+    if (argc == 1) {
+        ret = builder_.ArrayEvery(thisValue, callBackFn, builder_.UndefineConstant(), pcOffset);
+    } else {
+        ret = builder_.ArrayEvery(thisValue, callBackFn, acc_.GetValueIn(gate, 2), pcOffset); //2: provide usingThis
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArrayPop(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    if (!acc_.IsCreateArray(thisValue)) {
+        builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    }
+    GateRef ret = builder_.ArrayPop(thisValue, acc_.GetFrameState(gate));
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineArraySlice(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    if (!acc_.IsCreateArray(thisValue)) {
+        builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    }
+    GateRef frameState = acc_.GetFrameState(gate);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    GateRef ret = Circuit::NullGate();
+    if (argc == 0) {
+        ret = builder_.ArraySlice(thisValue, builder_.UndefineConstant(), builder_.UndefineConstant(), frameState);
+    } else if (argc == 1) {
+        GateRef startIndex = acc_.GetValueIn(gate, 1);
+        builder_.DeoptCheck(builder_.TaggedIsInt(startIndex), acc_.GetFrameState(gate), DeoptType::INDEXNOTINT);
+        ret = builder_.ArraySlice(thisValue, startIndex, builder_.UndefineConstant(), frameState);
+    } else {
+        GateRef startIndex = acc_.GetValueIn(gate, 1);
+        GateRef endIndex = acc_.GetValueIn(gate, 2);
+        builder_.DeoptCheck(builder_.TaggedIsInt(startIndex), acc_.GetFrameState(gate), DeoptType::INDEXNOTINT);
+        builder_.DeoptCheck(builder_.TaggedIsInt(endIndex), acc_.GetFrameState(gate), DeoptType::INDEXNOTINT);
+        ret = builder_.ArraySlice(thisValue, startIndex, endIndex, frameState);
+    }
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 }  // namespace panda::ecmascript

@@ -733,6 +733,21 @@ GateRef CircuitBuilder::IsNotUndefinedOrHoleCheck(GateRef value)
     return ret;
 }
 
+GateRef CircuitBuilder::IsCallableCheck(GateRef func)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->IsCallableCheck(),
+                                        MachineType::I1,
+                                        {currentControl, currentDepend, func, frameState},
+                                        GateType::NJSValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::IsDataViewCheck(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
@@ -1788,6 +1803,151 @@ GateRef CircuitBuilder::DataViewSet(
         MachineType::I64,
         {currentControl, currentDepend, thisobj, index, value, dataViewCallID, isLittleEndian, frameState},
         GateType::TaggedValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayIncludesIndexOf(
+    GateRef thisArray, GateRef fromIndex, GateRef targetElement, GateRef callID, GateRef arrayKind)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->ArrayIncludesIndexOf(),
+                              MachineType::I64,
+                              {currentControl, currentDepend, thisArray, fromIndex, targetElement, callID, arrayKind},
+                              GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayIteratorBuiltin(GateRef thisArray, GateRef callID)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto ret = GetCircuit()->NewGate(circuit_->ArrayIteratorBuiltin(),
+                                     MachineType::I64,
+                                     {currentControl, currentDepend, thisArray, callID},
+                                     GateType::TaggedValue());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayForEach(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayForEach(static_cast<uint64_t>(pcOffset)),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayFilter(
+    GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayFilter(static_cast<uint64_t>(pcOffset)),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis, frameState},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayMap(
+    GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayMap(static_cast<uint64_t>(pcOffset)),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis, frameState},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArraySome(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArraySome(static_cast<uint64_t>(pcOffset)),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayEvery(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayEvery(static_cast<uint64_t>(pcOffset)),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayPop(GateRef thisValue, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayPop(),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, frameState},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArraySlice(GateRef thisValue, GateRef startIndex, GateRef endIndex, GateRef frameState)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArraySlice(),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, startIndex, endIndex, frameState},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
+GateRef CircuitBuilder::ArrayFindOrFindIndex(
+    GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef callIDRef, uint32_t pcOffset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayFindOrFindIndex(static_cast<uint64_t>(pcOffset)),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, callBackFn, usingThis, callIDRef},
+                                        GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

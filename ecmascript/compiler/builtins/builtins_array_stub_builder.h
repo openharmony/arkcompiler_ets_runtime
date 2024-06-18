@@ -25,6 +25,7 @@ class BuiltinsArrayStubBuilder : public BuiltinsStubBuilder {
 public:
     explicit BuiltinsArrayStubBuilder(StubBuilder *parent)
         : BuiltinsStubBuilder(parent) {}
+    explicit BuiltinsArrayStubBuilder(Environment* env): BuiltinsStubBuilder(env) {}
     ~BuiltinsArrayStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsArrayStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsArrayStubBuilder);

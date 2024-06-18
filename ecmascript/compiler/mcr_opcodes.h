@@ -33,7 +33,8 @@ namespace panda::ecmascript::kungfu {
     V(IsTaggedBooleanCheck, IS_TAGGED_BOOLEAN_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                         \
     V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                              \
     V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                                \
-    V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)
+    V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)                                              \
+    V(IsCallableCheck, IS_CALLABLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)
 
 #define MCR_IMMUTABLE_META_DATA_CACHE_LIST(V)                                                   \
     V(ArrayGuardianCheck, ARRAY_GUARDIAN_CHECK, GateFlags::CHECKABLE, 1, 1, 0)                  \
@@ -160,6 +161,10 @@ namespace panda::ecmascript::kungfu {
     V(FunctionPrototypeApply, FUNCTION_PROTOTYPE_APPLY, GateFlags::NONE_FLAG, 1, 1, 3)          \
     V(FunctionPrototypeBind, FUNCTION_PROTOTYPE_BIND, GateFlags::NONE_FLAG, 1, 1, 2)            \
     V(HeapObjectIsEcmaObjectCheck, HEAP_OBJECT_IS_ECMA_OBJECT, GateFlags::CHECKABLE, 1, 1, 1)   \
+    V(ArrayIncludesIndexOf, ARRAY_INCLUDES_INDEXOF, GateFlags::NO_WRITE,  1, 1, 5)              \
+    V(ArrayIteratorBuiltin, ARRAY_ITERATOR_BUILTIN, GateFlags::NONE_FLAG,  1, 1, 2)             \
+    V(ArrayPop, ARRAY_POP, GateFlags::NONE_FLAG, 1, 1, 2)                                       \
+    V(ArraySlice, ARRAY_SLICE, GateFlags::NONE_FLAG, 1, 1, 4)                                   \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
 
 #define MCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                                                            \
@@ -192,7 +197,13 @@ namespace panda::ecmascript::kungfu {
     V(BuiltinPrototypeHClassCheck, BUILTIN_PROTOTYPE_HCLASS_CHECK, GateFlags::CHECKABLE, 1, 1, 1)       \
     V(IsSpecificObjectType,        IS_SPECIFIC_OBJECT_TYPE,        GateFlags::NO_WRITE,  1, 1, 1)       \
     V(LoadBuiltinObject,           LOAD_BUILTIN_OBJECT,            GateFlags::CHECKABLE, 1, 1, 0)       \
-    V(StringAdd,                   STRING_ADD,                     GateFlags::NO_WRITE,  1, 1, 2)
+    V(StringAdd,                   STRING_ADD,                     GateFlags::NO_WRITE,  1, 1, 2)       \
+    V(ArrayForEach,                ARRAY_FOR_EACH,                 GateFlags::NONE_FLAG, 1, 1, 3)       \
+    V(ArrayFilter,                 ARRAY_FILTER,                   GateFlags::NONE_FLAG, 1, 1, 4)       \
+    V(ArrayFindOrFindIndex,        ARRAY_FIND_OR_FINDINDEX,        GateFlags::NONE_FLAG, 1, 1, 4)       \
+    V(ArrayMap,                    ARRAY_MAP,                      GateFlags::NONE_FLAG, 1, 1, 4)       \
+    V(ArraySome,                   ARRAY_SOME,                     GateFlags::NONE_FLAG, 1, 1, 3)       \
+    V(ArrayEvery,                  ARRAY_EVERY,                    GateFlags::NONE_FLAG, 1, 1, 3)
 
 #define MCR_GATE_META_DATA_LIST_WITH_BOOL(V)                                                                 \
     V(LoadProperty, LOAD_PROPERTY, GateFlags::NO_WRITE, 1, 1, 2)                                             \

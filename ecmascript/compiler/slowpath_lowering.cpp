@@ -62,6 +62,9 @@ void SlowPathLowering::CallRuntimeLowering()
             case OpCode::CONSTRUCT:
                 LowerConstruct(gate);
                 break;
+            case OpCode::CALLINTERNAL:
+                LowerCallInternal(gate);
+                break;
             case OpCode::CALL_NEW:
                 LowerCallNew(gate);
                 break;
@@ -3256,6 +3259,33 @@ void SlowPathLowering::LowerConstruct(GateRef gate)
         glue_, gate, CommonStubCSigns::ConstructorCheck, { glue_, ctor, *res, thisObj });
     GateRef state = builder_.GetState();
     ReplaceHirWithPendingException(gate, state, result, result);
+}
+
+void SlowPathLowering::LowerCallInternal(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    size_t num = acc_.GetNumValueIn(gate);
+    std::vector<GateRef> args(num);
+    for (size_t i = 0; i < num; ++i) {
+        args[i] = acc_.GetValueIn(gate, i);
+    }
+    ASSERT(num >= 3); // 3:skip argc argv newtarget
+    std::vector<GateRef> argsFastCall(num - 3); // 3:skip argc argv newtarget
+    size_t j = 0;
+    for (size_t i = 0; i < num; ++i) {
+        if (IsFastCallArgs(i)) { // 1: argc index 3: newtarget index 2:ActualArgv
+            argsFastCall[j++] = acc_.GetValueIn(gate, i);
+        }
+    }
+    GateRef func = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::FUNC));
+    GateRef argc = acc_.GetValueIn(gate, static_cast<size_t>(CommonArgIdx::ACTUAL_ARGC));
+    Label exit(&builder_);
+    DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    LowerFastCall(gate, glue_, func, argc, args, argsFastCall, &res, &exit, false);
+    builder_.Bind(&exit);
+    GateRef stateInGate = builder_.GetState();
+    GateRef depend = builder_.GetDepend();
+    ReplaceHirWithPendingException(gate, stateInGate, depend, *res);
 }
 
 void SlowPathLowering::LowerCallNew(GateRef gate)

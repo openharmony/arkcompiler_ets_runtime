@@ -545,6 +545,12 @@ uint32_t GateAccessor::TryGetPcOffset(GateRef gate) const
         case OpCode::CALL_NEW:
         case OpCode::CALL_GETTER:
         case OpCode::CALL_SETTER:
+        case OpCode::ARRAY_FOR_EACH:
+        case OpCode::ARRAY_FIND_OR_FINDINDEX:
+        case OpCode::ARRAY_FILTER:
+        case OpCode::ARRAY_MAP:
+        case OpCode::ARRAY_SOME:
+        case OpCode::ARRAY_EVERY:
             return static_cast<uint32_t>(gatePtr->GetOneParameterMetaData()->GetValue());
         case OpCode::TYPEDCALL:
         case OpCode::TYPEDFASTCALL:

@@ -297,8 +297,10 @@ namespace panda::ecmascript::kungfu {
     V(ReflectConstruct)                             \
     V(ReflectApply)                                 \
     V(FunctionPrototypeHasInstance)                 \
+    V(ArrayKeys)                                    \
+    V(ArrayEntries)                                 \
     V(TYPED_BUILTINS_INLINE_FIRST = MathAcos)       \
-    V(TYPED_BUILTINS_INLINE_LAST = FunctionPrototypeHasInstance)
+    V(TYPED_BUILTINS_INLINE_LAST = ArrayEntries)
 
 class BuiltinsStubCSigns {
 public:
@@ -407,6 +409,18 @@ public:
             case BuiltinsStubCSigns::ID::FunctionPrototypeBind:
             case BuiltinsStubCSigns::ID::FunctionPrototypeCall:
             case BuiltinsStubCSigns::ID::FunctionPrototypeHasInstance:
+            case BuiltinsStubCSigns::ID::ArrayIndexOf:
+            case BuiltinsStubCSigns::ID::ArrayIncludes:
+            case BuiltinsStubCSigns::ID::ArrayValues:
+            case BuiltinsStubCSigns::ID::ArrayForEach:
+            case BuiltinsStubCSigns::ID::ArrayFind:
+            case BuiltinsStubCSigns::ID::ArrayFindIndex:
+            case BuiltinsStubCSigns::ID::ArrayFilter:
+            case BuiltinsStubCSigns::ID::ArrayMap:
+            case BuiltinsStubCSigns::ID::ArraySome:
+            case BuiltinsStubCSigns::ID::ArrayEvery:
+            case BuiltinsStubCSigns::ID::ArrayPop:
+            case BuiltinsStubCSigns::ID::ArraySlice:
                 return true;
             default:
                 return false;
@@ -668,6 +682,34 @@ public:
                 return ConstantIndex::FUNCTION_PROTOTYPE_CALL_INDEX;
             case BuiltinsStubCSigns::ID::FunctionPrototypeHasInstance:
                 return ConstantIndex::FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayIndexOf:
+                return ConstantIndex::ARRAY_INDEXOF_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayIncludes:
+                return ConstantIndex::ARRAY_INCLUDES_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayValues:
+                return ConstantIndex::ARRAY_VALUES_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayEntries:
+                return ConstantIndex::ARRAY_ENTRIES_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayKeys:
+                return ConstantIndex::ARRAY_KEYS_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayForEach:
+                return ConstantIndex::ARRAY_FOREACH_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayFind:
+                return ConstantIndex::ARRAY_FIND_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayFindIndex:
+                return ConstantIndex::ARRAY_FINDINDEX_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayFilter:
+                return ConstantIndex::ARRAY_FILTER_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayMap:
+                return ConstantIndex::ARRAY_MAP_INDEX;
+            case BuiltinsStubCSigns::ID::ArraySome:
+                return ConstantIndex::ARRAY_SOME_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayEvery:
+                return ConstantIndex::ARRAY_EVERY_INDEX;
+            case BuiltinsStubCSigns::ID::ArrayPop:
+                return ConstantIndex::ARRAY_POP_INDEX;
+            case BuiltinsStubCSigns::ID::ArraySlice:
+                return ConstantIndex::ARRAY_SLICE_INDEX;
             default:
                 LOG_COMPILER(INFO) << "GetConstantIndex Invalid Id:" << builtinId;
                 return ConstantIndex::INVALID;

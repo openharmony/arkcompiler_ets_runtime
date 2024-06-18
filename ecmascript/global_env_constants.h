@@ -260,7 +260,21 @@ class ObjectFactory;
     V(JSTaggedValue, FunctionApply, FUNCTION_PROTOTYPE_APPLY_INDEX, ecma_roots_special)                 \
     V(JSTaggedValue, FunctionBind, FUNCTION_PROTOTYPE_BIND_INDEX, ecma_roots_special)                   \
     V(JSTaggedValue, FunctionCall, FUNCTION_PROTOTYPE_CALL_INDEX, ecma_roots_special)                   \
-    V(JSTaggedValue, FunctionHasInstance, FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX, ecma_roots_special)
+    V(JSTaggedValue, FunctionHasInstance, FUNCTION_PROTOTYPE_HAS_INSTANCE_INDEX, ecma_roots_special)    \
+    V(JSTaggedValue, ArrayIndexOf, ARRAY_INDEXOF_INDEX, ecma_roots_builtins)                            \
+    V(JSTaggedValue, ArrayIncludes, ARRAY_INCLUDES_INDEX, ecma_roots_builtins)                          \
+    V(JSTaggedValue, ArrayKeys, ARRAY_KEYS_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, ArrayEntries, ARRAY_ENTRIES_INDEX, ecma_roots_builtins)                            \
+    V(JSTaggedValue, ArrayValues, ARRAY_VALUES_INDEX, ecma_roots_builtins)                              \
+    V(JSTaggedValue, ArrayForEach, ARRAY_FOREACH_INDEX, ecma_roots_builtins)                            \
+    V(JSTaggedValue, ArrayFind, ARRAY_FIND_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, ArrayFindIndex, ARRAY_FINDINDEX_INDEX, ecma_roots_builtins)                        \
+    V(JSTaggedValue, ArrayFilter, ARRAY_FILTER_INDEX, ecma_roots_builtins)                              \
+    V(JSTaggedValue, ArrayMap, ARRAY_MAP_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, ArraySome, ARRAY_SOME_INDEX, ecma_roots_builtins)                                  \
+    V(JSTaggedValue, ArrayEvery, ARRAY_EVERY_INDEX, ecma_roots_builtins)                                \
+    V(JSTaggedValue, ArrayPop, ARRAY_POP_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, ArraySlice, ARRAY_SLICE_INDEX, ecma_roots_builtins)
 
 // All of type JSTaggedValue
 #define SHARED_GLOBAL_ENV_CONSTANT_STRING(V)                                                                \

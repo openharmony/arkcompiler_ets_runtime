@@ -54,6 +54,7 @@ class TSHCRLowering;
 class Variable;
 class NativeInlineLowering;
 class TypedHCRLowering;
+class TypedNativeInlineLowering;
 class StringBuilderOptimizer;
 class PostSchedule;
 class TSHCROptPass;
@@ -204,6 +205,7 @@ public:
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
     GateRef GetDataOfTaggedArray(GateRef array);
+    GateRef GetLengthOfJSArray(GateRef array);
     GateRef IsTypedArray(GateRef array);
     GateRef GetSuperConstructor(GateRef ctor);
     GateRef Merge(const std::vector<GateRef> &inList);
@@ -398,6 +400,7 @@ public:
     GateRef CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
     GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool needPushArgv);
+    GateRef CallInternal(GateRef hirGate, std::vector<GateRef> args, uint64_t pcOffset);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef ctor);
     GateRef IsDerived(GateRef ctor);
@@ -554,6 +557,7 @@ public:
     GateRef IsUndefinedOrHoleCheck(GateRef value);
     GateRef IsNotUndefinedOrHoleCheck(GateRef value);
     GateRef IsDataViewCheck(GateRef obj);
+    GateRef IsCallableCheck(GateRef func);
     GateRef IsTaggedBooleanCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
     GateRef Int32DivWithCheck(GateRef left, GateRef right);
@@ -784,6 +788,19 @@ public:
                         GateRef dataViewCallID,
                         GateRef isLittleEndian,
                         GateRef frameState);
+    GateRef ArrayIncludesIndexOf(
+        GateRef thisArray, GateRef fromIndex, GateRef targetElement, GateRef CallID, GateRef ArrayKind);
+    GateRef ArrayIteratorBuiltin(GateRef thisArray, GateRef callID);
+    GateRef ArrayForEach(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
+    GateRef ArrayFilter(
+        GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset);
+    GateRef ArrayMap(GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset);
+    GateRef ArraySome(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
+    GateRef ArrayFindOrFindIndex(
+        GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef callIDRef, uint32_t pcOffset);
+    GateRef ArrayEvery(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
+    GateRef ArrayPop(GateRef thisValue, GateRef frameState);
+    GateRef ArraySlice(GateRef thisValue, GateRef startIndex, GateRef endIndex, GateRef frameState);
     GateRef ToNumber(GateRef gate, GateRef value, GateRef glue);
     GateRef IsASCIICharacter(GateRef gate);
 
@@ -868,6 +885,7 @@ public:
     inline GateRef DoubleIsNAN(GateRef x);
     inline GateRef DoubleIsINF(GateRef x);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
+    GateRef FastToBoolean(GateRef value);
 
     // Opcode with control and depend inputs from label and value inputs args
     GateRef BuildControlDependOp(const GateMetaData* op, std::vector<GateRef> args,
@@ -878,6 +896,7 @@ public:
     inline GateRef BinaryOpWithOverflow(GateRef x, GateRef y);
 
     GateRef BuildTypedArrayIterator(GateRef gate, const GateMetaData* op);
+    GateRef IsStableArrayLengthWriteable(GateRef array);
 
 #define ARITHMETIC_BINARY_OP_WITH_BITWIDTH(NAME, OPCODEID, MACHINETYPEID)                                        \
     inline GateRef NAME(GateRef x, GateRef y, GateType type = GateType::Empty(), const char* comment = nullptr)  \
@@ -938,6 +957,7 @@ private:
     friend SlowPathLowering;
     friend NativeInlineLowering;
     friend TypedHCRLowering;
+    friend TypedNativeInlineLowering;
     friend PostSchedule;
     friend TSHCROptPass;
 };

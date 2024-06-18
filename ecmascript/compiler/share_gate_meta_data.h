@@ -133,7 +133,10 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotSymbol,                       NOTSYMBOL)                      \
     V(IndexNotInt,                     INDEXNOTINT)                    \
     V(InitAotFailed,                   INIT_AOT_FAILED)                \
-    V(NotEcmaObject,                   NOT_ECMA_OBJECT)
+    V(NotEcmaObject,                   NOT_ECMA_OBJECT)                \
+    V(NotCallable,                     NOTCALLABLE)                    \
+    V(ArrayLengthOverMax,              ARRAYLENGTHOVERMAX)             \
+    V(ArrayLengthNotWritable,          ARRAYLENGTHNOTWRITABLE)
 
 enum class DeoptType : uint8_t {
     NONE = 0,

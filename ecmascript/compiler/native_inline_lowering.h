@@ -44,6 +44,7 @@ public:
     void RunNativeInlineLowering();
 
 private:
+    enum IncludesOrIndexOf : uint8_t { INCLUDES = 0, INDEXOF };
     std::optional<std::pair<size_t, bool>> GetCallInfo(GateRef gate);
     void TryInlineStringFromCharCode(GateRef gate, size_t argc, bool skipThis);
     void TryInlineStringSubstring(GateRef gate, size_t argc, bool skipThis);
@@ -99,6 +100,16 @@ private:
     void TryInlineBigIntConstructor(GateRef gate, size_t argc, bool skipThis);
     void ReplaceGateWithPendingException(GateRef hirGate, GateRef value);
     void AddTraceLogs(GateRef gate, BuiltinsStubCSigns::ID id);
+    void TryInlineIndexOfIncludes(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArrayIterator(GateRef gate, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArrayForEach(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArrayFindOrFindIndex(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArrayFilter(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArrayMap(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArraySome(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArrayEvery(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArrayPop(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArraySlice(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
 
     bool EnableLog() const
     {
