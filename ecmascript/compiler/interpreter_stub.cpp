@@ -428,7 +428,7 @@ template <bool needPrint>
 void InterpreterStubBuilder::DebugPrintInstruction()
 {
 #if ECMASCRIPT_ENABLE_INTERPRETER_LOG
-    if (!needPrint) {
+    if constexpr (!needPrint) {
         return;
     }
     GateRef glue = PtrArgument(static_cast<size_t>(InterpreterHandlerInputs::GLUE));

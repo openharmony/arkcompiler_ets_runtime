@@ -56,7 +56,7 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
                          valueRegion, writeType);
     }
     if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
-        if (writeType != WriteBarrierType::DESERIALIZE) {
+        if constexpr (writeType != WriteBarrierType::DESERIALIZE) {
             Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
         } else {
             // In deserialize, will never add references from old object(not allocated by deserialing) to
@@ -75,7 +75,7 @@ inline void Barriers::SetObject(const JSThread *thread, void *obj, size_t offset
 {
     // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
     *reinterpret_cast<JSTaggedType *>(reinterpret_cast<uintptr_t>(obj) + offset) = value;
-    if (needWriteBarrier) {
+    if constexpr (needWriteBarrier) {
         WriteBarrier(thread, obj, offset, value);
     }
 }

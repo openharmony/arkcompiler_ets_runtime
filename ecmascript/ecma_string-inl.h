@@ -305,7 +305,7 @@ template<bool verify>
 inline uint16_t EcmaString::At(int32_t index) const
 {
     int32_t length = static_cast<int32_t>(GetLength());
-    if (verify) {
+    if constexpr (verify) {
         if ((index < 0) || (index >= length)) {
             return 0;
         }

@@ -394,7 +394,7 @@ public:
                 JSSharedTypedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::BYTE_ARRAY:
-                if (visitType == VisitType::ALL_VISIT) {
+                if constexpr (visitType == VisitType::ALL_VISIT) {
                     ByteArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
@@ -408,17 +408,17 @@ public:
             }
             case JSType::HCLASS:
                 // semi gc is not needed to visit hclass
-                if (visitType != VisitType::SEMI_GC_VISIT) {
+                if constexpr (visitType != VisitType::SEMI_GC_VISIT) {
                     JSHClass::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
             case JSType::LINE_STRING:
-                if (visitType == VisitType::ALL_VISIT) {
+                if constexpr (visitType == VisitType::ALL_VISIT) {
                     LineEcmaString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
             case JSType::CONSTANT_STRING:
-                if (visitType == VisitType::ALL_VISIT) {
+                if constexpr (visitType == VisitType::ALL_VISIT) {
                     ConstantString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
@@ -429,7 +429,7 @@ public:
                 SlicedString::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::JS_NATIVE_POINTER:
-                if ((visitType == VisitType::SNAPSHOT_VISIT) || (visitType == VisitType::ALL_VISIT)) {
+                if constexpr ((visitType == VisitType::SNAPSHOT_VISIT) || (visitType == VisitType::ALL_VISIT)) {
                     JSNativePointer::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
@@ -449,12 +449,12 @@ public:
                 TaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::MUTANT_TAGGED_ARRAY:
-                if (visitType == VisitType::ALL_VISIT) {
+                if constexpr (visitType == VisitType::ALL_VISIT) {
                     MutantTaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
             case JSType::COW_MUTANT_TAGGED_ARRAY:
-                if (visitType == VisitType::ALL_VISIT) {
+                if constexpr (visitType == VisitType::ALL_VISIT) {
                     COWMutantTaggedArray::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
@@ -493,12 +493,12 @@ public:
                 PropertyBox::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::PROTO_CHANGE_MARKER:
-                if (visitType == VisitType::ALL_VISIT) {
+                if constexpr (visitType == VisitType::ALL_VISIT) {
                     ProtoChangeMarker::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
             case JSType::MARKER_CELL:
-                if (visitType == VisitType::ALL_VISIT) {
+                if constexpr (visitType == VisitType::ALL_VISIT) {
                     MarkerCell::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
@@ -690,7 +690,7 @@ public:
                 JSAPILinkedListIterator::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::BIGINT:
-                if (visitType == VisitType::ALL_VISIT) {
+                if constexpr (visitType == VisitType::ALL_VISIT) {
                     BigInt::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 }
                 break;
