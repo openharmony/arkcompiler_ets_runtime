@@ -309,7 +309,7 @@ void BaselineLdObjByNameStubBuilder::GenerateCircuit()
     StringIdInfo stringIdInfo(constpool, stringId);
     GateRef result = builder.LoadObjByName(
         glue, receiver, 0, stringIdInfo, profileTypeInfo, slotId, callback);
-    Return(result);
+    CHECK_EXCEPTION_WITH_VARACC(result);
 }
 
 void BaselineTryLdGLobalByNameImm8ID16StubBuilder::GenerateCircuit()
@@ -5924,7 +5924,7 @@ void BaselineDefineFieldByNameImm8Id16V8StubBuilder::GenerateCircuit()
     GateRef propKey = GetStringFromConstPool(glue, constpool, stringId);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFINE_BY_NAME(Boolean(false));
-    Return(*result);
+    CHECK_EXCEPTION_WITH_ACC(*result);
 }
 
 
@@ -5947,7 +5947,7 @@ void BaselineDefinePropertyByNameImm8Id16V8StubBuilder::GenerateCircuit()
     GateRef propKey = GetStringFromConstPool(glue, constpool, ZExtInt16ToInt32(stringId));
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
     DEFINE_BY_NAME(Boolean(true));
-    Return(*result);
+    CHECK_EXCEPTION_WITH_ACC(*result);
 }
 
 void BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8StubBuilder::GenerateCircuit()
