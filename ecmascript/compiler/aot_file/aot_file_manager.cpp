@@ -38,6 +38,7 @@
 #include "ecmascript/jspandafile/constpool_value.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/message_string.h"
@@ -203,10 +204,10 @@ std::list<CString> AOTFileManager::GetPandaFiles(uint32_t aotFileInfoIndex)
     return abcFilesList;
 }
 
-void AOTFileManager::BindPandaFilesInAotFile(const std::string &aotFileBaseName, const std::string &moduleName)
+void AOTFileManager::BindPreloadedPandaFilesInAotFile(const std::string &moduleName)
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    uint32_t aotFileInfoIndex = anFileDataManager->SafeGetFileInfoIndex(aotFileBaseName + FILE_EXTENSION_AN);
+    uint32_t aotFileInfoIndex = anFileDataManager->SafeGetFileInfoIndex(moduleName + FILE_EXTENSION_AN);
     if (aotFileInfoIndex == INVALID_INDEX) {
         return;
     }
@@ -219,8 +220,48 @@ void AOTFileManager::BindPandaFilesInAotFile(const std::string &aotFileBaseName,
         }
         if (!abcFile->IsLoadedAOT()) {
             abcFile->SetAOTFileInfoIndex(aotFileInfoIndex);
+            LOG_ECMA(INFO) << "Bind file: " << abcNormalizedName << ", aotFileInfoIndex: " << aotFileInfoIndex
+                           << " in module: " << moduleName;
         }
     }
+}
+
+bool AOTFileManager::HasPandaFile(uint32_t aotFileInfoIndex, const CString &abcNormalizedName) const
+{
+    auto aiDatumIter = aiDatum_.find(aotFileInfoIndex);
+    if (aiDatumIter == aiDatum_.end()) {
+        return false;
+    }
+    auto pandaCPIter = aiDatumIter->second.find(abcNormalizedName);
+    return pandaCPIter != aiDatumIter->second.end();
+}
+
+void AOTFileManager::BindPandaFileInAotFile(const std::string &aotFileBaseName, JSPandaFile *jsPandaFile) const
+{
+    if (jsPandaFile->IsLoadedAOT()) {
+        // already loaded.
+        return;
+    }
+
+    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+    if (!anFileDataManager->IsEnable()) {
+        return;
+    }
+    uint32_t aotFileInfoIndex = anFileDataManager->SafeGetFileInfoIndex(aotFileBaseName + FILE_EXTENSION_AN);
+    if (aotFileInfoIndex == INVALID_INDEX) {
+        LOG_ECMA(WARN) << "Bind panda file to AOT failed. AOT file not found for " << aotFileBaseName;
+        return;
+    }
+    CString abcNormalizedName(jsPandaFile->GetNormalizedFileDesc());
+    if (!HasPandaFile(aotFileInfoIndex, abcNormalizedName)) {
+        // not existed in an file.
+        LOG_ECMA(WARN) << "Bind panda file to AOT failed. " << abcNormalizedName << " not found for "
+                       << aotFileBaseName;
+        return;
+    }
+    jsPandaFile->SetAOTFileInfoIndex(aotFileInfoIndex);
+    LOG_ECMA(INFO) << "Bind file: " << abcNormalizedName << ", aotFileInfoIndex: " << aotFileInfoIndex
+                   << " in aotFileBaseName: " << aotFileBaseName;
 }
 
 uint32_t AOTFileManager::GetAnFileIndex(const JSPandaFile *jsPandaFile) const

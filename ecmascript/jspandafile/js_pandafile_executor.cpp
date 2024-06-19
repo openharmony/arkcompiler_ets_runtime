@@ -109,14 +109,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromFile(JSThread *thr
         }
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         module->SetStatus(ModuleStatus::INSTANTIATED);
-        BindPandaFilesForAot(vm, jsPandaFile.get());
         SourceTextModule::Evaluate(thread, module, nullptr, 0, executeFromJob);
         if (thread->HasPendingException()) {
             return Unexpected(false);
         }
         return JSTaggedValue::Undefined();
     }
-    BindPandaFilesForAot(vm, jsPandaFile.get());
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entry.c_str(), executeFromJob);
 }
 
@@ -171,7 +169,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBuffer(JSThread *t
 #endif
     }
     auto vm = thread->GetEcmaVM();
-    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
@@ -221,7 +218,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBuffer(
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
 #endif
     }
-    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     bool isBundle = jsPandaFile->IsBundlePack();
 
@@ -303,8 +299,24 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::Execute(JSThread *thread, con
     return result;
 }
 
-void JSPandaFileExecutor::BindPandaFilesForAot(EcmaVM *vm, [[maybe_unused]] JSPandaFile *jsPandaFile)
+void JSPandaFileExecutor::BindPreloadedPandaFilesToAOT(EcmaVM *vm, const std::string &moduleName)
 {
+    ASSERT(vm->GetJSThread()->IsMainThread());
+    if (!vm->GetJSOptions().GetEnableAsmInterpreter()) {
+        return;
+    }
+    // run not via command line
+    if (vm->GetJSOptions().WasAOTOutputFileSet()) {
+        return;
+    }
+    ASSERT(!moduleName.empty());
+    // bind pandafiles loaded in appspawn
+    vm->GetAOTFileManager()->BindPreloadedPandaFilesInAotFile(moduleName);
+}
+
+void JSPandaFileExecutor::BindPandaFileToAot(JSPandaFile *jsPandaFile)
+{
+    EcmaVM *vm = Runtime::GetInstance()->GetMainThread()->GetEcmaVM();
     if (vm->GetJSOptions().GetEnableAsmInterpreter()) {
         std::string aotFileBaseName(vm->GetModuleName());
         auto *aotFM = vm->GetAOTFileManager();
@@ -312,7 +324,7 @@ void JSPandaFileExecutor::BindPandaFilesForAot(EcmaVM *vm, [[maybe_unused]] JSPa
             std::string aotFilename = vm->GetJSOptions().GetAOTOutputFile();
             aotFileBaseName = JSFilePath::GetBaseName(aotFilename);
         }
-        aotFM->BindPandaFilesInAotFile(aotFileBaseName, aotFileBaseName);
+        aotFM->BindPandaFileInAotFile(aotFileBaseName, jsPandaFile);
     }
 }
 
@@ -334,7 +346,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteFromBufferSecure(JSThr
 #endif
     }
     auto vm = thread->GetEcmaVM();
-    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     CString entry = entryPoint.data();
     if (vm->IsNormalizedOhmUrlPack()) {
@@ -409,7 +420,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << name;
 #endif
     }
-    BindPandaFilesForAot(vm, jsPandaFile.get());
 
     // realEntry is used to record the original record, which is easy to throw when there are exceptions
     const CString realEntry = entry;
@@ -505,7 +515,6 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     SourceTextModule::Instantiate(thread, moduleRecord);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
-    BindPandaFilesForAot(thread->GetEcmaVM(), jsPandaFile.get());
     SourceTextModule::Evaluate(thread, module, nullptr, 0);
     return JSTaggedValue::Undefined();
 }
