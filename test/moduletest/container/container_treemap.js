@@ -117,6 +117,18 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     res.set("test commpare", commap.length == 0);
 
+    commap = new fastmap((firstValue, secondValue) => {return firstValue < secondValue});
+    commap.set("c","1");
+    commap.set("a","8");
+    commap.set("b","2");
+    commap.set("d","4");
+    commap.clear();
+    commap.set("c","1");
+    commap.set("a","8");
+    commap.set("b","2");
+    commap.set("d","4");
+    res.set("test clear and set", commap.getFirstKey() === "a");
+
     flag = false;
     try {
         proxy["aa"] = 3;

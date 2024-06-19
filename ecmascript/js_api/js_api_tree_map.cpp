@@ -98,8 +98,13 @@ void JSAPITreeMap::Clear(const JSThread *thread, const JSHandle<JSAPITreeMap> &m
     if (cap == 0) {
         return;
     }
+    JSTaggedValue fn = TaggedTreeMap::Cast(map->GetTreeMap().GetTaggedObject())->GetCompare();
+    JSHandle<JSTaggedValue> compareFn = JSHandle<JSTaggedValue>(thread, fn);
     cap = std::max(cap, TaggedTreeMap::MIN_CAPACITY);
     JSTaggedValue internal = TaggedTreeMap::Create(thread, cap);
+    if (!compareFn->IsUndefined() && !compareFn->IsNull()) {
+        TaggedTreeMap::Cast(internal.GetTaggedObject())->SetCompare(thread, compareFn.GetTaggedValue());
+    }
     map->SetTreeMap(thread, internal);
 }
 
