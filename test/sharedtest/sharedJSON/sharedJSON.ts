@@ -23,6 +23,14 @@
 // @ts-nocheck
 declare function print(str: any): string;
 
+const enum BigIntMode {
+    DEFAULT = 0,
+    PARSE_AS_BIGINT = 1,
+    ALWAYS_PARSE_AS_BIGINT = 2,
+};
+
+let input = '{"big":1122334455667788999,"small":123,"deci":1234567890.0123456,"shortExp":1.79e+308,"longExp":1.7976931348623157e+308}';
+
 let obj = {
     "innerEntry": {
         "x": 1,
@@ -90,5 +98,90 @@ function jsonRepeatCall() {
 
 }
 
+function testASONBigInt() {
+    var options1 = {
+        bigIntMode: BigIntMode.PARSE_AS_BIGINT,
+    }
+    var obj = JSON.parseSendable(input, undefined, options1);
+
+    print(obj.small);
+    print(obj.big);
+    print((typeof obj.big === "bigint"));
+
+    var options2 = {
+        bigIntMode: BigIntMode.ALWAYS_PARSE_AS_BIGINT,
+    }
+    var obj2 = JSON.parseSendable(input, undefined, options2);
+    print(obj2.small);
+    print(obj2.big);
+    print((typeof obj2.small === "bigint"));
+
+    var options3 = {
+        bigIntMode: BigIntMode.PARSE_AS_BIGINT,
+    }
+    var obj3 = JSON.parseSendable(input, undefined, options3);
+    print(obj3.deci);
+    print(obj3.shortExp);
+    print(obj3.longExp);
+
+    var options4 = {
+        bigIntMode: BigIntMode.PARSE_AS_BIGINT,
+    }
+    var obj4 = JSON.parseSendable(input, undefined, options4);
+    var output = JSON.stringifySendable(obj4);
+    print(output);
+
+    var options5 = {
+        bigIntMode: BigIntMode.ALWAYS_PARSE_AS_BIGINT,
+    }
+    var obj5 = JSON.parseSendable(input, undefined, options5);
+    var output2 = JSON.stringifySendable(obj5);
+    print(output2);
+}
+
+function testJSONBigInt() {
+    var options1 = {
+        bigIntMode: BigIntMode.PARSE_AS_BIGINT,
+    }
+    var obj = JSON.parseBigInt(input, undefined, options1);
+
+    print(obj.small);
+    print(obj.big);
+    print((typeof obj.big === "bigint"));
+
+    var options2 = {
+        bigIntMode: BigIntMode.ALWAYS_PARSE_AS_BIGINT,
+    }
+    var obj2 = JSON.parseBigInt(input, undefined, options2);
+    print(obj2.small);
+    print(obj2.big);
+    print((typeof obj2.small === "bigint"));
+
+    var options3 = {
+        bigIntMode: BigIntMode.PARSE_AS_BIGINT,
+    }
+    var obj3 = JSON.parseBigInt(input, undefined, options3);
+    print(obj3.deci);
+    print(obj3.shortExp);
+    print(obj3.longExp);
+
+    var options4 = {
+        bigIntMode: BigIntMode.PARSE_AS_BIGINT,
+    }
+    var obj4 = JSON.parseBigInt(input, undefined, options4);
+    var output = JSON.stringifyBigInt(obj4);
+    print(output);
+
+    var options5 = {
+        bigIntMode: BigIntMode.ALWAYS_PARSE_AS_BIGINT,
+    }
+    var obj5 = JSON.parseBigInt(input, undefined, options5);
+    var output2 = JSON.stringifyBigInt(obj5);
+    print(output2);
+
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
+testASONBigInt();
+testJSONBigInt();

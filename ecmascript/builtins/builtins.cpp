@@ -173,6 +173,7 @@ using Atomics = builtins::BuiltinsAtomics;
 using ArrayBuffer = builtins::BuiltinsArrayBuffer;
 using Json = builtins::BuiltinsJson;
 using SendableJson = builtins::BuiltinsSendableJson;
+using BigIntJson = builtins::BuiltinsBigIntJson;
 using Proxy = builtins::BuiltinsProxy;
 using Reflect = builtins::BuiltinsReflect;
 using AsyncFunction = builtins::BuiltinsAsyncFunction;
@@ -1721,7 +1722,10 @@ void Builtins::InitializeJson(const JSHandle<GlobalEnv> &env, const JSHandle<JST
 
     SetFunction(env, jsonObject, "parse", Json::Parse, FunctionLength::TWO);
     SetFunction(env, jsonObject, "parseSendable", SendableJson::Parse, FunctionLength::THREE);
-    SetFunction(env, jsonObject, "stringify", Json::Stringify, FunctionLength::FOUR, BUILTINS_STUB_ID(JsonStringify));
+    SetFunction(env, jsonObject, "parseBigInt", BigIntJson::Parse, FunctionLength::THREE);
+    SetFunction(env, jsonObject, "stringify", Json::Stringify, FunctionLength::THREE, BUILTINS_STUB_ID(JsonStringify));
+    SetFunction(env, jsonObject, "stringifySendable", SendableJson::Stringify, FunctionLength::THREE);
+    SetFunction(env, jsonObject, "stringifyBigInt", BigIntJson::Stringify, FunctionLength::THREE);
 
     PropertyDescriptor jsonDesc(thread_, JSHandle<JSTaggedValue>::Cast(jsonObject), true, false, true);
     JSHandle<JSTaggedValue> jsonString(factory_->NewFromASCIIReadOnly("JSON"));

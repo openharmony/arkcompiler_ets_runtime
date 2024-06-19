@@ -33,6 +33,7 @@
 namespace panda::ecmascript::builtins {
 namespace {
 using TransformType = base::JsonHelper::TransformType;
+using ParseOptions =  base::JsonHelper::ParseOptions;
 
 void InitWithTransformType(JSHandle<GlobalEnv> &env, TransformType transformType,
                            JSMutableHandle<JSFunction> &constructor, SCheckMode &sCheckMode)
@@ -59,6 +60,11 @@ JSTaggedValue BuiltinsSendableJson::Parse(EcmaRuntimeCallInfo *argv)
     return BuiltinsJson::ParseWithTransformType(argv, TransformType::SENDABLE);
 }
 
+JSTaggedValue BuiltinsBigIntJson::Parse(EcmaRuntimeCallInfo *argv)
+{
+    return BuiltinsJson::ParseWithTransformType(argv, TransformType::BIGINT);
+}
+
 // 24.5.1
 JSTaggedValue BuiltinsJson::ParseWithTransformType(EcmaRuntimeCallInfo *argv, TransformType transformType)
 {
@@ -78,14 +84,29 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(EcmaRuntimeCallInfo *argv, Tr
 
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSMutableHandle<JSTaggedValue> reviverVal(thread, JSTaggedValue::Undefined());
-    if (argc == 2) {  // 2: 2 args
+    ParseOptions mode {ParseOptions::DEFAULT};
+    if (argc == 2) {  // 2: two args
         reviverVal.Update(GetCallArg(argv, 1));
+    } else if (argc == 3 && base::JsonHelper::IsTypeSupportBigInt(transformType)) { // 3: three args
+        JSHandle<JSTaggedValue> options = GetCallArg(argv, 2); // 2: two args
+        JSHandle<JSTaggedValue> modeKey(factory->NewFromStdString("bigIntMode"));
+        JSHandle<JSTaggedValue> modeValue = JSTaggedValue::GetProperty(thread, options, modeKey).GetValue();
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (modeValue->IsInt()) {
+            int val = modeValue->GetInt();
+            if (val == 2) { // 2: bigIntMode
+                mode = ParseOptions::ALWAYSPARSEASBIGINT;
+            } else if (val == 1) {
+                mode = ParseOptions::PARSEASBIGINT;
+            }
+        }
     }
-    return ParseWithTransformType(thread->GetEcmaVM(), msg, reviverVal, transformType);
+    return ParseWithTransformType(thread->GetEcmaVM(), msg, reviverVal, transformType, mode);
 }
 
 JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JSTaggedValue> &msg,
-                                                   JSHandle<JSTaggedValue> &reviverVal, TransformType transformType)
+                                                   JSHandle<JSTaggedValue> &reviverVal, TransformType transformType,
+                                                   ParseOptions mode)
 {
     JSThread *thread = vm->GetJSThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -95,10 +116,10 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JS
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> result;
     if (EcmaStringAccessor(parseString).IsUtf8()) {
-        panda::ecmascript::base::Utf8JsonParser parser(thread, transformType);
+        panda::ecmascript::base::Utf8JsonParser parser(thread, transformType, mode);
         result = parser.Parse(parseString);
     } else {
-        panda::ecmascript::base::Utf16JsonParser parser(thread, transformType);
+        panda::ecmascript::base::Utf16JsonParser parser(thread, transformType, mode);
         result = parser.Parse(*parseString);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -135,6 +156,21 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JS
 // 24.5.2
 JSTaggedValue BuiltinsJson::Stringify(EcmaRuntimeCallInfo *argv)
 {
+    return BuiltinsJson::StringifyWithTransformType(argv, TransformType::NORMAL);
+}
+
+JSTaggedValue BuiltinsSendableJson::Stringify(EcmaRuntimeCallInfo *argv)
+{
+    return BuiltinsJson::StringifyWithTransformType(argv, TransformType::SENDABLE);
+}
+
+JSTaggedValue BuiltinsBigIntJson::Stringify(EcmaRuntimeCallInfo *argv)
+{
+    return BuiltinsJson::StringifyWithTransformType(argv, TransformType::BIGINT);
+}
+
+JSTaggedValue BuiltinsJson::StringifyWithTransformType(EcmaRuntimeCallInfo *argv, TransformType transformType)
+{
     BUILTINS_API_TRACE(argv->GetThread(), Json, Stringify);
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
@@ -161,7 +197,7 @@ JSTaggedValue BuiltinsJson::Stringify(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> handleValue(thread, value);
     JSHandle<JSTaggedValue> handleReplacer(thread, replacer);
     JSHandle<JSTaggedValue> handleGap(thread, gap);
-    panda::ecmascript::base::JsonStringifier stringifier(thread);
+    panda::ecmascript::base::JsonStringifier stringifier(thread, transformType);
     JSHandle<JSTaggedValue> result = stringifier.Stringify(handleValue, handleReplacer, handleGap);
 
     return result.GetTaggedValue();

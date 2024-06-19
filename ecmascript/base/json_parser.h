@@ -70,13 +70,14 @@ struct JsonContinuation {
 template<typename T>
 class JsonParser {
 protected:
+    using ParseOptions =  base::JsonHelper::ParseOptions;
     using TransformType = base::JsonHelper::TransformType;
     using Text = const T *;
     using ContType = JsonContinuation::ContinuationType;
     // Instantiation of the class is prohibited
     JsonParser() = default;
-    JsonParser(JSThread *thread, TransformType transformType)
-        : thread_(thread), transformType_(transformType)
+    JsonParser(JSThread *thread, TransformType transformType, ParseOptions options = ParseOptions::DEFAULT)
+        : thread_(thread), transformType_(transformType), parseOptions_(options)
     {
     }
     ~JsonParser() = default;
@@ -434,13 +435,15 @@ protected:
                                               JSTaggedValue::Exception());
             }
             if (isFast) {
-                return JSTaggedValue(fastInteger);
+                return parseOptions_ == ParseOptions::ALWAYSPARSEASBIGINT ?
+                    BigInt::Int32ToBigInt(thread_, fastInteger).GetTaggedValue() : JSTaggedValue(fastInteger);
             }
         }
 
         Text current = current_;
         bool negative = false;
         bool hasExponent = false;
+        bool hasDecimal = false;
         if (*current_ == '-') {
             if (UNLIKELY(current_++ == end_)) {
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
@@ -452,7 +455,7 @@ protected:
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
             }
         } else if (*current_ >= '1' && *current_ <= '9') {
-            if (!CheckNonZeroBeginNumber(hasExponent)) {
+            if (!CheckNonZeroBeginNumber(hasExponent, hasDecimal)) {
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
             }
         } else {
@@ -461,8 +464,13 @@ protected:
 
         std::string strNum(current, end_ + 1);
         current_ = end_ + 1;
+        return ConvertToNumber(strNum, negative, hasExponent, hasDecimal);
+    }
+
+    JSTaggedValue ConvertToNumber(const std::string &str, bool negative, bool hasExponent, bool hasDecimal)
+    {
         errno = 0; // reset errno to 0 to avoid errno has been changed
-        double v = std::strtod(strNum.c_str(), nullptr);
+        double v = std::strtod(str.c_str(), nullptr);
         if (errno == ERANGE) {
             errno = 0;
             if (v > 0) {
@@ -475,7 +483,23 @@ protected:
         if (negative && v == 0) {
             return JSTaggedValue(-0.0);
         }
-        return JSTaggedValue::TryCastDoubleToInt32(v);
+        if (parseOptions_ == ParseOptions::DEFAULT) {
+            return JSTaggedValue::TryCastDoubleToInt32(v);
+        }
+        if (NumberHelper::IsSafeIntegerNumber(v)) {
+            if (parseOptions_ == ParseOptions::ALWAYSPARSEASBIGINT) {
+                JSTaggedValue value =  BigInt::DoubleToBigInt(thread_, v);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                if (value.IsBigInt()) {
+                    return value;
+                }
+                THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON", JSTaggedValue::Exception());
+            }
+            return JSTaggedValue::TryCastDoubleToInt32(v);
+        } else {
+            return (hasExponent || hasDecimal) ? JSTaggedValue::TryCastDoubleToInt32(v) :
+                NumberHelper::StringToBigInt(thread_, JSHandle<JSTaggedValue>::Cast(factory_->NewFromStdString(str)));
+        }
     }
 
     bool ParseBackslash(std::u16string &res)
@@ -862,13 +886,14 @@ protected:
         return true;
     }
 
-    bool CheckNonZeroBeginNumber(bool &hasExponent)
+    bool CheckNonZeroBeginNumber(bool &hasExponent, bool &hasDecimal)
     {
         while (current_ != end_) {
             Advance();
             if (IsNumberCharacter(*current_)) {
                 continue;
             } else if (*current_ == '.') {
+                hasDecimal = true;
                 if (!IsDecimalsLegal(hasExponent)) {
                     return false;
                 }
@@ -900,6 +925,7 @@ protected:
     ObjectFactory *factory_ {nullptr};
     GlobalEnv *env_ {nullptr};
     TransformType transformType_ {TransformType::NORMAL};
+    ParseOptions parseOptions_ {ParseOptions::DEFAULT};
     JSHandle<JSHClass> initialJSArrayClass_;
     JSHandle<JSHClass> initialJSObjectClass_;
 };
@@ -907,7 +933,8 @@ protected:
 class Utf8JsonParser : public JsonParser<uint8_t> {
 public:
     Utf8JsonParser() = default;
-    Utf8JsonParser(JSThread *thread, TransformType transformType) : JsonParser(thread, transformType) {}
+    Utf8JsonParser(JSThread *thread, TransformType transformType, ParseOptions options = ParseOptions::DEFAULT)
+        : JsonParser(thread, transformType, options) {}
     ~Utf8JsonParser() = default;
     NO_COPY_SEMANTIC(Utf8JsonParser);
     NO_MOVE_SEMANTIC(Utf8JsonParser);
@@ -1032,7 +1059,8 @@ private:
 class Utf16JsonParser : public JsonParser<uint16_t> {
 public:
     Utf16JsonParser() = default;
-    Utf16JsonParser(JSThread *thread, TransformType transformType) : JsonParser(thread, transformType) {}
+    Utf16JsonParser(JSThread *thread, TransformType transformType, ParseOptions options = ParseOptions::DEFAULT)
+        : JsonParser(thread, transformType, options) {}
     ~Utf16JsonParser() = default;
     NO_COPY_SEMANTIC(Utf16JsonParser);
     NO_MOVE_SEMANTIC(Utf16JsonParser);

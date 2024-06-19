@@ -153,6 +153,12 @@ public:
         }
     }
 
+    static bool inline IsSafeIntegerNumber(double d)
+    {
+        double number = TruncateDouble(d);
+        return (number == d) && std::abs(d) <= MAX_SAFE_INTEGER;
+    }
+
     static JSTaggedValue DoubleToString(JSThread *thread, double number, int radix);
     static bool IsEmptyString(const uint8_t *start, const uint8_t *end);
     static JSHandle<EcmaString> IntToEcmaString(const JSThread *thread, int number);
@@ -160,7 +166,7 @@ public:
     static uint32_t ToCharCode(uint32_t number);
     static JSTaggedValue Int32ToString(JSThread *thread, int32_t number, uint32_t radix);
     static JSHandle<EcmaString> NumberToString(const JSThread *thread, JSTaggedValue number);
-    static double TruncateDouble(double d);
+    static double PUBLIC_API TruncateDouble(double d);
     static int64_t DoubleToInt64(double d);
     static bool IsDigitalString(const uint8_t *start, const uint8_t *end);
     static int StringToInt(const uint8_t *start, const uint8_t *end);
@@ -173,7 +179,7 @@ public:
     static JSTaggedValue StringToDoubleWithRadix(const uint8_t *start, const uint8_t *end, int radix, bool *negative);
     static CString IntToString(int number);
     static CString IntegerToString(double number, int radix);
-    static JSTaggedValue StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal);
+    static JSTaggedValue PUBLIC_API StringToBigInt(JSThread *thread, JSHandle<JSTaggedValue> strVal);
     static JSTaggedValue DoubleToExponential(JSThread *thread, double number, int digit);
     static JSTaggedValue DoubleToASCII(JSThread *thread, double valueNumber, int digits, int flags);
     static JSTaggedValue DoubleToFixedString(JSThread *thread, double valueNumber, int digits);

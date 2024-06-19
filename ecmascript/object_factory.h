@@ -577,7 +577,7 @@ public:
     JSHandle<EcmaString> NewFromUtf16WithoutStringTable(std::u16string_view data);
     JSHandle<EcmaString> NewFromUtf16(std::u16string_view data);
 
-    JSHandle<EcmaString> NewFromStdString(const std::string &data);
+    JSHandle<EcmaString> PUBLIC_API NewFromStdString(const std::string &data);
 
     JSHandle<EcmaString> NewFromUtf8WithoutStringTable(const uint8_t *utf8Data, uint32_t utf8Len);
     JSHandle<EcmaString> NewFromUtf8(const uint8_t *utf8Data, uint32_t utf8Len);

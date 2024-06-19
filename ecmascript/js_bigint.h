@@ -102,7 +102,8 @@ public:
     static JSHandle<BigInt> BigintSub(JSThread *thread, JSHandle<BigInt> x, JSHandle<BigInt> y, bool resultSign);
 
     static JSTaggedValue NumberToBigInt(JSThread *thread, JSHandle<JSTaggedValue> number);
-    static JSHandle<BigInt> Int32ToBigInt(JSThread *thread, const int &number);
+    static JSTaggedValue PUBLIC_API DoubleToBigInt(JSThread *thread, double value);
+    static JSHandle<BigInt> PUBLIC_API Int32ToBigInt(JSThread *thread, const int &number);
     static JSHandle<BigInt> Uint32ToBigInt(JSThread *thread, const uint32_t &number);
     static JSHandle<BigInt> Int64ToBigInt(JSThread *thread, const int64_t &number);
     static JSHandle<BigInt> Uint64ToBigInt(JSThread *thread, const uint64_t &number);

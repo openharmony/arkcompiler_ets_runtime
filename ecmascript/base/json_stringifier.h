@@ -17,6 +17,7 @@
 #define ECMASCRIPT_BASE_JSON_STRINGIFY_INL_H
 
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/base/json_helper.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/global_env.h"
@@ -24,10 +25,12 @@
 
 namespace panda::ecmascript::base {
 class JsonStringifier {
+    using TransformType = base::JsonHelper::TransformType;
 public:
     JsonStringifier() = default;
 
-    explicit JsonStringifier(JSThread *thread) : thread_(thread) {}
+    explicit JsonStringifier(JSThread *thread, TransformType transformType = TransformType::NORMAL)
+        : thread_(thread), transformType_(transformType) {}
 
     ~JsonStringifier() = default;
     NO_COPY_SEMANTIC(JsonStringifier);
@@ -76,6 +79,7 @@ private:
     CVector<JSHandle<JSTaggedValue>> propList_;
     JSMutableHandle<JSTaggedValue> handleKey_ {};
     JSMutableHandle<JSTaggedValue> handleValue_ {};
+    TransformType transformType_ {};
 };
 }  // namespace panda::ecmascript::base
 #endif  // ECMASCRIPT_BASE_JSON_STRINGIFY_INL_H
