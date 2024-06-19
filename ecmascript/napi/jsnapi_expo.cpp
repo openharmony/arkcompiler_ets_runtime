@@ -4401,14 +4401,12 @@ bool JSNApi::IsJitEscape()
 bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
-    ecmascript::ThreadManagedScope scope(thread);
     // Currently only log trace on main thread
-    if (!thread->IsMainThread()) {
-        return false;
-    }
     auto jsDebuggerManager = vm->GetJsDebuggerManager();
     if (jsDebuggerManager != nullptr) {
-        return jsDebuggerManager->IsSerializationTimeoutCheckEnabled();
+        if (jsDebuggerManager->IsSerializationTimeoutCheckEnabled()) {
+            return thread->IsMainThread();
+        }
     }
     return false;
 }
