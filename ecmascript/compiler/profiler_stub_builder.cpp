@@ -94,7 +94,7 @@ void ProfilerStubBuilder::ProfileOpType(
     Bind(&profiler);
     {
         Label icSlotValid(env);
-        Label uninitialize(env);
+        Label uninitialized(env);
         Label compareLabel(env);
         Label updateSlot(env);
 
@@ -105,7 +105,7 @@ void ProfilerStubBuilder::ProfileOpType(
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
         DEFVARIABLE(curType, VariableType::INT32(), type);
         DEFVARIABLE(curCount, VariableType::INT32(), Int32(0));
-        BRANCH(TaggedIsInt(slotValue), &compareLabel, &uninitialize);
+        BRANCH(TaggedIsInt(slotValue), &compareLabel, &uninitialized);
         Bind(&compareLabel);
         {
             GateRef oldSlotValue = TaggedGetInt(slotValue);
@@ -114,9 +114,10 @@ void ProfilerStubBuilder::ProfileOpType(
             curCount = Int32And(oldSlotValue, Int32(0xfffffc00));   // 0xfffffc00: count bits
             BRANCH(Int32Equal(oldType, *curType), &exit, &updateSlot);
         }
-        Bind(&uninitialize);
+        Bind(&uninitialized);
         {
-            // Slot maybe overflow.
+            // Only when slot value is undefined, it means uninitialized, so we need to update the slot.
+            // When the slot value is hole, it means slot is overflow (0xff). Otherwise, do nothing.
             BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &exit);
         }
         Bind(&updateSlot);
@@ -198,6 +199,8 @@ void ProfilerStubBuilder::ProfileCreateObject(
         }
         Bind(&uninitialized);
         {
+            // Only when slot value is undefined, it means uninitialized, so we need to update the slot.
+            // When the slot value is hole, it means slot is overflow (0xff). Otherwise, do nothing.
             BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &exit);
         }
         Bind(&updateSlot);
@@ -274,6 +277,8 @@ void ProfilerStubBuilder::ProfileCall(
             }
             Bind(&uninitialized);
             {
+                // Only when slot value is undefined, it means uninitialized, so we need to update the slot.
+                // When the slot value is hole, it means slot is overflow (0xff). Otherwise, do nothing.
                 BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &exit);
             }
             Bind(&updateSlot);
@@ -328,12 +333,15 @@ void ProfilerStubBuilder::ProfileNativeCall(
         Label initSlot(env);
         Label sameValueCheck(env);
         Label invalidate(env);
+        Label notOverflow(env);
 
         GateRef slotId = GetSlotID(slotInfo);
         GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
         BRANCH(Int32LessThan(slotId, length), &icSlotValid, &exit);
         Bind(&icSlotValid);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        BRANCH(TaggedIsHole(slotValue), &exit, &notOverflow); // hole -- slot is overflow
+        Bind(&notOverflow);
         BRANCH(TaggedIsInt(slotValue), &updateSlot, &initSlot);
         Bind(&updateSlot);
         GateRef oldId = TaggedGetInt(slotValue);
@@ -558,6 +566,8 @@ void ProfilerStubBuilder::ProfileBranch(GateRef glue, SlotIDInfo slotInfo,
             }
             Bind(&uninitialized);
             {
+                // Only when slot value is undefined, it means uninitialized, so we need to update the slot.
+                // When the slot value is hole, it means slot is overflow (0xff). Otherwise, do nothing.
                 BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &exit);
             }
             Bind(&updateSlot);
@@ -697,12 +707,15 @@ void ProfilerStubBuilder::ProfileGetIterator(
         Label initSlot(env);
         Label sameValueCheck(env);
         Label invalidate(env);
+        Label notOverflow(env);
 
         GateRef slotId = GetSlotID(slotInfo);
         GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
         BRANCH(Int32LessThan(slotId, length), &icSlotValid, &exit);
         Bind(&icSlotValid);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        BRANCH(TaggedIsHole(slotValue), &exit, &notOverflow); // hole -- slot is overflow
+        Bind(&notOverflow);
         BRANCH(TaggedIsInt(slotValue), &updateSlot, &initSlot);
         Bind(&updateSlot);
         GateRef oldIterKind = TaggedGetInt(slotValue);
