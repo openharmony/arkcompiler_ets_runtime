@@ -31,7 +31,8 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        JSNApi::SetBundleName(vm, (char*)data);
+        std::string result(data, data + size);
+        JSNApi::SetBundleName(vm, result);
         [[maybe_unused]]std::string res = JSNApi::GetBundleName(vm);
         JSNApi::DestroyJSVM(vm);
     }
