@@ -106,7 +106,7 @@ public:
         return hapPath_;
     }
 
-    static CString GetNormalizedFileDesc(const CString &desc);
+    static CString PUBLIC_API GetNormalizedFileDesc(const CString &desc);
 
     uint32_t GetChecksum() const
     {

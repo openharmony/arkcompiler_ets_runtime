@@ -339,7 +339,8 @@ public:
                                       data->GetRecordName(),
                                       data->GetCallMethodFlagMap(),
                                       data->GetPGOProfilerDecoder(),
-                                      data->GetOptBCRange());
+                                      data->GetOptBCRange(),
+                                      data->GetMethodLiteral());
         lowering.RunTypedBytecodeLowering();
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
         DeadCodeElimination deadCodeElimination(data->GetCircuit(), &visitor, &chunk);
