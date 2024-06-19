@@ -266,6 +266,42 @@ HWTEST_F_L0(GCTest, GlobalNativeSizeLargerThanLimitTest)
     ret = heap->GlobalNativeSizeLargerThanLimit();
     EXPECT_TRUE(ret);
 }
+#ifdef NDEBUG
+HWTEST_F_L0(GCTest, IdleGCTriggerTest)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto sHeap = SharedHeap::GetInstance();
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    int baseLocalGCCount = heap->GetEcmaGCStats()->GetGCCount();
+    int baseSharedGCCount = sHeap->GetEcmaGCStats()->GetGCCount();
+    heap->GetConcurrentMarker()->ConfigConcurrentMark(false);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    // Apply for some memory that cannot be released to simulate the actual situation
+    for (int i = 0; i < 5120; i++) {
+        factory->NewTaggedArray(1024, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+        factory->NewSOldSpaceTaggedArray(1024, JSTaggedValue::Hole());
+    }
+    for (size_t i = 0; i < 20480; i++)
+    {
+        factory->NewTaggedArray(512, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+        factory->NewSOldSpaceTaggedArray(512, JSTaggedValue::Hole());
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        [[maybe_unused]] JSHandle<TaggedArray> array = factory->NewTaggedArray(1024, JSTaggedValue::Hole(),
+                    MemSpaceType::OLD_SPACE);
+        [[maybe_unused]] JSHandle<TaggedArray> sArray = factory->NewSOldSpaceTaggedArray(1024,
+                    JSTaggedValue::Hole());
+        if (i%340 == 0) {
+            heap->CheckAndTriggerGCForIdle(0);
+        }
+    }
+    heap->CheckAndTriggerGCForIdle(0);
+    int afterLocalGCCount = heap->GetEcmaGCStats()->GetGCCount();
+    int afterSharedGCCount = sHeap->GetEcmaGCStats()->GetGCCount();
+    EXPECT_TRUE(afterLocalGCCount - baseLocalGCCount < 10);
+    EXPECT_TRUE(afterSharedGCCount - baseSharedGCCount < 10);
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+}
+#endif  // #ifndef NDEBUG
 
 HWTEST_F_L0(GCTest, AdjustCapacity)
 {

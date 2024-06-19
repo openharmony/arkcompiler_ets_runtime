@@ -1447,8 +1447,44 @@ void Heap::CheckAndTriggerGCForIdle(int idleTime)
     if (idleTime != 0) {
         return;
     }
-    LOG_GC(DEBUG) << "recv idle time";
-    return;
+    // idleTime equal 0, This means that the next few frames are idle
+    if (ShouldCheckIdleGC()) {
+        if (GetHeapObjectSize() < GetCommittedSize() * IDLE_FULLGC_SPACE_USAGE_LIMIT_RATE && !NeedStopCollection()) {
+            CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+        } else {
+            //check for oldGC
+            bool isFullMarking = IsConcurrentFullMark() && GetJSThread()->IsMarking();
+            bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimitForIdle();
+
+            size_t idleSizeLimit = static_cast<size_t>(oldSpace_->GetInitialCapacity() *
+                                                        IDLE_SPACE_SIZE_LIMIT_RATE);
+            size_t currentSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
+
+            size_t maxCapacity = oldSpace_->GetMaximumCapacity() + oldSpace_->GetOvershootSize() +
+                                oldSpace_->GetOutOfMemoryOvershootSize();
+            size_t currentCapacity = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize();
+            size_t idleCapacityLimit = static_cast<size_t>(maxCapacity * IDLE_SPACE_SIZE_LIMIT_RATE);
+
+            size_t oldSpaceAllocLimit = globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize();
+            size_t idleOldSpaceAllocLimit = static_cast<size_t>(oldSpaceAllocLimit * IDLE_SPACE_SIZE_LIMIT_RATE);
+
+            bool needOldGC = currentSize >= idleSizeLimit || isNativeSizeLargeTrigger ||
+                currentCapacity >= idleCapacityLimit || GetHeapObjectSize() > idleOldSpaceAllocLimit;
+            if (needOldGC && !NeedStopCollection()) {
+                CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
+            }
+        }
+    }
+
+    if (sHeap_->ShouldCheckIdleGC()) {
+        size_t expectSizeLimit = sHeap_->GetOldSpace()->GetInitialCapacity() * IDLE_SPACE_SIZE_LIMIT_RATE;
+        size_t currentOldSize = sHeap_->GetOldSpace()->GetHeapObjectSize();
+        size_t expectGlobalSizeLimit = sHeap_->GetGlobalSpaceAllocLimit() * IDLE_SPACE_SIZE_LIMIT_RATE;
+        if ((currentOldSize > expectSizeLimit || sHeap_->GetHeapObjectSize() > expectGlobalSizeLimit) &&
+            !NeedStopCollection()) {
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::IDLE>(thread_);
+        }
+    }
 }
 
 bool Heap::CheckAndTriggerHintGC()
