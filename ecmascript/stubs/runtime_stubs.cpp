@@ -1186,8 +1186,8 @@ DEF_RUNTIME_STUBS(OptSuperCallSpread)
     RUNTIME_STUBS_HEADER(OptSuperCallSpread);
     JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the first parameter
-    JSHandle<JSTaggedValue> array = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
-    return RuntimeSuperCallSpread(thread, func, newTarget, array).GetRawData();
+    JSHandle<JSTaggedValue> taggedArray = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
+    return RuntimeOptSuperCallSpread(thread, func, newTarget, taggedArray).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(GetCallSpreadArgs)

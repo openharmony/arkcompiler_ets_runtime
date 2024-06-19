@@ -53,7 +53,9 @@
     V("isOnHeap",                       IsOnHeap,                       1, INVALID)       \
     V("checkDeoptStatus",               CheckDeoptStatus,               2, INVALID)       \
     V("checkCircularImport",            CheckCircularImport,            2, INVALID)       \
-    V("hashCode",                       HashCode,                       1, ArkToolsHashCode)
+    V("hashCode",                       HashCode,                       1, ArkToolsHashCode)    \
+    V("startRuntimeStat",               StartRuntimeStat,               0, INVALID)       \
+    V("stopRuntimeStat",                StopRuntimeStat,                0, INVALID)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
     V("prepareFunctionForOptimization",            PrepareFunctionForOptimization,            1, INVALID)     \
@@ -374,6 +376,9 @@ public:
     static JSTaggedValue JitCompileSync(EcmaRuntimeCallInfo *info);
     static JSTaggedValue JitCompileAsync(EcmaRuntimeCallInfo *info);
     static JSTaggedValue WaitJitCompileFinish(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue StartRuntimeStat(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue StopRuntimeStat(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {

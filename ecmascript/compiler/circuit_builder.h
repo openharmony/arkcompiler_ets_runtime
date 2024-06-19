@@ -203,6 +203,7 @@ public:
     GateRef GetElementsArray(GateRef object);
     GateRef GetLengthOfTaggedArray(GateRef array);
     GateRef GetLengthOfJSTypedArray(GateRef array);
+    GateRef GetDataOfTaggedArray(GateRef array);
     GateRef IsTypedArray(GateRef array);
     GateRef GetSuperConstructor(GateRef ctor);
     GateRef Merge(const std::vector<GateRef> &inList);

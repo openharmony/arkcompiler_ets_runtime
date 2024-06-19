@@ -373,6 +373,13 @@ void GetUnmappedArgsStubBuilder::GenerateCircuit()
     Return(*argumentsObj);
 }
 
+void GetCallSpreadArgsStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef array = TaggedArgument(1);
+    Return(GetCallSpreadArgs(glue, array, ProfileOperation()));
+}
+
 void GetPropertyByIndexStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
