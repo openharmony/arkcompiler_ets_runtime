@@ -47,6 +47,23 @@ public:
     static const uint32_t HEX_FORMAT_WIDTH_FOR_32BITS;
 };
 
+class DumpJsonUtils {
+public:
+    static inline const std::string ABC_FILE_POOL = "abcFilePool";
+    static inline const std::string ABC_FILE = "abcFile";
+    static inline const std::string RECORD_DETAIL = "recordDetail";
+    static inline const std::string MODULE_NAME = "moduleName";
+    static inline const std::string FUNCTION = "function";
+    static inline const std::string FUNCTION_NAME = "functionName";
+    static inline const std::string TYPE = "type";
+    static inline const std::string TYPE_OFFSET = "typeOffset";
+    static inline const std::string TYPE_NAME = "typeName";
+    static inline const std::string IS_ROOT = "isRoot";
+    static inline const std::string KIND = "kind";
+    static inline const std::string ABC_ID = "abcId";
+    static inline const std::string ID = "id";
+};
+
 class ApNameUtils {
 public:
     static const std::string AP_SUFFIX;

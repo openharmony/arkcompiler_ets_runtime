@@ -1,0 +1,81 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+
+ohos_shared_library("profDumpJson") {
+  deps = [ ":profDumpJsonStatic" ]
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_static_library("profDumpJsonStatic") {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
+    sanitize = {
+      ubsan = true
+    }
+  }
+  sources = [ "src/prof_dump_json.cpp" ]
+  include_dirs = [ "include" ]
+  cflags = [ "-g" ]
+  if (is_mingw) {
+    defines = [ "PROF_DUMP_JSON_WINDOWS" ]
+  }
+  deps = [
+    "$js_root:libark_js_intl_set",
+    "$js_root:libark_jsruntime_set",
+    "$js_root/ecmascript/compiler:libark_mock_stub_set",
+  ]
+  external_deps = [
+    "cJSON:cjson_static",
+    "runtime_core:arkfile_header_deps",
+    "runtime_core:libarkbase_static",
+    "runtime_core:libarkfile_static",
+    "zlib:libz",
+  ]
+  if (target_os == "ios") {
+    deps += [
+      "$ark_third_party_root/icu/icu4c:static_icui18n",
+      "$ark_third_party_root/icu/icu4c:static_icuuc",
+    ]
+  } else {
+    external_deps += [
+      "icu:shared_icui18n",
+      "icu:shared_icuuc",
+    ]
+  }
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}
+
+ohos_executable("apViewer") {
+  sources = [ "src/main.cpp" ]
+  include_dirs = [ "include" ]
+  deps = [ ":profDumpJson" ]
+  configs = [
+    "$js_root:ark_jsruntime_common_config",
+    "$js_root:ark_jsruntime_public_config",
+  ]
+  external_deps = [
+    "bounds_checking_function:libsec_shared",
+    "cJSON:cjson_static",
+  ]
+
+  # hiviewdfx libraries
+  external_deps += hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+
+  part_name = "ets_runtime"
+  subsystem_name = "arkcompiler"
+}

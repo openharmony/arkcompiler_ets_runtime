@@ -103,6 +103,8 @@ public:
     bool ParseFromText(const std::string &typeString);
     void ProcessToText(std::string &text) const;
 
+    void ProcessToJson(ProfileType::VariantVector &typeArray) const;
+
     NO_COPY_SEMANTIC(PGOMethodTypeSet);
     NO_MOVE_SEMANTIC(PGOMethodTypeSet);
 
@@ -199,6 +201,15 @@ private:
             text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
         }
 
+        void ProcessToJson(ProfileType::MapVector &typeArray) const
+        {
+            for (uint32_t i = 0; i < type_.GetCount(); i++) {
+                std::vector<ProfileType::StringMap> sameOffsetTypeArray;
+                type_.GetObjectInfo(i).GetInfoJson(sameOffsetTypeArray, std::to_string(GetOffset()));
+                typeArray.push_back(sameOffsetTypeArray);
+            }
+        }
+
     private:
         RWOpType type_;
     };
@@ -267,6 +278,11 @@ private:
             text += DumpUtils::ARRAY_START + DumpUtils::SPACE;
             text += this->GetType().GetTypeString();
             text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
+        }
+
+        void ProcessToJson(std::vector<ProfileType::StringMap> &sameOffsetTypeArray) const
+        {
+            this->GetType().GetTypeJson(sameOffsetTypeArray, std::to_string(this->GetOffset()));
         }
 
         PGODefineOpType GetType() const

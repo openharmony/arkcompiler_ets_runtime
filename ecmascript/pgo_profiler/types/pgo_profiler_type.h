@@ -248,6 +248,22 @@ public:
         }
     }
 
+    void GetTypeJson(ProfileType::StringMap &type) const
+    {
+        if (IsPrimitiveType()) {
+            type.insert(std::make_pair(DumpJsonUtils::TYPE_NAME,
+                std::to_string(static_cast<uint32_t>(std::get<Type>(type_)))));
+        } else {
+            type.insert(std::make_pair(DumpJsonUtils::TYPE_NAME, "Type"));
+            std::get<PGOProfileType>(type_).GetTypeJson(type);
+        }
+        if (IsScalarOpType()) {
+            if (!ToString().empty()) {
+                type.insert(std::make_pair(DumpJsonUtils::TYPE_NAME, ToString()));
+            }
+        }
+    }
+
     std::string ToString() const
     {
         if (IsPrimitiveType()) {
@@ -284,12 +300,10 @@ public:
                 case Type::ANY:
                     return "any";
                 default:
-                    LOG_ECMA(FATAL) << "this branch is unreachable";
-                    UNREACHABLE();
+                    return "";
             }
         }
-        LOG_ECMA(FATAL) << "this branch is unreachable";
-        UNREACHABLE();
+        return "";
     }
 
     bool IsProfileType() const
@@ -587,6 +601,28 @@ public:
         return result;
     }
 
+    template <typename T>
+    void AddTypeJson(const char *typeName, const T& type, std::string typeOffset,
+                     std::vector<ProfileType::StringMap> &typeArray) const
+    {
+        ProfileType::StringMap typeJson;
+        typeJson.insert(std::make_pair(DumpJsonUtils::TYPE_NAME, typeName));
+        typeJson.insert(std::make_pair(DumpJsonUtils::TYPE_OFFSET, typeOffset));
+        type.GetTypeJson(typeJson);
+        typeArray.push_back(typeJson);
+    }
+
+    void GetInfoJson(std::vector<ProfileType::StringMap> &typeArray, std::string typeoffset) const
+    {
+        AddTypeJson("receiverRootType", receiverRootType_, typeoffset, typeArray);
+        AddTypeJson("receiverType", receiverType_, typeoffset, typeArray);
+        AddTypeJson("holdRootType", holdRootType_, typeoffset, typeArray);
+        AddTypeJson("holdType", holdType_, typeoffset, typeArray);
+        AddTypeJson("holdTraRootType", holdTraRootType_, typeoffset, typeArray);
+        AddTypeJson("holdTraType", holdTraType_, typeoffset, typeArray);
+        AddTypeJson("accessorMethodType", accessorMethod_, typeoffset, typeArray);
+    }
+
     PGOProfileType GetProfileType() const
     {
         return receiverType_;
@@ -815,6 +851,25 @@ public:
             result += ToSpaceTypeName(spaceFlag_);
         }
         return result;
+    }
+
+    template <typename T>
+    void AddTypeJson(const char *typeName, const T& type, std::string typeOffset,
+                     std::vector<ProfileType::StringMap> &sameOffsetTypeArray) const
+    {
+        ProfileType::StringMap typeJson;
+        typeJson.insert(std::make_pair(DumpJsonUtils::TYPE_NAME, typeName));
+        typeJson.insert(std::make_pair(DumpJsonUtils::TYPE_NAME, typeOffset));
+        type.GetTypeJson(typeJson);
+        sameOffsetTypeArray.push_back(typeJson);
+    }
+
+    void GetTypeJson(std::vector<ProfileType::StringMap> &sameOffsetTypeArray,
+                     std::string typeOffset) const
+    {
+        AddTypeJson("localType", type_, typeOffset, sameOffsetTypeArray);
+        AddTypeJson("ctorType", ctorPt_, typeOffset, sameOffsetTypeArray);
+        AddTypeJson("protoType", protoPt_, typeOffset, sameOffsetTypeArray);
     }
 
     bool IsNone() const

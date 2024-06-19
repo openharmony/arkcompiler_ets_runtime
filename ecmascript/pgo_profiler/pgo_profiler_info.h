@@ -234,6 +234,8 @@ public:
     static std::vector<std::string> ParseFromText(const std::string &infoString);
     void ProcessToText(std::string &text) const;
 
+    void ProcessToJson(ProfileType::VariantMap &function) const;
+
     NO_COPY_SEMANTIC(PGOMethodInfo);
     NO_MOVE_SEMANTIC(PGOMethodInfo);
 
@@ -290,6 +292,8 @@ public:
 
     bool ParseFromText(Chunk *chunk, uint32_t threshold, const std::vector<std::string> &content);
     void ProcessToText(uint32_t threshold, const CString &recordName, std::ofstream &stream) const;
+
+    void ProcessToJson(uint32_t threshold, ProfileType::jModuleType &jModule) const;
 
     const CMap<PGOMethodId, PGOMethodInfo *> &GetMethodInfos() const
     {

@@ -1684,7 +1684,7 @@ std::string JSDateTimeFormat::ToTitleCaseTimezonePosition(const std::string &inp
             continue;
         }
     }
-    ASSERT(input.length() >= leftPosition);
+    ASSERT(input.length() >= static_cast<size_t>(leftPosition));
     titleEntry.emplace_back(input.substr(leftPosition, input.length() - leftPosition));
     std::string result;
     size_t len = titleEntry.size();
