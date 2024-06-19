@@ -1495,8 +1495,10 @@ void TypedHCRLowering::LowerJSCallThisTargetTypeCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
-    GateRef isObj = builder_.TaggedIsHeapObject(func);
-    builder_.DeoptCheck(isObj, frameState, DeoptType::NOTJSCALLTGT3);
+    builder_.HeapObjectCheck(func, frameState);
+    GateRef methodId = builder_.GetMethodId(func);
+    GateRef check = builder_.Equal(methodId, acc_.GetValueIn(gate, 1));
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSCALLTGT3);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
@@ -1517,8 +1519,10 @@ void TypedHCRLowering::LowerJSFastCallThisTargetTypeCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
-    GateRef isObj = builder_.TaggedIsHeapObject(func);
-    builder_.DeoptCheck(isObj, frameState, DeoptType::NOTJSFASTCALLTGT2);
+    builder_.HeapObjectCheck(func, frameState);
+    GateRef methodId = builder_.GetMethodId(func);
+    GateRef check = builder_.Equal(methodId, acc_.GetValueIn(gate, 1));
+    builder_.DeoptCheck(check, frameState, DeoptType::NOTJSFASTCALLTGT2);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

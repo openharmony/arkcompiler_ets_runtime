@@ -1484,7 +1484,8 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     GateRef frameState = acc_.FindNearestFrameState(stateSplit);
     GateRef ihclass = builder_.GetHClassGateFromIndex(frameState, hclassIndex);
     GateRef size = builder_.IntPtr(hclass->GetObjectSize());
-    builder_.JSCallThisTargetTypeCheck<TypedCallTargetCheckOp::JS_NEWOBJRANGE>(ctor, gate); // call target check
+    // call target check
+    builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JS_NEWOBJRANGE>(ctor, builder_.IntPtr(INVALID_INDEX), gate);
     // check IHC
     GateRef protoOrHclass = builder_.LoadConstOffset(VariableType::JS_ANY(), ctor,
         JSFunction::PROTO_OR_DYNCLASS_OFFSET);
@@ -1620,12 +1621,11 @@ void TypedBytecodeLowering::CheckFastCallThisCallTarget(const TypeAccessor &tacc
     }
     GateRef func = tacc.GetFunc();
     GateRef gate = tacc.GetGate();
+    GateRef methodIndex = builder_.IntPtr(tacc.GetFuncMethodOffset());
     if (tacc.IsNoGC()) {
-        uint32_t methodOffset = tacc.GetFuncMethodOffset();
-        builder_.JSNoGCCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS_FAST_NOGC>(
-            func, builder_.IntPtr(methodOffset), gate);
+        builder_.JSNoGCCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS_FAST_NOGC>(func, methodIndex, gate);
     } else {
-        builder_.JSCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS_FAST>(func, gate);
+        builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS_FAST>(func, methodIndex, gate);
     }
 }
 
@@ -1637,12 +1637,11 @@ void TypedBytecodeLowering::CheckCallThisCallTarget(const TypeAccessor &tacc)
     }
     GateRef func = tacc.GetFunc();
     GateRef gate = tacc.GetGate();
+    GateRef methodIndex = builder_.IntPtr(tacc.GetFuncMethodOffset());
     if (tacc.IsNoGC()) {
-        auto methodOffset = tacc.GetFuncMethodOffset();
-        builder_.JSNoGCCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS_NOGC>(
-            func, builder_.IntPtr(methodOffset), gate);
+        builder_.JSNoGCCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS_NOGC>(func, methodIndex, gate);
     } else {
-        builder_.JSCallThisTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS>(func, gate);
+        builder_.JSCallTargetTypeCheck<TypedCallTargetCheckOp::JSCALLTHIS>(func, methodIndex, gate);
     }
 }
 
