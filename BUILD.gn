@@ -34,6 +34,15 @@ group("ark_js_packages") {
   }
 }
 
+group("ap_viewer_all_host_tools_packages") {
+  if (host_os != "mac" && target_os != "android") {
+    deps = [
+      "tools/ap_file_viewer/native:apViewer($build_root/toolchain/mingw:mingw_x86_64)",
+      "tools/ap_file_viewer/native:apViewer(${host_toolchain})",
+    ]
+  }
+}
+
 group("ark_js_host_windows_tools_packages") {
   deps = []
   if (host_os != "mac" && target_os != "android") {
@@ -532,6 +541,9 @@ config("ark_jsruntime_common_config") {
       !defined(global_parts_info.security_code_crypto_metadata_process)) {
     code_encrypto_enable = false
   }
+  if (is_mingw && ark_standalone_build) {
+    code_encrypto_enable = false
+  }
   if (code_encrypto_enable) {
     defines += [ "CODE_ENCRYPTION_ENABLE" ]
   }
@@ -543,6 +555,7 @@ config("ecma_test_config") {
     "./ecmascript/*",
     "./test/executiontest/*",
     "./test/fuzztest/*",
+    "./tools/ap_file_viewer/*",
   ]
 
   configs = [

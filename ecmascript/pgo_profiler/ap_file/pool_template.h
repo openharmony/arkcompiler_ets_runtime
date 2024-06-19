@@ -161,6 +161,15 @@ public:
         return true;
     }
 
+    void ProcessToJson(std::vector<ProfileType::StringMap> &abcPoolArray)
+    {
+        for (auto &entry : pool_) {
+            ProfileType::StringMap abcPool;
+            abcPool.insert(std::make_pair(DumpJsonUtils::ABC_ID, std::to_string(entry.first)));
+            abcPool.insert(std::make_pair(DumpJsonUtils::ABC_FILE, entry.second.GetData()));
+            abcPoolArray.push_back(abcPool);
+        }
+    }
     uint32_t ParseFromBinary([[maybe_unused]] PGOContext &context, void **buffer,
                              PGOProfilerHeader const *header) override
     {
