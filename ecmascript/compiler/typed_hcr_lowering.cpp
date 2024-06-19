@@ -1313,9 +1313,14 @@ void TypedHCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId i
             break;
     }
 
+    OptStoreElementByOnHeapMode(gate, receiver, offset, value);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypedHCRLowering::OptStoreElementByOnHeapMode(GateRef gate, GateRef receiver, GateRef offset, GateRef value)
+{
     StoreElementAccessor accessor = acc_.GetStoreElementAccessor(gate);
     OnHeapMode onHeapMode = accessor.GetOnHeapMode();
-
     switch (onHeapMode) {
         case OnHeapMode::ON_HEAP: {
             BuildOnHeapTypedArrayStoreElement(receiver, offset, value);
@@ -1333,8 +1338,6 @@ void TypedHCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId i
             break;
         }
     }
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
 void TypedHCRLowering::BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value)
@@ -1421,13 +1424,7 @@ void TypedHCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     }
     builder_.Bind(&exit);
     value = builder_.TruncInt32ToInt8(*result);
-
-    GateRef arrbuffer = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver,
-        JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
-
-    GateRef data = builder_.PtrAdd(arrbuffer, builder_.IntPtr(ByteArray::DATA_OFFSET));
-
-    builder_.StoreMemory(MemoryType::ELEMENT_TYPE, VariableType::VOID(), data, offset, value);
+    OptStoreElementByOnHeapMode(gate, receiver, offset, value);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
