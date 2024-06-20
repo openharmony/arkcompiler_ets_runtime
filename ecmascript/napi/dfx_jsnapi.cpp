@@ -302,19 +302,6 @@ void DFXJSNApi::DestroyHeapProfiler([[maybe_unused]] const EcmaVM *vm)
 
 bool DFXJSNApi::BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr)
 {
-    LOG_ECMA(INFO) <<"BuildJsStackInfoList start";
-    std::vector<JsFrameInfo> jf = ecmascript::JsStackInfo::BuildJsStackInfo(vm->GetAssociatedJSThread());
-    LOG_ECMA(INFO) <<"BuildJsStackInfoList JsFrameInfo";
-    for (uint32_t i = 0; i < jf.size(); ++i) {
-        std::string functionname = jf[i].functionName;
-        std::string filename = jf[i].fileName;
-        std::string pos = jf[i].pos;
-        uintptr_t *nativepointer = jf[i].nativePointer;
-        LOG_ECMA(INFO) << "BuildJsStackInfoList functionname: " << functionname;
-        LOG_ECMA(INFO) << "BuildJsStackInfoList filenaem: " << filename;
-        LOG_ECMA(INFO) << "BuildJsStackInfoList pos: " << pos;
-        LOG_ECMA(INFO) << "BuildJsStackInfoList nativepointer: " << nativepointer;
-    }
     stackTraceStr = ecmascript::JsStackInfo::BuildJsStackTrace(vm->GetAssociatedJSThread(), true);
     if (stackTraceStr.empty()) {
         return false;
