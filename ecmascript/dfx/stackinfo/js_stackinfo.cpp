@@ -1559,59 +1559,6 @@ bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] 
     return ret;
 }
 
-bool StepArkManagedNativeFrame(int pid, uintptr_t *pc, uintptr_t *fp,
-    uintptr_t *sp, [[maybe_unused]] char *buf, [[maybe_unused]] size_t buf_sz)
-{
-    constexpr size_t FP_SIZE = 8;
-    constexpr size_t LR_SIZE = 8;
-    uintptr_t currentPtr = *fp;
-    if (currentPtr == 0) {
-        LOG_ECMA(ERROR) << "fp is nullptr in StepArkManagedNativeFrame()!";
-        return false;
-    }
-    if (pid == getpid() && JsStackInfo::loader != nullptr &&
-        !JsStackInfo::loader->InsideStub(*pc) && !JsStackInfo::loader->InsideAOT(*pc)) {
-        LOG_ECMA(ERROR) << "invalid pc in StepArkManagedNativeFrame()!";
-        return false;
-    }
-    while (true) {
-        currentPtr -= sizeof(FrameType);
-        uintptr_t frameType = 0;
-        if (!ReadUintptrFromAddr(pid, currentPtr, frameType, true)) {
-            return false;
-        }
-        uintptr_t typeOffset = 0;
-        uintptr_t prevOffset = 0;
-        if (!GetTypeOffsetAndPrevOffsetFromFrameType(frameType, typeOffset, prevOffset)) {
-            LOG_ECMA(ERROR) << "FrameType ERROR, addr: " << currentPtr << ", frameType: " << frameType;
-            return false;
-        }
-        if (static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_ENTRY_FRAME ||
-            static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME ||
-            static_cast<FrameType>(frameType) == FrameType::BUILTIN_ENTRY_FRAME) {
-            break;
-        }
-        currentPtr -= typeOffset;
-        currentPtr += prevOffset;
-        if (!ReadUintptrFromAddr(pid, currentPtr, currentPtr, true)) {
-            return false;
-        }
-        if (currentPtr == 0) {
-            LOG_ECMA(ERROR) << "currentPtr is nullptr in StepArkManagedNativeFrame()!";
-            return false;
-        }
-    }
-    currentPtr += sizeof(FrameType);
-    *fp = currentPtr;
-    currentPtr += FP_SIZE;
-    if (!ReadUintptrFromAddr(pid, currentPtr, *pc, true)) {
-        return false;
-    }
-    currentPtr += LR_SIZE;
-    *sp = currentPtr;
-    return true;
-}
-
 void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t &strIdx, char *outStr, size_t strLen)
 {
     // note: big endian
@@ -1650,68 +1597,6 @@ void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t
         }
     }
     outStr[strIdx] = '\0';
-}
-
-bool GetArkJSHeapCrashInfo(int pid, uintptr_t *bytecodePc, uintptr_t *fp, bool outJSInfo, char *outStr, size_t strLen)
-{
-    // bytecodePc: X20 in ARM
-    // fp: X29 in ARM
-    // outJSInfo: not async-safe, more info
-    uintptr_t currentPtr = *fp;
-    if (currentPtr == 0) {
-        LOG_ECMA(ERROR) << "fp is nullptr in GetArkJSHeapCrashInfo()!";
-        return false;
-    }
-    currentPtr -= sizeof(FrameType);
-    uintptr_t frameType = 0;
-    if (!ReadUintptrFromAddr(pid, currentPtr, frameType, false)) {
-        return false;
-    }
-    if (static_cast<FrameType>(frameType) != FrameType::ASM_INTERPRETER_FRAME) {
-        return false;
-    }
-    size_t strIndex = 0;
-    uintptr_t registerBytecode = 0;
-    if (!ReadUintptrFromAddr(pid, *bytecodePc, registerBytecode, false)) {
-        return false;
-    }
-    CopyBytecodeInfoToBuffer("RegisterBytecode:", registerBytecode, strIndex, outStr, strLen);
-    uintptr_t typeOffset = MEMBER_OFFSET(AsmInterpretedFrame, base) + MEMBER_OFFSET(InterpretedFrameBase, type);
-    uintptr_t pcOffset = MEMBER_OFFSET(AsmInterpretedFrame, pc);
-    currentPtr -= typeOffset;
-    currentPtr += pcOffset;
-    uintptr_t framePc = 0;
-    uintptr_t frameBytecode = 0;
-    if (!ReadUintptrFromAddr(pid, currentPtr, framePc, false)) {
-        return false;
-    }
-    if (!ReadUintptrFromAddr(pid, framePc, frameBytecode, false)) {
-        return false;
-    }
-    CopyBytecodeInfoToBuffer(" FrameBytecode:", frameBytecode, strIndex, outStr, strLen);
-    if (outJSInfo) {
-        uintptr_t functionOffset = MEMBER_OFFSET(AsmInterpretedFrame, function);
-        currentPtr -= pcOffset;
-        currentPtr += functionOffset;
-        uintptr_t functionAddress = 0;
-        if (!ReadUintptrFromAddr(pid, currentPtr, functionAddress, false)) {
-            return false;
-        }
-        JSTaggedValue functionValue(static_cast<JSTaggedType>(functionAddress));
-        Method *method = ECMAObject::Cast(functionValue.GetTaggedObject())->GetCallTarget();
-        auto bytecodeOffset = static_cast<uint32_t>(reinterpret_cast<uint8_t *>(*bytecodePc) -
-                                                    method->GetBytecodeArray());
-        std::string info = JsStackInfo::BuildMethodTrace(method, bytecodeOffset, static_cast<FrameType>(frameType));
-        const char *infoChar = info.c_str();
-        if (strIndex < strLen - 1) {  // 1: last '\0'
-            outStr[strIndex++] = ' ';
-        }
-        for (size_t i = 0; infoChar[i] != '\0' && strIndex < strLen - 1; i++) {  // 1: last '\0'
-            outStr[strIndex++] = infoChar[i];
-        }
-        outStr[strIndex] = '\0';
-    }
-    return true;
 }
 
 JSSymbolExtractor::~JSSymbolExtractor()
@@ -1983,24 +1868,6 @@ __attribute__((visibility("default"))) int ark_translate_js_frame_info(
     uint8_t *data, size_t dataSize, panda::ecmascript::JsFunction *jsFunction)
 {
     if (panda::ecmascript::ArkTranslateJsFrameInfo(data, dataSize, jsFunction)) {
-        return 1;
-    }
-    return -1;
-}
-
-__attribute__((visibility("default"))) int step_ark_managed_native_frame(
-    int pid, uintptr_t *pc, uintptr_t *fp, uintptr_t *sp, char *buf, size_t buf_sz)
-{
-    if (panda::ecmascript::StepArkManagedNativeFrame(pid, pc, fp, sp, buf, buf_sz)) {
-        return 1;
-    }
-    return -1;
-}
-
-__attribute__((visibility("default"))) int get_ark_js_heap_crash_info(
-    int pid, uintptr_t *x20, uintptr_t *fp, int outJsInfo, char *buf, size_t buf_sz)
-{
-    if (panda::ecmascript::GetArkJSHeapCrashInfo(pid, x20, fp, outJsInfo != 0, buf, buf_sz)) {
         return 1;
     }
     return -1;

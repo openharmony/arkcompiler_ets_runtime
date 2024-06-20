@@ -1020,34 +1020,6 @@ host_unittest_action("EcmaVm_035_Test") {
   deps += hiviewdfx_deps
 }
 
-host_unittest_action("EcmaVm_036_Test") {
-  module_out_path = module_output_path
-
-  sources = [
-    # test file
-    "frame_test.cpp",
-  ]
-
-  configs = [
-    "../../:asm_interp_enable_config",
-    "../../:ecma_test_config",
-    "$ark_root/assembler:arkassembler_public_config",
-    "$ark_root/libpandafile:arkfile_public_config",
-  ]
-
-  deps = [
-    "$ark_third_party_root/icu/icu4c:shared_icui18n",
-    "$ark_third_party_root/icu/icu4c:shared_icuuc",
-    "../../:libark_jsruntime_test",
-    sdk_libc_secshared_dep,
-  ]
-
-  # hiviewdfx libraries
-  external_deps = hiviewdfx_ext_deps
-  external_deps += [ "zlib:libz" ]
-  deps += hiviewdfx_deps
-}
-
 host_unittest_action("EcmaVm_037_Test") {
   module_out_path = module_output_path
 
@@ -1439,7 +1411,6 @@ group("unittest") {
     ":EcmaVm_033_Test",
     ":EcmaVm_034_Test",
     ":EcmaVm_035_Test",
-    ":EcmaVm_036_Test",
     ":EcmaVm_037_Test",
     ":EcmaVm_038_Test",
     ":EcmaVm_039_Test",
@@ -1495,7 +1466,6 @@ group("host_unittest") {
     ":EcmaVm_033_TestAction",
     ":EcmaVm_034_TestAction",
     ":EcmaVm_035_TestAction",
-    ":EcmaVm_036_TestAction",
     ":EcmaVm_037_TestAction",
     ":EcmaVm_038_TestAction",
     ":EcmaVm_039_TestAction",
@@ -1547,7 +1517,6 @@ group("host_unittest") {
       ":EcmaVm_033_TestAction",
       ":EcmaVm_034_TestAction",
       ":EcmaVm_035_TestAction",
-      ":EcmaVm_036_TestAction",
       ":EcmaVm_037_TestAction",
       ":EcmaVm_038_TestAction",
       ":EcmaVm_039_TestAction",
