@@ -1970,6 +1970,7 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
+    Label exit(env);
     Label notDictionary(env);
     GateRef array = GetPropertiesArray(obj);
     BRANCH(IsDictionaryMode(array), slowPath, &notDictionary);
@@ -2020,7 +2021,14 @@ GateRef BuiltinsObjectStubBuilder::GetEnumPropertyEntries(GateRef glue, GateRef 
     idx = Int32Add(*idx, Int32(1));
     LoopEnd(&loopHead, env, glue);
     Bind(&loopExit);
-    Store(VariableType::INT32(), glue, allEnumArray, IntPtr(TaggedArray::LENGTH_OFFSET), *length);
+    Label needTrim(env);
+    BRANCH(Int32LessThan(*length, len), &needTrim, &exit);
+    Bind(&needTrim);
+    {
+        CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, allEnumArray, ZExtInt32ToInt64(*length)});
+        Jump(&exit);
+    }
+    Bind(&exit);
     auto ret = allEnumArray;
     env->SubCfgExit();
     return ret;
