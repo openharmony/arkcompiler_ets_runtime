@@ -81,4 +81,18 @@ JSTaggedValue BuiltinsGc::RegisterNativeFree(EcmaRuntimeCallInfo *info)
     heap->DecreaseNativeBindingSize(std::min(allocated, static_cast<size_t>(size)));
     return JSTaggedValue::Undefined();
 }
+
+JSTaggedValue BuiltinsGc::WaitForFinishGC(EcmaRuntimeCallInfo *info)
+{
+    auto *heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
+    heap->WaitAllTasksFinished();
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsGc::StartGC(EcmaRuntimeCallInfo *info)
+{
+    auto *heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
+    return JSTaggedValue::Undefined();
+}
 }  // namespace panda::ecmascript::builtins

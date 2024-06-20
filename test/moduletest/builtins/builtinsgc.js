@@ -58,3 +58,5 @@ try {
 
 ArkTools.GC.registerNativeFree(100);
 ArkTools.GC.registerNativeAllocation(20000);
+ArkTools.GC.waitForFinishGC();
+ArkTools.GC.startGC();
