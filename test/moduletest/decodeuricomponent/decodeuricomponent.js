@@ -48,3 +48,24 @@ try {
 } catch(err) {
     print(err);
 }
+
+let header = "https://ifs.tanx.com/display_ifs?i~";
+try {
+    let invalidURI = header + "%F5%8F%BF%BF";
+    decodeURIComponent(invalidURI);
+} catch (err) {
+    print(err.name);
+}
+
+try {
+    let invalidURI = header + "%F4%90%BF%BF";
+    decodeURIComponent(invalidURI);
+} catch (err) {
+    print(err.name);
+}
+
+{
+    let validURI = header + "%F4%8F%BF%BF";
+    decodeURIComponent(validURI);
+    print("decode successful");
+}

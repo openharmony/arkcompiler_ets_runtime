@@ -16,3 +16,6 @@
 URIError
 URIError: DecodeURI: invalid character: http://example.com/?q=%
 URIError: DecodeURI: invalid character: %E4%25BD%2593%25E8%2582%25B2
+URIError
+URIError
+decode successful

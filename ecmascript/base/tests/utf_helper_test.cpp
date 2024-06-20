@@ -125,10 +125,8 @@ HWTEST_F_L0(UtfHelperTest, IsValidUTF8)
     EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild3));
     EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild4));
     EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataThreeBitInvaild5));
-    // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx, min:65536, max:2097151
+    // 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx, min:65536, max:1114111(0x10FFFF)
     const std::vector<uint8_t> utfDataFourBitVaild1 = {BIT_MASK_4, BIT_MASK_1 + 0x10, BIT_MASK_1, BIT_MASK_1};
-    const std::vector<uint8_t> utfDataFourBitVaild2 =
-        {BIT_MASK_5 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01};
     const std::vector<uint8_t> utfDataFourBitVaild3 = {BIT_MASK_4 + 0x01, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
     const std::vector<uint8_t> utfDataFourBitInvaild1 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1, BIT_MASK_2};
     const std::vector<uint8_t> utfDataFourBitInvaild2 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_2, BIT_MASK_1};
@@ -136,8 +134,9 @@ HWTEST_F_L0(UtfHelperTest, IsValidUTF8)
     const std::vector<uint8_t> utfDataFourBitInvaild4 = {BIT_MASK_5, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
     const std::vector<uint8_t> utfDataFourBitInvaild5 = {BIT_MASK_5, BIT_MASK_2, BIT_MASK_2, BIT_MASK_2};
     const std::vector<uint8_t> utfDataFourBitInvaild6 = {BIT_MASK_4, BIT_MASK_1, BIT_MASK_1, BIT_MASK_1};
+    const std::vector<uint8_t> utfDataFourBitInvaild7 =
+        {BIT_MASK_5 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01, BIT_MASK_2 - 0x01};
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataFourBitVaild1));
-    EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataFourBitVaild2));
     EXPECT_TRUE(utf_helper::IsValidUTF8(utfDataFourBitVaild3));
     EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild1));
     EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild2));
@@ -145,6 +144,7 @@ HWTEST_F_L0(UtfHelperTest, IsValidUTF8)
     EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild4));
     EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild5));
     EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild6));
+    EXPECT_FALSE(utf_helper::IsValidUTF8(utfDataFourBitInvaild7));
 }
 
 /*
