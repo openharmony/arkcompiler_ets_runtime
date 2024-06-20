@@ -669,6 +669,8 @@ size_t Heap::GetHeapObjectSize() const
                     nonMovableSpace_->GetHeapObjectSize() +
                     machineCodeSpace_->GetCommittedSize() +
                     hugeMachineCodeSpace_->GetCommittedSize() +
+                    readOnlySpace_->GetCommittedSize() +
+                    appSpawnSpace_->GetHeapObjectSize() +
                     snapshotSpace_->GetHeapObjectSize();
     return result;
 }
