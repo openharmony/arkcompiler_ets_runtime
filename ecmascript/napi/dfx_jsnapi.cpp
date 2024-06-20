@@ -192,7 +192,7 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
     dumpStruct->isPrivate = isPrivate;
     dumpStruct->captureNumericValue = captureNumericValue;
     dumpStruct->isFullGC = isFullGC;
-    uv_work_t *work = new uv_work_t;
+    uv_work_t *work = new(std::nothrow) uv_work_t;
     if (work == nullptr) {
         LOG_ECMA(ERROR) << "work nullptr";
         delete dumpStruct;
@@ -255,6 +255,43 @@ void DFXJSNApi::TriggerGC([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] ui
             return;
         }
     });
+    // triggerSharedGC
+    TriggerSharedGCWithVm(vm);
+}
+
+void DFXJSNApi::TriggerSharedGCWithVm([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
+#if defined(ENABLE_DUMP_IN_FAULTLOG)
+    uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
+    if (loop == nullptr) {
+        LOG_ECMA(ERROR) << "loop nullptr";
+        return;
+    }
+    if (uv_loop_alive(loop) == 0) {
+        LOG_ECMA(ERROR) << "uv_loop_alive dead";
+        return;
+    }
+    uv_work_t *work = new(std::nothrow) uv_work_t;
+    if (work == nullptr) {
+        LOG_ECMA(FATAL) << "DFXJSNApi::TriggerGCWithVm:work is nullptr";
+        return;
+    }
+    work->data = static_cast<void *>(const_cast<EcmaVM *>(vm));
+    int ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
+        EcmaVM *vm = static_cast<EcmaVM *>(work->data);
+        ecmascript::SharedHeap* sHeap = ecmascript::SharedHeap::GetInstance();
+        JSThread *thread = vm->GetJSThread();
+        ecmascript::ThreadManagedScope managedScope(thread);
+        sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_GC, ecmascript::GCReason::EXTERNAL_TRIGGER>(thread);
+        delete work;
+    });
+    if (ret != 0) {
+        LOG_ECMA(ERROR) << "uv_queue_work fail ret " << ret;
+        delete work;
+    }
+#endif
+#endif
 }
 
 void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
@@ -270,7 +307,7 @@ void DFXJSNApi::TriggerGCWithVm([[maybe_unused]] const EcmaVM *vm)
         LOG_ECMA(ERROR) << "uv_loop_alive dead";
         return;
     }
-    uv_work_t *work = new uv_work_t;
+    uv_work_t *work = new(std::nothrow) uv_work_t;
     if (work == nullptr) {
         LOG_ECMA(FATAL) << "DFXJSNApi::TriggerGCWithVm:work is nullptr";
         return;

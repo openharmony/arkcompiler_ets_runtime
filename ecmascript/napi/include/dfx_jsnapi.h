@@ -79,6 +79,7 @@ public:
                                        bool captureNumericValue, bool isFullGC, uint32_t tid);
     static void TriggerGC(const EcmaVM *vm, uint32_t tid);
     static void TriggerGCWithVm(const EcmaVM *vm);
+    static void TriggerSharedGCWithVm(const EcmaVM *vm);
     static void DestroyHeapProfiler(const EcmaVM *vm);
 
     static bool BuildNativeAndJsStackTrace(const EcmaVM *vm, std::string &stackTraceStr);
