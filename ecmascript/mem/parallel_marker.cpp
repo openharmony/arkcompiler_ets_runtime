@@ -59,13 +59,15 @@ void Marker::MarkJitCodeMap(uint32_t threadId)
 
 void Marker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeMap *> &jitCodeMaps)
 {
+    if (!heap_->IsFullMark()) {
+        return;
+    }
     auto it = jitCodeMaps.begin();
     while (it != jitCodeMaps.end()) {
         JSTaggedType jsError = it->first;
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
         if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
-            delete it->second;
-            it = jitCodeMaps.erase(it);
+            ++it;
             continue;
         }
         for (auto jitCodeMap : *(it->second)) {
@@ -75,7 +77,7 @@ void Marker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, Jit
                 MarkObject(threadId, jitCode);
             }
         }
-        it++;
+        ++it;
     }
 }
 
