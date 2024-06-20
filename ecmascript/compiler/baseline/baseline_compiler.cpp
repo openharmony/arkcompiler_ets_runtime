@@ -92,22 +92,21 @@ void BaselineCompiler::Handle##name(const uint8_t *bytecodeArray)
     Address builtinAddress = thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineUpdateHotness); \
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);                                   \
 
-void BaselineCompiler::SetPfHeaderAddr(const Method *method)
+void BaselineCompiler::SetPfHeaderAddr(const JSPandaFile *jsPandaFile)
 {
-    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     const panda_file::File *pandaFile = jsPandaFile->GetPandaFile();
     pfHeaderAddr = pandaFile->GetBase();
 }
 
-void BaselineCompiler::Compile(JSHandle<JSFunction> &jsFunction)
+void BaselineCompiler::Compile(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral)
 {
     std::string tripleStr = vm->GetJSOptions().GetTargetTriple();
-    const Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    const uint8_t *bytecodeArray = method->GetBytecodeArray();
-    const uint8_t *methodBytecodeLast = bytecodeArray + method->GetCodeSize();
-    StackOffsetDescriptor stackOffsetDescriptor(method->GetCallField());
+    const uint8_t *bytecodeArray = methodLiteral->GetBytecodeArray();
+    auto codeSize = MethodLiteral::GetCodeSize(jsPandaFile, methodLiteral->GetMethodId());
+    const uint8_t *methodBytecodeLast = bytecodeArray + codeSize;
+    StackOffsetDescriptor stackOffsetDescriptor(methodLiteral->GetCallField());
     GetBaselineAssembler().SetStackOffsetDescriptor(stackOffsetDescriptor);
-    SetPfHeaderAddr(method);
+    SetPfHeaderAddr(jsPandaFile);
     firstPC = bytecodeArray;
 
     auto *thread = vm->GetAssociatedJSThread();
@@ -121,7 +120,7 @@ void BaselineCompiler::Compile(JSHandle<JSFunction> &jsFunction)
         auto opCode = Bytecodes::GetOpcode(bytecodeArray);
         LOG_INST() << "processing opCode: " << GetEcmaOpcodeStr(Bytecodes::GetOpcode(bytecodeArray));
         LOG_INST() << "current bytecodePc offset: " <<
-            static_cast<uint32_t>(bytecodeArray - method->GetBytecodeArray());
+            static_cast<uint32_t>(bytecodeArray - methodLiteral->GetBytecodeArray());
         LOG_INST() << "current relative nativePc diff: " <<
             static_cast<uint64_t>(GetBaselineAssembler().GetBufferSize() - nativePcOffsetTable.GetPrevNativePc());
 

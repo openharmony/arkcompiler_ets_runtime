@@ -125,7 +125,7 @@ bool JitCompilerTask::Compile()
             return false;
         }
         baselineCompiler_.reset(baselineCompiler);
-        baselineCompiler_->Compile(jsFunction_);
+        baselineCompiler_->Compile(jitCompilationEnv_->GetJSPandaFile(), jitCompilationEnv_->GetMethodLiteral());
         return true;
     }
 

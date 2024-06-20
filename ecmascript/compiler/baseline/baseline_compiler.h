@@ -73,7 +73,7 @@ public:
         jumpMap.clear();
     }
 
-    void Compile(JSHandle<JSFunction> &jsFunction);
+    void Compile(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral);
 
     BaselineAssembler &GetBaselineAssembler()
     {
@@ -82,7 +82,7 @@ public:
 
     void CollectMemoryCodeInfos(MachineCodeDesc &codeDesc);
 
-    void SetPfHeaderAddr(const Method *method);
+    void SetPfHeaderAddr(const JSPandaFile *jsPandaFile);
 
     void GetJumpToOffsets(const uint8_t *start, const uint8_t *end, std::unordered_set<size_t> &jumpToOffsets) const;
 private:
