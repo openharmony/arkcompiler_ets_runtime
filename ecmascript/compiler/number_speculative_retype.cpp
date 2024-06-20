@@ -325,6 +325,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::ARRAY_FILTER:
         case OpCode::ARRAY_MAP:
         case OpCode::ARRAY_SLICE:
+        case OpCode::FINISH_ALLOCATE:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
