@@ -54,7 +54,7 @@
     /* %TypedArray%.from ( source [ , mapfn [ , thisArg ] ] ) */    \
     V("from", From, 1, INVALID)                                     \
     /* %TypedArray%.of ( ...items ) */                              \
-    V("of",   Of,   0, TypedArrayOf)
+    V("of",   Of,   0, INVALID)
 
 // List of get accessors in %TypedArray%.prototype, excluding the '@@' properties.
 // V(name, func, stubIndex)
