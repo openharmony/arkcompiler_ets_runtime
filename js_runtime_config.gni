@@ -146,7 +146,7 @@ if (enable_hisysevent) {
 
 enable_target_compilation =
     !ark_standalone_build && !is_mac && !(defined(is_arkui_x) && is_arkui_x) &&
-    (current_cpu == "arm64" && !is_linux)
+    (current_cpu == "arm64" && host_cpu != "arm64")
 
 have_local_code_sign = false
 if (defined(global_parts_info) &&
