@@ -95,6 +95,8 @@ public:
 
     static void JSCallWithArgVAndPushArgv(ExtendedAssembler *assembler);
 
+    static void SuperCallWithArgV(ExtendedAssembler *assembler);
+
     static void AOTCallToAsmInterBridge(ExtendedAssembler *assembler);
 
     static void FastCallToAsmInterBridge(ExtendedAssembler *assembler);
@@ -105,7 +107,7 @@ public:
 
     static void GenJSCall(ExtendedAssembler *assembler, bool isNew);
 
-    static void GenJSCallWithArgV(ExtendedAssembler *assembler, bool needPushArgv);
+    static void GenJSCallWithArgV(ExtendedAssembler *assembler, int id);
 private:
     static void DeoptEnterAsmInterp(ExtendedAssembler *assembler);
     static void JSCallCheck(ExtendedAssembler *assembler, Register jsfunc, Register taggedValue,

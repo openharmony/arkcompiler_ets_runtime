@@ -447,6 +447,7 @@ private:
     V(JSFastCallWithArgV)                       \
     V(JSFastCallWithArgVAndPushArgv)            \
     V(JSCallWithArgVAndPushArgv)                \
+    V(SuperCallWithArgV)                        \
     V(ResumeRspAndDispatch)                     \
     V(ResumeRspAndReturn)                       \
     V(ResumeRspAndReturnBaseline)               \

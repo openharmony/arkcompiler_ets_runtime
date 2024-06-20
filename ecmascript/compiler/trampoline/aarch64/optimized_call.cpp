@@ -1286,7 +1286,7 @@ void OptimizedCall::PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler)
 //               |       call-target        |               v
 //               +--------------------------+ ---------------
 
-void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, [[maybe_unused]] bool needPushArgv)
+void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, int id)
 {
     Register sp(SP);
     Register glue(X0);
@@ -1322,12 +1322,7 @@ void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, [[maybe_unus
         __ Str(tmp, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
         __ Str(actualNumArgs, MemoryOperand(currentSp, -FRAME_SLOT_SIZE, AddrMode::PREINDEX));
     }
-    if (needPushArgv) {
-        __ CallAssemblerStub(RTSTUB_ID(OptimizedCallAndPushArgv), false);
-    } else {
-        __ CallAssemblerStub(RTSTUB_ID(CallOptimized), false);
-    }
-
+    __ CallAssemblerStub(id, false);
     __ Ldr(actualNumArgs, MemoryOperand(sp, 0));
     PopJSFunctionArgs(assembler, actualNumArgs, actualNumArgs);
     PopOptimizedUnfoldArgVFrame(assembler);
@@ -1347,13 +1342,19 @@ void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, [[maybe_unus
 void OptimizedCall::JSCallWithArgVAndPushArgv(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgVAndPushArgv));
-    GenJSCallWithArgV(assembler, true);
+    GenJSCallWithArgV(assembler, RTSTUB_ID(OptimizedCallAndPushArgv));
 }
 
 void OptimizedCall::JSCallWithArgV(ExtendedAssembler *assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(JSCallWithArgV));
-    GenJSCallWithArgV(assembler, false);
+    GenJSCallWithArgV(assembler, RTSTUB_ID(CallOptimized));
+}
+
+void OptimizedCall::SuperCallWithArgV(ExtendedAssembler *assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(SuperCallWithArgV));
+    GenJSCallWithArgV(assembler, RTSTUB_ID(JSCallNew));
 }
 
 void OptimizedCall::CallOptimized(ExtendedAssembler *assembler)

@@ -245,9 +245,9 @@ private:
     void LowerSuperCallSpread(GateRef gate);
     GateRef IsSuperFuncValid(GateRef superFunc);
     GateRef IsAotOrFastCall(GateRef method, CircuitBuilder::JudgeMethodType type);
-    void GenerateSuperCall(const std::vector<GateRef> &args, Variable *result, Label *exit);
-    void SuperCallSpreadWithArgV(const std::vector<GateRef> &args, GateRef id, GateRef actualArgc, GateRef expectedNum,
-                                 Variable *result);
+    void LowerFastSuperCall(const std::vector<GateRef> &args, Variable *result, Label *exit, GateRef actualArgc,
+                            bool isSuperCallSpread);
+    GateRef GetSuperCallArgs(const std::vector<GateRef> &args, bool isSuperCallSpread);
     void LowerIsTrueOrFalse(GateRef gate, bool flag);
     void LowerNewObjRange(GateRef gate);
     void LowerConditionJump(GateRef gate, bool isEqualJump);
@@ -302,6 +302,7 @@ private:
     void LowerAsyncGeneratorReject(GateRef gate);
     void LowerSetGeneratorState(GateRef gate);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
+    GateRef GetTaggedArrayFromValueIn(Environment *env, GateRef gate, size_t length);
     GateRef LowerUpdateArrayHClass(GateRef gate, GateRef array);
     void AddProfiling(GateRef gate, bool skipGenerator = true);
     GateRef FastStrictEqual(GateRef left, GateRef right);

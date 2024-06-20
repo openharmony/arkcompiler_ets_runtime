@@ -2565,7 +2565,12 @@ DEF_RUNTIME_STUBS(SuperCall)
 DEF_RUNTIME_STUBS(OptSuperCall)
 {
     RUNTIME_STUBS_HEADER(OptSuperCall);
-    return RuntimeOptSuperCall(thread, argv, argc).GetRawData();
+    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<TaggedArray> taggedArray(thread, GetArg(argv, argc, 2));  // 2: means the second parameter
+    JSTaggedValue length = GetArg(argv, argc, 3);  // 3: means the third parameter
+    return RuntimeOptSuperCall(thread, func, newTarget, taggedArray,
+                               static_cast<uint16_t>(length.GetInt())).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ThrowNotCallableException)
