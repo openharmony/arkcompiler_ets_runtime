@@ -35,6 +35,12 @@ static constexpr int MS_PER_HOUR = 3600 * 1000;
 static constexpr int MS_PER_DAY = 86400000;
 static constexpr int DAY_PER_WEEK = 7;
 static constexpr int DATE_LENGTH = 9;
+static constexpr int DATE_STRING_LENGTH = 15;
+static constexpr int DATE_CSTRING_LENGTH = 36;
+static constexpr int ISO_STRING_LENGTH = 25;
+static constexpr int TO_STRING_LENGTH = 36;
+static constexpr int TIME_STRING_LENGTH = 18;
+static constexpr int UTC_STRING_LENGTH = 29;
 // the index in the Date Fields
 static constexpr uint8_t YEAR = 0;
 static constexpr uint8_t MONTH = 1;
@@ -161,6 +167,7 @@ public:
     static double SetDateValues(int64_t year, int64_t month, int64_t day);
     static void GetDateValues(double timeMs, std::array<int64_t, DATE_LENGTH> *date, bool isLocal);
     static CString StrToTargetLength(const CString &str, int length);
+    static void AppendStrToTargetLength(const CString &str, int length, CString &target);
     DECL_DUMP()
 
 private:
@@ -168,6 +175,12 @@ private:
     CString GetLocaleTimeStr(const std::array<int64_t, DATE_LENGTH> &fields) const;
     CString GetLocaleDateStr(const std::array<int64_t, DATE_LENGTH> &fields) const;
     static int64_t MathMod(int64_t a, int b);
+    template<class T>
+    inline static void ConvertAndAppend(T number, int length, CString& str)
+    {
+        const CString cStr = ToCString(number);
+        AppendStrToTargetLength(cStr, length, str);
+    }
 
     static constexpr int MINUTE_PER_HOUR = 60;
     static constexpr std::array<int, 12> MONTH_DAYS = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -186,6 +199,9 @@ private:
     static constexpr char SPACE = ' ';
     static constexpr char COLON = ':';
     static constexpr char POINT = '.';
+    static constexpr std::string_view NEG_STR = "-";
+    static constexpr std::string_view COMMA_STR = ",";
+    static constexpr std::string_view SPACE_STR = " ";
     static constexpr int LENGTH_MONTH_NAME = 3;
     static constexpr int MS_PER_MINUTE = 60000;
     static constexpr int64_t MAX_TIME_IN_MS = static_cast<int64_t>(864000000) * 10000000;
