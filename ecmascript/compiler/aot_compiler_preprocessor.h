@@ -112,12 +112,16 @@ public:
     bool HandlePandaFileNames(const int argc, const char **argv);
 
     void AOTInitialize();
+    
+    void Process(CompilationOptions &cOptions);
 
     uint32_t GenerateAbcFileInfos();
 
+    void GenerateBytecodeInfoCollectors(const CompilationOptions &cOptions);
+
     bool HandleMergedPgoFile(uint32_t checksum);
 
-    void GeneratePGOTypes(const CompilationOptions &cOptions);
+    void GeneratePGOTypes();
 
     void SnapshotInitialize();
 
@@ -164,6 +168,11 @@ public:
         return fileInfos_;
     }
 
+    const CVector<std::unique_ptr<BytecodeInfoCollector>>& GetBcInfoCollectors() const
+    {
+        return bcInfoCollectors_;
+    }
+
     std::shared_ptr<OhosPkgArgs> GetMainPkgArgs() const
     {
         if (pkgsArgs_.empty()) {
@@ -198,7 +207,7 @@ private:
 
     void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
 
-    void RecordArrayElement(const CompilationOptions &cOptions);
+    void RecordArrayElement(const JSPandaFile* jsPandaFile, BytecodeInfoCollector& collector);
 
     bool OutCompiledMethodsRange() const
     {
@@ -215,6 +224,7 @@ private:
     PGOProfilerDecoder &profilerDecoder_;
     arg_list_t &pandaFileNames_;
     CVector<AbcFileInfo> fileInfos_;
+    CVector<std::unique_ptr<BytecodeInfoCollector>> bcInfoCollectors_;
     CallMethodFlagMap callMethodFlagMap_;
     AOTCompilationEnv aotCompilationEnv_;
     friend class OhosPkgArgs;

@@ -132,18 +132,22 @@ class PassManager {
 public:
     explicit PassManager(CompilationEnv *env, std::string &triple, size_t optLevel, size_t relocMode,
         CompilerLog *log, AotMethodLogList *logList, size_t maxAotMethodSize, size_t maxMethodsInModule,
-        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions,
-        CallMethodFlagMap *callMethodFlagMap, const CVector<AbcFileInfo> &fileInfos, std::string optBCRange)
+        PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions, CallMethodFlagMap *callMethodFlagMap,
+        const CVector<AbcFileInfo> &fileInfos, const CVector<std::unique_ptr<BytecodeInfoCollector>> &bcInfoCollectors,
+        std::string optBCRange)
         : compilationEnv_(env), triple_(triple), optLevel_(optLevel), relocMode_(relocMode), log_(log),
           logList_(logList), maxAotMethodSize_(maxAotMethodSize), maxMethodsInModule_(maxMethodsInModule),
-          profilerDecoder_(profilerDecoder), passOptions_(passOptions),
-          callMethodFlagMap_(callMethodFlagMap), fileInfos_(fileInfos), optBCRange_(optBCRange) {
+          profilerDecoder_(profilerDecoder), passOptions_(passOptions), callMethodFlagMap_(callMethodFlagMap),
+          fileInfos_(fileInfos), bcInfoCollectors_(bcInfoCollectors), optBCRange_(optBCRange) {
                 enableJITLog_ = compilationEnv_->GetJSOptions().GetTraceJIT();
             };
 
     virtual ~PassManager() = default;
+
+    void CompileValidFiles(AOTFileGenerator &generator, bool &ret, AotCompilerStats &compilerStats);
+
     bool Compile(JSPandaFile *jsPandaFile, const std::string &fileName, AOTFileGenerator &generator,
-        AotCompilerStats &compilerStats);
+                 AotCompilerStats &compilerStats, BytecodeInfoCollector &collector);
 
 protected:
     bool IsReleasedPandaFile(const JSPandaFile *jsPandaFile) const;
@@ -160,6 +164,7 @@ protected:
     PassOptions *passOptions_ {nullptr};
     CallMethodFlagMap *callMethodFlagMap_ {nullptr};
     const CVector<AbcFileInfo> &fileInfos_;
+    const CVector<std::unique_ptr<BytecodeInfoCollector>> &bcInfoCollectors_;
     std::string optBCRange_ {};
     bool enableJITLog_ {false};
 };
@@ -170,7 +175,7 @@ public:
         CompilerLog *log, AotMethodLogList *logList,
         PGOProfilerDecoder &profilerDecoder, PassOptions *passOptions)
         : PassManager(env, triple, optLevel, relocMode, log, logList, 1, 1, profilerDecoder, passOptions,
-                      nullptr, CVector<AbcFileInfo> {}, "") { };
+                      nullptr, CVector<AbcFileInfo> {}, CVector<std::unique_ptr<BytecodeInfoCollector>> {}, "") { };
 
     bool Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo, AOTFileGenerator &gen, int32_t osrOffset = -1);
     bool RunCg();

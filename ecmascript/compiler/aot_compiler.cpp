@@ -46,22 +46,6 @@ enum ErrCode {
     ERR_MERGE_AP = (3),
 };
 
-void CompileValidFiles(PassManager &passManager, AOTFileGenerator &generator, bool &ret,
-                       const CVector<AbcFileInfo> &fileInfos, AotCompilerStats &compilerStats)
-{
-    for (const AbcFileInfo &fileInfo : fileInfos) {
-        JSPandaFile *jsPandaFile = fileInfo.jsPandaFile_.get();
-        const std::string &extendedFilePath = fileInfo.extendedFilePath_;
-        LOG_COMPILER(INFO) << "AOT compile: " << extendedFilePath;
-        generator.SetCurrentCompileFileName(jsPandaFile->GetNormalizedFileDesc());
-        if (passManager.Compile(jsPandaFile, extendedFilePath, generator, compilerStats) == false) {
-            ret = false;
-            continue;
-        }
-    }
-}
-} // namespace
-
 bool CheckVersion(JSRuntimeOptions& runtimeOptions, AotCompilerStats& compilerStats, bool isPgoMerged)
 {
     if (runtimeOptions.IsCheckPgoVersion()) {
@@ -84,6 +68,7 @@ bool IsExistsPkgInfo(AotCompilerPreprocessor &cPreprocessor)
     }
     return false;
 }
+} // namespace
 
 int Main(const int argc, const char **argv)
 {
@@ -155,6 +140,7 @@ int Main(const int argc, const char **argv)
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
         uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
+        ret = cPreprocessor.GetCompilerResult();
         // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
         // need support multiple abc
         auto isPgoMerged = cPreprocessor.HandleMergedPgoFile(checksum);
@@ -166,11 +152,7 @@ int Main(const int argc, const char **argv)
             filesystem::CreateEmptyFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI);
             return ERR_MERGE_AP;
         }
-        cPreprocessor.GeneratePGOTypes(cOptions);
-        cPreprocessor.SnapshotInitialize();
-        ret = cPreprocessor.GetCompilerResult();
-        const auto &fileInfos = cPreprocessor.GetAbcFileInfo();
-        cPreprocessor.GenerateMethodMap(cOptions);
+        cPreprocessor.Process(cOptions);
 
         PassOptions::Builder optionsBuilder;
         PassOptions passOptions =
@@ -206,7 +188,8 @@ int Main(const int argc, const char **argv)
                                 profilerDecoder,
                                 &passOptions,
                                 cPreprocessor.GetCallMethodFlagMap(),
-                                fileInfos,
+                                cPreprocessor.GetAbcFileInfo(),
+                                cPreprocessor.GetBcInfoCollectors(),
                                 cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
@@ -218,7 +201,7 @@ int Main(const int argc, const char **argv)
 
         AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);
 
-        CompileValidFiles(passManager, generator, ret, fileInfos, compilerStats);
+        passManager.CompileValidFiles(generator, ret, compilerStats);
         std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();
         generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature);
         generator.SaveSnapshotFile();
