@@ -180,7 +180,7 @@ private:
     EcmaVM *vm_ { nullptr };
     kungfu::PGOTypeManager *ptManager_ { nullptr };
     ProfileTypeInfo* profileTypeInfo_ { nullptr };
-    ApEntityId abcId_ {};
+    ApEntityId abcId_ { 0 };
     EntityId methodId_ {};
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};
     std::unordered_map<int32_t, const PGORWOpType*> bcOffsetPGORwTypeMap_ {};
