@@ -72,6 +72,7 @@ public:
     static constexpr int WEIGHT_START_BIT = 10;
     static constexpr int WEIGHT_TRUE_START_BIT = WEIGHT_START_BIT + WEIGHT_BITS;
     static constexpr int WEIGHT_MASK = (1 << WEIGHT_BITS) - 1;
+    static constexpr int WEIGHT_THRESHOLD = WEIGHT_MASK; // 2047
 
     enum class Type : uint32_t {
         NONE = 0x0ULL,

@@ -513,8 +513,8 @@ GateRef ProfilerStubBuilder::TaggedToTrackType(GateRef value)
     return ret;
 }
 
-void ProfilerStubBuilder::ProfileBranch(GateRef glue, SlotIDInfo slotInfo,
-                                        GateRef func, GateRef profileTypeInfo, bool isTrue)
+void ProfilerStubBuilder::ProfileBranch(
+    GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef profileTypeInfo, bool isTrue)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -542,7 +542,7 @@ void ProfilerStubBuilder::ProfileBranch(GateRef glue, SlotIDInfo slotInfo,
         BRANCH(Int32LessThan(slotId, length), &icSlotValid, &exit);
         Bind(&icSlotValid);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        BRANCH(TaggedIsHole(slotValue), &exit, &hasSlot);   // ishole -- isundefined
+        BRANCH(TaggedIsHole(slotValue), &exit, &hasSlot); // ishole -- isundefined
         Bind(&hasSlot);
         {
             Label uninitialized(env);
@@ -554,9 +554,9 @@ void ProfilerStubBuilder::ProfileBranch(GateRef glue, SlotIDInfo slotInfo,
                 GateRef oldFalse = Int32LSR(oldSlotValue, Int32(PGOSampleType::WEIGHT_START_BIT));
                 oldFalse = Int32And(oldFalse, Int32(PGOSampleType::WEIGHT_MASK));
                 oldPrama = Int32And(oldSlotValue, Int32(PGOSampleType::AnyType()));
-                auto condition = BoolAnd(Int32LessThan(oldTrue, Int32(PGOSampleType::WEIGHT_MASK)),
-                    Int32LessThan(oldFalse, Int32(PGOSampleType::WEIGHT_MASK)));
-                BRANCH(condition, &needUpdate, &exit);    // 2000: limit
+                auto condition = BoolAnd(Int32LessThan(oldTrue, Int32(PGOSampleType::WEIGHT_THRESHOLD)),
+                                         Int32LessThan(oldFalse, Int32(PGOSampleType::WEIGHT_THRESHOLD)));
+                BRANCH(condition, &needUpdate, &exit); // WEIGHT_THRESHOLD: 2047 limit
                 Bind(&needUpdate);
                 {
                     newTrue = Int32Add(*newTrue, oldTrue);
@@ -575,18 +575,11 @@ void ProfilerStubBuilder::ProfileBranch(GateRef glue, SlotIDInfo slotInfo,
                 GateRef newSlotValue =
                     Int32Or(*oldPrama, Int32LSL(*newTrue, Int32(PGOSampleType::WEIGHT_TRUE_START_BIT)));
                 newSlotValue = Int32Or(newSlotValue, Int32LSL(*newFalse, Int32(PGOSampleType::WEIGHT_START_BIT)));
-                SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo,
-                    slotId, IntToTaggedInt(newSlotValue));
-                auto totalCount = Int32Add(*newTrue, *newFalse);
-                auto mask = Int32(0x1FF);
-                Label updateFinal(env);
-                BRANCH(Int32Equal(Int32And(totalCount, mask), Int32(0)), &preProfile, &updateFinal);
-                Bind(&updateFinal);
-                {
-                    auto isFinal = BoolOr(Int32Equal(*newTrue, Int32(PGOSampleType::WEIGHT_MASK)),
-                        Int32Equal(*newFalse, Int32(PGOSampleType::WEIGHT_MASK)));
-                    BRANCH(isFinal, &preProfile, &exit);
-                }
+                SetValueToTaggedArray(
+                    VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newSlotValue));
+                auto isFinal = BoolOr(Int32Equal(*newTrue, Int32(PGOSampleType::WEIGHT_THRESHOLD)),
+                                      Int32Equal(*newFalse, Int32(PGOSampleType::WEIGHT_THRESHOLD)));
+                BRANCH(isFinal, &preProfile, &exit);
             }
             Bind(&preProfile);
             {
