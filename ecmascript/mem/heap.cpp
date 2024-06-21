@@ -78,37 +78,6 @@ static bool g_developMode = (OHOS::system::GetParameter("persist.hiview.leak_det
 namespace panda::ecmascript {
 SharedHeap *SharedHeap::instance_ = nullptr;
 
-std::string FormatCmdLine(const std::string& cmdLine)
-{
-    std::string::size_type startPos = 0;
-    std::string::size_type endPos = cmdLine.size();
-    for (std::string::size_type i = 0; i < cmdLine.size(); i++) {
-        if (cmdLine[i] == '/') {
-            startPos = i + 1;
-        } else if (cmdLine[i] == '\0') {
-            endPos = i;
-            break;
-        }
-    }
-    ASSERT(endPos >= startPos);
-    return cmdLine.substr(startPos, endPos - startPos);
-}
-
-std::string GetProcessName(int32_t pid)
-{
-    std::ifstream cmdLineFile("/proc/" + std::to_string(pid) + "/cmdline");
-    std::string processName;
-    if (cmdLineFile) {
-        std::getline(cmdLineFile, processName);
-        cmdLineFile.close();
-        processName = FormatCmdLine(processName);
-        return processName;
-    } else {
-        LOG_ECMA(ERROR) << " GetProcessName failed";
-        return "";
-    }
-}
-
 void SharedHeap::CreateNewInstance()
 {
     ASSERT(instance_ == nullptr);
@@ -536,11 +505,8 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
     LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(vm);
-    int32_t pid = getpid();
-    std::string propertyName = "hiviewdfx.freeze.filter." + GetProcessName(pid);
-    if (!SetParameter(propertyName.c_str(), std::to_string(pid).c_str())) {
-        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, propertyName:" << propertyName
-            << " value:" << std::to_string(pid);
+    if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
+        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM Success. ";
     }
     heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true, true);
     HeapProfilerInterface::Destroy(vm);
@@ -1147,6 +1113,14 @@ void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std
     thread->SetException(error.GetTaggedValue());
 }
 
+void BaseHeap::SetAppFreezeFilterCallback(AppFreezeFilterCallback cb)
+{
+    if (cb != nullptr) {
+        LOG_ECMA(INFO) << "DumpHeapSnapshotBeforeOOM, SetAppFreezeFilterCallback";
+        appfreezeCallback_ = cb;
+    }
+}
+
 void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
     bool NonMovableObjNearOOM)
 {
@@ -1332,11 +1306,8 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
     LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, isFullGC" << isFullGC;
     base::BlockHookScope blockScope;
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
-    int32_t pid = getpid();
-    std::string propertyName = "hiviewdfx.freeze.filter." + GetProcessName(pid);
-    if (!SetParameter(propertyName.c_str(), std::to_string(pid).c_str())) {
-        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM, propertyName:" << propertyName
-            << " value:" << std::to_string(pid);
+    if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
+        LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM Success. ";
     }
 #ifdef ENABLE_HISYSEVENT
     GetEcmaGCKeyStats()->SendSysEventBeforeDump("OOMDump", GetHeapLimitSize(), GetLiveObjectSize());

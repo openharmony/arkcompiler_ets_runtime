@@ -519,6 +519,13 @@ void DFXJSNApi::SetJsDumpThresholds([[maybe_unused]] EcmaVM *vm, [[maybe_unused]
 #endif
 }
 
+void DFXJSNApi::SetAppFreezeFilterCallback(const EcmaVM *vm, AppFreezeFilterCallback cb)
+{
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->SetAppFreezeFilterCallback(cb);
+    ecmascript::SharedHeap* sHeap = ecmascript::SharedHeap::GetInstance();
+    sHeap->SetAppFreezeFilterCallback(cb);
+}
+
 void DFXJSNApi::NotifyApplicationState(EcmaVM *vm, bool inBackground)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());

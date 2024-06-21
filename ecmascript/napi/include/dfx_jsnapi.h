@@ -50,6 +50,7 @@ using JsFrameInfo = ecmascript::JsFrameInfo;
 using SamplingInfo = ecmascript::SamplingInfo;
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 using TraceEvent = ecmascript::TraceEvent;
+using AppFreezeFilterCallback = std::function<bool(const int32_t pid)>;
 
 struct DumpForSnapShotStruct {
     const EcmaVM *vm;
@@ -120,6 +121,7 @@ public:
     static bool CpuProfilerSamplingAnyTime(const EcmaVM *vm);
     static void CpuProfilerAnyTimeMainThread(const EcmaVM *vm);
     static void SetJsDumpThresholds(EcmaVM *vm, size_t thresholds);
+    static void SetAppFreezeFilterCallback(const EcmaVM *vm, AppFreezeFilterCallback cb);
     static bool StartCpuProfilerForFile(const EcmaVM *vm, const std::string &fileName,
                                         int interval = 500); // 500:Default Sampling interval 500 microseconds
     static void StopCpuProfilerForFile(const EcmaVM *vm);
