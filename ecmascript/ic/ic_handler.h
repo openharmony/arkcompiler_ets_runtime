@@ -438,7 +438,7 @@ public:
                 result = PropertyBox::Cast(result.GetTaggedObject())->GetValue();
             }
             AccessorData *accessor = AccessorData::Cast(result.GetTaggedObject());
-            if (!accessor->IsInternal()) {
+            if (!accessor->IsInternal() && accessor->HasSetter()) {
                 JSTaggedValue setter = accessor->GetSetter();
                 JSHandle<JSFunction> func(thread, setter);
                 handler->SetAccessorMethodId(

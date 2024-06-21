@@ -33,3 +33,12 @@ for (let i = 0; i < 100; i++) {
     v77.__proto__ = null;
 }
 print("test set __proto__ null successful")
+
+let bad_proto = {
+    get __proto__(){
+
+    }
+}
+let obj = {};
+obj.__proto__ = bad_proto;
+print("test set bad_proto successful!");

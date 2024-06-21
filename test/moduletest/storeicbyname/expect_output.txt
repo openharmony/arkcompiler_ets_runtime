@@ -13,3 +13,4 @@
 
 test successful !!!
 test set __proto__ null successful
+test set bad_proto successful!
