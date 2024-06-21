@@ -117,6 +117,7 @@ std::unordered_set<std::string> AotArgsSet {
     "hap-abc-offset",
     "hap-abc-size",
     "compiler-no-check",
+    "compiler-pipeline-host-aot",
     "compiler-fast-compile",
     "compiler-opt-loop-peeling",
     "compiler-opt-array-onheap-check",

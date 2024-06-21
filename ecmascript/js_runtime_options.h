@@ -146,6 +146,7 @@ enum CommandValues {
     OPTION_HAP_ABC_OFFSET,
     OPTION_HAP_ABC_SIZE,
     OPTION_COMPILER_NOCHECK,
+    OPTION_COMPILER_PIPELINE_HOST_AOT,
     OPTION_FAST_AOT_COMPILE_MODE,
     OPTION_COMPILER_OPT_LOOP_PEELING,
     OPTION_COMPILER_OPT_ON_HEAP_CHECK,
@@ -1536,6 +1537,16 @@ public:
 
     void SetOptionsForTargetCompilation();
 
+    void SetCompilerPipelineHostAOT(bool value)
+    {
+        compilerPipelineHostAOT_ = value;
+    }
+
+    bool IsCompilerPipelineHostAOT() const
+    {
+        return compilerPipelineHostAOT_;
+    }
+
     void SetFastAOTCompileMode(bool value)
     {
         fastAOTCompileMode_ = value;
@@ -1786,7 +1797,7 @@ public:
     {
         return enableJitFastCompile_;
     }
-    
+
     void SetEnableFrameworkAOT(bool value)
     {
         enableFrameworkAOT_ = value;
@@ -1798,6 +1809,8 @@ public:
     }
 
 private:
+    static constexpr int32_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
+
     static bool StartsWith(const std::string &haystack, const std::string &needle)
     {
         return std::equal(needle.begin(), needle.end(), haystack.begin());
@@ -1925,6 +1938,7 @@ private:
     bool traceJIT_{false};
     bool traceValueNumbering_{false};
     bool traceInstructionCombine_{false};
+    bool compilerPipelineHostAOT_ {false};
     size_t maxInlineBytecodes_ {45};
     std::string targetCompilerMode_ {""};
     std::string frameworkAbcPath_ {""};

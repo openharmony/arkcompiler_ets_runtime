@@ -155,6 +155,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--hap-abc-size(Deprecated)            The size of the abc file in app hap. Default: '0'\n"
     "--compiler-fast-compile               Disable some time-consuming pass. Default: 'true'\n"
     "--compiler-no-check                   Enable remove checks for aot compiler. Default: 'false'\n"
+    "--compiler-pipeline-host-aot          Enable pipeline host aot compiler. Default: 'false'\n"
     "--compiler-opt-loop-peeling:          Enable loop peeling for aot compiler: Default: 'false'\n"
     "--compiler-pkg-info                   Specify the package json info for ark aot compiler\n"
     "--compiler-external-pkg-info          Specify the external package json info for ark aot compiler\n"
@@ -272,6 +273,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"hap-abc-offset", required_argument, nullptr, OPTION_HAP_ABC_OFFSET},
         {"hap-abc-size", required_argument, nullptr, OPTION_HAP_ABC_SIZE},
         {"compiler-no-check", required_argument, nullptr, OPTION_COMPILER_NOCHECK},
+        {"compiler-pipeline-host-aot", required_argument, nullptr, OPTION_COMPILER_PIPELINE_HOST_AOT},
         {"compiler-fast-compile", required_argument, nullptr, OPTION_FAST_AOT_COMPILE_MODE},
         {"compiler-opt-loop-peeling", required_argument, nullptr, OPTION_COMPILER_OPT_LOOP_PEELING},
         {"compiler-opt-array-onheap-check", required_argument, nullptr, OPTION_COMPILER_OPT_ON_HEAP_CHECK},
@@ -894,6 +896,13 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 }
                 SetCompilerNoCheck(argBool);
                 break;
+            case OPTION_COMPILER_PIPELINE_HOST_AOT:
+                ret = ParseBoolParam(&argBool);
+                if (!ret) {
+                    return false;
+                }
+                SetCompilerPipelineHostAOT(argBool);
+                break;
             case OPTION_FAST_AOT_COMPILE_MODE:
                 ret = ParseBoolParam(&argBool);
                 if (!ret) {
@@ -1305,6 +1314,17 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
             SetEnableOptPGOType(false);
             SetPGOProfilerPath("");
         }
+    }
+    if (IsCompilerPipelineHostAOT()) {
+        SetTargetTriple("aarch64-unknown-linux-gnu");
+        SetMaxAotMethodSize(1_KB);
+        SetEnableOptTrackField(false);
+        SetEnableOptInlining(false);
+        SetEnableOptPGOType(true);
+        SetFastAOTCompileMode(true);
+        SetOptLevel(DEFAULT_OPT_LEVEL);
+        SetCompilerEnableLiteCG(true);
+        SetEnableLoweringBuiltin(false);
     }
 }
 }
