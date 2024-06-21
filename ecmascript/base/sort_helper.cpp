@@ -32,10 +32,10 @@ void TimSort::Sort(JSThread *thread, JSHandle<TaggedArray> &elements, const JSHa
     }
 
     TimSort ts(thread, elements, fn);
-    uint32_t minRunLength = ComputeMinRunLength(len);
+    uint32_t minRunLength = static_cast<uint32_t>(ComputeMinRunLength(len));
 
     while (nRemaining != 0) {
-        uint32_t runLen = CountRunAndMakeAscending(thread, elements, low, len, fn);
+        uint32_t runLen = static_cast<uint32_t>(CountRunAndMakeAscending(thread, elements, low, len, fn));
         if (runLen < minRunLength) {
             uint32_t force = std::min(nRemaining, minRunLength);
             BinarySort(thread, elements, low, low + force, low + runLen, fn);

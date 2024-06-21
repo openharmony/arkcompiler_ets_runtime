@@ -345,8 +345,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         if (UNLIKELY(thread->DoStackOverflowCheck(newSp - actualNumArgs))) { \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
-        for (int i = actualNumArgs - 1; i >= 0; i--) {                           \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];            \
+        for (int32_t i = actualNumArgs - 1; i >= 0; i--) {                           \
+            *(--newSp) = sp[startReg + i];            \
         }                                                                    \
     } while (false)
 
@@ -356,8 +356,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         if (UNLIKELY(thread->DoStackOverflowCheck(newSp - actualNumArgs))) { \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
-        for (int i = actualNumArgs; i > 0; i--) {                            \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];             \
+        for (int32_t i = actualNumArgs; i > 0; i--) {                            \
+            *(--newSp) = sp[startReg + i];             \
         }                                                                    \
     } while (false)
 
@@ -368,8 +368,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
         /* 1: skip this */                                                   \
-        for (int i = actualNumArgs; i > 0; i--) {                        \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];             \
+        for (int32_t i = actualNumArgs; i > 0; i--) {                        \
+            *(--newSp) = sp[startReg + i];             \
         }                                                                    \
     } while (false)
 
@@ -380,8 +380,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
         /* 1: skip this */                                                   \
-        for (int i = actualNumArgs + 1; i > 1; i--) {                        \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];             \
+        for (int32_t i = actualNumArgs + 1; i > 1; i--) {                        \
+            *(--newSp) = sp[startReg + i];             \
         }                                                                    \
     } while (false)
 
@@ -436,8 +436,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         if (UNLIKELY(thread->DoStackOverflowCheck(newSp - num))) {           \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
-        for (int i = num - 1; i >= 0; i--) {                                 \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];            \
+        for (int32_t i = num - 1; i >= 0; i--) {                                 \
+            *(--newSp) = sp[startReg + i];            \
         }                                                                    \
     } while (false)
 
@@ -448,8 +448,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
         if (UNLIKELY(thread->DoStackOverflowCheck(newSp - num))) {           \
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                            \
         }                                                                    \
-        for (int i = num; i > 0; i--) {                                      \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];            \
+        for (int32_t i = num; i > 0; i--) {                                      \
+            *(--newSp) = sp[startReg + i];            \
         }                                                                    \
     } while (false)
 
@@ -461,8 +461,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                                \
         }                                                                        \
         /* 1: skip this */                                                       \
-        for (int i = num; i > 0; i--) {                                          \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];                \
+        for (int32_t i = num; i > 0; i--) {                                          \
+            *(--newSp) = sp[startReg + i];                \
         }                                                                        \
     } while (false)
 
@@ -474,8 +474,8 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
             INTERPRETER_GOTO_EXCEPTION_HANDLER();                                \
         }                                                                        \
         /* 1: skip this */                                                       \
-        for (int i = num + 1; i > 1; i--) {                                      \
-            *(--newSp) = sp[startReg + static_cast<uint32_t>(i)];                 \
+        for (int32_t i = num + 1; i > 1; i--) {                                      \
+            *(--newSp) = sp[startReg + i];                 \
         }                                                                        \
     } while (false)
 
