@@ -39,7 +39,7 @@ declare_args() {
   TARGET = "x86_64"
   HOST_ARCH = 64
 
-  # If true app_aot_disable_list, app_aot_disable_list, app_jit_enable_list will be placed in /etc/ark
+  # If true app_aot_jit_enable_list will be placed in /etc/ark
   # Default false.
   js_runtime_feature_enable_list = false
 }

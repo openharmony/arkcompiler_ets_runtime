@@ -193,7 +193,7 @@ int Main(const int argc, const char **argv)
                                 cOptions.optBCRange_);
 
         bool isEnableLiteCG = runtimeOptions.IsCompilerEnableLiteCG();
-        if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+        if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
             isEnableLiteCG = true;
         }
         vm->GetJSOptions().SetCompilerEnableLiteCG(isEnableLiteCG);
@@ -210,7 +210,8 @@ int Main(const int argc, const char **argv)
             compilerStats.PrintCompilerStatsLog();
         }
         if (IsExistsPkgInfo(cPreprocessor)) {
-            ohos::EnableAotListHelper::GetInstance()->AddEnableListCount(cPreprocessor.GetMainPkgArgs()->GetPgoDir());
+            ohos::EnableAotJitListHelper::GetInstance()->AddEnableListCount(
+                cPreprocessor.GetMainPkgArgs()->GetPgoDir());
         }
     }
 

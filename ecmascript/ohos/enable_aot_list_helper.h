@@ -33,59 +33,33 @@
 #include "parameters.h"
 #endif
 namespace panda::ecmascript::ohos {
-class EnableAotListHelper {
+class EnableAotJitListHelper {
 constexpr static const char *const AOT_BUILD_COUNT_DISABLE = "ark.aot.build.count.disable";
 public:
-    static std::shared_ptr<EnableAotListHelper> GetInstance()
+    static std::shared_ptr<EnableAotJitListHelper> GetInstance()
     {
-        static auto helper = std::make_shared<EnableAotListHelper>(ENABLE_LIST_NAME, DISABLE_LIST_NAME);
+        static auto helper = std::make_shared<EnableAotJitListHelper>(ENABLE_LIST_NAME);
         return helper;
     }
 
-    static std::shared_ptr<EnableAotListHelper> GetJitInstance()
+    explicit EnableAotJitListHelper(const std::string &enableListName)
     {
-        static auto helper = std::make_shared<EnableAotListHelper>(JIT_ENABLE_LIST_NAME, "");
-        return helper;
+        ReadEnableList(enableListName);
     }
 
-    explicit EnableAotListHelper(const std::string &enableListName, const std::string &disableListName)
-    {
-        ReadEnableAotList(enableListName);
-        ReadEnableAotList(disableListName);
-    }
+    EnableAotJitListHelper() = default;
+    ~EnableAotJitListHelper() = default;
 
-    EnableAotListHelper() = default;
-    ~EnableAotListHelper() = default;
-
-    bool IsEnableList(const std::string &candidate)
+    bool IsEnableAot(const std::string &candidate)
     {
-        return enableList_.find(candidate) != enableList_.end();
-    }
-
-    bool IsEnableList(const std::string &bundleName, const std::string &moduleName)
-    {
-        if (IsEnableList(bundleName)) {
-            return true;
-        }
-        return IsEnableList(bundleName + ":" + moduleName);
+        return (enableList_.find(candidate) != enableList_.end()) ||
+               (enableList_.find(candidate + ":aot") != enableList_.end());
     }
 
     bool IsEnableJit(const std::string &candidate)
     {
-        return jitEnableList_.find(candidate) != jitEnableList_.end();
-    }
-
-    bool IsDisableBlackList(const std::string &candidate)
-    {
-        return disableList_.find(candidate) != disableList_.end();
-    }
-
-    bool IsDisableBlackList(const std::string &bundleName, const std::string &moduleName)
-    {
-        if (IsDisableBlackList(bundleName)) {
-            return true;
-        }
-        return IsDisableBlackList(bundleName + ":" + moduleName);
+        return (enableList_.find(candidate) != enableList_.end()) ||
+               (enableList_.find(candidate + ":jit") != enableList_.end());
     }
 
     void AddEnableListEntry(const std::string &entry)
@@ -93,21 +67,9 @@ public:
         enableList_.insert(entry);
     }
 
-    void AddDisableListEntry(const std::string &entry)
-    {
-        disableList_.insert(entry);
-    }
-
-    void AddJitEnableListEntry(const std::string &entry)
-    {
-        jitEnableList_.insert(entry);
-    }
-
     void Clear()
     {
-        disableList_.clear();
         enableList_.clear();
-        jitEnableList_.clear();
     }
 
     static bool GetAotBuildCountDisable()
@@ -139,8 +101,8 @@ public:
     }
 
 private:
-    NO_COPY_SEMANTIC(EnableAotListHelper);
-    NO_MOVE_SEMANTIC(EnableAotListHelper);
+    NO_COPY_SEMANTIC(EnableAotJitListHelper);
+    NO_MOVE_SEMANTIC(EnableAotJitListHelper);
 
     static void Trim(std::string &data)
     {
@@ -151,17 +113,17 @@ private:
         data.erase(data.find_last_not_of(' ') + 1);
     }
 
-    void ReadEnableAotList(const std::string &aotListName)
+    void ReadEnableList(const std::string &aotJitListName)
     {
-        if (!panda::ecmascript::FileExist(aotListName.c_str())) {
-            LOG_ECMA(DEBUG) << "bundle enable list not exist and will pass by all. file: " << aotListName;
+        if (!panda::ecmascript::FileExist(aotJitListName.c_str())) {
+            LOG_ECMA(DEBUG) << "bundle enable list not exist and will pass by all. file: " << aotJitListName;
             return;
         }
 
-        std::ifstream inputFile(aotListName);
+        std::ifstream inputFile(aotJitListName);
 
         if (!inputFile.is_open()) {
-            LOG_ECMA(ERROR) << "bundle enable list open failed! file: " << aotListName << ", errno: " << errno;
+            LOG_ECMA(ERROR) << "bundle enable list open failed! file: " << aotJitListName << ", errno: " << errno;
             return;
         }
 
@@ -177,24 +139,11 @@ private:
             if (appName.at(0) == '#') {
                 continue;
             }
-            if (aotListName == ENABLE_LIST_NAME) {
-                AddEnableListEntry(appName);
-            }
-            if (aotListName == DISABLE_LIST_NAME) {
-                AddDisableListEntry(appName);
-            }
-            if (aotListName == JIT_ENABLE_LIST_NAME) {
-                AddJitEnableListEntry(appName);
-            }
+            AddEnableListEntry(appName);
         }
     }
     std::set<std::string> enableList_ {};
-    std::set<std::string> disableList_ {};
-    std::set<std::string> jitEnableList_ {};
     PUBLIC_API static const std::string ENABLE_LIST_NAME;
-    PUBLIC_API static const std::string DISABLE_LIST_NAME;
-    PUBLIC_API static const std::string JIT_ENABLE_LIST_NAME;
 };
 }  // namespace panda::ecmascript::ohos
 #endif  // ECMASCRIPT_OHOS_ENABLE_AOT_LIST_HELPER_H
-

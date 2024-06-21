@@ -203,7 +203,7 @@ using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
 using FrameIterator = ecmascript::FrameIterator;
 using Concurrent = ecmascript::Concurrent;
 using CrashInfo = ecmascript::ohos::AotCrashInfo;
-using EnableAotListHelper = ecmascript::ohos::EnableAotListHelper;
+using EnableAotJitListHelper = ecmascript::ohos::EnableAotJitListHelper;
 using PGOProfilerManager = ecmascript::pgo::PGOProfilerManager;
 
 namespace {
@@ -4465,7 +4465,7 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
         return;
     }
     if (!vm->GetJSOptions().WasAOTOutputFileSet() &&
-        !EnableAotListHelper::GetInstance()->IsEnableList(PGOProfilerManager::GetInstance()->GetBundleName())) {
+        !EnableAotJitListHelper::GetInstance()->IsEnableAot(PGOProfilerManager::GetInstance()->GetBundleName())) {
         LOG_ECMA(INFO) << "Stop load AOT because it's not in enable list";
         return;
     }

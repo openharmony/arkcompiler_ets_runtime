@@ -61,7 +61,7 @@ public:
     void TearDown() override
     {
         vm_->GetJSThread()->ManagedCodeEnd();
-        ohos::EnableAotListHelper::GetInstance()->Clear();
+        ohos::EnableAotJitListHelper::GetInstance()->Clear();
         JSNApi::DestroyJSVM(vm_);
         vm_ = nullptr;
     }
@@ -95,41 +95,36 @@ protected:
 HWTEST_F_L0(OhosTest, AotWhiteListTest)
 {
     const char *whiteListTestDir = "ohos-whiteList/";
-    const char *enableListName = "ohos-whiteList/app_aot_enable_list.conf";
-    const char *disableListName = "ohos-whiteList/app_aot_disable_list.conf";
+    const char *enableListName = "ohos-whiteList/app_aot_jit_enable_list.conf";
     std::string bundleScope = "com.bundle.scope.test";
-    std::string moduleScope = "com.module.scope.test";
+    std::string bundleScope1 = "com.bundle.scope.test1";
+    std::string bundleScope2 = "com.bundle.scope.test2";
     mkdir(whiteListTestDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    std::ofstream file(disableListName);
+    std::ofstream file(enableListName);
     file << bundleScope << std::endl;
-    file << moduleScope << ":entry" << std::endl;
-    file << " # " <<moduleScope << ":entryComment" << std::endl;
+    file << bundleScope1 << ":aot" << std::endl;
+    file << bundleScope2 << ":jit" << std::endl;
 
     file.close();
-    auto helper = std::make_unique<ohos::EnableAotListHelper>(enableListName, disableListName);
-    ASSERT_FALSE(helper->IsDisableBlackList(bundleScope));
-    ASSERT_FALSE(helper->IsDisableBlackList(bundleScope, "entry"));
-    ASSERT_FALSE(helper->IsDisableBlackList(moduleScope, "entry"));
-    ASSERT_FALSE(helper->IsDisableBlackList(moduleScope, "entry1"));
-    ASSERT_FALSE(helper->IsDisableBlackList(moduleScope, "entryComment"));
-    unlink(disableListName);
+    auto helper = std::make_unique<ohos::EnableAotJitListHelper>(enableListName);
+    ASSERT_TRUE(helper->IsEnableAot(bundleScope));
+    ASSERT_TRUE(helper->IsEnableJit(bundleScope));
+    ASSERT_TRUE(helper->IsEnableAot(bundleScope1));
+    ASSERT_FALSE(helper->IsEnableJit(bundleScope1));
+    ASSERT_FALSE(helper->IsEnableAot(bundleScope2));
+    ASSERT_TRUE(helper->IsEnableJit(bundleScope2));
     unlink(enableListName);
     rmdir(whiteListTestDir);
 }
 
 HWTEST_F_L0(OhosTest, AotWhiteListPassBy)
 {
-    const char *enableListName = "ohos-AotWhiteListPassBy/app_aot_enable_list.conf";
-    const char *disableListName = "ohos-AotWhiteListPassBy/app_aot_disable_list.conf";
+    const char *enableListName = "ohos-AotWhiteListPassBy/app_aot_jit_enable_list.conf";
     std::string bundleScope = "com.bundle.scope.test";
-    std::string moduleScope = "com.module.scope.test";
 
-    auto helper = std::make_unique<ohos::EnableAotListHelper>(enableListName, disableListName);
-    ASSERT_FALSE(helper->IsDisableBlackList(bundleScope));
-    ASSERT_FALSE(helper->IsDisableBlackList(bundleScope, "entry"));
-    ASSERT_FALSE(helper->IsDisableBlackList(moduleScope, "entry"));
-    ASSERT_FALSE(helper->IsDisableBlackList(moduleScope, "entry1"));
-    ASSERT_FALSE(helper->IsDisableBlackList(moduleScope, "entryCommentNotExist"));
+    auto helper = std::make_unique<ohos::EnableAotJitListHelper>(enableListName);
+    ASSERT_FALSE(helper->IsEnableAot(bundleScope));
+    ASSERT_FALSE(helper->IsEnableJit(bundleScope));
 }
 
 HWTEST_F_L0(OhosTest, OhosPkgArgsParse)

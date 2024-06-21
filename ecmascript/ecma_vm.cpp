@@ -220,10 +220,10 @@ void EcmaVM::PostFork()
     DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
-    if (ohos::EnableAotListHelper::GetInstance()->IsEnableList(bundleName)) {
+    if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
         options_.SetEnablePGOProfiler(true);
     }
-    if (ohos::EnableAotListHelper::GetInstance()->IsAotCompileSuccessOnce()) {
+    if (ohos::EnableAotJitListHelper::GetInstance()->IsAotCompileSuccessOnce()) {
         options_.SetEnablePGOProfiler(false);
         LOG_ECMA(INFO) << "Aot has compile success once.";
     }
@@ -237,7 +237,7 @@ void EcmaVM::PostFork()
     processStartRealtime_ = InitializeStartRealTime();
     bool jitEscapeDisable = ohos::JitTools::GetJitEscapeDisable();
     if (jitEscapeDisable || !JSNApi::IsJitEscape()) {
-        if (ohos::EnableAotListHelper::GetJitInstance()->IsEnableJit(bundleName)) {
+        if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableJit(bundleName)) {
             bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
             bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
             options_.SetEnableAPPJIT(true);
