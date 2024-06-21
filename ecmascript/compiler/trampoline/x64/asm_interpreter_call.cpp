@@ -1248,8 +1248,8 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
     __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndReturnBaseline));
     Register currentSp = r12;
     Register fpRegister = r10;
-    intptr_t fpOffset =
-        static_cast<intptr_t>(AsmInterpretedFrame::GetFpOffset(false) - AsmInterpretedFrame::GetSize(false));
+    intptr_t fpOffset = static_cast<intptr_t>(AsmInterpretedFrame::GetFpOffset(false)) -
+        static_cast<intptr_t>(AsmInterpretedFrame::GetSize(false));
     __ Movq(Operand(currentSp, static_cast<int32_t>(fpOffset)), fpRegister);
     __ Movq(fpRegister, rsp);
 
@@ -1270,8 +1270,8 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
 
         // acc is undefined
         __ Bind(&getThis);
-        intptr_t thisOffset =
-            static_cast<intptr_t>(AsmInterpretedFrame::GetThisOffset(false) - AsmInterpretedFrame::GetSize(false));
+        intptr_t thisOffset = static_cast<intptr_t>(AsmInterpretedFrame::GetThisOffset(false)) -
+            static_cast<intptr_t>(AsmInterpretedFrame::GetSize(false));
         __ Movq(Operand(currentSp, static_cast<int32_t>(thisOffset)), ret);
         __ Jmp(&normalReturn);
 
