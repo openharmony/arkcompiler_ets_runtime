@@ -490,6 +490,7 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
             sStr = StringHelper::Utf16ToU16String(&cc, 1);
         } else {
             DecodePercentEncoding(thread, str, k, IsInURISet, strLen, sStr);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         resStr.append(sStr);
         k++;
@@ -578,7 +579,9 @@ JSTaggedValue BuiltinsGlobal::DecodePercentEncoding(JSThread *thread, const JSHa
             THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
         }
         DecodePercentEncoding(thread, n, k, str, bb, oct);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         UTF16EncodeCodePoint(thread, IsInURISet, oct, str, start, k, sStr);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
     return JSTaggedValue::True();
 }

@@ -56,6 +56,8 @@ static constexpr uint8_t UTF8_3B_SECOND_MIN = 0xa0;  // the minimum for 3 bytes 
 
 static constexpr uint8_t UTF8_4B_FIRST = 0xf0;
 static constexpr uint8_t UTF8_4B_SECOND_MIN = 0x90;  // the minimum for 4 bytes is 65536, which is 0xf0908080
+static constexpr uint8_t UTF8_4B_FIRST_MAX = 0xF4; // the maximum for 4 bytes is 1114111, which is 0x10FFFF
+static constexpr uint8_t UTF8_4B_SECOND_MAX = 0x8F;
 
 static constexpr uint8_t byteMask = 0xbf;
 static constexpr uint8_t byteMark = 0x80;

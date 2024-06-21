@@ -144,6 +144,11 @@ bool IsValidUTF8(const std::vector<uint8_t> &data)
             if (data.at(0) == UTF8_4B_FIRST && data.at(1) < UTF8_4B_SECOND_MIN) {
                 return false;
             }
+            // max four length binary: 11110(100) 10(001111) 10(111111) 10(111111), max data[0] is 0xF4, data[1] is 0x8F
+            if (data.at(0) > UTF8_4B_FIRST_MAX ||
+               (data.at(0) == UTF8_4B_FIRST_MAX && data.at(1) > UTF8_4B_SECOND_MAX)) {
+                return false;
+            }
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
