@@ -584,14 +584,14 @@ GateRef CircuitBuilder::LdLocalModuleVar(GateRef jsFunc, GateRef index)
     return newGate;
 }
 
-GateRef CircuitBuilder::BuiltinConstructor(BuiltinTypeId id, GateRef gate)
+GateRef CircuitBuilder::BuiltinConstructor(BuiltinsStubCSigns::ID id, GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef newGate = Circuit::NullGate();
     switch (id) {
-        case BuiltinTypeId::ARRAY: {
+        case BuiltinsStubCSigns::ID::ArrayConstructor: {
             if (acc_.GetNumValueIn(gate) == 1) {
                 newGate = GetCircuit()->NewGate(circuit_->ArrayConstructor(1), MachineType::I64,
                                                 { currentControl, currentDepend, acc_.GetValueIn(gate, 0)},
@@ -604,7 +604,7 @@ GateRef CircuitBuilder::BuiltinConstructor(BuiltinTypeId id, GateRef gate)
             }
             break;
         }
-        case BuiltinTypeId::OBJECT: {
+        case BuiltinsStubCSigns::ID::ObjectConstructor: {
             if (acc_.GetNumValueIn(gate) == 1) {
                 newGate = GetCircuit()->NewGate(circuit_->ObjectConstructor(1), MachineType::I64,
                                                 { currentControl, currentDepend, acc_.GetValueIn(gate, 0)},
@@ -617,7 +617,7 @@ GateRef CircuitBuilder::BuiltinConstructor(BuiltinTypeId id, GateRef gate)
             }
             break;
         }
-        case BuiltinTypeId::BOOLEAN: {
+        case BuiltinsStubCSigns::ID::BooleanConstructor: {
             if (acc_.GetNumValueIn(gate) == 1) {
                 newGate = GetCircuit()->NewGate(circuit_->BooleanConstructor(1), MachineType::I64,
                                                 { currentControl, currentDepend, acc_.GetValueIn(gate, 0)},

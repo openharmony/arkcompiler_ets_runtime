@@ -2491,11 +2491,27 @@ void TypedHCRLowering::LowerObjectConstructor(GateRef gate, GateRef glue)
         builder_.Bind(&notNumber);
         {
             Label isBoolean(&builder_);
-            BRANCH_CIR(builder_.TaggedIsBoolean(value), &isBoolean, &slowPath);
+            Label notBoolean(&builder_);
+            BRANCH_CIR(builder_.TaggedIsBoolean(value), &isBoolean, &notBoolean);
             builder_.Bind(&isBoolean);
             {
                 res = NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BOOLEAN, glue, value);
                 builder_.Jump(&exit);
+            }
+            builder_.Bind(&notBoolean);
+            {
+                Label isNullOrUndefined(&builder_);
+                BRANCH_CIR(builder_.TaggedIsUndefinedOrNull(value), &isNullOrUndefined, &slowPath);
+                builder_.Bind(&isNullOrUndefined);
+                {
+                    GateRef glueGlobalEnvOffset = builder_.IntPtr(
+                        JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
+                    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                    GateRef objectFunctionPrototype = builder_.GetGlobalEnvValue(VariableType::JS_ANY(),
+                        glueGlobalEnv, GlobalEnv::OBJECT_FUNCTION_PROTOTYPE_INDEX);
+                    res = builder_.OrdinaryNewJSObjectCreate(glue, objectFunctionPrototype);
+                    builder_.Jump(&exit);
+                }
             }
         }
     }
@@ -2588,23 +2604,23 @@ GateRef TypedHCRLowering::NewJSPrimitiveRef(PrimitiveType type, GateRef glue, Ga
 {
     GateRef glueGlobalEnvOffset = builder_.IntPtr(
         JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
-    GateRef gloablEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef globalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
     GateRef ctor = Circuit::NullGate();
     switch (type) {
         case PrimitiveType::PRIMITIVE_NUMBER: {
-            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), gloablEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
+            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
             break;
         }
         case PrimitiveType::PRIMITIVE_SYMBOL: {
-            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), gloablEnv, GlobalEnv::SYMBOL_FUNCTION_INDEX);
+            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::SYMBOL_FUNCTION_INDEX);
             break;
         }
         case PrimitiveType::PRIMITIVE_BOOLEAN: {
-            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), gloablEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
+            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::BOOLEAN_FUNCTION_INDEX);
             break;
         }
         case PrimitiveType::PRIMITIVE_BIGINT: {
-            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), gloablEnv, GlobalEnv::BIGINT_FUNCTION_INDEX);
+            ctor = builder_.GetGlobalEnvValue(VariableType::JS_ANY(), globalEnv, GlobalEnv::BIGINT_FUNCTION_INDEX);
             break;
         }
         default: {

@@ -403,7 +403,7 @@ public:
     GateRef ToLength(GateRef receiver);
     GateRef StoreModuleVar(GateRef jsFunc, GateRef index, GateRef value);
     GateRef LdLocalModuleVar(GateRef jsFunc, GateRef index);
-    GateRef BuiltinConstructor(BuiltinTypeId id, GateRef gate);
+    GateRef BuiltinConstructor(BuiltinsStubCSigns::ID id, GateRef gate);
 
     inline GateRef GetMethodId(GateRef func);
     inline GateRef GetBuiltinsId(GateRef func);

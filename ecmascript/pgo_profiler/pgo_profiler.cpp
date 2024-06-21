@@ -1310,11 +1310,15 @@ void PGOProfiler::DumpNewObjRange(ApEntityId abcId, const CString &recordName, E
     } else {
         return;
     }
+    PGOSampleType type;
     if (ctorMethodId > 0) {
-        auto type = PGOSampleType::CreateProfileType(abcId, ctorMethodId, ProfileType::Kind::ClassId, true);
-        ProfileType recordType = GetRecordProfileType(abcId, recordName);
-        recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
+        type = PGOSampleType::CreateProfileType(abcId, ctorMethodId, ProfileType::Kind::ClassId, true);
+    } else {
+        auto kind = ProfileType::Kind::BuiltinFunctionId;
+        type = PGOSampleType::CreateProfileType(abcId, std::abs(ctorMethodId), kind);
     }
+    ProfileType recordType = GetRecordProfileType(abcId, recordName);
+    recordInfos_->AddCallTargetType(recordType, methodId, bcOffset, type);
 }
 
 void PGOProfiler::DumpInstanceof(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,

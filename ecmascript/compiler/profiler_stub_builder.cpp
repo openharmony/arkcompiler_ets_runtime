@@ -297,6 +297,7 @@ GateRef ProfilerStubBuilder::TryGetBuiltinFunctionId(GateRef target)
     Label exit(env);
 
     DEFVARIABLE(functionId, VariableType::INT32(), Int32(PGO_BUILTINS_STUB_ID(NONE)));
+    
     BRANCH(IsJSFunction(target), &targetIsFunction, &exit);
     Bind(&targetIsFunction);
     {
