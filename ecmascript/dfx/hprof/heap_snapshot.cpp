@@ -1128,15 +1128,17 @@ CString HeapSnapshot::ParseFunctionName(TaggedObject *obj)
         result.append(moduleStr).append(" ");
     }
     if (nameStr.empty()) {
-        DebugInfoExtractor *debugExtractor =
-            JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
-        if (debugExtractor == nullptr) {
-            return result.append(moduleStr).append(" anonymous");
-        }
-        int32_t line = debugExtractor->GetFristLine(methodId);
-        return result.append(moduleStr).append(" anonymous(line:").append(std::to_string(line)).append(")");
+        result.append("anonymous");
+    } else {
+        result.append(nameStr);
     }
-    return result.append(nameStr);
+    DebugInfoExtractor *debugExtractor =
+        JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    if (debugExtractor == nullptr) {
+        return result;
+    }
+    int32_t line = debugExtractor->GetFristLine(methodId);
+    return result.append("(line:").append(std::to_string(line)).append(")");
 }
 
 const CString HeapSnapshot::ParseObjectName(TaggedObject *obj)

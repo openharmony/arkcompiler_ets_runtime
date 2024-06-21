@@ -41,6 +41,32 @@ public:
     JSThread *thread_ {nullptr};
 };
 
+class HeapDumpTestHelper {
+public:
+    explicit HeapDumpTestHelper(EcmaVM *vm) : instance(vm) {}
+
+    ~HeapDumpTestHelper()
+    {
+        HeapProfilerInterface::Destroy(instance);
+    }
+
+    size_t GenerateSnapShot(const std::string &filePath)
+    {
+        // first generate this file of filePath if not exist,
+        // so the function `realpath` of FileStream can not failed on arm/arm64.
+        fstream outputString(filePath, std::ios::out);
+        outputString.close();
+        outputString.clear();
+        FileStream stream(filePath.c_str());
+        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+        heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
+        return heapProfile->GetIdCount();
+    }
+
+private:
+    EcmaVM *instance {nullptr};
+};
+
 class MockHeapProfiler : public HeapProfilerInterface {
 public:
     NO_MOVE_SEMANTIC(MockHeapProfiler);
@@ -192,6 +218,29 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
         }
     }
     ASSERT_TRUE(pass);
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionUrl)
+{
+    const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"heapdump.abc";
+
+    bool result = JSNApi::Execute(ecmaVm_, abcFileName, "heapdump");
+    EXPECT_TRUE(result);
+
+    HeapDumpTestHelper tester(ecmaVm_);
+    tester.GenerateSnapShot("testFunctionUrl.heapsnapshot");
+
+    // match function url
+    std::string line;
+    std::ifstream inputStream("testFunctionUrl.heapsnapshot");
+    bool strMatched = false;
+    while (getline(inputStream, line)) {
+        if (line == "\"heapdump greet(line:98)\",") {
+            strMatched = true;
+            break;
+        }
+    }
+    ASSERT_TRUE(strMatched);
 }
 
 }
