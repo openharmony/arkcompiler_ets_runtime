@@ -219,6 +219,11 @@ GateRef CircuitBuilder::GetDataOfTaggedArray(GateRef array)
     return PtrAdd(array, Int64(TaggedArray::DATA_OFFSET));
 }
 
+GateRef CircuitBuilder::GetLengthOfJSArray(GateRef array)
+{
+    return Load(VariableType::INT32(), array, IntPtr(JSArray::LENGTH_OFFSET));
+}
+
 GateRef CircuitBuilder::IsTypedArray(GateRef array)
 {
     GateRef hclass = LoadHClass(array);
@@ -1404,5 +1409,110 @@ void CircuitBuilder::UpdateProfileTypeInfoCellType(GateRef glue, GateRef profile
     }
     Bind(&endProfileTypeInfoCellType);
     env_->SubCfgExit();
+}
+
+GateRef CircuitBuilder::FastToBoolean(GateRef value)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    DEFVALUE(result, env_, VariableType::JS_ANY(), HoleConstant());
+    Label exit(env_);
+
+    Label isSpecial(env_);
+    Label notSpecial(env_);
+    Label isNumber(env_);
+    Label isInt(env_);
+    Label isDouble(env_);
+    Label notNumber(env_);
+    Label notNan(env_);
+    Label isString(env_);
+    Label notString(env_);
+    Label isBigint(env_);
+    Label lengthIsOne(env_);
+    Label returnTrue(env_);
+    Label returnFalse(env_);
+
+    BRANCH_CIR2(TaggedIsSpecial(value), &isSpecial, &notSpecial);
+    Bind(&isSpecial);
+    {
+        BRANCH_CIR2(TaggedIsTrue(value), &returnTrue, &returnFalse);
+    }
+    Bind(&notSpecial);
+    {
+        BRANCH_CIR2(TaggedIsNumber(value), &isNumber, &notNumber);
+        Bind(&notNumber);
+        {
+            BRANCH_CIR2(TaggedIsString(value), &isString, &notString);
+            Bind(&isString);
+            {
+                auto len = GetLengthFromString(value);
+                BRANCH_CIR2(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
+            }
+            Bind(&notString);
+            BRANCH_CIR2(TaggedIsBigInt(value), &isBigint, &returnTrue);
+            Bind(&isBigint);
+            {
+                auto len = Load(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));
+                BRANCH_CIR2(Int32Equal(len, Int32(1)), &lengthIsOne, &returnTrue);
+                Bind(&lengthIsOne);
+                {
+                    auto data = PtrAdd(value, IntPtr(BigInt::DATA_OFFSET));
+                    auto data0 = Load(VariableType::INT32(), data, Int32(0));
+                    BRANCH_CIR2(Int32Equal(data0, Int32(0)), &returnFalse, &returnTrue);
+                }
+            }
+        }
+        Bind(&isNumber);
+        {
+            BRANCH_CIR2(TaggedIsInt(value), &isInt, &isDouble);
+            Bind(&isInt);
+            {
+                auto intValue = GetInt32OfTInt(value);
+                BRANCH_CIR2(Int32Equal(intValue, Int32(0)), &returnFalse, &returnTrue);
+            }
+            Bind(&isDouble);
+            {
+                auto doubleValue = GetDoubleOfTDouble(value);
+                BRANCH_CIR2(DoubleIsNAN(doubleValue), &returnFalse, &notNan);
+                Bind(&notNan);
+                BRANCH_CIR2(DoubleEqual(doubleValue, Double(0.0)), &returnFalse, &returnTrue);
+            }
+        }
+    }
+    Bind(&returnTrue);
+    {
+        result = TaggedTrue();
+        Jump(&exit);
+    }
+    Bind(&returnFalse);
+    {
+        result = TaggedFalse();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
+GateRef CircuitBuilder::IsStableArrayLengthWriteable(GateRef array)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    GateRef hClass = LoadHClassByConstOffset(array);
+    GateRef attrOffset = IntPtr(JSHClass::LAYOUT_OFFSET);
+    GateRef layout = Load(VariableType::JS_POINTER(), hClass, attrOffset);
+    GateRef entryHandler = Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX);
+    GateRef index =
+        Int32Add(Int32LSL(entryHandler, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)), Int32(LayoutInfo::ATTR_INDEX_OFFSET));
+    GateRef attr = GetInt64OfTInt(GetValueFromTaggedArray(layout, index));
+    GateRef writeableField =
+        Int32And(TruncInt64ToInt32(Int64LSR(attr, Int64(PropertyAttributes::WritableField::START_BIT))),
+                 Int32((1LLU << PropertyAttributes::WritableField::SIZE) - 1));
+    result = Int32NotEqual(writeableField, Int32(0));
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
 }
 }  // namespace panda::ecmascript::kungfu

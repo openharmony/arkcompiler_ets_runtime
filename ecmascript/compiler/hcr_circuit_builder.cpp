@@ -452,6 +452,23 @@ GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
     return callGate;
 }
 
+GateRef CircuitBuilder::CallInternal(GateRef hirGate, std::vector<GateRef> args, uint64_t pcOffset)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    uint64_t bitfield = args.size();
+    ASSERT(pcOffset != 0);
+    args.insert(args.begin(), currentDepend);
+    args.insert(args.begin(), currentControl);
+    AppendFrameArgs(args, hirGate);
+    auto callGate = GetCircuit()->NewGate(
+        circuit_->CallInternal(bitfield, pcOffset), MachineType::I64, args.size(), args.data(), GateType::AnyType());
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
 GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
                                 bool needPushArgv)
 {

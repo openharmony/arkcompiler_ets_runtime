@@ -131,6 +131,7 @@ private:
     GateRef VisitMonoStoreProperty(GateRef gate);
     GateRef VisitDateGetTime(GateRef gate);
     GateRef VisitDateNow(GateRef gate);
+    GateRef VisitArrayIncludesIndexOf(GateRef gate);
 
     void ConvertForNumberBinaryOp(GateRef gate);
     void ConvertForNumberCompareOp(GateRef gate);

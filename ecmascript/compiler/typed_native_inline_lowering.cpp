@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/typed_native_inline_lowering.h"
+#include "builtins/builtins_array_stub_builder.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/byte_array.h"
@@ -24,8 +25,9 @@
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
-#include "ecmascript/compiler/lcr_circuit_builder.h"
 #include "ecmascript/compiler/gate.h"
+#include "ecmascript/compiler/lcr_circuit_builder.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/share_opcodes.h"
@@ -33,19 +35,17 @@
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_dataview.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_date.h"
+#include "ecmascript/js_hclass.h"
+#include "ecmascript/js_iterator.h"
+#include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/message_string.h"
 #include "macros.h"
-#include "ecmascript/compiler/new_object_stub_builder.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/js_array_iterator.h"
-#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::kungfu {
 GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
@@ -330,6 +330,36 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::FUNCTION_PROTOTYPE_CALL:
             LowerFunctionPrototypeCall(gate);
             break;
+        case OpCode::ARRAY_INCLUDES_INDEXOF:
+            LowerArrayIncludesIndexOf(gate);
+            break;
+        case OpCode::ARRAY_ITERATOR_BUILTIN:
+            LowerArrayIteratorBuiltin(gate);
+            break;
+        case OpCode::ARRAY_FOR_EACH:
+            LowerArrayForEach(gate);
+            break;
+        case OpCode::ARRAY_FIND_OR_FINDINDEX:
+            LowerArrayFindOrFindIndex(gate);
+            break;
+        case OpCode::ARRAY_FILTER:
+            LowerArrayFilter(gate);
+            break;
+        case OpCode::ARRAY_MAP:
+            LowerArrayMap(gate);
+            break;
+        case OpCode::ARRAY_SOME:
+            LowerArraySome(gate);
+            break;
+        case OpCode::ARRAY_EVERY:
+            LowerArrayEvery(gate);
+            break;
+        case OpCode::ARRAY_POP:
+            LowerArrayPop(gate);
+            break;
+        case OpCode::ARRAY_SLICE:
+            LowerArraySlice(gate);
+            break;
         default:
             break;
     }
@@ -377,9 +407,10 @@ void TypedNativeInlineLowering::LowerMathCeilFloorWithRuntimeCall(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
-GateRef TypedNativeInlineLowering::AllocateTypedArrayIterator(GateRef glue, GateRef self,
-                                                              GateRef iteratorHClass,
-                                                              IterationKind iterationKind)
+GateRef TypedNativeInlineLowering::AllocateArrayIterator(GateRef glue,
+                                                         GateRef self,
+                                                         GateRef iteratorHClass,
+                                                         IterationKind iterationKind)
 {
     GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
     GateRef kind = builder_.Int32(static_cast<int32_t>(iterationKind));
@@ -448,7 +479,7 @@ void TypedNativeInlineLowering::LowerTypedArrayIterator(GateRef gate, CommonStub
         GateRef offset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
         builder_.Store(VariableType::JS_POINTER(), glue, iteratorHClass, offset, prototype);
 
-        result = AllocateTypedArrayIterator(glue, self, iteratorHClass, iterationKind);
+        result = AllocateArrayIterator(glue, self, iteratorHClass, iterationKind);
         builder_.Jump(&exit);
     }
 
@@ -2673,5 +2704,1081 @@ void TypedNativeInlineLowering::LowerFunctionPrototypeCall(GateRef gate)
     std::vector<GateRef> args = acc_.GetValueIns(gate);
     GateRef result = builder_.CallRuntime(glue, RTSTUB_ID(FunctionPrototypeCall), Gate::InvalidGateRef, args, gate);
     acc_.ReplaceGate(gate, builder_.GetStateDepend(), result);
+}
+
+void TypedNativeInlineLowering::LowerArrayIncludesIndexOf(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label returnFind(&builder_);
+    Label returnNotFind(&builder_);
+    Label exit(&builder_);
+    Label quit(&builder_);
+    Label done(&builder_);
+    Label fromIndexLessZero(&builder_);
+    Label setIndexZero(&builder_);
+    Label InitializeIndex(&builder_);
+    Label prepareReady(&builder_);
+    Label targetIsUndefined(&builder_);
+    Label targetIsNotUndefiend(&builder_);
+    Label arrayKindCheckPass(&builder_);
+
+    GateRef thisArray = acc_.GetValueIn(gate, 0);
+    GateRef fromIndexHandler = acc_.GetValueIn(gate, 1);
+    GateRef targetElement = acc_.GetValueIn(gate, 2);
+    GateRef callIDRef = acc_.GetValueIn(gate, 3);
+    BuiltinsStubCSigns::ID callID = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(callIDRef));
+    GateRef kindRef = acc_.GetValueIn(gate, 4);
+    GateRef elements = builder_.LoadConstOffset(VariableType::JS_POINTER(), thisArray, JSObject::ELEMENTS_OFFSET);
+    ElementsKind kind = static_cast<ElementsKind>(acc_.GetConstantValue(kindRef));
+
+    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
+    DEFVALUE(fromIndex, (&builder_), VariableType::INT32(), fromIndexHandler);
+    DEFVALUE(IncludesRes, (&builder_), VariableType::BOOL(), builder_.False());
+    GateRef arrayLength = builder_.GetLengthOfJSArray(thisArray);
+
+    BRANCH_CIR(builder_.Int32Equal(arrayLength, builder_.Int32(0)), &exit, &InitializeIndex);
+    builder_.Bind(&InitializeIndex);
+    {
+        BRANCH_CIR(builder_.Int32GreaterThanOrEqual(fromIndexHandler, builder_.Int32(0)), &done, &fromIndexLessZero);
+        builder_.Bind(&fromIndexLessZero);
+        {
+            fromIndex = builder_.Int32Add(fromIndexHandler, arrayLength);
+            BRANCH_CIR(builder_.Int32GreaterThanOrEqual(*fromIndex, builder_.Int32(0)), &done, &setIndexZero);
+            builder_.Bind(&setIndexZero);
+            {
+                fromIndex = builder_.Int32(0);
+            }
+            builder_.Jump(&done);
+        }
+    }
+    builder_.Bind(&done);
+
+    BRANCH_CIR(builder_.Int32GreaterThanOrEqual(*fromIndex, arrayLength), &exit, &prepareReady);
+
+    builder_.Bind(&prepareReady);
+
+    if (callID == BuiltinsStubCSigns::ID::ArrayIncludes && Elements::IsHole(kind)) {
+        BRANCH_CIR(builder_.TaggedIsUndefined(targetElement), &targetIsUndefined, &targetIsNotUndefiend);
+        builder_.Bind(&targetIsUndefined);
+        {
+            IncludesRes = includesUndefinedLoop(elements, *fromIndex, arrayLength);
+            builder_.Jump(&quit);
+        }
+        builder_.Bind(&targetIsNotUndefiend);
+    }
+
+    switch (kind) {
+        case ElementsKind::HOLE_INT: {
+            BRANCH_CIR(builder_.TaggedIsNumber(targetElement), &arrayKindCheckPass, &exit);
+            builder_.Bind(&arrayKindCheckPass);
+            {
+                res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, true);
+                builder_.Jump(&exit);
+            }
+            break;
+        }
+        case ElementsKind::INT: {
+            BRANCH_CIR(builder_.TaggedIsNumber(targetElement), &arrayKindCheckPass, &exit);
+            builder_.Bind(&arrayKindCheckPass);
+            {
+                res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, false);
+                builder_.Jump(&exit);
+            }
+            break;
+        }
+        case ElementsKind::HOLE_NUMBER: {
+            BRANCH_CIR(builder_.TaggedIsNumber(targetElement), &arrayKindCheckPass, &exit);
+            builder_.Bind(&arrayKindCheckPass);
+            {
+                res = IncludeIndexOfNumberLoop(elements, *fromIndex, targetElement, arrayLength, callID, true);
+                builder_.Jump(&exit);
+            }
+            break;
+        }
+        case ElementsKind::NUMBER: {
+            BRANCH_CIR(builder_.TaggedIsNumber(targetElement), &arrayKindCheckPass, &exit);
+            builder_.Bind(&arrayKindCheckPass);
+            {
+                res = IncludeIndexOfNumberLoop(elements, *fromIndex, targetElement, arrayLength, callID, false);
+                builder_.Jump(&exit);
+            }
+            break;
+        }
+        case ElementsKind::HOLE_OBJECT: {
+            BRANCH_CIR(builder_.IsEcmaObject(targetElement), &arrayKindCheckPass, &exit);
+            builder_.Bind(&arrayKindCheckPass);
+            res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, true);
+            builder_.Jump(&exit);
+            break;
+        }
+        case ElementsKind::OBJECT: {
+            BRANCH_CIR(builder_.IsEcmaObject(targetElement), &arrayKindCheckPass, &exit);
+            builder_.Bind(&arrayKindCheckPass);
+            res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, false);
+            builder_.Jump(&exit);
+            break;
+        }
+        case ElementsKind::HOLE_STRING: {
+            BRANCH_CIR(builder_.TaggedIsString(targetElement), &arrayKindCheckPass, &exit);
+            builder_.Bind(&arrayKindCheckPass);
+            res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, true);
+            builder_.Jump(&exit);
+            break;
+        }
+        case ElementsKind::STRING: {
+            BRANCH_CIR(builder_.TaggedIsString(targetElement), &arrayKindCheckPass, &exit);
+            builder_.Bind(&arrayKindCheckPass);
+            res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, false);
+            builder_.Jump(&exit);
+            break;
+        }
+        default: {
+            UNREACHABLE();
+        }
+    }
+    builder_.Bind(&exit);
+    if (callID == BuiltinsStubCSigns::ID::ArrayIncludes) {
+        BRANCH_CIR(builder_.Int32GreaterThanOrEqual(*res, builder_.Int32(0)), &returnFind, &quit);
+        builder_.Bind(&returnFind);
+        {
+            IncludesRes = builder_.True();
+            builder_.Jump(&quit);
+        }
+        builder_.Bind(&quit);
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *IncludesRes);
+    } else {
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
+    }
+}
+
+GateRef TypedNativeInlineLowering::includesUndefinedLoop(GateRef elements, GateRef fromIndex, GateRef arrayLength)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label findElement(&builder_);
+    Label exit(&builder_);
+    DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
+    DEFVALUE(res, (&builder_), VariableType::BOOL(), builder_.False());
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
+    {
+        BRANCH_CIR(builder_.TaggedIsUndefinedOrHole(value), &findElement, &afterLoop);
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        BRANCH_CIR(builder_.Int32LessThanOrEqual(*i, arrayLength), &loopEnd, &exit);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&findElement);
+    {
+        res = builder_.True();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedNativeInlineLowering::IncludeIndexOfIntOrObjLoop(
+    GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength, ElementsKind kind, bool hasHole)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label findElement(&builder_);
+    Label exit(&builder_);
+    Label compare(&builder_);
+
+    DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
+    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    {
+        GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
+        if (hasHole) {
+            BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
+            builder_.Bind(&compare);
+        }
+        {
+            BRANCH_CIR(CompareWithElementsKind(targetElement, value, kind), &findElement, &afterLoop);
+        }
+        builder_.Bind(&afterLoop);
+        {
+            i = builder_.Int32Add(*i, builder_.Int32(1));
+            BRANCH_CIR(builder_.Int32LessThanOrEqual(*i, arrayLength), &loopEnd, &exit);
+        }
+        builder_.Bind(&loopEnd);
+    }
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&findElement);
+    {
+        res = *i;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedNativeInlineLowering::IncludeIndexOfNumberLoop(GateRef elements,
+                                                            GateRef fromIndex,
+                                                            GateRef targetElement,
+                                                            GateRef arrayLength,
+                                                            BuiltinsStubCSigns::ID callID,
+                                                            bool hasHole)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label findElement(&builder_);
+    Label compare(&builder_);
+    Label numberCompare(&builder_);
+    Label NaNcompare(&builder_);
+    Label exit(&builder_);
+    DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
+    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
+    if (hasHole) {
+        BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
+        builder_.Bind(&compare);
+    }
+    {
+        GateRef doubleTarget = builder_.GetDoubleOfTNumber(targetElement);
+        GateRef doubleValue = builder_.GetDoubleOfTNumber(value);
+        if (callID == BuiltinsStubCSigns::ID::ArrayIncludes) {
+            BRANCH_CIR(builder_.DoubleIsNAN(doubleTarget), &NaNcompare, &numberCompare);
+            builder_.Bind(&NaNcompare);
+            {
+                BRANCH_CIR(builder_.DoubleIsNAN(doubleValue), &findElement, &afterLoop);
+            }
+            builder_.Bind(&numberCompare);
+        }
+        BRANCH_CIR(builder_.DoubleEqual(doubleTarget, doubleValue), &findElement, &afterLoop);
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        BRANCH_CIR(builder_.Int32LessThanOrEqual(*i, arrayLength), &loopEnd, &exit);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&findElement);
+    {
+        res = *i;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedNativeInlineLowering::CompareWithElementsKind(GateRef targetElement, GateRef value, ElementsKind kind)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label findElement(&builder_);
+    Label exit(&builder_);
+    DEFVALUE(res, (&builder_), VariableType::BOOL(), builder_.False());
+    if (Elements::IsInt(kind) || Elements::IsHoleInt(kind)) {
+        GateRef valueDouble = builder_.GetDoubleOfTInt(value);
+        GateRef targetDouble = builder_.GetDoubleOfTNumber(targetElement);
+        BRANCH_CIR(builder_.DoubleEqual(valueDouble, targetDouble), &findElement, &exit);
+    } else if (Elements::IsObject(kind) || Elements::IsHoleObject(kind)) {
+        BRANCH_CIR(builder_.Equal(targetElement, value), &findElement, &exit);
+    } else if (Elements::IsString(kind) || Elements::IsHoleString(kind)) {
+        auto env = builder_.GetCurrentEnvironment();
+        BuiltinsStringStubBuilder builtinsStringStubBuilder(env);
+        GateRef stringEqual =
+            builtinsStringStubBuilder.FastStringEqual(acc_.GetGlueFromArgList(), targetElement, value);
+        BRANCH_CIR(stringEqual, &findElement, &exit);
+    } else {
+        LOG_COMPILER(FATAL) << "ElementsKind illegal: " << static_cast<uint32_t>(kind);
+        UNREACHABLE();
+    }
+    builder_.Bind(&findElement);
+    {
+        res = builder_.True();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+void TypedNativeInlineLowering::LowerArrayIteratorBuiltin(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisArray = acc_.GetValueIn(gate, 0);
+    GateRef callIDRef = acc_.GetValueIn(gate, 1);
+    BuiltinsStubCSigns::ID callID = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(callIDRef));
+    IterationKind iterationKind = GetArrayIterKindFromBuilin(callID);
+
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef glueGlobalEnvOffset = builder_.IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env.Is32Bit()));
+    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef prototype = builder_.GetGlobalEnvValue(
+        VariableType::JS_POINTER(), glueGlobalEnv, GlobalEnv::ARRAY_ITERATOR_PROTOTYPE_INDEX);
+
+    GateRef iteratorHClass = builder_.GetGlobalConstantValue(ConstantIndex::JS_ARRAY_ITERATOR_CLASS_INDEX);
+    GateRef offset = builder_.IntPtr(JSHClass::PROTOTYPE_OFFSET);
+    builder_.Store(VariableType::JS_POINTER(), glue, iteratorHClass, offset, prototype);
+
+    GateRef result = AllocateArrayIterator(glue, thisArray, iteratorHClass, iterationKind);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+}
+
+IterationKind TypedNativeInlineLowering::GetArrayIterKindFromBuilin(BuiltinsStubCSigns::ID callID)
+{
+    switch (callID) {
+        case BuiltinsStubCSigns::ID::ArrayEntries:
+            return IterationKind::KEY_AND_VALUE;
+        case BuiltinsStubCSigns::ID::ArrayKeys:
+            return IterationKind::KEY;
+        case BuiltinsStubCSigns::ID::ArrayValues:
+            return IterationKind::VALUE;
+        default:
+            UNREACHABLE();
+    }
+}
+
+void TypedNativeInlineLowering::LowerArrayForEach(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    GateRef usingThis = acc_.GetValueIn(gate, 2);
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef length = builder_.GetLengthOfJSArray(thisValue);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label exit(&builder_);
+    Label NotHole(&builder_);
+    Label merge(&builder_);
+    DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(*i)));
+    DEFVALUE(value, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopHead, &exit);
+    builder_.LoopBegin(&loopHead);
+    GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), thisValue, JSObject::ELEMENTS_OFFSET);
+    value = builder_.GetValueFromTaggedArray(element, *i);
+    {
+        GateRef nativeCall = builder_.CallInternal(gate,
+                                                   {glue,
+                                                    builder_.Int64(6),
+                                                    builder_.IntPtr(0),
+                                                    callBackFn,
+                                                    builder_.Undefined(),
+                                                    usingThis,
+                                                    *value,
+                                                    *propKey,
+                                                    thisValue},
+                                                   acc_.TryGetPcOffset(gate));
+        builder_.SetDepend(nativeCall);
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        propKey = builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(*i));
+        builder_.Jump(&merge);
+    }
+    builder_.Bind(&merge);
+    BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopEnd, &exit);
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), builder_.UndefineConstant());
+}
+
+void TypedNativeInlineLowering::LowerArrayFindOrFindIndex(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    BuiltinsArrayStubBuilder arrayBuilder(&env);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    GateRef usingThis = acc_.GetValueIn(gate, 2);
+    GateRef builtinFunc = acc_.GetValueIn(gate, 3);
+    auto builtinsID = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(builtinFunc));
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef length = builder_.GetLengthOfJSArray(thisValue);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label exit(&builder_);
+    Label afterLoop(&builder_);
+    Label findElement(&builder_);
+    Label returnNotFind(&builder_);
+    Label returnFind(&builder_);
+    Label quit(&builder_);
+    DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    DEFVALUE(value, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
+    DEFVALUE(findRes, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopHead, &exit);
+    builder_.LoopBegin(&loopHead);
+    GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), thisValue, JSObject::ELEMENTS_OFFSET);
+    value = builder_.GetValueFromTaggedArray(element, *i);
+    {
+        GateRef nativeCall = builder_.CallInternal(gate,
+                                                   {glue,
+                                                    builder_.Int64(6),
+                                                    builder_.IntPtr(0),
+                                                    callBackFn,
+                                                    builder_.Undefined(),
+                                                    usingThis,
+                                                    *value,
+                                                    builder_.Int32ToTaggedPtr(*i),
+                                                    thisValue},
+                                                   acc_.TryGetPcOffset(gate));
+        builder_.SetDepend(nativeCall);
+        BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(nativeCall)), &findElement, &afterLoop);
+    }
+    builder_.Bind(&afterLoop);
+    i = builder_.Int32Add(*i, builder_.Int32(1));
+    BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopEnd, &exit);
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+    builder_.Bind(&findElement);
+    {
+        res = *i;
+        findRes = *value;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    if (builtinsID == BuiltinsStubCSigns::ID::ArrayFind) {
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *findRes);
+    } else {
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), builder_.Int32ToTaggedPtr(*res));
+    }
+}
+
+void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env);
+    auto pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    GateRef usingThis = acc_.GetValueIn(gate, 2);
+    GateRef frameState = acc_.GetValueIn(gate, 3);
+    GateRef length = builder_.SExtInt32ToInt64(builder_.GetLengthOfJSArray(thisValue));
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
+
+    Label lengthIsZero(&builder_);
+    Label lengthNotZero(&builder_);
+    Label notHole(&builder_);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label returnTrue(&builder_);
+    Label exit(&builder_);
+    Label needTrim(&builder_);
+    Label quit(&builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVALUE(i, (&builder_), VariableType::INT64(), builder_.Int64(0));
+    DEFVALUE(toIndex, (&builder_), VariableType::INT64(), builder_.Int64(0));
+    DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(*i));
+    DEFVALUE(kValue, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    BRANCH_CIR(builder_.Int64Equal(length, builder_.Int64(0)), &lengthIsZero, &lengthNotZero)
+    builder_.Bind(&lengthIsZero);
+    {
+        NewObjectStubBuilder newBuilder(&env);
+        result = newBuilder.CreateEmptyArray(glue);
+        builder_.Jump(&quit);
+    }
+    builder_.Bind(&lengthNotZero);
+    builder_.DeoptCheck(builder_.Int64LessThanOrEqual(length, builder_.Int64(JSObject::MAX_GAP)),
+                        frameState,
+                        DeoptType::ARRAYLENGTHOVERMAX);
+    GateRef newArray = builtinsArrayStubBuilder.NewArray(glue, length);
+    GateRef newArrayEles = builder_.GetElementsArray(newArray);
+    builder_.Jump(&loopHead);
+    builder_.LoopBegin(&loopHead);
+    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
+    {
+        GateRef callJs = builder_.CallInternal(gate,
+                                               {glue,
+                                                builder_.Int64(6),
+                                                builder_.IntPtr(0),
+                                                callBackFn,
+                                                builder_.Undefined(),
+                                                usingThis,
+                                                *kValue,
+                                                *propKey,
+                                                thisValue},
+                                               pcOffset);
+        builder_.SetDepend(callJs);
+        BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(callJs)), &returnTrue, &afterLoop);
+        builder_.Bind(&returnTrue);
+        {
+            builtinsArrayStubBuilder.SetValueWithElementsKind(
+                glue,
+                newArray,
+                *kValue,
+                *toIndex,
+                builder_.Boolean(true),
+                builder_.Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            toIndex = builder_.Int64Add(*toIndex, builder_.Int64(1));
+            builder_.Jump(&afterLoop);
+        }
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int64Add(*i, builder_.Int64(1));
+        propKey = builder_.ToTaggedIntPtr(*i);
+        BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &exit);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&exit);
+    result = newArray;
+
+    BRANCH_CIR(builder_.Int64LessThan(*toIndex, length), &needTrim, &quit);
+    builder_.Bind(&needTrim);
+    {
+        GateRef trim = builder_.CallNGCRuntime(
+            glue, RTSTUB_ID(ArrayTrim), Gate::InvalidGateRef, {glue, newArrayEles, *toIndex}, Circuit::NullGate());
+        builder_.SetDepend(trim);
+        builder_.Store(VariableType::INT32(), glue, newArray, lengthOffset, builder_.TruncInt64ToInt32(*toIndex));
+        builder_.Jump(&quit);
+    }
+    builder_.Bind(&quit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env);
+    auto pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    GateRef usingThis = acc_.GetValueIn(gate, 2);
+    GateRef frameState = acc_.GetValueIn(gate, 3);
+    GateRef length = builder_.SExtInt32ToInt64(builder_.GetLengthOfJSArray(thisValue));
+    GateRef glue = acc_.GetGlueFromArgList();
+
+    Label lengthIsZero(&builder_);
+    Label lengthNotZero(&builder_);
+    Label notHole(&builder_);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label returnTrue(&builder_);
+    Label exit(&builder_);
+    Label needTrim(&builder_);
+    Label finish(&builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    DEFVALUE(i, (&builder_), VariableType::INT64(), builder_.Int64(0));
+    DEFVALUE(toIndex, (&builder_), VariableType::INT64(), builder_.Int64(0));
+    DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(*i));
+    DEFVALUE(kValue, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    BRANCH_CIR(builder_.Int64Equal(length, builder_.Int64(0)), &lengthIsZero, &lengthNotZero)
+    builder_.Bind(&lengthIsZero);
+    {
+        NewObjectStubBuilder newBuilder(&env);
+        result = newBuilder.CreateEmptyArray(glue);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&lengthNotZero);
+    builder_.DeoptCheck(builder_.Int64LessThanOrEqual(length, builder_.Int64(JSObject::MAX_GAP)),
+                        frameState,
+                        DeoptType::ARRAYLENGTHOVERMAX);
+    GateRef newArray = builtinsArrayStubBuilder.NewArray(glue, length);
+    builder_.Jump(&loopHead);
+    builder_.LoopBegin(&loopHead);
+    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
+    {
+        GateRef callJs = builder_.CallInternal(gate,
+                                               {glue,
+                                                builder_.Int64(6),
+                                                builder_.IntPtr(0),
+                                                callBackFn,
+                                                builder_.Undefined(),
+                                                usingThis,
+                                                *kValue,
+                                                *propKey,
+                                                thisValue},
+                                               pcOffset);
+        builder_.SetDepend(callJs);
+        {
+            builtinsArrayStubBuilder.SetValueWithElementsKind(
+                glue,
+                newArray,
+                callJs,
+                *toIndex,
+                builder_.Boolean(true),
+                builder_.Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+            toIndex = builder_.Int64Add(*toIndex, builder_.Int64(1));
+            builder_.Jump(&afterLoop);
+        }
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int64Add(*i, builder_.Int64(1));
+        propKey = builder_.ToTaggedIntPtr(*i);
+        BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &finish);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&finish);
+    {
+        result = newArray;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedNativeInlineLowering::LowerArraySome(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env);
+    auto pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    GateRef usingThis = acc_.GetValueIn(gate, 2);
+    GateRef length = builder_.SExtInt32ToInt64(builder_.GetLengthOfJSArray(thisValue));
+    GateRef glue = acc_.GetGlueFromArgList();
+
+    Label lengthIsZero(&builder_);
+    Label lengthNotZero(&builder_);
+    Label notHole(&builder_);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label exit(&builder_);
+    Label findElement(&builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.TaggedFalse());
+    DEFVALUE(i, (&builder_), VariableType::INT64(), builder_.Int64(0));
+    DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(*i));
+    DEFVALUE(kValue, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    BRANCH_CIR(builder_.Int64Equal(length, builder_.Int64(0)), &lengthIsZero, &lengthNotZero)
+    builder_.Bind(&lengthIsZero);
+    {
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&lengthNotZero);
+    builder_.Jump(&loopHead);
+    builder_.LoopBegin(&loopHead);
+    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
+    {
+        GateRef callJs = builder_.CallInternal(gate,
+                                               {glue,
+                                                builder_.Int64(6),
+                                                builder_.IntPtr(0),
+                                                callBackFn,
+                                                builder_.Undefined(),
+                                                usingThis,
+                                                *kValue,
+                                                *propKey,
+                                                thisValue},
+                                               pcOffset);
+        builder_.SetDepend(callJs);
+        {
+            BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(callJs)), &findElement, &afterLoop);
+        }
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int64Add(*i, builder_.Int64(1));
+        propKey = builder_.ToTaggedIntPtr(*i);
+        BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &exit);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&findElement);
+    {
+        result = builder_.TaggedTrue();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedNativeInlineLowering::LowerArrayEvery(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    BuiltinsArrayStubBuilder builtinsArrayStubBuilder(&env);
+    auto pcOffset = acc_.TryGetPcOffset(gate);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    GateRef usingThis = acc_.GetValueIn(gate, 2);
+    GateRef length = builder_.SExtInt32ToInt64(builder_.GetLengthOfJSArray(thisValue));
+    GateRef glue = acc_.GetGlueFromArgList();
+
+    Label lengthIsZero(&builder_);
+    Label lengthNotZero(&builder_);
+    Label notHole(&builder_);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label exit(&builder_);
+    Label callResultNotTrue(&builder_);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.TaggedTrue());
+    DEFVALUE(i, (&builder_), VariableType::INT64(), builder_.Int64(0));
+    DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(*i));
+    DEFVALUE(kValue, (&builder_), VariableType::JS_ANY(), builder_.Hole());
+    BRANCH_CIR(builder_.Int64Equal(length, builder_.Int64(0)), &lengthIsZero, &lengthNotZero)
+    builder_.Bind(&lengthIsZero);
+    {
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&lengthNotZero);
+    builder_.Jump(&loopHead);
+    builder_.LoopBegin(&loopHead);
+    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
+    {
+        GateRef callJs = builder_.CallInternal(gate,
+                                               {glue,
+                                                builder_.Int64(6),
+                                                builder_.IntPtr(0),
+                                                callBackFn,
+                                                builder_.Undefined(),
+                                                usingThis,
+                                                *kValue,
+                                                *propKey,
+                                                thisValue},
+                                               pcOffset);
+        builder_.SetDepend(callJs);
+        {
+            BRANCH_CIR(builder_.TaggedIsFalse(builder_.FastToBoolean(callJs)), &callResultNotTrue, &afterLoop);
+        }
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int64Add(*i, builder_.Int64(1));
+        propKey = builder_.ToTaggedIntPtr(*i);
+        BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &exit);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&callResultNotTrue);
+    {
+        result = builder_.TaggedFalse();
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+}
+
+void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label arraylengthNotZero(&builder_);
+    Label exit(&builder_);
+    Label isCOWArray(&builder_);
+    Label getElements(&builder_);
+    Label indexLessCapacity(&builder_);
+    Label setArrayLength(&builder_);
+    Label checkTrim(&builder_);
+    Label needTrim(&builder_);
+    Label noTrim(&builder_);
+    Label isHole(&builder_);
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef glue = acc_.GetGlueFromArgList();
+    builder_.DeoptCheck(
+        builder_.IsStableArrayLengthWriteable(thisValue), acc_.GetValueIn(gate, 1), DeoptType::ARRAYLENGTHNOTWRITABLE);
+    GateRef arrayLength = builder_.GetLengthOfJSArray(thisValue);
+    DEFVALUE(ret, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+    BRANCH_CIR(builder_.Int32Equal(arrayLength, builder_.Int32(0)), &exit, &arraylengthNotZero);
+    builder_.Bind(&arraylengthNotZero);
+    {
+        BRANCH_CIR(builder_.IsJsCOWArray(thisValue), &isCOWArray, &getElements);
+        builder_.Bind(&isCOWArray);
+        {
+            builder_.CallRuntime(glue, RTSTUB_ID(CheckAndCopyArray), builder_.GetDepend(), {thisValue}, glue);
+            builder_.Jump(&getElements);
+        }
+    }
+    builder_.Bind(&getElements);
+    {
+        GateRef elements = builder_.GetElementsArray(thisValue);
+        GateRef capacity = builder_.GetLengthOfTaggedArray(elements);
+        GateRef index = builder_.Int32Sub(arrayLength, builder_.Int32(1));
+        BRANCH_CIR(builder_.Int32LessThan(index, capacity), &indexLessCapacity, &setArrayLength);
+        builder_.Bind(&indexLessCapacity);
+        {
+            GateRef result = builder_.GetValueFromTaggedArray(elements, index);
+            BRANCH_CIR(builder_.TaggedIsHole(result), &setArrayLength, &checkTrim);
+            builder_.Bind(&checkTrim);
+            {
+                ret = result;
+                GateRef unused = builder_.Int32Sub(capacity, index);
+                BRANCH_CIR(
+                    builder_.Int32GreaterThan(unused, builder_.Int32(TaggedArray::MAX_END_UNUSED)), &needTrim, &noTrim);
+            }
+        }
+        builder_.Bind(&needTrim);
+        {
+            builder_.CallNGCRuntime(glue,
+                                    RTSTUB_ID(ArrayTrim),
+                                    builder_.GetDepend(),
+                                    {glue, elements, builder_.ZExtInt32ToInt64(index)},
+                                    Circuit::NullGate());
+            builder_.Jump(&setArrayLength);
+        }
+        builder_.Bind(&noTrim);
+        {
+            builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, index, builder_.HoleConstant());
+            builder_.Jump(&setArrayLength);
+        }
+        builder_.Bind(&setArrayLength);
+        {
+            GateRef lengthOffset = builder_.IntPtr(JSArray::LENGTH_OFFSET);
+            builder_.Store(VariableType::INT32(), glue, thisValue, lengthOffset, index);
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *ret);
+}
+
+void TypedNativeInlineLowering::LowerArraySlice(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    Label exit(&builder_);
+    Label checkIndexDone(&builder_);
+    Label lenUseCount(&builder_);
+    Label lenUseMixLenAndStart(&builder_);
+    Label startCopy(&builder_);
+    Label inThisEles(&builder_);
+    Label outThisEles(&builder_);
+
+    Label indexOutRange(&builder_);
+    Label indexInRange(&builder_);
+    Label setElementToNewArray(&builder_);
+
+    GateRef thisArray = acc_.GetValueIn(gate, 0);
+    GateRef startHandler = acc_.GetValueIn(gate, 1);
+    GateRef endHandler = acc_.GetValueIn(gate, 2);
+    GateRef frameState = acc_.GetValueIn(gate, 3);
+    GateRef length = builder_.GetLengthOfJSArray(thisArray);
+    GateRef glue = acc_.GetGlueFromArgList();
+    DEFVALUE(start, (&builder_), VariableType::INT32(), builder_.Int32(0));
+    DEFVALUE(end, (&builder_), VariableType::INT32(), length);
+    DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
+
+    CheckAndCalcuSliceIndex(length, startHandler, endHandler, &exit, &checkIndexDone, &res, &start, &end);
+    builder_.Bind(&checkIndexDone);
+    GateRef sliceCount = builder_.Int32Sub(*end, *start);
+    builder_.DeoptCheck(builder_.Int32LessThanOrEqual(sliceCount, builder_.Int32(JSObject::MAX_GAP)),
+                        frameState,
+                        DeoptType::ARRAYLENGTHOVERMAX);
+    BuiltinsArrayStubBuilder arrayBuilder(&env);
+    GateRef newArray = arrayBuilder.NewArray(glue, sliceCount);
+    GateRef newArrayElements = builder_.GetElementsArray(newArray);
+    GateRef thisElements = builder_.GetElementsArray(thisArray);
+    GateRef thisElementsLen = builder_.GetLengthOfTaggedArray(thisElements);
+    BRANCH_CIR(
+        builder_.Int32GreaterThan(thisElementsLen, builder_.Int32Add(*start, sliceCount)), &inThisEles, &outThisEles);
+    builder_.Bind(&inThisEles);
+    {
+        Label loopHead(&builder_);
+        Label loopEnd(&builder_);
+        Label copyElement(&builder_);
+        Label loopExit(&builder_);
+        Label afterLoop(&builder_);
+        DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
+        builder_.Jump(&loopHead);
+        builder_.LoopBegin(&loopHead);
+        {
+            BRANCH_CIR(builder_.Int32LessThan(*i, sliceCount), &copyElement, &loopExit);
+            builder_.Bind(&copyElement);
+            {
+                GateRef copyPosition = builder_.Int32Add(*start, *i);
+                GateRef ele = builder_.GetValueFromTaggedArray(thisElements, copyPosition);
+                builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, newArrayElements, *i, ele);
+                builder_.Jump(&afterLoop);
+            }
+        }
+        builder_.Bind(&afterLoop);
+        {
+            i = builder_.Int32Add(*i, builder_.Int32(1));
+            builder_.Jump(&loopEnd);
+        }
+        builder_.Bind(&loopEnd);
+        builder_.LoopEnd(&loopHead);
+        builder_.Bind(&loopExit);
+        {
+            res = newArray;
+            builder_.Jump(&exit);
+        }
+    }
+    builder_.Bind(&outThisEles);
+    {
+        Label loopHead(&builder_);
+        Label loopEnd(&builder_);
+        Label copyElement(&builder_);
+        Label loopExit(&builder_);
+        Label afterLoop(&builder_);
+        DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
+        builder_.Jump(&loopHead);
+        builder_.LoopBegin(&loopHead);
+        {
+            BRANCH_CIR(builder_.Int32LessThan(*i, sliceCount), &copyElement, &loopExit);
+            builder_.Bind(&copyElement);
+            {
+                GateRef copyPosition = builder_.Int32Add(*i, *start);
+                DEFVALUE(element, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
+                BRANCH_CIR(
+                    builder_.Int32GreaterThan(thisElementsLen, copyPosition), &indexInRange, &setElementToNewArray);
+                builder_.Bind(&indexInRange);
+                {
+                    element = builder_.GetValueFromTaggedArray(thisElements, copyPosition);
+                    builder_.Jump(&setElementToNewArray);
+                }
+                builder_.Bind(&setElementToNewArray);
+                {
+                    builder_.SetValueToTaggedArray(VariableType::JS_ANY(), glue, newArrayElements, *i, *element);
+                    builder_.Jump(&afterLoop);
+                }
+            }
+            builder_.Bind(&afterLoop);
+            {
+                i = builder_.Int32Add(*i, builder_.Int32(1));
+                builder_.Jump(&loopEnd);
+            }
+            builder_.Bind(&loopEnd);
+            builder_.LoopEnd(&loopHead);
+            builder_.Bind(&loopExit);
+            {
+                res = newArray;
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
+}
+
+void TypedNativeInlineLowering::CheckAndCalcuSliceIndex(GateRef length,
+                                                        GateRef startHandler,
+                                                        GateRef endHandler,
+                                                        Label* exit,
+                                                        Label* checkIndexDone,
+                                                        Variable* res,
+                                                        Variable* start,
+                                                        Variable* end)
+{
+    Label startUseZero(&builder_);
+    Label startNotUndef(&builder_);
+    Label returnEmptyArray(&builder_);
+    Label startGreaterOrEqualZero(&builder_);
+    Label startLessZero(&builder_);
+    Label startLessLength(&builder_);
+    Label startCheckDone(&builder_);
+    Label startCalcu(&builder_);
+    Label endUseLength(&builder_);
+    Label endNotUndef(&builder_);
+    Label endLessZero(&builder_);
+    Label endGreaterZero(&builder_);
+    Label endUseMixed(&builder_);
+    Label endUseZero(&builder_);
+    Label checkEndLessStart(&builder_);
+    Label endUseHandler(&builder_);
+    BRANCH_CIR(builder_.TaggedIsUndefined(startHandler), &startUseZero, &startNotUndef);
+    builder_.Bind(&startNotUndef);
+    {
+        GateRef tempStart = builder_.GetInt32OfTInt(startHandler);
+        BRANCH_CIR(builder_.Int32LessThan(tempStart, builder_.Int32(0)), &startLessZero, &startGreaterOrEqualZero);
+        builder_.Bind(&startGreaterOrEqualZero);
+        {
+            BRANCH_CIR(builder_.Int32GreaterThanOrEqual(tempStart, length), &returnEmptyArray, &startLessLength);
+            builder_.Bind(&startLessLength);
+            {
+                start->WriteVariable(tempStart);
+                builder_.Jump(&startCheckDone);
+            }
+        }
+        builder_.Bind(&startLessZero);
+        {
+            GateRef negativeLength = builder_.Int32Sub(builder_.Int32(0), length);
+            BRANCH_CIR(builder_.Int32LessThan(tempStart, negativeLength), &startUseZero, &startCalcu);
+            builder_.Bind(&startCalcu);
+            {
+                start->WriteVariable(builder_.Int32Add(tempStart, length));
+                builder_.Jump(&startCheckDone);
+            }
+        }
+        builder_.Bind(&startUseZero);
+        {
+            start->WriteVariable(builder_.Int32(0));
+            builder_.Jump(&startCheckDone);
+        }
+    }
+    builder_.Bind(&startCheckDone);
+    {
+        BRANCH_CIR(builder_.TaggedIsUndefined(endHandler), &endUseLength, &endNotUndef);
+        builder_.Bind(&endNotUndef);
+        {
+            GateRef tempEnd = builder_.GetInt32OfTInt(endHandler);
+            BRANCH_CIR(builder_.Int32LessThan(tempEnd, builder_.Int32(0)), &endLessZero, &endGreaterZero);
+            builder_.Bind(&endLessZero);
+            {
+                GateRef endMixed = builder_.Int32Add(tempEnd, length);
+                BRANCH_CIR(builder_.Int32LessThan(endMixed, builder_.Int32(0)), &endUseZero, &endUseMixed);
+                builder_.Bind(&endUseMixed);
+                {
+                    end->WriteVariable(endMixed);
+                    builder_.Jump(&checkEndLessStart);
+                }
+                builder_.Bind(&endUseZero);
+                {
+                    end->WriteVariable(builder_.Int32(0));
+                    builder_.Jump(&checkEndLessStart);
+                }
+            }
+            builder_.Bind(&endGreaterZero);
+            {
+                BRANCH_CIR(builder_.Int32GreaterThanOrEqual(tempEnd, length), &endUseLength, &endUseHandler);
+                builder_.Bind(&endUseHandler);
+                {
+                    end->WriteVariable(tempEnd);
+                    builder_.Jump(&checkEndLessStart);
+                }
+            }
+        }
+        builder_.Bind(&endUseLength);
+        {
+            end->WriteVariable(length);
+            builder_.Jump(&checkEndLessStart);
+        }
+        builder_.Bind(&checkEndLessStart);
+        {
+            BRANCH_CIR(builder_.Int32GreaterThan(start->ReadVariable(), end->ReadVariable()),
+                       &returnEmptyArray,
+                       checkIndexDone);
+        }
+    }
+    builder_.Bind(&returnEmptyArray);
+    {
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+        res->WriteVariable(newBuilder.CreateEmptyArray(acc_.GetGlueFromArgList()));
+        builder_.Jump(exit);
+    }
 }
 }

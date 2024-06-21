@@ -41,7 +41,7 @@
     /* Array.prototype.copyWithin ( target, start [ , end ] ) */            \
     V("copyWithin",     CopyWithin,       2, ArrayCopyWithin)               \
     /* Array.prototype.entries ( ) */                                       \
-    V("entries",        Entries,          0, INVALID)                       \
+    V("entries",        Entries,          0, ArrayEntries)                  \
     /* Array.prototype.every ( callbackfn [ , thisArg ] ) */                \
     V("every",          Every,            1, ArrayEvery)                    \
     /* Array.prototype.fill ( value [ , start [ , end ] ] ) */              \
@@ -69,7 +69,7 @@
     /* Array.prototype.join ( separator ) */                                \
     V("join",           Join,             1, INVALID)                       \
     /* Array.prototype.keys ( ) */                                          \
-    V("keys",           Keys,             0, INVALID)                       \
+    V("keys",           Keys,             0, ArrayKeys)                     \
     /* Array.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */     \
     V("lastIndexOf",    LastIndexOf,      1, ArrayLastIndexOf)              \
     /* Array.prototype.map ( callbackfn [ , thisArg ] ) */                  \

@@ -136,6 +136,9 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_IS_ECMA_OBJECT:
             LowerHeapObjectIsEcmaObject(gate);
             break;
+        case OpCode::IS_CALLABLE_CHECK:
+            LowerIsCallableCheck(gate);
+            break;
         default:
             break;
     }
@@ -1303,6 +1306,17 @@ void MCRLowering::LowerHeapObjectIsEcmaObject(GateRef gate)
     GateRef isEcmaObject = builder_.TaggedObjectIsEcmaObject(value);
     builder_.DeoptCheck(isEcmaObject, frameState, DeoptType::NOT_ECMA_OBJECT);
 
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerIsCallableCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef func = acc_.GetValueIn(gate, 0);
+    GateRef frameState = acc_.GetFrameState(gate);
+    GateRef isHeapObject = builder_.TaggedIsHeapObject(func);
+    GateRef callable = builder_.IsCallable(func);
+    builder_.DeoptCheck(builder_.BoolAnd(isHeapObject, callable), frameState, DeoptType::NOTCALLABLE);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript

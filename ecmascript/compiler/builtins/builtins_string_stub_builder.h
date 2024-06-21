@@ -27,6 +27,7 @@ public:
         : BuiltinsStubBuilder(parent) {}
     BuiltinsStringStubBuilder(CallSignature *callSignature, Environment *env)
         : BuiltinsStubBuilder(callSignature, env) {}
+    explicit BuiltinsStringStubBuilder(Environment* env): BuiltinsStubBuilder(env) {}
     ~BuiltinsStringStubBuilder() override = default;
     NO_MOVE_SEMANTIC(BuiltinsStringStubBuilder);
     NO_COPY_SEMANTIC(BuiltinsStringStubBuilder);

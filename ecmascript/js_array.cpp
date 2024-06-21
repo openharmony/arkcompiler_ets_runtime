@@ -276,9 +276,12 @@ void JSArray::UpdateElementsKind(JSThread *thread, const JSHandle<JSObject> &arr
 {
     // Update ElementsKind after reset array length.
     // Add this switch because we do not support ElementsKind for instance from new Array
-    if (thread->GetEcmaVM()->IsEnableElementsKind() && !array->IsElementDict()) {
+    if (!array->IsElementDict()) {
         ElementsKind oldKind = array->GetClass()->GetElementsKind();
-        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+        if (Elements::IsGeneric(oldKind)) {
+            return;
+        }
+#if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
         ElementsKind newKind = ElementsKind::GENERIC;
         #else
         ElementsKind newKind = ElementsKind::NONE;

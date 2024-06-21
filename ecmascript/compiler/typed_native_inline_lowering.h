@@ -40,6 +40,7 @@ public:
     GateRef VisitGate(GateRef gate) override;
 private:
     enum class DataViewProtoFunc : uint8_t { GET = 0, SET = 1 };
+    enum class ArrayFindVariant : uint8_t { FIND = 0, FINDINDEX = 1 };
 
     enum ElmentSize : uint32_t { BITS_8 = 1, BITS_16 = 2, BITS_32 = 4, BITS_64 = 8 };
 
@@ -120,8 +121,7 @@ private:
     void LowerGlobalIsFinite(GateRef gate);
     void LowerGlobalIsNan(GateRef gate);
     void LowerGeneralWithoutArgs(GateRef gate, RuntimeStubCSigns::ID stubId);
-    GateRef AllocateTypedArrayIterator(GateRef glue, GateRef self,
-                                       GateRef iteratorHClass, IterationKind iterationKind);
+    GateRef AllocateArrayIterator(GateRef glue, GateRef self, GateRef iteratorHClass, IterationKind iterationKind);
     void LowerTypedArrayIterator(GateRef gate, CommonStubCSigns::ID index, IterationKind iterationKind);
 
     GateRef LowerGlobalDoubleIsFinite(GateRef value);
@@ -146,6 +146,40 @@ private:
     void LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id);
 
     GateRef FindFrameState(GateRef gate);
+    void LowerArrayIncludesIndexOf(GateRef gate);
+    GateRef IncludeIndexOfIntOrObjLoop(GateRef elements,
+                                       GateRef fromIndex,
+                                       GateRef targetElement,
+                                       GateRef arrayLength,
+                                       ElementsKind kind,
+                                       bool hasHole);
+    GateRef IncludeIndexOfNumberLoop(GateRef elements,
+                                     GateRef fromIndex,
+                                     GateRef targetElement,
+                                     GateRef arrayLength,
+                                     BuiltinsStubCSigns::ID callID,
+                                     bool hasHole);
+    GateRef CompareWithElementsKind(GateRef targetElement, GateRef value, ElementsKind kind);
+    GateRef includesUndefinedLoop(GateRef elements, GateRef fromIndex, GateRef arrayLength);
+    void LowerArrayIteratorBuiltin(GateRef gate);
+    IterationKind GetArrayIterKindFromBuilin(BuiltinsStubCSigns::ID callID);
+    void LowerArrayForEach(GateRef gate);
+    void LowerArrayFindOrFindIndex(GateRef gate);
+    void LowerArrayFilter(GateRef gate);
+    void LowerArrayMap(GateRef gate);
+    void LowerArraySome(GateRef gate);
+    void LowerArrayEvery(GateRef gate);
+    void LowerArrayPop(GateRef gate);
+    void LowerArraySlice(GateRef gate);
+    void CheckAndCalcuSliceIndex(GateRef length,
+                                 GateRef startHandler,
+                                 GateRef endHandler,
+                                 Label* exit,
+                                 Label* checkIndexDone,
+                                 Variable* res,
+                                 Variable* start,
+                                 Variable* end);
+
 private:
     Circuit* circuit_ {nullptr};
     GateAccessor acc_;

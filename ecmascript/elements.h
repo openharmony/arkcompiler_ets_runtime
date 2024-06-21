@@ -74,9 +74,30 @@ public:
         return kind == ElementsKind::HOLE_INT;
     }
 
+    static bool IsHoleObject(ElementsKind kind)
+    {
+        return kind == ElementsKind::HOLE_OBJECT;
+    }
+
+    static bool IsString(ElementsKind kind)
+    {
+        return kind == ElementsKind::STRING;
+    }
+
+    static bool IsHoleString(ElementsKind kind)
+    {
+        return kind == ElementsKind::HOLE_STRING;
+    }
+
     static bool IsHoleNumber(ElementsKind kind)
     {
         return kind == ElementsKind::HOLE_NUMBER;
+    }
+
+    static bool IsFastElementsKind(ElementsKind kind)
+    {
+        return (static_cast<uint32_t>(kind) > static_cast<uint32_t>(ElementsKind::HOLE) &&
+                static_cast<uint32_t>(kind) < static_cast<uint32_t>(ElementsKind::TAGGED));
     }
 
     static ConstantIndex GetGlobalContantIndexByKind(ElementsKind kind);

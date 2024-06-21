@@ -94,6 +94,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::MONO_LOAD_PROPERTY_ON_PROTO:
         case OpCode::LOAD_BUILTIN_OBJECT:
         case OpCode::LOOK_UP_HOLDER:
+        case OpCode::IS_CALLABLE_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
             return TryEliminateFrameState(gate);

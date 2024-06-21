@@ -83,6 +83,7 @@ private:
     void LowerMigrateFromHoleIntToHoleNumber(GateRef gate);
     void LowerMigrateFromHoleNumberToHoleInt(GateRef gate);
     void LowerHeapObjectIsEcmaObject(GateRef gate);
+    void LowerIsCallableCheck(GateRef gate);
 
     GateRef ConvertSpecialHoleIntToTagged(GateRef gate, Label* exit);
     GateRef ConvertSpecialHoleDoubleToTagged(GateRef gate, Label* exit);

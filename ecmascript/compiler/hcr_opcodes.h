@@ -43,7 +43,8 @@ namespace panda::ecmascript::kungfu {
     V(BaselineCall, BASELINE_CALL, GateFlags::NONE_FLAG, 0, 1, value)
 
 #define HCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
-    V(Construct, CONSTRUCT, GateFlags::HAS_FRAME_STATE, 1, 1, value)
+    V(Construct, CONSTRUCT, GateFlags::HAS_FRAME_STATE, 1, 1, value)           \
+    V(CallInternal, CALLINTERNAL, GateFlags::HAS_FRAME_STATE, 1, 1, value)
 
 #define HCR_GATE_META_DATA_LIST_FOR_NEW(V)                                     \
     V(CallNew, CALL_NEW, GateFlags::HAS_FRAME_STATE, 1, 1, value)

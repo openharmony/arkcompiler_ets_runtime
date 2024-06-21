@@ -185,6 +185,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TYPEDCALL:
         case OpCode::TYPEDFASTCALL:
         case OpCode::OBJECT_TYPE_CHECK:
+        case OpCode::CALLINTERNAL:
             return VisitWithConstantValue(gate, PROPERTY_LOOKUP_RESULT_INDEX);
         case OpCode::LOOP_EXIT_VALUE:
         case OpCode::RANGE_GUARD:
@@ -263,6 +264,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitOthers(gate, GateType::UndefinedType());
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
             return VisitOthersWithoutConvert(gate);
+        case OpCode::ARRAY_INCLUDES_INDEXOF:
+            return VisitArrayIncludesIndexOf(gate);
         case OpCode::NUMBER_PARSE_INT:
         case OpCode::JS_BYTECODE:
         case OpCode::RUNTIME_CALL:
@@ -319,6 +322,9 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::FUNCTION_PROTOTYPE_CALL:
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
         case OpCode::HEAP_OBJECT_CHECK:
+        case OpCode::ARRAY_FILTER:
+        case OpCode::ARRAY_MAP:
+        case OpCode::ARRAY_SLICE:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -2001,6 +2007,25 @@ GateRef NumberSpeculativeRetype::VisitDateNow(GateRef gate)
     }
     ASSERT(IsConvert());
     // Nothing to do, because don't have inputs
+    return Circuit::NullGate();
+}
+
+GateRef NumberSpeculativeRetype::VisitArrayIncludesIndexOf(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef callID = acc_.GetValueIn(gate, 3);
+    BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(callID));
+    if (IsRetype()) {
+        if (id == BuiltinsStubCSigns::ID::ArrayIncludes) {
+            SetOutputType(gate, GateType::BooleanType());
+        } else {
+            SetOutputType(gate, GateType::IntType());
+        }
+    }
+    GateRef findElement = acc_.GetValueIn(gate, 2);
+    acc_.ReplaceValueIn(gate, ConvertToTagged(findElement), 2); //2:find element position
+    acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    acc_.ReplaceStateIn(gate, builder_.GetState());
     return Circuit::NullGate();
 }
 
