@@ -415,3 +415,14 @@ try {
 print('trimStart' == String.prototype.trimLeft.name);
 print('trimEnd' == String.prototype.trimRight.name);
 
+{
+    const abc_str = "abc";
+    const negativeHeapNumber = -1 * 2**32;
+    const positiveHeapNumber = 2**32;
+    print(abc_str.substring(positiveHeapNumber))
+    print(abc_str.substring(negativeHeapNumber, positiveHeapNumber))
+    print(abc_str.substring(-abc_str.length, positiveHeapNumber))
+    print(abc_str.substring(0, positiveHeapNumber))
+    print(abc_str.substring(-2, positiveHeapNumber))
+    print(abc_str.substring(-1, positiveHeapNumber))
+}

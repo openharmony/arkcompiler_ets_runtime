@@ -2112,6 +2112,7 @@ void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
     Label startTagNotInt(&builder_);
     Label endTagIsInt(&builder_);
     Label endTagNotInt(&builder_);
+    GateRef length = builder_.GetLengthFromString(thisValue);
 
     if (acc_.GetMachineType(startTag) == MachineType::I64) {
         BRANCH_CIR(builder_.TaggedIsInt(startTag), &startTagIsInt, &startTagNotInt);
@@ -2119,8 +2120,27 @@ void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
         start = builder_.GetInt32OfTInt(startTag);
         builder_.Jump(&next);
         builder_.Bind(&startTagNotInt);
-        start = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(startTag), base::INT32_BITS);
-        builder_.Jump(&next);
+        {
+            Label slowPath(&builder_);
+            Label fastPath(&builder_);
+            GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
+                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(startTag))),
+                builder_.Int32(INT32_MIN));
+            GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
+                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(startTag))),
+                builder_.Int32(INT32_MAX));
+            BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+            builder_.Bind(&slowPath);
+            {
+                start = length;
+                builder_.Jump(&next);
+            }
+            builder_.Bind(&fastPath);
+            {
+                start = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(startTag), base::INT32_BITS);
+                builder_.Jump(&next);
+            }
+        }
     } else {
         start = NumberToInt32(startTag);
         builder_.Jump(&next);
@@ -2133,15 +2153,33 @@ void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
             end = builder_.GetInt32OfTInt(endTag);
             builder_.Jump(&countStart);
             builder_.Bind(&endTagNotInt);
-            end = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(endTag), base::INT32_BITS);
-            builder_.Jump(&countStart);
+            {
+                Label slowPath(&builder_);
+                Label fastPath(&builder_);
+                GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
+                    builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(endTag))),
+                    builder_.Int32(INT32_MIN));
+                GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
+                    builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(endTag))),
+                    builder_.Int32(INT32_MAX));
+                BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+                builder_.Bind(&slowPath);
+                {
+                    end = length;
+                    builder_.Jump(&countStart);
+                }
+                builder_.Bind(&fastPath);
+                {
+                    end = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(endTag), base::INT32_BITS);
+                    builder_.Jump(&countStart);
+                }
+            }
         } else {
             end = NumberToInt32(endTag);
             builder_.Jump(&countStart);
         }
     }
     builder_.Bind(&countStart);
-    GateRef length = builder_.GetLengthFromString(thisValue);
     GateRef zero = builder_.Int32(0);
     GateRef finalStart = BuildIntMinMax<false>(BuildIntMinMax<true>(*start, zero), length);
     GateRef finalEnd = BuildIntMinMax<false>(BuildIntMinMax<true>(*end, zero), length);
@@ -2176,6 +2214,7 @@ void TypedNativeInlineLowering::LowerStringSubStr(GateRef gate)
     Label countStart(&builder_);
     Label countResultLength(&builder_);
     Label countResult(&builder_);
+    GateRef length = builder_.GetLengthFromString(thisValue);
 
     if (acc_.GetMachineType(intStart) == MachineType::I64) {
         BRANCH_CIR(builder_.TaggedIsInt(intStart), &intStartIsInt, &intStartNotInt);
@@ -2183,8 +2222,25 @@ void TypedNativeInlineLowering::LowerStringSubStr(GateRef gate)
         start = builder_.GetInt32OfTInt(intStart);
         builder_.Jump(&next);
         builder_.Bind(&intStartNotInt);
-        start = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(intStart), base::INT32_BITS);
-        builder_.Jump(&next);
+        {
+            Label slowPath(&builder_);
+            Label fastPath(&builder_);
+            GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
+                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(intStart))), builder_.Int32(INT32_MIN));
+            GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
+                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(intStart))), builder_.Int32(INT32_MAX));
+            BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+            builder_.Bind(&slowPath);
+            {
+                start = length;
+                builder_.Jump(&next);
+            }
+            builder_.Bind(&fastPath);
+            {
+                start = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(intStart), base::INT32_BITS);
+                builder_.Jump(&next);
+            }
+        }
     } else {
         start = NumberToInt32(intStart);
         builder_.Jump(&next);
@@ -2197,15 +2253,33 @@ void TypedNativeInlineLowering::LowerStringSubStr(GateRef gate)
             end = builder_.GetInt32OfTInt(lengthTag);
             builder_.Jump(&countStart);
             builder_.Bind(&lengthTagNotInt);
-            end = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(lengthTag), base::INT32_BITS);
-            builder_.Jump(&countStart);
+            {
+                Label slowPath(&builder_);
+                Label fastPath(&builder_);
+                GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
+                    builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(lengthTag))),
+                    builder_.Int32(INT32_MIN));
+                GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
+                    builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(lengthTag))),
+                    builder_.Int32(INT32_MAX));
+                BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+                builder_.Bind(&slowPath);
+                {
+                    end = length;
+                    builder_.Jump(&countStart);
+                }
+                builder_.Bind(&fastPath);
+                {
+                    end = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(lengthTag), base::INT32_BITS);
+                    builder_.Jump(&countStart);
+                }
+            }
         } else {
             end = NumberToInt32(lengthTag);
             builder_.Jump(&countStart);
         }
     }
     builder_.Bind(&countStart);
-    GateRef length = builder_.GetLengthFromString(thisValue);
     GateRef zero = builder_.Int32(0);
     BRANCH_CIR(builder_.Int32LessThan(*start, zero), &startLessZero, &countResultLength);
     builder_.Bind(&startLessZero);
@@ -2266,6 +2340,7 @@ void TypedNativeInlineLowering::LowerStringSlice(GateRef gate)
     Label getTo(&builder_);
     Label startLessThanZero(&builder_);
     Label startNotLessThanZero(&builder_);
+    GateRef length = builder_.GetLengthFromString(thisValue);
 
     if (acc_.GetMachineType(startTag) == MachineType::I64) {
         BRANCH_CIR(builder_.TaggedIsInt(startTag), &startTagIsInt, &startTagNotInt);
@@ -2273,8 +2348,25 @@ void TypedNativeInlineLowering::LowerStringSlice(GateRef gate)
         start = builder_.GetInt32OfTInt(startTag);
         builder_.Jump(&next);
         builder_.Bind(&startTagNotInt);
-        start = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(startTag), base::INT32_BITS);
-        builder_.Jump(&next);
+        {
+            Label slowPath(&builder_);
+            Label fastPath(&builder_);
+            GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
+                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(startTag))), builder_.Int32(INT32_MIN));
+            GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
+                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(startTag))), builder_.Int32(INT32_MAX));
+            BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+            builder_.Bind(&slowPath);
+            {
+                start = length;
+                builder_.Jump(&next);
+            }
+            builder_.Bind(&fastPath);
+            {
+                start = builder_.DoubleToInt(glue, builder_.GetDoubleOfTDouble(startTag), base::INT32_BITS);
+                builder_.Jump(&next);
+            }
+        }
     } else {
         start = NumberToInt32(startTag);
         builder_.Jump(&next);
@@ -2295,7 +2387,6 @@ void TypedNativeInlineLowering::LowerStringSlice(GateRef gate)
         }
     }
     builder_.Bind(&countStart);
-    GateRef length = builder_.GetLengthFromString(thisValue);
     GateRef zero = builder_.Int32(0);
     BRANCH_CIR(builder_.Int32LessThan(*start, zero), &startLessThanZero, &startNotLessThanZero);
     builder_.Bind(&startLessThanZero);
