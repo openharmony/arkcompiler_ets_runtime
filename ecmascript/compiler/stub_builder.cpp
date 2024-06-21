@@ -56,9 +56,15 @@ void StubBuilder::Jump(Label *label)
 
 void StubBuilder::Branch(GateRef condition, Label *trueLabel, Label *falseLabel, const char* comment)
 {
+    return BranchPredict(condition, trueLabel, falseLabel, BranchWeight::ONE_WEIGHT, BranchWeight::ONE_WEIGHT, comment);
+}
+
+void StubBuilder::BranchPredict(GateRef condition, Label *trueLabel, Label *falseLabel, uint32_t trueWeight,
+                                uint32_t falseWeight, const char *comment)
+{
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
-    GateRef ifBranch = env_->GetBuilder()->Branch(currentControl, condition, 1, 1, comment);
+    GateRef ifBranch = env_->GetBuilder()->Branch(currentControl, condition, trueWeight, falseWeight, comment);
     currentLabel->SetControl(ifBranch);
     GateRef ifTrue = env_->GetBuilder()->IfTrue(ifBranch);
     trueLabel->AppendPredecessor(env_->GetCurrentLabel());
@@ -111,7 +117,7 @@ void StubBuilder::LoopEnd(Label *loopHead, Environment *env, GateRef glue)
 {
     Label loopEnd(env);
     Label needSuspend(env);
-    Branch(Int32Equal(Int32(ThreadFlag::SUSPEND_REQUEST), CheckSuspend(glue)), &needSuspend, &loopEnd);
+    BRANCH_UNLIKELY(Int32Equal(Int32(ThreadFlag::SUSPEND_REQUEST), CheckSuspend(glue)), &needSuspend, &loopEnd);
     Bind(&needSuspend);
     {
         CallRuntime(glue, RTSTUB_ID(CheckSafePoint), {});

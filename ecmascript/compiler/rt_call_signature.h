@@ -72,6 +72,18 @@ RUNTIME_STUB_LIST(DEF_STUB_NAME)
         return "unknown";
     }
 
+    static bool IsCold(int index)
+    {
+        ASSERT(index < NUM_OF_STUBS);
+        switch (index) {
+            case ID_CheckSafePoint:
+                return true;
+            default:
+                return false;
+        }
+        return false;
+    }
+
     static const CallSignature* GetOptimizedCallSign()
     {
         return &optimizedCallSign_;

@@ -142,7 +142,28 @@ public:
         os << __func__ << ": " << #trueLabel << "- " << #falseLabel;   \
         Branch(condition, trueLabel, falseLabel, os.str().c_str());    \
     }
-    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel, const char* comment = nullptr);
+
+    void Branch(GateRef condition, Label *trueLabel, Label *falseLabel, const char *comment = nullptr);
+
+#define BRANCH_LIKELY(condition, trueLabel, falseLabel)                                  \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "(likely)- " << #falseLabel;             \
+        BranchPredict(condition, trueLabel, falseLabel,                                  \
+            BranchWeight::DEOPT_WEIGHT, BranchWeight::ONE_WEIGHT, os.str().c_str());     \
+    }
+#define BRANCH_UNLIKELY(condition, trueLabel, falseLabel)                                \
+    {                                                                                    \
+        std::ostringstream os;                                                           \
+        os << __func__ << ": " << #trueLabel << "(unlikely)- " << #falseLabel;           \
+        BranchPredict(condition, trueLabel, falseLabel,                                  \
+            BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, os.str().c_str());     \
+    }
+
+    void BranchPredict(GateRef condition, Label *trueLabel, Label *falseLabel,
+                       uint32_t trueWeight = BranchWeight::ONE_WEIGHT, uint32_t falseWeight = BranchWeight::ONE_WEIGHT,
+                       const char *comment = nullptr);
+
     void Switch(GateRef index, Label *defaultLabel, int64_t *keysValue, Label *keysLabel, int numberOfKeys);
     void LoopBegin(Label *loopHead);
     void LoopEnd(Label *loopHead);
