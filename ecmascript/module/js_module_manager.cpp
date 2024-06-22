@@ -464,14 +464,14 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
     CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
     JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
     JSRecordInfo recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
-    if (jsPandaFile->IsModule(recordInfo)) {
+    if (jsPandaFile->IsModule(&recordInfo)) {
         moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
     } else {
-        ASSERT(jsPandaFile->IsCjs(recordInfo));
+        ASSERT(jsPandaFile->IsCjs(&recordInfo));
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     }
     // json file can not be compiled into isolate abc.
-    ASSERT(!jsPandaFile->IsJson(recordInfo));
+    ASSERT(!jsPandaFile->IsJson(&recordInfo));
     ModuleDeregister::InitForDeregisterModule(moduleRecord, executeFromJob);
     JSHandle<NameDictionary> dict(thread, resolvedModules_);
     JSHandle<JSTaggedValue> referencingHandle = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(moduleFileName));
@@ -500,8 +500,8 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
     CString moduleFileName = jsPandaFile->GetJSPandaFileDesc();
     JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
     CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName.GetTaggedValue());
-    JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordNameStr, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordNameStr, &recordInfo);
     if (!hasRecord) {
         JSHandle<JSTaggedValue> exp(thread, JSTaggedValue::Exception());
         THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, recordNameStr, moduleFileName, exp);

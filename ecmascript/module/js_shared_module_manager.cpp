@@ -87,8 +87,8 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModule(JSThread *thr
     if (jsPandaFile == nullptr) {
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileName;
     }
-    JSRecordInfo recordInfo;
-    jsPandaFile->CheckAndGetRecordInfo(fileName, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    jsPandaFile->CheckAndGetRecordInfo(fileName, &recordInfo);
     if (jsPandaFile->IsSharedModule(recordInfo)) {
         return ResolveSharedImportedModule(thread, fileName, jsPandaFile.get(), recordInfo);
     }
@@ -98,7 +98,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModule(JSThread *thr
 }
 
 JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModule(JSThread *thread,
-    const CString &referencingModule, const JSPandaFile *jsPandaFile, [[maybe_unused]] JSRecordInfo recordInfo)
+    const CString &referencingModule, const JSPandaFile *jsPandaFile, [[maybe_unused]] JSRecordInfo *recordInfo)
 {
     if (SearchInSModuleManager(thread, referencingModule)) {
         return JSHandle<JSTaggedValue>(GetSModule(thread, referencingModule));
@@ -138,8 +138,8 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModuleWithMerge(JSTh
         CString msg = "Load file with filename '" + fileName + "' failed, recordName '" + recordName + "'";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
-    JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
     if (!hasRecord) {
         CString msg = "cannot find record '" + recordName + "', please check the request path.'"
                       + fileName + "'.";
@@ -157,7 +157,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModuleWithMerge(JSTh
 
 JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModuleWithMerge(JSThread *thread,
     const CString &fileName, const CString &recordName, const JSPandaFile *jsPandaFile,
-    [[maybe_unused]] JSRecordInfo recordInfo)
+    [[maybe_unused]] JSRecordInfo *recordInfo)
 {
     if (SearchInSModuleManager(thread, recordName)) {
         return JSHandle<JSTaggedValue>(GetSModule(thread, recordName));
@@ -282,8 +282,8 @@ JSHandle<JSTaggedValue> SharedModuleManager::GenerateFuncModule(JSThread *thread
 {
     CString recordName = jsPandaFile->GetRecordName(entryPoint);
     auto vm = thread->GetEcmaVM();
-    JSRecordInfo recordInfo;
-    jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
     if (jsPandaFile->IsModule(recordInfo)) {
         JSHandle<SourceTextModule> module;
         if (jsPandaFile->IsSharedModule(recordInfo)) {

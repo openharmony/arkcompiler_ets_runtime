@@ -84,10 +84,10 @@ private:
     JSTaggedValue GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, int index) const;
 
     JSHandle<JSTaggedValue> ResolveSharedImportedModule(JSThread *thread, const CString &referencingModule,
-        const JSPandaFile *jsPandaFile, JSRecordInfo recordInfo);
+        const JSPandaFile *jsPandaFile, JSRecordInfo *recordInfo);
 
     JSHandle<JSTaggedValue> ResolveSharedImportedModuleWithMerge(JSThread *thread, const CString &fileName,
-        const CString &recordName, const JSPandaFile *jsPandaFile, JSRecordInfo recordInfo);
+        const CString &recordName, const JSPandaFile *jsPandaFile, JSRecordInfo *recordInfo);
 
     bool SearchInSModuleManagerUnsafe(JSThread *thread, const CString &recordName);
 

@@ -98,6 +98,9 @@ JSPandaFile::~JSPandaFile()
     }
 
     constpoolMap_.clear();
+    for (auto& each : jsRecordInfo_) {
+        delete each.second;
+    }
     jsRecordInfo_.clear();
     methodLiteralMap_.clear();
     ClearNameMap();
@@ -132,7 +135,7 @@ void JSPandaFile::InitializeUnMergedPF()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
     numClasses_ = classIndexes.size();
-    JSRecordInfo info;
+    JSRecordInfo* info = new JSRecordInfo();
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
@@ -141,27 +144,27 @@ void JSPandaFile::InitializeUnMergedPF()
         panda_file::ClassDataAccessor cda(*pf_, classId);
         numMethods_ += cda.GetMethodsNumber();
         const char *desc = utf::Mutf8AsCString(cda.GetDescriptor());
-        if (info.moduleRecordIdx == -1 && std::strcmp(MODULE_CLASS, desc) == 0) {
+        if (info->moduleRecordIdx == -1 && std::strcmp(MODULE_CLASS, desc) == 0) {
             cda.EnumerateFields([&](panda_file::FieldDataAccessor &fieldAccessor) -> void {
                 panda_file::File::EntityId fieldNameId = fieldAccessor.GetNameId();
                 panda_file::File::StringData sd = GetStringData(fieldNameId);
                 CString fieldName = utf::Mutf8AsCString(sd.data);
                 if (fieldName != desc_) {
-                    info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
-                    info.classId = index;
+                    info->moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
+                    info->classId = index;
                     return;
                 }
             });
         }
-        if (!info.isCjs && std::strcmp(COMMONJS_CLASS, desc) == 0) {
-            info.classId = index;
-            info.isCjs = true;
+        if (!info->isCjs && std::strcmp(COMMONJS_CLASS, desc) == 0) {
+            info->classId = index;
+            info->isCjs = true;
         }
-        if (!info.isSharedModule && std::strcmp(IS_SHARED_MODULE, desc) == 0) {
-            info.isSharedModule = true;
+        if (!info->isSharedModule && std::strcmp(IS_SHARED_MODULE, desc) == 0) {
+            info->isSharedModule = true;
         }
-        if (!info.hasTopLevelAwait && std::strcmp(HASTLA_CLASS, desc) == 0) {
-            info.hasTopLevelAwait = true;
+        if (!info->hasTopLevelAwait && std::strcmp(HASTLA_CLASS, desc) == 0) {
+            info->hasTopLevelAwait = true;
         }
     }
     jsRecordInfo_.insert({JSPandaFile::ENTRY_FUNCTION_NAME, info});
@@ -181,9 +184,8 @@ void JSPandaFile::InitializeMergedPF()
         }
         panda_file::ClassDataAccessor cda(*pf_, classId);
         numMethods_ += cda.GetMethodsNumber();
-        // get record info
-        JSRecordInfo info;
-        info.classId = index;
+        JSRecordInfo* info = new JSRecordInfo();
+        info->classId = index;
         bool hasCjsFiled = false;
         bool hasJsonFiled = false;
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
@@ -194,30 +196,32 @@ void JSPandaFile::InitializeMergedPF()
             const char *fieldName = utf::Mutf8AsCString(sd.data);
             if (std::strcmp(IS_COMMON_JS, fieldName) == 0) {
                 hasCjsFiled = true;
-                info.isCjs = fieldAccessor.GetValue<bool>().value();
+                info->isCjs = fieldAccessor.GetValue<bool>().value();
             } else if (std::strcmp(IS_JSON_CONTENT, fieldName) == 0) {
                 hasJsonFiled = true;
-                info.isJson = true;
-                info.jsonStringId = fieldAccessor.GetValue<uint32_t>().value();
+                info->isJson = true;
+                info->jsonStringId = fieldAccessor.GetValue<uint32_t>().value();
             } else if (std::strcmp(MODULE_RECORD_IDX, fieldName) == 0) {
-                info.moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
+                info->moduleRecordIdx = fieldAccessor.GetValue<int32_t>().value();
             } else if (std::strcmp(IS_SHARED_MODULE, fieldName) == 0) {
-                info.isSharedModule = fieldAccessor.GetValue<bool>().value();
+                info->isSharedModule = fieldAccessor.GetValue<bool>().value();
             } else if (std::strcmp(HAS_TOP_LEVEL_AWAIT, fieldName) == 0) {
-                info.hasTopLevelAwait = fieldAccessor.GetValue<bool>().value();
+                info->hasTopLevelAwait = fieldAccessor.GetValue<bool>().value();
             } else if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
-                info.hasTSTypes = fieldAccessor.GetValue<uint8_t>().value() != 0;
+                info->hasTSTypes = fieldAccessor.GetValue<uint8_t>().value() != 0;
             } else if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {
-                info.typeSummaryOffset = fieldAccessor.GetValue<uint32_t>().value();
+                info->typeSummaryOffset = fieldAccessor.GetValue<uint32_t>().value();
             } else if (std::strlen(fieldName) > PACKAGE_NAME_LEN &&
                        std::strncmp(fieldName, PACKAGE_NAME, PACKAGE_NAME_LEN) == 0) {
-                info.npmPackageName = fieldName + PACKAGE_NAME_LEN;
+                info->npmPackageName = fieldName + PACKAGE_NAME_LEN;
             } else {
-                npmEntries_.emplace(recordName, fieldName);
+                npmEntries_.emplace(recordName.c_str(), fieldName);
             }
         });
         if (hasCjsFiled || hasJsonFiled) {
             jsRecordInfo_.emplace(recordName, info);
+        } else {
+            delete info;
         }
     }
     methodLiterals_ =
@@ -242,21 +246,21 @@ bool JSPandaFile::IsFirstMergedAbc() const
     return false;
 }
 
-bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo &recordInfo) const
+bool JSPandaFile::CheckAndGetRecordInfo(const CString &recordName, [[maybe_unused]] JSRecordInfo **recordInfo) const
 {
     if (IsBundlePack()) {
-        recordInfo = jsRecordInfo_.begin()->second;
+        *recordInfo = jsRecordInfo_.begin()->second;
         return true;
     }
     auto info = jsRecordInfo_.find(recordName);
     if (info != jsRecordInfo_.end()) {
-        recordInfo = info->second;
+        *recordInfo = info->second;
         return true;
     }
     return false;
 }
 
-const JSRecordInfo &JSPandaFile::GetRecordInfo(const CString &recordName)
+const JSRecordInfo* JSPandaFile::GetRecordInfo(const CString &recordName)
 {
     if (IsBundlePack()) {
         return jsRecordInfo_.begin()->second;
@@ -288,7 +292,7 @@ CString JSPandaFile::GetRecordName(const CString &entryPoint) const
 
 bool JSPandaFile::FindOhmUrlInPF(const CString &recordName, CString &entryPoint) const
 {
-    auto info = npmEntries_.find(recordName);
+    auto info = npmEntries_.find(recordName.c_str());
     if (info != npmEntries_.end()) {
         entryPoint = info->second;
         return true;

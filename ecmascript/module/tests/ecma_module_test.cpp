@@ -411,19 +411,26 @@ HWTEST_F_L0(EcmaModuleTest, ConcatFileNameWithMerge4)
     auto res = parser.Parse(data);
     std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
     std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
-    const CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &recordInfo = pf->GetJSRecordInfo();
-    // Test moduleRequestName is npm package
+    CUnorderedMap<CString, JSPandaFile::JSRecordInfo*> &recordInfo =
+        const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
+    
     CString moduleRecordName = "node_modules/0/moduleTest4/index";
     CString moduleRequestName = "json/index";
     CString result = "node_modules/0/moduleTest4/node_modules/json/index";
-    JSPandaFile::JSRecordInfo info;
-    info.npmPackageName = "node_modules/0/moduleTest4";
-    const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({moduleRecordName, info});
-    const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo> &>(recordInfo).insert({result, info});
-    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pf.get(), baseFilename, moduleRecordName,
-                                                             moduleRequestName);
+    JSPandaFile::JSRecordInfo *info = new JSPandaFile::JSRecordInfo();
+    info->npmPackageName = "node_modules/0/moduleTest4";
+    recordInfo.insert({moduleRecordName, info});
+    recordInfo.insert({result, info});
+    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(
+        thread, pf.get(), baseFilename, moduleRecordName, moduleRequestName);
     EXPECT_EQ(result, entryPoint);
+    
+    // delete info
+    delete info;
+    recordInfo.erase(moduleRecordName);
+    recordInfo.erase(result);
 }
+
 
 HWTEST_F_L0(EcmaModuleTest, NormalizePath)
 {

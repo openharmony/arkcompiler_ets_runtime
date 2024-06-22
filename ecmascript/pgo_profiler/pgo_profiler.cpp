@@ -1995,8 +1995,8 @@ ProfileType PGOProfiler::GetRecordProfileType(const std::shared_ptr<JSPandaFile>
                                               const CString &recordName)
 {
     ASSERT(pf != nullptr);
-    JSRecordInfo recordInfo;
-    bool hasRecord = pf->CheckAndGetRecordInfo(recordName, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    bool hasRecord = pf->CheckAndGetRecordInfo(recordName, &recordInfo);
     if (!hasRecord) {
         LOG_ECMA(ERROR) << "Get recordInfo failed. recordName: " << recordName;
         return ProfileType::PROFILE_TYPE_NONE;
@@ -2008,13 +2008,13 @@ ProfileType PGOProfiler::GetRecordProfileType(const std::shared_ptr<JSPandaFile>
         recordInfos_->GetRecordPool()->Add(recordType, recordName);
         return recordType;
     }
-    if (recordInfo.classId != JSPandaFile::CLASSID_OFFSET_NOT_FOUND) {
-        recordType = CreateRecordProfileType(abcId, recordInfo.classId);
+    if (recordInfo->classId != JSPandaFile::CLASSID_OFFSET_NOT_FOUND) {
+        recordType = CreateRecordProfileType(abcId, recordInfo->classId);
         recordInfos_->GetRecordPool()->Add(recordType, recordName);
         return recordType;
     }
-    LOG_ECMA(ERROR) << "Invalid classId, skip it. recordName: " << recordName << ", isCjs: " << recordInfo.isCjs
-                    << ", isJson: " << recordInfo.isJson;
+    LOG_ECMA(ERROR) << "Invalid classId, skip it. recordName: " << recordName << ", isCjs: " << recordInfo->isCjs
+                    << ", isJson: " << recordInfo->isJson;
     return ProfileType::PROFILE_TYPE_NONE;
 }
 

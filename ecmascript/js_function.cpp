@@ -1109,8 +1109,8 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     notificationMgr->LoadModuleEvent(moduleName, recordName);
 
     // check ESM or CJS
-    ecmascript::JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, recordInfo);
+    ecmascript::JSRecordInfo *recordInfo = nullptr;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
     if (!hasRecord) {
         CString msg = "Cannot find module '" + recordName + "' , which is application Entry Point";
         LOG_ECMA(ERROR) << msg;

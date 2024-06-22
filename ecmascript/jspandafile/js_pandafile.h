@@ -179,11 +179,11 @@ public:
     uint32_t GetMainMethodIndex(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
         if (IsBundlePack()) {
-            return jsRecordInfo_.begin()->second.mainMethodIndex;
+            return jsRecordInfo_.begin()->second->mainMethodIndex;
         }
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
-            return info->second.mainMethodIndex;
+            return info->second->mainMethodIndex;
         }
         LOG_ECMA(ERROR) << "can not get main method index: " << recordName;
         return 0;
@@ -193,7 +193,7 @@ public:
     {
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
-            return &info->second.constpoolMap;
+            return &info->second->constpoolMap;
         }
         LOG_FULL(FATAL) << "find entryPoint failed: " << recordName;
         UNREACHABLE();
@@ -210,11 +210,11 @@ public:
     void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
     {
         if (IsBundlePack()) {
-            jsRecordInfo_.begin()->second.mainMethodIndex = mainMethodIndex;
+            jsRecordInfo_.begin()->second->mainMethodIndex = mainMethodIndex;
         } else {
             auto info = jsRecordInfo_.find(recordName);
             if (info != jsRecordInfo_.end()) {
-                info->second.mainMethodIndex = mainMethodIndex;
+                info->second->mainMethodIndex = mainMethodIndex;
             }
         }
     }
@@ -224,11 +224,11 @@ public:
     int GetModuleRecordIdx(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
         if (IsBundlePack()) {
-            return jsRecordInfo_.begin()->second.moduleRecordIdx;
+            return jsRecordInfo_.begin()->second->moduleRecordIdx;
         }
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
-            return info->second.moduleRecordIdx;
+            return info->second->moduleRecordIdx;
         }
         // The array subscript will not have a negative number, and returning -1 means the search failed
         return -1;
@@ -237,11 +237,11 @@ public:
     int GetHasTopLevelAwait(const CString &recordName = ENTRY_FUNCTION_NAME) const
     {
         if (IsBundlePack()) {
-            return jsRecordInfo_.begin()->second.hasTopLevelAwait;
+            return jsRecordInfo_.begin()->second->hasTopLevelAwait;
         }
         auto info = jsRecordInfo_.find(recordName);
         if (info != jsRecordInfo_.end()) {
-            return info->second.hasTopLevelAwait;
+            return info->second->hasTopLevelAwait;
         }
         return false;
     }
@@ -303,30 +303,30 @@ public:
         return pf_->GetHeader()->file_size;
     }
 
-    bool CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo &recordInfo) const;
+    bool CheckAndGetRecordInfo(const CString &recordName, JSRecordInfo **recordInfo) const;
 
-    const JSRecordInfo &GetRecordInfo(const CString &recordName);
+    const JSRecordInfo* GetRecordInfo(const CString &recordName);
 
     CString GetJsonStringId(const JSRecordInfo &jsRecordInfo) const;
 
-    bool PUBLIC_API IsModule(const JSRecordInfo &jsRecordInfo) const
+    bool PUBLIC_API IsModule(const JSRecordInfo *jsRecordInfo) const
     {
-        return jsRecordInfo.moduleRecordIdx != -1;
+        return jsRecordInfo->moduleRecordIdx != -1;
     }
 
-    bool IsCjs(const JSRecordInfo &jsRecordInfo) const
+    bool IsCjs(const JSRecordInfo *jsRecordInfo) const
     {
-        return jsRecordInfo.isCjs;
+        return jsRecordInfo->isCjs;
     }
 
-    bool IsJson(const JSRecordInfo &jsRecordInfo) const
+    bool IsJson(const JSRecordInfo *jsRecordInfo) const
     {
-        return jsRecordInfo.isJson;
+        return jsRecordInfo->isJson;
     }
 
-    bool IsSharedModule(const JSRecordInfo &jsRecordInfo) const
+    bool IsSharedModule(const JSRecordInfo *jsRecordInfo) const
     {
-        return jsRecordInfo.isSharedModule;
+        return jsRecordInfo->isSharedModule;
     }
 
     bool IsBundlePack() const
@@ -365,17 +365,17 @@ public:
             LOG_FULL(FATAL) << "find recordName failed: " << recordName;
             UNREACHABLE();
         }
-        return info->second;
+        return *(info->second);
     }
 
     // note : it only uses in TDD
     void InsertJSRecordInfo(const CString &recordName)
     {
-        JSRecordInfo info;
+        JSRecordInfo* info = new JSRecordInfo();
         jsRecordInfo_.insert({recordName, info});
     }
 
-    const CUnorderedMap<CString, JSRecordInfo> &GetJSRecordInfo() const
+    const CUnorderedMap<CString, JSRecordInfo*> &GetJSRecordInfo() const
     {
         return jsRecordInfo_;
     }
@@ -418,7 +418,7 @@ public:
     {
         auto it = jsRecordInfo_.find(recordName);
         if (it != jsRecordInfo_.end()) {
-            return it->second.hasTSTypes;
+            return it->second->hasTSTypes;
         }
         return false;
     }
@@ -432,7 +432,7 @@ public:
     {
         auto it = jsRecordInfo_.find(recordName);
         if (it != jsRecordInfo_.end()) {
-            return it->second.typeSummaryOffset;
+            return it->second->typeSummaryOffset;
         }
         return TYPE_SUMMARY_OFFSET_NOT_FOUND;
     }
@@ -445,7 +445,7 @@ public:
     void DeleteParsedConstpoolVM(const EcmaVM *vm)
     {
         for (auto &recordInfo : jsRecordInfo_) {
-            recordInfo.second.vmListOfParsedConstPool.erase(vm);
+            recordInfo.second->vmListOfParsedConstPool.erase(vm);
         }
     }
     static FunctionKind PUBLIC_API GetFunctionKind(panda_file::FunctionKind funcKind);
@@ -513,8 +513,8 @@ private:
 
     // marge abc
     bool isBundlePack_ {true}; // isBundlePack means app compile mode is JSBundle
-    CUnorderedMap<CString, JSRecordInfo> jsRecordInfo_;
-    CUnorderedMap<CString, CString> npmEntries_;
+    CUnorderedMap<CString, JSRecordInfo*> jsRecordInfo_;
+    CUnorderedMap<const char *, CString> npmEntries_;
     bool isRecordWithBundleName_ {true};
     static bool loadedFirstPandaFile;
     bool isFirstPandafile_{false};
