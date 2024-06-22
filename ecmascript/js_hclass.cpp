@@ -1179,8 +1179,14 @@ JSHandle<JSTaggedValue> JSHClass::ParseKeyFromPGOCString(ObjectFactory* factory,
 
 JSHandle<JSHClass> JSHClass::CreateRootHClassFromPGO(const JSThread* thread,
                                                      const HClassLayoutDesc* desc,
-                                                     uint32_t maxNum)
+                                                     uint32_t maxNum,
+                                                     bool isCache)
 {
+    if (isCache) {
+        if (ObjectFactory::CanObjectLiteralHClassCache(maxNum)) {
+            return CreateRootHClassWithCached(thread, desc, maxNum);
+        }
+    }
     auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t numOfProps = rootDesc->NumOfProps();
@@ -1206,6 +1212,40 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassFromPGO(const JSThread* thread,
     hclass->SetLayout(thread, layout);
     hclass->SetNumberOfProps(numOfProps);
     hclass->SetTS(true);
+    return hclass;
+}
+
+JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
+                                                        const HClassLayoutDesc* desc,
+                                                        uint32_t maxNum)
+{
+    auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t index = 0;
+    ASSERT(rootDesc->GetObjectSize() == JSObject::SIZE);
+    ASSERT(rootDesc->GetObjectType() == JSType::JS_OBJECT);
+    JSHandle<JSHClass> hclass = factory->GetObjectLiteralRootHClass(maxNum);
+    JSHandle<LayoutInfo> layout = factory->CreateLayoutInfo(maxNum, MemSpaceType::SEMI_SPACE, GrowMode::KEEP);
+    hclass->SetPrototype(thread, JSTaggedValue::Null());
+    hclass->SetLayout(thread, layout);
+    hclass->SetTS(true);
+    rootDesc->IterateProps([thread, factory, &index, &hclass](const pgo::PropertyDesc& propDesc) {
+        auto& cstring = propDesc.first;
+        auto& handler = propDesc.second;
+        JSHandle<JSTaggedValue> key = ParseKeyFromPGOCString(factory, cstring, handler);
+        PropertyAttributes attributes = PropertyAttributes::Default();
+        if (handler.SetAttribute(thread, attributes)) {
+            hclass->SetIsAllTaggedProp(false);
+        }
+        attributes.SetIsInlinedProps(true);
+        attributes.SetOffset(index++);
+
+        JSHandle<JSHClass> child = SetPropertyOfObjHClass(thread, hclass, key, attributes);
+        child->SetParent(thread, hclass);
+        child->SetPrototype(thread, JSTaggedValue::Null());
+        child->SetTS(true);
+        hclass = child;
+    });
     return hclass;
 }
 

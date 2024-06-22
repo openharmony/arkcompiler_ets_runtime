@@ -158,8 +158,10 @@ private:
     void DumpICByValueWithPoly(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                                JSTaggedValue cacheValue, BCType type);
 
-    void DumpICByNameWithHandler(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+    bool DumpICByNameWithHandler(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                                  JSHClass *hclass, JSTaggedValue secondValue, BCType type);
+    bool DumpICLoadByNameWithHandler(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+                                     JSHClass *hclass, JSTaggedValue secondValue);
     void DumpICByValueWithHandler(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                                   JSHClass *hclass, JSTaggedValue secondValue, BCType type);
     void DumpByForce();
@@ -194,11 +196,11 @@ private:
     bool AddObjectInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                        JSHClass *receiver, JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId = 0);
     void AddObjectInfoWithMega(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset);
-    void AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CString &recordName, EntityId methodId,
+    bool AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CString &recordName, EntityId methodId,
         int32_t bcOffset, JSHClass *receiver);
-    void AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
+    bool AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
         JSHClass *receiver, JSHClass *hold);
-    void AddBuiltinsInfo(
+    bool AddBuiltinsInfo(
         ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, JSHClass *receiver,
         JSHClass *transitionHClass, OnHeapMode onHeap = OnHeapMode::NONE, bool everOutOfBounds = false);
     void AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,
@@ -216,6 +218,7 @@ private:
     bool IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
                             JSHClass *exceptRecvHClassOnHeap, JSHClass *exceptHoldHClass,
                             JSHClass *exceptPrototypeOfPrototypeHClass);
+    bool CheckProtoChangeMarker(JSTaggedValue cellValue) const;
 
     class PGOProfilerTask : public Task {
     public:
@@ -484,6 +487,20 @@ private:
         return false;
     }
 
+    bool IsSkippableCtor(uint32_t entityId)
+    {
+        return entityId == 0 || skipCtorMethodId_.find(entityId) != skipCtorMethodId_.end();
+    }
+
+    bool InsertDefinedCtor(uint32_t entityId)
+    {
+        if (definedCtorMethodId_.find(entityId) == definedCtorMethodId_.end()) {
+            definedCtorMethodId_.insert(entityId);
+            return true;
+        }
+        return false;
+    }
+
     ConcurrentGuardValues v_;
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;
     EcmaVM *vm_ { nullptr };
@@ -499,6 +516,9 @@ private:
     Mutex tracedProfilesMutex_;
     CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
+    // AOT only supports executing Defineclass bc once currently.
+    // If defineclass executed multiple times, It will gives up collection.
+    CUnorderedSet<uint32_t> definedCtorMethodId_;
     CUnorderedSet<uint32_t> skipCtorMethodId_;
     Mutex skipCtorMethodIdMutex_;
     JITProfiler *jitProfiler_ {nullptr};

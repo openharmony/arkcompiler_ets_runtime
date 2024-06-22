@@ -109,7 +109,7 @@ public:
         LOG_ECMA_IF(mainIndex == nullptr, FATAL) << "Unknown methodId: " << id.GetOffset();
         auto constpoolSize = mainIndex->method_idx_size;
 
-        JSHandle<ConstantPool> constpool(vm->GetJSThread(), JSTaggedValue::Hole());
+        JSHandle<JSTaggedValue> constpool(vm->GetJSThread(), JSTaggedValue::Hole());
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         if (isLoadedAOT) {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
@@ -121,15 +121,18 @@ public:
             UNREACHABLE();
 #endif
         }
+        JSHandle<ConstantPool> constpoolObj;
         if (constpool.GetTaggedValue().IsHole()) {
             ObjectFactory *factory = vm->GetFactory();
-            constpool = factory->NewConstantPool(constpoolSize);
+            constpoolObj = factory->NewConstantPool(constpoolSize);
+        } else {
+            constpoolObj = JSHandle<ConstantPool>(constpool);
         }
 
-        constpool->SetJSPandaFile(jsPandaFile);
-        constpool->SetIndexHeader(mainIndex);
+        constpoolObj->SetJSPandaFile(jsPandaFile);
+        constpoolObj->SetIndexHeader(mainIndex);
 
-        return constpool;
+        return constpoolObj;
     }
 
     static JSHandle<ConstantPool> CreateUnSharedConstPoolBySharedConstpool(
@@ -138,7 +141,7 @@ public:
         const panda_file::File::IndexHeader *mainIndex = shareCp->GetIndexHeader();
         auto constpoolSize = mainIndex->method_idx_size;
 
-        JSHandle<ConstantPool> constpool(vm->GetJSThread(), JSTaggedValue::Hole());
+        JSHandle<JSTaggedValue> constpool(vm->GetJSThread(), JSTaggedValue::Hole());
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         if (isLoadedAOT) {
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS)
@@ -149,15 +152,18 @@ public:
             UNREACHABLE();
 #endif
         }
+        JSHandle<ConstantPool> constpoolObj;
         if (constpool.GetTaggedValue().IsHole()) {
             ObjectFactory *factory = vm->GetFactory();
-            constpool = factory->NewConstantPool(constpoolSize);
+            constpoolObj = factory->NewConstantPool(constpoolSize);
+        } else {
+            constpoolObj = JSHandle<ConstantPool>(constpool);
         }
 
-        constpool->SetJSPandaFile(jsPandaFile);
-        constpool->SetIndexHeader(mainIndex);
+        constpoolObj->SetJSPandaFile(jsPandaFile);
+        constpoolObj->SetIndexHeader(mainIndex);
 
-        return constpool;
+        return constpoolObj;
     }
 
     static JSHandle<ConstantPool> CreateSharedConstPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
@@ -826,7 +832,9 @@ private:
         return pf->IsLoadedAOT() && (cachedVal.IsAOTLiteralInfo() || cachedVal.IsInt());
     };
 
-    static JSHandle<ConstantPool> GetDeserializedConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, int32_t cpID);
+    static JSHandle<JSTaggedValue> GetDeserializedConstantPool(
+        EcmaVM *vm, const JSPandaFile *jsPandaFile, int32_t cpID);
+    static void MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTaggedValue> &pool);
 };
 }  // namespace ecmascript
 }  // namespace panda

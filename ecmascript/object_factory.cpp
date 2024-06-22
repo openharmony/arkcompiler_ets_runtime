@@ -3927,6 +3927,11 @@ JSHandle<JSHClass> ObjectFactory::SetLayoutInObjHClass(const JSHandle<TaggedArra
     return newObjHclass;
 }
 
+bool ObjectFactory::CanObjectLiteralHClassCache(size_t length)
+{
+    return length <= MAX_LITERAL_HCLASS_CACHE_SIZE;
+}
+
 JSHandle<JSHClass> ObjectFactory::CreateObjectLiteralRootHClass(size_t length)
 {
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
@@ -3965,7 +3970,7 @@ JSHandle<JSHClass> ObjectFactory::GetObjectLiteralHClass(const JSHandle<TaggedAr
 {
     ASSERT(length <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY);
     // 64 : If object literal gets too many properties, create hclass directly.
-    if (length > MAX_LITERAL_HCLASS_CACHE_SIZE) {
+    if (!CanObjectLiteralHClassCache(length)) {
         return CreateObjectClass(properties, length);
     }
     JSHandle<JSHClass> rootHClass = GetObjectLiteralRootHClass(length);
@@ -4897,6 +4902,7 @@ JSHandle<ProfileTypeInfoCell> ObjectFactory::NewProfileTypeInfoCell(const JSHand
     JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
     profileTypeInfoCell->SetValue(thread_, value.GetTaggedValue());
     profileTypeInfoCell->SetMachineCode(thread_, JSTaggedValue::Hole());
+    profileTypeInfoCell->SetHandle(thread_, JSTaggedValue::Undefined());
     return profileTypeInfoCell;
 }
 
@@ -4983,7 +4989,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithProperties(size_t prope
                                                                     const Local<JSValueRef> *keys,
                                                                     const PropertyDescriptor *descs)
 {
-    if (propertyCount > MAX_LITERAL_HCLASS_CACHE_SIZE) {
+    if (!CanObjectLiteralHClassCache(propertyCount)) {
         return CreateLargeJSObjectWithProperties(propertyCount, keys, descs);
     }
 
@@ -5019,7 +5025,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateLargeJSObjectWithProperties(size_t 
                                                                          const Local<JSValueRef> *keys,
                                                                          const PropertyDescriptor *descs)
 {
-    ASSERT(propertyCount > MAX_LITERAL_HCLASS_CACHE_SIZE);
+    ASSERT(!CanObjectLiteralHClassCache(propertyCount));
     if (UNLIKELY(propertyCount > PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         return CreateDictionaryJSObjectWithProperties(propertyCount, keys, descs);
     }
@@ -5092,7 +5098,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateDictionaryJSObjectWithProperties(si
 JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
                                                                          const Local<JSValueRef> *values)
 {
-    if (propertyCount > MAX_LITERAL_HCLASS_CACHE_SIZE) {
+    if (!CanObjectLiteralHClassCache(propertyCount)) {
         return CreateLargeJSObjectWithNamedProperties(propertyCount, keys, values);
     }
 
@@ -5123,7 +5129,7 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithNamedProperties(size_t 
 JSHandle<JSTaggedValue> ObjectFactory::CreateLargeJSObjectWithNamedProperties(size_t propertyCount, const char **keys,
                                                                               const Local<JSValueRef> *values)
 {
-    ASSERT(propertyCount > MAX_LITERAL_HCLASS_CACHE_SIZE);
+    ASSERT(!CanObjectLiteralHClassCache(propertyCount));
     if (UNLIKELY(propertyCount > PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
         return CreateDictionaryJSObjectWithNamedProperties(propertyCount, keys, values);
     }

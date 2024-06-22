@@ -1746,7 +1746,7 @@ void Program::Dump(std::ostream &os) const
 void LinkedNode::Dump(std::ostream &os) const
 {
     os << " - Next: ";
-    
+
     os << "\n";
 }
 
@@ -1775,6 +1775,8 @@ void ProfileTypeInfoCell::Dump(std::ostream &os) const
     DISALLOW_GARBAGE_COLLECTION;
     os << " - Value: ";
     GetValue().Dump(os);
+    os << " - Handle: ";
+    GetHandle().Dump(os);
     os << "\n";
 }
 
@@ -4911,6 +4913,7 @@ void ConstantPool::DumpForSnapshot(std::vector<Reference> &vec) const
 void ProfileTypeInfoCell::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Value"), GetValue());
+    vec.emplace_back(CString("Handle"), GetHandle());
 }
 
 void VTable::DumpForSnapshot(std::vector<Reference> &vec) const
@@ -5901,7 +5904,7 @@ void MachineCode::DumpForSnapshot(std::vector<Reference> &vec) const
 void TrackInfo::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back("ElementsKind", JSTaggedValue(static_cast<uint32_t>(GetElementsKind())));
-    
+
     vec.emplace_back(CString("CachedHClass"), GetCachedHClass());
     vec.emplace_back(CString("CachedFunc"), GetCachedFunc());
     vec.emplace_back(CString("ArrayLength"), JSTaggedValue(GetArrayLength()));

@@ -530,6 +530,7 @@ public:
     JSHandle<JSObject> NewOldSpaceObjLiteralByHClass(const JSHandle<JSHClass> &hclass);
     JSHandle<JSHClass> SetLayoutInObjHClass(const JSHandle<TaggedArray> &properties, size_t length,
                                             const JSHandle<JSHClass> &objClass);
+    static bool CanObjectLiteralHClassCache(size_t length);
     JSHandle<JSHClass> CreateObjectLiteralRootHClass(size_t length);
     JSHandle<JSHClass> GetObjectLiteralRootHClass(size_t length);
     JSHandle<JSHClass> GetObjectLiteralHClass(const JSHandle<TaggedArray> &properties, size_t length);

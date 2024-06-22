@@ -1329,6 +1329,12 @@ inline GateRef StubBuilder::IsJSShared(GateRef obj)
     return TaggedIsSharedObj(obj);
 }
 
+inline GateRef StubBuilder::IsProfileTypeInfoCell0(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::PROFILE_TYPE_INFO_CELL_0)));
+}
+
 inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));

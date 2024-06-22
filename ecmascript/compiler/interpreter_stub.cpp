@@ -4131,7 +4131,11 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm8Id16Id16Imm16V8)
         DISPATCH_LAST_WITH_ACC();
     }
     Bind(&isNotException);
+#if ECMASCRIPT_ENABLE_IC
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+    UpdateProfileTypeInfoCellToFunction(glue, res, profileTypeInfo, slotId);
     callback.ProfileDefineClass(res);
+#endif
     varAcc = res;
     DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8);
 }
@@ -4164,7 +4168,11 @@ DECLARE_ASM_HANDLER(HandleDefineclasswithbufferImm16Id16Id16Imm16V8)
         DISPATCH_LAST_WITH_ACC();
     }
     Bind(&isNotException);
+#if ECMASCRIPT_ENABLE_IC
+    GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+    UpdateProfileTypeInfoCellToFunction(glue, res, profileTypeInfo, slotId);
     callback.ProfileDefineClass(res);
+#endif
     varAcc = res;
     DISPATCH_WITH_ACC(DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8);
 }
@@ -4801,8 +4809,8 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
 #if ECMASCRIPT_ENABLE_IC
         GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
         UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
-#endif
         callback.ProfileDefineClass(result);
+#endif
         varAcc = result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
     }
@@ -4830,9 +4838,9 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
 #if ECMASCRIPT_ENABLE_IC
         GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
         UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
+        callback.ProfileDefineClass(result);
 #endif
         varAcc = result;
-        callback.ProfileDefineClass(result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
     }
 }
@@ -5415,8 +5423,8 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8ColdReload)
 #if ECMASCRIPT_ENABLE_IC
         GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
         UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
-#endif
         callback.ProfileDefineClass(result);
+#endif
         varAcc = result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
     }
@@ -5445,9 +5453,9 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8ColdReload)
 #if ECMASCRIPT_ENABLE_IC
         GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
         UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
+        callback.ProfileDefineClass(result);
 #endif
         varAcc = result;
-        callback.ProfileDefineClass(result);
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
     }
 }

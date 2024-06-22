@@ -425,12 +425,12 @@ void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, int32_t tr
             if (profileType.IsNone()) {
                 return;
             }
-            ASSERT(profileType.GetKind() == ProfileType::Kind::LiteralId);
+            ASSERT(profileType.GetKind() == ProfileType::Kind::ObjectLiteralId);
             PGODefineOpType* objDefType = new PGODefineOpType(profileType);
             UpdatePGOType(bcOffset, objDefType);
         }
     } else if (slotValue.IsTrackInfoObject()) {
-        auto currentType = PGOSampleType::CreateProfileType(abcId_, traceId, ProfileType::Kind::LiteralId, true);
+        auto currentType = PGOSampleType::CreateProfileType(abcId_, traceId, ProfileType::Kind::ArrayLiteralId, true);
         auto profileType = currentType.GetProfileType();
         PGODefineOpType* objDefType = new PGODefineOpType(profileType);
         TrackInfo *trackInfo = TrackInfo::Cast(slotValue.GetTaggedObject());

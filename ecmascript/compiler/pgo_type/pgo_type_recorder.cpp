@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/compiler/pgo_type/pgo_type_recorder.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
 namespace panda::ecmascript::kungfu {
@@ -111,7 +112,6 @@ uint32_t PGOTypeRecorder::GetElementsLength(int32_t offset) const
     return 0;
 }
 
-
 PGOTypeRef PGOTypeRecorder::GetPGOType(int32_t offset) const
 {
     if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {
@@ -122,5 +122,22 @@ PGOTypeRef PGOTypeRecorder::GetPGOType(int32_t offset) const
         return PGOTypeRef(bcOffsetPGODefOpTypeMap_.at(offset));
     }
     return PGOTypeRef::NoneType();
+}
+
+bool PGOTypeRecorder::IsValidPt(ProfileType type) const
+{
+    auto abcId = type.GetAbcId();
+    CString abcName;
+    if (decoder_.GetAbcNameById(abcId, abcName)) {
+        CString normalizedFileName = JSPandaFile::GetNormalizedFileDesc(abcName);
+        if (JSPandaFileManager::GetInstance()->FindJSPandaFileByNormalizedName(normalizedFileName) == nullptr) {
+            LOG_ECMA(DEBUG) << "ProfileType is invalid:" << type.GetTypeString() << ", abcName:" << abcName
+                            << ", normalize name:" << normalizedFileName;
+            return false;
+        }
+        return true;
+    }
+    LOG_ECMA(DEBUG) << "ProfileType is invalid:" << type.GetTypeString();
+    return false;
 }
 }  // namespace panda::ecmascript

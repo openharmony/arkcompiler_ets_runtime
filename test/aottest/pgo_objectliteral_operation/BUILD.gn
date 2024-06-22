@@ -17,4 +17,5 @@ host_aot_test_action("pgo_objectliteral_operation") {
   deps = []
   is_only_typed_path = true
   is_enable_pgo = true
+  is_enable_trace_deopt = true
 }

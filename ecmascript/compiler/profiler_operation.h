@@ -25,6 +25,7 @@ namespace panda::ecmascript::kungfu {
 enum class OperationType : uint8_t {
     CALL,
     NATIVE_CALL,
+    GETTER_SETTER_CALL,
     OPERATION_TYPE,
     DEFINE_CLASS,
     CREATE_OBJECT,
@@ -70,6 +71,13 @@ public:
     {
         if (callback_) {
             callback_({ func }, OperationType::NATIVE_CALL);
+        }
+    }
+
+    inline void ProfileGetterSetterCall(GateRef func) const
+    {
+        if (callback_) {
+            callback_({ func }, OperationType::GETTER_SETTER_CALL);
         }
     }
 

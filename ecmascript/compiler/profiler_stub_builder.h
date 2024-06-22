@@ -100,6 +100,7 @@ public:
         GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef target, GateRef profileTypeInfo);
     void ProfileNativeCall(
         GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef target, GateRef profileTypeInfo);
+    void ProfileGetterSetterCall(GateRef glue, GateRef target);
     void ProfileOpType(
         GateRef glue, SlotIDInfo slotInfo, GateRef func, GateRef profileTypeInfo, GateRef type);
     void ProfileDefineClass(

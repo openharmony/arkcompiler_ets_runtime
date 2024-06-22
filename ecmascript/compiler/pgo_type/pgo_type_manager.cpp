@@ -127,8 +127,7 @@ void PGOTypeManager::GenSymbolInfo()
 
 void PGOTypeManager::GenHClassInfo()
 {
-    uint32_t count = 0;
-
+    uint32_t count = 1; // For object literal hclass cache
     for (auto& root: hcData_) {
         count += root.second.size();
     }
@@ -146,6 +145,15 @@ void PGOTypeManager::GenHClassInfo()
             profileTyperToHClassIndex_.emplace(key, pos);
             hclassInfo->Set(thread_, pos++, JSTaggedValue(hclass));
         }
+    }
+    // The cache of Object literal serializes to last index of AOTHClassInfo.
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> maybeCache = env->GetObjectLiteralHClassCache();
+    if (!maybeCache->IsHole()) {
+        // It cannot be serialized if object in global env.
+        JSHandle<TaggedArray> array(maybeCache);
+        auto cloneResult = factory->CopyArray(array, array->GetLength(), array->GetLength());
+        hclassInfo->Set(thread_, pos++, cloneResult);
     }
 
     aotSnapshot_.StoreHClassInfo(hclassInfo);

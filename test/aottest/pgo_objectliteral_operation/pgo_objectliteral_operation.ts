@@ -18,3 +18,18 @@ declare function print(arg:any):string;
 let d = {x:1, y:2}
 d.x = 3;
 print(d.x);
+
+function foo(obj) {
+   let ret;
+   for (let i = 0; i < 10000; i++) {
+       ret = obj.x
+   }
+   return ret
+}
+
+let a = {x:1, y: 2}
+
+let b = {x:2, y: 3}
+
+print(foo(a));
+print(foo(b));

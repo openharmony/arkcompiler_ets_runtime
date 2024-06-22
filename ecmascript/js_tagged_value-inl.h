@@ -530,6 +530,11 @@ inline bool JSTaggedValue::IsProfileTypeInfoCell() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsProfileTypeInfoCell();
 }
 
+inline bool JSTaggedValue::IsProfileTypeInfoCell0() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsProfileTypeInfoCell0();
+}
+
 inline bool JSTaggedValue::IsVTable() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsVTable();

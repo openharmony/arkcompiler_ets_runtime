@@ -35,6 +35,20 @@ bool BaseSnapshotInfo::TryGetABCId(ApEntityId &abcId)
     return pfDecoder_->GetABCIdByJSPandaFile(jsPandaFile_, abcId);
 }
 
+JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetIHClass(ProfileType rootType, ProfileType childType,
+    const ItemData &data, const JSHandle<TaggedArray> &properties) const
+{
+    JSHandle<JSTaggedValue> ihc = TryGetHClass(rootType, childType);
+    if (ihc->IsUndefined()) {
+        PGOTypeLocation loc(jsPandaFile_, data.methodOffset_, data.bcIndex_);
+        ihc = TryGetHClassByPGOTypeLocation(loc);
+        if (ihc->IsUndefined()) {
+            ihc = TryGetHClassFromCached(properties);
+        }
+    }
+    return ihc;
+}
+
 JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetHClass(ProfileType rootType, ProfileType childType) const
 {
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
@@ -47,6 +61,55 @@ JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetHClassByPGOTypeLocation(PGOTypeL
     PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     ProfileType  pt = ptManager->GetRootIdByLocation(loc);
     return TryGetHClass(pt, pt);
+}
+
+JSHandle<JSTaggedValue> BaseSnapshotInfo::TryGetHClassFromCached(const JSHandle<TaggedArray> &properties) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    JSHandle<JSTaggedValue> maybeCache = env->GetObjectLiteralHClassCache();
+    if (maybeCache->IsTaggedArray()) {
+        size_t length = properties->GetLength();
+        uint32_t propsLen = 0;
+        for (size_t i = 0; i < length; i += 2) { // 2: skip a pair of key and value
+            if (properties->Get(i).IsHole()) {
+                break;
+            }
+            propsLen++;
+        }
+
+        JSHandle<TaggedArray> hclassCacheArr = JSHandle<TaggedArray>::Cast(maybeCache);
+        JSTaggedValue maybeHClass = hclassCacheArr->Get(propsLen);
+        if (!maybeHClass.IsJSHClass()) {
+            return thread_->GlobalConstants()->GetHandledUndefined();
+        }
+        JSHClass *newClass = JSHClass::Cast(maybeHClass.GetTaggedObject());
+        JSMutableHandle<JSTaggedValue> key(thread_, JSTaggedValue::Undefined());
+
+        for (size_t fieldOffset = 0; fieldOffset < propsLen; fieldOffset++) {
+            key.Update(properties->Get(fieldOffset * 2)); // 2 : pair of key and value
+            ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
+            PropertyAttributes attributes = PropertyAttributes::Default();
+            if (properties->Get(fieldOffset * 2 + 1).IsAccessor()) {  // 2: Meaning to double
+                attributes.SetIsAccessor(true);
+            }
+            attributes.SetIsInlinedProps(true);
+            attributes.SetRepresentation(Representation::TAGGED);
+            attributes.SetOffset(fieldOffset);
+
+            newClass =
+                newClass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attributes.GetPropertyMetaData()));
+            if (newClass == nullptr) {
+                return thread_->GlobalConstants()->GetHandledUndefined();
+            }
+        }
+
+        auto result = JSHandle<JSHClass>(thread_, newClass);
+        if (JSObject::CheckPropertiesForRep(properties, propsLen, result)) {
+            return JSHandle<JSTaggedValue>(result);
+        }
+    }
+    return thread_->GlobalConstants()->GetHandledUndefined();
 }
 
 void BaseSnapshotInfo::Record(ItemData &data)
@@ -193,7 +256,6 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
     }
 }
 
-
 void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
                                                       const std::set<uint32_t> &skippedMethods)
 {
@@ -215,14 +277,10 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &global
         JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
         JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
         if (hasAbcId) {
-            ProfileType pt(abcId, id.GetOffset(), ProfileType::Kind::LiteralId, true);
+            ProfileType pt(abcId, id.GetOffset(), ProfileType::Kind::ObjectLiteralId, true);
             ProfileType ctorPt(abcId, id.GetOffset(), ProfileType::Kind::ConstructorId, true);
-            ihc = TryGetHClass(pt, pt);
             chc = TryGetHClass(ctorPt, ctorPt);
-            if (ihc->IsUndefined()) {
-                PGOTypeLocation loc(jsPandaFile_, data.methodOffset_, data.bcIndex_);
-                ihc = TryGetHClassByPGOTypeLocation(loc);
-            }
+            ihc = TryGetIHClass(pt, pt, data, properties);
         }
 
         CollectLiteralInfo(properties, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
