@@ -399,6 +399,12 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test list removeByIndex:", flag)
     res = proxy1.remove(888);
     map.set("test list remove:", !res);
+
+    let testlist = new List();
+    testlist.add(7);
+    testlist.add(8);
+    map.set("test list JSAPIList::GetProperty:", testlist[Math.floor(1)] === 8);
+
     flag = undefined;
     function elementsList(valueList, keyList, map) {
         if (!valueList) {
