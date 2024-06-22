@@ -111,7 +111,9 @@ void JITProfiler::ProfileBytecode(JSThread *thread, const JSHandle<ProfileTypeIn
                 break;
             }
             case EcmaOpcode::STOBJBYNAME_IMM8_ID16_V8:
-            case EcmaOpcode::STTHISBYNAME_IMM8_ID16: {
+            case EcmaOpcode::STTHISBYNAME_IMM8_ID16:
+            case EcmaOpcode::DEFINEPROPERTYBYNAME_IMM8_ID16_V8:
+            case EcmaOpcode::STPRIVATEPROPERTY_IMM8_IMM16_IMM16_V8: {
                 Jit::JitLockHolder lock(thread);
                 if (!useRawProfileTypeInfo) {
                     profileTypeInfo_ = *profileTypeInfo;
