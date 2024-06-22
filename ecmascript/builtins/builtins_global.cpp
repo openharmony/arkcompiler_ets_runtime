@@ -234,7 +234,10 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
     // 2. Let R be the empty String.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::u16string resStr;
-
+    JSHandle<EcmaString> string = str;
+    if (EcmaStringAccessor(str).IsTreeString()) {
+        string = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), str));
+    }
     // 3. Let k be 0.
     // 4. Repeat
     uint32_t k = 0;
@@ -251,7 +254,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
         //   i. Let S be a String containing only the code unit C.
         //   ii. Let R be a new String value computed by concatenating the previous value of R and S.
         // d. Else C is not in unescapedSet,
-        uint16_t cc = EcmaStringAccessor(str).Get(k);
+        uint16_t cc = EcmaStringAccessor(string).Get(k);
         if (IsInURISet(cc)) {
             std::u16string sStr = StringHelper::Utf16ToU16String(&cc, 1);
             resStr.append(sStr);
@@ -259,7 +262,7 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
             // i. If the code unit value of C is not less than 0xDC00 and not greater than 0xDFFF,
             //    throw a URIError exception.
             if (cc >= base::utf_helper::DECODE_TRAIL_LOW && cc <= base::utf_helper::DECODE_TRAIL_HIGH) {
-                errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+                errorMsg = "DecodeURI: invalid character: " + ConvertToString(string.GetTaggedValue());
                 THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
             }
 
@@ -277,12 +280,12 @@ JSTaggedValue BuiltinsGlobal::Encode(JSThread *thread, const JSHandle<EcmaString
             } else {
                 k++;
                 if (k == strLen) {
-                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(string.GetTaggedValue());
                     THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
-                uint16_t kc = EcmaStringAccessor(str).Get(k);
+                uint16_t kc = EcmaStringAccessor(string).Get(k);
                 if (kc < base::utf_helper::DECODE_TRAIL_LOW || kc > base::utf_helper::DECODE_TRAIL_HIGH) {
-                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(str.GetTaggedValue());
+                    errorMsg = "DecodeURI: invalid character: " + ConvertToString(string.GetTaggedValue());
                     THROW_URI_ERROR_AND_RETURN(thread, errorMsg.c_str(), JSTaggedValue::Exception());
                 }
                 vv = base::utf_helper::UTF16Decode(cc, kc);

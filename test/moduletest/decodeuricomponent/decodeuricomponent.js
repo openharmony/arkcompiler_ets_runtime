@@ -69,3 +69,14 @@ try {
     decodeURIComponent(validURI);
     print("decode successful");
 }
+
+var uri0="https://www.runoob.com/my t" + "est.php?name=ståle&car=saab";
+var uri11 = uri0 + "/jfdlskafasfd";
+var uri2 = uri0 + "/2389018203";
+var uri3 = uri11 + "/jd2931dsafdsa";
+var uri4 = uri3 + "/jd2931wjeiojfwre";
+print(encodeURIComponent(uri0));
+print(encodeURIComponent(uri11));
+print(encodeURIComponent(uri2));
+print(encodeURIComponent(uri3));
+print(encodeURIComponent(uri4));
