@@ -90,6 +90,8 @@ ElfChecker::ElfChecker(const void* data, int len) : elfLen_(len), elfErrorCode_(
 ElfChecker::ElfChecker(const std::string& path) : elfErrorCode_(0), fromMmap_(false)
 {
     if (!panda::ecmascript::FileExist(path.c_str())) {
+        elfData_ = nullptr;
+        elfLen_ = 0;
         return;
     }
     std::ifstream file(path, std::ios::binary | std::ios::ate);
