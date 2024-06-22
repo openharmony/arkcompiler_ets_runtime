@@ -19,3 +19,8 @@ URIError: DecodeURI: invalid character: %E4%25BD%2593%25E8%2582%25B2
 URIError
 URIError
 decode successful
+https%3A%2F%2Fwww.runoob.com%2Fmy%20test.php%3Fname%3Dst%C3%A5le%26car%3Dsaab
+https%3A%2F%2Fwww.runoob.com%2Fmy%20test.php%3Fname%3Dst%C3%A5le%26car%3Dsaab%2Fjfdlskafasfd
+https%3A%2F%2Fwww.runoob.com%2Fmy%20test.php%3Fname%3Dst%C3%A5le%26car%3Dsaab%2F2389018203
+https%3A%2F%2Fwww.runoob.com%2Fmy%20test.php%3Fname%3Dst%C3%A5le%26car%3Dsaab%2Fjfdlskafasfd%2Fjd2931dsafdsa
+https%3A%2F%2Fwww.runoob.com%2Fmy%20test.php%3Fname%3Dst%C3%A5le%26car%3Dsaab%2Fjfdlskafasfd%2Fjd2931dsafdsa%2Fjd2931wjeiojfwre
