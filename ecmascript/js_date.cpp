@@ -750,7 +750,7 @@ JSTaggedValue JSDate::ToISOString(JSThread *thread) const
     str += COLON;
     ConvertAndAppend(fields[SEC], STR_LENGTH_OTHERS, str);
     str += POINT;
-    ConvertAndAppend(fields[MS], STR_LENGTH_OTHERS, str);
+    ConvertAndAppend(fields[MS], STR_LENGTH_OTHERS + 1, str);
     str += FLAG_UTC;
     return thread->GetEcmaVM()->GetFactory()->NewFromASCII(str).GetTaggedValue();
 }
