@@ -3297,6 +3297,7 @@ void SlowPathLowering::LowerCallNew(GateRef gate)
     for (size_t i = 0; i < num; ++i) {
         args[i] = acc_.GetValueIn(gate, i);
     }
+    ASSERT(num >= 3); // 3:skip argc argv newtarget
     std::vector<GateRef> argsFastCall(num - 3); // 3:skip argc argv newtarget
     size_t j = 0;
     for (size_t i = 0; i < num; ++i) {
