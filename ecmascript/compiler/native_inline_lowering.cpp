@@ -975,6 +975,9 @@ void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, Built
         builder_.IsTaggedBooleanCheck(isLittleEndian);
         ret = builder_.DataViewGet(thisObj, indexInt, dataViewCallID, isLittleEndian, frameState);
     }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
@@ -1007,6 +1010,9 @@ void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, Built
         GateRef isLittleEndian = acc_.GetValueIn(gate, 3); // 3: is little endian mode
         builder_.IsTaggedBooleanCheck(isLittleEndian);
         ret = builder_.DataViewSet(thisObj, indexInt, value, dataViewCallID, isLittleEndian, frameState);
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
     }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
@@ -1471,9 +1477,6 @@ void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, B
     GateRef thisArray = acc_.GetValueIn(gate, 0);
     GateRef targetElement = acc_.GetValueIn(gate, 1);
     ElementsKind kind = acc_.TryGetArrayElementsKind(thisArray);
-    if (!Elements::IsFastElementsKind(kind)) {
-        return;
-    }
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
     }
@@ -1493,6 +1496,9 @@ void NativeInlineLowering::TryInlineIndexOfIncludes(GateRef gate, size_t argc, B
         GateRef fromIndex = builder_.TaggedGetInt(fromIndexHandler);
         ret = builder_.ArrayIncludesIndexOf(thisArray, fromIndex, targetElement, callID, arrayKind);
     }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
@@ -1506,6 +1512,9 @@ void NativeInlineLowering::TryInlineArrayIterator(GateRef gate, BuiltinsStubCSig
 
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(), builder_.IntPtr(static_cast<int64_t>(id)), {tacc.GetThisObj()});
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
     }
     GateRef thisObj = acc_.GetValueIn(gate, 0);
     builder_.EcmaObjectCheck(thisObj);
@@ -1539,7 +1548,9 @@ void NativeInlineLowering::TryInlineArrayForEach(GateRef gate, size_t argc, Buil
     }
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(callBackFn);
-
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     if (argc == 1) {
         ret = builder_.ArrayForEach(thisValue, callBackFn, builder_.UndefineConstant(), pcOffset);
     } else {
@@ -1577,6 +1588,9 @@ void NativeInlineLowering::TryInlineArrayFindOrFindIndex(GateRef gate,
     }
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(callBackFn);
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     GateRef callIDRef = builder_.Int32(static_cast<int32_t>(id));
 
     if (argc == 1) {
@@ -1611,6 +1625,9 @@ void NativeInlineLowering::TryInlineArrayFilter(GateRef gate, size_t argc, Built
     }
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(callBackFn);
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     uint32_t pcOffset = acc_.TryGetPcOffset(gate);
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef ret = Circuit::NullGate();
@@ -1646,6 +1663,9 @@ void NativeInlineLowering::TryInlineArrayMap(GateRef gate, size_t argc, Builtins
     }
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(callBackFn);
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     uint32_t pcOffset = acc_.TryGetPcOffset(gate);
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef ret = Circuit::NullGate();
@@ -1681,6 +1701,9 @@ void NativeInlineLowering::TryInlineArraySome(GateRef gate, size_t argc, Builtin
     }
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(callBackFn);
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     uint32_t pcOffset = acc_.TryGetPcOffset(gate);
     GateRef ret = Circuit::NullGate();
     if (argc == 1) {
@@ -1714,6 +1737,9 @@ void NativeInlineLowering::TryInlineArrayEvery(GateRef gate, size_t argc, Builti
     }
     GateRef callBackFn = acc_.GetValueIn(gate, 1);
     builder_.IsCallableCheck(callBackFn);
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
     uint32_t pcOffset = acc_.TryGetPcOffset(gate);
     GateRef ret = Circuit::NullGate();
     if (argc == 1) {
@@ -1738,6 +1764,9 @@ void NativeInlineLowering::TryInlineArrayPop(GateRef gate, size_t argc, Builtins
     builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
     if (!acc_.IsCreateArray(thisValue)) {
         builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
     }
     GateRef ret = builder_.ArrayPop(thisValue, acc_.GetFrameState(gate));
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
@@ -1772,6 +1801,9 @@ void NativeInlineLowering::TryInlineArraySlice(GateRef gate, size_t argc, Builti
         builder_.DeoptCheck(builder_.TaggedIsInt(startIndex), acc_.GetFrameState(gate), DeoptType::INDEXNOTINT);
         builder_.DeoptCheck(builder_.TaggedIsInt(endIndex), acc_.GetFrameState(gate), DeoptType::INDEXNOTINT);
         ret = builder_.ArraySlice(thisValue, startIndex, endIndex, frameState);
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
     }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }

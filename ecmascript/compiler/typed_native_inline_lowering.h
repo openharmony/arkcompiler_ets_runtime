@@ -43,6 +43,13 @@ private:
     enum class ArrayFindVariant : uint8_t { FIND = 0, FINDINDEX = 1 };
 
     enum ElmentSize : uint32_t { BITS_8 = 1, BITS_16 = 2, BITS_32 = 4, BITS_64 = 8 };
+    //TAR:targetKind only Int or Double, ARR:arrayElementsKind only Int or Number
+    enum NumberCompareKind : uint8_t { NONE = 0, TARINT_ARRINT, TARINT_ARRNUM, TARDOU_ARRINT, TARDOU_ARRNUM };
+
+    inline bool NeedRunNaNLoopCheck(NumberCompareKind kind, BuiltinsStubCSigns::ID callID)
+    {
+        return ((kind == TARDOU_ARRNUM || kind == NONE) && callID == BuiltinsStubCSigns::ID::ArrayIncludes);
+    }
 
     void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId);
     void LowerMathAtan2(GateRef gate);
@@ -147,20 +154,32 @@ private:
 
     GateRef FindFrameState(GateRef gate);
     void LowerArrayIncludesIndexOf(GateRef gate);
-    GateRef IncludeIndexOfIntOrObjLoop(GateRef elements,
-                                       GateRef fromIndex,
-                                       GateRef targetElement,
-                                       GateRef arrayLength,
-                                       ElementsKind kind,
-                                       bool hasHole);
-    GateRef IncludeIndexOfNumberLoop(GateRef elements,
-                                     GateRef fromIndex,
-                                     GateRef targetElement,
-                                     GateRef arrayLength,
-                                     BuiltinsStubCSigns::ID callID,
-                                     bool hasHole);
-    GateRef CompareWithElementsKind(GateRef targetElement, GateRef value, ElementsKind kind);
-    GateRef includesUndefinedLoop(GateRef elements, GateRef fromIndex, GateRef arrayLength);
+    GateRef NormalCompareLoop(
+        GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength, BuiltinsStubCSigns::ID callID);
+    GateRef IncludesUndefinedLoop(GateRef elements, GateRef fromIndex, GateRef arrayLength);
+    GateRef TargetIntCompareLoop(GateRef elements,
+                                 GateRef fromIndex,
+                                 GateRef targetElement,
+                                 GateRef arrayLength,
+                                 NumberCompareKind kind,
+                                 bool arrayHasHole);
+    GateRef TargetIntCompareWithCompareKind(GateRef targetElement,
+                                        GateRef doubleTarget,
+                                        GateRef value,
+                                        NumberCompareKind kind);
+    GateRef TargetNumberCompareWithArrKind(GateRef doubleTarget, GateRef value, NumberCompareKind kind);
+    GateRef TargetNumberCompareLoop(GateRef elements,
+                                    GateRef fromIndex,
+                                    GateRef targetElement,
+                                    GateRef arrayLength,
+                                    BuiltinsStubCSigns::ID callID,
+                                    bool arrayHasHole,
+                                    NumberCompareKind kind);
+    GateRef TargetBigIntCompareLopp(GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength);
+    GateRef TargetStringCompareLoop(
+        GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength, bool arrayHasHole);
+    GateRef TargetEqualCompareLoop(
+        GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength, bool arrayHasHole);
     void LowerArrayIteratorBuiltin(GateRef gate);
     IterationKind GetArrayIterKindFromBuilin(BuiltinsStubCSigns::ID callID);
     void LowerArrayForEach(GateRef gate);
