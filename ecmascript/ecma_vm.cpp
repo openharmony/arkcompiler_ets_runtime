@@ -91,7 +91,7 @@
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/taskpool/taskpool.h"
-
+#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/jit_tools.h"
 
@@ -102,6 +102,8 @@
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
+using AotCrashInfo = ohos::AotCrashInfo;
+using JitTools = ohos::JitTools;
 AOTFileManager *JsStackInfo::loader = nullptr;
 JSRuntimeOptions *JsStackInfo::options = nullptr;
 bool EcmaVM::multiThreadCheck_ = false;
@@ -213,40 +215,20 @@ void EcmaVM::PostFork()
     GetAssociatedJSThread()->PostFork();
     Taskpool::GetCurrentTaskpool()->Initialize();
     LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
-#ifdef JIT_ESCAPE_ENABLE
+#if defined(JIT_ESCAPE_ENABLE) || defined(AOT_ESCAPE_ENABLE)
     SignalAllReg();
 #endif
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
-    if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
-        options_.SetEnablePGOProfiler(true);
-    }
-    if (ohos::EnableAotJitListHelper::GetInstance()->IsAotCompileSuccessOnce()) {
-        options_.SetEnablePGOProfiler(false);
-        LOG_ECMA(INFO) << "Aot has compile success once.";
-    }
-    if (JSNApi::IsAotEscape()) {
-        options_.SetEnablePGOProfiler(false);
-        LOG_ECMA(INFO) << "Aot has escaped.";
-    }
+#ifdef AOT_ESCAPE_ENABLE
+    AotCrashInfo::GetInstance().SetOptionPGOProfiler(&options_, bundleName);
+#endif
     ResetPGOProfiler();
-
-    options_.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());
-    processStartRealtime_ = InitializeStartRealTime();
-    bool jitEscapeDisable = ohos::JitTools::GetJitEscapeDisable();
-    if (jitEscapeDisable || !JSNApi::IsJitEscape()) {
-        if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableJit(bundleName)) {
-            bool isEnableFastJit = options_.IsEnableJIT() && options_.GetEnableAsmInterpreter();
-            bool isEnableBaselineJit = options_.IsEnableBaselineJIT() && options_.GetEnableAsmInterpreter();
-            options_.SetEnableAPPJIT(true);
-            Jit::GetInstance()->SetEnableOrDisable(options_, isEnableFastJit, isEnableBaselineJit);
-            if (isEnableFastJit || isEnableBaselineJit) {
-                EnableJit();
-            }
-        }
-    }
+#ifdef JIT_ESCAPE_ENABLE
+    ohos::JitTools::GetInstance().SetJitEnable(this, bundleName);
+#endif
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
@@ -330,46 +312,6 @@ bool EcmaVM::IsEnableBaselineJit() const
     return GetJit()->IsEnableBaselineJit();
 }
 
-void EcmaVM::EnableJit()
-{
-    if (!options_.IsEnableJITPGO() || pgoProfiler_ == nullptr) {
-        thread_->SwitchJitProfileStubs(false);
-    } else {
-        // if not enable aot pgo
-        if (!PGOProfilerManager::GetInstance()->IsEnable()) {
-            // disable dump
-            options_.SetEnableProfileDump(false);
-            Jit::GetInstance()->SetProfileNeedDump(false);
-            // enable profiler
-            options_.SetEnablePGOProfiler(true);
-            pgoProfiler_->Reset(true);
-            // switch pgo stub
-            thread_->SwitchJitProfileStubs(true);
-        }
-        pgoProfiler_->InitJITProfiler();
-    }
-    bool isApp = Jit::GetInstance()->IsAppJit();
-    options_.SetEnableAPPJIT(isApp);
-    bool profileNeedDump = Jit::GetInstance()->IsProfileNeedDump();
-    options_.SetEnableProfileDump(profileNeedDump);
-
-    bool jitEnableLitecg = ohos::JitTools::IsJitEnableLitecg(options_.IsCompilerEnableLiteCG());
-    options_.SetCompilerEnableLiteCG(jitEnableLitecg);
-    uint8_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options_.GetJitCallThreshold());
-    options_.SetJitCallThreshold(jitCallThreshold);
-
-    uint32_t jitHotnessThreshold = ohos::JitTools::GetJitHotnessThreshold(options_.GetJitHotnessThreshold());
-    options_.SetJitHotnessThreshold(jitHotnessThreshold);
-    LOG_JIT(INFO) << "jit enable litecg:" << jitEnableLitecg << ", call threshold:" <<
-        static_cast<int>(jitCallThreshold) << ", hotness threshold:" << jitHotnessThreshold;
-
-    bool jitDisableCodeSign = ohos::JitTools::GetCodeSignDisable();
-    options_.SetDisableCodeSign(jitDisableCodeSign);
-    LOG_JIT(INFO) << "jit disable codesigner:" << jitDisableCodeSign;
-
-    SetEnableJitLogSkip(ohos::JitTools::GetSkipJitLogEnable());
-}
-
 Jit *EcmaVM::GetJit() const
 {
     return Jit::GetInstance();
@@ -418,7 +360,7 @@ bool EcmaVM::Initialize()
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
-        EnableJit();
+        ohos::JitTools::GetInstance().EnableJit(this);
     }
     initialized_ = true;
     return true;

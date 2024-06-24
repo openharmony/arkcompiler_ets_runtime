@@ -21,7 +21,6 @@
 #include "ecmascript/platform/directory.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/map.h"
-#include "ecmascript/ohos/aot_crash_info.h"
 #include "libpandafile/file.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "ohos_constants.h"
@@ -78,50 +77,11 @@ public:
     constexpr static const char *const RUNTIME_KEY_BUILDID = "buildId";
     constexpr static const char *const RUNTIME_KEY_TIMESTAMP = "timestamp";
     constexpr static const char *const RUNTIME_KEY_TYPE = "type";
-    uint64_t GetMicrosecondsTimeStamp() const
-    {
-        struct timespec time;
-        clock_gettime(CLOCK_MONOTONIC, &time);
-        return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
-    }
 
-    std::vector<RuntimeInfoPart> GetCrashRuntimeInfoList() const
+    static AotRuntimeInfo &GetInstance()
     {
-        std::string realOutPath = GetCrashSandBoxRealPath();
-        std::vector<RuntimeInfoPart> list;
-        if (!FileExist(realOutPath.c_str())) {
-            LOG_ECMA(INFO) << "Get crash sanbox path fail.";
-            return list;
-        }
-        std::string soBuildId = GetRuntimeBuildId();
-        if (soBuildId == "") {
-            LOG_ECMA(INFO) << "can't get so buildId.";
-            return list;
-        }
-        list = GetRuntimeInfoByPath(realOutPath, soBuildId);
-        return list;
-    }
-
-    std::vector<RuntimeInfoPart> GetRealPathRuntimeInfoList(const std::string &pgoRealPath) const
-    {
-        std::vector<RuntimeInfoPart> list;
-        std::string realOutPath;
-        std::string runtimePgoRealPath = pgoRealPath + OhosConstants::PATH_SEPARATOR +
-            OhosConstants::AOT_RUNTIME_INFO_NAME;
-        if (!ecmascript::RealPath(runtimePgoRealPath, realOutPath, false)) {
-            return list;
-        }
-        if (!FileExist(realOutPath.c_str())) {
-            LOG_ECMA(INFO) << "Get pgo real path fail.";
-            return list;
-        }
-        std::string soBuildId = GetRuntimeBuildId();
-        if (soBuildId == "") {
-            LOG_ECMA(INFO) << "can't get so buildId.";
-            return list;
-        }
-        list = GetRuntimeInfoByPath(realOutPath, soBuildId);
-        return list;
+        static AotRuntimeInfo singleAotRuntimeInfo;
+        return singleAotRuntimeInfo;
     }
 
     void BuildCompileRuntimeInfo(const std::string &type, const std::string &pgoPath) const
@@ -163,9 +123,9 @@ public:
         SetRuntimeInfo(realOutPath, lines);
     }
 
-    int GetCompileCountByType(RuntimeInfoType type)
+    int GetCompileCountByType(RuntimeInfoType type, const std::string &pgoRealPath = "")
     {
-        std::map<RuntimeInfoType, int> escapeMap = CollectCrashSum();
+        std::map<RuntimeInfoType, int> escapeMap = CollectCrashSum(pgoRealPath);
         if (escapeMap.count(type) == 0) {
             return 0;
         }
@@ -174,7 +134,9 @@ public:
 
     std::map<RuntimeInfoType, int> CollectCrashSum(const std::string &pgoRealPath = "")
     {
-        std::map<RuntimeInfoType, int> escapeMap;
+        if (IsLoadedMap()) {
+            return escapeMap_;
+        }
         std::vector<RuntimeInfoPart> runtimeInfoParts;
         if (pgoRealPath == "") {
             runtimeInfoParts = GetCrashRuntimeInfoList();
@@ -183,9 +145,76 @@ public:
         }
         for (const auto &runtimeInfoPart: runtimeInfoParts) {
             RuntimeInfoType runtimeInfoType = GetRuntimeInfoTypeByStr(runtimeInfoPart.type);
-            escapeMap[runtimeInfoType]++;
+            escapeMap_[runtimeInfoType]++;
         }
-        return escapeMap;
+        SetLoadedMap(true);
+        return escapeMap_;
+    }
+
+    static std::string GetRuntimeInfoTypeStr(RuntimeInfoType type)
+    {
+        const std::map<RuntimeInfoType, const char *> strMap = {
+#define RUNTIME_INFO_TYPE_MAP(name) { RuntimeInfoType::name, #name },
+        RUNTIME_INFO_TYPE(RUNTIME_INFO_TYPE_MAP)
+#undef RUNTIME_INFO_TYPE_MAP
+        };
+        if (strMap.count(type) > 0) {
+            return strMap.at(type);
+        }
+        return "";
+    }
+    
+    static RuntimeInfoType GetRuntimeInfoTypeByStr(std::string type)
+    {
+        const std::map<std::string, RuntimeInfoType> strMap = {
+#define RUNTIME_INFO_TYPE_MAP(name) { #name, RuntimeInfoType::name },
+        RUNTIME_INFO_TYPE(RUNTIME_INFO_TYPE_MAP)
+#undef RUNTIME_INFO_TYPE_MAP
+        };
+        if (strMap.count(type) > 0) {
+            return strMap.at(type);
+        }
+        return RuntimeInfoType::NONE;
+    }
+
+private:
+    std::vector<RuntimeInfoPart> GetCrashRuntimeInfoList() const
+    {
+        std::string realOutPath = GetCrashSandBoxRealPath();
+        std::vector<RuntimeInfoPart> list;
+        if (!FileExist(realOutPath.c_str())) {
+            LOG_ECMA(INFO) << "Get crash sanbox path fail.";
+            return list;
+        }
+        std::string soBuildId = GetRuntimeBuildId();
+        if (soBuildId == "") {
+            LOG_ECMA(INFO) << "can't get so buildId.";
+            return list;
+        }
+        list = GetRuntimeInfoByPath(realOutPath, soBuildId);
+        return list;
+    }
+
+    std::vector<RuntimeInfoPart> GetRealPathRuntimeInfoList(const std::string &pgoRealPath) const
+    {
+        std::vector<RuntimeInfoPart> list;
+        std::string realOutPath;
+        std::string runtimePgoRealPath = pgoRealPath + OhosConstants::PATH_SEPARATOR +
+            OhosConstants::AOT_RUNTIME_INFO_NAME;
+        if (!ecmascript::RealPath(runtimePgoRealPath, realOutPath, false)) {
+            return list;
+        }
+        if (!FileExist(realOutPath.c_str())) {
+            LOG_ECMA(INFO) << "Get pgo real path fail.";
+            return list;
+        }
+        std::string soBuildId = GetRuntimeBuildId();
+        if (soBuildId == "") {
+            LOG_ECMA(INFO) << "can't get so buildId.";
+            return list;
+        }
+        list = GetRuntimeInfoByPath(realOutPath, soBuildId);
+        return list;
     }
 
     std::string GetRuntimeBuildId() const
@@ -212,32 +241,12 @@ public:
         return buildId;
     }
 
-    static std::string GetRuntimeInfoTypeStr(RuntimeInfoType type)
+    uint64_t GetMicrosecondsTimeStamp() const
     {
-        const std::map<RuntimeInfoType, const char *> strMap = {
-#define RUNTIME_INFO_TYPE_MAP(name) { RuntimeInfoType::name, #name },
-        RUNTIME_INFO_TYPE(RUNTIME_INFO_TYPE_MAP)
-#undef RUNTIME_INFO_TYPE_MAP
-        };
-        if (strMap.count(type) > 0) {
-            return strMap.at(type);
-        }
-        return "";
+        struct timespec time;
+        clock_gettime(CLOCK_MONOTONIC, &time);
+        return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
     }
-
-    static RuntimeInfoType GetRuntimeInfoTypeByStr(std::string type)
-    {
-        const std::map<std::string, RuntimeInfoType> strMap = {
-#define RUNTIME_INFO_TYPE_MAP(name) { #name, RuntimeInfoType::name },
-        RUNTIME_INFO_TYPE(RUNTIME_INFO_TYPE_MAP)
-#undef RUNTIME_INFO_TYPE_MAP
-        };
-        if (strMap.count(type) > 0) {
-            return strMap.at(type);
-        }
-        return RuntimeInfoType::NONE;
-    }
-private:
 
     void SetRuntimeInfo(const std::string &realOutPath, std::vector<RuntimeInfoPart> &runtimeInfoParts) const
     {
@@ -301,7 +310,7 @@ private:
     std::string GetCrashSandBoxRealPath() const
     {
         std::string realOutPath;
-        std::string arkProfilePath = AotCrashInfo::GetSandBoxPath();
+        std::string arkProfilePath = OhosConstants::SANDBOX_ARK_PROFILE_PATH;
         std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(arkProfilePath);
         if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
             return "";
@@ -389,6 +398,19 @@ private:
     {
         return (align) - 1;
     }
+
+    bool IsLoadedMap()
+    {
+        return isLoadedMap_;
+    }
+
+    void SetLoadedMap(bool value)
+    {
+        isLoadedMap_ = value;
+    }
+
+    std::map<RuntimeInfoType, int> escapeMap_;
+    bool isLoadedMap_ = false;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_OHOS_RUNTIME_BUILD_INFO_H

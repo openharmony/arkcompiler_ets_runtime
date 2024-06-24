@@ -1556,9 +1556,6 @@ public:
 
     // Napi helper function
     static bool KeyIsNumber(const char* utf8);
-
-    static bool IsJitEscape();
-    static bool IsAotEscape(const std::string &pgoRealPath = "");
     static int GetStartRealTime(const EcmaVM *vm);
 private:
     static int vmCount_;

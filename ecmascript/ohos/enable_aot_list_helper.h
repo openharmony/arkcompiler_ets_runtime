@@ -80,20 +80,22 @@ public:
         return false;
     }
 
-    void AddEnableListCount(const std::string &pgoPath = "") const
+    void AddEnableListCount(bool isCompileSuccess, const std::string &pgoPath = "") const
     {
-        ohos::AotRuntimeInfo aotRuntimeInfo;
-        aotRuntimeInfo.BuildCompileRuntimeInfo(
+        if (!isCompileSuccess) {
+            return;
+        }
+        ohos::AotRuntimeInfo::GetInstance().BuildCompileRuntimeInfo(
             ohos::AotRuntimeInfo::GetRuntimeInfoTypeStr(ohos::RuntimeInfoType::AOT_BUILD), pgoPath);
     }
 
-    bool IsAotCompileSuccessOnce() const
+    bool IsAotCompileSuccessOnce(const std::string &pgoRealPath = "") const
     {
         if (GetAotBuildCountDisable()) {
             return false;
         }
-        ohos::AotRuntimeInfo aotRuntimeInfo;
-        int count = aotRuntimeInfo.GetCompileCountByType(ohos::RuntimeInfoType::AOT_BUILD);
+        int count = ohos::AotRuntimeInfo::GetInstance().GetCompileCountByType(
+            ohos::RuntimeInfoType::AOT_BUILD, pgoRealPath);
         if (count > 0) {
             return true;
         }

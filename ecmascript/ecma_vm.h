@@ -665,11 +665,15 @@ public:
     {
         return processStartRealtime_;
     }
+    
+    void SetProcessStartRealtime(int value)
+    {
+        processStartRealtime_ = value;
+    }
 
     Jit *GetJit() const;
     bool PUBLIC_API IsEnableFastJit() const;
     bool PUBLIC_API IsEnableBaselineJit() const;
-    void EnableJit();
 
     bool IsEnableOsr() const
     {

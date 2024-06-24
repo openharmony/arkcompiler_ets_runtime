@@ -205,6 +205,8 @@ using Concurrent = ecmascript::Concurrent;
 using CrashInfo = ecmascript::ohos::AotCrashInfo;
 using EnableAotJitListHelper = ecmascript::ohos::EnableAotJitListHelper;
 using PGOProfilerManager = ecmascript::pgo::PGOProfilerManager;
+using AotRuntimeInfo = ecmascript::ohos::AotRuntimeInfo;
+using AotCrashInfo = ecmascript::ohos::AotCrashInfo;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
@@ -4376,28 +4378,6 @@ bool JSNApi::KeyIsNumber(const char* utf8)
     return true;
 }
 
-bool JSNApi::IsAotEscape(const std::string &pgoRealPath)
-{
-    if (CrashInfo::GetAotEscapeDisable()) {
-        return false;
-    }
-    ecmascript::ohos::AotRuntimeInfo aotRuntimeInfo;
-    auto escapeMap = aotRuntimeInfo.CollectCrashSum(pgoRealPath);
-    return escapeMap[ecmascript::ohos::RuntimeInfoType::AOT] >= CrashInfo::GetAotCrashCount() ||
-        escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
-        escapeMap[ecmascript::ohos::RuntimeInfoType::JS] >= CrashInfo::GetJsCrashCount();
-}
-
-bool JSNApi::IsJitEscape()
-{
-    ecmascript::ohos::AotRuntimeInfo aotRuntimeInfo;
-    auto escapeMap = aotRuntimeInfo.CollectCrashSum();
-    return escapeMap[ecmascript::ohos::RuntimeInfoType::JIT] >= CrashInfo::GetJitCrashCount() ||
-        escapeMap[ecmascript::ohos::RuntimeInfoType::AOT] >= CrashInfo::GetAotCrashCount() ||
-        escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS] >= CrashInfo::GetOthersCrashCount() ||
-        escapeMap[ecmascript::ohos::RuntimeInfoType::JS] >= CrashInfo::GetJsCrashCount();
-}
-
 bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
@@ -4460,16 +4440,6 @@ void JSNApi::LoadAotFileInternal(EcmaVM *vm, const std::string &moduleName, std:
 
 void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 {
-    if (IsAotEscape()) {
-        LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
-        return;
-    }
-    if (!vm->GetJSOptions().WasAOTOutputFileSet() &&
-        !EnableAotJitListHelper::GetInstance()->IsEnableAot(PGOProfilerManager::GetInstance()->GetBundleName())) {
-        LOG_ECMA(INFO) << "Stop load AOT because it's not in enable list";
-        return;
-    }
-
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
 
@@ -4485,11 +4455,6 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleName, const std::string &moduleName,
                          std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
 {
-    if (IsAotEscape()) {
-        LOG_ECMA(INFO) << "Stop load AOT because there are more crashes";
-        return;
-    }
-
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(thread);
 
