@@ -131,7 +131,7 @@ void Backtrace(std::ostringstream &stack, bool enableCache)
             return;
         }
         stack << std::endl;
-        stack << std::string(buf, strlen(buf));
+        stack << buf;
     }
 }
 } // namespace panda::ecmascript
