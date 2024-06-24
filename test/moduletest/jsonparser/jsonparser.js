@@ -72,3 +72,6 @@ print(JSON.stringify(JSON.parse(strData7)))
 
 let strData8 = '{"1\\u0000":"name"}'
 print(JSON.stringify(JSON.parse(strData8)))
+
+print(JSON.parse('123.456e-789'));
+print(1 / JSON.parse('-0'));

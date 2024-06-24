@@ -26,3 +26,5 @@ SyntaxError
 {"a":"{\"width\": 18}"}
 {"a":"{\"name\": \"张三\"}"}
 {"1\u0000":"name"}
+0
+-Infinity
