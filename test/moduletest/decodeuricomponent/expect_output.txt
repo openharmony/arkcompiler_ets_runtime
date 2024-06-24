@@ -24,3 +24,8 @@ https%3A%2F%2Fwww.runoob.com%2Fmy%20test.php%3Fname%3Dst%C3%A5le%26car%3Dsaab%2F
 https%3A%2F%2Fwww.runoob.com%2Fmy%20test.php%3Fname%3Dst%C3%A5le%26car%3Dsaab%2F2389018203
 https%3A%2F%2Fwww.runoob.com%2Fmy%20test.php%3Fname%3Dst%C3%A5le%26car%3Dsaab%2Fjfdlskafasfd%2Fjd2931dsafdsa
 https%3A%2F%2Fwww.runoob.com%2Fmy%20test.php%3Fname%3Dst%C3%A5le%26car%3Dsaab%2Fjfdlskafasfd%2Fjd2931dsafdsa%2Fjd2931wjeiojfwre
+https://www.runoob.com/my test.php?name=ståle&car=saab
+https://www.runoob.com/my test.php?name=ståle&car=saab/jfdlskafasfd
+https://www.runoob.com/my test.php?name=ståle&car=saab/2389018203
+https://www.runoob.com/my test.php?name=ståle&car=saab/jfdlskafasfd/jd2931dsafdsa
+https://www.runoob.com/my test.php?name=ståle&car=saab/jfdlskafasfd/jd2931dsafdsa/jd2931wjeiojfwre
