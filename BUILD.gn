@@ -999,16 +999,23 @@ config("include_llvm") {
         ]
       }
     } else {
-      if (current_cpu == "arm64") {
+      if (host_cpu == "arm64") {
         include_dirs = [
-          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/llvm/include",
-          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_linux_aarch64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_linux_aarch64/build/include",
         ]
       } else {
-        include_dirs = [
-          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/llvm/include",
-          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
-        ]
+        if (current_cpu == "arm64") {
+          include_dirs = [
+            "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/llvm/include",
+            "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/include",
+          ]
+        } else {
+          include_dirs = [
+            "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/llvm/include",
+            "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
+          ]
+        }
       }
     }
   }
