@@ -1015,7 +1015,7 @@ EcmaString *EcmaString::ToLower(const EcmaVM *vm, const JSHandle<EcmaString> &sr
         std::string res = base::StringHelper::ToLower(u16str);
         return *(factory->NewFromStdString(res));
     } else {
-        return ConvertUtf8ToLowerOrUpper(vm, src, true);
+        return ConvertUtf8ToLowerOrUpper(vm, src, true, srcFlat);
     }
 }
 
@@ -1037,18 +1037,38 @@ EcmaString *EcmaString::TryToLower(const EcmaVM *vm, const JSHandle<EcmaString> 
     if (upperIndex == srcLength) {
         return *src;
     }
-    return ConvertUtf8ToLowerOrUpper(vm, src, true, upperIndex);
+    return ConvertUtf8ToLowerOrUpper(vm, src, true, srcFlat, upperIndex);
+}
+
+/* static */
+EcmaString *EcmaString::TryToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src)
+{
+    auto srcFlat = FlattenAllString(vm, src);
+    uint32_t srcLength = srcFlat.GetLength();
+    const char start = 'a';
+    const char end = 'z';
+    uint32_t lowerIndex = srcLength;
+    Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
+    for (uint32_t index = 0; index < srcLength; ++index) {
+        if (base::StringHelper::Utf8CharInRange(data[index], start, end)) {
+            lowerIndex = index;
+            break;
+        }
+    }
+    if (lowerIndex == srcLength) {
+        return *src;
+    }
+    return ConvertUtf8ToLowerOrUpper(vm, src, false, srcFlat, lowerIndex);
 }
 
 /* static */
 EcmaString *EcmaString::ConvertUtf8ToLowerOrUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src,
-                                                  bool toLower, uint32_t startIndex)
+                                                  bool toLower, FlatStringInfo &srcFlat, uint32_t startIndex)
 {
     const char start = toLower ? 'A' : 'a';
     const char end = toLower ? 'Z' : 'z';
     uint32_t srcLength = src->GetLength();
     JSHandle<EcmaString> newString(vm->GetJSThread(), CreateLineString(vm, srcLength, true));
-    auto srcFlat = FlattenAllString(vm, src);
     Span<uint8_t> data(srcFlat.GetDataUtf8Writable(), srcLength);
     auto newStringPtr = newString->GetDataUtf8Writable();
     if (startIndex > 0) {
@@ -1078,7 +1098,7 @@ EcmaString *EcmaString::ToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &sr
         std::string res = base::StringHelper::ToUpper(u16str);
         return *(factory->NewFromStdString(res));
     } else {
-        return ConvertUtf8ToLowerOrUpper(vm, src, false);
+        return ConvertUtf8ToLowerOrUpper(vm, src, false, srcFlat);
     }
 }
 

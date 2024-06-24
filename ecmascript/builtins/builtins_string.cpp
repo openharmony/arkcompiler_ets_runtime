@@ -1985,6 +1985,11 @@ JSTaggedValue BuiltinsString::ToLocaleUpperCase(EcmaRuntimeCallInfo *argv)
 
     // Let requestedLocales be ? CanonicalizeLocaleList(locales).
     JSHandle<JSTaggedValue> locales = GetCallArg(argv, 0);
+    // Fast path
+    if (locales->IsUndefined() && EcmaStringAccessor(string).IsUtf8()) {
+        EcmaString *result = EcmaStringAccessor::TryToUpper(ecmaVm, string);
+        return JSTaggedValue(result);
+    }
     JSHandle<TaggedArray> requestedLocales = intl::LocaleHelper::CanonicalizeLocaleList(thread, locales);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
