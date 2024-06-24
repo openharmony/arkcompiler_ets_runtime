@@ -1392,7 +1392,8 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         {
             RuntimeLockHolder locker(thread, stringTable->mutex_);
-            auto strFromTable = stringTable->GetStringThreadUnsafe(str);
+            auto hashcode = EcmaStringAccessor(str).GetHashcode();
+            auto strFromTable = stringTable->GetStringWithHashThreadUnsafe(str, hashcode);
             if (strFromTable) {
                 deserializeStringVector_.emplace_back(thread, strFromTable);
             } else {
@@ -1411,8 +1412,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                     UNREACHABLE();
                 }
                 str = reinterpret_cast<EcmaString *>(newObj);
-                EcmaStringAccessor(str).ClearInternString();
-                stringTable->GetOrInternStringThreadUnsafe(vm_, str);
+                stringTable->InsertStringToTableWithHashThreadUnsafe(str, hashcode);
                 deserializeStringVector_.emplace_back(thread, str);
             }
         }

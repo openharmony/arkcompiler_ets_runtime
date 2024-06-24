@@ -29,8 +29,7 @@ JSTaggedValue ConstantPool::GetMethodFromCache(JSTaggedValue constpool, uint32_t
     auto val = taggedPool->GetObjectFromCache(index);
     JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
 
-    bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
-    if (isLoadedAOT && val.IsAOTLiteralInfo()) {
+    if (IsLoadedMethodInfoFromAOT(jsPandaFile, val)) {
         val = JSTaggedValue::Hole();
     }
 
@@ -47,13 +46,24 @@ void ConstantPool::UpdateConstpoolWhenDeserialAI(EcmaVM *vm, const ConstantPool 
                                                  ConstantPool *sharedCP, ConstantPool *unsharedCP)
 {
     uint32_t constpoolLen = aiCP->GetCacheLength();
+    auto aiCPLength = aiCP->GetLength();
     for (uint32_t i = 0; i < constpoolLen; i++) {
+        // We need preserve unshared constantPool index and shared constantPool id instead of fetching from ai.
+        // Because framework abc's ai does not contain those infos.
+        if (i == (aiCPLength - ConstantPool::UNSHARED_CONSTPOOL_INDEX) ||
+            i == (aiCPLength - ConstantPool::SHARED_CONSTPOOL_ID)) {
+            continue;
+        }
         JSThread *thread = vm->GetJSThread();
         auto val = aiCP->GetObjectFromCache(i);
         if (IsAotMethodLiteralInfo(val)) {
             JSHandle<AOTLiteralInfo> valHandle(thread, val);
             JSHandle<AOTLiteralInfo> methodLiteral = CopySharedMethodAOTLiteralInfo(vm, valHandle);
             sharedCP->SetObjectToCache(thread, i, methodLiteral.GetTaggedValue());
+        } else if (val.IsInt()) {
+            // For MethodInfo which does not have ihc infos, we store codeEntry directly.
+            sharedCP->SetObjectToCache(thread, i, val);
+            unsharedCP->SetObjectToCache(thread, i, val);
         }
         // update method, class and object aotliteralinfo
         if (val.IsAOTLiteralInfo()) {

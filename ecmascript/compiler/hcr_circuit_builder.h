@@ -154,11 +154,10 @@ GateRef CircuitBuilder::IsStableArray(GateRef hClass)
 
 GateRef CircuitBuilder::IsAOTLiteralInfo(GateRef x)
 {
-    GateRef isHeapObj = TaggedIsHeapObject(x);
     GateRef objType = GetObjectType(LoadHClass(x));
     GateRef isAOTLiteralInfoObj = Equal(objType,
         Int32(static_cast<int32_t>(JSType::AOT_LITERAL_INFO)));
-    return LogicAnd(isHeapObj, isAOTLiteralInfoObj);
+    return isAOTLiteralInfoObj;
 }
 
 GateRef CircuitBuilder::LoadHClass(GateRef object)

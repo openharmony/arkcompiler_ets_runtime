@@ -206,6 +206,9 @@ public:
                 JSHandle<AOTLiteralInfo> valHandle(thread, val);
                 JSHandle<AOTLiteralInfo> methodLiteral = CopySharedMethodAOTLiteralInfo(vm, valHandle);
                 sconstpool->SetObjectToCache(thread, i, methodLiteral.GetTaggedValue());
+            } else if (val.IsInt()) {
+                // Here is to copy methodCodeEntry which does not have ihc infos from aot.
+                sconstpool->SetObjectToCache(thread, i, val);
             }
         }
 
@@ -436,8 +439,8 @@ public:
         std::atomic<JSTaggedValue> *atomicVal = reinterpret_cast<std::atomic<JSTaggedValue> *>(
             reinterpret_cast<uintptr_t>(taggedPool) + DATA_OFFSET + index * JSTaggedValue::TaggedTypeSize());
         JSTaggedValue tempVal = taggedPool->GetObjectFromCache(index);
-        JSTaggedValue expected = taggedPool->GetJSPandaFile()->IsLoadedAOT() && tempVal.IsAOTLiteralInfo() ?
-            tempVal : JSTaggedValue::Hole();
+        JSTaggedValue expected = IsLoadedMethodInfoFromAOT(taggedPool->GetJSPandaFile(), tempVal) ? tempVal :
+            JSTaggedValue::Hole();
         JSTaggedValue desired = value;
         if (std::atomic_compare_exchange_strong_explicit(atomicVal, &expected, desired,
             std::memory_order_release, std::memory_order_relaxed)) {
@@ -461,9 +464,15 @@ public:
         bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
         bool hasEntryIndex = false;
         uint32_t entryIndex = 0;
-        if (isLoadedAOT && val.IsAOTLiteralInfo()) {
-            JSHandle<AOTLiteralInfo> entryIndexes(thread, val);
-            int entryIndexVal = entryIndexes->GetObjectFromCache(0).GetInt(); // 0: only one method
+        if (IsLoadedMethodInfoFromAOT(jsPandaFile, val)) {
+            int entryIndexVal = 0; // 0: only one method
+            if (val.IsInt()) {
+                // For MethodInfo which does not have ihc infos, we store codeEntry directly.
+                entryIndexVal = static_cast<uint32_t>(val.GetInt());
+            } else {
+                JSHandle<AOTLiteralInfo> entryIndexes(thread, val);
+                entryIndexVal = entryIndexes->GetObjectFromCache(0).GetInt(); // 0: only one method
+            }
             if (entryIndexVal != static_cast<int>(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE)) {
                 hasEntryIndex = true;
                 entryIndex = static_cast<uint32_t>(entryIndexVal);
@@ -811,6 +820,11 @@ private:
     {
         return JSTaggedValue::TaggedTypeSize() * GetLength() + DATA_OFFSET;
     }
+
+    static bool IsLoadedMethodInfoFromAOT(const JSPandaFile *pf, JSTaggedValue cachedVal)
+    {
+        return pf->IsLoadedAOT() && (cachedVal.IsAOTLiteralInfo() || cachedVal.IsInt());
+    };
 
     static JSHandle<ConstantPool> GetDeserializedConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile, int32_t cpID);
 };

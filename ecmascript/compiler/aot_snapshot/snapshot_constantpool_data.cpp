@@ -107,13 +107,11 @@ void StringSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData, c
 {
     for (auto item : info_) {
         const ItemData &data = item.second;
-        JSTaggedValue cp = thread_->GetCurrentEcmaContext()->FindConstpool(jsPandaFile_, data.constantPoolId_);
-        JSTaggedValue str = ConstantPool::GetStringFromCache(thread_, cp, data.constantPoolIdx_);
-
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread_, globalData.GetCurSnapshotCpArray());
         JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
-        snapshotCp->SetObjectToCache(thread_, data.constantPoolIdx_, str);
+        // Lazy ConstantPool String Loading
+        snapshotCp->SetObjectToCache(thread_, data.constantPoolIdx_, JSTaggedValue::Hole());
     }
 }
 
@@ -144,13 +142,21 @@ void MethodSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
         aotLiteralInfo->SetLiteralType(JSTaggedValue(AOTLiteralInfo::METHOD_LITERAL_TYPE));
         if (!ihc->IsUndefined()) {
             aotLiteralInfo->SetIhc(ihc.GetTaggedValue());
-        }
-        if (skippedMethods.find(methodOffset) == skippedMethods.end()) {
-            aotLiteralInfo->SetObjectToCache(thread_, 0, JSTaggedValue(methodOffset));
+            if (skippedMethods.find(methodOffset) == skippedMethods.end()) {
+                aotLiteralInfo->SetObjectToCache(thread_, 0, JSTaggedValue(methodOffset));
+                globalData.RecordReviseData(
+                    ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
+            }
+            snapshotCp->SetObjectToCache(thread_, data.constantPoolIdx_, aotLiteralInfo.GetTaggedValue());
+        } else if (skippedMethods.find(methodOffset) == skippedMethods.end()) {
+            // For MethodSnaphotInfo which does not have ihc info, we insert JSTaggedValue(methodOffset) as revervation.
+            // For the purpose of reducing ai size.
             globalData.RecordReviseData(
                 ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
+            snapshotCp->SetObjectToCache(thread_, data.constantPoolIdx_, JSTaggedValue(methodOffset));
+        } else {
+            snapshotCp->SetObjectToCache(thread_, data.constantPoolIdx_, JSTaggedValue::Hole());
         }
-        snapshotCp->SetObjectToCache(thread_, data.constantPoolIdx_, aotLiteralInfo.GetTaggedValue());
     }
 }
 
