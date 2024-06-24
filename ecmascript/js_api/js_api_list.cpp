@@ -271,7 +271,7 @@ OperationResult JSAPIList::GetProperty(JSThread *thread, const JSHandle<JSAPILis
 {
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
     int nodeLength = singleList->Length();
-    int index = key->GetInt();
+    int index = static_cast<int>(key->GetNumber());
     if (index < 0 || index >= nodeLength) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (nodeLength - 1)
@@ -291,7 +291,7 @@ bool JSAPIList::SetProperty(JSThread *thread, const JSHandle<JSAPIList> &obj,
 {
     JSHandle<TaggedSingleList> singleList(thread, obj->GetSingleList());
     int nodeLength = singleList->Length();
-    int index = key->GetInt();
+    int index = static_cast<int>(key->GetNumber());
     if (index < 0 || index >= nodeLength) {
         return false;
     }
