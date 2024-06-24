@@ -390,7 +390,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     if (!numberingSystem->IsUndefined()) {
         JSHandle<EcmaString> nsEcmaStr = JSHandle<EcmaString>::Cast(numberingSystem);
         nsStr = intl::LocaleHelper::ConvertToStdString(nsEcmaStr);
-        if (!JSLocale::IsWellNumberingSystem(nsStr)) {
+        if (!JSLocale::IsNormativeNumberingSystem(nsStr)) {
             THROW_RANGE_ERROR_AND_RETURN(thread, "invalid numberingSystem", dateTimeFormat);
         }
     }
@@ -428,7 +428,7 @@ JSHandle<JSDateTimeFormat> JSDateTimeFormat::InitializeDateTimeFormat(JSThread *
     ASSERT_PRINT(!icuLocale.isBogus(), "icuLocale is bogus");
     UErrorCode status = U_ZERO_ERROR;
 
-    if (numberingSystem->IsUndefined()) {
+    if (numberingSystem->IsUndefined() || !JSLocale::IsWellNumberingSystem(nsStr)) {
         std::string numberingSystemStr = JSLocale::GetNumberingSystem(icuLocale);
         auto result = factory->NewFromStdString(numberingSystemStr);
         dateTimeFormat->SetNumberingSystem(thread, result);

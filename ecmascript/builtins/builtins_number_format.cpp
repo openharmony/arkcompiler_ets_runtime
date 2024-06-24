@@ -66,7 +66,7 @@ JSTaggedValue BuiltinsNumberFormat::NumberFormatConstructor(EcmaRuntimeCallInfo 
     //    a. Perform ? DefinePropertyOrThrow(this, %Intl%.[[FallbackSymbol]], PropertyDescriptor{
     //       [[Value]]: numberFormat, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
     //    b. Return this.
-    if (newTarget->IsUndefined() && thisValue->IsJSObject()) {
+    if (GetNewTarget(argv)->IsUndefined() && thisValue->IsJSObject()) {
         bool isInstanceOf = JSObject::InstanceOf(thread, thisValue, env->GetNumberFormatFunction());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (isInstanceOf) {
