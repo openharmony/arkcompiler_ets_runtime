@@ -458,6 +458,10 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
     // 2. Let R be the empty String.
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     std::u16string resStr;
+    JSHandle<EcmaString> string = str;
+    if (EcmaStringAccessor(str).IsTreeString()) {
+        string = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), str));
+    }
 
     // 3. Let k be 0.
     // 4. Repeat
@@ -483,7 +487,7 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
         //         a. Let S be the String containing only the code unit C.
         //      3. Else C is in reservedSet,
         //         a. Let S be the substring of string from index start to index k inclusive.
-        uint16_t cc = EcmaStringAccessor(str).Get(k);
+        uint16_t cc = EcmaStringAccessor(string).Get(k);
         std::u16string sStr;
         if (cc != '%') {
             if (cc == 0 && strLen == 1) {
@@ -492,7 +496,7 @@ JSTaggedValue BuiltinsGlobal::Decode(JSThread *thread, const JSHandle<EcmaString
             }
             sStr = StringHelper::Utf16ToU16String(&cc, 1);
         } else {
-            DecodePercentEncoding(thread, str, k, IsInURISet, strLen, sStr);
+            DecodePercentEncoding(thread, string, k, IsInURISet, strLen, sStr);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         }
         resStr.append(sStr);

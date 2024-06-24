@@ -80,3 +80,9 @@ print(encodeURIComponent(uri11));
 print(encodeURIComponent(uri2));
 print(encodeURIComponent(uri3));
 print(encodeURIComponent(uri4));
+
+print(decodeURIComponent(uri0));
+print(decodeURIComponent(uri11));
+print(decodeURIComponent(uri2));
+print(decodeURIComponent(uri3));
+print(decodeURIComponent(uri4));
