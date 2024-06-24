@@ -2409,20 +2409,20 @@ const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, Tagged
     const CString &moduleStr = method->GetRecordNameStr();
 
     if (!moduleStr.empty()) {
-        result.append(moduleStr);
+        result.append(moduleStr).append(" ");
     }
-    if (!nameStr.empty()) {
-        DebugInfoExtractor *debugExtractor =
-            JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
-        if (debugExtractor == nullptr) {
-            result.append("JSObject");
-            return result;
-        }
-        int32_t line = debugExtractor->GetFristLine(methodId);
-        result.append(moduleStr).append(" JSObject(line:").append(std::to_string(line)).append(")");
+    if (nameStr.empty()) {
+        result.append("JSObject");
+    } else {
+        result.append(nameStr);
     }
-    result.append("JSObject");
-    return result;
+    DebugInfoExtractor *debugExtractor =
+        JSPandaFileManager::GetInstance()->GetJSPtExtractor(jsPandaFile);
+    if (debugExtractor == nullptr) {
+        return result;
+    }
+    int32_t line = debugExtractor->GetFristLine(methodId);
+    return result.append("(line:").append(std::to_string(line)).append(")");
 }
 
 JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSHandle<JSObject> &obj,
