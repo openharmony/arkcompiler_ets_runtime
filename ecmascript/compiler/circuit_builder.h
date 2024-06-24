@@ -143,6 +143,7 @@ class TSHCROptPass;
     V(ChangeInt32ToFloat32, SignedIntToFloat, MachineType::F32)        \
     V(ChangeUInt32ToFloat64, UnsignedIntToFloat, MachineType::F64)     \
     V(ChangeFloat64ToInt32, FloatToSignedInt, MachineType::I32)        \
+    V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)     \
     V(SExtInt16ToInt64, Sext, MachineType::I64)                        \
     V(SExtInt16ToInt32, Sext, MachineType::I32)                        \
     V(SExtInt8ToInt32, Sext, MachineType::I32)                         \
@@ -152,9 +153,6 @@ class TSHCROptPass;
     V(CountLeadingZeroes32, Clz32, MachineType::I32)                   \
     V(DoubleCeil, Ceil, MachineType::F64)                              \
     V(DoubleFloor, Floor, MachineType::F64)
-
-#define UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH_PRIVATE(V)          \
-    V(ChangeTaggedPointerToInt64, TaggedToInt64, MachineType::I64)
 
 #define BINARY_CMP_METHOD_LIST_WITHOUT_BITWIDTH(V)                                      \
     V(DoubleLessThan, Fcmp, static_cast<BitField>(FCmpCondition::OLT))                  \
@@ -939,7 +937,6 @@ private:
         return circuit_->NewGate(circuit_->OPCODEID(), MACHINETYPEID, { x }, GateType::NJSValue(), comment); \
     }
 
-    UNARY_ARITHMETIC_METHOD_LIST_WITH_BITWIDTH_PRIVATE(ARITHMETIC_UNARY_OP_WITH_BITWIDTH)
 #undef ARITHMETIC_UNARY_OP_WITH_BITWIDTH
 
     Circuit *circuit_ {nullptr};

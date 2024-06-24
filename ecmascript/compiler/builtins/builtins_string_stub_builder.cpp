@@ -401,13 +401,11 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
     Label countFrom(env);
     Label countRes(env);
     Label startTagNotUndefined(env);
-    Label posTagIsInt(env);
-    Label posTagNotInt(env);
-    Label posTagIsDouble(env);
+    Label startTagIsNumber(env);
+    Label startTagIsInt(env);
     Label endTagNotUndefined(env);
+    Label endTagIsNumber(env);
     Label endTagIsInt(env);
-    Label endTagNotInt(env);
-    Label endTagIsDouble(env);
     Label endGreatZero(env);
     Label endGreatLen(env);
     Label startGreatZero(env);
@@ -429,15 +427,14 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
             Bind(&startTagNotUndefined);
             {
                 GateRef startTag = GetCallArg0(numArgs);
-                BRANCH(TaggedIsInt(startTag), &posTagIsInt, &posTagNotInt);
-                Bind(&posTagIsInt);
-                start = GetInt32OfTInt(startTag);
-                Jump(&next);
-                Bind(&posTagNotInt);
-                BRANCH(TaggedIsDouble(startTag), &posTagIsDouble, slowPath);
-                Bind(&posTagIsDouble);
-                start = DoubleToInt(glue, GetDoubleOfTDouble(startTag));
-                Jump(&next);
+                BRANCH(TaggedIsNumber(startTag), &startTagIsNumber, slowPath);
+                Bind(&startTagIsNumber);
+                BRANCH(TaggedIsInt(startTag), &startTagIsInt, slowPath);
+                Bind(&startTagIsInt);
+                {
+                    start = GetInt32OfTInt(startTag);
+                    Jump(&next);
+                }
             }
             Bind(&next);
             {
@@ -450,15 +447,14 @@ void BuiltinsStringStubBuilder::Substring(GateRef glue, GateRef thisValue, GateR
                 Bind(&endTagNotUndefined);
                 {
                     GateRef endTag = GetCallArg1(numArgs);
-                    BRANCH(TaggedIsInt(endTag), &endTagIsInt, &endTagNotInt);
+                    BRANCH(TaggedIsNumber(endTag), &endTagIsNumber, slowPath);
+                    Bind(&endTagIsNumber);
+                    BRANCH(TaggedIsInt(endTag), &endTagIsInt, slowPath);
                     Bind(&endTagIsInt);
-                    end = GetInt32OfTInt(endTag);
-                    Jump(&countStart);
-                    Bind(&endTagNotInt);
-                    BRANCH(TaggedIsDouble(endTag), &endTagIsDouble, slowPath);
-                    Bind(&endTagIsDouble);
-                    end = DoubleToInt(glue, GetDoubleOfTDouble(endTag));
-                    Jump(&countStart);
+                    {
+                        end = GetInt32OfTInt(endTag);
+                        Jump(&countStart);
+                    }
                 }
             }
             Bind(&countStart);
@@ -542,12 +538,10 @@ void BuiltinsStringStubBuilder::SubStr(GateRef glue, GateRef thisValue, GateRef 
     Label countResultLength1(env);
     Label countRes(env);
     Label intStartNotUndefined(env);
+    Label intStartIsNumber(env);
     Label intStartIsInt(env);
-    Label intStartNotInt(env);
-    Label intStartIsDouble(env);
+    Label lengthTagIsNumber(env);
     Label lengthTagIsInt(env);
-    Label lengthTagNotInt(env);
-    Label lengthTagIsDouble(env);
     Label thisIsHeapobject(env);
     Label endGreatZero(env);
 
@@ -565,15 +559,14 @@ void BuiltinsStringStubBuilder::SubStr(GateRef glue, GateRef thisValue, GateRef 
             Bind(&intStartNotUndefined);
             {
                 GateRef intStart = GetCallArg0(numArgs);
-                BRANCH(TaggedIsInt(intStart), &intStartIsInt, &intStartNotInt);
+                BRANCH(TaggedIsNumber(intStart), &intStartIsNumber, slowPath);
+                Bind(&intStartIsNumber);
+                BRANCH(TaggedIsInt(intStart), &intStartIsInt, slowPath);
                 Bind(&intStartIsInt);
-                start = GetInt32OfTInt(intStart);
-                Jump(&next);
-                Bind(&intStartNotInt);
-                BRANCH(TaggedIsDouble(intStart), &intStartIsDouble, slowPath);
-                Bind(&intStartIsDouble);
-                start = DoubleToInt(glue, GetDoubleOfTDouble(intStart));
-                Jump(&next);
+                {
+                    start = GetInt32OfTInt(intStart);
+                    Jump(&next);
+                }
             }
             Bind(&next);
             {
@@ -586,15 +579,14 @@ void BuiltinsStringStubBuilder::SubStr(GateRef glue, GateRef thisValue, GateRef 
                 Bind(&lengthTagNotUndefined);
                 {
                     GateRef lengthTag = GetCallArg1(numArgs);
-                    BRANCH(TaggedIsInt(lengthTag), &lengthTagIsInt, &lengthTagNotInt);
+                    BRANCH(TaggedIsNumber(lengthTag), &lengthTagIsNumber, slowPath);
+                    Bind(&lengthTagIsNumber);
+                    BRANCH(TaggedIsInt(lengthTag), &lengthTagIsInt, slowPath);
                     Bind(&lengthTagIsInt);
-                    end = GetInt32OfTInt(lengthTag);
-                    Jump(&countStart);
-                    Bind(&lengthTagNotInt);
-                    BRANCH(TaggedIsDouble(lengthTag), &lengthTagIsDouble, slowPath);
-                    Bind(&lengthTagIsDouble);
-                    end = DoubleToInt(glue, GetDoubleOfTDouble(lengthTag));
-                    Jump(&countStart);
+                    {
+                        end = GetInt32OfTInt(lengthTag);
+                        Jump(&countStart);
+                    }
                 }
             }
             Bind(&countStart);
