@@ -1285,6 +1285,7 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
     } else {
         double val = 0.0;
         uint32_t copyLen = srcLength > elemLen ? elemLen : srcLength;
+        JSHandle<TaggedArray> backupVal = BackupBeforeCopyFromArray(thread, obj, copyLen);
         for (uint32_t i = 0; i < copyLen; i++) {
             JSTaggedValue taggedVal = ElementAccessor::Get(obj, i);
             if (!taggedVal.IsNumber()) {
@@ -1292,7 +1293,7 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 val = taggedNumber.GetNumber();
             } else {
-                val = taggedVal.GetNumber();
+                val = backupVal->Get(thread, i).GetNumber();
             }
             BuiltinsArrayBufferType<typedArrayKind>::Type::FastSetValueInBuffer(
                 thread, targetBuffer.GetTaggedValue(), targetByteIndex, targetType, val, true);
@@ -1309,6 +1310,17 @@ JSTaggedValue JSStableArray::FastCopyFromArrayToTypedArray(JSThread *thread, JSH
         }
     }
     return JSTaggedValue::Undefined();
+}
+
+JSHandle<TaggedArray> JSStableArray::BackupBeforeCopyFromArray(JSThread *thread, JSHandle<JSObject> &obj,
+                                                               uint32_t copyLen)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> taggedArray = factory->NewTaggedArray(copyLen);
+    for (uint32_t i = 0; i < copyLen; i++) {
+        taggedArray->Set(thread, i, ElementAccessor::Get(obj, i));
+    }
+    return taggedArray;
 }
 
 JSTaggedValue JSStableArray::At(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)

@@ -231,10 +231,13 @@ void JSArray::HandleDictionaryMode(JSThread *thread, const JSHandle<JSObject> &a
         JSHandle<NumberDictionary> dictHandle(thread, element);
         JSHandle<TaggedArray> newArr = factory->NewTaggedArray(numOfElements);
         GetAllElementKeys(thread, array, 0, newArr);
-        for (uint32_t i = numOfElements - 1; i >= newLen; i--) {
+        for (int32_t i = numOfElements - 1; i >= 0; i--) {
             JSTaggedValue value = newArr->Get(i);
             uint32_t output = 0;
             JSTaggedValue::StringToElementIndex(value, &output);
+            if (output < newLen) {
+                break;
+            }
             JSTaggedValue key(static_cast<int>(output));
             int entry = dictHandle->FindEntry(key);
             auto attr = dictHandle->GetAttributes(entry).GetValue();
@@ -242,10 +245,6 @@ void JSArray::HandleDictionaryMode(JSThread *thread, const JSHandle<JSObject> &a
             if (propAttr.IsConfigurable()) {
                 JSHandle<NumberDictionary> newDict = NumberDictionary::Remove(thread, dictHandle, entry);
                 array->SetElements(thread, newDict);
-                if (i == 0) {
-                    newNumOfElements = i;
-                    break;
-                }
             } else {
                 newNumOfElements = i + 1;
                 break;
