@@ -174,6 +174,7 @@ private:
                                        Label *isArrayBuffer, Label *exit);
     void LowerArrayStoreElement(GateRef gate, GateRef glue, TypedStoreOp kind);
     void LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId id);
+    void OptStoreElementByOnHeapMode(GateRef gate, GateRef receiver, GateRef offset, GateRef value);
     void BuildOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
     void BuildNotOnHeapTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value);
     void BuildTypedArrayStoreElement(GateRef receiver, GateRef offset, GateRef value, Label *isByteArray,
