@@ -49,7 +49,7 @@
     CROSS_THREAD_CHECK(vm);                                                                      \
     do {                                                                                         \
         if (thread->HasPendingException()) {                                                     \
-            LOG_ECMA(DEBUG) << "Pending exception before " << __FUNCTION__ << " called in line:" \
+            LOG_ECMA(ERROR) << "Pending exception before " << __FUNCTION__ << " called in line:" \
                             << __LINE__ << ", exception details as follows:";                    \
             JSNApi::PrintExceptionInfo(vm);                                                      \
             return returnVal;                                                                    \
@@ -60,7 +60,7 @@
     CROSS_THREAD_CHECK(vm);                                                                       \
     do {                                                                                          \
         if (thread->HasPendingException()) {                                                      \
-            LOG_ECMA(DEBUG) << "Pending exception before " << __FUNCTION__ << " called, in line:" \
+            LOG_ECMA(ERROR) << "Pending exception before " << __FUNCTION__ << " called, in line:" \
                             << __LINE__ << ", exception details as follows:";                     \
             JSNApi::PrintExceptionInfo(vm);                                                       \
             return;                                                                               \

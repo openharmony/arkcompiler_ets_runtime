@@ -3892,7 +3892,7 @@ void JSNApi::PrintExceptionInfo(const EcmaVM *vm)
     }
     JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, exceptionHandle);
     ecmascript::CString string = ConvertToString(*result);
-    LOG_ECMA(DEBUG) << string;
+    LOG_ECMA(ERROR) << string;
     ThrowException(vm, exception);
 }
 
