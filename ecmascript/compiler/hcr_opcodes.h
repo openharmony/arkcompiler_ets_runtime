@@ -56,7 +56,7 @@ namespace panda::ecmascript::kungfu {
     V(CallSetter, CALL_SETTER, GateFlags::HAS_FRAME_STATE, 1, 1, 4)                             \
     V(MonoCallGetterOnProto, MONO_CALL_GETTER_ON_PROTO, GateFlags::HAS_FRAME_STATE, 1, 1, 4)    \
     V(CreateArray, CREATE_ARRAY, GateFlags::NONE_FLAG, 1, 1, 1)                                 \
-    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 3)           \
+    V(CreateArrayWithBuffer, CREATE_ARRAY_WITH_BUFFER, GateFlags::CHECKABLE, 1, 1, 2)           \
     V(CreateArguments, CREATE_ARGUMENTS, GateFlags::HAS_FRAME_STATE, 1, 1, 1)
 
 #define HCR_GATE_META_DATA_LIST_WITH_VALUE(V)                                           \

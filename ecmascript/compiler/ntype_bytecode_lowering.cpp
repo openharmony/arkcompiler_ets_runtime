@@ -208,23 +208,14 @@ void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     // 1: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef index = acc_.GetValueIn(gate, 0);
-    uint32_t cpIdx = static_cast<uint32_t>(acc_.GetConstantValue(index));
     auto methodOffset = acc_.TryGetMethodOffset(gate);
     uint32_t cpId = ptManager_->GetConstantPoolIDByMethodOffset(methodOffset);
-    JSTaggedValue cp = compilationEnv_->GetConstantPoolByMethodOffset(methodOffset);
-    panda_file::File::EntityId id = ConstantPool::GetIdFromCache(cp, cpIdx);
-
-    int elementIndex = ptManager_->GetElementsIndexByEntityId(id);
-    if (elementIndex == -1) { // slowpath
-        return;
-    }
 
     AddProfiling(gate);
     ElementsKind kind = acc_.TryGetElementsKind(gate);
-    GateRef elementIndexGate = builder_.IntPtr(elementIndex);
     GateRef cpIdGr = builder_.Int32(cpId);
     GateRef array =
-        builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, cpIdGr, index, elementIndexGate);
+        builder_.CreateArrayWithBuffer(kind, ArrayMetaDataAccessor::Mode::CREATE, cpIdGr, index);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), array);
 }
 

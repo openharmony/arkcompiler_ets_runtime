@@ -58,8 +58,7 @@ void BaseSnapshotInfo::Record(ItemData &data)
 void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                                           JSHandle<ConstantPool> snapshotConstantPool,
                                           const std::set<uint32_t> &skippedMethods,
-                                          JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc,
-                                          int32_t elementIndex, ElementsKind kind)
+                                          JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc)
 {
     ObjectFactory *factory = vm_->GetFactory();
     JSMutableHandle<JSTaggedValue> valueHandle(thread_, JSTaggedValue::Undefined());
@@ -90,14 +89,6 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
 
     if (!chc->IsUndefined()) {
         aotLiteralInfo->SetChc(chc.GetTaggedValue());
-    }
-
-    if (elementIndex != AOT_ELEMENT_INDEX_DEFAULT_VALUE) {
-        aotLiteralInfo->SetElementIndex(JSTaggedValue(elementIndex));
-    }
-
-    if (kind != ElementsKind::GENERIC) {
-        aotLiteralInfo->SetElementsKind(kind);
     }
 
     snapshotConstantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
@@ -186,8 +177,7 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
             chc = TryGetHClass(ctorPt, ctorPt);
         }
 
-        CollectLiteralInfo(arrayHandle, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
-                           AOT_ELEMENT_INDEX_DEFAULT_VALUE, ElementsKind::GENERIC);
+        CollectLiteralInfo(arrayHandle, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
@@ -225,8 +215,7 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &global
             }
         }
 
-        CollectLiteralInfo(properties, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
-                           AOT_ELEMENT_INDEX_DEFAULT_VALUE, ElementsKind::GENERIC);
+        CollectLiteralInfo(properties, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
@@ -235,23 +224,18 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &global
 void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
                                                      const std::set<uint32_t> &skippedMethods)
 {
-    PGOTypeManager *ptManager = thread_->GetCurrentEcmaContext()->GetPTManager();
     for (auto item : info_) {
         const ItemData &data = item.second;
         JSHandle<ConstantPool> cp = GetUnsharedConstpool(data);
         panda_file::File::EntityId id = cp->GetEntityId(data.constantPoolIdx_);
         JSHandle<TaggedArray> literal = LiteralDataExtractor::GetDatasIgnoreType(
             thread_, jsPandaFile_, id, cp, data.recordName_);
-        int32_t elementIndex = ptManager->GetElementsIndexByEntityId(id);
-        ElementsKind kind = ptManager->GetElementsKindByEntityId(id);
-
         uint32_t snapshotCpArrIdx = globalData.GetCpArrIdxByConstanPoolId(data.constantPoolId_);
         JSHandle<TaggedArray> snapshotCpArr(thread_, globalData.GetCurSnapshotCpArray());
         JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
         JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
         JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
-        CollectLiteralInfo(literal, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc,
-                           elementIndex, kind);
+        CollectLiteralInfo(literal, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }

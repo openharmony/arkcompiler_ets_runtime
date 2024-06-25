@@ -165,12 +165,8 @@ JSHandle<TaggedArray> PGOTypeManager::GenJITHClassInfo()
 
 void PGOTypeManager::GenArrayInfo()
 {
-    uint32_t count = arrayData_.size();
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> arrayInfo = factory->NewTaggedArray(count);
-    for (uint32_t pos = 0; pos < count; pos++) {
-        arrayInfo->Set(thread_, pos, JSTaggedValue(arrayData_[pos]));
-    }
+    JSHandle<TaggedArray> arrayInfo = factory->EmptyArray();
     aotSnapshot_.StoreArrayInfo(arrayInfo);
 }
 
@@ -217,52 +213,10 @@ void PGOTypeManager::RecordHClass(ProfileType rootType, ProfileType childType, J
     hclassMap.emplace(childType, hclass);
 }
 
-void PGOTypeManager::RecordElements(panda_file::File::EntityId id, JSTaggedValue elements)
-{
-    JSHandle<TaggedArray> elementsHandle(thread_, elements);
-    arrayData_.emplace_back(elementsHandle.GetTaggedType());
-    idElmsIdxMap_.emplace(id, arrayData_.size() - 1);
-}
-
-void PGOTypeManager::UpdateRecordedElements(panda_file::File::EntityId id, JSTaggedValue elements, ElementsKind kind)
-{
-    JSHandle<TaggedArray> elementsHandle(thread_, elements);
-    auto iter = idElmsIdxMap_.find(id);
-    if (iter == idElmsIdxMap_.end()) {
-        LOG_COMPILER(FATAL) << "this branch is unreachable - Should have recorded elements";
-        UNREACHABLE();
-    }
-    auto arrayDataIndex = iter->second;
-    arrayData_[arrayDataIndex] = elementsHandle.GetTaggedType();
-    JSHandle<TaggedArray> arrayInfo(thread_, aotSnapshot_.GetArrayInfo());
-    arrayInfo->Set(thread_, arrayDataIndex, JSTaggedValue(elements));
-    idElmsKindMap_.emplace(id, kind);
-}
-
 void PGOTypeManager::RecordConstantIndex(uint32_t bcAbsoluteOffset, uint32_t index)
 {
     constantIndexData_.emplace_back(bcAbsoluteOffset);
     constantIndexData_.emplace_back(index);
-}
-
-int PGOTypeManager::GetElementsIndexByEntityId(panda_file::File::EntityId id)
-{
-    auto iter = idElmsIdxMap_.find(id);
-    auto endIter = idElmsIdxMap_.end();
-    if (iter == endIter) {
-        return -1;
-    }
-    return iter->second;
-}
-
-ElementsKind PGOTypeManager::GetElementsKindByEntityId(panda_file::File::EntityId id)
-{
-    auto iter = idElmsKindMap_.find(id);
-    auto endIter = idElmsKindMap_.end();
-    if (iter == endIter) {
-        return ElementsKind::HOLE_TAGGED;
-    }
-    return iter->second;
 }
 
 uint32_t PGOTypeManager::GetHClassIndexByProfileType(ProfileTyper type) const
