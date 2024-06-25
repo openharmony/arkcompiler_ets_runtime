@@ -1319,16 +1319,37 @@ void NewObjectStubBuilder::InitializeWithSpeicalValue(Label *exit, GateRef objec
     Label begin(env);
     Label storeValue(env);
     Label endLoop(env);
-
+    Label storeHead(env);
+    Label enterLoop(env);
     DEFVARIABLE(startOffset, VariableType::INT32(), start);
-    Jump(&begin);
+    const auto tSize = static_cast<int32_t>(JSTaggedValue::TaggedTypeSize());
+    static_assert((tSize & (tSize - 1)) == 0 && "tSize must be power of 2");
+    GateRef length = Int32Sub(end, start);
+    GateRef remainder = Int32And(length, Int32(LOOP_UNROLL_FACTOR * tSize - 1));
+    BRANCH(Int32NotEqual(remainder, Int32(0)), &storeHead, &enterLoop);
+    Bind(&storeHead);
+    {
+        // Now use 2 as loop unroll factor, so only store once if reminder is not 0.
+        // But if using other loop unroll factor, the store head should also be refactored.
+        Store(VariableType::INT64(), glue_, object, ZExtInt32ToPtr(start), value, order);
+        startOffset = Int32Add(start, Int32(tSize));
+        Jump(&enterLoop);
+    }
+    Bind(&enterLoop);
+    {
+        Jump(&begin);
+    }
     LoopBegin(&begin);
     {
         BRANCH(Int32UnsignedLessThan(*startOffset, end), &storeValue, exit);
         Bind(&storeValue);
         {
-            Store(VariableType::INT64(), glue_, object, ZExtInt32ToPtr(*startOffset), value, order);
-            startOffset = Int32Add(*startOffset, Int32(JSTaggedValue::TaggedTypeSize()));
+            auto off = *startOffset;
+            for (auto i = 0; i < LOOP_UNROLL_FACTOR; i++) {
+                Store(VariableType::INT64(), glue_, object, ZExtInt32ToPtr(off), value, order);
+                off = Int32Add(off, Int32(tSize));
+            }
+            startOffset = Int32Add(*startOffset, Int32(LOOP_UNROLL_FACTOR * tSize));
             Jump(&endLoop);
         }
         Bind(&endLoop);
