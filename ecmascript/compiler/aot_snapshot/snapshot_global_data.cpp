@@ -39,9 +39,28 @@ void ReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
                                                                        item.dataIdx_, item.cpArrayIdx_);
 
         JSTaggedValue val = newCP->GetObjectFromCache(item.constpoolIdx_);
+        if (val.IsHole()) {
+            continue;
+        }
+        std::string name = globalData->GetFileNameByDataIdx(item.dataIdx_).c_str();
+        // For MethodSnaphotInfo which does not have ihc info, we insert JSTaggedValue(methodOffset) as revervation.
+        // We need to set JSTaggedValue(codeEntry); to replace JSTaggedValue(methodOffset).
+        if (val.IsInt()) {
+            if (val.GetInt() == -1) {
+                continue;
+            }
+            uint32_t methodOffset = static_cast<uint32_t>(val.GetInt());
+            if (thread->GetEcmaVM()->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+                LOG_COMPILER(INFO) << "[aot-snapshot] store AOT entry index of method (offset: "
+                                   << methodOffset << ") ";
+            }
+            AnFileInfo::FuncEntryIndexKey key = std::make_pair(name, methodOffset);
+            uint32_t entryIndex = methodToEntryIndexMap.at(key);
+            newCP->SetObjectToCache(thread, item.constpoolIdx_, JSTaggedValue(entryIndex));
+            continue;
+        }
         AOTLiteralInfo *aotLiteralInfo = AOTLiteralInfo::Cast(val.GetTaggedObject());
         uint32_t aotLiteralInfoLen = aotLiteralInfo->GetCacheLength();
-        std::string name = globalData->GetFileNameByDataIdx(item.dataIdx_).c_str();
         for (uint32_t i = 0; i < aotLiteralInfoLen; ++i) {
             JSTaggedValue methodOffsetVal = aotLiteralInfo->GetObjectFromCache(i);
             if (methodOffsetVal.GetInt() == -1) {

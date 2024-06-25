@@ -54,6 +54,7 @@ public:
     EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
                                                MemSpaceType type);
     EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
+    void InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode);
     EcmaString *InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle);
 
     void SweepWeakReference(const WeakRootVisitor &visitor);
@@ -68,6 +69,7 @@ private:
     std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len,
                                                             bool canBeCompress) const;
     std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint16_t *utf16Data, uint32_t utf16Len) const;
+    EcmaString *GetStringWithHashThreadUnsafe(EcmaString *string, uint32_t hashcode) const;
     EcmaString *GetStringThreadUnsafe(EcmaString *string) const;
 
     void InternStringThreadUnsafe(EcmaString *string);

@@ -76,6 +76,18 @@ std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const u
     return std::make_pair(nullptr, hashCode);
 }
 
+EcmaString *EcmaStringTable::GetStringWithHashThreadUnsafe(EcmaString *string, uint32_t hashcode) const
+{
+    auto range = table_.equal_range(hashcode);
+    for (auto item = range.first; item != range.second; ++item) {
+        auto foundString = item->second;
+        if (EcmaStringAccessor::StringsAreEqual(foundString, string)) {
+            return foundString;
+        }
+    }
+    return nullptr;
+}
+
 EcmaString *EcmaStringTable::GetStringThreadUnsafe(EcmaString *string) const
 {
     auto hashcode = EcmaStringAccessor(string).GetHashcode();
@@ -294,6 +306,16 @@ EcmaString *EcmaStringTable::GetOrInternStringThreadUnsafe(EcmaVM *vm, EcmaStrin
 
     InternStringThreadUnsafe(strFlat);
     return strFlat;
+}
+
+void EcmaStringTable::InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode)
+{
+    // Strings in string table should not be in the young space.
+    ASSERT(Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(string))->InSharedHeap());
+    ASSERT(EcmaStringAccessor(string).NotTreeString());
+    ASSERT(EcmaStringAccessor(string).GetHashcode() == hashcode);
+    table_.emplace(hashcode, string);
+    EcmaStringAccessor(string).SetInternString();
 }
 
 EcmaString *EcmaStringTable::InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle)

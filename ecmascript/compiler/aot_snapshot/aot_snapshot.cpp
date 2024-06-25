@@ -54,7 +54,8 @@ void AOTSnapshot::GenerateSnapshotConstantPools(const CMap<int32_t, JSTaggedValu
     for (auto &iter : allConstantPools) {
         int32_t cpId = iter.first;
         cp.Update(iter.second);
-        uint32_t cacheSize = cp->GetCacheLength();
+        // cachedSize should not have extra data included
+        uint32_t cacheSize = cp->GetCacheLength() - ConstantPool::EXTEND_DATA_NUM;
         if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
             LOG_COMPILER(INFO) << "[aot-snapshot] constantPoolID: " << cpId;
             LOG_COMPILER(INFO) << "[aot-snapshot] cacheSize: " << cacheSize;

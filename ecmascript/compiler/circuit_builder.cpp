@@ -841,31 +841,58 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     Bind(&cache);
     {
         if (type == ConstPoolType::METHOD) {
-            Label isAOTLiteralInfo(env_);
-            BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
-            Bind(&isAOTLiteralInfo);
+            Label isHeapObj(env_);
+            Label checkInteger(env_);
+            BRANCH_CIR2(TaggedIsHeapObject(*result), &isHeapObj, &checkInteger);
+            Bind(&isHeapObj);
             {
-                result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
-                    { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
-                Jump(&exit);
+                Label isAOTLiteralInfo(env_);
+                BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+                Bind(&isAOTLiteralInfo);
+                {
+                    result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
+                        { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
+                    Jump(&exit);
+                }
+            }
+            Bind(&checkInteger);
+            {
+                Label isInteger(env_);
+                BRANCH_CIR2(TaggedIsInt(*result), &isInteger, &exit);
+                Bind(&isInteger);
+                {
+                    result = CallRuntime(glue, RTSTUB_ID(GetMethodFromCache), Gate::InvalidGateRef,
+                        { sharedConstPool, Int32ToTaggedInt(index) }, hirGate);
+                    Jump(&exit);
+                }
             }
         } else if (type == ConstPoolType::ARRAY_LITERAL) {
-            Label isAOTLiteralInfo(env_);
-            BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
-            Bind(&isAOTLiteralInfo);
+            Label isHeapObj(env_);
+            BRANCH_CIR2(TaggedIsHeapObject(*result), &isHeapObj, &exit);
+            Bind(&isHeapObj);
             {
-                result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
-                    { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
-                Jump(&exit);
+                Label isAOTLiteralInfo(env_);
+                BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+                Bind(&isAOTLiteralInfo);
+                {
+                    result = CallRuntime(glue, RTSTUB_ID(GetArrayLiteralFromCache), Gate::InvalidGateRef,
+                        { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
+                    Jump(&exit);
+                }
             }
         } else if (type == ConstPoolType::OBJECT_LITERAL) {
-            Label isAOTLiteralInfo(env_);
-            BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
-            Bind(&isAOTLiteralInfo);
+            Label isHeapObj(env_);
+            BRANCH_CIR2(TaggedIsHeapObject(*result), &isHeapObj, &exit);
+            Bind(&isHeapObj);
             {
-                result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
-                    { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
-                Jump(&exit);
+                Label isAOTLiteralInfo(env_);
+                BRANCH_CIR2(IsAOTLiteralInfo(*result), &isAOTLiteralInfo, &exit);
+                Bind(&isAOTLiteralInfo);
+                {
+                    result = CallRuntime(glue, RTSTUB_ID(GetObjectLiteralFromCache), Gate::InvalidGateRef,
+                        { sharedConstPool, Int32ToTaggedInt(index), module }, hirGate);
+                    Jump(&exit);
+                }
             }
         } else {
             Jump(&exit);
