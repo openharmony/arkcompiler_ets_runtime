@@ -244,6 +244,8 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessMarkStack]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("ReMark:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ReMark]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ProcessSharedGCRSetWorkList:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessSharedGCRSetWorkList]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("Sweep:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("ClearNativeObject:")
@@ -270,6 +272,8 @@ void GCStats::PrintGCDurationStatistic()
         case GCType::COMPRESS_GC:
             LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::TotalGC]) << "ms\n"
+                         << STATS_DESCRIPTION_FORMAT("ProcessSharedGCRSetWorkList:")
+                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessSharedGCRSetWorkList]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("Initialize:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Initialize]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("Mark:")

@@ -49,6 +49,7 @@ protected:
     void Finish() override;
 
 private:
+    void ProcessSharedGCRSetWorkList();
     void Evacuate();
     void ProcessNativeDelete();
 

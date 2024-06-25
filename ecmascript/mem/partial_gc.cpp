@@ -60,6 +60,7 @@ void PartialGC::RunPhases()
     if (UNLIKELY(heap_->ShouldVerifyHeap())) {
         Verification::VerifyMark(heap_);
     }
+    ProcessSharedGCRSetWorkList();
     Sweep();
     Evacuate();
     if (heap_->IsConcurrentFullMark()) {
@@ -193,5 +194,11 @@ void PartialGC::Evacuate()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PartialGC::Evacuate");
     TRACE_GC(GCStats::Scope::ScopeId::Evacuate, heap_->GetEcmaVM()->GetEcmaGCStats());
     heap_->GetEvacuator()->Evacuate();
+}
+
+ARK_INLINE void PartialGC::ProcessSharedGCRSetWorkList()
+{
+    TRACE_GC(GCStats::Scope::ScopeId::ProcessSharedGCRSetWorkList, heap_->GetEcmaVM()->GetEcmaGCStats());
+    heap_->ProcessSharedGCRSetWorkList();
 }
 }  // namespace panda::ecmascript

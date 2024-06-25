@@ -51,6 +51,7 @@ class MemController;
 class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
+class RSetWorkListHandler;
 class SharedConcurrentMarker;
 class SharedConcurrentSweeper;
 class SharedGC;
@@ -151,6 +152,8 @@ public:
     virtual inline size_t GetCommittedSize() const = 0;
 
     virtual inline size_t GetHeapObjectSize() const = 0;
+
+    virtual inline size_t GetRegionCount() const = 0;
 
     virtual void ChangeGCParams(bool inBackground) = 0;
 
@@ -598,6 +601,15 @@ public:
         return result;
     }
 
+    inline size_t GetRegionCount() const override
+    {
+        size_t result = sOldSpace_->GetRegionCount() +
+            sHugeObjectSpace_->GetRegionCount() +
+            sNonMovableSpace_->GetRegionCount() +
+            sReadOnlySpace_->GetRegionCount();
+        return result;
+    }
+
     void ChangeGCParams([[maybe_unused]] bool inBackground) override
     {
         LOG_FULL(ERROR) << "SharedHeap ChangeGCParams() not support yet";
@@ -908,8 +920,18 @@ public:
 
     WorkNode *&GetMarkingObjectLocalBuffer()
     {
-        return sharedConcurrentMarkingLocalBuffer_;
+        return sharedGCData_.sharedConcurrentMarkingLocalBuffer_;
     }
+
+    void SetRSetWorkListHandler(RSetWorkListHandler *handler)
+    {
+        ASSERT((sharedGCData_.rSetWorkListHandler_ == nullptr) != (handler == nullptr));
+        sharedGCData_.rSetWorkListHandler_ = handler;
+    }
+
+    void ProcessSharedGCMarkingLocalBuffer();
+
+    void ProcessSharedGCRSetWorkList();
 
     const GlobalEnvConstants *GetGlobalConst() const override
     {
@@ -1052,6 +1074,8 @@ public:
     inline size_t GetCommittedSize() const override;
 
     inline size_t GetHeapObjectSize() const override;
+
+    inline size_t GetRegionCount() const override;
 
     size_t GetRegionCachedSize() const
     {
@@ -1400,11 +1424,6 @@ private:
         std::vector<NativePointerCallbackData> nativePointerCallbacks_ {};
     };
 
-    EcmaVM *ecmaVm_ {nullptr};
-    JSThread *thread_ {nullptr};
-
-    SharedHeap *sHeap_ {nullptr};
-
     struct MainLocalHeapSmartGCStats {
         /**
          * For SmartGC.
@@ -1414,6 +1433,31 @@ private:
         std::atomic<AppSensitiveStatus> sensitiveStatus_ {AppSensitiveStatus::NORMAL_SCENE};
         std::atomic<bool> onStartupEvent_ {false};
     };
+
+    // Some data used in SharedGC is also need to store in local heap, e.g. the temporary local mark stack.
+    struct SharedGCLocalStoragePackedData {
+        /**
+         * During SharedGC concurrent marking, barrier will push shared object to mark stack for marking,
+         * in LocalGC can just push non-shared object to WorkNode for MAIN_THREAD_INDEX, but in SharedGC, only can
+         * either use a global lock for DAEMON_THREAD_INDEX's WorkNode, or push to a local WorkNode, and push to global
+         * in remark.
+         * If the heap is destructed before push this node to global, check and try to push remain object as well.
+        */
+        WorkNode *sharedConcurrentMarkingLocalBuffer_ {nullptr};
+        /**
+         * Recording the local_to_share rset used in SharedGC concurrentMark,
+         * which lifecycle is in one SharedGC.
+         * Before mutate this local heap(e.g. LocalGC::Evacuate), should make sure the RSetWorkList is all processed,
+         * other the SharedGC concurrentMark will visitor the incorrect local_to_share bit.
+         * Before destroying local heap, RSetWorkList should be done as well.
+        */
+        RSetWorkListHandler *rSetWorkListHandler_ {nullptr};
+    };
+
+    EcmaVM *ecmaVm_ {nullptr};
+    JSThread *thread_ {nullptr};
+
+    SharedHeap *sHeap_ {nullptr};
     MainLocalHeapSmartGCStats smartGCStats_;
 
     /*
@@ -1485,14 +1529,8 @@ private:
 
     // Work manager managing the tasks mostly generated in the GC mark phase.
     WorkManager *workManager_ {nullptr};
-    /**
-     * During SharedGC concurrent marking, barrier will push shared object to mark stack for marking,
-     * in LocalGC can just push non-shared object to WorkNode for MAIN_THREAD_INDEX, but in SharedGC, only can
-     * either use a global lock for DAEMON_THREAD_INDEX's WorkNode, or push to a local WorkNode, and push to global
-     * in remark.
-     * If the heap is destructed before push this node to global, check and try to push remain object as well.
-    */
-    WorkNode *sharedConcurrentMarkingLocalBuffer_ {nullptr};
+
+    SharedGCLocalStoragePackedData sharedGCData_;
 
     bool onSerializeEvent_ {false};
     bool parallelGC_ {true};

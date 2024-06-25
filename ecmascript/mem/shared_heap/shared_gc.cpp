@@ -75,8 +75,10 @@ void SharedGC::Mark()
         sHeap_->GetConcurrentMarker()->ReMark();
         return;
     }
-    sHeap_->GetSharedGCMarker()->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::NOT_CONCURRENT_MARK);
-    sHeap_->GetSharedGCMarker()->ProcessMarkStack(DAEMON_THREAD_INDEX);
+    SharedGCMarker *marker = sHeap_->GetSharedGCMarker();
+    marker->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::NOT_CONCURRENT_MARK);
+    marker->DoMark<SharedMarkType::NOT_CONCURRENT_MARK>(DAEMON_THREAD_INDEX);
+    marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();
 }
 

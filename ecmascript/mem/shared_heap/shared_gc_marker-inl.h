@@ -32,6 +32,15 @@ inline void SharedGCMarker::MarkObject(uint32_t threadId, TaggedObject *object)
     }
 }
 
+inline void SharedGCMarker::MarkObjectFromJSThread(WorkNode *&localBuffer, TaggedObject *object)
+{
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    ASSERT(objectRegion->InSharedHeap());
+    if (!objectRegion->InSharedReadOnlySpace() && objectRegion->AtomicMark(object)) {
+        sWorkManager_->PushToLocalMarkingBuffer(localBuffer, object);
+    }
+}
+
 inline void SharedGCMarker::MarkValue(uint32_t threadId, ObjectSlot &slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
@@ -100,58 +109,79 @@ ARK_INLINE bool SharedGCMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot st
     return true;
 }
 
-inline void SharedGCMarker::ProcessLocalToShareNoMarkStack(uint32_t threadId, Heap *localHeap,
-                                                           SharedMarkType markType)
-{
-    if (markType == SharedMarkType::NOT_CONCURRENT_MARK) {
-        localHeap->EnumerateRegions(std::bind(&SharedGCMarker::HandleLocalToShareRSet, this, threadId,
-                                              std::placeholders::_1));
-    } else {
-        localHeap->EnumerateRegions(std::bind(&SharedGCMarker::ConcurrentMarkHandleLocalToShareRSet,
-                                              this, threadId, std::placeholders::_1));
-    }
-}
-
 inline void SharedGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedType *slot)
 {
     sWorkManager_->PushWeakReference(threadId, slot);
 }
 
-// Don't call this function when mutator thread is running.
-inline void SharedGCMarker::HandleLocalToShareRSet(uint32_t threadId, Region *region)
+template <SharedMarkType markType>
+inline auto SharedGCMarker::GenerateRSetVisitor(uint32_t threadId)
 {
-    // If the mem does not point to a shared object, the related bit in localToShareRSet will be cleared.
-    region->IterateAllLocalToShareBits([this, threadId](void *mem) -> bool {
+    auto visitor = [this, threadId](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());
         if (value.IsInSharedSweepableSpace()) {
-            if (value.IsWeakForHeapObject()) {
-                RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem));
+            if constexpr (markType == SharedMarkType::CONCURRENT_MARK_INITIAL_MARK) {
+                // For now if record weak references from local to share in marking root, the slots
+                // may be invalid due to LocalGC, so just mark them as strong-reference.
+                MarkObject(threadId, value.GetHeapObject());
             } else {
-                MarkObject(threadId, value.GetTaggedObject());
+                static_assert(markType == SharedMarkType::NOT_CONCURRENT_MARK);
+                if (value.IsWeakForHeapObject()) {
+                    RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem));
+                } else {
+                    MarkObject(threadId, value.GetTaggedObject());
+                }
             }
             return true;
         } else {
             // clear bit.
             return false;
         }
-    });
+    };
+    return visitor;
+};
+
+template<SharedMarkType markType>
+inline void SharedGCMarker::DoMark(uint32_t threadId)
+{
+    if constexpr (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
+        auto rSetVisitor = GenerateRSetVisitor<markType>(threadId);
+        auto visitor = [rSetVisitor](Region *region, RememberedSet *rSet) {
+            rSet->IterateAllMarkedBits(ToUintPtr(region), rSetVisitor);
+        };
+        for (RSetWorkListHandler *handler : rSetHandlers_) {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
+            handler->ProcessAll(visitor);
+        }
+    }
+    ProcessMarkStack(threadId);
 }
 
-inline void SharedGCMarker::ConcurrentMarkHandleLocalToShareRSet(uint32_t threadId, Region *region)
+inline void SharedGCMarker::ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler)
 {
-    // If the mem does not point to a shared object, the related bit in localToShareRSet will be cleared.
-    region->IterateAllLocalToShareBits([this, threadId](void *mem) -> bool {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
+    ASSERT(JSThread::GetCurrent() == handler->GetHeap()->GetEcmaVM()->GetJSThread());
+    ASSERT(JSThread::GetCurrent()->IsInRunningState());
+    WorkNode *&localBuffer = handler->GetHeap()->GetMarkingObjectLocalBuffer();
+    auto rSetVisitor = [this, &localBuffer](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());
         if (value.IsInSharedSweepableSpace()) {
-            MarkObject(threadId, value.GetHeapObject());
+            // For now if record weak references from local to share in marking root, the slots
+            // may be invalid due to LocalGC, so just mark them as strong-reference.
+            MarkObjectFromJSThread(localBuffer, value.GetHeapObject());
             return true;
         } else {
             // clear bit.
             return false;
         }
-    });
+    };
+    auto visitor = [rSetVisitor](Region *region, RememberedSet *rSet) {
+        rSet->IterateAllMarkedBits(ToUintPtr(region), rSetVisitor);
+    };
+    handler->ProcessAll(visitor);
+    handler->WaitFinishedThenMergeBack();
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_GC_MARKER_INL_H

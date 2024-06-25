@@ -341,8 +341,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
                 break;
             }
             if (!isRoot) {
-                WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                            value);
+                WriteBarrier(thread_, reinterpret_cast<void *>(objAddr), fieldOffset, value);
             }
             UpdateMaybeWeak(slot, value, GetAndResetWeak());
             break;

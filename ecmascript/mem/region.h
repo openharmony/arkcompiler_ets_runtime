@@ -86,6 +86,11 @@ enum RegionGCFlags {
     IN_INACTIVE_SEMI_SPACE = 1 << 13,
 };
 
+enum RSetType {
+    OLD_TO_NEW,
+    LOCAL_TO_SHARE,
+};
+
 static inline std::string ToSpaceTypeName(uint8_t space)
 {
     switch (space) {
@@ -256,6 +261,7 @@ public:
     void ClearMarkGCBitset();
     // local to share remembered set
     bool HasLocalToShareRememberedSet() const;
+    RememberedSet *ExtractLocalToShareRSet();
     void InsertLocalToShareRSet(uintptr_t addr);
     void AtomicInsertLocalToShareRSet(uintptr_t addr);
     void ClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
@@ -705,6 +711,9 @@ public:
     // should call in js-thread
     void MergeOldToNewRSetForCS();
     void MergeLocalToShareRSetForCS();
+
+    // should call in daemon-thread, or in js-thread in RUNNING state
+    void MergeLocalToShareRSetForCM(RememberedSet *set);
 
     struct alignas(JSTaggedValue::TaggedTypeSize()) PackedPtr : public base::AlignedPointer {
         uint8_t spaceFlag_;

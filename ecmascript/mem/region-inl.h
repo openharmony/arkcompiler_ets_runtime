@@ -117,6 +117,16 @@ inline void Region::MergeOldToNewRSetForCS()
     }
 }
 
+inline void Region::MergeLocalToShareRSetForCM(RememberedSet *set)
+{
+    if (packedData_.localToShareSet_ == nullptr) {
+        packedData_.localToShareSet_ = set;
+    } else {
+        packedData_.localToShareSet_->Merge(set);
+        nativeAreaAllocator_->Free(set, set->Size());
+    }
+}
+
 inline GCBitset *Region::GetMarkGCBitset() const
 {
     return packedData_.markGCBitset_;
@@ -208,6 +218,13 @@ inline void Region::AtomicInsertCrossRegionRSet(uintptr_t addr)
 inline bool Region::HasLocalToShareRememberedSet() const
 {
     return packedData_.localToShareSet_ != nullptr;
+}
+
+inline RememberedSet *Region::ExtractLocalToShareRSet()
+{
+    RememberedSet *set = packedData_.localToShareSet_;
+    packedData_.localToShareSet_ = nullptr;
+    return set;
 }
 
 inline void Region::InsertLocalToShareRSet(uintptr_t addr)

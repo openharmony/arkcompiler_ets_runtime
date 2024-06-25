@@ -60,6 +60,7 @@ void FullGC::RunPhases()
         heap_->DisableNotifyIdle();
         heap_->GetIncrementalMarker()->Reset();
     }
+    ProcessSharedGCRSetWorkList();
     Initialize();
     Mark();
     Sweep();
@@ -207,5 +208,11 @@ bool FullGC::HasEvacuated(Region *region)
 void FullGC::SetForAppSpawn(bool flag)
 {
     forAppSpawn_ = flag;
+}
+
+ARK_INLINE void FullGC::ProcessSharedGCRSetWorkList()
+{
+    TRACE_GC(GCStats::Scope::ScopeId::ProcessSharedGCRSetWorkList, heap_->GetEcmaVM()->GetEcmaGCStats());
+    heap_->ProcessSharedGCRSetWorkList();
 }
 }  // namespace panda::ecmascript
