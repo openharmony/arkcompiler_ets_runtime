@@ -33,10 +33,22 @@
 #include "hitrace_meter.h"
 #ifdef CODE_SIGN_ENABLE
 #include "local_code_sign_kit.h"
+#include <sys/syscall.h>
 #endif
 #include "system_ability_definition.h"
 
 namespace OHOS::ArkCompiler {
+#ifdef CODE_SIGN_ENABLE
+static pid_t ForkBySyscall(void)
+{
+#ifdef SYS_fork
+    return syscall(SYS_fork);
+#else
+    return syscall(SYS_clone, SIGCHLD, 0);
+#endif
+}
+#endif
+
 AotCompilerImpl& AotCompilerImpl::GetInstance()
 {
     static AotCompilerImpl aotCompiler;
@@ -196,7 +208,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     int32_t ret = ERR_OK;
     std::lock_guard<std::mutex> lock(mutex_);
     LOG_SA(DEBUG) << "begin to fork";
-    pid_t pid = fork();
+    pid_t pid = ForkBySyscall();
     if (pid == -1) {
         LOG_SA(ERROR) << "fork process failed : " << strerror(errno);
         return ERR_AOT_COMPILER_CALL_FAILED;
