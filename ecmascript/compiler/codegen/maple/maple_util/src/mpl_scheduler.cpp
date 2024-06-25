@@ -118,10 +118,10 @@ int MplScheduler::RunTask(uint32 threadsNum, bool seq)
         std::thread threads[threadsNum];
         std::thread threadFinish;
         for (uint32 i = 0; i < threadsNum; ++i) {
-            threads[i] = std::thread(&MplScheduler::ThreadMain, this, i, EncodeThreadMainEnvironment(i));
+            threads[i] = std::thread([this, i] { this->ThreadMain(i, EncodeThreadMainEnvironment(i)); });
         }
         if (isSchedulerSeq) {
-            threadFinish = std::thread(&MplScheduler::ThreadFinish, this, EncodeThreadFinishEnvironment());
+            threadFinish = std::thread([this] { this->ThreadFinish(EncodeThreadFinishEnvironment()); });
         }
         for (uint32 i = 0; i < threadsNum; ++i) {
             threads[i].join();

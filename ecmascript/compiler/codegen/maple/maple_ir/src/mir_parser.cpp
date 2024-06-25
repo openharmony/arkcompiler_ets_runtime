@@ -18,8 +18,6 @@
 #include "opcode_info.h"
 
 namespace maple {
-std::map<TokenKind, MIRParser::FuncPtrParseStmtBlock> MIRParser::funcPtrMapForParseStmtBlock =
-    MIRParser::InitFuncPtrMapForParseStmtBlock();
 
 bool MIRParser::ParseSwitchCase(int64 &constVal, LabelIdx &lblIdx)
 {
@@ -231,6 +229,92 @@ bool MIRParser::ParseLoc()
     return true;
 }
 
+bool MIRParser::ParseStmtBlockSwitch(BlockNodePtr &blk, TokenKind stmtTk, uint32 mplNum)
+{
+    stmtTk = lexer.GetTokenKind();
+    switch (stmtTk) {
+        case TK_var:{
+            if (!ParseStmtBlockForVar(stmtTk)) {
+                return false;
+            }
+        }
+        case TK_tempvar:{
+            if (!ParseStmtBlockForTempVar()) {
+                return false;
+            }
+        }
+        case TK_reg:{
+            if (!ParseStmtBlockForReg()) {
+                return false;
+            }
+        }
+        case TK_type:{
+            if (!ParseStmtBlockForType()) {
+                return false;
+            }
+        }
+        case TK_framesize:{
+            if (!ParseStmtBlockForFrameSize()) {
+                return false;
+            }
+        }
+        case TK_upformalsize:{
+            if (!ParseStmtBlockForUpformalSize()) {
+                return false;
+            }
+        }
+        case TK_moduleid:{
+            if (!ParseStmtBlockForModuleID()) {
+                return false;
+            }
+        }
+        case TK_funcsize:{
+            if (!ParseStmtBlockForFuncSize()) {
+                return false;
+            }
+        }
+        case TK_funcid:{
+            if (!ParseStmtBlockForFuncID()) {
+                return false;
+            }
+        }
+        case TK_formalwordstypetagged:{
+            if (!ParseStmtBlockForFormalWordsTypeTagged()) {
+                return false;
+            }
+        }
+        case TK_localwordstypetagged:{
+            if (!ParseStmtBlockForLocalWordsTypeTagged()) {
+                return false;
+            }
+        }
+        case TK_formalwordsrefcounted:{
+            if (!ParseStmtBlockForFormalWordsRefCounted()) {
+                return false;
+            }
+        }
+        case TK_localwordsrefcounted:{
+            if (!ParseStmtBlockForLocalWordsRefCounted()) {
+                return false;
+            }
+        }
+        case TK_funcinfo:{
+            if (!ParseStmtBlockForFuncInfo()) {
+                return false;
+            }
+        }
+        case TK_rbrace:{
+            ParseStmtBlockForSeenComment(blk, mplNum);
+            lexer.NextToken();
+            return true;
+        }
+        default:{
+            Error("expect } or var or statement for func body but get ");
+            return false;
+        }
+    }
+    return true;
+}
 /* parse the statements enclosed by { and }
  */
 bool MIRParser::ParseStmtBlock(BlockNodePtr &blk)
@@ -262,20 +346,8 @@ bool MIRParser::ParseStmtBlock(BlockNodePtr &blk)
                 blk->AddStatement(stmt);
             }
         } else {
-            std::map<TokenKind, FuncPtrParseStmtBlock>::iterator itFuncPtr = funcPtrMapForParseStmtBlock.find(stmtTk);
-            if (itFuncPtr == funcPtrMapForParseStmtBlock.end()) {
-                if (stmtTk == TK_rbrace) {
-                    ParseStmtBlockForSeenComment(blk, mplNum);
-                    lexer.NextToken();
-                    return true;
-                } else {
-                    Error("expect } or var or statement for func body but get ");
-                    return false;
-                }
-            } else {
-                if (!(this->*(itFuncPtr->second))()) {
-                    return false;
-                }
+            if (!ParseStmtBlockSwitch(blk, stmtTk, mplNum)) {
+                return false;
             }
         }
     }
@@ -678,26 +750,6 @@ bool MIRParser::ParseScalarValue(MIRConstPtr &stype, MIRType &type)
         return false;
     }
     return true;
-}
-
-std::map<TokenKind, MIRParser::FuncPtrParseStmtBlock> MIRParser::InitFuncPtrMapForParseStmtBlock()
-{
-    std::map<TokenKind, MIRParser::FuncPtrParseStmtBlock> funcPtrMap;
-    funcPtrMap[TK_var] = &MIRParser::ParseStmtBlockForVar;
-    funcPtrMap[TK_tempvar] = &MIRParser::ParseStmtBlockForTempVar;
-    funcPtrMap[TK_reg] = &MIRParser::ParseStmtBlockForReg;
-    funcPtrMap[TK_type] = &MIRParser::ParseStmtBlockForType;
-    funcPtrMap[TK_framesize] = &MIRParser::ParseStmtBlockForFrameSize;
-    funcPtrMap[TK_upformalsize] = &MIRParser::ParseStmtBlockForUpformalSize;
-    funcPtrMap[TK_moduleid] = &MIRParser::ParseStmtBlockForModuleID;
-    funcPtrMap[TK_funcsize] = &MIRParser::ParseStmtBlockForFuncSize;
-    funcPtrMap[TK_funcid] = &MIRParser::ParseStmtBlockForFuncID;
-    funcPtrMap[TK_formalwordstypetagged] = &MIRParser::ParseStmtBlockForFormalWordsTypeTagged;
-    funcPtrMap[TK_localwordstypetagged] = &MIRParser::ParseStmtBlockForLocalWordsTypeTagged;
-    funcPtrMap[TK_formalwordsrefcounted] = &MIRParser::ParseStmtBlockForFormalWordsRefCounted;
-    funcPtrMap[TK_localwordsrefcounted] = &MIRParser::ParseStmtBlockForLocalWordsRefCounted;
-    funcPtrMap[TK_funcinfo] = &MIRParser::ParseStmtBlockForFuncInfo;
-    return funcPtrMap;
 }
 
 void MIRParser::SetSrcPos(SrcPosition &srcPosition, uint32 mplNum)

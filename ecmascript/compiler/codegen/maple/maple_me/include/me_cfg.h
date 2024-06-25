@@ -185,7 +185,9 @@ public:
     }
     FilterIterator<const_iterator> valid_begin() const
     {
-        return build_filter_iterator(begin(), std::bind(FilterNullPtr<const_iterator>, std::placeholders::_1, end()));
+        return build_filter_iterator(begin(), [this](const_iterator it) {
+            return FilterNullPtr<const_iterator>(it, end());
+        });
     }
 
     FilterIterator<const_iterator> valid_end() const
@@ -195,8 +197,9 @@ public:
 
     FilterIterator<const_reverse_iterator> valid_rbegin() const
     {
-        return build_filter_iterator(rbegin(),
-                                     std::bind(FilterNullPtr<const_reverse_iterator>, std::placeholders::_1, rend()));
+        return build_filter_iterator(rbegin(), [this](const_reverse_iterator it) {
+            return FilterNullPtr<const_reverse_iterator>(it, rend());
+        });
     }
 
     FilterIterator<const_reverse_iterator> valid_rend() const
