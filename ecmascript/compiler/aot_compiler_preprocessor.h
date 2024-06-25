@@ -68,7 +68,7 @@ struct CompilationOptions {
     std::string profilerIn_;
     std::string optBCRange_;
     bool needMerge_ {false};
-    bool isEnableArrayBoundsCheckElimination_ {false};
+    bool isEnableArrayBoundsCheckElimination_ {true};
     bool isEnableTypeLowering_ {true};
     bool isEnableEarlyElimination_ {true};
     bool isEnableLaterElimination_ {true};

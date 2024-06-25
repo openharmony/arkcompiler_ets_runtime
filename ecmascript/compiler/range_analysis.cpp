@@ -193,7 +193,7 @@ GateRef RangeAnalysis::VisitLoadMapSize(GateRef gate)
 
 GateRef RangeAnalysis::VisitLoadTypedArrayLength(GateRef gate)
 {
-    TypedArrayMetaDateAccessor accessor = acc_.GetTypedArrayMetaDateAccessor(gate);
+    TypedArrayMetaDataAccessor accessor = acc_.GetTypedArrayMetaDataAccessor(gate);
     OnHeapMode onHeap = accessor.GetOnHeapMode();
     int32_t max = onHeap == OnHeapMode::ON_HEAP ? RangeInfo::TYPED_ARRAY_ONHEAP_MAX : INT32_MAX;
     return UpdateRange(gate, RangeInfo(0, max));

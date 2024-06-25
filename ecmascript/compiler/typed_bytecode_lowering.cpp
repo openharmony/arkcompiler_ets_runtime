@@ -1023,15 +1023,15 @@ void TypedBytecodeLowering::LowerTypedLdArrayLength(const LoadBulitinObjTypeInfo
 {
     GateRef gate = tacc.GetGate();
     GateRef array = tacc.GetReceiver();
+    ElementsKind kind = acc_.TryGetElementsKind(gate);
     AddProfiling(gate);
     if (!Uncheck()) {
-        ElementsKind kind = acc_.TryGetElementsKind(gate);
         if (!acc_.IsCreateArray(array)) {
             builder_.StableArrayCheck(array, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
         }
     }
 
-    GateRef result = builder_.LoadArrayLength(array);
+    GateRef result = builder_.LoadArrayLength(array, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
 }
 
@@ -1043,7 +1043,7 @@ void TypedBytecodeLowering::LowerTypedLdTypedArrayLength(const LoadBulitinObjTyp
     ParamType arrayType = tacc.GetParamType();
     OnHeapMode onHeap = acc_.TryGetOnHeapMode(gate);
     if (!Uncheck()) {
-        builder_.TypedArrayCheck(array, arrayType, TypedArrayMetaDateAccessor::Mode::LOAD_LENGTH, onHeap);
+        builder_.TypedArrayCheck(array, arrayType, TypedArrayMetaDataAccessor::Mode::LOAD_LENGTH, onHeap);
     }
     GateRef result = builder_.LoadTypedArrayLength(array, arrayType, onHeap);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
@@ -1162,7 +1162,7 @@ bool TypedBytecodeLowering::TryLowerTypedStObjByIndexForBuiltin(GateRef gate)
     ParamType receiverType = tacc.GetParamType();
     if (!Uncheck()) {
         OnHeapMode onHeap = tacc.TryGetHeapMode();
-        builder_.TypedArrayCheck(receiver, receiverType, TypedArrayMetaDateAccessor::Mode::ACCESS_ELEMENT, onHeap);
+        builder_.TypedArrayCheck(receiver, receiverType, TypedArrayMetaDataAccessor::Mode::ACCESS_ELEMENT, onHeap);
     }
     GateRef index = builder_.Int32(tacc.TryConvertKeyToInt());
     GateRef value = tacc.GetValue();
@@ -1240,7 +1240,7 @@ GateRef TypedBytecodeLowering::LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAc
         if (!acc_.IsCreateArray(receiver)) {
             builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
         }
-        GateRef length = builder_.LoadArrayLength(receiver);
+        GateRef length = builder_.LoadArrayLength(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
         propKey = builder_.IndexCheck(length, propKey);
     }
 
@@ -1269,7 +1269,7 @@ GateRef TypedBytecodeLowering::LoadTypedArrayByIndex(const LoadBulitinObjTypeInf
     OnHeapMode onHeap = tacc.TryGetHeapMode();
     JSType builtinsType = tacc.GetBuiltinsJSType();
     if (!Uncheck()) {
-        builder_.TypedArrayCheck(receiver, receiverType, TypedArrayMetaDateAccessor::Mode::ACCESS_ELEMENT, onHeap);
+        builder_.TypedArrayCheck(receiver, receiverType, TypedArrayMetaDataAccessor::Mode::ACCESS_ELEMENT, onHeap);
         GateRef length = builder_.LoadTypedArrayLength(receiver, receiverType, onHeap);
         propKey = builder_.IndexCheck(length, propKey);
     }
@@ -1310,7 +1310,7 @@ void TypedBytecodeLowering::StoreJSArrayByIndex(const StoreBulitinObjTypeInfoAcc
         if (!acc_.IsCreateArray(receiver)) {
             builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::STORE_ELEMENT);
         }
-        GateRef length = builder_.LoadArrayLength(receiver);
+        GateRef length = builder_.LoadArrayLength(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
         builder_.IndexCheck(length, propKey);
         builder_.COWArrayCheck(receiver);
 
@@ -1330,7 +1330,7 @@ void TypedBytecodeLowering::StoreTypedArrayByIndex(const StoreBulitinObjTypeInfo
     GateRef value = tacc.GetValue();
     OnHeapMode onHeap = tacc.TryGetHeapMode();
     if (!Uncheck()) {
-        builder_.TypedArrayCheck(receiver, receiverType, TypedArrayMetaDateAccessor::Mode::ACCESS_ELEMENT, onHeap);
+        builder_.TypedArrayCheck(receiver, receiverType, TypedArrayMetaDataAccessor::Mode::ACCESS_ELEMENT, onHeap);
         GateRef length = builder_.LoadTypedArrayLength(receiver, receiverType, onHeap);
         propKey = builder_.IndexCheck(length, propKey);
     }

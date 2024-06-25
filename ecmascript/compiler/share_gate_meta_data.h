@@ -756,7 +756,7 @@ private:
     uint64_t type_;
 };
 
-class TypedArrayMetaDateAccessor {
+class TypedArrayMetaDataAccessor {
 public:
     enum Mode : uint8_t {
         ACCESS_ELEMENT = 0,
@@ -767,7 +767,7 @@ public:
     static constexpr int MODE_BITS_SIZE = 2;
     static constexpr int ON_HEAP_MODE_BITS_SIZE = 2;
 
-    explicit TypedArrayMetaDateAccessor(uint64_t value) : bitField_(value) {}
+    explicit TypedArrayMetaDataAccessor(uint64_t value) : bitField_(value) {}
 
     ParamType GetParamType() const
     {
@@ -782,6 +782,11 @@ public:
     bool IsAccessElement() const
     {
         return ModeBits::Get(bitField_) == Mode::ACCESS_ELEMENT;
+    }
+
+    uint64_t ToValue()
+    {
+        return bitField_;
     }
 
     static uint64_t ToValue(ParamType paramType, Mode mode, OnHeapMode onHeap)

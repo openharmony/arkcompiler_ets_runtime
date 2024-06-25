@@ -522,7 +522,7 @@ public:
     GateRef FlattenTreeStringCheck(GateRef gate);
     GateRef HClassStableArrayCheck(GateRef gate, GateRef frameState, ArrayMetaDataAccessor accessor);
     GateRef ArrayGuardianCheck(GateRef frameState);
-    GateRef TypedArrayCheck(GateRef gate, ParamType paramType, TypedArrayMetaDateAccessor::Mode mode,
+    GateRef TypedArrayCheck(GateRef gate, ParamType paramType, TypedArrayMetaDataAccessor::Mode mode,
                             OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef LoadTypedArrayLength(GateRef gate, ParamType paramType, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef RangeGuard(GateRef gate, uint32_t left, uint32_t right);
@@ -560,9 +560,9 @@ public:
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
     GateRef Int32DivWithCheck(GateRef left, GateRef right);
     GateType GetGateTypeOfValueType(ValueType type);
-    GateRef InsertStableArrayCheck(GateRef array);
-    GateRef InsertLoadArrayLength(GateRef array, bool isTypedArray);
-    GateRef InsertTypedArrayCheck(GateType type, GateRef array);
+    GateRef InsertStableArrayCheck(GateRef array, ArrayMetaDataAccessor accessor);
+    GateRef InsertLoadArrayLength(GateRef array, GateRef length, bool isTypedArray);
+    GateRef InsertTypedArrayCheck(GateRef array, TypedArrayMetaDataAccessor accessor);
     GateRef ArrayConstructorCheck(GateRef gate);
     GateRef ObjectConstructorCheck(GateRef gate);
     GateRef BooleanConstructorCheck(GateRef gate);
@@ -633,7 +633,7 @@ public:
     template<TypedLoadOp Op>
     GateRef LoadElement(GateRef receiver, GateRef index, OnHeapMode onHeap = OnHeapMode::NONE);
     GateRef LoadProperty(GateRef receiver, GateRef propertyLookupResult, bool isFunction);
-    GateRef LoadArrayLength(GateRef array);
+    GateRef LoadArrayLength(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode);
     inline GateRef LoadFromTaggedArray(GateRef array, size_t index);
     GateRef LoadStringLength(GateRef string);
     GateRef LoadMapSize(GateRef string);

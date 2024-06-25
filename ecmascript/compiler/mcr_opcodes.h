@@ -50,7 +50,6 @@ namespace panda::ecmascript::kungfu {
     V(LookUpHolder, LOOK_UP_HOLDER, GateFlags::NO_WRITE, 1, 1, 3)                               \
     V(LoadGetter, LOAD_GETTER, GateFlags::NO_WRITE, 0, 1, 2)                                    \
     V(LoadSetter, LOAD_SETTER, GateFlags::NO_WRITE, 0, 1, 2)                                    \
-    V(LoadArrayLength, LOAD_ARRAY_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                         \
     V(LoadStringLength, LOAD_STRING_LENGTH, GateFlags::NO_WRITE, 1, 1, 1)                       \
     V(LoadMapSize, LOAD_MAP_SIZE, GateFlags::NO_WRITE, 1, 1, 1)                                 \
     V(StartAllocate, START_ALLOCATE, GateFlags::NONE_FLAG, 0, 1, 0)                             \
@@ -184,6 +183,7 @@ namespace panda::ecmascript::kungfu {
     V(StoreMemory,                 STORE_MEMORY,                   GateFlags::NONE_FLAG, 1, 1, 3)       \
     V(ObjectTypeCheck,             OBJECT_TYPE_CHECK,              GateFlags::CHECKABLE, 1, 1, 2)       \
     V(StableArrayCheck,            STABLE_ARRAY_CHECK,             GateFlags::CHECKABLE, 1, 1, 1)       \
+    V(LoadArrayLength,             LOAD_ARRAY_LENGTH,              GateFlags::NO_WRITE,  1, 1, 1)       \
     V(ElementsKindCheck,           ELEMENTSKIND_CHECK,             GateFlags::CHECKABLE, 1, 1, 1)       \
     V(StoreProperty,               STORE_PROPERTY,                 GateFlags::NONE_FLAG, 1, 1, 3)       \
     V(PrototypeCheck,              PROTOTYPE_CHECK,                GateFlags::CHECKABLE, 1, 1, 1)       \

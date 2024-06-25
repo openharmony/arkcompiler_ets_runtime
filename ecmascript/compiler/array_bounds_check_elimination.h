@@ -92,9 +92,9 @@ private:
             return upper_ < b->Lower();
         }
 
-        Bound* Copy()
+        Bound* Copy(Chunk *chunk)
         {
-            return new Bound(lower_, lowerGate_, upper_, upperGate_);
+            return chunk->New<Bound>(lower_, lowerGate_, upper_, upperGate_);
         }
 
     private:
@@ -138,8 +138,8 @@ private:
     void ProcessIndexCheck(GateRegion *loopHeader, GateRef gate);
     void RemoveIndexCheck(GateRef gate);
     void CopyStateInAndDependIn(GateRef &stateIn, GateRef &dependIn, GateRef insertAfter);
-    void LoopInvariantMotionForIndexCheck(GateRef array, GateRef length, GateRef lowerGate, int lower,
-                                            GateRef upperGate, int upper, bool isTypedArray);
+    void LoopInvariantMotionForIndexCheck(GateRef array, GateRef length, GateRef lengthMetaData,
+        GateRef lowerGate, int lower, GateRef upperGate, int upper, bool isTypedArray);
     bool GetInstrAndConstValueFromUnaryOp(GateRef gate, GateRef &other, int& value);
     bool GetInstrAndConstValueFromBinaryOp(GateRef gate, GateRef &other, int& value);
     void GetInstrAndConstValueFromOp(GateRef gate, GateRef &instrValue, int& constValue);
