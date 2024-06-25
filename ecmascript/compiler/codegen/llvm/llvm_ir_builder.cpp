@@ -673,6 +673,11 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
         runtimeCall = LLVMBuildCall2(builder_, funcType, callee, params.data(), actualNumArgs, "");
     }
     LLVMSetInstructionCallConv(runtimeCall, LLVMWebKitJSCallConv);
+    if (RuntimeStubCSigns::IsCold(index)) {
+        unsigned ColdAttrKind = LLVMGetEnumAttributeKindForName(COLD_ATTR.data(), COLD_ATTR.size());
+        LLVMAttributeRef ColdAttribute = LLVMCreateEnumAttribute(context_, ColdAttrKind, 0);
+        LLVMAddCallSiteAttribute(runtimeCall, LLVMAttributeFunctionIndex, ColdAttribute);
+    }
     Bind(gate, runtimeCall);
 
     if (IsLogEnabled()) {

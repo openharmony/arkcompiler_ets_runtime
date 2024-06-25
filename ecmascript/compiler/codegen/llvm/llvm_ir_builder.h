@@ -471,6 +471,8 @@ private:
     LLVMMetadataRef dFuncMD_ {nullptr};
     bool enableOptInlining_ {false};
     bool enableOptBranchProfiling_ {true};
+
+    static constexpr std::string_view COLD_ATTR = "cold";
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LLVM_IR_BUILDER_H
