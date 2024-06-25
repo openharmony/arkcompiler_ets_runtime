@@ -121,7 +121,7 @@ private:
 
 class MemDescPool {
 public:
-    MemDescPool();
+    MemDescPool(uintptr_t fortBegin, size_t fortSize);
     ~MemDescPool();
 
     static inline bool IsEmpty(MemDesc* list)
@@ -141,6 +141,17 @@ public:
         Add(desc);
         returned_++;
     }
+
+    inline uintptr_t JitFortBegin()
+    {
+        return fortBegin_;
+    }
+
+    inline size_t JitFortSize()
+    {
+        return fortSize_;
+    }
+
 private:
     MemDesc *GetDesc();
     void Add(MemDesc *);
@@ -153,6 +164,9 @@ private:
     size_t returned_ {0};
     size_t highwater_ {0};
     Mutex lock_;
+
+    uintptr_t fortBegin_;
+    size_t fortSize_;
 };
 
 }  // namespace panda::ecmascript

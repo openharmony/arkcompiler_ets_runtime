@@ -91,10 +91,6 @@ inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object
                                    ((MachineCode*)object)->GetInstructionsSize())
             << " size " <<((MachineCode *)object)->GetInstructionsSize();
     }
-#else
-    if (objectRegion->InMachineCodeSpace()) {
-        LOG_JIT(DEBUG) << "MarkObject MachineCode " << object;
-    }
 #endif
     if (objectRegion->AtomicMark(object)) {
         workManager_->Push(threadId, object);
@@ -449,6 +445,15 @@ inline SlotStatus CompressGCMarker::MarkObject(uint32_t threadId, TaggedObject *
     Region *objectRegion = Region::ObjectAddressToRange(object);
     if (!NeedEvacuate(objectRegion)) {
         if (!objectRegion->InSharedHeap() && objectRegion->AtomicMark(object)) {
+#ifdef ENABLE_JITFORT
+            if (objectRegion->InMachineCodeSpace()) {
+                LOG_JIT(DEBUG) << "CompressGC MarkObject MachineCode " << object
+                    << " instructionsAddr " << (void *)((MachineCode*)object)->GetInstructionsAddr()
+                    << " end " << (void *)(((MachineCode*)object)->GetInstructionsAddr() +
+                                           ((MachineCode*)object)->GetInstructionsSize())
+                    << " size " <<((MachineCode *)object)->GetInstructionsSize();
+            }
+#endif
             workManager_->Push(threadId, object);
         }
         return SlotStatus::CLEAR_SLOT;

@@ -43,10 +43,10 @@ template void FreeObjectSet<FreeObject>::Free(uintptr_t, size_t);
 template <>
 void FreeObjectSet<MemDesc>::Free(uintptr_t begin, size_t size)
 {
-    ASSERT(begin >= JitFort::GetInstance()->JitFortBegin() &&
-        size <= JitFort::GetInstance()->JitFortSize());
+    ASSERT(begin >= memDescPool_->JitFortBegin() &&
+        size <= memDescPool_->JitFortSize());
 
-    auto freeObject = JitFort::GetInstance()->GetMemDescFromPool();
+    auto freeObject = memDescPool_->GetDescFromPool();
     freeObject->SetMem(begin);
     freeObject->SetSize(size);
     freeObject->SetNext(freeObject_);
@@ -81,7 +81,7 @@ void FreeObjectSet<MemDesc>::Rebuild()
     while (!MemDescPool::IsEmpty(current)) {
         // put desc back to free pool
         auto next = current->GetNext();
-        JitFort::GetInstance()->ReturnMemDescToPool(current);
+        memDescPool_->ReturnDescToPool(current);
         current = next;
     }
     freeObject_ = MemDesc::Cast(INVALID_OBJPTR);

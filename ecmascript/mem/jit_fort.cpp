@@ -21,13 +21,20 @@
 namespace panda::ecmascript {
 
 template <>
+FreeListAllocator<MemDesc>::FreeListAllocator(BaseHeap *heap, MemDescPool *pool, JitFort *fort)
+    : memDescPool_(pool), heap_(heap)
+{
+    freeList_ = std::make_unique<FreeObjectList<MemDesc>>(fort);
+}
+
+template <>
 uintptr_t FreeListAllocator<MemDesc>::Allocate(MemDesc *object, size_t size)
 {
     uintptr_t begin = object->GetBegin();
     uintptr_t end = object->GetEnd();
     uintptr_t remainSize = end - begin - size;
     ASSERT(remainSize >= 0);
-    JitFort::GetInstance()->ReturnMemDescToPool(object);
+    memDescPool_->ReturnDescToPool(object);
 
     // Keep a longest freeObject between bump-pointer and free object that just allocated
     allocationSizeAccumulator_ += size;
@@ -64,8 +71,8 @@ JitFort::JitFort()
     jitFortMem_ = PageMap(JIT_FORT_REG_SPACE_MAX, PAGE_PROT_EXEC_READWRITE, DEFAULT_REGION_SIZE, nullptr, MAP_JITFORT);
     jitFortBegin_ = reinterpret_cast<uintptr_t>(jitFortMem_.GetMem());
     jitFortSize_ = JIT_FORT_REG_SPACE_MAX;
-    memDescPool_ = new MemDescPool();
-    allocator_ = new FreeListAllocator<MemDesc>(nullptr);
+    memDescPool_ = new MemDescPool(jitFortBegin_, jitFortSize_);
+    allocator_ = new FreeListAllocator<MemDesc>(nullptr, memDescPool_, this);
     InitRegions();
     LOG_JIT(DEBUG) << "JitFort Begin " << (void *)JitFortBegin() << " end " << (void *)(JitFortBegin() + JitFortSize());
 }
@@ -83,7 +90,8 @@ void JitFort::InitRegions()
     for (auto i = 0; i < numRegions; i++) {
         uintptr_t mem = reinterpret_cast<uintptr_t>(jitFortMem_.GetMem()) + i*DEFAULT_REGION_SIZE;
         uintptr_t end = mem + DEFAULT_REGION_SIZE;
-        JitFortRegion *region = new JitFortRegion(nullptr, mem, end, RegionSpaceFlag::IN_MACHINE_CODE_SPACE);
+        JitFortRegion *region = new JitFortRegion(nullptr, mem, end, RegionSpaceFlag::IN_MACHINE_CODE_SPACE,
+            memDescPool_);
         region->InitializeFreeObjectSets();
         regions_[i] = region;
     }
@@ -103,6 +111,8 @@ bool JitFort::AddRegion()
 
 uintptr_t JitFort::Allocate(size_t size)
 {
+    LockHolder lock(mutex_);
+
     auto ret = allocator_->Allocate(size);
     if (ret == ToUintPtr(nullptr)) {
         if (AddRegion()) {
@@ -118,7 +128,14 @@ uintptr_t JitFort::Allocate(size_t size)
 void JitFort::RecordLiveJitCode(uintptr_t addr, size_t size)
 {
     LockHolder lock(liveJitCodeBlksLock_);
-    MemDesc *desc = GetMemDescFromPool();
+    // check duplicate
+    for (size_t i = 0; i < liveJitCodeBlks_.size(); ++i) {
+        if (liveJitCodeBlks_[i]->GetBegin() == addr && liveJitCodeBlks_[i]->Available() == size) {
+            LOG_JIT(DEBUG) << "RecordLiveJitCode duplicate " << (void *)addr << " size " << size;
+            return;
+        }
+    }
+    MemDesc *desc = memDescPool_->GetDescFromPool();
     desc->SetMem(addr);
     desc->SetSize(size);
     liveJitCodeBlks_.emplace_back(desc);
@@ -131,16 +148,6 @@ void JitFort::SortLiveMemDescList()
             return second->GetBegin() < first->GetBegin();  // descending order
         });
     }
-}
-
-// Called by concurrent sweep in PrepareSweep() and non-concurent sweep in Sweep()
-void JitFort::RebuildFreeList()
-{
-    // disable Fort collection for now - temporary until collection bug fixed
-    return;
-
-    freeListUpdated_ = false;
-    allocator_->RebuildFreeList();
 }
 
 /*
@@ -159,25 +166,23 @@ void JitFort::RebuildFreeList()
 */
 void JitFort::UpdateFreeSpace()
 {
+    LockHolder lock(mutex_);
+
     if (!regionList_.GetLength()) {
         return;
     }
 
-    // disable Fort collection for now - temporary until collection bug fixed
-    return;
-
-    LockHolder lock(mutex_);
-    if (freeListUpdated_) {
-        LOG_JIT(DEBUG) << "FreeFortSpace already done for current GC Sweep";
+    if (!IsMachineCodeGC()) {
         return;
-    } else {
-        freeListUpdated_ = true;
     }
-    SortLiveMemDescList();
+    SetMachineCodeGC(false);
+
     LOG_JIT(DEBUG) << "UpdateFreeSpace enter: " << "Fort space allocated: "
-        << JitFort::GetInstance()->allocator_->GetAllocatedSize()
-        << " available: " << JitFort::GetInstance()->allocator_->GetAvailableSize()
+        << allocator_->GetAllocatedSize()
+        << " available: " << allocator_->GetAvailableSize()
         << " liveJitCodeBlks: " << liveJitCodeBlks_.size();
+    allocator_->RebuildFreeList();
+    SortLiveMemDescList();
     auto region = regionList_.GetFirst();
     while (region) {
         CollectFreeRanges(region);
@@ -185,7 +190,7 @@ void JitFort::UpdateFreeSpace()
     }
     liveJitCodeBlks_.clear();
     LOG_JIT(DEBUG) << "UpdateFreeSpace exit: allocator_->GetAvailableSize  "
-        << JitFort::GetInstance()->allocator_->GetAvailableSize();
+        << allocator_->GetAvailableSize();
 }
 
 void JitFort::CollectFreeRanges(JitFortRegion *region)
@@ -204,7 +209,7 @@ void JitFort::CollectFreeRanges(JitFortRegion *region)
                 allocator_->Free(freeStart, freeEnd - freeStart, true);
             }
             freeStart = freeEnd + desc->Available();
-            ReturnMemDescToPool(desc);
+            memDescPool_->ReturnDescToPool(desc);
             liveJitCodeBlks_.pop_back();
         } else {
             break;
@@ -219,9 +224,9 @@ void JitFort::CollectFreeRanges(JitFortRegion *region)
 // Used by JitFort::UpdateFreeSpace call path to find corresponding
 // JitFortRegion for a free block in JitFort space, in order to put the blk into
 // the corresponding free set of the JitFortRegion the free block belongs.
-JitFortRegion *JitFortRegion::ObjectAddressToRange(uintptr_t objAddress)
+JitFortRegion *JitFort::ObjectAddressToRange(uintptr_t objAddress)
 {
-    JitFortRegion *region = JitFort::GetInstance()->GetRegionList();
+    JitFortRegion *region = GetRegionList();
     while (region != nullptr) {
         if (objAddress >= region->GetBegin() && objAddress < region->GetEnd()) {
             return region;
@@ -231,7 +236,8 @@ JitFortRegion *JitFortRegion::ObjectAddressToRange(uintptr_t objAddress)
     return region;
 }
 
-MemDescPool::MemDescPool()
+MemDescPool::MemDescPool(uintptr_t fortBegin, size_t fortSize)
+    : fortBegin_(fortBegin), fortSize_(fortSize)
 {
     Expand();
 }

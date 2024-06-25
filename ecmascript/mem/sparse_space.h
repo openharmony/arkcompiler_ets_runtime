@@ -70,13 +70,8 @@ public:
     bool Expand();
 
     // For sweeping
-#ifdef ENABLE_JITFORT
-    virtual void PrepareSweeping();
-    virtual void Sweep();
-#else
     void PrepareSweeping();
     void Sweep();
-#endif
     void AsyncSweep(bool isMain);
 
     bool TryFillSweptRegion();
@@ -292,27 +287,41 @@ struct MachineCodeDesc;
 class MachineCodeSpace : public SparseSpace {
 public:
     MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity);
-    ~MachineCodeSpace() override = default;
+    ~MachineCodeSpace() override;
     NO_COPY_SEMANTIC(MachineCodeSpace);
     NO_MOVE_SEMANTIC(MachineCodeSpace);  // Note: Expand() left for define
 #ifdef ENABLE_JITFORT
-    void Sweep() override;
-    void PrepareSweeping() override;
     void FreeRegion(Region *current, bool isMain = true) override;
     uintptr_t Allocate(size_t size, MachineCodeDesc &desc, bool allowGC = true);
     inline void RecordLiveJitCode(MachineCode *obj);
-
-    uintptr_t JitFortAllocate(size_t size)
-    {
-        return jitFort_->Allocate(size);
-    }
 
     inline bool IsSweeping()
     {
         return sweepState_ == SweepState::SWEEPING ;
     }
+
+    inline JitFort *GetJitFort()
+    {
+        return jitFort_;
+    }
+
+    void UpdateFortSpace()
+    {
+        if (jitFort_) {
+            jitFort_->UpdateFreeSpace();
+        }
+    }
+
+    uintptr_t JitFortAllocate(size_t size)
+    {
+        if (!jitFort_) {
+            jitFort_ = new JitFort();
+        }
+        return jitFort_->Allocate(size);
+    }
+
 private:
-    JitFort *jitFort_;
+    JitFort *jitFort_ {nullptr};
     friend class Heap;
     friend class ConcurrentSweeper;
 #endif

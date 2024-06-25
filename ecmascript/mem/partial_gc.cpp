@@ -53,7 +53,6 @@ void PartialGC::RunPhases()
         Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::STW);
     }
     markingInProgress_ = heap_->CheckOngoingConcurrentMarking();
-
     LOG_GC(DEBUG) << "markingInProgress_" << markingInProgress_;
     Initialize();
     Mark();

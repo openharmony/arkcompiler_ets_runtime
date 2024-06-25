@@ -624,55 +624,30 @@ uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
 MachineCodeSpace::MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SparseSpace(heap, MemSpaceType::MACHINE_CODE_SPACE, initialCapacity, maximumCapacity)
 {
+}
+
+MachineCodeSpace::~MachineCodeSpace()
+{
 #ifdef ENABLE_JITFORT
-    jitFort_ = JitFort::GetInstance();
+    if (jitFort_) {
+        delete jitFort_;
+        jitFort_ = nullptr;
+    }
 #endif
 }
 
 #ifdef ENABLE_JITFORT
 inline void MachineCodeSpace::RecordLiveJitCode(MachineCode *obj)
 {
-    jitFort_->RecordLiveJitCode(obj->GetInstructionsAddr(), obj->GetInstructionsSize());
-}
-
-// Non concurrent Sweep.
-void MachineCodeSpace::Sweep()
-{
-    liveObjectSize_ = 0;
-    allocator_->RebuildFreeList();
-    jitFort_->RebuildFreeList();
-    EnumerateRegions([this](Region *current) {
-        if (!current->InCollectSet()) {
-            IncreaseLiveObjectSize(current->AliveObject());
-            current->ResetWasted();
-            FreeRegion(current);
-        }
-    });
-    jitFort_->UpdateFreeSpace();
-}
-
-// Concurrent Sweep.
-void MachineCodeSpace::PrepareSweeping()
-{
-    liveObjectSize_ = 0;
-    EnumerateRegions([this](Region *current) {
-        if (!current->InCollectSet()) {
-            IncreaseLiveObjectSize(current->AliveObject());
-            current->ResetWasted();
-            current->SwapOldToNewRSetForCS();
-            current->SwapLocalToShareRSetForCS();
-            AddSweepingRegion(current);
-        }
-    });
-    SortSweepingRegion();
-    sweepState_ = SweepState::SWEEPING;
-    allocator_->RebuildFreeList();
-    jitFort_->RebuildFreeList();
+    if (jitFort_) {
+        jitFort_->RecordLiveJitCode(obj->GetInstructionsAddr(), obj->GetInstructionsSize());
+    }
 }
 
 // Record info on JitFort mem allocated to live MachineCode objects
 void MachineCodeSpace::FreeRegion(Region *current, bool isMain)
 {
+    LOG_JIT(DEBUG) << "MachineCodeSpace FreeRegion: " << current << " isMain " << isMain;
     uintptr_t freeStart = current->GetBegin();
     current->IterateAllMarkedBits([this, &current, &freeStart, isMain](void *mem) {
         ASSERT(current->InRange(ToUintPtr(mem)));
@@ -690,6 +665,9 @@ void MachineCodeSpace::FreeRegion(Region *current, bool isMain)
     uintptr_t freeEnd = current->GetEnd();
     if (freeStart != freeEnd) {
         FreeLiveRange(current, freeStart, freeEnd, isMain);
+    }
+    if (jitFort_) {
+        jitFort_->SetMachineCodeGC(true);
     }
 }
 

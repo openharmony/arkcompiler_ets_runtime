@@ -63,7 +63,6 @@ js_root = "//arkcompiler/ets_runtime"
 global_root = "//base/global/i18n"
 hilog_root = "//base/hiviewdfx/hilog/interfaces/native/innerkits"
 qos_root = "//foundation/resourceschedule/qos_manager"
-code_sign_root = "//base/security/code_signature/interfaces/innerkits"
 compile_llvm_online = false
 run_with_asan = false
 if (enable_fuzz_option) {
@@ -264,13 +263,10 @@ template("libark_jsruntime_common_set") {
     include_dirs = []
     if (enable_jit_code_sign) {
       defines += [ "CODE_SIGN_ENABLE" ]
+      external_deps += [ "code_signature:libjit_code_sign" ]
       if (disable_fort_switch) {
         defines += [ "JIT_FORT_DISABLE" ]
       }
-      include_dirs += [
-        "$code_sign_root/common/include",
-        "$code_sign_root/jit_code_sign/include",
-      ]
     }
 
     if (enable_target_compilation) {
