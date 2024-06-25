@@ -46,7 +46,7 @@ public:
     void ProcessSnapshotRSet(uint32_t threadId);              // for SemiGC
     void ProcessSnapshotRSetNoMarkStack(uint32_t threadId);
     void MarkJitCodeMap(uint32_t threadId);
-    void HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeMap *> &jitCodeMap);
+    void HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeVector *> &jitCodeMap);
 
     virtual void ProcessMarkStack([[maybe_unused]] uint32_t threadId)
     {

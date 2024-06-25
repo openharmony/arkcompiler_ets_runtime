@@ -155,8 +155,7 @@ private:
 
 class JsStackInfo {
 public:
-    static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets,
-        const FrameType frameType);
+    static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets);
     static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative)
     {
         // If jsErrorObj not be pass in, MachineCode object of its stack frame while not be keep alive
@@ -165,14 +164,14 @@ public:
     }
     static std::string BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj);
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread, bool currentStack = false);
-    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, const FrameType frameType,
-        bool enableStackSourceFile = true);
+    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile = true);
     static AOTFileManager *loader;
     static JSRuntimeOptions *options;
-    static void BuildCrashInfo(bool isJsCrash, uintptr_t pc = 0, JSThread *thread = nullptr);
+    static void BuildCrashInfo(bool isJsCrash, FrameType frameType = FrameType::OPTIMIZED_FRAME,
+                               JSThread *thread = nullptr);
     static inline void BuildCrashInfo(JSThread *thread)
     {
-        BuildCrashInfo(true, 0, thread); // pc is useless for JsCrash, pass 0 as placeholder
+        BuildCrashInfo(true, FrameType::OPTIMIZED_FRAME, thread); // pc is useless for JsCrash, pass 0 as placeholder
     }
     static std::unordered_map<EntityId, std::string> nameMap;
     static std::unordered_map<EntityId, std::vector<uint8>> machineCodeMap;
