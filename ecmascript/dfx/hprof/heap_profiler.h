@@ -90,7 +90,8 @@ public:
      */
     bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
                           bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
-                          bool isFullGC = true, bool isSimplify = false, bool isSync = true) override;
+                          bool isFullGC = true, bool isSimplify = false, bool isSync = true,
+                          bool isBeforeFill = true) override;
     void DumpHeapSnapshot(DumpFormat dumpFormat, bool isVmMode = true, bool isPrivate = false,
                           bool captureNumericValue = false, bool isFullGC = true,
                           bool isSimplify = false, bool isSync = true) override;

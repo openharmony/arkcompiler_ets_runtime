@@ -90,10 +90,11 @@ public:
 
     bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
                           bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
-                          bool isFullGC = true, bool isSimplify = false, bool isSync = false) override
+                          bool isFullGC = true, bool isSimplify = false, bool isSync = false,
+                          bool isBeforeFill = true) override
     {
         return profiler_->DumpHeapSnapshot(dumpFormat, stream, progress, isVmMode, isPrivate, captureNumericValue,
-                                           isFullGC, isSimplify, isSync);
+                                           isFullGC, isSimplify, isSync, isBeforeFill);
     }
 
     void DumpHeapSnapshot(DumpFormat dumpFormat, bool isVmMode = true, bool isPrivate = false,

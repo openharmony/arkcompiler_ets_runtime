@@ -163,7 +163,7 @@ void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] DumpFormat dumpFormat, [[ma
     }
     FileDescriptorStream stream(fd);
     DumpHeapSnapshot(
-        dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, isFullGC, isSimplify, isSync);
+        dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, isFullGC, isSimplify, isSync, false);
 #endif
 }
 
@@ -272,7 +272,7 @@ void HeapProfiler::FillIdMap()
 
 bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
                                     bool isVmMode, bool isPrivate, bool captureNumericValue,
-                                    bool isFullGC, bool isSimplify, bool isSync)
+                                    bool isFullGC, bool isSimplify, bool isSync, bool isBeforeFill)
 {
     bool res = false;
     base::BlockHookScope blockScope;
@@ -290,11 +290,13 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
             DISALLOW_GARBAGE_COLLECTION;
             const_cast<Heap *>(vm_->GetHeap())->Prepare();
         }
-        Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
-            ASSERT(!thread->IsInRunningState());
-            const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
-        });
-        FillIdMap();
+        if (isBeforeFill) {
+            Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
+                ASSERT(!thread->IsInRunningState());
+                const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
+            });
+            FillIdMap();
+        }
         // fork
         if ((pid = ForkBySyscall()) < 0) {
             LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
