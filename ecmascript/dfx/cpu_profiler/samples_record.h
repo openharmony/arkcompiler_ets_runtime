@@ -157,10 +157,6 @@ public:
     void ClearNapiCall();
     void RecordCallNapiTime(uint64_t currentTime);
     void RecordCallNapiAddr(const std::string &methodAddrName);
-    void FinetuneSampleData();
-    void FindSampleAndFinetune(size_t findIdx, size_t napiCallIdx, size_t &sampleIdx,
-                               uint64_t startSampleTime, uint64_t &sampleTime);
-    void FinetuneTimeDeltas(size_t idx, uint64_t napiTime, uint64_t &sampleTime, bool isEndSample);
     void PostFrame();
     void PostNapiFrame();
     void ResetFrameLength();
