@@ -59,6 +59,7 @@ class ObjectRef;
 class FunctionRef;
 class NumberRef;
 class MapIteratorRef;
+class SendableMapIteratorRef;
 class BooleanRef;
 class NativePointerRef;
 class JsiRuntimeCallInfo;
@@ -517,6 +518,7 @@ public:
     bool IsSharedTypedArray(const EcmaVM *vm);
     bool IsSharedSet(const EcmaVM *vm);
     bool IsSharedMap(const EcmaVM *vm);
+    bool IsSharedMapIterator(const EcmaVM *vm);
     bool IsHeapObject();
     void *GetNativePointerValue(const EcmaVM *vm, bool &isNativePointer);
     bool IsDetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer);
@@ -1270,10 +1272,36 @@ public:
     int32_t GetSize();
     int32_t GetTotalElements();
     Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
+    Local<JSValueRef> Get(const EcmaVM *vm, const char *utf8);
     Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
     static Local<MapRef> New(const EcmaVM *vm);
     void Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
+    void Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value);
+    bool Has(const EcmaVM *vm, Local<JSValueRef> key);
+    bool Has(const EcmaVM *vm, const char *utf8);
+    void Delete(const EcmaVM *vm, Local<JSValueRef> key);
+    void Clear(const EcmaVM *vm);
+    Local<MapIteratorRef> GetEntries(const EcmaVM *vm);
+    Local<MapIteratorRef> GetKeys(const EcmaVM *vm);
+    Local<MapIteratorRef> GetValues(const EcmaVM *vm);
+};
+
+class ECMA_PUBLIC_API SendableMapRef : public ObjectRef {
+public:
+    static Local<SendableMapRef> New(const EcmaVM *vm);
+    uint32_t GetSize(const EcmaVM *vm);
+    Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
+    Local<JSValueRef> Get(const EcmaVM *vm, const char *utf8);
+    void Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
+    void Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value);
+    bool Has(const EcmaVM *vm, Local<JSValueRef> key);
+    bool Has(const EcmaVM *vm, const char *utf8);
+    void Delete(const EcmaVM *vm, Local<JSValueRef> key);
+    void Clear(const EcmaVM *vm);
+    Local<SendableMapIteratorRef> GetEntries(const EcmaVM *vm);
+    Local<SendableMapIteratorRef> GetKeys(const EcmaVM *vm);
+    Local<SendableMapIteratorRef> GetValues(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API BufferRef : public ObjectRef {
@@ -1334,6 +1362,12 @@ public:
     static Local<MapIteratorRef> New(const EcmaVM *vm, Local<MapRef> map);
     ecmascript::EcmaRuntimeCallInfo* GetEcmaRuntimeCallInfo(const EcmaVM *vm);
     static Local<ArrayRef> Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo* ecmaRuntimeCallInfo);
+    Local<JSValueRef> Next(const EcmaVM *vm);
+};
+
+class ECMA_PUBLIC_API SendableMapIteratorRef : public ObjectRef {
+public:
+    Local<JSValueRef> Next(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API JSNApi {
