@@ -58,21 +58,6 @@ public:
         return false;
     }
 
-    bool IsAotEscapeOrCompileOnce(const std::string &pgoDir, int32_t &ret)
-    {
-        if (ohos::AotCrashInfo::IsAotEscape(pgoDir)) {
-            LOG_COMPILER(ERROR) << "Stop compile AOT because there are multiple crashes";
-            ret = -1;
-            return true;
-        }
-        if (ohos::EnableAotJitListHelper::GetInstance()->IsAotCompileSuccessOnce(pgoDir)) {
-            LOG_ECMA(ERROR) << "Aot has compile success once.";
-            ret = 0;
-            return true;
-        }
-        return false;
-    }
-
     void SetOptionPGOProfiler(JSRuntimeOptions *options, const std::string &bundleName) const
     {
         if (EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {

@@ -121,10 +121,9 @@ int Main(const int argc, const char **argv)
         }
 
         if (IsExistsPkgInfo(cPreprocessor)) {
-            int32_t escapeRet;
-            if (ohos::AotCrashInfo::GetInstance().IsAotEscapeOrCompileOnce(
-                cPreprocessor.GetMainPkgArgs()->GetPgoDir(), escapeRet)) {
-                return escapeRet;
+            if (ohos::AotCrashInfo::IsAotEscape(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
+                LOG_COMPILER(ERROR) << "Stop compile AOT because there are multiple crashes";
+                return ERR_FAIL;
             }
         }
         if (runtimeOptions.IsPartialCompilerMode() && cOptions.profilerIn_.empty()) {
