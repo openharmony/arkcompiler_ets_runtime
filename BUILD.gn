@@ -301,6 +301,8 @@ config("ark_jsruntime_common_config") {
     "-Wno-unused-but-set-variable",
   ]
 
+  cflags_c = []
+
   if (is_ohos && is_clang && (target_cpu == "arm" || target_cpu == "arm64")) {
     if (ets_runtime_feature_enable_pgo) {
       cflags = [
@@ -421,7 +423,20 @@ config("ark_jsruntime_common_config") {
     defines += [ "FUZZ_TEST" ]
   }
 
-  if (is_debug) {
+  if (is_fastverify) {
+    cflags_cc += [
+      "-O3",
+      "-ggdb3",
+      "-fno-omit-frame-pointer",
+      "-D_GLIBCXX_ASSERTIONS",
+    ]
+    cflags_c += [
+      "-O3",
+      "-ggdb3",
+      "-fno-omit-frame-pointer",
+      "-D_GLIBCXX_ASSERTIONS",
+    ]
+  } else if (is_debug) {
     cflags_cc += [
       "-O0",
       "-ggdb3",
