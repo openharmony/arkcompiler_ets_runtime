@@ -70,14 +70,20 @@ void ICStubBuilder::NamedICAccessor(Variable* cachedHandler, Label *tryICHandler
                 GateRef firstValue = GetValueFromTaggedArray(profileTypeInfo_, slotId_);
                 GateRef secondValue = GetValueFromTaggedArray(profileTypeInfo_, Int32Add(slotId_, Int32(1)));
                 cachedHandler->WriteVariable(secondValue);
-                GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
-                auto numberFunction = GetGlobalEnvValue(VariableType::JS_ANY(),
-                    glueGlobalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
-                GateRef ctorProtoOrHC =
-                    Load(VariableType::JS_POINTER(), numberFunction, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-                BRANCH(BoolAnd(TaggedIsHeapObject(firstValue), Equal(LoadObjectFromWeakRef(firstValue), ctorProtoOrHC)),
-                       tryICHandler, slowPath_);
+                auto taggedIsHeapObject = [&] {
+                    return TaggedIsHeapObject(firstValue);
+                };
+                auto equal = [&] {
+                    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue_, glueGlobalEnvOffset);
+                    auto numberFunction = GetGlobalEnvValue(VariableType::JS_ANY(),
+                                                            glueGlobalEnv, GlobalEnv::NUMBER_FUNCTION_INDEX);
+                    GateRef ctorProtoOrHC =
+                            Load(VariableType::JS_POINTER(), numberFunction,
+                                 IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+                    return Equal(LoadObjectFromWeakRef(firstValue), ctorProtoOrHC);
+                };
+                BRANCH(ShortcutBoolAnd(taggedIsHeapObject, equal), tryICHandler, slowPath_);
             }
         }
     }

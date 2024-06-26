@@ -348,13 +348,20 @@ GateRef StubBuilder::GetIndexFromPropertiesCache(GateRef glue, GateRef cache, Ga
     Label find(env);
     GateRef hash = HashFromHclassAndKey(glue, cls, key, hir);
     GateRef prop =
-        PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(PropertiesCache::PropertyKey::GetPropertyKeySize())));
-    GateRef propHclass =
-        Load(VariableType::JS_POINTER(), prop, IntPtr(PropertiesCache::PropertyKey::GetHclassOffset()));
-    GateRef propKey = Load(VariableType::JS_ANY(), prop, IntPtr(PropertiesCache::PropertyKey::GetKeyOffset()));
-    GateRef hclassIsEqual = IntPtrEqual(cls, propHclass);
-    GateRef keyIsEqual = IntPtrEqual(key, propKey);
-    BRANCH(BoolAnd(hclassIsEqual, keyIsEqual), &find, &exit);
+            PtrAdd(cache, PtrMul(ZExtInt32ToPtr(hash), IntPtr(PropertiesCache::PropertyKey::GetPropertyKeySize())));
+    auto hclassIsEqual = [&] {
+        GateRef propHclass = Load(VariableType::JS_POINTER(), prop,
+                                  IntPtr(PropertiesCache::PropertyKey::GetHclassOffset()));
+        GateRef hclassIsEqual = IntPtrEqual(cls, propHclass);
+        return hclassIsEqual;
+    };
+    auto keyIsEqual = [&] {
+        GateRef propKey = Load(VariableType::JS_ANY(), prop,
+                               IntPtr(PropertiesCache::PropertyKey::GetKeyOffset()));
+        GateRef keyIsEqual = IntPtrEqual(key, propKey);
+        return keyIsEqual;
+    };
+    BRANCH(ShortcutBoolAnd(hclassIsEqual, keyIsEqual), &find, &exit);
     Bind(&find);
     {
         result = Load(VariableType::INT32(), prop, IntPtr(PropertiesCache::PropertyKey::GetResultsOffset()));
@@ -1185,15 +1192,20 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
 //      keyHandle.GetTaggedValue() == thread->GlobalConstants()->GetConstructorString()
 GateRef StubBuilder::SetHasConstructorCondition(GateRef glue, GateRef receiver, GateRef key)
 {
-    GateRef gConstOffset = Load(VariableType::JS_ANY(), glue,
-        IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
-
-    GateRef gCtorStr = Load(VariableType::JS_ANY(),
-        gConstOffset,
-        Int64Mul(Int64(sizeof(JSTaggedValue)),
-            Int64(static_cast<uint64_t>(ConstantIndex::CONSTRUCTOR_STRING_INDEX))));
-    GateRef isCtorStr = Equal(key, gCtorStr);
-    return BoolAnd(BoolOr(IsJsArray(receiver), IsTypedArray(receiver)), isCtorStr);
+    auto isArray = [&] {
+        return SHORTCUT_BOOLOR(IsJsArray(receiver), IsTypedArray(receiver));
+    };
+    auto isCtorStr = [&] {
+        GateRef gConstOffset = Load(VariableType::JS_ANY(), glue,
+                                    IntPtr(JSThread::GlueData::GetGlobalConstOffset(env_->Is32Bit())));
+        GateRef gCtorStr = Load(VariableType::JS_ANY(),
+                                gConstOffset,
+                                Int64Mul(Int64(sizeof(JSTaggedValue)),
+                                         Int64(static_cast<uint64_t>(ConstantIndex::CONSTRUCTOR_STRING_INDEX))));
+        GateRef isCtorStr = Equal(key, gCtorStr);
+        return isCtorStr;
+    };
+    return ShortcutBoolAnd(isArray, isCtorStr);
 }
 
 // Note: set return exit node
@@ -3220,7 +3232,8 @@ GateRef StubBuilder::GetPropertyByName(GateRef glue, GateRef receiver, GateRef k
             Label isString(env);
             Label notString(env);
             Label notJsPrimitiveRef(env);
-            BRANCH(BoolAnd(TaggedIsString(*holder), TaggedIsString(key)), &isString, &notString);
+            auto holderValue = *holder;
+            BRANCH(SHORTCUT_BOOLAND(TaggedIsString(holderValue), TaggedIsString(key)), &isString, &notString);
             Bind(&isString);
             {
                 Label getStringLength(env);
@@ -10669,4 +10682,45 @@ GateRef StubBuilder::IsDetachedBuffer(GateRef buffer)
     env->SubCfgExit();
     return ret;
 }
+
+GateRef StubBuilder::ShortcutBoolAnd(const std::function<GateRef()>& first, const std::function<GateRef()>& second)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env);
+    Label secondCond(env);
+    BRANCH(first(), &secondCond, &exit);
+    Bind(&secondCond);
+    {
+        result = second();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ShortcutBoolOr(const std::function<GateRef()>& first, const std::function<GateRef()>& second)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    Label exit(env);
+    Label secondCond(env);
+    BRANCH(first(), &exit, &secondCond);
+    Bind(&secondCond);
+    {
+        result = second();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 }  // namespace panda::ecmascript::kungfu
