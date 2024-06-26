@@ -1520,9 +1520,15 @@ bool JSSymbolExtractor::ParseHapFileData([[maybe_unused]] std::string& hapName)
                 ret = true;
                 break;
             }
-        } else if (fileName.rfind("sourceMaps.map") != std::string::npos) {
-            CreateSourceMap(hapName);
         }
+    }
+    if (ret) {
+        std::string filePath = "ets/sourceMaps.map";
+        if (entrys.find(filePath) == entrys.end()) {
+            LOG_ECMA(INFO) << "Can't find sourceMaps.map in hap/hsp";
+            return ret;
+        }
+        CreateSourceMap(hapName);
     }
 #endif
     return ret;
