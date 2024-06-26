@@ -204,6 +204,7 @@ void RegExpParser::ParseDisjunction(bool isBackward)
                     ptr += SPARSE_HEAD_OFFSET;
                     for (int32_t i = chars.size() - 1; i >= 0; i--) {
                         buffer_.PutU16(ptr, chars[i]);
+                        // 2: cnt = count of splits + 1, for invert index should be extra - 1, so -1-1=-2
                         offsets[i] += opCharSize - opSplitSize * std::max(0, cnt - i -2);
                         buffer_.PutU32(ptr + SPARSE_OFF_OFFSET, offsets[i]);
                         ptr += SPARSE_MAX_OFFSET;

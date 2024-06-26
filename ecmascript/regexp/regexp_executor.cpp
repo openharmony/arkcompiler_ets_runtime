@@ -151,7 +151,9 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
                     PopRegExpState(isNegative);
                 }
                 if (isNegative) {
-                    MatchFailed(false);
+                    if (MatchFailed(false)) {
+                        return false;
+                    }
                 }
                 break;
             }
