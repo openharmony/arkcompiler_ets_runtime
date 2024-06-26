@@ -125,3 +125,17 @@ print("test proxy constructor success!")
 var proxyHandler = {};
 var object = new Proxy({}, proxyHandler);
 print(Object.prototype.isPrototypeOf.call(object, object));
+
+{
+  function f0() {
+    return f0;
+  }
+  class C1 extends f0 {
+  }
+
+  try{
+     let  v11 = new Proxy(C1);
+  }catch(err) {
+    print(err)
+  }
+}

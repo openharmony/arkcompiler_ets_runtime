@@ -27,3 +27,4 @@ TypeError
 TypeError: function.toString() target is incompatible object
 test proxy constructor success!
 false
+TypeError: ProxyCreate: handler is not Object
