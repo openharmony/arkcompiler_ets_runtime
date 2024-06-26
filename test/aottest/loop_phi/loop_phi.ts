@@ -21,3 +21,5 @@ function foo(l) {
 }
 
 print(foo({a:1, b:null}));
+
+print({} && -9223372036854775808);
