@@ -426,3 +426,9 @@ print('trimEnd' == String.prototype.trimRight.name);
     print(abc_str.substring(-2, positiveHeapNumber))
     print(abc_str.substring(-1, positiveHeapNumber))
 }
+
+{
+    const localestr = "island"
+    print(localestr.toLocaleUpperCase());
+    print(localestr.toLocaleUpperCase('TR'));
+}
