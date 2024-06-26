@@ -4265,8 +4265,7 @@ template("host_pgotypeinfer_test_action") {
 
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
-    _aot_compile_options_ = " --compiler-assert-types=true" +
-                            " --compiler-opt-type-lowering=false" +
+    _aot_compile_options_ = " --compiler-opt-type-lowering=false" +
                             " --compiler-opt-loop-peeling=false"
 
     # Pgo Option
@@ -4315,7 +4314,6 @@ template("host_pgotypeinfer_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ =
-        " --compiler-assert-types=true" +
         " --compiler-opt-type-lowering=false" +
         " --compiler-opt-loop-peeling=false" + " --compiler-enable-litecg=true"
 
