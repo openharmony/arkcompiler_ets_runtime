@@ -49,7 +49,9 @@ void PartialGC::RunPhases()
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, gcStats);
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), PartialGC_RunPhases);
     bool mainThreadInForeground = heap_->GetJSThread()->IsMainThreadFast() && !heap_->IsInBackground();
-    if (mainThreadInForeground) {
+    bool needAjustGCThreadPrio = heap_->GetGCType() == TriggerGCType::OLD_GC ||
+        heap_->GetNewSpace()->GetCommittedSize() >= heap_->GetNewSpace()->GetMaximumCapacity();
+    if (mainThreadInForeground && needAjustGCThreadPrio) {
         Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::STW);
     }
     markingInProgress_ = heap_->CheckOngoingConcurrentMarking();
@@ -70,7 +72,7 @@ void PartialGC::RunPhases()
         Verification::VerifyEvacuate(heap_);
     }
     Finish();
-    if (mainThreadInForeground) {
+    if (mainThreadInForeground && needAjustGCThreadPrio) {
         Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
     }
     if (heap_->IsConcurrentFullMark()) {
