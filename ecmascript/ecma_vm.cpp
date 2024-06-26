@@ -428,7 +428,7 @@ EcmaVM::~EcmaVM()
 {
     if (isJitCompileVM_) {
         if (factory_ != nullptr) {
-            delete factory_;
+            chunk_.Delete(factory_);
             factory_ = nullptr;
         }
         stringTable_ = nullptr;

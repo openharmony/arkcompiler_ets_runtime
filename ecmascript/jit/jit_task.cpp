@@ -57,6 +57,7 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     jitDfx_(JitDfx),
     runState_(RunState::INIT)
 {
+    jit->IncJitTaskCnt(hostThread);
     ecmaContext_ = hostThread->GetCurrentEcmaContext();
     sustainingJSHandle_ = std::make_unique<SustainingJSHandle>(hostThread->GetEcmaVM());
 }
@@ -359,6 +360,7 @@ JitTask::~JitTask()
 {
     ReleaseSustainingJSHandle();
     jit_->DeleteJitCompile(compilerTask_);
+    jit_->DecJitTaskCnt(hostThread_);
 }
 
 void JitTask::WaitFinish()
