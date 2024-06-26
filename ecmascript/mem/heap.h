@@ -63,6 +63,7 @@ using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
 using GCListenerId = std::vector<std::pair<FinishGCListener, void *>>::const_iterator;
 using Clock = std::chrono::high_resolution_clock;
+using AppFreezeFilterCallback = std::function<bool(const int32_t pid)>;
 
 enum class IdleTaskType : uint8_t {
     NO_TASK,
@@ -306,6 +307,7 @@ public:
     void ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
         bool NonMovableObjNearOOM = false);
     void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
+    void SetAppFreezeFilterCallback(AppFreezeFilterCallback cb);
 
 protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
@@ -358,6 +360,7 @@ protected:
     ConditionVariable waitTaskFinishedCV_;
     Mutex waitClearTaskFinishedMutex_;
     ConditionVariable waitClearTaskFinishedCV_;
+    AppFreezeFilterCallback appfreezeCallback_ {nullptr};
     bool clearTaskFinished_ {true};
     bool inBackground_ {false};
     bool shouldThrowOOMError_ {false};
