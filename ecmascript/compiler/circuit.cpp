@@ -482,13 +482,13 @@ GateRef Circuit::GetConstantStringGate(MachineType machineType, std::string_view
     return gate;
 }
 
-GateRef Circuit::GetInitialEnvGate(GateRef jsFunc)
+GateRef Circuit::GetInitialEnvGate(GateRef depend, GateRef jsFunc)
 {
     auto search = initialEnvCache_.find(jsFunc);
     if (search != initialEnvCache_.end()) {
         return initialEnvCache_.at(jsFunc);
     }
-    auto gate = NewGate(GetEnv(), MachineType::I64, {jsFunc}, GateType::AnyType());
+    auto gate = NewGate(GetEnv(), MachineType::I64, {depend, jsFunc}, GateType::AnyType());
     initialEnvCache_[jsFunc] = gate;
     return gate;
 }

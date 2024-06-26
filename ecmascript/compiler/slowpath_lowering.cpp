@@ -118,7 +118,7 @@ void SlowPathLowering::LowerGetEnv(GateRef gate)
 {
     GateRef jsFunc = acc_.GetValueIn(gate, 0);
     GateRef envOffset = builder_.IntPtr(JSFunction::LEXICAL_ENV_OFFSET);
-    GateRef env = builder_.Load(VariableType::JS_ANY(), jsFunc, envOffset, acc_.GetDependRoot());
+    GateRef env = builder_.Load(VariableType::JS_ANY(), jsFunc, envOffset, acc_.GetDep(gate));
     acc_.UpdateAllUses(gate, env);
     acc_.DeleteGate(gate);
 }
@@ -1873,7 +1873,7 @@ void SlowPathLowering::LowerFastSuperCall(const std::vector<GateRef> &args, Vari
     Label notFastCall(&builder_);
     Label aotCall(&builder_);
     Label notAotCall(&builder_);
-    
+
     ASSERT(args.size() == 6); // 6: means args size
     GateRef method = builder_.GetMethodFromFunction(args[1]);
     GateRef expectedNum = builder_.GetExpectedNumOfArgs(method);

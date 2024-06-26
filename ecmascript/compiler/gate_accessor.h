@@ -488,7 +488,7 @@ public:
     MachineType GetMachineType(GateRef gate) const;
     void SetMachineType(GateRef gate, MachineType type);
     GateRef GetConstantGate(MachineType bitValue, BitField bitfield, GateType type) const;
-    GateRef GetInitialEnvGate(GateRef jsFunc) const;
+    GateRef GetInitialEnvGate(GateRef depend, GateRef jsFunc) const;
     double GetFloat64FromConstant(GateRef gate) const;
     int GetInt32FromConstant(GateRef gate) const;
     bool IsInGateNull(GateRef gate, size_t idx) const;

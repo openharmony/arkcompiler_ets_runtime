@@ -428,8 +428,9 @@ void FrameStateBuilder::InitEntryBB(const BytecodeRegion &bb)
     GateRef frameArgs = bcBuilder_->GetFrameArgs();
     if (liveout->TestBit(envIndex_)) {
         GateRef jsFunc = acc_.GetValueIn(frameArgs, static_cast<size_t>(FrameArgIdx::FUNC));
-        auto env = acc_.GetInitialEnvGate(jsFunc);
+        auto env = acc_.GetInitialEnvGate(frameContext->currentDepend_, jsFunc);
         frameContext->SetValuesAt(envIndex_, env);
+        frameContext->currentDepend_ = env;
     }
     auto holeGate = circuit_->GetConstantGate(MachineType::I64,
                                               JSTaggedValue::VALUE_HOLE,
