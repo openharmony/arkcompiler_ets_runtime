@@ -32,3 +32,28 @@ try {
 } catch (err) {
     print(err instanceof TypeError);
 }
+
+{
+    let noThrow = true;
+    try {
+        new Intl.DateTimeFormat("en", { numberingSystem: "invalid" });
+    } catch (e) {
+        noThrow = false;
+    }
+    print(noThrow);
+}
+
+{
+    let constructors = [
+        {c: Intl.DateTimeFormat, f: "format"},
+        {c: Intl.NumberFormat, f: "format"},
+    ];
+
+    for (let {c, f} of constructors) {
+        let o = Object.create(c.prototype);
+        print(o instanceof c);
+        print(o == c.call(o));
+        print(o[f] == o[f]);
+        print(o instanceof c);
+    }
+}
