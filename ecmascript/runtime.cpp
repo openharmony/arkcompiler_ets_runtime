@@ -131,6 +131,7 @@ void Runtime::DestroyIfLastVm()
         MemMapAllocator::GetInstance()->Finalize();
         PGOProfilerManager::GetInstance()->Destroy();
         SharedModuleManager::GetInstance()->Destroy();
+        Jit::GetInstance()->Destroy();
         ASSERT(instance_ != nullptr);
         delete instance_;
         instance_ = nullptr;

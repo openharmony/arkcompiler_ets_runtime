@@ -453,9 +453,35 @@ void Jit::ClearTaskWithVm(EcmaVM *vm)
         return vm == asyncTask->GetHostVM();
     });
 
-    LockHolder holder(installJitTasksDequeMtx_);
-    auto &taskQueue = installJitTasks_[vm->GetJSThread()->GetThreadId()];
-    taskQueue.clear();
+    {
+        LockHolder holder(installJitTasksDequeMtx_);
+        auto &taskQueue = installJitTasks_[vm->GetJSThread()->GetThreadId()];
+        taskQueue.clear();
+    }
+    {
+        LockHolder holder(jitTaskCntMtx_);
+        auto &cnt = jitTaskCnt_[vm->GetJSThread()->GetThreadId()];
+        if (cnt.first.load() != 0) {
+            cnt.second.Wait(&jitTaskCntMtx_);
+        }
+    }
+}
+
+void Jit::IncJitTaskCnt(JSThread *thread)
+{
+    LockHolder holder(jitTaskCntMtx_);
+    auto &cnt = jitTaskCnt_[thread->GetThreadId()];
+    cnt.first.fetch_add(1);
+}
+
+void Jit::DecJitTaskCnt(JSThread *thread)
+{
+    LockHolder holder(jitTaskCntMtx_);
+    auto &cnt = jitTaskCnt_[thread->GetThreadId()];
+    uint32_t old = cnt.first.fetch_sub(1);
+    if (old == 1) {
+        cnt.second.Signal();
+    }
 }
 
 void Jit::CheckMechineCodeSpaceMemory(JSThread *thread, int remainSize)

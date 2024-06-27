@@ -49,8 +49,6 @@ JitVM *JitVM::Create()
 
 JitVM::~JitVM()
 {
-    // explict invoke ~EcmaVM
-    EcmaVM::~EcmaVM();
 }
 
 void JitVM::Destroy(EcmaVM *compilerVm)

@@ -94,6 +94,10 @@ public:
     {
         return jitDfx_;
     }
+
+    void IncJitTaskCnt(JSThread *thread);
+    void DecJitTaskCnt(JSThread *thread);
+
     NO_COPY_SEMANTIC(Jit);
     NO_MOVE_SEMANTIC(Jit);
 
@@ -199,8 +203,10 @@ private:
     bool isProfileNeedDump_ { true };
 
     std::unordered_map<uint32_t, std::deque<std::shared_ptr<JitTask>>> installJitTasks_;
+    std::unordered_map<uint32_t, std::pair<std::atomic<uint32_t>, ConditionVariable>> jitTaskCnt_;
     Mutex installJitTasksDequeMtx_;
     Mutex setEnableLock_;
+    Mutex jitTaskCntMtx_;
 
     JitDfx *jitDfx_ { nullptr };
     static constexpr int MIN_CODE_SPACE_SIZE = 1_KB;
