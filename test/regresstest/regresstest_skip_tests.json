@@ -1762,7 +1762,6 @@
         "mjsunit/optimized-filter.js",
         "mjsunit/fun-name.js",
         "mjsunit/function-prototype.js",
-        "mjsunit/string-indexof-1.js",
         "mjsunit/call-stub.js",
         "mjsunit/unicode-test.js",
         "mjsunit/fast-non-keyed.js",

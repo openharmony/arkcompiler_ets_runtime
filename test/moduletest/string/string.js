@@ -432,3 +432,7 @@ print('trimEnd' == String.prototype.trimRight.name);
     print(localestr.toLocaleUpperCase());
     print(localestr.toLocaleUpperCase('TR'));
 }
+
+// Test empty string search an empty string(Array.tostring).
+let indexOf = String.prototype.indexOf;
+print(0 == "".indexOf([]));
