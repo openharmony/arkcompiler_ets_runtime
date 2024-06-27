@@ -13,6 +13,13 @@
  * limitations under the License.
  */
 
+class C1 {
+  __proto__ = "-65012";
+}
+const v2 = new C1();
+Date.__proto__ = v2;
+print("C1")
+
 try {
     function f0() {
     }
