@@ -162,7 +162,7 @@ const JSPandaFile* FrameHandler::GetJSPandaFile() const
 std::string FrameHandler::GetFileName() const
 {
     auto pandaFile = GetJSPandaFile();
-    return pandaFile->GetJSPandaFileDesc().c_str();
+    return pandaFile->GetFileName();
 }
 
 uint32_t FrameHandler::GetAbcId() const

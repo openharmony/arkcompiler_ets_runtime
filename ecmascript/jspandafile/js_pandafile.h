@@ -118,6 +118,11 @@ public:
         return pf_;
     }
 
+    std::string GetFileName() const
+    {
+        return pf_->GetFilename();
+    }
+
     const char *GetMethodName(EntityId methodId);
     const char *GetCpuProfilerMethodName(EntityId methodId);
     CString GetRecordName(EntityId methodId);

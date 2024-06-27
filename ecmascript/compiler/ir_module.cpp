@@ -22,7 +22,7 @@ namespace panda::ecmascript::kungfu {
 std::string IRModule::GetFuncName(const MethodLiteral *methodLiteral,
                                   const JSPandaFile *jsPandaFile)
 {
-    std::string fileName(jsPandaFile->GetJSPandaFileDesc());
+    std::string fileName = jsPandaFile->GetFileName();
     std::string name = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
     auto methodId = methodLiteral->GetMethodId();
     DebugInfoExtractor *debugExtractor =

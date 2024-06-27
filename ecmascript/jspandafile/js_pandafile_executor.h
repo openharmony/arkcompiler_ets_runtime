@@ -53,8 +53,7 @@ public:
                                                              bool executeFromJob = false);
     static Expected<JSTaggedValue, bool> Execute(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                  std::string_view entryPoint, bool executeFromJob = false);
-    static void BindPreloadedPandaFilesToAOT(EcmaVM *vm, const std::string &moduleName);
-    static void BindPandaFileToAot(JSPandaFile *jsPandaFile);
+    static void BindPandaFilesForAot(EcmaVM *vm, JSPandaFile *jsPandaFile);
     static Expected<JSTaggedValue, bool> ExecuteSpecialModule(JSThread *thread, const CString &recordName,
                                                               const CString &filename, const JSPandaFile *jsPandaFile,
                                                               const JSRecordInfo &recordInfo);

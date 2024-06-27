@@ -39,7 +39,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
     const uint8_t *pcStart = compilationEnv_->GetMethodPcStart();
     const panda_file::File::Header *header = jsPandaFile->GetPandaFile()->GetHeader();
     ApEntityId abcId = compilationEnv_->GetMethodAbcId();
-    std::string fileName(jsPandaFile->GetJSPandaFileDesc());
+    std::string fileName = jsPandaFile->GetFileName();
 
     collector_ = new BytecodeInfoCollector(compilationEnv_, const_cast<JSPandaFile*>(jsPandaFile),
         profilerDecoder_);
