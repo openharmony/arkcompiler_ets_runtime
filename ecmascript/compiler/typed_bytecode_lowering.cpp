@@ -1511,32 +1511,30 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
 bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
 {
     NewBuiltinCtorTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
-    if (!tacc.IsBuiltinModule()) {
-        return false;
-    }
+
     GateRef ctor = tacc.GetValue();
     GateRef constructGate = Circuit::NullGate();
-    if (tacc.IsBuiltinConstructor(BuiltinTypeId::ARRAY)) {
+    if (tacc.IsBuiltinId(BuiltinsStubCSigns::ID::ArrayConstructor)) {
         if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
             AddProfiling(gate);
             if (!Uncheck()) {
                 builder_.ArrayConstructorCheck(ctor);
             }
-            constructGate = builder_.BuiltinConstructor(BuiltinTypeId::ARRAY, gate);
+            constructGate = builder_.BuiltinConstructor(BuiltinsStubCSigns::ID::ArrayConstructor, gate);
         }
-    } else if (tacc.IsBuiltinConstructor(BuiltinTypeId::OBJECT)) {
+    } else if (tacc.IsBuiltinId(BuiltinsStubCSigns::ID::ObjectConstructor)) {
         AddProfiling(gate);
         if (!Uncheck()) {
             builder_.ObjectConstructorCheck(ctor);
         }
-        constructGate = builder_.BuiltinConstructor(BuiltinTypeId::OBJECT, gate);
-    } else if (tacc.IsBuiltinConstructor(BuiltinTypeId::BOOLEAN)) {
+        constructGate = builder_.BuiltinConstructor(BuiltinsStubCSigns::ID::ObjectConstructor, gate);
+    } else if (tacc.IsBuiltinId(BuiltinsStubCSigns::ID::BooleanConstructor)) {
         if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
             AddProfiling(gate);
             if (!Uncheck()) {
                 builder_.BooleanConstructorCheck(ctor);
             }
-            constructGate = builder_.BuiltinConstructor(BuiltinTypeId::BOOLEAN, gate);
+            constructGate = builder_.BuiltinConstructor(BuiltinsStubCSigns::ID::BooleanConstructor, gate);
         }
     }
     if (constructGate == Circuit::NullGate()) {

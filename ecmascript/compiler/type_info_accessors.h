@@ -60,6 +60,8 @@ public:
     static bool IsTrustedNotSameType(const CompilationEnv *env, Circuit *circuit, Chunk *chunk,
                                      GateAccessor acc, GateRef left, GateRef right);
 
+    BuiltinsStubCSigns::ID TryGetPGOBuiltinMethodId() const;
+
     static constexpr uint32_t INVALID_LEN = std::numeric_limits<uint32_t>::max();
 
 protected:
@@ -237,14 +239,9 @@ public:
     NO_COPY_SEMANTIC(NewBuiltinCtorTypeInfoAccessor);
     NO_MOVE_SEMANTIC(NewBuiltinCtorTypeInfoAccessor);
 
-    bool IsBuiltinModule() const
+    bool IsBuiltinId(BuiltinsStubCSigns::ID id)
     {
-        return GetCtorGT().IsBuiltinModule();
-    }
-
-    bool IsBuiltinConstructor([[maybe_unused]] BuiltinTypeId type)
-    {
-        return false; // NOTICE-PGO:: tsManager_->IsBuiltinConstructor(type, GetCtorGT());
+        return TryGetPGOBuiltinMethodId() == id;
     }
 
 private:
@@ -440,8 +437,6 @@ public:
         }
         return 0;
     }
-
-    BuiltinsStubCSigns::ID TryGetPGOBuiltinMethodId() const;
 
 protected:
     size_t argc_;

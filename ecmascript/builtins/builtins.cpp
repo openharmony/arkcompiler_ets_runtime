@@ -280,7 +280,8 @@ void Builtins::Initialize(const JSHandle<GlobalEnv> &env, JSThread *thread, bool
 
     // Object = new Function()
     JSHandle<JSObject> objectFunction(
-        NewBuiltinConstructor(env, objFuncPrototype, Object::ObjectConstructor, "Object", FunctionLength::ONE));
+        NewBuiltinConstructor(env, objFuncPrototype, Object::ObjectConstructor, "Object",
+                              FunctionLength::ONE, BUILTINS_STUB_ID(ObjectConstructor)));
     JSFunction::SetFunctionPrototypeOrInstanceHClass(thread_, JSHandle<JSFunction>(objectFunction),
                                                      objFuncClass.GetTaggedValue());
     // initialize object method.

@@ -250,6 +250,18 @@ bool TypeInfoAccessor::IsTrustedNotSameType(const CompilationEnv *env, Circuit *
     return false;
 }
 
+BuiltinsStubCSigns::ID TypeInfoAccessor::TryGetPGOBuiltinMethodId() const
+{
+    PGOTypeRef sampleType = acc_.TryGetPGOType(gate_);
+    if (sampleType.GetPGOSampleType()->IsNone()) {
+        return BuiltinsStubCSigns::ID::NONE;
+    }
+    if (sampleType.GetPGOSampleType()->GetProfileType().IsBuiltinFunctionId()) {
+        return static_cast<BuiltinsStubCSigns::ID>(sampleType.GetPGOSampleType()->GetProfileType().GetId());
+    }
+    return BuiltinsStubCSigns::ID::NONE;
+}
+
 bool NewObjRangeTypeInfoAccessor::FindHClass()
 {
     auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
@@ -283,18 +295,6 @@ SuperCallTypeInfoAccessor::SuperCallTypeInfoAccessor(const CompilationEnv *env, 
     : TypeInfoAccessor(env, circuit, gate)
 {
     ctor_ = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
-}
-
-BuiltinsStubCSigns::ID CallTypeInfoAccessor::TryGetPGOBuiltinMethodId() const
-{
-    PGOTypeRef sampleType = acc_.TryGetPGOType(gate_);
-    if (sampleType.GetPGOSampleType()->IsNone()) {
-        return BuiltinsStubCSigns::ID::NONE;
-    }
-    if (sampleType.GetPGOSampleType()->GetProfileType().IsBuiltinFunctionId()) {
-        return static_cast<BuiltinsStubCSigns::ID>(sampleType.GetPGOSampleType()->GetProfileType().GetId());
-    }
-    return BuiltinsStubCSigns::ID::NONE;
 }
 
 GetIteratorTypeInfoAccessor::GetIteratorTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate,
