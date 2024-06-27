@@ -34,12 +34,6 @@ public:
     bool AddRegion();
     uintptr_t Allocate(size_t size);
 
-    inline static JitFort *GetInstance()
-    {
-        static JitFort instance;
-        return &instance;
-    }
-
     inline JitFortRegion *GetRegionList()
     {
         return regionList_.GetFirst();
@@ -55,28 +49,29 @@ public:
         return jitFortSize_;
     }
 
-    inline MemDesc *GetMemDescFromPool()
+    inline bool  IsMachineCodeGC()
     {
-        return memDescPool_->GetDescFromPool();
+        return isMachineCodeGC_;
     }
 
-    inline void ReturnMemDescToPool(MemDesc *desc)
+    inline void SetMachineCodeGC(bool flag)
     {
-        memDescPool_->ReturnDescToPool(desc);
+        LOG_JIT(DEBUG) << "SetMachineCodeGC " << flag;
+        isMachineCodeGC_ = flag;
     }
 
     void RecordLiveJitCode(uintptr_t addr, size_t size);
     void CollectFreeRanges(JitFortRegion  *region);
     void SortLiveMemDescList();
     void UpdateFreeSpace();
-    void RebuildFreeList();
+    JitFortRegion *ObjectAddressToRange(uintptr_t objAddress);
 
 private:
     FreeListAllocator<MemDesc> *allocator_ {nullptr};
 
     // Fort memory space
     static constexpr int MAP_JITFORT = 0x1000;
-    static constexpr size_t JIT_FORT_REG_SPACE_MAX = 8_MB;
+    static constexpr size_t JIT_FORT_REG_SPACE_MAX = 4_MB;
     static constexpr size_t JIT_FORT_HUGE_SPACE_MAX = 2_MB;
     static constexpr size_t JIT_FORT_MEM_DESC_MAX = 40_KB;
     MemMap jitFortMem_;
@@ -96,6 +91,7 @@ private:
     bool freeListUpdated_ {false};  // use atomic if not mutext protected
     Mutex mutex_;
     Mutex liveJitCodeBlksLock_;
+    bool isMachineCodeGC_ {false};
 
     friend class HugeMachineCodeSpace;
 };
@@ -103,7 +99,8 @@ private:
 class JitFortRegion : public Region {
 public:
     JitFortRegion(NativeAreaAllocator *allocator, uintptr_t allocateBase, uintptr_t end,
-        RegionSpaceFlag spaceType) : Region(allocator, allocateBase, end, spaceType) {}
+        RegionSpaceFlag spaceType, MemDescPool *pool) : Region(allocator, allocateBase, end, spaceType),
+        memDescPool_(pool) {}
 
     void InitializeFreeObjectSets()
     {
@@ -123,7 +120,7 @@ public:
     {
         // Thread safe
         if (fortFreeObjectSets_[type] == nullptr) {
-            fortFreeObjectSets_[type] = new FreeObjectSet<MemDesc>(type);
+            fortFreeObjectSets_[type] = new FreeObjectSet<MemDesc>(type, memDescPool_);
         }
         return fortFreeObjectSets_[type];
     }
@@ -148,11 +145,11 @@ public:
         return prev_;
     }
 
-    static JitFortRegion *ObjectAddressToRange(uintptr_t objAddress);
 private:
     Span<FreeObjectSet<MemDesc> *> fortFreeObjectSets_;
     JitFortRegion *next_ {nullptr};
     JitFortRegion *prev_ {nullptr};
+    MemDescPool *memDescPool_ {nullptr};
 };
 
 }  // namespace panda::ecmascript

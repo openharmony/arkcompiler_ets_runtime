@@ -464,12 +464,6 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size)
     desc.instructionsAddr = 0;
     if (size <= MAX_REGULAR_HEAP_OBJECT_SIZE) {
         // for non huge code cache obj, allocate fort space before allocating the code object
-        if (machineCodeSpace_->sweepState_ == SweepState::SWEEPING) {
-            GetSweeper()->EnsureTaskFinished(MACHINE_CODE_SPACE);
-            LOG_JIT(DEBUG) << "Heap::AllocateMachineCode: MachineCode space sweep state = "
-                << machineCodeSpace_->GetSweepState();
-            JitFort::GetInstance()->UpdateFreeSpace();
-        }
         uintptr_t mem = machineCodeSpace_->JitFortAllocate(desc.instructionsSize);
         if (mem == ToUintPtr(nullptr)) {
             SetMachineCodeOutOfMemoryError(GetJSThread(), size, "Heap::JitFortAllocate");
@@ -618,7 +612,7 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
 #ifdef ENABLE_JITFORT
     // machinecode space is not sweeped in young GC
     if (machineCodeSpace_->sweepState_ != SweepState::NO_SWEEP) {
-        JitFort::GetInstance()->UpdateFreeSpace();
+        machineCodeSpace_->UpdateFortSpace();
     }
 #endif
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {

@@ -40,6 +40,12 @@ public:
     {
         Rebuild();
     }
+#ifdef ENABLE_JITFORT
+    explicit FreeObjectSet(SetType type, MemDescPool *pool) : setType_(type), memDescPool_(pool)
+    {
+        Rebuild();
+    }
+#endif
     ~FreeObjectSet() = default;
 
     inline bool Empty() const
@@ -81,7 +87,7 @@ private:
     bool isAdded_ = false;
 #ifdef ENABLE_JITFORT
     T *freeObject_ = nullptr;
-
+    MemDescPool *memDescPool_ {nullptr};
     friend class FreeObjectList<T>;
 #else
     FreeObject *freeObject_ = nullptr;

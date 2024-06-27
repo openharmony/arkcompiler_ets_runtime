@@ -25,11 +25,15 @@
 
 namespace panda::ecmascript {
 #ifdef ENABLE_JITFORT
+class JitFort;
 template <typename T>
 #endif
 class FreeObjectList {
 public:
     FreeObjectList();
+#ifdef ENABLE_JITFORT
+    FreeObjectList(JitFort *fort);
+#endif
     ~FreeObjectList();
 
 #ifdef ENABLE_JITFORT
@@ -153,6 +157,7 @@ private:
 #ifdef ENABLE_JITFORT
     Span<FreeObjectSet<T> *> sets_ {};
     Span<FreeObjectSet<T> *> lastSets_ {};
+    JitFort *jitFort_ {nullptr};
 #else
     Span<FreeObjectSet *> sets_ {};
     Span<FreeObjectSet *> lastSets_ {};

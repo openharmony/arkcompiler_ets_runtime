@@ -24,6 +24,7 @@
 namespace panda::ecmascript {
 class Region;
 class BaseHeap;
+class JitFort;
 
 class Allocator {
 public:
@@ -91,6 +92,9 @@ public:
     NO_MOVE_SEMANTIC(FreeListAllocator);
 
     inline explicit FreeListAllocator(BaseHeap *heap);
+#ifdef ENABLE_JITFORT
+    inline explicit FreeListAllocator(BaseHeap *heap, MemDescPool *pool, JitFort *fort);
+#endif
     inline void Initialize(Region *region);
 
     inline void Reset(BaseHeap *heap);
@@ -136,6 +140,7 @@ private:
 #ifdef ENABLE_JITFORT
     inline uintptr_t Allocate(T *object, size_t size);
     std::unique_ptr<FreeObjectList<T>> freeList_ {nullptr};
+    MemDescPool *memDescPool_ {nullptr};
 #else
     inline uintptr_t Allocate(FreeObject *object, size_t size);
     std::unique_ptr<FreeObjectList> freeList_ {nullptr};

@@ -39,6 +39,19 @@ FreeObjectList::FreeObjectList() : sets_(new FreeObjectSet *[NUMBER_OF_SETS](), 
 #ifdef ENABLE_JITFORT
 template FreeObjectList<FreeObject>::FreeObjectList();
 template FreeObjectList<MemDesc>::FreeObjectList();
+
+template <>
+FreeObjectList<MemDesc>::FreeObjectList(JitFort *fort)
+    : sets_(new FreeObjectSet<MemDesc> *[NUMBER_OF_SETS](), NUMBER_OF_SETS),
+    lastSets_(new FreeObjectSet<MemDesc> *[NUMBER_OF_SETS](), NUMBER_OF_SETS),
+    jitFort_(fort)
+{
+    for (int i = 0; i < NUMBER_OF_SETS; i++) {
+        sets_[i] = nullptr;
+        lastSets_[i] = nullptr;
+    }
+    noneEmptySetBitMap_ = 0;
+}
 #endif
 
 #ifdef ENABLE_JITFORT
@@ -228,6 +241,7 @@ void FreeObjectList::Free(uintptr_t start, size_t size, bool isAdd)
         }
     }
 }
+
 #ifdef ENABLE_JITFORT
 // template class instance for non JitFort space uses FreeObject and Region.
 template void FreeObjectList<FreeObject>::Free(uintptr_t, size_t, bool);
@@ -239,7 +253,7 @@ void FreeObjectList<MemDesc>::Free(uintptr_t start, size_t size, bool isAdd)
         return;
     }
     if (UNLIKELY(size < MIN_SIZE)) {
-        JitFortRegion *region = JitFortRegion::ObjectAddressToRange(start);
+        JitFortRegion *region = jitFort_->ObjectAddressToRange(start);
         region->IncreaseWasted(size);
         if (isAdd) {
             wasted_ += size;
@@ -251,7 +265,7 @@ void FreeObjectList<MemDesc>::Free(uintptr_t start, size_t size, bool isAdd)
         return;
     }
 
-    JitFortRegion *region = JitFortRegion::ObjectAddressToRange(start);
+    JitFortRegion *region = jitFort_->ObjectAddressToRange(start);
     auto set = region->GetFreeObjectSet(type);
     if (set == nullptr) {
         LOG_FULL(FATAL) << "The set of region is nullptr";
