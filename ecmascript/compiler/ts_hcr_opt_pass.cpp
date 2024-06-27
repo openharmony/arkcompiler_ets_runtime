@@ -111,6 +111,9 @@ bool TSHCROptPass::IsSingleCharString(GateRef gate)
         uint32_t strId = acc_.GetStringIdFromLdaStrGate(gate);
         auto methodOffset = acc_.TryGetMethodOffset(gate);
         JSTaggedValue str = GetStringFromConstantPool(methodOffset, strId);
+        if (str.IsUndefined()) {
+            return false;
+        }
         return EcmaStringAccessor(str).GetLength() == 1;
     }
     return acc_.IsSingleCharGate(gate);

@@ -2151,6 +2151,9 @@ void TypedBytecodeLowering::LowerTypedTryLdGlobalByName(GateRef gate)
     DISALLOW_GARBAGE_COLLECTION;
     LoadGlobalObjByNameTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     JSTaggedValue key = tacc.GetKeyTaggedValue();
+    if (key.IsUndefined()) {
+        return;
+    }
 
     BuiltinIndex& builtin = BuiltinIndex::GetInstance();
     auto index = builtin.GetBuiltinIndex(key);
@@ -2244,7 +2247,11 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
     }
     JSHClass *newClass = JSHClass::Cast(hclassVal.GetTaggedObject());
     GateRef index = tacc.GetIndex();
-    JSObject *objhandle = JSObject::Cast(tacc.GetObject());
+    JSTaggedValue obj = tacc.GetObject();
+    if (obj.IsUndefined()) {
+        return;
+    }
+    JSObject *objhandle = JSObject::Cast(obj);
     std::vector<uint64_t> inlinedProps;
     auto layout = LayoutInfo::Cast(newClass->GetLayout().GetTaggedObject());
     for (uint32_t i = 0; i < newClass->GetInlinedProperties(); i++) {

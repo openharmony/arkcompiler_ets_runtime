@@ -472,6 +472,9 @@ PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const
     uint16_t propIndex = acc_.GetConstantValue(constData);
     auto methodOffset = acc_.TryGetMethodOffset(gate_);
     auto prop = compilationEnv_->GetStringFromConstantPool(methodOffset, propIndex);
+    if (prop.IsUndefined()) {
+        return PropertyLookupResult();
+    }
     // PGO currently does not support call, so GT is still used to support inline operations.
     // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
     if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
@@ -820,6 +823,9 @@ void LoadObjByNameTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 bool LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInfo()
 {
     JSTaggedValue key = parent_.GetKeyTaggedValue();
+    if (key.IsUndefined()) {
+        return false;
+    }
     for (size_t i = 0; i < parent_.types_.size(); ++i) {
         ProfileTyper receiverType = parent_.types_[i].first;
         ProfileTyper holderType = parent_.types_[i].second;
@@ -1265,6 +1271,9 @@ JSTaggedValue CreateObjWithBufferTypeInfoAccessor::GetObject() const
     auto imm = acc_.GetConstantValue(index_);
     auto methodOffset = acc_.TryGetMethodOffset(GetGate());
     JSTaggedValue unsharedCp = compilationEnv_->FindOrCreateUnsharedConstpool(methodOffset);
+    if (unsharedCp.IsUndefined()) {
+        return JSTaggedValue::Undefined();
+    }
     return compilationEnv_->GetObjectLiteralFromCache(unsharedCp, imm, recordName_);
 }
 
