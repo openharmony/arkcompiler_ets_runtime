@@ -4190,7 +4190,6 @@ bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
         return false;
     }
 
-    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
     const auto &handler = jsDebuggerManager->GetDebugLibraryHandle();
     if (handler.IsValid()) {
