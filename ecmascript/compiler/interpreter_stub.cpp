@@ -239,7 +239,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     Bind(&getOsrCache);                                                                                              \
     {                                                                                                                \
         GateRef profileTypeInfoLength = GetLengthOfTaggedArray(profileTypeInfo);                                     \
-        GateRef typeInfoNum = Int32Sub(profileTypeInfoLength, Int32(ProfileTypeInfo::EXTRA_CACHE_SLOT_INDEX));       \
+        GateRef typeInfoNum = Int32Sub(profileTypeInfoLength, Int32(ProfileTypeInfo::JIT_OSR_INDEX));                \
         GateRef relativeOffset = PtrMul(ZExtInt32ToPtr(typeInfoNum), IntPtr(JSTaggedValue::TaggedTypeSize()));       \
         GateRef osrCacheOffset = PtrAdd(relativeOffset, IntPtr(TaggedArray::DATA_OFFSET));                           \
         varOsrCache = Load(VariableType::NATIVE_POINTER(), profileTypeInfo, osrCacheOffset);                         \

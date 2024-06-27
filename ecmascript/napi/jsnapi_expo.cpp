@@ -4687,7 +4687,9 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
     jsOption.SetEnableJIT(option.GetEnableJIT());
     jsOption.SetEnableBaselineJIT(option.GetEnableBaselineJIT());
+    jsOption.SetMaxAotMethodSize(JSRuntimeOptions::MAX_APP_COMPILE_METHOD_SIZE);
     ecmascript::pgo::PGOProfilerManager::GetInstance()->SetBundleName(option.GetBundleName());
+    ecmascript::pgo::PGOProfilerManager::GetInstance()->SetMaxAotMethodSize(jsOption.GetMaxAotMethodSize());
     JSRuntimeOptions runtimeOptions;
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     Log::Initialize(runtimeOptions);

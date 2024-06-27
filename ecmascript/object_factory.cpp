@@ -3329,16 +3329,15 @@ JSHandle<ProtoChangeDetails> ObjectFactory::NewProtoChangeDetails()
     return protoInfo;
 }
 
-JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t length)
+JSHandle<ProfileTypeInfo> ObjectFactory::NewProfileTypeInfo(uint32_t icSlotSize)
 {
     NewObjectHook();
-    ASSERT(length > 0);
-
-    size_t size = ProfileTypeInfo::ComputeSize(length);
+    ASSERT(icSlotSize > 0);
+    size_t size = ProfileTypeInfo::ComputeSize(icSlotSize);
     auto header = heap_->AllocateYoungOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetProfileTypeInfoClass().GetTaggedObject()), size);
     JSHandle<ProfileTypeInfo> array(thread_, header);
-    array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), length);
+    array->InitializeWithSpecialValue(JSTaggedValue::Undefined(), icSlotSize);
     if (vm_->IsEnableFastJit()) {
         uint16_t threshold = vm_->GetJSOptions().GetJitHotnessThreshold();
         ASSERT(threshold != ProfileTypeInfo::JIT_DISABLE_FLAG);

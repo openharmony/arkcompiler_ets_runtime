@@ -1808,6 +1808,9 @@ public:
         return enableFrameworkAOT_;
     }
 
+public:
+    static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 1_KB;
+
 private:
     static constexpr int32_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
 

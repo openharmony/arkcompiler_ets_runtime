@@ -135,6 +135,8 @@ private:
     GateRef GetBitFieldOffsetFromProfileTypeInfo(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoDumped(GateRef profileTypeInfo);
     GateRef IsProfileTypeInfoPreDumped(GateRef profileTypeInfo);
+    GateRef IsProfileTypeInfoWithBigMethod(GateRef profileTypeInfo);
+    GateRef IsProfileTypeInfoHotAndValid(GateRef profileTypeInfo);
     void SetDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo);
     void SetPreDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo);
     GateRef TaggedToTrackType(GateRef value);
