@@ -1,2 +1,5 @@
 # Known failure list for regress test - release-x64
+# Issue #17901
+regresstest/ark-regress/intl/regress-1130489.js
+# Issue #17902
 regresstest/ark-regress/mjsunit/regress/regress-crbug-1439691.js
