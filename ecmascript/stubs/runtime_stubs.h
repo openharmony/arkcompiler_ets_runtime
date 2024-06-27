@@ -128,6 +128,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(JSCallWithArgV)                        \
     V(JSCallWithArgVAndPushArgv)             \
     V(JSProxyCallInternalWithArgV)           \
+    V(SuperCallWithArgV)                     \
     V(OptimizedCallAndPushArgv)              \
     V(DeoptHandlerAsm)                       \
     V(JSCallNew)                             \
@@ -876,7 +877,10 @@ private:
     static inline JSTaggedValue RuntimeSuperCall(JSThread *thread, const JSHandle<JSTaggedValue> &func,
                                                  const JSHandle<JSTaggedValue> &newTarget, uint16_t firstVRegIdx,
                                                  uint16_t length);
-    static inline JSTaggedValue RuntimeOptSuperCall(JSThread *thread, uintptr_t argv, uint32_t argc);
+    static inline JSTaggedValue RuntimeOptSuperCall(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+                                                    const JSHandle<JSTaggedValue> &newTarget,
+                                                    const JSHandle<TaggedArray> &argv,
+                                                    uint16_t length);
     static inline JSTaggedValue RuntimeThrowTypeError(JSThread *thread, const char *message);
     static inline JSTaggedValue RuntimeGetCallSpreadArgs(JSThread *thread, const JSHandle<JSTaggedValue> &array);
     static inline JSTaggedValue RuntimeThrowReferenceError(JSThread *thread, JSTaggedValue prop, const char *desc);

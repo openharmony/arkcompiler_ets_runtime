@@ -2473,24 +2473,19 @@ JSTaggedValue RuntimeStubs::RuntimeSuperCall(JSThread *thread, const JSHandle<JS
     return result;
 }
 
-JSTaggedValue RuntimeStubs::RuntimeOptSuperCall(JSThread *thread, uintptr_t argv, uint32_t argc)
+JSTaggedValue RuntimeStubs::RuntimeOptSuperCall(JSThread *thread, const JSHandle<JSTaggedValue> &func,
+                                                const JSHandle<JSTaggedValue> &newTarget,
+                                                const JSHandle<TaggedArray> &argv,
+                                                uint16_t length)
 {
-    constexpr size_t fixNums = 2;
-    JSHandle<JSTaggedValue> func = GetHArg<JSTaggedValue>(argv, argc, 0);
-    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);
     JSHandle<JSTaggedValue> superFunc(thread, JSTaggedValue::GetPrototype(thread, func));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint16_t length = argc - fixNums;
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, superFunc, undefined, newTarget, length);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    for (size_t i = 0; i < length; ++i) {
-        JSTaggedType arg = reinterpret_cast<JSTaggedType *>(argv)[i + fixNums];
-        info->SetCallArg(i, JSTaggedValue(arg));
-    }
+    info->SetCallArg(length, argv);
     JSTaggedValue result = JSFunction::Construct(info);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     return result;
 }
 

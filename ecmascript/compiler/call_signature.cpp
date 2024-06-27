@@ -1948,6 +1948,26 @@ DEF_CALL_SIGNATURE(CallOptimized)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(SuperCallWithArgV)
+{
+    // 5 : 5 input parameters
+    CallSignature superCallWithArgV("SuperCallWithArgV", 0, 5,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
+    *callSign = superCallWithArgV;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),   // glue
+        VariableType::INT64(),            // actualNumArgs
+        VariableType::JS_ANY(),           // jsfunc
+        VariableType::JS_ANY(),           // newTarget
+        VariableType::JS_ANY(),           // this
+    };
+    callSign->SetVariadicArgs(true);
+    callSign->SetParameters(params.data());
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(Dump)
 {
     constexpr size_t N_INPUT_PARAMETERS = 1;
