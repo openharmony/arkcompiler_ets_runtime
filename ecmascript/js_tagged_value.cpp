@@ -1483,7 +1483,8 @@ bool JSTaggedValue::SetJSAPIProperty(JSThread *thread, const JSHandle<JSTaggedVa
                 return JSAPIList::SetProperty(thread, JSHandle<JSAPIList>::Cast(obj), key, value);
             }
             case JSType::JS_API_LINKED_LIST: {
-                return JSAPILinkedList::SetProperty(thread, JSHandle<JSAPILinkedList>::Cast(obj), key, value);
+                JSAPILinkedList::SetProperty(thread, JSHandle<JSAPILinkedList>::Cast(obj), key, value);
+                return true;
             }
             case JSType::JS_API_QUEUE: {
                 return JSAPIQueue::SetProperty(thread, JSHandle<JSAPIQueue>::Cast(obj), key, value);
