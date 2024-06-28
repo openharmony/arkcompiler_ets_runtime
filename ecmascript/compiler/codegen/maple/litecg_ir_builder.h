@@ -121,7 +121,6 @@ private:
     GateAccessor acc_;
     maple::litecg::LMIRBuilder *lmirBuilder_ {nullptr};
     std::unordered_map<GateRef, maple::litecg::LiteCGValue> gate2Expr_;
-    std::unordered_map<OpCode, void (LiteCGIRBuilder::*)(GateRef gate)> opHandlers_;
     std::set<OpCode> illegalOpHandlers_;
     std::map<GateId, int> instID2bbID_;
     std::map<int, maple::litecg::BB *> bbID2BB_;
@@ -214,6 +213,7 @@ private:
     bool IsBaselineBuiltin() const;
     void AddFunc();
     void CollectDerivedRefInfo();
+    void HandleBB(const std::vector<GateRef> &bb, std::unordered_set<OpCode> &usedOpcodeSet);
     bool IsLogEnabled() const
     {
         return enableLog_;

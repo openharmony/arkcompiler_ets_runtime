@@ -57,8 +57,6 @@ const std::map<TokenKind, PragmaValueType> tkPragmaValType = {
 }  // namespace
 
 namespace maple {
-std::map<TokenKind, MIRParser::FuncPtrParseMIRForElem> MIRParser::funcPtrMapForParseMIR =
-    MIRParser::InitFuncPtrMapForParseMIR();
 
 MIRFunction *MIRParser::CreateDummyFunction()
 {
@@ -1015,28 +1013,6 @@ bool MIRParser::ParseSrcLang(MIRSrcLang &srcLang)
         }
     }
     return false;
-}
-
-std::map<TokenKind, MIRParser::FuncPtrParseMIRForElem> MIRParser::InitFuncPtrMapForParseMIR()
-{
-    std::map<TokenKind, MIRParser::FuncPtrParseMIRForElem> funcPtrMap;
-    funcPtrMap[TK_func] = &MIRParser::ParseMIRForFunc;
-    funcPtrMap[TK_flavor] = &MIRParser::ParseMIRForFlavor;
-    funcPtrMap[TK_srclang] = &MIRParser::ParseMIRForSrcLang;
-    funcPtrMap[TK_globalmemsize] = &MIRParser::ParseMIRForGlobalMemSize;
-    funcPtrMap[TK_globalmemmap] = &MIRParser::ParseMIRForGlobalMemMap;
-    funcPtrMap[TK_globalwordstypetagged] = &MIRParser::ParseMIRForGlobalWordsTypeTagged;
-    funcPtrMap[TK_globalwordsrefcounted] = &MIRParser::ParseMIRForGlobalWordsRefCounted;
-    funcPtrMap[TK_id] = &MIRParser::ParseMIRForID;
-    funcPtrMap[TK_numfuncs] = &MIRParser::ParseMIRForNumFuncs;
-    funcPtrMap[TK_entryfunc] = &MIRParser::ParseMIRForEntryFunc;
-    funcPtrMap[TK_fileinfo] = &MIRParser::ParseMIRForFileInfo;
-    funcPtrMap[TK_filedata] = &MIRParser::ParseMIRForFileData;
-    funcPtrMap[TK_srcfileinfo] = &MIRParser::ParseMIRForSrcFileInfo;
-    funcPtrMap[TK_importpath] = &MIRParser::ParseMIRForImportPath;
-    funcPtrMap[TK_asmdecl] = &MIRParser::ParseMIRForAsmdecl;
-    funcPtrMap[TK_LOC] = &MIRParser::ParseLoc;
-    return funcPtrMap;
 }
 
 bool MIRParser::ParseMIRForFunc()

@@ -239,6 +239,315 @@ void LiteCGIRBuilder::CollectDerivedRefInfo()
     derivedGateCache_.clear();
 }
 
+void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_set<OpCode> &usedOpcodeSet)
+{
+    for (size_t instIdx = bb.size(); instIdx > 0; instIdx--) {
+        GateRef gate = bb[instIdx - 1];
+        OpCode opcode = acc_.GetOpCode(gate);
+        switch (opcode) {
+            case OpCode::STATE_ENTRY:
+                HandleGoto(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::STATE_ENTRY);
+                break;
+            case OpCode::RETURN:
+                HandleReturn(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::RETURN);
+                break;
+            case OpCode::RETURN_VOID:
+                HandleReturnVoid(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::RETURN_VOID);
+                break;
+            case OpCode::IF_BRANCH:
+                HandleBranch(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::IF_BRANCH);
+                break;
+            case OpCode::ORDINARY_BLOCK:
+                HandleGoto(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ORDINARY_BLOCK);
+                break;
+            case OpCode::IF_TRUE:
+                HandleGoto(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::IF_TRUE);
+                break;
+            case OpCode::IF_FALSE:
+                HandleGoto(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::IF_FALSE);
+                break;
+            case OpCode::SWITCH_BRANCH:
+                HandleSwitch(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::SWITCH_BRANCH);
+                break;
+            case OpCode::SWITCH_CASE:
+                HandleGoto(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::SWITCH_CASE);
+                break;
+            case OpCode::MERGE:
+                HandleGoto(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::MERGE);
+                break;
+            case OpCode::DEFAULT_CASE:
+                HandleGoto(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::DEFAULT_CASE);
+                break;
+            case OpCode::LOOP_BEGIN:
+                HandleGoto(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::LOOP_BACK);
+                break;
+            case OpCode::LOOP_BACK:
+                HandleGoto(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::LOOP_BEGIN);
+                break;
+            case OpCode::VALUE_SELECTOR:
+                HandlePhi(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::VALUE_SELECTOR);
+                break;
+            case OpCode::RUNTIME_CALL:
+                HandleRuntimeCall(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::RUNTIME_CALL);
+                break;
+            case OpCode::RUNTIME_CALL_WITH_ARGV:
+                HandleRuntimeCallWithArgv(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::RUNTIME_CALL_WITH_ARGV);
+                break;
+            case OpCode::NOGC_RUNTIME_CALL:
+                HandleCall(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::NOGC_RUNTIME_CALL);
+                break;
+            case OpCode::CALL_OPTIMIZED:
+                HandleCall(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::CALL_OPTIMIZED);
+                break;
+            case OpCode::FAST_CALL_OPTIMIZED:
+                HandleCall(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FAST_CALL_OPTIMIZED);
+                break;
+            case OpCode::CALL:
+                HandleCall(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::CALL);
+                break;
+            case OpCode::BASELINE_CALL:
+                HandleCall(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::BASELINE_CALL);
+                break;
+            case OpCode::BUILTINS_CALL:
+                HandleCall(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::BUILTINS_CALL);
+                break;
+            case OpCode::BUILTINS_CALL_WITH_ARGV:
+                HandleCall(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::BUILTINS_CALL_WITH_ARGV);
+                break;
+            case OpCode::ARG:
+                HandleParameter(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ARG);
+                break;
+            case OpCode::CONSTANT:
+                HandleConstant(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::CONSTANT);
+                break;
+            case OpCode::ZEXT:
+                HandleZExtInt(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ZEXT);
+                break;
+            case OpCode::SEXT:
+                HandleSExtInt(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::SEXT);
+                break;
+            case OpCode::TRUNC:
+                HandleCastIntXToIntY(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::TRUNC);
+                break;
+            case OpCode::FEXT:
+                HandleFPExt(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FEXT);
+                break;
+            case OpCode::FTRUNC:
+                HandleFPTrunc(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FTRUNC);
+                break;
+            case OpCode::REV:
+                HandleIntRev(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::REV);
+                break;
+            case OpCode::ADD:
+                HandleAdd(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ADD);
+                break;
+            case OpCode::SUB:
+                HandleSub(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::SUB);
+                break;
+            case OpCode::MUL:
+                HandleMul(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::MUL);
+                break;
+            case OpCode::FDIV:
+                HandleFloatDiv(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FDIV);
+                break;
+            case OpCode::SDIV:
+                HandleIntDiv(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::SDIV);
+                break;
+            case OpCode::UDIV:
+                HandleUDiv(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::UDIV);
+                break;
+            case OpCode::AND:
+                HandleIntAnd(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::AND);
+                break;
+            case OpCode::OR:
+                HandleIntOr(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::OR);
+                break;
+            case OpCode::XOR:
+                HandleIntXor(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::XOR);
+                break;
+            case OpCode::LSR:
+                HandleIntLsr(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::LSR);
+                break;
+            case OpCode::ASR:
+                HandleIntAsr(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ASR);
+                break;
+            case OpCode::ICMP:
+                HandleCmp(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ICMP);
+                break;
+            case OpCode::FCMP:
+                HandleCmp(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FCMP);
+                break;
+            case OpCode::LOAD:
+                HandleLoad(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::LOAD);
+                break;
+            case OpCode::STORE_WITHOUT_BARRIER:
+                HandleStore(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::STORE_WITHOUT_BARRIER);
+                break;
+            case OpCode::SIGNED_INT_TO_FLOAT:
+                HandleChangeInt32ToDouble(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::SIGNED_INT_TO_FLOAT);
+                break;
+            case OpCode::UNSIGNED_INT_TO_FLOAT:
+                HandleChangeUInt32ToDouble(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::UNSIGNED_INT_TO_FLOAT);
+                break;
+            case OpCode::FLOAT_TO_SIGNED_INT:
+                HandleChangeDoubleToInt32(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FLOAT_TO_SIGNED_INT);
+                break;
+            case OpCode::TAGGED_TO_INT64:
+                HandleChangeTaggedPointerToInt64(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::TAGGED_TO_INT64);
+                break;
+            case OpCode::INT64_TO_TAGGED:
+                HandleChangeInt64ToTagged(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::INT64_TO_TAGGED);
+                break;
+            case OpCode::BITCAST:
+                HandleBitCast(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::BITCAST);
+                break;
+            case OpCode::LSL:
+                HandleIntLsl(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::LSL);
+                break;
+            case OpCode::SMOD:
+                HandleMod(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::SMOD);
+                break;
+            case OpCode::FMOD:
+                HandleMod(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FMOD);
+                break;
+            case OpCode::DEOPT_CHECK:
+                HandleDeoptCheck(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::DEOPT_CHECK);
+                break;
+            case OpCode::TRUNC_FLOAT_TO_INT64:
+                HandleTruncFloatToInt(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::TRUNC_FLOAT_TO_INT64);
+                break;
+            case OpCode::TRUNC_FLOAT_TO_INT32:
+                HandleTruncFloatToInt(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::TRUNC_FLOAT_TO_INT32);
+                break;
+            case OpCode::ADD_WITH_OVERFLOW:
+                HandleAddWithOverflow(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ADD_WITH_OVERFLOW);
+                break;
+            case OpCode::SUB_WITH_OVERFLOW:
+                HandleSubWithOverflow(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::SUB_WITH_OVERFLOW);
+                break;
+            case OpCode::MUL_WITH_OVERFLOW:
+                HandleMulWithOverflow(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::MUL_WITH_OVERFLOW);
+                break;
+            case OpCode::EXP:
+                HandleExp(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::EXP);
+                break;
+            case OpCode::ABS:
+                HandleAbs(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::ABS);
+                break;
+            case OpCode::MIN:
+                HandleMin(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::MIN);
+                break;
+            case OpCode::MAX:
+                HandleMax(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::MAX);
+                break;
+            case OpCode::CLZ32:
+                HandleClz32(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::CLZ32);
+                break;
+            case OpCode::DOUBLE_TRUNC:
+                HandleDoubleTrunc(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::DOUBLE_TRUNC);
+                break;
+            case OpCode::CEIL:
+                HandleCeil(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::CEIL);
+                break;
+            case OpCode::FLOOR:
+                HandleFloor(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FLOOR);
+                break;
+            case OpCode::EXTRACT_VALUE:
+                HandleExtractValue(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::EXTRACT_VALUE);
+                break;
+            case OpCode::SQRT:
+                HandleSqrt(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::SQRT);
+                break;
+            case OpCode::READSP:
+                HandleReadSp(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::READSP);
+                break;
+            case OpCode::FINISH_ALLOCATE:
+                HandleFinishAllocate(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::FINISH_ALLOCATE);
+                break;
+            case OpCode::INITVREG:
+                HandleInitVreg(gate);
+                InsertUsedOpcodeSet(usedOpcodeSet, OpCode::INITVREG);
+                break;
+            default:
+                if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
+                    LOG_COMPILER(FATAL) << "can't process opcode: " << acc_.GetOpCode(gate) << std::endl;
+                }
+        }
+    }
+}
 void LiteCGIRBuilder::Build()
 {
     BuildInstID2BBIDMap();
@@ -248,19 +557,7 @@ void LiteCGIRBuilder::Build()
     std::unordered_set<OpCode> usedOpcodeSet;
     for (size_t bbIdx = 0; bbIdx < scheduledGates_->size(); bbIdx++) {
         const std::vector<GateRef> &bb = scheduledGates_->at(bbIdx);
-
-        for (size_t instIdx = bb.size(); instIdx > 0; instIdx--) {
-            GateRef gate = bb[instIdx - 1];
-            auto found = opHandlers_.find(acc_.GetOpCode(gate));
-            if (found != opHandlers_.end()) {
-                (this->*(found->second))(gate);
-                InsertUsedOpcodeSet(usedOpcodeSet, found->first);
-                continue;
-            }
-            if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
-                LOG_COMPILER(FATAL) << "can't process opcode: " << acc_.GetOpCode(gate) << std::endl;
-            }
-        }
+        HandleBB(bb, usedOpcodeSet);
     }
 
     if (enableLog_) {
@@ -535,82 +832,6 @@ Expr LiteCGIRBuilder::GetExprFromGate(GateRef gate)
 
 void LiteCGIRBuilder::InitializeHandlers()
 {
-    opHandlers_ = {
-        {OpCode::STATE_ENTRY, &LiteCGIRBuilder::HandleGoto},
-        {OpCode::RETURN, &LiteCGIRBuilder::HandleReturn},
-        {OpCode::RETURN_VOID, &LiteCGIRBuilder::HandleReturnVoid},
-        {OpCode::IF_BRANCH, &LiteCGIRBuilder::HandleBranch},
-        {OpCode::ORDINARY_BLOCK, &LiteCGIRBuilder::HandleGoto},
-        {OpCode::IF_TRUE, &LiteCGIRBuilder::HandleGoto},
-        {OpCode::IF_FALSE, &LiteCGIRBuilder::HandleGoto},
-        {OpCode::SWITCH_BRANCH, &LiteCGIRBuilder::HandleSwitch},
-        {OpCode::SWITCH_CASE, &LiteCGIRBuilder::HandleGoto},
-        {OpCode::MERGE, &LiteCGIRBuilder::HandleGoto},
-        {OpCode::DEFAULT_CASE, &LiteCGIRBuilder::HandleGoto},
-        {OpCode::LOOP_BEGIN, &LiteCGIRBuilder::HandleGoto},
-        {OpCode::LOOP_BACK, &LiteCGIRBuilder::HandleGoto},
-        {OpCode::VALUE_SELECTOR, &LiteCGIRBuilder::HandlePhi},
-        {OpCode::RUNTIME_CALL, &LiteCGIRBuilder::HandleRuntimeCall},
-        {OpCode::RUNTIME_CALL_WITH_ARGV, &LiteCGIRBuilder::HandleRuntimeCallWithArgv},
-        {OpCode::NOGC_RUNTIME_CALL, &LiteCGIRBuilder::HandleCall},
-        {OpCode::CALL_OPTIMIZED, &LiteCGIRBuilder::HandleCall},
-        {OpCode::FAST_CALL_OPTIMIZED, &LiteCGIRBuilder::HandleCall},
-        {OpCode::CALL, &LiteCGIRBuilder::HandleCall},
-        {OpCode::BASELINE_CALL, &LiteCGIRBuilder::HandleCall},
-        {OpCode::BUILTINS_CALL, &LiteCGIRBuilder::HandleCall},
-        {OpCode::BUILTINS_CALL_WITH_ARGV, &LiteCGIRBuilder::HandleCall},
-        {OpCode::ARG, &LiteCGIRBuilder::HandleParameter},
-        {OpCode::CONSTANT, &LiteCGIRBuilder::HandleConstant},
-        {OpCode::ZEXT, &LiteCGIRBuilder::HandleZExtInt},
-        {OpCode::SEXT, &LiteCGIRBuilder::HandleSExtInt},
-        {OpCode::TRUNC, &LiteCGIRBuilder::HandleCastIntXToIntY},
-        {OpCode::FEXT, &LiteCGIRBuilder::HandleFPExt},
-        {OpCode::FTRUNC, &LiteCGIRBuilder::HandleFPTrunc},
-        {OpCode::REV, &LiteCGIRBuilder::HandleIntRev},
-        {OpCode::ADD, &LiteCGIRBuilder::HandleAdd},
-        {OpCode::SUB, &LiteCGIRBuilder::HandleSub},
-        {OpCode::MUL, &LiteCGIRBuilder::HandleMul},
-        {OpCode::FDIV, &LiteCGIRBuilder::HandleFloatDiv},
-        {OpCode::SDIV, &LiteCGIRBuilder::HandleIntDiv},
-        {OpCode::UDIV, &LiteCGIRBuilder::HandleUDiv},
-        {OpCode::AND, &LiteCGIRBuilder::HandleIntAnd},
-        {OpCode::OR, &LiteCGIRBuilder::HandleIntOr},
-        {OpCode::XOR, &LiteCGIRBuilder::HandleIntXor},
-        {OpCode::LSR, &LiteCGIRBuilder::HandleIntLsr},
-        {OpCode::ASR, &LiteCGIRBuilder::HandleIntAsr},
-        {OpCode::ICMP, &LiteCGIRBuilder::HandleCmp},
-        {OpCode::FCMP, &LiteCGIRBuilder::HandleCmp},
-        {OpCode::LOAD, &LiteCGIRBuilder::HandleLoad},
-        {OpCode::STORE_WITHOUT_BARRIER, &LiteCGIRBuilder::HandleStore},
-        {OpCode::SIGNED_INT_TO_FLOAT, &LiteCGIRBuilder::HandleChangeInt32ToDouble},
-        {OpCode::UNSIGNED_INT_TO_FLOAT, &LiteCGIRBuilder::HandleChangeUInt32ToDouble},
-        {OpCode::FLOAT_TO_SIGNED_INT, &LiteCGIRBuilder::HandleChangeDoubleToInt32},
-        {OpCode::TAGGED_TO_INT64, &LiteCGIRBuilder::HandleChangeTaggedPointerToInt64},
-        {OpCode::INT64_TO_TAGGED, &LiteCGIRBuilder::HandleChangeInt64ToTagged},
-        {OpCode::BITCAST, &LiteCGIRBuilder::HandleBitCast},
-        {OpCode::LSL, &LiteCGIRBuilder::HandleIntLsl},
-        {OpCode::SMOD, &LiteCGIRBuilder::HandleMod},
-        {OpCode::FMOD, &LiteCGIRBuilder::HandleMod},
-        {OpCode::DEOPT_CHECK, &LiteCGIRBuilder::HandleDeoptCheck},
-        {OpCode::TRUNC_FLOAT_TO_INT64, &LiteCGIRBuilder::HandleTruncFloatToInt},
-        {OpCode::TRUNC_FLOAT_TO_INT32, &LiteCGIRBuilder::HandleTruncFloatToInt},
-        {OpCode::ADD_WITH_OVERFLOW, &LiteCGIRBuilder::HandleAddWithOverflow},
-        {OpCode::SUB_WITH_OVERFLOW, &LiteCGIRBuilder::HandleSubWithOverflow},
-        {OpCode::MUL_WITH_OVERFLOW, &LiteCGIRBuilder::HandleMulWithOverflow},
-        {OpCode::EXP, &LiteCGIRBuilder::HandleExp},
-        {OpCode::ABS, &LiteCGIRBuilder::HandleAbs},
-        {OpCode::MIN, &LiteCGIRBuilder::HandleMin},
-        {OpCode::MAX, &LiteCGIRBuilder::HandleMax},
-        {OpCode::CLZ32, &LiteCGIRBuilder::HandleClz32},
-        {OpCode::DOUBLE_TRUNC, &LiteCGIRBuilder::HandleDoubleTrunc},
-        {OpCode::CEIL, &LiteCGIRBuilder::HandleCeil},
-        {OpCode::FLOOR, &LiteCGIRBuilder::HandleFloor},
-        {OpCode::EXTRACT_VALUE, &LiteCGIRBuilder::HandleExtractValue},
-        {OpCode::SQRT, &LiteCGIRBuilder::HandleSqrt},
-        {OpCode::READSP, &LiteCGIRBuilder::HandleReadSp},
-        {OpCode::FINISH_ALLOCATE, &LiteCGIRBuilder::HandleFinishAllocate},
-        {OpCode::INITVREG, &LiteCGIRBuilder::HandleInitVreg},
-    };
     illegalOpHandlers_ = {OpCode::NOP,
                           OpCode::CIRCUIT_ROOT,
                           OpCode::DEPEND_ENTRY,

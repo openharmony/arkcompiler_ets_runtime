@@ -83,6 +83,7 @@ public:
     bool ParseSpecialReg(PregIdx &pRegIdx);
     bool ParsePseudoReg(PrimType primType, PregIdx &pRegIdx);
     bool ParseStmtBlock(BlockNodePtr &blk);
+    bool ParseStmtBlockSwitch(BlockNodePtr &blk, TokenKind stmtTk, uint32 mplNum);
     bool ParseStorageClass(MIRSymbol &symbol) const;
     bool ParseDeclareVarInitValue(MIRSymbol &symbol);
     bool ParseDeclareReg(MIRSymbol &symbol, const MIRFunction &func);
@@ -125,9 +126,6 @@ public:
 
 private:
     // func ptr map for ParseMIR()
-    using FuncPtrParseMIRForElem = bool (MIRParser::*)();
-    static std::map<TokenKind, FuncPtrParseMIRForElem> funcPtrMapForParseMIR;
-    static std::map<TokenKind, FuncPtrParseMIRForElem> InitFuncPtrMapForParseMIR();
 
     bool TypeCompatible(TyIdx typeIdx1, TyIdx typeIdx2);
     bool IsTypeIncomplete(MIRType *type);
@@ -150,9 +148,6 @@ private:
     bool ParseMIRForAsmdecl();
 
     // func and param for ParseStmtBlock
-    using FuncPtrParseStmtBlock = bool (MIRParser::*)();
-    static std::map<TokenKind, FuncPtrParseStmtBlock> funcPtrMapForParseStmtBlock;
-    static std::map<TokenKind, FuncPtrParseStmtBlock> InitFuncPtrMapForParseStmtBlock();
     void ParseStmtBlockForSeenComment(BlockNodePtr blk, uint32 mplNum);
     bool ParseStmtBlockForVar(TokenKind stmtTK);
     bool ParseStmtBlockForVar();
