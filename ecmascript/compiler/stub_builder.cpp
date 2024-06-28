@@ -5881,14 +5881,14 @@ GateRef StubBuilder::FastToBooleanBaseline(GateRef value, bool flag)
         Branch(TaggedIsNumber(value), &isNumber, &notNumber);
         Bind(&notNumber);
         {
-            Branch(TaggedIsString(value), &isString, &notString);
+            Branch(IsString(value), &isString, &notString);
             Bind(&isString);
             {
                 auto len = GetLengthFromString(value);
                 Branch(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
             }
             Bind(&notString);
-            Branch(env_->GetBuilder()->TaggedIsBigInt(value), &isBigint, &returnTrue);
+            Branch(TaggedObjectIsBigInt(value), &isBigint, &returnTrue);
             Bind(&isBigint);
             {
                 auto len = Load(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));
@@ -6120,14 +6120,14 @@ GateRef StubBuilder::FastToBooleanWithProfileBaseline(GateRef value, ProfileOper
         Branch(TaggedIsNumber(value), &isNumber, &notNumber);
         Bind(&notNumber);
         {
-            Branch(TaggedIsString(value), &isString, &notString);
+            Branch(IsString(value), &isString, &notString);
             Bind(&isString);
             {
                 auto len = GetLengthFromString(value);
                 Branch(Int32Equal(len, Int32(0)), &returnFalse, &returnTrue);
             }
             Bind(&notString);
-            Branch(env_->GetBuilder()->TaggedIsBigInt(value), &isBigint, &returnTrue);
+            Branch(TaggedObjectIsBigInt(value), &isBigint, &returnTrue);
             Bind(&isBigint);
             {
                 auto len = Load(VariableType::INT32(), value, IntPtr(BigInt::LENGTH_OFFSET));

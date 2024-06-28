@@ -6394,6 +6394,7 @@ void BaselineUpdateHotnessStubBuilder::GenerateCircuit()
     GateRef method = GetMethodFromFunction(func);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(method);
     GateRef profileTypeInfo = GetProfileTypeInfoFromFunction(func);
+    GateRef acc = GetAccFromFrame(frame);
 
     auto env = GetEnvironment();
     DEFVARIABLE(varProfileTypeInfo, VariableType::JS_ANY(), profileTypeInfo);
@@ -6421,7 +6422,8 @@ void BaselineUpdateHotnessStubBuilder::GenerateCircuit()
         BRANCH(HasPendingException(glue), &handleException, &noException);
         Bind(&handleException);
         {
-            Jump(&exitLabel);
+            DISPATCH_LAST();
+            Return();
         }
         Bind(&noException);
         {
