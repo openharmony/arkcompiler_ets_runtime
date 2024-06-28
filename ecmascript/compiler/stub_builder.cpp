@@ -268,46 +268,43 @@ GateRef StubBuilder::FindElementWithCache(GateRef glue, GateRef layoutInfo, Gate
     auto env = GetEnvironment();
     Label subEntry(env);
     env->SubCfgEntry(&subEntry);
-    DEFVARIABLE(result, VariableType::INT32(), Int32(-1));
-    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
     Label exit(env);
     Label notExceedUpper(env);
     Label exceedUpper(env);
     // 9 : Builtins Object properties number is nine
-    BRANCH(Int32LessThanOrEqual(propsNum, Int32(9)), &notExceedUpper, &exceedUpper);
+    constexpr int32_t maxPropsNum = 9;
+    BRANCH(Int32LessThanOrEqual(propsNum, Int32(maxPropsNum)), &notExceedUpper, &exceedUpper);
     Bind(&notExceedUpper);
     {
-        Label loopHead(env);
-        Label loopEnd(env);
-        Label afterLoop(env);
-        Jump(&loopHead);
-        LoopBegin(&loopHead);
-        {
-            Label propsNumIsZero(env);
-            Label propsNumNotZero(env);
-            BRANCH(Int32Equal(propsNum, Int32(0)), &propsNumIsZero, &propsNumNotZero);
-            Bind(&propsNumIsZero);
-            Jump(&afterLoop);
-            Bind(&propsNumNotZero);
-            GateRef elementAddr = GetPropertiesAddrFromLayoutInfo(layoutInfo);
-            GateRef keyInProperty = Load(VariableType::JS_ANY(), elementAddr,
-                                         PtrMul(ZExtInt32ToPtr(*i), IntPtr(sizeof(panda::ecmascript::Properties))));
-            Label equal(env);
-            Label notEqual(env);
-            Label afterEqualCon(env);
-            BRANCH(Equal(keyInProperty, key), &equal, &notEqual);
-            Bind(&equal);
-            result = *i;
-            Jump(&exit);
-            Bind(&notEqual);
-            Jump(&afterEqualCon);
-            Bind(&afterEqualCon);
-            i = Int32Add(*i, Int32(1));
-            BRANCH(Int32UnsignedLessThan(*i, propsNum), &loopEnd, &afterLoop);
-            Bind(&loopEnd);
-            LoopEnd(&loopHead, env, glue);
+        Label labels[maxPropsNum] = {Label(env), Label(env), Label(env), Label(env), Label(env), Label(env), Label(env),
+                                     Label(env), Label(env)};
+        Label notFount(env);
+        GateRef elementAddr = GetPropertiesAddrFromLayoutInfo(layoutInfo);
+        Jump(&labels[0]);
+        for (int32_t idx = 0; idx < maxPropsNum; idx++) {
+            bool isLast = (idx == maxPropsNum - 1);
+            Label check(env);
+            Bind(&labels[idx]);
+            {
+                BRANCH_LIKELY(Int32LessThan(Int32(idx), propsNum), &check, &notFount);
+                // Not real "likely", just to make the code layout of labels and check block tightly.
+            }
+            Bind(&check);
+            {
+                result = Int32(idx);
+                GateRef keyInProperty = Load(VariableType::JS_ANY(), elementAddr,
+                                             PtrMul(ZExtInt32ToPtr(Int32(idx)),
+                                                    IntPtr(sizeof(panda::ecmascript::Properties))));
+                if (!isLast) {
+                    BRANCH_UNLIKELY(Equal(keyInProperty, key), &exit, &labels[idx + 1]);
+                    // Not real "unlikely", just to make the code layout of labels and check block tightly.
+                } else {
+                    BRANCH(Equal(keyInProperty, key), &exit, &notFount);
+                }
+            }
         }
-        Bind(&afterLoop);
+        Bind(&notFount);
         result = Int32(-1);
         Jump(&exit);
     }
