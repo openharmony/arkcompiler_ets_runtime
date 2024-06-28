@@ -45,6 +45,12 @@ bool IsFastJitFunctionFrame(const FrameType frameType)
     return frameType == FrameType::FASTJIT_FUNCTION_FRAME || frameType == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
 }
 
+bool IsFastJitFunctionFrame(uintptr_t frameType)
+{
+    return static_cast<FrameType>(frameType) == FrameType::FASTJIT_FUNCTION_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
+}
+
 std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
 {
     std::string data;
@@ -469,16 +475,37 @@ bool ArkFrameCheck(uintptr_t frameType)
            static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_ENTRY_FRAME;
 }
 
-bool IsFunctionFrame(uintptr_t frameType)
+bool IsJsFunctionFrame(uintptr_t frameType)
 {
     return static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_FRAME ||
            static_cast<FrameType>(frameType) == FrameType::INTERPRETER_CONSTRUCTOR_FRAME ||
            static_cast<FrameType>(frameType) == FrameType::INTERPRETER_FRAME ||
-           static_cast<FrameType>(frameType) == FrameType::INTERPRETER_FAST_NEW_FRAME ||
-           static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::INTERPRETER_FAST_NEW_FRAME;
+}
+
+bool IsNativeFunctionFrame(uintptr_t frameType)
+{
+    return static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::BASELINE_BUILTIN_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::ASM_BRIDGE_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME ||
            static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME ||
-           static_cast<FrameType>(frameType) == FrameType::FASTJIT_FUNCTION_FRAME ||
-           static_cast<FrameType>(frameType) == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
+           static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::LEAVE_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::LEAVE_FRAME_WITH_ARGV ||
+           static_cast<FrameType>(frameType) == FrameType::BUILTIN_CALL_LEAVE_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::BUILTIN_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::BUILTIN_ENTRY_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::BUILTIN_FRAME_WITH_ARGV ||
+           static_cast<FrameType>(frameType) == FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::ASM_INTERPRETER_BRIDGE_FRAME;
+}
+
+bool IsAotFunctionFrame(uintptr_t frameType)
+{
+    return static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+           static_cast<FrameType>(frameType) == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME;
 }
 
 std::optional<MethodInfo> JSStackTrace::ReadMethodInfo(panda_file::MethodDataAccessor &mda)
@@ -524,8 +551,11 @@ CVector<MethodInfo> JSStackTrace::ReadAllMethodInfos(std::shared_ptr<JSPandaFile
 
 std::optional<CodeInfo> JSStackTrace::TranslateByteCodePc(uintptr_t realPc, const CVector<MethodInfo> &vec)
 {
+    if (vec.size() == 0) {
+        LOG_ECMA(ERROR) << "Translate bytecode pc failed, vec is empty.";
+        return std::nullopt;
+    }
     int32_t left = 0;
-    ASSERT(vec.size() > 0);
     int32_t right = static_cast<int32_t>(vec.size()) - 1;
     for (; left <= right;) {
         int32_t mid = (left + right) / 2;
@@ -540,6 +570,7 @@ std::optional<CodeInfo> JSStackTrace::TranslateByteCodePc(uintptr_t realPc, cons
             right = mid -1;
         }
     }
+    LOG_ECMA(ERROR) << "Translate bytecode pc failed, pc: " << std::hex << realPc;
     return std::nullopt;
 }
 
@@ -555,7 +586,7 @@ void SaveFuncName(EntityId entityId, const std::string &name)
 
 template<typename T>
 void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtractor,
-                      EntityId methodId, uintptr_t offset, T &jsFrame, SourceMap *sourceMap = nullptr)
+                      EntityId methodId, uintptr_t offset, T &jsFrame, SourceMap *sourceMap)
 {
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "Parse jsFrame info failed, jsPandaFile is nullptr.";
@@ -661,6 +692,7 @@ uintptr_t GetBytecodeOffset(void *ctx, ReadMemFunc readMem, uintptr_t frameType,
     uintptr_t bytecodePc = 0;
     FrameType type = static_cast<FrameType>(frameType);
     switch (type) {
+        // return bytecode pc
         case FrameType::ASM_INTERPRETER_FRAME:
         case FrameType::INTERPRETER_CONSTRUCTOR_FRAME: {
             currentPtr -= AsmInterpretedFrame::GetTypeOffset();
@@ -675,17 +707,80 @@ uintptr_t GetBytecodeOffset(void *ctx, ReadMemFunc readMem, uintptr_t frameType,
             readMem(ctx, currentPtr, &bytecodePc);
             return bytecodePc;
         }
-        // aot get native pc
+        case FrameType::FASTJIT_FUNCTION_FRAME:
+        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
+            currentPtr -= FASTJITFunctionFrame::GetTypeOffset();
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        // return returnaddr
         case FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME:
-        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME: {
+        case FrameType::OPTIMIZED_JS_FUNCTION_FRAME:
+        case FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME: {
             currentPtr -= OptimizedJSFunctionFrame::GetTypeOffset();
             currentPtr += OptimizedJSFunctionFrame::GetReturnAddrOffset();
             readMem(ctx, currentPtr, &bytecodePc);
             return bytecodePc;
         }
-        case FrameType::FASTJIT_FUNCTION_FRAME:
-        case FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME: {
-            currentPtr -= FASTJITFunctionFrame::GetTypeOffset();
+        case FrameType::BUILTIN_FRAME:
+        case FrameType::BUILTIN_ENTRY_FRAME: {
+            currentPtr -= BuiltinFrame::GetTypeOffset();
+            currentPtr += BuiltinFrame::GetReturnAddrOffset();
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::BUILTIN_FRAME_WITH_ARGV:
+        case FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME: {
+            currentPtr -= BuiltinWithArgvFrame::GetTypeOffset();
+            currentPtr += BuiltinWithArgvFrame::GetReturnAddrOffset();
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::BASELINE_BUILTIN_FRAME: {
+            currentPtr -= BaselineBuiltinFrame::GetTypeOffset();
+            currentPtr += BaselineBuiltinFrame::GetReturnAddrOffset();
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::ASM_BRIDGE_FRAME: {
+            currentPtr -= AsmBridgeFrame::GetTypeOffset();
+            currentPtr += AsmBridgeFrame::GetReturnAddrOffset();
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::LEAVE_FRAME: {
+            currentPtr -= OptimizedLeaveFrame::GetTypeOffset();
+            currentPtr += OptimizedLeaveFrame::GetReturnAddrOffset();
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::LEAVE_FRAME_WITH_ARGV: {
+            currentPtr -= OptimizedWithArgvLeaveFrame::GetTypeOffset();
+            currentPtr += OptimizedWithArgvLeaveFrame::GetReturnAddrOffset();
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::BUILTIN_CALL_LEAVE_FRAME: {
+            currentPtr -= OptimizedBuiltinLeaveFrame::GetTypeOffset();
+            currentPtr += OptimizedBuiltinLeaveFrame::GetReturnAddrOffset();
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::OPTIMIZED_FRAME: {
+            currentPtr -= OptimizedFrame::GetTypeOffset();
+            currentPtr += OptimizedFrame::GetReturnAddrOffset();
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::ASM_INTERPRETER_BRIDGE_FRAME: {
+            currentPtr -= AsmInterpretedBridgeFrame::GetTypeOffset();
+            currentPtr += AsmInterpretedBridgeFrame::GetReturnAddrOffset(false);
+            readMem(ctx, currentPtr, &bytecodePc);
+            return bytecodePc;
+        }
+        case FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME: {
+            currentPtr -= OptimizedJSFunctionUnfoldArgVFrame::GetTypeOffset();
+            currentPtr += OptimizedJSFunctionUnfoldArgVFrame::GetReturnAddrOffset();
             readMem(ctx, currentPtr, &bytecodePc);
             return bytecodePc;
         }
@@ -824,12 +919,15 @@ bool ArkGetNextFrame(void *ctx, ReadMemFunc readMem, uintptr_t &currentPtr,
         return true;
     }
     bool ret = false;
-    if (IsFunctionFrame(frameType)) {
+    if (IsJsFunctionFrame(frameType)) {
         pc = GetBytecodeOffset(ctx, readMem, frameType, currentPtr);
         ret = true;
         if (methodId != nullptr) {
             ret = ArkGetMethodId(ctx, readMem, frameType, currentPtr, *methodId);
         }
+    } else if (IsNativeFunctionFrame(frameType)) {
+        pc = GetBytecodeOffset(ctx, readMem, frameType, currentPtr);
+        ret = true;
     }
 
     uintptr_t typeOffset = 0;
@@ -868,7 +966,7 @@ bool ArkGetMethodIdWithJit(ArkUnwindParam *arkUnwindParam, uintptr_t frameType, 
         return false;
     }
 
-    if (IsFastJitFunctionFrame(static_cast<FrameType>(frameType))) {
+    if (IsFastJitFunctionFrame(frameType)) {
         uintptr_t machineCode = 0;
         uintptr_t functionAddr = function + JSFunction::MACHINECODE_OFFSET;
         arkUnwindParam->readMem(arkUnwindParam->ctx, functionAddr, &machineCode);
@@ -904,12 +1002,16 @@ bool ArkGetNextFrameWithJit(ArkUnwindParam *arkUnwindParam, uintptr_t &currentPt
         return true;
     }
     bool ret = false;
-    if (IsFunctionFrame(frameType)) {
+    if (IsJsFunctionFrame(frameType) ||
+        IsFastJitFunctionFrame(frameType)) {
         *arkUnwindParam->pc = GetBytecodeOffset(arkUnwindParam->ctx, arkUnwindParam->readMem, frameType, currentPtr);
         ret = true;
         if (arkUnwindParam->methodId != nullptr) {
             ret = ArkGetMethodIdWithJit(arkUnwindParam, frameType, currentPtr);
         }
+    } else if (IsNativeFunctionFrame(frameType)) {
+        *arkUnwindParam->pc = GetBytecodeOffset(arkUnwindParam->ctx, arkUnwindParam->readMem, frameType, currentPtr);
+        ret = true;
     }
 
     uintptr_t typeOffset = 0;
@@ -977,7 +1079,9 @@ bool StepArkWithRecordJit(ArkUnwindParam *arkUnwindParam)
         } else {
             *arkUnwindParam->fp = currentPtr;
             *arkUnwindParam->sp = currentPtr;
-            *arkUnwindParam->isJsFrame = true;
+            // js && jit -> true, native -> false
+            *arkUnwindParam->isJsFrame = IsJsFunctionFrame(frameType) ||
+                IsFastJitFunctionFrame(frameType);
         }
     } else {
         LOG_ECMA(ERROR) << "ArkGetNextFrame failed, currentPtr: " << currentPtr << ", frameType: " << frameType;
@@ -1009,7 +1113,8 @@ bool StepArk(void *ctx, ReadMemFunc readMem, uintptr_t *fp, uintptr_t *sp,
         } else {
             *fp = currentPtr;
             *sp = currentPtr;
-            *isJsFrame = true;
+            // js -> true, native -> false
+            *isJsFrame = IsJsFunctionFrame(frameType);
         }
     } else {
         LOG_ECMA(ERROR) << std::hex << "ArkGetNextFrame failed, addr: " << currentPtr;
@@ -1453,7 +1558,7 @@ bool GetArkNativeFrameInfo([[maybe_unused]] int pid, [[maybe_unused]] uintptr_t 
         if (!ReadUintptrFromAddr(pid, currentPtr, frameType, g_needCheck)) {
             return false;
         }
-        if (g_needCheck && IsFunctionFrame(frameType)) {
+        if (g_needCheck && (IsJsFunctionFrame(frameType) || IsAotFunctionFrame(frameType))) {
             ArkGetJsFrameDebugInfo(pid, currentPtr, frameType, JsFrameDebugInfos);
         } else if (ArkFrameCheck(frameType)) {
             currentPtr += sizeof(FrameType);

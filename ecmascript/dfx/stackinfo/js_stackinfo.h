@@ -28,6 +28,16 @@
 
 namespace panda::ecmascript {
 typedef bool (*ReadMemFunc)(void *ctx, uintptr_t addr, uintptr_t *val);
+bool ArkFrameCheck(uintptr_t frameType);
+bool IsJsFunctionFrame(uintptr_t frameType);
+bool IsNativeFunctionFrame(uintptr_t frameType);
+bool IsAotFunctionFrame(uintptr_t frameType);
+bool IsFastJitFunctionFrame(uintptr_t frameType);
+bool IsFastJitFunctionFrame(const FrameType frameType);
+template<typename T>
+void ParseJsFrameInfo(JSPandaFile *jsPandaFile, DebugInfoExtractor *debugExtractor,
+    EntityId methodId, uintptr_t offset, T &jsFrame, SourceMap *sourceMap = nullptr);
+
 
 static constexpr uint16_t URL_MAX = 1024;
 static constexpr uint16_t FUNCTIONNAME_MAX = 1024;

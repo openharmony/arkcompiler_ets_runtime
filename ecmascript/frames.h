@@ -197,6 +197,11 @@ public:
         return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
 
+    static size_t GetReturnAddrOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
+    }
+
     static size_t ComputeReservedSize(size_t slotSize)
     {
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::TypeIndex);
@@ -270,6 +275,11 @@ public:
         return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
 
+    static size_t GetReturnAddrOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
+    }
+
     static size_t ComputeReservedSize(size_t slotSize)
     {
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::TypeIndex);
@@ -325,6 +335,11 @@ public:
     static size_t GetPrevOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
+    }
+
+    static size_t GetReturnAddrOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
     }
 
     uintptr_t GetCallSiteSp() const
@@ -392,6 +407,11 @@ public:
     static size_t GetPrevOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
+    }
+
+    static size_t GetReturnAddrOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
     }
 
     FrameType GetType() const
@@ -1342,6 +1362,11 @@ struct OptimizedLeaveFrame {
         return MEMBER_OFFSET(OptimizedLeaveFrame, callsiteFp);
     }
 
+    static size_t GetReturnAddrOffset()
+    {
+        return MEMBER_OFFSET(OptimizedLeaveFrame, returnAddr);
+    }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 };
 
@@ -1396,6 +1421,11 @@ struct OptimizedWithArgvLeaveFrame {
     static size_t GetPrevOffset()
     {
         return MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, callsiteFp);
+    }
+
+    static size_t GetReturnAddrOffset()
+    {
+        return MEMBER_OFFSET(OptimizedWithArgvLeaveFrame, returnAddr);
     }
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
@@ -1456,6 +1486,11 @@ public:
     static size_t GetPrevOffset()
     {
         return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, callsiteFp);
+    }
+
+    static size_t GetReturnAddrOffset()
+    {
+        return MEMBER_OFFSET(OptimizedBuiltinLeaveFrame, returnAddr);
     }
 
     static size_t GetFunctionOffset()
@@ -1593,6 +1628,11 @@ struct BuiltinFrame : public base::AlignedStruct<base::AlignedPointer::Size(),
         return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
     }
 
+    static size_t GetReturnAddrOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
+    }
+
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
 
     alignas(EAS) FrameType type;
@@ -1687,6 +1727,11 @@ struct BuiltinWithArgvFrame : public base::AlignedStruct<base::AlignedPointer::S
     static size_t GetPrevOffset(bool isArch32 = false)
     {
         return GetOffset<static_cast<size_t>(Index::PrevFpIndex)>(isArch32);
+    }
+
+    static size_t GetReturnAddrOffset(bool isArch32 = false)
+    {
+        return GetOffset<static_cast<size_t>(Index::ReturnAddrIndex)>(isArch32);
     }
 
     void GCIterate(const FrameIterator &it, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor) const;
