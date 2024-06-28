@@ -135,7 +135,12 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_001)
     stream.Clear();
     EXPECT_TRUE(!stream.Good());
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true, false);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = true;
+    dumpOption.captureNumericValue = false;
+    heapProfile->DumpHeapSnapshot(&stream, dumpOption, &testProgress);
     HeapProfilerInterface::Destroy(instance);
 }
 
@@ -166,7 +171,12 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_002)
     stream.Clear();
     EXPECT_TRUE(!stream.Good());
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::BINARY, &stream, &testProgress, true, true, false);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = true;
+    dumpOption.captureNumericValue = false;
+    heapProfile->DumpHeapSnapshot(&stream, dumpOption, &testProgress);
     HeapProfilerInterface::Destroy(instance);
 }
 
@@ -197,7 +207,12 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_003)
     stream.Clear();
     EXPECT_TRUE(!stream.Good());
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::OTHER, &stream, &testProgress, true, true, false);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::OTHER;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = true;
+    dumpOption.captureNumericValue = false;
+    heapProfile->DumpHeapSnapshot(&stream, dumpOption, &testProgress);
     HeapProfilerInterface::Destroy(instance);
 }
 
@@ -228,8 +243,12 @@ HWTEST_F_L0(HeapTrackerTest, GenDumpFileName_004)
     stream.Clear();
     EXPECT_TRUE(!stream.Good());
     TestProgress testProgress;
-    DumpFormat dumFormat = static_cast<DumpFormat>(5);
-    heapProfile->DumpHeapSnapshot(dumFormat, &stream, &testProgress, true, true, false);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = static_cast<DumpFormat>(5); // 5 is exception.
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = true;
+    dumpOption.captureNumericValue = false;
+    heapProfile->DumpHeapSnapshot(&stream, dumpOption, &testProgress);
     HeapProfilerInterface::Destroy(instance);
 }
 

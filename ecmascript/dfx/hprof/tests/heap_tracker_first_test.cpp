@@ -248,7 +248,12 @@ HWTEST_F_L0(HeapTrackerTest, DumpHeapSnapshot)
 
     FileStream stream(fileName.c_str());
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true, false);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = true;
+    dumpOption.captureNumericValue = false;
+    heapProfile->DumpHeapSnapshot(&stream, dumpOption, &testProgress);
     HeapProfilerInterface::Destroy(instance);
 
     // Check
@@ -284,8 +289,11 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotBuildUp)
     bool traceAllocation = false;
     bool captureNumericValue = false;
     HeapProfiler heapProfiler(instance);
-    HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), isVmMode,
-                              isPrivate, captureNumericValue, traceAllocation,
+    DumpSnapShotOption dumpOption;
+    dumpOption.isVmMode = isVmMode;
+    dumpOption.isPrivate = isPrivate;
+    dumpOption.captureNumericValue = captureNumericValue;
+    HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), dumpOption, traceAllocation,
                               heapProfiler.GetEntryIdMap(), instance->GetChunk());
     EXPECT_TRUE(heapSnapshot.BuildUp());
 }
@@ -297,8 +305,11 @@ HWTEST_F_L0(HeapTrackerTest, HeapSnapshotUpdateNode)
     bool traceAllocation = false;
     bool captureNumericValue = false;
     HeapProfiler heapProfiler(instance);
-    HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), isVmMode,
-                              isPrivate, captureNumericValue, traceAllocation,
+    DumpSnapShotOption dumpOption;
+    dumpOption.isVmMode = isVmMode;
+    dumpOption.isPrivate = isPrivate;
+    dumpOption.captureNumericValue = captureNumericValue;
+    HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), dumpOption, traceAllocation,
                               heapProfiler.GetEntryIdMap(), instance->GetChunk());
     size_t beginNode = heapSnapshot.GetNodeCount();
     heapSnapshot.UpdateNodes();

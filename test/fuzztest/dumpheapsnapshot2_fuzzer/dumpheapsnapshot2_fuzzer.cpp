@@ -30,22 +30,24 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        int input = 0;
+        DumpFormat dumpFormat = DumpFormat::JSON;
         if (size <= 0) {
             return;
         }
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
         }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+        if (memcpy_s(&dumpFormat, MAXBYTELEN, data, size) != 0) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        bool isVmMode = true;
-        bool isPrivate = false;
-        bool captureNumericValue = false;
+        DumpSnapShotOption dumpOption;
+        dumpOption.dumpFormat = dumpFormat;
+        dumpOption.isVmMode = true;
+        dumpOption.isPrivate = false;
+        dumpOption.captureNumericValue = false;
         std::string path(data, data + size);
-        DFXJSNApi::DumpHeapSnapshot(vm, input, path, isVmMode, isPrivate, captureNumericValue);
+        DFXJSNApi::DumpHeapSnapshot(vm, path, dumpOption);
         JSNApi::DestroyJSVM(vm);
     }
 }

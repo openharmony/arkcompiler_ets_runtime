@@ -26,8 +26,17 @@ class TaggedObject;
 class Progress;
 class Stream;
 struct SamplingInfo;
-
 enum class DumpFormat { JSON, BINARY, OTHER };
+struct DumpSnapShotOption {
+    DumpFormat dumpFormat; // dumpformat like JSON BINARY and OTHER
+    bool isVmMode = true; // vmMode do more dump.
+    bool isPrivate = false;
+    bool captureNumericValue = false; // heapdump add numeric object.
+    bool isFullGC = true; // whether do FullGC.
+    bool isSimplify = false; // whether trim heapdump snapshot.
+    bool isSync = true; // OOM and Ide dump need sync dump.
+    bool isBeforeFill = true; // whether do fillmap on main thread.
+};
 
 class HeapProfilerInterface {
 public:
@@ -40,14 +49,10 @@ public:
     virtual size_t GetIdCount() = 0;
     virtual void AllocationEvent(TaggedObject *address, size_t size) = 0;
     virtual void MoveEvent(uintptr_t address, TaggedObject *forwardAddress, size_t size)= 0;
-    virtual bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
-                                  bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
-                                  bool isFullGC = true, bool isSimplify = false, bool isSync = true,
-                                  bool isBeforeFill = true) = 0;
+    virtual bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption,
+                                  Progress *progress = nullptr) = 0;
     // Provide an internal interface for oom dump.
-    virtual void DumpHeapSnapshot(DumpFormat dumpFormat, bool isVmMode = true, bool isPrivate = false,
-                                  bool captureNumericValue = false, bool isFullGC = true,
-                                  bool isSimplify = false, bool isSync = true) = 0;
+    virtual void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) = 0;
 
     virtual bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
                                    bool traceAllocation = false, bool newThread = true) = 0;
