@@ -13,6 +13,6 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_jit_test_action("ldobjbyname") {
+host_jit_test_action("string_length") {
   deps = []
 }

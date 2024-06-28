@@ -23,6 +23,7 @@ group("ark_jit_ts_test") {
     "construct_with_normal_function",
     "addition_assignment",
     "catch_with_osr",
+    "string_length",
     "ts_inline",
   ]
 

@@ -13,28 +13,19 @@
  * limitations under the License.
  */
 
-class Rectangle {
-    constructor(height, width) {
-        this.height = height;
-        this.width = width;
-  }
+function f(arg) {
+    let v = arg[0];
+    let c = v.charCodeAt(0);
+    return v.length > 0 ? c : ".";
 }
 
-function LoadValueByName(square) {
-    return square.height;
+let ss = "abcdefg"
+for (let i = 0; i < 20; i++) {
+    f(ss)
 }
 
-const square = new Rectangle(10, 10);
+ArkTools.jitCompileAsync(f);
+let res = ArkTools.waitJitCompileFinish(f);
+print(res)
 
-for (let i = 0; i < 3; i++) {
-    LoadValueByName(square)
-}
-
-ArkTools.jitCompileAsync(LoadValueByName);
-let res = ArkTools.waitJitCompileFinish(LoadValueByName);
-print(res);
-try {
-    print(LoadValueByName(0))
-} catch(err) {
-    print("catch")
-}
+print(f(ss))
