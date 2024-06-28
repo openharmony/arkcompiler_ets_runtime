@@ -23,6 +23,7 @@
 #include "ecmascript/ic/profile_type_info.h"
 #include "libpandafile/code_data_accessor-inl.h"
 #include "libpandafile/method_data_accessor-inl.h"
+#include "ecmascript/ohos/jit_tools.h"
 
 namespace panda::ecmascript {
 void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
@@ -37,6 +38,87 @@ Jit *Jit::GetInstance()
 {
     static Jit instance_;
     return &instance_;
+}
+
+void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
+{
+    JSRuntimeOptions &options = vm->GetJSOptions();
+    bool jitEnable = ohos::JitTools::GetJitEscapeDisable() || !AotCrashInfo::IsJitEscape();
+    jitEnable &= ohos::EnableAotJitListHelper::GetInstance()->IsEnableJit(bundleName);
+    if (jitEnable) {
+        bool isEnableFastJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
+        bool isEnableBaselineJit = options.IsEnableBaselineJIT() && options.GetEnableAsmInterpreter();
+
+        options.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());
+        options.SetEnableAPPJIT(true);
+        // for app threshold
+        uint32_t defaultSize = 150;
+        uint32_t threshold = ohos::JitTools::GetJitHotnessThreshold(defaultSize);
+        options.SetJitHotnessThreshold(threshold);
+        bundleName_ = bundleName;
+
+        SetEnableOrDisable(options, isEnableFastJit, isEnableBaselineJit);
+        if (fastJitEnable_ || baselineJitEnable_) {
+            ConfigJit(vm);
+        }
+    }
+}
+
+void Jit::SwitchProfileStubs(EcmaVM *vm)
+{
+    JSThread *thread = vm->GetAssociatedJSThread();
+    JSRuntimeOptions &options = vm->GetJSOptions();
+    std::shared_ptr<PGOProfiler> pgoProfiler = vm->GetPGOProfiler();
+    if (!options.IsEnableJITPGO() || pgoProfiler == nullptr) {
+        thread->SwitchJitProfileStubs(false);
+    } else {
+        // if not enable aot pgo
+        if (!pgo::PGOProfilerManager::GetInstance()->IsEnable()) {
+            // disable dump
+            options.SetEnableProfileDump(false);
+            SetProfileNeedDump(false);
+            // enable profiler
+            options.SetEnablePGOProfiler(true);
+            pgoProfiler->Reset(true);
+            // switch pgo stub
+            thread->SwitchJitProfileStubs(true);
+        }
+        pgoProfiler->InitJITProfiler();
+    }
+}
+
+void Jit::ConfigOptions(EcmaVM *vm) const
+{
+    JSRuntimeOptions &options = vm->GetJSOptions();
+
+    options.SetEnableAPPJIT(isApp_);
+    options.SetEnableProfileDump(isProfileNeedDump_);
+
+    bool jitEnableLitecg = ohos::JitTools::IsJitEnableLitecg(options.IsCompilerEnableLiteCG());
+    options.SetCompilerEnableLiteCG(jitEnableLitecg);
+
+    uint8_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options.GetJitCallThreshold());
+    options.SetJitCallThreshold(jitCallThreshold);
+
+    uint32_t jitHotnessThreshold = GetHotnessThreshold();
+    options.SetJitHotnessThreshold(jitHotnessThreshold);
+
+    bool jitDisableCodeSign = ohos::JitTools::GetCodeSignDisable();
+    options.SetDisableCodeSign(jitDisableCodeSign);
+
+    vm->SetEnableJitLogSkip(ohos::JitTools::GetSkipJitLogEnable());
+
+    LOG_JIT(INFO) << "enable jit bundle:" << bundleName_ <<
+        ", litecg:" << jitEnableLitecg <<
+        ", call threshold:" << static_cast<int>(jitCallThreshold) <<
+        ", hotness threshold:" << jitHotnessThreshold <<
+        ", disable codesigner:" << jitDisableCodeSign;
+}
+
+void Jit::ConfigJit(EcmaVM *vm)
+{
+    SwitchProfileStubs(vm);
+    ConfigOptions(vm);
 }
 
 void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit)
@@ -71,17 +153,13 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
             jitEnable = true;
         }
         if (jitEnable) {
+            jitDfx_ = JitDfx::GetInstance();
+            jitDfx_->Init(options, bundleName_);
+
             isApp_ = options.IsEnableAPPJIT();
             hotnessThreshold_ = options.GetJitHotnessThreshold();
             initJitCompiler_(options);
             JitTaskpool::GetCurrentTaskpool()->Initialize();
-
-            jitDfx_ = JitDfx::GetInstance();
-            if (options.IsEnableJitDfxDump()) {
-                jitDfx_->EnableDump();
-            }
-            jitDfx_->ResetCompilerTime();
-            jitDfx_->ResetBlockUIEventTime();
         }
     }
 }
@@ -126,7 +204,9 @@ void Jit::Initialize()
 
     libHandle_ = LoadLib(LIBARK_JSOPTIMIZER);
     if (libHandle_ == nullptr) {
-        LOG_JIT(ERROR) << "jit dlopen libark_jsoptimizer.so failed";
+        char *error = LoadLibError();
+        LOG_JIT(ERROR) << "jit dlopen libark_jsoptimizer.so failed, as:" <<
+            ((error == nullptr) ? "unknown error" : error);
         return;
     }
 
@@ -182,11 +262,19 @@ bool Jit::MethodHasTryCatch(const JSPandaFile *jsPandaFile, const MethodLiteral 
     return cda.GetTriesSize() != 0;
 }
 
-bool Jit::SupportJIT(const Method *method, EcmaVM *vm) const
+bool Jit::SupportJIT(JSHandle<JSFunction> &jsFunction, EcmaVM *vm, CompilerTier tier) const
 {
+    Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     const JSPandaFile* jSPandaFile_ = method->GetJSPandaFile();
     MethodLiteral* methodLiteral_ = method->GetMethodLiteral();
     if (!vm->GetJSOptions().IsEnableTryCatchFunction() && MethodHasTryCatch(jSPandaFile_, methodLiteral_)) {
+        LOG_JIT(DEBUG) << "method does not support compile try catch function:" <<
+            method->GetRecordNameStr() + "." + method->GetMethodName();
+        return false;
+    }
+    if (jsFunction.GetTaggedValue().IsJSSharedFunction()) {
+        LOG_JIT(DEBUG) << "method does not support compile shared function:" <<
+            method->GetRecordNameStr() + "." + method->GetMethodName();
         return false;
     }
 
@@ -202,8 +290,17 @@ bool Jit::SupportJIT(const Method *method, EcmaVM *vm) const
         case FunctionKind::NONE_FUNCTION:
             return true;
         default:
-            return false;
+            break;
     }
+    std::stringstream msgStr;
+    msgStr << "method does not support jit:" << method->GetRecordNameStr() + "." + method->GetMethodName() <<
+     ", kind:" << static_cast<int>(kind);
+    if (tier == CompilerTier::BASELINE) {
+        LOG_BASELINEJIT(DEBUG) << msgStr.str();
+    } else {
+        LOG_JIT(DEBUG) << msgStr.str();
+    }
+    return false;
 }
 
 void Jit::DeleteJitCompile(void *compiler)
@@ -264,8 +361,6 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
     CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
     uint32_t codeSize = method->GetCodeSize();
-    jit->GetJitDfx()->SetBundleName(vm->GetBundleName());
-    jit->GetJitDfx()->SetPidNumber(vm->GetJSThread()->GetThreadId());
     CString methodInfo = methodName + ", bytecode size:" + ToCString(codeSize);
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("JIT::Compile:" + methodInfo));
 
@@ -298,17 +393,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 
         return;
     }
-    bool isJSSharedFunction = jsFunction.GetTaggedValue().IsJSSharedFunction();
-    if (!jit->SupportJIT(method, vm) || isJSSharedFunction) {
-        FunctionKind kind = method->GetFunctionKind();
-        std::stringstream msgStr;
-        msgStr << "method does not support jit:" << methodInfo << ", kind:" << static_cast<int>(kind)
-               <<", JSSharedFunction:" << isJSSharedFunction;
-        if (tier == CompilerTier::BASELINE) {
-            LOG_BASELINEJIT(DEBUG) << msgStr.str();
-        } else {
-            LOG_JIT(DEBUG) << msgStr.str();
-        }
+    if (!jit->SupportJIT(jsFunction, vm, tier)) {
         return;
     }
     bool needCompile = jit->CheckJitCompileStatus(jsFunction, methodName, tier);
@@ -330,7 +415,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
         EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
         std::shared_ptr<JitTask> jitTask = std::make_shared<JitTask>(vm->GetJSThread(), compilerVm->GetJSThread(),
-            jit, jsFunction, tier, methodName, offset, vm->GetJSThread()->GetThreadId(), mode, jit->GetJitDfx());
+            jit, jsFunction, tier, methodName, offset, vm->GetJSThread()->GetThreadId(), mode);
 
         jitTask->PrepareCompile();
         JitTaskpool::GetCurrentTaskpool()->PostTask(
@@ -343,16 +428,18 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         }
         int spendTime = scope.TotalSpentTimeInMicroseconds();
         jitTask->SetMainThreadCompilerTime(spendTime);
-        jit->GetJitDfx()->SetTotalTimeOnMainThread(spendTime);
-        jit->GetJitDfx()->PrintJitStatsLog();
+        jit->GetJitDfx()->RecordSpentTimeAndPrintStatsLogInJsThread(spendTime);
     }
 }
 
 void Jit::RequestInstallCode(std::shared_ptr<JitTask> jitTask)
 {
-    LockHolder holder(installJitTasksDequeMtx_);
-    auto &taskQueue = installJitTasks_[jitTask->GetTaskThreadId()];
-    taskQueue.push_back(jitTask);
+    LockHolder holder(threadTaskInfoLock_);
+    ThreadTaskInfo &info = threadTaskInfo_[jitTask->GetTaskThreadId()];
+    if (info.skipInstallTask_) {
+        return;
+    }
+    info.installJitTasks_.push_back(jitTask);
 
     // set
     jitTask->GetHostThread()->SetInstallMachineCode(true);
@@ -400,8 +487,10 @@ bool Jit::CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
 
 void Jit::InstallTasks(uint32_t threadId)
 {
-    LockHolder holder(installJitTasksDequeMtx_);
-    auto &taskQueue = installJitTasks_[threadId];
+    LockHolder holder(threadTaskInfoLock_);
+    ThreadTaskInfo &info = threadTaskInfo_[threadId];
+    auto &taskQueue = info.installJitTasks_;
+
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("Jit::InstallTasks count:" + ToCString(taskQueue.size())));
 
     for (auto it = taskQueue.begin(); it != taskQueue.end(); it++) {
@@ -446,10 +535,6 @@ void Jit::ClearTask(const std::function<bool(Task *task)> &checkClear)
         JitTask::AsyncTask *asyncTask = static_cast<JitTask::AsyncTask*>(task);
         if (checkClear(asyncTask)) {
             asyncTask->Terminated();
-            if (asyncTask->IsRunning()) {
-                asyncTask->WaitFinish();
-            }
-            asyncTask->ReleaseSustainingJSHandle();
         }
     });
 }
@@ -470,33 +555,32 @@ void Jit::ClearTaskWithVm(EcmaVM *vm)
     });
 
     {
-        LockHolder holder(installJitTasksDequeMtx_);
-        auto &taskQueue = installJitTasks_[vm->GetJSThread()->GetThreadId()];
+        LockHolder holder(threadTaskInfoLock_);
+        ThreadTaskInfo &info = threadTaskInfo_[vm->GetJSThread()->GetThreadId()];
+        info.skipInstallTask_ = true;
+        auto &taskQueue = info.installJitTasks_;
         taskQueue.clear();
-    }
-    {
-        LockHolder holder(jitTaskCntMtx_);
-        auto &cnt = jitTaskCnt_[vm->GetJSThread()->GetThreadId()];
-        if (cnt.first.load() != 0) {
-            cnt.second.Wait(&jitTaskCntMtx_);
+
+        if (info.jitTaskCnt_.load() != 0) {
+            info.jitTaskCntCv_.Wait(&threadTaskInfoLock_);
         }
     }
 }
 
 void Jit::IncJitTaskCnt(JSThread *thread)
 {
-    LockHolder holder(jitTaskCntMtx_);
-    auto &cnt = jitTaskCnt_[thread->GetThreadId()];
-    cnt.first.fetch_add(1);
+    LockHolder holder(threadTaskInfoLock_);
+    ThreadTaskInfo &info = threadTaskInfo_[thread->GetThreadId()];
+    info.jitTaskCnt_.fetch_add(1);
 }
 
 void Jit::DecJitTaskCnt(JSThread *thread)
 {
-    LockHolder holder(jitTaskCntMtx_);
-    auto &cnt = jitTaskCnt_[thread->GetThreadId()];
-    uint32_t old = cnt.first.fetch_sub(1);
+    LockHolder holder(threadTaskInfoLock_);
+    ThreadTaskInfo &info = threadTaskInfo_[thread->GetThreadId()];
+    uint32_t old = info.jitTaskCnt_.fetch_sub(1);
     if (old == 1) {
-        cnt.second.Signal();
+        info.jitTaskCntCv_.Signal();
     }
 }
 

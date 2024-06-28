@@ -81,5 +81,6 @@ bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module);
 void *LoadLib(const std::string &libname);
 void *FindSymbol(void *handle, const char *symbol);
 int CloseLib(void *handle);
+char *LoadLibError();
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_FILE_H

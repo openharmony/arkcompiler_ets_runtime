@@ -41,7 +41,7 @@ uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]] uint32_t threadN
 
 JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHandle<JSFunction> &jsFunction,
     CompilerTier tier, CString &methodName, int32_t offset, uint32_t taskThreadId,
-    JitCompileMode mode, JitDfx *JitDfx)
+    JitCompileMode mode)
     : hostThread_(hostThread),
     compilerThread_(compilerThread),
     jit_(jit),
@@ -54,7 +54,6 @@ JitTask::JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit, JSHan
     taskThreadId_(taskThreadId),
     ecmaContext_(nullptr),
     jitCompileMode_(mode),
-    jitDfx_(JitDfx),
     runState_(RunState::INIT)
 {
     jit->IncJitTaskCnt(hostThread);
@@ -396,14 +395,8 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
             jitTask_->jit_->RequestInstallCode(jitTask_);
         }
         int compilerTime = scope.TotalSpentTimeInMicroseconds();
-        jitTask_->jitDfx_->SetTotalTimeOnJitThread(compilerTime);
-        if (jitTask_->jitDfx_->ReportBlockUIEvent(jitTask_->mainThreadCompileTime_)) {
-            jitTask_->jitDfx_->SetBlockUIEventInfo(
-                jitTask_->methodName_,
-                jitTask_->compilerTier_ == CompilerTier::BASELINE ? true : false,
-                jitTask_->mainThreadCompileTime_, compilerTime);
-        }
-        jitTask_->jitDfx_->PrintJitStatsLog();
+        JitDfx::GetInstance()->RecordSpentTimeAndPrintStatsLogInJitThread(compilerTime, jitTask_->methodName_,
+            jitTask_->compilerTier_ == CompilerTier::BASELINE, jitTask_->mainThreadCompileTime_);
     }
     jitvm->ReSetHostVM();
     jitTask_->SetRunStateFinish();

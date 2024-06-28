@@ -95,7 +95,7 @@ class JitTask {
 public:
     JitTask(JSThread *hostThread, JSThread *compilerThread, Jit *jit,
         JSHandle<JSFunction> &jsFunction, CompilerTier tier, CString &methodName, int32_t offset,
-        uint32_t taskThreadId, JitCompileMode mode, JitDfx *jitDfx);
+        uint32_t taskThreadId, JitCompileMode mode);
     // for ut
     JitTask(EcmaVM *hVm, EcmaVM *cVm, Jit *jit, uint32_t taskThreadId, JitCompileMode mode);
     ~JitTask();
