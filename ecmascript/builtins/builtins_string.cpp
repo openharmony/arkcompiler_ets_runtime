@@ -483,6 +483,10 @@ JSTaggedValue BuiltinsString::IndexOf(EcmaRuntimeCallInfo *argv)
         pos = posVal.ToInt32();
     }
     pos = std::min(std::max(pos, 0), static_cast<int32_t>(thisLen));
+    // If searching for an null string.
+    if (EcmaStringAccessor(searchHandle).GetLength() == 0) {
+        return GetTaggedInt(pos);
+    }
     int32_t res = EcmaStringAccessor::IndexOf(thread->GetEcmaVM(), thisHandle, searchHandle, pos);
     if (res >= 0 && res < static_cast<int32_t>(thisLen)) {
         return GetTaggedInt(res);
