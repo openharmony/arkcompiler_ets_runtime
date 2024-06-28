@@ -2811,6 +2811,9 @@ void TypedNativeInlineLowering::LowerArrayIncludesIndexOf(GateRef gate)
     Label prepareReady(&builder_);
     Label targetIsUndefined(&builder_);
     Label targetIsNotUndefiend(&builder_);
+    Label targetIsInt(&builder_);
+    Label targetNumberCheck(&builder_);
+    Label targetIsDouble(&builder_);
     Label arrayKindCheckPass(&builder_);
 
     GateRef thisArray = acc_.GetValueIn(gate, 0);
@@ -2848,11 +2851,11 @@ void TypedNativeInlineLowering::LowerArrayIncludesIndexOf(GateRef gate)
 
     builder_.Bind(&prepareReady);
 
-    if (callID == BuiltinsStubCSigns::ID::ArrayIncludes && Elements::IsHole(kind)) {
+    if (callID == BuiltinsStubCSigns::ID::ArrayIncludes && (Elements::IsHole(kind) || kind == ElementsKind::NONE)) {
         BRANCH_CIR(builder_.TaggedIsUndefined(targetElement), &targetIsUndefined, &targetIsNotUndefiend);
         builder_.Bind(&targetIsUndefined);
         {
-            IncludesRes = includesUndefinedLoop(elements, *fromIndex, arrayLength);
+            IncludesRes = IncludesUndefinedLoop(elements, *fromIndex, arrayLength);
             builder_.Jump(&quit);
         }
         builder_.Bind(&targetIsNotUndefiend);
@@ -2860,71 +2863,137 @@ void TypedNativeInlineLowering::LowerArrayIncludesIndexOf(GateRef gate)
 
     switch (kind) {
         case ElementsKind::HOLE_INT: {
-            BRANCH_CIR(builder_.TaggedIsNumber(targetElement), &arrayKindCheckPass, &exit);
-            builder_.Bind(&arrayKindCheckPass);
+            BRANCH_CIR(builder_.TaggedIsInt(targetElement), &targetIsInt, &targetNumberCheck);
+            builder_.Bind(&targetIsInt);
             {
-                res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, true);
+                res = TargetIntCompareLoop(
+                    elements, *fromIndex, targetElement, arrayLength, NumberCompareKind::TARINT_ARRINT, true);
                 builder_.Jump(&exit);
+            }
+            builder_.Bind(&targetNumberCheck);
+            {
+                BRANCH_CIR(builder_.TaggedIsDouble(targetElement), &targetIsDouble, &exit);
+                builder_.Bind(&targetIsDouble);
+                {
+                    res = TargetNumberCompareLoop(elements,
+                                                  *fromIndex,
+                                                  targetElement,
+                                                  arrayLength,
+                                                  callID,
+                                                  true,
+                                                  NumberCompareKind::TARDOU_ARRINT);
+                    builder_.Jump(&exit);
+                }
             }
             break;
         }
         case ElementsKind::INT: {
-            BRANCH_CIR(builder_.TaggedIsNumber(targetElement), &arrayKindCheckPass, &exit);
-            builder_.Bind(&arrayKindCheckPass);
+            BRANCH_CIR(builder_.TaggedIsInt(targetElement), &targetIsInt, &targetNumberCheck);
+            builder_.Bind(&targetIsInt);
             {
-                res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, false);
+                res = TargetIntCompareLoop(
+                    elements, *fromIndex, targetElement, arrayLength, NumberCompareKind::TARINT_ARRINT, false);
                 builder_.Jump(&exit);
+            }
+            builder_.Bind(&targetNumberCheck);
+            {
+                BRANCH_CIR(builder_.TaggedIsDouble(targetElement), &targetIsDouble, &exit);
+                builder_.Bind(&targetIsDouble);
+                {
+                    res = TargetNumberCompareLoop(elements,
+                                                  *fromIndex,
+                                                  targetElement,
+                                                  arrayLength,
+                                                  callID,
+                                                  false,
+                                                  NumberCompareKind::TARDOU_ARRINT);
+                    builder_.Jump(&exit);
+                }
             }
             break;
         }
         case ElementsKind::HOLE_NUMBER: {
-            BRANCH_CIR(builder_.TaggedIsNumber(targetElement), &arrayKindCheckPass, &exit);
-            builder_.Bind(&arrayKindCheckPass);
+            BRANCH_CIR(builder_.TaggedIsInt(targetElement), &targetIsInt, &targetNumberCheck);
+            builder_.Bind(&targetIsInt);
             {
-                res = IncludeIndexOfNumberLoop(elements, *fromIndex, targetElement, arrayLength, callID, true);
+                res = TargetIntCompareLoop(
+                    elements, *fromIndex, targetElement, arrayLength, NumberCompareKind::TARINT_ARRNUM, true);
                 builder_.Jump(&exit);
+            }
+            builder_.Bind(&targetNumberCheck);
+            {
+                BRANCH_CIR(builder_.TaggedIsDouble(targetElement), &targetIsDouble, &exit);
+                builder_.Bind(&targetIsDouble);
+                {
+                    res = TargetNumberCompareLoop(elements,
+                                                  *fromIndex,
+                                                  targetElement,
+                                                  arrayLength,
+                                                  callID,
+                                                  true,
+                                                  NumberCompareKind::TARDOU_ARRNUM);
+                    builder_.Jump(&exit);
+                }
             }
             break;
         }
         case ElementsKind::NUMBER: {
-            BRANCH_CIR(builder_.TaggedIsNumber(targetElement), &arrayKindCheckPass, &exit);
-            builder_.Bind(&arrayKindCheckPass);
+            BRANCH_CIR(builder_.TaggedIsInt(targetElement), &targetIsInt, &targetNumberCheck);
+            builder_.Bind(&targetIsInt);
             {
-                res = IncludeIndexOfNumberLoop(elements, *fromIndex, targetElement, arrayLength, callID, false);
+                res = TargetIntCompareLoop(
+                    elements, *fromIndex, targetElement, arrayLength, NumberCompareKind::TARINT_ARRNUM, false);
                 builder_.Jump(&exit);
+            }
+            builder_.Bind(&targetNumberCheck);
+            {
+                BRANCH_CIR(builder_.TaggedIsDouble(targetElement), &targetIsDouble, &exit);
+                builder_.Bind(&targetIsDouble);
+                {
+                    res = TargetNumberCompareLoop(elements,
+                                                  *fromIndex,
+                                                  targetElement,
+                                                  arrayLength,
+                                                  callID,
+                                                  false,
+                                                  NumberCompareKind::TARDOU_ARRNUM);
+                    builder_.Jump(&exit);
+                }
             }
             break;
         }
         case ElementsKind::HOLE_OBJECT: {
             BRANCH_CIR(builder_.IsEcmaObject(targetElement), &arrayKindCheckPass, &exit);
             builder_.Bind(&arrayKindCheckPass);
-            res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, true);
+            res = TargetEqualCompareLoop(elements, *fromIndex, targetElement, arrayLength, true);
             builder_.Jump(&exit);
             break;
         }
         case ElementsKind::OBJECT: {
             BRANCH_CIR(builder_.IsEcmaObject(targetElement), &arrayKindCheckPass, &exit);
             builder_.Bind(&arrayKindCheckPass);
-            res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, false);
+            res = TargetEqualCompareLoop(elements, *fromIndex, targetElement, arrayLength, false);
             builder_.Jump(&exit);
             break;
         }
         case ElementsKind::HOLE_STRING: {
             BRANCH_CIR(builder_.TaggedIsString(targetElement), &arrayKindCheckPass, &exit);
             builder_.Bind(&arrayKindCheckPass);
-            res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, true);
+            res = TargetStringCompareLoop(elements, *fromIndex, targetElement, arrayLength, true);
             builder_.Jump(&exit);
             break;
         }
         case ElementsKind::STRING: {
             BRANCH_CIR(builder_.TaggedIsString(targetElement), &arrayKindCheckPass, &exit);
             builder_.Bind(&arrayKindCheckPass);
-            res = IncludeIndexOfIntOrObjLoop(elements, *fromIndex, targetElement, arrayLength, kind, false);
+            res = TargetStringCompareLoop(elements, *fromIndex, targetElement, arrayLength, false);
             builder_.Jump(&exit);
             break;
         }
         default: {
-            UNREACHABLE();
+            res = NormalCompareLoop(elements, *fromIndex, targetElement, arrayLength, callID);
+            builder_.Jump(&exit);
+            break;
         }
     }
     builder_.Bind(&exit);
@@ -2942,7 +3011,7 @@ void TypedNativeInlineLowering::LowerArrayIncludesIndexOf(GateRef gate)
     }
 }
 
-GateRef TypedNativeInlineLowering::includesUndefinedLoop(GateRef elements, GateRef fromIndex, GateRef arrayLength)
+GateRef TypedNativeInlineLowering::IncludesUndefinedLoop(GateRef elements, GateRef fromIndex, GateRef arrayLength)
 {
     Label entry(&builder_);
     builder_.SubCfgEntry(&entry);
@@ -2950,6 +3019,7 @@ GateRef TypedNativeInlineLowering::includesUndefinedLoop(GateRef elements, GateR
     Label loopEnd(&builder_);
     Label afterLoop(&builder_);
     Label findElement(&builder_);
+    Label checkUndeOrHole(&builder_);
     Label exit(&builder_);
     DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
     DEFVALUE(res, (&builder_), VariableType::BOOL(), builder_.False());
@@ -2963,7 +3033,7 @@ GateRef TypedNativeInlineLowering::includesUndefinedLoop(GateRef elements, GateR
     builder_.Bind(&afterLoop);
     {
         i = builder_.Int32Add(*i, builder_.Int32(1));
-        BRANCH_CIR(builder_.Int32LessThanOrEqual(*i, arrayLength), &loopEnd, &exit);
+        BRANCH_CIR(builder_.Int32LessThan(*i, arrayLength), &loopEnd, &exit);
     }
     builder_.Bind(&loopEnd);
     builder_.LoopEnd(&loopHead);
@@ -2979,139 +3049,62 @@ GateRef TypedNativeInlineLowering::includesUndefinedLoop(GateRef elements, GateR
     return ret;
 }
 
-GateRef TypedNativeInlineLowering::IncludeIndexOfIntOrObjLoop(
-    GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength, ElementsKind kind, bool hasHole)
+GateRef TypedNativeInlineLowering::NormalCompareLoop(
+    GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength, BuiltinsStubCSigns::ID callID)
 {
     Label entry(&builder_);
     builder_.SubCfgEntry(&entry);
-    Label loopHead(&builder_);
-    Label loopEnd(&builder_);
-    Label afterLoop(&builder_);
-    Label findElement(&builder_);
+    Label targetIsInt(&builder_);
+    Label targetMaybeNumber(&builder_);
+    Label targetMaybeString(&builder_);
+    Label targetMaybeBigInt(&builder_);
+    Label targetIsNumber(&builder_);
+    Label targetIsString(&builder_);
+    Label targetIsObject(&builder_);
+    Label targetIsBigint(&builder_);
     Label exit(&builder_);
-    Label compare(&builder_);
+    Label falseLabel(&builder_);
+    Label falseLabel1(&builder_);
 
-    DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
     DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
-    builder_.Jump(&loopHead);
-
-    builder_.LoopBegin(&loopHead);
+    BRANCH_CIR(builder_.TaggedIsInt(targetElement), &targetIsInt, &targetMaybeNumber);
+    builder_.Bind(&targetIsInt);
     {
-        GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
-        if (hasHole) {
-            BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
-            builder_.Bind(&compare);
-        }
+        res = TargetIntCompareLoop(elements, fromIndex, targetElement, arrayLength, NumberCompareKind::NONE, false);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&targetMaybeNumber);
+    {
+        BRANCH_CIR(builder_.TaggedIsDouble(targetElement), &targetIsNumber, &targetMaybeString);
+        builder_.Bind(&targetIsNumber);
         {
-            BRANCH_CIR(CompareWithElementsKind(targetElement, value, kind), &findElement, &afterLoop);
+            res = TargetNumberCompareLoop(
+                elements, fromIndex, targetElement, arrayLength, callID, true, NumberCompareKind::NONE);
+            builder_.Jump(&exit);
         }
-        builder_.Bind(&afterLoop);
+    }
+    builder_.Bind(&targetMaybeString);
+    BRANCH_CIR(builder_.TaggedIsString(targetElement), &targetIsString, &targetMaybeBigInt);
+    builder_.Bind(&targetIsString);
+    {
+        res = TargetStringCompareLoop(elements, fromIndex, targetElement, arrayLength, true);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&targetMaybeBigInt);
+    {
+        BRANCH_CIR(builder_.TaggedIsBigInt(targetElement), &targetIsBigint, &targetIsObject);
+        builder_.Bind(&targetIsBigint);
         {
-            i = builder_.Int32Add(*i, builder_.Int32(1));
-            BRANCH_CIR(builder_.Int32LessThanOrEqual(*i, arrayLength), &loopEnd, &exit);
+            res = TargetBigIntCompareLopp(elements, fromIndex, targetElement, arrayLength);
+            builder_.Jump(&exit);
         }
-        builder_.Bind(&loopEnd);
     }
-    builder_.LoopEnd(&loopHead);
-
-    builder_.Bind(&findElement);
+    builder_.Bind(&targetIsObject);
     {
-        res = *i;
+        res = TargetEqualCompareLoop(elements, fromIndex, targetElement, arrayLength, true);
         builder_.Jump(&exit);
     }
-    builder_.Bind(&exit);
-    auto ret = *res;
-    builder_.SubCfgExit();
-    return ret;
-}
 
-GateRef TypedNativeInlineLowering::IncludeIndexOfNumberLoop(GateRef elements,
-                                                            GateRef fromIndex,
-                                                            GateRef targetElement,
-                                                            GateRef arrayLength,
-                                                            BuiltinsStubCSigns::ID callID,
-                                                            bool hasHole)
-{
-    Label entry(&builder_);
-    builder_.SubCfgEntry(&entry);
-    Label loopHead(&builder_);
-    Label loopEnd(&builder_);
-    Label afterLoop(&builder_);
-    Label findElement(&builder_);
-    Label compare(&builder_);
-    Label numberCompare(&builder_);
-    Label NaNcompare(&builder_);
-    Label exit(&builder_);
-    DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
-    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
-    builder_.Jump(&loopHead);
-
-    builder_.LoopBegin(&loopHead);
-    GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
-    if (hasHole) {
-        BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
-        builder_.Bind(&compare);
-    }
-    {
-        GateRef doubleTarget = builder_.GetDoubleOfTNumber(targetElement);
-        GateRef doubleValue = builder_.GetDoubleOfTNumber(value);
-        if (callID == BuiltinsStubCSigns::ID::ArrayIncludes) {
-            BRANCH_CIR(builder_.DoubleIsNAN(doubleTarget), &NaNcompare, &numberCompare);
-            builder_.Bind(&NaNcompare);
-            {
-                BRANCH_CIR(builder_.DoubleIsNAN(doubleValue), &findElement, &afterLoop);
-            }
-            builder_.Bind(&numberCompare);
-        }
-        BRANCH_CIR(builder_.DoubleEqual(doubleTarget, doubleValue), &findElement, &afterLoop);
-    }
-    builder_.Bind(&afterLoop);
-    {
-        i = builder_.Int32Add(*i, builder_.Int32(1));
-        BRANCH_CIR(builder_.Int32LessThanOrEqual(*i, arrayLength), &loopEnd, &exit);
-    }
-    builder_.Bind(&loopEnd);
-    builder_.LoopEnd(&loopHead);
-
-    builder_.Bind(&findElement);
-    {
-        res = *i;
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    auto ret = *res;
-    builder_.SubCfgExit();
-    return ret;
-}
-
-GateRef TypedNativeInlineLowering::CompareWithElementsKind(GateRef targetElement, GateRef value, ElementsKind kind)
-{
-    Label entry(&builder_);
-    builder_.SubCfgEntry(&entry);
-    Label findElement(&builder_);
-    Label exit(&builder_);
-    DEFVALUE(res, (&builder_), VariableType::BOOL(), builder_.False());
-    if (Elements::IsInt(kind) || Elements::IsHoleInt(kind)) {
-        GateRef valueDouble = builder_.GetDoubleOfTInt(value);
-        GateRef targetDouble = builder_.GetDoubleOfTNumber(targetElement);
-        BRANCH_CIR(builder_.DoubleEqual(valueDouble, targetDouble), &findElement, &exit);
-    } else if (Elements::IsObject(kind) || Elements::IsHoleObject(kind)) {
-        BRANCH_CIR(builder_.Equal(targetElement, value), &findElement, &exit);
-    } else if (Elements::IsString(kind) || Elements::IsHoleString(kind)) {
-        auto env = builder_.GetCurrentEnvironment();
-        BuiltinsStringStubBuilder builtinsStringStubBuilder(env);
-        GateRef stringEqual =
-            builtinsStringStubBuilder.FastStringEqual(acc_.GetGlueFromArgList(), targetElement, value);
-        BRANCH_CIR(stringEqual, &findElement, &exit);
-    } else {
-        LOG_COMPILER(FATAL) << "ElementsKind illegal: " << static_cast<uint32_t>(kind);
-        UNREACHABLE();
-    }
-    builder_.Bind(&findElement);
-    {
-        res = builder_.True();
-        builder_.Jump(&exit);
-    }
     builder_.Bind(&exit);
     auto ret = *res;
     builder_.SubCfgExit();
@@ -3871,5 +3864,428 @@ void TypedNativeInlineLowering::CheckAndCalcuSliceIndex(GateRef length,
         res->WriteVariable(newBuilder.CreateEmptyArray(acc_.GetGlueFromArgList()));
         builder_.Jump(exit);
     }
+}
+
+GateRef TypedNativeInlineLowering::TargetIntCompareLoop(GateRef elements,
+                                                        GateRef fromIndex,
+                                                        GateRef targetElement,
+                                                        GateRef arrayLength,
+                                                        NumberCompareKind kind,
+                                                        bool arrayHasHole)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label findElement(&builder_);
+    Label compare(&builder_);
+    Label exit(&builder_);
+    Label valueIsInt(&builder_);
+    Label intCompare(&builder_);
+    Label checkNumber(&builder_);
+    Label numberCompare(&builder_);
+    GateRef doubleTarget = builder_.GetDoubleOfTInt(targetElement);
+
+    DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
+    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
+    if (arrayHasHole) {
+        BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
+        builder_.Bind(&compare);
+    }
+    {
+        BRANCH_CIR(TargetIntCompareWithCompareKind(targetElement, doubleTarget, value, kind), &findElement, &afterLoop);
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        BRANCH_CIR(builder_.Int32LessThan(*i, arrayLength), &loopEnd, &exit);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&findElement);
+    {
+        res = *i;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedNativeInlineLowering::TargetIntCompareWithCompareKind(GateRef targetElement,
+                                                                   GateRef doubleTarget,
+                                                                   GateRef value,
+                                                                   NumberCompareKind kind)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    DEFVALUE(res, (&builder_), VariableType::BOOL(), builder_.False());
+    Label checkDouble(&builder_);
+    Label intCompareInt(&builder_);
+    Label checkValueDouble(&builder_);
+    Label intCompareDouble(&builder_);
+    Label returnTrue(&builder_);
+    Label exit(&builder_);
+    switch (kind) {
+        case NumberCompareKind::NONE: {
+            BRANCH_CIR(builder_.TaggedIsInt(value), &intCompareInt, &checkValueDouble);
+            builder_.Bind(&checkValueDouble);
+            BRANCH_CIR(builder_.TaggedIsDouble(value), &intCompareDouble, &exit);
+            builder_.Bind(&intCompareDouble);
+            BRANCH_CIR(builder_.DoubleEqual(doubleTarget, builder_.GetDoubleOfTDouble(value)), &returnTrue, &exit);
+            builder_.Bind(&intCompareInt);
+            BRANCH_CIR(builder_.Equal(targetElement, value), &returnTrue, &exit);
+            break;
+        }
+        case NumberCompareKind::TARINT_ARRINT: {
+            BRANCH_CIR(builder_.Equal(targetElement, value), &returnTrue, &exit);
+            break;
+        }
+        case NumberCompareKind::TARINT_ARRNUM: {
+            BRANCH_CIR(builder_.TaggedIsInt(value), &intCompareInt, &intCompareDouble);
+            builder_.Bind(&intCompareDouble);
+            BRANCH_CIR(builder_.DoubleEqual(doubleTarget, builder_.GetDoubleOfTDouble(value)), &returnTrue, &exit);
+            builder_.Bind(&intCompareInt);
+            BRANCH_CIR(builder_.Equal(targetElement, value), &returnTrue, &exit);
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "TargetIntCompareWithCompareKind Kind: " << kind << " illegal!";
+            UNREACHABLE();
+    }
+    builder_.Bind(&returnTrue);
+    res = builder_.True();
+    builder_.Jump(&exit);
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedNativeInlineLowering::TargetNumberCompareWithArrKind(GateRef doubleTarget,
+                                                                  GateRef value,
+                                                                  NumberCompareKind kind)
+{
+    //Dont need to compare NaN
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    DEFVALUE(res, (&builder_), VariableType::BOOL(), builder_.False());
+    Label checkDouble(&builder_);
+    Label doubleCompareInt(&builder_);
+    Label checkValueDouble(&builder_);
+    Label doubleCompareDouble(&builder_);
+    Label doubleIsNaNCheck(&builder_);
+    Label returnTrue(&builder_);
+    Label exit(&builder_);
+    switch (kind) {
+        case NumberCompareKind::NONE: {
+            BRANCH_CIR(builder_.TaggedIsInt(value), &doubleCompareInt, &checkValueDouble);
+            builder_.Bind(&doubleCompareInt);
+            BRANCH_CIR(builder_.DoubleEqual(doubleTarget, builder_.GetDoubleOfTInt(value)), &returnTrue, &exit);
+            builder_.Bind(&checkValueDouble);
+            BRANCH_CIR(builder_.TaggedIsDouble(value), &doubleCompareDouble, &exit);
+            builder_.Bind(&doubleCompareDouble);
+            BRANCH_CIR(builder_.DoubleEqual(doubleTarget, builder_.GetDoubleOfTDouble(value)), &returnTrue, &exit);
+            break;
+        }
+        case NumberCompareKind::TARDOU_ARRINT: {
+            GateRef doubleValue = builder_.GetDoubleOfTInt(value);
+            BRANCH_CIR(builder_.DoubleEqual(doubleTarget, doubleValue), &returnTrue, &exit);
+            break;
+        }
+        case NumberCompareKind::TARDOU_ARRNUM: {
+            GateRef doubleValue = builder_.GetDoubleOfTNumber(value);
+            BRANCH_CIR(builder_.DoubleEqual(doubleValue, doubleTarget), &returnTrue, &exit);
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "TargetDoubleCompareWithArrKind Kind: " << kind << " illegal!";
+            UNREACHABLE();
+    }
+    builder_.Bind(&returnTrue);
+    res = builder_.True();
+    builder_.Jump(&exit);
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedNativeInlineLowering::TargetNumberCompareLoop(GateRef elements,
+                                                           GateRef fromIndex,
+                                                           GateRef targetElement,
+                                                           GateRef arrayLength,
+                                                           BuiltinsStubCSigns::ID callID,
+                                                           bool arrayHasHole,
+                                                           NumberCompareKind kind)
+
+{
+    Label doubleCompareLoop(&builder_);
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label handleNaNLoop(&builder_);
+    Label exit(&builder_);
+    Label doubleNaNCheck(&builder_);
+    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
+    GateRef doubleTarget = builder_.GetDoubleOfTDouble(targetElement);
+    if (NeedRunNaNLoopCheck(kind, callID)) {
+        BRANCH_CIR(builder_.DoubleIsNAN(doubleTarget), &handleNaNLoop, &doubleCompareLoop);
+    } else {
+        BRANCH_CIR(builder_.DoubleIsNAN(doubleTarget), &exit, &doubleCompareLoop);
+    }
+    builder_.Bind(&doubleCompareLoop);
+    {
+        Label loopHead(&builder_);
+        Label loopEnd(&builder_);
+        Label afterLoop(&builder_);
+        Label findElement(&builder_);
+        Label compare(&builder_);
+        Label doubleCompare(&builder_);
+        Label checkNumber(&builder_);
+        Label intCheck(&builder_);
+        Label intCompare(&builder_);
+        DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
+        builder_.Jump(&loopHead);
+        builder_.LoopBegin(&loopHead);
+        GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
+        if (arrayHasHole) {
+            BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
+            builder_.Bind(&compare);
+        }
+        {
+            BRANCH_CIR(TargetNumberCompareWithArrKind(doubleTarget, value, kind), &findElement, &afterLoop);
+        }
+        builder_.Bind(&afterLoop);
+        {
+            i = builder_.Int32Add(*i, builder_.Int32(1));
+            BRANCH_CIR(builder_.Int32LessThan(*i, arrayLength), &loopEnd, &exit);
+        }
+        builder_.Bind(&loopEnd);
+        builder_.LoopEnd(&loopHead);
+
+        builder_.Bind(&findElement);
+        {
+            res = *i;
+            builder_.Jump(&exit);
+        }
+    }
+    if (NeedRunNaNLoopCheck(kind, callID)) {
+        builder_.Bind(&handleNaNLoop);
+        {
+            Label loopHead(&builder_);
+            Label loopEnd(&builder_);
+            Label afterLoop(&builder_);
+            Label findElement(&builder_);
+            Label compare(&builder_);
+            Label NaNCompare(&builder_);
+            DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
+            builder_.Jump(&loopHead);
+            builder_.LoopBegin(&loopHead);
+            GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
+            if (arrayHasHole) {
+                BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
+                builder_.Bind(&compare);
+            }
+            builder_.Bind(&compare);
+            {
+                BRANCH_CIR(builder_.TaggedIsDouble(value), &NaNCompare, &afterLoop);
+                builder_.Bind(&NaNCompare);
+                {
+                    GateRef valueDouble = builder_.GetDoubleOfTDouble(value);
+                    BRANCH_CIR(builder_.DoubleIsNAN(valueDouble), &findElement, &afterLoop);
+                }
+            }
+            builder_.Bind(&afterLoop);
+            {
+                i = builder_.Int32Add(*i, builder_.Int32(1));
+                BRANCH_CIR(builder_.Int32LessThan(*i, arrayLength), &loopEnd, &exit);
+            }
+            builder_.Bind(&loopEnd);
+            builder_.LoopEnd(&loopHead);
+
+            builder_.Bind(&findElement);
+            {
+                res = *i;
+                builder_.Jump(&exit);
+            }
+        }
+    }
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedNativeInlineLowering::TargetStringCompareLoop(GateRef elements,
+                                                           GateRef fromIndex,
+                                                           GateRef targetElement,
+                                                           GateRef arrayLength,
+                                                           bool arrayHasHole)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label findElement(&builder_);
+    Label compare(&builder_);
+    Label exit(&builder_);
+    Label slowCompare(&builder_);
+    Label startStringCompare(&builder_);
+    GateRef targetLength = builder_.GetLengthFromString(targetElement);
+    BuiltinsStringStubBuilder stringBuilder(builder_.GetCurrentEnvironment());
+    DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
+    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
+    if (arrayHasHole) {
+        BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
+        builder_.Bind(&compare);
+    }
+    {
+        BRANCH_CIR(builder_.TaggedIsString(value), &startStringCompare, &afterLoop);
+        builder_.Bind(&startStringCompare);
+        {
+            GateRef valueLength = builder_.GetLengthFromString(value);
+            BRANCH_CIR(builder_.Int32Equal(targetLength, valueLength), &slowCompare, &afterLoop);
+            builder_.Bind(&slowCompare);
+            {
+                BRANCH_CIR(stringBuilder.FastStringEqual(acc_.GetGlueFromArgList(), targetElement, value),
+                           &findElement,
+                           &afterLoop);
+            }
+        }
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        BRANCH_CIR(builder_.Int32LessThan(*i, arrayLength), &loopEnd, &exit);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&findElement);
+    {
+        res = *i;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedNativeInlineLowering::TargetEqualCompareLoop(GateRef elements,
+                                                          GateRef fromIndex,
+                                                          GateRef targetElement,
+                                                          GateRef arrayLength,
+                                                          bool arrayHasHole)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label findElement(&builder_);
+    Label compare(&builder_);
+    Label objCompare(&builder_);
+    Label exit(&builder_);
+
+    DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
+    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
+    if (arrayHasHole) {
+        BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
+        builder_.Bind(&compare);
+    }
+    {
+        BRANCH_CIR(builder_.Equal(targetElement, value), &findElement, &afterLoop);
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        BRANCH_CIR(builder_.Int32LessThan(*i, arrayLength), &loopEnd, &exit);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&findElement);
+    {
+        res = *i;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
+}
+
+GateRef TypedNativeInlineLowering::TargetBigIntCompareLopp(GateRef elements,
+                                                           GateRef fromIndex,
+                                                           GateRef targetElement,
+                                                           GateRef arrayLength)
+{
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
+    Label loopHead(&builder_);
+    Label loopEnd(&builder_);
+    Label afterLoop(&builder_);
+    Label findElement(&builder_);
+    Label compare(&builder_);
+    Label bigIntCompare(&builder_);
+    Label exit(&builder_);
+
+    DEFVALUE(i, (&builder_), VariableType::INT32(), fromIndex);
+    DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
+    builder_.Jump(&loopHead);
+
+    builder_.LoopBegin(&loopHead);
+    GateRef value = builder_.GetValueFromTaggedArray(elements, *i);
+    BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
+    builder_.Bind(&compare);
+    {
+        BRANCH_CIR(builder_.TaggedIsBigInt(value), &bigIntCompare, &afterLoop);
+        builder_.Bind(&bigIntCompare);
+        {
+            int rtStub = RTSTUB_ID(BigIntEquals);
+            const std::string name = RuntimeStubCSigns::GetRTName(rtStub);
+            GateRef compareResult = builder_.CallNGCRuntime(acc_.GetGlueFromArgList(),
+                                                            rtStub,
+                                                            Gate::InvalidGateRef,
+                                                            {targetElement, value},
+                                                            Circuit::NullGate(),
+                                                            name.c_str());
+            BRANCH_CIR(compareResult, &findElement, &afterLoop);
+        }
+    }
+    builder_.Bind(&afterLoop);
+    {
+        i = builder_.Int32Add(*i, builder_.Int32(1));
+        BRANCH_CIR(builder_.Int32LessThan(*i, arrayLength), &loopEnd, &exit);
+    }
+    builder_.Bind(&loopEnd);
+    builder_.LoopEnd(&loopHead);
+
+    builder_.Bind(&findElement);
+    {
+        res = *i;
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto ret = *res;
+    builder_.SubCfgExit();
+    return ret;
 }
 }
