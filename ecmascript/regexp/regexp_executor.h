@@ -175,6 +175,7 @@ public:
         ASSERT(captureIndex < nCapture_);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         CaptureState *captureState = &captureResultList_[captureIndex];
+        // 2: Even indexes store captureStart. Odd indexes store captureEnd. 0: start0, 1: end0, 2: start1, 3: end1, ...
         PushRegExpState(STATE_SAVE, captureIndex * 2, reinterpret_cast<uintptr_t>(captureState->captureStart));
         captureState->captureStart = GetCurrentPtr();
         Advance(opCode);
@@ -186,6 +187,7 @@ public:
         ASSERT(captureIndex < nCapture_);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         CaptureState *captureState = &captureResultList_[captureIndex];
+        // 2: Even indexes store captureStart. Odd indexes store captureEnd. 0: start0, 1: end0, 2: start1, 3: end1, ...
         PushRegExpState(STATE_SAVE, captureIndex * 2 + 1, reinterpret_cast<uintptr_t>(captureState->captureEnd));
         captureState->captureEnd = GetCurrentPtr();
         Advance(opCode);
@@ -198,7 +200,11 @@ public:
         for (uint32_t i = catpureStartIndex; i <= catpureEndIndex; i++) {
             CaptureState *captureState =
                 &captureResultList_[i];  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            // 2: Even indexes store captureStart.
+            // Odd indexes store captureEnd. 0: start0, 1: end0, 2: start1, 3: end1, ...
             PushRegExpState(STATE_SAVE, i * 2, reinterpret_cast<uintptr_t>(captureState->captureStart));
+            // 2: Even indexes store captureStart.
+            // Odd indexes store captureEnd. 0: start0, 1: end0, 2: start1, 3: end1, ...
             PushRegExpState(STATE_SAVE, i * 2 + 1, reinterpret_cast<uintptr_t>(captureState->captureEnd));
             captureState->captureStart = nullptr;
             captureState->captureEnd = nullptr;
