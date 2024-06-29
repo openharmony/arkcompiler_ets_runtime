@@ -1313,11 +1313,15 @@ void TypedHCRLowering::LowerTypedArrayStoreElement(GateRef gate, BuiltinTypeId i
             break;
     }
 
-    OptStoreElementByOnHeapMode(gate, receiver, offset, value);
+    Label isByteArray(&builder_);
+    Label isArrayBuffer(&builder_);
+    Label exit(&builder_);
+    OptStoreElementByOnHeapMode(gate, receiver, offset, value, &isByteArray, &isArrayBuffer, &exit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
-void TypedHCRLowering::OptStoreElementByOnHeapMode(GateRef gate, GateRef receiver, GateRef offset, GateRef value)
+void TypedHCRLowering::OptStoreElementByOnHeapMode(GateRef gate, GateRef receiver, GateRef offset, GateRef value,
+                                                   Label *isByteArray, Label *isArrayBuffer, Label *exit)
 {
     StoreElementAccessor accessor = acc_.GetStoreElementAccessor(gate);
     OnHeapMode onHeapMode = accessor.GetOnHeapMode();
@@ -1331,10 +1335,7 @@ void TypedHCRLowering::OptStoreElementByOnHeapMode(GateRef gate, GateRef receive
             break;
         }
         default: {
-            Label isByteArray(&builder_);
-            Label isArrayBuffer(&builder_);
-            Label exit(&builder_);
-            BuildTypedArrayStoreElement(receiver, offset, value, &isByteArray, &isArrayBuffer, &exit);
+            BuildTypedArrayStoreElement(receiver, offset, value, isByteArray, isArrayBuffer, exit);
             break;
         }
     }
@@ -1406,6 +1407,9 @@ void TypedHCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     Label isOverFlow(&builder_);
     Label notOverFlow(&builder_);
     Label exit(&builder_);
+    Label isByteArray(&builder_);
+    Label isArrayBuffer(&builder_);
+    Label quit(&builder_);
     BRANCH_CIR(builder_.Int32GreaterThan(value, topValue), &isOverFlow, &notOverFlow);
     builder_.Bind(&isOverFlow);
     {
@@ -1424,7 +1428,7 @@ void TypedHCRLowering::LowerUInt8ClampedArrayStoreElement(GateRef gate)
     }
     builder_.Bind(&exit);
     value = builder_.TruncInt32ToInt8(*result);
-    OptStoreElementByOnHeapMode(gate, receiver, offset, value);
+    OptStoreElementByOnHeapMode(gate, receiver, offset, value, &isByteArray, &isArrayBuffer, &quit);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
