@@ -354,8 +354,8 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             break;
         }
         case OpCode::TYPED_ARRAY_CHECK: {
-            TypedArrayMetaDateAccessor lhsAccessor = acc_.GetTypedArrayMetaDateAccessor(lhs);
-            TypedArrayMetaDateAccessor rhsAccessor = acc_.GetTypedArrayMetaDateAccessor(rhs);
+            TypedArrayMetaDataAccessor lhsAccessor = acc_.GetTypedArrayMetaDataAccessor(lhs);
+            TypedArrayMetaDataAccessor rhsAccessor = acc_.GetTypedArrayMetaDataAccessor(rhs);
             if ((lhsAccessor.GetParamType() != rhsAccessor.GetParamType()) ||
                 (lhsAccessor.GetOnHeapMode() != rhsAccessor.GetOnHeapMode())) {
                 return false;

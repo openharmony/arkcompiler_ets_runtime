@@ -169,7 +169,7 @@ uint32_t RangeGuard::CheckIndexCheckLengthInput(GateRef lhs, GateRef rhs) const
         auto indexCheckLengthInput = acc_.GetValueIn(lhs, 0); // length
         auto indexCheckLengthInputOpcode = acc_.GetOpCode(indexCheckLengthInput);
         if (indexCheckLengthInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) {
-            TypedArrayMetaDateAccessor accessor = acc_.GetTypedArrayMetaDateAccessor(indexCheckLengthInput);
+            TypedArrayMetaDataAccessor accessor = acc_.GetTypedArrayMetaDataAccessor(indexCheckLengthInput);
             OnHeapMode onHeap = accessor.GetOnHeapMode();
             int32_t max = onHeap == OnHeapMode::ON_HEAP ? RangeInfo::TYPED_ARRAY_ONHEAP_MAX : INT32_MAX;
             return max;
@@ -189,7 +189,7 @@ uint32_t RangeGuard::CheckIndexCheckIndexInput(GateRef lhs, GateRef rhs) const
         auto indexCheckLengthInputOpcode = acc_.GetOpCode(indexCheckLengthInput);
         // TYPED_ARRAY
         if (indexCheckIndexInput == rhs && indexCheckLengthInputOpcode == OpCode::LOAD_TYPED_ARRAY_LENGTH) {
-            TypedArrayMetaDateAccessor accessor = acc_.GetTypedArrayMetaDateAccessor(indexCheckLengthInput);
+            TypedArrayMetaDataAccessor accessor = acc_.GetTypedArrayMetaDataAccessor(indexCheckLengthInput);
             OnHeapMode onHeap = accessor.GetOnHeapMode();
             int32_t max = onHeap == OnHeapMode::ON_HEAP ? RangeInfo::TYPED_ARRAY_ONHEAP_MAX : INT32_MAX;
             return max;

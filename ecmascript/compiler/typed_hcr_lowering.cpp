@@ -395,7 +395,7 @@ void TypedHCRLowering::SetDeoptTypeInfo(JSType jstype, DeoptType &type, size_t &
 void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    TypedArrayMetaDateAccessor accessor = acc_.GetTypedArrayMetaDateAccessor(gate);
+    TypedArrayMetaDataAccessor accessor = acc_.GetTypedArrayMetaDataAccessor(gate);
     size_t typedArrayRootHclassIndex = GlobalEnv::INT8_ARRAY_ROOT_HCLASS_INDEX;
     size_t typedArrayRootHclassOnHeapIndex = GlobalEnv::INT8_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX;
     auto deoptType = DeoptType::NONE;

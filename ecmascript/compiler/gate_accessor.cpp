@@ -275,7 +275,8 @@ ArrayMetaDataAccessor GateAccessor::GetArrayMetaDataAccessor(GateRef gate) const
            GetOpCode(gate) == OpCode::ELEMENTSKIND_CHECK ||
            GetOpCode(gate) == OpCode::CREATE_ARRAY ||
            GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER ||
-           GetOpCode(gate) == OpCode::CREATE_ARGUMENTS);
+           GetOpCode(gate) == OpCode::CREATE_ARGUMENTS ||
+           GetOpCode(gate) == OpCode::LOAD_ARRAY_LENGTH);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
     return ArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
@@ -308,11 +309,11 @@ BuiltinPrototypeHClassAccessor GateAccessor::GetBuiltinHClassAccessor(GateRef ga
     return BuiltinPrototypeHClassAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
-TypedArrayMetaDateAccessor GateAccessor::GetTypedArrayMetaDateAccessor(GateRef gate) const
+TypedArrayMetaDataAccessor GateAccessor::GetTypedArrayMetaDataAccessor(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::TYPED_ARRAY_CHECK || GetOpCode(gate) == OpCode::LOAD_TYPED_ARRAY_LENGTH);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    return TypedArrayMetaDateAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
+    return TypedArrayMetaDataAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
 }
 
 LoadElementAccessor GateAccessor::GetLoadElementAccessor(GateRef gate) const

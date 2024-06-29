@@ -416,7 +416,7 @@ public:
     CreateArgumentsAccessor GetCreateArgumentsAccessor(GateRef gate) const;
     ObjectTypeAccessor GetObjectTypeAccessor(GateRef gate) const;
     BuiltinPrototypeHClassAccessor GetBuiltinHClassAccessor(GateRef gate) const;
-    TypedArrayMetaDateAccessor GetTypedArrayMetaDateAccessor(GateRef gate) const;
+    TypedArrayMetaDataAccessor GetTypedArrayMetaDataAccessor(GateRef gate) const;
     LoadElementAccessor GetLoadElementAccessor(GateRef gate) const;
     StoreElementAccessor GetStoreElementAccessor(GateRef gate) const;
     bool NeedPushArgv(GateRef gate) const;

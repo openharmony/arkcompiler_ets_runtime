@@ -209,14 +209,14 @@ GateRef CircuitBuilder::ArrayGuardianCheck(GateRef frameState)
     return ret;
 }
 
-GateRef CircuitBuilder::TypedArrayCheck(GateRef gate, ParamType type, TypedArrayMetaDateAccessor::Mode mode,
+GateRef CircuitBuilder::TypedArrayCheck(GateRef gate, ParamType type, TypedArrayMetaDataAccessor::Mode mode,
                                         OnHeapMode onHeap)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    uint64_t value = TypedArrayMetaDateAccessor::ToValue(type, mode, onHeap);
+    uint64_t value = TypedArrayMetaDataAccessor::ToValue(type, mode, onHeap);
     GateRef ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(value), MachineType::I1,
                                         {currentControl, currentDepend, gate, frameState}, GateType::NJSValue());
     currentLabel->SetControl(ret);
@@ -229,8 +229,8 @@ GateRef CircuitBuilder::LoadTypedArrayLength(GateRef gate, ParamType paramType, 
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    uint64_t value = TypedArrayMetaDateAccessor::ToValue(paramType,
-                                                         TypedArrayMetaDateAccessor::Mode::LOAD_LENGTH, onHeap);
+    uint64_t value = TypedArrayMetaDataAccessor::ToValue(paramType,
+        TypedArrayMetaDataAccessor::Mode::LOAD_LENGTH, onHeap);
     GateRef ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(value), MachineType::I64,
                                         {currentControl, currentDepend, gate}, GateType::IntType());
     currentLabel->SetControl(ret);
@@ -887,13 +887,14 @@ GateRef CircuitBuilder::StoreProperty(GateRef receiver, GateRef propertyLookupRe
     return ret;
 }
 
-GateRef CircuitBuilder::LoadArrayLength(GateRef array)
+GateRef CircuitBuilder::LoadArrayLength(GateRef gate, ElementsKind kind, ArrayMetaDataAccessor::Mode mode)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    auto ret = GetCircuit()->NewGate(circuit_->LoadArrayLength(), MachineType::I64,
-                                     { currentControl, currentDepend, array }, GateType::IntType());
+    ArrayMetaDataAccessor accessor(kind, mode);
+    auto ret = GetCircuit()->NewGate(circuit_->LoadArrayLength(accessor.ToValue()), MachineType::I64,
+                                     { currentControl, currentDepend, gate }, GateType::IntType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;
@@ -1126,15 +1127,12 @@ GateRef CircuitBuilder::InsertRangeCheckPredicate(GateRef left, TypedBinOp cond,
     return ret;
 }
 
-GateRef CircuitBuilder::InsertStableArrayCheck(GateRef array)
+GateRef CircuitBuilder::InsertStableArrayCheck(GateRef array, ArrayMetaDataAccessor accessor)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef frameState = acc_.FindNearestFrameState(currentDepend);
-    ElementsKind kind = acc_.TryGetElementsKind(array);
-    ArrayMetaDataAccessor::Mode mode = ArrayMetaDataAccessor::Mode::LOAD_LENGTH;
-    ArrayMetaDataAccessor accessor(kind, mode);
     auto ret = GetCircuit()->NewGate(circuit_->StableArrayCheck(accessor.ToValue()),
                                      MachineType::I1,
                                      {currentControl, currentDepend, array, frameState},
@@ -1145,13 +1143,13 @@ GateRef CircuitBuilder::InsertStableArrayCheck(GateRef array)
     return ret;
 }
 
-GateRef CircuitBuilder::InsertTypedArrayCheck(GateType type, GateRef array)
+GateRef CircuitBuilder::InsertTypedArrayCheck(GateRef array, TypedArrayMetaDataAccessor accessor)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     GateRef frameState = acc_.FindNearestFrameState(currentDepend);
-    auto ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(static_cast<size_t>(type.Value())),
+    auto ret = GetCircuit()->NewGate(circuit_->TypedArrayCheck(accessor.ToValue()),
                                      MachineType::I1,
                                      {currentControl, currentDepend, array, frameState},
                                      GateType::NJSValue());
@@ -1161,17 +1159,17 @@ GateRef CircuitBuilder::InsertTypedArrayCheck(GateType type, GateRef array)
     return ret;
 }
 
-GateRef CircuitBuilder::InsertLoadArrayLength(GateRef array, bool isTypedArray)
+GateRef CircuitBuilder::InsertLoadArrayLength(GateRef array, GateRef length, bool isTypedArray)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    GateType arrayType = acc_.GetGateType(array);
     if (isTypedArray) {
-        InsertTypedArrayCheck(arrayType, array);
+        TypedArrayMetaDataAccessor accessor = acc_.GetTypedArrayMetaDataAccessor(length);
+        InsertTypedArrayCheck(array, accessor);
         currentControl = currentLabel->GetControl();
         currentDepend = currentLabel->GetDepend();
-        auto ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(static_cast<size_t>(arrayType.Value())),
+        auto ret = GetCircuit()->NewGate(circuit_->LoadTypedArrayLength(accessor.ToValue()),
                                          MachineType::I64,
                                          { currentControl, currentDepend, array },
                                          GateType::IntType());
@@ -1180,10 +1178,11 @@ GateRef CircuitBuilder::InsertLoadArrayLength(GateRef array, bool isTypedArray)
         currentLabel->SetDepend(ret);
         return ret;
     } else {
-        InsertStableArrayCheck(array);
+        ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(length);
+        InsertStableArrayCheck(array, accessor);
         currentControl = currentLabel->GetControl();
         currentDepend = currentLabel->GetDepend();
-        auto ret = GetCircuit()->NewGate(circuit_->LoadArrayLength(),
+        auto ret = GetCircuit()->NewGate(circuit_->LoadArrayLength(accessor.ToValue()),
                                          MachineType::I64,
                                          { currentControl, currentDepend, array },
                                          GateType::IntType());

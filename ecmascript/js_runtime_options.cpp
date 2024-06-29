@@ -1305,6 +1305,7 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
         SetMaxAotMethodSize(1_KB);
         SetEnableOptTrackField(false);
         SetEnableOptInlining(false);
+        SetEnableArrayBoundsCheckElimination(false);
         if (IsPartialCompilerMode()) {
             SetEnableOptPGOType(true);
             if (IsPGOProfilerPathEmpty()) {
@@ -1320,6 +1321,7 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
         SetMaxAotMethodSize(1_KB);
         SetEnableOptTrackField(false);
         SetEnableOptInlining(false);
+        SetEnableArrayBoundsCheckElimination(false);
         SetEnableOptPGOType(true);
         SetFastAOTCompileMode(true);
         SetOptLevel(DEFAULT_OPT_LEVEL);
