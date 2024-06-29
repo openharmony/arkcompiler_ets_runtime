@@ -19,5 +19,4 @@ host_moduletest_action("container") {
   is_module = true
   is_merge = true
   is_merge_abc = true
-  timeout = "300"
 }

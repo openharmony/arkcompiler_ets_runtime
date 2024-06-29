@@ -79,5 +79,4 @@ host_moduletest_action("builtins") {
     ":gen_builtinsregexp_abc",
     ":gen_builtinsstring_abc",
   ]
-  timeout = "300"
 }
