@@ -1220,12 +1220,12 @@ Local<JSValueRef> DebuggerApi::GetStackValue(const EcmaVM *ecmaVm, Local<JSValue
                                              Global<MapRef> internalObjects)
 {
     JSHandle<JSAPIStack> stack(JSNApiHelper::ToJSHandle(value));
-    uint32_t size = static_cast<uint32_t>(stack->GetSize());
+    uint32_t size = static_cast<uint32_t>(stack->GetSize() + 1);
     Local<JSValueRef> jsValueRef = ArrayRef::New(ecmaVm, size);
     JSThread *thread = ecmaVm->GetJSThread();
     JSMutableHandle<JSTaggedValue> currentValue(thread, JSTaggedValue::Undefined());
     uint32_t index = 0;
-    while (index < size + 1) {
+    while (index < size) {
         currentValue.Update(stack->Get(index));
         ArrayRef::SetValueAt(ecmaVm, jsValueRef, index++, JSNApiHelper::ToLocal<JSValueRef>(currentValue));
     }
