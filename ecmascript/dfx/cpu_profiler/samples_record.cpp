@@ -368,11 +368,6 @@ void SamplesRecord::SetThreadStopTime()
     profileInfo_->stopTime = previousTimeStamp_;
 }
 
-void SamplesRecord::SetStartsampleData(std::string sampleData)
-{
-    sampleData_ += sampleData;
-}
-
 void SamplesRecord::SetFileName(std::string &fileName)
 {
     fileName_ = fileName;
@@ -381,11 +376,6 @@ void SamplesRecord::SetFileName(std::string &fileName)
 const std::string SamplesRecord::GetFileName() const
 {
     return fileName_;
-}
-
-void SamplesRecord::ClearSampleData()
-{
-    sampleData_.clear();
 }
 
 std::unique_ptr<struct ProfileInfo> SamplesRecord::GetProfileInfo()
@@ -455,12 +445,6 @@ void SamplesRecord::ClearNapiStack()
 {
     napiFrameStack_.clear();
     napiFrameInfoTemps_.clear();
-}
-
-void SamplesRecord::ClearNapiCall()
-{
-    napiCallTimeVec_.clear();
-    napiCallAddrVec_.clear();
 }
 
 int SamplesRecord::GetNapiFrameStackLength()
@@ -591,16 +575,6 @@ void SamplesRecord::NapiFrameInfoTempToMap()
 int SamplesRecord::GetframeStackLength() const
 {
     return frameStackLength_;
-}
-
-void SamplesRecord::RecordCallNapiTime(uint64_t currentTime)
-{
-    napiCallTimeVec_.emplace_back(currentTime);
-}
-
-void SamplesRecord::RecordCallNapiAddr(const std::string &methodAddr)
-{
-    napiCallAddrVec_.emplace_back(methodAddr);
 }
 
 void SamplesRecord::PostFrame()

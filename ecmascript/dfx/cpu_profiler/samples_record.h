@@ -129,10 +129,8 @@ public:
     void SetThreadStartTime(uint64_t threadStartTime);
     uint64_t GetThreadStartTime();
     void SetThreadStopTime();
-    void SetStartsampleData(std::string sampleData);
     void SetFileName(std::string &fileName);
     const std::string GetFileName() const;
-    void ClearSampleData();
     std::unique_ptr<struct ProfileInfo> GetProfileInfo();
     bool GetIsStart() const;
     void SetIsStart(bool isStart);
@@ -154,9 +152,6 @@ public:
     bool PushNapiStackInfo(const FrameInfoTemp &frameInfoTemp);
     int GetNapiFrameStackLength();
     void ClearNapiStack();
-    void ClearNapiCall();
-    void RecordCallNapiTime(uint64_t currentTime);
-    void RecordCallNapiAddr(const std::string &methodAddrName);
     void PostFrame();
     void PostNapiFrame();
     void ResetFrameLength();
@@ -164,8 +159,6 @@ public:
     void SetCallTimeStamp(uint64_t timeStamp);
     void AddTraceEvent(bool isFinish);
     void AddStartTraceEvent();
-    std::ofstream fileHandle_;
-    SamplesQueue *samplesQueue_ {nullptr};
 
     void SetEnableVMTag(bool flag)
     {
@@ -181,6 +174,9 @@ public:
     {
         timeDeltaThreshold_ = timeDeltaThreshold;
     }
+
+    std::ofstream fileHandle_;
+    SamplesQueue *samplesQueue_ {nullptr};
 
 private:
     void StringifyStateTimeStatistic();
@@ -214,8 +210,6 @@ private:
     // napi stack
     CVector<struct MethodKey> napiFrameStack_;
     CVector<FrameInfoTemp> napiFrameInfoTemps_;
-    CVector<uint64_t> napiCallTimeVec_;
-    CVector<std::string> napiCallAddrVec_;
     bool enableVMTag_ {false};
     uint64_t callTimeStamp_ = 0;
     uint32_t timeDeltaThreshold_ = 0;

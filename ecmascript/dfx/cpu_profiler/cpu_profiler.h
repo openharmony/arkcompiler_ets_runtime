@@ -31,13 +31,6 @@ const int THRESHOLD_FIXED_INCREMENT = 2000; // 2000:TimeDelta Threshold Fixed In
 using JSTaggedType = uint64_t;
 class SamplesRecord;
 
-struct CurrentProcessInfo {
-    uint64_t nowTimeStamp = 0;
-    uint64_t tts = 0;
-    pid_t pid = 0;
-    pthread_t tid = 0;
-};
-
 class GcStateScope {
 public:
     inline explicit GcStateScope(JSThread *thread)
@@ -91,7 +84,6 @@ public:
     bool StartCpuProfilerForFile(const std::string &fileName);
     bool StopCpuProfilerForFile();
     void SetCpuSamplingInterval(int interval);
-    void RecordCallNapiInfo(const std::string &methodAddr);
     void SetBuildNapiStack(bool flag);
     bool GetBuildNapiStack();
     bool GetOutToFile();
@@ -106,8 +98,6 @@ private:
     void GetStack(FrameIterator &it);
     static uint64_t GetPcFromContext(void *context);
     bool IsAddrAtStubOrAot(uint64_t pc) const;
-    void SetProfileStart(uint64_t nowTimeStamp);
-    void GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo);
     bool CheckFileName(const std::string &fileName, std::string &absoluteFilePath) const;
     bool RegisterGetStackSignal();
 
