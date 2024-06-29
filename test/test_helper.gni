@@ -29,7 +29,11 @@ common_options = ""
 if (defined(disable_force_gc) && disable_force_gc) {
   common_options += " --enable-force-gc=false"
 }
-
+if (defined(timeout)) {
+  _timeout_ = timeout
+} else {
+  _timeout_ = 1200
+}
 template("host_unittest_action") {
   _target_name_ = "${target_name}"
 
@@ -70,7 +74,7 @@ template("host_unittest_action") {
           "/thirdparty/bounds_checking_function:" +
           rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
       "--timeout-limit",
-      "1200",
+      "${_timeout_}",
     ]
 
     inputs = [
@@ -112,7 +116,7 @@ template("host_unittest_action") {
         "--qemu-ld-prefix",
         rebase_path(musl_linker_so_out_dir, root_build_dir),
         "--timeout-limit",
-        "1200",
+        "${_timeout_}",
       ]
 
       inputs = [
@@ -156,10 +160,6 @@ template("host_moduletest_action") {
   _is_merge_abc_ = false
   if (defined(invoker.is_merge_abc) && invoker.is_merge_abc) {
     _is_merge_abc_ = true
-  }
-  _timeout_ = "300"
-  if (defined(invoker.timeout)) {
-    _timeout_ = invoker.timeout
   }
 
   _src_dir_ = "."
@@ -635,10 +635,6 @@ template("host_moduletest_assert_action") {
   _is_merge_abc_ = false
   if (defined(invoker.is_merge_abc) && invoker.is_merge_abc) {
     _is_merge_abc_ = true
-  }
-  _timeout_ = "200"
-  if (defined(invoker.timeout)) {
-    _timeout_ = invoker.timeout
   }
 
   _src_dir_ = "."
@@ -4495,7 +4491,7 @@ template("host_quickfix_test_action") {
       "--script-args",
       _script_args_,
       "--timeout-limit",
-      "500",
+      "${_timeout_}",
       "--expect-file",
       rebase_path(_test_expect_path_),
       "--env-path",

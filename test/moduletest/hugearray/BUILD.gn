@@ -36,5 +36,4 @@ host_moduletest_assert_action("hugearray") {
     ":gen_hugearray_second_abc",
     ":gen_hugearray_third_abc",
   ]
-  timeout = "300"
 }

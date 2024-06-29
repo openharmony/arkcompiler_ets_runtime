@@ -12,7 +12,11 @@
 # limitations under the License.
 
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
-
+if (defined(timeout)) {
+  _timeout_ = timeout
+} else {
+  _timeout_ = 1200
+}
 config("include_llvm") {
   if (compile_llvm_online) {
     include_dirs = [
@@ -623,7 +627,7 @@ action("gen_stub_file") {
     "--expect-output",
     "0",
     "--timeout-limit",
-    "1200",
+    "${_timeout_}",
     "--env-path",
     rebase_path(root_out_dir_with_host_toolchain) +
         "/arkcompiler/ets_runtime:" +
