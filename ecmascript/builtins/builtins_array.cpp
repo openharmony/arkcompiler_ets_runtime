@@ -1278,6 +1278,10 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
         if (k > 0) {
             concatStr.append(sepStr);
         }
+        if (concatStr.size() > EcmaString::MAX_STRING_LENGTH) {
+            context->JoinStackPopFastPath(thisHandle);
+            THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+        }
         concatStr.append(nextStr);
     }
 
@@ -2586,12 +2590,10 @@ JSTaggedValue BuiltinsArray::ToString(EcmaRuntimeCallInfo *argv)
         callbackFnHandle = JSTaggedValue::GetProperty(thread, objectPrototype, toStringKey).GetValue();
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    const uint32_t argsLength = argv->GetArgsNumber();
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisObjVal, undefined, argsLength);
+        EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisObjVal, undefined, 0);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(argsLength, 0, argv, 0);
     return JSFunction::Call(info);
 }
 

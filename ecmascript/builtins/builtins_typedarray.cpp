@@ -781,7 +781,7 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         return globalConst->GetEmptyString();
     }
-    size_t allocateLength = 0;
+    uint64_t allocateLength = 0;
     bool isOneByte = (sep != BuiltinsTypedArray::SeparatorFlag::MINUS_ONE) ||
         EcmaStringAccessor(sepStringHandle).IsUtf8();
     CVector<JSHandle<EcmaString>> vec;
@@ -806,7 +806,10 @@ JSTaggedValue BuiltinsTypedArray::Join(EcmaRuntimeCallInfo *argv)
             vec.push_back(JSHandle<EcmaString>(globalConst->GetHandledEmptyString()));
         }
     }
-    allocateLength += sepLength * (length - 1);
+    allocateLength += static_cast<uint64_t>(sepLength) * (length - 1);
+    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+    }
     if (allocateLength <= 1) {
         // sep unused, set isOneByte to default(true)
         isOneByte = true;
