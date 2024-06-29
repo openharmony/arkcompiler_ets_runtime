@@ -43,19 +43,20 @@ public:
     int32_t StopAotCompiler() override;
     int32_t GetAOTVersion(std::string& sigData) override;
     int32_t NeedReCompile(const std::string& args, bool& sigData) override;
-    void DelayUnloadTask();
 protected:
     void OnStart() override;
     void OnStop() override;
 private:
     bool Init();
+    void RemoveUnloadTask(const std::string taskId);
+    void DelayUnloadTask(const std::string taskId, const int32_t delayTime);
     void RegisterPowerDisconnectedListener();
     void UnRegisterPowerDisconnectedListener();
 
-    std::shared_ptr<AppExecFwk::EventHandler> unLoadHandler_;
+    std::shared_ptr<AppExecFwk::EventHandler> unLoadHandler_ { nullptr };
     ServiceRunningState state_;
-    std::shared_ptr<PowerDisconnectedListener> powerDisconnectedListener_;
-    bool isPowerEventSubscribered_ = false;
+    std::shared_ptr<PowerDisconnectedListener> powerDisconnectedListener_ { nullptr };
+    bool isPowerEventSubscribered_ { false };
 };
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOTCOMPILER_SERVICE_H

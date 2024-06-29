@@ -11,18 +11,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("compiler_service_unittest") {
-  testonly = true
-  deps = [
-    "unittest/aotcompilerclient_unit:AotCompilerClientUnitTest",
-    "unittest/aotcompilerservice_unit:AotCompilerServiceUnitTest",
-  ]
-}
-
-group("compiler_service_fuzztest") {
-  testonly = true
-  deps = [
-    "fuzztest/aotcompilerargsprepare_fuzzer:AotCompilerArgsPrepareFuzzTest",
-    "fuzztest/compilerinterfacestub_fuzzer:CompilerInterfaceStubFuzzTest",
-  ]
-}
+appIdentifier

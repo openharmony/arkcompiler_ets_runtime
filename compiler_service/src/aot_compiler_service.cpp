@@ -46,7 +46,7 @@ AotCompilerService::AotCompilerService(int32_t systemAbilityId, bool runOnCreate
     : SystemAbility(systemAbilityId, runOnCreate), state_(ServiceRunningState::STATE_NOT_START)
 {
 }
-   
+
 AotCompilerService::~AotCompilerService()
 {
 }
@@ -80,8 +80,21 @@ bool AotCompilerService::Init()
     return true;
 }
 
-void AotCompilerService::DelayUnloadTask()
+void AotCompilerService::RemoveUnloadTask(const std::string taskId)
 {
+    if (unLoadHandler_ == nullptr) {
+        LOG_SA(ERROR) << "NULL pointer of unLoadHandler_ error";
+        return;
+    }
+    unLoadHandler_->RemoveTask(taskId);
+}
+
+void AotCompilerService::DelayUnloadTask(const std::string taskId, const int32_t delayTime)
+{
+    if (unLoadHandler_ == nullptr) {
+        LOG_SA(ERROR) << "NULL pointer of unLoadHandler_ error";
+        return;
+    }
     auto task = []() {
         sptr<ISystemAbilityManager> samgr =
             SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
@@ -95,8 +108,7 @@ void AotCompilerService::DelayUnloadTask()
             return;
         }
     };
-    unLoadHandler_->RemoveTask(TASK_ID);
-    unLoadHandler_->PostTask(task, TASK_ID, DELAY_TIME);
+    unLoadHandler_->PostTask(task, taskId, delayTime);
 }
 
 void AotCompilerService::OnStop()
@@ -110,45 +122,45 @@ int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, st
                                         std::vector<int16_t> &sigData)
 {
     LOG_SA(DEBUG) << "begin to call aot compiler";
-    unLoadHandler_->RemoveTask(TASK_ID);
+    RemoveUnloadTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().EcmascriptAotCompiler(argsMap, sigData);
     LOG_SA(DEBUG) << "finish aot compiler";
-    DelayUnloadTask();
+    DelayUnloadTask(TASK_ID, DELAY_TIME);
     return ret;
 }
 
 int32_t AotCompilerService::GetAOTVersion(std::string& sigData)
 {
     LOG_SA(DEBUG) << "begin to get AOT version";
-    unLoadHandler_->RemoveTask(TASK_ID);
+    RemoveUnloadTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().GetAOTVersion(sigData);
     LOG_SA(DEBUG) << "finish get AOT Version";
-    DelayUnloadTask();
+    DelayUnloadTask(TASK_ID, DELAY_TIME);
     return ret;
 }
 
 int32_t AotCompilerService::NeedReCompile(const std::string& args, bool& sigData)
 {
     LOG_SA(DEBUG) << "begin to check need to re-compile version";
-    unLoadHandler_->RemoveTask(TASK_ID);
+    RemoveUnloadTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().NeedReCompile(args, sigData);
     LOG_SA(DEBUG) << "finish check need re-compile";
-    DelayUnloadTask();
+    DelayUnloadTask(TASK_ID, DELAY_TIME);
     return ret;
 }
 
 int32_t AotCompilerService::StopAotCompiler()
 {
     LOG_SA(DEBUG) << "stop aot compiler service";
-    unLoadHandler_->RemoveTask(TASK_ID);
+    RemoveUnloadTask(TASK_ID);
     int32_t ret = AotCompilerImpl::GetInstance().StopAotCompiler();
-    DelayUnloadTask();
+    DelayUnloadTask(TASK_ID, DELAY_TIME);
     return ret;
 }
 
 void AotCompilerService::RegisterPowerDisconnectedListener()
 {
-    LOG_SA(INFO) << "AotCompilerService::RegisterPowerDisconnectedListener";
+    LOG_SA(DEBUG) << "AotCompilerService::RegisterPowerDisconnectedListener";
     EventFwk::MatchingSkills matchingSkills;
     matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_POWER_DISCONNECTED);
     EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
@@ -164,7 +176,7 @@ void AotCompilerService::RegisterPowerDisconnectedListener()
 
 void AotCompilerService::UnRegisterPowerDisconnectedListener()
 {
-    LOG_SA(INFO) << "AotCompilerService::UnRegisterPowerDisconnectedListener";
+    LOG_SA(DEBUG) << "AotCompilerService::UnRegisterPowerDisconnectedListener";
     if (!isPowerEventSubscribered_) {
         return;
     }

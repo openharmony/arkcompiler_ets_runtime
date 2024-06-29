@@ -20,6 +20,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <linux/capability.h>
+#include <securec.h>
 #include <sys/capability.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -323,6 +324,4 @@ void AotCompilerImpl::ResetState()
     state_.running = false;
     state_.childPid = -1;
 }
-
-
-} // namespace ArkCompiler::OHOS
+} // namespace OHOS::ArkCompiler
