@@ -19,6 +19,7 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/lcr_gate_meta_data.h"
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
@@ -222,6 +223,12 @@ public:
     GateRef IntPtrAnd(GateRef x, GateRef y);
     GateRef BoolAnd(GateRef x, GateRef y);
     GateRef BoolOr(GateRef x, GateRef y);
+#define SHORTCUT_BOOLAND(first, second)                                    \
+ShortcutBoolAnd([&]{ return first; }, [&]{ return second; })
+    GateRef ShortcutBoolAnd(const std::function<GateRef()>& first, const std::function<GateRef()>& second);
+#define SHORTCUT_BOOLOR(first, second)                                    \
+ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
+    GateRef ShortcutBoolOr(const std::function<GateRef()>& first, const std::function<GateRef()>& second);
     GateRef Int32Not(GateRef x);
     GateRef IntPtrNot(GateRef x);
     GateRef BoolNot(GateRef x);
