@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_message_helper.h"
@@ -337,6 +338,7 @@ void JSPandaFileManager::AddJSPandaFile(const std::shared_ptr<JSPandaFile> &jsPa
     }
 
     loadedJSPandaFiles_[filename] = std::move(jsPandaFile);
+    JSPandaFileExecutor::BindPandaFileToAot(jsPandaFile.get());
     LOG_ECMA(DEBUG) << "add file: " << filename;
 }
 
