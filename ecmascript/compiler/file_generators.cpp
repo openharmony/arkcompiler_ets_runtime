@@ -607,6 +607,33 @@ void AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
     panda::ecmascript::CodeSignatureForAOTFile(filename, appSignature);
 }
 
+void AOTFileGenerator::SaveEmptyAOTFile(const std::string& filename, const std::string& appSignature, bool isAnFile)
+{
+    if (!CreateDirIfNotExist(filename)) {
+        LOG_COMPILER(ERROR) << "Fail to access dir: " << filename;
+        return;
+    }
+    std::string realPath;
+    if (!RealPath(filename, realPath, false)) {
+        LOG_COMPILER(ERROR) << "Fail to get realPath: " << filename;
+        return;
+    }
+    if (FileExist(realPath.c_str())) {
+        LOG_COMPILER(ERROR) << "AOT file: " << realPath << " exist, skip create empty file";
+        return;
+    }
+    const char* rawPath = realPath.c_str();
+    std::ofstream file(rawPath, std::ofstream::binary);
+    file.close();
+    if (!panda::ecmascript::SetFileModeAsDefault(filename)) {
+        LOG_COMPILER(ERROR) << "Fail to set file mode: " << filename;
+    }
+    if (isAnFile) {
+        panda::ecmascript::CodeSignatureForAOTFile(filename, appSignature);
+    }
+    LOG_COMPILER(ERROR) << "create empty AOT file: " << realPath << " due to illegal AP file";
+}
+
 void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
 {
     if (aotInfo_.GetTotalCodeSize() == 0) {

@@ -151,9 +151,12 @@ int Main(const int argc, const char **argv)
         if (CheckVersion(runtimeOptions, compilerStats, isPgoMerged)) {
             return ERR_OK;
         }
+        std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();
         if (!isPgoMerged) {
-            filesystem::CreateEmptyFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN);
-            filesystem::CreateEmptyFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI);
+            AOTFileGenerator::SaveEmptyAOTFile(
+                cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature, true);
+            AOTFileGenerator::SaveEmptyAOTFile(
+                cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI, appSignature, false);
             return ERR_MERGE_AP;
         }
         cPreprocessor.Process(cOptions);
@@ -206,7 +209,6 @@ int Main(const int argc, const char **argv)
         AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);
 
         passManager.CompileValidFiles(generator, ret, compilerStats);
-        std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();
         generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature);
         generator.SaveSnapshotFile();
         log.Print();

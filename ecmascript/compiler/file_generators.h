@@ -197,12 +197,14 @@ public:
 
     void GenerateMergedStackmapSection();
 
-    bool CreateDirIfNotExist(const std::string &filename);
+    static bool CreateDirIfNotExist(const std::string& filename);
 
     bool SetFileModeAsDefault(const std::string &filename);
 
     // save function for aot files containing normal func translated from JS/TS
     void SaveAOTFile(const std::string &filename, const std::string &appSignature);
+
+    static void SaveEmptyAOTFile(const std::string& filename, const std::string& appSignature, bool isAnFile);
 
     void SaveSnapshotFile();
 
