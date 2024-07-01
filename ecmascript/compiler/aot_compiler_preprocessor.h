@@ -207,8 +207,6 @@ private:
 
     void ResolveModule(const JSPandaFile *jsPandaFile, const std::string &fileName);
 
-    void RecordArrayElement(const JSPandaFile* jsPandaFile, BytecodeInfoCollector& collector);
-
     bool OutCompiledMethodsRange() const
     {
         static uint32_t compiledMethodsCount = 0;

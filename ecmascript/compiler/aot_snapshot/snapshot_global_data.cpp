@@ -46,7 +46,7 @@ void ReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
         // For MethodSnaphotInfo which does not have ihc info, we insert JSTaggedValue(methodOffset) as revervation.
         // We need to set JSTaggedValue(codeEntry); to replace JSTaggedValue(methodOffset).
         if (val.IsInt()) {
-            if (val.GetInt() == -1) {
+            if (val.GetInt() == AOTLiteralInfo::NO_FUNC_ENTRY_VALUE) {
                 continue;
             }
             uint32_t methodOffset = static_cast<uint32_t>(val.GetInt());
@@ -63,7 +63,7 @@ void ReviseData::Resolve(JSThread *thread, const SnapshotGlobalData *globalData,
         uint32_t aotLiteralInfoLen = aotLiteralInfo->GetCacheLength();
         for (uint32_t i = 0; i < aotLiteralInfoLen; ++i) {
             JSTaggedValue methodOffsetVal = aotLiteralInfo->GetObjectFromCache(i);
-            if (methodOffsetVal.GetInt() == -1) {
+            if (methodOffsetVal.GetInt() == AOTLiteralInfo::NO_FUNC_ENTRY_VALUE) {
                 continue;
             }
             uint32_t methodOffset = static_cast<uint32_t>(methodOffsetVal.GetInt());

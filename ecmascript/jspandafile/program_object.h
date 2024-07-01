@@ -54,7 +54,7 @@ public:
 /*                         ConstantPool(TaggedArray)
  *      +--------------------------------+----------------------------------
  *      |               ...              |       ^           ^          ^   index 0
- *      |              Method            |       |           |          |
+ *      |  Method / AOTLiteralInfo / Int |       |           |          |
  *      |              String            |       |           |          |
  *      |           Array Literal        | ConstpoolLength   |          |
  *      |           Class Literal        |       |           |          |
@@ -644,14 +644,10 @@ public:
                     #else
                     ElementsKind dataKind = ElementsKind::NONE;
                     #endif
-                    bool loadedFromAOT = constpoolHandle->TryGetAOTArrayLiteral(thread, needSetAotFlag,
-                                                                                entryIndexes, literal, &dataKind);
-                    if (!loadedFromAOT) {
-                        literal.Update(LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id,
-                                                                                constpoolHandle, entry,
-                                                                                needSetAotFlag, entryIndexes,
-                                                                                &dataKind));
-                    }
+                    literal.Update(LiteralDataExtractor::GetDatasIgnoreType(thread, jsPandaFile, id,
+                                                                            constpoolHandle, entry,
+                                                                            needSetAotFlag, entryIndexes,
+                                                                            &dataKind));
                     uint32_t length = literal->GetLength();
                     JSHandle<JSArray> arr(JSArray::ArrayCreate(thread, JSTaggedNumber(length), ArrayMode::LITERAL));
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -666,11 +662,9 @@ public:
                         arr->SynchronizedSetClass(thread, JSHClass::Cast(hclassVal.GetTaggedObject()));
                         ElementsKind oldKind = arr->GetClass()->GetElementsKind();
                         JSHClass::TransitToElementsKind(thread, arr, dataKind);
-                        if (!loadedFromAOT) {
-                            ElementsKind newKind = arr->GetClass()->GetElementsKind();
-                            JSHandle<JSObject> receiver(arr);
-                            Elements::MigrateArrayWithKind(thread, receiver, oldKind, newKind);
-                        }
+                        ElementsKind newKind = arr->GetClass()->GetElementsKind();
+                        JSHandle<JSObject> receiver(arr);
+                        Elements::MigrateArrayWithKind(thread, receiver, oldKind, newKind);
                     }
                     val = arr.GetTaggedValue();
                     break;
@@ -683,22 +677,6 @@ public:
         }
 
         return val;
-    }
-
-    bool PUBLIC_API TryGetAOTArrayLiteral(JSThread *thread, bool loadAOT, JSHandle<AOTLiteralInfo> entryIndexes,
-                               JSMutableHandle<TaggedArray> literal, ElementsKind *dataKind)
-    {
-        if (loadAOT) {
-            int elementIndex = entryIndexes->GetElementIndex();
-            if (elementIndex != kungfu::BaseSnapshotInfo::AOT_ELEMENT_INDEX_DEFAULT_VALUE) {
-                JSTaggedValue arrayInfos = GetAotArrayInfo();
-                JSHandle<TaggedArray> aotArrayInfos(thread, arrayInfos);
-                literal.Update(aotArrayInfos->Get(elementIndex));
-                *dataKind = entryIndexes->GetElementsKind();
-                return true;
-            }
-        }
-        return false;
     }
 
     template <ConstPoolType type>

@@ -39,28 +39,25 @@ namespace panda::ecmascript {
 class JSpandafile;
 class JSThread;
 
-/*                  AOTLiteralInfo
- *      +-----------------------------------+----
- *      |             cache                 |  ^
- *      |              ...                  |  |
- *      |   -1 (No AOT Function Entry)      |  |
- *      |     AOT Function Entry Index      |  |
- *      |     AOT Function Entry Index      |  |
- *      +-----------------------------------+----
- *      |      AOT Instance Hclass (IHC)    |
- *      |   AOT Constructor Hclass (CHC)    |
- *      |   AOT ElementIndex (ElementIndex) |
- *      |   AOT ElementKind  (ElementKind)  |
- *      +-----------------------------------+
+/*                AOTLiteralInfo (TaggedArray)
+ *    +--------------------------------------------------+------
+ *    |      AOT Function CodeEntry of 1st Method        |    ^
+ *    |     (NO_FUNC_ENTRY_VALUE if NoMethodEntry)       |    |
+ *    |                    ...                           | MethodsCache
+ *    |                    ...                           |    |
+ *    |      AOT Function CodeEntry of nth Method        |    v
+ *    +--------------------------------------------------+------
+ *    |      AOT Instance Hclass (IHC) (JSTaggedValue)   |
+ *    |    AOT Constructor Hclass (CHC) (JSTaggedValue)  |
+ *    +--------------------------------------------------+
+ *
  */
 class AOTLiteralInfo : public TaggedArray {
 public:
     static constexpr size_t NO_FUNC_ENTRY_VALUE = -1;
     static constexpr size_t AOT_CHC_INDEX = 1;
     static constexpr size_t AOT_IHC_INDEX = 2;
-    static constexpr size_t AOT_ELEMENT_INDEX = 3;
-    static constexpr size_t AOT_ELEMENTS_KIND_INDEX = 4;
-    static constexpr size_t LITERAL_TYPE_INDEX = 5;
+    static constexpr size_t LITERAL_TYPE_INDEX = 3;
     static constexpr size_t RESERVED_LENGTH = LITERAL_TYPE_INDEX;
 
     static constexpr int32_t METHOD_LITERAL_TYPE = 1;
@@ -82,8 +79,6 @@ public:
         TaggedArray::InitializeWithSpecialValue(initValue, capacity + RESERVED_LENGTH, extraLength);
         SetIhc(JSTaggedValue::Undefined());
         SetChc(JSTaggedValue::Undefined());
-        SetElementIndex(JSTaggedValue(kungfu::BaseSnapshotInfo::AOT_ELEMENT_INDEX_DEFAULT_VALUE));
-        SetElementsKind(ElementsKind::GENERIC);
         SetLiteralType(JSTaggedValue(INVALID_LITERAL_TYPE));
     }
 
@@ -110,29 +105,6 @@ public:
     inline JSTaggedValue GetChc() const
     {
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetChcOffset()));
-    }
-
-    inline void SetElementIndex(JSTaggedValue value)
-    {
-        Barriers::SetPrimitive(GetData(), GetElementIndexOffset(), value.GetRawData());
-    }
-
-    inline int GetElementIndex() const
-    {
-        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetElementIndexOffset())).GetInt();
-    }
-
-    inline void SetElementsKind(ElementsKind kind)
-    {
-        JSTaggedValue value(static_cast<int>(kind));
-        Barriers::SetPrimitive(GetData(), GetElementsKindOffset(), value.GetRawData());
-    }
-
-    inline ElementsKind GetElementsKind() const
-    {
-        JSTaggedValue value = JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetElementsKindOffset()));
-        ElementsKind kind = static_cast<ElementsKind>(value.GetInt());
-        return kind;
     }
 
     inline void SetLiteralType(JSTaggedValue value)
@@ -164,16 +136,6 @@ private:
     inline size_t GetChcOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_CHC_INDEX);
-    }
-
-    inline size_t GetElementIndexOffset() const
-    {
-        return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_ELEMENT_INDEX);
-    }
-
-    inline size_t GetElementsKindOffset() const
-    {
-        return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_ELEMENTS_KIND_INDEX);
     }
 
     inline size_t GetLiteralTypeOffset() const

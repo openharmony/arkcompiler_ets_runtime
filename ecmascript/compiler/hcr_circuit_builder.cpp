@@ -504,7 +504,7 @@ GateRef CircuitBuilder::CreateArray(ElementsKind kind, uint32_t arraySize, GateR
 }
 
 GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode, GateRef cpId,
-                                              GateRef constPoolIndex, GateRef elementIndex)
+                                              GateRef constPoolIndex)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
@@ -513,8 +513,7 @@ GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAc
     ArrayMetaDataAccessor accessor(kind, mode);
     GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArrayWithBuffer(accessor.ToValue()),
                                             MachineType::I64,
-                                            { currentControl, currentDepend, cpId, constPoolIndex,
-                                              elementIndex, frameState },
+                                            { currentControl, currentDepend, cpId, constPoolIndex, frameState },
                                             GateType::NJSValue());
     currentLabel->SetControl(newGate);
     currentLabel->SetDepend(newGate);

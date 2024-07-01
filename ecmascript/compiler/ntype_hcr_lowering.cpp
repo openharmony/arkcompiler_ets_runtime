@@ -82,16 +82,20 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
     // 3: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 3);
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef cpId = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
-    GateRef aotElmIndex = acc_.GetValueIn(gate, 2);
-    auto elementIndex = acc_.GetConstantValue(aotElmIndex);
     uint32_t constPoolIndex = static_cast<uint32_t>(acc_.GetConstantValue(index));
     ArgumentAccessor argAcc(circuit_);
     GateRef frameState = GetFrameState(gate);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
     GateRef unsharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
-    GateRef literialElements = LoadFromConstPool(unsharedConstpool, elementIndex, ConstantPool::AOT_ARRAY_INFO_INDEX);
+    GateRef sharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
+    GateRef cachedArray = builder_.GetObjectFromConstPool(glue, gate, sharedConstpool, unsharedConstpool,
+                                                          module, builder_.TruncInt64ToInt32(index),
+                                                          ConstPoolType::ARRAY_LITERAL);
+    GateRef literialElements = builder_.GetElementsArray(cachedArray);
     uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
     JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
     if (arr.IsUndefined()) {

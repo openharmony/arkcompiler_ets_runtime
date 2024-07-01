@@ -52,21 +52,8 @@ public:
         return aotSnapshot_;
     }
 
-    CVector<JSTaggedType>& GetArrayInfo()
-    {
-        return arrayData_;
-    }
-
     // array
-    void PUBLIC_API RecordElements(panda_file::File::EntityId id, JSTaggedValue elements);
-
-    void PUBLIC_API UpdateRecordedElements(panda_file::File::EntityId id, JSTaggedValue elements, ElementsKind kind);
-
     void RecordConstantIndex(uint32_t bcAbsoluteOffset, uint32_t index);
-
-    int PUBLIC_API GetElementsIndexByEntityId(panda_file::File::EntityId id);
-
-    ElementsKind PUBLIC_API GetElementsKindByEntityId(panda_file::File::EntityId id);
 
     // hclass
     void RecordHClass(ProfileType rootType, ProfileType childType, JSTaggedType hclass, bool update = false);
@@ -147,14 +134,11 @@ private:
 
     JSThread *thread_;
     RootIdToTransMap hcData_;
-    CVector<JSTaggedType> arrayData_ {};
     CVector<uint32_t> constantIndexData_ {};
     CUnorderedMap<PGOTypeLocation, ProfileType, HashPGOTypeLocation> locToRootIdMap_ {};
     CUnorderedMap<PGOTypeLocation, ElementsKind, HashPGOTypeLocation> locToElmsKindMap_ {};
     CMap<ProfileTyper, uint32_t> profileTyperToHClassIndex_ {};
     CMap<ProfileTypeTuple, uint64_t> profileTypeToSymbolId_ {};
-    std::map<panda_file::File::EntityId, uint32_t> idElmsIdxMap_ {};
-    std::map<panda_file::File::EntityId, ElementsKind> idElmsKindMap_ {};
     AOTSnapshot aotSnapshot_;
 
     // Since there is only one PGOTypeManager instance during compilation,
