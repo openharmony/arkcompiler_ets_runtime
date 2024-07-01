@@ -27,18 +27,20 @@ public:
         : typeRecorder_(typeRecorder), ptManager_(ptManager) {}
 
     bool FindHClassLayoutDesc(PGOSampleType type) const;
-    bool GenerateHClass(PGOSampleType type) const;
+    // The hclass of object literal needs to be created from cached
+    bool GenerateHClass(PGOSampleType type, bool isCache) const;
     bool GenerateIHClass(PGOSampleType type, const JSHandle<JSObject> &prototype) const;
 
 private:
     void CaculateMaxNumOfObj(
         const PGOHClassTreeDesc *desc, const HClassLayoutDesc *parent, uint32_t lastNum, uint32_t &maxNum) const;
+    bool CheckIsValid(PGOSampleType type, uint32_t maxNum, bool isCache) const;
     JSHandle<JSHClass> CreateRootPHClass(
         ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum) const;
     JSHandle<JSHClass> CreateRootCHClass(
         ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum) const;
     JSHandle<JSHClass> CreateRootHClass(
-        ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum) const;
+        ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum, bool isCache) const;
 
     void CreateChildHClass(ProfileType rootType, const PGOHClassTreeDesc *desc, const JSHandle<JSHClass> &parent,
         const HClassLayoutDesc *parentLayoutDesc) const;

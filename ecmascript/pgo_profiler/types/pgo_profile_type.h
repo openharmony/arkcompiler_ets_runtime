@@ -42,7 +42,8 @@ class ProfileType {
 public:
     enum class Kind : uint8_t {
         ClassId,
-        LiteralId,
+        ObjectLiteralId,
+        ArrayLiteralId,
         BuiltinsId,
         LegacyKind = BuiltinsId,
         MethodId,           // method offset of js function
@@ -253,9 +254,14 @@ public:
         return GetKind() == Kind::BuiltinFunctionId;
     }
 
-    bool IsLiteralType() const
+    bool IsArrayLiteralType() const
     {
-        return GetKind() == Kind::LiteralId;
+        return GetKind() == Kind::ArrayLiteralId;
+    }
+
+    bool IsObjectLiteralType() const
+    {
+        return GetKind() == Kind::ObjectLiteralId;
     }
 
     bool IsConstructor() const

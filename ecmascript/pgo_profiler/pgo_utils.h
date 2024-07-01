@@ -119,7 +119,8 @@ public:
         v_.AddLogWithDebugLog("[ConcurrentGuard] " + operation_ + " start");
         auto tid = v_.Gettid();
         auto except = 0;
-        if (!v_.count.compare_exchange_strong(except, 1)) {
+        // Support reenter
+        if (!v_.count.compare_exchange_strong(except, 1) && v_.last_tid != tid) {
             v_.PrintLog();
             LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 0, but get " << except
                             << ", current tid: " << tid << ", last tid: " << v_.last_tid;
@@ -130,7 +131,8 @@ public:
     {
         auto tid = v_.Gettid();
         auto except = 1;
-        if (!v_.count.compare_exchange_strong(except, 0)) {
+        // Support reenter
+        if (!v_.count.compare_exchange_strong(except, 0) && v_.last_tid != tid) {
             v_.PrintLog();
             LOG_ECMA(FATAL) << "[ConcurrentGuard] total thead count should be 1, but get " << except
                             << ", current tid: " << tid << ", last tid: " << v_.last_tid;

@@ -1643,6 +1643,12 @@ public:
         return jsType >= JSType::PROFILE_TYPE_INFO_CELL_FIRST && jsType <= JSType::PROFILE_TYPE_INFO_CELL_LAST;
     }
 
+    inline bool IsProfileTypeInfoCell0() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::PROFILE_TYPE_INFO_CELL_0;
+    }
+
     inline bool IsVTable() const
     {
         return GetObjectType() == JSType::VTABLE;
@@ -1984,7 +1990,11 @@ public:
 
     static JSHandle<JSHClass> CreateRootHClassFromPGO(const JSThread* thread,
                                                       const HClassLayoutDesc* desc,
-                                                      uint32_t maxNum);
+                                                      uint32_t maxNum,
+                                                      bool isCache);
+    static JSHandle<JSHClass> CreateRootHClassWithCached(const JSThread* thread,
+                                                         const HClassLayoutDesc* desc,
+                                                         uint32_t maxNum);
     static JSHandle<JSHClass> CreateChildHClassFromPGO(const JSThread* thread,
                                                        const JSHandle<JSHClass>& parent,
                                                        const HClassLayoutDesc* desc);

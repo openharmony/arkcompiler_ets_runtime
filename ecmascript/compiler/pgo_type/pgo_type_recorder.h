@@ -68,6 +68,8 @@ public:
         bcOffsetPGORwTypeMap_ = jitProfile->GetRwTypeMap();
     }
 
+    bool IsValidPt(ProfileType type) const;
+
 private:
     const PGOProfilerDecoder &decoder_;
     std::unordered_map<int32_t, const PGOSampleType*> bcOffsetPGOOpTypeMap_ {};

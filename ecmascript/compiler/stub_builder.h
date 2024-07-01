@@ -398,6 +398,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef TaggedObjectIsBigInt(GateRef obj);
     GateRef IsJsProxy(GateRef obj);
     GateRef IsJSShared(GateRef obj);
+    GateRef IsProfileTypeInfoCell0(GateRef obj);
     GateRef IsJSGlobalObject(GateRef obj);
     GateRef IsModuleNamespace(GateRef obj);
     GateRef ObjIsSpecialContainer(GateRef obj);
@@ -962,6 +963,9 @@ private:
                             ProfileOperation callback);
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
+    void HandleProfileCall(GateRef func, ProfileOperation callback, JSCallMode mode);
+    void HandleProfileNativeCall(GateRef func, ProfileOperation callback, JSCallMode mode);
+    bool IsCallModeGetterSetter(JSCallMode mode);
     bool IsCallModeSupportPGO(JSCallMode mode);
     bool IsCallModeSupportCallBuiltin(JSCallMode mode);
     GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);

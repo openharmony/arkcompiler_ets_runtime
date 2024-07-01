@@ -16,11 +16,53 @@
 #include "ecmascript/jspandafile/program_object.h"
 
 namespace panda::ecmascript {
-JSHandle<ConstantPool> ConstantPool::GetDeserializedConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
-                                                                 int32_t cpID)
+JSHandle<JSTaggedValue> ConstantPool::GetDeserializedConstantPool(EcmaVM *vm, const JSPandaFile *jsPandaFile,
+                                                                  int32_t cpID)
 {
     auto aotFileManager = vm->GetAOTFileManager();
-    return JSHandle<ConstantPool>(aotFileManager->GetDeserializedConstantPool(jsPandaFile, cpID));
+    auto constantPool = aotFileManager->GetDeserializedConstantPool(jsPandaFile, cpID);
+    MergeObjectLiteralHClassCache(vm, constantPool);
+    return constantPool;
+}
+
+void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTaggedValue> &constpool)
+{
+    if (constpool->IsHole()) {
+        return;
+    }
+    JSHandle<ConstantPool> pool(constpool);
+    auto aotHCInfo = pool->GetAotHClassInfo();
+    if (!aotHCInfo.IsTaggedArray()) {
+        return;
+    }
+    auto aotHCInfoArray = TaggedArray::Cast(aotHCInfo);
+    auto last = aotHCInfoArray->Get(aotHCInfoArray->GetLength() - 1);
+    if (!last.IsTaggedArray()) {
+        return;
+    }
+    auto snapshotCachedArray = TaggedArray::Cast(last);
+    auto curCached = vm->GetGlobalEnv()->GetObjectLiteralHClassCache();
+    if (curCached->IsHole()) {
+        vm->GetGlobalEnv()->SetObjectLiteralHClassCache(vm->GetJSThread(), last);
+        return;
+    }
+    auto curCachedArray = TaggedArray::Cast(curCached.GetTaggedValue());
+    auto length = snapshotCachedArray->GetLength();
+    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+    auto prototype = env->GetObjectFunctionPrototype();
+    for (uint32_t i = 0; i < length; i++) {
+        auto newValue = snapshotCachedArray->Get(i);
+        if (newValue.IsHole()) {
+            continue;
+        }
+        auto curValue = curCachedArray->Get(i);
+        // If already merged, stop to merge.
+        if (curValue.IsJSHClass() && JSHClass::Cast(curValue.GetTaggedObject())->IsTS()) {
+            break;
+        }
+        JSHClass::Cast(newValue.GetTaggedObject())->SetPrototype(vm->GetJSThread(), prototype);
+        curCachedArray->Set(vm->GetJSThread(), i, newValue);
+    }
 }
 
 JSTaggedValue ConstantPool::GetMethodFromCache(JSTaggedValue constpool, uint32_t index)

@@ -7584,6 +7584,43 @@ GateRef StubBuilder::GetIterator(GateRef glue, GateRef obj, ProfileOperation cal
     return ret;
 }
 
+void StubBuilder::HandleProfileCall(GateRef func, ProfileOperation callback, JSCallMode mode)
+{
+    if (!callback.IsEmpty()) {
+        if (!IsCallModeSupportPGO(mode)) {
+            return;
+        }
+        if (IsCallModeGetterSetter(mode)) {
+            callback.ProfileGetterSetterCall(func);
+            return;
+        }
+        callback.ProfileCall(func);
+    }
+}
+
+void StubBuilder::HandleProfileNativeCall(GateRef func, ProfileOperation callback, JSCallMode mode)
+{
+    if (!callback.IsEmpty()) {
+        if (!IsCallModeSupportPGO(mode)) {
+            return;
+        }
+        if (!IsCallModeGetterSetter(mode)) {
+            callback.ProfileNativeCall(func);
+        }
+    }
+}
+
+bool StubBuilder::IsCallModeGetterSetter(JSCallMode mode)
+{
+    switch (mode) {
+        case JSCallMode::CALL_GETTER:
+        case JSCallMode::CALL_SETTER:
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
 {
     switch (mode) {
@@ -7600,6 +7637,8 @@ bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::SUPER_CALL_WITH_ARGV:
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+        case JSCallMode::CALL_GETTER:
+        case JSCallMode::CALL_SETTER:
             return true;
         case JSCallMode::DEPRECATED_CALL_ARG0:
         case JSCallMode::DEPRECATED_CALL_ARG1:
@@ -7611,8 +7650,6 @@ bool StubBuilder::IsCallModeSupportPGO(JSCallMode mode)
         case JSCallMode::CALL_ENTRY:
         case JSCallMode::CALL_FROM_AOT:
         case JSCallMode::CALL_GENERATOR:
-        case JSCallMode::CALL_GETTER:
-        case JSCallMode::CALL_SETTER:
         case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
@@ -7689,9 +7726,7 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
     // 3. call native
     Bind(&methodIsNative);
     {
-        if (IsCallModeSupportPGO(mode)) {
-            callback.ProfileNativeCall(func);
-        }
+        HandleProfileNativeCall(func, callback, mode);
         GateRef nativeCode = Load(VariableType::NATIVE_POINTER(), method,
                                   IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef newTarget = Undefined();
@@ -7823,9 +7858,7 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
         BRANCH(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &methodNotAot);
         Bind(&funcIsClassConstructor);
     }
-    if (IsCallModeSupportPGO(mode)) {
-        callback.ProfileCall(func);
-    }
+    HandleProfileCall(func, callback, mode);
     GateRef sp = 0;
     if (env->IsBaselineBuiltin()) {
         sp = Argument(static_cast<size_t>(BaselineCallInputs::SP));
@@ -8447,9 +8480,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
     // 3. call native
     Bind(&methodIsNative);
     {
-        if (IsCallModeSupportPGO(mode)) {
-            callback.ProfileNativeCall(func);
-        }
+        HandleProfileNativeCall(func, callback, mode);
         GateRef nativeCode = Load(VariableType::NATIVE_POINTER(), method,
             IntPtr(Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET));
         GateRef newTarget = Undefined();
@@ -8579,9 +8610,7 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
         BRANCH(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &methodNotAot);
         Bind(&funcIsClassConstructor);
     }
-    if (IsCallModeSupportPGO(mode)) {
-        callback.ProfileCall(func);
-    }
+    HandleProfileCall(func, callback, mode);
     GateRef sp = 0;
     if (env->IsAsmInterp()) {
         sp = Argument(static_cast<size_t>(InterpreterHandlerInputs::SP));

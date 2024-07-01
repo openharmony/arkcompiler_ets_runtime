@@ -146,16 +146,24 @@ void ProfilerStubBuilder::ProfileDefineClass(
     {
         Label icSlotValid(env);
         Label updateSlot(env);
+        Label isHeapObject(env);
+        Label isProfileTypeInfoCell0(env);
 
         GateRef slotId = GetSlotID(slotInfo);
         GateRef length = GetLengthOfTaggedArray(profileTypeInfo);
         BRANCH(Int32LessThan(slotId, length), &icSlotValid, &exit);
         Bind(&icSlotValid);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        BRANCH(TaggedIsUndefined(slotValue), &updateSlot, &exit);
+        Branch(TaggedIsHeapObject(slotValue), &isHeapObject, &exit);
+        Bind(&isHeapObject);
+        Branch(IsProfileTypeInfoCell0(slotValue), &isProfileTypeInfoCell0, &exit);
+        Bind(&isProfileTypeInfoCell0);
+        GateRef handleOffset = IntPtr(ProfileTypeInfoCell::HANDLE_OFFSET);
+        GateRef handle = Load(VariableType::JS_ANY(), slotValue, handleOffset);
+        BRANCH(TaggedIsUndefined(handle), &updateSlot, &exit);
         Bind(&updateSlot);
         auto weakCtor = env->GetBuilder()->CreateWeakRef(constructor);
-        SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, weakCtor);
+        Store(VariableType::JS_POINTER(), glue, slotValue, handleOffset, weakCtor);
         TryPreDumpInner(glue, func, profileTypeInfo);
         Jump(&exit);
     }
@@ -287,6 +295,31 @@ void ProfilerStubBuilder::ProfileCall(
                 TryPreDumpInner(glue, func, profileTypeInfo);
                 Jump(&exit);
             }
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void ProfilerStubBuilder::ProfileGetterSetterCall(GateRef glue, GateRef target)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+
+    Label exit(env);
+
+    Label targetIsFunction(env);
+    BRANCH(IsJSFunction(target), &targetIsFunction, &exit);
+    Bind(&targetIsFunction);
+    {
+        GateRef targetProfileInfo = GetProfileTypeInfo(target);
+        Label targetNonHotness(env);
+        BRANCH(TaggedIsUndefined(targetProfileInfo), &targetNonHotness, &exit);
+        Bind(&targetNonHotness);
+        {
+            CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { target });
+            Jump(&exit);
         }
     }
     Bind(&exit);
@@ -1091,6 +1124,9 @@ void ProfilerStubBuilder::PGOProfiler(GateRef glue, GateRef func, GateRef profil
             break;
         case OperationType::NATIVE_CALL:
             ProfileNativeCall(glue, slotIdInfo, func, values[0], profileTypeInfo);
+            break;
+        case OperationType::GETTER_SETTER_CALL:
+            ProfileGetterSetterCall(glue, values[0]);
             break;
         case OperationType::OPERATION_TYPE:
             ProfileOpType(glue, slotIdInfo, func, profileTypeInfo, values[0]);

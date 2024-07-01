@@ -443,6 +443,7 @@ JSHandle<ProfileTypeInfoCell> ObjectFactory::NewSEmptyProfileTypeInfoCell()
     JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(thread_, header);
     profileTypeInfoCell->SetValue(thread_, JSTaggedValue::Undefined());
     profileTypeInfoCell->SetMachineCode(thread_, JSTaggedValue::Hole());
+    profileTypeInfoCell->SetHandle(thread_, JSTaggedValue::Undefined());
     return profileTypeInfoCell;
 }
 
