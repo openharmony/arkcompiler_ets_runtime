@@ -17,6 +17,7 @@
 
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_regexp.h"
@@ -389,7 +390,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             // no gc for this allocate
             res = heap_->GetHugeObjectSpace()->Allocate(objSize, thread_, AllocateEventType::DESERIALIZE);
             if (res == 0) {
-                LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize huge object";
+                DeserializeFatalOutOfMemory(objSize, false, false);
             }
             break;
         }
@@ -415,7 +416,7 @@ uintptr_t BaseDeserializer::RelocateObjectAddr(SerializedObjectSpace space, size
             // no gc for this allocate
             res = sheap_->GetHugeObjectSpace()->Allocate(thread_, objSize, AllocateEventType::DESERIALIZE);
             if (res == 0) {
-                LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize shared huge object";
+                DeserializeFatalOutOfMemory(objSize, false, true);
             }
             break;
         }
@@ -568,9 +569,11 @@ void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
         std::vector<size_t> regionRemainSizeVector = data_->GetRegionRemainSizeVector();
         space->ResetTopPointer(space->GetCurrentRegion()->GetEnd() - regionRemainSizeVector[regionRemainSizeIndex_++]);
         if (!space->Expand()) {
-            LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
+            DeserializeFatalOutOfMemory(spaceObjSize);
         }
-        regionVector_.push_back(space->GetCurrentRegion());
+        Region *currentRegion = space->GetCurrentRegion();
+        FreeObject::FillFreeObject(heap_, currentRegion->GetBegin(), currentRegion->GetSize());
+        regionVector_.push_back(currentRegion);
         regionNum--;
     }
     size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
@@ -586,12 +589,10 @@ Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, si
     std::vector<Region *> allocateRegions;
     while (regionNum > 0) {
         if (space->CommittedSizeExceed()) {
-            LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
+            DeserializeFatalOutOfMemory(spaceObjSize, true, true);
         }
         Region *region = space->AllocateDeserializeRegion(thread_);
-        if (region == nullptr) {
-            LOG_ECMA(FATAL) << "BaseDeserializer::AllocateMultiSharedRegion:region is nullptr";
-        }
+        FreeObject::FillFreeObject(sheap_, region->GetBegin(), region->GetSize());
         if (regionNum == 1) { // 1: Last allocate region
             size_t lastRegionRemainSize = regionAlignedSize - spaceObjSize;
             region->SetHighWaterMark(region->GetEnd() - lastRegionRemainSize);
@@ -612,11 +613,13 @@ void BaseDeserializer::AllocateToOldSpace(size_t oldSpaceSize)
     uintptr_t object = space->Allocate(oldSpaceSize, false);
     if (UNLIKELY(object == 0U)) {
         if (space->CommittedSizeExceed()) {
-            LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
+            DeserializeFatalOutOfMemory(oldSpaceSize);
         }
         oldSpaceBeginAddr_ = space->GetCurrentRegion()->GetBegin();
+        FreeObject::FillFreeObject(heap_, oldSpaceBeginAddr_, space->GetCurrentRegion()->GetSize());
         AllocateMultiRegion(space, oldSpaceSize, oldRegionIndex_);
     } else {
+        FreeObject::FillFreeObject(heap_, object, oldSpaceSize);
         oldSpaceBeginAddr_ = object;
     }
 }
@@ -627,11 +630,13 @@ void BaseDeserializer::AllocateToNonMovableSpace(size_t nonMovableSpaceSize)
     uintptr_t object = space->Allocate(nonMovableSpaceSize, false);
     if (UNLIKELY(object == 0U)) {
         if (space->CommittedSizeExceed()) {
-            LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
+            DeserializeFatalOutOfMemory(nonMovableSpaceSize);
         }
         nonMovableSpaceBeginAddr_ = space->GetCurrentRegion()->GetBegin();
+        FreeObject::FillFreeObject(heap_, nonMovableSpaceBeginAddr_, space->GetCurrentRegion()->GetSize());
         AllocateMultiRegion(space, nonMovableSpaceSize, nonMovableRegionIndex_);
     } else {
+        FreeObject::FillFreeObject(heap_, object, nonMovableSpaceSize);
         nonMovableSpaceBeginAddr_ = object;
     }
 }
@@ -642,11 +647,13 @@ void BaseDeserializer::AllocateToMachineCodeSpace(size_t machineCodeSpaceSize)
     uintptr_t object = space->Allocate(machineCodeSpaceSize, false);
     if (UNLIKELY(object == 0U)) {
         if (space->CommittedSizeExceed()) {
-            LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize";
+            DeserializeFatalOutOfMemory(machineCodeSpaceSize);
         }
         machineCodeSpaceBeginAddr_ = space->GetCurrentRegion()->GetBegin();
+        FreeObject::FillFreeObject(heap_, machineCodeSpaceBeginAddr_, space->GetCurrentRegion()->GetSize());
         AllocateMultiRegion(space, machineCodeSpaceSize, machineCodeRegionIndex_);
     } else {
+        FreeObject::FillFreeObject(heap_, object, machineCodeSpaceSize);
         machineCodeSpaceBeginAddr_ = object;
     }
 }
@@ -659,6 +666,7 @@ void BaseDeserializer::AllocateToSharedOldSpace(size_t sOldSpaceSize)
         Region *region = AllocateMultiSharedRegion(space, sOldSpaceSize, sOldRegionIndex_);
         sOldSpaceBeginAddr_ = region->GetBegin();
     } else {
+        FreeObject::FillFreeObject(sheap_, object, sOldSpaceSize);
         sOldSpaceBeginAddr_ = object;
     }
 }
@@ -671,6 +679,7 @@ void BaseDeserializer::AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSi
         Region *region = AllocateMultiSharedRegion(space, sNonMovableSpaceSize, sNonMovableRegionIndex_);
         sNonMovableSpaceBeginAddr_ = region->GetBegin();
     } else {
+        FreeObject::FillFreeObject(sheap_, object, sNonMovableSpaceSize);
         sNonMovableSpaceBeginAddr_ = object;
     }
 }

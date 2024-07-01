@@ -174,6 +174,42 @@ private:
         return nullptr;
     }
 
+    void DeserializeFatalOutOfMemory(size_t size, bool dump = true, bool isShared = false)
+    {
+        if (isShared) {
+            if (dump) {
+                sheap_->DumpHeapSnapshotBeforeOOM(true, thread_);
+            }
+            LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize shared obj size: " << size
+                << ", old space heap object size: "
+                << sheap_->GetOldSpace()->GetHeapObjectSize()
+                << ", old space committed size: "
+                << sheap_->GetOldSpace()->GetCommittedSize()
+                << ", non movable space heap object size: "
+                << sheap_->GetNonMovableSpace()->GetHeapObjectSize()
+                << ", non movable space committed size: "
+                << sheap_->GetNonMovableSpace()->GetCommittedSize()
+                << ", huge space committed size: "
+                << sheap_->GetHugeObjectSpace()->GetCommittedSize();
+        } else {
+            if (dump) {
+                heap_->StatisticHeapDetail();
+                heap_->DumpHeapSnapshotBeforeOOM();
+            }
+            LOG_ECMA(FATAL) << "BaseDeserializer::OutOfMemory when deserialize obj size: " << size
+                << ", old space heap object size: "
+                << heap_->GetOldSpace()->GetHeapObjectSize()
+                << ", old space committed size: "
+                << heap_->GetOldSpace()->GetCommittedSize()
+                << ", non movable space heap object size: "
+                << heap_->GetNonMovableSpace()->GetHeapObjectSize()
+                << ", non movable space committed size: "
+                << heap_->GetNonMovableSpace()->GetCommittedSize()
+                << ", huge space committed size: "
+                << heap_->GetHugeObjectSpace()->GetCommittedSize();
+        }
+    }
+
     void UpdateMaybeWeak(ObjectSlot slot, uintptr_t addr, bool isWeak)
     {
         isWeak ? slot.UpdateWeak(addr) : slot.Update(addr);

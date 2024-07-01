@@ -700,6 +700,8 @@ public:
     inline TaggedObject *AllocateSOldTlab(JSThread *thread, size_t size);
 
     size_t VerifyHeapObjects(VerifyKind verifyKind) const;
+
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread);
 private:
 
     inline void CollectGarbageFinish(bool inDaemon);
@@ -707,8 +709,6 @@ private:
     void ReclaimRegions();
 
     void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
-
-    void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread);
 
     struct SharedHeapSmartGCStats {
         /**
@@ -1333,6 +1333,7 @@ public:
     void CheckNonMovableSpaceOOM();
     void ReleaseEdenAllocator();
     void InstallEdenAllocator();
+    void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
 
     PUBLIC_API GCListenerId AddGCListener(FinishGCListener listener, void *data);
@@ -1360,7 +1361,6 @@ private:
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
     void PrepareRecordRegionsForReclaim();
-    void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
     void ProcessGCListeners();
