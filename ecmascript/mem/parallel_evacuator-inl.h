@@ -40,6 +40,10 @@ bool ParallelEvacuator::IsWholeRegionEvacuate(Region *region)
 
 bool ParallelEvacuator::WholeRegionEvacuate(Region *region)
 {
+    if (region->IsFreshRegion()) {
+        ASSERT(region->InYoungSpace());
+        return heap_->MoveYoungRegionSync(region);
+    }
     bool isInYoung = region->InYoungSpace();
     bool isBelowAgeMark = region->BelowAgeMark();
     if (isInYoung && !isBelowAgeMark && IsWholeRegionEvacuate(region) && heap_->MoveYoungRegionSync(region)) {

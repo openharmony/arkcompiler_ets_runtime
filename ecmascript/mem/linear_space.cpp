@@ -26,6 +26,7 @@ namespace panda::ecmascript {
 LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, size_t maximumCapacity)
     : Space(heap, heap->GetHeapRegionAllocator(), type, initialCapacity, maximumCapacity),
       localHeap_(heap),
+      thread_(heap->GetJSThread()),
       waterLine_(0)
 {
 }
@@ -103,10 +104,9 @@ bool LinearSpace::Expand(bool isPromoted)
         currentRegion->SetHighWaterMark(top);
     }
     JSThread *thread = localHeap_->GetJSThread();
-    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_,
+                                                                 thread_->IsConcurrentMarkingOrFinished());
     allocator_.Reset(region->GetBegin(), region->GetEnd());
-    linearEnd_.store(region->GetEnd(), std::memory_order_relaxed);
-    linearTop_.store(region->GetBegin(), std::memory_order_release);
     AddRegion(region);
     return true;
 }
@@ -263,7 +263,8 @@ Region *EdenSpace::AllocRegion()
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     uintptr_t begin = AlignUp(mem + sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
     uintptr_t end = mem + memmap.GetSize();
-    auto region = new (ToVoidPtr(mem)) Region(localHeap_->GetNativeAreaAllocator(), mem, begin, end, GetRegionFlag());
+    auto region = new (ToVoidPtr(mem)) Region(localHeap_->GetNativeAreaAllocator(), mem, begin, end,
+                                              GetRegionFlag(), RegionTypeFlag::DEFAULT);
     region->Initialize();
     return region;
 }
@@ -348,8 +349,6 @@ void SemiSpace::Initialize()
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
     AddRegion(region);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
-    linearEnd_.store(region->GetEnd(), std::memory_order_relaxed);
-    linearTop_.store(region->GetBegin(), std::memory_order_release);
 }
 
 void SemiSpace::Restart(size_t overShootSize)

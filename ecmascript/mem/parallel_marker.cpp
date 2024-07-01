@@ -130,56 +130,29 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
             MarkValue(threadId, slot, rootRegion, needBarrier);
         }
     };
+    SemiSpace *newSpace = heap_->GetNewSpace();
     TaggedObject *obj = nullptr;
     while (true) {
         obj = nullptr;
-        if (!workManager_->Pop(threadId, &obj) && !workManager_->PopPendingObject(threadId, &obj)) {
+        if (!workManager_->Pop(threadId, &obj)) {
             break;
+        }
+        Region *region = Region::ObjectAddressToRange(obj);
+        if (region->IsHalfFreshRegion()) {
+            ASSERT(region->InYoungSpace());
+            if (newSpace->IsFreshObjectInHalfFreshRegion(obj)) {
+                // Fresh object do not need to visit body.
+                continue;
+            }
         }
 
         JSHClass *jsHclass = obj->SynchronizedGetClass();
-        Region *region = Region::ObjectAddressToRange(obj);
+        ASSERT(!region->IsFreshRegion());
         auto size = jsHclass->SizeFromJSHClass(obj);
         region->IncreaseAliveObjectSafe(size);
         MarkObject(threadId, jsHclass);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
     }
-}
-
-void NonMovableMarker::ProcessMarkStackConcurrent(uint32_t threadId)
-{
-    TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
-    bool isFullMark = heap_->IsConcurrentFullMark();
-    auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
-        MarkValue(threadId, s, rootRegion, needBarrier);
-    };
-    auto visitor = [this, threadId, isFullMark, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                    VisitObjectArea area) {
-        Region *rootRegion = Region::ObjectAddressToRange(root);
-        bool needBarrier = isFullMark && !rootRegion->InGeneralNewSpaceOrCSet();
-        if (area == VisitObjectArea::IN_OBJECT) {
-            if (VisitBodyInObj(root, start, end, needBarrier, cb)) {
-                return;
-            }
-        }
-        for (ObjectSlot slot = start; slot < end; slot++) {
-            MarkValue(threadId, slot, rootRegion, needBarrier);
-        }
-    };
-    TaggedObject *obj = nullptr;
-    while (workManager_->Pop(threadId, &obj)) {
-        if (heap_->GetNewSpace()->IsNewAllocatedObject(reinterpret_cast<uintptr_t>(obj))) {
-            workManager_->PushPendingObject(threadId, obj);
-        } else {
-            JSHClass *jsHclass = obj->SynchronizedGetClass();
-            Region *region = Region::ObjectAddressToRange(obj);
-            auto size = jsHclass->SizeFromJSHClass(obj);
-            region->IncreaseAliveObjectSafe(size);
-            MarkObject(threadId, jsHclass);
-            ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHclass, visitor);
-        }
-    }
-    workManager_->PushPendingNodeToGlobal(threadId);
 }
 
 void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t markStepSize)

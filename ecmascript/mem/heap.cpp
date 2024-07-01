@@ -2069,7 +2069,7 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
             heap_->GetCompressGCMarker()->ProcessMarkStack(threadIndex);
             break;
         case ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK:
-            heap_->GetNonMovableMarker()->ProcessMarkStackConcurrent(threadIndex);
+            heap_->GetNonMovableMarker()->ProcessMarkStack(threadIndex);
             break;
         case ParallelGCTaskPhase::CONCURRENT_HANDLE_OLD_TO_NEW_TASK:
             heap_->GetNonMovableMarker()->ProcessOldToNew(threadIndex);

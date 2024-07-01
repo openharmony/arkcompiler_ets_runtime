@@ -2682,7 +2682,7 @@ inline GateRef StubBuilder::ObjectAddressToRange(GateRef x)
 
 inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag space)
 {
-    auto offset = Region::PackedData::GetFlagOffset(env_->Is32Bit());
+    auto offset = Region::PackedData::GetFlagsOffset(env_->Is32Bit());
     GateRef x = Load(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
         IntPtr(0));
     if (env_->Is32Bit()) {
@@ -2706,7 +2706,7 @@ inline GateRef StubBuilder::InYoungGeneration(GateRef region)
 
 inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag spaceBegin, RegionSpaceFlag spaceEnd)
 {
-    auto offset = Region::PackedData::GetFlagOffset(env_->Is32Bit());
+    auto offset = Region::PackedData::GetFlagsOffset(env_->Is32Bit());
     GateRef x = Load(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
         IntPtr(0));
     if (env_->Is32Bit()) {
@@ -2734,7 +2734,7 @@ inline GateRef StubBuilder::InGeneralOldGeneration(GateRef region)
 
 inline GateRef StubBuilder::InSharedHeap(GateRef region)
 {
-    auto offset = Region::PackedData::GetFlagOffset(env_->Is32Bit());
+    auto offset = Region::PackedData::GetFlagsOffset(env_->Is32Bit());
     GateRef x = Load(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
         IntPtr(0));
     if (env_->Is32Bit()) {
@@ -2752,7 +2752,7 @@ inline GateRef StubBuilder::InSharedHeap(GateRef region)
 
 inline GateRef StubBuilder::InSharedSweepableSpace(GateRef region)
 {
-    auto offset = Region::PackedData::GetFlagOffset(env_->Is32Bit());
+    auto offset = Region::PackedData::GetFlagsOffset(env_->Is32Bit());
     GateRef x = Load(VariableType::NATIVE_POINTER(), PtrAdd(IntPtr(offset), region),
         IntPtr(0));
     if (env_->Is32Bit()) {

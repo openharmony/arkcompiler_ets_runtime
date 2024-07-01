@@ -26,13 +26,15 @@
 namespace panda::ecmascript {
 constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
 
-Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap)
+Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap,
+                                                   bool isFresh)
 {
     if (capacity == 0) {
         LOG_ECMA_MEM(FATAL) << "capacity must have a size bigger than 0";
         UNREACHABLE();
     }
     RegionSpaceFlag flags = space->GetRegionFlag();
+    RegionTypeFlag typeFlag = isFresh ? RegionTypeFlag::FRESH : RegionTypeFlag::DEFAULT;
     bool isRegular = (flags != RegionSpaceFlag::IN_HUGE_OBJECT_SPACE &&
         flags != RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE &&
         flags != RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE);
@@ -67,7 +69,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     uintptr_t begin = AlignUp(mem + sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
     uintptr_t end = mem + capacity;
 
-    Region *region = new (ToVoidPtr(mem)) Region(heap->GetNativeAreaAllocator(), mem, begin, end, flags);
+    Region *region = new (ToVoidPtr(mem)) Region(heap->GetNativeAreaAllocator(), mem, begin, end, flags, typeFlag);
     region->Initialize();
     std::atomic_thread_fence(std::memory_order_seq_cst);
     return region;
