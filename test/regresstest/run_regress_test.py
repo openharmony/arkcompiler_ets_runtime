@@ -225,7 +225,7 @@ class RegressTestPrepare:
                 output_file = os.path.join(self.args.test_case_out_dir, output_test_case_path)
                 command = [self.args.ark_frontend_binary]
                 command.extend([input_file_path, f'--output={output_file}'])
-                exec_command(command)
+                exec_command(command, self.args.timeout)
                 if expect_file_exits:
                     out_file_path = os.path.join(self.args.test_case_out_dir, test_case_path.replace('.js', '.out'))
                     shutil.copy(out_flle, out_file_path)
@@ -456,7 +456,7 @@ def run_test_case_dir(args, test_abc_files, force_gc_files, timeout=RegressTestC
 def run_regress_test_case(args):
     test_cast_list = get_regress_test_files(args.test_case_out_dir, 'abc')
     force_gc_files = get_regress_force_gc_files()
-    return run_test_case_dir(args, test_cast_list, force_gc_files)
+    return run_test_case_dir(args, test_cast_list, force_gc_files, args.timeout)
 
 
 def get_regress_force_gc_files():
