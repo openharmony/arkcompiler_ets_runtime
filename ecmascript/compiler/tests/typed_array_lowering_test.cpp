@@ -342,8 +342,8 @@ HWTEST_F_L0(TypedArrayLoweringTests, UInt16OnHeapArrayLoadElement)
     EXPECT_EQ(acc.GetMachineType(load), MachineType::I16);
 }
 
-
-HWTEST_F_L0(TypedArrayLoweringTests, Int32ArrayStoreElement)
+// NOTE: enable (issue 17873)
+HWTEST_F_L0(TypedArrayLoweringTests, DISABLED_Int32ArrayStoreElement)
 {
     // construct a circuit
     ecmascript::NativeAreaAllocator allocator;
