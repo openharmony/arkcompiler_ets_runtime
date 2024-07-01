@@ -155,6 +155,17 @@ DEF_RUNTIME_STUBS(FunctionDefineOwnProperty)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(DefineOwnProperty)
+{
+    RUNTIME_STUBS_HEADER(DefineOwnProperty);
+    JSHandle<JSTaggedValue> obj = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the first parameter
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 2); // 2: means the second parameter
+    PropertyDescriptor desc(thread, value, true, true, true);
+    bool res = JSTaggedValue::DefineOwnProperty(thread, obj, key, desc);
+    return JSTaggedValue(res).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(AllocateInYoung)
 {
     RUNTIME_STUBS_HEADER(AllocateInYoung);

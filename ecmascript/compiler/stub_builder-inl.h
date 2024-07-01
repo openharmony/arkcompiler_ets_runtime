@@ -1137,6 +1137,16 @@ inline GateRef StubBuilder::IsJSHClass(GateRef obj)
     return res;
 }
 
+inline void StubBuilder::CanNotConvertNotValidObject([[maybe_unused]] GateRef obj)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(CanNotConvertNotValidObject), IsEcmaObject(obj));
+}
+
+inline void StubBuilder::IsNotPropertyKey([[maybe_unused]] GateRef flag)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsNotPropertyKey), flag);
+}
+
 // object operation
 inline GateRef StubBuilder::LoadHClass(GateRef object)
 {
