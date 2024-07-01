@@ -1133,7 +1133,6 @@ void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std
 void BaseHeap::SetAppFreezeFilterCallback(AppFreezeFilterCallback cb)
 {
     if (cb != nullptr) {
-        LOG_ECMA(INFO) << "DumpHeapSnapshotBeforeOOM, SetAppFreezeFilterCallback";
         appfreezeCallback_ = cb;
     }
 }
