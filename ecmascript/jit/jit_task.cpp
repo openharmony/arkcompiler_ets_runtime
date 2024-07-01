@@ -237,7 +237,7 @@ void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
         return;
     }
     std::string outFile = realOutPath + "/" + std::string(fileName);
-    int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0664);
+    int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     jitDumpElf.WriteJitElfFile(fd);
     close(fd);
 }

@@ -435,11 +435,13 @@ void LLVMIRBuilder::SaveByteCodePcOnOptJSFuncFrame(LLVMValueRef value)
     LLVMValueRef func = LLVMBuildPtrToInt(builder_, value, slotType_, "cast_to_i64");
     LLVMValueRef offsetMethod = LLVMConstInt(GetInt64T(), JSFunctionBase::METHOD_OFFSET, false);
     LLVMValueRef addrMethod = LLVMBuildAdd(builder_, func, offsetMethod, "");
-    LLVMValueRef method = LLVMBuildLoad(builder_, addrMethod, "");
+    LLVMValueRef methodPtr = LLVMBuildIntToPtr(builder_, addrMethod, GetTaggedPtrT(), "");
+    LLVMValueRef method = LLVMBuildLoad(builder_, methodPtr, "");
     // load byteCodePc
     LLVMValueRef offsetByteCodePc = LLVMConstInt(GetInt64T(), Method::NATIVE_POINTER_OR_BYTECODE_ARRAY_OFFSET, false);
     LLVMValueRef addrByteCodePc = LLVMBuildAdd(builder_, method, offsetByteCodePc, "");
-    LLVMValueRef byteCodePc = LLVMBuildLoad(builder_, addrByteCodePc, "");
+    LLVMValueRef byteCodePcPtr = LLVMBuildIntToPtr(builder_, addrByteCodePc, GetTaggedPtrT(), "");
+    LLVMValueRef byteCodePc = LLVMBuildLoad(builder_, byteCodePcPtr, "");
     // push byteCodePc
     LLVMValueRef llvmFpAddr = CallingFp(module_, builder_, false);
     LLVMValueRef frameAddr = LLVMBuildPtrToInt(builder_, llvmFpAddr, slotType_, "cast_int_t");
