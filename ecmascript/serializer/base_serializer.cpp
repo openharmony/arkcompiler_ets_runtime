@@ -152,8 +152,7 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
                 break;
             }
             case JSHClass::TRANSTIONS_OFFSET:
-            case JSHClass::PARENT_OFFSET:
-            case JSHClass::VTABLE_OFFSET: {
+            case JSHClass::PARENT_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Undefined());
                 slot++;
@@ -164,13 +163,6 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
             case JSHClass::ENUM_CACHE_OFFSET: {
                 data_->WriteEncodeFlag(EncodeFlag::PRIMITIVE);
                 data_->WriteJSTaggedValue(JSTaggedValue::Null());
-                slot++;
-                break;
-            }
-            case JSHClass::SUPERS_OFFSET: {
-                auto globalConst = const_cast<GlobalEnvConstants *>(thread_->GlobalConstants());
-                data_->WriteEncodeFlag(EncodeFlag::ROOT_OBJECT);
-                data_->WriteUint32(globalConst->GetEmptyArrayIndex());
                 slot++;
                 break;
             }

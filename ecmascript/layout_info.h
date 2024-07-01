@@ -67,6 +67,8 @@ public:
     template<bool checkDuplicateKeys = false>
     void AddKey(const JSThread *thread, int index, const JSTaggedValue &key, const PropertyAttributes &attr);
     void SetIsNotHole(const JSThread *thread, int index);
+    void UpdateTrackTypeAttr(int index, const PropertyAttributes &attr);
+    void SetIsPGODumped(int index);
 
     inline uint32_t GetLength() const
     {

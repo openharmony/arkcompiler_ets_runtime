@@ -57,8 +57,9 @@ public:
 
     virtual ~PGOProfiler();
 
+    void PUBLIC_API RecordProfileType(JSHClass *hclass, JSPandaFile *pandaFile, int32_t traceId);
+
     static ProfileType CreateRecordProfileType(ApEntityId abcId, ApEntityId classId);
-    void PUBLIC_API ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
     void ProfileDefineClass(JSTaggedType ctor);
     void ProfileProtoTransitionClass(JSHandle<JSFunction> func,
                                      JSHandle<JSHClass> hclass,
@@ -216,10 +217,12 @@ private:
     void AddBuiltinsGlobalInfo(ApEntityId abcId, const CString &recordName, EntityId methodId,
                                int32_t bcOffset, GlobalIndex globalId);
 
-    ProfileType GetProfileType(JSTaggedType root, JSTaggedType child);
-    ProfileType GetProfileTypeSafe(JSTaggedType root, JSTaggedType child);
-    ProfileType GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedType child);
-    bool InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType);
+    void SetRootProfileType(JSHClass *root, ApEntityId abcId, uint32_t type, ProfileType::Kind kind);
+    ProfileType FindRootProfileType(JSHClass *hclass);
+
+    ProfileType GetOrInsertProfileType(JSHClass *child, ProfileType rootType);
+    ProfileType GetProfileType(JSHClass *hclass, bool check = false);
+
     bool IsRecoredTransRootType(ProfileType type);
 
     class WorkNode;
@@ -525,8 +528,6 @@ private:
     ConditionVariable condition_;
     WorkList dumpWorkList_;
     WorkList preDumpWorkList_;
-    Mutex tracedProfilesMutex_;
-    CMap<JSTaggedType, PGOTypeGenerator *> tracedProfiles_;
     std::unique_ptr<PGORecordDetailInfos> recordInfos_;
     // AOT only supports executing Defineclass bc once currently.
     // If defineclass executed multiple times, It will gives up collection.

@@ -35,12 +35,8 @@
 namespace panda::ecmascript::pgo {
 class PGOHandler {
 public:
-    using PropertyMetaDataField = BitField<int, 0, 4>;  // 4: property metaData field occupies 4 bits
-    using WritableField = BitField<bool, 0, 1>;
-    using EnumerableField = WritableField::NextFlag;
-    using ConfigurableField = EnumerableField::NextFlag;
-    using IsAccessorField = ConfigurableField::NextFlag;
-    using TrackTypeField = IsAccessorField::NextField<TrackType, PropertyAttributes::TRACK_TYPE_NUM>;
+    using TrackTypeField =
+        PropertyAttributes::PropertyMetaDataField::NextField<TrackType, PropertyAttributes::TRACK_TYPE_NUM>;
     using IsSymbol = TrackTypeField::NextFlag;
 
     PGOHandler()
@@ -120,32 +116,32 @@ public:
 
     void SetPropertyMeta(int meta)
     {
-        PropertyMetaDataField::Set(meta, &value_);
+        PropertyAttributes::PropertyMetaDataField::Set(meta, &value_);
     }
 
     int GetPropertyMeta() const
     {
-        return PropertyMetaDataField::Get(value_);
+        return PropertyAttributes::PropertyMetaDataField::Get(value_);
     }
 
     bool IsAccessor() const
     {
-        return IsAccessorField::Get(value_);
+        return PropertyAttributes::IsAccessorField::Get(value_);
     }
 
     bool IsWritable() const
     {
-        return WritableField::Get(value_);
+        return PropertyAttributes::WritableField::Get(value_);
     }
 
     bool IsEnumerable() const
     {
-        return EnumerableField::Get(value_);
+        return PropertyAttributes::EnumerableField::Get(value_);
     }
 
     bool IsConfigurable() const
     {
-        return ConfigurableField::Get(value_);
+        return PropertyAttributes::ConfigurableField::Get(value_);
     }
 
     bool operator!=(const PGOHandler &right) const

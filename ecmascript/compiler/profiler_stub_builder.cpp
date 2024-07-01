@@ -339,7 +339,7 @@ GateRef ProfilerStubBuilder::TryGetBuiltinFunctionId(GateRef target)
     Label exit(env);
 
     DEFVARIABLE(functionId, VariableType::INT32(), Int32(PGO_BUILTINS_STUB_ID(NONE)));
-    
+
     BRANCH(IsJSFunction(target), &targetIsFunction, &exit);
     Bind(&targetIsFunction);
     {
@@ -479,7 +479,7 @@ void ProfilerStubBuilder::UpdatePropAttrIC(
         BRANCH(Equal(attr, newAttr), &exit, &updateLayout);
         Bind(&updateLayout);
         {
-            SetPropAttrToLayoutInfo(glue, layout, attrIndex, newAttr);
+            UpdateFieldType(glue, LoadHClass(receiver), newAttr);
             callback.TryPreDump();
             Jump(&exit);
         }
@@ -488,8 +488,8 @@ void ProfilerStubBuilder::UpdatePropAttrIC(
     env->SubCfgExit();
 }
 
-void ProfilerStubBuilder::UpdatePropAttrWithValue(GateRef glue, GateRef receiver, GateRef layout, GateRef attr,
-                                                  GateRef attrIndex, GateRef value, ProfileOperation callback)
+void ProfilerStubBuilder::UpdatePropAttrWithValue(GateRef glue, GateRef receiver, GateRef attr,
+                                                  GateRef value, ProfileOperation callback)
 {
     if (callback.IsEmpty()) {
         return;
@@ -506,7 +506,7 @@ void ProfilerStubBuilder::UpdatePropAttrWithValue(GateRef glue, GateRef receiver
     BRANCH(Equal(attr, newAttr), &exit, &updateLayout);
     Bind(&updateLayout);
     {
-        SetPropAttrToLayoutInfo(glue, layout, attrIndex, newAttr);
+        UpdateFieldType(glue, LoadHClass(receiver), newAttr);
         Jump(&exit);
     }
     Bind(&exit);

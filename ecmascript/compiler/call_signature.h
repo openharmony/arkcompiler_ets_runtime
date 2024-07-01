@@ -506,6 +506,7 @@ private:
     V(CallDateNow)                              \
     V(NumberIsFinite)                           \
     V(FindElementWithCache)                     \
+    V(UpdateFieldType)                          \
     V(MarkingBarrier)                           \
     V(MarkingBarrierWithEden)                   \
     V(SharedGCMarkingBarrier)                   \

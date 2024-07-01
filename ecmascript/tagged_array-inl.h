@@ -98,6 +98,15 @@ inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSTagge
     }
 }
 
+inline void TaggedArray::Set(uint32_t idx, const JSTaggedValue &value)
+{
+    ASSERT(idx < GetLength());
+    ASSERT(!value.IsHeapObject());
+    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+
+    Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetRawData());
+}
+
 JSHandle<TaggedArray> TaggedArray::Append(const JSThread *thread, const JSHandle<TaggedArray> &first,
                                           const JSHandle<TaggedArray> &second)
 {

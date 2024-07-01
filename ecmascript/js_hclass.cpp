@@ -159,9 +159,7 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
     SetProtoChangeMarker(thread, JSTaggedValue::Null());
     SetProtoChangeDetails(thread, JSTaggedValue::Null());
     SetEnumCache(thread, JSTaggedValue::Null());
-    SetSupers(thread, JSTaggedValue::Undefined());
     SetLevel(0);
-    SetVTable(thread, JSTaggedValue::Undefined());
 }
 
 bool JSHClass::IsJSTypeShared(JSType type)
@@ -207,7 +205,6 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, ui
     if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
         SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
     }
-    InitTSInheritInfo(thread);
 }
 
 // for sharedHeap
@@ -221,22 +218,6 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
     if (IsJSTypeShared(type)) {
         SetIsJSShared(true);
     }
-}
-
-void JSHClass::InitTSInheritInfo(const JSThread *thread)
-{
-    // Supers and Level are used to record the relationship between TSHClass.
-    if (ShouldSetDefaultSupers()) {
-        ASSERT(thread->GlobalConstants()->GetDefaultSupers().IsTaggedArray());
-        SetSupers(thread, thread->GlobalConstants()->GetDefaultSupers());
-    } else {
-        SetSupers(thread, JSTaggedValue::Undefined());
-    }
-    SetLevel(0);
-
-    // VTable records the location information of properties and methods of TSHClass,
-    // which is used to perform efficient IC at runtime
-    SetVTable(thread, JSTaggedValue::Undefined());
 }
 
 JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
@@ -563,7 +544,6 @@ void JSHClass::TransitionToDictionary(const JSThread *thread, const JSHandle<JSO
     // 1. new a hclass
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     JSHandle<JSHClass> newJsHClass = CloneWithoutInlinedProperties(thread, jshclass);
-    UpdateRootHClass(thread, jshclass, newJsHClass);
 
     {
         DISALLOW_GARBAGE_COLLECTION;
@@ -587,7 +567,6 @@ void JSHClass::OptimizeAsFastProperties(const JSThread *thread, const JSHandle<J
     // 1. new a hclass
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
     JSHandle<JSHClass> newJsHClass = Clone(thread, jshclass, isDictionary);
-    UpdateRootHClass(thread, jshclass, newJsHClass);
 
     // 2. If it is dictionary, migrate should change layout. otherwise, copy the hclass only.
     JSHandle<NameDictionary> properties(thread, obj->GetProperties());
@@ -752,6 +731,62 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
     return false;
 }
 
+void JSHClass::UpdateFieldType(JSHClass *hclass, const PropertyAttributes &attr)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    JSHClass *ownHClass = FindFieldOwnHClass(hclass, attr);
+    VisitAndUpdateLayout(ownHClass, attr);
+}
+
+JSHClass *JSHClass::FindFieldOwnHClass(JSHClass *hclass, const PropertyAttributes &attr)
+{
+    uint32_t offset = attr.GetOffset();
+    JSTaggedValue parent(hclass);
+    JSHClass *curHClass = hclass;
+    while (parent.IsJSHClass()) {
+        auto parentHClass = JSHClass::Cast(parent.GetTaggedObject());
+        if (parentHClass->NumberOfProps() <= offset) {
+            break;
+        }
+        curHClass = parentHClass;
+        parent = curHClass->GetParent();
+    }
+    return curHClass;
+}
+
+void JSHClass::VisitAndUpdateLayout(JSHClass *ownHClass, const PropertyAttributes &attr)
+{
+    uint32_t offset = attr.GetOffset();
+    auto targetTrackType = attr.GetTrackType();
+    std::queue<JSHClass *> backHClass;
+    backHClass.push(ownHClass);
+    while (!backHClass.empty()) {
+        JSHClass *current = backHClass.front();
+        backHClass.pop();
+
+        auto layout = LayoutInfo::Cast(current->GetLayout().GetTaggedObject());
+        if (layout->GetAttr(offset).GetTrackType() != targetTrackType) {
+            layout->UpdateTrackTypeAttr(offset, attr);
+        }
+
+        auto transitions = current->GetTransitions();
+        if (transitions.IsUndefined()) {
+            continue;
+        }
+        if (transitions.IsWeak()) {
+            auto cache = transitions.GetTaggedWeakRef();
+            backHClass.push(JSHClass::Cast(cache));
+            continue;
+        }
+
+        ASSERT(transitions.IsTaggedArray());
+        TransitionsDictionary *dict = TransitionsDictionary::Cast(transitions.GetTaggedObject());
+        dict->IterateEntryValue([&backHClass] (JSHClass *cache) {
+            backHClass.push(JSHClass::Cast(cache));
+        });
+    }
+}
+
 TransitionResult JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
     const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
     PropertyAttributes &attr)
@@ -760,7 +795,7 @@ TransitionResult JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,
     auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     attr = layout->GetAttr(attr.GetOffset());
     if (thread->IsPGOProfilerEnable() && !hclass->IsJSShared() && attr.UpdateTrackType(value.GetTaggedValue())) {
-        layout->SetNormalAttr(thread, attr.GetOffset(), attr);
+        UpdateFieldType(hclass, attr);
     }
 
     Representation oldRep = attr.GetRepresentation();
@@ -805,11 +840,7 @@ JSHandle<JSTaggedValue> JSHClass::EnableProtoChangeMarker(const JSThread *thread
     // PHC (prototype-HClass) and its IHC (instance-HClass) from the current PHC along the chain.
     // therefore, when registering, it is also necessary to register IHC into its
     // PHC's Listener to ensure that it can be notified.
-    if (jshclass->IsTSIHCWithInheritInfo()) {
-        RegisterOnProtoChain(thread, jshclass);
-    } else {
-        RegisterOnProtoChain(thread, protoClass);
-    }
+    RegisterOnProtoChain(thread, protoClass);
 
     JSTaggedValue protoChangeMarker = protoClass->GetProtoChangeMarker();
     if (protoChangeMarker.IsProtoChangeMarker()) {
@@ -980,18 +1011,14 @@ JSHandle<ProtoChangeDetails> JSHClass::GetProtoChangeDetails(const JSThread *thr
     return GetProtoChangeDetails(thread, jshclass);
 }
 
-void JSHClass::MarkProtoChanged(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
+void JSHClass::MarkProtoChanged([[maybe_unused]] const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    ASSERT(jshclass->IsPrototype() || jshclass->HasTSSubtyping());
+    ASSERT(jshclass->IsPrototype());
     JSTaggedValue markerValue = jshclass->GetProtoChangeMarker();
     if (markerValue.IsProtoChangeMarker()) {
         ProtoChangeMarker *protoChangeMarker = ProtoChangeMarker::Cast(markerValue.GetTaggedObject());
         protoChangeMarker->SetHasChanged(true);
-    }
-
-    if (jshclass->HasTSSubtyping()) {
-        jshclass->InitTSInheritInfo(thread);
     }
 }
 
@@ -1038,21 +1065,6 @@ void JSHClass::RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &ol
     }
 }
 
-bool JSHClass::HasTSSubtyping() const
-{
-    // if fill TS inherit info, supers must not be empty
-    if (!GetSupers().IsHeapObject()) {
-        return false;
-    }
-    WeakVector *supers = WeakVector::Cast(GetSupers().GetTaggedObject());
-    return !(supers->Empty());
-}
-
-bool JSHClass::IsTSIHCWithInheritInfo() const
-{
-    return IsTS() && !IsPrototype() && HasTSSubtyping();
-}
-
 PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread, JSHClass *hclass, JSTaggedValue key)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -1086,23 +1098,6 @@ PropertyLookupResult JSHClass::LookupPropertyInAotHClass(const JSThread *thread,
         }
         result.SetRepresentation(attr.GetRepresentation());
         result.SetIsWritable(attr.IsWritable());
-        return result;
-    }
-
-    // found in vtable
-    if (hclass->GetVTable().IsUndefined()) {
-        result.SetIsFound(false);
-        return result;
-    }
-    JSHandle<VTable> vtable(thread, hclass->GetVTable());
-    entry = vtable->GetTupleIndexByName(key);
-    if (entry != -1) {
-        result.SetIsVtable();
-        uint32_t offset = static_cast<uint32_t>(entry * VTable::TUPLE_SIZE);
-        result.SetOffset(offset);
-        if (vtable->IsAccessor(entry)) {
-            result.SetIsAccessor(true);
-        }
         return result;
     }
 
@@ -1189,21 +1184,6 @@ PropertyLookupResult JSHClass::LookupPropertyInBuiltinPrototypeHClass(const JSTh
     result.SetRepresentation(attr.GetRepresentation());
     result.SetIsWritable(attr.IsWritable());
     return result;
-}
-
-void JSHClass::CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
-                                 JSHandle<JSHClass> &newHClass)
-{
-    JSHandle<WeakVector> supers(thread, oldHClass->GetSupers());
-    JSHandle<WeakVector> copySupers = WeakVector::Copy(thread, supers);
-    newHClass->SetSupers(thread, copySupers);
-
-    uint8_t level = oldHClass->GetLevel();
-    newHClass->SetLevel(level);
-
-    JSHandle<VTable> vtable(thread, oldHClass->GetVTable());
-    JSHandle<VTable> copyVtable = VTable::Copy(thread, vtable);
-    newHClass->SetVTable(thread, copyVtable);
 }
 
 JSHandle<JSTaggedValue> JSHClass::ParseKeyFromPGOCString(ObjectFactory* factory,
@@ -1385,9 +1365,7 @@ bool JSHClass::UpdateChildLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDe
     return layoutInfo->UpdateFieldIndexByPGO(last, childDesc);
 }
 
-bool JSHClass::UpdateRootLayoutDescByPGO(const JSHClass* hclass,
-                                         const PGOHClassTreeDesc* treeDesc,
-                                         HClassLayoutDesc* desc)
+bool JSHClass::UpdateRootLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* desc)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (hclass->IsDictionaryMode()) {
@@ -1396,24 +1374,9 @@ bool JSHClass::UpdateRootLayoutDescByPGO(const JSHClass* hclass,
 
     auto rootDesc = reinterpret_cast<const pgo::RootHClassLayoutDesc *>(desc);
     int rootPropLen = static_cast<int>(rootDesc->NumOfProps());
-    int element = static_cast<int>(hclass->NumberOfProps());
-    ASSERT(element >= rootPropLen);
     LayoutInfo *layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
     for (int i = 0; i < rootPropLen; i++) {
         layout->UpdateFieldIndexByPGO(i, desc);
-    }
-    auto lastDesc = desc;
-    for (int i = rootPropLen; i < element - 1; i++) {
-        if (lastDesc == nullptr || lastDesc->GetChildSize() == 0) {
-            break;
-        }
-        lastDesc->IterateChilds([treeDesc, layout, i, &lastDesc] (const ProfileType &childType) -> bool {
-            lastDesc = treeDesc->GetHClassLayoutDesc(childType);
-            if (lastDesc == nullptr) {
-                return true;
-            }
-            return !layout->UpdateFieldIndexByPGO(i, lastDesc);
-        });
     }
     return true;
 }
@@ -1432,10 +1395,13 @@ CString JSHClass::DumpToString(JSTaggedType hclassVal)
     for (int i = 0; i < element; i++) {
         auto key = layout->GetKey(i);
         if (key.IsString()) {
-            result += EcmaStringAccessor(key).ToCString();
+            uint64_t value = EcmaStringAccessor(key).GetHashcode();
+            value <<= sizeof(uint32_t) * BITS_PER_BYTE;
             auto attr = layout->GetAttr(i);
-            result += static_cast<int32_t>(attr.GetTrackType());
-            result += attr.GetPropertyMetaData();
+            auto defaultAttr = PropertyAttributes(attr.GetPropertyMetaData());
+            defaultAttr.SetTrackType(attr.GetTrackType());
+            value += defaultAttr.GetValue();
+            result += ToCString(value);
         } else if (key.IsSymbol()) {
             result += JSSymbol::Cast(key)->GetPrivateId();
             auto attr = layout->GetAttr(i);

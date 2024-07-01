@@ -81,6 +81,7 @@ bool PGOHClassTreeDesc::DumpForRoot(JSTaggedType root, ProfileType rootType)
     auto rootHClass = JSHClass::Cast(JSTaggedValue(root).GetTaggedObject());
     if (iter != transitionLayout_.end()) {
         rootLayout = iter->second;
+        return JSHClass::UpdateRootLayoutDescByPGO(rootHClass, rootLayout);
     } else {
         rootLayout = new RootHClassLayoutDesc(rootType, rootHClass->GetObjectType(),
                                               rootHClass->GetObjectSizeExcludeInlinedProps());
@@ -93,13 +94,7 @@ bool PGOHClassTreeDesc::DumpForRoot(JSTaggedType root, ProfileType rootType)
 bool PGOHClassTreeDesc::DumpForChild(JSTaggedType child, ProfileType childType)
 {
     ASSERT(!childType.IsRootType());
-    auto rootType = GetProfileType();
-    auto rootIter = transitionLayout_.find(rootType);
     auto childHClass = JSHClass::Cast(JSTaggedValue(child).GetTaggedObject());
-    if (rootIter != transitionLayout_.end()) {
-        auto rootLayout = rootIter->second;
-        JSHClass::UpdateRootLayoutDescByPGO(childHClass, this, rootLayout);
-    }
 
     HClassLayoutDesc *childLayout;
     auto iter = transitionLayout_.find(childType);
@@ -132,10 +127,6 @@ bool PGOHClassTreeDesc::UpdateForTransition(
 {
     if (parentType.IsRootType()) {
         if (!DumpForRoot(parent, parentType)) {
-            return false;
-        }
-    } else {
-        if (!DumpForChild(parent, parentType)) {
             return false;
         }
     }

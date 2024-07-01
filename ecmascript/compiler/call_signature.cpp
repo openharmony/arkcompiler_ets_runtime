@@ -2290,6 +2290,21 @@ DEF_CALL_SIGNATURE(FindElementWithCache)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(UpdateFieldType)
+{
+    // 2 : 2 input parameters
+    CallSignature index("UpdateFieldType", 0, 2, ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = index;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::JS_ANY(),
+        VariableType::INT64(),
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 DEF_CALL_SIGNATURE(NumberIsFinite)
 {
     // 1 : 1 input parameters

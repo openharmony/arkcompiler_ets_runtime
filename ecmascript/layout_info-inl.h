@@ -187,6 +187,22 @@ inline void LayoutInfo::SetIsNotHole(const JSThread *thread, int index)
     TaggedArray::Set(thread, fixedIdx, attr.GetTaggedValue());
 }
 
+inline void LayoutInfo::UpdateTrackTypeAttr(int index, const PropertyAttributes &attr)
+{
+    uint32_t fixedIdx = GetAttrIndex(index);
+    PropertyAttributes oldAttr(TaggedArray::Get(fixedIdx));
+    oldAttr.SetNormalAttr(attr.GetNormalAttr());
+    oldAttr.SetIsPGODumped(false);
+    TaggedArray::Set(fixedIdx, oldAttr.GetTaggedValue());
+}
+
+inline void LayoutInfo::SetIsPGODumped(int index)
+{
+    uint32_t fixedIdx = GetAttrIndex(index);
+    PropertyAttributes attr(TaggedArray::Get(fixedIdx));
+    attr.SetIsPGODumped(true);
+    TaggedArray::Set(fixedIdx, attr.GetTaggedValue());
+}
 
 template<bool checkDuplicateKeys /* = false*/>
 void LayoutInfo::AddKey(const JSThread *thread, [[maybe_unused]] int index, const JSTaggedValue &key,

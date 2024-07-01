@@ -299,10 +299,12 @@ inline void JSHClass::Copy(const JSThread *thread, const JSHClass *jshclass)
 inline JSHClass *JSHClass::FindRootHClass(JSHClass *hclass)
 {
     auto root = hclass;
-    auto parent = hclass->GetParent();
-    while (parent.IsJSHClass()) {
+    while (!ProfileType(root->GetProfileType()).IsRootType()) {
+        auto parent = root->GetParent();
+        if (!parent.IsJSHClass()) {
+            break;
+        }
         root = JSHClass::Cast(parent.GetTaggedObject());
-        parent = root->GetParent();
     }
     return root;
 }

@@ -26,76 +26,18 @@
 namespace panda::ecmascript::pgo {
 class PGOTypeGenerator {
 public:
-    ProfileType GenerateProfileType(ProfileType rootType, JSTaggedType hclass)
+    static ProfileType GenerateProfileType(JSTaggedType child, ProfileType rootType)
     {
-        {
-            LockHolder lock(mutex_);
-            auto iter = exsitId_.find(hclass);
-            if (iter != exsitId_.end()) {
-                return iter->second;
-            }
-        }
-
-        CString result = JSHClass::DumpToString(hclass);
+        CString result = JSHClass::DumpToString(child);
         uint32_t traceId = ComputeHashCode(result);
         ProfileType type(rootType.GetAbcId(), traceId, rootType.GetKind());
-        LockHolder lock(mutex_);
-        exsitId_.emplace(hclass, type);
         return type;
-    }
-
-    ProfileType GetProfileType(JSTaggedType hclass)
-    {
-        LockHolder lock(mutex_);
-        auto iter = exsitId_.find(hclass);
-        if (iter != exsitId_.end()) {
-            return iter->second;
-        }
-        return ProfileType::PROFILE_TYPE_NONE;
-    }
-
-    bool InsertProfileType(JSTaggedType hclass, ProfileType type)
-    {
-        LockHolder lock(mutex_);
-        auto iter = exsitId_.find(hclass);
-        if (iter != exsitId_.end()) {
-            return false;
-        }
-        exsitId_.emplace(hclass, type);
-        return true;
-    }
-
-    void UpdateProfileType(JSTaggedType oldHClass, JSTaggedType newHClass)
-    {
-        LockHolder lock(mutex_);
-        auto iter = exsitId_.find(oldHClass);
-        if (iter != exsitId_.end()) {
-            auto profileType = iter->second;
-            exsitId_.erase(oldHClass);
-            exsitId_.emplace(newHClass, profileType);
-        }
-    }
-
-    void ProcessReferences(const WeakRootVisitor &visitor)
-    {
-        for (auto iter = exsitId_.begin(); iter != exsitId_.end();) {
-            JSTaggedType object = iter->first;
-            auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
-            if (fwd == nullptr) {
-                iter = exsitId_.erase(iter);
-                continue;
-            }
-            if (fwd != reinterpret_cast<TaggedObject *>(object)) {
-                UNREACHABLE();
-            }
-            ++iter;
-        }
     }
 
 private:
     static constexpr uint32_t INVALID_ID = 0;
 
-    uint32_t ComputeHashCode(const CString &string)
+    static uint32_t ComputeHashCode(const CString &string)
     {
         uint32_t hash = INVALID_ID;
         Span<const char> sp(string.c_str(), string.size());
@@ -105,9 +47,6 @@ private:
         }
         return hash;
     }
-
-    Mutex mutex_;
-    CMap<JSTaggedType, ProfileType> exsitId_;
 };
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_TYPES_PGO_TYPE_GENERATOR_H

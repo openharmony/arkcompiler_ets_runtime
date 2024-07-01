@@ -128,11 +128,24 @@ public:
     }
 
     int FindEntry(const JSTaggedValue &key, const JSTaggedValue &metaData);
+    template <typename Callback>
+    void IterateEntryValue(Callback callback)
+    {
+        auto number = EntriesCount();
+        for (int entry = 0; entry < number; entry++) {
+            JSTaggedValue ret = GetValue(entry);
+            if (ret.IsWeak()) {
+                auto next = ret.GetTaggedWeakRef();
+                callback(JSHClass::Cast(next));
+            }
+        }
+    }
     static JSHandle<TransitionsDictionary> PutIfAbsent(const JSThread *thread,
                                                        const JSHandle<TransitionsDictionary> &dictionary,
                                                        const JSHandle<JSTaggedValue> &key,
                                                        const JSHandle<JSTaggedValue> &value,
                                                        const JSHandle<JSTaggedValue> &metaData);
+    // For test
     static JSHandle<TransitionsDictionary> Remove(const JSThread *thread, const JSHandle<TransitionsDictionary> &table,
                                                   const JSHandle<JSTaggedValue> &key, const JSTaggedValue &metaData);
     void Rehash(const JSThread *thread, TransitionsDictionary *newTable);

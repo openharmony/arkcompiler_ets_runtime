@@ -415,7 +415,9 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
+                auto literalFunc = JSHandle<JSFunction>::Cast(propValue);
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(literalFunc);
+                JSFunction::UpdateProfileTypeInfoCell(thread, literalFunc, propFunc);
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -441,7 +443,9 @@ JSHandle<JSFunction> ClassHelper::DefineClassFromExtractor(JSThread *thread, con
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
+                auto literalFunc = JSHandle<JSFunction>::Cast(propValue);
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(literalFunc);
+                JSFunction::UpdateProfileTypeInfoCell(thread, literalFunc, propFunc);
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -508,7 +512,9 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
         for (uint32_t index = 0; index < nonStaticLength; ++index) {
             propValue.Update(nonStaticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
+                auto literalFunc = JSHandle<JSFunction>::Cast(propValue);
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(literalFunc);
+                JSFunction::UpdateProfileTypeInfoCell(thread, literalFunc, propFunc);
                 propFunc->SetHomeObject(thread, prototype);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);
@@ -535,7 +541,9 @@ JSHandle<JSFunction> ClassHelper::DefineClassWithIHClass(JSThread *thread,
         for (uint32_t index = 0; index < staticLength; ++index) {
             propValue.Update(staticProperties->Get(index));
             if (propValue->IsJSFunction()) {
-                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(JSHandle<JSFunction>::Cast(propValue));
+                auto literalFunc = JSHandle<JSFunction>::Cast(propValue);
+                JSHandle<JSFunction> propFunc = factory->CloneJSFunction(literalFunc);
+                JSFunction::UpdateProfileTypeInfoCell(thread, literalFunc, propFunc);
                 propFunc->SetHomeObject(thread, constructor);
                 propFunc->SetLexicalEnv(thread, lexenv);
                 propValue.Update(propFunc);

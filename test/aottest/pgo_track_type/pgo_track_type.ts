@@ -58,3 +58,41 @@ Vec3.set(a.a0, 0.5, 0.5, 0.5);
 print(a.a0.x)
 print(a.a0.y)
 print(a.a0.z)
+
+class QType {
+  arr: number[];
+  Lastx:number = 0;
+  Lasty:number = 0;
+  Normal: Float64Array[] = new Array();
+  Line: boolean[] = new Array();
+  Edge: number[][] = new Array();
+}
+
+let obj = {x: 1, y: 2, z: 3, u: 3, v: 4}
+
+let next = {x: 1, z: 2, y: 3, v: 3, u: 3}
+
+let count = 0;
+let Init = Change;
+
+function Change(CubeSize: number) {
+    let Q: QType = new QType();
+    Q.arr = []
+
+    Q.arr[0] = base + 0 * -20;
+    if (count == 0) {
+        Q.arr[0] = 1;
+    }
+
+    obj.x = Q.arr[0];
+    print(obj.x);
+}
+
+let base = -10
+if (ArkTools.isAOTCompiled(Init)) {
+    base = -20
+}
+
+Init(20)
+count++;
+Init(20)

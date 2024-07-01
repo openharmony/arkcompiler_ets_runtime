@@ -124,6 +124,7 @@ public:
     static_assert(FastModeStartField::SIZE == CommonLastBitField::SIZE);
     using OffsetField = FastModeStartField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 17
     using TrackTypeField = OffsetField::NextField<TrackType, TRACK_TYPE_NUM>;     // 20: 3 bits
+    static_assert(TrackTypeField::END_BIT <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
     // normal attr should include SharedFieldTypeField when set to layout
     static constexpr uint32_t NORMAL_ATTR_BITS = 28;
@@ -132,7 +133,8 @@ public:
     using SortedIndexField = SharedFieldTypeField::NextField<uint32_t, OFFSET_BITFIELD_NUM>; // 38: 10 bits
     using IsConstPropsField = SortedIndexField::NextFlag;                              // 39
     using IsNotHoleField = IsConstPropsField::NextFlag;                                // 40
-    using FastModeLastField = IsNotHoleField;
+    using IsPGODumpedField = IsNotHoleField::NextFlag;                                      // 41
+    using FastModeLastField = IsPGODumpedField;
     static_assert(
         FastModeLastField::START_BIT + FastModeLastField::SIZE <= MAX_BIT_SIZE, "Invalid");
 
@@ -319,6 +321,16 @@ public:
     inline void SetTrackType(TrackType type)
     {
         TrackTypeField::Set<uint64_t>(type, &value_);
+    }
+
+    inline bool IsPGODumped()
+    {
+        return IsPGODumpedField::Get(value_);
+    }
+
+    inline void SetIsPGODumped(bool isDumped)
+    {
+        IsPGODumpedField::Set<uint64_t>(isDumped, &value_);
     }
 
     inline SharedFieldType GetSharedFieldType() const

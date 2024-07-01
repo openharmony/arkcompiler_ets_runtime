@@ -16,7 +16,6 @@
 declare function print(a0:any, a1?:any):string;
 declare class ArkTools {
     static isTSHClass(o:object):boolean;
-    static hasTSSubtyping(o:object):boolean;
 }
 
 class A {
@@ -38,7 +37,6 @@ function testVTable(o:A) {
 
 let b = new B();
 print("Before breaking, B's ihclass is TS:", ArkTools.isTSHClass(b));
-print("Before breaking, B's ihclass has TS inherit info:", ArkTools.hasTSSubtyping(b));
 testVTable(b);
 
 // break TS Chain on object
@@ -47,5 +45,4 @@ b.foo = function () {
 }
 
 print("After breaking, b's hclass is TS:", ArkTools.isTSHClass(b));
-print("After breaking, b's hclass has TS inherit info:", ArkTools.hasTSSubtyping(b));
 testVTable(b);  // occur deopt

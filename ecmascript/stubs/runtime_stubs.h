@@ -194,6 +194,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallDateNow)                             \
     V(NumberIsFinite)                          \
     V(FindElementWithCache)                    \
+    V(UpdateFieldType)                         \
     V(CreateArrayFromList)                     \
     V(StringsAreEquals)                        \
     V(BigIntEquals)                            \
@@ -595,6 +596,7 @@ public:
     static double CallDateNow();
     static int32_t FindElementWithCache(uintptr_t argGlue, JSTaggedType hclass,
                                         JSTaggedType key, int32_t num);
+    static void UpdateFieldType(JSTaggedType hclass, uint64_t value);
     static bool StringsAreEquals(EcmaString *str1, EcmaString *str2);
     static bool BigIntEquals(JSTaggedType left, JSTaggedType right);
     static bool BigIntSameValueZero(JSTaggedType key, JSTaggedType other);
