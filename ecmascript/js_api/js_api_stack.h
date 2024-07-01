@@ -48,7 +48,7 @@ public:
 
     int Search(const JSHandle<JSTaggedValue> &value);
 
-    inline uint32_t GetSize() const
+    inline int32_t GetSize() const
     {
         return GetTop();
     }
