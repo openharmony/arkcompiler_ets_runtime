@@ -30,3 +30,28 @@ let v1 = 1.23;
 v1.fill(7);
 Number.prototype.__proto__ = rawProto
 print("fill Number Obj Success!")
+
+var log = [];
+var fake =
+    {
+      get source() {
+        log.push("p");
+        return {
+          toString: function() {
+            log.push("ps");
+            return "pattern";
+          }
+        };
+      },
+      get flags() {
+        log.push("f");
+        return {
+          toString: function() {
+            log.push("fs");
+            return "flags";
+          }
+        };
+      }
+    }
+RegExp.prototype.toString.call(fake);
+print(JSON.stringify(["p", "ps", "f", "fs"]) == JSON.stringify(log));

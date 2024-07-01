@@ -395,8 +395,12 @@ def get_file_source(file):
     with open(file, encoding='ISO-8859-1') as f:
         return f.read()
 
-def setIntlEnviron(case):
+def setTestEnviron(case):
     # intl environ LC_ALL
+    if 'LC_ALL' in os.environ:
+        del os.environ['LC_ALL']
+    if 'TZ' in os.environ:
+        del os.environ['TZ']
     if case.startswith('/'):
         real_path = case.replace('/regresstest/ark-regress/', '')
     else:
@@ -406,12 +410,13 @@ def setIntlEnviron(case):
         return;
     source = get_file_source(js_case_path)
     env_match = ENV_PATTERN.search(source)
-    if 'LC_ALL' in os.environ:
-        del os.environ['LC_ALL']
     if env_match:
         for env_pair in env_match.group(1).strip().split():
             var, value = env_pair.split('=')
-            os.environ['LC_ALL'] = value
+            if var.find('TZ') >= 0:
+                os.environ['TZ'] = value
+            if var.find('LC_ALL') >= 0:
+                os.environ['LC_ALL'] = value
             break;
 
 def run_test_case_dir(args, test_abc_files, force_gc_files, timeout=RegressTestConfig.DEFAULT_TIMEOUT):
@@ -429,8 +434,8 @@ def run_test_case_dir(args, test_abc_files, force_gc_files, timeout=RegressTestC
         os.environ["LD_LIBRARY_PATH"] = ld_library_path
         unforced_gc = False
         force_gc_file = test_case_file.replace('regresstest/ark-regress/', '')
-        # intl environ LC_ALL
-        setIntlEnviron(test_case_file)
+        # test environ LC_ALL/TZ
+        setTestEnviron(test_case_file)
         if force_gc_file in force_gc_files:
             unforced_gc = True
         asm_arg1 = "--enable-force-gc=true"
