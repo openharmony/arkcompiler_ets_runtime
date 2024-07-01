@@ -1419,9 +1419,6 @@ GateRef NumberSpeculativeRetype::VisitLoadStringLength(GateRef gate)
         TypeInfo typeInfo = GetOutputTypeInfo(input);
         if (typeInfo == TypeInfo::CHAR) {
             acc_.ReplaceValueIn(gate, ConvertToTagged(input), 0);
-        } else if (typeInfo != TypeInfo::TAGGED) {
-            LOG_COMPILER(FATAL) << "should be tagged type";
-            UNREACHABLE();
         }
     }
     return Circuit::NullGate();
