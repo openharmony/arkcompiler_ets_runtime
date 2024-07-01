@@ -17,12 +17,10 @@
 namespace panda::ecmascript::kungfu {
 
 #define BASELINE_COMPILER_BUILTIN_LIST(V)                                  \
-    V(BaselineLdObjByName)                                                 \
     V(BaselineTryLdGLobalByNameImm8ID16)                                   \
     V(BaselineStToGlobalRecordImm16ID16)                                   \
     V(BaselineLdaStrID16)                                                  \
     V(BaselineCallArg1Imm8V8)                                              \
-    V(BaselineJmpImm16)                                                    \
     V(BaselineLdsymbol)                                                    \
     V(BaselineLdglobal)                                                    \
     V(BaselinePoplexenv)                                                   \
@@ -119,8 +117,6 @@ namespace panda::ecmascript::kungfu {
     V(BaselineGettemplateobjectImm8)                                       \
     V(BaselineGettemplateobjectImm16)                                      \
     V(BaselineGetnextpropnameV8)                                           \
-    V(BaselineJeqzImm8)                                                    \
-    V(BaselineJeqzImm16)                                                   \
     V(BaselineSetobjectwithprotoImm8V8)                                    \
     V(BaselineDelobjpropV8)                                                \
     V(BaselineSuspendgeneratorV8)                                          \
@@ -168,24 +164,17 @@ namespace panda::ecmascript::kungfu {
     V(BaselineStsuperbynameImm16Id16V8)                                    \
     V(BaselineLdlocalmodulevarImm8)                                        \
     V(BaselineStconsttoglobalrecordImm16Id16)                              \
-    V(BaselineJeqzImm32)                                                   \
-    V(BaselineJnezImm8)                                                    \
-    V(BaselineJnezImm16)                                                   \
-    V(BaselineJnezImm32)                                                   \
     V(BaselineStownbyvaluewithnamesetImm8V8V8)                             \
     V(BaselineStownbyvaluewithnamesetImm16V8V8)                            \
     V(BaselineStownbynamewithnamesetImm8Id16V8)                            \
     V(BaselineStownbynamewithnamesetImm16Id16V8)                           \
     V(BaselineLdbigintId16)                                                \
-    V(BaselineJmpImm8)                                                     \
-    V(BaselineJmpImm32)                                                    \
     V(BaselineFldaiImm64)                                                  \
     V(BaselineReturn)                                                      \
     V(BaselineLdlexvarImm8Imm8)                                            \
     V(BaselineStlexvarImm8Imm8)                                            \
     V(BaselineJnstricteqV8Imm16)                                           \
     V(BaselineAsyncgeneratorrejectV8)                                      \
-    V(BaselineNop)                                                         \
     V(BaselineSetgeneratorstateImm8)                                       \
     V(BaselineGetasynciteratorImm8)                                        \
     V(BaselineLdPrivatePropertyImm8Imm16Imm16)                             \

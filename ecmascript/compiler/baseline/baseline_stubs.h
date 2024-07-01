@@ -74,8 +74,8 @@ public:
 
     inline void SetEnvToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void CheckExceptionWithVar(GateRef glue, GateRef sp, GateRef res, GateRef acc);
-    inline void CheckException(GateRef glue, GateRef sp, GateRef res, GateRef acc);
-    inline void CheckExceptionAndReturn(GateRef glue, GateRef sp, GateRef res, GateRef acc);
+    inline void CheckException(GateRef glue, GateRef sp, GateRef res);
+    inline void CheckExceptionReturn(GateRef glue, GateRef sp, GateRef res);
     inline void CheckExceptionWithJump(GateRef glue, GateRef sp, GateRef res, GateRef acc, Label *jump);
     inline void CheckExceptionWithJumpAndReturn(GateRef glue, GateRef sp, GateRef res, GateRef acc, Label *jump);
     inline void CheckPendingException(GateRef glue, GateRef sp, GateRef res, GateRef acc);

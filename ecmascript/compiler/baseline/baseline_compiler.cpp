@@ -345,7 +345,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDLEXVAR_IMM4_IMM4)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(static_cast<int32_t>(level));
     parameters.emplace_back(static_cast<int32_t>(slot));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
@@ -386,7 +385,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDLEXVAR_IMM8_IMM8)
     LOG_INST() << "      solt: " << static_cast<int32_t>(slot);
 
     std::vector<BaselineParameter> parameters;
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(static_cast<int32_t>(level));
     parameters.emplace_back(static_cast<int32_t>(slot));
     parameters.emplace_back(BaselineSpecialParameter::SP);
@@ -446,7 +444,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDSYMBOL)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -462,7 +459,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDGLOBAL)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -1080,7 +1076,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDSUPERBYNAME_IMM8_ID16)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(static_cast<int32_t>(stringId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -1119,7 +1114,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDSUPERBYNAME_IMM16_ID16)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(static_cast<int32_t>(stringId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -1198,7 +1192,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDA_STR_ID16)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(static_cast<int32_t>(stringId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -1214,7 +1207,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(FLDAI_IMM64)
     LOG_INST() << "    BaselineFldaiImm64 Address: " << std::hex << builtinAddress << std::endl;
 
     std::vector<BaselineParameter> parameters;
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(imm);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -1712,7 +1704,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDEXTERNALMODULEVAR_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(index);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -1783,7 +1774,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDLOCALMODULEVAR_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(index);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -2045,7 +2035,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(ASYNCFUNCTIONENTER)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2370,7 +2359,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(SUPERCALLTHISRANGE_IMM8_IMM8_V8)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(static_cast<int16_t>(range));
     parameters.emplace_back(static_cast<int16_t>(v0));
     parameters.emplace_back(BaselineSpecialParameter::HOTNESS_COUNTER);
@@ -2590,7 +2578,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(GETMODULENAMESPACE_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(static_cast<int32_t>(index));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -2699,7 +2686,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DYNAMICIMPORT)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -2977,19 +2963,16 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(XOR2_IMM8_V8)
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(EXP_IMM8_V8)
 {
     uint8_t vBaseId = READ_INST_8_1();
-    uint8_t slotId = READ_INST_8_0();
 
     auto *thread = vm->GetAssociatedJSThread();
     Address builtinAddress =
             thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineExpImm8V8);
     LOG_INST() << "    BaselineExpImm8V8 Address: " << std::hex << builtinAddress;
-    LOG_INST() << "      slotId: " << static_cast<int32_t>(slotId);
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(VirtualRegister(vBaseId));
-    parameters.emplace_back(static_cast<int32_t>(slotId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
@@ -3767,7 +3750,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_COPYRESTARGS_PREF_IMM16)
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
-// GLUE, SP, ACC, LEVEL, SLOT
+// SP, LEVEL, SLOT
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_LDLEXVAR_PREF_IMM16_IMM16)
 {
     uint16_t level = READ_INST_16_1();
@@ -3780,9 +3763,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_LDLEXVAR_PREF_IMM16_IMM16)
     LOG_INST() << "      slot: " << static_cast<int32_t>(slot);
 
     std::vector<BaselineParameter> parameters;
-    parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(static_cast<int32_t>(level));
     parameters.emplace_back(static_cast<int32_t>(slot));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
@@ -3821,7 +3802,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_GETMODULENAMESPACE_PREF_IMM16)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(index);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -3843,7 +3823,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_STMODULEVAR_PREF_IMM16)
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
 }
 
-// GLUE, ACC, INDEX
+// GLUE, INDEX
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_LDLOCALMODULEVAR_PREF_IMM16)
 {
     int16_t index = READ_INST_16_1();
@@ -3854,13 +3834,12 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_LDLOCALMODULEVAR_PREF_IMM16)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(index);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
-// GLUE, ACC, INDEX
+// GLUE, INDEX
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16)
 {
     int16_t index = READ_INST_16_1();
@@ -3871,13 +3850,12 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(index);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
-// GLUE, SP, ACC, INDEX
+// GLUE, SP, INDEX
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_LDPATCHVAR_PREF_IMM16)
 {
     int16_t index = READ_INST_16_1();
@@ -3889,7 +3867,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(WIDE_LDPATCHVAR_PREF_IMM16)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(index);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -4125,7 +4102,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(THROW_PATTERNNONCOERCIBLE_PREF_NONE)
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
 }
 
-// GLUE
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(THROW_NOTEXISTS_PREF_NONE)
 {
     (void)bytecodeArray;
@@ -4200,7 +4176,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(BaselineSpecialParameter::SP);
     parameters.emplace_back(static_cast<int32_t>(stringId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
@@ -4236,11 +4211,10 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(THROW_IFNOTOBJECT_PREF_V8)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(v0);
+    parameters.emplace_back(VirtualRegister(v0));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
 }
 
-// GLUE, SP, V0
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(THROW_CONSTASSIGNMENT_PREF_V8)
 {
     int8_t v0 = READ_INST_8_1();
@@ -4252,7 +4226,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(THROW_CONSTASSIGNMENT_PREF_V8)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(v0);
+    parameters.emplace_back(VirtualRegister(v0));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
 }
 
@@ -4532,9 +4506,9 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDLEXENV_PREF_NONE)
     LOG_INST() << "    BaselineDeprecatedLdlexenvPrefNone Address: " << std::hex << builtinAddress;
 
     std::vector<BaselineParameter> parameters;
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(BaselineSpecialParameter::SP);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
+    GetBaselineAssembler().SaveResultIntoAcc();
 }
 
 // GLUE, SP
@@ -4611,7 +4585,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_CREATEOBJECTWITHBUFFER_PREF_IMM16
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
-// GLUE, SP, ACC, V0
+// GLUE, SP, V0
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_TONUMBER_PREF_V8)
 {
     int8_t v0 = READ_INST_8_1();
@@ -4623,13 +4597,12 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_TONUMBER_PREF_V8)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(v0);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
-// GLUE, SP, ACC, V0
+// GLUE, SP, V0
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_TONUMERIC_PREF_V8)
 {
     int8_t v0 = READ_INST_8_1();
@@ -4641,7 +4614,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_TONUMERIC_PREF_V8)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(v0);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -5023,7 +4995,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_SETOBJECTWITHPROTO_PREF_V8_V8)
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
-// GLUE, SP, ACC, V0, V1
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDOBJBYVALUE_PREF_V8_V8)
 {
     int8_t v0 = READ_INST_8_1();
@@ -5036,7 +5007,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDOBJBYVALUE_PREF_V8_V8)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(v0);
     parameters.emplace_back(v1);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
@@ -5188,7 +5158,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STLEXVAR_PREF_IMM16_IMM16_V8)
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
 }
 
-// GLUE, ACC, STRING_ID, SP
+// GLUE, STRING_ID, SP
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_GETMODULENAMESPACE_PREF_ID32)
 {
     int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
@@ -5199,7 +5169,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_GETMODULENAMESPACE_PREF_ID32)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(stringId);
     parameters.emplace_back(BaselineSpecialParameter::SP);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
@@ -5222,7 +5191,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_STMODULEVAR_PREF_ID32)
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
 }
 
-// GLUE, SP, ACC, V0, STRING_ID
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDOBJBYNAME_PREF_ID32_V8)
 {
     int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
@@ -5235,14 +5203,12 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDOBJBYNAME_PREF_ID32_V8)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(v0);
     parameters.emplace_back(stringId);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
 }
 
-// GLUE, SP, ACC, STRING_ID, V0
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDSUPERBYNAME_PREF_ID32_V8)
 {
     int32_t stringId = static_cast<int32_t>(READ_INST_32_1());
@@ -5255,7 +5221,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDSUPERBYNAME_PREF_ID32_V8)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(stringId);
     parameters.emplace_back(v0);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
@@ -5273,7 +5238,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDMODULEVAR_PREF_ID32_IMM8)
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(stringId);
     parameters.emplace_back(flagI8);
     parameters.emplace_back(BaselineSpecialParameter::SP);
@@ -5343,7 +5307,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(DEPRECATED_LDHOMEOBJECT_PREF_NONE)
     LOG_INST() << "    BaselineDeprecatedLdhomeobjectPrefNone Address: " << std::hex << builtinAddress;
 
     std::vector<BaselineParameter> parameters;
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(BaselineSpecialParameter::SP);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
@@ -5602,7 +5565,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLECLASS_PREF_IMM16)
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
-    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(level);
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
     GetBaselineAssembler().SaveResultIntoAcc();
