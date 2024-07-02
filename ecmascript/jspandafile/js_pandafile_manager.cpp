@@ -420,7 +420,8 @@ DebugInfoExtractor *JSPandaFileManager::GetJSPtExtractor(const JSPandaFile *jsPa
     LockHolder lock(jsPandaFileLock_);
     const auto &filename = jsPandaFile->GetJSPandaFileDesc();
     if (loadedJSPandaFiles_.find(filename) == loadedJSPandaFiles_.end()) {
-        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename;
+        LOG_ECMA(FATAL) << "get extractor failed, file not exist: " << filename
+            << " file addr is " << reinterpret_cast<uintptr_t>(jsPandaFile->GetHeader());
         UNREACHABLE();
     }
 
