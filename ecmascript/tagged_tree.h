@@ -138,7 +138,9 @@ public:
         if (fn.IsHole()) {
             return OrdinayEntryCompare(thread, valueX, valueY);
         }
-
+        if (OrdinayEntryCompare(thread, valueX, valueY) == ComparisonResult::EQUAL) {
+            return ComparisonResult::EQUAL;
+        }
         JSHandle<JSTaggedValue> compareFn(thread, fn);
         JSHandle<JSTaggedValue> thisArgHandle = thread->GlobalConstants()->GetHandledUndefined();
         const uint32_t argsLength = 2;
@@ -151,15 +153,7 @@ public:
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
         int compareResult = 0;
         if (callResult.IsBoolean()) {
-            if (callResult.IsTrue()) {
-                compareResult = -1;
-            } else {
-                info = EcmaInterpreter::NewRuntimeCallInfo(thread, compareFn, thisArgHandle, undefined, argsLength);
-                info->SetCallArg(valueY.GetTaggedValue(), valueX.GetTaggedValue());
-                callResult = JSFunction::Call(info);
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-                compareResult = callResult.IsTrue() ? 1 : 0;
-            }
+            compareResult = callResult.IsTrue() ? -1 : 1;
         } else if (callResult.IsInt()) {
             compareResult = callResult.GetInt();
         } else {

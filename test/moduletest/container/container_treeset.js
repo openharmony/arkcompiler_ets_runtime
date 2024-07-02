@@ -93,6 +93,16 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.set("test set throw error", flag);
 
+    let cmmp = new fastset((firstValue, secondValue) => {return firstValue > secondValue});
+    cmmp.add("aa");
+    cmmp.add("bb");
+    map.set("test has undefined", cmmp.has(undefined) == false);
+    map.set("test has null", cmmp.has(null) == false);
+    cmmp.add(null, 1);
+    cmmp.add(undefined, 1);
+    map.set("test has undefined false", cmmp.has(undefined) == true);
+    map.set("test has null false", cmmp.has(null) == true);
+
     let comset =  new fastset((firstValue, secondValue) => {return firstValue < secondValue});
     comset.add("c");
     comset.add("a");

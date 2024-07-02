@@ -265,9 +265,11 @@ JSTaggedValue ContainersTreeMap::SetAll(EcmaRuntimeCallInfo *argv)
     JSHandle<TaggedTreeMap> dmap(thread, dst->GetTreeMap());
     JSHandle<TaggedTreeMap> smap(thread, JSHandle<JSAPITreeMap>::Cast(obj)->GetTreeMap());
 
-    JSTaggedValue tmap = TaggedTreeMap::SetAll(thread, dmap, smap);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    dst->SetTreeMap(thread, tmap);
+    if (JSHandle<JSAPITreeMap>::Cast(obj)->GetSize() > 0) {
+        JSTaggedValue tmap = TaggedTreeMap::SetAll(thread, dmap, smap);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        dst->SetTreeMap(thread, tmap);
+    }
     return JSTaggedValue::Undefined();
 }
 
