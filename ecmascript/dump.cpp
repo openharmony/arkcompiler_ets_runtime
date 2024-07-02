@@ -1758,7 +1758,7 @@ void ConstantPool::Dump(std::ostream &os) const
 void ProfileTypeInfo::Dump(std::ostream &os) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint32_t len = GetCacheLength();
+    uint32_t len = GetIcSlotLength();
     os << " <ProfileTypeInfo[" << std::dec << len << "]>\n";
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(Get(i));
@@ -4924,7 +4924,7 @@ void VTable::DumpForSnapshot(std::vector<Reference> &vec) const
 void ProfileTypeInfo::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     DISALLOW_GARBAGE_COLLECTION;
-    uint32_t len = GetCacheLength();
+    uint32_t len = GetIcSlotLength();
     vec.reserve(vec.size() + len);
     for (uint32_t i = 0; i < len; i++) {
         JSTaggedValue val(Get(i));

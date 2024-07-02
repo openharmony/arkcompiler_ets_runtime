@@ -248,6 +248,9 @@ void PGOProfiler::UpdateTrackInfo(JSTaggedValue trackInfoVal)
             return;
         }
         auto profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
+        if (profileTypeInfo->IsProfileTypeInfoWithBigMethod()) {
+            return;
+        }
         if (!profileTypeInfo->IsProfileTypeInfoPreDumped()) {
             profileTypeInfo->SetPreDumpPeriodIndex();
             PGOPreDump(JSTaggedType(object));
@@ -518,6 +521,7 @@ void PGOProfiler::HandlePGOPreDump()
 
 void PGOProfiler::HandlePGODumpByDumpThread(bool force)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::HandlePGODumpByDumpThread");
     ConcurrentGuard guard(v_, "HandlePGODumpByDumpThread");
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
@@ -574,6 +578,7 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
 
 void PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask(bool force)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask");
     // Merged every 50 methods and merge interval greater than minimal interval
     auto interval = std::chrono::system_clock::now() - saveTimestamp_;
     auto minIntervalOption = vm_->GetJSOptions().GetPGOSaveMinInterval();
@@ -607,6 +612,7 @@ PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
 
 void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::ProfileBytecode");
     JSFunction *function = JSFunction::Cast(funcValue);
     if (function->GetClass()->IsJSSharedFunction() ||
         function->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION) {

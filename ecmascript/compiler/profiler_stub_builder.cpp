@@ -52,7 +52,10 @@ void ProfilerStubBuilder::TryDump(GateRef glue, GateRef func, GateRef profileTyp
 
     Label updatePeriodCounter(env);
     Label exit(env);
+    Label needDump(env);
 
+    BRANCH(IsProfileTypeInfoWithBigMethod(profileTypeInfo), &exit, &needDump);
+    Bind(&needDump);
     BRANCH(IsProfileTypeInfoDumped(profileTypeInfo), &exit, &updatePeriodCounter);
     Bind(&updatePeriodCounter);
     {
@@ -71,7 +74,7 @@ void ProfilerStubBuilder::TryPreDump(GateRef glue, GateRef func, GateRef profile
     env->SubCfgEntry(&subEntry);
     Label exit(env);
     Label profiler(env);
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
+    BRANCH(IsProfileTypeInfoHotAndValid(profileTypeInfo), &profiler, &exit);
     Bind(&profiler);
     {
         TryPreDumpInner(glue, func, profileTypeInfo);
@@ -90,7 +93,7 @@ void ProfilerStubBuilder::ProfileOpType(
 
     Label exit(env);
     Label profiler(env);
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
+    BRANCH(IsProfileTypeInfoHotAndValid(profileTypeInfo), &profiler, &exit);
     Bind(&profiler);
     {
         Label icSlotValid(env);
@@ -141,7 +144,7 @@ void ProfilerStubBuilder::ProfileDefineClass(
 
     Label exit(env);
     Label profiler(env);
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
+    BRANCH(IsProfileTypeInfoHotAndValid(profileTypeInfo), &profiler, &exit);
     Bind(&profiler);
     {
         Label icSlotValid(env);
@@ -180,7 +183,7 @@ void ProfilerStubBuilder::ProfileCreateObject(
     Label exit(env);
 
     Label profiler(env);
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
+    BRANCH(IsProfileTypeInfoHotAndValid(profileTypeInfo), &profiler, &exit);
     Bind(&profiler);
     {
         Label icSlotValid(env);
@@ -231,28 +234,29 @@ void ProfilerStubBuilder::ProfileCall(
     env->SubCfgEntry(&subEntry);
 
     Label exit(env);
-    Label slowpath(env);
-    Label fastpath(env);
-
+    Label slowPath(env);
+    Label fastPath(env);
     Label targetIsFunction(env);
+
     BRANCH(IsJSFunction(target), &targetIsFunction, &exit);
     Bind(&targetIsFunction);
     {
         GateRef targetProfileInfo = GetProfileTypeInfo(target);
-        Label targetNonHotness(env);
-        Label IsCurrentHotness(env);
-        Label currentIsHotness(env);
-        BRANCH(TaggedIsUndefined(targetProfileInfo), &targetNonHotness, &IsCurrentHotness);
-        Bind(&targetNonHotness);
+        Label targetIsNotHot(env);
+        Label targetIsHot(env);
+        Label currentIsHot(env);
+
+        BRANCH(IsProfileTypeInfoHotAndValid(targetProfileInfo), &targetIsHot, &targetIsNotHot);
+        Bind(&targetIsNotHot);
         {
             CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { target });
-            Jump(&IsCurrentHotness);
+            Jump(&targetIsHot);
         }
-        Bind(&IsCurrentHotness);
+        Bind(&targetIsHot);
         {
-            BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &currentIsHotness);
+            BRANCH(IsProfileTypeInfoHotAndValid(profileTypeInfo), &currentIsHot, &exit);
         }
-        Bind(&currentIsHotness);
+        Bind(&currentIsHot);
         {
             Label icSlotValid(env);
             Label isHeapObject(env);
@@ -359,7 +363,7 @@ void ProfilerStubBuilder::ProfileNativeCall(
     Label exit(env);
     Label currentIsHot(env);
 
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &currentIsHot);
+    BRANCH(IsProfileTypeInfoHotAndValid(profileTypeInfo), &currentIsHot, &exit);
     Bind(&currentIsHot);
     {
         Label icSlotValid(env);
@@ -568,7 +572,7 @@ void ProfilerStubBuilder::ProfileBranch(
     DEFVARIABLE(newTrue, VariableType::INT32(), isTrue ? Int32(1) : Int32(0));
     DEFVARIABLE(newFalse, VariableType::INT32(), isTrue ? Int32(0) : Int32(1));
 
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
+    BRANCH(IsProfileTypeInfoHotAndValid(profileTypeInfo), &profiler, &exit);
     Bind(&profiler);
     {
         GateRef slotId = GetSlotID(slotInfo);
@@ -726,7 +730,7 @@ void ProfilerStubBuilder::ProfileGetIterator(
 
     Label exit(env);
     Label profiler(env);
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &profiler);
+    BRANCH(IsProfileTypeInfoHotAndValid(profileTypeInfo), &profiler, &exit);
     Bind(&profiler);
     {
         Label icSlotValid(env);
@@ -809,27 +813,55 @@ GateRef ProfilerStubBuilder::IsProfileTypeInfoDumped(GateRef profileTypeInfo)
 {
     GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
     GateRef count = Load(VariableType::INT32(), profileTypeInfo, periodCounterOffset);
-    return Int32Equal(count, Int32(ProfileTypeInfo::DUMP_PEROID_INDEX));
+    return Int32Equal(count, Int32(ProfileTypeInfo::DUMP_PERIOD_INDEX));
 }
 
 GateRef ProfilerStubBuilder::IsProfileTypeInfoPreDumped(GateRef profileTypeInfo)
 {
     GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
     GateRef count = Load(VariableType::INT32(), profileTypeInfo, periodCounterOffset);
-    return Int32Equal(count, Int32(ProfileTypeInfo::PRE_DUMP_PEROID_INDEX));
+    return Int32Equal(count, Int32(ProfileTypeInfo::PRE_DUMP_PERIOD_INDEX));
+}
+
+GateRef ProfilerStubBuilder::IsProfileTypeInfoWithBigMethod(GateRef profileTypeInfo)
+{
+    GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
+    GateRef count = Load(VariableType::INT32(), profileTypeInfo, periodCounterOffset);
+    return Int32Equal(count, Int32(ProfileTypeInfo::BIG_METHOD_PERIOD_INDEX));
+}
+
+GateRef ProfilerStubBuilder::IsProfileTypeInfoHotAndValid(GateRef profileTypeInfo)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    Label isHot(env);
+    Label hotAndValid(env);
+    DEFVARIABLE(res, VariableType::BOOL(), Boolean(false));
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &exit, &isHot);
+    Bind(&isHot);
+    {
+        res = BoolNot(IsProfileTypeInfoWithBigMethod(profileTypeInfo));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
 }
 
 void ProfilerStubBuilder::SetDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo)
 {
     GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
-    GateRef newCount = Int32(ProfileTypeInfo::DUMP_PEROID_INDEX);
+    GateRef newCount = Int32(ProfileTypeInfo::DUMP_PERIOD_INDEX);
     Store(VariableType::INT32(), glue, profileTypeInfo, periodCounterOffset, newCount);
 }
 
 void ProfilerStubBuilder::SetPreDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo)
 {
     GateRef periodCounterOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
-    GateRef newCount = Int32(ProfileTypeInfo::PRE_DUMP_PEROID_INDEX);
+    GateRef newCount = Int32(ProfileTypeInfo::PRE_DUMP_PERIOD_INDEX);
     Store(VariableType::INT32(), glue, profileTypeInfo, periodCounterOffset, newCount);
 }
 

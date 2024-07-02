@@ -1302,7 +1302,7 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
 {
     if (IsTargetCompilerMode()) {
         SetTargetTriple("aarch64-unknown-linux-gnu");
-        SetMaxAotMethodSize(1_KB);
+        SetMaxAotMethodSize(MAX_APP_COMPILE_METHOD_SIZE);
         SetEnableOptTrackField(false);
         SetEnableOptInlining(false);
         SetEnableArrayBoundsCheckElimination(false);
@@ -1318,7 +1318,7 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
     }
     if (IsCompilerPipelineHostAOT()) {
         SetTargetTriple("aarch64-unknown-linux-gnu");
-        SetMaxAotMethodSize(1_KB);
+        SetMaxAotMethodSize(MAX_APP_COMPILE_METHOD_SIZE);
         SetEnableOptTrackField(false);
         SetEnableOptInlining(false);
         SetEnableArrayBoundsCheckElimination(false);

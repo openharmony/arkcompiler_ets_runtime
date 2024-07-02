@@ -83,16 +83,20 @@ static inline bool IsGlobalIC(ICKind kind)
 
 std::string ICKindToString(ICKind kind);
 
-/*                  ProfileTypeInfo
- *      +--------------------------------+----
- *      |            cache               |
- *      |            .....               |
- *      +--------------------------------+----
- *      |    low 32bits(PeriodCount)     |
- *      |    hight 32bits(jit hotness)   |
+/**
+ *              ProfileTypeInfo
  *      +--------------------------------+
- *      |    low 32bits(osr hotness)     |
- *      | hight 32bits(baseline hotness) |
+ *      |           ic slot              |
+ *      |            .....               |
+ *      +--------------------------------+
+ *      |        64 bits jit osr         |
+ *      |      tagged array address      |
+ *      +--------------------------------+
+ *      |    low 32 bits(PeriodCount)    |
+ *      |    hight 32 bits(jit hotness)  |
+ *      +--------------------------------+
+ *      |    low 32 bits(osr hotness)    |
+ *      | hight 32 bits(baseline hotness)|
  *      +--------------------------------+
  */
 class ProfileTypeInfo : public TaggedArray {
@@ -101,17 +105,17 @@ public:
     static constexpr uint32_t INVALID_SLOT_INDEX = 0xFF;
     static constexpr uint32_t MAX_SLOT_INDEX = 0xFFFF;
     static constexpr size_t BIT_FIELD_INDEX = 2;
-    static constexpr size_t RESERVED_LENGTH = BIT_FIELD_INDEX;
-    // 1 : one more slot for registering osr jit code array
-    static constexpr size_t EXTRA_CACHE_SLOT_INDEX = RESERVED_LENGTH + 1;
-    static constexpr size_t INITIAL_PEROID_INDEX = 0;
+    static constexpr size_t JIT_OSR_INDEX = 3;
+    static constexpr size_t RESERVED_LENGTH = JIT_OSR_INDEX;
+    static constexpr size_t INITIAL_PERIOD_INDEX = 0;
+    static constexpr size_t PRE_DUMP_PERIOD_INDEX = 1;
+    static constexpr size_t DUMP_PERIOD_INDEX = 2;
+    static constexpr size_t BIG_METHOD_PERIOD_INDEX = 3;
     static constexpr size_t INITIAL_OSR_HOTNESS_THRESHOLD = 0;
     static constexpr size_t INITIAL_OSR_HOTNESS_CNT = 0;
     static constexpr size_t INITIAL_JIT_CALL_THRESHOLD = 0;
     static constexpr size_t INITIAL_JIT_CALL_CNT = 0;
     static constexpr uint16_t JIT_DISABLE_FLAG = 0xFFFF;
-    static constexpr size_t PRE_DUMP_PEROID_INDEX = 1;
-    static constexpr size_t DUMP_PEROID_INDEX = 2;
     static constexpr size_t JIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 4;  // 4 : 4 byte offset from bitfield
     static constexpr size_t JIT_CNT_OFFSET_FROM_THRESHOLD = 2;  // 2 : 2 byte offset from jit hotness threshold
     static constexpr size_t OSR_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD = 8;  // 8 : 8 byte offset from bitfield
@@ -127,43 +131,49 @@ public:
         return static_cast<ProfileTypeInfo *>(object);
     }
 
-    static size_t ComputeSize(uint32_t cacheSize)
+    static size_t ComputeSize(uint32_t icSlotSize)
     {
-        if (cacheSize == INVALID_SLOT_INDEX) {
-            // used as hole.
-            ++cacheSize;
-        }
-        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + EXTRA_CACHE_SLOT_INDEX);
+        return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), AdjustSlotSize(icSlotSize) + RESERVED_LENGTH);
     }
 
-    inline uint32_t GetCacheLength() const
+    inline uint32_t GetIcSlotLength() const
     {
         return GetLength() - RESERVED_LENGTH;
     }
 
-    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength = 0)
+    inline uint32_t GetIcSlotAndOsrLength() const
+    {
+        return GetLength() - BIT_FIELD_INDEX;
+    }
+
+    static inline uint32_t AdjustSlotSize(uint32_t icSlotSize)
+    {
+        // if ic slot size is 0xff comes from frontend, it means the actual size is 0x100.
+        // 0xff is a invalid slot index, which value is hole.
+        if (icSlotSize == INVALID_SLOT_INDEX) {
+            ++icSlotSize;
+        }
+        return icSlotSize;
+    }
+
+    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t icSlotSize, uint32_t extraLength = 0)
     {
         ASSERT(initValue.IsSpecial());
-        bool needHole {false};
-        if (capacity == INVALID_SLOT_INDEX) {
-            // used as hole.
-            ++capacity;
-            needHole = true;
-        }
-        SetLength(capacity + EXTRA_CACHE_SLOT_INDEX);
+        icSlotSize = AdjustSlotSize(icSlotSize);
+        SetLength(icSlotSize + RESERVED_LENGTH);
         SetExtraLength(extraLength);
-        for (uint32_t i = 0; i < capacity; i++) {
+        for (uint32_t i = 0; i < icSlotSize; i++) {
             size_t offset = JSTaggedValue::TaggedTypeSize() * i;
-            Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
+            if (i == INVALID_SLOT_INDEX) {
+                Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, JSTaggedValue::Hole().GetRawData());
+            } else {
+                Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
+            }
         }
-        if (needHole) {
-            Barriers::SetPrimitive<JSTaggedType>(GetData(), INVALID_SLOT_INDEX * JSTaggedValue::TaggedTypeSize(),
-                                                 JSTaggedValue::Hole().GetRawData());
-        }
-        // the last of the cache is used to save osr jit code array
-        Barriers::SetPrimitive<JSTaggedType>(GetData(), capacity * JSTaggedValue::TaggedTypeSize(),
-                                             JSTaggedValue::Undefined().GetRawData());
-        SetPeriodIndex(INITIAL_PEROID_INDEX);
+        // the last of the cache is used to save osr jit tagged array
+        Barriers::SetPrimitive<JSTaggedType>(
+            GetData(), icSlotSize * JSTaggedValue::TaggedTypeSize(), JSTaggedValue::Undefined().GetRawData());
+        SetPeriodIndex(INITIAL_PERIOD_INDEX);
         SetJitHotnessThreshold(JIT_DISABLE_FLAG);
         SetJitHotnessCnt(0);
         SetBaselineJitHotnessThreshold(JIT_DISABLE_FLAG);
@@ -175,12 +185,22 @@ public:
 
     void SetPreDumpPeriodIndex()
     {
-        SetPeriodIndex(PRE_DUMP_PEROID_INDEX);
+        SetPeriodIndex(PRE_DUMP_PERIOD_INDEX);
     }
 
     bool IsProfileTypeInfoPreDumped() const
     {
-        return GetPeroidIndex() == PRE_DUMP_PEROID_INDEX;
+        return GetPeriodIndex() == PRE_DUMP_PERIOD_INDEX;
+    }
+
+    void SetBigMethodPeriodIndex()
+    {
+        SetPeriodIndex(BIG_METHOD_PERIOD_INDEX);
+    }
+
+    bool IsProfileTypeInfoWithBigMethod() const
+    {
+        return GetPeriodIndex() == BIG_METHOD_PERIOD_INDEX;
     }
 
     uint16_t GetJitHotnessThreshold() const
@@ -205,12 +225,12 @@ public:
 
     uint16_t GetBaselineJitHotnessThreshold() const
     {
-        return Barriers::GetValue<uint16_t>(GetData(), GetBaselineJitHotnessThresholdBitfiledOffset());
+        return Barriers::GetValue<uint16_t>(GetData(), GetBaselineJitHotnessThresholdBitfieldOffset());
     }
 
     void SetBaselineJitHotnessThreshold(uint16_t count)
     {
-        Barriers::SetPrimitive(GetData(), GetBaselineJitHotnessThresholdBitfiledOffset(), count);
+        Barriers::SetPrimitive(GetData(), GetBaselineJitHotnessThresholdBitfieldOffset(), count);
     }
 
     uint8_t GetJitCallThreshold() const
@@ -243,12 +263,24 @@ public:
         Barriers::SetPrimitive(GetData(), GetJitCallCntBitfieldOffset(), count);
     }
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength(), GetCacheLength());
+    inline JSTaggedValue GetIcSlot(uint32_t idx) const
+    {
+        ASSERT(idx < GetIcSlotLength());
+        return TaggedArray::Get(idx);
+    }
+
+    inline void SetIcSlot(const JSThread* thread, uint32_t idx, const JSTaggedValue& value)
+    {
+        ASSERT(idx < GetIcSlotLength());
+        TaggedArray::Set(thread, idx, value);
+    }
+
+    DECL_VISIT_ARRAY(DATA_OFFSET, GetIcSlotAndOsrLength(), GetIcSlotAndOsrLength());
 
     DECL_DUMP()
 
 private:
-    uint32_t GetPeroidIndex() const
+    uint32_t GetPeriodIndex() const
     {
         return Barriers::GetValue<uint32_t>(GetData(), GetBitfieldOffset());
     }
@@ -281,7 +313,7 @@ private:
     }
 
     // baselinejit hotness(16bits)
-    inline size_t GetBaselineJitHotnessThresholdBitfiledOffset() const
+    inline size_t GetBaselineJitHotnessThresholdBitfieldOffset() const
     {
         return GetBitfieldOffset() + BASELINEJIT_HOTNESS_THRESHOLD_OFFSET_FROM_BITFIELD;
     }
@@ -360,11 +392,6 @@ public:
     ICKind GetKind() const
     {
         return kind_;
-    }
-
-    bool IsICSlotValid() const
-    {
-        return slotId_ + 1 < profileTypeInfo_->GetLength(); // slotId_ + 1 need to be valid
     }
 
 private:

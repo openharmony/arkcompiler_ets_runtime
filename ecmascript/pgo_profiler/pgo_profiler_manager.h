@@ -256,6 +256,21 @@ public:
         return isApFileCompatible_;
     }
 
+    size_t GetMaxAotMethodSize() const
+    {
+        return maxAotMethodSize_;
+    }
+
+    void SetMaxAotMethodSize(uint32_t value)
+    {
+        maxAotMethodSize_ = value;
+    }
+
+    bool IsBigMethod(uint32_t methodSize) const
+    {
+        return maxAotMethodSize_ != 0 && methodSize > maxAotMethodSize_;
+    }
+
 private:
     bool InitializeData()
     {
@@ -276,6 +291,7 @@ private:
     os::memory::Mutex *mutex_ = new os::memory::Mutex();
     std::set<std::shared_ptr<PGOProfiler>> profilers_;
     bool isApFileCompatible_ {true};
+    uint32_t maxAotMethodSize_ {0};
 };
 } // namespace panda::ecmascript::pgo
 #endif  // ECMASCRIPT_PGO_PROFILER_MANAGER_H

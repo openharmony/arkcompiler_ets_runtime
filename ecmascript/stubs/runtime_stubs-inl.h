@@ -1116,6 +1116,8 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassConstructorLength(JSThread *thread, J
 JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<JSFunction> &function,
                                                      uint32_t icSlotSize)
 {
+    // max ic slot index is 0xffff, so the size of ic slot should be less and equal than 0x10000
+    ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + 1);
     if (icSlotSize == 0) {
         return JSTaggedValue::Undefined();
     }
@@ -1126,11 +1128,12 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
     } else {
         profileTypeInfo = factory->NewProfileTypeInfo(icSlotSize);
     }
-    // overflow 8bit
-    if (icSlotSize > ProfileTypeInfo::INVALID_SLOT_INDEX) {
-        // set as mega
-        profileTypeInfo->Set(thread, ProfileTypeInfo::INVALID_SLOT_INDEX, JSTaggedValue::Hole());
-        ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + 1);
+    Method* method = Method::Cast(function->GetMethod());
+    auto codeSize = method->GetCodeSize();
+    if (pgo::PGOProfilerManager::GetInstance()->IsBigMethod(codeSize)) {
+        LOG_ECMA(DEBUG) << "method size is too large, skip pgo. code size: " << codeSize
+                        << ", max code size: " << pgo::PGOProfilerManager::GetInstance()->GetMaxAotMethodSize();
+        profileTypeInfo->SetBigMethodPeriodIndex();
     }
     JSFunction::SetProfileTypeInfo(thread, function, JSHandle<JSTaggedValue>::Cast(profileTypeInfo));
     return profileTypeInfo.GetTaggedValue();
