@@ -159,7 +159,8 @@ public:
     {
         if (IsEOF() ||
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            ((flags_ & RegExpParser::FLAG_MULTILINE) != 0 && PeekChar(currentPtr_, inputEnd_) == '\n')) {
+            ((flags_ & RegExpParser::FLAG_MULTILINE) != 0
+             && (PeekChar(currentPtr_, inputEnd_) == '\n' || PeekChar(currentPtr_, inputEnd_) == '\r'))) {
             Advance(opCode);
         } else {
             if (MatchFailed()) {

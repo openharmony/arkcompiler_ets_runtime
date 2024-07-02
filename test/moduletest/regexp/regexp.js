@@ -655,3 +655,20 @@ print("success");
   print(reg52.flags);
   print(count);
 }
+
+// The above test case in false environment did not reset the environment
+Object.defineProperty(RegExp.prototype, "global", {
+  value: true
+})
+string = 'aaa\n789\r\nccc\r\n345';
+var pattern = /\d$/gm;
+result = string.match(pattern);
+print(2 == result.length);
+print('9' == result[0]);
+print('5' == result[1]);
+
+string = 'aaa\n789\r\nccc\r\nddd';
+pattern = /\d$/gm;
+result = string.match(pattern);
+print(1 == result.length);
+print('9' == result[0]);

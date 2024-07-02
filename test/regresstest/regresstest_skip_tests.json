@@ -1769,7 +1769,6 @@
         "mjsunit/fast-array-length.js",
         "mjsunit/string-charcodeat-external.js",
         "mjsunit/try-catch-extension-object.js",
-        "mjsunit/regexp-standalones.js",
         "mjsunit/newline-in-string.js",
         "mjsunit/clone-ic-regressions.js",
         "mjsunit/fast-element-smi-check.js",
