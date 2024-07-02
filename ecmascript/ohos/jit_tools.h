@@ -45,6 +45,10 @@ public:
                 bool isEnableFastJit = options.IsEnableJIT() && options.GetEnableAsmInterpreter();
                 bool isEnableBaselineJit = options.IsEnableBaselineJIT() && options.GetEnableAsmInterpreter();
                 options.SetEnableAPPJIT(true);
+                // for app threshold
+                uint32_t defaultSize = 150;
+                uint32_t threshold = GetJitHotnessThreshold(defaultSize);
+                options.SetJitHotnessThreshold(threshold);
                 Jit::GetInstance()->SetEnableOrDisable(options, isEnableFastJit, isEnableBaselineJit);
                 if (isEnableFastJit || isEnableBaselineJit) {
                     EnableJit(vm);
@@ -85,7 +89,7 @@ public:
         uint8_t jitCallThreshold = ohos::JitTools::GetJitCallThreshold(options.GetJitCallThreshold());
         options.SetJitCallThreshold(jitCallThreshold);
 
-        uint32_t jitHotnessThreshold = ohos::JitTools::GetJitHotnessThreshold(options.GetJitHotnessThreshold());
+        uint32_t jitHotnessThreshold = Jit::GetInstance()->GetHotnessThreshold();
         options.SetJitHotnessThreshold(jitHotnessThreshold);
         LOG_JIT(INFO) << "jit enable litecg:" << jitEnableLitecg << ", call threshold:" <<
             static_cast<int>(jitCallThreshold) << ", hotness threshold:" << jitHotnessThreshold;
@@ -116,8 +120,7 @@ public:
     static uint32_t GetJitHotnessThreshold([[maybe_unused]] uint32_t threshold)
     {
     #ifdef GET_PARAMETER_FOR_JIT
-        uint32_t defaultSize = 150;
-        return OHOS::system::GetUintParameter("ark.jit.hotness.threshold", defaultSize);
+        return OHOS::system::GetUintParameter("ark.jit.hotness.threshold", threshold);
     #endif
         return threshold;
     }
