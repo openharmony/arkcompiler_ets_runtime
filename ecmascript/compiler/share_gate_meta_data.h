@@ -614,6 +614,11 @@ public:
         return ElementsKindBits::Get(bitField_);
     }
 
+    Mode GetMode() const
+    {
+        return ModeBits::Get(bitField_);
+    }
+
     void SetElementsKind(ElementsKind kind)
     {
         bitField_ = ElementsKindBits::Update(bitField_, kind);
@@ -645,11 +650,6 @@ public:
     }
 
 private:
-    Mode GetMode() const
-    {
-        return ModeBits::Get(bitField_);
-    }
-
     using ElementsKindBits = panda::BitField<ElementsKind, 0, BITS_SIZE>;
     using ModeBits = ElementsKindBits::NextField<Mode, BITS_SIZE>;
     using ArrayLengthBits = ModeBits::NextField<uint32_t, ARRAY_LENGTH_BITS_SIZE>;
