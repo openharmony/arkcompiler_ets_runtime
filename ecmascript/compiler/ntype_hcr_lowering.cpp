@@ -81,7 +81,7 @@ void NTypeHCRLowering::LowerCreateArrayWithOwn(GateRef gate, GateRef glue)
 void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
-    // 3: number of value inputs
+    // 2: number of value inputs
     ASSERT(acc_.GetNumValueIn(gate) == 2);
     GateRef cpId = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);

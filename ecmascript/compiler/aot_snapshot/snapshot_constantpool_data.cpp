@@ -167,6 +167,10 @@ void StringSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData, c
         // Lazy ConstantPool String Loading
         snapshotCp->SetObjectToCache(thread_, data.constantPoolIdx_, JSTaggedValue::Hole());
     }
+
+    if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm_->AddAOTSnapShotStats("String", info_.size());
+    }
 }
 
 void MethodSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
@@ -212,6 +216,9 @@ void MethodSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
             snapshotCp->SetObjectToCache(thread_, data.constantPoolIdx_, JSTaggedValue::Hole());
         }
     }
+    if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm_->AddAOTSnapShotStats("Method", info_.size());
+    }
 }
 
 void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
@@ -243,6 +250,9 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
         CollectLiteralInfo(arrayHandle, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
+    }
+    if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm_->AddAOTSnapShotStats("ClassLiteral", info_.size());
     }
 }
 
@@ -277,6 +287,9 @@ void ObjectLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &global
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
     }
+    if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm_->AddAOTSnapShotStats("ObjectLiteral", info_.size());
+    }
 }
 
 void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData,
@@ -296,6 +309,9 @@ void ArrayLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
         CollectLiteralInfo(literal, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
         globalData.RecordReviseData(
             ReviseData::ItemData {globalData.GetCurDataIdx(), snapshotCpArrIdx, data.constantPoolIdx_});
+    }
+    if (vm_->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm_->AddAOTSnapShotStats("ArrayLiteral", info_.size());
     }
 }
 

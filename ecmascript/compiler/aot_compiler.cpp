@@ -219,6 +219,9 @@ int Main(const int argc, const char **argv)
         }
     }
 
+    if (vm->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm->PrintAOTSnapShotStats();
+    }
     LOG_COMPILER(INFO) << (ret ? "ts aot compile success" : "ts aot compile failed");
     JSNApi::DestroyJSVM(vm);
     return ret ? ERR_OK : ERR_FAIL;

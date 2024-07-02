@@ -122,6 +122,10 @@ void PGOTypeManager::GenSymbolInfo()
         }
     }
 
+    EcmaVM *vm = thread_->GetEcmaVM();
+    if (vm->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm->AddAOTSnapShotStats("SymbolInfo", symbolInfo->GetLength());
+    }
     aotSnapshot_.StoreSymbolInfo(symbolInfo);
 }
 
@@ -156,6 +160,10 @@ void PGOTypeManager::GenHClassInfo()
         hclassInfo->Set(thread_, pos++, cloneResult);
     }
 
+    EcmaVM *vm = thread_->GetEcmaVM();
+    if (vm->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm->AddAOTSnapShotStats("HClassInfo", hclassInfo->GetLength());
+    }
     aotSnapshot_.StoreHClassInfo(hclassInfo);
 }
 
@@ -173,18 +181,26 @@ JSHandle<TaggedArray> PGOTypeManager::GenJITHClassInfo()
 
 void PGOTypeManager::GenArrayInfo()
 {
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread_->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
     JSHandle<TaggedArray> arrayInfo = factory->EmptyArray();
+    if (vm->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm->AddAOTSnapShotStats("ArrayInfo", arrayInfo->GetLength());
+    }
     aotSnapshot_.StoreArrayInfo(arrayInfo);
 }
 
 void PGOTypeManager::GenConstantIndexInfo()
 {
     uint32_t count = constantIndexData_.size();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    EcmaVM *vm = thread_->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
     JSHandle<TaggedArray> constantIndexInfo = factory->NewTaggedArray(count);
     for (uint32_t pos = 0; pos < count; pos++) {
         constantIndexInfo->Set(thread_, pos, JSTaggedValue(constantIndexData_[pos]));
+    }
+    if (vm->GetJSOptions().IsEnableCompilerLogSnapshot()) {
+        vm->AddAOTSnapShotStats("ConstantIndexInfo", constantIndexInfo->GetLength());
     }
     aotSnapshot_.StoreConstantIndexInfo(constantIndexInfo);
 }
