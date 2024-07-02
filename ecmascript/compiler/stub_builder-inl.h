@@ -776,6 +776,80 @@ inline GateRef StubBuilder::DoubleIsINF(GateRef x)
     return env_->GetBuilder()->DoubleIsINF(x);
 }
 
+inline GateRef StubBuilder::DoubleAbs(GateRef x)
+{
+    return env_->GetBuilder()->FAbs(x);
+}
+
+inline GateRef StubBuilder::DoubleIsInteger(GateRef x)
+{
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    Label exit(env_);
+    Label checkTrunc(env_);
+    BRANCH(BoolOr(DoubleIsNAN(x), DoubleIsINF(x)), &exit, &checkTrunc);
+    Bind(&checkTrunc);
+    {
+        GateRef truncated = DoubleTrunc(x);
+        result = DoubleEqual(x, truncated);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
+inline GateRef StubBuilder::DoubleTrunc(GateRef x)
+{
+    if (env_->IsAArch64()) {
+        return env_->GetBuilder()->DoubleTrunc(x);
+    }
+
+    Label entry(env_);
+    env_->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::FLOAT64(), x);
+    Label exit(env_);
+
+    constexpr int64_t DOUBLE_FRACTION_BITS = 52;
+    constexpr int64_t DOUBLE_EXP_MASK = 0x7ff;
+    constexpr int64_t DOUBLE_EXP_OFFSET = 0x3ff;
+    GateRef bits = CastDoubleToInt64(x);
+    GateRef exp = Int64Sub(Int64And(Int64LSR(bits, Int64(DOUBLE_FRACTION_BITS)), Int64(DOUBLE_EXP_MASK)),
+                           Int64(DOUBLE_EXP_OFFSET));
+
+    Label trunc(env_);
+    BRANCH(Int64GreaterThanOrEqual(exp, Int64(DOUBLE_FRACTION_BITS)), &exit, &trunc);
+    Bind(&trunc);
+    {
+        Label zero(env_);
+        Label nonZero(env_);
+        BRANCH(Int64LessThan(exp, Int64(0)), &zero, &nonZero);
+        Bind(&zero);
+        {
+            constexpr int64_t DOUBLE_SIGN_SHIFT = 63;
+            constexpr int64_t mask = static_cast<int64_t>(1) << DOUBLE_SIGN_SHIFT;
+            result = CastInt64ToFloat64(Int64And(bits, Int64(mask)));
+            Jump(&exit);
+        }
+        Bind(&nonZero);
+        {
+            constexpr int64_t DOUBLE_NON_FRACTION_BITS = 12;
+            constexpr int64_t NEG_ONE = -1;
+            GateRef mask = Int64LSR(Int64(NEG_ONE), Int64Add(exp, Int64(DOUBLE_NON_FRACTION_BITS)));
+            result = CastInt64ToFloat64(Int64And(bits, Int64Not(mask)));
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env_->SubCfgExit();
+    return ret;
+}
+
 inline GateRef StubBuilder::TaggedIsNull(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsNull(x);
@@ -1045,6 +1119,11 @@ inline GateRef StubBuilder::TruncInt32ToInt16(GateRef val)
 inline GateRef StubBuilder::TruncInt32ToInt8(GateRef val)
 {
     return env_->GetBuilder()->TruncInt32ToInt8(val);
+}
+
+inline GateRef StubBuilder::TruncFloatToInt64(GateRef val)
+{
+    return env_->GetBuilder()->TruncFloatToInt64(val);
 }
 
 inline GateRef StubBuilder::ChangeInt64ToIntPtr(GateRef val)

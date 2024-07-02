@@ -148,6 +148,10 @@ namespace panda::ecmascript::kungfu {
 #define BUILTINS_WITH_NUMBER_STUB_BUILDER(V)        \
     V(ParseFloat,      Number,    Undefined())      \
     V(ParseInt,        Number,    Undefined())      \
+    V(IsFinite,        Number,    Undefined())      \
+    V(IsNaN,           Number,    Undefined())      \
+    V(IsInteger,       Number,    Undefined())      \
+    V(IsSafeInteger,   Number,    Undefined())      \
     V(ToString,        Number,    Undefined())
 
 #define BUILTINS_WITH_REFLECT_STUB_BUILDER(V)       \
@@ -288,10 +292,6 @@ namespace panda::ecmascript::kungfu {
     V(DataViewSetUint8)                             \
     V(DataViewSetUint16)                            \
     V(DataViewSetUint32)                            \
-    V(NumberIsFinite)                               \
-    V(NumberIsInteger)                              \
-    V(NumberIsNaN)                                  \
-    V(NumberIsSafeInteger)                          \
     V(ObjectIs)                                     \
     V(ObjectGetProto)                               \
     V(ObjectIsPrototypeOf)                          \
@@ -398,6 +398,10 @@ public:
             case BuiltinsStubCSigns::ID::SetAdd:
             case BuiltinsStubCSigns::ID::NumberParseFloat:
             case BuiltinsStubCSigns::ID::NumberParseInt:
+            case BuiltinsStubCSigns::ID::NumberIsFinite:
+            case BuiltinsStubCSigns::ID::NumberIsNaN:
+            case BuiltinsStubCSigns::ID::NumberIsInteger:
+            case BuiltinsStubCSigns::ID::NumberIsSafeInteger:
             case BuiltinsStubCSigns::ID::ObjectIs:
             case BuiltinsStubCSigns::ID::ObjectGetPrototypeOf:
             case BuiltinsStubCSigns::ID::ObjectGetProto:

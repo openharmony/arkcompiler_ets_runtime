@@ -290,6 +290,9 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetNextPositionForHash(GateRef last, GateRef count, GateRef size);
     GateRef DoubleIsNAN(GateRef x);
     GateRef DoubleIsINF(GateRef x);
+    GateRef DoubleAbs(GateRef x);
+    GateRef DoubleIsInteger(GateRef x);
+    GateRef DoubleTrunc(GateRef x);
     GateRef TaggedIsNull(GateRef x);
     GateRef TaggedIsUndefinedOrNull(GateRef x);
     GateRef TaggedIsTrue(GateRef x);
@@ -650,6 +653,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef TruncInt16ToInt8(GateRef x);
     GateRef TruncInt32ToInt16(GateRef x);
     GateRef TruncInt32ToInt8(GateRef x);
+    GateRef TruncFloatToInt64(GateRef x);
     GateRef CastInt32ToFloat32(GateRef x);
     GateRef CastInt64ToFloat64(GateRef x);
     GateRef SExtInt32ToInt64(GateRef x);
