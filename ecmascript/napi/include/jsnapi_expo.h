@@ -1380,7 +1380,7 @@ public:
     // aot load
     static void LoadAotFileInternal(EcmaVM *vm, const std::string &moduleName, std::string &aotFileName);
     static void LoadAotFile(EcmaVM *vm, const std::string &moduleName);
-#if defined(ANDROID_PLATFORM)
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
     static void LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleName,
                             const std::string &moduleName,
                             std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
