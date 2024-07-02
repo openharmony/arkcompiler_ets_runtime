@@ -850,7 +850,7 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
     }
-    
+
     // 12. Return O.
     return thisObjHandle.GetTaggedValue();
 }
@@ -1089,6 +1089,9 @@ JSTaggedValue BuiltinsArray::IndexOfStable(
     }
     if (fromIndex >= length) {
         return JSTaggedValue(-1);
+    }
+    if (UNLIKELY(thisHandle->IsECMAObject())) {
+        return IndexOfSlowPath(argv, thread, thisHandle, length, fromIndex);
     }
     JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
     return JSStableArray::IndexOf(

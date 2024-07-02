@@ -4459,7 +4459,10 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 
     std::string aotFileName;
     LoadAotFileInternal(vm, moduleName, aotFileName);
-    thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
+    if (!thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName)) {
+        return;
+    }
+    ecmascript::JSPandaFileExecutor::BindPreloadedPandaFilesToAOT(vm, moduleName);
 }
 
 #if defined(ANDROID_PLATFORM)

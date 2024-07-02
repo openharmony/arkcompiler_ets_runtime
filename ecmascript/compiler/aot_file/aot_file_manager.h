@@ -171,7 +171,9 @@ public:
     uint32_t GetFileIndex(uint32_t anFileInfoIndex, CString abcNormalizedName) const;
     std::list<CString> GetPandaFiles(uint32_t aotFileInfoIndex);
     uint32_t GetAnFileIndex(const JSPandaFile *jsPandaFile) const;
-    void BindPandaFilesInAotFile(const std::string &aotFileBaseName, const std::string &moduleName);
+    void BindPreloadedPandaFilesInAotFile(const std::string &moduleName);
+    bool HasPandaFile(uint32_t aotFileInfoIndex, const CString &abcNormalizedName) const;
+    void BindPandaFileInAotFile(const std::string &aotFileBaseName, JSPandaFile *jsPandaFile) const;
     void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
                              std::string_view entryPoint);
     void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction *function,
