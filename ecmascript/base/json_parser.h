@@ -439,11 +439,13 @@ protected:
         }
 
         Text current = current_;
+        bool negative = false;
         bool hasExponent = false;
         if (*current_ == '-') {
             if (UNLIKELY(current_++ == end_)) {
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
             }
+            negative = true;
         }
         if (*current_ == '0') {
             if (!CheckZeroBeginNumber(hasExponent)) {
@@ -463,9 +465,16 @@ protected:
         double v = std::strtod(strNum.c_str(), nullptr);
         if (errno == ERANGE) {
             errno = 0;
-            return v > 0 ? JSTaggedValue(base::POSITIVE_INFINITY): JSTaggedValue(-base::POSITIVE_INFINITY);
+            if (v > 0) {
+                return JSTaggedValue(base::POSITIVE_INFINITY);
+            } else if (v < 0) {
+                return JSTaggedValue(-base::POSITIVE_INFINITY);
+            }
         }
         errno = 0;
+        if (negative && v == 0) {
+            return JSTaggedValue(-0.0);
+        }
         return JSTaggedValue::TryCastDoubleToInt32(v);
     }
 
