@@ -112,6 +112,6 @@ void ConstantPool::UpdateConstpoolWhenDeserialAI(EcmaVM *vm, const ConstantPool 
             unsharedCP->SetObjectToCache(thread, i, val);
         }
     }
-    unsharedCP->InitConstantPoolTail(aiCP);
+    unsharedCP->InitConstantPoolTail(vm->GetJSThread(), aiCP);
 }
 }

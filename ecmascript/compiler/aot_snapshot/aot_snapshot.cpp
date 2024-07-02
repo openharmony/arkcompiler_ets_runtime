@@ -35,10 +35,10 @@ JSHandle<ConstantPool> AOTSnapshot::NewSnapshotConstantPool(uint32_t cacheSize)
     JSHandle<ConstantPool> cp = factory_->NewConstantPool(cacheSize);
 
     ASSERT(!snapshotData_.GetHClassInfo().IsHole());
-    cp->SetAotSymbolInfo(snapshotData_.GetSymbolInfo());
-    cp->SetAotHClassInfo(snapshotData_.GetHClassInfo());
-    cp->SetAotArrayInfo(snapshotData_.GetArrayInfo());
-    cp->SetConstantIndexInfo(snapshotData_.GetConstantIndexInfo());
+    cp->SetAotSymbolInfo(vm_->GetJSThread(), snapshotData_.GetSymbolInfo());
+    cp->SetAotHClassInfo(vm_->GetJSThread(), snapshotData_.GetHClassInfo());
+    cp->SetAotArrayInfo(vm_->GetJSThread(), snapshotData_.GetArrayInfo());
+    cp->SetConstantIndexInfo(vm_->GetJSThread(), snapshotData_.GetConstantIndexInfo());
     return cp;
 }
 
