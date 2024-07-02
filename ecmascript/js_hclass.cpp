@@ -331,18 +331,6 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
     TryRestoreElementsKind(thread, newJsHClass, obj);
 }
 
-void JSHClass::TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
-                                      const JSHandle<JSObject> &obj)
-{
-    ElementsKind newKind = ElementsKind::GENERIC;
-    if (newJsHClass->GetObjectType() == JSType::JS_ARRAY &&
-        obj->GetElements().IsMutantTaggedArray()) {
-        ElementsKind oldKind = newJsHClass->GetElementsKind();
-        Elements::MigrateArrayWithKind(thread, obj, oldKind, newKind);
-    }
-    newJsHClass->SetElementsKind(newKind);
-}
-
 JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
     JSHandle<JSTaggedValue> key(thread->GlobalConstants()->GetHandledPreventExtensionsString());
