@@ -345,10 +345,8 @@ GateRef TSInlineLowering::BuildAccessor(InlineTypeInfoAccessor &info)
     const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
     ASSERT(pgoTypes->GetCount() == 1);
     auto pgoType = pgoTypes->GetObjectInfo(0);
-    ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
     PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
-    int holderHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
-    ASSERT(ptManager->QueryHClass(holderType.first, holderType.second).IsJSHClass());
+    int holderHCIndex = ptManager->GetHolderHIndexByPGOObjectInfoType(pgoType, compilationEnv_->IsAotCompiler());
     ArgumentAccessor argAcc(circuit_);
     GateRef unsharedConstPool = argAcc.GetFrameArgsIn(gate, FrameArgIdx::UNSHARED_CONST_POOL);
 
@@ -543,11 +541,8 @@ void TSInlineLowering::InlineAccessorCheck(const InlineTypeInfoAccessor &info)
     const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate).GetPGORWOpType();
     ASSERT(pgoTypes->GetCount() == 1);
     auto pgoType = pgoTypes->GetObjectInfo(0);
-    ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
     PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
-    int receiverHCIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(receiverType));
-    ASSERT(ptManager->QueryHClass(receiverType.first, receiverType.second).IsJSHClass());
-
+    int receiverHCIndex = ptManager->GetReceiverHIndexByPGOObjectInfoType(pgoType, compilationEnv_->IsAotCompiler());
     bool noNeedCheckHeapObject = acc_.IsHeapObjectFromElementsKind(receiver);
     builder_.ObjectTypeCheck(noNeedCheckHeapObject, receiver, builder_.Int32(receiverHCIndex),
                              acc_.GetFrameState(gate));

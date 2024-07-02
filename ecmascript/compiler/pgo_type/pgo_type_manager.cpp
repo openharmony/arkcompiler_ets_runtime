@@ -159,18 +159,6 @@ void PGOTypeManager::GenHClassInfo()
     aotSnapshot_.StoreHClassInfo(hclassInfo);
 }
 
-
-JSHandle<TaggedArray> PGOTypeManager::GenJITHClassInfo()
-{
-    uint32_t count = hclassInfoLocal_.size();
-    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> hclassInfo = factory->NewTaggedArray(count);
-    for (uint32_t pos = 0; pos < count; pos++) {
-        hclassInfo->Set(thread_, pos, JSTaggedValue(hclassInfoLocal_[pos]));
-    }
-    return hclassInfo;
-}
-
 void PGOTypeManager::GenArrayInfo()
 {
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
@@ -197,8 +185,6 @@ void PGOTypeManager::RecordHClass(ProfileType rootType, ProfileType childType, J
         auto map = TransIdToHClass();
         map.emplace(childType, hclass);
         hcData_.emplace(rootType, map);
-        profileTyperToHClassIndex_.emplace(std::make_pair(rootType, childType), pos_++);
-        hclassInfoLocal_.emplace_back(JSTaggedValue(hclass));
         return;
     }
 
@@ -210,14 +196,9 @@ void PGOTypeManager::RecordHClass(ProfileType rootType, ProfileType childType, J
             return;
         } else {
             hclassMap[childType]= hclass;
-            auto index = GetHClassIndexByProfileType(std::pair(rootType, childType));
-            ASSERT(index >= 0);
-            hclassInfoLocal_[index] = JSTaggedValue(hclass);
             return;
         }
     }
-    profileTyperToHClassIndex_.emplace(std::make_pair(rootType, childType), pos_++);
-    hclassInfoLocal_.emplace_back(JSTaggedValue(hclass));
     hclassMap.emplace(childType, hclass);
 }
 
@@ -235,6 +216,34 @@ uint32_t PGOTypeManager::GetHClassIndexByProfileType(ProfileTyper type) const
         index = iter->second;
     }
     return index;
+}
+
+int PGOTypeManager::GetHolderHIndexByPGOObjectInfoType(pgo::PGOObjectInfo type, bool isAot)
+{
+    if (isAot) {
+        ProfileTyper holderType = std::make_pair(type.GetHoldRootType(), type.GetHoldType());
+        int holderHCIndex = static_cast<int>(GetHClassIndexByProfileType(holderType));
+        ASSERT(QueryHClass(holderType.first, holderType.second).IsJSHClass());
+        return holderHCIndex;
+    } else {
+        JSHClass *holderHClass = type.GetHolderHclass();
+        int holderHCIndex = RecordAndGetHclassIndexForJIT(holderHClass);
+        return holderHCIndex;
+    }
+}
+
+int PGOTypeManager::GetReceiverHIndexByPGOObjectInfoType(pgo::PGOObjectInfo type, bool isAot)
+{
+    if (isAot) {
+        ProfileTyper receiverType = std::make_pair(type.GetReceiverRootType(), type.GetReceiverType());
+        int receiverHCIndex = static_cast<int>(GetHClassIndexByProfileType(receiverType));
+        ASSERT(QueryHClass(receiverType.first, receiverType.second).IsJSHClass());
+        return receiverHCIndex;
+    } else {
+        JSHClass *receiverHClass = type.GetReceiverHclass();
+        int receiverHCIndex = RecordAndGetHclassIndexForJIT(receiverHClass);
+        return receiverHCIndex;
+    }
 }
 
 std::optional<uint64_t> PGOTypeManager::GetSymbolIdByProfileType(ProfileTypeTuple type) const
@@ -263,8 +272,24 @@ JSTaggedValue PGOTypeManager::QueryHClass(ProfileType rootType, ProfileType chil
 
 JSTaggedValue PGOTypeManager::QueryHClassByIndexForJIT(uint32_t hclassIndex)
 {
-    ASSERT(hclassIndex < profileTyperToHClassIndex_.size());
+    ASSERT(hclassIndex < pos_);
     return hclassInfoLocal_[hclassIndex];
 }
+
+int PGOTypeManager::RecordAndGetHclassIndexForJIT(JSHClass* hclass)
+{
+    // The hclass in hclassInfoLocal_ cannot currently be cleared after each
+    // JIT session because it depends on ensuring the survival of hclass.
+    // If a reference from machineCode to hclass is added in the future, then it can be cleared.
+    auto value = JSTaggedValue::Cast(hclass);
+    for (int i = 0; i < pos_; i++) {
+        if (hclassInfoLocal_[i] == value) {
+            return i;
+        }
+    }
+    hclassInfoLocal_.emplace_back(value);
+    return pos_++;
+}
+
 
 }  // namespace panda::ecmascript

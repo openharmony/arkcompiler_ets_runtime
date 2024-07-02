@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "ecmascript/elements.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
@@ -521,12 +522,18 @@ class PGOObjectTemplate {
 public:
     PGOObjectTemplate() = default;
     PGOObjectTemplate(PGOProfileType type) : receiverType_(type) {}
-    PGOObjectTemplate(PGOProfileType receiverRootType, PGOProfileType receiverType, PGOProfileType holdRootType,
-        PGOProfileType holdType, PGOProfileType holdTraRootType,
-        PGOProfileType holdTraType, PGOSampleType accessorMethod)
-        : receiverRootType_(receiverRootType), receiverType_(receiverType), holdRootType_(holdRootType),
-        holdType_(holdType), holdTraRootType_(holdTraRootType),
-        holdTraType_(holdTraType), accessorMethod_(accessorMethod) {}
+    PGOObjectTemplate(PGOProfileType receiverType, JSHClass *receiver, JSHClass *hold, JSHClass *holdTra,
+                      PGOSampleType accessorMethod)
+        : receiverType_(receiverType), receiver_(receiver), holder_(hold), holdTra_(holdTra),
+          accessorMethod_(accessorMethod) {}
+    PGOObjectTemplate(PGOProfileType receiverRootType,
+                      PGOProfileType receiverType, PGOProfileType holdRootType,
+                      PGOProfileType holdType, PGOProfileType holdTraRootType,
+                      PGOProfileType holdTraType, PGOSampleType accessorMethod)
+        : receiverRootType_(receiverRootType), receiverType_(receiverType),
+          holdRootType_(holdRootType), holdType_(holdType),
+          holdTraRootType_(holdTraRootType), holdTraType_(holdTraType),
+          accessorMethod_(accessorMethod) {}
 
     void AddPrototypePt(std::vector<std::pair<PGOProfileType, PGOProfileType>> protoChain)
     {
@@ -635,6 +642,11 @@ public:
         return receiverType_.IsMegaStateType();
     }
 
+    bool IsJITClassType() const
+    {
+        return receiverType_.IsJITClassType();
+    }
+
     bool InConstructor() const
     {
         return receiverType_.IsConstructor();
@@ -656,7 +668,25 @@ public:
     {
         return receiverRootType_ == right.receiverRootType_ && receiverType_ == right.receiverType_ &&
             holdRootType_ == right.holdRootType_ && holdType_ == right.holdType_ &&
-            holdTraRootType_ == right.holdTraRootType_ && holdTraType_ == right.holdTraType_;
+            holdTraRootType_ == right.holdTraRootType_ && holdTraType_ == right.holdTraType_ &&
+            receiver_ == right.receiver_ && holder_ == right.holder_ && holdTra_ == right.holdTra_;
+    }
+
+    // Only Use For JIT
+    JSHClass* GetReceiverHclass() const
+    {
+        ASSERT(receiverType_.IsJITClassType());
+        return receiver_;
+    }
+    JSHClass* GetHolderHclass() const
+    {
+        ASSERT(receiverType_.IsJITClassType());
+        return holder_;
+    }
+    JSHClass* GetHolderTraHclass() const
+    {
+        ASSERT(receiverType_.IsJITClassType());
+        return holdTra_;
     }
 
 private:
@@ -666,6 +696,9 @@ private:
     PGOProfileType holdType_ { PGOProfileType() };
     PGOProfileType holdTraRootType_ { PGOProfileType() };
     PGOProfileType holdTraType_ { PGOProfileType() };
+    JSHClass* receiver_  {nullptr};
+    JSHClass* holder_ {nullptr};
+    JSHClass *holdTra_ {nullptr};
     PGOSampleType accessorMethod_ { PGOSampleType() };
     ProtoChainMarker protoChainMarker_ {ProtoChainMarker::NOT_EXSIT};
     PGOProtoChainTemplate<PGOProfileType> *protoChain_ { nullptr };
@@ -741,6 +774,8 @@ class PGODefineOpTemplate : public PGOType {
 public:
     PGODefineOpTemplate() : PGOType(TypeKind::DEFINE_OP_TYPE), type_(PGOProfileType()) {};
     explicit PGODefineOpTemplate(PGOProfileType type) : PGOType(TypeKind::DEFINE_OP_TYPE), type_(type) {};
+    explicit PGODefineOpTemplate(PGOProfileType type, JSHClass* hclass) : PGOType(TypeKind::DEFINE_OP_TYPE),
+                                                                          type_(type), receiver_(hclass) {};
 
     template <typename FromType>
     void ConvertFrom(PGOContext &context, const FromType &from)
@@ -837,6 +872,12 @@ public:
         return this->GetProfileType() < right.GetProfileType();
     }
 
+    JSHClass* GetReceiver() const
+    {
+        ASSERT(type_.IsJITClassType());
+        return receiver_;
+    }
+
 private:
     PGOProfileType type_ { PGOProfileType() };
     PGOProfileType ctorPt_ { PGOProfileType() };
@@ -844,6 +885,7 @@ private:
     uint32_t elementsLength_ { 0 };
     ElementsKind kind_ { ElementsKind::NONE };
     RegionSpaceFlag spaceFlag_  { RegionSpaceFlag::UNINITIALIZED };
+    JSHClass* receiver_ {nullptr};
 };
 
 using PGODefineOpType = PGODefineOpTemplate<ProfileType>;
@@ -906,9 +948,36 @@ public:
         return false;
     }
 
+    bool IsDefOpValidCallMethodId() const
+    {
+        if (type_ == nullptr) {
+            return false;
+        }
+        if (!type_->IsDefineOpType()) {
+            return false;
+        }
+        auto sampleType = static_cast<const PGODefineOpType*>(type_);
+        if (sampleType->GetProfileType().IsMethodId()) {
+            return sampleType->GetProfileType().IsValidCallMethodId();
+        }
+        if (sampleType->GetProfileType().IsClassType()) {
+            return sampleType->GetProfileType().IsValidClassConstructorMethodId();
+        }
+        return false;
+    }
+
     uint32_t GetCallMethodId() const
     {
         auto sampleType = static_cast<const PGOSampleType*>(type_);
+        if (sampleType->GetProfileType().IsClassType()) {
+            return sampleType->GetProfileType().GetClassConstructorMethodId();
+        }
+        return sampleType->GetProfileType().GetCallMethodId();
+    }
+
+    uint32_t GetDefOpCallMethodId() const
+    {
+        auto sampleType = static_cast<const PGODefineOpType*>(type_);
         if (sampleType->GetProfileType().IsClassType()) {
             return sampleType->GetProfileType().GetClassConstructorMethodId();
         }

@@ -101,7 +101,6 @@ public:
     void Finalize();
     void PrepareCompile();
 
-    void SetHClassInfoForPGO(JSHandle<Method> &methodHandle);
     void InstallCode();
     void InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj);
     void InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCode,

@@ -303,6 +303,9 @@
       panda::ecmascript::kungfu::PGOTypeManager::QueryHClass*;
       panda::ecmascript::kungfu::PGOTypeManager::UpdateRecordElements*;
       panda::ecmascript::kungfu::PGOTypeManager::RecordElements*;
+      panda::ecmascript::kungfu::PGOTypeManager::RecordAndGetHclassIndexForJIT*;
+      panda::ecmascript::kungfu::PGOTypeManager::GetHolderHIndexByPGOObjectInfoType*;
+      panda::ecmascript::kungfu::PGOTypeManager::GetReceiverHIndexByPGOObjectInfoType*;
       panda::ecmascript::kungfu::PGOTypeManager::SetCurConstantPool*;
       panda::ecmascript::kungfu::PGOTypeManager::GetSymbolIdByProfileType*;
       panda::ecmascript::kungfu::PGOTypeParser::CreatePGOType*;

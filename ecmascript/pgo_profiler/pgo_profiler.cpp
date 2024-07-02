@@ -181,11 +181,7 @@ void PGOProfiler::UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHC
         return;
     }
     newHClass->SetParent(vm_->GetJSThread(), JSTaggedValue::Undefined());
-    if (jitProfiler_ != nullptr) {
-        jitProfiler_->UpdateRootProfileType(oldHClass, newHClass);
-    } else {
-        InsertProfileTypeSafe(JSTaggedType(newHClass), JSTaggedType(newHClass), rootProfileType);
-    }
+    InsertProfileTypeSafe(JSTaggedType(newHClass), JSTaggedType(newHClass), rootProfileType);
 }
 
 void PGOProfiler::UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKind newKind)
@@ -1676,9 +1672,6 @@ bool PGOProfiler::InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, P
     if (!isEnable_) {
         return false;
     }
-    if (jitProfiler_ != nullptr) {
-        jitProfiler_->InsertProfileType(root, child, traceType, traceType);
-    }
     auto iter = tracedProfiles_.find(root);
     if (iter != tracedProfiles_.end()) {
         auto generator = iter->second;
@@ -1724,8 +1717,7 @@ ProfileType PGOProfiler::GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedT
     if (rootType.IsNone()) {
         return ProfileType::PROFILE_TYPE_NONE;
     }
-    bool generateNewType = false;
-    return generator->GenerateProfileType(rootType, child, generateNewType);
+    return generator->GenerateProfileType(rootType, child);
 }
 
 void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
@@ -1747,9 +1739,6 @@ void PGOProfiler::ProcessReferences(const WeakRootVisitor &visitor)
         auto generator = iter->second;
         generator->ProcessReferences(visitor);
         ++iter;
-    }
-    if (jitProfiler_ != nullptr) {
-        jitProfiler_->ProcessReferences(visitor);
     }
     preDumpWorkList_.Iterate([this, &visitor](WorkNode *node) {
         auto object = reinterpret_cast<TaggedObject *>(node->GetValue());

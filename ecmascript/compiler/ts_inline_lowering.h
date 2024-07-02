@@ -128,6 +128,7 @@ private:
     void CandidateAccessor(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
     void CandidateNormalCall(GateRef gate, ChunkQueue<InlineTypeInfoAccessor> &workList, CallKind kind);
     void InlineAccessorCheck(const InlineTypeInfoAccessor &info);
+    void InlineAccessorCheckInJIT(const InlineTypeInfoAccessor &info);
     void InlineCheck(InlineTypeInfoAccessor &info);
     GateRef GetAccessorReceiver(GateRef gate);
     GateRef GetFrameArgs(InlineTypeInfoAccessor &info);

@@ -17,6 +17,7 @@
 
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_location.h"
+#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
 namespace panda::ecmascript::kungfu {
 class PGOTypeManager {
@@ -57,8 +58,10 @@ public:
 
     // hclass
     void RecordHClass(ProfileType rootType, ProfileType childType, JSTaggedType hclass, bool update = false);
-
+    int PUBLIC_API RecordAndGetHclassIndexForJIT(JSHClass* hclass);
     uint32_t PUBLIC_API GetHClassIndexByProfileType(ProfileTyper type) const;
+    int PUBLIC_API GetHolderHIndexByPGOObjectInfoType(pgo::PGOObjectInfo type, bool isAot);
+    int PUBLIC_API GetReceiverHIndexByPGOObjectInfoType(pgo::PGOObjectInfo type, bool isAot);
 
     JSTaggedValue PUBLIC_API QueryHClass(ProfileType rootType, ProfileType childType) ;
     JSTaggedValue PUBLIC_API QueryHClassByIndexForJIT(uint32_t hclassIndex) ;
@@ -95,9 +98,8 @@ public:
     inline void ClearHCInfoLocal()
     {
         hclassInfoLocal_.clear();
+        pos_ = 0;
     }
-
-    JSHandle<TaggedArray> GenJITHClassInfo();
 
     // symbol
     std::optional<uint64_t> PUBLIC_API GetSymbolIdByProfileType(ProfileTypeTuple type) const;

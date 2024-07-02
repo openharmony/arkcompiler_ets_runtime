@@ -202,16 +202,6 @@ static size_t ComputePayLoadSize(const MachineCodeDesc &codeDesc)
 #endif
 }
 
-void JitTask::SetHClassInfoForPGO(JSHandle<Method> &methodHandle)
-{
-    auto ptManager = hostThread_->GetCurrentEcmaContext()->GetPTManager();
-    auto info = ptManager->GenJITHClassInfo();
-    auto ecmaContext = hostThread_->GetCurrentEcmaContext();
-    auto unsharedConstantPool = ConstantPool::Cast(
-        ecmaContext->FindUnsharedConstpool(methodHandle->GetConstantPool()).GetTaggedObject());
-    unsharedConstantPool->SetAotHClassInfoWithBarrier(hostThread_, info.GetTaggedValue());
-}
-
 void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
 {
     if (!ohos::JitTools::GetJitDumpObjEanble()) {

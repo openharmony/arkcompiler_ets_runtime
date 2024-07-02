@@ -262,28 +262,55 @@ BuiltinsStubCSigns::ID TypeInfoAccessor::TryGetPGOBuiltinMethodId() const
     return BuiltinsStubCSigns::ID::NONE;
 }
 
-bool NewObjRangeTypeInfoAccessor::FindHClass()
+bool NewObjRangeTypeInfoAccessor::AotAccessorStrategy::FindHClass() const
 {
-    auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+    auto sampleType = parent_.pgoType_.GetPGOSampleType();
     if (!sampleType->IsProfileType()) {
         return false;
     }
     auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
-    hclassIndex_ = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
-    if (hclassIndex_ == -1) {
+    parent_.hclassIndex_ = static_cast<int>(parent_.ptManager_->GetHClassIndexByProfileType(type));
+    if (parent_.hclassIndex_ == -1) {
         return false;
     }
-    return ptManager_->QueryHClass(type.first, type.second).IsJSHClass();
+    return parent_.ptManager_->QueryHClass(type.first, type.second).IsJSHClass();
 }
 
-JSTaggedValue NewObjRangeTypeInfoAccessor::GetHClass()
+bool NewObjRangeTypeInfoAccessor::JitAccessorStrategy::FindHClass() const
 {
-    auto sampleType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+    // For JIT, it handles Builtin using SampleType. For handling others, it uses DefType.
+    // Therefore, when it's SampleType, it can directly return.
+    if (parent_.pgoType_.IsPGOSampleType()) {
+        return false;
+    }
+    auto sampleType = parent_.pgoType_.GetPGODefineOpType();
+    if (sampleType->IsNone()) {
+        return false;
+    }
+    JSHClass *hclass = sampleType->GetReceiver();
+    bool result = hclass != nullptr;
+    if (result) {
+        parent_.hclassIndex_ = parent_.ptManager_->RecordAndGetHclassIndexForJIT(hclass);
+    }
+    return result;
+}
+
+JSTaggedValue NewObjRangeTypeInfoAccessor::AotAccessorStrategy::GetHClass() const
+{
+    auto sampleType = parent_.pgoType_.GetPGOSampleType();
     ASSERT(sampleType->IsProfileType());
     auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
-    hclassIndex_ = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
-    ASSERT(hclassIndex_ != -1);
-    return ptManager_->QueryHClass(type.first, type.second);
+    parent_.hclassIndex_ = static_cast<int>(parent_.ptManager_->GetHClassIndexByProfileType(type));
+    ASSERT(parent_.hclassIndex_ != -1);
+    return parent_.ptManager_->QueryHClass(type.first, type.second);
+}
+
+JSTaggedValue NewObjRangeTypeInfoAccessor::JitAccessorStrategy::GetHClass() const
+{
+    auto sampleType = parent_.pgoType_.GetPGODefineOpType();
+    JSHClass *hclass = sampleType->GetReceiver();
+    parent_.hclassIndex_ = parent_.ptManager_->RecordAndGetHclassIndexForJIT(hclass);
+    return JSTaggedValue(sampleType->GetReceiver());
 }
 
 bool TypeOfTypeInfoAccessor::IsIllegalType() const
@@ -431,7 +458,11 @@ InlineTypeInfoAccessor::InlineTypeInfoAccessor(
     : TypeInfoAccessor(env, circuit, gate), receiver_(receiver), kind_(kind)
 {
     if (IsCallAccessor()) {
-        plr_ = GetAccessorPlr();
+        if (IsAot()) {
+            plr_ = GetAccessorPlr();
+        } else {
+            plr_ = GetAccessorPlrInJIT();
+        }
     }
 }
 
@@ -469,6 +500,39 @@ PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const
             return PropertyLookupResult();
         }
         hclass = JSHClass::Cast(ptManager->QueryHClass(holderType.first, holderType.second).GetTaggedObject());
+    }
+
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilationEnv_->GetJSThread(), hclass, prop);
+    return plr;
+}
+
+PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlrInJIT() const
+{
+    GateRef constData = acc_.GetValueIn(gate_, 1);
+    uint16_t propIndex = acc_.GetConstantValue(constData);
+    auto methodOffset = acc_.TryGetMethodOffset(gate_);
+    auto prop = compilationEnv_->GetStringFromConstantPool(methodOffset, propIndex);
+    // PGO currently does not support call, so GT is still used to support inline operations.
+    // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
+    if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
+        return PropertyLookupResult();
+    }
+
+    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    if (pgoTypes->GetCount() != 1) {
+        return PropertyLookupResult();
+    }
+    if (!pgoTypes->GetObjectInfo(0).IsJITClassType()) {
+        return PropertyLookupResult();
+    }
+    auto pgoType = pgoTypes->GetObjectInfo(0);
+    JSHClass* receiverType = pgoType.GetReceiverHclass();
+    JSHClass* holderType = pgoType.GetHolderHclass();
+    JSHClass *hclass = nullptr;
+    if (receiverType == holderType) {
+        hclass = receiverType;
+    } else {
+        hclass = holderType;
     }
 
     PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilationEnv_->GetJSThread(), hclass, prop);
@@ -519,14 +583,38 @@ bool ObjAccByNameTypeInfoAccessor::GeneratePlr(ProfileTyper type, ObjectAccessIn
     return (plr.IsFound() && !plr.IsFunction());
 }
 
-void StorePrivatePropertyTypeInfoAccessor::FetchPGORWTypesDual()
+bool ObjAccByNameTypeInfoAccessor::GeneratePlrInJIT(JSHClass* hclass, ObjectAccessInfo &info, JSTaggedValue key) const
 {
-    const PGORWOpType* pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilationEnv_->GetJSThread(), hclass, key);
+    int hclassIndex = ptManager_->RecordAndGetHclassIndexForJIT(hclass);
+    info.Set(hclassIndex, plr);
+
+    if (mode_ == AccessMode::LOAD) {
+        return plr.IsFound();
+    }
+
+    return (plr.IsFound() && !plr.IsFunction());
+}
+
+void StorePrivatePropertyTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
+{
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
-        types_.emplace_back(std::make_tuple(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
-                                            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType()),
-                                            std::make_pair(temp.GetHoldTraRootType(), temp.GetHoldTraType())));
+        parent_.types_.emplace_back(std::make_tuple(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+                                                    std::make_pair(temp.GetHoldRootType(), temp.GetHoldType()),
+                                                    std::make_pair(temp.GetHoldTraRootType(), temp.GetHoldTraType())));
+    }
+}
+
+void StorePrivatePropertyTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
+{
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        if (temp.GetReceiverType().IsJITClassType()) {
+            parent_.jitTypes_.emplace_back(temp);
+        }
     }
 }
 
@@ -550,24 +638,23 @@ JSTaggedValue StorePrivatePropertyTypeInfoAccessor::GetKeyTaggedValue() const
     return symbol;
 }
 
-bool StorePrivatePropertyTypeInfoAccessor::GenerateObjectAccessInfo()
+bool StorePrivatePropertyTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInfo()
 {
-    JSTaggedValue key = GetKeyTaggedValue();
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
     if (key.IsHole()) {
-        isAccessor_ = true;
+        parent_.isAccessor_ = true;
         return true;
     }
 
-    ProfileTyper receiverType = std::get<0>(types_.at(0));
-    ProfileTyper holderType = std::get<1>(types_.at(0));
-
+    ProfileTyper receiverType = std::get<0>(parent_.types_.at(0));
+    ProfileTyper holderType = std::get<1>(parent_.types_.at(0));
     if (receiverType == holderType) {
         ObjectAccessInfo receiverInfo;
-        if (!GeneratePlr(receiverType, receiverInfo, key)) {
+        if (!parent_.GeneratePlr(receiverType, receiverInfo, key)) {
             return false;
         }
-        accessInfos_.emplace_back(receiverInfo);
-        checkerInfos_.emplace_back(receiverInfo);
+        parent_.accessInfos_.emplace_back(receiverInfo);
+        parent_.checkerInfos_.emplace_back(receiverInfo);
     } else {
         UNREACHABLE();
     }
@@ -575,15 +662,52 @@ bool StorePrivatePropertyTypeInfoAccessor::GenerateObjectAccessInfo()
     return true;
 }
 
-void LoadPrivatePropertyTypeInfoAccessor::FetchPGORWTypesDual()
+bool StorePrivatePropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
 {
-    const PGORWOpType* pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    if (key.IsHole()) {
+        parent_.isAccessor_ = true;
+        return true;
+    }
+
+    JSHClass *receiverType = parent_.jitTypes_[0].GetReceiverHclass();
+    JSHClass *holderType = parent_.jitTypes_[0].GetHolderHclass();
+
+    if (receiverType == holderType) {
+        ObjectAccessInfo receiverInfo;
+        if (!parent_.GeneratePlrInJIT(receiverType, receiverInfo, key)) {
+            return false;
+        }
+        parent_.accessInfos_.emplace_back(receiverInfo);
+        parent_.checkerInfos_.emplace_back(receiverInfo);
+    } else {
+        UNREACHABLE();
+    }
+
+    return true;
+}
+
+void LoadPrivatePropertyTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
+{
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
-        types_.emplace_back(std::make_pair(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
-                                           std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())));
+        parent_.types_.emplace_back(std::make_pair(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+                                                   std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())));
     }
 }
+
+void LoadPrivatePropertyTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
+{
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        if (temp.GetReceiverType().IsJITClassType()) {
+            parent_.jitTypes_.emplace_back(temp);
+        }
+    }
+}
+
 
 JSTaggedValue LoadPrivatePropertyTypeInfoAccessor::GetKeyTaggedValue() const
 {
@@ -605,24 +729,23 @@ JSTaggedValue LoadPrivatePropertyTypeInfoAccessor::GetKeyTaggedValue() const
     return symbol;
 }
 
-bool LoadPrivatePropertyTypeInfoAccessor::GenerateObjectAccessInfo()
+bool LoadPrivatePropertyTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInfo()
 {
-    JSTaggedValue key = GetKeyTaggedValue();
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
     if (key.IsHole()) {
-        isAccessor_ = true;
+        parent_.isAccessor_ = true;
         return true;
     }
 
-    ProfileTyper receiverType = types_.at(0).first;
-    ProfileTyper holderType = types_.at(0).second;
-
+    ProfileTyper receiverType = parent_.types_.at(0).first;
+    ProfileTyper holderType = parent_.types_.at(0).second;
     if (receiverType == holderType) {
         ObjectAccessInfo receiverInfo;
-        if (!GeneratePlr(receiverType, receiverInfo, key)) {
+        if (!parent_.GeneratePlr(receiverType, receiverInfo, key)) {
             return false;
         }
-        accessInfos_.emplace_back(receiverInfo);
-        checkerInfos_.emplace_back(receiverInfo);
+        parent_.accessInfos_.emplace_back(receiverInfo);
+        parent_.checkerInfos_.emplace_back(receiverInfo);
     } else {
         UNREACHABLE();
     }
@@ -630,56 +753,125 @@ bool LoadPrivatePropertyTypeInfoAccessor::GenerateObjectAccessInfo()
     return true;
 }
 
-LoadObjByNameTypeInfoAccessor::LoadObjByNameTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
-                                                             GateRef gate, Chunk *chunk)
-    : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::LOAD), types_(chunk_)
+bool LoadPrivatePropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
 {
-    key_ = acc_.GetValueIn(gate, 1); // 1: key
-    receiver_ = acc_.GetValueIn(gate, 2); // 2: receiver
-    FetchPGORWTypesDual();
-    hasIllegalType_ = !GenerateObjectAccessInfo();
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    if (key.IsHole()) {
+        parent_.isAccessor_ = true;
+        return true;
+    }
+
+    JSHClass *receiver = parent_.jitTypes_[0].GetReceiverHclass();
+    JSHClass *holder = parent_.jitTypes_[0].GetHolderHclass();
+
+    if (receiver == holder) {
+        ObjectAccessInfo receiverInfo;
+        if (!parent_.GeneratePlrInJIT(receiver, receiverInfo, key)) {
+            return false;
+        }
+        parent_.accessInfos_.emplace_back(receiverInfo);
+        parent_.checkerInfos_.emplace_back(receiverInfo);
+    } else {
+        UNREACHABLE();
+    }
+
+    return true;
 }
 
-void LoadObjByNameTypeInfoAccessor::FetchPGORWTypesDual()
+LoadObjByNameTypeInfoAccessor::LoadObjByNameTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate,
+                                                             Chunk *chunk)
+    : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::LOAD), types_(chunk_), jitTypes_(chunk_)
 {
-    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    key_ = acc_.GetValueIn(gate, 1);      // 1: key
+    receiver_ = acc_.GetValueIn(gate, 2); // 2: receiver
+    if (IsAot()) {
+        strategy_ = chunk_->New<AotAccessorStrategy>(*this);
+    } else {
+        strategy_ = chunk_->New<JitAccessorStrategy>(*this);
+    }
+    strategy_->FetchPGORWTypesDual();
+    hasIllegalType_ = !strategy_->GenerateObjectAccessInfo();
+}
+
+void LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
+{
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsBuiltinsType()) {
             continue;
         }
-        types_.emplace_back(std::make_pair(
-            std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
-            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())
-        ));
+        parent_.types_.emplace_back(std::make_pair(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+                                                   std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())));
     }
 }
 
-bool LoadObjByNameTypeInfoAccessor::GenerateObjectAccessInfo()
+void LoadObjByNameTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 {
-    JSTaggedValue key = GetKeyTaggedValue();
-    for (size_t i = 0; i < types_.size(); ++i) {
-        ProfileTyper receiverType = types_[i].first;
-        ProfileTyper holderType = types_[i].second;
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        if (temp.GetReceiverType().IsJITClassType()) {
+            parent_.jitTypes_.emplace_back(temp);
+        }
+    }
+}
+
+bool LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInfo()
+{
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    for (size_t i = 0; i < parent_.types_.size(); ++i) {
+        ProfileTyper receiverType = parent_.types_[i].first;
+        ProfileTyper holderType = parent_.types_[i].second;
         if (receiverType == holderType) {
             ObjectAccessInfo info;
-            if (!GeneratePlr(receiverType, info, key)) {
+            if (!parent_.GeneratePlr(receiverType, info, key)) {
                 return false;
             }
-            accessInfos_.emplace_back(info);
-            checkerInfos_.emplace_back(info);
+            parent_.accessInfos_.emplace_back(info);
+            parent_.checkerInfos_.emplace_back(info);
         } else {
             ObjectAccessInfo accInfo;
-            if (!GeneratePlr(holderType, accInfo, key)) {
+            if (!parent_.GeneratePlr(holderType, accInfo, key)) {
                 return false;
             }
-            accessInfos_.emplace_back(accInfo);
+            parent_.accessInfos_.emplace_back(accInfo);
             ObjectAccessInfo checkInfo;
-            GeneratePlr(receiverType, checkInfo, key);
+            parent_.GeneratePlr(receiverType, checkInfo, key);
             if (checkInfo.HClassIndex() == -1) {
                 return false;
             }
-            checkerInfos_.emplace_back(checkInfo);
+            parent_.checkerInfos_.emplace_back(checkInfo);
+        }
+    }
+    return true;
+}
+
+bool LoadObjByNameTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
+{
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
+        JSHClass *receiver = parent_.jitTypes_[i].GetReceiverHclass();
+        JSHClass *holder = parent_.jitTypes_[i].GetHolderHclass();
+        if (receiver == holder) {
+            ObjectAccessInfo info;
+            if (!parent_.GeneratePlrInJIT(receiver, info, key)) {
+                return false;
+            }
+            parent_.accessInfos_.emplace_back(info);
+            parent_.checkerInfos_.emplace_back(info);
+        } else {
+            ObjectAccessInfo accInfo;
+            if (!parent_.GeneratePlrInJIT(holder, accInfo, key)) {
+                return false;
+            }
+            parent_.accessInfos_.emplace_back(accInfo);
+            ObjectAccessInfo checkInfo;
+            parent_.GeneratePlrInJIT(receiver, checkInfo, key);
+            if (checkInfo.HClassIndex() == -1) {
+                return false;
+            }
+            parent_.checkerInfos_.emplace_back(checkInfo);
         }
     }
     return true;
@@ -687,7 +879,7 @@ bool LoadObjByNameTypeInfoAccessor::GenerateObjectAccessInfo()
 
 StoreObjByNameTypeInfoAccessor::StoreObjByNameTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
                                                                GateRef gate, Chunk *chunk)
-    : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_)
+    : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::STORE), types_(chunk_), jitTypes_(chunk)
 {
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     switch (ecmaOpcode) {
@@ -718,16 +910,21 @@ StoreObjByNameTypeInfoAccessor::StoreObjByNameTypeInfoAccessor(const Compilation
             UNREACHABLE();
     }
 
-    FetchPGORWTypesDual();
-    hasIllegalType_ = !GenerateObjectAccessInfo();
+    if (IsAot()) {
+        strategy_ = chunk_->New<AotAccessorStrategy>(*this);
+    } else {
+        strategy_ = chunk_->New<JitAccessorStrategy>(*this);
+    }
+    strategy_->FetchPGORWTypesDual();
+    hasIllegalType_ = !strategy_->GenerateObjectAccessInfo();
 }
 
-void StoreObjByNameTypeInfoAccessor::FetchPGORWTypesDual()
+void StoreObjByNameTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 {
-    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
-        types_.emplace_back(std::make_tuple(
+        parent_.types_.emplace_back(std::make_tuple(
             std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
             std::make_pair(temp.GetHoldRootType(), temp.GetHoldType()),
             std::make_pair(temp.GetHoldTraRootType(), temp.GetHoldTraType())
@@ -735,35 +932,46 @@ void StoreObjByNameTypeInfoAccessor::FetchPGORWTypesDual()
     }
 }
 
-bool StoreObjByNameTypeInfoAccessor::GenerateObjectAccessInfo()
+void StoreObjByNameTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 {
-    JSTaggedValue key = GetKeyTaggedValue();
-    for (size_t i = 0; i < types_.size(); ++i) {
-        ProfileTyper receiverType = std::get<0>(types_[i]);
-        ProfileTyper holderType = std::get<1>(types_[i]);
-        ProfileTyper newHolderType = std::get<2>(types_[i]);
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        if (temp.GetReceiverType().IsJITClassType()) {
+            parent_.jitTypes_.emplace_back(temp);
+        }
+    }
+}
+
+bool StoreObjByNameTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInfo()
+{
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    for (size_t i = 0; i < parent_.types_.size(); ++i) {
+        ProfileTyper receiverType = std::get<0>(parent_.types_[i]);
+        ProfileTyper holderType = std::get<1>(parent_.types_[i]);
+        ProfileTyper newHolderType = std::get<2>(parent_.types_[i]);
 
         if (receiverType != newHolderType) {
             // transition happened ==> slowpath
             ObjectAccessInfo newHolderInfo;
-            if (!GeneratePlr(newHolderType, newHolderInfo, key)) {
+            if (!parent_.GeneratePlr(newHolderType, newHolderInfo, key)) {
                 return false;
             }
-            accessInfos_.emplace_back(newHolderInfo);
+            parent_.accessInfos_.emplace_back(newHolderInfo);
 
             ObjectAccessInfo receiverInfo;
-            GeneratePlr(receiverType, receiverInfo, key);
+            parent_.GeneratePlr(receiverType, receiverInfo, key);
             if (receiverInfo.HClassIndex() == -1) {
                 return false;
             }
-            checkerInfos_.emplace_back(receiverInfo);
+            parent_.checkerInfos_.emplace_back(receiverInfo);
         } else if (receiverType == holderType) {
             ObjectAccessInfo receiverInfo;
-            if (!GeneratePlr(receiverType, receiverInfo, key)) {
+            if (!parent_.GeneratePlr(receiverType, receiverInfo, key)) {
                 return false;
             }
-            accessInfos_.emplace_back(receiverInfo);
-            checkerInfos_.emplace_back(receiverInfo);
+            parent_.accessInfos_.emplace_back(receiverInfo);
+            parent_.checkerInfos_.emplace_back(receiverInfo);
         } else {
             UNREACHABLE();
         }
@@ -771,15 +979,55 @@ bool StoreObjByNameTypeInfoAccessor::GenerateObjectAccessInfo()
     return true;
 }
 
-InstanceOfTypeInfoAccessor::InstanceOfTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
-                                                       GateRef gate, Chunk *chunk)
-    : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::LOAD), types_(chunk_)
+bool StoreObjByNameTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
+{
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
+        JSHClass* receiverType = parent_.jitTypes_[i].GetReceiverHclass();
+        JSHClass* holderType = parent_.jitTypes_[i].GetHolderHclass();
+        JSHClass* newHolderType = parent_.jitTypes_[i].GetHolderTraHclass();
+
+        if (receiverType != newHolderType) {
+            // transition happened ==> slowpath
+            ObjectAccessInfo newHolderInfo;
+            if (!parent_.GeneratePlrInJIT(newHolderType, newHolderInfo, key)) {
+                return false;
+            }
+            parent_.accessInfos_.emplace_back(newHolderInfo);
+
+            ObjectAccessInfo receiverInfo;
+            parent_.GeneratePlrInJIT(receiverType, receiverInfo, key);
+            if (receiverInfo.HClassIndex() == -1) {
+                return false;
+            }
+            parent_.checkerInfos_.emplace_back(receiverInfo);
+        } else if (receiverType == holderType) {
+            ObjectAccessInfo receiverInfo;
+            if (!parent_.GeneratePlrInJIT(receiverType, receiverInfo, key)) {
+                return false;
+            }
+            parent_.accessInfos_.emplace_back(receiverInfo);
+            parent_.checkerInfos_.emplace_back(receiverInfo);
+        } else {
+            UNREACHABLE();
+        }
+    }
+    return true;
+}
+
+InstanceOfTypeInfoAccessor::InstanceOfTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate,
+                                                       Chunk *chunk)
+    : ObjAccByNameTypeInfoAccessor(env, circuit, gate, chunk, AccessMode::LOAD), types_(chunk_), jitTypes_(chunk)
 {
     receiver_ = acc_.GetValueIn(gate, 1); // 2: receiver
-    target_ = acc_.GetValueIn(gate, 2);  // 2: the third parameter
-
-    FetchPGORWTypesDual();
-    hasIllegalType_ = !GenerateObjectAccessInfo();
+    target_ = acc_.GetValueIn(gate, 2);   // 2: the third parameter
+    if (IsAot()) {
+        strategy_ = chunk_->New<AotAccessorStrategy>(*this);
+    } else {
+        strategy_ = chunk_->New<JitAccessorStrategy>(*this);
+    }
+    strategy_->FetchPGORWTypesDual();
+    hasIllegalType_ = !strategy_->GenerateObjectAccessInfo();
 }
 
 JSTaggedValue InstanceOfTypeInfoAccessor::GetKeyTaggedValue() const
@@ -789,54 +1037,95 @@ JSTaggedValue InstanceOfTypeInfoAccessor::GetKeyTaggedValue() const
     return globalEnv->GetGlobalEnvObjectByIndex(hasInstanceEnvIndex).GetTaggedValue();
 }
 
-void InstanceOfTypeInfoAccessor::FetchPGORWTypesDual()
+void InstanceOfTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 {
-    const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsBuiltinsType()) {
             continue;
         }
-        types_.emplace_back(std::make_pair(
-            std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
-            std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())
-        ));
+        parent_.types_.emplace_back(std::make_pair(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
+                                                   std::make_pair(temp.GetHoldRootType(), temp.GetHoldType())));
     }
 }
 
-bool InstanceOfTypeInfoAccessor::ClassInstanceIsCallable(ProfileTyper type) const
+void InstanceOfTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 {
-    int hclassIndex = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
+    const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+        auto temp = pgoTypes->GetObjectInfo(i);
+        if (temp.GetReceiverType().IsJITClassType()) {
+            parent_.jitTypes_.emplace_back(temp);
+        }
+    }
+}
+
+
+bool InstanceOfTypeInfoAccessor::AotAccessorStrategy::ClassInstanceIsCallable(ProfileTyper type) const
+{
+    int hclassIndex = static_cast<int>(parent_.ptManager_->GetHClassIndexByProfileType(type));
     if (hclassIndex == -1) {
         return false;
     }
 
-    JSHClass *hclass = JSHClass::Cast(ptManager_->QueryHClass(type.first, type.second).GetTaggedObject());
+    JSHClass *hclass = JSHClass::Cast(parent_.ptManager_->QueryHClass(type.first, type.second).GetTaggedObject());
 
     return hclass->IsCallable();
 }
 
-bool InstanceOfTypeInfoAccessor::GenerateObjectAccessInfo()
+bool InstanceOfTypeInfoAccessor::JitAccessorStrategy::ClassInstanceIsCallable(JSHClass *hclass) const
+{
+    return hclass->IsCallable();
+}
+
+
+bool InstanceOfTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInfo()
 {
     // Instanceof does not support Poly for now
     if (!IsMono()) {
         return false;
     }
-    JSTaggedValue key = GetKeyTaggedValue();
-    for (size_t i = 0; i < types_.size(); ++i) {
-        ProfileTyper targetPgoType = types_[i].first;
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    for (size_t i = 0; i < parent_.types_.size(); ++i) {
+        ProfileTyper targetPgoType = parent_.types_[i].first;
         ObjectAccessInfo targetInfo;
         // If @@hasInstance is found on prototype Chain of ctor -> slowpath
         // Future work: pgo support Symbol && Dump Object.defineProperty && FunctionPrototypeHclass
         // Current temporary solution:
         // Try searching @@hasInstance in pgo dump stage,
         // If found, pgo dump no types and we go slowpath in aot
-        GeneratePlr(targetPgoType, targetInfo, key);
+        parent_.GeneratePlr(targetPgoType, targetInfo, key);
         if (targetInfo.HClassIndex() == -1 || !ClassInstanceIsCallable(targetPgoType)) {
             return false;
         }
-        accessInfos_.emplace_back(targetInfo);
-        checkerInfos_.emplace_back(targetInfo);
+        parent_.accessInfos_.emplace_back(targetInfo);
+        parent_.checkerInfos_.emplace_back(targetInfo);
+    }
+    return true;
+}
+
+bool InstanceOfTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
+{
+    // Instanceof does not support Poly for now
+    if (!IsMono()) {
+        return false;
+    }
+    JSTaggedValue key = parent_.GetKeyTaggedValue();
+    for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
+        JSHClass *receiver = parent_.jitTypes_[i].GetReceiverHclass();
+        ObjectAccessInfo targetInfo;
+        // If @@hasInstance is found on prototype Chain of ctor -> slowpath
+        // Future work: pgo support Symbol && Dump Object.defineProperty && FunctionPrototypeHclass
+        // Current temporary solution:
+        // Try searching @@hasInstance in pgo dump stage,
+        // If found, pgo dump no types and we go slowpath in aot
+        parent_.GeneratePlrInJIT(receiver, targetInfo, key);
+        if (targetInfo.HClassIndex() == -1 || !ClassInstanceIsCallable(receiver)) {
+            return false;
+        }
+        parent_.accessInfos_.emplace_back(targetInfo);
+        parent_.checkerInfos_.emplace_back(targetInfo);
     }
     return true;
 }
@@ -958,11 +1247,17 @@ StoreBulitinObjTypeInfoAccessor::StoreBulitinObjTypeInfoAccessor(const Compilati
 }
 
 CreateObjWithBufferTypeInfoAccessor::CreateObjWithBufferTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit,
-                                                                         GateRef gate, const CString &recordName)
+                                                                         GateRef gate, const CString &recordName,
+                                                                         Chunk *chunk)
     : TypeInfoAccessor(env, circuit, gate), recordName_(recordName)
 {
     ASSERT(acc_.GetNumValueIn(gate) == 2);  // 2: number of value ins
     index_ = acc_.GetValueIn(gate, 0);
+    if (IsAot()) {
+        strategy_ = chunk->New<AotAccessorStrategy>(*this);
+    } else {
+        strategy_ = chunk->New<JitAccessorStrategy>(*this);
+    }
 }
 
 JSTaggedValue CreateObjWithBufferTypeInfoAccessor::GetObject() const
@@ -973,15 +1268,15 @@ JSTaggedValue CreateObjWithBufferTypeInfoAccessor::GetObject() const
     return compilationEnv_->GetObjectLiteralFromCache(unsharedCp, imm, recordName_);
 }
 
-JSTaggedValue CreateObjWithBufferTypeInfoAccessor::GetHClass() const
+JSTaggedValue CreateObjWithBufferTypeInfoAccessor::AotAccessorStrategy::GetHClass() const
 {
-    JSTaggedValue obj = GetObject();
+    JSTaggedValue obj = parent_.GetObject();
     if (obj.IsUndefined()) {
         return JSTaggedValue::Undefined();
     }
-    auto sampleType = acc_.TryGetPGOType(gate_).GetPGODefineOpType();
+    auto sampleType = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGODefineOpType();
     auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
-    int hclassIndex = static_cast<int>(ptManager_->GetHClassIndexByProfileType(type));
+    int hclassIndex = static_cast<int>(parent_.ptManager_->GetHClassIndexByProfileType(type));
 
     JSObject *jsObj = JSObject::Cast(obj);
     JSHClass *oldClass = jsObj->GetClass();
@@ -991,10 +1286,34 @@ JSTaggedValue CreateObjWithBufferTypeInfoAccessor::GetHClass() const
         }
         return JSTaggedValue::Undefined();
     }
-    JSHClass *newClass = JSHClass::Cast(ptManager_->QueryHClass(type.first, type.second).GetTaggedObject());
+    JSHClass *newClass = JSHClass::Cast(parent_.ptManager_->QueryHClass(type.first, type.second).GetTaggedObject());
     if (oldClass->GetInlinedProperties() != newClass->GetInlinedProperties()) {
         return JSTaggedValue::Undefined();
     }
     return JSTaggedValue(newClass);
 }
+
+JSTaggedValue CreateObjWithBufferTypeInfoAccessor::JitAccessorStrategy::GetHClass() const
+{
+    JSTaggedValue obj = parent_.GetObject();
+    if (obj.IsUndefined()) {
+        return JSTaggedValue::Undefined();
+    }
+    auto sampleType = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGODefineOpType();
+
+    JSObject *jsObj = JSObject::Cast(obj);
+    JSHClass *oldClass = jsObj->GetClass();
+    JSHClass *newClass = sampleType->GetReceiver();
+    if (newClass == nullptr) {
+        if (jsObj->ElementsAndPropertiesIsEmpty()) {
+            return JSTaggedValue(oldClass);
+        }
+        return JSTaggedValue::Undefined();
+    }
+    if (oldClass->GetInlinedProperties() != newClass->GetInlinedProperties()) {
+        return JSTaggedValue::Undefined();
+    }
+    return JSTaggedValue(newClass);
+}
+
 }  // namespace panda::ecmascript::kungfu

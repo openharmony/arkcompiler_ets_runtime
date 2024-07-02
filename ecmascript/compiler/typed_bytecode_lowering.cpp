@@ -1466,7 +1466,7 @@ void TypedBytecodeLowering::LowerTypedNewObjRange(GateRef gate)
     if (TryLowerNewNumber(&builder_, acc_, gate)) {
         return;
     }
-    NewObjRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
+    NewObjRangeTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
     if (!tacc.FindHClass() || !tacc.IsValidCallMethodId()) {
         return;
     }
@@ -2234,7 +2234,7 @@ void TypedBytecodeLowering::LowerTypedStOwnByValue(GateRef gate)
 void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    CreateObjWithBufferTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, recordName_);
+    CreateObjWithBufferTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, recordName_, chunk_);
     if (!tacc.CanOptimize()) {
         return;
     }
