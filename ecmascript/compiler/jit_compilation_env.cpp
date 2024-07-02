@@ -92,10 +92,10 @@ JSTaggedValue JitCompilationEnv::FindConstpool([[maybe_unused]] const JSPandaFil
 
 JSTaggedValue JitCompilationEnv::FindOrCreateUnsharedConstpool([[maybe_unused]] const uint32_t methodOffset) const
 {
-    ASSERT(thread_->IsInRunningState());
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    ASSERT(method->GetMethodId().GetOffset() == methodOffset);
-    JSTaggedValue constpool = method->GetConstantPool();
+    JSTaggedValue constpool = GetConstantPoolByMethodOffset(methodOffset);
+    if (constpool.IsUndefined()) {
+        return JSTaggedValue::Undefined();
+    }
     ASSERT(!ConstantPool::CheckUnsharedConstpool(constpool));
     JSTaggedValue unSharedConstpool = hostThread_->GetCurrentEcmaContext()->FindUnsharedConstpool(constpool);
     return unSharedConstpool;
@@ -120,9 +120,18 @@ JSHandle<ConstantPool> JitCompilationEnv::FindOrCreateConstPool([[maybe_unused]]
 JSTaggedValue JitCompilationEnv::GetConstantPoolByMethodOffset([[maybe_unused]] const uint32_t methodOffset) const
 {
     ASSERT(thread_->IsInRunningState());
-    Method *method = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    ASSERT(method->GetMethodId().GetOffset() == methodOffset);
-    return method->GetConstantPool();
+    JSTaggedValue constpool;
+    Method *currMethod = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
+    if (methodOffset != currMethod->GetMethodId().GetOffset()) {
+        auto calleeFunc = GetJsFunctionByMethodOffset(methodOffset);
+        if (!calleeFunc) {
+            return JSTaggedValue::Undefined();
+        }
+        constpool = Method::Cast(calleeFunc->GetMethod())->GetConstantPool();
+    } else {
+        constpool = currMethod->GetConstantPool();
+    }
+    return constpool;
 }
 
 JSTaggedValue JitCompilationEnv::GetArrayLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const
@@ -163,17 +172,9 @@ const GlobalEnvConstants *JitCompilationEnv::GlobalConstants() const
 JSTaggedValue JitCompilationEnv::GetStringFromConstantPool([[maybe_unused]] const uint32_t methodOffset,
     const uint16_t cpIdx) const
 {
-    ASSERT(thread_->IsInRunningState());
-    JSTaggedValue constpool;
-    Method *currMethod = Method::Cast(jsFunction_->GetMethod().GetTaggedObject());
-    if (methodOffset != currMethod->GetMethodId().GetOffset()) {
-        auto calleeFunc = GetJsFunctionByMethodOffset(methodOffset);
-        if (!calleeFunc) {
-            return JSTaggedValue::Undefined();
-        }
-        constpool = Method::Cast(calleeFunc->GetMethod())->GetConstantPool();
-    } else {
-        constpool = currMethod->GetConstantPool();
+    JSTaggedValue constpool = GetConstantPoolByMethodOffset(methodOffset);
+    if (constpool.IsUndefined()) {
+        return JSTaggedValue::Undefined();
     }
     return ConstantPool::GetStringFromCacheForJit(GetJSThread(), constpool, cpIdx);
 }
