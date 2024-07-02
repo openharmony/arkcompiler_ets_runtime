@@ -14,10 +14,14 @@
  */
 
 #include "ecmascript/platform/directory.h"
+#include "ecmascript/platform/filesystem.h"
 
 namespace panda::ecmascript {
-bool ForceCreateDirectory([[maybe_unused]] const std::string &path)
+bool ForceCreateDirectory(const std::string &path)
 {
+    if (!filesystem::CreateDirectory(path)) {
+        return false;
+    }
     return true;
 }
 
