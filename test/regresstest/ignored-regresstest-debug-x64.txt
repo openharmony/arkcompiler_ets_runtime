@@ -54,4 +54,4 @@ regresstest/ark-regress/mjsunit/regress/regress-732836.js
 regresstest/ark-regress/mjsunit/regress/regress-json-stringify-gc.js
 regresstest/ark-regress/mjsunit/regress/regress-982.js
 
-# --- end of Issue #17827
+# --- end of Issue #17901

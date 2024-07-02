@@ -30,7 +30,9 @@ import signal
 import stat
 import subprocess
 import sys
-from typing import Tuple, Optional
+from os.path import dirname, join
+from pathlib import Path
+from typing import Tuple, Optional, List
 
 from regress_test_config import RegressTestConfig
 
@@ -46,8 +48,10 @@ def parse_args():
                         help='Directory to test ')
     parser.add_argument('--test-file', metavar='FILE',
                         help='File to test')
+    parser.add_argument('--test-list', metavar='FILE', dest="test_list", default=None,
+                        help='File with list of tests to run')
     parser.add_argument('--timeout', default=RegressTestConfig.DEFAULT_TIMEOUT, type=int,
-                        help='Set a custom test timeout in milliseconds !!!\n')
+                        help='Set a custom test timeout in seconds !!!\n')
     parser.add_argument('--processes', default=RegressTestConfig.DEFAULT_PROCESSES, type=int,
                         help='set number of processes to use. Default value: 1\n')
     parser.add_argument('--ark-tool',
@@ -185,6 +189,18 @@ class RegressTestPrepare:
         self.args = args
         self.out_dir = args.regress_out_dir
         self.skil_test = skip_test_cases
+        self.test_list: List[str] = self.read_test_list(args.test_list)
+
+    @staticmethod
+    def read_test_list(test_list_name: Optional[str]) -> List[str]:
+        if test_list_name is None:
+            return []
+        filename = join(dirname(__file__), test_list_name)
+        if not Path(filename).exists():
+            print(f"File {filename} set as --test-list value cannot be found")
+            exit(1)
+        with open(filename, 'r') as stream:
+            return stream.read().split("\n")
 
     def run(self):
         self.get_test_case()
@@ -252,7 +268,12 @@ class RegressTestPrepare:
 
     def get_regress_test_files(self):
         result = []
-        if self.args.test_file is not None and len(self.args.test_file) > 0:
+        if self.test_list:
+            for test in self.test_list:
+                test_file_name = join(dirname(RegressTestConfig.REGRESS_BASE_TEST_DIR), test)
+                result.append(test_file_name)
+            return result
+        elif self.args.test_file is not None and len(self.args.test_file) > 0:
             test_file_list = os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, self.args.test_file)
             result.append(test_file_list)
             return result
@@ -359,10 +380,9 @@ def run_test_case_with_expect(command, test_case_file, expect_file, timeout) -> 
             process.kill()
             process.terminate()
             os.kill(process.pid, signal.SIGTERM)
-            msg = f'FAIL: {test_case_file},err:{exception}'
+            msg = f'FAIL: {test_case_file} \n\tError:{exception}\n\tCommand: {command}'
             out_put_std(ret_code, command, msg)
-            result_message = f'{msg} \n Command: {command}'
-            return False, result_message
+            return False, msg
 
 
 def run_test_case_with_assert(command, test_case_file, timeout) -> Tuple[bool, str]:
@@ -389,7 +409,7 @@ def run_test_case_with_assert(command, test_case_file, timeout) -> Tuple[bool, s
             process.kill()
             process.terminate()
             os.kill(process.pid, signal.SIGTERM)
-            result_message = f'FAIL: {test_case_file},err:{exception}'
+            result_message = f'FAIL: {test_case_file}\n\tError:{exception}'
             out_put_std(ret_code, command, result_message)
             return False, result_message
 
