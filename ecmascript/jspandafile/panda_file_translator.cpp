@@ -102,6 +102,47 @@ void PandaFileTranslator::TranslateClasses(const JSThread *thread, JSPandaFile *
     }
 }
 
+void PandaFileTranslator::TranslateClass(const JSThread *thread, JSPandaFile *jsPandaFile,
+    const CString &methodName, size_t methodIdx, size_t classIdx)
+{
+    ASSERT(jsPandaFile != nullptr && jsPandaFile->GetMethodLiterals() != nullptr);
+    MethodLiteral *methodLiterals = jsPandaFile->GetMethodLiterals();
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
+    const uint32_t index = classIndexes[classIdx];
+    panda_file::File::EntityId classId(index);
+    panda_file::ClassDataAccessor cda(*pf, classId);
+    CString recordName = JSPandaFile::ParseEntryPoint(utf::Mutf8AsCString(cda.GetDescriptor()));
+    bool isUpdateMainMethodIndex = false;
+    cda.EnumerateMethods([thread, jsPandaFile, methodLiterals, &methodIdx, pf, &methodName,
+                            &recordName, &isUpdateMainMethodIndex]
+        (panda_file::MethodDataAccessor &mda) {
+        auto methodId = mda.GetMethodId();
+        CString name = reinterpret_cast<const char *>(jsPandaFile->GetStringData(mda.GetNameId()).data);
+        auto methodOffset = methodId.GetOffset();
+        if (jsPandaFile->IsBundlePack()) {
+            if (!isUpdateMainMethodIndex && name == methodName) {
+                jsPandaFile->UpdateMainMethodIndex(methodOffset);
+                isUpdateMainMethodIndex = true;
+            }
+        } else {
+            if (!isUpdateMainMethodIndex && JSPandaFile::IsEntryOrPatch(name)) {
+                jsPandaFile->UpdateMainMethodIndex(methodOffset, recordName);
+                isUpdateMainMethodIndex = true;
+            }
+        }
+
+        MethodLiteral *methodLiteral = methodLiterals + (methodIdx++);
+        InitializeMemory(methodLiteral, methodId);
+        methodLiteral->Initialize(jsPandaFile, thread);
+        // IsNewVersion
+        panda_file::IndexAccessor indexAccessor(*pf, methodId);
+        panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
+        FunctionKind kind = JSPandaFile::GetFunctionKind(funcKind);
+        methodLiteral->SetFunctionKind(kind);
+    });
+}
+
 JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                                        std::string_view entryPoint)
 {

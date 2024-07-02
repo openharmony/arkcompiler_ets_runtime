@@ -198,6 +198,7 @@ void EcmaVM::PreFork()
     heap_->AdjustSpaceSizeForAppSpawn();
     heap_->GetReadOnlySpace()->SetReadOnly();
     heap_->DisableParallelGC();
+    SetPostForked(false);
     SharedHeap::GetInstance()->DisableParallelGC(thread_);
 }
 
@@ -207,6 +208,7 @@ void EcmaVM::PostFork()
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
     Taskpool::GetCurrentTaskpool()->Initialize();
+    SetPostForked(true);
     LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
 #if defined(JIT_ESCAPE_ENABLE) || defined(AOT_ESCAPE_ENABLE)
     SignalAllReg();

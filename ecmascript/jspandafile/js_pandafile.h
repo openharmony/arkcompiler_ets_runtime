@@ -21,6 +21,7 @@
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
+#include "ecmascript/taskpool/task.h"
 
 #include "libpandafile/file-inl.h"
 #include "libpandafile/file_items.h"
@@ -88,6 +89,23 @@ public:
 
     JSPandaFile(const panda_file::File *pf, const CString &descriptor);
     ~JSPandaFile();
+
+    class TranslateClassesTask : public Task {
+    public:
+        TranslateClassesTask(int32_t id, JSThread *thread, JSPandaFile *jsPandaFile,
+            const std::shared_ptr<CString> &methodNamePtr)
+            : Task(id), thread_(thread), jsPandaFile_(jsPandaFile), methodNamePtr_(methodNamePtr) {};
+        ~TranslateClassesTask() override = default;
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(TranslateClassesTask);
+        NO_MOVE_SEMANTIC(TranslateClassesTask);
+    
+    private:
+        JSThread *thread_ {nullptr};
+        JSPandaFile *jsPandaFile_ {nullptr};
+        std::shared_ptr<CString> methodNamePtr_;
+    };
 
     const CString &GetJSPandaFileDesc() const
     {
@@ -440,9 +458,28 @@ public:
     }
 
     void ClearNameMap();
+
+    void TranslateClasses(JSThread *thread, const CString &methodName);
+
 private:
     void InitializeUnMergedPF();
     void InitializeMergedPF();
+
+    void WaitTranslateClassTaskFinished();
+
+    void NotifyTranslateClassTaskCompleted();
+
+    void IncreaseTaskCount();
+
+    void TranslateClass(JSThread *thread, const CString &methodName);
+
+    void PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr);
+
+    void ReduceTaskCount();
+
+    void SetAllMethodLiteralToMap();
+
+    size_t GetClassAndMethodIndex(size_t *methodIdx);
 
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
@@ -457,9 +494,16 @@ private:
     CUnorderedMap<uint32_t, CString> recordNameMap_;
     Mutex methodNameMapMutex_;
     Mutex recordNameMapMutex_;
+    Mutex waitTranslateClassFinishedMutex_;
+    Mutex classIndexMutex_;
+    ConditionVariable waitTranslateClassFinishedCV_;
+    uint32_t runningTaskCount_ {0};
+    size_t classIndex_ {0};
+    size_t methodIndex_ {0};
 
     CUnorderedMap<uint32_t, uint64_t> constpoolMap_;
     uint32_t numMethods_ {0};
+    uint32_t numClasses_ {0};
     MethodLiteral *methodLiterals_ {nullptr};
     CString desc_;
     uint32_t anFileInfoIndex_ {INVALID_INDEX};

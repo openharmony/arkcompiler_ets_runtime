@@ -38,6 +38,8 @@ public:
     static JSHandle<Program> GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                              std::string_view entryPoint);
     static void TranslateClasses(const JSThread *thread, JSPandaFile *jsPandaFile, const CString &methodName);
+    static void TranslateClass(const JSThread *thread, JSPandaFile *jsPandaFile, const CString &methodName,
+        size_t methodIdx, size_t classIdx);
 
 private:
     static JSHandle<Program> GenerateProgramInternal(EcmaVM *vm, MethodLiteral *mainMethodLiteral,

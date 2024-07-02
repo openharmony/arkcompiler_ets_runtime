@@ -131,6 +131,7 @@ uint32_t JSPandaFile::GetOrInsertConstantPool(ConstPoolType type, uint32_t offse
 void JSPandaFile::InitializeUnMergedPF()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
+    numClasses_ = classIndexes.size();
     JSRecordInfo info;
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
@@ -172,6 +173,7 @@ void JSPandaFile::InitializeUnMergedPF()
 void JSPandaFile::InitializeMergedPF()
 {
     Span<const uint32_t> classIndexes = pf_->GetClasses();
+    numClasses_ = classIndexes.size();
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (pf_->IsExternal(classId)) {
@@ -448,5 +450,95 @@ void JSPandaFile::ClearNameMap()
         LockHolder lock(recordNameMapMutex_);
         recordNameMap_.clear();
     }
+}
+
+size_t JSPandaFile::GetClassAndMethodIndex(size_t *methodIdx)
+{
+    LockHolder lock(classIndexMutex_);
+    size_t result = 0;
+    Span<const uint32_t> classIndexes = GetClasses();
+    uint32_t index = 0;
+    do {
+        result = classIndex_++;
+        if (result >= numClasses_) {
+            return result;
+        }
+        index = classIndexes[result];
+    } while (IsExternal(panda_file::File::EntityId(index)));
+
+    *methodIdx = methodIndex_;
+    panda_file::File::EntityId classId(classIndexes[result]);
+    panda_file::ClassDataAccessor cda(*pf_, classId);
+    methodIndex_ += cda.GetMethodsNumber();
+    return result;
+}
+
+bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    jsPandaFile_->TranslateClass(thread_, *methodNamePtr_);
+    jsPandaFile_->ReduceTaskCount();
+    return true;
+}
+
+void JSPandaFile::TranslateClass(JSThread *thread, const CString &methodName)
+{
+    size_t methodIdx = 0;
+    size_t classIdx = GetClassAndMethodIndex(&methodIdx);
+    while (classIdx < numClasses_) {
+        PandaFileTranslator::TranslateClass(thread, this, methodName, methodIdx, classIdx);
+        classIdx = GetClassAndMethodIndex(&methodIdx);
+    }
+}
+
+void JSPandaFile::PostInitializeMethodTask(JSThread *thread, const std::shared_ptr<CString> &methodNamePtr)
+{
+    IncreaseTaskCount();
+    Taskpool::GetCurrentTaskpool()->PostTask(
+        std::make_unique<TranslateClassesTask>(thread->GetThreadId(), thread, this, methodNamePtr));
+}
+
+void JSPandaFile::IncreaseTaskCount()
+{
+    LockHolder holder(waitTranslateClassFinishedMutex_);
+    runningTaskCount_++;
+}
+
+void JSPandaFile::WaitTranslateClassTaskFinished()
+{
+    LockHolder holder(waitTranslateClassFinishedMutex_);
+    while (runningTaskCount_ > 0) {
+        waitTranslateClassFinishedCV_.Wait(&waitTranslateClassFinishedMutex_);
+    }
+}
+
+void JSPandaFile::ReduceTaskCount()
+{
+    LockHolder holder(waitTranslateClassFinishedMutex_);
+    runningTaskCount_--;
+    if (runningTaskCount_ == 0) {
+        waitTranslateClassFinishedCV_.SignalAll();
+    }
+}
+
+void JSPandaFile::SetAllMethodLiteralToMap()
+{
+    // async to optimize SetAllMethodLiteralToMap later
+    MethodLiteral *methodLiterals = GetMethodLiterals();
+    size_t methodIdx = 0;
+    while (methodIdx < numMethods_) {
+        MethodLiteral *methodLiteral = methodLiterals + (methodIdx++);
+        SetMethodLiteralToMap(methodLiteral);
+    }
+}
+
+void JSPandaFile::TranslateClasses(JSThread *thread, const CString &methodName)
+{
+    const std::shared_ptr<CString> methodNamePtr = std::make_shared<CString>(methodName);
+    for (int i = 0; i < Taskpool::GetCurrentTaskpool()->GetTotalThreadNum(); i++) {
+        PostInitializeMethodTask(thread, methodNamePtr);
+    }
+    TranslateClass(thread, methodName);
+    WaitTranslateClassTaskFinished();
+    SetAllMethodLiteralToMap();
 }
 }  // namespace panda::ecmascript

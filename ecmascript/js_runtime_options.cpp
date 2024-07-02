@@ -185,7 +185,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-opt-induction-variable:    Enable induciton variable analysis for aot compiler. Default: 'false'\n"
     "--compiler-trace-induction-variable:  Enable tracing induction variable for aot compiler. Default: 'false'\n"
     "--compiler-memory-analysis:           Enable memory analysis for aot compiler. Default: 'true'\n"
-    "--compiler-enable-jit-fast-compile:   Enable jit fast compile. Default: 'false'\n\n";
+    "--compiler-enable-jit-fast-compile:   Enable jit fast compile. Default: 'false'\n"
+    "--async-load-abc:                     Enable asynchronous load abc. Default: 'true'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -312,6 +313,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-baselinejit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD},
         {"compiler-force-baselinejit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN},
         {"compiler-enable-jit-fast-compile", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE},
+        {"async-load-abc", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1184,6 +1186,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableJitFastCompile(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ASYNC_LOAD_ABC:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetAsyncLoadAbc(argBool);
                 } else {
                     return false;
                 }
