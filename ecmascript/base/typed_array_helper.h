@@ -102,6 +102,7 @@ public:
     static JSTaggedValue findLastCommon(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> thisObjVal, int64_t len);
     static JSTaggedValue findLastIndexCommon(EcmaRuntimeCallInfo *argv,
                                              JSHandle<JSTaggedValue> thisObjVal, int64_t len);
+    static JSTaggedValue someCommon(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> thisObjVal, int64_t len);
 
     #define DEFINE_GET_ONHEAP_HCLASS_FROM_TYPE(Type)                                                          \
         inline static JSHandle<JSHClass> GetOnHeapHclass##Type(JSThread *thread, JSHClass* objHclass);

@@ -1006,3 +1006,34 @@ try {
 } catch(e) {
     print(e instanceof TypeError);
 }
+
+var arr_map = new Uint8Array([11, 22, 33, 44]);
+ArkTools.arrayBufferDetach(arr_map.buffer);
+try {
+    arr_map.map((v) => v)
+} catch (e) {
+    print(e instanceof TypeError)
+}
+
+var arr_filter = new Uint8Array([11, 22]);
+ArkTools.arrayBufferDetach(arr_filter.buffer);
+try {
+    arr_filter.filter(false)
+} catch (e) {
+    print(e instanceof TypeError)
+}
+
+var arr_some = new Uint8Array([11, 22]);
+ArkTools.arrayBufferDetach(arr_some.buffer);
+try {
+    arr_some.some(false)
+} catch (e) {
+    print(e instanceof TypeError)
+}
+
+var arr_some1 = new Uint8Array([33, 44]);
+Object.defineProperty(arr_some1, 'length', { value: 1 });
+print(arr_some1.some(function(elt) { return elt == 44; }));
+print(Array.prototype.some.call(arr_some1, function(elt) {
+    return elt == 44;
+}));

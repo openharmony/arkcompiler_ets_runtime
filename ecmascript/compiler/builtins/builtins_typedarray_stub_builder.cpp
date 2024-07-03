@@ -1293,12 +1293,16 @@ void BuiltinsTypedArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRe
     Label ecmaObj(env);
     Label typedArray(env);
     Label thisExists(env);
+    Label notDetached(env);
     BRANCH(IsEcmaObject(thisValue), &ecmaObj, slowPath);
     Bind(&ecmaObj);
     BRANCH(IsTypedArray(thisValue), &typedArray, slowPath);
     Bind(&typedArray);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
 
     Label arg0HeapObject(env);
     Label callable(env);
@@ -1376,6 +1380,7 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
 {
     auto env = GetEnvironment();
     Label thisExists(env);
+    Label notDetached(env);
     Label isEcmaObject(env);
     Label isFastTypedArray(env);
     Label defaultConstr(env);
@@ -1384,6 +1389,9 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
     Label accessorNotChanged(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
     BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
     GateRef arrayType = GetObjectType(LoadHClass(thisValue));
@@ -2583,6 +2591,7 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
     Label prototypeIsEcmaObj(env);
     Label isProtoChangeMarker(env);
     Label accessorNotChanged(env);
+    Label notDetached(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
@@ -2591,6 +2600,9 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
     Bind(&typedArrayIsFast);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
+    GateRef buffer = GetViewedArrayBuffer(thisValue);
+    BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
+    Bind(&notDetached);
     GateRef prototype = GetPrototypeFromHClass(LoadHClass(thisValue));
     BRANCH(IsEcmaObject(prototype), &prototypeIsEcmaObj, slowPath);
     Bind(&prototypeIsEcmaObj);
