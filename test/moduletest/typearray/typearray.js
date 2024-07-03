@@ -990,3 +990,19 @@ try {
 } catch (e) {
     print(e instanceof TypeError);
 }
+
+var arr_indexOf = new Uint8Array([11, 22, 33]);
+ArkTools.arrayBufferDetach(arr_indexOf.buffer);
+try {
+    arr_indexOf.indexOf(0);
+} catch(e) {
+    print(e instanceof TypeError);
+}
+
+var arr_lastIndexOf = new Uint8Array([11, 22, 33]);
+ArkTools.arrayBufferDetach(arr_lastIndexOf.buffer);
+try {
+    arr_lastIndexOf.lastIndexOf(0);
+} catch(e) {
+    print(e instanceof TypeError);
+}
