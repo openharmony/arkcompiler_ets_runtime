@@ -72,3 +72,10 @@ const deleteWords = words.find((word, index, arr) => {
 console.log(deleteWords);
 console.log(words.length);
 
+var arr1 = [{ valueOf() { arr1[1] = 20; return 1; }}, 2];
+var ta = new Uint8Array(arr1);
+print(2 == ta[1]);
+
+var arr2 = [{ valueOf() { arr2[1] = 20; return 1; }}, 2, , 4]; 
+var ta = new Uint8Array(arr2);
+print(2 == ta[1]);
