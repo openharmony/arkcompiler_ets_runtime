@@ -1474,11 +1474,21 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Some(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Some);
-    if (!GetThis(argv)->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
-    }
-    return BuiltinsArray::Some(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, TypedArray, Some);
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    // 2. Let valid be ValidateTypedArray(O).
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+
+    // 3. Let len be ToLength(Get(O, "length")).
+    int64_t len = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetArrayLength();
+    return TypedArrayHelper::someCommon(argv, thisObjVal, len);
 }
 
 // 22.2.3.25

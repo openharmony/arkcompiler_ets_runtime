@@ -2969,7 +2969,6 @@
         "mjsunit/es6/proxies-cross-realm-exception.js",
         "mjsunit/es6/super-with-spread-modify-next.js",
         "mjsunit/es6/array-of.js",
-        "mjsunit/es6/typedarray-iteration.js",
         "mjsunit/es6/array-iterator-detached.js",
         "mjsunit/es6/block-let-semantics-sloppy.js",
         "mjsunit/es6/string-iterator6.js",
