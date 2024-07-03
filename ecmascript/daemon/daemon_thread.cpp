@@ -55,7 +55,7 @@ void DaemonThread::StartRunning()
     ASSERT(tasks_.empty());
     Taskpool::GetCurrentTaskpool()->Initialize();
     ASSERT(GetThreadId() == 0);
-    thread_ = std::make_unique<std::thread>(&DaemonThread::Run, this);
+    thread_ = std::make_unique<std::thread>([this] {this->Run();});
     // Wait until daemon thread is running.
     while (!IsRunning());
 #ifdef ENABLE_QOS

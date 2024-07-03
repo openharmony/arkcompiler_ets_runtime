@@ -1222,8 +1222,9 @@ size_t Heap::VerifyHeapObjects(VerifyKind verifyKind) const
             verifyKind == VerifyKind::VERIFY_EVACUATE_OLD ||
             verifyKind == VerifyKind::VERIFY_EVACUATE_FULL) {
                 inactiveSemiSpace_->EnumerateRegions([this](Region *region) {
-                    region->IterateAllMarkedBits(std::bind(&VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject,
-                        this, std::placeholders::_1));
+                    region->IterateAllMarkedBits([this](void *addr) {
+                        VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(this, addr);
+                    });
                 });
             }
     }

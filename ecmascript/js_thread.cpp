@@ -115,24 +115,24 @@ JSThread::JSThread(EcmaVM *vm) : id_(os::thread::GetCurrentThreadId()), vm_(vm)
     auto chunk = vm->GetChunk();
     if (!vm_->GetJSOptions().EnableGlobalLeakCheck()) {
         globalStorage_ = chunk->New<EcmaGlobalStorage<Node>>(this, vm->GetNativeAreaAllocator());
-        newGlobalHandle_ = std::bind(&EcmaGlobalStorage<Node>::NewGlobalHandle, globalStorage_, std::placeholders::_1);
-        disposeGlobalHandle_ = std::bind(&EcmaGlobalStorage<Node>::DisposeGlobalHandle, globalStorage_,
-            std::placeholders::_1);
-        setWeak_ = std::bind(&EcmaGlobalStorage<Node>::SetWeak, globalStorage_, std::placeholders::_1,
-            std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-        clearWeak_ = std::bind(&EcmaGlobalStorage<Node>::ClearWeak, globalStorage_, std::placeholders::_1);
-        isWeak_ = std::bind(&EcmaGlobalStorage<Node>::IsWeak, globalStorage_, std::placeholders::_1);
+        newGlobalHandle_ = [this](JSTaggedType value) { return globalStorage_->NewGlobalHandle(value); };
+        disposeGlobalHandle_ = [this](uintptr_t nodeAddr) { globalStorage_->DisposeGlobalHandle(nodeAddr); };
+        setWeak_ = [this](uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack,
+                        WeakClearCallback nativeFinalizeCallBack) {
+            return globalStorage_->SetWeak(nodeAddr, ref, freeGlobalCallBack, nativeFinalizeCallBack);
+        };
+        clearWeak_ = [this](uintptr_t nodeAddr) { return globalStorage_->ClearWeak(nodeAddr); };
+        isWeak_ = [this](uintptr_t addr) { return globalStorage_->IsWeak(addr); };
     } else {
-        globalDebugStorage_ =
-            chunk->New<EcmaGlobalStorage<DebugNode>>(this, vm->GetNativeAreaAllocator());
-        newGlobalHandle_ = std::bind(&EcmaGlobalStorage<DebugNode>::NewGlobalHandle, globalDebugStorage_,
-            std::placeholders::_1);
-        disposeGlobalHandle_ = std::bind(&EcmaGlobalStorage<DebugNode>::DisposeGlobalHandle, globalDebugStorage_,
-            std::placeholders::_1);
-        setWeak_ = std::bind(&EcmaGlobalStorage<DebugNode>::SetWeak, globalDebugStorage_, std::placeholders::_1,
-            std::placeholders::_2, std::placeholders::_3, std::placeholders::_4);
-        clearWeak_ = std::bind(&EcmaGlobalStorage<DebugNode>::ClearWeak, globalDebugStorage_, std::placeholders::_1);
-        isWeak_ = std::bind(&EcmaGlobalStorage<DebugNode>::IsWeak, globalDebugStorage_, std::placeholders::_1);
+        globalDebugStorage_ = chunk->New<EcmaGlobalStorage<DebugNode>>(this, vm->GetNativeAreaAllocator());
+        newGlobalHandle_ = [this](JSTaggedType value) { return globalDebugStorage_->NewGlobalHandle(value); };
+        disposeGlobalHandle_ = [this](uintptr_t nodeAddr) { globalDebugStorage_->DisposeGlobalHandle(nodeAddr); };
+        setWeak_ = [this](uintptr_t nodeAddr, void *ref, WeakClearCallback freeGlobalCallBack,
+                        WeakClearCallback nativeFinalizeCallBack) {
+            return globalDebugStorage_->SetWeak(nodeAddr, ref, freeGlobalCallBack, nativeFinalizeCallBack);
+        };
+        clearWeak_ = [this](uintptr_t nodeAddr) { return globalDebugStorage_->ClearWeak(nodeAddr); };
+        isWeak_ = [this](uintptr_t addr) { return globalDebugStorage_->IsWeak(addr); };
     }
     vmThreadControl_ = new VmThreadControl(this);
     SetBCStubStatus(BCStubStatus::NORMAL_BC_STUB);
