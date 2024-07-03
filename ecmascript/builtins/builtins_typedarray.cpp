@@ -773,10 +773,10 @@ JSTaggedValue BuiltinsTypedArray::ForEach(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::IndexOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, IndexOf);
-    if (!GetThis(argv)->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
-    }
+    TypedArrayHelper::ValidateTypedArray(thread, GetThis(argv));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return BuiltinsArray::IndexOf(argv);
 }
 
@@ -904,10 +904,10 @@ JSTaggedValue BuiltinsTypedArray::Keys(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::LastIndexOf(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, LastIndexOf);
-    if (!GetThis(argv)->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
-    }
+    TypedArrayHelper::ValidateTypedArray(thread, GetThis(argv));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return BuiltinsArray::LastIndexOf(argv);
 }
 

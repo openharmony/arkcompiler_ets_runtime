@@ -248,3 +248,5 @@ Test New Uint8Array with Bad_Obj Success!
 Test New Uint8ClampedArray with Bad_Obj Success!
 true
 true
+true
+true
