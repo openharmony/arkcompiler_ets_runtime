@@ -149,10 +149,7 @@ void HeapProfiler::UpdateHeapObjects(HeapSnapshot *snapshot)
     snapshot->UpdateNodes();
 }
 
-void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] DumpFormat dumpFormat, [[maybe_unused]] bool isVmMode,
-                                    [[maybe_unused]] bool isPrivate, [[maybe_unused]] bool captureNumericValue,
-                                    [[maybe_unused]] bool isFullGC, [[maybe_unused]] bool isSimplify,
-                                    [[maybe_unused]] bool isSync)
+void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] const DumpSnapShotOption &dumpOption)
 {
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     // Write in faultlog for heap leak.
@@ -162,18 +159,16 @@ void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] DumpFormat dumpFormat, [[ma
         return;
     }
     FileDescriptorStream stream(fd);
-    DumpHeapSnapshot(
-        dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue, isFullGC, isSimplify, isSync, false);
+    DumpHeapSnapshot(&stream, dumpOption);
 #endif
 }
 
-bool HeapProfiler::DoDump(DumpFormat dumpFormat, Stream *stream, Progress *progress,
-                          bool isVmMode, bool isPrivate, bool captureNumericValue, bool isFullGC, bool isSimplify)
+bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShotOption &dumpOption)
 {
     int32_t heapCount = 0;
     HeapSnapshot *snapshot = nullptr;
     {
-        if (isFullGC) {
+        if (dumpOption.isFullGC) {
             size_t heapSize = vm_->GetHeap()->GetLiveObjectSize();
             LOG_ECMA(INFO) << "HeapProfiler DumpSnapshot heap size " << heapSize;
             heapCount = static_cast<int32_t>(vm_->GetHeap()->GetHeapObjectCount());
@@ -181,8 +176,7 @@ bool HeapProfiler::DoDump(DumpFormat dumpFormat, Stream *stream, Progress *progr
                 progress->ReportProgress(0, heapCount);
             }
         }
-        snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, isVmMode, isPrivate, captureNumericValue,
-                                    false, false, isSimplify);
+        snapshot = MakeHeapSnapshot(SampleType::ONE_SHOT, dumpOption);
         ASSERT(snapshot != nullptr);
     }
     entryIdMap_->UpdateEntryIdMap(snapshot);
@@ -191,7 +185,7 @@ bool HeapProfiler::DoDump(DumpFormat dumpFormat, Stream *stream, Progress *progr
         progress->ReportProgress(heapCount, heapCount);
     }
     if (!stream->Good()) {
-        FileStream newStream(GenDumpFileName(dumpFormat));
+        FileStream newStream(GenDumpFileName(dumpOption.dumpFormat));
         auto serializerResult = HeapSnapshotJSONSerializer::Serialize(snapshot, &newStream);
         GetChunk()->Delete(snapshot);
         return serializerResult;
@@ -270,9 +264,7 @@ void HeapProfiler::FillIdMap()
     GetChunk()->Delete(newEntryIdMap);
 }
 
-bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress,
-                                    bool isVmMode, bool isPrivate, bool captureNumericValue,
-                                    bool isFullGC, bool isSimplify, bool isSync, bool isBeforeFill)
+bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress)
 {
     bool res = false;
     base::BlockHookScope blockScope;
@@ -280,17 +272,17 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
 
     pid_t pid = -1;
     {
-        if (isFullGC) {
+        if (dumpOption.isFullGC) {
             [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
             ASSERT(heapClean);
         }
         // suspend All.
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-        if (isFullGC) {
+        if (dumpOption.isFullGC) {
             DISALLOW_GARBAGE_COLLECTION;
             const_cast<Heap *>(vm_->GetHeap())->Prepare();
         }
-        if (isBeforeFill) {
+        if (dumpOption.isBeforeFill) {
             Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
                 ASSERT(!thread->IsInRunningState());
                 const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
@@ -305,13 +297,13 @@ bool HeapProfiler::DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progr
         if (pid == 0) {
             vm_->GetAssociatedJSThread()->EnableCrossThreadExecution();
             prctl(PR_SET_NAME, reinterpret_cast<unsigned long>("dump_process"), 0, 0, 0);
-            res = DoDump(dumpFormat, stream, progress, isVmMode, isPrivate, captureNumericValue, isFullGC, isSimplify);
+            res = DoDump(stream, progress, dumpOption);
             _exit(0);
         }
     }
 
     if (pid != 0) {
-        if (isSync) {
+        if (dumpOption.isSync) {
             WaitProcess(pid);
         } else {
             std::thread thread(&WaitProcess, pid);
@@ -329,7 +321,11 @@ bool HeapProfiler::StartHeapTracking(double timeInterval, bool isVmMode, Stream 
     vm_->CollectGarbage(TriggerGCType::OLD_GC);
     ForceSharedGC();
     SuspendAllScope suspendScope(vm_->GetAssociatedJSThread());
-    HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::REAL_TIME, isVmMode, false, false, traceAllocation);
+    DumpSnapShotOption dumpOption;
+    dumpOption.isVmMode = isVmMode;
+    dumpOption.isPrivate = false;
+    dumpOption.captureNumericValue = false;
+    HeapSnapshot *snapshot = MakeHeapSnapshot(SampleType::REAL_TIME, dumpOption, traceAllocation);
     if (snapshot == nullptr) {
         return false;
     }
@@ -466,31 +462,28 @@ void HeapProfiler::ForceSharedGC()
     sHeap->GetSweeper()->WaitAllTaskFinished();
 }
 
-HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, bool isVmMode, bool isPrivate,
-                                             bool captureNumericValue, bool traceAllocation, bool isFullGC,
-                                             bool isSimplify)
+HeapSnapshot *HeapProfiler::MakeHeapSnapshot(SampleType sampleType, const DumpSnapShotOption &dumpOption,
+                                             bool traceAllocation)
 {
     LOG_ECMA(INFO) << "HeapProfiler::MakeHeapSnapshot";
-    if (isFullGC) {
+    if (dumpOption.isFullGC) {
         DISALLOW_GARBAGE_COLLECTION;
         const_cast<Heap *>(vm_->GetHeap())->Prepare();
     }
     switch (sampleType) {
         case SampleType::ONE_SHOT: {
-            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), isVmMode, isPrivate,
-                                                           captureNumericValue, traceAllocation, entryIdMap_,
-                                                           GetChunk());
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), dumpOption,
+                                                           traceAllocation, entryIdMap_, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();
             }
-            snapshot->BuildUp(isSimplify);
+            snapshot->BuildUp(dumpOption.isSimplify);
             return snapshot;
         }
         case SampleType::REAL_TIME: {
-            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), isVmMode, isPrivate,
-                                                           captureNumericValue, traceAllocation, entryIdMap_,
-                                                           GetChunk());
+            auto *snapshot = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), dumpOption,
+                                                           traceAllocation, entryIdMap_, GetChunk());
             if (snapshot == nullptr) {
                 LOG_FULL(FATAL) << "alloc snapshot failed";
                 UNREACHABLE();

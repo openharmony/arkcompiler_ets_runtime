@@ -88,13 +88,8 @@ public:
     /**
      * dump the specific snapshot in target format
      */
-    bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
-                          bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
-                          bool isFullGC = true, bool isSimplify = false, bool isSync = true,
-                          bool isBeforeFill = true) override;
-    void DumpHeapSnapshot(DumpFormat dumpFormat, bool isVmMode = true, bool isPrivate = false,
-                          bool captureNumericValue = false, bool isFullGC = true,
-                          bool isSimplify = false, bool isSync = true) override;
+    bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress = nullptr) override;
+    void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) override;
     void AddSnapshot(HeapSnapshot *snapshot);
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
@@ -131,11 +126,9 @@ private:
     /**
      * make a new heap snapshot and put it into a container eg, vector
      */
-    HeapSnapshot *MakeHeapSnapshot(SampleType sampleType, bool isVmMode = true,
-                                   bool isPrivate = false, bool captureNumericValue = false,
-                                   bool traceAllocation = false, bool isFullGC = true, bool isSimplify = false);
-    bool DoDump(DumpFormat dumpFormat, Stream *stream, Progress *progress,
-                bool isVmMode, bool isPrivate, bool captureNumericValue, bool isFullGC, bool isSimplify);
+    HeapSnapshot *MakeHeapSnapshot(SampleType sampleType, const DumpSnapShotOption &dumpOption,
+                                   bool traceAllocation = false);
+    bool DoDump(Stream *stream, Progress *progress, const DumpSnapShotOption &dumpOption);
     std::string GenDumpFileName(DumpFormat dumpFormat);
     CString GetTimeStamp();
     void UpdateHeapObjects(HeapSnapshot *snapshot);

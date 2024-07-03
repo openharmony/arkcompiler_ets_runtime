@@ -59,7 +59,9 @@ public:
         outputString.clear();
         FileStream stream(filePath.c_str());
         HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
-        heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
+        DumpSnapShotOption dumpOption;
+        dumpOption.dumpFormat = DumpFormat::JSON;
+        heapProfile->DumpHeapSnapshot(&stream, dumpOption);
         return heapProfile->GetIdCount();
     }
 
@@ -88,21 +90,14 @@ public:
         return profiler_->MoveEvent(address, forwardAddress, size);
     }
 
-    bool DumpHeapSnapshot(DumpFormat dumpFormat, Stream *stream, Progress *progress = nullptr,
-                          bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
-                          bool isFullGC = true, bool isSimplify = false, bool isSync = false,
-                          bool isBeforeFill = true) override
+    bool DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &dumpOption, Progress *progress = nullptr) override
     {
-        return profiler_->DumpHeapSnapshot(dumpFormat, stream, progress, isVmMode, isPrivate, captureNumericValue,
-                                           isFullGC, isSimplify, isSync, isBeforeFill);
+        return profiler_->DumpHeapSnapshot(stream, dumpOption, progress);
     }
 
-    void DumpHeapSnapshot(DumpFormat dumpFormat, bool isVmMode = true, bool isPrivate = false,
-                          bool captureNumericValue = false, bool isFullGC = true,
-                          bool isSimplify = false, bool isSync = false) override
+    void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) override
     {
-        profiler_->DumpHeapSnapshot(dumpFormat, isVmMode, isPrivate, captureNumericValue,
-                                    isFullGC, isSimplify, isSync);
+        profiler_->DumpHeapSnapshot(dumpOption);
     }
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,

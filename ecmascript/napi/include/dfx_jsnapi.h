@@ -25,6 +25,7 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/dfx/hprof/file_stream.h"
+#include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 
 #include "libpandabase/macros.h"
 
@@ -51,10 +52,11 @@ using SamplingInfo = ecmascript::SamplingInfo;
 using DebuggerPostTask = std::function<void(std::function<void()> &&)>;
 using TraceEvent = ecmascript::TraceEvent;
 using AppFreezeFilterCallback = std::function<bool(const int32_t pid)>;
-
+using DumpSnapShotOption = ecmascript::DumpSnapShotOption;
+using DumpFormat = ecmascript::DumpFormat;
 struct DumpForSnapShotStruct {
     const EcmaVM *vm;
-    int dumpFormat;
+    DumpFormat dumpFormat;
     bool isVmMode = true;
     bool isPrivate = false;
     bool captureNumericValue = false;
@@ -65,19 +67,13 @@ class PUBLIC_API DFXJSNApi {
 public:
     // progress pointer is used to report the object number for IDE.
     // isVmMode means the internal class in vm is visible. isPrivate means the number and string is not visible.
-    static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, const std::string &path, bool isVmMode = true,
-                                 bool isPrivate = false, bool captureNumericValue = false);
-    static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, Stream *stream, Progress *progress = nullptr,
-                                 bool isVmMode = true, bool isPrivate = false, bool captureNumericValue = false,
-                                 bool isFullGC = true);
-    static void DumpCpuProfile(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
-                               bool captureNumericValue = false, bool isFullGC = true);
-    static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode = true, bool isPrivate = false,
-                                 bool captureNumericValue = false, bool isFullGC = true);
-    static void DumpHeapSnapshot(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
-                                 bool captureNumericValue, bool isFullGC, uint32_t tid);
-    static void DumpHeapSnapshotWithVm(const EcmaVM *vm, int dumpFormat, bool isVmMode, bool isPrivate,
-                                       bool captureNumericValue, bool isFullGC, uint32_t tid);
+    static void DumpHeapSnapshot(const EcmaVM *vm, const std::string &path, const DumpSnapShotOption &dumpOption);
+    static void DumpHeapSnapshot(const EcmaVM *vm, Stream *stream, const DumpSnapShotOption &dumpOption,
+                                 Progress *progress = nullptr);
+    static void DumpCpuProfile(const EcmaVM *vm);
+    static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption);
+    static void DumpHeapSnapshot(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
+    static void DumpHeapSnapshotWithVm(const EcmaVM *vm, const DumpSnapShotOption &dumpOption, uint32_t tid);
     static void TriggerGC(const EcmaVM *vm, uint32_t tid);
     static void TriggerGCWithVm(const EcmaVM *vm);
     static void TriggerSharedGCWithVm(const EcmaVM *vm);

@@ -144,7 +144,12 @@ HWTEST_F_L0(HeapTrackerTest, StreamWriterEnd)
     stream.UpdateLastSeenObjectId(1, 1677567644913058);
 
     TestProgress testProgress;
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream, &testProgress, true, true, false);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = true;
+    dumpOption.captureNumericValue = false;
+    heapProfile->DumpHeapSnapshot(&stream, dumpOption, &testProgress);
     StreamWriter streamWriter(&stream);
     streamWriter.End();
     HeapProfilerInterface::Destroy(instance);
@@ -190,8 +195,11 @@ HWTEST_F_L0(HeapTrackerTest, FormatString)
     bool traceAllocation = false;
     bool captureNumericValue = false;
     HeapProfiler heapProfiler(instance);
-    HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), isVmMode,
-                              isPrivate, captureNumericValue, traceAllocation,
+    DumpSnapShotOption dumpOption;
+    dumpOption.isVmMode = isVmMode;
+    dumpOption.isPrivate = isPrivate;
+    dumpOption.captureNumericValue = captureNumericValue;
+    HeapSnapshot heapSnapshot(instance, heapProfiler.GetEcmaStringTable(), dumpOption, traceAllocation,
                               heapProfiler.GetEntryIdMap(), instance->GetChunk());
 
     StringHashMap stringHashMap(instance);

@@ -33,18 +33,21 @@ namespace OHOS {
         if (size <= 0) {
             return;
         }
-        int input = 0;
+        DumpFormat dumpFormat = DumpFormat::JSON;
         if (size > MAXBYTELEN) {
             size = MAXBYTELEN;
         }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+        if (memcpy_s(&dumpFormat, MAXBYTELEN, data, size) != 0) {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        bool isVmMode = true;
-        bool isPrivate = false;
-        bool captureNumericValue = false;
-        DFXJSNApi::DumpHeapSnapshot(vm, input, isVmMode, isPrivate, captureNumericValue);
+
+        DumpSnapShotOption dumpOption;
+        dumpOption.dumpFormat = dumpFormat;
+        dumpOption.isVmMode = true;
+        dumpOption.isPrivate = false;
+        dumpOption.captureNumericValue = false;
+        DFXJSNApi::DumpHeapSnapshot(vm, dumpOption);
         JSNApi::DestroyJSVM(vm);
     }
 }

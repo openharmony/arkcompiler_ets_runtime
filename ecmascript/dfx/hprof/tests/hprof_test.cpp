@@ -128,7 +128,9 @@ public:
         outputString.clear();
         FileStream stream(filePath.c_str());
         HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
-        heapProfile->DumpHeapSnapshot(DumpFormat::JSON, &stream);
+        DumpSnapShotOption dumpOption;
+        dumpOption.dumpFormat = DumpFormat::JSON;
+        heapProfile->DumpHeapSnapshot(&stream, dumpOption);
         return heapProfile->GetIdCount();
     }
 

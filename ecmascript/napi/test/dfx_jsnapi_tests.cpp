@@ -76,19 +76,20 @@ bool MatchJSONLineHeader(std::fstream &fs, const std::string filePath, int lineN
 
 HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_001)
 {
-    const int dumpFormat = static_cast<int>(ecmascript::DumpFormat::JSON);
     const std::string filePath = "DFXJSNApiTests_json_001.heapsnapshot";
     std::fstream outputString(filePath, std::ios::out);
     outputString.close();
     outputString.clear();
 
-    bool isVmMode = true;
-    bool isPrivate = false;
-    bool captureNumericValue = false;
     std::fstream inputFile {};
     EXPECT_TRUE(inputFile.good());
 
-    DFXJSNApi::DumpHeapSnapshot(vm_, dumpFormat, filePath, isVmMode, isPrivate, captureNumericValue);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = false;
+    dumpOption.captureNumericValue = false;
+    DFXJSNApi::DumpHeapSnapshot(vm_, filePath, dumpOption);
     EXPECT_TRUE(MatchJSONLineHeader(inputFile, filePath, 1, "{\"snapshot\":"));
     EXPECT_TRUE(MatchJSONLineHeader(inputFile, filePath, 2, "{\"meta\":"));
     EXPECT_TRUE(MatchJSONLineHeader(inputFile, filePath, 3, "{\"node_fields\":"));
@@ -104,7 +105,6 @@ HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_001)
 
 HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_002)
 {
-    const int dumpFormat = static_cast<int>(ecmascript::DumpFormat::JSON);
     const std::string filePath = "DFXJSNApiTests_json_002.heapsnapshot";
     std::fstream outputString(filePath, std::ios::out);
     outputString.close();
@@ -114,13 +114,15 @@ HWTEST_F_L0(DFXJSNApiTests, DumpHeapSnapshot_002)
     EXPECT_TRUE(stream.Good());
 
     ecmascript::Progress *progress = nullptr;
-    bool isVmMode = true;
-    bool isPrivate = false;
-    bool captureNumericValue = false;
     std::fstream fStream {};
     EXPECT_TRUE(fStream.good());
 
-    DFXJSNApi::DumpHeapSnapshot(vm_, dumpFormat, &stream, progress, isVmMode, isPrivate, captureNumericValue);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = ecmascript::DumpFormat::JSON;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = false;
+    dumpOption.captureNumericValue = false;
+    DFXJSNApi::DumpHeapSnapshot(vm_, &stream, dumpOption, progress);
     EXPECT_TRUE(MatchJSONLineHeader(fStream, filePath, 1, "{\"snapshot\":"));
     EXPECT_TRUE(MatchJSONLineHeader(fStream, filePath, 2, "{\"meta\":"));
     EXPECT_TRUE(MatchJSONLineHeader(fStream, filePath, 3, "{\"node_fields\":"));

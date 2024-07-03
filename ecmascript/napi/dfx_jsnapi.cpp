@@ -60,31 +60,29 @@ using ecmascript::FileStream;
 using ecmascript::FileDescriptorStream;
 using ecmascript::CMap;
 using ecmascript::Tracing;
+using ecmascript::DumpSnapShotOption;
 sem_t g_heapdumpCnt;
 
-void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
-                                 [[maybe_unused]] const std::string &path, [[maybe_unused]] bool isVmMode,
-                                 [[maybe_unused]] bool isPrivate, [[maybe_unused]] bool captureNumericValue)
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const std::string &path,
+                                 [[maybe_unused]] const DumpSnapShotOption &dumpOption)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     FileStream stream(path);
-    DumpHeapSnapshot(vm, dumpFormat, &stream, nullptr, isVmMode, isPrivate, captureNumericValue);
+    DumpHeapSnapshot(vm, &stream, dumpOption);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
 }
 
 // IDE interface.
-void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
-                                 [[maybe_unused]] Stream *stream, [[maybe_unused]] Progress *progress,
-                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                                 [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] Stream *stream,
+                                 [[maybe_unused]] const DumpSnapShotOption &dumpOption,
+                                 [[maybe_unused]] Progress *progress)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
-    heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), stream, progress,
-                                  isVmMode, isPrivate, captureNumericValue, isFullGC, false, true);
+    heapProfile->DumpHeapSnapshot(stream, dumpOption, progress);
 #else
     LOG_ECMA(ERROR) << "Not support arkcompiler heap snapshot";
 #endif
@@ -92,9 +90,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 
 [[maybe_unused]] static uint8_t killCount = 0;
 
-void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
-                               [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                               [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
+void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -115,9 +111,8 @@ void DFXJSNApi::DumpCpuProfile([[maybe_unused]] const EcmaVM *vm, [[maybe_unused
 }
 
 // kill -39.
-void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
-                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                                 [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC)
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm,
+                                 [[maybe_unused]] const DumpSnapShotOption &dumpOption)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
@@ -142,8 +137,7 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     FileDescriptorStream stream(fd);
     ecmascript::HeapProfilerInterface *heapProfile = ecmascript::HeapProfilerInterface::GetInstance(
         const_cast<EcmaVM *>(vm));
-    heapProfile->DumpHeapSnapshot(ecmascript::DumpFormat(dumpFormat), &stream, nullptr,
-                                  isVmMode, isPrivate, captureNumericValue, isFullGC, false, false);
+    heapProfile->DumpHeapSnapshot(&stream, dumpOption);
 
     sem_post(&g_heapdumpCnt);
 #endif // ENABLE_DUMP_IN_FAULTLOG
@@ -153,10 +147,8 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 }
 
 // tid = 0: dump all vm; tid != 0: dump tid vm, hidumper.
-void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
-                                 [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                                 [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC,
-                                 [[maybe_unused]] uint32_t tid)
+void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm,
+                                 [[maybe_unused]] const DumpSnapShotOption &dumpOption, [[maybe_unused]] uint32_t tid)
 {
     const int THREAD_COUNT = 1;
     if (vm->IsWorkerThread()) {
@@ -166,12 +158,11 @@ void DFXJSNApi::DumpHeapSnapshot([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
     sem_init(&g_heapdumpCnt, 0, THREAD_COUNT);
     uint32_t curTid = vm->GetTid();
     LOG_ECMA(INFO) << "DumpHeapSnapshot tid " << tid << " curTid " << curTid;
-    DumpHeapSnapshotWithVm(vm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC, tid);
+    DumpHeapSnapshotWithVm(vm, dumpOption, tid);
 }
 
-void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] int dumpFormat,
-                                       [[maybe_unused]] bool isVmMode, [[maybe_unused]] bool isPrivate,
-                                       [[maybe_unused]] bool captureNumericValue, [[maybe_unused]] bool isFullGC,
+void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
+                                       [[maybe_unused]] const DumpSnapShotOption &dumpOption,
                                        [[maybe_unused]] uint32_t tid)
 {
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
@@ -187,11 +178,11 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
     }
     struct DumpForSnapShotStruct *dumpStruct = new DumpForSnapShotStruct();
     dumpStruct->vm = vm;
-    dumpStruct->dumpFormat = dumpFormat;
-    dumpStruct->isVmMode = isVmMode;
-    dumpStruct->isPrivate = isPrivate;
-    dumpStruct->captureNumericValue = captureNumericValue;
-    dumpStruct->isFullGC = isFullGC;
+    dumpStruct->dumpFormat = dumpOption.dumpFormat;
+    dumpStruct->isVmMode = dumpOption.isVmMode;
+    dumpStruct->isPrivate = dumpOption.isPrivate;
+    dumpStruct->captureNumericValue = dumpOption.captureNumericValue;
+    dumpStruct->isFullGC = dumpOption.isFullGC;
     uv_work_t *work = new(std::nothrow) uv_work_t;
     if (work == nullptr) {
         LOG_ECMA(ERROR) << "work nullptr";
@@ -206,8 +197,13 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
         ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
             struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
             DFXJSNApi::GetHeapPrepare(dump->vm);
-            DumpHeapSnapshot(dump->vm, dump->dumpFormat, dump->isVmMode, dump->isPrivate,
-                dump->captureNumericValue, dump->isFullGC);
+            DumpSnapShotOption dumpOption;
+            dumpOption.dumpFormat = dump->dumpFormat;
+            dumpOption.isVmMode = dump->isVmMode;
+            dumpOption.isPrivate = dump->isPrivate;
+            dumpOption.captureNumericValue = dump->captureNumericValue;
+            dumpOption.isFullGC = dump->isFullGC;
+            DumpHeapSnapshot(dump->vm, dumpOption);
             delete dump;
             delete work;
         });
@@ -220,7 +216,7 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm, [[mayb
     const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
         uint32_t curTid = workerVm->GetTid();
         LOG_ECMA(INFO) << "DumpHeapSnapshot workthread curTid " << curTid;
-        DumpHeapSnapshotWithVm(workerVm, dumpFormat, isVmMode, isPrivate, captureNumericValue, isFullGC, tid);
+        DumpHeapSnapshotWithVm(workerVm, dumpOption, tid);
         return;
     });
 

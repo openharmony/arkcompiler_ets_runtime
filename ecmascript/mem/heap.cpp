@@ -508,7 +508,15 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
     if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
         LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM Success. ";
     }
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true, true);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = false;
+    dumpOption.captureNumericValue = false;
+    dumpOption.isFullGC = isFullGC;
+    dumpOption.isSimplify = true;
+    dumpOption.isSync = true;
+    heapProfile->DumpHeapSnapshot(dumpOption);
     HeapProfilerInterface::Destroy(vm);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
@@ -1330,7 +1338,15 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
     hasOOMDump_ = true;
 #endif
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
-    heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, isFullGC, true, true);
+    DumpSnapShotOption dumpOption;
+    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.isVmMode = true;
+    dumpOption.isPrivate = false;
+    dumpOption.captureNumericValue = false;
+    dumpOption.isFullGC = isFullGC;
+    dumpOption.isSimplify = true;
+    dumpOption.isSync = true;
+    heapProfile->DumpHeapSnapshot(dumpOption);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
 #endif // ECMASCRIPT_SUPPORT_SNAPSHOT
@@ -2359,7 +2375,15 @@ void Heap::ThresholdReachedDump()
             HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
             GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
                                                         GetHeapLimitSize(), GetLiveObjectSize());
-            heapProfile->DumpHeapSnapshot(DumpFormat::JSON, true, false, false, false, true, false);
+            DumpSnapShotOption dumpOption;
+            dumpOption.dumpFormat = DumpFormat::JSON;
+            dumpOption.isVmMode = true;
+            dumpOption.isPrivate = false;
+            dumpOption.captureNumericValue = false;
+            dumpOption.isFullGC = false;
+            dumpOption.isSimplify = true;
+            dumpOption.isSync = false;
+            heapProfile->DumpHeapSnapshot(dumpOption);
             hasOOMDump_ = false;
             HeapProfilerInterface::Destroy(ecmaVm_);
         }

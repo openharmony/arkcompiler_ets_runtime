@@ -399,10 +399,10 @@ public:
     static constexpr int SEQ_STEP = 2;
     NO_MOVE_SEMANTIC(HeapSnapshot);
     NO_COPY_SEMANTIC(HeapSnapshot);
-    HeapSnapshot(const EcmaVM *vm, StringHashMap *stringTable, const bool isVmMode, const bool isPrivate,
-                 const bool captureNumericValue, const bool trackAllocations, EntryIdMap *entryIdMap, Chunk *chunk)
-        : vm_(vm), stringTable_(stringTable), isVmMode_(isVmMode), isPrivate_(isPrivate),
-          captureNumericValue_(captureNumericValue), trackAllocations_(trackAllocations),
+    HeapSnapshot(const EcmaVM *vm, StringHashMap *stringTable, const DumpSnapShotOption &dumpOption,
+                 const bool trackAllocations, EntryIdMap *entryIdMap, Chunk *chunk)
+        : vm_(vm), stringTable_(stringTable), isVmMode_(dumpOption.isVmMode), isPrivate_(dumpOption.isPrivate),
+          captureNumericValue_(dumpOption.captureNumericValue), trackAllocations_(trackAllocations),
           entryIdMap_(entryIdMap), chunk_(chunk) {}
     ~HeapSnapshot();
     bool BuildUp(bool isSimplify = false);
