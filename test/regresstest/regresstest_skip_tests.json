@@ -3036,7 +3036,6 @@
         "mjsunit/es6/symbols.js",
         "mjsunit/es6/string-html.js",
         "mjsunit/es6/array-iterator.js",
-        "mjsunit/es6/typedarray-reverse.js",
         "mjsunit/es6/map-iterator-9.js",
         "mjsunit/es6/default-parameters-destructuring.js",
         "mjsunit/es6/call-with-spread-modify-next.js",

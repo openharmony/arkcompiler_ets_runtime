@@ -820,7 +820,7 @@ function testTypeArrayToReversed2(ctor) {
     return true;
 }
 
-var arr_every = new Uint8Array(["a", "b", "c"]);
+var arr_every = new Uint8Array([11, 22, 33, 44]);
 ArkTools.arrayBufferDetach(arr_every.buffer);
 try {
     arr_every.every(() => true)
@@ -828,7 +828,7 @@ try {
     print(e instanceof TypeError);
 }
 
-var arr_forEach = new Uint8Array(["a", "b", "c"]);
+var arr_forEach = new Uint8Array([11, 22, 33, 44]);
 ArkTools.arrayBufferDetach(arr_forEach.buffer);
 try {
     arr_forEach.forEach(() => true)
@@ -980,5 +980,13 @@ try {
 		ArkTools.ArrayBufferDetach(this.buffer);
     })
 } catch(e) {
+    print(e instanceof TypeError);
+}
+
+var array_reverse = new Uint8Array([11, 22, 33, 44]);
+ArkTools.arrayBufferDetach(array_reverse.buffer);
+try {
+    array_reverse.reverse();
+} catch (e) {
     print(e instanceof TypeError);
 }

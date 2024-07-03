@@ -1035,14 +1035,14 @@ JSTaggedValue BuiltinsTypedArray::Reverse(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Reverse);
-    if (!GetThis(argv)->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
-    }
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
-    // 1. Let O be ToObject(this value).
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 1. Let O be ToObject(this value).
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
