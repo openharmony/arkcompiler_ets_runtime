@@ -454,7 +454,7 @@ void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, [[maybe_un
 
 void JITProfiler::ConvertICByName(int32_t bcOffset, uint32_t slotId, BCType type)
 {
-    ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThread());
+    ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
     JSTaggedValue firstValue = profileTypeInfo_->Get(slotId);
     if (!firstValue.IsHeapObject()) {
         if (firstValue.IsHole()) {
@@ -664,7 +664,7 @@ void JITProfiler::ConvertICByNameWithPoly(ApEntityId abcId, int32_t bcOffset, JS
 
 void JITProfiler::ConvertICByValue(int32_t bcOffset, uint32_t slotId, BCType type)
 {
-    ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThread());
+    ProfileTypeAccessorLockScope accessorLockScope(vm_->GetJSThreadNoCheck());
     JSTaggedValue firstValue = profileTypeInfo_->Get(slotId);
     if (!firstValue.IsHeapObject()) {
         if (firstValue.IsHole()) {
