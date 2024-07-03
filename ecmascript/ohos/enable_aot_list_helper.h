@@ -117,12 +117,17 @@ private:
 
     void ReadEnableList(const std::string &aotJitListName)
     {
-        if (!panda::ecmascript::FileExist(aotJitListName.c_str())) {
-            LOG_ECMA(DEBUG) << "bundle enable list not exist and will pass by all. file: " << aotJitListName;
+        std::string realPath;
+        if (!panda::ecmascript::RealPath(aotJitListName, realPath, false)) {
+            LOG_ECMA(DEBUG) << "Fail to get realPath: " << aotJitListName;
+            return;
+        }
+        if (!panda::ecmascript::FileExist(realPath.c_str())) {
+            LOG_ECMA(DEBUG) << "bundle enable list not exist and will pass by all. file: " << realPath;
             return;
         }
 
-        std::ifstream inputFile(aotJitListName);
+        std::ifstream inputFile(realPath);
 
         if (!inputFile.is_open()) {
             LOG_ECMA(ERROR) << "bundle enable list open failed! file: " << aotJitListName << ", errno: " << errno;
