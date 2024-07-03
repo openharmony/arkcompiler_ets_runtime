@@ -251,40 +251,6 @@ CpuProfiler::~CpuProfiler()
     }
 }
 
-void CpuProfiler::SetProfileStart(uint64_t nowTimeStamp)
-{
-    uint64_t ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    struct CurrentProcessInfo currentProcessInfo = {0};
-    GetCurrentProcessInfo(currentProcessInfo);
-    std::string data = "";
-    data = "[{\"args\":{\"data\":{\"frames\":[{\"processId\":" + std::to_string(currentProcessInfo.pid) + "}]"
-            + ",\"persistentIds\":true}},\"cat\":\"disabled-by-default-devtools.timeline\","
-            + "\"name\":\"TracingStartedInBrowser\",\"ph\":\"I\",\"pid\":"
-            + std::to_string(currentProcessInfo.pid) + ",\"s\":\"t\",\"tid\":"
-            + std::to_string(currentProcessInfo.tid) + ",\"ts\":"
-            + std::to_string(ts) + ",\"tts\":178460227},\n";
-    ts = SamplingProcessor::GetMicrosecondsTimeStamp();
-    data += "{\"args\":{\"data\":{\"startTime\":" + std::to_string(nowTimeStamp) + "}},"
-            + "\"cat\":\"disabled-by-default-ark.cpu_profiler\",\"id\":\"0x2\","
-            + "\"name\":\"Profile\",\"ph\":\"P\",\"pid\":"
-            + std::to_string(currentProcessInfo.pid) + ",\"tid\":"
-            + std::to_string(currentProcessInfo.tid) + ",\"ts\":"
-            + std::to_string(ts) + ",\"tts\":" + std::to_string(currentProcessInfo.tts)
-            + "},\n";
-    generator_->SetStartsampleData(data);
-}
-
-void CpuProfiler::GetCurrentProcessInfo(struct CurrentProcessInfo &currentProcessInfo)
-{
-    currentProcessInfo.nowTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
-    currentProcessInfo.pid = getpid();
-    if (syscall(SYS_gettid) == -1) {
-        LOG_FULL(FATAL) << "syscall failed";
-        UNREACHABLE();
-    }
-    currentProcessInfo.tts = SamplingProcessor::GetMicrosecondsTimeStamp();
-}
-
 void CpuProfiler::GetStack(FrameIterator &it)
 {
     const CMap<struct MethodKey, struct FrameInfo> &stackInfo = generator_->GetStackInfo();
@@ -566,13 +532,6 @@ bool CpuProfiler::CheckFileName(const std::string &fileName, std::string &absolu
     file.close();
     absoluteFilePath = resolvedPath.data();
     return true;
-}
-
-void CpuProfiler::RecordCallNapiInfo(const std::string &methodAddr)
-{
-    uint64_t currentTime = SamplingProcessor::GetMicrosecondsTimeStamp();
-    generator_->RecordCallNapiTime(currentTime);
-    generator_->RecordCallNapiAddr(methodAddr);
 }
 
 void CpuProfiler::SetBuildNapiStack(bool flag)

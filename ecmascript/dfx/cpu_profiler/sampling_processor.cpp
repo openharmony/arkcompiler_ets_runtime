@@ -34,9 +34,9 @@ void *SamplingProcessor::Run(void *arg)
 {
     LOG_ECMA(INFO) << "SamplingProcessor::Run start";
     RunParams params = *reinterpret_cast<RunParams *>(arg);
-    SamplesRecord *generator = params.generatorParam;
-    uint32_t interval = params.intervalParam;
-    pthread_t pid = params.pidParam;
+    SamplesRecord *generator = params.generator_;
+    uint32_t interval = params.interval_;
+    pthread_t pid = params.tid_;
     pthread_t tid = pthread_self();
     pthread_setname_np(tid, "SamplingThread");
     uint64_t startTime = generator->GetThreadStartTime();
