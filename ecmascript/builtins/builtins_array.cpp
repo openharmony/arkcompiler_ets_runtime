@@ -1167,31 +1167,21 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     auto factory = thread->GetEcmaVM()->GetFactory();
-    auto context = thread->GetCurrentEcmaContext();
-    bool noCircular = context->JoinStackPushFastPath(thisHandle);
-    if (!noCircular) {
-        return factory->GetEmptyString().GetTaggedValue();
-    }
-    if (thisHandle->IsStableJSArray(thread)) {
-        return JSStableArray::Join(JSHandle<JSArray>::Cast(thisHandle), argv);
-    }
 
     // 1. Let O be ToObject(this value).
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
 
-    // 3. Let len be ToLength(Get(O, "length")).
+    // 2. Let len be ? LengthOfArrayLike(O).
     int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     if (len > UINT32_MAX) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "Invalid array length", JSTaggedValue::Exception());
     }
-    // 4. ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
 
-    // 5. If separator is undefined, let separator be the single-element String ",".
-    // 6. Let sep be ToString(separator).
+    // 3. If separator is undefined, let sep be ",".
+    // 4. Else, let sep be ? ToString(separator).
     JSHandle<JSTaggedValue> sepHandle;
     if ((GetCallArg(argv, 0)->IsUndefined())) {
         sepHandle = thread->GlobalConstants()->GetHandledCommaString();
@@ -1200,6 +1190,7 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<EcmaString> sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     uint32_t allocateLength = 0;
     uint32_t sepLength = EcmaStringAccessor(sepStringHandle).GetLength();
 
@@ -1207,11 +1198,18 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
         allocateLength = sepLength * (len - 1) + len;
     }
     if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
-        context->JoinStackPopFastPath(thisHandle);
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
     }
-    // 7. ReturnIfAbrupt(sep).
-    RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, thisHandle);
+
+    if (thisHandle->IsStableJSArray(thread)) {
+        return JSStableArray::Join(thread, JSHandle<JSArray>::Cast(thisHandle), sepStringHandle, len);
+    }
+    auto context = thread->GetCurrentEcmaContext();
+    bool noCircular = context->JoinStackPushFastPath(thisHandle);
+    if (!noCircular) {
+        return factory->GetEmptyString().GetTaggedValue();
+    }
+
     std::u16string sepStr = EcmaStringAccessor(sepStringHandle).ToU16String();
 
     // 8. If len is zero, return the empty String.
