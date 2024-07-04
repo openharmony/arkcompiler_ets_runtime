@@ -30,7 +30,7 @@ Runner::Runner(uint32_t threadNum, const std::function<void(os::thread::native_h
 {
     for (uint32_t i = 0; i < threadNum; i++) {
         // main thread is 0;
-        std::unique_ptr<std::thread> thread = std::make_unique<std::thread>(&Runner::Run, this, i + 1);
+        std::unique_ptr<std::thread> thread = std::make_unique<std::thread>([this, i] {this->Run(i + 1);});
         threadPool_.emplace_back(std::move(thread));
     }
 

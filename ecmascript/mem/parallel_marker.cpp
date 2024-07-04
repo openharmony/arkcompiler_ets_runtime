@@ -27,23 +27,25 @@ void Marker::MarkRoots(uint32_t threadId)
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkRoots");
     ObjectXRay::VisitVMRoots(
         heap_->GetEcmaVM(),
-        std::bind(&Marker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2),
-        std::bind(&Marker::HandleRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
-                  std::placeholders::_3),
-        std::bind(&Marker::HandleDerivedRoots, this, std::placeholders::_1, std::placeholders::_2,
-                  std::placeholders::_3, std::placeholders::_4));
+        [this, threadId](Root type, ObjectSlot slot) {this->HandleRoots(threadId, type, slot);},
+        [this, threadId](Root type, ObjectSlot start, ObjectSlot end) {
+            this->HandleRangeRoots(threadId, type, start, end);
+        },
+        [this](Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
+            this->HandleDerivedRoots(type, base, derived, baseOldObject);
+        });
     workManager_->PushWorkNodeToGlobal(threadId, false);
 }
 
 void Marker::ProcessNewToEden(uint32_t threadId)
 {
-    heap_->EnumerateNewSpaceRegions(std::bind(&Marker::HandleNewToEdenRSet, this, threadId, std::placeholders::_1));
+    heap_->EnumerateNewSpaceRegions([this, threadId](Region *region) {this->HandleNewToEdenRSet(threadId, region);});
     ProcessMarkStack(threadId);
 }
 
 void Marker::ProcessNewToEdenNoMarkStack(uint32_t threadId)
 {
-    heap_->EnumerateNewSpaceRegions(std::bind(&Marker::HandleNewToEdenRSet, this, threadId, std::placeholders::_1));
+    heap_->EnumerateNewSpaceRegions([this, threadId](Region *region) {this->HandleNewToEdenRSet(threadId, region);});
 }
 
 void Marker::MarkJitCodeMap(uint32_t threadId)
@@ -53,7 +55,9 @@ void Marker::MarkJitCodeMap(uint32_t threadId)
     TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkJitCodeMap");
     ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(),
-        std::bind(&Marker::HandleVisitJitCodeMap, this, threadId, std::placeholders::_1));
+        [this, threadId](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
+            this->HandleVisitJitCodeMap(threadId, jitCodeMaps);
+        });
     ProcessMarkStack(threadId);
 }
 
@@ -83,31 +87,40 @@ void Marker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, Jit
 
 void Marker::ProcessOldToNew(uint32_t threadId)
 {
-    heap_->EnumerateOldSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1));
+    heap_->EnumerateOldSpaceRegions([this, threadId](Region *region) {
+        this->HandleOldToNewRSet(threadId, region);
+    });
     ProcessMarkStack(threadId);
 }
 
 void Marker::ProcessOldToNewNoMarkStack(uint32_t threadId)
 {
-    heap_->EnumerateOldSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1));
+    heap_->EnumerateOldSpaceRegions([this, threadId](Region *region) {
+        this->HandleOldToNewRSet(threadId, region);
+    });
 }
 
 void Marker::ProcessOldToNew(uint32_t threadId, Region *region)
 {
-    heap_->EnumerateOldSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1),
-                                    region);
+    heap_->EnumerateOldSpaceRegions([this, threadId](Region *region) {
+        this->HandleOldToNewRSet(threadId, region);
+        }, region);
     ProcessMarkStack(threadId);
 }
 
 void Marker::ProcessSnapshotRSet(uint32_t threadId)
 {
-    heap_->EnumerateSnapshotSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1));
+    heap_->EnumerateSnapshotSpaceRegions([this, threadId](Region *region) {
+        this->HandleOldToNewRSet(threadId, region);
+    });
     ProcessMarkStack(threadId);
 }
 
 void Marker::ProcessSnapshotRSetNoMarkStack(uint32_t threadId)
 {
-    heap_->EnumerateSnapshotSpaceRegions(std::bind(&Marker::HandleOldToNewRSet, this, threadId, std::placeholders::_1));
+    heap_->EnumerateSnapshotSpaceRegions([this, threadId](Region *region) {
+        this->HandleOldToNewRSet(threadId, region);
+    });
 }
 
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)

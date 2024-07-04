@@ -53,11 +53,13 @@ void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm)
     heap->WaitClearTaskFinished();
     ObjectXRay::VisitVMRoots(
         localVm,
-        std::bind(&SharedGCMarker::HandleLocalRoots, this, threadId, std::placeholders::_1, std::placeholders::_2),
-        std::bind(&SharedGCMarker::HandleLocalRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
-                  std::placeholders::_3),
-        std::bind(&SharedGCMarker::HandleLocalDerivedRoots, this, std::placeholders::_1, std::placeholders::_2,
-                  std::placeholders::_3, std::placeholders::_4));
+        [this, threadId](Root type, ObjectSlot slot) {this->HandleLocalRoots(threadId, type, slot);},
+        [this, threadId](Root type, ObjectSlot start, ObjectSlot end) {
+            this->HandleLocalRangeRoots(threadId, type, start, end);
+        },
+        [this](Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
+            this->HandleLocalDerivedRoots(type, base, derived, baseOldObject);
+        });
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 
@@ -73,25 +75,23 @@ void SharedGCMarker::CollectLocalVMRSet(EcmaVM *localVm)
 void SharedGCMarker::MarkSerializeRoots(uint32_t threadId)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkSerializeRoots");
-    auto callback =
-        std::bind(&SharedGCMarker::HandleRoots, this, threadId, std::placeholders::_1, std::placeholders::_2);
+    auto callback = [this, threadId](Root type, ObjectSlot slot) {this->HandleRoots(threadId, type, slot);};
     Runtime::GetInstance()->IterateSerializeRoot(callback);
 }
 
 void SharedGCMarker::MarkStringCache(uint32_t threadId)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkStringCache");
-    auto cacheStringCallback =
-        std::bind(&SharedGCMarker::HandleLocalRangeRoots, this, threadId, std::placeholders::_1, std::placeholders::_2,
-            std::placeholders::_3);
+    auto cacheStringCallback = [this, threadId](Root type, ObjectSlot start, ObjectSlot end) {
+        this->HandleLocalRangeRoots(threadId, type, start, end);
+    };
     Runtime::GetInstance()->IterateCachedStringRoot(cacheStringCallback);
 }
 
 void SharedGCMarker::MarkSharedModule(uint32_t threadId)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkSharedModule");
-    auto visitor = std::bind(&SharedGCMarker::HandleRoots, this, threadId, std::placeholders::_1,
-                             std::placeholders::_2);
+    auto visitor = [this, threadId](Root type, ObjectSlot slot) {this->HandleRoots(threadId, type, slot);};
     SharedModuleManager::GetInstance()->Iterate(visitor);
 }
 
