@@ -27,16 +27,17 @@
 #include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/pgo_profiler/pgo_trace.h"
+#include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
 #include "ecmascript/pgo_profiler/types/pgo_type_generator.h"
-#include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "macros.h"
 
 namespace panda::ecmascript::pgo {
@@ -587,6 +588,9 @@ void PGOProfiler::HandlePGOPreDump()
         ProfileType recordType = GetRecordProfileType(abcId, recordName);
         recordInfos_->AddMethod(recordType, Method::Cast(methodValue), SampleMode::HOTNESS_MODE);
         ProfileBytecode(abcId, recordName, funcValue);
+        if (PGOTrace::GetInstance()->IsEnable()) {
+            PGOTrace::GetInstance()->TryGetMethodData(methodValue, false);
+        }
     });
 }
 
@@ -639,6 +643,9 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
         }
         ProfileBytecode(abcId, recordName, value);
         current = PopFromProfileQueue();
+        if (PGOTrace::GetInstance()->IsEnable()) {
+            PGOTrace::GetInstance()->TryGetMethodData(methodValue, true);
+        }
     }
     ASSERT(GetState() != State::STOP);
     if (IsGCWaitingWithLock()) {
@@ -656,7 +663,13 @@ void PGOProfiler::MergeProfilerAndDispatchAsyncSaveTask(bool force)
     auto mergeMinInterval = std::chrono::milliseconds(minIntervalOption * MS_PRE_SECOND);
     if ((methodCount_ >= MERGED_EVERY_COUNT && interval > mergeMinInterval) || (force && methodCount_ > 0)) {
         LOG_ECMA(DEBUG) << "Sample: post task to save profiler";
-        PGOProfilerManager::GetInstance()->Merge(this);
+        {
+            ClockScope start;
+            PGOProfilerManager::GetInstance()->Merge(this);
+            if (PGOTrace::GetInstance()->IsEnable()) {
+                PGOTrace::GetInstance()->SetMergeTime(start.TotalSpentTime());
+            }
+        }
         if (!force) {
             PGOProfilerManager::GetInstance()->AsyncSave();
         }
@@ -684,6 +697,7 @@ PGOProfiler::WorkNode* PGOProfiler::PopFromProfileQueue()
 void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, JSTaggedValue funcValue)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::ProfileBytecode");
+    ClockScope start;
     JSFunction *function = JSFunction::Cast(funcValue);
     if (function->IsSendableFunction()) {
         return;
@@ -909,6 +923,10 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
                 break;
         }
         bcIns = bcIns.GetNext();
+    }
+    if (PGOTrace::GetInstance()->IsEnable()) {
+        auto methodData = PGOTrace::GetInstance()->TryGetMethodData(function->GetMethod());
+        methodData->SetProfileBytecodeTime(start.TotalSpentTime());
     }
 }
 

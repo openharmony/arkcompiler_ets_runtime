@@ -79,6 +79,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/pgo_profiler/pgo_trace.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/runtime_call_id.h"
@@ -94,6 +95,7 @@
 #include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/jit_tools.h"
+#include "ecmascript/ohos/aot_tools.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -217,6 +219,7 @@ void EcmaVM::PostFork()
     DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
+    pgo::PGOTrace::GetInstance()->SetEnable(ohos::AotTools::GetPgoTraceEnable());
 #ifdef AOT_ESCAPE_ENABLE
     AotCrashInfo::GetInstance().SetOptionPGOProfiler(&options_, bundleName);
 #endif
@@ -271,6 +274,7 @@ void EcmaVM::InitializePGOProfiler()
     if (pgoProfiler_ == nullptr) {
         pgoProfiler_ = PGOProfilerManager::GetInstance()->Build(this, isEnablePGOProfiler);
     }
+    pgo::PGOTrace::GetInstance()->SetEnable(options_.GetPGOTrace() || ohos::AotTools::GetPgoTraceEnable());
     thread_->SetPGOProfilerEnable(isEnablePGOProfiler);
 }
 

@@ -21,12 +21,13 @@
 #include <sys/stat.h>
 
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/mem/c_string.h"
+#include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/pgo_profiler/pgo_trace.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/mutex.h"
@@ -179,6 +180,7 @@ void PGOProfilerEncoder::MergeWithExistProfile(PGOProfilerEncoder &runtimeEncode
 
 bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
 {
+    ClockScope start;
     umask(S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
     static const char *tempSuffix = ".tmp";
     auto tmpOutPath = realOutPath_ + "." + std::to_string(getpid()) + tempSuffix;
@@ -218,6 +220,10 @@ bool PGOProfilerEncoder::SaveAndRename(const SaveTask *task)
         return false;
     }
     RequestAot();
+    if (PGOTrace::GetInstance()->IsEnable()) {
+        PGOTrace::GetInstance()->SetSaveTime(start.TotalSpentTime());
+        PGOTrace::GetInstance()->Print();
+    }
     return true;
 }
 
@@ -243,7 +249,13 @@ bool PGOProfilerEncoder::InternalSave(const SaveTask *task)
         PGOProfilerEncoder encoder(realOutPath_, hotnessThreshold_, mode_);
         encoder.InitializeData();
         PGOProfilerDecoder decoder(realOutPath_, hotnessThreshold_);
-        encoder.MergeWithExistProfile(*this, decoder, task);
+        {
+            ClockScope start;
+            encoder.MergeWithExistProfile(*this, decoder, task);
+            if (PGOTrace::GetInstance()->IsEnable()) {
+                PGOTrace::GetInstance()->SetMergeWithExistProfileTime(start.TotalSpentTime());
+            }
+        }
         auto saveAndRenameResult = encoder.SaveAndRename(task);
         encoder.Destroy();
         return saveAndRenameResult;
