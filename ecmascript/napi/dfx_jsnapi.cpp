@@ -1021,4 +1021,9 @@ void DFXJSNApi::TranslateJSStackInfo(const EcmaVM *vm, std::string &url, int32_t
         LOG_ECMA(ERROR) << "Translate failed, url: " << url;
     }
 }
+
+uint32_t DFXJSNApi::GetCurrentThreadId()
+{
+    return JSThread::GetCurrentThreadId();
+}
 } // namespace panda
