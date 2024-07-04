@@ -70,6 +70,7 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
         }
         if (jitEnable) {
             isApp_ = options.IsEnableAPPJIT();
+            hotnessThreshold_ = options.GetJitHotnessThreshold();
             initJitCompiler_(options);
             JitTaskpool::GetCurrentTaskpool()->Initialize();
 

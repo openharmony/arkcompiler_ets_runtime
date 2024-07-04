@@ -80,6 +80,11 @@ public:
         return isApp_;
     }
 
+    uint32_t GetHotnessThreshold() const
+    {
+        return hotnessThreshold_;
+    }
+
     void SetProfileNeedDump(bool isNeed)
     {
         isProfileNeedDump_ = isNeed;
@@ -201,6 +206,7 @@ private:
     bool baselineJitEnable_ { false };
     bool isApp_ { false };
     bool isProfileNeedDump_ { true };
+    uint32_t hotnessThreshold_ { 0 };
 
     std::unordered_map<uint32_t, std::deque<std::shared_ptr<JitTask>>> installJitTasks_;
     std::unordered_map<uint32_t, std::pair<std::atomic<uint32_t>, ConditionVariable>> jitTaskCnt_;
