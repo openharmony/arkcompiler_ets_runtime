@@ -48,8 +48,8 @@ protected:
     void OnStop() override;
 private:
     bool Init();
-    void RemoveUnloadTask(const std::string taskId);
-    void DelayUnloadTask(const std::string taskId, const int32_t delayTime);
+    void RemoveUnloadTask(const std::string &taskId);
+    void DelayUnloadTask(const std::string &taskId, const int32_t delayTime);
     void RegisterPowerDisconnectedListener();
     void UnRegisterPowerDisconnectedListener();
 
