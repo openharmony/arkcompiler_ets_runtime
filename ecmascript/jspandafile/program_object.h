@@ -219,10 +219,10 @@ public:
         }
 
         JSHandle<TaggedArray> array(vm->GetJSThread()->GlobalConstants()->GetHandledEmptyArray());
-        sconstpool->SetAotSymbolInfo(array.GetTaggedValue());
-        sconstpool->SetAotHClassInfo(array.GetTaggedValue());
-        sconstpool->SetAotArrayInfo(array.GetTaggedValue());
-        sconstpool->SetConstantIndexInfo(array.GetTaggedValue());
+        sconstpool->SetAotSymbolInfo(vm->GetJSThread(), array.GetTaggedValue());
+        sconstpool->SetAotHClassInfo(vm->GetJSThread(), array.GetTaggedValue());
+        sconstpool->SetAotArrayInfo(vm->GetJSThread(), array.GetTaggedValue());
+        sconstpool->SetConstantIndexInfo(vm->GetJSThread(), array.GetTaggedValue());
         sconstpool->SetJSPandaFile(constpool->GetJSPandaFile());
         sconstpool->SetIndexHeader(constpool->GetIndexHeader());
         sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(0));
@@ -322,10 +322,10 @@ public:
             Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
         }
         JSHandle<TaggedArray> array(thread->GlobalConstants()->GetHandledEmptyArray());
-        SetAotSymbolInfo(array.GetTaggedValue());
-        SetAotHClassInfo(array.GetTaggedValue());
-        SetAotArrayInfo(array.GetTaggedValue());
-        SetConstantIndexInfo(array.GetTaggedValue());
+        SetAotSymbolInfo(thread, array.GetTaggedValue());
+        SetAotHClassInfo(thread, array.GetTaggedValue());
+        SetAotArrayInfo(thread, array.GetTaggedValue());
+        SetConstantIndexInfo(thread, array.GetTaggedValue());
         SetJSPandaFile(nullptr);
         SetIndexHeader(nullptr);
         SetUnsharedConstpoolIndex(JSTaggedValue(CONSTPOOL_TYPE_FLAG));
@@ -352,17 +352,17 @@ public:
         return Barriers::GetValue<JSPandaFile *>(GetData(), GetJSPandaFileOffset());
     }
 
-    inline void InitConstantPoolTail(const ConstantPool *constPool)
+    inline void InitConstantPoolTail(const JSThread *thread, const ConstantPool *constPool)
     {
-        SetAotArrayInfo(constPool->GetAotArrayInfo());
-        SetAotHClassInfo(constPool->GetAotHClassInfo());
-        SetConstantIndexInfo(constPool->GetConstantIndexInfo());
-        SetAotSymbolInfo(constPool->GetAotSymbolInfo());
+        SetAotArrayInfo(thread, constPool->GetAotArrayInfo());
+        SetAotHClassInfo(thread, constPool->GetAotHClassInfo());
+        SetConstantIndexInfo(thread, constPool->GetConstantIndexInfo());
+        SetAotSymbolInfo(thread, constPool->GetAotSymbolInfo());
     }
 
-    inline void SetConstantIndexInfo(JSTaggedValue info)
+    inline void SetConstantIndexInfo(const JSThread *thread, JSTaggedValue info)
     {
-        Barriers::SetPrimitive(GetData(), GetConstantIndexInfoOffset(), info.GetRawData());
+        Set(thread, (GetLength() - CONSTANT_INDEX_INFO_INDEX), info);
     }
 
     inline JSTaggedValue GetConstantIndexInfo() const
@@ -370,9 +370,9 @@ public:
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetConstantIndexInfoOffset()));
     }
 
-    inline void SetAotArrayInfo(JSTaggedValue info)
+    inline void SetAotArrayInfo(const JSThread *thread, JSTaggedValue info)
     {
-        Barriers::SetPrimitive(GetData(), GetAotArrayInfoOffset(), info.GetRawData());
+        Set(thread, (GetLength() - AOT_ARRAY_INFO_INDEX), info);
     }
 
     inline JSTaggedValue GetAotArrayInfo() const
@@ -412,9 +412,9 @@ public:
         return JSTaggedValue::Hole();
     }
 
-    inline void SetAotHClassInfo(JSTaggedValue info)
+    inline void SetAotHClassInfo(const JSThread *thread, JSTaggedValue info)
     {
-        Barriers::SetPrimitive(GetData(), GetAotHClassInfoOffset(), info.GetRawData());
+        Set(thread, (GetLength() - AOT_HCLASS_INFO_INDEX), info);
     }
 
     inline JSTaggedValue GetAotHClassInfo() const
@@ -422,14 +422,9 @@ public:
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotHClassInfoOffset()));
     }
 
-    inline void SetAotHClassInfoWithBarrier(JSThread *thread, JSTaggedValue info)
+    inline void SetAotSymbolInfo(const JSThread *thread, JSTaggedValue info)
     {
-        Set(thread, (GetLength() - AOT_HCLASS_INFO_INDEX), info);
-    }
-
-    inline void SetAotSymbolInfo(JSTaggedValue info)
-    {
-        Barriers::SetPrimitive(GetData(), GetAotSymbolInfoOffset(), info.GetRawData());
+        Set(thread, (GetLength() - AOT_SYMBOL_INFO_INDEX), info);
     }
 
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
