@@ -849,32 +849,39 @@ public:
         auto size = bcBuilder_->GetBasicBlockCount();
         visitState_.resize(size, MarkState::UNVISITED);
         size_t entryId = 0; // entry id
+        VisitedInfo info = {0, false};
+        visitedInfo_.resize(size, info);
         pendingList_.emplace_back(entryId);
         while (!pendingList_.empty()) {
             size_t bbId = pendingList_.back();
             auto &bb = bcBuilder_->GetBasicBlockById(bbId);
             bool allVisited = true;
             visitState_[bbId] = MarkState::PENDING;
-            auto it = bb.succs.begin();
             BytecodeRegion* catchBlock = bb.catches.empty() ? nullptr : bb.catches.at(0);
-            while (it != bb.succs.end() || (catchBlock != nullptr)) {
-                BytecodeRegion* succBlock = nullptr;
-                if (it != bb.succs.end()) {
-                    succBlock = *it;
-                    it++;
-                } else if (catchBlock != nullptr) {
-                    succBlock = catchBlock;
-                    catchBlock = nullptr;
-                }
+            for (size_t i = visitedInfo_[bbId].needVisitIndex; i < bb.succs.size(); i++) {
+                BytecodeRegion* succBlock = bb.succs[i];
                 size_t succId = succBlock->id;
                 if (visitState_[succId] == MarkState::UNVISITED) {
                     pendingList_.emplace_back(succId);
                     visitState_[succId] = MarkState::ON_STACK;
                     allVisited = false;
+                    visitedInfo_[bbId].needVisitIndex = i + 1;
                     break;
                 } else if (visitState_[succId] == MarkState::PENDING) {
                     // back edge
                     CountLoopBackEdge(bbId, succId);
+                }
+            }
+            if (catchBlock != nullptr && !visitedInfo_[bbId].isVisitedCatchBlock) {
+                size_t catchId = catchBlock->id;
+                if (visitState_[catchId] == MarkState::UNVISITED) {
+                    pendingList_.emplace_back(catchId);
+                    visitState_[catchId] = MarkState::ON_STACK;
+                    allVisited = false;
+                    visitedInfo_[bbId].isVisitedCatchBlock = true;
+                } else if (visitState_[catchId] == MarkState::PENDING) {
+                    // back edge
+                    CountLoopBackEdge(bbId, catchId);
                 }
             }
             if (allVisited) {
@@ -1016,6 +1023,7 @@ public:
         for (size_t i = 0; i < numLoops_; i++) {
             auto& loopInfo = frameBuilder_->loops_[i];
             auto& loopHeader = bcBuilder_->GetBasicBlockById(loopInfo.loopHeadId);
+            ASSERT(loopHeader.numOfStatePreds > loopInfo.numLoopBacks);
             size_t numOfEntries = static_cast<size_t>(loopHeader.numOfStatePreds - loopInfo.numLoopBacks);
             if (numOfEntries > 1 && loopHeader.trys.size() == 0) {
                 InsertEmptyBytecodeRegion(loopInfo, loopHeader, numOfEntries);
@@ -1177,6 +1185,10 @@ private:
         size_t bbId;
         size_t index;
     };
+    struct VisitedInfo {
+        size_t needVisitIndex;
+        bool isVisitedCatchBlock = false;
+    };
     enum class MarkState : uint8_t {
         UNVISITED = 0,
         ON_STACK,
@@ -1193,6 +1205,7 @@ private:
     ChunkVector<MarkState> visitState_;
     Chunk* chunk_ {nullptr};
     size_t numLoops_ {0};
+    std::vector<VisitedInfo> visitedInfo_;
 };
 
 void FrameStateBuilder::ComputeLoopInfo()
