@@ -115,6 +115,8 @@ public:
     static constexpr size_t NORMALIZED_IMPORT_PATH_INDEX = 3;
     static constexpr size_t NORMALIZED_VERSION_INDEX = 4;
     static constexpr size_t CURRENT_DIREATORY_TAG_LEN = 2;
+    static constexpr size_t SO_PREFIX_LEN = 3;
+    static constexpr size_t SO_SUFFIX_LEN = 3;
 
     static constexpr size_t PKGINFO_PACKAGE_NAME_INDEX = 1;
     static constexpr size_t PKGINFO_BUDNLE_NAME_INDEX = 3;
@@ -346,7 +348,10 @@ public:
             LOG_FULL(ERROR) << "GetNormalizedPathFromOhmUrl Invalid normalized ohmurl";
             return "";
         }
-        return res[NORMALIZED_IMPORT_PATH_INDEX];
+        CString soName = res[NORMALIZED_IMPORT_PATH_INDEX];
+        // Delete the prefix "lib" and suffix ".so".
+        soName = soName.substr(SO_PREFIX_LEN, soName.size() - SO_PREFIX_LEN - SO_SUFFIX_LEN);
+        return soName;
     }
 
     /*
