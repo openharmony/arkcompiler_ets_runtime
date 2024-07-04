@@ -572,11 +572,96 @@ JSTaggedValue BuiltinsTypedArray::Every(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Fill(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Fill);
-    if (!GetThis(argv)->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, TypedArray, Fill);
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 2. Let taRecord be ? ValidateTypedArray(O, SEQ-CST).
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 3. Let len be TypedArrayLength(taRecord).
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    int64_t len = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetArrayLength();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 4. If O.[[ContentType]] is BIGINT, set value to ? ToBigInt(value).
+    // 5. Otherwise, set value to ? ToNumber(value).
+    JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
+    if (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray()) {
+        ContentType contentType = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetContentType();
+        if (contentType == ContentType::BigInt) {
+            value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
+        } else {
+            value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToNumber(thread, value));
+        }
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     }
-    return BuiltinsArray::Fill(argv);
+    // 6. Let relativeStart be ? ToIntegerOrInfinity(start).
+    JSHandle<JSTaggedValue> startArg = GetCallArg(argv, 1);
+    JSTaggedNumber argStartTemp = JSTaggedValue::ToInteger(thread, startArg);
+    // 7. ReturnIfAbrupt(relativeStart).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    double argStart = argStartTemp.GetNumber();
+    // 8. Else if relativeStart < 0, let startIndex be max(len + relativeStart, 0).
+    // 9. Else, let startIndex be min(relativeStart, len).
+    int64_t start = 0;
+    if (argStart < 0) {
+        double tempStart = argStart + len;
+        start = tempStart > 0 ? tempStart : 0;
+    } else {
+        start = argStart < len ? argStart : len;
+    }
+
+    // 10. If end is undefined, let relativeEnd be len; else let relativeEnd be ? ToIntegerOrInfinity(end).
+    double argEnd = len;
+    JSHandle<JSTaggedValue> endArg = GetCallArg(argv, INDEX_TWO);
+    if (!endArg->IsUndefined()) {
+        JSTaggedNumber argEndTemp = JSTaggedValue::ToInteger(thread, endArg);
+        // 11. ReturnIfAbrupt(relativeEnd).
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        argEnd = argEndTemp.GetNumber();
+    }
+
+    // 12. Else if relativeEnd < 0, let endIndex be max(len + relativeEnd, 0).
+    // 13. Else, let endIndex be min(relativeEnd, len).
+    int64_t end = len;
+    if (argEnd < 0) {
+        double tempEnd = argEnd + len;
+        end = tempEnd > 0 ? tempEnd : 0;
+    } else {
+        end = argEnd < len ? argEnd : len;
+    }
+
+    // 14. Set taRecord to MakeTypedArrayWithBufferWitnessRecord(O, SEQ-CST).
+    // 15. If IsTypedArrayOutOfBounds(taRecord) is true, throw a TypeError exception.
+    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 19. Repeat, while k < final
+    //   a. Let Pk be ! ToString(𝔽(k)).
+    //   b. Perform ! Set(O, Pk, value, true).
+    //   c. Set k to k + 1.
+
+    if (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray()) {
+        bool result = JSTypedArray::FastTypedArrayFill(thread, thisObjVal, value, start, end);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (result) {
+            return thisObjHandle.GetTaggedValue();
+        }
+    }
+
+    int64_t k = start;
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    while (k < end) {
+        key.Update(JSTaggedValue(k));
+        JSArray::FastSetPropertyByValue(thread, thisObjVal, key, value);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        k++;
+    }
+    
+    // 20. Return O.
+    return thisObjHandle.GetTaggedValue();
 }
 
 // 22.2.3.9 %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] )

@@ -1037,3 +1037,21 @@ print(arr_some1.some(function(elt) { return elt == 44; }));
 print(Array.prototype.some.call(arr_some1, function(elt) {
     return elt == 44;
 }));
+
+var arr_fill = new Uint8Array([2, 2]);
+Object.defineProperty(arr_fill, 'length', {value: 1});
+arr_fill.fill(3);
+Array.prototype.fill.call(arr_fill, 4);
+print(4 == arr_fill[0]);
+print(3 == arr_fill[1]);
+ArkTools.arrayBufferDetach(arr_fill.buffer);
+try {
+    arr_fill.fill(0);
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+var arr_fill1 = new Uint8ClampedArray([0, 0, 0]).fill(2.50000);
+arr_fill1.forEach((b)=> {
+    print(2 == b);
+})
