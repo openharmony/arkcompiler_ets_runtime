@@ -2850,7 +2850,7 @@ void CallerSavePre::ApplySSAPRE()
         workCand = workList.front();
         workCand->SetIndex(static_cast<int32>(cnt));
         workLr = regAllocator->GetLiveRange(static_cast<RegOperand *>(workCand->GetTheOperand())->GetRegisterNumber());
-        DEBUG_ASSERT(workLr != nullptr, "exepected non null lr");
+        DEBUG_ASSERT(workLr != nullptr, "expected non null lr");
         workList.pop_front();
         if (workCand->GetRealOccs().empty()) {
             continue;
@@ -2867,7 +2867,7 @@ void CallerSavePre::ApplySSAPRE()
         // #2 Rename
         ComputeDS();
         ComputeAvail();
-        DEBUG_ASSERT(workLr->GetProcessed() == false, "exepected unprocessed");
+        DEBUG_ASSERT(workLr->GetProcessed() == false, "expected unprocessed");
         workLr->SetProcessed();
     }
 }
