@@ -52,7 +52,7 @@ bool BetterUseMOVZ(uint64 val)
     /*
      * note that since we already check if the value
      * can be movable with as a single mov instruction,
-     * we should not exepct either n_16zeros_chunks>=3 or n_16ones_chunks>=3
+     * we should not expect either n_16zeros_chunks>=3 or n_16ones_chunks>=3
      */
 #if DEBUG
     constexpr uint32 kN16ChunksCheck = 2;
