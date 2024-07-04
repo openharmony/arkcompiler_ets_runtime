@@ -967,7 +967,7 @@ JSTaggedValue BuiltinsArray::Find(EcmaRuntimeCallInfo *argv)
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-    
+
     // 3. Let len be ToLength(Get(O, "length")).
     int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
@@ -1090,7 +1090,7 @@ JSTaggedValue BuiltinsArray::IndexOfStable(
     if (fromIndex >= length) {
         return JSTaggedValue(-1);
     }
-    if (UNLIKELY(thisHandle->IsECMAObject())) {
+    if (UNLIKELY(!thisHandle->IsECMAObject())) {
         return IndexOfSlowPath(argv, thread, thisHandle, length, fromIndex);
     }
     JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
