@@ -98,9 +98,7 @@ void NTypeHCRLowering::LowerCreateArrayWithBuffer(GateRef gate, GateRef glue)
     GateRef literialElements = builder_.GetElementsArray(cachedArray);
     uint32_t cpIdVal = static_cast<uint32_t>(acc_.GetConstantValue(cpId));
     JSTaggedValue arr = GetArrayLiteralValue(cpIdVal, constPoolIndex);
-    if (arr.IsUndefined()) {
-        return;
-    }
+    ASSERT(!arr.IsUndefined());
     DISALLOW_GARBAGE_COLLECTION;
     JSArray *arrayHandle = JSArray::Cast(arr.GetTaggedObject());
     TaggedArray *arrayLiteral = TaggedArray::Cast(arrayHandle->GetElements());

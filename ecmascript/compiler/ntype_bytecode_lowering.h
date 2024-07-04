@@ -23,7 +23,7 @@ namespace panda::ecmascript::kungfu {
 class NTypeBytecodeLowering {
 public:
     NTypeBytecodeLowering(Circuit *circuit, PassContext *ctx,
-                          bool enableLog, const std::string& name)
+                          bool enableLog, const std::string& name, const CString& recordName)
         : circuit_(circuit),
           acc_(circuit),
           builder_(circuit, ctx->GetCompilerConfig()),
@@ -33,6 +33,7 @@ public:
           profiling_(ctx->GetCompilerConfig()->IsProfiling()),
           traceBc_(ctx->GetCompilerConfig()->IsTraceBC()),
           methodName_(name),
+          recordName_(recordName),
           glue_(acc_.GetGlueFromArgList()),
           argAcc_(circuit),
           compilationEnv_(ctx->GetCompilationEnv()) {}
@@ -76,6 +77,18 @@ private:
         return methodName_;
     }
 
+    JSTaggedValue GetConstantpoolValue(uint32_t cpId)
+    {
+        return compilationEnv_->FindConstpool(jsPandaFile_, cpId);
+    }
+
+    JSTaggedValue GetArrayLiteralValue(uint32_t cpId, uint32_t cpIdx)
+    {
+        JSTaggedValue cp = GetConstantpoolValue(cpId);
+        JSTaggedValue unsharedCp = compilationEnv_->FindOrCreateUnsharedConstpool(cp);
+        return compilationEnv_->GetArrayLiteralFromCache(unsharedCp, cpIdx, recordName_);
+    }
+
     enum SuperCorrectCallCheck : uint8_t {
         CALL_SUPER_BEFORE_THIS_CHECK = 0,
         FORBIDDEN_SUPER_REBIND_THIS_CHECK,
@@ -91,6 +104,7 @@ private:
     bool profiling_ {false};
     bool traceBc_ {false};
     std::string methodName_;
+    const CString recordName_;
     GateRef glue_ {Circuit::NullGate()};
     ArgumentAccessor argAcc_;
     const CompilationEnv *compilationEnv_ {nullptr};

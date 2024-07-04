@@ -366,7 +366,8 @@ public:
         TimeScope timescope("NTypeBytecodeLoweringPass", data->GetMethodName(),
             data->GetMethodOffset(), data->GetLog());
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
-        NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName());
+        NTypeBytecodeLowering lowering(data->GetCircuit(), data->GetPassContext(), enableLog, data->GetMethodName(),
+                                       data->GetRecordName());
         lowering.RunNTypeBytecodeLowering();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
