@@ -227,6 +227,9 @@ void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
         return;
     }
     std::string outFile = realOutPath + "/" + std::string(fileName);
+    if (!ecmascript::FileExist(outFile.c_str())) {
+        return;
+    }
     int fd = open(outFile.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     jitDumpElf.WriteJitElfFile(fd);
     close(fd);
