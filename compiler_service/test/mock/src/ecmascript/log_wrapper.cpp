@@ -13,19 +13,15 @@
  * limitations under the License.
  */
 
-#ifndef OHOS_ARKCOMPILER_POWER_DISCONNECTED_LISTENER_H
-#define OHOS_ARKCOMPILER_POWER_DISCONNECTED_LISTENER_H
-
-#include "common_event_manager.h"
-#include "common_event_subscriber.h"
-#include "common_event_support.h"
+/** @file mock for ecmascript/log_wrapper.cpp
+ *  This file is the mock of ecmascript/log_wrapper.cpp
+ */
+#include "ecmascript/log_wrapper.h"
 
 namespace OHOS::ArkCompiler {
-class PowerDisconnectedListener : public EventFwk::CommonEventSubscriber {
-public:
-    explicit PowerDisconnectedListener(const EventFwk::CommonEventSubscribeInfo &subscribeInfo);
-    virtual ~PowerDisconnectedListener() = default;
-    void OnReceiveEvent(const EventFwk::CommonEventData &data) override;
-};
-}  // namespace OHOS::ArkCompiler
-#endif // OHOS_ARKCOMPILER_POWER_DISCONNECTED_LISTENER_H
+std::ostringstream LOG_SA(const Level level)
+{
+    std::ostringstream stream_;
+    return stream_;
+}
+} // namespace OHOS::ArkCompiler
