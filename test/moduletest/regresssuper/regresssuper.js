@@ -66,3 +66,26 @@
   print(undefined == (new A).s.call(null));
   print(undefined == (new A).s.call("abc"));
 })();
+
+class TestA {
+  constructor() {
+      print("TestA", this.constructor.name, new.target.name);
+  }
+}
+class TestB extends TestA {
+  constructor() {
+      super();
+      print("TestB", this.constructor.name, new.target.name);
+      this.test();
+  }
+}
+class TestC {
+  constructor() {
+      print("TestC", this.constructor.name, new.target.name);
+  }
+  test() {
+      print("TestC");
+  }
+}
+let c1 = Reflect.construct(TestB, [], TestC.prototype.constructor);
+let c2 = Reflect.construct(TestB, [], c1.constructor);
