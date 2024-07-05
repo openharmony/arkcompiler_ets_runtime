@@ -1656,18 +1656,18 @@ GateRef StubBuilder::LoadGlobal(GateRef cell)
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label cellIsInvalid(env);
     Label cellNotInvalid(env);
+    Label cellNotAccessor(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Branch(IsInvalidPropertyBox(cell), &cellIsInvalid, &cellNotInvalid);
-    Bind(&cellIsInvalid);
-    {
-        Jump(&exit);
-    }
+    Branch(IsInvalidPropertyBox(cell), &exit, &cellNotInvalid);
     Bind(&cellNotInvalid);
     {
-        result = GetValueFromPropertyBox(cell);
-        Jump(&exit);
+        Branch(IsAccessorPropertyBox(cell), &exit, &cellNotAccessor);
+        Bind(&cellNotAccessor);
+        {
+            result = GetValueFromPropertyBox(cell);
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     auto ret = *result;
@@ -2405,27 +2405,19 @@ GateRef StubBuilder::StoreGlobal(GateRef glue, GateRef value, GateRef cell)
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label cellIsInvalid(env);
     Label cellNotInvalid(env);
-    Label cellIsAccessorData(env);
     Label cellIsNotAccessorData(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Branch(IsInvalidPropertyBox(cell), &cellIsInvalid, &cellNotInvalid);
-    Bind(&cellIsInvalid);
-    {
-        Jump(&exit);
-    }
+    Branch(IsInvalidPropertyBox(cell), &exit, &cellNotInvalid);
     Bind(&cellNotInvalid);
-    Branch(IsAccessorPropertyBox(cell), &cellIsAccessorData, &cellIsNotAccessorData);
-    Bind(&cellIsAccessorData);
     {
-        Jump(&exit);
-    }
-    Bind(&cellIsNotAccessorData);
-    {
-        Store(VariableType::JS_ANY(), glue, cell, IntPtr(PropertyBox::VALUE_OFFSET), value);
-        result = Undefined();
-        Jump(&exit);
+        Branch(IsAccessorPropertyBox(cell), &exit, &cellIsNotAccessorData);
+        Bind(&cellIsNotAccessorData);
+        {
+            Store(VariableType::JS_ANY(), glue, cell, IntPtr(PropertyBox::VALUE_OFFSET), value);
+            result = Undefined();
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     auto ret = *result;

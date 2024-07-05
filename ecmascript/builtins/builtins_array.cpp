@@ -1315,6 +1315,10 @@ JSTaggedValue BuiltinsArray::Join(EcmaRuntimeCallInfo *argv)
         if (k > 0) {
             concatStr.append(sepStr);
         }
+        if (concatStr.size() > EcmaString::MAX_STRING_LENGTH) {
+            context->JoinStackPopFastPath(thisHandle);
+            THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+        }
         concatStr.append(nextStr);
     }
 

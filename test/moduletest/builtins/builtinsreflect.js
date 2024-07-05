@@ -29,4 +29,7 @@ var tag2 = Reflect.set(y, 'length', 5);
 print(tag1);
 print(tag2);
 
+let obj = {name:"tom"};
+let pxobj = new Proxy(obj,{});
+print(Reflect.get(pxobj,"name"))
 print("builtins reflect end");

@@ -125,3 +125,13 @@ Reflect.defineProperty(globalThis,"c",{
 Reflect.set(globalThis,"d","d");
 JSON.stringify(globalThis);
 print("end JSON.stringify(globalThis)")
+
+let obj1 = {
+    get a() {
+        this[102400] = 1;
+        return "a";
+    },
+    b: "b",
+}
+Object.keys(obj1);
+print(JSON.stringify(obj1));
