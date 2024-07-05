@@ -86,6 +86,19 @@ enum RegionGCFlags {
     IN_INACTIVE_SEMI_SPACE = 1 << 13,
 };
 
+// Currently only use for region in LinearSpace, to check if the region is allocated during concurrent marking.
+enum class RegionTypeFlag : uint8_t {
+    DEFAULT = 0,
+    // We should avoid using the lower 3 bits (bits 0 to 2).
+    // If ZAP_MEM is enabled, the value of the lower 3 bits conflicts with the INVALID_VALUE.
+
+    // Region is allocated before concurrent marking, but some new object may be allocated here
+    // during concurrent marking.
+    HALF_FRESH = 0x08,
+    // Region is allocated during concurrent marking.
+    FRESH = 0x09,
+};
+
 enum RSetType {
     OLD_TO_NEW,
     LOCAL_TO_SHARE,
@@ -136,8 +149,8 @@ static inline std::string ToSpaceTypeName(uint8_t space)
 class Region {
 public:
     Region(NativeAreaAllocator *allocator, uintptr_t allocateBase, uintptr_t begin, uintptr_t end,
-        RegionSpaceFlag spaceType)
-        : packedData_(begin, end, spaceType),
+        RegionSpaceFlag spaceType, RegionTypeFlag typeFlag)
+        : packedData_(begin, end, spaceType, typeFlag),
           nativeAreaAllocator_(allocator),
           allocateBase_(allocateBase),
           end_(end),
@@ -250,6 +263,8 @@ public:
     // Mark bitset
     GCBitset *GetMarkGCBitset() const;
     bool AtomicMark(void *address);
+    // Objects in fresh region should only mark in JS Thread.
+    bool NonAtomicMark(void *address);
     void ClearMark(void *address);
     bool Test(void *addr) const;
     // ONLY used for heap verification.
@@ -507,6 +522,31 @@ public:
         return InYoungSpace() && !InInactiveSemiSpace();
     }
 
+    RegionTypeFlag GetRegionTypeFlag() const
+    {
+        return packedData_.typeFlag_;
+    }
+
+    void SetRegionTypeFlag(RegionTypeFlag typeFlag)
+    {
+        packedData_.typeFlag_ = typeFlag;
+    }
+
+    void ResetRegionTypeFlag()
+    {
+        SetRegionTypeFlag(RegionTypeFlag::DEFAULT);
+    }
+
+    bool IsFreshRegion() const
+    {
+        return GetRegionTypeFlag() == RegionTypeFlag::FRESH;
+    }
+
+    bool IsHalfFreshRegion() const
+    {
+        return GetRegionTypeFlag() == RegionTypeFlag::HALF_FRESH;
+    }
+
     // ONLY used for heap verification.
     void SetInactiveSemiSpace()
     {
@@ -726,9 +766,11 @@ public:
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
                                                  base::AlignedPointer,
+                                                 base::AlignedPointer,
                                                  base::AlignedSize> {
         enum class Index : size_t {
-            FlagIndex = 0,
+            FlagsIndex = 0,
+            TypeFlagIndex,
             MarkGCBitSetIndex,
             OldToNewSetIndex,
             LocalToShareSetIndex,
@@ -739,10 +781,11 @@ public:
 
         static_assert(static_cast<size_t>(Index::NumOfMembers) == NumOfTypes);
 
-        inline PackedData(uintptr_t begin, uintptr_t end, RegionSpaceFlag spaceType)
+        inline PackedData(uintptr_t begin, uintptr_t end, RegionSpaceFlag spaceType, RegionTypeFlag typeFlag)
         {
             flags_.spaceFlag_ = spaceType;
             flags_.gcFlags_ = 0;
+            typeFlag_ = typeFlag;
             bitsetSize_ = (spaceType == RegionSpaceFlag::IN_HUGE_OBJECT_SPACE ||
                            spaceType == RegionSpaceFlag::IN_HUGE_MACHINE_CODE_SPACE ||
                            spaceType == RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE) ?
@@ -761,14 +804,20 @@ public:
         {
             flags_.spaceFlag_ = spaceType;
             flags_.gcFlags_ = 0;
+            typeFlag_ = RegionTypeFlag::DEFAULT;
             // no markGCBitset
             begin_ = begin;
             markGCBitset_ = nullptr;
         }
 #endif
-        static size_t GetFlagOffset(bool isArch32)
+        static size_t GetFlagsOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::FlagIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::FlagsIndex)>(isArch32);
+        }
+
+        static size_t GetTypeFlagOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::TypeFlagIndex)>(isArch32);
         }
 
         static size_t GetGCBitsetOffset(bool isArch32)
@@ -798,6 +847,10 @@ public:
         }
 
         alignas(EAS) PackedPtr flags_;
+        // Use different UIntPtr from flags_ to prevent the potential data race.
+        // Be careful when storing to this value, currently this is only from JS_Thread during ConcurrentMarking,
+        // or from GC_Thread during GC ClearTask.
+        alignas(EAS) RegionTypeFlag typeFlag_;
         alignas(EAS) GCBitset *markGCBitset_ {nullptr};
         // OldToNewRSet only for general OldSpace, NewToEdenRSet only for YoungSpace. Their pointers can union
         union {

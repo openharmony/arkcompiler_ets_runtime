@@ -78,7 +78,6 @@ void ConcurrentMarker::ReMark()
     LOG_GC(DEBUG) << "ConcurrentMarker: Remarking Begin";
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ReMarking);
     Marker *nonMovableMarker = heap_->GetNonMovableMarker();
-    workManager_->SetPostGCTaskType(ParallelGCTaskPhase::OLD_HANDLE_GLOBAL_POOL_TASK);
     nonMovableMarker->MarkRoots(MAIN_THREAD_INDEX);
     nonMovableMarker->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningTaskFinished();
@@ -122,6 +121,7 @@ void ConcurrentMarker::Reset(bool revertCSet)
         // Partial gc clear cset when evacuation allocator finalize
         heap_->GetOldSpace()->RevertCSet();
         auto callback = [](Region *region) {
+            region->ResetRegionTypeFlag();
             region->ClearMarkGCBitset();
             region->ClearCrossRegionRSet();
             region->ResetAliveObject();
@@ -138,6 +138,8 @@ void ConcurrentMarker::InitializeMarking()
 {
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarkingInitialize);
     heap_->Prepare();
+    ASSERT(VerifyAllRegionsNonFresh());
+    heap_->GetNewSpace()->RecordCurrentRegionAsHalfFresh();
     isConcurrentMarking_ = true;
     thread_->SetMarkStatus(MarkStatus::MARKING);
 
@@ -180,7 +182,7 @@ bool ConcurrentMarker::MarkerTask::Run(uint32_t threadId)
     // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
     while (!heap_->GetWorkManager()->HasInitialized());
     ClockScope clockScope;
-    heap_->GetNonMovableMarker()->ProcessMarkStackConcurrent(threadId);
+    heap_->GetNonMovableMarker()->ProcessMarkStack(threadId);
     heap_->WaitRunningTaskFinished();
     heap_->GetConcurrentMarker()->FinishMarking(clockScope.TotalSpentTime());
     DecreaseTaskCounts();
@@ -208,5 +210,14 @@ void ConcurrentMarker::FinishMarking(float spendTime)
     if (heap_->IsFullMarkRequested()) {
         heap_->SetFullMarkRequestedState(false);
     }
+}
+
+bool ConcurrentMarker::VerifyAllRegionsNonFresh()
+{
+    bool ok = true;
+    heap_->EnumerateRegions([&ok](Region *region) {
+        ok &= !region->IsFreshRegion() && !region->IsHalfFreshRegion();
+    });
+    return ok;
 }
 }  // namespace panda::ecmascript

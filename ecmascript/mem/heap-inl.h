@@ -593,6 +593,7 @@ void Heap::SwapOldSpace()
 void Heap::ReclaimRegions(TriggerGCType gcType)
 {
     activeSemiSpace_->EnumerateRegionsWithRecord([] (Region *region) {
+        region->ResetRegionTypeFlag();
         region->ClearMarkGCBitset();
         region->ClearCrossRegionRSet();
         region->ResetAliveObject();

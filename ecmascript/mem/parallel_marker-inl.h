@@ -54,6 +54,12 @@ inline void NonMovableMarker::MarkValue(uint32_t threadId, ObjectSlot &slot, Reg
         TaggedObject *obj = nullptr;
         if (!value.IsWeakForHeapObject()) {
             obj = value.GetTaggedObject();
+            Region *objRegion = Region::ObjectAddressToRange(obj);
+            if (objRegion->IsFreshRegion()) {
+                // Object in fresh region should only mark from JS Thread in barrier, or MarkObject in MarkRoots.
+                ASSERT(objRegion->InYoungSpace());
+                return;
+            }
             MarkObject(threadId, obj);
         } else {
             RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()), rootRegion);
@@ -92,7 +98,12 @@ inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object
             << " size " <<((MachineCode *)object)->GetInstructionsSize();
     }
 #endif
-    if (objectRegion->AtomicMark(object)) {
+    if (objectRegion->IsFreshRegion()) {
+        // This should only happen in MarkRoot from js thread.
+        ASSERT(JSThread::GetCurrent() != nullptr);
+        ASSERT(objectRegion->InYoungSpace());
+        objectRegion->NonAtomicMark(object);
+    } else if (objectRegion->AtomicMark(object)) {
         workManager_->Push(threadId, object);
     }
 }

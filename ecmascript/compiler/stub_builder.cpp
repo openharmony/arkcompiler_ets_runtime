@@ -1755,10 +1755,13 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
             BRANCH(Int64Equal(state, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK))), &exit, &marking);
 
             Bind(&marking);
-            CallNGCRuntime(
-                glue,
-                RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
-            Jump(&exit);
+            {
+                // Check fresh region, and directly mark value instead of call runtime.
+                CallNGCRuntime(
+                    glue,
+                    RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
+                Jump(&exit);
+            }
         }
     }
     Bind(&exit);

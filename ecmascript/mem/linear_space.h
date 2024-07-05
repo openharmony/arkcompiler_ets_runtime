@@ -47,21 +47,34 @@ public:
     }
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
-    bool IsNewAllocatedObject(uintptr_t current)
+    void RecordCurrentRegionAsHalfFresh()
     {
-        uintptr_t currentTop = linearTop_.load(std::memory_order_acquire);
-        uintptr_t currentEnd = linearEnd_.load(std::memory_order_relaxed);
-        return currentTop <= current && current < currentEnd;
+        Region *region = GetCurrentRegion();
+        ASSERT(region != nullptr);
+        ASSERT(!region->IsFreshRegion() && !region->IsHalfFreshRegion());
+        region->SetRegionTypeFlag(RegionTypeFlag::HALF_FRESH);
+        freshObjectWaterLine_ = allocator_.GetTop();
+        ASSERT(region->InRange(freshObjectWaterLine_));
     }
+
+    bool IsFreshObjectInHalfFreshRegion(TaggedObject *object)
+    {
+        uintptr_t addr = ToUintPtr(object);
+        ASSERT(Region::ObjectAddressToRange(object)->IsHalfFreshRegion());
+        ASSERT(Region::ObjectAddressToRange(object)->InRange(addr));
+        return addr >= freshObjectWaterLine_;
+    }
+
 protected:
     Heap *localHeap_;
+    JSThread *thread_ {nullptr};
     BumpPointerAllocator allocator_;
     size_t overShootSize_ {0};
     size_t allocateAfterLastGC_ {0};
     size_t survivalObjectSize_ {0};
     uintptr_t waterLine_ {0};
-    std::atomic<uintptr_t> linearTop_ {0};
-    std::atomic<uintptr_t> linearEnd_ {0};
+    // This value is set in ConcurrentMark::InitializeMarking before post GC task, so do not need atomic store/load.
+    uintptr_t freshObjectWaterLine_ {0};
 };
 
 class EdenSpace : public LinearSpace {

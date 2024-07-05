@@ -119,4 +119,48 @@ HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithNewSpace)
         EXPECT_TRUE(!heap->IsConcurrentFullMark());
     }
 }
+
+HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithFreshRegion)
+{
+    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    JSHandle<TaggedArray> arr = factory->NewTaggedArray(1);
+    EXPECT_TRUE(!thread->IsConcurrentMarkingOrFinished());
+
+    SemiSpace *space = heap->GetNewSpace();
+    EXPECT_TRUE(space->Expand(false));
+    Region *region = space->GetCurrentRegion();
+    EXPECT_TRUE(!region->IsFreshRegion());
+
+    JSHandle<JSHClass> hclass(thread, thread->GlobalConstants()->GetObjectClass().GetTaggedObject());
+    uint32_t numInlinedProps = hclass->GetInlinedProperties();
+    EXPECT_TRUE(numInlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+    uint32_t size = hclass->GetObjectSize();
+    EXPECT_TRUE(size == JSObject::SIZE + numInlinedProps * sizeof(JSTaggedValue));
+    uintptr_t addr = space->Allocate(size);
+    EXPECT_TRUE(addr != 0);
+    JSObject *obj = reinterpret_cast<JSObject*>(addr);
+
+    JSHandle<TaggedArray> emptyArray = factory->EmptyArray();
+    factory->InitializeExtraProperties(hclass, obj, numInlinedProps);
+    obj->InitializeHash();
+    obj->SetElements(thread, emptyArray, SKIP_BARRIER);
+    obj->SetProperties(thread, emptyArray, SKIP_BARRIER);
+    obj->SynchronizedSetClass(thread, *hclass);
+
+    arr->Set(thread, 0, JSTaggedValue(obj));
+
+    heap->SetMarkType(MarkType::MARK_YOUNG);
+    heap->TriggerConcurrentMarking();
+    EXPECT_TRUE(thread->IsConcurrentMarkingOrFinished());
+    EXPECT_TRUE(region->IsHalfFreshRegion());
+    region->SetRegionTypeFlag(RegionTypeFlag::FRESH);
+    EXPECT_TRUE(region->IsFreshRegion());
+
+    heap->WaitConcurrentMarkingFinished();
+    JSHandle<JSObject> objHandle(thread, obj);
+    heap->GetConcurrentMarker()->HandleMarkingFinished();
+}
 }  // namespace panda::test

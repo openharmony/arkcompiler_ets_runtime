@@ -140,6 +140,15 @@ inline bool Region::AtomicMark(void *address)
         (addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
 }
 
+inline bool Region::NonAtomicMark(void *address)
+{
+    ASSERT(IsFreshRegion());
+    auto addrPtr = reinterpret_cast<uintptr_t>(address);
+    ASSERT(InRange(addrPtr));
+    return packedData_.markGCBitset_->SetBit<AccessType::NON_ATOMIC>(
+        (addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+}
+
 inline void Region::ClearMark(void *address)
 {
     auto addrPtr = reinterpret_cast<uintptr_t>(address);

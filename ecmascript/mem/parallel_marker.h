@@ -53,11 +53,6 @@ public:
         LOG_GC(FATAL) << "can not call this method";
     }
 
-    virtual void ProcessMarkStackConcurrent([[maybe_unused]] uint32_t threadId)
-    {
-        LOG_GC(FATAL) << "can not call this method";
-    }
-
     virtual void ProcessIncrementalMarkStack([[maybe_unused]] uint32_t threadId,
                                              [[maybe_unused]] uint32_t markStepSize)
     {
@@ -103,7 +98,6 @@ public:
     ~NonMovableMarker() override = default;
 
 protected:
-    void ProcessMarkStackConcurrent(uint32_t threadId) override;
     void ProcessMarkStack(uint32_t threadId) override;
     template <typename Callback>
     inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,

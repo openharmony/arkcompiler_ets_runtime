@@ -103,38 +103,6 @@ void WorkManager::PushWorkNodeToGlobal(uint32_t threadId, bool postTask)
     }
 }
 
-bool WorkManager::PushPendingObject(uint32_t threadId, TaggedObject *object)
-{
-    WorkNode *&pendingNode = works_.at(threadId).pendingNode_;
-    if (!pendingNode->PushObject(ToUintPtr(object))) {
-        pendingStack_.Push(pendingNode);
-        pendingNode = AllocateWorkNode();
-        return pendingNode->PushObject(ToUintPtr(object));
-    }
-    return true;
-}
-
-void WorkManager::PushPendingNodeToGlobal(uint32_t threadId)
-{
-    WorkNode *&pendingNode = works_.at(threadId).pendingNode_;
-    if (!pendingNode->IsEmpty()) {
-        pendingStack_.Push(pendingNode);
-        pendingNode = AllocateWorkNode();
-    }
-}
-
-bool WorkManager::PopPendingObject(uint32_t threadId, TaggedObject **object)
-{
-    WorkNode *&pendingNode = works_.at(threadId).pendingNode_;
-    if (!pendingNode->PopObject(reinterpret_cast<uintptr_t *>(object))) {
-        if (!pendingStack_.Pop(&works_.at(threadId).pendingNode_)) {
-            return false;
-        }
-        return pendingNode->PopObject(reinterpret_cast<uintptr_t *>(object));
-    }
-    return true;
-}
-
 bool WorkManager::Pop(uint32_t threadId, TaggedObject **object)
 {
     WorkNode *&outNode = works_.at(threadId).outNode_;
@@ -175,7 +143,6 @@ size_t WorkManager::Finish()
         holder.pendingUpdateSlots_.clear();
         aliveSize += holder.aliveSize_;
     }
-    pendingStack_.ResetTop();
     FinishBase();
     initialized_.store(false, std::memory_order_release);
     return aliveSize;
@@ -195,12 +162,10 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
 {
     parallelGCTaskPhase_ = taskPhase;
     InitializeBase();
-    ASSERT(pendingStack_.Top() == nullptr);
     for (uint32_t i = 0; i < threadNum_; i++) {
         WorkNodeHolder &holder = works_.at(i);
         holder.inNode_ = AllocateWorkNode();
         holder.outNode_ = AllocateWorkNode();
-        holder.pendingNode_ = AllocateWorkNode();
         holder.weakQueue_ = new ProcessQueue();
         holder.weakQueue_->BeginMarking(continuousQueue_.at(i));
         holder.aliveSize_ = 0;

@@ -161,6 +161,7 @@ private:
 
     void InitializeMarking();
     void FinishMarking(float spendTime);
+    bool VerifyAllRegionsNonFresh();
 
     static size_t taskCounts_;
     static Mutex taskCountMutex_;
