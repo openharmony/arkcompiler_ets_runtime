@@ -19,3 +19,4 @@ test successful
 {"a":{}}
 {"3":3}
 end JSON.stringify(globalThis)
+{"a":"a","b":"b"}

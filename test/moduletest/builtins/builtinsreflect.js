@@ -30,4 +30,7 @@ Reflect.set(v56, "length", v0)
 Reflect.set(v55, "length", v0, v56)
 print("v56.length",v56.length)
 
+let obj = {name:"tom"};
+let pxobj = new Proxy(obj,{});
+print(Reflect.get(pxobj,"name"))
 print("builtins reflect end");

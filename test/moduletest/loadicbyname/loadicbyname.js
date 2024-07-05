@@ -46,3 +46,12 @@ try {
   flag1 = true;
 }
 print(flag1);
+function f(){return 1};
+Object.defineProperty(this,"g",{
+    get:f,
+    set:f,
+})
+for(let i=0;i<2;i++){
+    print(g)
+}
+print("load global ic with accessor success!");
