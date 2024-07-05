@@ -503,7 +503,11 @@ JSTaggedValue BigInt::NumberToBigInt(JSThread *thread, JSHandle<JSTaggedValue> n
     if (num == 0.0) {
         return Int32ToBigInt(thread, 0).GetTaggedValue();
     }
+    return DoubleToBigInt(thread, num);
+}
 
+JSTaggedValue BigInt::DoubleToBigInt(JSThread *thread, double num)
+{
     // Bit operations must be of integer type
     uint64_t bits = 0;
     if (memcpy_s(&bits, sizeof(bits), &num, sizeof(num)) != EOK) {

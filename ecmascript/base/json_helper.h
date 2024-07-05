@@ -26,8 +26,20 @@ class JsonHelper {
 public:
     enum class TransformType : uint32_t {
         SENDABLE = 1,
-        NORMAL = 2
+        NORMAL = 2,
+        BIGINT = 3
     };
+
+    enum class ParseOptions : uint8_t {
+        DEFAULT,
+        PARSEASBIGINT,
+        ALWAYSPARSEASBIGINT
+    };
+
+    static inline bool IsTypeSupportBigInt(TransformType type)
+    {
+        return type == TransformType::SENDABLE || type == TransformType::BIGINT;
+    }
 
     static CString ValueToQuotedString(CString str);
 

@@ -121,6 +121,8 @@
       panda::ecmascript::AOTFileVersion::CheckAOTVersion*;
       panda::ecmascript::Barriers::Update*;
       panda::ecmascript::BigInt::SameValue*;
+      panda::ecmascript::BigInt::DoubleToBigInt*;
+      panda::ecmascript::BigInt::Int32ToBigInt*;
       panda::ecmascript::BindSmallCpuCore*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
       panda::ecmascript::ConstantPool::GetMethodFromCache*;
@@ -267,6 +269,7 @@
       panda::ecmascript::ObjectFactory::GetRawStringFromStringTable*;
       panda::ecmascript::SendableClassDefiner::AddFieldTypeToHClass*;
       panda::ecmascript::ObjectFactory::NewSMethod*;
+      panda::ecmascript::ObjectFactory::NewFromStdString*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageSize*;
@@ -289,6 +292,8 @@
       panda::ecmascript::base::ArrayHelper::GetLength*;
       panda::ecmascript::base::utf_helper::ConvertRegionUtf16ToUtf8*;
       panda::ecmascript::base::NumberHelper::DoubleInRangeInt32*;
+      panda::ecmascript::base::NumberHelper::StringToBigInt*;
+      panda::ecmascript::base::NumberHelper::TruncateDouble*;
       panda::ecmascript::kungfu::AOTSnapshot::StoreConstantPoolInfo*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::Collect*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::GenerateArkStackMap*;

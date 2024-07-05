@@ -35,6 +35,7 @@
 
 namespace panda::ecmascript::base {
 constexpr int GAP_MAX_LEN = 10;
+using TransformType = base::JsonHelper::TransformType;
 
 JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue> &value,
                                                    const JSHandle<JSTaggedValue> &replacer,
@@ -324,7 +325,14 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
             case JSType::SYMBOL:
                 return JSTaggedValue::Undefined();
             case JSType::BIGINT: {
-                THROW_TYPE_ERROR_AND_RETURN(thread_, "cannot serialize a BigInt", JSTaggedValue::Exception());
+                if (transformType_ == TransformType::NORMAL) {
+                    THROW_TYPE_ERROR_AND_RETURN(thread_, "cannot serialize a BigInt", JSTaggedValue::Exception());
+                } else {
+                    JSHandle<BigInt> thisBigint(thread_, valHandle.GetTaggedValue());
+                    auto bigIntStr = BigInt::ToString(thread_, thisBigint);
+                    result_ += ConvertToString(*bigIntStr);
+                    return tagValue;
+                }
             }
             case JSType::JS_NATIVE_POINTER: {
                 result_ += "{}";
@@ -612,7 +620,13 @@ void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primi
     } else if (primitive.IsBoolean()) {
         result_ += primitive.IsTrue() ? "true" : "false";
     } else if (primitive.IsBigInt()) {
-        THROW_TYPE_ERROR(thread_, "cannot serialize a BigInt");
+        if (transformType_ == TransformType::NORMAL) {
+            THROW_TYPE_ERROR(thread_, "cannot serialize a BigInt");
+        } else {
+            JSHandle<BigInt> thisBigint(thread_, primitive);
+            auto bigIntStr = BigInt::ToString(thread_, thisBigint);
+            result_ += ConvertToString(*bigIntStr);
+        }
     }
 }
 
