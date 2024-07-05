@@ -776,18 +776,9 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-    if (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray()) {
-        ContentType contentType = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetContentType();
-        if (contentType == ContentType::BigInt) {
-            value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToBigInt(thread, value));
-        } else {
-            value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToNumber(thread, value));
-        }
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    }
 
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = ArrayHelper::GetLength(thread, thisObjVal);
+    int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
     // 4. ReturnIfAbrupt(len).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -832,14 +823,6 @@ JSTaggedValue BuiltinsArray::Fill(EcmaRuntimeCallInfo *argv)
 
     if (thisObjVal->IsStableJSArray(thread) && !startArg->IsJSObject() && !endArg->IsJSObject()) {
         return JSStableArray::Fill(thread, thisObjHandle, value, start, end, len);
-    }
-
-    if (thisObjVal->IsTypedArray() || thisObjVal->IsSharedTypedArray()) {
-        bool result = JSTypedArray::FastTypedArrayFill(thread, thisObjVal, value, start, end);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (result) {
-            return thisObjHandle.GetTaggedValue();
-        }
     }
 
     int64_t k = start;
