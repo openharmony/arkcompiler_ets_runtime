@@ -52,6 +52,7 @@ public:
     {
         LockHolder lock(jitTaskPoolMutex_);
         compilerVm_ = vm;
+        threadId_ = compilerVm_->GetJSThread()->GetThreadId();
         jitTaskPoolCV_.SignalAll();
     }
 
@@ -79,14 +80,15 @@ public:
 
     void Destroy()
     {
-        Taskpool::Destroy(compilerVm_->GetJSThread()->GetThreadId());
+        Taskpool::Destroy(threadId_);
     }
 
 private:
     uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const override;
-    EcmaVM *compilerVm_;
+    EcmaVM *compilerVm_ { nullptr };
     Mutex jitTaskPoolMutex_;
     ConditionVariable jitTaskPoolCV_;
+    int32_t threadId_ { -1 };
 };
 
 class JitTask {

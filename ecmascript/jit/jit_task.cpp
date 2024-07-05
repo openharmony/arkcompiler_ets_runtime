@@ -371,7 +371,8 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
     }
     DISALLOW_HEAP_ACCESS;
 
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compile");
+    CString info = "compile method:" + jitTask_->GetMethodName();
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("JIT::Compile:" + info));
     // JitCompileMode ASYNC
     // check init ok
     jitTask_->SetRunState(RunState::RUNNING);
@@ -385,7 +386,7 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
     if (jitTask_->GetJsFunction().GetAddress() == 0) {
         // for unit test
     } else {
-        CString info = "compile method:" + jitTask_->GetMethodName() + ", in jit thread";
+        info = info + ", in jit thread";
         Jit::TimeScope scope(jitTask_->GetHostThread()->GetEcmaVM(), info, jitTask_->GetCompilerTier());
 
         jitTask_->Optimize();
