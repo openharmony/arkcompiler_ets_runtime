@@ -250,7 +250,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::DataViewGetUint16:
             case BuiltinsStubCSigns::ID::DataViewGetUint32:
             case BuiltinsStubCSigns::ID::DataViewGetUint8:
-                TryInlineDataViewGet(gate, argc, id);
+                TryInlineDataViewGet(gate, argc, id, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::DataViewSetFloat32:
             case BuiltinsStubCSigns::ID::DataViewSetFloat64:
@@ -260,7 +260,7 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::DataViewSetUint8:
             case BuiltinsStubCSigns::ID::DataViewSetUint16:
             case BuiltinsStubCSigns::ID::DataViewSetUint32:
-                TryInlineDataViewSet(gate, argc, id);
+                TryInlineDataViewSet(gate, argc, id, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::BigIntAsIntN:
             case BuiltinsStubCSigns::ID::BigIntAsUintN:
@@ -950,8 +950,11 @@ void NativeInlineLowering::TryInlineArrayBufferIsView(GateRef gate,
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
-void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id)
+void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
 {
+    if (!skipThis) {
+        return;
+    }
     if (argc != 1 && argc != 2) { // number of args must be 1/2
         return;
     }
@@ -981,8 +984,11 @@ void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, Built
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
-void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id)
+void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
 {
+    if (!skipThis) {
+        return;
+    }
     if (argc != 1 && argc != 2 && argc != 3) { // number of args must be 1/2/3
         return;
     }
