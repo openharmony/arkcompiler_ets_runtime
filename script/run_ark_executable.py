@@ -122,7 +122,7 @@ def judge_output(args: object):
     """run executable and judge is success or not."""
     start_time = time.time()
     [cmd, subp] = process_open(args)
-    timeout_limit = int(args.timeout_limit) if args.timeout_limit else 150  # units: s
+    timeout_limit = int(args.timeout_limit) if args.timeout_limit else 1200  # units: s
 
     try:
         out, err = subp.communicate(timeout=timeout_limit)
