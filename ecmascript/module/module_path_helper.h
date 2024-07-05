@@ -188,7 +188,8 @@ public:
                                                    CString &baseFileName, const CString &recordName,
                                                    CString requestName);
     static CVector<CString> SplitNormalizedRecordName(const CString &recordName);
-    static CString ConcatImportFileNormalizedOhmurlWithRecordName(const CString &recordName, CString &requestName);
+    static CString ConcatImportFileNormalizedOhmurlWithRecordName(const JSPandaFile *jsPandaFile,
+        const CString &recordName, CString &requestName);
     static void ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                             [[maybe_unused]] CString &baseFileName, CString &requestPath);
     static CString ConcatNormalizedOhmurlWithData(CVector<CString> &data, CString &pkgName, CString &entryPath);
