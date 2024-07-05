@@ -24,6 +24,7 @@ namespace panda::ecmascript::kungfu {
 using PGOProfilerDecoder = pgo::PGOProfilerDecoder;
 using PGOHClassTreeDesc = pgo::PGOHClassTreeDesc;
 using PGODefineOpType = pgo::PGODefineOpType;
+using PGOProtoTransitionType = pgo::PGOProtoTransitionType;
 using RootHClassLayoutDesc = pgo::RootHClassLayoutDesc;
 using PGORWOpType = pgo::PGORWOpType;
 
@@ -59,6 +60,12 @@ public:
     void IterateHClassTreeDesc(Callback callback) const
     {
         decoder_.IterateHClassTreeDesc(callback);
+    }
+
+    template <typename Callback>
+    void IterateProtoTransitionPool(Callback callback) const
+    {
+        decoder_.IterateProtoTransitionPool(callback);
     }
 
     void InitMap(JITProfiler* jitProfile)

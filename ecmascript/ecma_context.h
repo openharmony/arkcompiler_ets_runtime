@@ -66,6 +66,7 @@ class AOTFileManager;
 class QuickFixManager;
 class OptCodeProfiler;
 struct CJSInfo;
+class FunctionProtoTransitionTable;
 
 namespace job {
 class MicroJobQueue;
@@ -270,6 +271,8 @@ public:
     JSTaggedValue PUBLIC_API FindConstpool(const JSPandaFile *jsPandaFile, panda_file::File::EntityId id);
     JSTaggedValue PUBLIC_API FindOrCreateUnsharedConstpool(JSTaggedValue sharedConstpool);
     JSTaggedValue PUBLIC_API FindUnsharedConstpool(JSTaggedValue sharedConstpool);
+    void PUBLIC_API LoadProtoTransitionTable(JSTaggedValue constpool);
+    void PUBLIC_API ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool);
     JSTaggedValue FindCachedConstpoolAndLoadAiIfNeeded(const JSPandaFile *jsPandaFile, int32_t index);
     void EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index, int32_t constpoolIndex);
     std::optional<std::reference_wrapper<CMap<int32_t, JSTaggedValue>>> FindConstpools(
@@ -345,6 +348,11 @@ public:
     void ClearDefaultComapreStringsOption()
     {
         defaultComapreStringsOption_ = std::nullopt;
+    }
+
+    FunctionProtoTransitionTable *GetFunctionProtoTransitionTable() const
+    {
+        return functionProtoTransitionTable_;
     }
 
     // For icu objects cache
@@ -679,6 +687,9 @@ private:
     ModuleManager *moduleManager_ {nullptr};
     kungfu::PGOTypeManager *ptManager_ {nullptr};
     AOTFileManager *aotFileManager_ {nullptr};
+
+    // for recording the transition of function prototype
+    FunctionProtoTransitionTable *functionProtoTransitionTable_ {nullptr};
 
     // atomics
     bool AllowAtomicWait_ {true};

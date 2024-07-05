@@ -730,6 +730,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
                                  MemoryOrder order = MemoryOrder::Default());
+    void SetProtoTransRootHClassToFunction(GateRef glue, GateRef object, GateRef hclass,
+                                           MemoryOrder order = MemoryOrder::Default());
     void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value,
                                     MemoryOrder order = MemoryOrder::Default());
     void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value,

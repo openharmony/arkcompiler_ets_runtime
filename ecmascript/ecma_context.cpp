@@ -21,6 +21,7 @@
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/builtins/builtins_string.h"
+#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
@@ -129,7 +130,7 @@ bool EcmaContext::Initialize()
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
         typedOpProfiler_ = new TypedOpProfiler();
     }
-
+    functionProtoTransitionTable_ = new FunctionProtoTransitionTable(thread_);
     sustainingJSHandleList_ = new SustainingJSHandleList();
     initialized_ = true;
     return true;
@@ -262,6 +263,10 @@ EcmaContext::~EcmaContext()
     if (sustainingJSHandleList_ != nullptr) {
         delete sustainingJSHandleList_;
         sustainingJSHandleList_ = nullptr;
+    }
+    if (functionProtoTransitionTable_ != nullptr) {
+        delete functionProtoTransitionTable_;
+        functionProtoTransitionTable_ = nullptr;
     }
     // clear join stack
     joinStack_.clear();
@@ -472,6 +477,18 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
         // Collecting module.exports : exports ---> module.exports --->Module._cache
         RequireManager::CollectExecutedExp(thread_, cjsInfo);
     }
+}
+
+void EcmaContext::LoadProtoTransitionTable(JSTaggedValue constpool)
+{
+    JSTaggedValue protoTransitionTable = ConstantPool::Cast(constpool.GetTaggedObject())->GetProtoTransTableInfo();
+    functionProtoTransitionTable_->UpdateProtoTransitionTable(
+        thread_, JSHandle<PointerToIndexDictionary>(thread_, protoTransitionTable));
+}
+
+void EcmaContext::ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool)
+{
+    ConstantPool::Cast(constpool.GetTaggedObject())->SetProtoTransTableInfo(thread_, JSTaggedValue::Undefined());
 }
 
 JSTaggedValue EcmaContext::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
@@ -916,6 +933,9 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&pointerToIndexDictionary_)));
     }
 
+    if (functionProtoTransitionTable_) {
+        functionProtoTransitionTable_->Iterate(v);
+    }
     if (moduleManager_) {
         moduleManager_->Iterate(v);
     }

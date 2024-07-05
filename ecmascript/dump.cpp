@@ -1828,6 +1828,9 @@ void JSFunction::Dump(std::ostream &os) const
     os << " - Module: ";
     GetModule().Dump(os);
     os << "\n";
+    os << " - ProtoTransRootHClass: ";
+    GetProtoTransRootHClass().Dump(os);
+    os << "\n";
     JSObject::Dump(os);
 }
 
@@ -4872,6 +4875,7 @@ void JSFunction::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.emplace_back(CString("RawProfileTypeInfo"), GetRawProfileTypeInfo());
     vec.emplace_back(CString("HomeObject"), GetHomeObject());
     vec.emplace_back(CString("Module"), GetModule());
+    vec.emplace_back(CString("ProtoTransRootHClass"), GetProtoTransRootHClass());
     vec.emplace_back(CString("Method"), GetMethod());
     if ((!GetMethod().IsNull()) && (!GetMethod().IsUndefined())) {
         vec.emplace_back(CString("FunctionKind"), JSTaggedValue(static_cast<int>(GetFunctionKind())));

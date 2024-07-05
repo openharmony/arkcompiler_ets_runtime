@@ -268,12 +268,19 @@ bool NewObjRangeTypeInfoAccessor::AotAccessorStrategy::FindHClass() const
     if (!sampleType->IsProfileType()) {
         return false;
     }
-    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+    ProfileType profileType = sampleType->GetProfileType();
+    auto type = std::make_pair(profileType, profileType);
     parent_.hclassIndex_ = static_cast<int>(parent_.ptManager_->GetHClassIndexByProfileType(type));
     if (parent_.hclassIndex_ == -1) {
         return false;
     }
-    return parent_.ptManager_->QueryHClass(type.first, type.second).IsJSHClass();
+    profileType.UpdateKind(pgo::ProfileType::Kind::TransitionClassId);
+    auto transType = std::make_pair(profileType, profileType);
+    parent_.traHClassIndex_ = static_cast<int>(parent_.ptManager_->GetHClassIndexByProfileType(transType));
+    if (parent_.traHClassIndex_ == -1) {
+        return parent_.ptManager_->QueryHClass(type.first, type.second).IsJSHClass();
+    }
+    return parent_.ptManager_->QueryHClass(transType.first, transType.second).IsJSHClass();
 }
 
 bool NewObjRangeTypeInfoAccessor::JitAccessorStrategy::FindHClass() const
@@ -299,10 +306,17 @@ JSTaggedValue NewObjRangeTypeInfoAccessor::AotAccessorStrategy::GetHClass() cons
 {
     auto sampleType = parent_.pgoType_.GetPGOSampleType();
     ASSERT(sampleType->IsProfileType());
-    auto type = std::make_pair(sampleType->GetProfileType(), sampleType->GetProfileType());
+    ProfileType profileType = sampleType->GetProfileType();
+    auto type = std::make_pair(profileType, profileType);
     parent_.hclassIndex_ = static_cast<int>(parent_.ptManager_->GetHClassIndexByProfileType(type));
     ASSERT(parent_.hclassIndex_ != -1);
-    return parent_.ptManager_->QueryHClass(type.first, type.second);
+    profileType.UpdateKind(pgo::ProfileType::Kind::TransitionClassId);
+    auto transType = std::make_pair(profileType, profileType);
+    parent_.traHClassIndex_ = static_cast<int>(parent_.ptManager_->GetHClassIndexByProfileType(transType));
+    if (parent_.traHClassIndex_ == -1) {
+        return parent_.ptManager_->QueryHClass(type.first, type.second);
+    }
+    return parent_.ptManager_->QueryHClass(transType.first, transType.second);
 }
 
 JSTaggedValue NewObjRangeTypeInfoAccessor::JitAccessorStrategy::GetHClass() const

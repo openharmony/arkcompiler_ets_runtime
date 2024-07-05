@@ -177,24 +177,27 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
     bool canFastCall = true;
     bool noGC = true;
     bool debuggerStmt = false;
+    uint32_t newtargetIndex = method->GetNewTargetVregIndex();
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
-        bool fastCallFlag = true;
-        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr, classConstructIndexes, &fastCallFlag);
-        if (!fastCallFlag) {
+        curPc = bcIns.GetAddress();
+        auto metaData = bytecodes_.GetBytecodeMetaData(curPc);
+        bool opcodeSupprotFastCall = true;
+        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr, classConstructIndexes, &opcodeSupprotFastCall);
+        bool vregSupportFastCall = !IsVRegUsed(bcIns, metaData, newtargetIndex);
+        if (!opcodeSupprotFastCall || !vregSupportFastCall) {
             canFastCall = false;
         }
         if (snapshotCPData_ != nullptr) {
             snapshotCPData_->Record(bcIns, bcIndex, *recordNamePtr, method);
         }
         pgoBCInfo_.Record(bcIns, bcIndex, *recordNamePtr, method);
-        if (noGC && !bytecodes_.GetBytecodeMetaData(curPc).IsNoGC()) {
+        if (noGC && !metaData.IsNoGC()) {
             noGC = false;
         }
-        if (!debuggerStmt && bytecodes_.GetBytecodeMetaData(curPc).HasDebuggerStmt()) {
+        if (!debuggerStmt && metaData.HasDebuggerStmt()) {
             debuggerStmt = true;
         }
-        curPc = bcIns.GetAddress();
         auto nextInst = bcIns.GetNext();
         bcIns = nextInst;
         pcOffsets.emplace_back(curPc);
@@ -204,6 +207,23 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
     method->SetIsFastCall(canFastCall);
     method->SetNoGCBit(noGC);
     method->SetHasDebuggerStmtBit(debuggerStmt);
+}
+
+// static
+bool BytecodeInfoCollector::IsVRegUsed(const BytecodeInstruction &inst, const BytecodeMetaData &metaData, uint32_t idx)
+{
+    if (idx == 0) {
+        return false;
+    }
+    uint32_t vregCount = metaData.GetVRegCount();
+    for (uint32_t i = 0; i < vregCount; i++) {
+        ASSERT(inst.HasVReg(inst.GetFormat(), i));
+        uint16_t vregIdx = inst.GetVReg(i);
+        if (vregIdx == idx) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void BytecodeInfoCollector::SetMethodPcInfoIndex(uint32_t methodOffset,

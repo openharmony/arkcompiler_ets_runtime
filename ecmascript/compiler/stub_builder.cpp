@@ -7854,9 +7854,6 @@ void StubBuilder::JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef 
             Jump(exit);
         }
         Bind(&funcNotClassConstructor);
-    } else {
-        BRANCH(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &methodNotAot);
-        Bind(&funcIsClassConstructor);
     }
     HandleProfileCall(func, callback, mode);
     GateRef sp = 0;
@@ -8606,9 +8603,6 @@ GateRef StubBuilder::JSCallDispatch(GateRef glue, GateRef func, GateRef actualNu
             Jump(&exit);
         }
         Bind(&funcNotClassConstructor);
-    } else {
-        BRANCH(IsClassConstructorFromBitField(bitfield), &funcIsClassConstructor, &methodNotAot);
-        Bind(&funcIsClassConstructor);
     }
     HandleProfileCall(func, callback, mode);
     GateRef sp = 0;

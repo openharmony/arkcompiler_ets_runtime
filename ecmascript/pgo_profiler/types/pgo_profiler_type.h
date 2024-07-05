@@ -38,6 +38,7 @@ public:
         SCALAR_OP_TYPE,
         RW_OP_TYPE,
         DEFINE_OP_TYPE,
+        PROTO_TRANSITION_TYPE,
     };
     PGOType() = default;
     explicit PGOType(TypeKind kind) : kind_(kind) {}
@@ -55,6 +56,11 @@ public:
     bool IsDefineOpType() const
     {
         return kind_ == TypeKind::DEFINE_OP_TYPE;
+    }
+
+    bool IsProtoTransitionType() const
+    {
+        return kind_ == TypeKind::PROTO_TRANSITION_TYPE;
     }
 
 private:
@@ -891,6 +897,122 @@ private:
 using PGODefineOpType = PGODefineOpTemplate<ProfileType>;
 using PGODefineOpTypeRef = PGODefineOpTemplate<ProfileTypeRef>;
 
+template <typename PGOProfileType>
+class PGOProtoTransitionTemplate : public PGOType {
+public:
+    PGOProtoTransitionTemplate() : PGOType(TypeKind::PROTO_TRANSITION_TYPE), ihcType_(PGOProfileType()) {};
+    explicit PGOProtoTransitionTemplate(PGOProfileType type) : PGOType(TypeKind::PROTO_TRANSITION_TYPE),
+                                                               ihcType_(type) {}
+
+    template <typename FromType>
+    void ConvertFrom(PGOContext &context, const FromType &from)
+    {
+        ihcType_ = PGOProfileType(context, from.GetIhcType());
+        baseRootPt_ = PGOProfileType(context, from.GetBaseType().first);
+        basePt_ = PGOProfileType(context, from.GetBaseType().second);
+        transIhcType_ = PGOProfileType(context, from.GetTransitionType());
+        transProtoPt_ = PGOProfileType(context, from.GetTransitionProtoPt());
+    }
+
+    std::string GetTypeString() const
+    {
+        std::string result = "(ihc";
+        result += ihcType_.GetTypeString();
+        result += ", baseRoot";
+        result += baseRootPt_.GetTypeString();
+        result += ", base";
+        result += basePt_.GetTypeString();
+        result += ", transIhc";
+        result += transIhcType_.GetTypeString();
+        result += ", transProto";
+        result += transProtoPt_.GetTypeString();
+        result += ")";
+        return result;
+    }
+
+    bool IsNone() const
+    {
+        return ihcType_.IsNone() || transIhcType_.IsNone();
+    }
+
+    bool IsProtoTransitionNone() const
+    {
+        return transIhcType_.IsNone();
+    }
+
+    PGOProfileType GetIhcType() const
+    {
+        return ihcType_;
+    }
+
+    void SetBaseType(PGOProfileType rootType, PGOProfileType type)
+    {
+        baseRootPt_ = rootType;
+        basePt_ = type;
+    }
+
+    std::pair<PGOProfileType, PGOProfileType> GetBaseType() const
+    {
+        return std::make_pair(baseRootPt_, basePt_);
+    }
+
+    void SetTransitionType(PGOProfileType type)
+    {
+        transIhcType_ = type;
+    }
+
+    PGOProfileType GetTransitionType() const
+    {
+        return transIhcType_;
+    }
+
+    void SetTransitionProtoPt(PGOProfileType type)
+    {
+        transProtoPt_ = type;
+    }
+
+    PGOProfileType GetTransitionProtoPt() const
+    {
+        return transProtoPt_;
+    }
+
+    bool operator<(const PGOProtoTransitionTemplate &right) const
+    {
+        return this->GetIhcType() < right.GetIhcType();
+    }
+
+    bool IsSameProtoTransition(const PGOProtoTransitionTemplate &type) const
+    {
+        return (GetBaseType().first == type.GetBaseType().first) &&
+               (GetBaseType().second == type.GetBaseType().second) &&
+               (GetTransitionType() == type.GetTransitionType()) &&
+               (GetTransitionProtoPt() == type.GetTransitionProtoPt());
+    }
+
+    // only support mono-state prototype transition now
+    PGOProtoTransitionTemplate CombineType(const PGOProtoTransitionTemplate &type)
+    {
+        ASSERT(GetIhcType() == type.GetIhcType());
+        if (IsProtoTransitionNone() || IsSameProtoTransition(type)) {
+            return *this;
+        }
+        // clear all except for key
+        SetBaseType(PGOProfileType(), PGOProfileType());
+        SetTransitionType(PGOProfileType());
+        SetTransitionProtoPt(PGOProfileType());
+        return *this;
+    }
+
+private:
+    PGOProfileType ihcType_ { PGOProfileType() };  // key
+    PGOProfileType baseRootPt_ { PGOProfileType() };
+    PGOProfileType basePt_ { PGOProfileType() };
+    PGOProfileType transIhcType_ { PGOProfileType() };
+    PGOProfileType transProtoPt_ { PGOProfileType() };
+};
+using PGOProtoTransitionType = PGOProtoTransitionTemplate<ProfileType>;
+using PGOProtoTransitionTypeRef = PGOProtoTransitionTemplate<ProfileTypeRef>;
+
 class PGOTypeRef {
 public:
     PGOTypeRef() : type_(nullptr) {}
@@ -902,6 +1024,8 @@ public:
     explicit PGOTypeRef(const PGORWOpType *type) : type_(static_cast<const PGOType*>(type)) {}
 
     explicit PGOTypeRef(const PGODefineOpType *type) : type_(static_cast<const PGOType*>(type)) {}
+
+    explicit PGOTypeRef(const PGOProtoTransitionType *type) : type_(static_cast<const PGOType*>(type)) {}
 
     static PGOTypeRef NoneType()
     {

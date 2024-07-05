@@ -106,6 +106,7 @@ public:
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&hclassInfo_)));
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&arrayInfo_)));
         v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&constantIndexInfo_)));
+        v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&protoTransTableInfo_)));
     }
 
     void SetData(JSTaggedValue data)
@@ -179,6 +180,11 @@ public:
         return constantIndexInfo_;
     }
 
+    JSTaggedValue GetProtoTransTableInfo() const
+    {
+        return protoTransTableInfo_;
+    }
+
     void StoreHClassInfo(JSHandle<TaggedArray> info)
     {
         hclassInfo_ = info.GetTaggedValue();
@@ -199,6 +205,11 @@ public:
         constantIndexInfo_ = info.GetTaggedValue();
     }
 
+    void StoreProtoTransTableInfo(JSHandle<JSTaggedValue> info)
+    {
+        protoTransTableInfo_ = info.GetTaggedValue();
+    }
+
 private:
     using CpIdToCpArrIdxMap = CUnorderedMap<int32_t, uint32_t>;
 
@@ -214,6 +225,7 @@ private:
     JSTaggedValue arrayInfo_ {JSTaggedValue::Hole()};
     JSTaggedValue symbolInfo_ {JSTaggedValue::Hole()};
     JSTaggedValue constantIndexInfo_ {JSTaggedValue::Hole()};
+    JSTaggedValue protoTransTableInfo_ {JSTaggedValue::Hole()};
 };
 }  // panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_AOT_SNAPSHOT_SNAPSHOT_GLOBAL_DATA_H

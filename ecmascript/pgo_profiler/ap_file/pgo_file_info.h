@@ -59,6 +59,8 @@ struct SectionInfo {
   |------------{ offset, size (reserve), number3 }
   |--------RECORD_POOL(12)
   |------------{ offset, size (reserve), recordPoolCount }
+  |--------PROTO_TRANSITION_POOL(12)
+  |------------{ offset, size (reserve), protoTransitionPoolCount }
   |
   |----Section1: PGOPandaFileInfos(number1)
   |--------[{ size, CHECK_SUM }, { size, CHECK_SUM }, ...]
@@ -89,7 +91,11 @@ struct SectionInfo {
   |--------{ offset, size, recordItemCount }
   |--------[ recordId, recordName ](recordItemCount)
   |
-  |----Section5: ProfileTypes(ProfileTypePoolCount)
+  |----Section5: PGOProtoTransitionTypes(protoTransitionPoolCount)
+  |--------{ offset, size, protoTransitionItemCount }
+  |--------[ PGOProtoTransitionType ](protoTransitionItemCount)
+  |
+  |----Section6: ProfileTypes(ProfileTypePoolCount)
   |--------{ offset, size, profileTypeItemCount }
   |--------[ profileTypeId, profileType(64bit) ](profileTypeItemCount)
  */
@@ -105,17 +111,19 @@ public:
     static constexpr VersionType WIDE_CLASS_TYPE_MINI_VERSION = {0, 0, 0, 10};
     static constexpr VersionType PROFILE_TYPE_WITH_ABC_ID_MINI_VERSION = {0, 0, 0, 11};
     static constexpr VersionType ELEMENTS_TRACK_INFO_MINI_VERSION = {0, 0, 0, 12};
+    static constexpr VersionType PROTO_TRANSITION_POOL_MINI_VERSION = {0, 0, 0, 14};
     static constexpr VersionType FILE_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType HEADER_SIZE_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
     static constexpr VersionType ELASTIC_HEADER_MINI_VERSION = FILE_CONSISTENCY_MINI_VERSION;
-    static constexpr VersionType LAST_VERSION = {0, 0, 0, 13};
+    static constexpr VersionType LAST_VERSION = {0, 0, 0, 14};
     static constexpr size_t PANDA_FILE_SECTION_INDEX = 0;
     static constexpr size_t RECORD_INFO_SECTION_INDEX = 1;
     static constexpr size_t LAYOUT_DESC_SECTION_INDEX = 2;
     static constexpr size_t RECORD_POOL_SECTION_INDEX = 3;
-    static constexpr size_t CLASS_TYPE_POOL_SECTION_INDEX = 4;
-    static constexpr size_t ABC_FILE_POOL_SECTION_INDEX = 5;
-    static constexpr size_t SECTION_SIZE = 6;
+    static constexpr size_t PROTO_TRANSITION_POOL_SECTION_INDEX = 4;
+    static constexpr size_t CLASS_TYPE_POOL_SECTION_INDEX = 5;
+    static constexpr size_t ABC_FILE_POOL_SECTION_INDEX = 6;
+    static constexpr size_t SECTION_SIZE = 7;
 
     PGOProfilerHeader() : base::FileHeaderElastic(LAST_VERSION), sectionNumber_(SECTION_SIZE)
     {
@@ -213,6 +221,11 @@ public:
         return GetSectionInfo(ABC_FILE_POOL_SECTION_INDEX);
     }
 
+    SectionInfo *GetProtoTransitionPoolSection() const
+    {
+        return GetSectionInfo(PROTO_TRANSITION_POOL_SECTION_INDEX);
+    }
+
     bool SupportType() const
     {
         return CompatibleVerify(TYPE_MINI_VERSION);
@@ -226,6 +239,11 @@ public:
     bool SupportUseHClassType() const
     {
         return CompatibleVerify(USE_HCLASS_TYPE_MINI_VERSION);
+    }
+
+    bool SupportProtoTransitionPool() const
+    {
+        return CompatibleVerify(PROTO_TRANSITION_POOL_MINI_VERSION);
     }
 
     bool SupportFileConsistency() const

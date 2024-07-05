@@ -143,6 +143,15 @@ public:
         return recordSimpleInfos_->IterateHClassTreeDesc(callback);
     }
 
+    template <typename Callback>
+    bool IterateProtoTransitionPool(Callback callback) const
+    {
+        if (!isLoaded_ || !isVerifySuccess_) {
+            return false;
+        }
+        return recordSimpleInfos_->IterateProtoTransitionPool(callback);
+    }
+
     bool IsLoaded() const
     {
         return isLoaded_;

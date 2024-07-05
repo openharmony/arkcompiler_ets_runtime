@@ -264,7 +264,7 @@ public:
     };
 
     NewObjRangeTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate, Chunk* chunk)
-        : UnOpTypeInfoAccessor(env, circuit, gate), hclassIndex_(-1)
+        : UnOpTypeInfoAccessor(env, circuit, gate), hclassIndex_(-1), traHClassIndex_(-1)
     {
         if (IsAot()) {
             strategy_ = chunk->New<AotAccessorStrategy>(*this);
@@ -297,11 +297,15 @@ public:
 
     int GetHClassIndex() const
     {
+        if (traHClassIndex_ != -1) {
+            return traHClassIndex_;
+        }
         return hclassIndex_;
     }
 
 private:
     int hclassIndex_;
+    int traHClassIndex_ {-1};
     AccessorStrategy* strategy_;
 
     friend class AotAccessorStrategy;

@@ -61,6 +61,8 @@ public:
  *      |           Object Literal       |       |           |          |
  *      |               ...              |       v           |          |
  *      +--------------------------------+---------------    |          |
+ *      |          ProtoTransTableInfo   |PointerToIndexDic  |          |
+ *      +--------------------------------+---------------    |          |
  *      |          AOTSymbolInfo         |TaggedArray        |          |
  *      +--------------------------------+---------------    |          |
  *      |      unshared constpool index  |int32_t        CacheLength    |
@@ -88,10 +90,12 @@ public:
     static constexpr size_t UNSHARED_CONSTPOOL_INDEX = 6;
     static constexpr size_t SHARED_CONSTPOOL_ID = 7;
     static constexpr size_t AOT_SYMBOL_INFO_INDEX = 8;
+    static constexpr size_t PROTO_TRANS_TABLE_INFO_INDEX = 9;
     static constexpr size_t RESERVED_POOL_LENGTH = INDEX_HEADER_INDEX; // divide the gc area
 
-    // AOTHClassInfo, AOTArrayInfo, ConstIndexInfo, unsharedConstpoolIndex, constpoolId, AOTSymbolInfo
-    static constexpr size_t EXTEND_DATA_NUM = 6;
+    // AOTHClassInfo, AOTArrayInfo, ConstIndexInfo, unsharedConstpoolIndex, constpoolId, AOTSymbolInfo,
+    // ProtoTransTableInfo
+    static constexpr size_t EXTEND_DATA_NUM = 7;
 
     static constexpr int32_t CONSTPOOL_TYPE_FLAG = INT32_MAX; // INT32_MAX : unshared constpool.
     static constexpr int32_t CONSTPOOL_INVALID_ID = 0;
@@ -202,10 +206,9 @@ public:
             ObjectFactory *factory = vm->GetFactory();
             sconstpool = factory->NewSConstantPool(capacity);
         }
-
+        JSThread *thread = vm->GetJSThread();
         for (uint32_t i = 0; i < capacity; i++) {
             JSTaggedValue val = constpool->GetObjectFromCache(i);
-            JSThread *thread = vm->GetJSThread();
             if (val.IsString()) {
                 sconstpool->SetObjectToCache(thread, i, val);
             } else if (IsAotMethodLiteralInfo(val)) {
@@ -218,11 +221,12 @@ public:
             }
         }
 
-        JSHandle<TaggedArray> array(vm->GetJSThread()->GlobalConstants()->GetHandledEmptyArray());
-        sconstpool->SetAotSymbolInfo(vm->GetJSThread(), array.GetTaggedValue());
-        sconstpool->SetAotHClassInfo(vm->GetJSThread(), array.GetTaggedValue());
-        sconstpool->SetAotArrayInfo(vm->GetJSThread(), array.GetTaggedValue());
-        sconstpool->SetConstantIndexInfo(vm->GetJSThread(), array.GetTaggedValue());
+        JSHandle<TaggedArray> array(thread->GlobalConstants()->GetHandledEmptyArray());
+        sconstpool->SetAotSymbolInfo(thread, array.GetTaggedValue());
+        sconstpool->SetProtoTransTableInfo(thread, JSTaggedValue::Undefined());
+        sconstpool->SetAotHClassInfo(thread, array.GetTaggedValue());
+        sconstpool->SetAotArrayInfo(thread, array.GetTaggedValue());
+        sconstpool->SetConstantIndexInfo(thread, array.GetTaggedValue());
         sconstpool->SetJSPandaFile(constpool->GetJSPandaFile());
         sconstpool->SetIndexHeader(constpool->GetIndexHeader());
         sconstpool->SetUnsharedConstpoolIndex(JSTaggedValue(0));
@@ -323,6 +327,7 @@ public:
         }
         JSHandle<TaggedArray> array(thread->GlobalConstants()->GetHandledEmptyArray());
         SetAotSymbolInfo(thread, array.GetTaggedValue());
+        SetProtoTransTableInfo(thread, JSTaggedValue::Undefined());
         SetAotHClassInfo(thread, array.GetTaggedValue());
         SetAotArrayInfo(thread, array.GetTaggedValue());
         SetConstantIndexInfo(thread, array.GetTaggedValue());
@@ -358,6 +363,7 @@ public:
         SetAotHClassInfo(thread, constPool->GetAotHClassInfo());
         SetConstantIndexInfo(thread, constPool->GetConstantIndexInfo());
         SetAotSymbolInfo(thread, constPool->GetAotSymbolInfo());
+        SetProtoTransTableInfo(thread, constPool->GetProtoTransTableInfo());
     }
 
     inline void SetConstantIndexInfo(const JSThread *thread, JSTaggedValue info)
@@ -383,6 +389,11 @@ public:
     inline JSTaggedValue GetAotSymbolInfo() const
     {
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetAotSymbolInfoOffset()));
+    }
+
+    inline JSTaggedValue GetProtoTransTableInfo() const
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetProtoTransTableInfoOffset()));
     }
 
     static JSTaggedValue GetSymbolFromSymbolInfo(JSHandle<TaggedArray> symbolInfoHandler, uint64_t id)
@@ -425,6 +436,11 @@ public:
     inline void SetAotSymbolInfo(const JSThread *thread, JSTaggedValue info)
     {
         Set(thread, (GetLength() - AOT_SYMBOL_INFO_INDEX), info);
+    }
+
+    inline void SetProtoTransTableInfo(const JSThread *thread, JSTaggedValue info)
+    {
+        Set(thread, (GetLength() - PROTO_TRANS_TABLE_INFO_INDEX), info);
     }
 
     inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
@@ -793,6 +809,11 @@ private:
     inline size_t GetAotSymbolInfoOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_SYMBOL_INFO_INDEX);
+    }
+
+    inline size_t GetProtoTransTableInfoOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - PROTO_TRANS_TABLE_INFO_INDEX);
     }
 
     inline size_t GetLastOffset() const

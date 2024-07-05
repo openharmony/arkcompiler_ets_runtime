@@ -35,6 +35,7 @@
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_profile_type_pool.h"
+#include "ecmascript/pgo_profiler/ap_file/pgo_proto_transition_type_pool.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_record_pool.h"
 #include "ecmascript/pgo_profiler/pgo_context.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
@@ -498,6 +499,11 @@ public:
         return profileTypePool_;
     }
 
+    std::shared_ptr<PGOProtoTransitionPool> GetProtoTransitionPool() const
+    {
+        return protoTransitionPool_;
+    }
+
     uint32_t GetHotnessThreshold() const override
     {
         return hotnessThreshold_;
@@ -550,6 +556,7 @@ private:
     std::set<PGOHClassTreeDesc> hclassTreeDescInfos_;
     PGOProfilerHeader *header_ {nullptr};
     std::shared_ptr<PGORecordPool> recordPool_;
+    std::shared_ptr<PGOProtoTransitionPool> protoTransitionPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;
 };
@@ -628,6 +635,11 @@ public:
         }
     }
 
+    std::shared_ptr<PGOProtoTransitionPool> GetProtoTransitionPool() const
+    {
+        return protoTransitionPool_;
+    }
+
     bool GetHClassTreeDesc(PGOSampleType profileType, PGOHClassTreeDesc **desc) const
     {
         auto iter = hclassTreeDescInfos_.find(PGOHClassTreeDesc(profileType.GetProfileType()));
@@ -644,6 +656,13 @@ public:
         for (auto treeDescInfo : hclassTreeDescInfos_) {
             callback(&treeDescInfo);
         }
+        return true;
+    }
+
+    template <typename Callback>
+    bool IterateProtoTransitionPool(Callback callback) const
+    {
+        protoTransitionPool_->Iterate(callback);
         return true;
     }
 
@@ -732,6 +751,7 @@ private:
     PGOProfilerHeader *header_ {nullptr};
     // std::list<std::weak_ptr<PGOFileSectionInterface>> apSectionList_;
     std::shared_ptr<PGORecordPool> recordPool_;
+    std::shared_ptr<PGOProtoTransitionPool> protoTransitionPool_;
     std::shared_ptr<PGOProfileTypePool> profileTypePool_;
     std::set<PGOHClassTreeDesc> hclassTreeDescInfos_;
     mutable std::map<ApEntityId, ApEntityId> abcIdRemap_;

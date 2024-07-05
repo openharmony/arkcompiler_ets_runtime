@@ -15,6 +15,7 @@
 
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 
+#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
@@ -62,6 +63,7 @@ void PGOTypeManager::InitAOTSnapshot(uint32_t compileFilesCount)
     GenSymbolInfo();
     GenArrayInfo();
     GenConstantIndexInfo();
+    GenProtoTransitionInfo();
 }
 
 uint32_t PGOTypeManager::GetSymbolCountFromHClassData()
@@ -157,6 +159,36 @@ void PGOTypeManager::GenHClassInfo()
     }
 
     aotSnapshot_.StoreHClassInfo(hclassInfo);
+}
+
+void PGOTypeManager::GenProtoTransitionInfo()
+{
+    auto transitionTable = thread_->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    for (auto &protoTransType : protoTransTypes_) {
+        JSTaggedValue ihc = QueryHClass(protoTransType.ihcType, protoTransType.ihcType);
+        JSTaggedValue baseIhc = QueryHClass(protoTransType.baseRootType, protoTransType.baseType);
+        JSTaggedValue transIhc = QueryHClass(protoTransType.transIhcType, protoTransType.transIhcType);
+        JSTaggedValue transPhc = QueryHClass(protoTransType.transPhcType, protoTransType.transPhcType);
+        if (ihc.IsUndefined() || baseIhc.IsUndefined() || transIhc.IsUndefined() || transPhc.IsUndefined()) {
+            LOG_COMPILER(ERROR) << "broken prototype transition info!";
+            continue;
+        }
+        transitionTable->InsertTransitionItem(thread_,
+                                              JSHandle<JSTaggedValue>(thread_, ihc),
+                                              JSHandle<JSTaggedValue>(thread_, baseIhc),
+                                              JSHandle<JSTaggedValue>(thread_, transIhc),
+                                              JSHandle<JSTaggedValue>(thread_, transPhc));
+        // Situation:
+        // 1: d1.prototype = p
+        // 2: d2.prototype = p
+        // For this case, baseIhc is transPhc
+        transitionTable->InsertTransitionItem(thread_,
+                                              JSHandle<JSTaggedValue>(thread_, ihc),
+                                              JSHandle<JSTaggedValue>(thread_, transPhc),
+                                              JSHandle<JSTaggedValue>(thread_, transIhc),
+                                              JSHandle<JSTaggedValue>(thread_, transPhc));
+    }
+    aotSnapshot_.StoreProtoTransTableInfo(JSHandle<JSTaggedValue>(thread_, transitionTable->GetProtoTransitionTable()));
 }
 
 void PGOTypeManager::GenArrayInfo()

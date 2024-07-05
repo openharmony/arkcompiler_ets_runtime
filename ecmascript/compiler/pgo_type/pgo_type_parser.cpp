@@ -22,6 +22,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript::kungfu {
+using ProtoTransType = PGOTypeManager::ProtoTransType;
 void BaseParser::Parse(const BytecodeInfoCollector &collector, const PGOTypeRecorder &typeRecorder,
     const PGOHClassGenerator &generator, uint32_t methodOffset)
 {
@@ -193,6 +194,14 @@ void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
 {
     const JSPandaFile *jsPandaFile = collector.GetJSPandaFile();
     PGOTypeRecorder typeRecorder(decoder_);
+    typeRecorder.IterateProtoTransitionPool([this](PGOProtoTransitionType type) {
+        ProfileType ihcType = type.GetIhcType();
+        std::pair<ProfileType, ProfileType> baseType = type.GetBaseType();
+        ProfileType transIhcType = type.GetTransitionType();
+        ProfileType transPhcType = type.GetTransitionProtoPt();
+        ProtoTransType transType(ihcType, baseType.first, baseType.second, transIhcType, transPhcType);
+        ptManager_->RecordProtoTransType(transType);
+    });
     typeRecorder.IterateHClassTreeDesc([this, typeRecorder](PGOHClassTreeDesc *desc) {
         auto rootType = desc->GetProfileType();
         auto protoPt = desc->GetProtoPt();
@@ -202,35 +211,11 @@ void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
         if (!isCache && !typeRecorder.IsValidPt(rootType)) {
             return;
         }
-        auto thread = ptManager_->GetJSThread();
         const PGOHClassGenerator generator(typeRecorder, ptManager_);
-        if (rootType.IsClassType()) {
-            if (!protoPt.IsPrototype()) {
-                return;
-            }
-            auto phValue = ptManager_->QueryHClass(protoPt, protoPt);
-            if (phValue.IsUndefined()) {
-                generator.GenerateHClass(PGOSampleType(protoPt), isCache);
-            }
-            phValue = ptManager_->QueryHClass(protoPt, protoPt);
-            if (phValue.IsUndefined()) {
-                return;
-            }
-            JSHandle<JSHClass> phclass(thread, phValue);
-            JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
-            generator.GenerateIHClass(PGOSampleType(rootType), prototype);
+        if (rootType.IsGeneralizedClassType()) {
+            this->GenerateHClassForClassType(rootType, protoPt, generator, isCache);
         } else if (rootType.IsPrototype()) {
-            // When the collected object only has phc, use phc to create a prototype and store it in the IHC field.
-            generator.GenerateHClass(PGOSampleType(rootType), isCache);
-            auto classType = ProfileType(rootType.GetRaw());
-            classType.UpdateKind(ProfileType::Kind::ClassId);
-            auto ihc = ptManager_->QueryHClass(classType, classType);
-            if (ihc.IsUndefined()) {
-                auto phc = ptManager_->QueryHClass(rootType, rootType);
-                JSHandle<JSHClass> phclass(thread, phc);
-                JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
-                ptManager_->RecordHClass(classType, classType, prototype.GetTaggedType());
-            }
+            this->GenerateHClassForPrototype(rootType, generator, isCache);
         } else {
             generator.GenerateHClass(PGOSampleType(rootType), isCache);
         }
@@ -243,5 +228,43 @@ void PGOTypeParser::CreatePGOType(BytecodeInfoCollector &collector)
             parser->Parse(collector, typeRecorder, generator, methodOffset);
         }
     });
+}
+
+void PGOTypeParser::GenerateHClassForClassType(ProfileType rootType, ProfileType protoPt,
+                                               const PGOHClassGenerator &generator, bool isCache)
+{
+    if (!protoPt.IsGeneralizedPrototype()) {
+        return;
+    }
+    auto phValue = ptManager_->QueryHClass(protoPt, protoPt);
+    if (phValue.IsUndefined()) {
+        generator.GenerateHClass(PGOSampleType(protoPt), isCache);
+    }
+    phValue = ptManager_->QueryHClass(protoPt, protoPt);
+    if (phValue.IsUndefined()) {
+        return;
+    }
+    auto thread = ptManager_->GetJSThread();
+    JSHandle<JSHClass> phclass(thread, phValue);
+    JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
+    PGOSampleType rootSampleType(rootType);
+    generator.GenerateIHClass(rootSampleType, prototype);
+}
+
+void PGOTypeParser::GenerateHClassForPrototype(ProfileType rootType, const PGOHClassGenerator &generator, bool isCache)
+{
+    PGOSampleType rootSampleType(rootType);
+    // When the collected object only has phc, use phc to create a prototype and store it in the IHC field.
+    generator.GenerateHClass(rootSampleType, isCache);
+    auto classType = ProfileType(rootType.GetRaw());
+    classType.UpdateKind(ProfileType::Kind::ClassId);
+    auto ihc = ptManager_->QueryHClass(classType, classType);
+    if (ihc.IsUndefined()) {
+        auto phc = ptManager_->QueryHClass(rootType, rootType);
+        auto thread = ptManager_->GetJSThread();
+        JSHandle<JSHClass> phclass(thread, phc);
+        JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
+        ptManager_->RecordHClass(classType, classType, prototype.GetTaggedType());
+    }
 }
 }  // namespace panda::ecmascript

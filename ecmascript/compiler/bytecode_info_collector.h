@@ -372,6 +372,7 @@ private:
     void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr, MethodLiteral *method,
                                 uint32_t methodOffset, const std::shared_ptr<CString> recordNamePtr,
                                 std::vector<panda_file::File::EntityId> &classConstructIndexes);
+    static bool IsVRegUsed(const BytecodeInstruction &inst, const BytecodeMetaData &metaData, uint32_t idx);
     void SetMethodPcInfoIndex(uint32_t methodOffset, const std::pair<size_t, uint32_t> &processedMethodInfo,
                               const std::shared_ptr<CString> recordNamePtr);
     void CollectMethods(const MethodLiteral *method, const std::shared_ptr<CString> recordNamePtr);

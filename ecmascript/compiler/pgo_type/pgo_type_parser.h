@@ -80,6 +80,7 @@ private:
 class FunctionParser final : public BaseParser {
 public:
     FunctionParser(PGOTypeManager *ptManager) : BaseParser(ptManager, PGOBCInfo::Type::FUNCTION) {}
+
 private:
     virtual bool RecordTypeInfo(const PGODefineOpType &defType, const PGOTypeLocation &loc) override;
     virtual void GenerateHClass(const PGOHClassGenerator &generator, const PGOTypeLocation &loc) override;
@@ -93,6 +94,10 @@ public:
     void PUBLIC_API CreatePGOType(BytecodeInfoCollector &collector);
 
 private:
+    void GenerateHClassForClassType(ProfileType rootType, ProfileType protoPt, const PGOHClassGenerator &generator,
+                                    bool isCache);
+    void GenerateHClassForPrototype(ProfileType rootType, const PGOHClassGenerator &generator, bool isCache);
+
     const PGOProfilerDecoder &decoder_;
     PGOTypeManager *ptManager_;
     CVector<std::unique_ptr<BaseParser>> parsers_;

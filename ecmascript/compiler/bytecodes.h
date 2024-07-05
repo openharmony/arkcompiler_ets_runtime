@@ -73,13 +73,15 @@ class BytecodeMetaData {
 public:
     static constexpr uint32_t MAX_OPCODE_SIZE = 16;
     static constexpr uint32_t MAX_SIZE_BITS = 4;
-    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 14;
     static constexpr uint32_t BYTECODE_KIND_SIZE = 4;
+    static constexpr uint32_t BYTECODE_FLAGS_SIZE = 14;
+    static constexpr uint32_t VREG_COUNT_SIZE = 16;
 
     using OpcodeField = panda::BitField<EcmaOpcode, 0, MAX_OPCODE_SIZE>;
     using SizeField = OpcodeField::NextField<size_t, MAX_SIZE_BITS>;
     using KindField = SizeField::NextField<BytecodeKind, BYTECODE_KIND_SIZE>;
     using FlagsField = KindField::NextField<BytecodeFlags, BYTECODE_FLAGS_SIZE>;
+    using VRegCountField = FlagsField::NextField<size_t, VREG_COUNT_SIZE>;
 
     bool HasAccIn() const
     {
@@ -233,6 +235,11 @@ public:
         return HasFlag(BytecodeFlags::DEBUGGER_STMT);
     }
 
+    uint32_t GetVRegCount() const
+    {
+        return VRegCountField::Get(value_);
+    }
+
 private:
     BytecodeMetaData() = default;
     DEFAULT_NOEXCEPT_MOVE_SEMANTIC(BytecodeMetaData);
@@ -240,6 +247,8 @@ private:
     explicit BytecodeMetaData(uint64_t value) : value_(value) {}
 
     static BytecodeMetaData InitBytecodeMetaData(const uint8_t *pc);
+
+    static size_t GetVRegCount(const BytecodeInstruction &inst);
 
     inline bool HasFlag(BytecodeFlags flag) const
     {

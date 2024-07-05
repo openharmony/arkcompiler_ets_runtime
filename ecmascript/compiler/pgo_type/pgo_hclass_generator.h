@@ -35,8 +35,9 @@ private:
     void CaculateMaxNumOfObj(
         const PGOHClassTreeDesc *desc, const HClassLayoutDesc *parent, uint32_t lastNum, uint32_t &maxNum) const;
     bool CheckIsValid(PGOSampleType type, uint32_t maxNum, bool isCache) const;
+    void CaculateMaxNumOfObjIncludeProtoTransition(PGOSampleType type, uint32_t &maxNum) const;
     JSHandle<JSHClass> CreateRootPHClass(
-        ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum) const;
+        ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum, bool isTransitionPhc) const;
     JSHandle<JSHClass> CreateRootCHClass(
         ProfileType rootType, const HClassLayoutDesc *layoutDesc, uint32_t maxNum) const;
     JSHandle<JSHClass> CreateRootHClass(

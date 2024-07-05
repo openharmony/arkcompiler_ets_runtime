@@ -60,6 +60,13 @@ public:
     static ProfileType CreateRecordProfileType(ApEntityId abcId, ApEntityId classId);
     void PUBLIC_API ProfileCreateObject(JSTaggedType object, ApEntityId abcId, int32_t traceId);
     void ProfileDefineClass(JSTaggedType ctor);
+    void ProfileProtoTransitionClass(JSHandle<JSFunction> func,
+                                     JSHandle<JSHClass> hclass,
+                                     JSHandle<JSTaggedValue> proto);
+    void ProfileProtoTransitionPrototype(JSHandle<JSFunction> func,
+                                         JSHandle<JSTaggedValue> prototype,
+                                         JSHandle<JSTaggedValue> oldPrototype,
+                                         JSHandle<JSTaggedValue> baseIhc);
     void ProfileDefineGetterSetter(
         JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset);
     void ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
@@ -164,6 +171,9 @@ private:
                                      JSHClass *hclass, JSTaggedValue secondValue);
     void DumpICByValueWithHandler(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                                   JSHClass *hclass, JSTaggedValue secondValue, BCType type);
+
+    void TryDumpProtoTransitionType(JSHClass *hclass);
+
     void DumpByForce();
 
     void DumpOpType(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset, uint32_t slotId,
@@ -210,6 +220,7 @@ private:
     ProfileType GetProfileTypeSafe(JSTaggedType root, JSTaggedType child);
     ProfileType GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedType child);
     bool InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType);
+    bool IsRecoredTransRootType(ProfileType type);
 
     class WorkNode;
     void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString& recordName, EntityId methodId, WorkNode* current);
@@ -479,7 +490,7 @@ private:
 
     bool IsSkippableObjectTypeSafe(ProfileType type)
     {
-        if (type.IsClassType() || type.IsConstructor() || type.IsPrototype()) {
+        if (type.IsGeneralizedClassType() || type.IsConstructor() || type.IsGeneralizedPrototype()) {
             uint32_t ctorId = type.GetId();
             LockHolder lock(skipCtorMethodIdMutex_);
             return skipCtorMethodId_.find(ctorId) != skipCtorMethodId_.end();
@@ -522,6 +533,7 @@ private:
     CUnorderedSet<uint32_t> skipCtorMethodId_;
     Mutex skipCtorMethodIdMutex_;
     JITProfiler *jitProfiler_ {nullptr};
+    CVector<ProfileType> recordedTransRootType_;
     friend class PGOProfilerManager;
 };
 
