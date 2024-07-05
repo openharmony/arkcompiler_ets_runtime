@@ -1399,4 +1399,10 @@ CString EcmaStringAccessor::ToCString(StringConvertedUsage usage)
     }
     return res;
 }
+
+// static
+EcmaString *EcmaStringAccessor::CreateLineString(const EcmaVM *vm, size_t length, bool compressed)
+{
+    return EcmaString::CreateLineString(vm, length, compressed);
+}
 }  // namespace panda::ecmascript

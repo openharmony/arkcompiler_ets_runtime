@@ -75,3 +75,11 @@ print(JSON.stringify(JSON.parse(strData8)))
 
 print(JSON.parse('123.456e-789'));
 print(1 / JSON.parse('-0'));
+
+print("JSON.parse with backslash")
+print(JSON.parse('"\\"\\""'));  // utf8 -> utf8
+print(JSON.parse('"\\u0055\\u0066"'));  // utf8 -> utf8
+print(JSON.parse('"\\u5555\\u6666"'));  // utf8 -> utf16
+print(JSON.parse('["\\"\\"","中文"]')[0]);  // utf16 -> utf8
+print(JSON.parse('["\\u0055\\u0066","中文"]')[0]);  // utf16 -> utf8
+print(JSON.parse('["\\u5555\\u6666","中文"]')[0]);  // utf16 -> utf16
