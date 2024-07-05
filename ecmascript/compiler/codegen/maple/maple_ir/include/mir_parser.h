@@ -82,8 +82,6 @@ public:
     bool ParseType(TyIdx &tyIdx);
     bool ParseSpecialReg(PregIdx &pRegIdx);
     bool ParsePseudoReg(PrimType primType, PregIdx &pRegIdx);
-    bool ParseStmtBlock(BlockNodePtr &blk);
-    bool ParseStmtBlockSwitch(BlockNodePtr &blk, TokenKind stmtTk, uint32 mplNum);
     bool ParseStorageClass(MIRSymbol &symbol) const;
     bool ParseDeclareVarInitValue(MIRSymbol &symbol);
     bool ParseDeclareReg(MIRSymbol &symbol, const MIRFunction &func);
