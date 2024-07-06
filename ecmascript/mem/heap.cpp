@@ -1079,6 +1079,10 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     thread_->InvokeWeakNodeNativeFinalizeCallback();
     // PostTask for ProcessNativeDelete
     CleanCallBack();
+    // Update record heap object size after gc if in sensitive status
+    if (GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE) {
+        SetRecordHeapObjectSizeBeforeSensitive(GetHeapObjectSize());
+    }
 
     if (UNLIKELY(ShouldVerifyHeap())) {
         // verify post gc heap verify
@@ -2020,6 +2024,8 @@ void Heap::HandleExitHighSensitiveEvent()
     AppSensitiveStatus status = GetSensitiveStatus();
     if (status == AppSensitiveStatus::EXIT_HIGH_SENSITIVE
         && CASSensitiveStatus(status, AppSensitiveStatus::NORMAL_SCENE)) {
+        // Set record heap obj size 0 after exit high senstive
+        SetRecordHeapObjectSizeBeforeSensitive(0);
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
         int64_t semiRemainSize =
             static_cast<int64_t>(GetNewSpace()->GetInitialCapacity() - GetNewSpace()->GetCommittedSize());
@@ -2056,10 +2062,22 @@ bool Heap::NeedStopCollection()
         return false;
     }
 
-    if (!ObjectExceedMaxHeapSize()) {
+    // During app cold start, gc threshold adjust to max heap size
+    if (OnStartupEvent() && !ObjectExceedMaxHeapSize()) {
         return true;
     }
-    LOG_GC(INFO) << "SmartGC: force expand will cause OOM, have to trigger gc";
+
+    if (GetRecordHeapObjectSizeBeforeSensitive() == 0) {
+        SetRecordHeapObjectSizeBeforeSensitive(GetHeapObjectSize());
+    }
+
+    if (GetHeapObjectSize() < GetRecordHeapObjectSizeBeforeSensitive() + config_.GetIncObjSizeThresholdInSensitive()
+        && !ObjectExceedMaxHeapSize()) {
+        return true;
+    }
+
+    OPTIONAL_LOG(ecmaVm_, INFO) << "SmartGC: heap obj size: " << GetHeapObjectSize()
+        << " exceed sensitive gc threshold, have to trigger gc";
     return false;
 }
 
