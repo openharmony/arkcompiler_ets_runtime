@@ -502,43 +502,89 @@ protected:
         }
     }
 
-    bool ParseBackslash(std::u16string &res)
+    bool ParseStringLength(size_t &length, bool &isAscii, bool inObjorArr)
     {
-        if (current_ == end_) {
-            return false;
-        }
-        Advance();
-        switch (*current_) {
-            case '\"':
-                res += '\"';
-                break;
-            case '\\':
-                res += '\\';
-                break;
-            case '/':
-                res += '/';
-                break;
-            case 'b':
-                res += '\b';
-                break;
-            case 'f':
-                res += '\f';
-                break;
-            case 'n':
-                res += '\n';
-                break;
-            case 'r':
-                res += '\r';
-                break;
-            case 't':
-                res += '\t';
-                break;
-            case 'u': {
-                std::u16string u16Str;
-                if (UNLIKELY(!ConvertStringUnicode(u16Str))) {
+        Text last = inObjorArr ? range_ : end_;
+        for (Text current = current_; current < last; ++current) {
+            T c = *current;
+            if (inObjorArr && c == '"') {
+                end_ = current;
+                return true;
+            } else if (c == '\\') {
+                if (UNLIKELY(!CheckBackslash(current, last, isAscii))) {
                     return false;
                 }
-                res += u16Str;
+            } else if (UNLIKELY(c < CODE_SPACE)) {
+                return false;
+            } else if (c > ASCII_END) {
+                ASSERT(sizeof(T) == sizeof(uint16_t));
+                isAscii = false;
+            }
+            ++length;
+        }
+        return !inObjorArr;
+    }
+
+    bool CheckBackslash(Text &text, Text last, bool &isAscii)
+    {
+        ASSERT(*text == '\\');
+        ++text;
+        if (text >= last) {
+            return false;
+        }
+        switch (*text) {
+            case '\"':
+            case '\\':
+            case '/':
+            case 'b':
+            case 'f':
+            case 'n':
+            case 'r':
+            case 't':
+                break;
+            case 'u': {
+                if (text + UNICODE_DIGIT_LENGTH >= last) {
+                    return false;
+                };
+                T ucharFirst = *++text;
+                if (ucharFirst == '0') {
+                    // do nothing
+                } else if ((ucharFirst >= '1' && ucharFirst <= '9') ||
+                           (ucharFirst >= 'A' && ucharFirst <= 'F') || (ucharFirst >= 'a' && ucharFirst <= 'f')) {
+                    isAscii = false;  // >= \u1000
+                } else {
+                    return false;
+                }
+                T ucharSecond = *++text;
+                if (ucharSecond == '0') {
+                    // do nothing
+                } else if ((ucharSecond >= '1' && ucharSecond <= '9') ||
+                           (ucharSecond >= 'A' && ucharSecond <= 'F') || (ucharSecond >= 'a' && ucharSecond <= 'f')) {
+                    isAscii = false;  // >= \u0100
+                } else {
+                    return false;
+                }
+                bool thirdZero = false;
+                T ucharThird = *++text;
+                if (ucharThird == '0') {
+                    thirdZero = true;
+                } else if (ucharThird >= '1' && ucharThird <= '7') {
+                    // do nothing
+                } else if ((ucharThird >= '8' && ucharThird <= '9') ||
+                           (ucharThird >= 'A' && ucharThird <= 'F') || (ucharThird >= 'a' && ucharThird <= 'f')) {
+                    isAscii = false;  // >= \u0080
+                } else {
+                    return false;
+                }
+                T ucharFourth = *++text;
+                if (thirdZero && ucharFourth == '0') {
+                    isAscii = false;  // \uxx00
+                } else if ((ucharFourth >= '0' && ucharFourth <= '9') ||
+                           (ucharFourth >= 'A' && ucharFourth <= 'F') || (ucharFourth >= 'a' && ucharFourth <= 'f')) {
+                    // do nothing
+                } else {
+                    return false;
+                }
                 break;
             }
             default:
@@ -547,31 +593,106 @@ protected:
         return true;
     }
 
-    JSHandle<JSTaggedValue> SlowParseString()
+    template<typename Char>
+    void ParseBackslash(Char *&p)
     {
-        end_--;
-        std::u16string res;
-        res.reserve(end_ - current_);
-        while (current_ <= end_) {
-            if (*current_ == '\\') {
-                if (UNLIKELY(!ParseBackslash(res))) {
-                    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected string in JSON",
-                        JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
-                }
-                Advance();
-            } else {
-                Text nextCurrent = current_;
-                while (nextCurrent <= end_ && *nextCurrent != '\\') {
-                    ++nextCurrent;
-                }
-                res += std::u16string(current_, nextCurrent);
-                current_ = nextCurrent;
-            }
-        }
-        ASSERT(res.size() <= static_cast<size_t>(UINT32_MAX));
+        ASSERT(current_ < end_);
         Advance();
-        return JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf16(
-            reinterpret_cast<const uint16_t *>(res.data()), res.size()));
+        switch (*current_) {
+            case '\"':
+                *p++ = '\"';
+                break;
+            case '\\':
+                *p++ = '\\';
+                break;
+            case '/':
+                *p++ = '/';
+                break;
+            case 'b':
+                *p++ = '\b';
+                break;
+            case 'f':
+                *p++ = '\f';
+                break;
+            case 'n':
+                *p++ = '\n';
+                break;
+            case 'r':
+                *p++ = '\r';
+                break;
+            case 't':
+                *p++ = '\t';
+                break;
+            case 'u': {
+                ASSERT(end_ - current_ >= UNICODE_DIGIT_LENGTH);
+                uint16_t res = 0;
+                for (size_t pos = 0; pos < UNICODE_DIGIT_LENGTH; pos++) {
+                    Advance();
+                    T uchar = *current_;
+                    if (uchar >= '0' && uchar <= '9') {
+                        res *= NUMBER_SIXTEEN;
+                        res += (uchar - '0');
+                    } else if (uchar >= 'a' && uchar <= 'f') {
+                        res *= NUMBER_SIXTEEN;
+                        res += (uchar - 'a' + NUMBER_TEN);
+                    } else if (uchar >= 'A' && uchar <= 'F') {
+                        res *= NUMBER_SIXTEEN;
+                        res += (uchar - 'A' + NUMBER_TEN);
+                    } else {
+                        UNREACHABLE();
+                    }
+                }
+                ASSERT(sizeof(Char) == sizeof(uint16_t) || res <= ASCII_END);
+                *p++ = static_cast<Char>(res);
+                break;
+            }
+            default:
+                UNREACHABLE();
+        }
+    }
+
+    template<typename Char>
+    void CopyCharWithBackslash(Char *&p)
+    {
+        while (current_ <= end_) {
+            T c = *current_;
+            ASSERT(c >= CODE_SPACE);
+            ASSERT(sizeof(Char) == sizeof(uint16_t) || c <= ASCII_END);
+            if (c == '\\') {
+                ParseBackslash(p);
+            } else {
+                *p++ = c;
+            }
+            Advance();
+        }
+    }
+
+    JSHandle<JSTaggedValue> ParseStringWithBackslash(bool inObjorArr)
+    {
+        size_t length = 0;
+        bool isAscii = true;
+        if (UNLIKELY(!ParseStringLength(length, isAscii, inObjorArr))) {
+            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected string in JSON",
+                JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
+        }
+        end_--;
+        if (isAscii) {
+            EcmaString *str = EcmaStringAccessor::CreateLineString(thread_->GetEcmaVM(), length, true);
+            uint8_t *data = const_cast<uint8_t *>(EcmaStringAccessor(str).GetDataUtf8());
+            uint8_t *p = data;
+            CopyCharWithBackslash(p);
+            ASSERT(p - data == length);
+            Advance();
+            return JSHandle<JSTaggedValue>(thread_, str);
+        } else {
+            EcmaString *str = EcmaStringAccessor::CreateLineString(thread_->GetEcmaVM(), length, false);
+            uint16_t *data = const_cast<uint16_t *>(EcmaStringAccessor(str).GetDataUtf16());
+            uint16_t *p = data;
+            CopyCharWithBackslash(p);
+            ASSERT(p - data == length);
+            Advance();
+            return JSHandle<JSTaggedValue>(thread_, str);
+        }
     }
 
     virtual void ParticalParseString(std::string& str, Text current, Text nextCurrent) = 0;
@@ -830,44 +951,6 @@ protected:
         return true;
     }
 
-    bool ConvertStringUnicode(std::u16string &u16Str)
-    {
-        do {
-            uint32_t remainingLength = end_ - current_;
-            if (remainingLength < UNICODE_DIGIT_LENGTH) {
-                return false;
-            }
-            uint16_t res = 0;
-            for (uint32_t pos = 0; pos < UNICODE_DIGIT_LENGTH; pos++) {
-                Advance();
-                if (*current_ >= '0' && *current_ <= '9') {
-                    res *= NUMBER_SIXTEEN;
-                    res += (*current_ - '0');
-                } else if (*current_ >= 'a' && *current_ <= 'f') {
-                    res *= NUMBER_SIXTEEN;
-                    res += (*current_ - 'a' + NUMBER_TEN);
-                } else if (*current_ >= 'A' && *current_ <= 'F') {
-                    res *= NUMBER_SIXTEEN;
-                    res += (*current_ - 'A' + NUMBER_TEN);
-                } else {
-                    return false;
-                }
-            }
-            u16Str.push_back(res);
-        } while ([&]() -> bool {
-            static const int unicodePrefixLen = 2;
-            if (end_ - current_ < unicodePrefixLen) {
-                return false;
-            }
-            if (*(current_ + 1) == '\\' && *(current_ + unicodePrefixLen) == 'u') {
-                AdvanceMultiStep(unicodePrefixLen);
-                return true;
-            }
-            return false;
-        }());
-        return true;
-    }
-
     bool CheckZeroBeginNumber(bool &hasExponent)
     {
         if (current_++ != end_) {
@@ -1016,7 +1099,7 @@ private:
                     sourceString_, offset, strLength));
             }
         }
-        return SlowParseString();
+        return ParseStringWithBackslash(inObjorArr);
     }
 
     bool ReadJsonStringRange(bool &isFastString)
@@ -1029,8 +1112,9 @@ private:
                 end_ = current;
                 return true;
             } else if (UNLIKELY(c == '\\')) {
-                current++;
                 isFastString = false;
+                // early return for ParseStringWithBackslash
+                return true;
             } else if (UNLIKELY(c < CODE_SPACE)) {
                 return false;
             }
@@ -1047,6 +1131,8 @@ private:
                 return false;
             } else if (*current == '\\') {
                 isFastString = false;
+                // early return for ParseStringWithBackslash
+                return true;
             }
         }
         return true;
@@ -1124,7 +1210,7 @@ private:
                     reinterpret_cast<const uint16_t *>(value.data()), value.size()));
             }
         }
-        return SlowParseString();
+        return ParseStringWithBackslash(inObjorArr);
     }
 
     bool ReadJsonStringRange(bool &isFastString, bool &isAscii)
@@ -1136,8 +1222,9 @@ private:
                 end_ = current;
                 return true;
             } else if (UNLIKELY(c == '\\')) {
-                ++current;
                 isFastString = false;
+                // early return for ParseStringWithBackslash
+                return true;
             }
             if (!IsLegalAsciiCharacter(c, isAscii)) {
                 return false;
@@ -1155,6 +1242,8 @@ private:
             }
             if (*current == '\\') {
                 isFastString = false;
+                // early return for ParseStringWithBackslash
+                return true;
             }
         }
         return true;

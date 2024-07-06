@@ -28,3 +28,10 @@ SyntaxError
 {"1\u0000":"name"}
 0
 -Infinity
+JSON.parse with backslash
+""
+Uf
+啕晦
+""
+Uf
+啕晦

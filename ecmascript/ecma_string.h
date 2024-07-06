@@ -1075,10 +1075,7 @@ public:
 
     explicit EcmaStringAccessor(const JSHandle<EcmaString> &strHandle);
 
-    static EcmaString *CreateLineString(const EcmaVM *vm, size_t length, bool compressed)
-    {
-        return EcmaString::CreateLineString(vm, length, compressed);
-    }
+    static EcmaString *CreateLineString(const EcmaVM *vm, size_t length, bool compressed);
 
     static EcmaString *CreateEmptyString(const EcmaVM *vm)
     {

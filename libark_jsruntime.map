@@ -149,6 +149,7 @@
       panda::ecmascript::EcmaString::ToElementIndex*;
       panda::ecmascript::EcmaString::ToTypedArrayIndex*;
       panda::ecmascript::EcmaString::Flatten*;
+      panda::ecmascript::EcmaStringAccessor::CreateLineString*;
       panda::ecmascript::EcmaStringAccessor::EcmaStringAccessor*;
       panda::ecmascript::EcmaStringAccessor::ToStdString*;
       panda::ecmascript::EcmaVM::GetGlobalEnv*;
