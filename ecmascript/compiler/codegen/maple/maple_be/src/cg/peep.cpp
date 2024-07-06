@@ -218,25 +218,33 @@ bool CGPeepPattern::FindRegLiveOut(const RegOperand &regOpnd, const BB &bb)
 /* Check regOpnd in succs/ehSuccs. True is live-out, otherwise false. */
 bool CGPeepPattern::CheckOpndLiveinSuccs(const RegOperand &regOpnd, const BB &bb) const
 {
-    for (auto succ : bb.GetSuccs()) {
-        DEBUG_ASSERT(succ->GetInternalFlag3() <= PeepOptimizer::index, "internal error.");
-        if (succ->GetInternalFlag3() == PeepOptimizer::index) {
-            continue;
-        }
-        succ->SetInternalFlag3(PeepOptimizer::index);
-        ReturnType result = IsOpndLiveinBB(regOpnd, *succ);
-        if (result == kResNotFind) {
-            if (CheckOpndLiveinSuccs(regOpnd, *succ)) {
-                return true;
-            }
-            continue;
-        } else if (result == kResUseFirst) {
+    std::stack<BB *> bbStack;
+    bbStack.push(const_cast<BB *>(&bb));
+    while (!bbStack.empty()) {
+        BB *currentBB = bbStack.top();
+        bbStack.pop();
+        if (CheckRegLiveinReturnBB(regOpnd, *currentBB)) {
             return true;
-        } else if (result == kResDefFirst) {
-            continue;
+        }
+        // The traversal order of sibling nodes in the iterative version
+        // is reversed compared to the recursive version
+        for (auto succ : currentBB->GetSuccs()) {
+            DEBUG_ASSERT(succ->GetInternalFlag3() <= PeepOptimizer::index, "internal error.");
+            if (succ->GetInternalFlag3() == PeepOptimizer::index) {
+                continue;
+            }
+            succ->SetInternalFlag3(PeepOptimizer::index);
+            ReturnType result = IsOpndLiveinBB(regOpnd, *succ);
+            if (result == kResNotFind) {
+                bbStack.push(succ);
+            } else if (result == kResUseFirst) {
+                return true;
+            } else if (result == kResDefFirst) {
+                // Do nothing, continue to process successors
+            }
         }
     }
-    return CheckRegLiveinReturnBB(regOpnd, bb);
+    return false;
 }
 
 /* Check if the reg is used in return BB */
@@ -423,25 +431,33 @@ bool PeepPattern::FindRegLiveOut(const RegOperand &regOpnd, const BB &bb)
 /* Check regOpnd in succs/ehSuccs. True is live-out, otherwise false. */
 bool PeepPattern::CheckOpndLiveinSuccs(const RegOperand &regOpnd, const BB &bb) const
 {
-    for (auto succ : bb.GetSuccs()) {
-        DEBUG_ASSERT(succ->GetInternalFlag3() <= PeepOptimizer::index, "internal error.");
-        if (succ->GetInternalFlag3() == PeepOptimizer::index) {
-            continue;
-        }
-        succ->SetInternalFlag3(PeepOptimizer::index);
-        ReturnType result = IsOpndLiveinBB(regOpnd, *succ);
-        if (result == kResNotFind) {
-            if (CheckOpndLiveinSuccs(regOpnd, *succ)) {
-                return true;
-            }
-            continue;
-        } else if (result == kResUseFirst) {
+    std::stack<BB *> bbStack;
+    bbStack.push(const_cast<BB *>(&bb));
+    while (!bbStack.empty()) {
+        BB *currentBB = bbStack.top();
+        bbStack.pop();
+        if (CheckRegLiveinReturnBB(regOpnd, *currentBB)) {
             return true;
-        } else if (result == kResDefFirst) {
-            continue;
+        }
+        // The traversal order of sibling nodes in the iterative version
+        // is reversed compared to the recursive version
+        for (auto succ : currentBB->GetSuccs()) {
+            DEBUG_ASSERT(succ->GetInternalFlag3() <= PeepOptimizer::index, "internal error.");
+            if (succ->GetInternalFlag3() == PeepOptimizer::index) {
+                continue;
+            }
+            succ->SetInternalFlag3(PeepOptimizer::index);
+            ReturnType result = IsOpndLiveinBB(regOpnd, *succ);
+            if (result == kResNotFind) {
+                bbStack.push(succ);
+            } else if (result == kResUseFirst) {
+                return true;
+            } else if (result == kResDefFirst) {
+                // Do nothing, continue to process successors
+            }
         }
     }
-    return CheckRegLiveinReturnBB(regOpnd, bb);
+    return false;
 }
 
 /* Check if the reg is used in return BB */
