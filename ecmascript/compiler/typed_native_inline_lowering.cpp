@@ -4093,7 +4093,6 @@ GateRef TypedNativeInlineLowering::TargetNumberCompareLoop(GateRef elements,
                 BRANCH_CIR(builder_.TaggedIsHole(value), &afterLoop, &compare);
                 builder_.Bind(&compare);
             }
-            builder_.Bind(&compare);
             {
                 BRANCH_CIR(builder_.TaggedIsDouble(value), &NaNCompare, &afterLoop);
                 builder_.Bind(&NaNCompare);
