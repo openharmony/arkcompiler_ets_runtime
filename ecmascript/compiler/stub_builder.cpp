@@ -554,6 +554,150 @@ GateRef StubBuilder::GetKeyHashCode(GateRef glue, GateRef key, GateRef hir)
     return ret;
 }
 
+GateRef StubBuilder::CreateDataProperty(GateRef glue, GateRef obj, GateRef propKey, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    Label next(env);
+    Label objIsShared(env);
+    Label objIsNotShared(env);
+    Label isHole(env);
+    Label notHole(env);
+    Label hasPendingException(env);
+
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    auto flag = SetPropertyByValue(glue, obj, propKey, value, false, ProfileOperation(), true);
+
+    GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env->IsArch32Bit()));
+    GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
+
+    BRANCH(TaggedIsNotHole(exception), &hasPendingException, &next);
+    Bind(&hasPendingException);
+    {
+        result = False();
+        Jump(&exit);
+    }
+    Bind(&next);
+    {
+        BRANCH(TaggedIsHole(flag), &isHole, &notHole);
+        Bind(&isHole);
+        {
+            GateRef temp = CallRuntime(glue, RTSTUB_ID(DefineOwnProperty), {obj, propKey, value});
+            result = TaggedIsTrue(temp);
+            Jump(&exit);
+        }
+        Bind(&notHole);
+        {
+            result = BoolNot(TaggedIsException(flag));
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::CreateDataPropertyOrThrow(GateRef glue, GateRef obj, GateRef key, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    Label isPropertyKey(env);
+    Label isNotStringOrSymbol(env);
+    Label isNotNumber(env);
+    Label newThrow(env);
+    Label isNotThrow(env);
+
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    DEFVARIABLE(isPropertyKeyFlag, VariableType::BOOL(), True());
+
+    CanNotConvertNotValidObject(obj);
+    BRANCH(TaggedIsStringOrSymbol(key), &isPropertyKey, &isNotStringOrSymbol);
+    Bind(&isNotStringOrSymbol);
+    {
+        BRANCH(TaggedIsNumber(key), &isPropertyKey, &isNotNumber);
+        Bind(&isNotNumber);
+        {
+            isPropertyKeyFlag = False();
+            Jump(&isPropertyKey);
+        }
+    }
+    Bind(&isPropertyKey);
+    {
+        IsNotPropertyKey(*isPropertyKeyFlag);
+        result = CreateDataProperty(glue, obj, key, value);
+        BRANCH(*result, &exit, &isNotThrow);
+        Bind(&isNotThrow);
+        {
+            GateRef exceptionOffset = IntPtr(JSThread::GlueData::GetExceptionOffset(env->IsArch32Bit()));
+            GateRef exception = Load(VariableType::JS_ANY(), glue, exceptionOffset);
+            BRANCH(TaggedIsNotHole(exception), &exit, &newThrow);
+            Bind(&newThrow);
+            {
+                GateRef msgIntId = Int32(GET_MESSAGE_STRING_ID(CreateDataPropertyFailed));
+                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(msgIntId)});
+                Jump(&exit);
+            }
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::DefineField(GateRef glue, GateRef obj, GateRef propKey, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label next(env);
+    Label newThrow(env);
+    Label isObj(env);
+    Label notObj(env);
+    Label hasPendingException(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(key, VariableType::JS_ANY(), Undefined());
+    BRANCH(IsEcmaObject(obj), &isObj, &notObj);
+    Bind(&isObj);
+    {
+        key = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {propKey});
+        BRANCH(HasPendingException(glue), &hasPendingException, &next);
+    }
+    Bind(&next);
+    {
+        CreateDataPropertyOrThrow(glue, obj, *key, value);
+        BRANCH(HasPendingException(glue), &hasPendingException, &exit);
+    }
+    Bind(&notObj);
+    {
+        BRANCH(HasPendingException(glue), &hasPendingException, &newThrow);
+    }
+    Bind(&hasPendingException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&newThrow);
+    {
+        GateRef msgIntId = Int32(GET_MESSAGE_STRING_ID(DefineFieldField));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(msgIntId)});
+        result = Exception();
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index)
 {
     auto env = GetEnvironment();
@@ -3862,7 +4006,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
         Bind(&notDictionaryElement);
         {
             Label isReceiver(env);
-            if (useOwn) {
+            if (useOwn || defineSemantics) {
                 BRANCH(Equal(*holder, receiver), &isReceiver, &ifEnd);
             } else {
                 BRANCH(Equal(*holder, receiver), &isReceiver, &afterLoop);
@@ -3871,7 +4015,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             {
                 GateRef length = GetLengthOfTaggedArray(elements);
                 Label inRange(env);
-                if (useOwn) {
+                if (useOwn || defineSemantics) {
                     BRANCH(Int64LessThan(index, length), &inRange, &ifEnd);
                 } else {
                     BRANCH(Int64LessThan(index, length), &inRange, &loopExit);
@@ -3880,7 +4024,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 {
                     GateRef value1 = GetTaggedValueWithElementsKind(*holder, index);
                     Label notHole(env);
-                    if (useOwn) {
+                    if (useOwn || defineSemantics) {
                         BRANCH(Int64NotEqual(value1, Hole()), &notHole, &ifEnd);
                     } else {
                         BRANCH(Int64NotEqual(value1, Hole()), &notHole, &loopExit);
@@ -3944,7 +4088,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                     Bind(&notAccessor);
                     {
                         Label holdEqualsRecv(env);
-                        if (useOwn) {
+                        if (useOwn || defineSemantics) {
                             BRANCH(Equal(*holder, receiver), &holdEqualsRecv, &ifEnd);
                         } else {
                             BRANCH(Equal(*holder, receiver), &holdEqualsRecv, &afterLoop);
@@ -3968,7 +4112,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             Jump(&exit);
         }
     }
-    if (useOwn) {
+    if (useOwn || defineSemantics) {
         Bind(&ifEnd);
     } else {
         Bind(&loopExit);
@@ -4035,7 +4179,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Label loopExit(env);
     Label afterLoop(env);
     Label findProperty(env);
-    if (!useOwn) {
+    if (!useOwn && !defineSemantics) {
         // a do while loop
         Jump(&loopHead);
         LoopBegin(&loopHead);
@@ -4089,7 +4233,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Bind(&notSIndexObj);
     {
         if (canUseIsInternal) {
-            if (useOwn) {
+            if (useOwn || defineSemantics) {
                 BRANCH(isInternal, &findProperty, &ifEnd);
             } else {
                 BRANCH(isInternal, &findProperty, &loopExit);
@@ -4259,7 +4403,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     Bind(&writable1);
                     {
                         Label holdEqualsRecv1(env);
-                        if (useOwn) {
+                        if (useOwn || defineSemantics) {
                             BRANCH(Equal(*holder, receiver), &holdEqualsRecv1, &ifEnd);
                         } else {
                             BRANCH(Equal(*holder, receiver), &holdEqualsRecv1, &afterLoop);
