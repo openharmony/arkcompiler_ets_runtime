@@ -63,8 +63,8 @@ CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, cons
     } else if (IsImportFile(requestName)) {
         // this branch save for import "xxx.js" in npm
         CString inputPath = requestName;
-        CString entryPoint = ConcatImportFileNormalizedOhmurlWithRecordName(recordName, requestName);
-        if (!jsPandaFile->HasRecord(requestName)) {
+        CString entryPoint = ConcatImportFileNormalizedOhmurlWithRecordName(jsPandaFile, recordName, requestName);
+        if (entryPoint.empty()) {
             THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, inputPath, recordName, requestName);
         }
         return entryPoint;
@@ -75,9 +75,14 @@ CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, cons
     return ParseNormalizedOhmUrl(thread, baseFileName, recordName, requestName);
 }
 
-CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(const CString &recordName,
-    CString &requestName)
+/*
+ * Before: requestName: ../xxx1/xxx2 || ./xxx1
+ * After:  &entryPath&version
+ */
+CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(const JSPandaFile *jsPandaFile,
+    const CString &recordName, CString &requestName)
 {
+    CString entryPoint;
     CVector<CString> res = SplitNormalizedRecordName(recordName);
     CString path = PathHelper::NORMALIZED_OHMURL_TAG + res[NORMALIZED_IMPORT_PATH_INDEX];
     CString version = res[NORMALIZED_VERSION_INDEX];
@@ -88,11 +93,23 @@ CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(const C
     }
     pos = path.rfind(PathHelper::SLASH_TAG);
     if (pos != CString::npos) {
-        CString entryPoint = path.substr(0, pos + 1) + requestName;
-        entryPoint = PathHelper::NormalizePath(entryPoint);
-        requestName = ConcatImportFileNormalizedOhmurl(entryPoint, "", version);
+        entryPoint = path.substr(0, pos + 1) + requestName;
+    } else {
+        entryPoint = requestName;
     }
-    return requestName;
+    entryPoint = PathHelper::NormalizePath(entryPoint);
+    requestName = ConcatImportFileNormalizedOhmurl(entryPoint, "", version);
+    if (jsPandaFile->HasRecord(requestName)) {
+        return requestName;
+    }
+    // requestName may be a folder
+    entryPoint += PACKAGE_ENTRY_FILE;
+    entryPoint = PathHelper::NormalizePath(entryPoint);
+    requestName = ConcatImportFileNormalizedOhmurl(entryPoint, "", version);
+    if (jsPandaFile->HasRecord(requestName)) {
+        return requestName;
+    }
+    return CString();
 }
 
 CString ModulePathHelper::ReformatPath(CString requestName)
@@ -883,16 +900,8 @@ CString ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, cons
     EcmaVM *vm = thread->GetEcmaVM();
     CString inputPath = requestPath;
     if (IsImportFile(requestPath)) {
-        CString moduleRequestName = RemoveSuffix(requestPath);
-        size_t pos = moduleRequestName.find(PathHelper::CURRENT_DIREATORY_TAG);
-        if (pos == 0) {
-            moduleRequestName = moduleRequestName.substr(CURRENT_DIREATORY_TAG_LEN);
-        }
-        pos = recordName.rfind(PathHelper::SLASH_TAG);
-        if (pos != CString::npos) {
-            requestPath = ConcatImportFileNormalizedOhmurl(recordName.substr(0, pos + 1), moduleRequestName);
-        }
-        if (!jsPandaFile->HasRecord(requestPath)) {
+        CString entryPoint = ConcatImportFileNormalizedOhmurlWithRecordName(jsPandaFile, recordName, requestPath);
+        if (entryPoint.empty()) {
             THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, inputPath, recordName, requestPath);
         }
     } else if (StringHelper::StringStartWith(requestPath, PREFIX_ETS)) {
