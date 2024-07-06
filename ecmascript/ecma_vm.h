@@ -819,6 +819,26 @@ public:
         enableJitLogSkip_ = flag;
     }
 
+    void AddAOTSnapShotStats(std::string tag, uint32_t count = 1)
+    {
+        AOTSnapShotStatsMap_[tag] += count;
+    }
+
+    void PrintAOTSnapShotStats()
+    {
+        static constexpr int nameRightAdjustment = 30;
+        static constexpr int numberRightAdjustment = 30;
+        LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << "AOT Snapshot Genre"
+                       << std::setw(numberRightAdjustment) << "Count";
+        LOG_ECMA(ERROR) << "==========================================================================";
+        for (const auto &iter: AOTSnapShotStatsMap_) {
+            LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << iter.first
+                           << std::setw(numberRightAdjustment) << iter.second;
+        }
+        LOG_ECMA(ERROR) << "==========================================================================";
+        AOTSnapShotStatsMap_.clear();
+    }
+
 protected:
 
     void PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const;
@@ -857,6 +877,8 @@ private:
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
+
+    CUnorderedMap<std::string, uint32_t> AOTSnapShotStatsMap_;
 
     // VM resources.
     SnapshotEnv *snapshotEnv_ {nullptr};
