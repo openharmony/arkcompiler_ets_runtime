@@ -32,6 +32,7 @@
       panda::Float32ArrayRef::*;
       panda::Float64ArrayRef::*;
       panda::MapIteratorRef::*;
+      panda::SendableMapIteratorRef::*;
       panda::FunctionRef::*;
       panda::GeneratorFunctionRef::*;
       panda::GeneratorObjectRef::*;
@@ -41,6 +42,7 @@
       panda::IntegerRef::*;
       panda::JSValueRef::*;
       panda::MapRef::*;
+      panda::SendableMapRef::*;
       panda::NativePointerRef::*;
       panda::NumberFormatRef::*;
       panda::NumberRef::*;
