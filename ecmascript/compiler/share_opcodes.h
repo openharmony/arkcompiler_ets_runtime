@@ -54,7 +54,7 @@ namespace panda::ecmascript::kungfu {
     V(Return, RETURN, GateFlags::HAS_ROOT, 1, 1, 1)                                             \
     V(ReturnVoid, RETURN_VOID, GateFlags::HAS_ROOT, 1, 1, 0)                                    \
     V(StateSplit, STATE_SPLIT, GateFlags::CHECKABLE, 1, 1, 0)                                   \
-    V(GetEnv, GET_ENV, GateFlags::NONE_FLAG, 0, 0, 1)
+    V(GetEnv, GET_ENV, GateFlags::NO_WRITE, 0, 1, 1)
 
 #define SHARE_GATE_META_DATA_LIST_WITH_VALUE_IN(V)                                       \
     V(FrameValues, FRAME_VALUES, GateFlags::NONE_FLAG, 0, 0, value)                      \

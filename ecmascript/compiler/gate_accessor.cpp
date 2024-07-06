@@ -1415,9 +1415,9 @@ GateRef GateAccessor::GetConstantGate(MachineType bitValue, BitField bitfield, G
     return circuit_->GetConstantGate(bitValue, bitfield, type);
 }
 
-GateRef GateAccessor::GetInitialEnvGate(GateRef jsFunc) const
+GateRef GateAccessor::GetInitialEnvGate(GateRef depend, GateRef jsFunc) const
 {
-    return circuit_->GetInitialEnvGate(jsFunc);
+    return circuit_->GetInitialEnvGate(depend, jsFunc);
 }
 
 bool GateAccessor::IsConstantNumber(GateRef gate) const

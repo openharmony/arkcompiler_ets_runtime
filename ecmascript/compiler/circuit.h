@@ -69,7 +69,7 @@ public:
     void ClearConstantCache(MachineType machineType, uint64_t value, GateType type);
     GateRef GetConstantStringGate(MachineType machineType, std::string_view str, GateType type);
     GateRef NewArg(MachineType machineType, size_t index, GateType type, GateRef argRoot);
-    GateRef GetInitialEnvGate(GateRef jsFunc);
+    GateRef GetInitialEnvGate(GateRef depend, GateRef jsFunc);
     size_t GetGateCount() const;
     TimeStamp GetTime() const;
     void AdvanceTime() const;
