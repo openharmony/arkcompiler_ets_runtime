@@ -211,6 +211,12 @@ void NTypeBytecodeLowering::LowerNTypedCreateArrayWithBuffer(GateRef gate)
     auto methodOffset = acc_.TryGetMethodOffset(gate);
     uint32_t cpId = ptManager_->GetConstantPoolIDByMethodOffset(methodOffset);
 
+    uint32_t constPoolIndex = static_cast<uint32_t>(acc_.GetConstantValue(index));
+    JSTaggedValue arr = GetArrayLiteralValue(cpId, constPoolIndex);
+    // Since jit has no lazy loading array from constantpool, arr might be undefined.
+    if (arr.IsUndefined()) {
+        return;
+    }
     AddProfiling(gate);
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     GateRef cpIdGr = builder_.Int32(cpId);
