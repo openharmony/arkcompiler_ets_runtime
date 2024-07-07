@@ -104,6 +104,21 @@ if (globalThis["ArkPrivate"] != undefined) {
     let dProxy = new Proxy(dmap1, {});
     testdProxySet(proxy, res, dProxy);
 
+    let cmmp = new fastmap((firstValue, secondValue) => {return firstValue > secondValue});
+    cmmp.set("aa", 1);
+    cmmp.set("bb", 1);
+    res.set("test hasKey undefined", cmmp.hasKey(undefined) == false);
+    res.set("test hasKey null", cmmp.hasKey(null) == false);
+    cmmp.set(null, 1);
+    cmmp.set(undefined, 1);
+    res.set("test hasKey undefined true", cmmp.hasKey(undefined) == true);
+    res.set("test hasKey null true", cmmp.hasKey(null) == true);
+
+    cmmp.clear();
+    let commap1 = new fastmap();
+    commap1.setAll(cmmp);
+    res.set("test setAll null map", commap1.length == 0);
+
     let commap = new fastmap((firstValue, secondValue) => {return firstValue > secondValue});
     commap.set("c","1");
     commap.set("a","8");
