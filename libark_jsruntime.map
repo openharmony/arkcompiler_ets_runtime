@@ -60,6 +60,8 @@
       panda::SharedUint16ArrayRef::*;
       panda::SharedInt32ArrayRef::*;
       panda::SharedUint32ArrayRef::*;
+      panda::SharedFloat32ArrayRef::*;
+      panda::SharedUint8ClampedArrayRef::*;
       panda::ProxyRef::*;
       panda::StringRef::*;
       panda::SymbolRef::*;

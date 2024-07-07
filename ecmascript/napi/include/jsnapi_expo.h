@@ -1095,6 +1095,18 @@ public:
                                           int32_t byteOffset, int32_t length);
 };
 
+class ECMA_PUBLIC_API SharedFloat32ArrayRef : public SendableTypedArrayRef {
+public:
+    static Local<SharedFloat32ArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                            int32_t byteOffset, int32_t length);
+};
+
+class ECMA_PUBLIC_API SharedUint8ClampedArrayRef : public SendableTypedArrayRef {
+public:
+    static Local<SharedUint8ClampedArrayRef> New(const EcmaVM *vm, Local<SendableArrayBufferRef> buffer,
+                                                 int32_t byteOffset, int32_t length);
+};
+
 class ECMA_PUBLIC_API Uint32ArrayRef : public TypedArrayRef {
 public:
     static Local<Uint32ArrayRef> New(const EcmaVM *vm, Local<ArrayBufferRef> buffer, int32_t byteOffset,
