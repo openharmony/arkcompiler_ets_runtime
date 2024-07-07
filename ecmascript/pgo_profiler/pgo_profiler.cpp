@@ -614,8 +614,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::ProfileBytecode");
     JSFunction *function = JSFunction::Cast(funcValue);
-    if (function->GetClass()->IsJSSharedFunction() ||
-        function->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+    if (function->IsSendableFunction()) {
         return;
     }
     Method *method = Method::Cast(function->GetMethod());

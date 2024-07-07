@@ -727,6 +727,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetPropertiesToSendableEnv(GateRef glue, GateRef object, GateRef index, GateRef value);
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
+    GateRef GetSendableEnvFromModule(GateRef module);
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
                                  MemoryOrder order = MemoryOrder::Default());
@@ -746,6 +747,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value);
     void UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell);
     void SetJSObjectTaggedField(GateRef glue, GateRef object, size_t offset, GateRef value);
+    void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef sendableEnv);
+    void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value, MemoryOrder order);
     GateRef GetGlobalObject(GateRef glue);
     GateRef IsWorker(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
@@ -849,6 +852,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef IsClassConstructorKind(GateRef kind);
     GateRef IsGeneratorKind(GateRef kind);
     GateRef IsBaseKind(GateRef kind);
+    GateRef IsSendableFunction(GateRef method);
 
     GateRef IsAOTLiteralInfo(GateRef info);
     GateRef GetIhcFromAOTLiteralInfo(GateRef info);

@@ -19,6 +19,7 @@
 #include "ecmascript/builtins/builtins_object.h"
 #include "ecmascript/builtins/builtins_symbol.h"
 #include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
+#include "ecmascript/builtins/builtins_shared_async_function.h"
 #include "ecmascript/builtins/builtins_shared_function.h"
 #include "ecmascript/builtins/builtins_shared_object.h"
 #include "ecmascript/builtins/builtins_shared_map.h"
@@ -30,6 +31,7 @@
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
+#include "ecmascript/js_async_function.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/symbol_table.h"
@@ -38,6 +40,7 @@
 namespace panda::ecmascript {
 using BuiltinsSharedObject = builtins::BuiltinsSharedObject;
 using BuiltinsSharedFunction = builtins::BuiltinsSharedFunction;
+using BuiltinsSharedAsyncFunction = builtins::BuiltinsSharedAsyncFunction;
 using Function = builtins::BuiltinsFunction;
 using Object = builtins::BuiltinsObject;
 using BuiltinsSharedSet = builtins::BuiltinsSharedSet;
@@ -67,6 +70,7 @@ void Builtins::InitializeSObjectAndSFunction(const JSHandle<GlobalEnv> &env) con
         reinterpret_cast<void *>(Function::FunctionPrototypeInvokeSelf), sFuncPrototypeHClass,
         FunctionKind::NORMAL_FUNCTION);
     InitializeSFunction(env, sFuncPrototype);
+    InitializeSAsyncFunction(env, sObjIHClass);
     InitializeSObject(env, sObjIHClass, sObjPrototype, sFuncPrototype);
     InitializeSSet(env, sObjPrototype, sFuncPrototype);
     InitializeSMap(env, sObjPrototype, sFuncPrototype);
@@ -331,6 +335,30 @@ void Builtins::InitializeSModuleNamespace(const JSHandle<GlobalEnv> &env, const 
 
     // SharedmoduleNamespace.prototype [ @@toStringTag ]
     SetStringTagSymbol(env, moduleNamespacePrototype, "Module");
+}
+
+void Builtins::InitializeSAsyncFunction(const JSHandle<GlobalEnv> &env,
+                                        const JSHandle<JSHClass> &sObjIHClass) const
+{
+    // SharedAsyncFunction.prototype
+    JSHandle<JSObject> sAsyncFuncPrototype = factory_->NewSharedOldSpaceJSObjectWithInit(sObjIHClass);
+    JSObject::SetPrototype(thread_, sAsyncFuncPrototype, env->GetSFunctionPrototype());
+    // SharedAsyncFunction.prototype_or_hclass
+    auto emptySLayout = thread_->GlobalConstants()->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> sAsyncFuncIHClass = factory_->NewSEcmaHClass(JSAsyncFunction::SIZE, 0,
+        JSType::JS_SHARED_ASYNC_FUNCTION, JSHandle<JSTaggedValue>(sAsyncFuncPrototype), emptySLayout);
+        // SharedAsyncFunction = new SharedFunction()
+    JSHandle<JSFunction> sAsyncFuncFunction = factory_->NewSFunctionByHClass(
+        reinterpret_cast<void *>(BuiltinsSharedAsyncFunction::SharedAsyncFunctionConstructor),
+        sAsyncFuncIHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
+    JSObject::SetPrototype(thread_, JSHandle<JSObject>(sAsyncFuncFunction), env->GetSFunctionFunction());
+    sAsyncFuncFunction->SetProtoOrHClass(thread_, sAsyncFuncIHClass);
+    env->SetSAsyncFunctionFunction(thread_, sAsyncFuncFunction);
+    env->SetSAsyncFunctionPrototype(thread_, sAsyncFuncPrototype);
+    JSHandle<JSTaggedValue> sAsyncFuncPrototypeVal(thread_, sAsyncFuncPrototype.GetTaggedValue());
+    JSHandle<JSHClass> sAsyncFuncClass = factory_->CreateSFunctionClass(
+        JSAsyncFunction::SIZE, JSType::JS_SHARED_ASYNC_FUNCTION, sAsyncFuncPrototypeVal);
+    env->SetSAsyncFunctionClass(thread_, sAsyncFuncClass);
 }
 
 void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,

@@ -343,7 +343,7 @@ JSTaggedValue BuiltinsObject::Freeze(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     bool status = false;
     // 2.Let status be SetIntegrityLevel( O, "frozen").
-    if (obj->IsJSSharedObject() || obj->IsJSSharedFunction()) {
+    if (obj->IsJSSharedObject() || obj->IsJSSharedFunction() || obj->IsJSSharedAsyncFunction()) {
         status = JSObject::FreezeSharedObject(thread, JSHandle<JSObject>(obj));
     } else if (obj->IsJSSharedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(UpdateSendableAttributes), JSTaggedValue::Exception());

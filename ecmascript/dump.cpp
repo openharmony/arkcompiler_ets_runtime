@@ -427,6 +427,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "PropertyBox";
         case JSType::JS_ASYNC_FUNCTION:
             return "AsyncFunction";
+        case JSType::JS_SHARED_ASYNC_FUNCTION:
+            return "SharedAsyncFunction";
         case JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION:
             return "AsyncAwaitStatusFunction";
         case JSType::JS_ASYNC_FUNC_OBJECT:
@@ -1056,6 +1058,7 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             JSProxyRevocFunction::Cast(obj)->Dump(os);
             break;
         case JSType::JS_ASYNC_FUNCTION:
+        case JSType::JS_SHARED_ASYNC_FUNCTION:
             needDumpHClass = true;
             JSAsyncFunction::Cast(obj)->Dump(os);
             break;
@@ -4273,6 +4276,7 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
             JSProxyRevocFunction::Cast(obj)->DumpForSnapshot(vec);
             break;
         case JSType::JS_ASYNC_FUNCTION:
+        case JSType::JS_SHARED_ASYNC_FUNCTION:
             JSAsyncFunction::Cast(obj)->DumpForSnapshot(vec);
             break;
         case JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION:

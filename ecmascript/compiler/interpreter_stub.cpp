@@ -4801,16 +4801,33 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
     {
         SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
         auto frame = GetFrame(sp);
-        GateRef envHandle = GetEnvFromFrame(frame);
-        SetLexicalEnvToFunction(glue, result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
-        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
-        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
+        GateRef module = GetModuleFromFunction(currentFunc);
+        Label isSendableFunc(env);
+        Label isNotSendableFunc(env);
+        Label afterSendableFunc(env);
+        BRANCH(IsSendableFunction(GetMethodFromFunction(result)), &isSendableFunc, &isNotSendableFunc);
+        Bind(&isSendableFunc);
+        {
+            GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
+            SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(module));
+            SetModuleToFunction(glue, result, smodule);
+            Jump(&afterSendableFunc);
+        }
+        Bind(&isNotSendableFunc);
+        {
+            GateRef envHandle = GetEnvFromFrame(frame);
+            SetLexicalEnvToFunction(glue, result, envHandle);
+            SetModuleToFunction(glue, result, module);
+            SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
 #if ECMASCRIPT_ENABLE_IC
-        GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
-        UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
-        callback.ProfileDefineClass(result);
+            GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
+            UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
+            callback.ProfileDefineClass(result);
 #endif
+            Jump(&afterSendableFunc);
+        }
+        Bind(&afterSendableFunc);
         varAcc = result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM8_ID16_IMM8);
     }
@@ -4830,16 +4847,33 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
     {
         SetLengthToFunction(glue, result, ZExtInt8ToInt32(length));
         auto frame = GetFrame(sp);
-        GateRef envHandle = GetEnvFromFrame(frame);
-        SetLexicalEnvToFunction(glue, result, envHandle);
         GateRef currentFunc = GetFunctionFromFrame(frame);
-        SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
-        SetModuleToFunction(glue, result, GetModuleFromFunction(currentFunc));
+        GateRef module = GetModuleFromFunction(currentFunc);
+        Label isSendableFunc(env);
+        Label isNotSendableFunc(env);
+        Label afterSendableFunc(env);
+        BRANCH(IsSendableFunction(GetMethodFromFunction(result)), &isSendableFunc, &isNotSendableFunc);
+        Bind(&isSendableFunc);
+        {
+            GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
+            SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(module));
+            SetModuleToFunction(glue, result, smodule);
+            Jump(&afterSendableFunc);
+        }
+        Bind(&isNotSendableFunc);
+        {
+            GateRef envHandle = GetEnvFromFrame(frame);
+            SetLexicalEnvToFunction(glue, result, envHandle);
+            SetModuleToFunction(glue, result, module);
+            SetHomeObjectToFunction(glue, result, GetHomeObjectFromFunction(currentFunc));
 #if ECMASCRIPT_ENABLE_IC
-        GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
-        UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
-        callback.ProfileDefineClass(result);
+            GateRef slotId = ZExtInt16ToInt32(ReadInst16_0(pc));
+            UpdateProfileTypeInfoCellToFunction(glue, result, profileTypeInfo, slotId);
+            callback.ProfileDefineClass(result);
 #endif
+            Jump(&afterSendableFunc);
+        }
+        Bind(&afterSendableFunc);
         varAcc = result;
         DISPATCH_WITH_ACC(DEFINEFUNC_IMM16_ID16_IMM8);
     }

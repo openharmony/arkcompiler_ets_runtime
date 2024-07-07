@@ -250,6 +250,7 @@ public:
     void InitializeForConcurrentFunction(JSThread *thread);
 
     bool IsSendableFunction() const;
+    bool IsSharedFunction() const;
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
                                      FunctionKind kind = FunctionKind::NORMAL_FUNCTION);

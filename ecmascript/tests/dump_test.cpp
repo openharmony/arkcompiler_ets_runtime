@@ -570,7 +570,8 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 CHECK_DUMP_FIELDS(JSFunction::SIZE, JSGeneratorFunction::SIZE, 0U);
                 break;
             }
-            case JSType::JS_ASYNC_FUNCTION: {
+            case JSType::JS_ASYNC_FUNCTION:
+            case JSType::JS_SHARED_ASYNC_FUNCTION: {
                 CHECK_DUMP_FIELDS(JSFunction::SIZE, JSAsyncFunction::SIZE, 0U);
                 break;
             }

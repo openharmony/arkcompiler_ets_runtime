@@ -120,6 +120,7 @@ bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedOb
             SerializeSendableEnvFieldIndividually(root, start, end);
             return true;
         case JSType::JS_SHARED_FUNCTION:
+        case JSType::JS_SHARED_ASYNC_FUNCTION:
             SerializeSFunctionFieldIndividually(root, start, end);
             return true;
         case JSType::JS_ASYNC_FUNCTION:

@@ -398,6 +398,8 @@ public:
     void SetJitCompiledCode(bool flag);
     void ClearJitCompiledCodeFlags();
 
+    bool IsSharedMethod() const;
+
     bool CanSerializeCodeEntry() const;
 
     static constexpr size_t Size()
@@ -442,6 +444,7 @@ public:
     using DeoptTypeBits = DeoptCountBits::NextField<kungfu::DeoptType, DEOPTTYPE_NUM_BITS>; // offset 20-27
     using IsCallNapiBit = DeoptTypeBits::NextFlag; // offset 28
     using IsJitCompiledCodeBit = IsCallNapiBit::NextFlag; // offset 29
+    using IsSharedBit = IsJitCompiledCodeBit::NextFlag; // offset 30
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
     ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, CALL_FIELD_OFFSET)

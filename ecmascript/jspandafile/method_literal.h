@@ -209,10 +209,13 @@ public:
 
     static constexpr size_t BUILTINID_NUM_BITS = 8;
     static constexpr size_t FUNCTION_KIND_NUM_BITS = 4;
+    static constexpr size_t EMPTY_BITS = 16;
     using BuiltinIdBits = BitField<uint8_t, 0, BUILTINID_NUM_BITS>; // offset 0-7
     using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
     using IsNoGCBit = FunctionKindBits::NextFlag; // offset 12
     using HasDebuggerStmtBit = IsNoGCBit::NextFlag; // offset 13
+    using EmptyBit = HasDebuggerStmtBit::NextField<uint8_t, EMPTY_BITS>; // offset 14-29
+    using IsSharedBit = EmptyBit::NextFlag; // offset 30
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
     {
@@ -268,6 +271,16 @@ public:
     bool HasDebuggerStmt() const
     {
         return HasDebuggerStmtBit::Decode(extraLiteralInfo_);
+    }
+
+    void SetIsSharedBit(bool isShared)
+    {
+        extraLiteralInfo_ = IsSharedBit::Update(extraLiteralInfo_, isShared);
+    }
+
+    bool IsShared() const
+    {
+        return IsSharedBit::Decode(extraLiteralInfo_);
     }
 
     FunctionKind GetFunctionKind() const

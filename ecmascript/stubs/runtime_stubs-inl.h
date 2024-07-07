@@ -1123,7 +1123,7 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSH
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<ProfileTypeInfo> profileTypeInfo;
-    if (function->GetClass()->IsJSSharedFunction()) {
+    if (function->IsSharedFunction()) {
         return JSTaggedValue::Undefined();
     } else {
         profileTypeInfo = factory->NewProfileTypeInfo(icSlotSize);
@@ -2198,13 +2198,23 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     JSTaggedValue method = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
     const JSHandle<Method> methodHandle(thread, method);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> result = factory->NewJSFunction(methodHandle);
+    JSHandle<JSFunction> result;
+    if (methodHandle->IsSharedMethod()) {
+        result = factory->NewJSSendableFunction(methodHandle);
+        ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+        JSHandle<JSTaggedValue> sendableFuncModule = moduleManager->GenerateSendableFuncModule(module);
+        JSHandle<SourceTextModule> sendableFuncModuleRecord(sendableFuncModule);
+        sendableFuncModuleRecord->SetSendableEnv(thread, JSHandle<SourceTextModule>::Cast(module)->GetSendableEnv());
+        result->SetModule(thread, sendableFuncModule.GetTaggedValue());
+    } else {
+        result = factory->NewJSFunction(methodHandle);
+        result->SetModule(thread, module.GetTaggedValue());
+        result->SetLexicalEnv(thread, envHandle.GetTaggedValue());
+        result->SetHomeObject(thread, homeObject.GetTaggedValue());
+    }
     DefineFuncTryUseAOTHClass(thread, result, ihc);
 
     result->SetLength(length);
-    result->SetLexicalEnv(thread, envHandle.GetTaggedValue());
-    result->SetHomeObject(thread, homeObject.GetTaggedValue());
-    result->SetModule(thread, module.GetTaggedValue());
     QuickFixHelper::SetPatchModule(thread, methodHandle, result);
     return result.GetTaggedValue();
 }

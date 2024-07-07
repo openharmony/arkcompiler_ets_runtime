@@ -401,6 +401,8 @@ private:
                            const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSFunction(const JSHandle<GlobalEnv> &env,
                              const JSHandle<JSFunction> &sFuncPrototype) const;
+    void InitializeSAsyncFunction(const JSHandle<GlobalEnv> &env,
+                                  const JSHandle<JSHClass> &sObjIHClass) const;
     void InitializeSArrayBuffer(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &objFuncClass,
                                 const JSHandle<JSFunction> &sFuncPrototype) const;
     void InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &sObjPrototype,

@@ -873,6 +873,7 @@ public:
     JSHandle<JSSymbol> NewSPublicSymbol(const JSHandle<JSTaggedValue> &name);
     JSHandle<Method> CloneMethodTemporaryForJIT(JSHandle<Method> method);
     JSHandle<SendableEnv> NewSendableEnv(int numSlots);
+    JSHandle<JSFunction> NewJSSendableFunction(const JSHandle<Method> &methodHandle);
 
 private:
     friend class GlobalEnv;

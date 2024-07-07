@@ -1854,7 +1854,9 @@ bool JSObject::SetIntegrityLevel(JSThread *thread, const JSHandle<JSObject> &obj
 
 bool JSObject::FreezeSharedObject(JSThread *thread, const JSHandle<JSObject> &obj)
 {
-    ASSERT_PRINT(JSHandle<JSTaggedValue>(obj)->IsJSSharedObject() || JSHandle<JSTaggedValue>(obj)->IsJSSharedFunction(),
+    ASSERT_PRINT(JSHandle<JSTaggedValue>(obj)->IsJSSharedObject() ||
+                 JSHandle<JSTaggedValue>(obj)->IsJSSharedFunction() ||
+                 JSHandle<JSTaggedValue>(obj)->IsJSSharedAsyncFunction(),
                  "Obj is not a valid shared object");
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // It is not extensible for shared object.

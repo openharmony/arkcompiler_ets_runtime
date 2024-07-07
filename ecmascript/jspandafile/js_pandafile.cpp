@@ -297,6 +297,9 @@ bool JSPandaFile::FindOhmUrlInPF(const CString &recordName, CString &entryPoint)
 FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
 {
     FunctionKind kind;
+    if ((static_cast<uint32_t>(funcKind) & SENDABLE_FUNCTION_MASK) != 0) {
+        funcKind = static_cast<panda_file::FunctionKind>(static_cast<uint32_t>(funcKind) & (~SENDABLE_FUNCTION_MASK));
+    }
     switch (funcKind) {
         case panda_file::FunctionKind::NONE:
             kind = FunctionKind::NONE_FUNCTION;
@@ -327,6 +330,14 @@ FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
             UNREACHABLE();
     }
     return kind;
+}
+
+bool JSPandaFile::IsSendableFunctionKind(panda_file::FunctionKind funcKind)
+{
+    if ((static_cast<uint32_t>(funcKind) & SENDABLE_FUNCTION_MASK) != 0) {
+        return true;
+    }
+    return false;
 }
 
 FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)

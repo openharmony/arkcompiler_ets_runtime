@@ -164,6 +164,12 @@ void Method::SetJitCompiledCode(bool flag)
     IsJitCompiledCodeBit::Update(extraLiteralInfo, flag);
 }
 
+bool Method::IsSharedMethod() const
+{
+    uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+    return IsSharedBit::Decode(extraLiteralInfo);
+}
+
 void Method::ClearJitCompiledCodeFlags()
 {
     ClearAOTFlagsWhenInit();

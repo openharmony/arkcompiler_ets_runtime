@@ -432,6 +432,7 @@ public:
     }
     static FunctionKind PUBLIC_API GetFunctionKind(panda_file::FunctionKind funcKind);
     static FunctionKind GetFunctionKind(ConstPoolType type);
+    static bool PUBLIC_API IsSendableFunctionKind(panda_file::FunctionKind funcKind);
 
     bool PUBLIC_API IsFirstMergedAbc() const;
     const void *GetBase() const
@@ -446,6 +447,7 @@ private:
 
     static constexpr size_t VERSION_SIZE = 4;
     static constexpr std::array<uint8_t, VERSION_SIZE> OLD_VERSION {0, 0, 0, 2};
+    static constexpr uint32_t SENDABLE_FUNCTION_MASK = 1 << 3;
 
     // please add member after *pf_. static constexpr int32_t PF_OFFSET = 0.
     const panda_file::File *pf_ {nullptr};

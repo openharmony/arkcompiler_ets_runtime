@@ -240,6 +240,9 @@
     V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)                            \
     V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)                      \
     V(JSTaggedValue, SNormalFunctionClass, SHARED_NORMAL_FUNCTION_CLASS)                                         \
+    V(JSTaggedValue, SAsyncFunctionFunction, SHARED_ASYNC_FUNCTION_FUNCTION_INDEX)                               \
+    V(JSTaggedValue, SAsyncFunctionPrototype, SHARED_ASYNC_FUNCTION_PROTOTYPE_INDEX)                             \
+    V(JSTaggedValue, SAsyncFunctionClass, SHARED_ASYNC_FUNCTION_CLASS)                                           \
     /* DETECTOR SYMBOL BEGIN (Maintain the same order with DETECTOR_SYMBOL_LIST) */                              \
     V(JSTaggedValue, ReplaceSymbol, REPLACE_SYMBOL_INDEX)                                                        \
     V(JSTaggedValue, SplitSymbol, SPLIT_SYMBOL_INDEX)                                                            \
