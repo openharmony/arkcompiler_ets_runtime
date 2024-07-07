@@ -56,6 +56,7 @@
     V("unescape",                 Unescape,              1, INVALID)        \
     /* The following are ArkTS extensions */                                \
     V("markModuleCollectable",    MarkModuleCollectable, 0, INVALID)        \
+    V("loadNativeModule",         LoadNativeModule,      0, INVALID)        \
     V("print",                    PrintEntrypoint,       0, INVALID)        \
     V("__getCurrentModuleName__", GetCurrentModuleName,  0, INVALID)        \
     V("__getCurrentBundleName__", GetCurrentBundleName,  0, INVALID)
@@ -121,6 +122,7 @@ public:
 
     static JSTaggedValue PrintEntrypoint(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue MarkModuleCollectable(EcmaRuntimeCallInfo *msg);
+    static JSTaggedValue LoadNativeModule(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue CallJsBoundFunction(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue CallJsProxy(EcmaRuntimeCallInfo *msg);
 

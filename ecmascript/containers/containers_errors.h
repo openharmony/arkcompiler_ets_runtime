@@ -28,12 +28,14 @@ enum ErrorFlag {
     IS_NULL_ERROR = 10200012,
     IS_NOT_EXIST_ERROR = 10200017,
     CONCURRENT_MODIFICATION_ERROR = 10200201,
+    REFERENCE_ERROR = 10200301,
 };
 class ContainerError {
 public:
     static PUBLIC_API JSTaggedValue BusinessError(JSThread *thread, int32_t errorCode, const char *msg);
     static PUBLIC_API JSTaggedValue BindError(JSThread *thread, const char *msg);
     static PUBLIC_API JSTaggedValue ParamError(JSThread *thread, const char *msg);
+    static PUBLIC_API JSTaggedValue ReferenceError(JSThread *thread, const char *msg);
 };
 } // namespace panda::ecmascript::containers
 #endif // ECMASCRIPT_CONTAINERS_CONTAINERS_ERROR_H

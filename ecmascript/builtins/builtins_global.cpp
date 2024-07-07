@@ -30,10 +30,14 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/containers/containers_errors.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/module/js_module_manager.h"
 
 namespace panda::ecmascript::builtins {
 using NumberHelper = base::NumberHelper;
 using StringHelper = base::StringHelper;
+using GlobalError = containers::ContainerError;
 // bitmap for "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_" + "@*+-./"
 constexpr std::uint8_t ESCAPE_BIT_MAP[128] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -709,6 +713,51 @@ JSTaggedValue BuiltinsGlobal::MarkModuleCollectable(EcmaRuntimeCallInfo *msg)
 
     ModuleDeregister::ProcessModuleReference(thread, module);
     return JSTaggedValue::True();
+}
+
+JSTaggedValue BuiltinsGlobal::LoadNativeModule(EcmaRuntimeCallInfo *msg)
+{
+    ASSERT(msg);
+    JSThread *thread = msg->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    CString errorMsg;
+    uint32_t numArgs = msg->GetArgsNumber();
+    if (numArgs != 1) {
+        errorMsg = "The number of parameters received by loadNativeModule is incorrect.";
+        auto error = GlobalError::ParamError(thread, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    JSHandle<JSTaggedValue> input = GetCallArg(msg, 0);
+    if (!input->IsString()) {
+        errorMsg = "The number of parameters received by loadNativeModule is incorrect.";
+        auto error = GlobalError::ParamError(thread, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    
+    EcmaVM *vm  = thread->GetEcmaVM();
+    auto [moduleName, fileName] = vm->GetCurrentModuleInfo(false);
+    std::shared_ptr<JSPandaFile> curJsPandaFile;
+    CString requestPath = ModulePathHelper::Utf8ConvertToString(input.GetTaggedValue());
+    CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName.c_str());
+    if (moduleName.size() != 0) {
+        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath);
+        if (curJsPandaFile == nullptr) {
+            errorMsg = "Load file with filename '" + abcFilePath +
+                "' failed, module name '" + requestPath + "'" + ", from load native module";
+            auto error = GlobalError::ReferenceError(thread, errorMsg.c_str());
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        }
+        if (vm->IsNormalizedOhmUrlPack()) {
+            ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), abcFilePath, "",
+                requestPath);
+        } else if (ModulePathHelper::NeedTranstale(requestPath)) {
+            ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);
+        }
+    }
+
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    auto exportObject = moduleManager->ExecuteNativeModuleMayThrowError(thread, requestPath);
+    return exportObject.GetTaggedValue();
 }
 
 JSTaggedValue BuiltinsGlobal::CallJsBoundFunction(EcmaRuntimeCallInfo *msg)

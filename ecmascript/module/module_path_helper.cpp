@@ -897,6 +897,9 @@ CString ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, cons
     if (!NeedTranslateToNormalized(requestPath)) {
         return requestPath;
     }
+    if (StringHelper::StringStartWith(requestPath, RAW_ARKUIX_PREFIX)) {
+        return StringHelper::Replace(requestPath, RAW_ARKUIX_PREFIX, REQUIRE_NAPI_OHOS_PREFIX);
+    }
     EcmaVM *vm = thread->GetEcmaVM();
     CString inputPath = requestPath;
     if (IsImportFile(requestPath)) {

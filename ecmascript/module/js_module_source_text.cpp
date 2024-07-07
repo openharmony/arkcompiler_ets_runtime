@@ -42,6 +42,7 @@
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 using StringHelper = base::StringHelper;
+using GlobalError = containers::ContainerError;
 
 CVector<std::string> SourceTextModule::GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,
                                                         const JSHandle<TaggedArray> &exportStarSet)
@@ -400,12 +401,9 @@ void SourceTextModule::MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSVa
     arguments.emplace_back(StringRef::NewFromUtf8(vm, moduleDir.c_str()));
 }
 
-bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
-                                        ModuleTypes moduleType)
+Local<JSValueRef> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *thread,
+    const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
 {
-    EcmaVM *vm = thread->GetEcmaVM();
-    [[maybe_unused]] LocalScope scope(vm);
-
     CString moduleRequestName =
         ModulePathHelper::Utf8ConvertToString(requiredModule->GetEcmaModuleRecordName());
     bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
@@ -431,11 +429,43 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     // some function(s) may not registered in global object for non-main thread
     if (!maybeFuncRef->IsFunction(vm)) {
         LOG_FULL(WARN) << "Not found require func";
-        return false;
+        return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     }
 
     Local<FunctionRef> funcRef = maybeFuncRef;
     auto exportObject = funcRef->Call(vm, JSValueRef::Undefined(vm), arguments.data(), arguments.size());
+    return exportObject;
+}
+
+Local<JSValueRef> SourceTextModule::LoadNativeModuleMayThrowError(JSThread *thread,
+    const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    [[maybe_unused]] LocalScope scope(vm);
+
+    auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
+    if (exportObject->IsNativeModuleErrorObject(vm) || exportObject->IsUndefined()
+        || thread->HasPendingException()) {
+        CString errorMsg = "load native module failed.";
+        LOG_FULL(ERROR) << errorMsg.c_str();
+        auto error = GlobalError::ReferenceError(thread, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+            JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined())));
+    }
+    return exportObject;
+}
+
+bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
+                                        ModuleTypes moduleType)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    [[maybe_unused]] LocalScope scope(vm);
+    
+    auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
+    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
+    CString fileName =
+        ModulePathHelper::Utf8ConvertToString(requiredModule->GetEcmaModuleFilename());
+    CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(fileName);
     if (UNLIKELY(exportObject->IsUndefined())) {
         LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
         return false;
