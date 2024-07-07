@@ -442,7 +442,7 @@ OperationResult JSAPIArrayList::GetProperty(JSThread *thread, const JSHandle<JSA
                                             const JSHandle<JSTaggedValue> &key)
 {
     int length = obj->GetLength().GetInt();
-    int index = key->GetInt();
+    int index = static_cast<int>(key->GetNumber());
     if (index < 0 || index >= length) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
@@ -460,7 +460,7 @@ bool JSAPIArrayList::SetProperty(JSThread *thread, const JSHandle<JSAPIArrayList
                                  const JSHandle<JSTaggedValue> &value)
 {
     int length = obj->GetLength().GetInt();
-    int index = key->GetInt();
+    int index = static_cast<int>(key->GetNumber());
     if (index < 0 || index >= length) {
         return false;
     }

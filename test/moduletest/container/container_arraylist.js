@@ -212,6 +212,11 @@ if (globalThis["ArkPrivate"] != undefined) {
     proxy1.trimToCurrentLength()
     map.set("test arraylist trimToCurrentLength:", proxy1.getCapacity() === 6)
 
+    let testlist = new arrayList();
+    testlist.add(7);
+    testlist.add(9);
+    map.set("test arraylist JSAPIArrayList::GetProperty:", testlist[Math.floor(1)] === 9);
+    
     let flag = undefined;
     function elements(value, key, map) {
         if (!value) {
