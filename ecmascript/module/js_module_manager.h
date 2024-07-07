@@ -78,6 +78,8 @@ public:
 
     JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const std::string &key);
 
+    JSHandle<JSTaggedValue> ExecuteNativeModuleMayThrowError(JSThread *thread, const CString &recordName);
+
     JSHandle<JSTaggedValue> ExecuteNativeModule(JSThread *thread, const std::string &recordName);
 
     JSHandle<JSTaggedValue> ExecuteJsonModule(JSThread *thread, const std::string &recordName,

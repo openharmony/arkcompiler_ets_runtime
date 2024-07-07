@@ -170,6 +170,10 @@ public:
         const CString &soPath, const CString &moduleName);
     static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
                                  const CString &moduleRequestName);
+    static Local<JSValueRef> LoadNativeModuleImpl(EcmaVM *vm, JSThread *thread,
+        const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType);
+    static Local<JSValueRef> LoadNativeModuleMayThrowError(JSThread *thread,
+        const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType);
     static bool LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
                                  ModuleTypes moduleType);
     inline static bool IsNativeModule(ModuleTypes moduleType)

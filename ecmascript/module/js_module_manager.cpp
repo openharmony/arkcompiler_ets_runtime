@@ -716,6 +716,34 @@ JSHandle<JSTaggedValue> ModuleManager::LoadNativeModule(JSThread *thread, const 
     return JSHandle<JSTaggedValue>(thread, result);
 }
 
+JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModuleMayThrowError(JSThread *thread, const CString &recordName)
+{
+    ObjectFactory *factory = vm_->GetFactory();
+    JSHandle<EcmaString> record = factory->NewFromASCII(recordName.c_str());
+    JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
+    if (IsEvaluatedModule(record.GetTaggedValue())) {
+        JSHandle<SourceTextModule> moduleRecord = HostGetImportedModule(record.GetTaggedValue());
+        return JSHandle<JSTaggedValue>(thread, moduleRecord->GetModuleValue(thread, 0, false));
+    }
+
+    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(recordName);
+    JSHandle<JSTaggedValue> moduleRecord = ModuleDataExtractor::ParseNativeModule(thread,
+        recordName, "", moduleType);
+    JSHandle<SourceTextModule> nativeModule =
+        JSHandle<SourceTextModule>::Cast(moduleRecord);
+    auto exportObject = SourceTextModule::LoadNativeModuleMayThrowError(thread, nativeModule, moduleType);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    nativeModule->SetStatus(ModuleStatus::EVALUATED);
+    nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+    nativeModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
+    JSHandle<NameDictionary> handleDict(thread, resolvedModules_);
+    JSHandle<EcmaString> recordNameHandle = vm_->GetFactory()->NewFromUtf8(recordName);
+    resolvedModules_ = NameDictionary::Put(thread, handleDict, JSHandle<JSTaggedValue>(recordNameHandle),
+        moduleRecord, PropertyAttributes::Default()).GetTaggedValue();
+    return JSNApiHelper::ToJSHandle(exportObject);
+}
+
 JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, const std::string &recordName)
 {
     ObjectFactory *factory = vm_->GetFactory();
