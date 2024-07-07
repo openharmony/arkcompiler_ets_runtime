@@ -2900,6 +2900,22 @@ inline void StubBuilder::SetPropertiesToSendableEnv(GateRef glue, GateRef object
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, object, valueIndex, value);
 }
 
+inline GateRef StubBuilder::GetSendableEnvFromModule(GateRef module)
+{
+    return env_->GetBuilder()->GetSendableEnvFromModule(module);
+}
+
+inline void StubBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef sendableEnv)
+{
+    env_->GetBuilder()->SetSendableEnvToModule(glue, module, sendableEnv);
+}
+
+inline void StubBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value, MemoryOrder order)
+{
+    GateRef offset = IntPtr(SourceTextModule::SENDABLE_ENV_OFFSET);
+    Store(VariableType::JS_POINTER(), glue, module, offset, value, order);
+}
+
 inline GateRef StubBuilder::GetHomeObjectFromJSFunction(GateRef object)
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
@@ -3198,6 +3214,17 @@ inline GateRef StubBuilder::IsBaseKind(GateRef kind)
 {
     GateRef val = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::BASE_CONSTRUCTOR)));
     return BoolOr(val, IsGeneratorKind(kind));
+}
+
+inline GateRef StubBuilder::IsSendableFunction(GateRef method)
+{
+    GateRef fieldOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
+    GateRef literalField = Load(VariableType::INT64(), method, fieldOffset);
+    return Int64NotEqual(
+        Int64And(
+            Int64LSR(literalField, Int64(Method::IsSharedBit::START_BIT)),
+            Int64((1LU << Method::IsSharedBit::SIZE) - 1)),
+        Int64(0));
 }
 
 inline GateRef StubBuilder::IsNativeMethod(GateRef method)

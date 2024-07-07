@@ -863,4 +863,28 @@ JSHandle<SendableEnv> ObjectFactory::NewSendableEnv(int numSlots)
     array->InitializeWithSpecialValue(JSTaggedValue::Hole(), numSlots + SendableEnv::SENDABLE_RESERVED_ENV_LENGTH);
     return array;
 }
+
+JSHandle<JSFunction> ObjectFactory::NewJSSendableFunction(const JSHandle<Method> &methodHandle)
+{
+    JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
+    FunctionKind kind = methodHandle->GetFunctionKind();
+    JSHandle<JSHClass> hclass;
+    switch (kind) {
+        case FunctionKind::ASYNC_FUNCTION: {
+            hclass = JSHandle<JSHClass>::Cast(env->GetSAsyncFunctionClass());
+            break;
+        }
+        case FunctionKind::BASE_CONSTRUCTOR: {
+            hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
+            break;
+        }
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+
+    JSHandle<JSFunction> func = NewSFunctionByHClass(methodHandle, hclass);
+    ASSERT_NO_ABRUPT_COMPLETION(thread_);
+    return func;
+}
 }  // namespace panda::ecmascript

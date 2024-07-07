@@ -1070,6 +1070,10 @@ JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
 void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
 {
     JSHandle<Method> method(thread, this->GetMethod());
+    JSTaggedValue sendableEnv = JSTaggedValue::Undefined();
+    if (!this->GetModule().IsUndefined()) {
+        sendableEnv = SourceTextModule::Cast(this->GetModule())->GetSendableEnv();
+    }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     if (jsPandaFile == nullptr) {
         LOG_ECMA(ERROR) << "JSPandaFile is nullptr";
@@ -1109,8 +1113,9 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
-    if (this->GetClass()->IsJSSharedFunction()) {
+    if (this->IsSharedFunction()) {
         JSHandle<JSTaggedValue> sendableClassRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
+        SourceTextModule::Cast(sendableClassRecord.GetTaggedValue())->SetSendableEnv(thread, sendableEnv);
         this->SetModule(thread, sendableClassRecord);
     } else {
         this->SetModule(thread, moduleRecord);
@@ -1119,8 +1124,16 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
 
 bool JSFunction::IsSendableFunction() const
 {
-    if (this->GetClass()->IsJSSharedFunction() ||
+    if (this->GetClass()->IsJSSharedFunction() || this->GetClass()->IsJSSharedAsyncFunction() ||
         this->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION) {
+        return true;
+    }
+    return false;
+}
+
+bool JSFunction::IsSharedFunction() const
+{
+    if (this->GetClass()->IsJSSharedFunction() || this->GetClass()->IsJSSharedAsyncFunction()) {
         return true;
     }
     return false;

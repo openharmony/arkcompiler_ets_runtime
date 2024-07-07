@@ -80,6 +80,8 @@ void PandaFileTranslator::TranslateClasses(const JSThread *thread, JSPandaFile *
             if (jsPandaFile->IsNewVersion()) {
                 panda_file::IndexAccessor indexAccessor(*pf, methodId);
                 panda_file::FunctionKind funcKind = indexAccessor.GetFunctionKind();
+                bool isShared = JSPandaFile::IsSendableFunctionKind(funcKind);
+                methodLiteral->SetIsSharedBit(isShared);
                 FunctionKind kind = JSPandaFile::GetFunctionKind(funcKind);
                 methodLiteral->SetFunctionKind(kind);
             } else {

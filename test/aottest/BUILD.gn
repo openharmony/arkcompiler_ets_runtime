@@ -293,6 +293,7 @@ group("ark_aot_ts_test") {
     "sharedset",
     "definesendableclass",
     "sendableenv",
+    "sendablefunc",
     "sendablecontext",
     "createarraywithbuffer2",
     "builtins_number2",

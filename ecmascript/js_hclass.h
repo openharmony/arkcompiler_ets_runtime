@@ -101,6 +101,7 @@ struct Reference;
         JS_GENERATOR_FUNCTION, /* /////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_GENERATOR_FUNCTION,  /* //////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_FUNCTION, /* /////////////////////////////////////////////////////////////////////////////-PADDING */ \
+        JS_SHARED_ASYNC_FUNCTION, /* //////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_INTL_BOUND_FUNCTION, /* ////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_ASYNC_AWAIT_STATUS_FUNCTION, /* ////////////////////////////////////////////////////////////////-PADDING */ \
         JS_BOUND_FUNCTION, /*  //////////////////////////////////////////////////////////////////////////////////// */ \
@@ -890,7 +891,12 @@ public:
 
     inline bool IsJSAsyncFunction() const
     {
-        return GetObjectType() == JSType::JS_ASYNC_FUNCTION;
+        return GetObjectType() == JSType::JS_ASYNC_FUNCTION || GetObjectType() == JSType::JS_SHARED_ASYNC_FUNCTION;
+    }
+
+    inline bool IsJSSharedAsyncFunction() const
+    {
+        return GetObjectType() == JSType::JS_SHARED_ASYNC_FUNCTION;
     }
 
     inline bool IsJSAsyncAwaitStatusFunction() const

@@ -1183,6 +1183,11 @@ inline bool JSTaggedValue::IsJSAsyncFunction() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncFunction();
 }
 
+inline bool JSTaggedValue::IsJSSharedAsyncFunction() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedAsyncFunction();
+}
+
 inline bool JSTaggedValue::IsJSAsyncAwaitStatusFunction() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSAsyncAwaitStatusFunction();

@@ -257,7 +257,8 @@ public:
                 jsPromiseValueThunkOrThrowerFunction->VisitRangeSlot<visitType>(visitor);
                 break;
             }
-            case JSType::JS_ASYNC_FUNCTION: {
+            case JSType::JS_ASYNC_FUNCTION:
+            case JSType::JS_SHARED_ASYNC_FUNCTION: {
                 auto jsAsyncFunction = JSAsyncFunction::Cast(object);
                 jsAsyncFunction->VisitRangeSlot<visitType>(visitor);
                 break;

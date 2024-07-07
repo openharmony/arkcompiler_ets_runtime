@@ -436,6 +436,8 @@ CString *HeapSnapshot::GenerateNodeName(TaggedObject *entry)
             return GetString("Symbol");
         case JSType::JS_ASYNC_FUNCTION:
             return GetString("AsyncFunction");
+        case JSType::JS_SHARED_ASYNC_FUNCTION:
+            return GetString("SharedAsyncFunction");
         case JSType::JS_INTL_BOUND_FUNCTION:
             return GetString("JSIntlBoundFunction");
         case JSType::JS_ASYNC_AWAIT_STATUS_FUNCTION:

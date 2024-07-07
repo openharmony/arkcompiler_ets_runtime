@@ -79,7 +79,8 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
         case JSType::JS_SHARED_BIGINT64_ARRAY:
         case JSType::JS_SHARED_BIGUINT64_ARRAY:
         case JSType::JS_SHARED_OBJECT:
-        case JSType::JS_SHARED_FUNCTION: {
+        case JSType::JS_SHARED_FUNCTION:
+        case JSType::JS_SHARED_ASYNC_FUNCTION: {
             if (serializeSharedEvent_ > 0) {
                 return true;
             }

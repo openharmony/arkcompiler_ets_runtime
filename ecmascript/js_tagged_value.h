@@ -543,6 +543,7 @@ public:
     bool IsJSIntlBoundFunction() const;
     bool IsProxyRevocFunction() const;
     bool IsJSAsyncFunction() const;
+    bool IsJSSharedAsyncFunction() const;
     bool IsJSAsyncAwaitStatusFunction() const;
     bool IsClassConstructor() const;
     bool IsClassPrototype() const;

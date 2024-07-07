@@ -3886,6 +3886,14 @@ DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetSharedModule)
+{
+    RUNTIME_STUBS_HEADER(GetSharedModule);
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 0); // 0: means the zeroth parameter
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    return moduleManager->GenerateSendableFuncModule(module).GetTaggedValue().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(SetPrototypeTransition)
 {
     RUNTIME_STUBS_HEADER(SetPrototypeTransition);

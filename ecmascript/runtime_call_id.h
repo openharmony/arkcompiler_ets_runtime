@@ -361,6 +361,7 @@ namespace panda::ecmascript {
     V(AsyncFromSyncIterator, Throw)           \
     V(AsyncFromSyncIterator, Return)          \
     V(AsyncFunction, Constructor)             \
+    V(SharedAsyncFunction, Constructor)       \
     V(Boolean, BooleanPrototypeToString)      \
     V(Boolean, BooleanPrototypeValueOf)       \
     V(Boolean, Constructor)                   \
