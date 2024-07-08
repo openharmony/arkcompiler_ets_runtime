@@ -1512,6 +1512,10 @@ GateRef NewObjectStubBuilder::NewTrackInfo(GateRef glue, GateRef cachedHClass, G
 void NewObjectStubBuilder::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start,
                                                       GateRef end, MemoryOrder order)
 {
+    {
+        ASM_ASSERT(GET_MESSAGE_STRING_ID(InitializeWithSpeicalValue),
+                   Int32Equal(Int32Mod(Int32Sub(end, start), Int32(JSTaggedValue::TaggedTypeSize())), Int32(0)));
+    }
     auto env = GetEnvironment();
     Label begin(env);
     Label storeValue(env);
@@ -2224,17 +2228,17 @@ void NewObjectStubBuilder::NewByteArray(Variable *result, Label *exit, GateRef e
 
     Label noError(env);
     Label initializeExit(env);
-    size_ = AlignUp(ComputeTaggedTypedArraySize(ZExtInt32ToPtr(elementSize), ZExtInt32ToPtr(length)),
+    GateRef size = AlignUp(ComputeTaggedTypedArraySize(ZExtInt32ToPtr(elementSize), ZExtInt32ToPtr(length)),
         IntPtr(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)));
+    size_ = size;
     auto hclass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::BYTE_ARRAY_CLASS_INDEX);
     AllocateInYoung(result, exit, &noError, hclass);
     Bind(&noError);
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), hclass);
-        GateRef byteLength = Int32Mul(elementSize, length);
         auto startOffset = Int32(ByteArray::DATA_OFFSET);
-        auto endOffset = Int32Add(Int32(ByteArray::DATA_OFFSET), byteLength);
-        InitializeWithSpeicalValue(&initializeExit, result->ReadVariable(), Int32(0), startOffset, endOffset);
+        InitializeWithSpeicalValue(&initializeExit, result->ReadVariable(), Int32(0), startOffset,
+                                   TruncPtrToInt32(size));
         Bind(&initializeExit);
         Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::ARRAY_LENGTH_OFFSET), length);
         Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::BYTE_LENGTH_OFFSET), elementSize);
