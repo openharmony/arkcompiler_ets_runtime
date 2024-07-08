@@ -15,9 +15,9 @@
 #ifndef ECMASCRIPT_JIT_TOOLS_H
 #define ECMASCRIPT_JIT_TOOLS_H
 
-#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/platform/aot_crash_info.h"
 
 #if defined(JIT_ESCAPE_ENABLE) || defined(GET_PARAMETER_FOR_JIT)
 #include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"

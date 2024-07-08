@@ -1035,12 +1035,14 @@ if (is_mingw) {
     "ecmascript/platform/windows/os.cpp",
     "ecmascript/platform/windows/time.cpp",
     "ecmascript/platform/windows/log.cpp",
+    "ecmascript/platform/windows/aot_crash_info.cpp",
   ]
 } else {
   ecma_platform_source += [
     "ecmascript/platform/unix/file.cpp",
     "ecmascript/platform/unix/map.cpp",
     "ecmascript/platform/unix/time.cpp",
+    "ecmascript/platform/unix/aot_crash_info.cpp",
   ]
   if (is_mac) {
     ecma_platform_source += [

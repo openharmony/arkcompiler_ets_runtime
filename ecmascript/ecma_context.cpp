@@ -44,8 +44,8 @@
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/patch/patch_loader.h"
+#include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
@@ -1105,7 +1105,7 @@ bool EcmaContext::LoadAOTFilesInternal(const std::string& aotFileName)
 {
 #ifdef AOT_ESCAPE_ENABLE
     std::string bundleName = pgo::PGOProfilerManager::GetInstance()->GetBundleName();
-    if (ohos::AotCrashInfo::GetInstance().IsAotEscapeOrNotInEnableList(vm_, bundleName)) {
+    if (AotCrashInfo::GetInstance().IsAotEscapedOrNotInEnableList(vm_, bundleName)) {
         return false;
     }
 #endif

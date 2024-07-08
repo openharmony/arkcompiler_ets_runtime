@@ -58,6 +58,28 @@ bool RealPath(const std::string &path, std::string &realPath, bool readOnly)
     return true;
 }
 
+bool RealPathByChar(const char *path, char *realPath, int rowLength, bool readOnly)
+{
+    if (strlen(path) == 0 || strlen(path) > PATH_MAX) {
+        return false;
+    }
+    char buffer[PATH_MAX] = { '\0' };
+    if (!realpath(path, buffer)) {
+        // Maybe file does not exist.
+        if (!readOnly && errno == ENOENT) {
+            if (strcpy_s(realPath, rowLength, path) != 0) {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
+    if (strcpy_s(realPath, rowLength, buffer) != 0) {
+        return false;
+    }
+    return true;
+}
+
 void DPrintf(fd_t fd, const std::string &buffer)
 {
     int ret = dprintf(fd, "%s", buffer.c_str());

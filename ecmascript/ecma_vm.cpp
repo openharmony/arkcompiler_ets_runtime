@@ -92,10 +92,10 @@
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/taskpool/taskpool.h"
-#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/ohos/aot_tools.h"
+#include "ecmascript/platform/aot_crash_info.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -104,53 +104,10 @@
 namespace panda::ecmascript {
 using RandomGenerator = base::RandomGenerator;
 using PGOProfilerManager = pgo::PGOProfilerManager;
-using AotCrashInfo = ohos::AotCrashInfo;
 using JitTools = ohos::JitTools;
 AOTFileManager *JsStackInfo::loader = nullptr;
 JSRuntimeOptions *JsStackInfo::options = nullptr;
 bool EcmaVM::multiThreadCheck_ = false;
-
-#ifdef JIT_ESCAPE_ENABLE
-static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31
-
-void GetSignalHandler(int signal, siginfo_t *info, void *context)
-{
-#if defined(__aarch64__) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
-    ucontext_t *ucontext = static_cast<ucontext_t*>(context);
-    uintptr_t fp = ucontext->uc_mcontext.regs[29];
-    FrameIterator frame(reinterpret_cast<JSTaggedType *>(fp));
-    ecmascript::JsStackInfo::BuildCrashInfo(false, frame.GetFrameType());
-#else
-    ecmascript::JsStackInfo::BuildCrashInfo(false);
-#endif
-    sigaction(signal, &s_oldSa[signal], nullptr);
-    int rc = syscall(SYS_rt_tgsigqueueinfo, getpid(), syscall(SYS_gettid), info->si_signo, info);
-    if (rc != 0) {
-        LOG_ECMA(ERROR) << "GetSignalHandler() failed to resend signal during crash";
-    }
-}
-
-void SignalReg(int signo)
-{
-    sigaction(signo, nullptr, &s_oldSa[signo]);
-    struct sigaction newAction;
-    newAction.sa_flags = SA_RESTART | SA_SIGINFO;
-    newAction.sa_sigaction = GetSignalHandler;
-    sigaction(signo, &newAction, nullptr);
-}
-
-void SignalAllReg()
-{
-    SignalReg(SIGABRT);
-    SignalReg(SIGBUS);
-    SignalReg(SIGSEGV);
-    SignalReg(SIGILL);
-    SignalReg(SIGKILL);
-    SignalReg(SIGSTKFLT);
-    SignalReg(SIGFPE);
-    SignalReg(SIGTRAP);
-}
-#endif
 
 EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
 {
@@ -212,21 +169,15 @@ void EcmaVM::PostFork()
     Taskpool::GetCurrentTaskpool()->Initialize();
     SetPostForked(true);
     LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
-#if defined(JIT_ESCAPE_ENABLE) || defined(AOT_ESCAPE_ENABLE)
     SignalAllReg();
-#endif
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     pgo::PGOTrace::GetInstance()->SetEnable(ohos::AotTools::GetPgoTraceEnable());
-#ifdef AOT_ESCAPE_ENABLE
     AotCrashInfo::GetInstance().SetOptionPGOProfiler(&options_, bundleName);
-#endif
     ResetPGOProfiler();
-#ifdef JIT_ESCAPE_ENABLE
     ohos::JitTools::GetInstance().SetJitEnable(this, bundleName);
-#endif
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
