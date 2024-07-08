@@ -109,6 +109,16 @@ printSign(-1.5)      //: -1
 //aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
 printSign(Infinity)  //: 1
 
+class C {
+    constructor() {
+        return Math.sign("3");
+    }
+}
+
+//aot: [trace] aot inline builtin: Math.sign, caller function name:#~C=#C@builtinMathSign
+//aot: [trace] Check Type: NotNumber2
+new C();
+
 // Check IR correctness inside try-block
 try {
     //aot: [trace] aot inline builtin: Math.sign, caller function name:#*#doSign@builtinMathSign
