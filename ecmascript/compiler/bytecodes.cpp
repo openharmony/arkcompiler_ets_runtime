@@ -904,19 +904,23 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::DEFINEMETHOD_IMM8_ID16_IMM8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t methodId = READ_INST_16_1();
             uint16_t length = READ_INST_8_3();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.inputs.emplace_back(ICSlotId(slotId));
             break;
         }
         case EcmaOpcode::DEFINEMETHOD_IMM16_ID16_IMM8: {
+            uint16_t slotId = READ_INST_16_0();
             uint16_t methodId = READ_INST_16_2();
             uint16_t length = READ_INST_8_4();
             info.inputs.emplace_back(ConstDataId(ConstDataIDType::MethodIDType, methodId));
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.inputs.emplace_back(ICSlotId(slotId));
             break;
         }
         case EcmaOpcode::NEWOBJRANGE_IMM8_IMM8_V8: {
@@ -1680,6 +1684,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8: {
+            uint16_t slotId = READ_INST_8_0();
             uint16_t methodId = READ_INST_16_1();
             uint16_t literaId = READ_INST_16_3();
             uint16_t length = READ_INST_16_5();
@@ -1689,9 +1694,11 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.inputs.emplace_back(ICSlotId(slotId));
             break;
         }
         case EcmaOpcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
+            uint16_t slotId = READ_INST_16_0();
             uint16_t methodId = READ_INST_16_2();
             uint16_t literaId = READ_INST_16_4();
             uint16_t length = READ_INST_16_6();
@@ -1701,6 +1708,7 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             info.inputs.emplace_back(Immediate(length));
             info.inputs.emplace_back(VirtualRegister(v0));
             info.inputs.emplace_back(VirtualRegister(builder->GetEnvVregIdx()));
+            info.inputs.emplace_back(ICSlotId(slotId));
             break;
         }
         case EcmaOpcode::LDFUNCTION: {

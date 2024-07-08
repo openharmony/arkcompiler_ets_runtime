@@ -1575,10 +1575,25 @@ DEF_RUNTIME_STUBS(CreateClassWithBuffer)
     JSTaggedValue literalId = GetArg(argv, argc, 4);  // 4: means the four parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 5);  // 5: means the fifth parameter
     JSHandle<JSTaggedValue> length = GetHArg<JSTaggedValue>(argv, argc, 6);  // 6: means the sixth parameter
-    return RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
-                                        static_cast<uint16_t>(methodId.GetInt()),
-                                        static_cast<uint16_t>(literalId.GetInt()),
-                                        module, length).GetRawData();
+
+    auto res = RuntimeCreateClassWithBuffer(thread, base, lexenv, constpool,
+                                            static_cast<uint16_t>(methodId.GetInt()),
+                                            static_cast<uint16_t>(literalId.GetInt()),
+                                            module, length);
+#if ECMASCRIPT_ENABLE_IC
+    const uint32_t INDEX_OF_SLOT_ID = 7; // 7: index of slotId in argv
+    if (argc > INDEX_OF_SLOT_ID) {
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+        uint16_t slotId = static_cast<uint16_t>(GetArg(argv, argc, INDEX_OF_SLOT_ID).GetInt());
+        const uint32_t INDEX_OF_JS_FUNC = 8;  // 8: index of jsFunc in argv
+        ASSERT(argc > INDEX_OF_JS_FUNC);
+        JSHandle<JSFunction> jsFuncHandle = GetHArg<JSFunction>(argv, argc, INDEX_OF_JS_FUNC);
+        JSHandle<JSFunction> resHandle(thread, res);
+        SetProfileTypeInfoCellToFunction(thread, jsFuncHandle, resHandle, slotId);
+        res = resHandle.GetTaggedValue();
+    }
+#endif
+    return res.GetRawData();
 }
 
 DEF_RUNTIME_STUBS(CreateSharedClass)
@@ -2541,7 +2556,21 @@ DEF_RUNTIME_STUBS(DefineMethod)
     uint16_t length = static_cast<uint16_t>(GetArg(argv, argc, 2).GetInt()); // 2: means the second parameter
     JSHandle<JSTaggedValue> env = GetHArg<JSTaggedValue>(argv, argc, 3); // 3: means the third parameter
     JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 4); // 4: means the fourth parameter
-    return RuntimeDefineMethod(thread, method, homeObject, length, env, module).GetRawData();
+    auto res = RuntimeDefineMethod(thread, method, homeObject, length, env, module);
+#if ECMASCRIPT_ENABLE_IC
+    const uint32_t INDEX_OF_SLOT_ID = 5; // 5: index of slotId in argv
+    if (argc > INDEX_OF_SLOT_ID) {
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
+        uint16_t slotId = static_cast<uint16_t>(GetArg(argv, argc, INDEX_OF_SLOT_ID).GetInt());
+        const uint32_t INDEX_OF_JS_FUNC = 6;  // 6: index of jsFunc in argv
+        ASSERT(argc > INDEX_OF_JS_FUNC);
+        JSHandle<JSFunction> jsFuncHandle = GetHArg<JSFunction>(argv, argc, INDEX_OF_JS_FUNC);
+        JSHandle<JSFunction> resHandle(thread, res);
+        SetProfileTypeInfoCellToFunction(thread, jsFuncHandle, resHandle, slotId);
+        res = resHandle.GetTaggedValue();
+    }
+#endif
+    return res.GetRawData();
 }
 
 DEF_RUNTIME_STUBS(SetPatchModule)

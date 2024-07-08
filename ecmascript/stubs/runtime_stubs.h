@@ -714,6 +714,8 @@ private:
                                                              uint16_t methodId, uint16_t literalId,
                                                              const JSHandle<JSTaggedValue> &module,
                                                              const JSHandle<JSTaggedValue> &length);
+    static inline void SetProfileTypeInfoCellToFunction(JSThread *thread, const JSHandle<JSFunction> &jsFunc,
+                                                        const JSHandle<JSFunction> &definedFunc, uint16_t slotId);
     static inline JSTaggedValue RuntimeCreateSharedClass(JSThread *thread,
                                                          const JSHandle<JSTaggedValue> &base,
                                                          const JSHandle<JSTaggedValue> &constpool,

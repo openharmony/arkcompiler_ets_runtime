@@ -375,6 +375,27 @@ JSTaggedValue BuiltinsArkTools::IsAOTCompiled(EcmaRuntimeCallInfo *info)
     return JSTaggedValue(func->IsCompiledCode());
 }
 
+// It is used to check whether two functions have same profileTypeInfo
+JSTaggedValue BuiltinsArkTools::IsSameProfileTypeInfo(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSFunction> func0 = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
+    JSHandle<JSFunction> func1 = JSHandle<JSFunction>::Cast(GetCallArg(info, 1));
+    return JSTaggedValue(func0->GetProfileTypeInfo() == func1->GetProfileTypeInfo());
+}
+
+// It is used to check whether a function has valid profileTypeInfo
+JSTaggedValue BuiltinsArkTools::IsProfileTypeInfoValid(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
+    return JSTaggedValue(func->GetProfileTypeInfo().IsTaggedArray());
+}
+
 JSTaggedValue BuiltinsArkTools::IsOnHeap(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);

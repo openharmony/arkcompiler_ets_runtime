@@ -69,8 +69,9 @@ public:
     GateRef NewJSFunction(GateRef glue, GateRef constpool, GateRef index,
                           FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     void NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
-                       Variable *result, Label *success, Label *failed,
+                       Variable *result, Label *success, Label *failed, GateRef slotId,
                        FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
+    void SetProfileTypeInfoCellToFunction(GateRef jsFunc, GateRef definedFunc, GateRef slotId);
     void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind,
                               FunctionKind getKind = FunctionKind::LAST_FUNCTION_KIND);
     void InitializeSFunction(GateRef glue, GateRef func, GateRef kind,

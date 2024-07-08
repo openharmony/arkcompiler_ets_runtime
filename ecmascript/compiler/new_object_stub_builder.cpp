@@ -892,7 +892,8 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
 }
 
 void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
-                                         Variable *result, Label *success, Label *failed, FunctionKind targetKind)
+                                         Variable *result, Label *success, Label *failed, GateRef slotId,
+                                         FunctionKind targetKind)
 {
     auto env = GetEnvironment();
     Label hasException(env);
@@ -924,11 +925,45 @@ void NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef jsFunc, GateRef i
             SetLexicalEnvToFunction(glue_, result->ReadVariable(), lexEnv);
             SetModuleToFunction(glue_, result->ReadVariable(), module);
             SetHomeObjectToFunction(glue_, result->ReadVariable(), GetHomeObjectFromFunction(jsFunc));
+#if ECMASCRIPT_ENABLE_IC
+            SetProfileTypeInfoCellToFunction(jsFunc, result->ReadVariable(), slotId);
+#endif
             Jump(&afterSendableFunc);
         }
         Bind(&afterSendableFunc);
         Jump(success);
     }
+}
+
+void NewObjectStubBuilder::SetProfileTypeInfoCellToFunction(GateRef jsFunc, GateRef definedFunc, GateRef slotId)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label isValidSlotId(env);
+    Label exit(env);
+
+    BRANCH(Equal(slotId, Int32(ProfileTypeInfo::INVALID_SLOT_INDEX)), &exit, &isValidSlotId);
+    Bind(&isValidSlotId);
+    {
+        Label isUndefined(env);
+        Label notUndefined(env);
+        DEFVARIABLE(profileTypeInfo, VariableType::JS_ANY(), GetProfileTypeInfo(jsFunc));
+        BRANCH(TaggedIsUndefined(*profileTypeInfo), &isUndefined, &notUndefined);
+        Bind(&isUndefined);
+        {
+            profileTypeInfo = CallRuntime(glue_, RTSTUB_ID(UpdateHotnessCounter), { jsFunc });
+            Jump(&notUndefined);
+        }
+        Bind(&notUndefined);
+        {
+            UpdateProfileTypeInfoCellToFunction(glue_, definedFunc, *profileTypeInfo, slotId);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+    return;
 }
 
 void NewObjectStubBuilder::InitializeSFunction(GateRef glue, GateRef func, GateRef kind, FunctionKind getKind)

@@ -2684,8 +2684,7 @@ void SlowPathLowering::LowerStSendableVar(GateRef gate)
 
 void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
 {
-    // 5: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 5);
+    ASSERT(acc_.GetNumValueIn(gate) == 6);  // 6: number of value inputs
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = acc_.GetValueIn(gate, 0);
     GateRef proto = acc_.GetValueIn(gate, 3);
@@ -2700,7 +2699,12 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
     GateRef result;
     auto args = { proto, lexicalEnv, sharedConstPool,
                   builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId), module,
-                  builder_.ToTaggedInt(length)};
+                  builder_.ToTaggedInt(length),
+#if ECMASCRIPT_ENABLE_IC
+                  // 5: slot id
+                  builder_.Int32ToTaggedInt(builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 5))), jsFunc
+#endif
+    };
     result = LowerCallRuntime(gate, RTSTUB_ID(CreateClassWithBuffer), args, true);
     BRANCH_CIR(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION), &isException, &isNotException);
     CREATE_DOUBLE_EXIT(isNotException, isException)
@@ -2737,7 +2741,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     Label success(&builder_);
     Label failed(&builder_);
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::Definefunc,
-        {glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), builder_.TruncInt64ToInt32(length), lexEnv});
+        {glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), builder_.TruncInt64ToInt32(length), lexEnv, slotId});
     BRANCH_CIR(builder_.TaggedIsException(result), &failed, &success);
     builder_.Bind(&failed);
     {
@@ -2747,7 +2751,6 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     builder_.Bind(&success);
     {
 #if ECMASCRIPT_ENABLE_IC
-        builder_.UpdateProfileTypeInfoCellToFunction(glue_, result, builder_.GetProfileTypeInfo(jsFunc), slotId);
         if (compilationEnv_->IsJitCompiler()) {
             builder_.CallRuntime(glue_, RTSTUB_ID(JitReuseCompiledFunc), Gate::InvalidGateRef,
                 { result }, glue_);
@@ -3014,8 +3017,8 @@ void SlowPathLowering::LowerGetResumeMode(GateRef gate)
 
 void SlowPathLowering::LowerDefineMethod(GateRef gate)
 {
-    // 4: number of value inputs
-    ASSERT(acc_.GetNumValueIn(gate) == 4);
+    // 5: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 5);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef methodId = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
@@ -3024,13 +3027,17 @@ void SlowPathLowering::LowerDefineMethod(GateRef gate)
                                                   ConstPoolType::METHOD);
     GateRef length = acc_.GetValueIn(gate, 1);
     GateRef env = acc_.GetValueIn(gate, 2); // 2: Get current env
-    GateRef homeObject = acc_.GetValueIn(gate, 3);  // 3: second arg
+    GateRef homeObject = acc_.GetValueIn(gate, 4);  // 4: homeObject
 
     Label defaultLabel(&builder_);
     Label successExit(&builder_);
     Label exceptionExit(&builder_);
-    GateRef result = LowerCallRuntime(gate, RTSTUB_ID(DefineMethod),
-        {method, homeObject, builder_.ToTaggedInt(length), env, builder_.GetModuleFromFunction(jsFunc)}, true);
+    auto args = {method, homeObject, builder_.ToTaggedInt(length), env, builder_.GetModuleFromFunction(jsFunc),
+#if ECMASCRIPT_ENABLE_IC
+        builder_.Int32ToTaggedInt(builder_.ZExtInt16ToInt32(acc_.GetValueIn(gate, 3))), jsFunc  // 3: slot id
+#endif
+    };
+    GateRef result = LowerCallRuntime(gate, RTSTUB_ID(DefineMethod), args, true);
     BRANCH_CIR(builder_.IsSpecial(result, JSTaggedValue::VALUE_EXCEPTION),
         &exceptionExit, &successExit);
     CREATE_DOUBLE_EXIT(successExit, exceptionExit)

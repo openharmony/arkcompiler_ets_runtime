@@ -63,12 +63,13 @@ void DefinefuncStubBuilder::GenerateCircuit()
     GateRef methodId = Int32Argument(2); // 2: 3rd argument
     GateRef length = Int32Argument(3);   // 3: 4th argument
     GateRef lexEnv = TaggedArgument(4);  // 4: 5th argument
+    GateRef slotId = Int32Argument(5);   // 5: 6th argument
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     Label exit(env);
     Label failed(env);
     NewObjectStubBuilder newBuilder(this);
-    newBuilder.NewJSFunction(glue, jsFunc, methodId, length, lexEnv, &result, &exit, &failed);
+    newBuilder.NewJSFunction(glue, jsFunc, methodId, length, lexEnv, &result, &exit, &failed, slotId);
     Bind(&failed);
     {
         result = Exception();
