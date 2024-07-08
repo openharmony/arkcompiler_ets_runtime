@@ -67,7 +67,7 @@ JSTaggedValue BuiltinsNumberFormat::NumberFormatConstructor(EcmaRuntimeCallInfo 
     //       [[Value]]: numberFormat, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
     //    b. Return this.
     if (GetNewTarget(argv)->IsUndefined() && thisValue->IsJSObject()) {
-        bool isInstanceOf = JSObject::InstanceOf(thread, thisValue, env->GetNumberFormatFunction());
+        bool isInstanceOf = JSFunction::OrdinaryHasInstance(thread, env->GetNumberFormatFunction(), thisValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (isInstanceOf) {
             PropertyDescriptor descriptor(thread, JSHandle<JSTaggedValue>::Cast(numberFormat), false, false, false);
