@@ -50,7 +50,7 @@ CString *HeapSnapshot::GetArrayString(TaggedArray *array, const CString &as)
     return GetString(arrayName);  // String type was handled singly, see#GenerateStringNode
 }
 
-Node *Node::NewNode(Chunk *chunk, size_t id, size_t index, const CString *name, NodeType type, size_t size,
+Node *Node::NewNode(Chunk *chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
                     size_t nativeSize, JSTaggedType entry, bool isLive)
 {
     auto node = chunk->New<Node>(id, index, name, type, size, nativeSize, 0, entry, isLive);
@@ -61,9 +61,9 @@ Node *Node::NewNode(Chunk *chunk, size_t id, size_t index, const CString *name, 
     return node;
 }
 
-Edge *Edge::NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *to, CString *name)
+Edge *Edge::NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, CString *name)
 {
-    auto edge = chunk->New<Edge>(id, type, from, to, name);
+    auto edge = chunk->New<Edge>(type, from, to, name);
     if (UNLIKELY(edge == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -71,9 +71,9 @@ Edge *Edge::NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *
     return edge;
 }
 
-Edge *Edge::NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *to, uint32_t index)
+Edge *Edge::NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, uint32_t index)
 {
-    auto edge = chunk->New<Edge>(id, type, from, to, index);
+    auto edge = chunk->New<Edge>(type, from, to, index);
     if (UNLIKELY(edge == nullptr)) {
         LOG_FULL(FATAL) << "internal allocator failed";
         UNREACHABLE();
@@ -692,7 +692,7 @@ Node *HeapSnapshot::HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &i
     return node;
 }
 
-Node *HeapSnapshot::HandleBaseClassNode(size_t size, bool idExist, unsigned int &sequenceId,
+Node *HeapSnapshot::HandleBaseClassNode(size_t size, bool idExist, NodeId &sequenceId,
                                         TaggedObject* obj, JSTaggedType &addr)
 {
     size_t selfSize = (size != 0) ? size : obj->GetClass()->SizeFromJSHClass(obj);
@@ -1087,8 +1087,8 @@ void HeapSnapshot::FillEdges(bool isSimplify)
             }
             if (entryTo != nullptr) {
                 Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
-                    Edge::NewEdge(chunk_, edgeCount_, type, entryFrom, entryTo, it.index_) :
-                    Edge::NewEdge(chunk_, edgeCount_, type, entryFrom, entryTo, GetString(it.name_));
+                    Edge::NewEdge(chunk_, type, entryFrom, entryTo, it.index_) :
+                    Edge::NewEdge(chunk_, type, entryFrom, entryTo, GetString(it.name_));
                 RenameFunction(it.name_, entryFrom, entryTo);
                 InsertEdgeUnique(edge);
                 (*iter)->IncEdgeCount();  // Update Node's edgeCount_ here
@@ -1199,7 +1199,7 @@ void HeapSnapshot::AddSyntheticRoot()
                 }                                                                                     \
                 values.insert(valueTo);                                                               \
                 Edge *edge = Edge::NewEdge(chunk_,                                                    \
-                    edgeCount_, EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-")); \
+                    EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-"));             \
                 InsertEdgeAt(edgeOffset, edge);                                                       \
                 edgeOffset++;                                                                         \
                 syntheticRoot->IncEdgeCount();                                                        \
