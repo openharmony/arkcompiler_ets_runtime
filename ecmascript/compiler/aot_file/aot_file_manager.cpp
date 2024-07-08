@@ -455,7 +455,7 @@ void AOTFileManager::InitializeStubEntries(const std::vector<AnFileInfo::FuncEnt
         } else if (des.IsBaselineStub()) {
             thread->SetBaselineStubEntry(des.indexInKindOrMethodId_, des.codeAddr_);
 #if ECMASCRIPT_ENABLE_ASM_FILE_LOAD_LOG
-            int start = GET_MESSAGE_STRING_ID(BaselineLdObjByName);
+            int start = GET_MESSAGE_STRING_ID(BaselineTryLdGLobalByNameImm8ID16);
             std::string format = MessageString::GetMessageString(des.indexInKindOrMethodId_ + start - 1);  // -1: NONE
             LOG_ECMA(DEBUG) << "baseline stub index: " << std::dec << des.indexInKindOrMethodId_ << " :" << format
                             << " addr: 0x" << std::hex << des.codeAddr_;

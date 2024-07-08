@@ -47,7 +47,7 @@ void BaselineStubBuilder::CheckExceptionWithVar(GateRef glue, GateRef sp, GateRe
     }
 }
 
-void BaselineStubBuilder::CheckException(GateRef glue, GateRef sp, GateRef res, GateRef acc)
+void BaselineStubBuilder::CheckException(GateRef glue, GateRef sp, GateRef res)
 {
     auto env = GetEnvironment();
     Label isException(env);
@@ -55,6 +55,8 @@ void BaselineStubBuilder::CheckException(GateRef glue, GateRef sp, GateRef res, 
     Branch(TaggedIsException(res), &isException, &notException);
     Bind(&isException);
     {
+        GateRef frame = GetFrame(sp);
+        GateRef acc = GetAccFromFrame(frame);
         DispatchLast(glue, sp, acc);
         Return();
     }
@@ -64,7 +66,7 @@ void BaselineStubBuilder::CheckException(GateRef glue, GateRef sp, GateRef res, 
     }
 }
 
-void BaselineStubBuilder::CheckExceptionAndReturn(GateRef glue, GateRef sp, GateRef res, GateRef acc)
+void BaselineStubBuilder::CheckExceptionReturn(GateRef glue, GateRef sp, GateRef res)
 {
     auto env = GetEnvironment();
     Label isException(env);
@@ -72,6 +74,8 @@ void BaselineStubBuilder::CheckExceptionAndReturn(GateRef glue, GateRef sp, Gate
     Branch(TaggedIsException(res), &isException, &notException);
     Bind(&isException);
     {
+        GateRef frame = GetFrame(sp);
+        GateRef acc = GetAccFromFrame(frame);
         DispatchLast(glue, sp, acc);
         Return(acc);
     }
