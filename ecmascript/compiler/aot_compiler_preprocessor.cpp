@@ -50,6 +50,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
     isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
+    isEnableTryCatchFunction_ = runtimeOptions.IsEnableTryCatchFunction();
     isEnableOptString_ = runtimeOptions.IsEnableOptString();
     isEnableOptPGOType_ = runtimeOptions.IsEnableOptPGOType();
     isEnableOptTrackField_ = runtimeOptions.IsEnableOptTrackField();
@@ -334,6 +335,15 @@ bool AotCompilerPreprocessor::FilterOption(const std::map<std::string, std::vect
     return find(vec.begin(), vec.end(), methodName) != vec.end();
 }
 
+bool AotCompilerPreprocessor::MethodHasTryCatch(const JSPandaFile *jsPandaFile,
+                                                const MethodLiteral *methodLiteral) const
+{
+    auto pf = jsPandaFile->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodLiteral->GetMethodId());
+    panda_file::CodeDataAccessor cda(*pf, mda.GetCodeId().value());
+    return cda.GetTriesSize() != 0;
+}
+
 bool AotCompilerPreprocessor::IsSkipMethod(const JSPandaFile *jsPandaFile, const BCInfo &bytecodeInfo,
                                            const CString &recordName, const MethodLiteral *methodLiteral,
                                            const MethodPcInfo &methodPCInfo, const std::string &methodName,
@@ -345,6 +355,10 @@ bool AotCompilerPreprocessor::IsSkipMethod(const JSPandaFile *jsPandaFile, const
     }
 
     if (OutCompiledMethodsRange()) {
+        return true;
+    }
+
+    if (!cOptions.isEnableTryCatchFunction_ && MethodHasTryCatch(jsPandaFile, methodLiteral)) {
         return true;
     }
 

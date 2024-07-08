@@ -74,6 +74,7 @@ struct CompilationOptions {
     bool isEnableLaterElimination_ {true};
     bool isEnableValueNumbering_ {true};
     bool isEnableOptInlining_ {true};
+    bool isEnableTryCatchFunction_ {false};
     bool isEnableOptString_ {true};
     bool isEnableOptPGOType_ {true};
     bool isEnableOptTrackField_ {true};
@@ -127,6 +128,8 @@ public:
 
     bool FilterOption(const std::map<std::string, std::vector<std::string>> &optionMap,
                       const std::string &recordName, const std::string &methodName) const;
+
+    bool MethodHasTryCatch(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral) const;
 
     bool IsSkipMethod(const JSPandaFile *jsPandaFile, const BCInfo &bytecodeInfo,
                       const CString &recordName, const MethodLiteral *methodLiteral,

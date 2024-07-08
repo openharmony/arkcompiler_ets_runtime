@@ -128,6 +128,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_STRING,
     OPTION_COMPILER_OPT_VALUE_NUMBERING,
     OPTION_COMPILER_OPT_INLINING,
+    OPTION_COMPILER_TRY_CATCH_FUNCTION,
     OPTION_COMPILER_OPT_PGOTYPE,
     OPTION_COMPILER_OPT_TRACK_FIELD,
     OPTION_COMPILER_PGO_PROFILER_PATH,
@@ -197,7 +198,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
     OPTION_COMPILER_BASELINE_PGO,
 };
-static_assert(OPTION_SPLIT_ONE == 64);
+static_assert(OPTION_SPLIT_ONE == 65);
 
 class PUBLIC_API JSRuntimeOptions {
 public:
@@ -1290,6 +1291,16 @@ public:
         return enableOptInlining_;
     }
 
+    void SetEnableTryCatchFunction(bool value)
+    {
+        enableTryCatchFunction_ = value;
+    }
+
+    bool IsEnableTryCatchFunction() const
+    {
+        return enableTryCatchFunction_;
+    }
+
     void SetEnableOptPGOType(bool value)
     {
         enableOptPGOType_ = value;
@@ -1902,6 +1913,7 @@ private:
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
+    bool enableTryCatchFunction_ {false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_{false};
     bool enableAPPJIT_{false};
