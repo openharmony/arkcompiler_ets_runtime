@@ -1675,7 +1675,6 @@
         "intl/date-format/time_style_hour_cycle.js",
         "intl/date-format/format_range_hour_cycle.js",
         "intl/date-format/en-format-range-to-parts.js",
-        "intl/general/getCanonicalLocales.js",
         "intl/number-format/rounding-mode-table-v3.js",
         "intl/number-format/rounding-increment-value-v3.js",
         "intl/number-format/use-grouping-v3.js",
