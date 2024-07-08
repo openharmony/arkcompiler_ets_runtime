@@ -1055,3 +1055,27 @@ var arr_fill1 = new Uint8ClampedArray([0, 0, 0]).fill(2.50000);
 arr_fill1.forEach((b)=> {
     print(2 == b);
 })
+
+function sum(a, b) { return a + b; }
+var arr_shadow_length = new Uint8Array([11, 22]);
+Object.defineProperty(arr_shadow_length, 'length', {value: 1});
+print(Array.prototype.reduce.call(arr_shadow_length, sum, 0) == 11);
+print(Array.prototype.reduceRight.call(arr_shadow_length, sum, 0) == 11);
+print(Uint8Array.prototype.reduce.length == 1);
+print(Uint8Array.prototype.reduceRight.length == 1);
+
+var arr_reduce = new Uint8Array([11, 22]);
+ArkTools.arrayBufferDetach(arr_reduce.buffer);
+try {
+    arr_reduce.reduce(sum, 0);
+} catch (e) {
+    print(e instanceof TypeError);
+}
+
+var arr_reduceRight = new Uint8Array([11, 22]);
+ArkTools.arrayBufferDetach(arr_reduceRight.buffer);
+try {
+    arr_reduceRight.reduceRight(sum, 0);
+} catch (e) {
+    print(e instanceof TypeError);
+}
