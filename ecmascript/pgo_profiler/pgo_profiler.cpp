@@ -493,7 +493,7 @@ void PGOProfiler::HandlePGOPreDump()
             return;
         }
         auto func = JSFunction::Cast(funcValue);
-        if (func->IsSendableFunction()) {
+        if (func->IsSendableOrConcurrentFunction()) {
             return;
         }
         JSTaggedValue methodValue = func->GetMethod();
@@ -539,7 +539,7 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
             continue;
         }
         auto func = JSFunction::Cast(value);
-        if (func->IsSendableFunction()) {
+        if (func->IsSendableOrConcurrentFunction()) {
             current = PopFromProfileQueue();
             continue;
         }
@@ -614,7 +614,7 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::ProfileBytecode");
     JSFunction *function = JSFunction::Cast(funcValue);
-    if (function->IsSendableFunction()) {
+    if (function->IsSendableOrConcurrentFunction()) {
         return;
     }
     Method *method = Method::Cast(function->GetMethod());

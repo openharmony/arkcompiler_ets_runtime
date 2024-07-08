@@ -249,7 +249,7 @@ public:
 
     void InitializeForConcurrentFunction(JSThread *thread);
 
-    bool IsSendableFunction() const;
+    bool IsSendableOrConcurrentFunction() const;
     bool IsSharedFunction() const;
 
     static void InitializeJSFunction(JSThread *thread, const JSHandle<JSFunction> &func,
