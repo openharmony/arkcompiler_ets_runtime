@@ -344,15 +344,6 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::ReflectApply:
                 TryInlineReflectApply(gate, argc, id, skipThis);
                 break;
-            case BuiltinsStubCSigns::ID::FunctionPrototypeApply:
-                TryInlineFunctionPrototypeApply(gate, argc, id, skipThis);
-                break;
-            case BuiltinsStubCSigns::ID::FunctionPrototypeBind:
-                TryInlineFunctionPrototypeBind(gate, argc, id, skipThis);
-                break;
-            case BuiltinsStubCSigns::ID::FunctionPrototypeCall:
-                TryInlineFunctionPrototypeCall(gate, argc, id, skipThis);
-                break;
             case BuiltinsStubCSigns::ID::FunctionPrototypeHasInstance:
                 TryInlineFunctionPrototypeHasInstance(gate, argc, id, skipThis);
                 break;
