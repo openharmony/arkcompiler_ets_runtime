@@ -389,7 +389,7 @@ public:
     static Local<PrimitiveRef> True(const EcmaVM *vm);
     static Local<PrimitiveRef> False(const EcmaVM *vm);
 
-    bool BooleaValue();
+    bool BooleaValue(const EcmaVM *vm);
     int64_t IntegerValue(const EcmaVM *vm);
     uint32_t Uint32Value(const EcmaVM *vm);
     int32_t Int32Value(const EcmaVM *vm);
@@ -733,8 +733,8 @@ public:
     Local<JSValueRef> Seal(const EcmaVM *vm);
 
     void SetNativePointerFieldCount(const EcmaVM *vm, int32_t count);
-    int32_t GetNativePointerFieldCount();
-    void *GetNativePointerField(int32_t index);
+    int32_t GetNativePointerFieldCount(const EcmaVM *vm);
+    void *GetNativePointerField(const EcmaVM *vm, int32_t index);
     void SetNativePointerField(const EcmaVM *vm,
                                int32_t index,
                                void *nativePointer = nullptr,
@@ -846,9 +846,9 @@ public:
     static Local<StringRef> NewFromUtf8(const EcmaVM *vm, const char *utf8, int length = -1);
     static Local<StringRef> NewFromUtf16WithoutStringTable(const EcmaVM *vm, const char16_t *utf16, int length = -1);
     static Local<StringRef> NewFromUtf16(const EcmaVM *vm, const char16_t *utf16, int length = -1);
-    std::string ToString();
-    std::string DebuggerToString();
-    uint32_t Length();
+    std::string ToString(const EcmaVM *vm);
+    std::string DebuggerToString(const EcmaVM *vm);
+    uint32_t Length(const EcmaVM *vm);
     int32_t Utf8Length(const EcmaVM *vm);
     int WriteUtf8(const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer = false);
     int WriteUtf16(const EcmaVM *vm, char16_t *buffer, int length);
@@ -918,8 +918,8 @@ public:
     static Local<JSValueRef> CreateBigWords(const EcmaVM *vm, bool sign, uint32_t size, const uint64_t* words);
     void BigIntToInt64(const EcmaVM *vm, int64_t *value, bool *lossless);
     void BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless);
-    void GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words);
-    uint32_t GetWordsArraySize();
+    void GetWordsArray(const EcmaVM *vm, bool* signBit, size_t wordCount, uint64_t* words);
+    uint32_t GetWordsArraySize(const EcmaVM *vm);
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)
@@ -1000,7 +1000,7 @@ class ECMA_PUBLIC_API DateRef : public ObjectRef {
 public:
     static Local<DateRef> New(const EcmaVM *vm, double time);
     Local<StringRef> ToString(const EcmaVM *vm);
-    double GetTime();
+    double GetTime(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API TypedArrayRef : public ObjectRef {
@@ -1269,8 +1269,8 @@ private:
 
 class ECMA_PUBLIC_API MapRef : public ObjectRef {
 public:
-    int32_t GetSize();
-    int32_t GetTotalElements();
+    int32_t GetSize(const EcmaVM *vm);
+    int32_t GetTotalElements(const EcmaVM *vm);
     Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
     Local<JSValueRef> Get(const EcmaVM *vm, const char *utf8);
     Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
@@ -1627,8 +1627,8 @@ public:
 
 class ECMA_PUBLIC_API WeakMapRef : public ObjectRef {
 public:
-    int32_t GetSize();
-    int32_t GetTotalElements();
+    int32_t GetSize(const EcmaVM *vm);
+    int32_t GetTotalElements(const EcmaVM *vm);
     Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
     static Local<WeakMapRef> New(const EcmaVM *vm);
@@ -1638,8 +1638,8 @@ public:
 
 class ECMA_PUBLIC_API SetRef : public ObjectRef {
 public:
-    int32_t GetSize();
-    int32_t GetTotalElements();
+    int32_t GetSize(const EcmaVM *vm);
+    int32_t GetTotalElements(const EcmaVM *vm);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
     static Local<SetRef> New(const EcmaVM *vm);
     void Add(const EcmaVM *vm, Local<JSValueRef> value);
@@ -1647,8 +1647,8 @@ public:
 
 class ECMA_PUBLIC_API WeakSetRef : public ObjectRef {
 public:
-    int32_t GetSize();
-    int32_t GetTotalElements();
+    int32_t GetSize(const EcmaVM *vm);
+    int32_t GetTotalElements(const EcmaVM *vm);
     Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
     static Local<WeakSetRef> New(const EcmaVM *vm);
     void Add(const EcmaVM *vm, Local<JSValueRef> value);

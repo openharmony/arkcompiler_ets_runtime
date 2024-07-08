@@ -296,7 +296,7 @@ Local<NativePointerRef> JSValueRef::ToNativePointer(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<NativePointerRef>(obj);
 }
 
-bool JSValueRef::BooleaValue()
+bool JSValueRef::BooleaValue([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).ToBoolean();
 }
@@ -1299,14 +1299,14 @@ Local<MapRef> MapRef::New(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<MapRef>(mapTag);
 }
 
-int32_t MapRef::GetSize()
+int32_t MapRef::GetSize([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
     return map->GetSize();
 }
 
-int32_t MapRef::GetTotalElements()
+int32_t MapRef::GetTotalElements([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
@@ -1976,19 +1976,19 @@ Local<StringRef> StringRef::NewFromUtf16(const EcmaVM *vm, const char16_t *utf16
     return JSNApiHelper::ToLocal<StringRef>(current);
 }
 
-std::string StringRef::ToString()
+std::string StringRef::ToString([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).ToStdString();
 }
 
-std::string StringRef::DebuggerToString()
+std::string StringRef::DebuggerToString([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).DebuggerToStdString();
 }
 
-uint32_t StringRef::Length()
+uint32_t StringRef::Length([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetLength();
@@ -2112,7 +2112,7 @@ void BigIntRef::BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless
     BigInt::BigIntToUint64(thread, bigintVal, value, lossless);
 }
 
-void BigIntRef::GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words)
+void BigIntRef::GetWordsArray([[maybe_unused]] const EcmaVM *vm, bool* signBit, size_t wordCount, uint64_t* words)
 {
     DCHECK_SPECIAL_VALUE(this);
     JSHandle<BigInt> bigintVal(JSNApiHelper::ToJSHandle(this));
@@ -2133,7 +2133,7 @@ void BigIntRef::GetWordsArray(bool* signBit, size_t wordCount, uint64_t* words)
     *signBit = bigintVal->GetSign();
 }
 
-uint32_t BigIntRef::GetWordsArraySize()
+uint32_t BigIntRef::GetWordsArraySize([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<BigInt> bigintVal(JSNApiHelper::ToJSHandle(this));
@@ -2752,7 +2752,7 @@ void ObjectRef::SetNativePointerFieldCount(const EcmaVM *vm, int32_t count)
     object->SetNativePointerFieldCount(thread, count);
 }
 
-int32_t ObjectRef::GetNativePointerFieldCount()
+int32_t ObjectRef::GetNativePointerFieldCount([[maybe_unused]] const EcmaVM *vm)
 {
     // ObjectRef::New may return special value if exception occurs.
     // So we need do special value check before use it.
@@ -2761,7 +2761,7 @@ int32_t ObjectRef::GetNativePointerFieldCount()
     return object->GetNativePointerFieldCount();
 }
 
-void *ObjectRef::GetNativePointerField(int32_t index)
+void *ObjectRef::GetNativePointerField([[maybe_unused]] const EcmaVM *vm, int32_t index)
 {
     // ObjectRef::New may return special value if exception occurs.
     // So we need do special value check before use it.
@@ -2983,7 +2983,7 @@ Local<StringRef> DateRef::ToString(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(dateStrHandle);
 }
 
-double DateRef::GetTime()
+double DateRef::GetTime([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0.0);
     JSHandle<JSDate> date(JSNApiHelper::ToJSHandle(this));
@@ -5690,14 +5690,14 @@ bool ProxyRef::IsRevoked()
 }
 
 // ---------------------------------- SetRef --------------------------------------
-int32_t SetRef::GetSize()
+int32_t SetRef::GetSize([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
     return set->GetSize();
 }
 
-int32_t SetRef::GetTotalElements()
+int32_t SetRef::GetTotalElements([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
@@ -5739,14 +5739,14 @@ void SetRef::Add(const EcmaVM *vm, Local<JSValueRef> value)
 }
 
 // ---------------------------------- WeakMapRef --------------------------------------
-int32_t WeakMapRef::GetSize()
+int32_t WeakMapRef::GetSize([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
     return weakMap->GetSize();
 }
 
-int32_t WeakMapRef::GetTotalElements()
+int32_t WeakMapRef::GetTotalElements([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
@@ -5806,14 +5806,14 @@ bool WeakMapRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
 }
 
 // ---------------------------------- WeakSetRef --------------------------------------
-int32_t WeakSetRef::GetSize()
+int32_t WeakSetRef::GetSize([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
     return weakSet->GetSize();
 }
 
-int32_t WeakSetRef::GetTotalElements()
+int32_t WeakSetRef::GetTotalElements([[maybe_unused]] const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));

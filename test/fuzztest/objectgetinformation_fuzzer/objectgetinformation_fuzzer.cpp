@@ -78,7 +78,7 @@ void ObjectGetNativePointerFieldCountFuzzTest(const uint8_t *data, size_t size)
     }
     Local<ObjectRef> object = ObjectRef::New(vm);
     object->SetNativePointerFieldCount(vm, key);
-    object->GetNativePointerFieldCount();
+    object->GetNativePointerFieldCount(vm);
     JSNApi::DestroyJSVM(vm);
 }
 

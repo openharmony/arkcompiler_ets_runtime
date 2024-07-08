@@ -281,11 +281,11 @@ HWTEST_F_L0(JSNApiTests, TypeOf)
     LocalScope scope(vm_);
     Local<StringRef> origin = StringRef::NewFromUtf8(vm_, "1");
     Local<StringRef> typeString = origin->Typeof(vm_);
-    ASSERT_EQ(typeString->ToString(), "string");
+    ASSERT_EQ(typeString->ToString(vm_), "string");
 
     Local<NumberRef> target = NumberRef::New(vm_, 1);
     typeString = target->Typeof(vm_);
-    ASSERT_EQ(typeString->ToString(), "number");
+    ASSERT_EQ(typeString->ToString(vm_), "number");
 }
 
 /**
@@ -391,7 +391,7 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_001)
     std::string test = "中";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Length(), 1U);
+    EXPECT_EQ(testString->Length(vm_), 1U);
     char buffer[1];
     EXPECT_EQ(testString->WriteLatin1(vm_, buffer, 1), 1);
 
@@ -413,7 +413,7 @@ HWTEST_F_L0(JSNApiTests, StringLatin1_002)
     std::string test = "En123";
     Local<StringRef> testString = StringRef::NewFromUtf8(vm_, test.c_str());
 
-    EXPECT_EQ(testString->Length(), 5U);
+    EXPECT_EQ(testString->Length(vm_), 5U);
     char buffer[5];
     EXPECT_EQ(testString->WriteLatin1(vm_, buffer, 5), 5);
 
@@ -440,7 +440,7 @@ HWTEST_F_L0(JSNApiTests, ToType)
 
     ASSERT_EQ(toString->ToNumber(vm_)->Value(), -123.3); // -123 : test case of input
     ASSERT_EQ(toString->ToBoolean(vm_)->Value(), true);
-    ASSERT_EQ(toValue->ToString(vm_)->ToString(), "-123.3");
+    ASSERT_EQ(toValue->ToString(vm_)->ToString(vm_), "-123.3");
     ASSERT_TRUE(toValue->ToObject(vm_)->IsObject(vm_));
 }
 
@@ -451,7 +451,7 @@ HWTEST_F_L0(JSNApiTests, TypeValue)
     Local<JSValueRef> toValue(toString);
 
     ASSERT_EQ(toString->Int32Value(vm_), -123); // -123 : test case of input
-    ASSERT_EQ(toString->BooleaValue(), true);
+    ASSERT_EQ(toString->BooleaValue(vm_), true);
     ASSERT_EQ(toString->Uint32Value(vm_), 4294967173U); // 4294967173 : test case of input
     ASSERT_EQ(toString->IntegerValue(vm_), -123);       // -123 : test case of input
 }
@@ -587,7 +587,7 @@ HWTEST_F_L0(JSNApiTests, GetProtoType)
  * @tc.name: CheckReject
  * @tc.desc: The function of CheckReject is similar to that of CheckResolve,
  * but it is used to check whether a function call provides the correct cause of the error,
- * which is achieved through ASSERT_ EQ (Local<StringRef>(reason) ->ToString(),
+ * which is achieved through ASSERT_ EQ (Local<StringRef>(reason) ->ToString(vm_),
  * check if the value of this string is equal to "Reject".
  * @tc.type: FUNC
  * @tc.require:  parameter info
@@ -597,7 +597,7 @@ void CheckReject(JsiRuntimeCallInfo *info)
     ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> reason = info->GetCallArgRef(0);
     ASSERT_TRUE(reason->IsString(info->GetVM()));
-    ASSERT_EQ(Local<StringRef>(reason)->ToString(), "Reject");
+    ASSERT_EQ(Local<StringRef>(reason)->ToString(info->GetVM()), "Reject");
 }
 
 Local<JSValueRef> RejectCallback(JsiRuntimeCallInfo *info)
@@ -1514,7 +1514,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_CreateBigWords_GetWordsArray_GetWordsArraySiz
     EXPECT_TRUE(bigWords->IsBigInt(vm_));
 
     Local<BigIntRef> bigWordsRef(bigWords);
-    EXPECT_EQ(bigWordsRef->GetWordsArraySize(), size);
+    EXPECT_EQ(bigWordsRef->GetWordsArraySize(vm_), size);
 
     JSHandle<BigInt> bigintUint64Val(thread_, JSNApiHelper::ToJSTaggedValue(*bigWords));
     EXPECT_EQ(bigintUint64Val->GetSign(), false);
@@ -1522,7 +1522,7 @@ HWTEST_F_L0(JSNApiTests, BigIntRef_CreateBigWords_GetWordsArray_GetWordsArraySiz
 
     bool resultSignBit = true;
     uint64_t *resultWords = new uint64_t[3](); // 3 : length of words array
-    bigWordsRef->GetWordsArray(&resultSignBit, size, resultWords);
+    bigWordsRef->GetWordsArray(vm_, &resultSignBit, size, resultWords);
     EXPECT_EQ(resultSignBit, false);
     EXPECT_EQ(resultWords[0], words[0]);
     EXPECT_EQ(resultWords[1], words[1]);
@@ -1549,7 +1549,7 @@ HWTEST_F_L0(JSNApiTests, DateRef_New_ToString_GetTime)
     Local<StringRef> tostring = data->ToString(vm_);
     Local<JSValueRef> toValue(tostring);
     EXPECT_TRUE(tostring->IsString(vm_));
-    double dou = data->GetTime();
+    double dou = data->GetTime(vm_);
     EXPECT_EQ(dou, 1.1);
 }
 
@@ -1666,14 +1666,14 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_SetNativePointerFieldCount_GetNativePointerFi
     Local<ObjectRef> object = ObjectRef::New(vm_);
     int32_t input = 34;
     object->SetNativePointerFieldCount(vm_, input);
-    int32_t res = object->GetNativePointerFieldCount();
+    int32_t res = object->GetNativePointerFieldCount(vm_);
     ASSERT_EQ(res, input);
     NativePointerCallback callBack = nullptr;
     void *vp1 = static_cast<void *>(new std::string("test"));
     void *vp2 = static_cast<void *>(new std::string("test"));
     std::string *sp1 = static_cast<std::string *>(vp1);
     object->SetNativePointerField(vm_, 33, vp1, callBack, vp2);
-    void *res1 = object->GetNativePointerField(33);
+    void *res1 = object->GetNativePointerField(vm_, 33);
     std::string *sp2 = static_cast<std::string *>(res1);
     ASSERT_EQ(sp1, sp2);
 }
@@ -1702,7 +1702,7 @@ HWTEST_F_L0(JSNApiTests, FunctionRef_GetFunctionPrototype_SetName_GetName)
     Local<StringRef> origin = StringRef::NewFromUtf8(vm_, "1");
     res->SetName(vm_, origin);
     Local<StringRef> s = res->GetName(vm_);
-    std::string str = s->ToString();
+    std::string str = s->ToString(vm_);
     ASSERT_EQ("1", str);
 }
 
@@ -1734,7 +1734,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_ToNativePointer)
     Local<JSValueRef> toValue(toString);
     ASSERT_EQ(toString->ToNumber(vm_)->Value(), -123.3); // -123 : test case of input
     ASSERT_EQ(toString->ToBoolean(vm_)->Value(), true);
-    ASSERT_EQ(toValue->ToString(vm_)->ToString(), "-123.3");
+    ASSERT_EQ(toValue->ToString(vm_)->ToString(vm_), "-123.3");
     ASSERT_TRUE(toValue->ToObject(vm_)->IsObject(vm_));
     Local<NativePointerRef> res = toValue->ToNativePointer(vm_);
     ASSERT_TRUE(res->IsString(vm_));
@@ -1812,7 +1812,7 @@ HWTEST_F_L0(JSNApiTests, BooleanRef_New)
     bool input = true;
     Local<BooleanRef> res = BooleanRef::New(vm_, input);
     EXPECT_TRUE(res->IsBoolean());
-    EXPECT_TRUE(res->BooleaValue());
+    EXPECT_TRUE(res->BooleaValue(vm_));
 }
 
 /**
@@ -1881,15 +1881,15 @@ HWTEST_F_L0(JSNApiTests, MapRef_GetSize_GetTotalElements_Get_GetKey_GetValue_New
     Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
     map->Set(vm_, key, value);
     Local<JSValueRef> res = map->Get(vm_, key);
-    ASSERT_EQ(res->ToString(vm_)->ToString(), value->ToString(vm_)->ToString());
-    int32_t num = map->GetSize();
-    int32_t num1 = map->GetTotalElements();
+    ASSERT_EQ(res->ToString(vm_)->ToString(vm_), value->ToString(vm_)->ToString(vm_));
+    int32_t num = map->GetSize(vm_);
+    int32_t num1 = map->GetTotalElements(vm_);
     ASSERT_EQ(num, 1);
     ASSERT_EQ(num1, 1);
     Local<JSValueRef> res1 = map->GetKey(vm_, 0);
-    ASSERT_EQ(res1->ToString(vm_)->ToString(), key->ToString(vm_)->ToString());
+    ASSERT_EQ(res1->ToString(vm_)->ToString(vm_), key->ToString(vm_)->ToString(vm_));
     Local<JSValueRef> res2 = map->GetValue(vm_, 0);
-    ASSERT_EQ(res2->ToString(vm_)->ToString(), value->ToString(vm_)->ToString());
+    ASSERT_EQ(res2->ToString(vm_)->ToString(vm_), value->ToString(vm_)->ToString(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, GetSourceCode)
@@ -1938,7 +1938,7 @@ HWTEST_F_L0(JSNApiTests, ObjectRef_Set1)
     bool res = object->Set(vm_, 12, toValue);
     ASSERT_TRUE(res);
     Local<JSValueRef> res1 = object->Get(vm_, 12);
-    ASSERT_EQ(res1->ToString(vm_)->ToString(), toValue->ToString(vm_)->ToString());
+    ASSERT_EQ(res1->ToString(vm_)->ToString(vm_), toValue->ToString(vm_)->ToString(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, NativePointerRef_New)
@@ -1999,8 +1999,8 @@ HWTEST_F_L0(JSNApiTests, PromiseRejectInfo_GetData)
     Local<JSValueRef> promise_res = promisereject.GetPromise();
     // 获取拒绝的原因,并在下面断言拒绝原因与原始拒绝原因相同
     Local<JSValueRef> reason_res = promisereject.GetReason();
-    ASSERT_EQ(promise_res->ToString(vm_)->ToString(), promise->ToString(vm_)->ToString());
-    ASSERT_EQ(reason_res->ToString(vm_)->ToString(), reason->ToString(vm_)->ToString());
+    ASSERT_EQ(promise_res->ToString(vm_)->ToString(vm_), promise->ToString(vm_)->ToString(vm_));
+    ASSERT_EQ(reason_res->ToString(vm_)->ToString(vm_), reason->ToString(vm_)->ToString(vm_));
     // 获取自定义数据,并在下面断言自定义数据与传入的数据相同
     void *dataRes = promisereject.GetData();
     ASSERT_EQ(dataRes, data);
@@ -2150,7 +2150,7 @@ HWTEST_F_L0(JSNApiTests, ToType_ToBoolean_ToString_ToObject)
 
     ASSERT_EQ(toString->ToNumber(vm_)->Value(), -1.3);
     ASSERT_EQ(toString->ToBoolean(vm_)->Value(), true);
-    ASSERT_EQ(toValue->ToString(vm_)->ToString(), "-1.3");
+    ASSERT_EQ(toValue->ToString(vm_)->ToString(vm_), "-1.3");
     ASSERT_TRUE(toValue->ToObject(vm_)->IsObject(vm_));
 }
 

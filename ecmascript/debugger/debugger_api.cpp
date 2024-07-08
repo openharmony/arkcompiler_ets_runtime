@@ -333,7 +333,7 @@ void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &ta
     Local<JSValueRef> constructor = protoProperty.GetValue(ecmaVM);
     if (!constructor->IsNull()) {
         Local<StringRef> constructorFuncName = Local<FunctionRef>(constructor)->GetName(ecmaVM);
-        className = constructorFuncName->ToString();
+        className = constructorFuncName->ToString(ecmaVM);
     }
 }
 

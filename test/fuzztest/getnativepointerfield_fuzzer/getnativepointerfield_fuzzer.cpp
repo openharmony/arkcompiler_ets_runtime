@@ -40,7 +40,7 @@ namespace OHOS {
             UNREACHABLE();
         }
         Local<ObjectRef> object = ObjectRef::New(vm);
-        object->GetNativePointerField(index);
+        object->GetNativePointerField(vm, index);
         JSNApi::DestroyJSVM(vm);
     }
 }

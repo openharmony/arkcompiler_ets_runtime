@@ -142,11 +142,11 @@ HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_BigIntRef_Uint64)
                          << " [ " << i << " ] : " << uWords[i];
     }
     Local<BigIntRef> ubigWordsRef(ubigWords);
-    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_UArraySize : " << ubigWordsRef->GetWordsArraySize();
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_UArraySize : " << ubigWordsRef->GetWordsArraySize(vm_);
     bool uresultSignBit = true;
     int unewarraySize = 3;
     uint64_t *uresultWords = new uint64_t[unewarraySize]();
-    ubigWordsRef->GetWordsArray(&uresultSignBit, uSize, uresultWords);
+    ubigWordsRef->GetWordsArray(vm_, &uresultSignBit, uSize, uresultWords);
     for (int i = 0; i < unewarraySize; i++) {
         GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_uresultWords"
                          << " [ " << i << " ] : " << uresultWords[i];
@@ -176,11 +176,11 @@ HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_BigIntRef_Int64)
                          << " [ " << i << " ] : " << iWords[i];
     }
     Local<BigIntRef> ibigWordsRef(ibigWords);
-    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_iarraySize : " << ibigWordsRef->GetWordsArraySize();
+    GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_iarraySize : " << ibigWordsRef->GetWordsArraySize(vm_);
     bool iresultSignBit = true;
     int inewarraySize = 3;
     uint64_t *iresultWords = new uint64_t[inewarraySize]();
-    ibigWordsRef->GetWordsArray(&iresultSignBit, iSize, iresultWords);
+    ibigWordsRef->GetWordsArray(vm_, &iresultSignBit, iSize, iresultWords);
     for (int i = 0; i < inewarraySize; i++) {
         GTEST_LOG_(INFO) << "sample_primitive_BigIntRef_iresultWords"
                          << " [ " << i << " ] : " << iresultWords[i];
@@ -217,9 +217,9 @@ HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_StringRef_Char)
     EXPECT_EQ(charObject->WriteUtf8(vm_, buffer, 12), 12);
     std::string res(buffer);
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject : " << res;
-    std::string charObjectStr = charObject->ToString();
+    std::string charObjectStr = charObject->ToString(vm_);
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject_ToString : " << charObjectStr;
-    uint32_t charSize = charObject->Length();
+    uint32_t charSize = charObject->Length(vm_);
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject_Length : " << charSize;
     char cs[16] = {0};
     int length = charObject->WriteLatin1(vm_, cs, 12);
@@ -247,9 +247,9 @@ HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_StringRef_Char16)
     EXPECT_EQ(char16tObject->WriteUtf16(vm_, buffer2, 9), 9);
     std::string res2(buffer2, buffer2 + sizeof(buffer2) / sizeof(char16_t));
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject : " << res2 << std::endl;
-    std::string char16tObjectStr = char16tObject->ToString();
+    std::string char16tObjectStr = char16tObject->ToString(vm_);
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject_ToString : " << char16tObjectStr;
-    uint32_t charSize = char16tObject->Length();
+    uint32_t charSize = char16tObject->Length(vm_);
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject_Length : " << charSize;
     char cs1[10] = {0};
     int length = char16tObject->WriteLatin1(vm_, cs1, 10);
@@ -270,7 +270,7 @@ HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_SymbolRef)
     GTEST_LOG_(INFO) << "sample_primitive_SymbolRef==================================================================";
     Local<SymbolRef> symbolObject = SymbolRef::New(vm_, StringRef::NewFromUtf8(vm_, "description"));
     Local<StringRef> symbolDescription = symbolObject->GetDescription(vm_);
-    GTEST_LOG_(INFO) << "sample_primitive_symbol_description : " << symbolDescription->ToString();
+    GTEST_LOG_(INFO) << "sample_primitive_symbol_description : " << symbolDescription->ToString(vm_);
     Local<PrimitiveRef> psymbolObject = symbolObject;
     GTEST_LOG_(INFO) << "sample_primitive_SymbolRef_Psym_IsSymbol : " << psymbolObject->IsSymbol(vm_);
 }
@@ -527,9 +527,9 @@ void GetProperty(Local<ObjectRef> object, EcmaVM *vm)
         Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
         if (value->IsSymbol(vm)) {
             Local<SymbolRef> symbol = value;
-            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString(vm);
         } else {
-            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString(vm);
         }
     }
 }
@@ -540,15 +540,15 @@ void Get(Local<ObjectRef> object, EcmaVM *vm)
     int cnt = 1; // 1 = key
     Local<JSValueRef> value = object->Get(vm, cnt);
     if (value->IsString(vm)) {
-        GTEST_LOG_(INFO) << "Key:1  Value:" << value->ToString(vm)->ToString();
+        GTEST_LOG_(INFO) << "Key:1  Value:" << value->ToString(vm)->ToString(vm);
     }
     value = object->Get(vm, StringRef::NewFromUtf8(vm, "Test2"));
     if (value->IsString(vm)) {
-        GTEST_LOG_(INFO) << "Key:Test2  Value:" << value->ToString(vm)->ToString();
+        GTEST_LOG_(INFO) << "Key:Test2  Value:" << value->ToString(vm)->ToString(vm);
     }
     value = object->Get(vm, StringRef::NewFromUtf8(vm, "AttributeKey1"));
     if (value->IsString(vm)) {
-        GTEST_LOG_(INFO) << "Key:AttributeKey1  Value:" << value->ToString(vm)->ToString();
+        GTEST_LOG_(INFO) << "Key:AttributeKey1  Value:" << value->ToString(vm)->ToString(vm);
     }
     int num = 10; // 10 = randomness
     object->Set(vm, StringRef::NewFromUtf8(vm, "Accessor1"), NumberRef::New(vm, num));
@@ -557,15 +557,15 @@ void Get(Local<ObjectRef> object, EcmaVM *vm)
         SymbolRef::New(vm, StringRef::NewFromUtf8(vm, "AttributeKey3Value")));
     Local<StringRef> str = object->Get(vm, StringRef::NewFromUtf8(vm, "AttributeKey3"));
     if (str->IsString(vm)) {
-        GTEST_LOG_(INFO) << "Key:AttributeKey3  Value:" << str->ToString();
+        GTEST_LOG_(INFO) << "Key:AttributeKey3  Value:" << str->ToString(vm);
     }
     str = object->Get(vm, StringRef::NewFromUtf8(vm, "Accessor1"));
     if (str->IsString(vm)) {
-        GTEST_LOG_(INFO) << "Key:Accessor1  Value:" << str->ToString();
+        GTEST_LOG_(INFO) << "Key:Accessor1  Value:" << str->ToString(vm);
     }
     str = object->Get(vm, StringRef::NewFromUtf8(vm, "Test3"));
     if (str->IsString(vm)) {
-        GTEST_LOG_(INFO) << "Key:Test3  Value:" << str->ToString();
+        GTEST_LOG_(INFO) << "Key:Test3  Value:" << str->ToString(vm);
     }
 }
 
@@ -601,9 +601,9 @@ void GetOwnEnumerablePropertyNames(Local<ObjectRef> object, EcmaVM *vm)
         Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
         if (value->IsSymbol(vm)) {
             Local<SymbolRef> symbol = value;
-            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString(vm);
         } else {
-            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString(vm);
         }
     }
 }
@@ -632,9 +632,9 @@ void PrintAllProperty(Local<ObjectRef> object, EcmaVM *vm, int flag)
         Local<JSValueRef> value = ArrayRef::GetValueAt(vm, names, i);
         if (value->IsSymbol(vm)) {
             Local<SymbolRef> symbol = value;
-            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString();
+            GTEST_LOG_(INFO) << "PropertyNames: " << symbol->GetDescription(vm)->ToString(vm);
         } else {
-            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString();
+            GTEST_LOG_(INFO) << "PropertyNames: " << value->ToString(vm)->ToString(vm);
         }
     }
 }
@@ -702,7 +702,7 @@ void GetOwnProperty(Local<ObjectRef> object, EcmaVM *vm)
     ASSERT_EQ(true, value2.HasConfigurable());
     ASSERT_EQ(true, value2.HasEnumerable());
     Local<JSValueRef> value = value2.GetValue(vm);
-    ASSERT_EQ("AttributeValue1", value->ToString(vm)->ToString());
+    ASSERT_EQ("AttributeValue1", value->ToString(vm)->ToString(vm));
 }
 
 class A {
@@ -718,14 +718,14 @@ void NativePointer(Local<ObjectRef> object, EcmaVM *vm)
     GTEST_LOG_(INFO) << "NativePointer";
     int cnt = 10; // 10 = accommodate quantity
     object->SetNativePointerFieldCount(vm, cnt);
-    ASSERT_EQ(cnt, object->GetNativePointerFieldCount());
+    ASSERT_EQ(cnt, object->GetNativePointerFieldCount(vm));
     A *a = new A();
     int cnt2 = 1;  // 11 = random Numbers
     int cnt3 = 11; // 1 = random Numbers
     object->SetNativePointerField(vm, cnt2, static_cast<void *>(a), nullptr, nullptr);
     object->SetNativePointerField(vm, cnt3, static_cast<void *>(a), nullptr, nullptr);
-    A *value1 = static_cast<A *>(object->GetNativePointerField(cnt2));
-    A *value2 = static_cast<A *>(object->GetNativePointerField(cnt3));
+    A *value1 = static_cast<A *>(object->GetNativePointerField(vm, cnt2));
+    A *value2 = static_cast<A *>(object->GetNativePointerField(vm, cnt3));
     if (value1 == nullptr) {
         GTEST_LOG_(INFO) << "SetNativePointerField is Error";
     } else {
@@ -749,7 +749,7 @@ void SetPrototype(Local<ObjectRef> object, EcmaVM *vm)
     if (type->IsUndefined() || type->IsNull()) {
         return;
     }
-    GTEST_LOG_(INFO) << "Prototype: " << type->Typeof(vm)->ToString();
+    GTEST_LOG_(INFO) << "Prototype: " << type->Typeof(vm)->ToString(vm);
 }
 
 HWTEST_F_L0(JSNApiSampleTest, Sample_Demo3_ObjectRef)
@@ -1189,11 +1189,11 @@ void Greeter::AddFunction(EcmaVM *vm, Local<ObjectRef> &proto)
             Local<JSValueRef> jsStandardGreetingStr = claFunc->Get(vm, Greeter::standardGreetingStrKey);
             std::string ret;
             if (jsPrivateGreeting->IsString(vm)) {
-                ret.append("Hello, ").append(jsPrivateGreeting->ToString(vm)->ToString());
+                ret.append("Hello, ").append(jsPrivateGreeting->ToString(vm)->ToString(vm));
             } else if (jsGreeting->IsString(vm)) {
-                ret.append("Hello, ").append(jsGreeting->ToString(vm)->ToString());
+                ret.append("Hello, ").append(jsGreeting->ToString(vm)->ToString(vm));
             } else {
-                ret.append(jsStandardGreetingStr->ToString(vm)->ToString());
+                ret.append(jsStandardGreetingStr->ToString(vm)->ToString(vm));
             }
             return StringRef::NewFromUtf8(vm, ret.c_str(), ret.size());
         }));
@@ -1288,25 +1288,25 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo5_class_test)
     LocalScope scope(vm_);
     Local<Greeter> greeter1 = Greeter::New(vm_, StringRef::NewFromUtf8(vm_, "everyone"));
     // 非静态函数调用
-    GTEST_LOG_(INFO) << Greeter::Greet(vm_, greeter1)->ToString();
+    GTEST_LOG_(INFO) << Greeter::Greet(vm_, greeter1)->ToString(vm_);
     Greeter::SetPrivateGreeting(vm_, greeter1, StringRef::NewFromUtf8(vm_, "vip"));
-    GTEST_LOG_(INFO) << Greeter::Greet(vm_, greeter1)->ToString();
+    GTEST_LOG_(INFO) << Greeter::Greet(vm_, greeter1)->ToString(vm_);
     Greeter::SetPrivateGreeting(vm_, greeter1, JSValueRef::Undefined(vm_));
-    GTEST_LOG_(INFO) << Greeter::Greet(vm_, greeter1)->ToString();
+    GTEST_LOG_(INFO) << Greeter::Greet(vm_, greeter1)->ToString(vm_);
     // 修改变量
     Local<ObjectRef> objRef1 = greeter1;
     objRef1->Set(vm_, StringRef::NewFromUtf8(vm_, "greeting"), JSValueRef::Undefined(vm_));
-    GTEST_LOG_(INFO) << Greeter::Greet(vm_, greeter1)->ToString();
+    GTEST_LOG_(INFO) << Greeter::Greet(vm_, greeter1)->ToString(vm_);
 
     // 静态函数调用。
-    GTEST_LOG_(INFO) << Greeter::StandardGreeting(vm_)->ToString();
-    GTEST_LOG_(INFO) << Greeter::StandardPosition(vm_)->ToString();
+    GTEST_LOG_(INFO) << Greeter::StandardGreeting(vm_)->ToString(vm_);
+    GTEST_LOG_(INFO) << Greeter::StandardPosition(vm_)->ToString(vm_);
 
     // 修改静态变量。
     Local<FunctionRef> classFunc = Greeter::GetClassFunction(vm_);
     classFunc->Set(vm_, StringRef::NewFromUtf8(vm_, "position"), StringRef::NewFromUtf8(vm_, "house"));
 
-    GTEST_LOG_(INFO) << Greeter::StandardPosition(vm_)->ToString();
+    GTEST_LOG_(INFO) << Greeter::StandardPosition(vm_)->ToString(vm_);
     GTEST_LOG_(INFO) << "sample_demo5_class_test =======================================";
 }
 
@@ -2220,7 +2220,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo8_async_test_1)
             EcmaVM *vm = runtimeInfo->GetVM();
             LocalScope scope(vm);
             Local<JSValueRef> jsStr = runtimeInfo->GetCallArgRef(0);
-            std::string err = jsStr->ToString(vm)->ToString();
+            std::string err = jsStr->ToString(vm)->ToString(vm);
             // ts: console.log(err);
             GTEST_LOG_(INFO) << err;
             return JSValueRef::Undefined(vm);
@@ -2250,16 +2250,16 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo8_async_test_1)
 std::string jsValue2String(EcmaVM *vm, Local<JSValueRef> &jsVal)
 {
     if (jsVal->IsString(vm)) {
-        return "type string, val : " + jsVal->ToString(vm)->ToString();
+        return "type string, val : " + jsVal->ToString(vm)->ToString(vm);
     } else if (jsVal->IsNumber()) {
         return "type number, val : " + std::to_string(jsVal->Int32Value(vm));
     } else if (jsVal->IsBoolean()) {
-        return "type bool, val : " + std::to_string(jsVal->BooleaValue());
+        return "type bool, val : " + std::to_string(jsVal->BooleaValue(vm));
     } else if (jsVal->IsSymbol(vm)) {
         Local<SymbolRef> symbol = jsVal;
-        return "type symbol, val : " + symbol->GetDescription(vm)->ToString();
+        return "type symbol, val : " + symbol->GetDescription(vm)->ToString(vm);
     } else {
-        return "type other : " + jsVal->ToString(vm)->ToString();
+        return "type other : " + jsVal->ToString(vm)->ToString(vm);
     }
 }
 
@@ -2283,7 +2283,7 @@ void MapGetValue(EcmaVM *vm, Local<MapRef> &map, Local<JSValueRef> symbolKey)
 {
     Local<JSValueRef> val1 = map->Get(vm, StringRef::NewFromUtf8(vm, "key1"));
     bool val1IsString = val1->IsString(vm);
-    GTEST_LOG_(INFO) << "key1 : IsString:" << val1IsString << "    val:" << val1->ToString(vm)->ToString();
+    GTEST_LOG_(INFO) << "key1 : IsString:" << val1IsString << "    val:" << val1->ToString(vm)->ToString(vm);
 
     Local<JSValueRef> val2 = map->Get(vm, StringRef::NewFromUtf8(vm, "key2"));
     bool val2IsNumber = val2->IsNumber();
@@ -2291,32 +2291,33 @@ void MapGetValue(EcmaVM *vm, Local<MapRef> &map, Local<JSValueRef> symbolKey)
 
     Local<JSValueRef> val3 = map->Get(vm, StringRef::NewFromUtf8(vm, "key3"));
     bool val3IsBoolean = val3->IsBoolean();
-    GTEST_LOG_(INFO) << "key3 : IsBoolean:" << val3IsBoolean << "    val:" << val3->BooleaValue();
+    GTEST_LOG_(INFO) << "key3 : IsBoolean:" << val3IsBoolean << "    val:" << val3->BooleaValue(vm);
 
     Local<JSValueRef> val4 = map->Get(vm, StringRef::NewFromUtf8(vm, "key4"));
     bool val4IsSymbol = val4->IsSymbol(vm);
     Local<SymbolRef> val4Symbol = val4;
-    GTEST_LOG_(INFO) << "key4 : IsSymbol:" << val4IsSymbol << "    val:" << val4Symbol->GetDescription(vm)->ToString();
+    GTEST_LOG_(INFO) << "key4 : IsSymbol:" << val4IsSymbol << "    val:"
+                     << val4Symbol->GetDescription(vm)->ToString(vm);
 
     int num5 = 55; // random number
     Local<JSValueRef> val5 = map->Get(vm, IntegerRef::New(vm, num5));
-    GTEST_LOG_(INFO) << "55 : " << val5->ToString(vm)->ToString();
+    GTEST_LOG_(INFO) << "55 : " << val5->ToString(vm)->ToString(vm);
 
     int num6 = 66; // random number
     Local<JSValueRef> val6 = map->Get(vm, IntegerRef::New(vm, num6));
     GTEST_LOG_(INFO) << "66 : " << val6->Int32Value(vm);
     Local<JSValueRef> val7 = map->Get(vm, BooleanRef::New(vm, true));
-    GTEST_LOG_(INFO) << "true : " << val7->ToString(vm)->ToString();
+    GTEST_LOG_(INFO) << "true : " << val7->ToString(vm)->ToString(vm);
 
     Local<JSValueRef> val8 = map->Get(vm, symbolKey);
-    GTEST_LOG_(INFO) << "SymbolRef(key8)  : " << val8->ToString(vm)->ToString();
+    GTEST_LOG_(INFO) << "SymbolRef(key8)  : " << val8->ToString(vm)->ToString(vm);
 
     Local<JSValueRef> val82 = map->Get(vm, SymbolRef::New(vm, StringRef::NewFromUtf8(vm, "key8")));
     GTEST_LOG_(INFO) << "new SymbolRef(key8) is Undefined : " << val82->IsUndefined();
 
-    int32_t size = map->GetSize();
+    int32_t size = map->GetSize(vm);
     GTEST_LOG_(INFO) << "size : " << size;
-    int32_t totalElement = map->GetTotalElements();
+    int32_t totalElement = map->GetTotalElements(vm);
     GTEST_LOG_(INFO) << "total element : " << totalElement;
 
     for (int i = 0; i < size; ++i) {
@@ -2333,7 +2334,7 @@ void MapIteratorGetValue(EcmaVM *vm, Local<MapRef> &map)
     ecmascript::EcmaRuntimeCallInfo *mapIterInfo = mapIter->GetEcmaRuntimeCallInfo(vm);
 
     Local<StringRef> kind = mapIter->GetKind(vm);
-    GTEST_LOG_(INFO) << "Map Iterator kind : " << kind->ToString();
+    GTEST_LOG_(INFO) << "Map Iterator kind : " << kind->ToString(vm);
 
     for (Local<ArrayRef> array = MapIteratorRef::Next(vm, mapIterInfo); array->IsArray(vm);
         array = MapIteratorRef::Next(vm, mapIterInfo)) {
@@ -2378,9 +2379,9 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo9_map_test_2_WeakMapref)
     Local<JSValueRef> key8 = SymbolRef::New(vm_, StringRef::NewFromUtf8(vm_, "key8"));
     weakMap->Set(vm_, key8, StringRef::NewFromUtf8(vm_, "val8"));
 
-    int size = weakMap->GetSize();
+    int size = weakMap->GetSize(vm_);
     GTEST_LOG_(INFO) << "size : " << size;
-    int32_t totalElements = weakMap->GetTotalElements();
+    int32_t totalElements = weakMap->GetTotalElements(vm_);
     GTEST_LOG_(INFO) << "total elements : " << totalElements;
 
     for (int i = 0; i < size; ++i) {
@@ -2414,9 +2415,9 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo10_set)
     int num6 = 666; // random number
     set->Add(vm_, IntegerRef::New(vm_, num6));
 
-    int32_t size = set->GetSize();
+    int32_t size = set->GetSize(vm_);
     GTEST_LOG_(INFO) << "size : " << size;
-    int32_t totalElement = set->GetTotalElements();
+    int32_t totalElement = set->GetTotalElements(vm_);
     GTEST_LOG_(INFO) << "total element : " << totalElement;
 
     for (int i = 0; i < size; ++i) {
@@ -2429,7 +2430,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo10_set)
     ecmascript::EcmaRuntimeCallInfo *info = setIter->GetEcmaRuntimeCallInfo(vm_);
 
     Local<StringRef> kind = setIter->GetKind(vm_);
-    GTEST_LOG_(INFO) << "Set Iterator kind : " << kind->ToString();
+    GTEST_LOG_(INFO) << "Set Iterator kind : " << kind->ToString(vm_);
 
     for (Local<ArrayRef> array = SetIteratorRef::Next(vm_, info); array->IsArray(vm_);
         array = SetIteratorRef::Next(vm_, info)) {
@@ -2456,9 +2457,9 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo10_weakset)
     int num6 = 666; // random number
     weakSet->Add(vm_, IntegerRef::New(vm_, num6));
 
-    int32_t size = weakSet->GetSize();
+    int32_t size = weakSet->GetSize(vm_);
     GTEST_LOG_(INFO) << "size : " << size;
-    int32_t totalElement = weakSet->GetTotalElements();
+    int32_t totalElement = weakSet->GetTotalElements(vm_);
     GTEST_LOG_(INFO) << "total element : " << totalElement;
 
     for (int i = 0; i < size; ++i) {
@@ -2474,7 +2475,7 @@ void JsonObjGetValue(EcmaVM *vm, Local<ObjectRef> obj)
     Local<JSValueRef> jsVal1 = obj->Get(vm, StringRef::NewFromUtf8(vm, "str1"));
     bool jsVal1IsString = jsVal1->IsString(vm);
     Local<StringRef> val1 = jsVal1->ToString(vm);
-    GTEST_LOG_(INFO) << "str1 : is string : " << jsVal1IsString << "  value : " << val1->ToString();
+    GTEST_LOG_(INFO) << "str1 : is string : " << jsVal1IsString << "  value : " << val1->ToString(vm);
     Local<JSValueRef> jsVal2 = obj->Get(vm, StringRef::NewFromUtf8(vm, "str2"));
     bool jsVal2IsNumber = jsVal2->IsNumber();
     int val2 = jsVal2->Int32Value(vm);
@@ -2484,7 +2485,7 @@ void JsonObjGetValue(EcmaVM *vm, Local<ObjectRef> obj)
     GTEST_LOG_(INFO) << "333 : " << val3;
     Local<JSValueRef> jsVal4 = obj->Get(vm, StringRef::NewFromUtf8(vm, "444"));
     Local<StringRef> val4 = jsVal4->ToString(vm);
-    GTEST_LOG_(INFO) << "str4 : " << val4->ToString();
+    GTEST_LOG_(INFO) << "str4 : " << val4->ToString(vm);
 
     Local<JSValueRef> jsVal8 = obj->Get(vm, StringRef::NewFromUtf8(vm, "b8"));
     bool jsVal8IsBool = jsVal8->IsBoolean();
@@ -2517,7 +2518,7 @@ void JsonObjGetArray(EcmaVM *vm, Local<ObjectRef> obj)
     GTEST_LOG_(INFO) << "arr6 length : " << length3;
     for (int i = 0; i < length3; ++i) {
         Local<JSValueRef> val6Item = val6Obj->Get(vm, NumberRef::New(vm, i));
-        GTEST_LOG_(INFO) << "arr6 : " << i << "    " << val6Item->ToString(vm)->ToString();
+        GTEST_LOG_(INFO) << "arr6 : " << i << "    " << val6Item->ToString(vm)->ToString(vm);
     }
 }
 
@@ -2530,8 +2531,8 @@ void JsonObjGetObject(EcmaVM *vm, Local<ObjectRef> obj)
     for (uint32_t i = 0; i < val7ObjKeys->Length(vm); ++i) {
         Local<JSValueRef> itemKey = ArrayRef::GetValueAt(vm, val7ObjKeys, i);
         Local<JSValueRef> itemVal = val7Obj->Get(vm, itemKey);
-        GTEST_LOG_(INFO) << "data7 :   item index:" << i << "    Key:" << itemKey->ToString(vm)->ToString() <<
-            "    val:" << itemVal->ToString(vm)->ToString();
+        GTEST_LOG_(INFO) << "data7 :   item index:" << i << "    Key:" << itemKey->ToString(vm)->ToString(vm) <<
+            "    val:" << itemVal->ToString(vm)->ToString(vm);
     }
 }
 
@@ -2645,7 +2646,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_2_stringify_object)
     Local<JSValueRef> jsStr = JSON::Stringify(vm_, obj);
     GTEST_LOG_(INFO) << "jsStr is String : " << jsStr->IsString(vm_);
     Local<StringRef> strRef = jsStr->ToString(vm_);
-    std::string str = strRef->ToString();
+    std::string str = strRef->ToString(vm_);
     GTEST_LOG_(INFO) << "json : " << str;
 
     GTEST_LOG_(INFO) << "sample_demo11_json_test_2_stringify_object =======================================";
@@ -2697,7 +2698,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_3_parse_array2)
     GTEST_LOG_(INFO) << "arr2 length : " << arr2Length;
     for (uint32_t i = 0; i < arr2Length; ++i) {
         Local<JSValueRef> arr2Item = ArrayRef::GetValueAt(vm_, arr2, i);
-        std::string str = arr2Item->ToString(vm_)->ToString();
+        std::string str = arr2Item->ToString(vm_)->ToString(vm_);
         GTEST_LOG_(INFO) << "arr2 index : " << i << "  value : " << str;
     }
 
@@ -2720,7 +2721,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_3_parse_array3)
     GTEST_LOG_(INFO) << "arr3 length : " << arr3Length;
     for (uint32_t i = 0; i < arr3Length; ++i) {
         Local<JSValueRef> arr3Item = ArrayRef::GetValueAt(vm_, arr3, i);
-        int b = arr3Item->BooleaValue();
+        int b = arr3Item->BooleaValue(vm_);
         GTEST_LOG_(INFO) << "arr3 index : " << i << "  value : " << b;
     }
     GTEST_LOG_(INFO) << "sample_demo11_json_test_3_parse_array3 =======================================";
@@ -2765,8 +2766,8 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_3_parse_array4)
         Local<JSValueRef> objVal1 = obj->Get(vm_, StringRef::NewFromUtf8(vm_, "key1"));
         Local<JSValueRef> objVal2 = obj->Get(vm_, StringRef::NewFromUtf8(vm_, "key2"));
 
-        GTEST_LOG_(INFO) << "arr4 index : " << i << "  key1 : " << objVal1->ToString(vm_)->ToString();
-        GTEST_LOG_(INFO) << "arr4 index : " << i << "  key2 : " << objVal2->ToString(vm_)->ToString();
+        GTEST_LOG_(INFO) << "arr4 index : " << i << "  key1 : " << objVal1->ToString(vm_)->ToString(vm_);
+        GTEST_LOG_(INFO) << "arr4 index : " << i << "  key2 : " << objVal2->ToString(vm_)->ToString(vm_);
     }
 
     GTEST_LOG_(INFO) << "sample_demo11_json_test_3_parse_array4 =======================================";
@@ -2791,7 +2792,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_3_parse_array5)
     for (uint32_t i = 0; i < arr5Length; ++i) {
         Local<JSValueRef> arr5Item = ArrayRef::GetValueAt(vm_, arr5, i);
         if (arr5Item->IsString(vm_)) {
-            GTEST_LOG_(INFO) << "arr5 index : " << i << "  value : " << arr5Item->ToString(vm_)->ToString();
+            GTEST_LOG_(INFO) << "arr5 index : " << i << "  value : " << arr5Item->ToString(vm_)->ToString(vm_);
         } else if (arr5Item->IsNumber()) {
             GTEST_LOG_(INFO) << "arr5 index : " << i << "  value : " << arr5Item->Int32Value(vm_);
         } else if (arr5Item->IsBoolean()) {
@@ -2800,8 +2801,8 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_3_parse_array5)
             Local<ObjectRef> obj = arr5Item->ToObject(vm_);
             Local<ObjectRef> val1 = obj->Get(vm_, StringRef::NewFromUtf8(vm_, "key1"));
             Local<ObjectRef> val2 = obj->Get(vm_, StringRef::NewFromUtf8(vm_, "key2"));
-            GTEST_LOG_(INFO) << "arr5 index : " << i << "  key1 : " << val1->ToString(vm_)->ToString();
-            GTEST_LOG_(INFO) << "arr5 index : " << i << "  key2 : " << val2->ToString(vm_)->ToString();
+            GTEST_LOG_(INFO) << "arr5 index : " << i << "  key1 : " << val1->ToString(vm_)->ToString(vm_);
+            GTEST_LOG_(INFO) << "arr5 index : " << i << "  key2 : " << val2->ToString(vm_)->ToString(vm_);
         } else {
             GTEST_LOG_(INFO) << "arr5 index : " << i << "  not type !";
         }
@@ -2843,7 +2844,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_4_stringify_array1)
     ArrayRef::SetValueAt(vm_, arr, 2, StringRef::NewFromUtf8(vm_, "val2"));
     ArrayRef::SetValueAt(vm_, arr, 3, StringRef::NewFromUtf8(vm_, "val3"));
     Local<JSValueRef> json1 = JSON::Stringify(vm_, arr);
-    GTEST_LOG_(INFO) << " js arr 1 json : " << json1->ToString(vm_)->ToString();
+    GTEST_LOG_(INFO) << " js arr 1 json : " << json1->ToString(vm_)->ToString(vm_);
     GTEST_LOG_(INFO) << "sample_demo11_json_test_4_stringify_array1 =======================================";
 }
 
@@ -2862,7 +2863,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_4_stringify_array2)
     ArrayRef::SetValueAt(vm_, arr, 0, obj1);
     ArrayRef::SetValueAt(vm_, arr, 1, obj2);
     Local<JSValueRef> json2 = JSON::Stringify(vm_, arr);
-    GTEST_LOG_(INFO) << " js arr 2 json : " << json2->ToString(vm_)->ToString();
+    GTEST_LOG_(INFO) << " js arr 2 json : " << json2->ToString(vm_)->ToString(vm_);
     GTEST_LOG_(INFO) << "sample_demo11_json_test_4_stringify_array2 =======================================";
 }
 
@@ -2879,7 +2880,7 @@ HWTEST_F_L0(JSNApiSampleTest, sample_demo11_json_test_4_stringify_array3)
     ArrayRef::SetValueAt(vm_, arr, 2, BooleanRef::New(vm_, true));
     ArrayRef::SetValueAt(vm_, arr, 3, obj);
     Local<JSValueRef> json3 = JSON::Stringify(vm_, arr);
-    GTEST_LOG_(INFO) << " js arr 3 json : " << json3->ToString(vm_)->ToString();
+    GTEST_LOG_(INFO) << " js arr 3 json : " << json3->ToString(vm_)->ToString(vm_);
     GTEST_LOG_(INFO) << "sample_demo11_json_test_4_stringify_array3 =======================================";
 }
 
@@ -3012,9 +3013,11 @@ void ClearAndPrintException4JSNApi(const EcmaVM *vm, const std::string log)
 
     JSNApi::PrintExceptionInfo(vm);
     Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(vm);
-    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString();
-    std::string exceptionMessage = exception->Get(vm, StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString();
-    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString();
+    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString(vm);
+    std::string exceptionMessage = exception->Get(vm, StringRef::NewFromUtf8(vm,
+        "message"))->ToString(vm)->ToString(vm);
+    std::string exceptionStack = exception->Get(vm,
+        StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString(vm);
 
     GTEST_LOG_(INFO) << log << " exception name : " << exceptionName;
     GTEST_LOG_(INFO) << log << " exception message : " << exceptionMessage;
@@ -3030,9 +3033,10 @@ void ClearAndPrintException4TryCatch1(const EcmaVM *vm, const std::string log)
         return;
     }
     Local<ObjectRef> exception = tryCatch.GetAndClearException();
-    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString();
-    std::string exceptionMessage = exception->Get(vm, StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString();
-    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString();
+    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString(vm);
+    std::string exceptionMessage = exception->Get(vm,
+        StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString(vm);
+    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString(vm);
 
     GTEST_LOG_(INFO) << log << " exception name : " << exceptionName;
     GTEST_LOG_(INFO) << log << " exception message : " << exceptionMessage;
@@ -3050,9 +3054,10 @@ void ClearAndPrintException4TryCatch2(const EcmaVM *vm, const std::string log)
 
     Local<ObjectRef> exception = tryCatch.GetException();
     tryCatch.ClearException();
-    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString();
-    std::string exceptionMessage = exception->Get(vm, StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString();
-    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString();
+    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString(vm);
+    std::string exceptionMessage = exception->Get(vm,
+        StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString(vm);
+    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString(vm);
 
     GTEST_LOG_(INFO) << log << " exception name : " << exceptionName;
     GTEST_LOG_(INFO) << log << " exception message : " << exceptionMessage;
@@ -3070,9 +3075,10 @@ void PrintAndRethrowException4TryCatch3(const EcmaVM *vm, const std::string log)
     }
 
     Local<ObjectRef> exception = tryCatch.GetAndClearException();
-    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString();
-    std::string exceptionMessage = exception->Get(vm, StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString();
-    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString();
+    std::string exceptionName = exception->Get(vm, StringRef::NewFromUtf8(vm, "name"))->ToString(vm)->ToString(vm);
+    std::string exceptionMessage = exception->Get(vm,
+        StringRef::NewFromUtf8(vm, "message"))->ToString(vm)->ToString(vm);
+    std::string exceptionStack = exception->Get(vm, StringRef::NewFromUtf8(vm, "stack"))->ToString(vm)->ToString(vm);
 
     GTEST_LOG_(INFO) << log << " exception name : " << exceptionName;
     GTEST_LOG_(INFO) << log << " exception message : " << exceptionMessage;

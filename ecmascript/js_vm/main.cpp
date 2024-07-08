@@ -88,8 +88,8 @@ Local<JSValueRef> AssertEqual(JsiRuntimeCallInfo *runtimeInfo)
     Local<JSValueRef> jsArg1 = runtimeInfo->GetCallArgRef(1);
 
     if (!IsEqual(vm, jsArg0, jsArg1)) {
-        std::string errStr = std::string("Assertion failed: ").append(jsArg0->ToString(vm)->ToString())
-            .append(" != ").append(jsArg1->ToString(vm)->ToString());
+        std::string errStr = std::string("Assertion failed: ").append(jsArg0->ToString(vm)->ToString(vm))
+            .append(" != ").append(jsArg1->ToString(vm)->ToString(vm));
         auto error = panda::Exception::TypeError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
         panda::JSNApi::ThrowException(vm, error);
     }
@@ -112,7 +112,7 @@ Local<JSValueRef> AssertTrue(JsiRuntimeCallInfo *runtimeInfo)
     Local<JSValueRef> jsArg0 = runtimeInfo->GetCallArgRef(0);
 
     if (!jsArg0->IsTrue()) {
-        std::string errStr = std::string("Assertion failed: Expect ").append(jsArg0->ToString(vm)->ToString())
+        std::string errStr = std::string("Assertion failed: Expect ").append(jsArg0->ToString(vm)->ToString(vm))
             .append(" equals True.");
         auto error = panda::Exception::TypeError(vm, StringRef::NewFromUtf8(vm, errStr.c_str()));
         panda::JSNApi::ThrowException(vm, error);
