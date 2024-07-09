@@ -488,13 +488,12 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
 }
 
 void SourceTextModule::InstantiateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &currentModule,
-    JSHandle<SourceTextModule> &requiredModule, const JSHandle<JSTaggedValue> &moduleRequest,
-    ModuleTypes moduleType)
+    JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
 {
     if (requiredModule->GetStatus() != ModuleStatus::EVALUATED) {
         if (!SourceTextModule::LoadNativeModule(thread, requiredModule, moduleType)) {
             LOG_FULL(WARN) << "LoadNativeModule " <<
-            ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue()) << " failed";
+            ModulePathHelper::Utf8ConvertToString(requiredModule->GetEcmaModuleRecordName()) << " failed";
             return;
         }
     }
@@ -1114,21 +1113,26 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
         JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
+        JSHandle<SourceTextModule> requiredModule;
+        bool *lazyFlag = module->GetLazyImportStatusArray();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
+            if (lazyFlag[idx]) {
+                continue;
+            }
             required.Update(requestedModules->Get(idx));
-            JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
             JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
             if (moduleRecordName.IsUndefined()) {
-                requiredModule.Update(SourceTextModule::HostResolveImportedModule(thread, module, required));
+                requiredModule = JSHandle<SourceTextModule>::Cast(
+                    SourceTextModule::HostResolveImportedModule(thread, module, required));
             } else {
                 ASSERT(moduleRecordName.IsString());
-                requiredModule.Update(SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
+                requiredModule = JSHandle<SourceTextModule>::Cast(
+                    SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
             }
-
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (SourceTextModule::IsNativeModule(moduleType)) {
-                InstantiateNativeModule(thread, module, requiredModule, required, moduleType);
+                InstantiateNativeModule(thread, module, requiredModule, moduleType);
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
                 continue;
             }
@@ -1156,7 +1160,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
                 int dfsAncIdx = std::min(module->GetDFSAncestorIndex(), requiredModule->GetDFSAncestorIndex());
                 module->SetDFSAncestorIndex(dfsAncIdx);
             } else {
-                requiredModule.Update(requiredModule->GetCycleRoot());
+                requiredModule = JSHandle<SourceTextModule>(thread, requiredModule->GetCycleRoot());
                 requiredModuleStatus = requiredModule->GetStatus();
                 ASSERT(requiredModuleStatus == ModuleStatus::EVALUATING_ASYNC ||
                        requiredModuleStatus == ModuleStatus::EVALUATED);
@@ -1355,7 +1359,7 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (SourceTextModule::IsNativeModule(moduleType)) {
-                InstantiateNativeModule(thread, module, requiredModule, required, moduleType);
+                InstantiateNativeModule(thread, module, requiredModule, moduleType);
                 requiredModule->SetStatus(ModuleStatus::EVALUATED);
                 continue;
             }

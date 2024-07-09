@@ -79,6 +79,44 @@ JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
     UNREACHABLE();
 }
 
+JSTaggedValue SharedModuleManager::GetLazySendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
+{
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    return GetLazySendableModuleValueImpl(thread, index, currentModule);
+}
+
+JSTaggedValue SharedModuleManager::GetLazySendableModuleValueImpl(
+    JSThread *thread, int32_t index, JSTaggedValue currentModule) const
+{
+    if (currentModule.IsUndefined()) {
+        LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
+        UNREACHABLE();
+    }
+
+    JSHandle<SourceTextModule> module(thread, currentModule.GetTaggedObject());
+    JSTaggedValue moduleEnvironment = module->GetEnvironment();
+    if (moduleEnvironment.IsUndefined()) {
+        return thread->GlobalConstants()->GetUndefined();
+    }
+    ASSERT(moduleEnvironment.IsTaggedArray());
+    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
+    if (resolvedBinding.IsResolvedRecordIndexBinding()) {
+        return ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(thread, module, resolvedBinding);
+    } else if (resolvedBinding.IsResolvedIndexBinding()) {
+        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
+        JSHandle<SourceTextModule> resolvedModule(thread, binding->GetModule().GetTaggedObject());
+        SourceTextModule::Evaluate(thread, resolvedModule, nullptr);
+        if (thread->HasPendingException()) {
+            return JSTaggedValue::Undefined();
+        }
+        return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetIndex());
+    } else if (resolvedBinding.IsResolvedRecordBinding()) {
+        return ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(thread, module, resolvedBinding);
+    }
+    LOG_ECMA(FATAL) << "Unexpect binding";
+    UNREACHABLE();
+}
+
 JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModule(JSThread *thread, const CString &fileName,
                                                                    bool executeFromJob)
 {
@@ -122,7 +160,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModule(JSThrea
 
     ASSERT(jsPandaFile->IsModule(recordInfo));
     JSHandle<JSTaggedValue> moduleRecord = SharedModuleHelper::ParseSharedModule(thread,
-        jsPandaFile, fileName, fileName);
+        jsPandaFile, fileName, fileName, recordInfo);
     moduleManager->AddResolveImportedModule(requireModule, moduleRecord);
     moduleManager->AddToInstantiatingSModuleList(fileName);
     return moduleRecord;
@@ -173,7 +211,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModuleWithMerg
 
     ASSERT(jsPandaFile->IsModule(recordInfo));
     JSHandle<JSTaggedValue> moduleRecord = SharedModuleHelper::ParseSharedModule(thread, jsPandaFile, recordName,
-                                                                                 fileName);
+                                                                                 fileName, recordInfo);
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, requireModule);
     moduleManager->AddResolveImportedModule(requireModule, moduleRecord);
     moduleManager->AddToInstantiatingSModuleList(recordName);

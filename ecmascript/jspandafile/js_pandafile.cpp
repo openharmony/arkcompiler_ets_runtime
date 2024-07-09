@@ -207,6 +207,8 @@ void JSPandaFile::InitializeMergedPF()
                 info->isSharedModule = fieldAccessor.GetValue<bool>().value();
             } else if (std::strcmp(HAS_TOP_LEVEL_AWAIT, fieldName) == 0) {
                 info->hasTopLevelAwait = fieldAccessor.GetValue<bool>().value();
+            } else if (std::strcmp(LAZY_IMPORT, fieldName) == 0) {
+                info->lazyImportIdx = fieldAccessor.GetValue<uint32_t>().value();
             } else if (std::strcmp(TYPE_FLAG, fieldName) == 0) {
                 info->hasTSTypes = fieldAccessor.GetValue<uint8_t>().value() != 0;
             } else if (std::strcmp(TYPE_SUMMARY_OFFSET, fieldName) == 0) {

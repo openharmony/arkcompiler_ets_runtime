@@ -478,6 +478,10 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
         case EcmaOpcode::CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8:
         case EcmaOpcode::CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16:
+        case EcmaOpcode::CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16:
             flags |= BytecodeFlags::READ_FUNC;
             break;
         case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
@@ -1232,6 +1236,26 @@ void BytecodeInfo::InitBytecodeInfo(BytecodeCircuitBuilder *builder,
             break;
         }
         case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16: {
+            int32_t index = READ_INST_16_1();
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8: {
+            int32_t index = READ_INST_8_1();
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16: {
+            int32_t index = READ_INST_16_1();
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8: {
+            int32_t index = READ_INST_8_1();
+            info.inputs.emplace_back(Immediate(index));
+            break;
+        }
+        case EcmaOpcode::CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16: {
             int32_t index = READ_INST_16_1();
             info.inputs.emplace_back(Immediate(index));
             break;

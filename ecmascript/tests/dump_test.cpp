@@ -1370,7 +1370,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::SOURCE_TEXT_MODULE_RECORD: {
-                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 17U);
+                CHECK_DUMP_FIELDS(ModuleRecord::SIZE, SourceTextModule::SIZE, 18U);
                 JSHandle<SourceTextModule> moduleSourceRecord = factory->NewSourceTextModule();
                 DUMP_FOR_HANDLE(moduleSourceRecord);
                 break;

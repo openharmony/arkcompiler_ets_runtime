@@ -1039,7 +1039,7 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     constexpr size_t numOps = 0x100;
     constexpr size_t numThrowOps = 10;
     constexpr size_t numWideOps = 20;
-    constexpr size_t numCallRuntimeOps = 21;
+    constexpr size_t numCallRuntimeOps = 25;
     constexpr size_t numDeprecatedOps = 47;
 
     static std::array<const void *, numOps> instDispatchTable {
@@ -7802,6 +7802,46 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         }
         SET_ACC(SendableEnv::Cast(env.GetTaggedObject())->GetProperties(slot));
         DISPATCH(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8) {
+        int32_t index = READ_INST_8_1();
+        JSTaggedValue funcObj = GetFunction(sp);
+        LOG_INST() << "intrinsics::ldlazyexternalmodulevar index:" << index;
+
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdLazyExternalModuleVar(thread, index, funcObj);
+        INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+        SET_ACC(moduleVar);
+        DISPATCH(CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16) {
+        int32_t index = READ_INST_16_1();
+        JSTaggedValue funcObj = GetFunction(sp);
+        LOG_INST() << "intrinsics::ldlazyexternalmodulevar index:" << index;
+
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdLazyExternalModuleVar(thread, index, funcObj);
+        INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+        SET_ACC(moduleVar);
+        DISPATCH(CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8) {
+        int32_t index = READ_INST_8_1();
+        JSTaggedValue funcObj = GetFunction(sp);
+        LOG_INST() << "intrinsics::ldlazysendableexternalmodulevar index:" << index;
+
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdLazySendableExternalModuleVar(thread, index, funcObj);
+        INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+        SET_ACC(moduleVar);
+        DISPATCH(CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8);
+    }
+    HANDLE_OPCODE(CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16) {
+        int32_t index = READ_INST_16_1();
+        JSTaggedValue funcObj = GetFunction(sp);
+        LOG_INST() << "intrinsics::ldlazysendableexternalmodulevar index:" << index;
+
+        JSTaggedValue moduleVar = SlowRuntimeStub::LdLazySendableExternalModuleVar(thread, index, funcObj);
+        INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+        SET_ACC(moduleVar);
+        DISPATCH(CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16);
     }
 #include "templates/debugger_instruction_handler.inl"
 }

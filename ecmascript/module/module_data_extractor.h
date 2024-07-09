@@ -34,15 +34,19 @@ public:
 
     static void ExtractModuleDatas(JSThread *thread, const JSPandaFile *jsPandaFile,
                                    panda_file::File::EntityId moduleId,
-                                   JSHandle<SourceTextModule> &moduleRecord);
+                                   JSHandle<SourceTextModule> &moduleRecord,
+                                   [[maybe_unused]]JSRecordInfo *recordInfo);
     static JSHandle<JSTaggedValue> ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                               const CString &descriptor, const CString &moduleFilename);
+                                               const CString &descriptor, const CString &moduleFilename,
+                                               JSRecordInfo *recordInfo);
     static JSHandle<JSTaggedValue> ParseCjsModule(JSThread *thread, const JSPandaFile *jsPandaFile);
     static JSHandle<JSTaggedValue> ParseJsonModule(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                    const CString &moduleFilename, const CString &recordName);
     static JSHandle<JSTaggedValue> ParseNativeModule(JSThread *thread, const CString &moduleRequestName,
                                                      const CString &baseFileName, ModuleTypes moduleType);
     static JSTaggedValue JsonParse(JSThread *thread, const JSPandaFile *jsPandaFile, CString entryPoint);
+    static bool *ModuleLazyImportFlagAccessor(const JSPandaFile *pandaFile,
+        panda_file::File::EntityId module_lazy_import_flag_id);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_MODULE_DATA_EXTRACTOR_H

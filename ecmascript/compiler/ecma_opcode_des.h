@@ -340,6 +340,10 @@ namespace panda::ecmascript::kungfu {
     V(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16)                      \
     V(CALLRUNTIME_ISTRUE_PREF_IMM8)                                        \
     V(CALLRUNTIME_ISFALSE_PREF_IMM8)                                       \
+    V(CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8)                               \
+    V(CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16)                          \
+    V(CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8)                       \
+    V(CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16)                  \
 
 inline std::string GetEcmaOpcodeStr(EcmaOpcode opcode)
 {

@@ -37,6 +37,7 @@ public:
     JSTaggedValue GetModuleValueOutter(int32_t index);
     JSTaggedValue GetModuleValueOutter(int32_t index, JSTaggedValue jsFunc);
     JSTaggedValue GetModuleValueOutter(int32_t index, JSHandle<JSTaggedValue> currentModule);
+    JSTaggedValue GetLazyModuleValueOutter(int32_t index, JSTaggedValue jsFunc);
     void StoreModuleValue(int32_t index, JSTaggedValue value);
     void StoreModuleValue(int32_t index, JSTaggedValue value, JSTaggedValue jsFunc);
     JSTaggedValue GetModuleNamespace(int32_t index);
@@ -115,6 +116,19 @@ public:
         return ordinal;
     }
 
+    void NativeObjDestory()
+    {
+        NameDictionary* dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
+        int size = dict->Size();
+        for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+            JSTaggedValue key(dict->GetKey(hashIndex));
+            if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
+                JSTaggedValue val(dict->GetValue(hashIndex));
+                SourceTextModule::Cast(val)->DestoryLazyImportArray();
+            }
+        }
+    }
+
 private:
     NO_COPY_SEMANTIC(ModuleManager);
     NO_MOVE_SEMANTIC(ModuleManager);
@@ -122,6 +136,8 @@ private:
     JSTaggedValue GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
     void StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                   int32_t index, JSTaggedValue value);
+
+    JSTaggedValue GetLazyModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule);
 
     // deprecated begin
     JSTaggedValue GetModuleValueOutterInternal(JSTaggedValue key, JSTaggedValue currentModule);

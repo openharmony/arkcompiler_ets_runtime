@@ -45,6 +45,14 @@ public:
     static JSTaggedValue PUBLIC_API GetModuleValueFromRecordBinding(JSThread *thread,
                                                                     JSHandle<SourceTextModule> module,
                                                                     JSTaggedValue resolvedBinding);
+
+    static JSTaggedValue GetLazyModuleValueFromIndexBinding(JSThread *thread,
+                                                            JSHandle<SourceTextModule> module,
+                                                            JSTaggedValue resolvedBinding);
+
+    static JSTaggedValue GetLazyModuleValueFromRecordBinding(JSThread *thread,
+                                                             JSHandle<SourceTextModule> module,
+                                                             JSTaggedValue resolvedBinding);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_SHARED_MODULE_H

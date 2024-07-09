@@ -127,7 +127,8 @@ JSHandle<TaggedArray> JSSharedModule::CloneEnvForSModule(JSThread *thread, const
 }
 
 JSHandle<JSTaggedValue> SharedModuleHelper::ParseSharedModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                              const CString &descriptor, const CString &moduleFilename)
+                                                              const CString &descriptor, const CString &moduleFilename,
+                                                              JSRecordInfo *recordInfo)
 {
     int moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
     ASSERT(jsPandaFile->IsNewVersion() && (moduleIdx != -1)); // new pandafile version use new literal offset mechanism
@@ -136,7 +137,7 @@ JSHandle<JSTaggedValue> SharedModuleHelper::ParseSharedModule(JSThread *thread, 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSSourceTextModule();
     moduleRecord->SetSharedType(SharedTypes::SHARED_MODULE);
-    ModuleDataExtractor::ExtractModuleDatas(thread, jsPandaFile, moduleId, moduleRecord);
+    ModuleDataExtractor::ExtractModuleDatas(thread, jsPandaFile, moduleId, moduleRecord, recordInfo);
 
     bool hasTLA = jsPandaFile->GetHasTopLevelAwait(descriptor);
     moduleRecord->SetHasTLA(hasTLA);

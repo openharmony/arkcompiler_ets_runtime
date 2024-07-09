@@ -23,7 +23,7 @@
 // @ts-nocheck
 declare function print(str: any): string;
 
-import {Test1, foo2} from "./func"
+import lazy {Test1, foo2} from "./func"
 import {strA, strB} from "./string"
 
 class SendableClassA {

@@ -7796,6 +7796,62 @@ void InterpreterAssembly::ExceptionHandler(
     DISPATCH_OFFSET(0);
 }
 
+void InterpreterAssembly::HandleCallRuntimeLdLazyModuleVarPrefImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_8_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldlazyexternalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdLazyExternalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeWideLdLazyModuleVarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_16_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldlazyexternalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdLazyExternalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16);
+}
+
+void InterpreterAssembly::HandleCallRuntimeLdLazySendableModuleVarPrefImm8(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_8_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldlazysendableexternalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdLazySendableExternalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8);
+}
+
+void InterpreterAssembly::HandleCallRuntimeWideLdLazySendableModuleVarPrefImm16(
+    JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, JSTaggedValue profileTypeInfo,
+    JSTaggedValue acc, int16_t hotnessCounter)
+{
+    int32_t index = READ_INST_16_1();
+    JSTaggedValue thisFunc = GetFunction(sp);
+    LOG_INST() << "intrinsics::ldlazysendableexternalmodulevar index:" << index;
+
+    JSTaggedValue moduleVar = SlowRuntimeStub::LdLazySendableExternalModuleVar(thread, index, thisFunc);
+    INTERPRETER_RETURN_IF_ABRUPT(moduleVar);
+    SET_ACC(moduleVar);
+    DISPATCH(CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16);
+}
+
 #define DECLARE_UNUSED_ASM_HANDLE(name)                                                 \
     void InterpreterAssembly::name(                                                     \
         JSThread *thread, const uint8_t *pc, JSTaggedType *sp, JSTaggedValue constpool, \

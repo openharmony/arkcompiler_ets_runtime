@@ -689,6 +689,8 @@ JSHandle<SourceTextModule> ObjectFactory::NewSSourceTextModule()
     obj->SetTypes(ModuleTypes::UNKNOWN);
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
+    bool *tmp = new bool[0];
+    obj->SetLazyImportStatus(ToUintPtr(tmp));
     obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
     obj->SetSendableEnv(thread_, undefinedValue);
     return obj;

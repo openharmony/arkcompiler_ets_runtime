@@ -42,6 +42,7 @@ public:
         bool hasTopLevelAwait {false};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
         bool hasTSTypes {false};
+        uint32_t lazyImportIdx {0};
         uint32_t typeSummaryOffset {0};
         uint32_t classId {CLASSID_OFFSET_NOT_FOUND};
         CString npmPackageName;
@@ -77,6 +78,7 @@ public:
     static constexpr char MODULE_RECORD_IDX[] = "moduleRecordIdx";
     static constexpr char IS_SHARED_MODULE[] = "isSharedModule";
     static constexpr char HAS_TOP_LEVEL_AWAIT[] = "hasTopLevelAwait";
+    static constexpr char LAZY_IMPORT[] = "moduleRequestPhaseIdx";
     static constexpr char PACKAGE_NAME[] = "pkgName@";
     static constexpr char MERGE_ABC_NAME[] = "modules.abc";
     static constexpr char NPM_PATH_SEGMENT[] = "node_modules";
