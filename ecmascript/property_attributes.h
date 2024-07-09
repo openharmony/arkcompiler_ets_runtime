@@ -399,6 +399,16 @@ public:
         return PropertyBoxTypeField::Get(value_);
     }
 
+    static inline Representation TranslateToRep(JSTaggedValue value)
+    {
+        if (value.IsInt()) {
+            return Representation::INT;
+        } else if (value.IsDouble()) {
+            return Representation::DOUBLE;
+        }
+        return Representation::TAGGED;
+    }
+
     inline static bool IsValidIndex(int index)
     {
         return DictionaryOrderField::IsValid(index);

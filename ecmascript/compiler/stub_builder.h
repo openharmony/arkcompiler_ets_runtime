@@ -580,6 +580,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetPropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr);
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
+    GateRef TranslateToRep(GateRef value);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
     void MatchFieldType(GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
@@ -604,7 +605,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef ComputeElementCapacity(GateRef oldLength);
     GateRef ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef oldLength,
                                                GateRef maxNonInlinedFastPropsCapacity);
-    GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr);
+    GateRef FindTransitions(GateRef glue, GateRef receiver, GateRef hClass, GateRef key, GateRef attr, GateRef value);
+    GateRef CheckHClassForRep(GateRef hClass, GateRef rep);
     void TransitionForRepChange(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
     void TransitToElementsKind(GateRef glue, GateRef receiver, GateRef value, GateRef kind);
     GateRef TaggedToRepresentation(GateRef value);
@@ -630,7 +632,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef StoreWithTransition(GateRef glue, GateRef receiver, GateRef value, GateRef handler,
                              ProfileOperation callback, bool withPrototype = false);
     GateRef StoreGlobal(GateRef glue, GateRef value, GateRef cell);
-    void JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
+    void JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr, GateRef value);
     void NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClass);
     GateRef GetInt64OfTInt(GateRef x);
     GateRef GetInt32OfTInt(GateRef x);

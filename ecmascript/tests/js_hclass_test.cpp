@@ -226,14 +226,18 @@ HWTEST_F_L0(JSHClassTest, SetPropertyOfObjHClass_002)
     JSHandle<JSTaggedValue> keyE(factory->NewFromASCII("e"));
     JSHandle<JSTaggedValue> keyF(factory->NewFromASCII("f"));
     // not empty layoutInfo
-    JSObject::SetProperty(thread, Obj1, keyE, JSHandle<JSTaggedValue>(thread, JSTaggedValue(7)));
-    JSObject::SetProperty(thread, Obj2, keyF, JSHandle<JSTaggedValue>(thread, JSTaggedValue(8)));
+    auto valueE = JSHandle<JSTaggedValue>(thread, JSTaggedValue(7));
+    auto valueF = JSHandle<JSTaggedValue>(thread, JSTaggedValue(8));
+    JSObject::SetProperty(thread, Obj1, keyE, valueE);
+    JSObject::SetProperty(thread, Obj2, keyF, valueE);
 
-    JSHandle<JSHClass> propertyHclass = JSHClass::SetPropertyOfObjHClass(thread, objClass, keyE, attr);
+    auto repE = PropertyAttributes::TranslateToRep(valueE.GetTaggedValue());
+    JSHandle<JSHClass> propertyHclass = JSHClass::SetPropertyOfObjHClass(thread, objClass, keyE, attr, repE);
     JSHandle<JSHClass> obj1Class(thread, Obj1->GetClass());
     EXPECT_TRUE(propertyHclass == obj1Class);
 
-    propertyHclass = JSHClass::SetPropertyOfObjHClass(thread, objClass, keyF, attr);
+    auto repF = PropertyAttributes::TranslateToRep(valueF.GetTaggedValue());
+    propertyHclass = JSHClass::SetPropertyOfObjHClass(thread, objClass, keyF, attr, repF);
     JSHandle<JSHClass> obj2Class(thread, Obj2->GetClass());
     EXPECT_TRUE(propertyHclass == obj2Class);
 }

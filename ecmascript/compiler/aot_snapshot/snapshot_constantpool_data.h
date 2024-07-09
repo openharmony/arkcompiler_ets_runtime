@@ -67,13 +67,14 @@ protected:
     bool TryGetABCId(ApEntityId &abcId);
 
     JSHandle<JSTaggedValue> TryGetIHClass(ProfileType rootType, ProfileType childType, const ItemData &data,
-        const JSHandle<TaggedArray> &properties) const;
+        const JSHandle<TaggedArray> &properties, const SnapshotGlobalData &globalData) const;
 
     JSHandle<JSTaggedValue> TryGetHClass(ProfileType rootType, ProfileType childType) const;
 
     JSHandle<JSTaggedValue> TryGetHClassByPGOTypeLocation(PGOTypeLocation loc) const;
 
-    JSHandle<JSTaggedValue> TryGetHClassFromCached(const JSHandle<TaggedArray> &properties) const;
+    JSHandle<JSTaggedValue> TryGetHClassFromCached(const JSHandle<TaggedArray> &properties,
+                                                   const SnapshotGlobalData &globalData) const;
 
     void CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t constantPoolIndex,
                             JSHandle<ConstantPool> snapshotConstantPool, const std::set<uint32_t> &skippedMethods,

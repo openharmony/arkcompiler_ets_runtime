@@ -2416,6 +2416,37 @@ inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)
         Int32((1LLU << PropertyAttributes::PropertyMetaDataField::SIZE) - 1));
 }
 
+inline GateRef StubBuilder::TranslateToRep(GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    Label intLabel(env);
+    Label nonIntLabel(env);
+    Label doubleLabel(env);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(static_cast<int32_t>(Representation::TAGGED)));
+    Branch(TaggedIsInt(value), &intLabel, &nonIntLabel);
+    Bind(&intLabel);
+    {
+        result = Int32(static_cast<int32_t>(Representation::INT));
+        Jump(&exit);
+    }
+    Bind(&nonIntLabel);
+    {
+        Branch(TaggedIsDouble(value), &doubleLabel, &exit);
+    }
+    Bind(&doubleLabel);
+    {
+        result = Int32(static_cast<int32_t>(Representation::DOUBLE));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 inline GateRef StubBuilder::GetKeyFromLayoutInfo(GateRef layout, GateRef entry)
 {
     GateRef index = Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2));

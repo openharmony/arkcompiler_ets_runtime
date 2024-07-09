@@ -1293,7 +1293,7 @@ GateRef StubBuilder::ShouldCallSetter(GateRef receiver, GateRef holder, GateRef 
     return ret;
 }
 
-void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr)
+void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef key, GateRef attr, GateRef value)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -1301,7 +1301,7 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
     Label exit(env);
     GateRef hclass = LoadHClass(receiver);
     GateRef metaData = GetPropertyMetaDataFromAttr(attr);
-    GateRef newClass = FindTransitions(glue, receiver, hclass, key, metaData);
+    GateRef newClass = FindTransitions(glue, receiver, hclass, key, metaData, value);
     Label findHClass(env);
     Label notFindHClass(env);
     BRANCH(Equal(newClass, Undefined()), &notFindHClass, &findHClass);
@@ -1393,7 +1393,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             attr = SetIsInlinePropsFieldInPropAttr(*attr, Int32(1)); // 1: set inInlineProps true
             attr = SetTaggedRepInPropAttr(*attr);
             attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
-            JSHClassAddProperty(glue, receiver, key, *attr);
+            JSHClassAddProperty(glue, receiver, key, *attr, value);
             GateRef newHclass = LoadHClass(receiver);
             GateRef newLayoutInfo = GetLayoutFromHClass(newHclass);
             GateRef offset = GetInlinedPropOffsetFromHClass(hclass, numberOfProps);
@@ -1481,7 +1481,7 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 attr = SetOffsetFieldInPropAttr(*attr, numberOfProps);
                 attr = SetTaggedRepInPropAttr(*attr);
                 attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
-                JSHClassAddProperty(glue, receiver, key, *attr);
+                JSHClassAddProperty(glue, receiver, key, *attr, value);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, outProps, value);
                 Jump(&exit);
             }
@@ -3855,7 +3855,66 @@ GateRef StubBuilder::IsArrayLengthWritable(GateRef glue, GateRef receiver)
     return ret;
 }
 
-GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hclass, GateRef key, GateRef metaData)
+GateRef StubBuilder::CheckHClassForRep(GateRef hclass, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    Label isTSHClass(env);
+    DEFVARIABLE(result, VariableType::BOOL(), Boolean(true));
+    Branch(IsTSHClass(hclass), &isTSHClass, &exit);
+    Bind(&isTSHClass);
+    {
+        GateRef propNums = GetNumberOfPropsFromHClass(hclass);
+        GateRef last = Int32Sub(propNums, Int32(1));
+        GateRef layoutInfo = GetLayoutFromHClass(hclass);
+        GateRef cachedAttr = GetPropAttrFromLayoutInfo(layoutInfo, last);
+        GateRef lastRep = GetRepInPropAttr(cachedAttr);
+        Label repIsInt(env);
+        Label repIsNotInt(env);
+        Label repIsDouble(env);
+        Branch(Equal(lastRep, Int32(static_cast<int32_t>(Representation::INT))), &repIsInt, &repIsNotInt);
+        Bind(&repIsInt);
+        {
+            GateRef valueRep = TranslateToRep(value);
+            Label valueRepIsNotInt(env);
+            Branch(Equal(valueRep, Int32(static_cast<int32_t>(Representation::INT))), &exit, &valueRepIsNotInt);
+            Bind(&valueRepIsNotInt);
+            {
+                result = Boolean(false);
+                Jump(&exit);
+            }
+        }
+        Bind(&repIsNotInt);
+        {
+            Branch(Equal(lastRep, Int32(static_cast<int32_t>(Representation::DOUBLE))), &repIsDouble, &exit);
+            Bind(&repIsDouble);
+            GateRef valueRep = TranslateToRep(value);
+            Label valueRepIsNotInt(env);
+            Branch(Equal(valueRep, Int32(static_cast<int32_t>(Representation::INT))), &exit, &valueRepIsNotInt);
+            Bind(&valueRepIsNotInt);
+            {
+                Label valueRepIsNotDouble(env);
+                Branch(Equal(valueRep, Int32(static_cast<int32_t>(Representation::DOUBLE))), &exit,
+                    &valueRepIsNotDouble);
+                Bind(&valueRepIsNotDouble);
+                {
+                    result = Boolean(false);
+                    Jump(&exit);
+                }
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver,
+                                     GateRef hclass, GateRef key,
+                                     GateRef metaData, GateRef value)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3884,12 +3943,15 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
             Label keyMatch(env);
             Label isMatch(env);
             Label notMatch(env);
+            Label repMatch(env);
             BRANCH(Equal(cachedKey, key), &keyMatch, &notMatch);
             Bind(&keyMatch);
             {
                 BRANCH(Int32Equal(metaData, cachedMetaData), &isMatch, &notMatch);
                 Bind(&isMatch);
                 {
+                    BRANCH(CheckHClassForRep(transitionHClass, value), &repMatch, &notMatch);
+                    Bind(&repMatch);
                     GateRef oldHClass = LoadHClass(receiver);
                     GateRef prototype = GetPrototypeFromHClass(oldHClass);
                     StorePrototype(glue, transitionHClass, prototype);
@@ -3916,14 +3978,17 @@ GateRef StubBuilder::FindTransitions(GateRef glue, GateRef receiver, GateRef hcl
             Label notFound(env);
             BRANCH(Int32NotEqual(entryA, Int32(-1)), &isFound, &notFound);
             Bind(&isFound);
-            auto value = GetValueFromDictionary<TransitionsDictionary>(transition, entryA);
+            auto cachedValue = GetValueFromDictionary<TransitionsDictionary>(transition, entryA);
             Label valueUndefined(env);
             Label valueNotUndefined(env);
-            BRANCH(Int64NotEqual(value, Undefined()), &valueNotUndefined,
+            Label repMatch(env);
+            BRANCH(Int64NotEqual(cachedValue, Undefined()), &valueNotUndefined,
                 &valueUndefined);
             Bind(&valueNotUndefined);
             {
-                GateRef newHClass = LoadObjectFromWeakRef(value);
+                GateRef newHClass = LoadObjectFromWeakRef(cachedValue);
+                BRANCH(CheckHClassForRep(newHClass, value), &repMatch, &valueUndefined);
+                Bind(&repMatch);
                 result = newHClass;
                 GateRef oldHClass = LoadHClass(receiver);
                 GateRef prototype = GetPrototypeFromHClass(oldHClass);
