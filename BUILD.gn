@@ -1000,7 +1000,7 @@ config("include_llvm") {
         ]
       }
     } else {
-      if (host_cpu == "arm64") {
+      if (host_cpu == "arm64" && host_os == "linux") {
         include_dirs = [
           "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_linux_aarch64/llvm/include",
           "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_linux_aarch64/build/include",
