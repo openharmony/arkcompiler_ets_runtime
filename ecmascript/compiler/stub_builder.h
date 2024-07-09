@@ -18,7 +18,7 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
+#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/lcr_gate_meta_data.h"
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
@@ -97,10 +97,7 @@ public:
     {
         return callSignature_;
     }
-    int NextVariableId()
-    {
-        return env_->NextVariableId();
-    }
+    int NextVariableId();
     // constant
     GateRef Int8(int8_t value);
     GateRef Int16(int16_t value);
@@ -746,6 +743,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetMethodToFunction(GateRef glue, GateRef function, GateRef value,
                              MemoryOrder order = MemoryOrder::Default());
     void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetCompiledCodeFlagToFunctionFromMethod(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     void SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value);
     void SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value);
@@ -753,6 +751,9 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetJSObjectTaggedField(GateRef glue, GateRef object, size_t offset, GateRef value);
     void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef sendableEnv);
     void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value, MemoryOrder order);
+    void SetCompiledCodeFlagToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
+                                  MemoryOrder order = MemoryOrder::Default());
     GateRef GetGlobalObject(GateRef glue);
     GateRef IsWorker(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
@@ -848,7 +849,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     // method operator
     GateRef IsJSFunction(GateRef obj);
     GateRef IsBoundFunction(GateRef obj);
-    GateRef GetMethodFromJSFunction(GateRef jsfunc);
+    GateRef GetMethodFromJSFunctionOrProxy(GateRef jsfunc);
     GateRef IsNativeMethod(GateRef method);
     GateRef GetFuncKind(GateRef method);
     GateRef HasPrototype(GateRef kind);
@@ -862,10 +863,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetIhcFromAOTLiteralInfo(GateRef info);
     GateRef IsAotWithCallField(GateRef method);
     GateRef IsFastCall(GateRef method);
-    GateRef IsJitCompiledCode(GateRef method);
-    void ClearJitCompiledCodeFlags(GateRef glue, GateRef method);
     GateRef JudgeAotAndFastCall(GateRef jsFunc, CircuitBuilder::JudgeMethodType type);
-    GateRef JudgeAotAndFastCallWithMethod(GateRef method, CircuitBuilder::JudgeMethodType type);
     GateRef GetInternalString(GateRef glue, GateRef key);
     GateRef GetExpectedNumOfArgs(GateRef method);
     GateRef GetMethod(GateRef glue, GateRef obj, GateRef key, GateRef profileTypeInfo, GateRef slotId);

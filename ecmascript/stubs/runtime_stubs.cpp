@@ -3487,14 +3487,15 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     }
     context->SetRegsArray(thread, regsArray.GetTaggedValue());
     JSTaggedValue function = frameHandler.GetFunction();
-    JSFunction* func = JSFunction::Cast(function.GetTaggedObject());
+    JSFunction *func = JSFunction::Cast(function.GetTaggedObject());
     Method *method = func->GetCallTarget();
-    if (!thread->IsWorker() && method->IsAotWithCallField()) {
-        bool isFastCall = method->IsFastCall();  // get this flag before clear it
+    if (!thread->IsWorker() && func->IsCompiledCode()) {
+        bool isFastCall = func->IsCompiledFastCall();  // get this flag before clear it
         uintptr_t entry = isFastCall ? thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
                                      : thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
         func->SetCodeEntry(entry);
         method->ClearAOTStatusWhenDeopt(entry);
+        func->ClearCompiledCodeFlags();
     }
     context->SetMethod(thread, function);
     context->SetThis(thread, frameHandler.GetThis());
@@ -3853,12 +3854,6 @@ void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newL
     uint32_t length = static_cast<uint32_t>(newLength);
     auto thread = JSThread::GlueToJSThread(argGlue);
     array->Trim(thread, length);
-}
-
-void RuntimeStubs::ClearJitCompiledCodeFlags(Method *method)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    method->ClearJitCompiledCodeFlags();
 }
 
 DEF_RUNTIME_STUBS(ArrayForEachContinue)

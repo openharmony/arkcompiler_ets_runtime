@@ -333,7 +333,8 @@ void Deoptimizier::RelocateCalleeSave()
     }
 }
 
-bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWriter, size_t curDepth)
+bool Deoptimizier::CollectVirtualRegisters(JSTaggedValue callTarget, Method *method, FrameWriter *frameWriter,
+    size_t curDepth)
 {
     int32_t actualNumArgs = 0;
     int32_t declaredNumArgs = 0;
@@ -353,7 +354,8 @@ bool Deoptimizier::CollectVirtualRegisters(Method* method, FrameWriter *frameWri
     // [maybe argc] [actual args] [reserved args] [call field virtual regs]
 
     // [maybe argc]
-    if (!method->IsFastCall() && declaredNumArgs != actualNumArgs) {
+    bool isFastCall = JSFunctionBase::IsFastCallFromCallTarget(callTarget);
+    if (!isFastCall && declaredNumArgs != actualNumArgs) {
         auto value = JSTaggedValue(actualNumArgs);
         frameWriter->PushValue(value.GetRawData());
     }
@@ -495,7 +497,7 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
         auto start = frameWriter.GetTop();
         JSTaggedValue callTarget = GetDeoptValue(curDepth, static_cast<int32_t>(SpecVregIndex::FUNC_INDEX));
         auto method = GetMethod(callTarget);
-        if (!CollectVirtualRegisters(method, &frameWriter, curDepth)) {
+        if (!CollectVirtualRegisters(callTarget, method, &frameWriter, curDepth)) {
             return JSTaggedValue::Exception().GetRawData();
         }
         AsmInterpretedFrame *statePtr = frameWriter.ReserveAsmInterpretedFrame();
@@ -538,13 +540,14 @@ void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *me
     if (func->GetMachineCode().IsMachineCodeObject()) {
         Jit::GetInstance()->GetJitDfx()->SetJitDeoptCount();
     }
-    if (method->IsAotWithCallField()) {
-        bool isFastCall = method->IsFastCall();  // get this flag before clear it
+    if (func->IsCompiledCode()) {
+        bool isFastCall = func->IsCompiledFastCall();  // get this flag before clear it
         uintptr_t entry =
             isFastCall ? thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
                        : thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);
         func->SetCodeEntry(entry);
         method->ClearAOTStatusWhenDeopt(entry);
+        func->ClearCompiledCodeFlags();
     }  // Do not change the func code entry if the method is not aot or deopt has happened already
 }
 

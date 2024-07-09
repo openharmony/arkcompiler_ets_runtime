@@ -1707,20 +1707,6 @@ DEF_CALL_SIGNATURE(StringGetEnd)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
-DEF_CALL_SIGNATURE(ClearJitCompiledCodeFlags)
-{
-    // 1 : 1 input parameters
-    CallSignature ClearJitCompiledCodeFlags("ClearJitCompiledCodeFlags", 0, 1,
-        ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());
-    *callSign = ClearJitCompiledCodeFlags;
-    std::array<VariableType, 1> params = { // 1 : 1 input parameters
-        VariableType::JS_POINTER(),
-    };
-    callSign->SetParameters(params.data());
-    callSign->SetGCLeafFunction(true);
-    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
-}
-
 #define PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE_COMMON(name)                  \
     /* 1 : 1 input parameters */                                            \
     CallSignature signature(#name, 0, 1,                                    \

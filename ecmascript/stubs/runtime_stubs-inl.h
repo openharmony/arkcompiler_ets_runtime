@@ -2849,7 +2849,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
         uint32_t numArgs = ctor->GetCallTarget()->GetNumArgsWithCallField();
         bool needPushArgv = numArgs != size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
-        if (ctor->GetCallTarget()->IsFastCall()) {
+        if (ctor->IsCompiledFastCall()) {
             if (needPushArgv) {
                 values.reserve(numArgs + NUM_MANDATORY_JSFUNC_ARGS - 1);
                 for (uint32_t i = size; i < numArgs; i++) {
@@ -2863,6 +2863,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
         }
     } else {
         ctor->GetCallTarget()->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot
+        ctor->ClearCompiledCodeFlags();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2891,10 +2892,9 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     const uint32_t argsCount = args->GetLength();
     uint32_t size = preArgsSize + argsCount;
     CVector<JSTaggedType> values;
-    Method *method = ctor->GetCallTarget();
-    bool isAotMethod = method->IsAotWithCallField();
-    if (!thread->IsWorker() && isAotMethod && ctor->IsClassConstructor()) {
-        if (method->IsFastCall()) {
+    bool isCompiledCode = ctor->IsCompiledCode();
+    if (!thread->IsWorker() && isCompiledCode && ctor->IsClassConstructor()) {
+        if (ctor->IsCompiledFastCall()) {
             values.reserve(size + NUM_MANDATORY_JSFUNC_ARGS - 1);
             values.emplace_back(ctor.GetTaggedValue().GetRawData());
             values.emplace_back(obj.GetTaggedValue().GetRawData());
@@ -2922,7 +2922,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
             values.emplace_back(args->Get(i).GetRawData());
         }
     }
-    JSTaggedValue resultValue = RuntimeStubs::GetResultValue(thread, isAotMethod, ctor, values, newTgt, size, obj);
+    JSTaggedValue resultValue = RuntimeStubs::GetResultValue(thread, isCompiledCode, ctor, values, newTgt, size, obj);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // 9.3.2 [[Construct]] (argumentsList, newTarget)
     if (resultValue.IsECMAObject()) {

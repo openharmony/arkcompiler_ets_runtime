@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
+#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -312,34 +313,29 @@ GateRef CircuitBuilder::TaggedIsBoundFunction(GateRef obj)
 
 inline GateRef CircuitBuilder::JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodType type)
 {
-    GateRef method = GetMethodFromFunction(jsFunc);
-    return JudgeAotAndFastCallWithMethod(method, type);
-}
-
-inline GateRef CircuitBuilder::JudgeAotAndFastCallWithMethod(GateRef method, JudgeMethodType type)
-{
-    GateRef callFieldOffset = IntPtr(Method::CALL_FIELD_OFFSET);
-    GateRef callfield = Load(VariableType::INT64(), method, callFieldOffset);
+    GateRef bitFieldOffset = IntPtr(JSFunctionBase::BIT_FIELD_OFFSET);
+    GateRef bitField = Load(VariableType::INT32(), jsFunc, bitFieldOffset);
     switch (type) {
         case JudgeMethodType::HAS_AOT: {
-            return Int64NotEqual(
-                Int64And(
-                    Int64LSR(callfield, Int64(MethodLiteral::IsAotCodeBit::START_BIT)),
-                    Int64((1LLU << MethodLiteral::IsAotCodeBit::SIZE) - 1)),
-                Int64(0));
+            return Int32NotEqual(
+                Int32And(
+                    Int32LSR(bitField, Int32(JSFunctionBase::IsCompiledCodeBit::START_BIT)),
+                    Int32((1U << JSFunctionBase::IsCompiledCodeBit::SIZE) - 1)),
+                Int32(0));
         }
         case JudgeMethodType::HAS_AOT_FASTCALL: {
-            return Int64Equal(
-                Int64And(
-                    callfield,
-                    Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT)),
-                Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT));
+            return Int32Equal(
+                Int32And(
+                    bitField,
+                    Int32(JSFunctionBase::COMPILED_CODE_FASTCALL_BITS << JSFunctionBase::IsCompiledCodeBit::START_BIT)),
+                Int32(JSFunctionBase::COMPILED_CODE_FASTCALL_BITS << JSFunctionBase::IsCompiledCodeBit::START_BIT));
         }
         case JudgeMethodType::HAS_AOT_NOTFASTCALL: {
             GateRef fastCallField =
-                Int64And(callfield, Int64(Method::AOT_FASTCALL_BITS << MethodLiteral::IsAotCodeBit::START_BIT));
-            GateRef hasAot = Int64(1LLU << MethodLiteral::IsAotCodeBit::START_BIT);
-            return Int64Equal(fastCallField, hasAot);
+                Int32And(bitField,
+                    Int32(JSFunctionBase::COMPILED_CODE_FASTCALL_BITS << JSFunctionBase::IsCompiledCodeBit::START_BIT));
+            GateRef hasAot = Int32(1U << JSFunctionBase::IsCompiledCodeBit::START_BIT);
+            return Int32Equal(fastCallField, hasAot);
         }
         default:
             UNREACHABLE();

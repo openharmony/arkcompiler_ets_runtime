@@ -384,8 +384,7 @@ JSTaggedValue BuiltinsArkTools::IsAOTCompiled(EcmaRuntimeCallInfo *info)
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
-    Method *method = func->GetCallTarget();
-    return JSTaggedValue(method->IsAotWithCallField());
+    return JSTaggedValue(func->IsCompiledCode());
 }
 
 JSTaggedValue BuiltinsArkTools::IsOnHeap(EcmaRuntimeCallInfo *info)
@@ -407,9 +406,9 @@ JSTaggedValue BuiltinsArkTools::IsAOTDeoptimized(EcmaRuntimeCallInfo *info)
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
-    Method *method = func->GetCallTarget();
-    bool isAotCompiled = method->IsAotWithCallField();
+    bool isAotCompiled = func->IsCompiledCode();
     if (isAotCompiled) {
+        Method *method = func->GetCallTarget();
         uint32_t deoptedCount = method->GetDeoptThreshold();
         uint32_t deoptThreshold = thread->GetEcmaVM()->GetJSOptions().GetDeoptThreshold();
         return JSTaggedValue(deoptedCount != deoptThreshold);
@@ -427,7 +426,7 @@ JSTaggedValue BuiltinsArkTools::CheckDeoptStatus(EcmaRuntimeCallInfo *info)
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     JSHandle<JSFunction> func(thread, obj.GetTaggedValue());
     Method *method = func->GetCallTarget();
-    bool isAotCompiled = method->IsAotWithCallField();
+    bool isAotCompiled = func->IsCompiledCode();
     uint16_t threshold = method->GetDeoptThreshold();
     if (threshold > 0) {
         return JSTaggedValue(isAotCompiled);
@@ -442,7 +441,7 @@ JSTaggedValue BuiltinsArkTools::CheckDeoptStatus(EcmaRuntimeCallInfo *info)
     }
     // check status after deopt
     if (isAotCompiled ||
-        method->IsFastCall() ||
+        func->IsCompiledFastCall() ||
         method->GetDeoptType() != kungfu::DeoptType::NONE ||
         method->GetCodeEntryOrLiteral() == 0) {
         return JSTaggedValue(false);

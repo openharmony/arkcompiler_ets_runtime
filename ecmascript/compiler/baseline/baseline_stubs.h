@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/profiler_operation.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/compiler/circuit_builder_helper.h"
 
 namespace panda::ecmascript::kungfu {
 

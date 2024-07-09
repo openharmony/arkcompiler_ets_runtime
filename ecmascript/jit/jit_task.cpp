@@ -99,7 +99,7 @@ void JitTask::Finalize()
     }
 }
 
-void JitTask::InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj)
+void JitTask::InstallOsrCode(JSHandle<MachineCode> &codeObj)
 {
     auto profile = jsFunction_->GetProfileTypeInfo();
     if (profile.IsUndefined()) {
@@ -107,7 +107,7 @@ void JitTask::InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &co
         return;
     }
     FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(codeObj->GetFuncEntryDes());
-    method->SetIsFastCall(funcEntryDes->isFastCall_);
+    jsFunction_->SetIsCompiledFastCall(funcEntryDes->isFastCall_);
     JSHandle<ProfileTypeInfo> profileInfoHandle =
         JSHandle<ProfileTypeInfo>::Cast(JSHandle<JSTaggedValue>(hostThread_, profile));
     uint32_t slotId = profileInfoHandle->GetIcSlotAndOsrLength() - 1; // 1 : get last slot
@@ -246,8 +246,6 @@ void JitTask::InstallCode()
 
     size_t size = ComputePayLoadSize(codeDesc_);
 
-    JSHandle<Method> newMethodHandle = hostThread_->GetEcmaVM()->GetFactory()->CloneMethodTemporaryForJIT(methodHandle);
-    jsFunction_->SetMethod(hostThread_, newMethodHandle);
 #ifdef ENABLE_JITFORT
     // skip install if JitFort out of memory
     TaggedObject *machineCode = hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_);
@@ -260,10 +258,10 @@ void JitTask::InstallCode()
         return;
     }
     JSHandle<MachineCode> machineCodeObj =
-        hostThread_->GetEcmaVM()->GetFactory()->SetMachineCodeObjectData(machineCode, size, codeDesc_, newMethodHandle);
+        hostThread_->GetEcmaVM()->GetFactory()->SetMachineCodeObjectData(machineCode, size, codeDesc_, methodHandle);
 #else
     JSHandle<MachineCode> machineCodeObj =
-        hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_, newMethodHandle);
+        hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_, methodHandle);
 #endif
     machineCodeObj->SetOSROffset(offset_);
 
@@ -274,22 +272,22 @@ void JitTask::InstallCode()
     }
 
     if (IsOsrTask()) {
-        InstallOsrCode(newMethodHandle, machineCodeObj);
+        InstallOsrCode(machineCodeObj);
         return;
     }
 
-    InstallCodeByCompilerTier(machineCodeObj, methodHandle, newMethodHandle);
+    InstallCodeByCompilerTier(machineCodeObj, methodHandle);
 }
 
 void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
-    JSHandle<Method> &methodHandle, JSHandle<Method> &newMethodHandle)
+    JSHandle<Method> &methodHandle)
 {
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
     DumpJitCode(machineCodeObj, methodHandle);
     if (compilerTier_ == CompilerTier::FAST) {
         FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
         jsFunction_->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
-        newMethodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
+        methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
         jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);
         uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
@@ -303,7 +301,7 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
 #endif
     } else {
         ASSERT(compilerTier_ == CompilerTier::BASELINE);
-        newMethodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
+        methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetBaselineCode(hostThread_, machineCodeObj);
         LOG_BASELINEJIT(DEBUG) <<"Install baseline jit machine code:" << GetMethodName();
     }

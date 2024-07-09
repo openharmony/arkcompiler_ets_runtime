@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
+#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/method.h"
 

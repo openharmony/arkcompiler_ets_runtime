@@ -102,10 +102,9 @@ public:
     void PrepareCompile();
 
     void InstallCode();
-    void InstallOsrCode(JSHandle<Method> &method, JSHandle<MachineCode> &codeObj);
+    void InstallOsrCode(JSHandle<MachineCode> &codeObj);
     void InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCode,
-        JSHandle<Method> &methodHandle, JSHandle<Method> &newMethodHandle);
-
+        JSHandle<Method> &methodHandle);
     MachineCodeDesc &GetMachineCodeDesc()
     {
         return codeDesc_;

@@ -107,6 +107,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetProtoTransRootHClass(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
+    func->ClearCompiledCodeFlags();
     func->SetTaskConcurrentFuncFlag(0); // 0 : default value
 }
 
@@ -522,7 +523,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), mainFunc.GetTaggedType(), true);
 #endif
-    if (method->IsFastCall()) {
+    if (mainFunc->IsCompiledFastCall()) {
         // do not modify this log to INFO, this will call many times
         LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
         args = JSFunction::GetArgsData(true, thisArg, mainFunc, cjsInfo);
@@ -585,7 +586,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
 #endif
-    if (method->IsFastCall()) {
+    if (func->IsCompiledFastCall()) {
         if (needPushArgv) {
             info = EcmaInterpreter::ReBuildRuntimeCallInfo(thread, info, numArgs);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -625,15 +626,16 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
 
     JSTaggedValue resultValue;
     info->SetThis(obj.GetTaggedValue());
-    Method *method = func->GetCallTarget();
-    if (!thread->IsWorker() && method->IsAotWithCallField() && func->IsClassConstructor()) {
+    if (!thread->IsWorker() && func->IsCompiledCode() && func->IsClassConstructor()) {
         resultValue = InvokeOptimizedEntrypoint(thread, func, info);
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
         JSTaggedType *prevSp = entryState->base.prev;
         thread->SetCurrentSPFrame(prevSp);
     } else {
+        Method *method = func->GetCallTarget();
         method->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot
+        func->ClearCompiledCodeFlags();
         resultValue = EcmaInterpreter::Execute(info);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -1165,10 +1167,22 @@ void JSFunctionBase::SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall)
 {
     ASSERT(codeEntry != 0);
     SetCodeEntry(codeEntry);
+    SetIsCompiledFastCall(isFastCall);
+    SetCompiledCodeBit(true);
+}
 
-    Method* method = Method::Cast(GetMethod());
-    method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
-    method->SetJitCompiledCode(true);
-    method->SetIsFastCall(isFastCall);
+void JSFunction::SetJitCompiledFuncEntry(JSThread *thread, JSHandle<MachineCode> &machineCode, bool isFastCall)
+{
+    uintptr_t codeEntry = machineCode->GetFuncAddr();
+    ASSERT(codeEntry != 0);
+
+    SetMachineCode(thread, machineCode);
+    SetCompiledFuncEntry(codeEntry, isFastCall);
+}
+
+void JSFunctionBase::ClearCompiledCodeFlags()
+{
+    SetCompiledCodeBit(false);
+    SetIsCompiledFastCall(false);
 }
 }  // namespace panda::ecmascript

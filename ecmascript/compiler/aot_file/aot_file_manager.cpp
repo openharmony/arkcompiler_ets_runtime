@@ -355,8 +355,8 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     Method *method = mainFunc->GetCallTarget();
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     method->SetCodeEntryAndMarkAOTWhenBinding(static_cast<uintptr_t>(mainEntry));
-    mainFunc->SetCodeEntry(static_cast<uintptr_t>(mainEntry));
     method->SetIsFastCall(isFastCall);
+    mainFunc->SetCompiledFuncEntry(static_cast<uintptr_t>(mainEntry), isFastCall);
 #ifndef NDEBUG
     PrintAOTEntry(jsPandaFile, method, mainEntry);
 #endif
@@ -371,7 +371,7 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction 
 {
     uint64_t methodCodeEntry = method->GetCodeEntryOrLiteral();
     if (function != nullptr && methodCodeEntry != reinterpret_cast<uintptr_t>(nullptr)) {
-        function->SetCodeEntry(methodCodeEntry);
+        function->SetCompiledFuncEntry(methodCodeEntry, method->IsFastCall());
         return;
     }
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();

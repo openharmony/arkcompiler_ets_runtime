@@ -48,6 +48,10 @@
 namespace panda::ecmascript::kungfu {
 using JSFunction = panda::ecmascript::JSFunction;
 using PropertyBox = panda::ecmascript::PropertyBox;
+inline int StubBuilder::NextVariableId()
+{
+    return env_->NextVariableId();
+}
 
 inline GateRef StubBuilder::Int8(int8_t value)
 {
@@ -2922,7 +2926,7 @@ inline GateRef StubBuilder::GetHomeObjectFromJSFunction(GateRef object)
     return Load(VariableType::JS_ANY(), object, offset);
 }
 
-inline GateRef StubBuilder::GetMethodFromJSFunction(GateRef object)
+inline GateRef StubBuilder::GetMethodFromJSFunctionOrProxy(GateRef object)
 {
     auto env = GetEnvironment();
     Label subentry(env);
@@ -3070,6 +3074,22 @@ inline void StubBuilder::SetJSObjectTaggedField(GateRef glue, GateRef object, si
     Store(VariableType::JS_ANY(), glue, object, IntPtr(offset), value);
 }
 
+inline void StubBuilder::SetCompiledCodeFlagToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef bitFieldOffset = IntPtr(JSFunctionBase::BIT_FIELD_OFFSET);
+    GateRef oldVal = Load(VariableType::INT32(), function, bitFieldOffset);
+
+    GateRef mask = Int32(JSFunctionBase::COMPILED_CODE_FASTCALL_BITS << JSFunctionBase::IsCompiledCodeBit::START_BIT);
+    GateRef newVal = Int32Or(Int32And(oldVal, Int32Not(mask)), value);
+    Store(VariableType::INT32(), glue, function, bitFieldOffset, newVal);
+}
+
+inline void StubBuilder::SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value, MemoryOrder order)
+{
+    GateRef offset = IntPtr(JSFunction::MACHINECODE_OFFSET);
+    Store(VariableType::JS_ANY(), glue, function, offset, value, order);
+}
+
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
 {
     GateRef offset = IntPtr(JSThread::GlueData::GetGlobalObjOffset(env_->Is32Bit()));
@@ -3166,22 +3186,6 @@ inline GateRef StubBuilder::IsFastCall(GateRef method)
         Int64(0));
 }
 
-inline GateRef StubBuilder::IsJitCompiledCode(GateRef method)
-{
-    GateRef fieldOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
-    GateRef literalField = Load(VariableType::INT64(), method, fieldOffset);
-    return Int64NotEqual(
-        Int64And(
-            Int64LSR(literalField, Int64(Method::IsJitCompiledCodeBit::START_BIT)),
-            Int64((1LU << Method::IsJitCompiledCodeBit::SIZE) - 1)),
-        Int64(0));
-}
-
-inline void StubBuilder::ClearJitCompiledCodeFlags(GateRef glue, GateRef method)
-{
-    CallNGCRuntime(glue, RTSTUB_ID(ClearJitCompiledCodeFlags), { method });
-}
-
 inline GateRef StubBuilder::HasPrototype(GateRef kind)
 {
     GateRef greater = Int32GreaterThanOrEqual(kind,
@@ -3244,9 +3248,9 @@ inline GateRef StubBuilder::IsNativeMethod(GateRef method)
         Int64(0));
 }
 
-inline GateRef StubBuilder::JudgeAotAndFastCallWithMethod(GateRef method, CircuitBuilder::JudgeMethodType type)
+inline GateRef StubBuilder::JudgeAotAndFastCall(GateRef jsFunc, CircuitBuilder::JudgeMethodType type)
 {
-    return env_->GetBuilder()->JudgeAotAndFastCallWithMethod(method, type);
+    return env_->GetBuilder()->JudgeAotAndFastCall(jsFunc, type);
 }
 
 inline GateRef StubBuilder::GetExpectedNumOfArgs(GateRef method)

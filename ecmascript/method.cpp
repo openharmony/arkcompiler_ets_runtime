@@ -152,38 +152,9 @@ void Method::InitInterpreterStatusForCompiledMethod(const JSThread *thread)
     SetDeoptType(kungfu::DeoptType::INIT_AOT_FAILED);
 }
 
-bool Method::IsJitCompiledCode() const
-{
-    uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-    return IsJitCompiledCodeBit::Decode(extraLiteralInfo);
-}
-
-void Method::SetJitCompiledCode(bool flag)
-{
-    uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-    IsJitCompiledCodeBit::Update(extraLiteralInfo, flag);
-}
-
 bool Method::IsSharedMethod() const
 {
     uint64_t extraLiteralInfo = GetExtraLiteralInfo();
     return IsSharedBit::Decode(extraLiteralInfo);
-}
-
-void Method::ClearJitCompiledCodeFlags()
-{
-    ClearAOTFlagsWhenInit();
-    const JSPandaFile *jsPandaFile = GetJSPandaFile();
-    if (jsPandaFile == nullptr) {
-        LOG_ECMA(FATAL) << "Method::ClearJitCompiledCodeFlags:jsPandaFile is nullptr";
-    }
-    MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
-    SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
-    SetJitCompiledCode(false);
-}
-
-bool Method::CanSerializeCodeEntry() const
-{
-    return IsAotWithCallField() && !IsJitCompiledCode();
 }
 } // namespace panda::ecmascript
