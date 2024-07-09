@@ -179,6 +179,9 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer<TypedArrayKind::NO
             thread->GetEcmaVM()->GetFactory()->NewByteArray(arrayLength, elementSize).GetTaggedValue());
         JSHandle<JSHClass> onHeapHclass = TypedArrayHelper::GetOnHeapHclassFromType(
             thread, JSHandle<JSTypedArray>(obj), arrayType);
+#if ECMASCRIPT_ENABLE_IC
+        JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), onHeapHclass);
+#endif
         TaggedObject::Cast(*obj)->SynchronizedSetClass(thread, *onHeapHclass); // notOnHeap->onHeap
     }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exception);
@@ -233,6 +236,9 @@ JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer<TypedArrayKind::SH
             MemSpaceType::SHARED_OLD_SPACE).GetTaggedValue());
         JSHandle<JSHClass> onHeapHclass = TypedArrayHelper::GetSharedOnHeapHclassFromType(
             thread, JSHandle<JSTypedArray>(obj), arrayType);
+#if ECMASCRIPT_ENABLE_IC
+        JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, obj->GetJSHClass()), onHeapHclass);
+#endif
         TaggedObject::Cast(*obj)->SynchronizedSetClass(thread, *onHeapHclass); // notOnHeap->onHeap
     }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exception);

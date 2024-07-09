@@ -60,3 +60,16 @@ function baz(ta: Uint32Array | Float64Array) {
 baz(ta0);
 baz(ta1);
 
+function foo2() {
+    for (let v0 = 0; v0 < 5; v0++) {
+        function f1(a2, a3, a4) {
+            const v6 = new BigUint64Array(a2);
+            const v8 = new Uint8ClampedArray();
+            const t13 = v8.__proto__;
+            t13.__proto__ = v6;
+            return v6;
+        }
+        f1(f1());
+    }
+}
+foo2()
