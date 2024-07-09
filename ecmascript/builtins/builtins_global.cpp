@@ -742,8 +742,8 @@ JSTaggedValue BuiltinsGlobal::LoadNativeModule(EcmaRuntimeCallInfo *msg)
     if (moduleName.size() != 0) {
         curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath);
         if (curJsPandaFile == nullptr) {
-            errorMsg = "Load file with filename '" + abcFilePath +
-                "' failed, module name '" + requestPath + "'" + ", from load native module";
+            errorMsg = "Load native module failed, filename '" + abcFilePath +
+                ", module name '" + requestPath;
             auto error = GlobalError::ReferenceError(thread, errorMsg.c_str());
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
@@ -752,6 +752,14 @@ JSTaggedValue BuiltinsGlobal::LoadNativeModule(EcmaRuntimeCallInfo *msg)
                 requestPath);
         } else if (ModulePathHelper::NeedTranstale(requestPath)) {
             ModulePathHelper::TranstaleExpressionInput(curJsPandaFile.get(), requestPath);
+        }
+
+        size_t pos = requestPath.find(PathHelper::COLON_TAG);
+        if (pos == CString::npos) {
+            errorMsg = "The module name '"+ requestPath +
+                "' of parameters received by loadNativeModule is incorrect.";
+            auto error = GlobalError::ParamError(thread, errorMsg.c_str());
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
 
