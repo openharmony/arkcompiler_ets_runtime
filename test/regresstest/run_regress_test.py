@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Copyright (c) 2023 Huawei Device Co., Ltd.
+Copyright (c) 2023-2024 Huawei Device Co., Ltd.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,6 +21,7 @@ import argparse
 import datetime
 import json
 import logging
+import multiprocessing
 import os
 import platform
 import re
@@ -29,6 +30,7 @@ import signal
 import stat
 import subprocess
 import sys
+from typing import Tuple, Optional
 
 from regress_test_config import RegressTestConfig
 
@@ -46,6 +48,8 @@ def parse_args():
                         help='File to test')
     parser.add_argument('--timeout', default=RegressTestConfig.DEFAULT_TIMEOUT, type=int,
                         help='Set a custom test timeout in milliseconds !!!\n')
+    parser.add_argument('--processes', default=RegressTestConfig.DEFAULT_PROCESSES, type=int,
+                        help='set number of processes to use. Default value: 1\n')
     parser.add_argument('--ark-tool',
                         help="ark's binary tool")
     parser.add_argument('--ark-frontend-binary',
@@ -206,29 +210,33 @@ class RegressTestPrepare:
     def gen_test_tool(self):
         self.gen_abc_files([RegressTestConfig.REGRESS_TEST_TOOL_DIR])
 
+    def gen_abc_file(self, input_file_path):
+        start_index = input_file_path.find(RegressTestConfig.REGRESS_GIT_REPO)
+        if start_index != -1:
+            test_case_path = input_file_path[start_index + len(RegressTestConfig.REGRESS_GIT_REPO) + 1:]
+            file_extensions = ['.out', '.txt', '.abc']
+            pattern = r'({})$'.format('|'.join(re.escape(ext) for ext in file_extensions))
+            if re.search(pattern, test_case_path) or test_case_path in self.skil_test:
+                return
+            out_file = input_file_path.replace('.js', '.out')
+            expect_file_exits = os.path.exists(out_file)
+            src_dir = RegressTestConfig.REGRESS_TEST_CASE_DIR
+            out_dir = self.args.test_case_out_dir
+            self.mk_dst_dir(input_file_path, src_dir, out_dir)
+            output_test_case_path = self.change_extension(test_case_path)
+            output_file = os.path.join(self.args.test_case_out_dir, output_test_case_path)
+            command = [self.args.ark_frontend_binary]
+            command.extend([input_file_path, f'--output={output_file}'])
+            exec_command(command, self.args.timeout)
+            if expect_file_exits:
+                out_file_path = os.path.join(self.args.test_case_out_dir, test_case_path.replace('.js', '.out'))
+                shutil.copy(str(out_file), str(out_file_path))
+
     def gen_abc_files(self, test_list):
-        for file_path in test_list:
-            input_file_path = file_path
-            start_index = input_file_path.find(RegressTestConfig.REGRESS_GIT_REPO)
-            if start_index != -1:
-                test_case_path = input_file_path[start_index + len(RegressTestConfig.REGRESS_GIT_REPO) + 1:]
-                file_extensions = ['.out', '.txt', '.abc']
-                pattern = r'({})$'.format('|'.join(re.escape(ext) for ext in file_extensions))
-                if re.search(pattern, test_case_path) or test_case_path in self.skil_test:
-                    continue
-                out_flle = input_file_path.replace('.js', '.out')
-                expect_file_exits = os.path.exists(out_flle)
-                src_dir = RegressTestConfig.REGRESS_TEST_CASE_DIR
-                out_dir = self.args.test_case_out_dir
-                self.mk_dst_dir(input_file_path, src_dir, out_dir)
-                output_test_case_path = self.change_extension(test_case_path)
-                output_file = os.path.join(self.args.test_case_out_dir, output_test_case_path)
-                command = [self.args.ark_frontend_binary]
-                command.extend([input_file_path, f'--output={output_file}'])
-                exec_command(command, self.args.timeout)
-                if expect_file_exits:
-                    out_file_path = os.path.join(self.args.test_case_out_dir, test_case_path.replace('.js', '.out'))
-                    shutil.copy(out_flle, out_file_path)
+        with multiprocessing.Pool(processes=self.args.processes) as pool:
+            pool.imap_unordered(self.gen_abc_file, test_list)
+            pool.close()
+            pool.join()
 
     def mk_dst_dir(self, file, src_dir, dist_dir):
         idx = file.rfind(src_dir)
@@ -326,7 +334,7 @@ def open_result_excel(file_path):
     return file_object
 
 
-def run_test_case_with_expect(command, test_case_file, expect_file, result_file, timeout):
+def run_test_case_with_expect(command, test_case_file, expect_file, timeout) -> Tuple[bool, str]:
     ret_code = 0
     expect_output_str = read_expect_file(expect_file, test_case_file)
     with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
@@ -338,24 +346,25 @@ def run_test_case_with_expect(command, test_case_file, expect_file, result_file,
             # ret_code equals 0 means execute ok, ret_code equals 255 means uncaught error
             if (ret_code == 0 and (out_str == expect_output_str.strip() or err_str == expect_output_str.strip())) or \
                 ret_code == 255:
-                write_result_file(f'PASS {test_case_file} \n', result_file)
+                result_message = f'PASS {test_case_file} \n'
                 out_put_std(ret_code, command, f'PASS: {test_case_file}')
-                return True
+                return True, result_message
             else:
                 msg = f'FAIL: {test_case_file} \nexpect: [{expect_output_str}]\nbut got: [{err_str}]'
                 out_put_std(ret_code, command, msg)
-                write_result_file(f'FAIL {test_case_file} \n', result_file)
-                return False
+                result_message = f'{msg} \n Command: {command} \n'
+                return False, result_message
         except subprocess.TimeoutExpired as exception:
             process.kill()
             process.terminate()
             os.kill(process.pid, signal.SIGTERM)
-            out_put_std(ret_code, command, f'FAIL: {test_case_file},err:{exception}')
-            write_result_file(f'FAIL {test_case_file} \n', result_file)
-            return False
+            msg = f'FAIL: {test_case_file},err:{exception}'
+            out_put_std(ret_code, command, msg)
+            result_message = f'{msg} \n Command: {command}'
+            return False, result_message
 
 
-def run_test_case_with_assert(command, test_case_file, result_file, timeout):
+def run_test_case_with_assert(command, test_case_file, timeout) -> Tuple[bool, str]:
     ret_code = 0
     with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
         try:
@@ -365,31 +374,31 @@ def run_test_case_with_assert(command, test_case_file, result_file, timeout):
             # ret_code equals 0 means execute ok, ret_code equals 255 means uncaught error
             if ret_code == 255:
                 out_put_std(ret_code, command, f'PASS: {test_case_file}')
-                write_result_file(f'PASS {test_case_file} \n', result_file)
-                return True
+                result_message = f'PASS {test_case_file} \n'
+                return True, result_message
             elif ret_code != 0 or (err_str != '' and "[ecmascript] Stack overflow" not in err_str):
-                out_put_std(ret_code, command, f'FAIL: {test_case_file} \nerr: {str(err_str)}')
-                write_result_file(f'FAIL {test_case_file} \n', result_file)
-                return False
+                result_message = f'FAIL: {test_case_file} \nerr: {str(err_str)}'
+                out_put_std(ret_code, command, result_message)
+                return False, result_message
             else:
-                out_put_std(ret_code, command, f'PASS: {test_case_file}')
-                write_result_file(f'PASS {test_case_file} \n', result_file)
-                return True
+                result_message = f'PASS {test_case_file} \n'
+                out_put_std(ret_code, command, result_message)
+                return True, result_message
         except subprocess.TimeoutExpired as exception:
             process.kill()
             process.terminate()
             os.kill(process.pid, signal.SIGTERM)
-            out_put_std(ret_code, command, f'FAIL: {test_case_file},err:{exception}')
-            write_result_file(f'FAIL {test_case_file} \n', result_file)
-            return False
+            result_message = f'FAIL: {test_case_file},err:{exception}'
+            out_put_std(ret_code, command, result_message)
+            return False, result_message
 
 
-def run_test_case_file(command, test_case_file, expect_file, result_file, timeout):
+def run_test_case_file(command, test_case_file, expect_file, timeout) -> Tuple[bool, str]:
     expect_file_exits = os.path.exists(expect_file)
     if expect_file_exits:
-        return run_test_case_with_expect(command, test_case_file, expect_file, result_file, timeout)
+        return run_test_case_with_expect(command, test_case_file, expect_file, timeout)
     else:
-        return run_test_case_with_assert(command, test_case_file, result_file, timeout)
+        return run_test_case_with_assert(command, test_case_file, timeout)
 
 def get_file_source(file):
     with open(file, encoding='ISO-8859-1') as f:
@@ -419,32 +428,59 @@ def setTestEnviron(case):
                 os.environ['LC_ALL'] = value
             break;
 
-def run_test_case_dir(args, test_abc_files, force_gc_files, timeout=RegressTestConfig.DEFAULT_TIMEOUT):
+
+# pylint: disable=invalid-name,global-statement
+worker_wrapper_args = None
+
+
+def init_worker(args):
+    global worker_wrapper_args
+    worker_wrapper_args = args
+
+
+def run_test_case(tuple_args) -> Tuple[Optional[bool], str]:
+    test_file, force_gc_files, timeout = tuple_args
+    args = worker_wrapper_args
+    if args is None or test_file.endswith(RegressTestConfig.TEST_TOOL_FILE_NAME):
+        return None, ""
+    test_case_file = test_file.replace('abc', 'js').replace(f'{args.out_dir}', '')
+    assert_file = os.path.join(args.test_case_out_dir, RegressTestConfig.TEST_TOOL_FILE_NAME)
+    test_case = f'{assert_file}:{test_file}'
+    ld_library_path = args.ld_library_path
+    os.environ["LD_LIBRARY_PATH"] = ld_library_path
+    unforced_gc = False
+    force_gc_file = test_case_file.replace('regresstest/ark-regress/', '')
+    # test environ LC_ALL/TZ
+    setTestEnviron(test_case_file)
+    if force_gc_file in force_gc_files:
+        unforced_gc = True
+    asm_arg1 = "--enable-force-gc=true"
+    if unforced_gc:
+        asm_arg1 = "--enable-force-gc=false"
+    icu_path = f"--icu-data-path={args.icu_path}"
+    command = [args.ark_tool, asm_arg1, icu_path, test_case]
+    expect_file = test_file.replace('.abc', '.out')
+    test_res, result_message = run_test_case_file(command, test_case_file, expect_file, timeout)
+    return test_res, result_message
+
+
+def run_test_case_dir(args, test_abc_files, force_gc_files, timeout) -> Tuple[int, int]:
     pass_count = 0
     fail_count = 0
+
+    tests = [(test, force_gc_files, timeout) for test in test_abc_files]
+
+    with multiprocessing.Pool(processes=args.processes, initializer=init_worker, initargs=(args, )) as pool:
+        results = pool.imap_unordered(run_test_case, tests)
+        results = list(results)
+        pool.close()
+        pool.join()
+
     result_file = open_write_file(args.out_result, False)
-    for index, file in enumerate(test_abc_files):
-        test_file = file
-        if test_file.endswith(RegressTestConfig.TEST_TOOL_FILE_NAME):
+    for test_res, result_message in results:
+        if test_res is None:
             continue
-        test_case_file = test_file.replace('abc', 'js').replace(f'{args.out_dir}', '')
-        assert_file = os.path.join(args.test_case_out_dir, RegressTestConfig.TEST_TOOL_FILE_NAME)
-        test_case = f'{assert_file}:{file}'
-        ld_library_path = args.ld_library_path
-        os.environ["LD_LIBRARY_PATH"] = ld_library_path
-        unforced_gc = False
-        force_gc_file = test_case_file.replace('regresstest/ark-regress/', '')
-        # test environ LC_ALL/TZ
-        setTestEnviron(test_case_file)
-        if force_gc_file in force_gc_files:
-            unforced_gc = True
-        asm_arg1 = "--enable-force-gc=true"
-        if unforced_gc:
-            asm_arg1 = "--enable-force-gc=false"
-        icu_path = f"--icu-data-path={args.icu_path}"
-        command = [args.ark_tool, asm_arg1, icu_path, test_case]
-        expect_file = test_file.replace('.abc', '.out')
-        test_res = run_test_case_file(command, test_case_file, expect_file, result_file, timeout)
+        write_result_file(result_message, result_file)
         if test_res:
             pass_count += 1
         else:
@@ -453,7 +489,7 @@ def run_test_case_dir(args, test_abc_files, force_gc_files, timeout=RegressTestC
     return pass_count, fail_count
 
 
-def run_regress_test_case(args):
+def run_regress_test_case(args) -> Tuple[int, int]:
     test_cast_list = get_regress_test_files(args.test_case_out_dir, 'abc')
     force_gc_files = get_regress_force_gc_files()
     return run_test_case_dir(args, test_cast_list, force_gc_files, args.timeout)
