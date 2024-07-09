@@ -207,8 +207,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileNameStr;
     }
 
-    JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
     if (!hasRecord) {
         CString normalizeStr = ModulePathHelper::ReformatPath(entryPoint);
         CString msg =  "Cannot find dynamic-import module '" + normalizeStr;

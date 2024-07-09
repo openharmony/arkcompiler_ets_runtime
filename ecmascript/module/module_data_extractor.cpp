@@ -166,10 +166,10 @@ JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile
         EcmaInterpreter::NewRuntimeCallInfo(
             thread, undefined, undefined, undefined, 1); // 1 : argument numbers
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSRecordInfo recordInfo;
-    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
     ASSERT(hasRecord);
-    StringData sd = jsPandaFile->GetStringData(EntityId(recordInfo.jsonStringId));
+    StringData sd = jsPandaFile->GetStringData(EntityId(recordInfo->jsonStringId));
     JSTaggedValue value(thread->GetEcmaVM()->GetFactory()->GetRawStringFromStringTable(sd));
     info->SetCallArg(value);
     return BuiltinsJson::Parse(info);

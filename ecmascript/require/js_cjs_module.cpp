@@ -132,8 +132,8 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     InitializeModule(thread, module, filename, dirname);
     PutIntoCache(thread, module, filename);
 
-    JSRecordInfo recordInfo;
-    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(requestEntryPoint, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(requestEntryPoint, &recordInfo);
     if (!hasRecord) {
         JSHandle<JSTaggedValue> exp(thread, JSTaggedValue::Exception());
         CString requestStr = ConvertToString(request.GetTaggedValue());

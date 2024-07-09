@@ -57,7 +57,7 @@ public:
     static void BindPandaFileToAot(JSPandaFile *jsPandaFile);
     static Expected<JSTaggedValue, bool> ExecuteSpecialModule(JSThread *thread, const CString &recordName,
                                                               const CString &filename, const JSPandaFile *jsPandaFile,
-                                                              const JSRecordInfo &recordInfo);
+                                                              const JSRecordInfo* recordInfo);
     static Expected<JSTaggedValue, bool> LazyExecuteModule(JSThread *thread, CString &recordName,
                                                            const CString &filename, bool isMergedAbc);
     // Execute from secure mem

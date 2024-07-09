@@ -266,8 +266,8 @@ HWTEST_F_L0(JSPandaFileTest, IsModule_IsCjs)
     std::shared_ptr<JSPandaFile> pf1 = CreateJSPandaFile(source1, fileName1);
     JSPandaFile::JSRecordInfo info =
         const_cast<JSPandaFile *>(pf1.get())-> FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
-    EXPECT_EQ(pf1->IsModule(info), false);
-    EXPECT_EQ(pf1->IsCjs(info), false);
+    EXPECT_EQ(pf1->IsModule(&info), false);
+    EXPECT_EQ(pf1->IsCjs(&info), false);
 }
 
 HWTEST_F_L0(JSPandaFileTest, SetLoadedAOTStatus_IsLoadedAOT)

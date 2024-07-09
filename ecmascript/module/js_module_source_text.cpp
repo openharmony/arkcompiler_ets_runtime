@@ -2319,8 +2319,8 @@ std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModule
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
     ASSERT(!(jsPandaFile == nullptr));
-    JSRecordInfo recordInfo;
-    jsPandaFile->CheckAndGetRecordInfo(fileName, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    jsPandaFile->CheckAndGetRecordInfo(fileName, &recordInfo);
     if (jsPandaFile->IsSharedModule(recordInfo)) {
         return std::make_tuple(SourceTextModule::SHARED_MODULE_TAG,
             SharedModuleManager::GetInstance()->GetSModule(thread, fileName));
@@ -2362,8 +2362,8 @@ std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModule
         }
     }
 
-    JSRecordInfo recordInfo;
-    jsPandaFile->CheckAndGetRecordInfo(entryPoint, recordInfo);
+    JSRecordInfo *recordInfo = nullptr;
+    jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
     if (jsPandaFile->IsSharedModule(recordInfo)) {
         return std::make_tuple(SourceTextModule::SHARED_MODULE_TAG,
             SharedModuleManager::GetInstance()->GetSModule(thread, entryPoint));
