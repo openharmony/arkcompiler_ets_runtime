@@ -1006,4 +1006,25 @@ JSTaggedValue BuiltinsGlobal::GetCurrentBundleName(EcmaRuntimeCallInfo *msg)
     JSHandle<EcmaString> result = factory->NewFromUtf8(bundleName.c_str());
     return result.GetTaggedValue();
 }
+
+JSTaggedValue BuiltinsGlobal::IsSendable(EcmaRuntimeCallInfo *msg)
+{
+    ASSERT(msg);
+    JSThread *thread = msg->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    uint32_t numArgs = msg->GetArgsNumber();
+    if (numArgs != 1) {
+        LOG_FULL(ERROR) << "The number of parameters received by IsSendable is incorrect.";
+        return JSTaggedValue::False();
+    }
+    JSHandle<JSTaggedValue> obj = GetCallArg(msg, 0);
+    if ((obj->IsECMAObject() && obj->IsJSShared()) ||
+        obj->IsString() || obj->IsNumber() || obj->IsBoolean() ||
+        obj->IsUndefined() || obj->IsNull() || obj->IsBigInt()) {
+        return JSTaggedValue::True();
+    }
+
+    return JSTaggedValue::False();
+}
 }  // namespace panda::ecmascript::builtins

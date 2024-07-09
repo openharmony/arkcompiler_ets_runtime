@@ -58,6 +58,7 @@
     V("markModuleCollectable",    MarkModuleCollectable, 0, INVALID)        \
     V("loadNativeModule",         LoadNativeModule,      0, INVALID)        \
     V("print",                    PrintEntrypoint,       0, INVALID)        \
+    V("isSendable",               IsSendable,            0, INVALID)        \
     V("__getCurrentModuleName__", GetCurrentModuleName,  0, INVALID)        \
     V("__getCurrentBundleName__", GetCurrentBundleName,  0, INVALID)
 #if ECMASCRIPT_ENABLE_RUNTIME_STAT
@@ -125,6 +126,7 @@ public:
     static JSTaggedValue LoadNativeModule(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue CallJsBoundFunction(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue CallJsProxy(EcmaRuntimeCallInfo *msg);
+    static JSTaggedValue IsSendable(EcmaRuntimeCallInfo *msg);
 
     static JSTaggedValue GetCurrentModuleName(EcmaRuntimeCallInfo *msg);
     static JSTaggedValue GetCurrentBundleName(EcmaRuntimeCallInfo *msg);

@@ -468,6 +468,7 @@ void Builtins::InitializeGlobalObject(const JSHandle<GlobalEnv> &env, const JSHa
     // Global object test
     SetFunction(env, globalObject, "print", Global::PrintEntrypoint, 0);
     SetFunction(env, globalObject, "markModuleCollectable", Global::MarkModuleCollectable, 0);
+    SetFunction(env, globalObject, "isSendable", Global::IsSendable, 0);
     SetFunction(env, globalObject, "loadNativeModule", Global::LoadNativeModule, 0);
 #if ECMASCRIPT_ENABLE_RUNTIME_STAT
     SetFunction(env, globalObject, "startRuntimeStat", Global::StartRuntimeStat, 0);
