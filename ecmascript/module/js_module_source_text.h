@@ -232,6 +232,22 @@ public:
             SharedTypes::SENDABLE_FUNCTION_MODULE;
     }
 
+    inline void SetLazyImportArray(bool *lazyImportArray)
+    {
+        DestoryLazyImportArray();
+        SetLazyImportStatus(ToUintPtr(lazyImportArray));
+    }
+
+    inline void DestoryLazyImportArray()
+    {
+        delete[] GetLazyImportStatusArray();
+    }
+
+    inline bool *GetLazyImportStatusArray()
+    {
+        return reinterpret_cast<bool *>(GetLazyImportStatus());
+    }
+
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);
     ACCESSORS(Namespace, NAMESPACE_OFFSET, ECMA_MODULE_FILENAME);
@@ -251,7 +267,9 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(DFSAncestorIndex, int32_t, DFS_ANCESTOR_INDEX_OFFSET, DFS_INDEX_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(DFSIndex, int32_t, DFS_INDEX_OFFSET, ASYNC_EVALUATION_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(AsyncEvaluatingOrdinal, uint32_t, ASYNC_EVALUATION_OFFSET, PENDING_DEPENDENCIES_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(PendingAsyncDependencies, int32_t, PENDING_DEPENDENCIES_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(PendingAsyncDependencies,
+        int32_t, PENDING_DEPENDENCIES_OFFSET, LAYZ_IMPORT_STATUS_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(LazyImportStatus, uintptr_t, LAYZ_IMPORT_STATUS_OFFSET, BIT_FIELD_OFFSET);
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
 
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -289,7 +307,6 @@ public:
                                const JSHandle<SourceTextModule> &requiredModule);
     static void InstantiateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &currentModule,
                                         JSHandle<SourceTextModule> &requiredModule,
-                                        const JSHandle<JSTaggedValue> &moduleRequest,
                                         ModuleTypes moduleType);
 
     JSTaggedValue GetModuleValue(JSThread *thread, int32_t index, bool isThrow);

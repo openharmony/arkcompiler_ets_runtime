@@ -1936,6 +1936,22 @@ DEF_RUNTIME_STUBS(LdSendableExternalModuleVarByIndex)
     return RuntimeLdSendableExternalModuleVar(thread, index.GetInt(), jsFunc).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(LdLazyExternalModuleVarByIndex)
+{
+    RUNTIME_STUBS_HEADER(LdLazyExternalModuleVarByIndex);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1); // 1: means the first parameter
+    return RuntimeLdLazyExternalModuleVar(thread, index.GetInt(), jsFunc).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdLazySendableExternalModuleVarByIndex)
+{
+    RUNTIME_STUBS_HEADER(LdLazySendableExternalModuleVarByIndex);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue jsFunc = GetArg(argv, argc, 1); // 1: means the first parameter
+    return RuntimeLdLazySendableExternalModuleVar(thread, index.GetInt(), jsFunc).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LdLocalModuleVarByIndexOnJSFunc)
 {
     RUNTIME_STUBS_HEADER(LdLocalModuleVarByIndexOnJSFunc);

@@ -105,6 +105,7 @@ group("ark_js_moduletest") {
     "merge",
     "module",
     "moduleImportJson",
+    "moduleLazyImport",
     "moduleUseCjs",
     "multiargs",
     "multiprotoic",

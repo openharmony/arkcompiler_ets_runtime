@@ -31,11 +31,11 @@ using BuiltinsJson = builtins::BuiltinsJson;
 using JSRecordInfo = ecmascript::JSPandaFile::JSRecordInfo;
 
 JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                         const CString &descriptor, const CString &moduleFilename)
+                                                         const CString &descriptor, const CString &moduleFilename,
+                                                         JSRecordInfo *recordInfo)
 {
     int moduleIdx = jsPandaFile->GetModuleRecordIdx(descriptor);
     ASSERT(moduleIdx != -1);
-
     panda_file::File::EntityId moduleId;
     if (jsPandaFile->IsNewVersion()) {  // new pandafile version use new literal offset mechanism
         moduleId = panda_file::File::EntityId(static_cast<uint32_t>(moduleIdx));
@@ -46,9 +46,9 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
-    ModuleDataExtractor::ExtractModuleDatas(thread, jsPandaFile, moduleId, moduleRecord);
+    ExtractModuleDatas(thread, jsPandaFile, moduleId, moduleRecord, recordInfo);
 
-    bool hasTLA = jsPandaFile->GetHasTopLevelAwait(descriptor);
+    bool hasTLA = recordInfo->hasTopLevelAwait;
     moduleRecord->SetHasTLA(hasTLA);
 
     JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);
@@ -63,7 +63,8 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
 
 void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile *jsPandaFile,
                                              panda_file::File::EntityId moduleId,
-                                             JSHandle<SourceTextModule> &moduleRecord)
+                                             JSHandle<SourceTextModule> &moduleRecord,
+                                             [[maybe_unused]]JSRecordInfo *recordInfo)
 {
     [[maybe_unused]] EcmaHandleScope scope(thread);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -86,6 +87,17 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
         moduleRecord->SetRequestedModules(thread, requestModuleArray);
     }
 
+    if (recordInfo->lazyImportIdx != 0) {
+        bool *lazyImportFlags = ModuleLazyImportFlagAccessor(jsPandaFile,
+            panda_file::File::EntityId(static_cast<uint32_t>(recordInfo->lazyImportIdx)));
+        moduleRecord->SetLazyImportArray(lazyImportFlags); // set module Lazy Import flag
+    } else {
+        bool *lazyImportArray = new bool[len]();
+        for (size_t idx = 0; idx < len; idx++) {
+            lazyImportArray[idx] = 0;
+        }
+        moduleRecord->SetLazyImportArray(lazyImportArray); // set module Lazy Import 0
+    }
     // note the order can't change
     mda.EnumerateImportEntry(thread, requestModuleArray, moduleRecord);
     mda.EnumerateLocalExportEntry(thread, moduleRecord);
@@ -173,5 +185,20 @@ JSTaggedValue ModuleDataExtractor::JsonParse(JSThread *thread, const JSPandaFile
     JSTaggedValue value(thread->GetEcmaVM()->GetFactory()->GetRawStringFromStringTable(sd));
     info->SetCallArg(value);
     return BuiltinsJson::Parse(info);
+}
+
+bool* ModuleDataExtractor::ModuleLazyImportFlagAccessor(const JSPandaFile *pandaFile,
+    panda_file::File::EntityId module_lazy_import_flag_id)
+{
+    auto &pf = *pandaFile->GetPandaFile();
+    auto sp = pf.GetSpanFromId(module_lazy_import_flag_id);
+
+    uint32_t numLazyImportFlags = panda_file::helpers::Read<panda_file::ID_SIZE>(&sp);
+    bool *lazyImportArray = new bool[numLazyImportFlags]();
+    for (size_t idx = 0; idx < numLazyImportFlags; idx++) {
+        uint32_t value = static_cast<uint32_t>(panda_file::helpers::Read<sizeof(uint8_t)>(&sp));
+        lazyImportArray[idx] = value > 0 ? 1 : 0;
+    }
+    return lazyImportArray;
 }
 }  // namespace panda::ecmascript

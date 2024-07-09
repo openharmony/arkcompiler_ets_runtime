@@ -120,6 +120,8 @@ public:
     static JSTaggedValue LdLocalModuleVar(JSThread *thread, int32_t index);
     static JSTaggedValue LdExternalModuleVar(JSThread *thread, int32_t index);
     static JSTaggedValue LdSendableExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue thisFunc);
+    static JSTaggedValue LdLazyExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue thisFunc);
+    static JSTaggedValue LdLazySendableExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue thisFunc);
     static JSTaggedValue CreateRegExpWithLiteral(JSThread *thread, JSTaggedValue pattern, uint8_t flags);
     static JSTaggedValue GetIteratorNext(JSThread *thread, JSTaggedValue obj, JSTaggedValue method);
 

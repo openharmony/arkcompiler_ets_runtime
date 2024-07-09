@@ -164,6 +164,80 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     UNREACHABLE();
 }
 
+JSTaggedValue ModuleManager::GetLazyModuleValueOutter(int32_t index, JSTaggedValue jsFunc)
+{
+    JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
+    return GetLazyModuleValueOutterInternal(index, currentModule);
+}
+
+JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule)
+{
+    JSThread *thread = vm_->GetJSThread();
+    if (currentModule.IsUndefined()) {
+        LOG_FULL(FATAL) << "GetLazyModuleValueOutter currentModule failed";
+        UNREACHABLE();
+    }
+    JSHandle<SourceTextModule> currentModuleHdl(thread, currentModule);
+    JSTaggedValue moduleEnvironment = currentModuleHdl->GetEnvironment();
+    if (moduleEnvironment.IsUndefined()) {
+        return thread->GlobalConstants()->GetUndefined();
+    }
+    ASSERT(moduleEnvironment.IsTaggedArray());
+    JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
+    if (resolvedBinding.IsResolvedIndexBinding()) {
+        JSHandle<ResolvedIndexBinding> binding(thread, resolvedBinding);
+        JSTaggedValue resolvedModule = binding->GetModule();
+        JSHandle<SourceTextModule> module(thread, resolvedModule);
+        ASSERT(resolvedModule.IsSourceTextModule());
+        SourceTextModule::Evaluate(thread, module, nullptr);
+        if (thread->HasPendingException()) {
+            return JSTaggedValue::Undefined();
+        }
+        // Support for only modifying var value of HotReload.
+        // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
+        EcmaContext *context = thread->GetCurrentEcmaContext();
+        if (context->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+            const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
+                context->FindPatchModule(ConvertToString(module->GetEcmaModuleRecordName()));
+            if (!resolvedModuleOfHotReload->IsHole()) {
+                resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
+                JSHandle<SourceTextModule> moduleOfHotReload(thread, resolvedModule);
+                return ModuleManagerHelper::GetModuleValue(thread, moduleOfHotReload, binding->GetIndex());
+            }
+        }
+        return ModuleManagerHelper::GetModuleValue(thread, module, binding->GetIndex());
+    }
+    if (resolvedBinding.IsResolvedBinding()) {
+        JSHandle<ResolvedBinding> binding(thread, resolvedBinding);
+        JSTaggedValue resolvedModule = binding->GetModule();
+        JSHandle<SourceTextModule> module(thread, resolvedModule);
+        ModuleStatus status = module->GetStatus();
+        ModuleTypes moduleType = module->GetTypes();
+        if (SourceTextModule::IsNativeModule(moduleType)) {
+            SourceTextModule::InstantiateNativeModule(thread, currentModuleHdl, module, moduleType);
+            module->SetStatus(ModuleStatus::EVALUATED);
+            return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedModule, binding->GetBindingName());
+        }
+        if (moduleType == ModuleTypes::CJS_MODULE) {
+            if (status != ModuleStatus::EVALUATED) {
+                SourceTextModule::ModuleExecution(thread, module, nullptr, 0);
+                module->SetStatus(ModuleStatus::EVALUATED);
+            }
+            SourceTextModule::InstantiateCJS(thread, currentModuleHdl, module);
+            JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
+            return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+        }
+    }
+    if (resolvedBinding.IsResolvedRecordIndexBinding()) {
+        return ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(thread, currentModuleHdl, resolvedBinding);
+    }
+    if (resolvedBinding.IsResolvedRecordBinding()) {
+        return ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(thread, currentModuleHdl, resolvedBinding);
+    }
+    LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding";
+    UNREACHABLE();
+}
+
 void ModuleManager::StoreModuleValue(int32_t index, JSTaggedValue value)
 {
     JSThread *thread = vm_->GetJSThread();
@@ -465,7 +539,8 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModule(JSThread *thread, const JSP
     JSHandle<JSTaggedValue> moduleRecord = thread->GlobalConstants()->GetHandledUndefined();
     JSRecordInfo recordInfo = const_cast<JSPandaFile *>(jsPandaFile)->FindRecordInfo(JSPandaFile::ENTRY_FUNCTION_NAME);
     if (jsPandaFile->IsModule(&recordInfo)) {
-        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, moduleFileName, moduleFileName);
+        moduleRecord = ModuleDataExtractor::ParseModule(
+            thread, jsPandaFile, moduleFileName, moduleFileName, &recordInfo);
     } else {
         ASSERT(jsPandaFile->IsCjs(&recordInfo));
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
@@ -508,7 +583,7 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
     }
     if (jsPandaFile->IsModule(recordInfo)) {
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordNameStr, moduleFileName);
+        moduleRecord = ModuleDataExtractor::ParseModule(thread, jsPandaFile, recordNameStr, moduleFileName, recordInfo);
     } else if (jsPandaFile->IsJson(recordInfo)) {
         moduleRecord = ModuleDataExtractor::ParseJsonModule(thread, jsPandaFile, moduleFileName, recordNameStr);
     } else {
@@ -852,7 +927,8 @@ void ModuleManager::RemoveModuleFromCache(JSTaggedValue recordName)
     int entry = dict->FindEntry(recordName);
     LOG_ECMA_IF(entry == -1, FATAL) << "Can not get module: " << ConvertToString(recordName) <<
          ", when try to remove the module";
-
+    JSTaggedValue result = dict->GetValue(entry);
+    SourceTextModule::Cast(result)->DestoryLazyImportArray();
     resolvedModules_ = NameDictionary::Remove(thread, dict, entry).GetTaggedValue();
 }
 } // namespace panda::ecmascript

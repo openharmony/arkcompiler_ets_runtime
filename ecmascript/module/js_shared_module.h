@@ -75,7 +75,8 @@ public:
 class SharedModuleHelper {
 public:
     static JSHandle<JSTaggedValue> ParseSharedModule(JSThread *thread, const JSPandaFile *jsPandaFile,
-                                                     const CString &descriptor, const CString &moduleFilename);
+                                                     const CString &descriptor, const CString &moduleFilename,
+                                                     JSRecordInfo *recordInfo);
 };
 
 }  // namespace panda::ecmascript

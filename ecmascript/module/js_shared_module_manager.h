@@ -50,6 +50,10 @@ public:
 
     JSTaggedValue GetSendableModuleValueImpl(JSThread *thread, int32_t index, JSTaggedValue currentModule) const;
 
+    JSTaggedValue GetLazySendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
+
+    JSTaggedValue GetLazySendableModuleValueImpl(JSThread *thread, int32_t index, JSTaggedValue currentModule) const;
+
     void Iterate(const RootVisitor &v);
 
     JSHandle<JSTaggedValue> ResolveImportedModule(JSThread *thread, const CString &referencingModule,

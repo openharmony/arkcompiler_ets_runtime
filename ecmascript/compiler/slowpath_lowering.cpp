@@ -784,6 +784,14 @@ void SlowPathLowering::Lower(GateRef gate)
         case EcmaOpcode::CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16:
             LowerLdSendableVar(gate);
             break;
+        case EcmaOpcode::CALLRUNTIME_LDLAZYMODULEVAR_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDLAZYMODULEVAR_PREF_IMM16:
+            LowerLdLazyExternalModuleVar(gate);
+            break;
+        case EcmaOpcode::CALLRUNTIME_LDLAZYSENDABLEMODULEVAR_PREF_IMM8:
+        case EcmaOpcode::CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16:
+            LowerLdLazySendableExternalModuleVar(gate);
+            break;
         case EcmaOpcode::LDA_STR_ID16:
             LowerLdStr(gate);
             break;
@@ -3864,4 +3872,23 @@ void SlowPathLowering::LowerGetUnsharedConstPool(GateRef gate)
     acc_.DeleteGate(gate);
 }
 
+void SlowPathLowering::LowerLdLazyExternalModuleVar(GateRef gate)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    GateRef result = LowerCallRuntime(gate,
+        RTSTUB_ID(LdLazyExternalModuleVarByIndex), {index, jsFunc}, true);
+    ReplaceHirWithValue(gate, result);
+}
+
+void SlowPathLowering::LowerLdLazySendableExternalModuleVar(GateRef gate)
+{
+    ASSERT(acc_.GetNumValueIn(gate) == 1);
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
+    GateRef index = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
+    GateRef result = LowerCallRuntime(gate,
+        RTSTUB_ID(LdLazySendableExternalModuleVarByIndex), {index, jsFunc}, true);
+    ReplaceHirWithValue(gate, result);
+}
 }  // namespace panda::ecmascript

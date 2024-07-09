@@ -347,6 +347,8 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(LdLocalModuleVarByIndex)            \
     V(LdExternalModuleVarByIndex)         \
     V(LdSendableExternalModuleVarByIndex) \
+    V(LdLazyExternalModuleVarByIndex)     \
+    V(LdLazySendableExternalModuleVarByIndex) \
     V(LdLocalModuleVarByIndexOnJSFunc)    \
     V(LdExternalModuleVarByIndexOnJSFunc) \
     V(LdModuleVar)                        \
@@ -753,6 +755,10 @@ private:
                                                                    JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdExternalModuleVar(JSThread *thread, int32_t index,
                                                            JSTaggedValue jsFunc);
+    static inline JSTaggedValue RuntimeLdLazySendableExternalModuleVar(JSThread *thread, int32_t index,
+                                                                       JSTaggedValue jsFunc);
+    static inline JSTaggedValue RuntimeLdLazyExternalModuleVar(JSThread *thread, int32_t index,
+                                                               JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner);
     static inline JSTaggedValue RuntimeLdModuleVar(JSThread *thread, JSTaggedValue key, bool inner,
                                                    JSTaggedValue jsFunc);

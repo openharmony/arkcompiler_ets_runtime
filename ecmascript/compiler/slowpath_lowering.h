@@ -335,6 +335,8 @@ private:
     void LowerLdStr(GateRef gate);
     void LowerGetSharedConstPool(GateRef gate);
     void LowerGetUnsharedConstPool(GateRef gate);
+    void LowerLdLazyExternalModuleVar(GateRef gate);
+    void LowerLdLazySendableExternalModuleVar(GateRef gate);
 
     CompilationEnv *compilationEnv_;
     const MethodLiteral *methodLiteral_ {nullptr};
