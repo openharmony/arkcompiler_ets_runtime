@@ -160,3 +160,4 @@ abc
 ISLAND
 İSLAND
 true
+native Func toString test Success!
