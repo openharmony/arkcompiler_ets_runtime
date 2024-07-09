@@ -131,6 +131,21 @@ public:
         return initialized_;
     }
 
+    void SetPostForked(bool isPostForked)
+    {
+        isPostForked_ = isPostForked;
+    }
+
+    bool IsPostForked() const
+    {
+        return isPostForked_;
+    }
+
+    bool IsAsynTranslateClasses()
+    {
+        return IsPostForked() && GetJSOptions().IsAsyncLoadAbc();
+    }
+
     ObjectFactory *GetFactory() const
     {
         return factory_;
@@ -858,6 +873,7 @@ private:
     JSRuntimeOptions options_;
     bool icEnabled_ {true};
     bool initialized_ {false};
+    bool isPostForked_ {false};
     GCStats *gcStats_ {nullptr};
     GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
