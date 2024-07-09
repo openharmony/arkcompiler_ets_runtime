@@ -282,7 +282,7 @@ public:
         return HasDebuggerStmtBit::Decode(extraLiteralInfo_);
     }
 
-    void SetIsSharedBit(bool isShared)
+    void SetIsShared(bool isShared)
     {
         extraLiteralInfo_ = IsSharedBit::Update(extraLiteralInfo_, isShared);
     }

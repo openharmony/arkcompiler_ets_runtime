@@ -452,7 +452,10 @@ public:
     }
     static FunctionKind PUBLIC_API GetFunctionKind(panda_file::FunctionKind funcKind);
     static FunctionKind GetFunctionKind(ConstPoolType type);
-    static bool PUBLIC_API IsSendableFunctionKind(panda_file::FunctionKind funcKind);
+    static bool PUBLIC_API IsSendableFunctionKind(panda_file::FunctionKind funcKind)
+    {
+        return (static_cast<uint32_t>(funcKind) & SENDABLE_FUNCTION_MASK) != 0;
+    }
 
     bool PUBLIC_API IsFirstMergedAbc() const;
     const void *GetBase() const

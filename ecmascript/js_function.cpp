@@ -1146,7 +1146,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
     }
 }
 
-bool JSFunction::IsSendableFunction() const
+bool JSFunction::IsSendableOrConcurrentFunction() const
 {
     if (this->GetClass()->IsJSSharedFunction() || this->GetClass()->IsJSSharedAsyncFunction() ||
         this->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION) {

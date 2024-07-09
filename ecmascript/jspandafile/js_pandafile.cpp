@@ -340,14 +340,6 @@ FunctionKind JSPandaFile::GetFunctionKind(panda_file::FunctionKind funcKind)
     return kind;
 }
 
-bool JSPandaFile::IsSendableFunctionKind(panda_file::FunctionKind funcKind)
-{
-    if ((static_cast<uint32_t>(funcKind) & SENDABLE_FUNCTION_MASK) != 0) {
-        return true;
-    }
-    return false;
-}
-
 FunctionKind JSPandaFile::GetFunctionKind(ConstPoolType type)
 {
     FunctionKind kind;
