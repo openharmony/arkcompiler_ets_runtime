@@ -48,43 +48,6 @@ void Marker::ProcessNewToEdenNoMarkStack(uint32_t threadId)
     heap_->EnumerateNewSpaceRegions([this, threadId](Region *region) {this->HandleNewToEdenRSet(threadId, region);});
 }
 
-void Marker::MarkJitCodeMap(uint32_t threadId)
-{
-    // To keep MachineCode objects alive (for dump) before JsError object be free, we have to know which JsError is
-    // alive first. So this method must be call after all other mark work finish.
-    TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkJitCodeMap");
-    ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(),
-        [this, threadId](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
-            this->HandleVisitJitCodeMap(threadId, jitCodeMaps);
-        });
-    ProcessMarkStack(threadId);
-}
-
-void Marker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps)
-{
-    if (!heap_->IsFullMark()) {
-        return;
-    }
-    auto it = jitCodeMaps.begin();
-    while (it != jitCodeMaps.end()) {
-        JSTaggedType jsError = it->first;
-        Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
-        if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
-            ++it;
-            continue;
-        }
-        for (auto jitCodeMap : *(it->second)) {
-            auto jitCode = std::get<0>(jitCodeMap);
-            Region *jitCodeRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jitCode));
-            if (!jitCodeRegion->Test(jitCode)) {
-                MarkObject(threadId, jitCode);
-            }
-        }
-        ++it;
-    }
-}
-
 void Marker::ProcessOldToNew(uint32_t threadId)
 {
     heap_->EnumerateOldSpaceRegions([this, threadId](Region *region) {
@@ -121,6 +84,36 @@ void Marker::ProcessSnapshotRSetNoMarkStack(uint32_t threadId)
     heap_->EnumerateSnapshotSpaceRegions([this, threadId](Region *region) {
         this->HandleOldToNewRSet(threadId, region);
     });
+}
+
+void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
+{
+    // To keep MachineCode objects alive (for dump) before JsError object be free, we have to know which JsError is
+    // alive first. So this method must be call after all other mark work finish.
+    TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkJitCodeMap");
+    if (!heap_->IsFullMark()) {
+        return;
+    }
+    auto Visitor = [this, threadId](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
+        auto it = jitCodeMaps.begin();
+        while (it != jitCodeMaps.end()) {
+            JSTaggedType jsError = it->first;
+            Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(jsError));
+            if (!objectRegion->Test(reinterpret_cast<TaggedObject *>(jsError))) {
+                ++it;
+                continue;
+            }
+            for (auto &jitCodeMap : *(it->second)) {
+                auto &jitCode = std::get<0>(jitCodeMap);
+                MarkObject(threadId, jitCode);
+            }
+            ++it;
+        }
+    };
+    ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), Visitor);
+    ProcessMarkStack(threadId);
+    heap_->WaitRunningTaskFinished();
 }
 
 void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
@@ -276,6 +269,56 @@ void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
         ObjectSlot objectSlot(ToUintPtr(obj));
         MarkObject(threadId, jsHClass, objectSlot);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, jsHClass, visitor);
+    }
+}
+
+void CompressGCMarker::MarkJitCodeMap(uint32_t threadId)
+{
+    // To keep MachineCode objects alive (for dump) before JsError object be free, we have to know which JsError is
+    // alive first. So this method must be call after all other mark work finish.
+    TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkJitCodeMap");
+    ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(),
+        [this, threadId](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
+            this->HandleVisitJitCodeMap(threadId, jitCodeMaps);
+        });
+    ProcessMarkStack(threadId);
+    heap_->WaitRunningTaskFinished();
+}
+
+void CompressGCMarker::HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps)
+{
+    auto it = jitCodeMaps.begin();
+    while (it != jitCodeMaps.end()) {
+        JSTaggedType jsError = it->first;
+        auto jsErrorObj = reinterpret_cast<TaggedObject *>(jsError);
+        Region *objectRegion = Region::ObjectAddressToRange(jsErrorObj);
+        auto jitCodeVec = it->second;
+        if (!NeedEvacuate(objectRegion)) {
+            if (!objectRegion->InSharedHeap() && !objectRegion->Test(jsErrorObj)) {
+                delete it->second;
+                it = jitCodeMaps.erase(it);
+                continue;
+            }
+        } else {
+            MarkWord markWord(jsErrorObj);
+            if (markWord.IsForwardingAddress()) {
+                TaggedObject *dst = markWord.ToForwardingAddress();
+                jitCodeMaps.emplace(JSTaggedValue(dst).GetRawData(), it->second);
+                it = jitCodeMaps.erase(it);
+            } else {
+                delete it->second;
+                it = jitCodeMaps.erase(it);
+                continue;
+            }
+        }
+        for (auto &jitCodeMap : *jitCodeVec) {
+            auto &jitCode = std::get<0>(jitCodeMap);
+            auto obj = static_cast<TaggedObject *>(jitCode);
+            // jitcode is MachineCode, and MachineCode is in the MachineCode space, will not be evacute.
+            MarkObject(threadId, obj, ObjectSlot(reinterpret_cast<uintptr_t>(&jitCode)));
+        }
+        ++it;
     }
 }
 

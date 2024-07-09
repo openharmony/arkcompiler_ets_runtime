@@ -45,8 +45,10 @@ public:
     void ProcessOldToNew(uint32_t threadId, Region *region);  // for SemiGC
     void ProcessSnapshotRSet(uint32_t threadId);              // for SemiGC
     void ProcessSnapshotRSetNoMarkStack(uint32_t threadId);
-    void MarkJitCodeMap(uint32_t threadId);
-    void HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeVector *> &jitCodeMap);
+    virtual void MarkJitCodeMap([[maybe_unused]] uint32_t threadId)
+    {
+        LOG_GC(FATAL) << "can not call this method";
+    }
 
     virtual void ProcessMarkStack([[maybe_unused]] uint32_t threadId)
     {
@@ -99,6 +101,7 @@ public:
 
 protected:
     void ProcessMarkStack(uint32_t threadId) override;
+    void MarkJitCodeMap(uint32_t threadId) override;
     template <typename Callback>
     inline bool VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                bool needBarrier, Callback callback);
@@ -179,7 +182,9 @@ public:
     }
 
 protected:
+    void MarkJitCodeMap(uint32_t threadId) override;
     void ProcessMarkStack(uint32_t threadId) override;
+    void HandleVisitJitCodeMap(uint32_t threadId, std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps);
     inline void MarkValue(uint32_t threadId, ObjectSlot slot);
     inline SlotStatus MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot slot) override;
 
