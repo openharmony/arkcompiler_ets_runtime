@@ -1892,7 +1892,7 @@ private:
     double typeThreshold_ {-1};
     std::string entryPoint_ {"_GLOBAL::func_main_0"};
     bool mergeAbc_ {false};
-    bool enableArrayBoundsCheckElimination_ {true};
+    bool enableArrayBoundsCheckElimination_ {false};
     bool enableTypeLowering_ {true};
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};
