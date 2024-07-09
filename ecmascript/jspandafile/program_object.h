@@ -469,7 +469,7 @@ public:
             int entryIndexVal = 0; // 0: only one method
             if (val.IsInt()) {
                 // For MethodInfo which does not have ihc infos, we store codeEntry directly.
-                entryIndexVal = static_cast<uint32_t>(val.GetInt());
+                entryIndexVal = val.GetInt();
             } else {
                 JSHandle<AOTLiteralInfo> entryIndexes(thread, val);
                 entryIndexVal = entryIndexes->GetObjectFromCache(0).GetInt(); // 0: only one method

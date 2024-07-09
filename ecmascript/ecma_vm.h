@@ -821,7 +821,7 @@ public:
 
     void AddAOTSnapShotStats(std::string tag, uint32_t count = 1)
     {
-        AOTSnapShotStatsMap_[tag] += count;
+        aotSnapShotStatsMap_[tag] += count;
     }
 
     void PrintAOTSnapShotStats()
@@ -831,12 +831,12 @@ public:
         LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << "AOT Snapshot Genre"
                        << std::setw(numberRightAdjustment) << "Count";
         LOG_ECMA(ERROR) << "==========================================================================";
-        for (const auto &iter: AOTSnapShotStatsMap_) {
+        for (const auto &iter: aotSnapShotStatsMap_) {
             LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << iter.first
                            << std::setw(numberRightAdjustment) << iter.second;
         }
         LOG_ECMA(ERROR) << "==========================================================================";
-        AOTSnapShotStatsMap_.clear();
+        aotSnapShotStatsMap_.clear();
     }
 
 protected:
@@ -878,7 +878,7 @@ private:
     // VM execution states.
     JSThread *thread_ {nullptr};
 
-    CUnorderedMap<std::string, uint32_t> AOTSnapShotStatsMap_;
+    CUnorderedMap<std::string, uint32_t> aotSnapShotStatsMap_;
 
     // VM resources.
     SnapshotEnv *snapshotEnv_ {nullptr};
