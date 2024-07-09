@@ -19,7 +19,6 @@
  * @tc.type: FUNC
  * @tc.require: issueI7CTF7
  */
-
 let uri="%c2%aa%66%55%58%c2%83%c2%93%00%c2%89%c3%96%08%58%c2%b4%c3%bd%46";
 let uri_encode=decodeURIComponent(uri);
 print(encodeURIComponent(uri_encode));
@@ -86,3 +85,31 @@ print(decodeURIComponent(uri11));
 print(decodeURIComponent(uri2));
 print(decodeURIComponent(uri3));
 print(decodeURIComponent(uri4));
+
+{
+    var result = true;
+    var arr = [
+    [0x00, 0x2F],
+    [0x47, 0x60],
+    ];
+    for (var i = 0; i < arr.length; i++) {
+        for (var j = arr[i][0]; j <= arr[i][1]; j++) {
+            try {
+                decodeURIComponent("%" + String.fromCharCode(j)+ "1");
+                decodeURIComponent("%" + "1" + String.fromCharCode(j));
+                decodeURIComponent("%C0%" + String.fromCharCode(j, j));
+                decodeURIComponent("%E0%" + String.fromCharCode(j, j) + "%A0");
+                decodeURIComponent("%E0" + "%A0%" + String.fromCharCode(j, j));
+                decodeURIComponent("%F0%" + String.fromCharCode(j, j) + "%A0%A0");
+                decodeURIComponent("%F0" + "%A0%" + String.fromCharCode(j, j) + "%A0");
+                decodeURIComponent("%F0" + "%A0%A0%" + String.fromCharCode(j, j));
+                result = false;
+            } catch (e) {
+                if ((e instanceof URIError) !== true) {
+                    result = false;
+                }
+            }
+        }
+    }
+    print(result)
+}
