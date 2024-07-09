@@ -138,8 +138,17 @@ public:
         if (fn.IsHole()) {
             return OrdinayEntryCompare(thread, valueX, valueY);
         }
-        if (OrdinayEntryCompare(thread, valueX, valueY) == ComparisonResult::EQUAL) {
-            return ComparisonResult::EQUAL;
+        if (valueX->IsUndefined()) {
+            return valueY->IsUndefined() ? ComparisonResult::EQUAL : ComparisonResult::GREAT;
+        }
+        if (valueY->IsUndefined()) {
+            return ComparisonResult::LESS;
+        }
+        if (valueX->IsNull()) {
+            return valueY->IsNull() ? ComparisonResult::EQUAL : ComparisonResult::GREAT;
+        }
+        if (valueY->IsNull()) {
+            return ComparisonResult::LESS;
         }
         JSHandle<JSTaggedValue> compareFn(thread, fn);
         JSHandle<JSTaggedValue> thisArgHandle = thread->GlobalConstants()->GetHandledUndefined();
@@ -151,19 +160,24 @@ public:
         info->SetCallArg(valueX.GetTaggedValue(), valueY.GetTaggedValue());
         JSTaggedValue callResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-        int compareResult = 0;
+        int compareResult = -1;
         if (callResult.IsBoolean()) {
-            compareResult = callResult.IsTrue() ? -1 : 1;
+            // if callResult is true, compareResult = -1.
+            if (callResult.IsFalse()) {
+                info = EcmaInterpreter::NewRuntimeCallInfo(thread, compareFn, thisArgHandle, undefined, argsLength);
+                info->SetCallArg(valueY.GetTaggedValue(), valueX.GetTaggedValue());
+                callResult = JSFunction::Call(info);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+                compareResult = callResult.IsTrue() ? 1 : 0;
+            }
         } else if (callResult.IsInt()) {
             compareResult = callResult.GetInt();
         } else {
-            JSHandle<JSTaggedValue> resultHandle(thread, callResult);
-            JSTaggedNumber v = JSTaggedValue::ToNumber(thread, resultHandle);
+            JSTaggedNumber v = JSTaggedValue::ToNumber(thread, JSHandle<JSTaggedValue>(thread, callResult));
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
             double value = v.GetNumber();
             if (std::isnan(value)) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "CompareFn has illegal return value",
-                                            ComparisonResult::UNDEFINED);
+                THROW_TYPE_ERROR_AND_RETURN(thread, "CompareFn has illegal return value", ComparisonResult::UNDEFINED);
             }
             compareResult = static_cast<int>(value);
         }

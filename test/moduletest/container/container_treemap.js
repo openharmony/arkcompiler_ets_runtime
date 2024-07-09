@@ -131,7 +131,23 @@ if (globalThis["ArkPrivate"] != undefined) {
         commap.remove("d");
     }
     res.set("test commpare", commap.length == 0);
-
+    class Person {
+        id = 0;
+        name = '';
+        constructor(id, name) {
+            this.id = id;
+            this.name = name;
+        }
+    }
+    commap = new fastmap((firstValue, secondValue) => {return firstValue.id > secondValue.id});
+    let personone = new Person(1,'张三');
+    let persontwo = new Person(3,'李四');
+    let personsec = new Person(2,'王五');
+    commap.set(personone,"1")
+    commap.set(persontwo,"1")
+    commap.set(personsec,"1")
+    res.set("test clear and set", commap.getFirstKey().id === 3);
+    commap.clear();
     commap = new fastmap((firstValue, secondValue) => {return firstValue < secondValue});
     commap.set("c","1");
     commap.set("a","8");
