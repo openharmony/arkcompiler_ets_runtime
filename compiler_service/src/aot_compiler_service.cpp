@@ -80,7 +80,7 @@ bool AotCompilerService::Init()
     return true;
 }
 
-void AotCompilerService::RemoveUnloadTask(const std::string taskId)
+void AotCompilerService::RemoveUnloadTask(const std::string &taskId)
 {
     if (unLoadHandler_ == nullptr) {
         LOG_SA(ERROR) << "NULL pointer of unLoadHandler_ error";
@@ -89,7 +89,7 @@ void AotCompilerService::RemoveUnloadTask(const std::string taskId)
     unLoadHandler_->RemoveTask(taskId);
 }
 
-void AotCompilerService::DelayUnloadTask(const std::string taskId, const int32_t delayTime)
+void AotCompilerService::DelayUnloadTask(const std::string &taskId, const int32_t delayTime)
 {
     if (unLoadHandler_ == nullptr) {
         LOG_SA(ERROR) << "NULL pointer of unLoadHandler_ error";

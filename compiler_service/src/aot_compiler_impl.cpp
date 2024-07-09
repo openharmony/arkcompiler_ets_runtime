@@ -108,6 +108,7 @@ int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::
 
 void AotCompilerImpl::DropCapabilities(const int32_t &bundleUid, const int32_t &bundleGid) const
 {
+    LOG_SA(INFO) << "begin to drop capabilities";
     if (setuid(bundleUid)) {
         LOG_SA(ERROR) << "dropCapabilities setuid failed : " << strerror(errno);
         exit(-1);
@@ -133,6 +134,7 @@ void AotCompilerImpl::DropCapabilities(const int32_t &bundleUid, const int32_t &
         LOG_SA(ERROR) << "capset failed : " << strerror(errno);
         exit(-1);
     }
+    LOG_SA(INFO) << "drop capabilities success";
 }
 
 void AotCompilerImpl::ExecuteInChildProcess(const std::vector<std::string> &aotVector) const
@@ -142,11 +144,12 @@ void AotCompilerImpl::ExecuteInChildProcess(const std::vector<std::string> &aotV
     for (auto &arg : aotVector) {
         argv.emplace_back(arg.c_str());
     }
-    LOG_SA(DEBUG) << "argv size : " << argv.size();
+    LOG_SA(INFO) << "argv size : " << argv.size();
     for (const auto &arg : argv) {
-        LOG_SA(DEBUG) << arg;
+        LOG_SA(INFO) << arg;
     }
     argv.emplace_back(nullptr);
+    LOG_SA(INFO) << "begin to execute ark_aot_compiler";
     execv(argv[0], const_cast<char* const*>(argv.data()));
     LOG_SA(ERROR) << "execv failed : " << strerror(errno);
     exit(-1);
@@ -200,7 +203,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
 {
 #ifdef CODE_SIGN_ENABLE
     if (!allowAotCompiler_) {
-        return ERR_AOT_COMPILER_PARAM_FAILED;
+        return ERR_AOT_COMPILER_CONNECT_FAILED;
     }
     if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {
         LOG_SA(ERROR) << "aot compiler arguments error";
@@ -208,7 +211,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     }
     int32_t ret = ERR_OK;
     std::lock_guard<std::mutex> lock(mutex_);
-    LOG_SA(DEBUG) << "begin to fork";
+    LOG_SA(INFO) << "begin to fork";
     pid_t pid = ForkBySyscall();
     if (pid == -1) {
         LOG_SA(ERROR) << "fork process failed : " << strerror(errno);
@@ -280,25 +283,26 @@ int32_t AotCompilerImpl::StopAotCompiler()
     }
     LOG_SA(INFO) << "begin to kill child process : " << state_.childPid;
     auto result = kill(state_.childPid, SIGKILL);
+    int32_t ret = ERR_OK;
     if (result != 0) {
         LOG_SA(INFO) << "kill child process failed: " << result;
+        ret = ERR_AOT_COMPILER_STOP_FAILED;
     } else {
         LOG_SA(INFO) << "kill child process success";
     }
     ResetState();
-    return ERR_OK;
+    return ret;
 }
 
 void AotCompilerImpl::HandlePowerDisconnected()
 {
     LOG_SA(INFO) << "AotCompilerImpl::HandlePowerDisconnected";
     PauseAotCompiler();
-    auto task = []() {
-        AotCompilerImpl::GetInstance().StopAotCompiler();
-        sleep(30);
+    std::thread([]() {
+        (void)AotCompilerImpl::GetInstance().StopAotCompiler();
+        sleep(30);  // wait for 30 seconds
         AotCompilerImpl::GetInstance().AllowAotCompiler();
-    };
-    std::thread(task).detach();
+    }).detach();
 }
 
 void AotCompilerImpl::PauseAotCompiler()
