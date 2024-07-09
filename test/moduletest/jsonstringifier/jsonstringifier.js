@@ -238,3 +238,12 @@ let obj1 = {
 }
 Object.keys(obj1);
 print(JSON.stringify(obj1));
+
+try {
+  let loop = {};
+  loop.obj = loop;
+  JSON.stringify(loop);
+} catch (err) {
+  print(err.name);
+  print(err.message.includes("circular structure"));
+}
