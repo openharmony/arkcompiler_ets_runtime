@@ -90,14 +90,16 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(EcmaRuntimeCallInfo *argv, Tr
     } else if (argc == 3 && base::JsonHelper::IsTypeSupportBigInt(transformType)) { // 3: three args
         JSHandle<JSTaggedValue> options = GetCallArg(argv, 2); // 2: two args
         JSHandle<JSTaggedValue> modeKey(factory->NewFromStdString("bigIntMode"));
-        JSHandle<JSTaggedValue> modeValue = JSTaggedValue::GetProperty(thread, options, modeKey).GetValue();
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (modeValue->IsInt()) {
-            int val = modeValue->GetInt();
-            if (val == 2) { // 2: bigIntMode
-                mode = ParseOptions::ALWAYSPARSEASBIGINT;
-            } else if (val == 1) {
-                mode = ParseOptions::PARSEASBIGINT;
+        if (options->IsECMAObject()) {
+            JSHandle<JSTaggedValue> modeValue = JSTaggedValue::GetProperty(thread, options, modeKey).GetValue();
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (modeValue->IsInt()) {
+                int val = modeValue->GetInt();
+                if (val == 2) { // 2: bigIntMode
+                    mode = ParseOptions::ALWAYSPARSEASBIGINT;
+                } else if (val == 1) {
+                    mode = ParseOptions::PARSEASBIGINT;
+                }
             }
         }
     }

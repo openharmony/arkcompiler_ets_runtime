@@ -181,7 +181,22 @@ function testJSONBigInt() {
 
 }
 
+function testJSONNormal() {
+    var obj = JSON.parseBigInt(input, undefined, undefined);
+    print(obj.small);
+    print(obj.big);
+    print(obj.deci);
+    print(obj.shortExp);
+    print(obj.longExp);
+    print((typeof obj.small === "number"));
+    print((typeof obj.big === "number"));
+    print((typeof obj.deci === "number"));
+    print((typeof obj.shortExp === "number"));
+    print((typeof obj.longExp === "number"));
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
 testJSONBigInt();
+testJSONNormal();
