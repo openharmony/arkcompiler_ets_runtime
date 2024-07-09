@@ -78,15 +78,22 @@ enum class PageTagType : uint8_t {
 #define PAGE_PROT_EXEC_READWRITE 7
 #endif
 
+// Jit Fort space protection control
+inline int PageProtectProt([[maybe_unused]] bool disable_codesign)
+{
+#if defined(CODE_SIGN_ENABLE) && !defined(JIT_FORT_DISABLE)
+    if (!disable_codesign) {
+        return PAGE_PROT_EXEC_READ;
+    }
+#endif
+    return PAGE_PROT_EXEC_READWRITE;
+}
+
 static constexpr char HEAP_TAG[] = "ArkTS Heap";
 static constexpr char CODE_TAG[] = "ArkTS Code";
 static const std::string EMPTY_STRING = "";
-#ifdef ENABLE_JITFORT
 MemMap PUBLIC_API PageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0, void *addr = nullptr,
     int flags = 0);
-#else
-MemMap PUBLIC_API PageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0, void *addr = nullptr);
-#endif
 void PUBLIC_API PageUnmap(MemMap it);
 MemMap PUBLIC_API MachineCodePageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0);
 void PUBLIC_API *PageMapExecFortSpace(void *addr, size_t size, int prot);

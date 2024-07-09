@@ -71,7 +71,7 @@ HWTEST_F_L0(JSHClassTest, SizeFromJSHClass)
 
     objectClass = factory->NewEcmaHClass(MachineCode::SIZE, JSType::MACHINE_CODE_OBJECT, nullHandle);
     objectSize = objectClass->SizeFromJSHClass(*objectClass);
-    EXPECT_EQ(objectSize, 56U);
+    EXPECT_EQ(objectSize, 64U);
     // size is an integral multiple of eight
     objectClass = factory->NewEcmaHClass(JSObject::SIZE - 1, JSType::JS_OBJECT, nullHandle);
     objectSize = objectClass->SizeFromJSHClass(*objectClass);

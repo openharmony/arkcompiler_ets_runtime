@@ -60,6 +60,7 @@ public:
         isMachineCodeGC_ = flag;
     }
 
+    bool InRange(uintptr_t address) const;
     void RecordLiveJitCode(uintptr_t addr, size_t size);
     void CollectFreeRanges(JitFortRegion  *region);
     void SortLiveMemDescList();

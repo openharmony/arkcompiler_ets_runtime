@@ -30,11 +30,7 @@ SparseSpace::SparseSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, 
       localHeap_(heap),
       liveObjectSize_(0)
 {
-#ifdef ENABLE_JITFORT
     allocator_ = new FreeListAllocator<FreeObject>(heap);
-#else
-    allocator_ = new FreeListAllocator(heap);
-#endif
 }
 
 void SparseSpace::Initialize()
@@ -628,15 +624,14 @@ MachineCodeSpace::MachineCodeSpace(Heap *heap, size_t initialCapacity, size_t ma
 
 MachineCodeSpace::~MachineCodeSpace()
 {
-#ifdef ENABLE_JITFORT
-    if (jitFort_) {
-        delete jitFort_;
-        jitFort_ = nullptr;
+    if (localHeap_->GetEcmaVM()->GetJSOptions().GetEnableJitFort()) {
+        if (jitFort_) {
+            delete jitFort_;
+            jitFort_ = nullptr;
+        }
     }
-#endif
 }
 
-#ifdef ENABLE_JITFORT
 inline void MachineCodeSpace::RecordLiveJitCode(MachineCode *obj)
 {
     if (jitFort_) {
@@ -671,7 +666,12 @@ void MachineCodeSpace::FreeRegion(Region *current, bool isMain)
     }
 }
 
-uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc &desc, bool allowGC)
+uintptr_t MachineCodeSpace::Allocate(size_t size, bool allowGC)
+{
+    return SparseSpace::Allocate(size, allowGC);
+}
+
+uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc *desc, bool allowGC)
 {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
     if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) {
@@ -684,22 +684,22 @@ uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc &desc, bool al
     // instruction separated from Machine Code object into Jit FortSpace.
 
     auto object = allocator_->Allocate(size);
-    CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc.instructionsSize);
+    CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc->instructionsSize);
 
     if (sweepState_ == SweepState::SWEEPING) {
         object = AllocateAfterSweepingCompleted(size);
-        CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc.instructionsSize);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc->instructionsSize);
     }
 
     // Check whether it is necessary to trigger Old GC before expanding to avoid OOM risk.
     if (allowGC && localHeap_->CheckAndTriggerOldGC()) {
         object = allocator_->Allocate(size);
-        CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc.instructionsSize);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc->instructionsSize);
     }
 
     if (Expand()) {
         object = allocator_->Allocate(size);
-        CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc.instructionsSize);
+        CHECK_OBJECT_AND_INC_OBJ_SIZE(size + desc->instructionsSize);
     }
 
     if (allowGC) {
@@ -709,7 +709,6 @@ uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc &desc, bool al
     }
     return object;
 }
-#endif // ENABLE_JITFORT
 
 size_t MachineCodeSpace::CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &machineCode, uintptr_t pc)
 {
@@ -736,7 +735,7 @@ uintptr_t MachineCodeSpace::GetMachineCodeObject(uintptr_t pc)
         if (machineCode != 0) {
             return;
         }
-        if (region->InCollectSet() || !region->InRange(pc)) {
+        if (region->InCollectSet() || (!region->InRange(pc) && !InJitFortRange(pc))) {
             return;
         }
         uintptr_t curPtr = region->GetBegin();

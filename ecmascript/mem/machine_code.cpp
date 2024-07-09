@@ -19,8 +19,8 @@
 #include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#ifdef CODE_SIGN_ENABLE
 #include "ecmascript/jit/jit.h"
+#ifdef CODE_SIGN_ENABLE
 #include "jit_buffer_integrity.h"
 #endif
 
@@ -29,103 +29,98 @@ namespace panda::ecmascript {
 using namespace OHOS::Security::CodeSign;
 #endif
 
-void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize)
+static bool SetPageProtect(uint8_t *textStart, size_t dataSize)
 {
-    DISALLOW_GARBAGE_COLLECTION;
-    if (desc.codeType == MachineCodeType::BASELINE_CODE) {
-        SetBaselineCodeData(desc, method, dataSize);
-        return;
+    if (!Jit::GetInstance()->IsEnableJitFort() || Jit::GetInstance()->IsDisableCodeSign()) {
+        size_t pageSize = 4096;
+        uintptr_t startPage = reinterpret_cast<uintptr_t>(textStart) & ~(pageSize - 1);
+        uintptr_t endPage = (reinterpret_cast<uintptr_t>(textStart) + dataSize) & ~(pageSize - 1);
+        size_t protSize = (endPage == startPage) ? ((dataSize + pageSize - 1U) & (~(pageSize - 1))) :
+            (pageSize + ((dataSize + pageSize - 1U) & (~(pageSize - 1))));
+        return PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE);
     }
-    EntityId methodId = method->GetMethodId();
+    return true;
+}
 
-    SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
-    SetOsrDeoptFlag(false);
-    SetOsrExecuteCnt(0);
+static void ComputeSizes(const MachineCodeDesc desc,
+    size_t &rodataSizeBeforeTextAlign, size_t &rodataSizeAfterTextAlign,
+    size_t &funcEntryDesSizeAlign, size_t &stackMapOrOffsetTableSizeAlign)
+{
+    funcEntryDesSizeAlign = AlignUp(desc.funcEntryDesSize, MachineCode::TEXT_ALIGN);
+    stackMapOrOffsetTableSizeAlign = AlignUp(desc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
+    rodataSizeBeforeTextAlign = AlignUp(desc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
+    rodataSizeAfterTextAlign = Jit::GetInstance()->IsEnableJitFort() ?
+        AlignUp(desc.rodataSizeAfterText, MachineCode::TEXT_ALIGN) :
+        AlignUp(desc.rodataSizeAfterText, MachineCode::DATA_ALIGN);
+}
 
-    size_t rodataSizeBeforeTextAlign = AlignUp(desc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
-    size_t codeSizeAlign = AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
-#ifdef ENABLE_JITFORT
-    size_t rodataSizeAfterTextAlign = AlignUp(desc.rodataSizeAfterText, MachineCode::TEXT_ALIGN); // match jit_task code
-#else
-    size_t rodataSizeAfterTextAlign = AlignUp(desc.rodataSizeAfterText, MachineCode::DATA_ALIGN);
-#endif
-
-    size_t funcEntryDesSizeAlign = AlignUp(desc.funcEntryDesSize, MachineCode::TEXT_ALIGN);
-    SetFuncEntryDesSize(funcEntryDesSizeAlign);
-
-    size_t instrSize = rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign;
-    SetInstructionsSize(instrSize);
-
-    size_t stackMapOrOffsetTableSizeAlign = AlignUp(desc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
-    SetStackMapOrOffsetTableSize(stackMapOrOffsetTableSizeAlign);
-
-#ifdef ENABLE_JITFORT
-    ASSERT(desc.instructionsAddr != 0);
-    ASSERT(dataSize == (funcEntryDesSizeAlign + stackMapOrOffsetTableSizeAlign) ||
-           dataSize == (funcEntryDesSizeAlign + instrSize + stackMapOrOffsetTableSizeAlign));
-    SetInstructionsAddr(desc.instructionsAddr);
-#else
-    ASSERT(dataSize == (funcEntryDesSizeAlign + instrSize + stackMapOrOffsetTableSizeAlign));
-#endif
-    SetPayLoadSizeInBytes(dataSize);
-
+bool MachineCode::SetText(const MachineCodeDesc &desc,
+    size_t rodataSizeBeforeTextAlign, size_t codeSizeAlign, size_t rodataSizeAfterTextAlign)
+{
     uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
     uint8_t *pText = textStart;
     if (rodataSizeBeforeTextAlign != 0) {
         if (memcpy_s(pText, rodataSizeBeforeTextAlign,
             reinterpret_cast<uint8_t*>(desc.rodataAddrBeforeText), desc.rodataSizeBeforeText) != EOK) {
             LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
-            return;
+            return false;
         }
         pText += rodataSizeBeforeTextAlign;
     }
+    if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort()) {
 #ifdef CODE_SIGN_ENABLE
-    if ((uintptr_t)desc.codeSigner == 0) {
+        if ((uintptr_t)desc.codeSigner == 0) {
+            if (memcpy_s(pText, codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+                LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
+                return false;
+            }
+        } else {
+            LOG_JIT(DEBUG) << "Call JitVerifyAndCopy: "
+                           << std::hex << (uintptr_t)pText << " <- "
+                           << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
+            LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
+            if (Jit::GetInstance()->JitVerifyAndCopy(reinterpret_cast<void*>(desc.codeSigner),
+                pText, reinterpret_cast<void*>(desc.codeAddr), desc.codeSize) != EOK) {
+                LOG_JIT(ERROR) << "     JitVerifyAndCopy failed";
+            } else {
+                LOG_JIT(DEBUG) << "     JitVerifyAndCopy success!!";
+            }
+            delete reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
+        }
+#else
         if (memcpy_s(pText, codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
             LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
-            return;
+            return false;
         }
-    } else {
-        LOG_JIT(DEBUG) << "Call JitVerifyAndCopy: "
-                       << std::hex << (uintptr_t)pText << " <- "
-                       << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
-        LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
-        if (Jit::GetInstance()->JitVerifyAndCopy(reinterpret_cast<void*>(desc.codeSigner),
-            pText, reinterpret_cast<void*>(desc.codeAddr), desc.codeSize) != EOK) {
-            LOG_JIT(ERROR) << "     JitVerifyAndCopy failed";
-        } else {
-            LOG_JIT(DEBUG) << "     JitVerifyAndCopy success!!";
-        }
-        delete reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
-    }
-#else
-    if (memcpy_s(pText, codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
-        LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
-        return;
-    }
 #endif
+    }
     pText += codeSizeAlign;
     if (rodataSizeAfterTextAlign != 0) {
         if (memcpy_s(pText, rodataSizeAfterTextAlign,
             reinterpret_cast<uint8_t*>(desc.rodataAddrAfterText), desc.rodataSizeAfterText) != EOK) {
             LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
-            return;
+            return false;
         }
     }
+    return true;
+}
 
+bool MachineCode::SetNonText(const MachineCodeDesc &desc, EntityId methodId)
+{
+    uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
     uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
     if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize,
                  reinterpret_cast<uint8_t*>(desc.stackMapOrOffsetTableAddr),
                  desc.stackMapOrOffsetTableSize) != EOK) {
         LOG_JIT(ERROR) << "memcpy fail in copy fast jit stackmap";
-        return;
+        return false;
     }
 
     FuncEntryDes *funcEntry = reinterpret_cast<FuncEntryDes*>(GetFuncEntryDesAddress());
     if (memcpy_s(funcEntry, desc.funcEntryDesSize, reinterpret_cast<uint8_t*>(desc.funcEntryDesAddr),
         desc.funcEntryDesSize) != EOK) {
         LOG_JIT(ERROR) << "memcpy fail in copy fast jit funcEntry";
-        return;
+        return false;
     }
 
     uint32_t cnt = desc.funcEntryDesSize / sizeof(FuncEntryDes);
@@ -137,7 +132,49 @@ void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
         }
         funcEntry++;
     }
+    return true;
+}
 
+bool MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    if (desc.codeType == MachineCodeType::BASELINE_CODE) {
+        return SetBaselineCodeData(desc, method, dataSize);
+    }
+
+    SetOSROffset(MachineCode::INVALID_OSR_OFFSET);
+    SetOsrDeoptFlag(false);
+    SetOsrExecuteCnt(0);
+
+    size_t codeSizeAlign = AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
+    size_t rodataSizeBeforeTextAlign, rodataSizeAfterTextAlign,
+        funcEntryDesSizeAlign, stackMapOrOffsetTableSizeAlign;
+    ComputeSizes(desc, rodataSizeBeforeTextAlign, rodataSizeAfterTextAlign,
+        funcEntryDesSizeAlign, stackMapOrOffsetTableSizeAlign);
+    size_t instrSize = rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign;
+
+    SetFuncEntryDesSize(funcEntryDesSizeAlign);
+    SetInstructionsSize(instrSize);
+    SetStackMapOrOffsetTableSize(stackMapOrOffsetTableSizeAlign);
+    SetPayLoadSizeInBytes(dataSize);
+    if (Jit::GetInstance()->IsEnableJitFort()) {
+        SetInstructionsAddr(desc.instructionsAddr);
+        ASSERT(desc.instructionsAddr != 0);
+        ASSERT(dataSize == (funcEntryDesSizeAlign + stackMapOrOffsetTableSizeAlign) ||
+               dataSize == (funcEntryDesSizeAlign + instrSize + stackMapOrOffsetTableSizeAlign));
+    } else {
+        ASSERT(dataSize == (funcEntryDesSizeAlign + instrSize + stackMapOrOffsetTableSizeAlign));
+    }
+    if (!SetText(desc, rodataSizeBeforeTextAlign, codeSizeAlign, rodataSizeAfterTextAlign)) {
+        return false;
+    }
+    if (!SetNonText(desc, method->GetMethodId())) {
+        return false;
+    }
+
+    uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
+    uint32_t cnt = desc.funcEntryDesSize / sizeof(FuncEntryDes);
+    uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
     CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
     LOG_JIT(DEBUG) << "Fast JIT MachineCode :" << methodName << ", "  << " text addr:" <<
         reinterpret_cast<void*>(GetText()) << ", size:" << instrSize  <<
@@ -145,18 +182,14 @@ void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
         ", size:" << stackMapOrOffsetTableSizeAlign <<
         ", funcEntry addr:" << reinterpret_cast<void*>(GetFuncEntryDesAddress()) << ", count:" << cnt;
 
-#ifndef ENABLE_JITFORT
-    //todo
-    size_t pageSize = 4096; // 4096 : pageSize
-    uintptr_t startPage = reinterpret_cast<uintptr_t>(textStart) & ~(pageSize - 1);
-    uintptr_t endPage = (reinterpret_cast<uintptr_t>(textStart) + dataSize) & ~(pageSize - 1);
-    size_t protSize = (endPage == startPage) ? ((dataSize + pageSize - 1U) & (~(pageSize - 1))) :
-        (pageSize + ((dataSize + pageSize - 1U) & (~(pageSize - 1))));
-    PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE);
-#endif
+    if (!SetPageProtect(textStart, dataSize)) {
+        LOG_JIT(ERROR) << "MachineCode::SetData SetPageProtect failed";
+        return false;
+    }
+    return true;
 }
 
-void MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
+bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
                                       JSHandle<Method> &method, size_t dataSize)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -167,16 +200,28 @@ void MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
 
     size_t stackMapOrOffsetTableSizeAlign = AlignUp(desc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
     SetStackMapOrOffsetTableSize(stackMapOrOffsetTableSizeAlign);
-
-    ASSERT(dataSize == (instrSizeAlign + stackMapOrOffsetTableSizeAlign));
+    if (Jit::GetInstance()->IsEnableJitFort()) {
+        ASSERT(desc.instructionsAddr != 0);
+        ASSERT(dataSize == (stackMapOrOffsetTableSizeAlign) ||  // reg. obj
+               dataSize == (instrSizeAlign + stackMapOrOffsetTableSizeAlign)); // huge obj
+        SetInstructionsAddr(desc.instructionsAddr);
+    } else {
+        ASSERT(dataSize == (instrSizeAlign + stackMapOrOffsetTableSizeAlign));
+    }
     SetPayLoadSizeInBytes(dataSize);
 
     uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
-    ASSERT(IsAligned(reinterpret_cast<uintptr_t>(textStart), TEXT_ALIGN));
+    if (Jit::GetInstance()->IsEnableJitFort()) {
+        // relax assert for now until machine code padding for JitFort resolved
+        ASSERT(IsAligned(reinterpret_cast<uintptr_t>(textStart), TEXT_ALIGN) ||
+            IsAligned(reinterpret_cast<uintptr_t>(textStart), DATA_ALIGN));
+    } else {
+        ASSERT(IsAligned(reinterpret_cast<uintptr_t>(textStart), TEXT_ALIGN));
+    }
     uint8_t *pText = textStart;
     if (memcpy_s(pText, instrSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
         LOG_BASELINEJIT(ERROR) << "memcpy fail in copy baseline jit code";
-        return;
+        return false;
     }
     pText += instrSizeAlign;
 
@@ -185,7 +230,7 @@ void MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
                  reinterpret_cast<uint8_t*>(desc.stackMapOrOffsetTableAddr),
                  desc.stackMapOrOffsetTableSize) != EOK) {
         LOG_BASELINEJIT(ERROR) << "memcpy fail in copy fast baselineJIT offsetTable";
-        return;
+        return false;
     }
 
     SetFuncAddr(reinterpret_cast<uintptr_t>(textStart));
@@ -195,15 +240,11 @@ void MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
         reinterpret_cast<void*>(GetText()) << ", size:" << instrSizeAlign  <<
         ", stackMap addr: 0, size: 0, funcEntry addr: 0, count 0";
 
-#ifndef ENABLE_JITFORT
-    //todo
-    size_t pageSize = 4096;
-    uintptr_t startPage = reinterpret_cast<uintptr_t>(textStart) & ~(pageSize - 1);
-    uintptr_t endPage = (reinterpret_cast<uintptr_t>(textStart) + dataSize) & ~(pageSize - 1);
-    size_t protSize = (endPage == startPage) ? ((dataSize + pageSize - 1U) & (~(pageSize - 1))) :
-        (pageSize + ((dataSize + pageSize - 1U) & (~(pageSize - 1))));
-    PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE);
-#endif
+    if (!SetPageProtect(textStart, dataSize)) {
+        LOG_BASELINEJIT(ERROR) << "MachineCode::SetBaseLineCodeData SetPageProtect failed";
+        return false;
+    }
+    return true;
 }
 
 bool MachineCode::IsInText(const uintptr_t pc) const
@@ -263,4 +304,24 @@ std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> MachineCode::
     auto ret = std::make_tuple(textStart, stackmapAddr, delta, calleeRegInfo);
     return ret;
 }
+
+uintptr_t MachineCode::GetText() const
+{
+    if (Jit::GetInstance()->IsEnableJitFort()) {
+        return GetInstructionsAddr();
+    } else {
+        return GetFuncEntryDesAddress() + GetFuncEntryDesSize();
+    }
+}
+
+uint8_t *MachineCode::GetStackMapOrOffsetTableAddress() const
+{
+    if (Jit::GetInstance()->IsEnableJitFort()) {
+        // stackmap immediately follows FuncEntryDesc area
+        return reinterpret_cast<uint8_t*>(GetFuncEntryDesAddress() + GetFuncEntryDesSize());
+    } else {
+        return reinterpret_cast<uint8_t*>(GetText() + GetInstructionsSize());
+    }
+}
+
 }  // namespace panda::ecmascript

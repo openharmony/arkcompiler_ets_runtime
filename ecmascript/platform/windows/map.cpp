@@ -36,7 +36,7 @@
 namespace panda::ecmascript {
 static constexpr int INSUFFICIENT_CONTINUOUS_MEM = 1455;
 
-MemMap PageMap(size_t size, int prot, size_t alignment, void *addr)
+MemMap PageMap(size_t size, int prot, size_t alignment, void *addr, [[maybe_unused]] int flags)
 {
     ASSERT(size == AlignUp(size, PageSize()));
     ASSERT(alignment == AlignUp(alignment, PageSize()));

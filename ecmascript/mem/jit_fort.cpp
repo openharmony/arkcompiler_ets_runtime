@@ -16,7 +16,7 @@
 #include "ecmascript/mem/free_object_set.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/jit_fort.h"
-#include <sys/mman.h>
+#include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript {
 
@@ -68,7 +68,8 @@ void FreeListAllocator<MemDesc>::Free(uintptr_t begin, size_t size, bool isAdd)
 
 JitFort::JitFort()
 {
-    jitFortMem_ = PageMap(JIT_FORT_REG_SPACE_MAX, PAGE_PROT_EXEC_READWRITE, DEFAULT_REGION_SIZE, nullptr, MAP_JITFORT);
+    jitFortMem_ = PageMap(JIT_FORT_REG_SPACE_MAX, PageProtectProt(Jit::GetInstance()->IsDisableCodeSign()),
+        DEFAULT_REGION_SIZE, nullptr, MAP_JITFORT);
     jitFortBegin_ = reinterpret_cast<uintptr_t>(jitFortMem_.GetMem());
     jitFortSize_ = JIT_FORT_REG_SPACE_MAX;
     memDescPool_ = new MemDescPool(jitFortBegin_, jitFortSize_);
@@ -120,8 +121,6 @@ uintptr_t JitFort::Allocate(size_t size)
             ret = allocator_->Allocate(size);
         }
     }
-    LOG_JIT(DEBUG) << "JitFort::Allocate " << size << " bytes "
-        << "ret " << (void*)ret << " remainder " << allocator_->GetAvailableSize();
     return ret;
 }
 
@@ -219,6 +218,11 @@ void JitFort::CollectFreeRanges(JitFortRegion *region)
     if (freeStart != freeEnd) {
         allocator_->Free(freeStart, freeEnd - freeStart, true);
     }
+}
+
+bool JitFort::InRange(uintptr_t address) const
+{
+    return address >= jitFortBegin_ && address <= (jitFortBegin_ + jitFortSize_ - 1);
 }
 
 // Used by JitFort::UpdateFreeSpace call path to find corresponding

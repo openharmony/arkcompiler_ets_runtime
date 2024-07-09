@@ -24,45 +24,27 @@
 #include "libpandabase/utils/span.h"
 
 namespace panda::ecmascript {
-#ifdef ENABLE_JITFORT
 class JitFort;
 template <typename T>
-#endif
 class FreeObjectList {
 public:
     FreeObjectList();
-#ifdef ENABLE_JITFORT
     FreeObjectList(JitFort *fort);
-#endif
     ~FreeObjectList();
 
-#ifdef ENABLE_JITFORT
     T *Allocate(size_t size);
 
     T *LookupSuitableFreeObject(size_t size);
-#else
-    FreeObject *Allocate(size_t size);
-
-    FreeObject *LookupSuitableFreeObject(size_t size);
-#endif
 
     void Free(uintptr_t start, size_t size, bool isAdd = true);
 
     void Rebuild();
 
-#ifdef ENABLE_JITFORT
     bool MatchFreeObjectInSet(FreeObjectSet<T> *set, size_t size);
 
     bool AddSet(FreeObjectSet<T> *set);
 
     void RemoveSet(FreeObjectSet<T> *set);
-#else
-    bool MatchFreeObjectInSet(FreeObjectSet *set, size_t size);
-
-    bool AddSet(FreeObjectSet *set);
-
-    void RemoveSet(FreeObjectSet *set);
-#endif
     void Merge(FreeObjectList *list);
 
     template<class Callback>
@@ -117,11 +99,7 @@ private:
     {
         if (size < SMALL_SET_MAX_SIZE) {
             if (UNLIKELY(size < MIN_SIZE)) {
-#ifdef ENABLE_JITFORT
                 return FreeObjectSet<T>::INVALID_SET_TYPE;
-#else
-                return FreeObjectSet::INVALID_SET_TYPE;
-#endif
             }
             return (size >> INTERVAL_OFFSET) - smallSetOffsetIndex;
         }
@@ -154,14 +132,9 @@ private:
     size_t available_ = 0;
     size_t wasted_ = 0;
     uint64_t noneEmptySetBitMap_ = 0;
-#ifdef ENABLE_JITFORT
     Span<FreeObjectSet<T> *> sets_ {};
     Span<FreeObjectSet<T> *> lastSets_ {};
     JitFort *jitFort_ {nullptr};
-#else
-    Span<FreeObjectSet *> sets_ {};
-    Span<FreeObjectSet *> lastSets_ {};
-#endif
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_FREE_OBJECT_LIST_H

@@ -35,11 +35,7 @@ SharedSparseSpace::SharedSparseSpace(SharedHeap *heap,
       liveObjectSize_(0)
 {
     triggerLocalFullMarkLimit_ = maximumCapacity * LIVE_OBJECT_SIZE_RATIO;
-#ifdef ENABLE_JITFORT
     allocator_ = new FreeListAllocator<FreeObject>(heap);
-#else
-    allocator_ = new FreeListAllocator(heap);
-#endif
 }
 
 void SharedSparseSpace::Reset()

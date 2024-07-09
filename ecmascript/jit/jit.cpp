@@ -103,8 +103,14 @@ void Jit::ConfigOptions(EcmaVM *vm) const
     uint32_t jitHotnessThreshold = GetHotnessThreshold();
     options.SetJitHotnessThreshold(jitHotnessThreshold);
 
-    bool jitDisableCodeSign = ohos::JitTools::GetCodeSignDisable();
+    bool jitDisableCodeSign = ohos::JitTools::GetCodeSignDisable(options.GetDisableCodeSign());
     options.SetDisableCodeSign(jitDisableCodeSign);
+
+    bool jitEnableJitFort = ohos::JitTools::GetEnableJitFort(options.GetEnableJitFort());
+    options.SetEnableJitFort(jitEnableJitFort);
+
+    bool jitEnableAsyncCopyToFort = ohos::JitTools::GetEnableAsyncCopyToFort(options.GetEnableAsyncCopyToFort());
+    options.SetEnableAsyncCopyToFort(jitEnableAsyncCopyToFort);
 
     vm->SetEnableJitLogSkip(ohos::JitTools::GetSkipJitLogEnable());
 
@@ -119,6 +125,14 @@ void Jit::ConfigJit(EcmaVM *vm)
 {
     SwitchProfileStubs(vm);
     ConfigOptions(vm);
+    ConfigJitFortOptions(vm);
+}
+
+void Jit::ConfigJitFortOptions(EcmaVM *vm)
+{
+    SetDisableCodeSign(vm->GetJSOptions().GetDisableCodeSign());
+    SetEnableJitFort(vm->GetJSOptions().GetEnableJitFort());
+    SetEnableAsyncCopyToFort(vm->GetJSOptions().GetEnableAsyncCopyToFort());
 }
 
 void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit)
@@ -190,6 +204,36 @@ bool Jit::IsEnableFastJit() const
 bool Jit::IsEnableBaselineJit() const
 {
     return baselineJitEnable_;
+}
+
+bool Jit::IsEnableJitFort() const
+{
+    return isEnableJitFort_;
+}
+
+void Jit::SetEnableJitFort(bool isEnableJitFort)
+{
+    isEnableJitFort_ = isEnableJitFort;
+}
+
+bool Jit::IsDisableCodeSign() const
+{
+    return isDisableCodeSign_;
+}
+
+void Jit::SetDisableCodeSign(bool isDisableCodeSign)
+{
+    isDisableCodeSign_ = isDisableCodeSign;
+}
+
+bool Jit::IsEnableAsyncCopyToFort() const
+{
+    return isEnableAsyncCopyToFort_;
+}
+
+void Jit::SetEnableAsyncCopyToFort(bool isEnableAsyncCopyToFort)
+{
+    isEnableAsyncCopyToFort_ = isEnableAsyncCopyToFort;
 }
 
 void Jit::Initialize()

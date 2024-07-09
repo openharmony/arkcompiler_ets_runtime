@@ -558,13 +558,10 @@ public:
 
     JSHandle<JSObject> NewJSObjectWithInit(const JSHandle<JSHClass> &jshclass);
     uintptr_t NewSpaceBySnapshotAllocator(size_t size);
-#ifdef ENABLE_JITFORT
     TaggedObject *NewMachineCodeObject(size_t length, MachineCodeDesc &desc);
     JSHandle<MachineCode> SetMachineCodeObjectData(TaggedObject *obj, size_t length,
-        MachineCodeDesc &desc, JSHandle<Method> &method);
-#else
+        const MachineCodeDesc &desc, JSHandle<Method> &method);
     JSHandle<MachineCode> NewMachineCodeObject(size_t length, const MachineCodeDesc &desc, JSHandle<Method> &method);
-#endif
     JSHandle<ClassInfoExtractor> NewClassInfoExtractor(JSHandle<JSTaggedValue> method);
     JSHandle<ClassLiteral> NewClassLiteral();
 

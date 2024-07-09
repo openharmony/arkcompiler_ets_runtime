@@ -24,20 +24,12 @@
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {
-#ifdef ENABLE_JITFORT
 MemMap PageMap(size_t size, int prot, size_t alignment, void *addr, int flags)
-#else
-MemMap PageMap(size_t size, int prot, size_t alignment, void *addr)
-#endif
 {
     ASSERT(size == AlignUp(size, PageSize()));
     ASSERT(alignment == AlignUp(alignment, PageSize()));
     size_t allocSize = size + alignment;
-#ifdef ENABLE_JITFORT
     void *result = mmap(addr, allocSize, prot, MAP_PRIVATE | MAP_ANONYMOUS | flags, -1, 0);
-#else
-    void *result = mmap(addr, allocSize, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-#endif
     if (reinterpret_cast<intptr_t>(result) == -1) {
         LOG_ECMA(FATAL) << "mmap failed with error code:" << strerror(errno);
     }
