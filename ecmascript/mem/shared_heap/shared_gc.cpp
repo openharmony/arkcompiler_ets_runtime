@@ -52,6 +52,7 @@ void SharedGC::RunPhases()
         SharedHeapVerification(sHeap_, VerifyKind::VERIFY_SHARED_GC_SWEEP).VerifySweep(markingInProgress_);
     }
     Finish();
+    sHeap_->NotifyHeapAliveSizeAfterGC(sHeap_->GetHeapObjectSize());
 }
 
 void SharedGC::Initialize()

@@ -265,16 +265,24 @@ public:
         return heapAliveSizeAfterGC_;
     }
 
-    bool ShouldCheckIdleGC() const
-    {
-        return lastIdleGCTimestamp_ == Clock::time_point::min() ||
-            std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - lastIdleGCTimestamp_).count() >=
-            IDLE_GC_MIN_INTERVAL;
-    }
-
     void updateIdleGCTimePoint()
     {
         lastIdleGCTimestamp_ = Clock::now();
+    }
+
+    bool ShouldCheckIdleGC() const
+    {
+        if (heapAliveSizeAfterGC_ == 0 || GetCommittedSize() <= MIN_BACKGROUNG_GC_LIMIT) {
+            return false;
+        }
+        bool reachMinGrowSize = GetHeapObjectSize() - heapAliveSizeAfterGC_ > (GetCommittedSize() >
+            IDLE_GC_SMALL_SIZE_LIMIT ? IDLE_GC_LARGE_INCREASE_SIZE : IDLE_GC_SMALL_INCREASE_SIZE);
+        return reachMinGrowSize;
+    }
+
+    size_t GetGlobalSpaceAllocLimit() const
+    {
+        return globalSpaceAllocLimit_;
     }
 
     // Whether should verify heap during gc.
@@ -340,7 +348,9 @@ protected:
     };
 
     static constexpr double TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE = 0.75;
-    static constexpr int IDLE_GC_MIN_INTERVAL = 100; // ms
+    static constexpr size_t IDLE_GC_SMALL_SIZE_LIMIT = 100_MB;
+    static constexpr size_t IDLE_GC_SMALL_INCREASE_SIZE = 5_MB;
+    static constexpr size_t IDLE_GC_LARGE_INCREASE_SIZE = 10_MB;
 
     const EcmaParamConfiguration config_;
     MarkType markType_ {MarkType::MARK_YOUNG};
@@ -1355,7 +1365,7 @@ private:
     // Threadshold that HintGC will actually trigger GC.
     static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
     static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8;
-    static constexpr double IDLE_SHARED_SIZE_LIMIT_RATE = 1.2;
+    static constexpr double IDLE_FULLGC_SPACE_USAGE_LIMIT_RATE = 0.7;
     static constexpr size_t NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT = DEFAULT_SHARED_HEAP_SIZE / 10; // 10 : ten times.
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
