@@ -526,10 +526,22 @@ BytecodeMetaData BytecodeMetaData::InitBytecodeMetaData(const uint8_t *pc)
         flags |= BytecodeFlags::GENERAL_BC;
     }
     auto size = inst.GetSize();
+    auto vregCount = GetVRegCount(inst);
     uint64_t value = SizeField::Encode(size) | KindField::Encode(kind) |
                      FlagsField::Encode(static_cast<BytecodeFlags>(flags)) |
-                     OpcodeField::Encode(inst.GetOpcode());
+                     OpcodeField::Encode(inst.GetOpcode()) | VRegCountField::Encode(vregCount);
     return BytecodeMetaData(value);
+}
+
+// static
+size_t BytecodeMetaData::GetVRegCount(const BytecodeInstruction &inst)
+{
+    size_t idx = 0;
+    BytecodeInstruction::Format format = inst.GetFormat();
+    while (inst.HasVReg(format, idx)) {
+        idx++;
+    }
+    return idx;
 }
 
 Bytecodes::Bytecodes()

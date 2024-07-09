@@ -56,6 +56,11 @@ public:
         snapshotData_.StoreArrayInfo(info);
     }
 
+    void StoreProtoTransTableInfo(JSHandle<JSTaggedValue> info)
+    {
+        snapshotData_.StoreProtoTransTableInfo(info);
+    }
+
     JSTaggedValue GetArrayInfo()
     {
         return snapshotData_.GetArrayInfo();

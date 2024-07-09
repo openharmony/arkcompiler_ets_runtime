@@ -19,6 +19,7 @@
 #include <algorithm>
 
 #include "ecmascript/base/config.h"
+#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
@@ -382,6 +383,10 @@ JSHandle<JSHClass> JSHClass::TransitionProto(const JSThread *thread, const JSHan
         if (newClass != nullptr) {
             return JSHandle<JSHClass>(thread, newClass);
         }
+        newClass = FindTransitionProtoForAOT(thread, jshclass, proto);
+        if (newClass != nullptr) {
+            return JSHandle<JSHClass>(thread, newClass);
+        }
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -401,6 +406,56 @@ JSHandle<JSHClass> JSHClass::TransitionProto(const JSThread *thread, const JSHan
 
     // parent is the same as jshclass, already copy
     return newJsHClass;
+}
+
+// static
+JSHClass *JSHClass::FindTransitionProtoForAOT(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                              const JSHandle<JSTaggedValue> &proto)
+{
+    if (!proto->IsECMAObject()) {
+        return nullptr;
+    }
+    JSHandle<JSHClass> baseIhc(thread, proto->GetTaggedObject()->GetClass());
+    if (!jshclass->IsTS() || !baseIhc->IsTS()) {
+        return nullptr;
+    }
+    auto transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    auto transHc = transitionTable->FindTransitionByHClass(thread,
+                                                           JSHandle<JSTaggedValue>(jshclass),
+                                                           JSHandle<JSTaggedValue>(baseIhc));
+    JSHandle<JSTaggedValue> transIhc(thread, transHc.first);
+    JSHandle<JSTaggedValue> transPhc(thread, transHc.second);
+    if (transIhc->IsUndefined() || transPhc->IsUndefined()) {
+        return nullptr;
+    }
+    ReBuildFunctionInheritanceRelationship(thread, proto, JSHandle<JSTaggedValue>(baseIhc), transIhc, transPhc);
+    return JSHClass::Cast(transIhc->GetTaggedObject());
+}
+
+// static
+void JSHClass::ReBuildFunctionInheritanceRelationship(const JSThread *thread,
+                                                      const JSHandle<JSTaggedValue> &proto,
+                                                      const JSHandle<JSTaggedValue> &baseIhc,
+                                                      const JSHandle<JSTaggedValue> &transIhc,
+                                                      const JSHandle<JSTaggedValue> &transPhc)
+{
+    JSHandle<JSHClass>::Cast(transIhc)->SetProto(thread, proto.GetTaggedValue());
+    if (baseIhc.GetTaggedType() == transPhc.GetTaggedType()) {
+        return;
+    }
+    // use transPhc to replace the hclass of proto
+    JSHandle<JSHClass> oldPhc(thread, proto->GetTaggedObject()->GetClass());
+    proto->GetTaggedObject()->SynchronizedSetClass(thread, JSHClass::Cast(transPhc->GetTaggedObject()));
+    ASSERT(JSHClass::Cast(transPhc->GetTaggedObject())->IsPrototype());
+    // update the prototype of new phc
+    JSHClass::Cast(transPhc->GetTaggedObject())->SetPrototype(thread, oldPhc->GetPrototype());
+    // enable prototype change marker
+    JSTaggedValue phcPrototype = JSHClass::Cast(transPhc->GetTaggedObject())->GetPrototype();
+    JSHandle<JSTaggedValue> parentPrototype(thread, phcPrototype);
+    ASSERT(parentPrototype->IsECMAObject());
+    JSHClass::EnablePHCProtoChangeMarker(thread,
+        JSHandle<JSHClass>(thread, parentPrototype->GetTaggedObject()->GetClass()));
+    JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(transIhc));
 }
 
 JSHandle<JSHClass> JSHClass::CloneWithAddProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
@@ -469,12 +524,15 @@ void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue
     SetProto(thread, proto);
 }
 
-void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto)
+void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
 {
     JSHandle<JSHClass> hclass(thread, proto->GetTaggedObject()->GetClass());
     ASSERT(!Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(*hclass))->InReadOnlySpace());
     if (!hclass->IsPrototype()) {
-        if (!hclass->IsTS() && !hclass->IsJSShared()) {
+        // Situations for clone proto hclass:
+        // 1: unshared non-ts hclass
+        // 2: no matter whether hclass is ts or not when set function prototype
+        if ((!hclass->IsTS() && !hclass->IsJSShared()) || isChangeProto) {
             // The local IC and on-proto IC are different, because the former don't need to notify the whole
             // prototype-chain or listen the changes of prototype chain, but the latter do. Therefore, when
             // an object becomes a prototype object at the first time, we need to copy its hidden class in
@@ -500,7 +558,10 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JST
 #endif
             JSObject::Cast(proto->GetTaggedObject())->SynchronizedSetClass(thread, *newProtoClass);
             newProtoClass->SetIsPrototype(true);
-            thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileTypeSafe(*hclass, *newProtoClass);
+            // still dump for class in this path now
+            if (!isChangeProto) {
+                thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileTypeSafe(*hclass, *newProtoClass);
+            }
         } else {
             // There is no sharing in AOT hclass. Therefore, it is not necessary or possible to clone here.
             hclass->SetIsPrototype(true);

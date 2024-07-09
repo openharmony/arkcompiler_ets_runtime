@@ -442,8 +442,15 @@ public:
     static void TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
                                        const JSHandle<JSObject> &obj);
     static JSHandle<JSHClass> TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
+    static void ReBuildFunctionInheritanceRelationship(const JSThread *thread,
+                                                       const JSHandle<JSTaggedValue> &proto,
+                                                       const JSHandle<JSTaggedValue> &baseIhc,
+                                                       const JSHandle<JSTaggedValue> &transIhc,
+                                                       const JSHandle<JSTaggedValue> &transPhc);
     static JSHandle<JSHClass> TransitionProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                               const JSHandle<JSTaggedValue> &proto);
+    static JSHClass *FindTransitionProtoForAOT(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                               const JSHandle<JSTaggedValue> &proto);
     static JSHandle<JSHClass> TransProtoWithoutLayout(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                                       const JSHandle<JSTaggedValue> &proto);
     static JSHandle<JSHClass> CloneWithAddProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
@@ -1982,7 +1989,8 @@ public:
                                        const JSHandle<JSTaggedValue> &proto);
     void SetPrototype(const JSThread *thread, JSTaggedValue proto);
     void PUBLIC_API SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
-    static void OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto);
+    static void OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JSTaggedValue> &proto,
+                                       bool isChangeProto = false);
     inline JSTaggedValue GetPrototype() const
     {
         return GetProto();

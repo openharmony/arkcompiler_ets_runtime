@@ -39,6 +39,7 @@ JSHandle<ConstantPool> AOTSnapshot::NewSnapshotConstantPool(uint32_t cacheSize)
     cp->SetAotHClassInfo(vm_->GetJSThread(), snapshotData_.GetHClassInfo());
     cp->SetAotArrayInfo(vm_->GetJSThread(), snapshotData_.GetArrayInfo());
     cp->SetConstantIndexInfo(vm_->GetJSThread(), snapshotData_.GetConstantIndexInfo());
+    cp->SetProtoTransTableInfo(vm_->GetJSThread(), snapshotData_.GetProtoTransTableInfo());
     return cp;
 }
 

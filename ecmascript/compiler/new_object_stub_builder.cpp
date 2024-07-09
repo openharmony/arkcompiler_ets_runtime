@@ -889,7 +889,7 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
             Jump(&afterDealWithCompiledStatus);
         }
     }
-    // Notice: we set code entries for all function to deal with these senarios
+    // Notice: we set code entries for all function to deal with these situations
     // 1) AOT compiled method, set AOT compiled code entry
     // 2) define func with the deopted method, set the AOTToAsmInterpBridge
     Bind(&tryInitFuncCodeEntry);
@@ -1036,7 +1036,7 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
     if (JSFunction::IsNormalFunctionAndCanSkipWbWhenInitialization(getKind)) {
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryOrder::NoBarrier());
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryOrder::NoBarrier());
-
+        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryOrder::NoBarrier());
         if (JSFunction::HasPrototype(getKind)) {
             auto funcprotoAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                             ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR);
@@ -1080,6 +1080,7 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
         SetLexicalEnvToFunction(glue, func, Undefined(), MemoryOrder::NoBarrier());
         SetHomeObjectToFunction(glue, func, Undefined(), MemoryOrder::NoBarrier());
         SetProtoOrHClassToFunction(glue, func, Hole(), MemoryOrder::NoBarrier());
+        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryOrder::NoBarrier());
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryOrder::NoBarrier());
         SetMethodToFunction(glue, func, Undefined(), MemoryOrder::NoBarrier());
 

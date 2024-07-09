@@ -18,7 +18,7 @@ declare var ArkTools:any;
 
 function Test1() {
   function A() {
-    this.x = "1"; // asm
+    this.x = "1"; // store: this.x --> type: MONO_STORE_PROPERTY
   }
 
   // store: A.prototype.foo --> type: MONO_STORE_PROPERTY

@@ -515,13 +515,19 @@ void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTa
         auto &PandaCpInfoInserted = fileNameToMulCpMap.try_emplace(fileNameCStr).first->second;
         PandaCpInfoInserted.fileIndex_ = fileIndex;
         MultiConstantPoolMap &cpMap = PandaCpInfoInserted.multiCpsMap_;
+        auto context = thread->GetCurrentEcmaContext();
+        if (cpLen > 0) {
+            JSTaggedValue cp = cpList->Get(AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE - 1);  // first constpool
+            context->LoadProtoTransitionTable(cp);
+        }
         for (uint32_t pos = 0; pos < cpLen; pos += AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE) {
             int32_t constantPoolID = cpList->Get(pos).GetInt();
             JSTaggedValue cp = cpList->Get(pos + 1);
+            context->ResetProtoTransitionTableOnConstpool(cp);
             cpMap.insert({constantPoolID, cp});
             // the arkui framework abc file constpool was patched here
             if (frameworkHelper.IsFrameworkAbcFile(fileNameStr)) {
-                thread->GetCurrentEcmaContext()->UpdateConstpoolWhenDeserialAI(fileNameStr, cp, constantPoolID);
+                context->UpdateConstpoolWhenDeserialAI(fileNameStr, cp, constantPoolID);
             }
         }
     }

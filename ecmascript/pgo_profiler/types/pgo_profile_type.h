@@ -56,6 +56,8 @@ public:
         UnknowId,
         GlobalsId,
         JITClassId,
+        TransitionClassId,      // function class id after set prototype
+        TransitionPrototypeId   // function prototype id after set prototype
     };
 
     static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
@@ -287,9 +289,34 @@ public:
         return GetKind() == Kind::PrototypeId;
     }
 
+    bool IsTransitionClassType() const
+    {
+        return GetKind() == Kind::TransitionClassId;
+    }
+
+    bool IsTransitionPrototype() const
+    {
+        return GetKind() == Kind::TransitionPrototypeId;
+    }
+
+    bool IsTransitionType() const
+    {
+        return IsTransitionClassType() || IsTransitionPrototype();
+    }
+
     bool IsMegaStateType() const
     {
         return GetKind() == Kind::MegaStateKinds;
+    }
+
+    bool IsGeneralizedClassType() const
+    {
+        return IsClassType() || IsTransitionClassType();
+    }
+
+    bool IsGeneralizedPrototype() const
+    {
+        return IsPrototype() || IsTransitionPrototype();
     }
 
     uint32_t GetId() const
@@ -310,8 +337,7 @@ public:
     void UpdateAbcId(ApEntityId abcId)
     {
         if (abcId > HUGE_ABC_ID) {
-            // only for debug purpose, do not merge to release version
-            LOG_ECMA(FATAL) << "huge abcId: " << abcId;
+            LOG_ECMA(FATAL) << "huge abcId: " << abcId;  // only for debug purpose, do not merge to release version
         }
         type_ = AbcIdBits::Update(type_, abcId);
     }
@@ -337,8 +363,7 @@ public:
         stream << "Type: " << "(isRoot: " << IsRootType() <<
                 ", ever out of bounds: " << IsEverOutOfBounds() <<
                 ", kind: " << std::showbase << std::dec << static_cast<uint32_t>(GetKind()) <<
-                ", abcId: " << GetAbcId() <<
-                ", id: " << GetId() << ")";
+                ", abcId: " << GetAbcId() << ", id: " << GetId() << ")";
         return stream.str();
     }
 

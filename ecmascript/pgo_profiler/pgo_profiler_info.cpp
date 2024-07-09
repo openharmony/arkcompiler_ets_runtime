@@ -706,6 +706,7 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
     }
 
     recordPool_->Merge(*recordInfos.recordPool_);
+    protoTransitionPool_->Merge(*recordInfos.protoTransitionPool_);
     // Merge global layout desc infos to global method info map
     std::set<PGOHClassTreeDesc> hclassTreeDescInfos = recordInfos.hclassTreeDescInfos_;
     for (auto info = hclassTreeDescInfos.begin(); info != hclassTreeDescInfos.end();
@@ -726,12 +727,14 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
 void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *const header)
 {
     header_ = header;
+    // ProfileTypePool must be parsed at first
     PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *profileTypePool_->GetPool());
     if (!abcIdRemap_.empty()) {
         // step2: [abc pool merge] remap decoder's profileType pool's abcId field.
         LOG_ECMA(DEBUG) << "remap with abcRemapSize: " << abcIdRemap_.size();
         profileTypePool_->Remap(*this);
     }
+    PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *protoTransitionPool_);
     PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *recordPool_);
     SectionInfo *info = header->GetRecordInfoSection();
     void *addr = reinterpret_cast<void *>(reinterpret_cast<uintptr_t>(buffer) + info->offset_);
@@ -814,6 +817,8 @@ void PGORecordDetailInfos::ProcessToBinary(
     info->size_ = static_cast<uint32_t>(fileStream.tellp()) - info->offset_;
 
     PGOFileSectionInterface::ProcessSectionToBinary(*this, fileStream, header, *recordPool_);
+    PGOFileSectionInterface::ProcessSectionToBinary(*this, fileStream, header, *protoTransitionPool_);
+    // ProfileTypePool must be processed at last
     PGOFileSectionInterface::ProcessSectionToBinary(*this, fileStream, header, *profileTypePool_->GetPool());
 }
 
@@ -923,12 +928,15 @@ void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
         methodInfos->ProcessToText(hotnessThreshold_, recordName, stream);
     }
     recordPool_->ProcessToText(stream);
+    protoTransitionPool_->ProcessToText(stream);
+    // ProfileTypePool must be processed at last
     profileTypePool_->GetPool()->ProcessToText(stream);
 }
 
 void PGORecordDetailInfos::InitSections()
 {
     recordPool_ = std::make_unique<PGORecordPool>();
+    protoTransitionPool_ = std::make_unique<PGOProtoTransitionPool>();
     profileTypePool_ = std::make_unique<PGOProfileTypePool>();
 }
 
@@ -944,6 +952,7 @@ void PGORecordDetailInfos::Clear()
     hclassTreeDescInfos_.clear();
     recordInfos_.clear();
     recordPool_->Clear();
+    protoTransitionPool_->Clear();
     profileTypePool_->Clear();
     hclassTreeDescInfos_.clear();
     abcIdRemap_.clear();
@@ -971,6 +980,7 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
                                            std::shared_ptr<PGOAbcFilePool> &abcFilePool)
 {
     header_ = header;
+    // ProfileTypePool must be parsed at first
     if (!PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *profileTypePool_->GetPool())) {
         LOG_ECMA(ERROR) << "Parse from binary failed for profile type pool.";
         return;
@@ -979,6 +989,10 @@ void PGORecordSimpleInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         // step2: [abc pool merge] remap decoder's profileType pool's abcId field.
         LOG_ECMA(DEBUG) << "remap with abcRemapSize: " << abcIdRemap_.size();
         profileTypePool_->Remap(*this);
+    }
+    if (!PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *protoTransitionPool_)) {
+        LOG_ECMA(ERROR) << "Parse from binary failed for proto transition pool.";
+        return;
     }
     if (!PGOFileSectionInterface::ParseSectionFromBinary(*this, buffer, header, *recordPool_)) {
         LOG_ECMA(ERROR) << "Parse from binary failed for record pool.";
@@ -1039,6 +1053,7 @@ void PGORecordSimpleInfos::Merge(const PGORecordSimpleInfos &simpleInfos)
         }
     }
     recordPool_->Merge(*simpleInfos.recordPool_);
+    protoTransitionPool_->Merge(*simpleInfos.protoTransitionPool_);
     // Merge global layout desc infos to global method info map
     for (const auto &hclassTreeDescInfo : simpleInfos.hclassTreeDescInfos_) {
         auto result = hclassTreeDescInfos_.find(hclassTreeDescInfo);
@@ -1070,6 +1085,7 @@ bool PGORecordSimpleInfos::ParseFromBinaryForLayout(void **buffer)
 void PGORecordSimpleInfos::InitSections()
 {
     recordPool_ = std::make_unique<PGORecordPool>();
+    protoTransitionPool_ = std::make_unique<PGOProtoTransitionPool>();
     profileTypePool_ = std::make_unique<PGOProfileTypePool>();
 }
 

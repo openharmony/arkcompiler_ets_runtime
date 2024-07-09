@@ -16,6 +16,7 @@
 #include "ecmascript/js_function.h"
 
 #include "ecmascript/base/error_type.h"
+#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_env.h"
@@ -104,6 +105,7 @@ void JSFunction::InitializeWithDefaultValue(JSThread *thread, const JSHandle<JSF
     func->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
     func->SetMethod(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetModule(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
+    func->SetProtoTransRootHClass(thread, JSTaggedValue::Undefined(), SKIP_BARRIER);
     func->SetCodeEntry(reinterpret_cast<uintptr_t>(nullptr));
     func->SetTaskConcurrentFuncFlag(0); // 0 : default value
 }
@@ -132,6 +134,7 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
     }
 
     JSHandle<JSTaggedValue> proto;
+    bool needProfileTransition = false;
     if (!fun->HasFunctionPrototype()) {
         proto = JSHandle<JSTaggedValue>::Cast(NewJSFunctionPrototype(thread, fun));
         if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
@@ -140,13 +143,18 @@ JSHClass *JSFunction::GetOrCreateInitialJSHClass(JSThread *thread, const JSHandl
         }
     } else {
         proto = JSHandle<JSTaggedValue>(thread, fun->GetProtoOrHClass());
+        needProfileTransition = proto->IsECMAObject();
     }
 
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSHClass> hclass = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, proto);
     fun->SetProtoOrHClass(thread, hclass);
     if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
-        thread->GetEcmaVM()->GetPGOProfiler()->ProfileClassRootHClass(fun.GetTaggedType(), hclass.GetTaggedType());
+        if (!needProfileTransition) {
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileClassRootHClass(fun.GetTaggedType(), hclass.GetTaggedType());
+        } else {
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileProtoTransitionClass(fun, hclass, proto);
+        }
     }
     return *hclass;
 }
@@ -174,15 +182,29 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
         JSHandle<JSTaggedValue> hclass(thread, protoOrHClass);
         JSHandle<JSTaggedValue> newClass = JSHClass::SetPrototypeWithNotification(thread, hclass, value);
         func->SetProtoOrHClass(thread, newClass);
+        // Forbide to profile for changing the function prototype after an instance of the function has been created
+        if (!JSHClass::Cast(hclass->GetTaggedObject())->IsTS() && thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+            EntityId ctorMethodId = Method::Cast(func->GetMethod().GetTaggedObject())->GetMethodId();
+            thread->GetEcmaVM()->GetPGOProfiler()->InsertSkipCtorMethodIdSafe(ctorMethodId);
+        }
     } else {
-        SetFunctionPrototypeOrInstanceHClass(thread, func, value.GetTaggedValue());
-    }
-    // Since dynamically setting the prototype will cause a transition,
-    // but the HClass of the AOT after the transition cannot be obtained,
-    // in order to avoid subsequent Deopt, PGO gives up collecting this type.
-    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
-        EntityId ctorMethodId = Method::Cast(func->GetMethod())->GetMethodId();
-        thread->GetEcmaVM()->GetPGOProfiler()->InsertSkipCtorMethodIdSafe(ctorMethodId);
+        if (!value->IsECMAObject()) {
+            func->SetProtoOrHClass(thread, value.GetTaggedValue());
+            return true;
+        }
+
+        bool enablePgo = thread->GetEcmaVM()->IsEnablePGOProfiler();
+        JSMutableHandle<JSTaggedValue> oldPrototype(thread, func->GetProtoOrHClass());
+        // For pgo, we need the oldPrototype to record the old ihc and phc.
+        if (enablePgo && oldPrototype->IsHole()) {
+            oldPrototype.Update(JSHandle<JSTaggedValue>::Cast(NewJSFunctionPrototype(thread, func)));
+        }
+        JSHandle<JSTaggedValue> baseIhc(thread, value->GetTaggedObject()->GetClass());
+        func->SetProtoOrHClass(thread, value.GetTaggedValue());
+        JSHClass::OptimizePrototypeForIC(thread, value, true);
+        if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+            thread->GetEcmaVM()->GetPGOProfiler()->ProfileProtoTransitionPrototype(func, value, oldPrototype, baseIhc);
+        }
     }
     return true;
 }

@@ -115,6 +115,15 @@ public:
         return GetNumVregsWithCallField() + GetNumArgs();
     }
 
+    uint32_t GetNewTargetVregIndex() const
+    {
+        if (!HaveNewTargetWithCallField()) {
+            return 0;
+        }
+        uint32_t numVregs = GetNumVregsWithCallField();
+        return HaveFuncWithCallField() ? (numVregs + 1) : numVregs;
+    }
+
     static uint64_t SetNativeBit(uint64_t callField, bool isNative)
     {
         return IsNativeBit::Update(callField, isNative);

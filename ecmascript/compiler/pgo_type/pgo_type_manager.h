@@ -95,6 +95,41 @@ public:
         locToElmsKindMap_.emplace(loc, kind);
     }
 
+    struct ProtoTransType {
+        ProtoTransType(ProfileType ihcType,
+                       ProfileType baseRootType,
+                       ProfileType baseType,
+                       ProfileType transIhcType,
+                       ProfileType transPhcType)
+            : ihcType(ihcType),
+              baseRootType(baseRootType),
+              baseType(baseType),
+              transIhcType(transIhcType),
+              transPhcType(transPhcType) {}
+
+        ProfileType ihcType {};
+        ProfileType baseRootType {};
+        ProfileType baseType {};
+        ProfileType transIhcType {};
+        ProfileType transPhcType {};
+    };
+
+    inline void RecordProtoTransType(const ProtoTransType &type)
+    {
+        protoTransTypes_.emplace_back(type);
+    }
+
+    std::vector<ProfileType> FindAllTransPhcByBaseType(ProfileType baseRootType)
+    {
+        std::vector<ProfileType> transPhcs;
+        for (auto &transType: protoTransTypes_) {
+            if (baseRootType == transType.baseRootType) {
+                transPhcs.emplace_back(transType.transPhcType);
+            }
+        }
+        return transPhcs;
+    }
+
     inline void ClearHCInfoLocal()
     {
         hclassInfoLocal_.clear();
@@ -127,6 +162,7 @@ private:
     void GenSymbolInfo();
     void GenArrayInfo();
     void GenConstantIndexInfo();
+    void GenProtoTransitionInfo();
 
     uint32_t GetSymbolCountFromHClassData();
 
@@ -141,6 +177,8 @@ private:
     CUnorderedMap<PGOTypeLocation, ElementsKind, HashPGOTypeLocation> locToElmsKindMap_ {};
     CMap<ProfileTyper, uint32_t> profileTyperToHClassIndex_ {};
     CMap<ProfileTypeTuple, uint64_t> profileTypeToSymbolId_ {};
+    std::vector<ProtoTransType> protoTransTypes_;
+
     AOTSnapshot aotSnapshot_;
 
     // Since there is only one PGOTypeManager instance during compilation,

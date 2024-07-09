@@ -18,6 +18,7 @@
 #include <chrono>
 #include <memory>
 
+#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/ic/ic_handler.h"
@@ -133,6 +134,76 @@ void PGOProfiler::ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcV
         ProfileType ihcProfileType(GetMethodAbcId(ctorFunc), entityId, kind, true);
         InsertProfileTypeSafe(rootHcValue, rootHcValue, ihcProfileType);
     }
+}
+
+void PGOProfiler::ProfileProtoTransitionClass(JSHandle<JSFunction> func,
+                                              JSHandle<JSHClass> hclass,
+                                              JSHandle<JSTaggedValue> proto)
+{
+    if (!isEnable_) {
+        return;
+    }
+    auto thread = vm_->GetJSThread();
+    JSHClass *phc = proto->GetTaggedObject()->GetClass();
+    JSHClass *phcRoot = JSHClass::FindRootHClass(phc);
+    auto *transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    JSTaggedType baseIhc = transitionTable->GetFakeParent(JSTaggedType(phcRoot));
+    if (baseIhc == 0) {
+        LOG_ECMA(DEBUG) << "fake parent not found!";
+        ProfileClassRootHClass(func.GetTaggedType(), hclass.GetTaggedType());
+        return;
+    }
+    JSTaggedType ihc = func->GetProtoTransRootHClass().GetRawData();
+    if (JSTaggedValue(ihc).IsUndefined()) {
+        LOG_ECMA(DEBUG) << "maybe the prototype of the current function is just the initial prototype!";
+        ProfileClassRootHClass(func.GetTaggedType(), hclass.GetTaggedType());
+        return;
+    }
+    [[maybe_unused]] bool success = transitionTable->TryInsertFakeParentItem(hclass.GetTaggedType(), ihc);
+    ASSERT(success == true);  // ihc wont conflict
+    // record original ihc type
+    ProfileClassRootHClass(func.GetTaggedType(), ihc, ProfileType::Kind::ClassId);
+    // record transition ihc type
+    ProfileClassRootHClass(func.GetTaggedType(), hclass.GetTaggedType(), ProfileType::Kind::TransitionClassId);
+}
+
+void PGOProfiler::ProfileProtoTransitionPrototype(JSHandle<JSFunction> func,
+                                                  JSHandle<JSTaggedValue> prototype,
+                                                  JSHandle<JSTaggedValue> oldPrototype,
+                                                  JSHandle<JSTaggedValue> baseIhc)
+{
+    if (!isEnable_) {
+        return;
+    }
+    auto method = func->GetMethod();
+    if (Method::Cast(method)->IsNativeWithCallField()) {
+        return;
+    }
+    // set prototype once, and just skip this time
+    if (!func->GetProtoTransRootHClass().IsUndefined()) {
+        return;
+    }
+    auto thread = vm_->GetJSThread();
+    // insert transition item
+    JSHandle<JSTaggedValue> transIhc(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> transPhc(thread, prototype->GetTaggedObject()->GetClass());
+    if (JSHandle<JSHClass>(baseIhc)->IsDictionaryMode() || JSHandle<JSHClass>(transPhc)->IsDictionaryMode()) {
+        return;
+    }
+    auto *transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    bool success = transitionTable->TryInsertFakeParentItem(transPhc.GetTaggedType(), baseIhc.GetTaggedType());
+    if (!success) {
+        return;
+    }
+    // Do not generate ihc lazily, beacause it's used for the key of hash table
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSHClass> ihc = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_OBJECT, oldPrototype);
+    func->SetProtoTransRootHClass(thread, JSHandle<JSTaggedValue>(ihc));
+
+    // record phc type
+    JSHClass *phc0Root = JSHClass::FindRootHClass(oldPrototype->GetTaggedObject()->GetClass());
+    ProfileClassRootHClass(func.GetTaggedType(), JSTaggedType(phc0Root), ProfileType::Kind::PrototypeId);
+    ProfileClassRootHClass(func.GetTaggedType(), transPhc.GetTaggedType(), ProfileType::Kind::TransitionPrototypeId);
 }
 
 void PGOProfiler::ProfileDefineGetterSetter(JSHClass* receiverHClass,
@@ -946,6 +1017,7 @@ void PGOProfiler::DumpICByValueWithPoly(ApEntityId abcId,
 bool PGOProfiler::DumpICByNameWithHandler(ApEntityId abcId, const CString &recordName, EntityId methodId,
                                           int32_t bcOffset, JSHClass *hclass, JSTaggedValue secondValue, BCType type)
 {
+    TryDumpProtoTransitionType(hclass);
     if (type == BCType::LOAD) {
         return DumpICLoadByNameWithHandler(abcId, recordName, methodId, bcOffset, hclass, secondValue);
     }
@@ -1040,6 +1112,7 @@ bool PGOProfiler::DumpICLoadByNameWithHandler(ApEntityId abcId, const CString &r
 void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &recordName, EntityId methodId,
                                            int32_t bcOffset, JSHClass *hclass, JSTaggedValue secondValue, BCType type)
 {
+    TryDumpProtoTransitionType(hclass);
     if (type == BCType::LOAD) {
         if (secondValue.IsInt()) {
             auto handlerInfo = static_cast<uint32_t>(secondValue.GetInt());
@@ -1135,6 +1208,47 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
     }
 }
 
+void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
+{
+    JSHClass *ihc1 = JSHClass::FindRootHClass(hclass);
+    auto transitionType = GetProfileTypeSafe(JSTaggedType(ihc1), JSTaggedType(ihc1));
+    if (transitionType.IsNone() || !transitionType.IsTransitionClassType()) {
+        return;
+    }
+    ASSERT(transitionType.IsRootType());
+    JSTaggedValue phc1Root = JSHClass::FindProtoRootHClass(ihc1);
+
+    auto thread = vm_->GetJSThread();
+    auto *transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
+    JSTaggedType ihc0 = transitionTable->GetFakeParent(JSTaggedType(ihc1));
+    JSTaggedType baseIhc = transitionTable->GetFakeParent(phc1Root.GetRawData());
+    if ((ihc0 == 0) || (baseIhc == 0)) {
+        return;
+    }
+    UpdateLayout(JSHClass::Cast(JSTaggedValue(ihc0).GetTaggedObject()));
+    UpdateLayout(ihc1);
+    UpdateLayout(JSHClass::Cast(JSTaggedValue(baseIhc).GetTaggedObject()));
+
+    auto ihc0RootType = GetProfileTypeSafe(ihc0, ihc0);
+    ASSERT(ihc0RootType.IsRootType());
+    auto transitionProtoType = GetProfileTypeSafe(phc1Root.GetRawData(), phc1Root.GetRawData());
+    ASSERT(transitionProtoType.IsRootType());
+    auto baseRootHClass = JSHClass::FindRootHClass(JSHClass::Cast(JSTaggedValue(baseIhc).GetTaggedObject()));
+    auto baseRootType = GetProfileTypeSafe(JSTaggedType(baseRootHClass), JSTaggedType(baseRootHClass));
+    if (!baseRootType.IsRootType()) {
+        LOG_ECMA(WARN) << "Unsupported prototypes which cannot be recorded!";
+        return;
+    }
+    auto baseType = GetProfileTypeSafe(JSTaggedType(baseRootHClass), baseIhc);
+    ASSERT(!baseType.IsNone());
+    PGOProtoTransitionType protoTransitionType(ihc0RootType);
+    protoTransitionType.SetBaseType(baseRootType, baseType);
+    protoTransitionType.SetTransitionType(transitionType);
+    protoTransitionType.SetTransitionProtoPt(transitionProtoType);
+
+    recordInfos_->GetProtoTransitionPool()->Add(protoTransitionType);
+}
+
 void PGOProfiler::DumpOpType(ApEntityId abcId, const CString &recordName, EntityId methodId, int32_t bcOffset,
                              uint32_t slotId, ProfileTypeInfo *profileTypeInfo)
 {
@@ -1187,7 +1301,7 @@ void PGOProfiler::DumpDefineClass(ApEntityId abcId, const CString &recordName, E
             auto hclass = JSHClass::Cast(protoOrHClass.GetTaggedObject());
             auto result = InsertProfileTypeSafe(JSTaggedType(hclass), JSTaggedType(hclass), localType.GetProfileType());
             if (!result) {
-                LOG_COMPILER(INFO)
+                LOG_COMPILER(DEBUG)
                     << "DumpDefineClass InsertFail, May already exist , Method Name "
                     << Method::Cast(ctorFunction->GetMethod())->GetMethodName();
             }
@@ -1672,9 +1786,25 @@ bool PGOProfiler::AddBuiltinsInfo(
     return true;
 }
 
+bool PGOProfiler::IsRecoredTransRootType(ProfileType type)
+{
+    if (!type.IsRootType() || !type.IsTransitionType()) {
+        return false;
+    }
+    if (std::find(recordedTransRootType_.begin(), recordedTransRootType_.end(), type) != recordedTransRootType_.end()) {
+        LOG_ECMA(DEBUG) << "forbide to add more than 1 hclass for a root type!";
+        return true;
+    }
+    recordedTransRootType_.emplace_back(type);
+    return false;
+}
+
 bool PGOProfiler::InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType)
 {
     if (!isEnable_) {
+        return false;
+    }
+    if (IsRecoredTransRootType(traceType)) {
         return false;
     }
     auto iter = tracedProfiles_.find(root);
