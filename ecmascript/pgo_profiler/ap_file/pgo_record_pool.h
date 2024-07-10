@@ -278,6 +278,7 @@ public:
         for (auto &entry : pool->GetPool()->GetPool()) {
             auto emplacedEntry = GetPool()->GetPool().try_emplace(entry.first, entry.second.GetData());
             emplacedEntry.first->second.SetEntryId(entry.first);
+            GetPool()->GetValueToId().try_emplace(entry.second.GetData(), entry.first);
         }
     }
 };
