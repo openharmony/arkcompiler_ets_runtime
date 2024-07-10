@@ -292,7 +292,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     }                                                                                                                \
     Bind(&clearMachineCode);                                                                                         \
     {                                                                                                                \
-        Store(VariableType::NATIVE_POINTER(), glue, *varOsrCache, *varMachineCodeOffset, NullPtr());                 \
+        Store(VariableType::NATIVE_POINTER(), glue, *varOsrCache, *varMachineCodeOffset, Undefined());               \
         Jump(&executeBCByInterpreter);                                                                               \
     }                                                                                                                \
     Bind(&executeBCByAOT);                                                                                           \
