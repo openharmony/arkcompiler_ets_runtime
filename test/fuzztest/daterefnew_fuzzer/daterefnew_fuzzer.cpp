@@ -68,7 +68,7 @@ namespace OHOS {
             input = ecmascript::base::NAN_VALUE;
         }
         Local<DateRef> date = DateRef::New(vm, input);
-        date->GetTime();
+        date->GetTime(vm);
         JSNApi::DestroyJSVM(vm);
     }
 

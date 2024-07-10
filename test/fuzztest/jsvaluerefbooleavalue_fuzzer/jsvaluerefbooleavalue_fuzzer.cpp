@@ -34,10 +34,10 @@ void BooleaValueFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     }
     if (size % DIVIDEND == 0) {
         Local<JSValueRef> tag = JSValueRef::False(vm);
-        tag->BooleaValue();
+        tag->BooleaValue(vm);
     } else {
         Local<JSValueRef> tag = JSValueRef::True(vm);
-        tag->BooleaValue();
+        tag->BooleaValue(vm);
     }
     JSNApi::DestroyJSVM(vm);
 }

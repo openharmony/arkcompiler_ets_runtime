@@ -49,7 +49,7 @@ void SetRefGetSizeFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     Local<SetRef> set = JSNApiHelper::ToLocal<SetRef>(setTag);
     JSHandle<JSTaggedValue> fristValue(factory->NewFromASCII("vlue1"));
     JSSet::Add(vm->GetJSThread(), jsSet, fristValue);
-    set->GetSize();
+    set->GetSize(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

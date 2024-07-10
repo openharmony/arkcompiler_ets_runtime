@@ -42,8 +42,8 @@ void Int32GetSizeFuzzerTest(const uint8_t *data, size_t size)
     Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, value, (int32_t)size);
     Local<JSValueRef> objectvalue = StringRef::NewFromUtf8(vm_, value, (int32_t)size);
     object->Set(vm_, key, objectvalue);
-    object->GetSize();
-    object->GetTotalElements();
+    object->GetSize(vm_);
+    object->GetTotalElements(vm_);
     object->Get(vm_, key);
     object->GetKey(vm_, 0);
     object->GetValue(vm_, 0);

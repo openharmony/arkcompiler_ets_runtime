@@ -160,7 +160,7 @@ void CheckReject(JsiRuntimeCallInfo *info)
     ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> reason = info->GetCallArgRef(0);
     ASSERT_TRUE(reason->IsString(info->GetVM()));
-    ASSERT_EQ(Local<StringRef>(reason)->ToString(), "Reject");
+    ASSERT_EQ(Local<StringRef>(reason)->ToString(info->GetVM()), "Reject");
 }
 
 Local<JSValueRef> RejectCallback(JsiRuntimeCallInfo *info)
@@ -321,16 +321,16 @@ HWTEST_F_L0(JSNApiTests, GetKind_entries_values_keys)
     EXPECT_EQ(JSTaggedValue::SameValue(jsMapIterator->GetIteratedMap(), jsMap->GetLinkedMap()), true);
     Local<MapIteratorRef> mapIterator = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag);
     Local<JSValueRef> res = mapIterator->GetKind(vm_);
-    EXPECT_EQ(expectedResult, res->ToString(vm_)->ToString());
+    EXPECT_EQ(expectedResult, res->ToString(vm_)->ToString(vm_));
     EXPECT_TRUE(mapIterator->IsMapIterator(vm_));
     JSHandle<JSTaggedValue> jsMapIteratorTag1 = JSMapIterator::CreateMapIterator(thread, mapTag, IterationKind::KEY);
     Local<MapIteratorRef> mapIterator1 = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag1);
     Local<JSValueRef> res1 = mapIterator1->GetKind(vm_);
-    EXPECT_EQ(keysResult, res1->ToString(vm_)->ToString());
+    EXPECT_EQ(keysResult, res1->ToString(vm_)->ToString(vm_));
     JSHandle<JSTaggedValue> jsMapIteratorTag2 = JSMapIterator::CreateMapIterator(thread, mapTag, IterationKind::VALUE);
     Local<MapIteratorRef> mapIterator2 = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag2);
     Local<JSValueRef> res2 = mapIterator2->GetKind(vm_);
-    EXPECT_EQ(valuesResult, res2->ToString(vm_)->ToString());
+    EXPECT_EQ(valuesResult, res2->ToString(vm_)->ToString(vm_));
 }
 
 /**
@@ -360,7 +360,7 @@ HWTEST_F_L0(JSNApiTests, GetKind_001)
     EXPECT_EQ(JSTaggedValue::SameValue(jsMapIterator1->GetIteratedMap(), jsMap->GetLinkedMap()), true);
     Local<MapIteratorRef> mapIterator1 = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag1);
     Local<JSValueRef> res1 = mapIterator1->GetKind(vm_);
-    EXPECT_EQ(keysResult, res1->ToString(vm_)->ToString());
+    EXPECT_EQ(keysResult, res1->ToString(vm_)->ToString(vm_));
 }
 
 /**
@@ -390,7 +390,7 @@ HWTEST_F_L0(JSNApiTests, GetKind_002)
     EXPECT_EQ(JSTaggedValue::SameValue(jsMapIterator2->GetIteratedMap(), jsMap->GetLinkedMap()), true);
     Local<MapIteratorRef> mapIterator2 = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag2);
     Local<JSValueRef> res2 = mapIterator2->GetKind(vm_);
-    EXPECT_EQ(valuesResult, res2->ToString(vm_)->ToString());
+    EXPECT_EQ(valuesResult, res2->ToString(vm_)->ToString(vm_));
 }
 
 /**
@@ -427,7 +427,7 @@ HWTEST_F_L0(JSNApiTests, GetKind_003)
     // 将jsMapIteratorTag转换为本地代码可以使用的MapIteratorRef类型
     Local<MapIteratorRef> mapIterator = JSNApiHelper::ToLocal<MapIteratorRef>(jsMapIteratorTag);
     Local<JSValueRef> res = mapIterator->GetKind(vm_);
-    EXPECT_EQ(expectedResult, res->ToString(vm_)->ToString());
+    EXPECT_EQ(expectedResult, res->ToString(vm_)->ToString(vm_));
     EXPECT_TRUE(mapIterator->IsMapIterator(vm_));
 }
 
@@ -828,12 +828,12 @@ HWTEST_F_L0(JSNApiTests, WeakSetRef_GetSize_GetTotalElements_GetValue)
     Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
     JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
     JSWeakSet::Add(thread, weakSet, value);
-    int32_t num = set->GetSize();
-    int32_t num1 = set->GetTotalElements();
+    int32_t num = set->GetSize(vm_);
+    int32_t num1 = set->GetTotalElements(vm_);
     ASSERT_EQ(num, 1);
     ASSERT_EQ(num1, 1);
     Local<JSValueRef> res2 = set->GetValue(vm_, 0);
-    ASSERT_EQ(res2->ToString(vm_)->ToString(), "value");
+    ASSERT_EQ(res2->ToString(vm_)->ToString(vm_), "value");
 }
 
 /**
@@ -994,7 +994,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf16_NewFromUtf16_Length_WriteUtf16_01)
     LocalScope scope(vm_);
     const char16_t *test = u"年度";
     Local<StringRef> testString = StringRef::NewFromUtf16(vm_, test);
-    EXPECT_EQ(testString->Length(), 2);              // 2 : length of testString("年度")
+    EXPECT_EQ(testString->Length(vm_), 2);              // 2 : length of testString("年度")
     char16_t buffer[3];                              // 3 : length of testString + 1
     EXPECT_EQ(testString->WriteUtf16(vm_, buffer, 2), 2); // 2 : length of testString("年度")
     GTEST_LOG_(WARNING) << "年度test =" << buffer;
@@ -1015,7 +1015,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf16_NewFromUtf16_Length_WriteUtf16_02)
     const char16_t *test = u"hello world!0?";
     Local<StringRef> testString = StringRef::NewFromUtf16(vm_, test);
 
-    EXPECT_EQ(testString->Length(), 14);
+    EXPECT_EQ(testString->Length(vm_), 14);
     char16_t buffer[15];                               // 15 : length of testString + 1
     EXPECT_EQ(testString->WriteUtf16(vm_, buffer, 14), 14); // 14 : length of testString("hello world!!!")
     ASSERT_EQ(buffer[0], u'h');
@@ -1050,20 +1050,20 @@ HWTEST_F_L0(JSNApiTests, SetRef_IsSet_GetSize_GetTotalElements_GetValue)
     JSHandle<JSTaggedValue> fristValue(factory->NewFromASCII("vlue1"));
     JSSet::Add(thread, jsSet, fristValue);
     JSSet::Add(thread, jsSet, fristValue);
-    int32_t num = set->GetSize();
-    int32_t num1 = set->GetTotalElements();
+    int32_t num = set->GetSize(vm_);
+    int32_t num1 = set->GetTotalElements(vm_);
     ASSERT_EQ(num, 1);
     ASSERT_EQ(num1, 1);
     JSHandle<JSTaggedValue> secondValue(factory->NewFromASCII("vlue2"));
     JSSet::Add(thread, jsSet, secondValue);
-    num = set->GetSize();
-    num1 = set->GetTotalElements();
+    num = set->GetSize(vm_);
+    num1 = set->GetTotalElements(vm_);
     ASSERT_EQ(num, 2);
     ASSERT_EQ(num1, 2);
     Local<JSValueRef> res1 = set->GetValue(vm_, 0);
-    ASSERT_EQ(res1->ToString(vm_)->ToString(), "vlue1");
+    ASSERT_EQ(res1->ToString(vm_)->ToString(vm_), "vlue1");
     Local<JSValueRef> res2 = set->GetValue(vm_, 1);
-    ASSERT_EQ(res2->ToString(vm_)->ToString(), "vlue2");
+    ASSERT_EQ(res2->ToString(vm_)->ToString(vm_), "vlue2");
 }
 
 static JSSet *CreateJSSet(JSThread *thread)
@@ -1102,7 +1102,7 @@ HWTEST_F_L0(JSNApiTests, JSSetIterator_IsSetIterator_GetIndex_GetKind)
     EXPECT_TRUE(setIterator->IsSetIterator(vm_));
     EXPECT_EQ(setIterator->GetIndex(), 0U);
     Local<JSValueRef> resultKey = StringRef::NewFromUtf8(vm_, "keys");
-    EXPECT_EQ(setIterator->GetKind(vm_)->ToString(vm_)->ToString(), resultKey->ToString(vm_)->ToString());
+    EXPECT_EQ(setIterator->GetKind(vm_)->ToString(vm_)->ToString(vm_), resultKey->ToString(vm_)->ToString(vm_));
 }
 
 /**

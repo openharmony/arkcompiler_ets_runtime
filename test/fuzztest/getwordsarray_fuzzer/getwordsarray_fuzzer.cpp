@@ -44,7 +44,7 @@ namespace OHOS {
         }
         Local<JSValueRef> bigWordsValue = BigIntRef::CreateBigWords(vm, sign, wordsNum, words);
         Local<BigIntRef> bigWords(bigWordsValue);
-        bigWords->GetWordsArray(&sign, wordsNum, words);
+        bigWords->GetWordsArray(vm, &sign, wordsNum, words);
         delete[] words;
         words = nullptr;
         JSNApi::DestroyJSVM(vm);

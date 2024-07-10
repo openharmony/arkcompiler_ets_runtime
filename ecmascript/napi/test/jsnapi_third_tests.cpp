@@ -173,7 +173,7 @@ void CheckReject(JsiRuntimeCallInfo *info)
     ASSERT_EQ(info->GetArgsNumber(), 1U);
     Local<JSValueRef> reason = info->GetCallArgRef(0);
     ASSERT_TRUE(reason->IsString(info->GetVM()));
-    ASSERT_EQ(Local<StringRef>(reason)->ToString(), "Reject");
+    ASSERT_EQ(Local<StringRef>(reason)->ToString(info->GetVM()), "Reject");
 }
 
 Local<JSValueRef> RejectCallback(JsiRuntimeCallInfo *info)
@@ -474,7 +474,7 @@ HWTEST_F_L0(JSNApiTests, GetTime)
     LocalScope scope(vm_);
     const double time = 14.29;
     Local<DateRef> date = DateRef::New(vm_, time);
-    ASSERT_EQ(date->GetTime(), time);
+    ASSERT_EQ(date->GetTime(vm_), time);
 }
 
 /*
@@ -792,7 +792,7 @@ HWTEST_F_L0(JSNApiTests, NewFromUtf16)
     char16_t utf16[] = u"This is a char16 array";
     int length = sizeof(utf16);
     Local<StringRef> result = StringRef::NewFromUtf16(vm_, utf16, length);
-    ASSERT_EQ(result->Length(), length);
+    ASSERT_EQ(result->Length(vm_), length);
 }
 
 /*
@@ -848,14 +848,14 @@ HWTEST_F_L0(JSNApiTests, WeakMapRef_GetSize_GetTotalElements_GetKey_GetValue)
     JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
     JSHandle<JSTaggedValue> key(factory->NewFromASCII("key"));
     JSWeakMap::Set(thread, weakMap, key, value);
-    int32_t num = map->GetSize();
-    int32_t num1 = map->GetTotalElements();
+    int32_t num = map->GetSize(vm_);
+    int32_t num1 = map->GetTotalElements(vm_);
     ASSERT_EQ(num, 1);
     ASSERT_EQ(num1, 1);
     Local<JSValueRef> res1 = map->GetKey(vm_, 0);
-    ASSERT_EQ(res1->ToString(vm_)->ToString(), "key");
+    ASSERT_EQ(res1->ToString(vm_)->ToString(vm_), "key");
     Local<JSValueRef> res2 = map->GetValue(vm_, 0);
-    ASSERT_EQ(res2->ToString(vm_)->ToString(), "value");
+    ASSERT_EQ(res2->ToString(vm_)->ToString(vm_), "value");
 }
 
 /*
@@ -1211,19 +1211,19 @@ HWTEST_F_L0(JSNApiTests, NapiTryFastTest)
     
     Local<JSValueRef> flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object),
                                                      reinterpret_cast<uintptr_t>(*key));
-    ASSERT_TRUE(flag->BooleaValue());
+    ASSERT_TRUE(flag->BooleaValue(vm_));
     flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
-    ASSERT_TRUE(flag->BooleaValue());
+    ASSERT_TRUE(flag->BooleaValue(vm_));
 
     flag = JSNApi::NapiDeleteProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key));
-    ASSERT_TRUE(flag->BooleaValue());
+    ASSERT_TRUE(flag->BooleaValue(vm_));
     flag = JSNApi::NapiDeleteProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
-    ASSERT_TRUE(flag->BooleaValue());
+    ASSERT_TRUE(flag->BooleaValue(vm_));
 
     flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key));
-    ASSERT_FALSE(flag->BooleaValue());
+    ASSERT_FALSE(flag->BooleaValue(vm_));
     flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*object), reinterpret_cast<uintptr_t>(*key2));
-    ASSERT_FALSE(flag->BooleaValue());
+    ASSERT_FALSE(flag->BooleaValue(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, NapiTryFastHasMethodTest)
@@ -1234,7 +1234,7 @@ HWTEST_F_L0(JSNApiTests, NapiTryFastHasMethodTest)
     const char* utf8Key = "concat";
     Local<JSValueRef> key3 = StringRef::NewFromUtf8(vm_, utf8Key);
     auto flag = JSNApi::NapiHasProperty(vm_, reinterpret_cast<uintptr_t>(*arr), reinterpret_cast<uintptr_t>(*key3));
-    ASSERT_TRUE(flag->BooleaValue());
+    ASSERT_TRUE(flag->BooleaValue(vm_));
 }
 
 HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest001)
@@ -1310,6 +1310,6 @@ HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest008)
     ASSERT_TRUE(res);
     Local<StringRef> value = ExternalStringCache::GetCachedString(vm_, PROPERTY_INDEX);
     ASSERT_FALSE(value->IsUndefined());
-    EXPECT_EQ(value->ToString(), property);
+    EXPECT_EQ(value->ToString(vm_), property);
 }
 } // namespace panda::test

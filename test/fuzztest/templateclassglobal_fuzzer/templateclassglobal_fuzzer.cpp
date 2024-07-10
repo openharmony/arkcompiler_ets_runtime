@@ -102,7 +102,7 @@ namespace OHOS {
             return;
         }
         Global<BooleanRef> global(vm, BooleanRef::New(vm, true));
-        [[maybe_unused]]bool b = (*global)->BooleaValue();
+        [[maybe_unused]]bool b = (*global)->BooleaValue(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -116,7 +116,7 @@ namespace OHOS {
             return;
         }
         Global<BooleanRef> global(vm, BooleanRef::New(vm, true));
-        [[maybe_unused]]bool b = global->BooleaValue();
+        [[maybe_unused]]bool b = global->BooleaValue(vm);
         JSNApi::DestroyJSVM(vm);
     }
 

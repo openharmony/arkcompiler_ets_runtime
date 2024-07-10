@@ -54,8 +54,8 @@ namespace OHOS {
         JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
         JSHandle<JSTaggedValue> key(factory->NewFromASCII("key"));
         JSWeakMap::Set(thread, weakMap, key, value);
-        map->GetSize();
-        map->GetTotalElements();
+        map->GetSize(vm);
+        map->GetTotalElements(vm);
         map->GetKey(vm, 0);
         map->GetValue(vm, 0);
         JSNApi::DestroyJSVM(vm);

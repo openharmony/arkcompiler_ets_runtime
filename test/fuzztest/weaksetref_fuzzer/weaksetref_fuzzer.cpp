@@ -48,7 +48,7 @@ void WeakSetRefGetSizeFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
     Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
     JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
     JSWeakSet::Add(thread, weakSet, value);
-    set->GetSize();
+    set->GetSize(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -73,7 +73,7 @@ void WeakSetRefGetTotalElementsFuzzTest([[maybe_unused]]const uint8_t *data, siz
     Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
     JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
     JSWeakSet::Add(thread, weakSet, value);
-    set->GetTotalElements();
+    set->GetTotalElements(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }

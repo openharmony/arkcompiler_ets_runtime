@@ -47,7 +47,7 @@ void BigIntRefGetWordsArraySize(const uint8_t *data, size_t size)
     }
     Local<JSValueRef> bigWords = BigIntRef::CreateBigWords(vm, sign, wordsNum, words);
     Local<BigIntRef> bigWordsRef(bigWords);
-    bigWordsRef->GetWordsArraySize();
+    bigWordsRef->GetWordsArraySize(vm);
     delete[] words;
     words = nullptr;
     JSNApi::DestroyJSVM(vm);
