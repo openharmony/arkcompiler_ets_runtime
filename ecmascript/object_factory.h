@@ -138,7 +138,7 @@ class JSAPIList;
 class JSAPILinkedListIterator;
 class JSAPIListIterator;
 class ModuleNamespace;
-class NativeModuleError;
+class NativeModuleFailureInfo;
 class ImportEntry;
 class LocalExportEntry;
 class IndirectExportEntry;
@@ -663,7 +663,7 @@ public:
                                      const JSHandle<JSTaggedValue> &value);
     // --------------------------------------module--------------------------------------------
     JSHandle<ModuleNamespace> NewModuleNamespace();
-    JSHandle<NativeModuleError> NewNativeModuleError();
+    JSHandle<NativeModuleFailureInfo> NewNativeModuleFailureInfo();
     JSHandle<ImportEntry> NewImportEntry();
     JSHandle<ImportEntry> NewImportEntry(const JSHandle<JSTaggedValue> &moduleRequest,
                                          const JSHandle<JSTaggedValue> &importName,

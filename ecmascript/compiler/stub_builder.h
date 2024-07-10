@@ -402,6 +402,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef IsJSShared(GateRef obj);
     GateRef IsProfileTypeInfoCell0(GateRef obj);
     GateRef IsJSGlobalObject(GateRef obj);
+    GateRef IsNativeModuleFailureInfo(GateRef obj);
     GateRef IsModuleNamespace(GateRef obj);
     GateRef ObjIsSpecialContainer(GateRef obj);
     GateRef IsJSPrimitiveRef(GateRef obj);

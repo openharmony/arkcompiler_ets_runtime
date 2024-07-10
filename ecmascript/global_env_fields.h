@@ -226,7 +226,7 @@
     V(JSTaggedValue, GlobalPatch, GLOBAL_PATCH)                                                     \
     V(JSTaggedValue, ExportOfScript, DEFAULT_EXPORT_OF_SCRIPT)                                      \
     V(JSTaggedValue, JsonObjectHclassCache, JSON_OBJECT_HCLASS_CACHE)                               \
-    V(JSTaggedValue, NativeModuleErrorClass, NATIVE_MODULE_ERROR_CLASS)
+    V(JSTaggedValue, NativeModuleFailureInfoClass, NATIVE_MODULE_FAILURE_INFO_CLASS)
 
 #define GLOBAL_ENV_SHARED_FIELDS(V)                                                                              \
     V(JSTaggedValue, SObjectFunction, SHARED_OBJECT_FUNCTION_INDEX)                                              \

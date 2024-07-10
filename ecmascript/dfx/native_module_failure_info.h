@@ -13,24 +13,25 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_DFX_NATIVE_MODULE_ERROR_H
-#define ECMASCRIPT_DFX_NATIVE_MODULE_ERROR_H
+#ifndef ECMASCRIPT_DFX_NATIVE_MODULE_FAILURE_INFO_H
+#define ECMASCRIPT_DFX_NATIVE_MODULE_FAILURE_INFO_H
 
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory-inl.h"
 namespace panda::ecmascript {
-class NativeModuleError final : public JSObject {
+class NativeModuleFailureInfo final : public JSObject {
 public:
-    CAST_CHECK(NativeModuleError, IsNativeModuleError);
+    CAST_CHECK(NativeModuleFailureInfo, IsNativeModuleFailureInfo);
 
-    static JSHandle<NativeModuleError> CreateNativeModuleError(const EcmaVM *vm, const std::string &errorMsg);
+    static JSHandle<NativeModuleFailureInfo> CreateNativeModuleFailureInfo(const EcmaVM *vm,
+        const std::string &failureInfo);
 
-    static constexpr size_t ARK_NATIVE_MODULE_ERROR_OFFSET = JSObject::SIZE;
-    ACCESSORS(ArkNativeModuleError, ARK_NATIVE_MODULE_ERROR_OFFSET, SIZE)
+    static constexpr size_t ARK_NATIVE_MODULE_FAILURE_INFO_OFFSET = JSObject::SIZE;
+    ACCESSORS(ArkNativeModuleFailureInfo, ARK_NATIVE_MODULE_FAILURE_INFO_OFFSET, SIZE)
 
     DECL_DUMP()
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, ARK_NATIVE_MODULE_ERROR_OFFSET, SIZE)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, ARK_NATIVE_MODULE_FAILURE_INFO_OFFSET, SIZE)
 };
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_DFX_NATIVE_MODULE_ERROR_H
+#endif  // ECMASCRIPT_DFX_NATIVE_MODULE_FAILURE_INFO_H

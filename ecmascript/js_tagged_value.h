@@ -686,7 +686,7 @@ public:
     bool IsResolvedRecordIndexBinding() const;
     bool IsResolvedRecordBinding() const;
     bool IsModuleNamespace() const;
-    bool IsNativeModuleError() const;
+    bool IsNativeModuleFailureInfo() const;
     bool IsJSSharedObject() const;
     bool IsJSSharedFunction() const;
     bool IsJSShared() const;

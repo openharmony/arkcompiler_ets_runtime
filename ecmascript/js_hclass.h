@@ -224,7 +224,7 @@ struct Reference;
         JS_CJS_MODULE, /* /////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_EXPORTS, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_CJS_REQUIRE, /* ////////////////////////////////////////////////////////////////////////////////-PADDING */ \
-        NATIVE_MODULE_ERROR, /* ///////////////////////////////////////////////////////////////////////////-PADDING */ \
+        NATIVE_MODULE_FAILURE_INFO, /* ////////////////////////////////////////////////////////////////////-PADDING */ \
         JS_GLOBAL_OBJECT, /* JS_OBJECT_LAST////////////////////////////////////////////////////////////////-PADDING */ \
         JS_PROXY, /* ECMA_OBJECT_LAST ///////////////////////////////////////////////////////////////////////////// */ \
                                                                                                                        \
@@ -1738,9 +1738,9 @@ public:
         return GetObjectType() == JSType::JS_MODULE_NAMESPACE;
     }
 
-    inline bool IsNativeModuleError() const
+    inline bool IsNativeModuleFailureInfo() const
     {
-        return GetObjectType() == JSType::NATIVE_MODULE_ERROR;
+        return GetObjectType() == JSType::NATIVE_MODULE_FAILURE_INFO;
     }
 
     inline bool IsJSSharedObject() const

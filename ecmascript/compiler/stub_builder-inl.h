@@ -1434,6 +1434,12 @@ inline GateRef StubBuilder::IsJSGlobalObject(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_GLOBAL_OBJECT)));
 }
 
+inline GateRef StubBuilder::IsNativeModuleFailureInfo(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::NATIVE_MODULE_FAILURE_INFO)));
+}
+
 inline GateRef StubBuilder::IsModuleNamespace(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));

@@ -18,7 +18,7 @@
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/object_factory-inl.h"
 
-#include "ecmascript/dfx/native_module_error.h"
+#include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/builtins/builtins.h"
@@ -3146,16 +3146,16 @@ JSHandle<ModuleNamespace> ObjectFactory::NewModuleNamespace()
     return moduleNamespace;
 }
 
-JSHandle<NativeModuleError> ObjectFactory::NewNativeModuleError()
+JSHandle<NativeModuleFailureInfo> ObjectFactory::NewNativeModuleFailureInfo()
 {
     NewObjectHook();
     JSHandle<GlobalEnv> env = vm_->GetGlobalEnv();
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNativeModuleErrorClass());
+    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetNativeModuleFailureInfoClass());
     JSHandle<JSObject> obj = NewJSObject(hclass);
 
-    JSHandle<NativeModuleError> nativeModuleError = JSHandle<NativeModuleError>::Cast(obj);
-    nativeModuleError->SetArkNativeModuleError(thread_, JSTaggedValue::Undefined());
-    return nativeModuleError;
+    JSHandle<NativeModuleFailureInfo> nativeModuleFailureInfo = JSHandle<NativeModuleFailureInfo>::Cast(obj);
+    nativeModuleFailureInfo->SetArkNativeModuleFailureInfo(thread_, JSTaggedValue::Undefined());
+    return nativeModuleFailureInfo;
 }
 
 JSHandle<CjsModule> ObjectFactory::NewCjsModule()

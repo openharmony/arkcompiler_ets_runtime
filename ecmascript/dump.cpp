@@ -20,7 +20,7 @@
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
-#include "ecmascript/dfx/native_module_error.h"
+#include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
@@ -231,8 +231,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "Shared Function";
         case JSType::JS_ERROR:
             return "Error";
-        case JSType::NATIVE_MODULE_ERROR:
-            return "NativeModule Error";
+        case JSType::NATIVE_MODULE_FAILURE_INFO:
+            return "NativeModuleFailureInfo";
         case JSType::JS_EVAL_ERROR:
             return "Eval Error";
         case JSType::JS_RANGE_ERROR:
@@ -1335,8 +1335,8 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
         case JSType::RESOLVEDRECORDBINDING_RECORD:
             ResolvedRecordBinding::Cast(obj)->Dump(os);
             break;
-        case JSType::NATIVE_MODULE_ERROR:
-            NativeModuleError::Cast(obj)->Dump(os);
+        case JSType::NATIVE_MODULE_FAILURE_INFO:
+            NativeModuleFailureInfo::Cast(obj)->Dump(os);
             break;
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->Dump(os);
@@ -3857,10 +3857,10 @@ void ModuleNamespace::Dump(std::ostream &os) const
     os << "\n";
 }
 
-void NativeModuleError::Dump(std::ostream &os) const
+void NativeModuleFailureInfo::Dump(std::ostream &os) const
 {
-    os << " - ArkNativeModuleError: ";
-    GetArkNativeModuleError().Dump(os);
+    os << " - ArkNativeModuleFailureInfo: ";
+    GetArkNativeModuleFailureInfo().Dump(os);
     os << "\n";
 }
 
@@ -4489,8 +4489,8 @@ static void DumpObject(TaggedObject *obj, std::vector<Reference> &vec, bool isVm
         case JSType::JS_MODULE_NAMESPACE:
             ModuleNamespace::Cast(obj)->DumpForSnapshot(vec);
             break;
-        case JSType::NATIVE_MODULE_ERROR:
-            NativeModuleError::Cast(obj)->DumpForSnapshot(vec);
+        case JSType::NATIVE_MODULE_FAILURE_INFO:
+            NativeModuleFailureInfo::Cast(obj)->DumpForSnapshot(vec);
             break;
         case JSType::JS_API_PLAIN_ARRAY:
             JSAPIPlainArray::Cast(obj)->DumpForSnapshot(vec);
@@ -6019,9 +6019,9 @@ void ModuleNamespace::DumpForSnapshot(std::vector<Reference> &vec) const
     JSObject::DumpForSnapshot(vec);
 }
 
-void NativeModuleError::DumpForSnapshot(std::vector<Reference> &vec) const
+void NativeModuleFailureInfo::DumpForSnapshot(std::vector<Reference> &vec) const
 {
-    vec.emplace_back(CString("ArkNativeModuleError"), GetArkNativeModuleError());
+    vec.emplace_back(CString("ArkNativeModuleFailureInfo"), GetArkNativeModuleFailureInfo());
     JSObject::DumpForSnapshot(vec);
 }
 

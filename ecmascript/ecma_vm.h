@@ -740,6 +740,16 @@ public:
         return multiThreadCheck_;
     }
 
+    static void SetErrorInfoEnhance(bool errorInfoEnhance)
+    {
+        errorInfoEnhanced_ = errorInfoEnhance;
+    }
+
+    static bool GetErrorInfoEnhance()
+    {
+        return errorInfoEnhanced_;
+    }
+
     static void InitializeIcuData(const JSRuntimeOptions &options);
 
     static int InitializeStartRealTime();
@@ -878,6 +888,7 @@ private:
     GCKeyStats *gcKeyStats_ {nullptr};
     EcmaStringTable *stringTable_ {nullptr};
     PUBLIC_API static bool multiThreadCheck_;
+    static bool errorInfoEnhanced_;
 
     // VM memory management.
     std::unique_ptr<NativeAreaAllocator> nativeAreaAllocator_;

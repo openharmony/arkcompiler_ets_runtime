@@ -1568,9 +1568,9 @@ inline bool JSTaggedValue::IsModuleNamespace() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsModuleNamespace();
 }
 
-inline bool JSTaggedValue::IsNativeModuleError() const
+inline bool JSTaggedValue::IsNativeModuleFailureInfo() const
 {
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsNativeModuleError();
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsNativeModuleFailureInfo();
 }
 
 inline bool JSTaggedValue::IsJSSharedObject() const

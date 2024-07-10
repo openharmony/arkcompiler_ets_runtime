@@ -317,6 +317,7 @@ class ObjectFactory;
     V(FunctionString,                 FUNCTION_STRING_INDEX,                 "function")                    \
     V(StringString,                   STRING_STRING_INDEX,                   "string")                      \
     V(SymbolString,                   SYMBOL_STRING_INDEX,                   "symbol")                      \
+    V(NativeModuleFailureInfoString,  NATIVE_MODULE_FAILURE_INFO_STRING_INDEX, "NativeModuleFailureInfo")   \
     V(ObjectString,                   OBJECT_STRING_INDEX,                   "object")                      \
     V(TrueString,                     TRUE_STRING_INDEX,                     "true")                        \
     V(FalseString,                    FALSE_STRING_INDEX,                    "false")                       \

@@ -185,7 +185,7 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExportObject(JSThread *thread,
         // bind with a number
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
-    if (exports->IsNativeModuleError()) {
+    if (exports->IsNativeModuleFailureInfo()) {
         return JSHandle<JSTaggedValue>::Cast(factory->NewResolvedIndexBindingRecord(module, -1));
     }
     if (exports->IsJSObject()) {
@@ -444,7 +444,7 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleMayThrowError(JSThread *thre
     [[maybe_unused]] LocalScope scope(vm);
 
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
-    if (exportObject->IsNativeModuleErrorObject(vm) || exportObject->IsUndefined()
+    if (exportObject->IsNativeModuleFailureInfoObject(vm) || exportObject->IsUndefined()
         || thread->HasPendingException()) {
         CString errorMsg = "load native module failed.";
         LOG_FULL(ERROR) << errorMsg.c_str();
@@ -470,7 +470,7 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
         LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
         return false;
     }
-    if (UNLIKELY(exportObject->IsNativeModuleErrorObject(vm))) {
+    if (UNLIKELY(exportObject->IsNativeModuleFailureInfoObject(vm))) {
         requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
         LOG_FULL(ERROR) << "loading fails, NativeModuleErrorObject is returned";
         return false;
