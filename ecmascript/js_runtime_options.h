@@ -28,20 +28,20 @@
 namespace panda::ecmascript {
 using arg_list_t = std::vector<std::string>;
 enum ArkProperties {
-    DEFAULT = -1,  // default value 000'0000'0001'0000'0101'1100 -> 0x105c
+    DEFAULT = -1, // default value 000'0000'0001'0000'0101'1100 -> 0x105c
     OPTIONAL_LOG = 1,
     GC_STATS_PRINT = 1 << 1,
-    PARALLEL_GC = 1 << 2,  // default enable
-    CONCURRENT_MARK = 1 << 3,  // default enable
-    CONCURRENT_SWEEP = 1 << 4,  // default enable
+    PARALLEL_GC = 1 << 2, // default enable
+    CONCURRENT_MARK = 1 << 3, // default enable
+    CONCURRENT_SWEEP = 1 << 4, // default enable
     THREAD_CHECK = 1 << 5,
-    ENABLE_ARKTOOLS = 1 << 6,  // default enable
+    ENABLE_ARKTOOLS = 1 << 6, // default enable
     ENABLE_SNAPSHOT_SERIALIZE = 1 << 7,
     ENABLE_SNAPSHOT_DESERIALIZE = 1 << 8,
     EXCEPTION_BACKTRACE = 1 << 9,
     GLOBAL_OBJECT_LEAK_CHECK = 1 << 10,
     GLOBAL_PRIMITIVE_LEAK_CHECK = 1 << 11,
-    ENABLE_IDLE_GC = 1 << 12,  // default enable
+    ENABLE_IDLE_GC = 1 << 12, // default enable
     CPU_PROFILER_COLD_START_MAIN_THREAD = 1 << 13,
     ENABLE_CPU_PROFILER_VM_TAG = 1 << 14,
     ENABLE_GC_TRACER = 1 << 15,
@@ -197,6 +197,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
     OPTION_COMPILER_BASELINE_PGO,
     OPTION_ASYNC_LOAD_ABC,
+    OPTION_PGO_TRACE,
 };
 static_assert(OPTION_SPLIT_ONE == 64);
 
@@ -207,16 +208,16 @@ public:
     DEFAULT_COPY_SEMANTIC(JSRuntimeOptions);
     DEFAULT_MOVE_SEMANTIC(JSRuntimeOptions);
 
-    bool ParseCommand(const int argc, const char **argv);
+    bool ParseCommand(const int argc, const char** argv);
     bool SetDefaultValue(char* argv);
 
     bool EnableArkTools() const
     {
-        return (enableArkTools_) ||
-            ((static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_ARKTOOLS) != 0);
+        return (enableArkTools_) || ((static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_ARKTOOLS) != 0);
     }
 
-    void SetEnableArkTools(bool value) {
+    void SetEnableArkTools(bool value)
+    {
         enableArkTools_ = value;
     }
 
@@ -255,7 +256,7 @@ public:
         compilerPkgInfo_ = std::move(pkgJsonInfo);
     }
 
-    const std::string &GetCompilerPkgJsonInfo() const
+    const std::string& GetCompilerPkgJsonInfo() const
     {
         return compilerPkgInfo_;
     }
@@ -265,7 +266,7 @@ public:
         compilerExternalPkgInfo_ = std::move(pkgJsonInfo);
     }
 
-    const std::string &GetCompilerExternalPkgJsonInfo() const
+    const std::string& GetCompilerExternalPkgJsonInfo() const
     {
         return compilerExternalPkgInfo_;
     }
@@ -419,7 +420,7 @@ public:
         if (configProperty != "") {
             std::string key;
             std::string value;
-            for (char c : configProperty) {
+            for (char c: configProperty) {
                 if (isdigit(c)) {
                     value += c;
                 } else {
@@ -440,7 +441,7 @@ public:
     int GetDefaultProperties()
     {
         return ArkProperties::PARALLEL_GC | ArkProperties::CONCURRENT_MARK | ArkProperties::CONCURRENT_SWEEP |
-            ArkProperties::ENABLE_ARKTOOLS | ArkProperties::ENABLE_IDLE_GC;
+               ArkProperties::ENABLE_ARKTOOLS | ArkProperties::ENABLE_IDLE_GC;
     }
 
     int GetArkProperties()
@@ -663,9 +664,8 @@ public:
             std::string strEnd = strAsmOpcodeDisableRange.substr(pos + 1);
             int start = strStart.empty() ? 0 : std::stoi(strStart);
             int end = strEnd.empty() ? kungfu::BYTECODE_STUB_END_ID : std::stoi(strEnd);
-            if (start >= 0 && start < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS &&
-                end >= 0 && end < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS &&
-                start <= end) {
+            if (start >= 0 && start < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && end >= 0 &&
+                end < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && start <= end) {
                 asmInterParsedOption_.handleStart = start;
                 asmInterParsedOption_.handleEnd = end;
             }
@@ -689,8 +689,7 @@ public:
 
     bool WasSetCompilerLogOption() const
     {
-        return WasOptionSet(OPTION_COMPILER_LOG_OPT) &&
-            GetCompilerLogOption().find("none") == std::string::npos;
+        return WasOptionSet(OPTION_COMPILER_LOG_OPT) && GetCompilerLogOption().find("none") == std::string::npos;
     }
 
     std::string GetMethodsListForLog() const
@@ -705,9 +704,8 @@ public:
 
     bool WasSetMethodsListForLog() const
     {
-        return WasOptionSet(OPTION_COMPILER_LOG_METHODS)  &&
-            GetCompilerLogOption().find("none") == std::string::npos &&
-            GetCompilerLogOption().find("all") == std::string::npos;
+        return WasOptionSet(OPTION_COMPILER_LOG_METHODS) && GetCompilerLogOption().find("none") == std::string::npos &&
+               GetCompilerLogOption().find("all") == std::string::npos;
     }
 
     void SetCompilerLogSnapshot(bool value)
@@ -1140,7 +1138,6 @@ public:
         return enableValueNumbering_;
     }
 
-
     void SetEnableJIT(bool value)
     {
         enableFastJIT_ = value;
@@ -1406,6 +1403,16 @@ public:
         compilerSkipMethods_ = std::move(value);
     }
 
+    void SetPGOTrace(bool value)
+    {
+        pgoTrace_ = value;
+    }
+
+    bool GetPGOTrace() const
+    {
+        return pgoTrace_;
+    }
+
     void SetTraceInline(bool value)
     {
         traceInline_ = value;
@@ -1668,13 +1675,13 @@ public:
         return testAssert_;
     }
 
-    void SetCompilerMethodsRange(arg_list_t *argListStr)
+    void SetCompilerMethodsRange(arg_list_t* argListStr)
     {
         compileMethodsRange_.first = std::stoull((*argListStr)[0]);
         compileMethodsRange_.second = std::stoull((*argListStr)[1]);
     }
 
-    const std::pair<uint32_t, uint32_t> &GetCompilerMethodsRange() const
+    const std::pair<uint32_t, uint32_t>& GetCompilerMethodsRange() const
     {
         return compileMethodsRange_;
     }
@@ -1684,7 +1691,7 @@ public:
         compileCodegenOption_ = std::move(argListStr);
     }
 
-    const arg_list_t &GetCompilerCodegenOptions() const
+    const arg_list_t& GetCompilerCodegenOptions() const
     {
         return compileCodegenOption_;
     }
@@ -1823,9 +1830,9 @@ public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 1_KB;
 
 private:
-    static constexpr int32_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
+    static constexpr int32_t DEFAULT_OPT_LEVEL = 3; // 3: default opt level
 
-    static bool StartsWith(const std::string &haystack, const std::string &needle)
+    static bool StartsWith(const std::string& haystack, const std::string& needle)
     {
         return std::equal(needle.begin(), needle.end(), haystack.begin());
     }
@@ -1849,11 +1856,11 @@ private:
     }
 
     bool ParseBoolParam(bool* argBool);
-    bool ParseDoubleParam(const std::string &option, double* argDouble);
-    bool ParseIntParam(const std::string &option, int* argInt);
-    bool ParseUint32Param(const std::string &option, uint32_t *argUInt32);
-    bool ParseUint64Param(const std::string &option, uint64_t *argUInt64);
-    void ParseListArgParam(const std::string &option, arg_list_t *argListStr, std::string delimiter);
+    bool ParseDoubleParam(const std::string& option, double* argDouble);
+    bool ParseIntParam(const std::string& option, int* argInt);
+    bool ParseUint32Param(const std::string& option, uint32_t* argUInt32);
+    bool ParseUint64Param(const std::string& option, uint64_t* argUInt64);
+    void ParseListArgParam(const std::string& option, arg_list_t* argListStr, std::string delimiter);
 
     bool enableArkTools_ {true};
     std::string stubFile_ {"stub.an"};
@@ -1914,16 +1921,16 @@ private:
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
     bool enableOptPGOType_ {true};
-    bool enableFastJIT_{false};
-    bool enableAPPJIT_{false};
+    bool enableFastJIT_ {false};
+    bool enableAPPJIT_ {false};
     bool isEnableJitDfxDump_ {false};
-    bool enableOSR_{false};
+    bool enableOSR_ {false};
     uint16_t jitHotnessThreshold_ {2};
     uint8_t jitCallThreshold_ {0};
     uint16_t osrHotnessThreshold_ {2};
-    bool forceJitCompileMain_{false};
-    bool enableBaselineJIT_{false};
-    uint16_t baselineJitHotnessThreshold_{1};
+    bool forceJitCompileMain_ {false};
+    bool enableBaselineJIT_ {false};
+    uint16_t baselineJitHotnessThreshold_ {1};
     bool forceBaselineCompileMain_ {false};
     bool enableOptTrackField_ {true};
     uint32_t compilerModuleMethods_ {100};
@@ -1948,10 +1955,11 @@ private:
     bool verifyVTable_ {false};
     std::string compilerSelectMethods_ {""};
     std::string compilerSkipMethods_ {""};
+    bool pgoTrace_ {false};
     bool traceInline_ {false};
-    bool traceJIT_{false};
-    bool traceValueNumbering_{false};
-    bool traceInstructionCombine_{false};
+    bool traceJIT_ {false};
+    bool traceValueNumbering_ {false};
+    bool traceInstructionCombine_ {false};
     bool compilerPipelineHostAOT_ {false};
     size_t maxInlineBytecodes_ {45};
     std::string targetCompilerMode_ {""};
@@ -1982,11 +1990,11 @@ private:
     bool enableMemoryAnalysis_ {true};
     bool checkPgoVersion_ {false};
     bool enableJitFastCompile_ {false};
-    bool enableJitFrame_{false};
-    bool disableCodeSign_{false};
-    bool enableBaselinePgo_{false};
+    bool enableJitFrame_ {false};
+    bool disableCodeSign_ {false};
+    bool enableBaselinePgo_ {false};
     bool asyncLoadAbc_ {true};
 };
-}  // namespace panda::ecmascript
+} // namespace panda::ecmascript
 
-#endif  // ECMASCRIPT_JS_RUNTIME_OPTIONS_H_
+#endif // ECMASCRIPT_JS_RUNTIME_OPTIONS_H_

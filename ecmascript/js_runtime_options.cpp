@@ -65,6 +65,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-log-snapshot:              Enable to print snapshot information. Default: 'false'\n"
     "--compiler-log-time:                  Enable to print pass compiler time. Default: 'false'\n"
     "--enable-ark-tools:                   Enable ark tools to debug. Default: 'false'\n"
+    "--pgo-trace:                          Enable pgo trace for JS runtime. Default: 'false'\n"
     "--compiler-trace-bc:                  Enable tracing bytecode for aot runtime. Default: 'false'\n"
     "--compiler-trace-deopt:               Enable tracing deopt for aot runtime. Default: 'false'\n"
     "--compiler-trace-inline:              Enable tracing inline function for aot runtime. Default: 'false'\n"
@@ -203,6 +204,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-log-time", required_argument, nullptr, OPTION_COMPILER_LOG_TIME},
         {"compiler-type-threshold", required_argument, nullptr, OPTION_COMPILER_TYPE_THRESHOLD},
         {"enable-ark-tools", required_argument, nullptr, OPTION_ENABLE_ARK_TOOLS},
+        {"pgo-trace", required_argument, nullptr, OPTION_PGO_TRACE},
         {"compiler-trace-bc", required_argument, nullptr, OPTION_COMPILER_TRACE_BC},
         {"compiler-trace-deopt", required_argument, nullptr, OPTION_COMPILER_TRACE_DEOPT},
         {"compiler-trace-inline", required_argument, nullptr, OPTION_COMPILER_TRACE_INLINE},
@@ -414,6 +416,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableArkTools(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_PGO_TRACE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetPGOTrace(argBool);
                 } else {
                     return false;
                 }
