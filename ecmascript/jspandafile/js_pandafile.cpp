@@ -217,7 +217,7 @@ void JSPandaFile::InitializeMergedPF()
                        std::strncmp(fieldName, PACKAGE_NAME, PACKAGE_NAME_LEN) == 0) {
                 info->npmPackageName = fieldName + PACKAGE_NAME_LEN;
             } else {
-                npmEntries_.emplace(recordName.c_str(), fieldName);
+                npmEntries_.emplace(recordName, fieldName);
             }
         });
         if (hasCjsFiled || hasJsonFiled) {
@@ -294,7 +294,7 @@ CString JSPandaFile::GetRecordName(const CString &entryPoint) const
 
 bool JSPandaFile::FindOhmUrlInPF(const CString &recordName, CString &entryPoint) const
 {
-    auto info = npmEntries_.find(recordName.c_str());
+    auto info = npmEntries_.find(recordName);
     if (info != npmEntries_.end()) {
         entryPoint = info->second;
         return true;
