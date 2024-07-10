@@ -195,8 +195,25 @@ function testJSONNormal() {
     print((typeof obj.longExp === "number"));
 }
 
+function testJSONreviver() {
+    let opt = {
+        bigIntMode: BigIntMode.ALWAYS_PARSE_AS_BIGINT,
+    }
+    try {
+        JSON.parseSendable(input, function (k, v) {return v;});
+    } catch (error) {
+        print(error);
+    }
+    try {
+        JSON.parseSendable(input, function (k, v) {return v;}, opt);
+    } catch (error) {
+        print(error);
+    }
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
 testJSONBigInt();
 testJSONNormal();
+testJSONreviver();

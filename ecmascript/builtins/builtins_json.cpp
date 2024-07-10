@@ -38,7 +38,7 @@ using ParseOptions =  base::JsonHelper::ParseOptions;
 void InitWithTransformType(JSHandle<GlobalEnv> &env, TransformType transformType,
                            JSMutableHandle<JSFunction> &constructor, SCheckMode &sCheckMode)
 {
-    if (transformType == TransformType::NORMAL) {
+    if (transformType == TransformType::NORMAL || transformType == TransformType::BIGINT) {
         sCheckMode = SCheckMode::CHECK;
         constructor.Update(env->GetObjectFunction());
     } else {
@@ -57,6 +57,14 @@ JSTaggedValue BuiltinsJson::Parse(EcmaRuntimeCallInfo *argv)
 
 JSTaggedValue BuiltinsSendableJson::Parse(EcmaRuntimeCallInfo *argv)
 {
+    uint32_t argc = argv->GetArgsNumber();
+    if (argc >= 2) { // 2: two args
+        JSHandle<JSTaggedValue> reviverVal = GetCallArg(argv, 1);
+        if (!reviverVal->IsUndefined()) {
+            THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), GET_MESSAGE_STRING(ReviverOnlySupportUndefined),
+                                        JSTaggedValue::Exception());
+        }
+    }
     return BuiltinsJson::ParseWithTransformType(argv, TransformType::SENDABLE);
 }
 
@@ -88,6 +96,7 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(EcmaRuntimeCallInfo *argv, Tr
     if (argc == 2) {  // 2: two args
         reviverVal.Update(GetCallArg(argv, 1));
     } else if (argc == 3 && base::JsonHelper::IsTypeSupportBigInt(transformType)) { // 3: three args
+        reviverVal.Update(GetCallArg(argv, 1));
         JSHandle<JSTaggedValue> options = GetCallArg(argv, 2); // 2: two args
         JSHandle<JSTaggedValue> modeKey(factory->NewFromStdString("bigIntMode"));
         if (options->IsECMAObject()) {
