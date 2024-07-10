@@ -11,36 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-group("ark_jit_ts_test") {
-  testonly = true
-  test_list = [
-    "create_arguments",
-    "ldobjbyname",
-    "for_loop",
-    "typed_array",
-    "while_loop",
-    "exception",
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-    #(issue 18039)
-    #"construct_with_normal_function",
-    "addition_assignment",
-    "catch_with_osr",
-    "string_length",
-    "ts_inline",
-    "proxy_fast_call",
-  ]
-
+host_jit_test_action("proxy_fast_call") {
   deps = []
-  foreach(test, test_list) {
-    deps += [ "${test}:${test}JitAction" ]
-  }
-}
-
-group("ark_jit_test") {
-  testonly = true
-  deps = [ ":ark_jit_ts_test" ]
-
-  if (is_mac) {
-    deps -= [ ":ark_jit_ts_test" ]
-  }
 }
