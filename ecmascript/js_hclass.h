@@ -439,7 +439,7 @@ public:
     static void PUBLIC_API AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj,
                                        const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr);
 
-    static void TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
+    inline static void TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
                                        const JSHandle<JSObject> &obj);
     static JSHandle<JSHClass> TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     static void ReBuildFunctionInheritanceRelationship(const JSThread *thread,
