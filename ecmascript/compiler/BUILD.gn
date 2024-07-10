@@ -127,6 +127,7 @@ libark_jsoptimizer_sources = [
   "bytecode_info_collector.cpp",
   "bytecodes.cpp",
   "call_signature.cpp",
+  "call_stub_builder.cpp",
   "circuit.cpp",
   "circuit_builder.cpp",
   "circuit_builder_helper.cpp",

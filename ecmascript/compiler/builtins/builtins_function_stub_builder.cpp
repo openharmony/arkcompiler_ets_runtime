@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
+#include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_arguments.h"
@@ -44,8 +45,10 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
             Bind(&targetIsUndefined);
             {
                 // a. Return Call(func, thisArg).
-                res->WriteVariable(JSCallDispatch(glue, thisValue, Int32(0), 0, Circuit::NullGate(),
-                    JSCallMode::CALL_GETTER, { thisArg }));
+                JSCallArgs callArgs(JSCallMode::CALL_GETTER);
+                callArgs.callGetterArgs = { thisArg };
+                CallStubBuilder callBuilder(this, glue, thisValue, Int32(0), 0, nullptr, Circuit::NullGate(), callArgs);
+                res->WriteVariable(callBuilder.JSCallDispatch());
                 Jump(exit);
             }
             Bind(&targetNotUndefined);
@@ -71,8 +74,11 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                     {
                         GateRef argsLength = GetLengthOfTaggedArray(argList);
                         GateRef argv = PtrAdd(argList, IntPtr(TaggedArray::DATA_OFFSET));
-                        res->WriteVariable(JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
-                            JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, argv, thisArg }));
+                        JSCallArgs callArgs(JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
+                        callArgs.callThisArgvWithReturnArgs = { argsLength, argv, thisArg };
+                        CallStubBuilder callBuilder(this, glue, thisValue, argsLength, 0, nullptr, Circuit::NullGate(),
+                            callArgs);
+                        res->WriteVariable(callBuilder.JSCallDispatch());
                         Jump(exit);
                     }
                 }
@@ -90,8 +96,11 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                         GateRef length = TaggedGetInt(result);
                         GateRef argsLength = MakeArgListWithHole(glue, elements, length);
                         GateRef elementArgv = PtrAdd(elements, IntPtr(TaggedArray::DATA_OFFSET));
-                        res->WriteVariable(JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
-                            JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg }));
+                        JSCallArgs callArgs(JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
+                        callArgs.callThisArgvWithReturnArgs = { argsLength, elementArgv, thisArg };
+                        CallStubBuilder callBuilder(this, glue, thisValue, argsLength, 0, nullptr, Circuit::NullGate(),
+                            callArgs);
+                        res->WriteVariable(callBuilder.JSCallDispatch());
                         Jump(exit);
                     }
                     Bind(&taggedNotStableJsArg);
@@ -99,8 +108,11 @@ void BuiltinsFunctionStubBuilder::PrototypeApply(GateRef glue, GateRef thisValue
                         GateRef length = GetArrayLength(arrayObj);
                         GateRef argsLength = MakeArgListWithHole(glue, elements, length);
                         GateRef elementArgv = PtrAdd(elements, IntPtr(TaggedArray::DATA_OFFSET));
-                        res->WriteVariable(JSCallDispatch(glue, thisValue, argsLength, 0, Circuit::NullGate(),
-                            JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg }));
+                        JSCallArgs callArgs(JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
+                        callArgs.callThisArgvWithReturnArgs = { argsLength, elementArgv, thisArg };
+                        CallStubBuilder callBuilder(this, glue, thisValue, argsLength, 0, nullptr, Circuit::NullGate(),
+                            callArgs);
+                        res->WriteVariable(callBuilder.JSCallDispatch());
                         Jump(exit);
                     }
                 }
@@ -194,24 +206,31 @@ void BuiltinsFunctionStubBuilder::PrototypeCall(GateRef glue, GateRef thisValue,
         BRANCH(Int64LessThanOrEqual(numArgs, Int64(1)), &call0, &moreThan0);  // 1: thisArg
         Bind(&call0);
         {
-            res->WriteVariable(JSCallDispatch(glue, func, Int32(0), 0, Circuit::NullGate(),  // 0: call 0
-                JSCallMode::CALL_GETTER, { thisArg }));
+            JSCallArgs callArgs(JSCallMode::CALL_GETTER);
+            callArgs.callGetterArgs = { thisArg };
+            CallStubBuilder callBuilder(this, glue, func, Int32(0), 0, nullptr, Circuit::NullGate(), callArgs);
+            res->WriteVariable(callBuilder.JSCallDispatch());
             Jump(exit);
         }
         Bind(&moreThan0);
         BRANCH(Int64Equal(numArgs, Int64(2)), &call1, &moreThan1);  // 2: thisArg + 1 arg
         Bind(&call1);
         {
-            res->WriteVariable(JSCallDispatch(glue, func, Int32(1), 0, Circuit::NullGate(),  // 1: call 1
-                JSCallMode::CALL_SETTER, { thisArg, GetCallArg1(numArgs) }));
+            JSCallArgs callArgs(JSCallMode::CALL_SETTER);
+            callArgs.callSetterArgs = { thisArg, GetCallArg1(numArgs) };
+            CallStubBuilder callBuilder(this, glue, func, Int32(1), 0, nullptr, Circuit::NullGate(), callArgs);
+            res->WriteVariable(callBuilder.JSCallDispatch());
             Jump(exit);
         }
         Bind(&moreThan1);
         BRANCH(Int64Equal(numArgs, Int64(3)), &call2, &moreThan2);  // 3: thisArg + 2 args
         Bind(&call2);
         {
-            res->WriteVariable(JSCallDispatch(glue, func, Int32(2), 0, Circuit::NullGate(),  // 2: call 2
-                JSCallMode::CALL_THIS_ARG2_WITH_RETURN, { thisArg, GetCallArg1(numArgs), GetCallArg2(numArgs) }));
+            JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG2_WITH_RETURN);
+            callArgs.callThisArg2WithReturnArgs = { thisArg, GetCallArg1(numArgs), GetCallArg2(numArgs) };
+            CallStubBuilder callBuilder(this, glue, func, Int32(2), 0, nullptr, Circuit::NullGate(),  // 2: call 2
+                callArgs);
+            res->WriteVariable(callBuilder.JSCallDispatch());
             Jump(exit);
         }
         Bind(&moreThan2);
@@ -219,8 +238,10 @@ void BuiltinsFunctionStubBuilder::PrototypeCall(GateRef glue, GateRef thisValue,
             // currently argv will not be used in builtins IR except constructor
             GateRef argsLength = Int32Sub(TruncInt64ToInt32(numArgs), Int32(1));  // 1: thisArg
             GateRef elementArgv = PtrAdd(GetArgv(), IntPtr(JSTaggedValue::TaggedTypeSize()));
-            res->WriteVariable(JSCallDispatch(glue, func, argsLength, 0, Circuit::NullGate(),
-                JSCallMode::CALL_THIS_ARGV_WITH_RETURN, { argsLength, elementArgv, thisArg }));
+            JSCallArgs callArgs(JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
+            callArgs.callThisArgvWithReturnArgs = { argsLength, elementArgv, thisArg };
+            CallStubBuilder callBuilder(this, glue, func, argsLength, 0, nullptr, Circuit::NullGate(), callArgs);
+            res->WriteVariable(callBuilder.JSCallDispatch());
             Jump(exit);
         }
     }

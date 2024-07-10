@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/builtins/linked_hashtable_stub_builder.h"
 
 #include "ecmascript/compiler/builtins/builtins_stubs.h"
+#include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/hash_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/linked_hash_table.h"
@@ -459,9 +460,11 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
         }
         Label hasException(env);
         Label notHasException(env);
-        GateRef retValue = JSCallDispatch(glue_, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-            Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { thisArg, value, key, thisValue },
-            ProfileOperation(), false);
+        JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+        callArgs.callThisArg3WithReturnArgs = { thisArg, value, key, thisValue };
+        CallStubBuilder callBuilder(this, glue_, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+            Circuit::NullGate(), callArgs, ProfileOperation(), false);
+        GateRef retValue = callBuilder.JSCallDispatch();
         BRANCH(HasPendingException(glue_), &hasException, &notHasException);
         Bind(&hasException);
         {

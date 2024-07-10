@@ -18,6 +18,7 @@
 #include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
+#include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/js_iterator.h"
 
@@ -753,8 +754,11 @@ void BuiltinsTypedArrayStubBuilder::Find(GateRef glue, GateRef thisValue, GateRe
             GateRef key = Int64ToTaggedInt(*i);
             Label hasException1(env);
             Label notHasException1(env);
-            GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { argHandle, kValue, key, thisValue });
+            JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+            callArgs.callThisArg3WithReturnArgs = { argHandle, kValue, key, thisValue };
+            CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+                Circuit::NullGate(), callArgs);
+            GateRef retValue = callBuilder.JSCallDispatch();
             BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
             Bind(&hasException1);
             {
@@ -1074,9 +1078,11 @@ void BuiltinsTypedArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue,
                     // 3 : the fourth position
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(3), thisValue);
                     GateRef argv = PtrAdd(argList, IntPtr(TaggedArray::DATA_OFFSET));
-                    GateRef callResult = JSCallDispatch(glue, callbackFnHandle, argsLength, 0,
-                        Circuit::NullGate(), JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
-                        {argsLength, argv, Undefined()});
+                    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
+                    callArgs.callThisArgvWithReturnArgs = { argsLength, argv, Undefined() };
+                    CallStubBuilder callBuilder(this, glue, callbackFnHandle, argsLength, 0, nullptr,
+                        Circuit::NullGate(), callArgs);
+                    GateRef callResult = callBuilder.JSCallDispatch();
                     Label hasException1(env);
                     Label notHasException1(env);
                     BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
@@ -1177,9 +1183,11 @@ void BuiltinsTypedArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, Gate
                     // 3 : the fourth position
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, argList, Int32(3), thisValue);
                     GateRef argv = PtrAdd(argList, IntPtr(TaggedArray::DATA_OFFSET));
-                    GateRef callResult = JSCallDispatch(glue, callbackFnHandle, argsLength, 0,
-                        Circuit::NullGate(), JSCallMode::CALL_THIS_ARGV_WITH_RETURN,
-                        {argsLength, argv, Undefined()});
+                    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARGV_WITH_RETURN);
+                    callArgs.callThisArgvWithReturnArgs = { argsLength, argv, Undefined() };
+                    CallStubBuilder callBuilder(this, glue, callbackFnHandle, argsLength, 0, nullptr,
+                        Circuit::NullGate(), callArgs);
+                    GateRef callResult = callBuilder.JSCallDispatch();
                     Label hasException1(env);
                     Label notHasException1(env);
                     BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
@@ -1259,8 +1267,11 @@ void BuiltinsTypedArrayStubBuilder::Every(GateRef glue, GateRef thisValue,  Gate
         Bind(&notHasException0);
         {
             GateRef key = IntToTaggedInt(*i);
-            GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { argHandle, *kValue, key, thisValue });
+            JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+            callArgs.callThisArg3WithReturnArgs = { argHandle, *kValue, key, thisValue };
+            CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+                Circuit::NullGate(), callArgs);
+            GateRef retValue = callBuilder.JSCallDispatch();
             BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
             Bind(&hasException1);
             {
@@ -1345,9 +1356,11 @@ void BuiltinsTypedArrayStubBuilder::Some(GateRef glue, GateRef thisValue, GateRe
             Bind(&callDispatch);
             {
                 GateRef key = Int64ToTaggedInt(*i);
-                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
-                    0, Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
-                    { argHandle, *kValue, key, thisValue });
+                JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+                callArgs.callThisArg3WithReturnArgs = { argHandle, *kValue, key, thisValue };
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+                    Circuit::NullGate(), callArgs);
+                GateRef retValue = callBuilder.JSCallDispatch();
                 BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
                 Bind(&hasException1);
                 {
@@ -1448,9 +1461,11 @@ void BuiltinsTypedArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, Gate
                     Bind(&notHasException0);
                     {
                         GateRef key = IntToTaggedInt(*i);
-                        GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
-                            0, Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
-                            { argHandle, kValue, key, thisValue });
+                        JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+                        callArgs.callThisArg3WithReturnArgs = { argHandle, kValue, key, thisValue };
+                        CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
+                            nullptr, Circuit::NullGate(), callArgs);
+                        GateRef retValue = callBuilder.JSCallDispatch();
                         BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
                         Bind(&hasException1);
                         {
@@ -2298,9 +2313,11 @@ void BuiltinsTypedArrayStubBuilder::FindIndex(GateRef glue, GateRef thisValue, G
                 GateRef key = IntToTaggedPtr(*j);
                 Label hasException(env);
                 Label notHasException(env);
-                GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS),
-                    0, Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN,
-                    { argHandle, kValue, key, thisValue });
+                JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+                callArgs.callThisArg3WithReturnArgs = { argHandle, kValue, key, thisValue };
+                CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+                    Circuit::NullGate(), callArgs);
+                GateRef retValue = callBuilder.JSCallDispatch();
                 BRANCH(TaggedIsException(retValue), &hasException, &notHasException);
                 Bind(&hasException);
                 {
@@ -2408,8 +2425,11 @@ void BuiltinsTypedArrayStubBuilder::FindLastIndex(GateRef glue, GateRef thisValu
         Bind(&loopNext);
         kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), jsType);
         GateRef key = Int64ToTaggedInt(*i);
-        GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-            Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { argHandle, *kValue, key, thisValue });
+        JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+        callArgs.callThisArg3WithReturnArgs = { argHandle, *kValue, key, thisValue };
+        CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+            Circuit::NullGate(), callArgs);
+        GateRef retValue = callBuilder.JSCallDispatch();
         BRANCH(HasPendingException(glue), &hasException, &notHasException);
         Bind(&hasException);
         {
@@ -2643,8 +2663,11 @@ void BuiltinsTypedArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef
             Bind(&loopNext);
             kValue = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*i), jsType);
             GateRef key = Int64ToTaggedInt(*i);
-            GateRef retValue = JSCallDispatch(glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0,
-                Circuit::NullGate(), JSCallMode::CALL_THIS_ARG3_WITH_RETURN, { argHandle, *kValue, key, thisValue });
+            JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3_WITH_RETURN);
+            callArgs.callThisArg3WithReturnArgs = { argHandle, *kValue, key, thisValue };
+            CallStubBuilder callBuilder(this, glue, callbackFnHandle, Int32(NUM_MANDATORY_JSFUNC_ARGS), 0, nullptr,
+                Circuit::NullGate(), callArgs);
+            GateRef retValue = callBuilder.JSCallDispatch();
             BRANCH(HasPendingException(glue), &hasException1, &notHasException1);
             Bind(&hasException1);
             result->WriteVariable(Exception());
