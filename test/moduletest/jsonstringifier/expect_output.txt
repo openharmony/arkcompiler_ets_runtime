@@ -39,3 +39,5 @@ true
 true
 true
 {"a":"a","b":"b"}
+TypeError
+true

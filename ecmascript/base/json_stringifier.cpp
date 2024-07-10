@@ -408,7 +408,7 @@ bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, 
 {
     bool isContain = PushValue(value);
     if (isContain) {
-        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value", true);
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
     }
 
     CString stepback = indent_;
@@ -491,7 +491,7 @@ bool JsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object, co
 {
     bool isContain = PushValue(object);
     if (isContain) {
-        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value", true);
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
     }
 
     CString stepback = indent_;
@@ -543,7 +543,7 @@ bool JsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value, con
     // If state.[[Stack]] contains value, throw a TypeError exception because the structure is cyclical.
     bool isContain = PushValue(value);
     if (isContain) {
-        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value", true);
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
     }
 
     CString stepback = indent_;

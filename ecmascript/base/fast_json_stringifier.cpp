@@ -216,7 +216,7 @@ bool FastJsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &val
 {
     bool isContain = PushValue(value);
     if (isContain) {
-        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value", true);
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
     }
 
     result_ += "{";
@@ -302,7 +302,7 @@ bool FastJsonStringifier::SerializeJSProxy(const JSHandle<JSTaggedValue> &object
 {
     bool isContain = PushValue(object);
     if (isContain) {
-        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value", true);
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
     }
 
     result_ += "[";
@@ -344,7 +344,7 @@ bool FastJsonStringifier::SerializeJSArray(const JSHandle<JSTaggedValue> &value)
     // If state.[[Stack]] contains value, throw a TypeError exception because the structure is cyclical.
     bool isContain = PushValue(value);
     if (isContain) {
-        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value", true);
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
     }
 
     result_ += "[";
@@ -990,7 +990,7 @@ bool FastJsonStringifier::DefaultSerializeObject(const JSTaggedValue &object, ui
     JSHandle<JSTaggedValue> value(thread_, object);
     bool isContain = PushValue(value);
     if (isContain) {
-        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value", true);
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
     }
 
     result_ += "{";
