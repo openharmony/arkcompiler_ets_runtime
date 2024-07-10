@@ -169,11 +169,11 @@ public:
     void LoopEnd(Label *loopHead, Environment *env, GateRef glue);
     GateRef CheckSuspend(GateRef glue);
     // call operation
-    GateRef CallRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
+    GateRef CallRuntime(GateRef glue, int index, const std::vector<GateRef>& args);
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);
-    GateRef CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args);
-    GateRef FastCallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
-    GateRef CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args);
+    GateRef CallNGCRuntime(GateRef glue, int index, const std::vector<GateRef>& args);
+    GateRef FastCallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args);
+    GateRef CallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args);
     GateRef GetAotCodeAddr(GateRef jsFunc);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
@@ -886,15 +886,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
     GateRef GetCallSpreadArgs(GateRef glue, GateRef array, ProfileOperation callBack);
     GateRef GetIterator(GateRef glue, GateRef obj, ProfileOperation callback);
-    GateRef JSCallDispatch(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize, GateRef hotnessCounter,
-                           JSCallMode mode, std::initializer_list<GateRef> args,
-                           ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true);
     // For BaselineJIT
-    void JSCallDispatchForBaseline(GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
-                                   Variable *result, GateRef hotnessCounter, JSCallMode mode,
-                                   std::initializer_list<GateRef> args, Label *exit,
-                                   ProfileOperation callback = ProfileOperation(),
-                                   Label *noNeedCheckException = nullptr, bool checkIsCallable = true);
     GateRef FastToBooleanBaseline(GateRef value, bool flag = true);
     GateRef GetBaselineCodeAddr(GateRef baselineCode);
 
@@ -903,15 +895,11 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef SetTypeArrayPropertyByName(GateRef glue, GateRef receiver, GateRef holder, GateRef key, GateRef value,
                                        GateRef jsType);
     GateRef TryStringOrSymbolToElementIndex(GateRef glue, GateRef key);
-    inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::initializer_list<GateRef>& args);
-    inline GateRef DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId,
-                                            const std::initializer_list<GateRef>& args);
+    inline GateRef DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args);
+    inline GateRef DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args);
     GateRef ComputeSizeUtf8(GateRef length);
     GateRef ComputeSizeUtf16(GateRef length);
     GateRef AlignUp(GateRef x, GateRef alignment);
-    void CallFastBuiltin(GateRef glue, GateRef nativeCode, GateRef func, GateRef thisValue, GateRef actualNumArgs,
-                      GateRef callField, GateRef method, Label* notFastBuiltins, Label* exit, Variable* result,
-                      std::initializer_list<GateRef> args, JSCallMode mode);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, bool compressed);
     inline void SetLength(GateRef glue, GateRef str, GateRef length, GateRef isCompressed);
     void Assert(int messageId, int line, GateRef glue, GateRef condition, Label *nextLabel);
@@ -976,11 +964,6 @@ private:
                             ProfileOperation callback);
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
-    void HandleProfileCall(GateRef func, ProfileOperation callback, JSCallMode mode);
-    void HandleProfileNativeCall(GateRef func, ProfileOperation callback, JSCallMode mode);
-    bool IsCallModeGetterSetter(JSCallMode mode);
-    bool IsCallModeSupportPGO(JSCallMode mode);
-    bool IsCallModeSupportCallBuiltin(JSCallMode mode);
     GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
     GateRef CalIteratorKey(GateRef glue);
 

@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
+#include "ecmascript/compiler/access_object_stub_builder.h"
 #include "ecmascript/compiler/baseline/baseline_stubs.h"
 #include "ecmascript/compiler/baseline/baseline_stubs-inl.h"
 #include "ecmascript/compiler/baseline/baseline_call_signature.h"
-#include "ecmascript/compiler/access_object_stub_builder.h"
+#include "ecmascript/compiler/call_stub_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
@@ -323,8 +324,10 @@ void BaselineCallArg1Imm8V8StubBuilder::GenerateCircuit()
     Label noNeedCheckException(env);
     Label exit(env);
     GateRef jumpSize = INT_PTR(CALLARG1_IMM8_V8);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_ARG1, { a0Value }, &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_ARG1);
+    callArgs.callArgs = { a0Value, 0, 0 };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -752,8 +755,10 @@ void BaselineCallthis0Imm8V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARG0);
     GateRef jumpSize = INT_PTR(CALLTHIS0_IMM8_V8);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_THIS_ARG0, { thisValue }, &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG0);
+    callArgs.callArgsWithThis = { 0, 0, 0, thisValue };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -812,9 +817,10 @@ void BaselineCallthis1Imm8V8V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARG1);
     GateRef jumpSize = INT_PTR(CALLTHIS1_IMM8_V8_V8);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_THIS_ARG1, { a0Value, thisValue }, &exit, callback,
-                              &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG1);
+    callArgs.callArgsWithThis = { a0Value, 0, 0, thisValue };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -844,9 +850,10 @@ void BaselineCallthis2Imm8V8V8V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARGS2);
     GateRef jumpSize = INT_PTR(CALLTHIS2_IMM8_V8_V8_V8);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_THIS_ARG2, { a0Value, a1Value, thisValue }, &exit,
-                              callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG2);
+    callArgs.callArgsWithThis = { a0Value, a1Value, 0, thisValue };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -1342,9 +1349,10 @@ void BaselineCallthis3Imm8V8V8V8V8StubBuilder::GenerateCircuit()
     Label noNeedCheckException(env);
     Label exit(env);
     GateRef jumpSize = INT_PTR(CALLTHIS3_IMM8_V8_V8_V8_V8);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_THIS_ARG3, { a0Value, a1Value, a2Value, thisValue },
-                              &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG3);
+    callArgs.callArgsWithThis = { a0Value, a1Value, a2Value, thisValue };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -1371,9 +1379,10 @@ void BaselineCallthisrangeImm8Imm8V8StubBuilder::GenerateCircuit()
     GateRef thisValue = GetVregValue(sp, ZExtInt8ToPtr(thisReg));
     GateRef argv = PtrAdd(sp, PtrMul(PtrAdd(ZExtInt8ToPtr(thisReg), IntPtr(1)), IntPtr(8)));
     GateRef jumpSize = INT_PTR(CALLTHISRANGE_IMM8_IMM8_V8);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue },
-                              &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_WITH_ARGV);
+    callArgs.callArgvWithThis = { numArgs, argv, thisValue };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -1434,10 +1443,13 @@ void BaselineSupercallthisrangeImm8Imm8V8StubBuilder::GenerateCircuit()
             GateRef argv = PtrAdd(sp, PtrMul(ZExtInt16ToPtr(v0), IntPtr(JSTaggedValue::TaggedTypeSize())));
             GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
             METHOD_ENTRY_ENV_DEFINED(superCtor);
-            JSCallDispatchForBaseline(glue, superCtor, actualNumArgs, jumpSize, &res, hotnessCounter,
-                                      JSCallMode::SUPER_CALL_WITH_ARGV,
-                                      { thisFunc, Int16ToTaggedInt(v0), ZExtInt32ToPtr(actualNumArgs),
-                                        argv, *thisObj, newTarget }, &exit, callback, &noNeedCheckException);
+            JSCallArgs callArgs(JSCallMode::SUPER_CALL_WITH_ARGV);
+            callArgs.superCallArgs = {
+                thisFunc, Int16ToTaggedInt(v0), ZExtInt32ToPtr(actualNumArgs), argv, *thisObj, newTarget
+            };
+            CallStubBuilder callBuilder(this, glue, superCtor, actualNumArgs, jumpSize, &res, hotnessCounter, callArgs,
+                callback);
+            callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
             Bind(&exit);
             Jump(&threadCheck);
         }
@@ -1609,8 +1621,10 @@ void BaselineCallarg0Imm8StubBuilder::GenerateCircuit()
     GateRef jumpSize = INT_PTR(CALLARG0_IMM8);
     GateRef curMethod = GetMethodFromFunction(curFunc);
     GateRef hotnessCounter = GetHotnessCounterFromMethod(curMethod);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_ARG0, {}, &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_ARG0);
+    callArgs.callArgs = { 0, 0, 0 };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -1668,10 +1682,11 @@ void BaselineSupercallspreadImm8V8StubBuilder::GenerateCircuit()
             GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_V8));
             METHOD_ENTRY_ENV_DEFINED(superCtor);
             GateRef elementsPtr = PtrAdd(srcElements, IntPtr(TaggedArray::DATA_OFFSET));
-            JSCallDispatchForBaseline(glue, superCtor, argvLen, jumpSize, &res, hotnessCounter,
-                                      JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV,
-                                      { acc, array, ZExtInt32ToPtr(argvLen), elementsPtr, *thisObj, newTarget },
-                                      &exit, callback, &noNeedCheckException);
+            JSCallArgs callArgs(JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV);
+            callArgs.superCallArgs = { acc, array, ZExtInt32ToPtr(argvLen), elementsPtr, *thisObj, newTarget };
+            CallStubBuilder callBuilder(this, glue, superCtor, argvLen, jumpSize, &res, hotnessCounter, callArgs,
+                callback);
+            callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
             Bind(&exit);
             Jump(&threadCheck);
         }
@@ -1730,9 +1745,10 @@ void BaselineCallargs2Imm8V8V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARGS2);
     GateRef jumpSize = INT_PTR(CALLARGS2_IMM8_V8_V8);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_ARG2, { a0Value, a1Value }, &exit, callback,
-                              &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_ARG2);
+    callArgs.callArgs = { a0Value, a1Value, 0 };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -1761,9 +1777,10 @@ void BaselineCallargs3Imm8V8V8V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARGS3);
     GateRef jumpSize = INT_PTR(CALLARGS3_IMM8_V8_V8_V8);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_ARG3, { arg0Value, arg1Value, arg2Value }, &exit, callback,
-                              &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_ARG3);
+    callArgs.callArgs = { arg0Value, arg1Value, arg2Value };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -1789,9 +1806,10 @@ void BaselineCallrangeImm8Imm8V8StubBuilder::GenerateCircuit()
     GateRef argv = PtrAdd(sp, PtrMul(ZExtInt32ToPtr(argStart), IntPtr(8)));
     GateRef jumpSize = INT_PTR(CALLRANGE_IMM8_IMM8_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_WITH_ARGV, { numArgs, argv }, &exit, callback,
-                              &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_WITH_ARGV);
+    callArgs.callArgv = { numArgs, argv };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -3628,10 +3646,11 @@ void BaselineWideNewobjrangePrefImm16V8StubBuilder::GenerateCircuit()
             GateRef argv = PtrAdd(sp,
                 PtrMul(PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
             GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::PREF_IMM16_V8));
-            JSCallDispatchForBaseline(glue, ctor, actualNumArgs, jumpSize, &res, hotnessCounter,
-                                      JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV,
-                                      { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, &exit, callback,
-                                      &noNeedCheckException);
+            JSCallArgs callArgs(JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV);
+            callArgs.callConstructorArgs = { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj };
+            CallStubBuilder callBuilder(this, glue, ctor, actualNumArgs, jumpSize, &res, hotnessCounter, callArgs,
+                callback);
+            callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
             Bind(&exit);
             Jump(&threadCheck);
         }
@@ -3848,10 +3867,11 @@ void BaselineNewobjrangeImm8Imm8V8StubBuilder::GenerateCircuit()
                 PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
             GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM8_IMM8_V8));
             METHOD_ENTRY_ENV_DEFINED(ctor);
-            JSCallDispatchForBaseline(glue, ctor, actualNumArgs, jumpSize, &res, hotnessCounter,
-                                      JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
-                                      { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, &exit, callback,
-                                      &noNeedCheckException);
+            JSCallArgs callArgs(JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
+            callArgs.callConstructorArgs = { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj };
+            CallStubBuilder callBuilder(this, glue, ctor, actualNumArgs, jumpSize, &res, hotnessCounter, callArgs,
+                callback);
+            callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
             Bind(&exit);
             Jump(&threadCheck);
         }
@@ -3937,10 +3957,11 @@ void BaselineNewobjrangeImm16Imm8V8StubBuilder::GenerateCircuit()
                     PtrAdd(firstArgRegIdx, firstArgOffset), IntPtr(8))); // 8: skip function
             GateRef jumpSize = IntPtr(-BytecodeInstruction::Size(BytecodeInstruction::Format::IMM16_IMM8_V8));
             METHOD_ENTRY_ENV_DEFINED(ctor);
-            JSCallDispatchForBaseline(glue, ctor, actualNumArgs, jumpSize, &res, hotnessCounter,
-                                      JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV,
-                                      { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj }, &exit, callback,
-                                      &noNeedCheckException);
+            JSCallArgs callArgs(JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV);
+            callArgs.callConstructorArgs = { ZExtInt32ToPtr(actualNumArgs), argv, *thisObj };
+            CallStubBuilder callBuilder(this, glue, ctor, actualNumArgs, jumpSize, &res, hotnessCounter, callArgs,
+                callback);
+            callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
             Bind(&exit);
             Jump(&threadCheck);
         }
@@ -3990,9 +4011,10 @@ void BaselineWideCallrangePrefImm16V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef jumpSize = INT_PTR(WIDE_CALLRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result,
-                              hotnessCounter, JSCallMode::CALL_WITH_ARGV, { numArgs, argv }, &exit, callback,
-                              &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_WITH_ARGV);
+    callArgs.callArgv = { numArgs, argv };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -4055,9 +4077,10 @@ void BaselineWideCallthisrangePrefImm16V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef jumpSize = INT_PTR(WIDE_CALLTHISRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue },
-                              &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_WITH_ARGV);
+    callArgs.callArgvWithThis = { numArgs, argv, thisValue };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -4384,8 +4407,10 @@ void BaselineDeprecatedCallarg0PrefV8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARG0);
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLARG0_PREF_V8);
-    JSCallDispatchForBaseline(glue, func, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::DEPRECATED_CALL_ARG0, {}, &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::DEPRECATED_CALL_ARG0);
+    callArgs.callArgs = { 0, 0, 0 };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -4421,9 +4446,10 @@ void BaselineDeprecatedCallarg1PrefV8V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARG1);
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLARG1_PREF_V8_V8);
-    JSCallDispatchForBaseline(glue, func, actualNumArgs, jumpSize, &result,
-                              hotnessCounter, JSCallMode::DEPRECATED_CALL_ARG1, { a0Value }, &exit, callback,
-                              &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::DEPRECATED_CALL_ARG1);
+    callArgs.callArgs = { a0Value, 0, 0 };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -4476,9 +4502,10 @@ void BaselineDeprecatedCallargs2PrefV8V8V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARGS2);
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLARGS2_PREF_V8_V8_V8);
-    JSCallDispatchForBaseline(glue, func, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::DEPRECATED_CALL_ARG2, { a0Value, a1Value }, &exit, callback,
-                              &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::DEPRECATED_CALL_ARG2);
+    callArgs.callArgs = { a0Value, a1Value, 0 };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -4537,9 +4564,10 @@ void BaselineDeprecatedCallargs3PrefV8V8V8V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef actualNumArgs = Int32(EcmaInterpreter::ActualNumArgsOfCall::CALLARGS3);
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLARGS3_PREF_V8_V8_V8_V8);
-    JSCallDispatchForBaseline(glue, func, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::DEPRECATED_CALL_ARG3, { a0Value, a1Value, a2Value },
-                              &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::DEPRECATED_CALL_ARG3);
+    callArgs.callArgs = { a0Value, a1Value, a2Value };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -4574,9 +4602,10 @@ void BaselineDeprecatedCallrangePrefImm16V8StubBuilder::GenerateCircuit()
     Label exit(env);
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
-    JSCallDispatchForBaseline(glue, func, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::DEPRECATED_CALL_WITH_ARGV, { numArgs, argv },
-                              &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::DEPRECATED_CALL_WITH_ARGV);
+    callArgs.callArgv = { numArgs, argv };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -4642,9 +4671,10 @@ void BaselineDeprecatedCallthisrangePrefImm16V8StubBuilder::GenerateCircuit()
     GateRef actualNumArgs = Int32Sub(index, Int32(1));  // 1: exclude this
     GateRef jumpSize = INT_PTR(DEPRECATED_CALLTHISRANGE_PREF_IMM16_V8);
     GateRef numArgs = ZExtInt32ToPtr(actualNumArgs);
-    JSCallDispatchForBaseline(glue, func, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV, { numArgs, argv, thisValue },
-                              &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV);
+    callArgs.callArgvWithThis = { numArgs, argv, thisValue };
+    CallStubBuilder callBuilder(this, glue, func, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);
@@ -5486,8 +5516,10 @@ void BaselineCallRuntimeCallInitPrefImm8V8StubBuilder::GenerateCircuit()
     Label noNeedCheckException(env);
     Label exit(env);
     GateRef jumpSize = INT_PTR(CALLRUNTIME_CALLINIT_PREF_IMM8_V8);
-    JSCallDispatchForBaseline(glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter,
-                              JSCallMode::CALL_THIS_ARG0, { thisValue }, &exit, callback, &noNeedCheckException);
+    JSCallArgs callArgs(JSCallMode::CALL_THIS_ARG0);
+    callArgs.callArgsWithThis = { 0, 0, 0, thisValue };
+    CallStubBuilder callBuilder(this, glue, acc, actualNumArgs, jumpSize, &result, hotnessCounter, callArgs, callback);
+    callBuilder.JSCallDispatchForBaseline(&exit, &noNeedCheckException);
     Bind(&exit);
     CHECK_PENDING_EXCEPTION(*result);
     Bind(&noNeedCheckException);

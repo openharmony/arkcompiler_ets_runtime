@@ -213,7 +213,7 @@ inline void StubBuilder::Bind(Label *label)
     env_->GetBuilder()->Bind(label);
 }
 
-inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args)
+inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, const std::vector<GateRef>& args)
 {
     SavePcIfNeeded(glue);
     const std::string name = RuntimeStubCSigns::GetRTName(index);
@@ -230,7 +230,7 @@ inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, GateRef argc, G
     return result;
 }
 
-inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index, const std::initializer_list<GateRef>& args)
+inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index, const std::vector<GateRef>& args)
 {
     const std::string name = RuntimeStubCSigns::GetRTName(index);
     GateRef result = env_->GetBuilder()->CallNGCRuntime(glue, index, Gate::InvalidGateRef, args,
@@ -238,13 +238,13 @@ inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index, const std::i
     return result;
 }
 
-inline GateRef StubBuilder::FastCallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args)
+inline GateRef StubBuilder::FastCallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args)
 {
     GateRef result = env_->GetBuilder()->FastCallOptimized(glue, code, Gate::InvalidGateRef, args, Circuit::NullGate());
     return result;
 }
 
-inline GateRef StubBuilder::CallOptimized(GateRef glue, GateRef code, const std::initializer_list<GateRef>& args)
+inline GateRef StubBuilder::CallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args)
 {
     GateRef result = env_->GetBuilder()->CallOptimized(glue, code, Gate::InvalidGateRef, args, Circuit::NullGate());
     return result;
@@ -3316,15 +3316,13 @@ inline GateRef StubBuilder::HasPendingException(GateRef glue)
     return TaggedIsNotHole(exception);
 }
 
-inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId,
-                                             const std::initializer_list<GateRef>& args)
+inline GateRef StubBuilder::DispatchBuiltins(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args)
 {
     GateRef target = PtrMul(ZExtInt32ToPtr(builtinsId), IntPtrSize());
     return env_->GetBuilder()->CallBuiltin(glue, target, args);
 }
 
-inline GateRef StubBuilder::DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId,
-                                                     const std::initializer_list<GateRef>& args)
+inline GateRef StubBuilder::DispatchBuiltinsWithArgv(GateRef glue, GateRef builtinsId, const std::vector<GateRef>& args)
 {
     GateRef target = PtrMul(ZExtInt32ToPtr(builtinsId), IntPtrSize());
     return env_->GetBuilder()->CallBuiltinWithArgv(glue, target, args);
