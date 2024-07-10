@@ -91,6 +91,7 @@ public:
                            GateRef trackInfo, bool isEmptyArray);
     GateRef NewTrackInfo(GateRef glue, GateRef cachedHClass, GateRef cachedFunc, RegionSpaceFlag spaceFlag,
                          GateRef arraySize);
+    // Note: The size is the num of bytes, it is required to be divisible by 8.
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end,
                                     MemoryOrder order = MemoryOrder::Default());
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
