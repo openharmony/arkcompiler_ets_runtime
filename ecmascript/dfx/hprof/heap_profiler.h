@@ -29,6 +29,7 @@
 namespace panda::ecmascript {
 class HeapSnapshot;
 class EcmaVM;
+using NodeId = uint64_t;
 
 class EntryIdMap {
 public:
@@ -37,18 +38,18 @@ public:
     NO_COPY_SEMANTIC(EntryIdMap);
     NO_MOVE_SEMANTIC(EntryIdMap);
 
-    static constexpr uint32_t SEQ_STEP = 2;
-    std::pair<bool, uint32_t> FindId(JSTaggedType addr);
-    bool InsertId(JSTaggedType addr, uint32_t id);
+    static constexpr uint64_t SEQ_STEP = 2;
+    std::pair<bool, NodeId> FindId(JSTaggedType addr);
+    bool InsertId(JSTaggedType addr, NodeId id);
     bool EraseId(JSTaggedType addr);
     bool Move(JSTaggedType oldAddr, JSTaggedType forwardAddr);
     void UpdateEntryIdMap(HeapSnapshot *snapshot);
-    uint32_t GetNextId()
+    NodeId GetNextId()
     {
         nextId_ += SEQ_STEP;
         return nextId_ - SEQ_STEP;
     }
-    uint32_t GetLastId()
+    NodeId GetLastId()
     {
         return nextId_ - SEQ_STEP;
     }
@@ -56,22 +57,22 @@ public:
     {
         return idMap_.size();
     }
-    CUnorderedMap<JSTaggedType, uint32_t>* GetIdMap()
+    CUnorderedMap<JSTaggedType, NodeId>* GetIdMap()
     {
         return &idMap_;
     }
-    uint32_t GetId()
+    NodeId GetId()
     {
         return nextId_;
     }
-    void SetId(uint32_t id)
+    void SetId(NodeId id)
     {
         nextId_ = id;
     }
 
 private:
-    uint32_t nextId_ {3U};  // 1 Reversed for SyntheticRoot
-    CUnorderedMap<JSTaggedType, uint32_t> idMap_ {};
+    NodeId nextId_ {3U};  // 1 Reversed for SyntheticRoot
+    CUnorderedMap<JSTaggedType, NodeId> idMap_ {};
 };
 
 class HeapProfiler : public HeapProfilerInterface {

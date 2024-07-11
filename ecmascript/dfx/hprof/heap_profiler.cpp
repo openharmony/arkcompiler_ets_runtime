@@ -44,7 +44,7 @@ static pid_t ForkBySyscall(void)
 #endif
 }
 
-std::pair<bool, uint32_t> EntryIdMap::FindId(JSTaggedType addr)
+std::pair<bool, NodeId> EntryIdMap::FindId(JSTaggedType addr)
 {
     auto it = idMap_.find(addr);
     if (it == idMap_.end()) {
@@ -54,7 +54,7 @@ std::pair<bool, uint32_t> EntryIdMap::FindId(JSTaggedType addr)
     }
 }
 
-bool EntryIdMap::InsertId(JSTaggedType addr, uint32_t id)
+bool EntryIdMap::InsertId(JSTaggedType addr, NodeId id)
 {
     auto it = idMap_.find(addr);
     if (it == idMap_.end()) {
@@ -82,7 +82,7 @@ bool EntryIdMap::Move(JSTaggedType oldAddr, JSTaggedType forwardAddr)
     }
     auto it = idMap_.find(oldAddr);
     if (it != idMap_.end()) {
-        uint32_t id = it->second;
+        NodeId id = it->second;
         idMap_.erase(it);
         idMap_[forwardAddr] = id;
         return true;
@@ -96,7 +96,7 @@ void EntryIdMap::UpdateEntryIdMap(HeapSnapshot *snapshot)
         LOG_ECMA(FATAL) << "EntryIdMap::UpdateEntryIdMap:snapshot is nullptr";
     }
     auto nodes = snapshot->GetNodes();
-    CUnorderedMap<JSTaggedType, uint32_t> newIdMap;
+    CUnorderedMap<JSTaggedType, NodeId> newIdMap;
     for (auto node : *nodes) {
         auto addr = node->GetAddress();
         auto it = idMap_.find(addr);
@@ -221,45 +221,27 @@ void HeapProfiler::FillIdMap()
     // Iterate SharedHeap Object
     SharedHeap* sHeap = SharedHeap::GetInstance();
     if (sHeap != nullptr) {
-        sHeap->IterateOverObjects([newEntryIdMap](TaggedObject *obj) {
+        sHeap->IterateOverObjects([newEntryIdMap, this](TaggedObject *obj) {
             JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
-            auto [idExist, sequenceId] = newEntryIdMap->FindId(addr);
-            if (!idExist) {
-                newEntryIdMap->InsertId(addr, sequenceId);
-            }
+            auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
+            newEntryIdMap->InsertId(addr, sequenceId);
         });
     }
 
     // Iterate LocalHeap Object
     auto heap = vm_->GetHeap();
     if (heap != nullptr) {
-        heap->IterateOverObjects([newEntryIdMap](TaggedObject *obj) {
+        heap->IterateOverObjects([newEntryIdMap, this](TaggedObject *obj) {
             JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
-            auto [idExist, sequenceId] = newEntryIdMap->FindId(addr);
-            if (!idExist) {
-                newEntryIdMap->InsertId(addr, sequenceId);
-            }
+            auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
+            newEntryIdMap->InsertId(addr, sequenceId);
         });
     }
 
     // copy entryIdMap
-    CUnorderedMap<JSTaggedType, uint32_t>* idMap = entryIdMap_->GetIdMap();
-    CUnorderedMap<JSTaggedType, uint32_t>* newIdMap = newEntryIdMap->GetIdMap();
-    if (entryIdMap_->GetIdCount() == 0) {
-        *idMap = *newIdMap;
-        entryIdMap_->SetId(newEntryIdMap->GetId());
-    } else {
-        CUnorderedMap<JSTaggedType, uint32_t> tempIdMap;
-        for (auto it : *newIdMap) {
-            auto addr = it.first;
-            auto newIt = idMap->find(addr);
-            if (newIt != idMap->end()) {
-                tempIdMap.emplace(addr, newIt->second);
-            }
-        }
-        idMap->clear();
-        *idMap = tempIdMap;
-    }
+    CUnorderedMap<JSTaggedType, NodeId>* idMap = entryIdMap_->GetIdMap();
+    CUnorderedMap<JSTaggedType, NodeId>* newIdMap = newEntryIdMap->GetIdMap();
+    *idMap = *newIdMap;
 
     GetChunk()->Delete(newEntryIdMap);
 }

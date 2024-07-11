@@ -59,7 +59,7 @@ enum class EdgeType { CONTEXT, ELEMENT, PROPERTY, INTERNAL, HIDDEN, SHORTCUT, WE
 
 class Node {
 public:
-    Node(uint32_t id, uint32_t index, const CString *name, NodeType type, size_t size, size_t nativeSize,
+    Node(NodeId id, uint32_t index, const CString *name, NodeType type, size_t size, size_t nativeSize,
          uint32_t traceId, JSTaggedType address, bool isLive = true)
         : id_(id),
           index_(index),
@@ -72,7 +72,7 @@ public:
           isLive_(isLive)
     {
     }
-    uint32_t GetId() const
+    NodeId GetId() const
     {
         return id_;
     }
@@ -147,7 +147,7 @@ public:
     {
         traceId_ = traceId;
     }
-    static Node *NewNode(Chunk *chunk, size_t id, size_t index, const CString *name, NodeType type, size_t size,
+    static Node *NewNode(Chunk *chunk, NodeId id, size_t index, const CString *name, NodeType type, size_t size,
                          size_t nativeSize, JSTaggedType entry, bool isLive = true);
     template<typename T>
     static JSTaggedType NewAddress(T *addr)
@@ -158,7 +158,7 @@ public:
     ~Node() = default;
 
 private:
-    uint32_t id_ {0};  // Range from 1
+    NodeId id_ {0};  // Range from 1
     uint32_t index_ {0};
     const CString *name_ {nullptr};
     NodeType type_ {NodeType::DEFAULT};
@@ -172,14 +172,10 @@ private:
 
 class Edge {
 public:
-    Edge(uint32_t id, EdgeType type, Node *from, Node *to, CString *name)
-        : id_(id), edgeType_(type), from_(from), to_(to), name_(name) {}
-    Edge(uint32_t id, EdgeType type, Node *from, Node *to, uint32_t index)
-        : id_(id), edgeType_(type), from_(from), to_(to), index_(index) {}
-    uint32_t GetId() const
-    {
-        return id_;
-    }
+    Edge(EdgeType type, Node *from, Node *to, CString *name)
+        : edgeType_(type), from_(from), to_(to), name_(name) {}
+    Edge(EdgeType type, Node *from, Node *to, uint32_t index)
+        : edgeType_(type), from_(from), to_(to), index_(index) {}
     EdgeType GetType() const
     {
         return edgeType_;
@@ -215,13 +211,12 @@ public:
     {
         to_ = node;
     }
-    static Edge *NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *to, CString *name);
-    static Edge *NewEdge(Chunk *chunk, uint32_t id, EdgeType type, Node *from, Node *to, uint32_t index);
+    static Edge *NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, CString *name);
+    static Edge *NewEdge(Chunk *chunk, EdgeType type, Node *from, Node *to, uint32_t index);
     static constexpr int EDGE_FIELD_COUNT = 3;
     ~Edge() = default;
 
 private:
-    uint32_t id_ {-1U};
     EdgeType edgeType_ {EdgeType::DEFAULT};
     Node *from_ {nullptr};
     Node *to_ {nullptr};
@@ -503,7 +498,7 @@ private:
     Node *HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
     Node *HandleFunctionNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
     Node *HandleObjectNode(JSTaggedValue &entry, size_t &size, bool &isInFinish);
-    Node *HandleBaseClassNode(size_t size, bool idExist, unsigned int &sequenceId,
+    Node *HandleBaseClassNode(size_t size, bool idExist, NodeId &sequenceId,
                               TaggedObject* obj, JSTaggedType &addr);
     CString GeneratePrimitiveNameString(JSTaggedValue &entry);
     Node *GeneratePrivateStringNode(size_t size);
