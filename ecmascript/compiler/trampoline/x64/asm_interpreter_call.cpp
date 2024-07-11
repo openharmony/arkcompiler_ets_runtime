@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,13 +16,13 @@
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 
 #include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_generator_object.h"
+#include "ecmascript/mem/machine_code.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/method.h"
 #include "ecmascript/runtime_call_id.h"

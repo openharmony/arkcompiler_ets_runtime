@@ -17,8 +17,11 @@
 #define ECMASCRIPT_MODULE_JS_SHARED_MODULE_H
 
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript {
+using JSRecordInfo = JSPandaFile::JSRecordInfo;
+
 class SendableClassModule {
 public:
     static JSHandle<JSTaggedValue> GenerateSendableFuncModule(JSThread *thread, const JSHandle<JSTaggedValue> &module);

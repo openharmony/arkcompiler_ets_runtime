@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,14 +22,15 @@
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
-#include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/global_env_constants-inl.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/ic/properties_cache.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
@@ -47,9 +48,12 @@
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/platform/log.h"
 #include "ecmascript/global_index_map.h"
 #include "ecmascript/sustaining_js_handle.h"
@@ -167,6 +171,18 @@ void EcmaContext::InitializeEcmaScriptRunStat()
     if (UNLIKELY(runtimeStat_ == nullptr)) {
         LOG_FULL(FATAL) << "alloc runtimeStat_ failed";
         UNREACHABLE();
+    }
+}
+
+void EcmaContext::ClearIcuCache(JSThread *thread)
+{
+    for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); i++) {
+        auto &icuFormatter = icuObjCache_[i];
+        NativePointerCallback deleteEntry = icuFormatter.deleteEntry;
+        if (deleteEntry != nullptr) {
+            deleteEntry(thread->GetEnv(), icuFormatter.icuObj, vm_);
+        }
+        icuFormatter = EcmaContext::IcuFormatter{};
     }
 }
 

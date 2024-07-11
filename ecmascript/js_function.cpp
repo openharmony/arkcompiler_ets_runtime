@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,22 +16,28 @@
 #include "ecmascript/js_function.h"
 
 #include "ecmascript/base/error_type.h"
-#include "ecmascript/ecma_macros.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/object_factory-inl.h"
+#include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/require/js_require_manager.h"
 
@@ -950,6 +956,13 @@ bool JSFunction::NameSetter(JSThread *thread, const JSHandle<JSObject> &self, co
     }
     self->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, value.GetTaggedValue());
     return true;
+}
+
+// NOTE: move to INL file?
+void JSFunction::SetFunctionLength(const JSThread *thread, JSTaggedValue length)
+{
+    ASSERT(!IsPropertiesDict());
+    SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, length);
 }
 
 void JSFunction::SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,

@@ -26,6 +26,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"

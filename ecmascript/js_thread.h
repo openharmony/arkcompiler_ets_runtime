@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,9 +24,6 @@
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/daemon/daemon_task.h"
-#include "ecmascript/elements.h"
-#include "ecmascript/frames.h"
-#include "ecmascript/global_env_constants.h"
 #include "ecmascript/global_index.h"
 #include "ecmascript/js_object_resizing_strategy.h"
 #include "ecmascript/js_tagged_value.h"
@@ -35,7 +32,6 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mutator_lock.h"
-#include "ecmascript/mem/machine_code.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "ffrt.h"
@@ -54,6 +50,14 @@ class EcmaGlobalStorage;
 class Node;
 class DebugNode;
 class VmThreadControl;
+class GlobalEnvConstants;
+enum class ElementsKind : uint8_t;
+
+// NOTE: remove
+class MachineCode;
+using JitCodeVector = std::vector<std::tuple<MachineCode*, std::string, uintptr_t>>;
+using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVector*>&)>;
+
 using WeakClearCallback = void (*)(void *);
 
 enum class MarkStatus : uint8_t {
@@ -911,16 +915,7 @@ public:
         return glueData_.taskInfo_;
     }
 
-    void SetJitCodeMap(JSTaggedType exception,  MachineCode* machineCode, std::string &methodName, uintptr_t offset)
-    {
-        auto it = jitCodeMaps_.find(exception);
-        if (it != jitCodeMaps_.end()) {
-            it->second->push_back(std::make_tuple(machineCode, methodName, offset));
-        } else {
-            JitCodeVector *jitCode = new JitCodeVector {std::make_tuple(machineCode, methodName, offset)};
-            jitCodeMaps_.emplace(exception, jitCode);
-        }
-    }
+    void SetJitCodeMap(JSTaggedType exception,  MachineCode* machineCode, std::string &methodName, uintptr_t offset);
 
     std::map<JSTaggedType, JitCodeVector*> &GetJitCodeMaps()
     {
@@ -1472,6 +1467,8 @@ public:
         auto setNotShareValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithEdenBarrier);
         SetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithBarrier, setNotShareValueStub);
     }
+
+    
 
 #ifndef NDEBUG
     inline void LaunchSuspendAll()

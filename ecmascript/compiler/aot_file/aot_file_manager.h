@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -38,6 +38,9 @@
 namespace panda::ecmascript {
 class JSpandafile;
 class JSThread;
+namespace kungfu {
+    class ArkStackMapParser;
+} // namespace kungfu
 
 /*                AOTLiteralInfo (TaggedArray)
  *    +--------------------------------------------------+------
@@ -74,13 +77,8 @@ public:
         return TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), cacheSize + RESERVED_LENGTH);
     }
 
-    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength = 0)
-    {
-        TaggedArray::InitializeWithSpecialValue(initValue, capacity + RESERVED_LENGTH, extraLength);
-        SetIhc(JSTaggedValue::Undefined());
-        SetChc(JSTaggedValue::Undefined());
-        SetLiteralType(JSTaggedValue(INVALID_LITERAL_TYPE));
-    }
+    void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity,
+                                    uint32_t extraLength = 0);
 
     inline uint32_t GetCacheLength() const
     {
@@ -117,10 +115,7 @@ public:
         return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetLiteralTypeOffset())).GetInt();
     }
 
-    inline void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
-    {
-        Set(thread, index, value);
-    }
+    void SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value);
 
     inline JSTaggedValue GetObjectFromCache(uint32_t index) const
     {

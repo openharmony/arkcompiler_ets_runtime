@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,19 +17,16 @@
 #define ECMASCRIPT_JSOBJECT_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_string.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/filter_helper.h"
 #include "ecmascript/ic/property_box.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/js_native_pointer.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/layout_visitor.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/method.h"
-#include "ecmascript/object_operator.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array.h"
 
@@ -604,7 +601,10 @@ public:
 
     void FillElementsWithHoles(const JSThread *thread, uint32_t start, uint32_t end);
 
-    JSHClass *GetJSHClass() const;
+    JSHClass *GetJSHClass() const
+    {
+        return GetClass();
+    }
     uint32_t GetNonInlinedFastPropsCapacity() const;
     bool IsJSGlobalObject() const;
     bool IsConstructor() const;

@@ -15,6 +15,8 @@
 
 #include "ecmascript/sustaining_js_handle.h"
 
+#include "ecmascript/ecma_context.h"
+
 namespace panda::ecmascript {
 SustainingJSHandle::SustainingJSHandle(EcmaVM *vm) : vm_(vm)
 {

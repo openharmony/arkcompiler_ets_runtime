@@ -15,6 +15,7 @@
 
 #include "ecmascript/jit/jit_dfx.h"
 #include "ecmascript/runtime.h"
+#include "libpandafile/bytecode_instruction-inl.h"
 #include "libpandafile/file.h"
 #include "libpandafile/code_data_accessor.h"
 #include "libpandafile/class_data_accessor-inl.h"

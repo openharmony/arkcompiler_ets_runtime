@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -25,7 +25,7 @@
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/element_accessor-inl.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
+#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
 #include "ecmascript/js_api/js_api_deque.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
@@ -38,6 +38,7 @@
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/message_string.h"
@@ -1236,7 +1237,7 @@ JSTaggedValue ObjectFastOperator::FastGetPropertyByPorpsIndex(JSThread *thread,
         value = dict->GetValue(index);
     }
     if (UNLIKELY(value.IsAccessor())) {
-        return FastRuntimeStub::CallGetter(thread, JSTaggedValue(obj), JSTaggedValue(obj), value);
+        return CallGetter(thread, JSTaggedValue(obj), JSTaggedValue(obj), value);
     }
     ASSERT(!value.IsAccessor());
     return value;

@@ -20,6 +20,7 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/element_accessor.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/js_tagged_value-inl.h"

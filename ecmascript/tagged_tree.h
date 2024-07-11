@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,7 +17,6 @@
 #define ECMASCRIPT_TAGGED_TREE_H
 
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/tagged_array.h"
@@ -131,59 +130,8 @@ public:
 
     static int FindEntry(JSThread *thread, const JSHandle<Derived> &tree, const JSHandle<JSTaggedValue> &key);
 
-    inline static ComparisonResult EntryCompare(JSThread *thread, const JSHandle<JSTaggedValue> valueX,
-                                                const JSHandle<JSTaggedValue> valueY, JSHandle<Derived> tree)
-    {
-        JSTaggedValue fn = tree->GetCompare();
-        if (fn.IsHole()) {
-            return OrdinayEntryCompare(thread, valueX, valueY);
-        }
-        if (valueX->IsUndefined()) {
-            return valueY->IsUndefined() ? ComparisonResult::EQUAL : ComparisonResult::GREAT;
-        }
-        if (valueY->IsUndefined()) {
-            return ComparisonResult::LESS;
-        }
-        if (valueX->IsNull()) {
-            return valueY->IsNull() ? ComparisonResult::EQUAL : ComparisonResult::GREAT;
-        }
-        if (valueY->IsNull()) {
-            return ComparisonResult::LESS;
-        }
-        JSHandle<JSTaggedValue> compareFn(thread, fn);
-        JSHandle<JSTaggedValue> thisArgHandle = thread->GlobalConstants()->GetHandledUndefined();
-        const uint32_t argsLength = 2;
-        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-        EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread, compareFn, thisArgHandle, undefined, argsLength);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-        info->SetCallArg(valueX.GetTaggedValue(), valueY.GetTaggedValue());
-        JSTaggedValue callResult = JSFunction::Call(info);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-        int compareResult = -1;
-        if (callResult.IsBoolean()) {
-            // if callResult is true, compareResult = -1.
-            if (callResult.IsFalse()) {
-                info = EcmaInterpreter::NewRuntimeCallInfo(thread, compareFn, thisArgHandle, undefined, argsLength);
-                info->SetCallArg(valueY.GetTaggedValue(), valueX.GetTaggedValue());
-                callResult = JSFunction::Call(info);
-                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-                compareResult = callResult.IsTrue() ? 1 : 0;
-            }
-        } else if (callResult.IsInt()) {
-            compareResult = callResult.GetInt();
-        } else {
-            JSTaggedNumber v = JSTaggedValue::ToNumber(thread, JSHandle<JSTaggedValue>(thread, callResult));
-            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
-            double value = v.GetNumber();
-            if (std::isnan(value)) {
-                THROW_TYPE_ERROR_AND_RETURN(thread, "CompareFn has illegal return value", ComparisonResult::UNDEFINED);
-            }
-            compareResult = static_cast<int>(value);
-        }
-        return compareResult > 0 ? ComparisonResult::GREAT :
-                                (compareResult < 0 ? ComparisonResult::LESS : ComparisonResult::EQUAL);
-    }
+    static ComparisonResult EntryCompare(JSThread *thread, const JSHandle<JSTaggedValue> valueX,
+                                                const JSHandle<JSTaggedValue> valueY, JSHandle<Derived> tree);
 
     inline void SetKey(const JSThread *thread, uint32_t entry, JSTaggedValue key)
     {

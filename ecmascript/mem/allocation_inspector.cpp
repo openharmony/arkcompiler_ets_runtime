@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,6 +15,7 @@
 
 #include "allocation_inspector.h"
 
+#include "ecmascript/base/number_helper.h"
 #include "ecmascript/dfx/hprof/heap_sampling.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/mem/heap.h"

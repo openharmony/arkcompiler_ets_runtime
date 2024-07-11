@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -91,6 +91,67 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef nativeCode, Ga
                                             GateRef newTarget, GateRef thisValue, GateRef numArgs)
 #endif
 #endif
+
+GateRef BuiltinsStubBuilder::GetCallArg0(GateRef numArg)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label isValid(env);
+    Label exit(env);
+    BRANCH(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(0)), &isValid, &exit);
+    Bind(&isValid);
+    {
+        result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
+}
+
+GateRef BuiltinsStubBuilder::GetCallArg1(GateRef numArg)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label isValid(env);
+    Label exit(env);
+    BRANCH(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(1)), &isValid, &exit);
+    Bind(&isValid);
+    {
+        result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
+}
+
+GateRef BuiltinsStubBuilder::GetCallArg2(GateRef numArg)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label isValid(env);
+    Label exit(env);
+    // 2: 2 args
+    BRANCH(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(2)), &isValid, &exit);
+    Bind(&isValid);
+    {
+        result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
+}
 
 GateRef BuiltinsStubBuilder::GetArgFromArgv(GateRef index, GateRef numArgs, bool needCheck)
 {

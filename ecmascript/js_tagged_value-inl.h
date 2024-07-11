@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,15 +21,12 @@
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/base/number_helper.h"
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_bigint.h"
-#include "ecmascript/js_object.h"
 #include "ecmascript/js_proxy.h"
 #include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/tagged_object-inl.h"
 #include "ecmascript/module/js_module_namespace.h"
@@ -38,254 +35,6 @@
 namespace panda::ecmascript {
 // ecma6 7.1 Type Conversion
 static constexpr uint32_t MAX_ELEMENT_INDEX_LEN = 10;
-
-inline bool JSTaggedValue::ToBoolean() const
-{
-    if (IsInt()) {
-        return GetInt() != 0;
-    }
-    if (IsDouble()) {
-        double d = GetDouble();
-        return !std::isnan(d) && d != 0;
-    }
-    switch (GetRawData()) {
-        case JSTaggedValue::VALUE_UNDEFINED:
-            [[fallthrough]];
-        case JSTaggedValue::VALUE_HOLE:
-            [[fallthrough]];
-        case JSTaggedValue::VALUE_NULL:
-            [[fallthrough]];
-        case JSTaggedValue::VALUE_FALSE: {
-            return false;
-        }
-        case JSTaggedValue::VALUE_TRUE: {
-            return true;
-        }
-        default: {
-            break;
-        }
-    }
-
-    if (IsBigInt()) {
-        BigInt *bigint = BigInt::Cast(GetTaggedObject());
-        return !bigint->IsZero();
-    }
-    if (IsHeapObject()) {
-        TaggedObject *obj = GetTaggedObject();
-        if (IsString()) {
-            auto str = static_cast<EcmaString *>(obj);
-            return EcmaStringAccessor(str).GetLength() != 0;
-        }
-        return true;
-    }
-    LOG_ECMA(FATAL) << "this branch is unreachable";
-    UNREACHABLE();
-}
-
-inline JSTaggedNumber JSTaggedValue::ToNumber(JSThread *thread, JSTaggedValue tagged)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    if (tagged.IsInt() || tagged.IsDouble()) {
-        return JSTaggedNumber(tagged);
-    }
-
-    switch (tagged.GetRawData()) {
-        case JSTaggedValue::VALUE_UNDEFINED:
-        case JSTaggedValue::VALUE_HOLE: {
-            return JSTaggedNumber(base::NAN_VALUE);
-        }
-        case JSTaggedValue::VALUE_TRUE: {
-            return JSTaggedNumber(1);
-        }
-        case JSTaggedValue::VALUE_FALSE:
-        case JSTaggedValue::VALUE_NULL: {
-            return JSTaggedNumber(0);
-        }
-        default: {
-            break;
-        }
-    }
-
-    if (tagged.IsString()) {
-        return StringToNumber(tagged);
-    }
-    if (tagged.IsECMAObject()) {
-        JSHandle<JSTaggedValue>taggedHandle(thread, tagged);
-        JSTaggedValue primValue = ToPrimitive(thread, taggedHandle, PREFER_NUMBER);
-        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedNumber::Exception());
-        return ToNumber(thread, primValue);
-    }
-    if (tagged.IsSymbol()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a Symbol value to a number", JSTaggedNumber::Exception());
-    }
-    if (tagged.IsBigInt()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a BigInt value to a number", JSTaggedNumber::Exception());
-    }
-    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a Unknown value to a number", JSTaggedNumber::Exception());
-}
-
-inline JSTaggedNumber JSTaggedValue::ToNumber(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    return ToNumber(thread, tagged.GetTaggedValue());
-}
-
-inline JSTaggedValue JSTaggedValue::ToBigInt(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    JSHandle<JSTaggedValue> primValue(thread, ToPrimitive(thread, tagged));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    switch (primValue->GetRawData()) {
-        case JSTaggedValue::VALUE_UNDEFINED:
-        case JSTaggedValue::VALUE_NULL: {
-            THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a undefine or null value to a BigInt",
-                                        JSTaggedValue::Exception());
-        }
-        case JSTaggedValue::VALUE_TRUE: {
-            return BigInt::Int32ToBigInt(thread, 1).GetTaggedValue();
-        }
-        case JSTaggedValue::VALUE_FALSE: {
-            return BigInt::Int32ToBigInt(thread, 0).GetTaggedValue();
-        }
-        default: {
-            break;
-        }
-    }
-
-    if (primValue->IsNumber()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a Number value to a BigInt", JSTaggedNumber::Exception());
-    }
-    if (primValue->IsString()) {
-        JSHandle<JSTaggedValue> value(thread, base::NumberHelper::StringToBigInt(thread, primValue));
-        if (value->IsBigInt()) {
-            return value.GetTaggedValue();
-        }
-        THROW_SYNTAX_ERROR_AND_RETURN(thread, "Cannot convert string to a BigInt,"
-                                      "because not allow Infinity, decimal points, or exponents",
-                                      JSTaggedValue::Exception());
-    }
-    if (primValue->IsSymbol()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a Symbol value to a BigInt", JSTaggedNumber::Exception());
-    }
-    if (primValue->IsBigInt()) {
-        return primValue.GetTaggedValue();
-    }
-    THROW_TYPE_ERROR_AND_RETURN(thread, "Cannot convert a Unknown value to a BigInt", JSTaggedNumber::Exception());
-}
-
-inline JSTaggedValue JSTaggedValue::ToBigInt64(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    JSHandle<BigInt> value(thread, ToBigInt(thread, tagged));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<BigInt> tVal = BigInt::GetUint64MaxBigInt(thread);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<BigInt> int64bitVal = BigInt::FloorMod(thread, value, tVal);
-    JSHandle<BigInt> resValue = BigInt::GetInt64MaxBigInt(thread);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (!BigInt::LessThan(int64bitVal.GetTaggedValue(), resValue.GetTaggedValue())) {
-        return BigInt::Subtract(thread, int64bitVal, tVal).GetTaggedValue();
-    } else {
-        return int64bitVal.GetTaggedValue();
-    }
-}
-
-inline JSTaggedValue JSTaggedValue::ToBigUint64(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    JSHandle<BigInt> value(thread, ToBigInt(thread, tagged));
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    bool signFlag = value->GetSign();
-    uint32_t len = value->GetLength();
-    if (!signFlag && len <= 2) { // 2:2 int equal int64
-        return value.GetTaggedValue();
-    }
-    JSHandle<BigInt> tVal = BigInt::GetUint64MaxBigInt(thread);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return BigInt::FloorMod(thread, value, tVal).GetTaggedValue();
-}
-
-inline JSTaggedNumber JSTaggedValue::ToInteger(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    JSTaggedNumber number = ToNumber(thread, tagged);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedNumber::Exception());
-
-    return JSTaggedNumber(base::NumberHelper::TruncateDouble(number.GetNumber()));
-}
-
-inline int32_t JSTaggedValue::ToInt32(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    JSTaggedNumber number = ToNumber(thread, tagged);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
-    return base::NumberHelper::DoubleToInt(number.GetNumber(), base::INT32_BITS);
-}
-
-inline uint32_t JSTaggedValue::ToUint32(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    return ToInt32(thread, tagged);
-}
-
-inline int16_t JSTaggedValue::ToInt16(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    JSTaggedNumber number = ToNumber(thread, tagged);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
-
-    return base::NumberHelper::DoubleToInt(number.GetNumber(), base::INT16_BITS);
-}
-
-inline uint16_t JSTaggedValue::ToUint16(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    return ToInt16(thread, tagged);
-}
-
-inline int8_t JSTaggedValue::ToInt8(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    JSTaggedNumber number = ToNumber(thread, tagged);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
-
-    return base::NumberHelper::DoubleToInt(number.GetNumber(), base::INT8_BITS);
-}
-
-inline uint8_t JSTaggedValue::ToUint8(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    return ToInt8(thread, tagged);
-}
-
-inline uint8_t JSTaggedValue::ToUint8Clamp(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    JSTaggedNumber number = ToNumber(thread, tagged);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
-
-    double d = number.GetNumber();
-    if (std::isnan(d) || d <= 0) {
-        return 0;
-    }
-    if (d >= UINT8_MAX) {
-        return UINT8_MAX;
-    }
-
-    return lrint(d);
-}
-
-inline JSTaggedNumber JSTaggedValue::ToLength(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
-{
-    JSTaggedNumber len = ToInteger(thread, tagged);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedNumber::Exception());
-    if (len.GetNumber() < 0.0) {
-        return JSTaggedNumber(static_cast<double>(0));
-    }
-    if (len.GetNumber() > SAFE_NUMBER) {
-        return JSTaggedNumber(static_cast<double>(SAFE_NUMBER));
-    }
-    return len;
-}
-
-// ecma6 7.2 Testing and Comparison Operations
-inline JSHandle<JSTaggedValue> JSTaggedValue::RequireObjectCoercible(JSThread *thread,
-                                                                     const JSHandle<JSTaggedValue> &tagged,
-                                                                     const char *message)
-{
-    if (tagged->IsUndefinedOrNull()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, message, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Exception()));
-    }
-    return tagged;
-}
 
 inline bool JSTaggedValue::IsCallable() const
 {
@@ -500,11 +249,6 @@ inline bool JSTaggedValue::IsLexicalEnv() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsLexicalEnv();
 }
 
-inline bool JSTaggedValue::IsTaggedArray() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsTaggedArray();
-}
-
 inline bool JSTaggedValue::IsDictionary() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsDictionary();
@@ -579,11 +323,6 @@ inline bool JSTaggedValue::CheckIsJSNativePointer() const
 inline bool JSTaggedValue::IsSymbol() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSymbol();
-}
-
-inline bool JSTaggedValue::IsJSProxy() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSProxy();
 }
 
 inline bool JSTaggedValue::CheckIsJSProxy() const
@@ -947,24 +686,6 @@ inline bool JSTaggedValue::IsJSArray() const
 inline bool JSTaggedValue::IsJSSharedArray() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsJSSharedArray();
-}
-
-inline bool JSTaggedValue::IsStableJSArray(JSThread *thread) const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableJSArray() &&
-           !thread->IsStableArrayElementsGuardiansInvalid();
-}
-
-inline bool JSTaggedValue::IsStableJSArguments(JSThread *thread) const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableJSArguments() &&
-           !thread->IsStableArrayElementsGuardiansInvalid();
-}
-
-inline bool JSTaggedValue::HasStableElements(JSThread *thread) const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsStableElements() &&
-           !thread->IsStableArrayElementsGuardiansInvalid();
 }
 
 inline bool JSTaggedValue::IsTypedArray() const
@@ -1402,16 +1123,6 @@ inline bool JSTaggedValue::IsAsyncGeneratorFunction() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsAsyncGeneratorFunction();
 }
 
-inline bool JSTaggedValue::IsGeneratorObject() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorObject();
-}
-
-inline bool JSTaggedValue::IsGeneratorContext() const
-{
-    return IsHeapObject() && GetTaggedObject()->GetClass()->IsGeneratorContext();
-}
-
 inline bool JSTaggedValue::IsAsyncGeneratorRequest() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsAsyncGeneratorRequest();
@@ -1603,28 +1314,6 @@ inline double JSTaggedValue::ExtractNumber() const
 {
     ASSERT(IsNumber());
     return GetNumber();
-}
-
-// 9.4.2.4 ArraySetLength 3 to 7
-inline bool JSTaggedValue::ToArrayLength(JSThread *thread, const JSHandle<JSTaggedValue> &tagged, uint32_t *output)
-{
-    // 3. Let newLen be ToUint32(Desc.[[Value]]).
-    uint32_t newLen = ToUint32(thread, tagged);
-    // 4. ReturnIfAbrupt(newLen).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-
-    // 5. Let numberLen be ToNumber(Desc.[[Value]]).
-    JSTaggedNumber numberLen = ToNumber(thread, tagged);
-    // 6. ReturnIfAbrupt(newLen).
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-
-    // 7. If newLen != numberLen, throw a RangeError exception.
-    if (JSTaggedNumber(newLen) != numberLen) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, "Not a valid array length", false);
-    }
-
-    *output = newLen;
-    return true;
 }
 
 inline uint32_t JSTaggedValue::GetArrayLength() const

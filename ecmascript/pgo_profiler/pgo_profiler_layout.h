@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -63,36 +63,7 @@ public:
         return value_;
     }
 
-    bool SetAttribute(const JSThread *thread, PropertyAttributes &attr) const
-    {
-        bool ret = false;
-        if (thread->GetEcmaVM()->GetJSOptions().IsEnableOptTrackField()) {
-            TrackType trackType = GetTrackType();
-            attr.SetTrackType(trackType);
-            switch (trackType) {
-                case TrackType::DOUBLE:
-                case TrackType::NUMBER:
-                    attr.SetRepresentation(Representation::DOUBLE);
-                    ret = true;
-                    break;
-                case TrackType::INT:
-                    attr.SetRepresentation(Representation::INT);
-                    ret = true;
-                    break;
-                case TrackType::TAGGED:
-                default:
-                    attr.SetRepresentation(Representation::TAGGED);
-                    break;
-            }
-        } else {
-            attr.SetRepresentation(Representation::TAGGED);
-        }
-        attr.SetWritable(IsWritable());
-        attr.SetEnumerable(IsEnumerable());
-        attr.SetConfigurable(IsConfigurable());
-        attr.SetIsAccessor(IsAccessor());
-        return ret;
-    }
+    bool SetAttribute(const JSThread *thread, PropertyAttributes &attr) const;
 
     void SetIsSymbol(bool isSymbol)
     {

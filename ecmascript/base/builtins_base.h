@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,12 +16,9 @@
 #ifndef ECMASCRIPT_BASE_BUILTINS_BASE_H
 #define ECMASCRIPT_BASE_BUILTINS_BASE_H
 
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env_constants-inl.h"
-#include "ecmascript/js_symbol.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/runtime_call_id.h"

@@ -17,11 +17,14 @@
 #define ECMASCRIPT_MEM_JIT_FORT_H
 
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/mem/region.h"
 
 namespace panda::ecmascript {
 
 class JitFortRegion;
 class JitFortMemDescPool;
+template <typename T>
+class FreeListAllocator;
 
 class JitFort {
 public:

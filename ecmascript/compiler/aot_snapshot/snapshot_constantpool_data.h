@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,9 +16,11 @@
 #define ECMASCRIPT_COMPILER_AOT_SNAPSHOT_AOT_SNAPSHOT_DATA_H
 
 #include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
+#include "ecmascript/compiler/pgo_type/pgo_type_location.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
+#include "libpandafile/bytecode_instruction.h"
 
 namespace panda::ecmascript::kungfu {
 using ApEntityId = pgo::ApEntityId;

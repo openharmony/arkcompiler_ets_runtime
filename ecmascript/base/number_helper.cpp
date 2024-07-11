@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -27,9 +27,11 @@
 #include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_number.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::base {
 using NumberToStringResultCache = builtins::NumberToStringResultCache;

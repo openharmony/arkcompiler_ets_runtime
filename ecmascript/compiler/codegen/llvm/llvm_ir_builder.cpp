@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,12 +22,11 @@
 #include "ecmascript/compiler/baseline/baseline_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/debug_info.h"
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/baseline/baseline_stubs.h"
+#include "ecmascript/compiler/baseline/baseline_stub_csigns.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"

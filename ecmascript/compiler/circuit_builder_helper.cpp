@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,8 +14,21 @@
  */
 
 #include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/js_runtime_options.h"
 
 namespace panda::ecmascript::kungfu {
+
+CompilationConfig::CompilationConfig(const std::string &triple, const JSRuntimeOptions *options)
+    : tripleStr_(triple), triple_(GetTripleFromString(triple))
+{
+    if (options != nullptr) {
+        isTraceBc_ = options->IsTraceBC();
+        profiling_ = options->GetOptCodeProfiler();
+        stressDeopt_ = options->GetStressDeopt();
+        verifyVTable_ = options->GetVerifyVTable();
+        typedOpProfiling_ = options->GetTypedOpProfiler();
+    }
+}
 
 Environment::Environment(size_t arguments, CircuitBuilder *builder)
     : circuit_(builder->GetCircuit()), circuitBuilder_(builder), arguments_(arguments)
