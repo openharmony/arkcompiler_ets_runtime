@@ -28,6 +28,7 @@
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
 
 namespace panda::ecmascript {
 std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const JSHandle<EcmaString> &firstString,
@@ -131,43 +132,79 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const JSHandle<EcmaSt
 {
     auto firstFlat = JSHandle<EcmaString>(vm->GetJSThread(), EcmaStringAccessor::Flatten(vm, firstString));
     auto secondFlat = JSHandle<EcmaString>(vm->GetJSThread(), EcmaStringAccessor::Flatten(vm, secondString));
-    RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
+    if (vm->GetJsDebuggerManager()->GetSignalState()) {
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
+        if (vm->IsCollectingScopeLockStats()) {
+            vm->IncreaseStringTableLockCount();
+        }
 #endif
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(firstFlat, secondFlat);
-    if (result.first != nullptr) {
-        return result.first;
+        std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(firstFlat, secondFlat);
+        if (result.first != nullptr) {
+            return result.first;
+        }
+        JSHandle<EcmaString> concatHandle(vm->GetJSThread(),
+        EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
+        EcmaString *concatString = EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE);
+        concatString->SetMixHashcode(result.second);
+        InternStringThreadUnsafe(concatString);
+        return concatString;
+    } else {
+        RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+        if (vm->IsCollectingScopeLockStats()) {
+            vm->IncreaseStringTableLockCount();
+        }
+#endif
+        std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(firstFlat, secondFlat);
+        if (result.first != nullptr) {
+            return result.first;
+        }
+        JSHandle<EcmaString> concatHandle(vm->GetJSThread(),
+        EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
+        EcmaString *concatString = EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE);
+        concatString->SetMixHashcode(result.second);
+        InternStringThreadUnsafe(concatString);
+        return concatString;
     }
-    JSHandle<EcmaString> concatHandle(vm->GetJSThread(),
-    EcmaStringAccessor::Concat(vm, firstFlat, secondFlat, MemSpaceType::SHARED_OLD_SPACE));
-    EcmaString *concatString = EcmaStringAccessor::Flatten(vm, concatHandle, MemSpaceType::SHARED_OLD_SPACE);
-    concatString->SetMixHashcode(result.second);
-    InternStringThreadUnsafe(concatString);
-    return concatString;
 }
 
 EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                                bool canBeCompress)
 {
-    RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
+    if (vm->GetJsDebuggerManager()->GetSignalState()) {
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
-    if (vm->IsCollectingScopeLockStats()) {
-        vm->IncreaseStringTableLockCount();
-    }
+        if (vm->IsCollectingScopeLockStats()) {
+            vm->IncreaseStringTableLockCount();
+        }
 #endif
-    std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress);
-    if (result.first != nullptr) {
-        return result.first;
-    }
+        std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress);
+        if (result.first != nullptr) {
+            return result.first;
+        }
 
-    EcmaString *str =
-        EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
-    str->SetMixHashcode(result.second);
-    InternStringThreadUnsafe(str);
-    return str;
+        EcmaString *str =
+            EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+        str->SetMixHashcode(result.second);
+        InternStringThreadUnsafe(str);
+        return str;
+    } else {
+        RuntimeLockHolder locker(vm->GetJSThread(), mutex_);
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+        if (vm->IsCollectingScopeLockStats()) {
+            vm->IncreaseStringTableLockCount();
+        }
+#endif
+        std::pair<EcmaString *, uint32_t> result = GetStringThreadUnsafe(utf8Data, utf8Len, canBeCompress);
+        if (result.first != nullptr) {
+            return result.first;
+        }
+
+        EcmaString *str =
+            EcmaStringAccessor::CreateFromUtf8(vm, utf8Data, utf8Len, canBeCompress, MemSpaceType::SHARED_OLD_SPACE);
+        str->SetMixHashcode(result.second);
+        InternStringThreadUnsafe(str);
+        return str;
+    }
 }
 
 EcmaString *EcmaStringTable::GetOrInternCompressedSubString(EcmaVM *vm, const JSHandle<EcmaString> &string,

@@ -4935,6 +4935,8 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     JSRuntimeOptions &jsOption = vm->GetJSOptions();
     LOG_ECMA(INFO) << "asmint: " << jsOption.GetEnableAsmInterpreter()
                     << ", aot: " << jsOption.GetEnableAOT()
+                    << ", jit: " << option.GetEnableJIT()
+                    << ", baseline jit: " << option.GetEnableBaselineJIT()
                     << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
     jsOption.SetEnableJIT(option.GetEnableJIT());

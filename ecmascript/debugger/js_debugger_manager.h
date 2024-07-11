@@ -129,6 +129,16 @@ public:
         return debuggerLibraryHandle_;
     }
 
+    bool GetSignalState()
+    {
+        return isSignalInterrupt_;
+    }
+
+    void SetSignalState(bool isSignalInterrupt)
+    {
+        isSignalInterrupt_ = isSignalInterrupt;
+    }
+
     void SetEvalFrameHandler(std::shared_ptr<FrameHandler> frameHandler)
     {
         frameHandler_ = frameHandler;
@@ -244,6 +254,7 @@ private:
     bool isDebugApp_ {false};
     bool isMixedDebugEnabled_ { false };
     bool isMixedStackEnabled_ { false };
+    bool isSignalInterrupt_ {false};
     bool isObjHashDisplayEnabled_ { true };
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
