@@ -85,9 +85,6 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
                                << "] recordName [" << recordName << "] log:" << "\033[0m";
         }
         bool hasTypes = jsPandaFile->HasTSTypes(recordName);
-        if (UNLIKELY(!hasTypes)) {
-            LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
-        }
         if (compilationEnv_->GetJSOptions().IsEnableJITPGO()) {
             jitProfiler_ = compilationEnv_->GetPGOProfiler()->GetJITProfile();
             static_cast<JitCompilationEnv*>(compilationEnv_)->SetProfileTypeInfo(profileTypeInfo);

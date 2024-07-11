@@ -244,7 +244,6 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         return;
     }
 
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::Compile");
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
     CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
@@ -252,6 +251,8 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     jit->GetJitDfx()->SetBundleName(vm->GetBundleName());
     jit->GetJitDfx()->SetPidNumber(vm->GetJSThread()->GetThreadId());
     CString methodInfo = methodName + ", bytecode size:" + ToCString(codeSize);
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("JIT::Compile:" + methodInfo));
+
     uint32_t maxSize = 9000;
     if (vm->GetJSOptions().IsEnableJitFastCompile()) {
         maxSize = 15; // 15 is method codesize threshold during fast compiling
@@ -385,6 +386,8 @@ void Jit::InstallTasks(uint32_t threadId)
 {
     LockHolder holder(installJitTasksDequeMtx_);
     auto &taskQueue = installJitTasks_[threadId];
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("Jit::InstallTasks count:" + ToCString(taskQueue.size())));
+
     for (auto it = taskQueue.begin(); it != taskQueue.end(); it++) {
         std::shared_ptr<JitTask> task = *it;
         // check task state
