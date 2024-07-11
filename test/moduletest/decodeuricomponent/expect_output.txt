@@ -29,3 +29,4 @@ https://www.runoob.com/my test.php?name=ståle&car=saab/jfdlskafasfd
 https://www.runoob.com/my test.php?name=ståle&car=saab/2389018203
 https://www.runoob.com/my test.php?name=ståle&car=saab/jfdlskafasfd/jd2931dsafdsa
 https://www.runoob.com/my test.php?name=ståle&car=saab/jfdlskafasfd/jd2931dsafdsa/jd2931wjeiojfwre
+true
