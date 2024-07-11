@@ -808,6 +808,8 @@ void Heap::Resume(TriggerGCType gcType)
         }
     }
 
+    activeSemiSpace_->SetWaterLine();
+
     if (mode_ != HeapMode::SPAWN &&
         activeSemiSpace_->AdjustCapacity(inactiveSemiSpace_->GetAllocatedSizeSinceGC(), thread_)) {
         // if activeSpace capacity changes， oldSpace maximumCapacity should change, too.
@@ -823,7 +825,6 @@ void Heap::Resume(TriggerGCType gcType)
         inactiveSemiSpace_->SetInitialCapacity(activeSemiSpace_->GetInitialCapacity());
     }
 
-    activeSemiSpace_->SetWaterLine();
     PrepareRecordRegionsForReclaim();
     hugeObjectSpace_->ReclaimHugeRegion();
     hugeMachineCodeSpace_->ReclaimHugeRegion();

@@ -491,8 +491,6 @@ void ParallelEvacuator::UpdateAndSweepNewRegionReference(Region *region)
             size_t freeSize = freeEnd - freeStart;
             FreeObject::FillFreeObject(heap_, freeStart, freeSize);
             region->ClearLocalToShareRSetInRange(freeStart, freeEnd);
-            SemiSpace *toSpace = heap_->GetNewSpace();
-            toSpace->DecreaseSurvivalObjectSize(freeSize);
         }
 
         freeStart = freeEnd + klass->SizeFromJSHClass(header);
