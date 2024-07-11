@@ -371,6 +371,11 @@ public:
 
     bool IsWeak() const;
 
+    const EcmaVM *GetEcmaVM() const
+    {
+        return vm_;
+    }
+
 private:
     inline T *GetAddress() const
     {
