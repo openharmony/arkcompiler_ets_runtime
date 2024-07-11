@@ -468,7 +468,8 @@ public:
     bool IsJSSharedUint16Array(const EcmaVM *vm);
     bool IsJSSharedInt32Array(const EcmaVM *vm);
     bool IsJSSharedUint32Array(const EcmaVM *vm);
-
+    bool IsJSSharedFloat32Array(const EcmaVM *vm);
+    
     bool IsGeneratorObject(const EcmaVM *vm);
     bool IsJSPrimitiveSymbol(const EcmaVM *vm);
 
