@@ -13,3 +13,6 @@
 
 false
 number ic load success
+1
+1
+load global ic with accessor success!
