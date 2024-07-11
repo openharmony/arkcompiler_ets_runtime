@@ -247,13 +247,8 @@ HWTEST_F_L0(HeapTrackerTest, DumpHeapSnapshot)
     outputString.clear();
 
     FileStream stream(fileName.c_str());
-    TestProgress testProgress;
-    DumpSnapShotOption dumpOption;
-    dumpOption.dumpFormat = DumpFormat::JSON;
-    dumpOption.isVmMode = true;
-    dumpOption.isPrivate = true;
-    dumpOption.captureNumericValue = false;
-    heapProfile->DumpHeapSnapshot(&stream, dumpOption, &testProgress);
+    DumpSnapShotOption dumpOption = { DumpFormat::JSON, true, true };
+    heapProfile->DumpHeapSnapshot(&stream, dumpOption);
     HeapProfilerInterface::Destroy(instance);
 
     // Check
