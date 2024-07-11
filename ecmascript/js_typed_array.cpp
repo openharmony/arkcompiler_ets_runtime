@@ -618,7 +618,7 @@ bool JSTypedArray::IntegerIndexedElementSet(JSThread *thread, const JSHandle<JST
         numValueHandle = JSHandle<JSTaggedValue>(thread, JSTaggedValue::ToNumber(thread, value));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     }
-    
+
     JSHandle<JSTypedArray> typedarrayObj(typedarray);
     JSTaggedValue buffer = typedarrayObj->GetViewedArrayBufferOrByteArray();
     JSHandle<JSTaggedValue> indexHandle(thread, index);
@@ -774,6 +774,9 @@ JSTaggedValue JSTypedArray::GetOffHeapBuffer(JSThread *thread, JSHandle<JSTypedA
     DataViewType arrayType = JSTypedArray::GetTypeFromName(thread, typeName);
     JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetNotOnHeapHclassFromType(
         thread, typedArray, arrayType);
+#if ECMASCRIPT_ENABLE_IC
+    JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, typedArray->GetJSHClass()), notOnHeapHclass);
+#endif
     TaggedObject::Cast(*typedArray)->SynchronizedSetClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 
     return arrayBuffer.GetTaggedValue();
@@ -803,6 +806,9 @@ JSTaggedValue JSSharedTypedArray::GetSharedOffHeapBuffer(JSThread *thread, JSHan
     DataViewType arrayType = JSTypedArray::GetTypeFromName(thread, typeName);
     JSHandle<JSHClass> notOnHeapHclass = TypedArrayHelper::GetSharedNotOnHeapHclassFromType(
         thread, typedArray, arrayType);
+#if ECMASCRIPT_ENABLE_IC
+    JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, typedArray->GetJSHClass()), notOnHeapHclass);
+#endif
     TaggedObject::Cast(*typedArray)->SynchronizedSetClass(thread, *notOnHeapHclass); // onHeap->notOnHeap
 
     return arrayBuffer.GetTaggedValue();
