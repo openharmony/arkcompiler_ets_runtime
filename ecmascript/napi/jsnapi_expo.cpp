@@ -757,6 +757,11 @@ bool JSValueRef::IsJSSharedInt32Array([[maybe_unused]] const EcmaVM *vm)
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt32Array();
 }
 
+bool JSValueRef::IsJSSharedFloat32Array([[maybe_unused]] const EcmaVM *vm)
+{
+    return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedFloat32Array();
+}
+
 bool JSValueRef::IsJSSharedUint32Array([[maybe_unused]] const EcmaVM *vm)
 {
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint32Array();
