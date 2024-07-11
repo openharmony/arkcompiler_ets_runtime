@@ -13,15 +13,17 @@
  * limitations under the License.
  */
 
-#include "ecmascript/tests/test_helper.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/tests/test_helper.h"
 
 namespace panda::test {
 using namespace panda::ecmascript;
+using ErrorType = base::ErrorType;
 
 class HeapDumpTest : public testing::Test {
 public:
@@ -63,6 +65,21 @@ public:
         dumpOption.dumpFormat = DumpFormat::JSON;
         heapProfile->DumpHeapSnapshot(&stream, dumpOption);
         return heapProfile->GetIdCount();
+    }
+
+    bool MatchHeapDumpString(const std::string &filePath, std::string targetStr)
+    {
+        std::string line;
+        std::ifstream inputStream(filePath);
+        std::size_t lineNum = 0;
+        while (getline(inputStream, line)) {
+            lineNum = line.find(targetStr);
+            if (lineNum != line.npos) {
+                return true;
+            }
+        }
+        GTEST_LOG_(INFO) << "_______________" << targetStr << std::to_string(lineNum) <<"_______________ not found";
+        return false;  // Lost the Line
     }
 
 private:
@@ -239,4 +256,92 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionUrl)
     ASSERT_TRUE(strMatched);
 }
 
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName1)
+{
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // TAGGED_ARRAY
+    factory->NewTaggedArray(10);
+    // LEXICAL_ENV
+    factory->NewLexicalEnv(10);
+    // CONSTANT_POOL
+    factory->NewConstantPool(10);
+    // PROFILE_TYPE_INFO
+    factory->NewProfileTypeInfo(10);
+    // TAGGED_DICTIONARY
+    factory->NewDictionaryArray(10);
+    // AOT_LITERAL_INFO
+    factory->NewAOTLiteralInfo(10);
+    // VTABLE
+    factory->NewVTable(10);
+    // COW_TAGGED_ARRAY
+    factory->NewCOWTaggedArray(10);
+    // HCLASS
+    JSHandle<JSTaggedValue> proto = env->GetFunctionPrototype();
+    factory->NewEcmaHClass(JSHClass::SIZE, JSType::HCLASS, proto);
+    // LINKED_NODE
+    JSHandle<LinkedNode> linkedNode(thread_, JSTaggedValue::Hole());
+    factory->NewLinkedNode(1, JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Hole()),
+        JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Hole()), linkedNode);
+    // JS_NATIVE_POINTER
+    auto newData = ecmaVm_->GetNativeAreaAllocator()->AllocateBuffer(8);
+    factory->NewJSNativePointer(newData);
+
+    tester.GenerateSnapShot("testGenerateNodeName_1.heapsnapshot");
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalArray["));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"LexicalEnv["));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalConstantPool["));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalProfileTypeInfo["));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalDict["));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalAOTLiteralInfo["));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalVTable["));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"ArkInternalCOWArray["));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"HiddenClass(NonMovable)"));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"LinkedNode\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "\"JSNativePointer\""));
+    // Test Not Found
+    ASSERT_TRUE(!tester.MatchHeapDumpString("testGenerateNodeName_1.heapsnapshot", "*#@failed case"));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName2)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // JS_ERROR
+    JSHandle<EcmaString> handleMessage(thread_, EcmaStringAccessor::CreateEmptyString(ecmaVm_));
+    factory->NewJSError(ErrorType::ERROR, handleMessage);
+    // JS_EVAL_ERROR
+    factory->NewJSError(ErrorType::EVAL_ERROR, handleMessage);
+    // JS_RANGE_ERROR
+    factory->NewJSError(ErrorType::RANGE_ERROR, handleMessage);
+    // JS_TYPE_ERROR
+    factory->NewJSError(ErrorType::TYPE_ERROR, handleMessage);
+    // JS_AGGREGATE_ERROR
+    factory->NewJSAggregateError();
+    // JS_REFERENCE_ERROR
+    factory->NewJSError(ErrorType::REFERENCE_ERROR, handleMessage);
+    // JS_URI_ERROR
+    factory->NewJSError(ErrorType::URI_ERROR, handleMessage);
+    // JS_SYNTAX_ERROR
+    factory->NewJSError(ErrorType::SYNTAX_ERROR, handleMessage);
+    // JS_OOM_ERROR
+    factory->NewJSError(ErrorType::OOM_ERROR, handleMessage);
+    // JS_TERMINATION_ERROR
+    factory->NewJSError(ErrorType::TERMINATION_ERROR, handleMessage);
+
+    tester.GenerateSnapShot("testGenerateNodeName_2.heapsnapshot");
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Error\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Eval Error\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Range Error\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Type Error\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Aggregate Error\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Reference Error\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Uri Error\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Syntax Error\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"OutOfMemory Error\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Termination Error\""));
+}
 }
