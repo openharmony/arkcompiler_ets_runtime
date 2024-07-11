@@ -48,7 +48,8 @@ using namespace panda::ecmascript;
 
 #ifndef NDEBUG
 #define ASM_ASSERT(messageId, condition)                                            \
-    if (!GetEnvironment()->GetCircuit()->IsOptimizedOrFastJit()) {                  \
+    if (!GetEnvironment()->GetCircuit()->IsOptimizedOrFastJit() &&                  \
+        !GetEnvironment()->IsBaselineBuiltin()) {                                   \
         SUBENTRY(messageId, condition);                                             \
         EXITENTRY();                                                                \
     }
@@ -56,7 +57,8 @@ using namespace panda::ecmascript;
     SUBENTRY_WITH_GLUE(messageId, condition, glue)
 #elif defined(ENABLE_ASM_ASSERT)
 #define ASM_ASSERT(messageId, condition)                                            \
-    if (!GetEnvironment()->GetCircuit()->IsOptimizedOrFastJit()) {                  \
+    if (!GetEnvironment()->GetCircuit()->IsOptimizedOrFastJit() &&                  \
+        !GetEnvironment()->IsBaselineBuiltin()) {                                   \
         SUBENTRY(messageId, condition);                                             \
         EXITENTRY();                                                                \
     }
