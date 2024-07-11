@@ -168,12 +168,8 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT)
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     uv_loop_t *loop = reinterpret_cast<uv_loop_t *>(vm->GetLoop());
-    if (loop == nullptr) {
-        LOG_ECMA(ERROR) << "loop nullptr";
-        return;
-    }
-    if (uv_loop_alive(loop) == 0) {
-        LOG_ECMA(ERROR) << "uv_loop_alive dead";
+    if (loop == nullptr || uv_loop_alive(loop) == 0) {
+        LOG_ECMA(ERROR) << "loop nullptr or uv_loop_alive dead";
         return;
     }
     struct DumpForSnapShotStruct *dumpStruct = new DumpForSnapShotStruct();
@@ -197,12 +193,8 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
         ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
             struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
             DFXJSNApi::GetHeapPrepare(dump->vm);
-            DumpSnapShotOption dumpOption;
-            dumpOption.dumpFormat = dump->dumpFormat;
-            dumpOption.isVmMode = dump->isVmMode;
-            dumpOption.isPrivate = dump->isPrivate;
-            dumpOption.captureNumericValue = dump->captureNumericValue;
-            dumpOption.isFullGC = dump->isFullGC;
+            DumpSnapShotOption dumpOption = { dump->dumpFormat, dump->isVmMode, dump->isPrivate,
+                                              dump->captureNumericValue, dump->isFullGC };
             DumpHeapSnapshot(dump->vm, dumpOption);
             delete dump;
             delete work;
