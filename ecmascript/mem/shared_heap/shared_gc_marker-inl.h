@@ -114,48 +114,91 @@ inline void SharedGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedType 
     sWorkManager_->PushWeakReference(threadId, slot);
 }
 
-template <SharedMarkType markType>
+inline void SharedGCMarker::RecordObject(JSTaggedValue value, uint32_t threadId, void *mem)
+{
+    if (value.IsWeakForHeapObject()) {
+        RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem));
+    } else {
+        MarkObject(threadId, value.GetTaggedObject());
+    }
+}
+
+template<SharedMarkType markType>
+inline bool SharedGCMarker::GetVisitor(JSTaggedValue value, uint32_t threadId, void *mem)
+{
+    if (value.IsInSharedSweepableSpace()) {
+        if constexpr (markType == SharedMarkType::CONCURRENT_MARK_INITIAL_MARK) {
+            // For now if record weak references from local to share in marking root, the slots
+            // may be invalid due to LocalGC, so just mark them as strong-reference.
+            MarkObject(threadId, value.GetHeapObject());
+        } else {
+            static_assert(markType == SharedMarkType::NOT_CONCURRENT_MARK);
+            RecordObject(value, threadId, mem);
+        }
+        return true;
+    }
+    return false;
+}
+
+template<SharedMarkType markType>
 inline auto SharedGCMarker::GenerateRSetVisitor(uint32_t threadId)
 {
     auto visitor = [this, threadId](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());
-        if (value.IsInSharedSweepableSpace()) {
-            if constexpr (markType == SharedMarkType::CONCURRENT_MARK_INITIAL_MARK) {
-                // For now if record weak references from local to share in marking root, the slots
-                // may be invalid due to LocalGC, so just mark them as strong-reference.
-                MarkObject(threadId, value.GetHeapObject());
-            } else {
-                static_assert(markType == SharedMarkType::NOT_CONCURRENT_MARK);
-                if (value.IsWeakForHeapObject()) {
-                    RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem));
-                } else {
-                    MarkObject(threadId, value.GetTaggedObject());
-                }
-            }
-            return true;
-        } else {
-            // clear bit.
-            return false;
-        }
+        
+        return GetVisitor<markType>(value, threadId, mem);
     };
     return visitor;
-};
+}
+
+template<SharedMarkType markType>
+inline void SharedGCMarker::ProcessVisitorOfDoMark(uint32_t threadId)
+{
+    auto rSetVisitor = GenerateRSetVisitor<markType>(threadId);
+    auto visitor = [rSetVisitor](Region *region, RememberedSet *rSet) {
+        rSet->IterateAllMarkedBits(ToUintPtr(region), rSetVisitor);
+    };
+    for (RSetWorkListHandler *handler : rSetHandlers_) {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
+        handler->ProcessAll(visitor);
+    }
+}
 
 template<SharedMarkType markType>
 inline void SharedGCMarker::DoMark(uint32_t threadId)
 {
     if constexpr (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
-        auto rSetVisitor = GenerateRSetVisitor<markType>(threadId);
-        auto visitor = [rSetVisitor](Region *region, RememberedSet *rSet) {
-            rSet->IterateAllMarkedBits(ToUintPtr(region), rSetVisitor);
-        };
-        for (RSetWorkListHandler *handler : rSetHandlers_) {
-            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
-            handler->ProcessAll(visitor);
-        }
+        ProcessVisitorOfDoMark<markType>(threadId);
     }
     ProcessMarkStack(threadId);
+}
+
+inline bool SharedGCMarker::MarkObjectOfProcessVisitor(void *mem, WorkNode *&localBuffer)
+{
+    ObjectSlot slot(ToUintPtr(mem));
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsInSharedSweepableSpace()) {
+        // For now if record weak references from local to share in marking root, the slots
+        // may be invalid due to LocalGC, so just mark them as strong-reference.
+        MarkObjectFromJSThread(localBuffer, value.GetHeapObject());
+        return true;
+    }
+
+    // clear bit.
+    return false;
+}
+
+inline void SharedGCMarker::ProcessVisitor(RSetWorkListHandler *handler)
+{
+    WorkNode *&localBuffer = handler->GetHeap()->GetMarkingObjectLocalBuffer();
+    auto rSetVisitor = [this, &localBuffer](void *mem) -> bool {
+        return MarkObjectOfProcessVisitor(mem, localBuffer);
+    };
+    auto visitor = [rSetVisitor](Region *region, RememberedSet *rSet) {
+        rSet->IterateAllMarkedBits(ToUintPtr(region), rSetVisitor);
+    };
+    handler->ProcessAll(visitor);
 }
 
 inline void SharedGCMarker::ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler)
@@ -163,24 +206,7 @@ inline void SharedGCMarker::ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkLi
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
     ASSERT(JSThread::GetCurrent() == handler->GetHeap()->GetEcmaVM()->GetJSThread());
     ASSERT(JSThread::GetCurrent()->IsInRunningState());
-    WorkNode *&localBuffer = handler->GetHeap()->GetMarkingObjectLocalBuffer();
-    auto rSetVisitor = [this, &localBuffer](void *mem) -> bool {
-        ObjectSlot slot(ToUintPtr(mem));
-        JSTaggedValue value(slot.GetTaggedType());
-        if (value.IsInSharedSweepableSpace()) {
-            // For now if record weak references from local to share in marking root, the slots
-            // may be invalid due to LocalGC, so just mark them as strong-reference.
-            MarkObjectFromJSThread(localBuffer, value.GetHeapObject());
-            return true;
-        } else {
-            // clear bit.
-            return false;
-        }
-    };
-    auto visitor = [rSetVisitor](Region *region, RememberedSet *rSet) {
-        rSet->IterateAllMarkedBits(ToUintPtr(region), rSetVisitor);
-    };
-    handler->ProcessAll(visitor);
+    ProcessVisitor(handler);
     handler->WaitFinishedThenMergeBack();
 }
 }  // namespace panda::ecmascript

@@ -37,17 +37,22 @@ inline void RSetItem::MergeBack()
     region_->MergeLocalToShareRSetForCM(rSet_);
 }
 
-inline void RSetWorkListHandler::CollectRSetItemsInHeap(const Heap *heap)
+inline void RSetWorkListHandler::EnumerateRegions(const Heap *heap)
 {
-    ASSERT(items_.empty());
-    ASSERT(items_.capacity() == 0);
-    items_.reserve(heap->GetRegionCount());
     heap->EnumerateRegions([this](Region *region) {
         RememberedSet *rset = region->ExtractLocalToShareRSet();
         if (rset != nullptr) {
             items_.emplace_back(region, rset);
         }
     });
+}
+
+inline void RSetWorkListHandler::CollectRSetItemsInHeap(const Heap *heap)
+{
+    ASSERT(items_.empty());
+    ASSERT(items_.capacity() == 0);
+    items_.reserve(heap->GetRegionCount());
+    EnumerateRegions(heap);
     ASSERT(items_.size() <= heap->GetRegionCount());
     Initialize();
 }
@@ -79,13 +84,8 @@ ARK_INLINE bool RSetWorkListHandler::ProcessNext(const Visitor &visitor)
 }
 
 template<class Visitor>
-inline void RSetWorkListHandler::ProcessAll(const Visitor &visitor)
+inline void RSetWorkListHandler::ProcessAllVisitor(const Visitor &visitor, int done)
 {
-    ASSERT(JSThread::GetCurrent()->IsDaemonThread() ||
-          (JSThread::GetCurrent() == heap_->GetEcmaVM()->GetJSThread() && JSThread::GetCurrent()->IsInRunningState()));
-    // At this time, the items may be already cleared, but the ProcessNext will do nothing and return false,
-    // it just means that there is nothing to work.
-    int done = 0;
     while (ProcessNext(visitor)) {
         ++done;
     }
@@ -96,6 +96,17 @@ inline void RSetWorkListHandler::ProcessAll(const Visitor &visitor)
             cv_.SignalAll();
         }
     }
+}
+
+template<class Visitor>
+inline void RSetWorkListHandler::ProcessAll(const Visitor &visitor)
+{
+    ASSERT(JSThread::GetCurrent()->IsDaemonThread() ||
+          (JSThread::GetCurrent() == heap_->GetEcmaVM()->GetJSThread() && JSThread::GetCurrent()->IsInRunningState()));
+    // At this time, the items may be already cleared, but the ProcessNext will do nothing and return false,
+    // it just means that there is nothing to work.
+    int done = 0;
+    ProcessAllVisitor(visitor, done);
 }
 
 // This should only be called from js thread in RUNNING state, see comments for initialized_.
@@ -118,6 +129,15 @@ inline bool RSetWorkListHandler::TryMergeBack()
     return (reinterpret_cast<std::atomic<bool>*>(&initialized_)->exchange(false) == true);
 }
 
+inline void RSetWorkListHandler::MergeBackForAllItem()
+{
+    ASSERT(nextItemIndex_ < 0);
+    ASSERT(remainItems_ == 0);
+    for (RSetItem &item : items_) {
+        item.MergeBack();
+    }
+}
+
 inline bool RSetWorkListHandler::MergeBack()
 {
     ASSERT((JSThread::GetCurrent()->IsJSThread() && JSThread::GetCurrent()->IsInRunningState()) ||
@@ -127,11 +147,7 @@ inline bool RSetWorkListHandler::MergeBack()
         ASSERT(JSThread::GetCurrent()->IsDaemonThread());
         return false;
     }
-    ASSERT(nextItemIndex_ < 0);
-    ASSERT(remainItems_ == 0);
-    for (RSetItem &item : items_) {
-        item.MergeBack();
-    }
+    MergeBackForAllItem();
     // This in only called in the bound js thread, or daemon thread when SuspendAll, so this set without atomic
     // is safety.
     heap_->SetRSetWorkListHandler(nullptr);

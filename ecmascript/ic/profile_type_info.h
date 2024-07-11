@@ -156,12 +156,8 @@ public:
         return icSlotSize;
     }
 
-    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t icSlotSize, uint32_t extraLength = 0)
+    inline void SetPrimitiveOfSlot(JSTaggedValue initValue, uint32_t icSlotSize)
     {
-        ASSERT(initValue.IsSpecial());
-        icSlotSize = AdjustSlotSize(icSlotSize);
-        SetLength(icSlotSize + RESERVED_LENGTH);
-        SetExtraLength(extraLength);
         for (uint32_t i = 0; i < icSlotSize; i++) {
             size_t offset = JSTaggedValue::TaggedTypeSize() * i;
             if (i == INVALID_SLOT_INDEX) {
@@ -170,9 +166,10 @@ public:
                 Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, initValue.GetRawData());
             }
         }
-        // the last of the cache is used to save osr jit tagged array
-        Barriers::SetPrimitive<JSTaggedType>(
-            GetData(), icSlotSize * JSTaggedValue::TaggedTypeSize(), JSTaggedValue::Undefined().GetRawData());
+    }
+
+    inline void SetSpecialValue()
+    {
         SetPeriodIndex(INITIAL_PERIOD_INDEX);
         SetJitHotnessThreshold(JIT_DISABLE_FLAG);
         SetJitHotnessCnt(0);
@@ -181,6 +178,19 @@ public:
         SetOsrHotnessCnt(INITIAL_OSR_HOTNESS_CNT);
         SetJitCallThreshold(INITIAL_JIT_CALL_THRESHOLD);
         SetJitCallCnt(INITIAL_JIT_CALL_CNT);
+    }
+
+    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t icSlotSize, uint32_t extraLength = 0)
+    {
+        ASSERT(initValue.IsSpecial());
+        icSlotSize = AdjustSlotSize(icSlotSize);
+        SetLength(icSlotSize + RESERVED_LENGTH);
+        SetExtraLength(extraLength);
+        SetPrimitiveOfSlot(initValue, icSlotSize);
+        // the last of the cache is used to save osr jit tagged array
+        Barriers::SetPrimitive<JSTaggedType>(
+            GetData(), icSlotSize * JSTaggedValue::TaggedTypeSize(), JSTaggedValue::Undefined().GetRawData());
+        SetSpecialValue();
     }
 
     void SetPreDumpPeriodIndex()
