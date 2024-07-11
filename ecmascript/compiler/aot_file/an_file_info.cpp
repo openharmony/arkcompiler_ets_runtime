@@ -96,7 +96,7 @@ bool AnFileInfo::Load(const std::string &filename)
     return LoadInternal(filename);
 }
 
-#if defined(ANDROID_PLATFORM)
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
 bool AnFileInfo::Load(const std::string &filename, [[maybe_unused]] std::function<bool
     (std::string fileName, uint8_t **buff, size_t *buffSize)> ReadAOTCallBack)
 {

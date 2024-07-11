@@ -322,6 +322,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "IS_PUBLIC_VERSION" ]
   }
 
+  if (is_arkui_x) {
+    defines += [ "CROSS_PLATFORM" ]
+  }
+
   if (target_os == "android") {
     defines += [ "ANDROID_PLATFORM" ]
   }

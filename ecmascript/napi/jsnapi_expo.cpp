@@ -4685,7 +4685,7 @@ void JSNApi::LoadAotFileInternal(EcmaVM *vm, const std::string &moduleName, std:
     if (vm->GetJSOptions().WasAOTOutputFileSet()) {
         aotFileName = vm->GetJSOptions().GetAOTOutputFile();
     }
-#if defined(ANDROID_PLATFORM)
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
     else if (vm->GetJSOptions().GetEnableAOT())
 #else
     else if (ecmascript::AnFileDataManager::GetInstance()->IsEnable())
@@ -4719,7 +4719,7 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
     ecmascript::JSPandaFileExecutor::BindPreloadedPandaFilesToAOT(vm, moduleName);
 }
 
-#if defined(ANDROID_PLATFORM)
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
 void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleName, const std::string &moduleName,
                          std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
 {

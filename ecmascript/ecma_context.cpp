@@ -1130,7 +1130,7 @@ bool EcmaContext::LoadAOTFiles(const std::string& aotFileName)
     return LoadAOTFilesInternal(aotFileName);
 }
 
-#if defined(ANDROID_PLATFORM)
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
 bool EcmaContext::LoadAOTFiles(const std::string& aotFileName,
                                std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
 {

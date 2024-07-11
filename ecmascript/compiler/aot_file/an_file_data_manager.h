@@ -71,7 +71,7 @@ private:
     std::shared_ptr<AnFileInfo> UnsafeFind(const std::string &fileName) const;
     bool UnsafeLoadFromAOTInternal(const std::string &fileName, std::shared_ptr<AnFileInfo> &info);
     bool UnsafeLoadFromAOT(const std::string &fileName);
-#if defined(ANDROID_PLATFORM)
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
     bool UnsafeLoadFromAOT(const std::string &fileName,
                            std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
 #endif

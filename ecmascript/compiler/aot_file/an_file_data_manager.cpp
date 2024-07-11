@@ -80,7 +80,7 @@ bool AnFileDataManager::SafeLoad(const std::string &fileName, Type type, [[maybe
         if (aotFileInfo != nullptr) {
             return true;
         }
-#if defined(ANDROID_PLATFORM)
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
         return UnsafeLoadFromAOT(fileName, cb);
 #else
         return UnsafeLoadFromAOT(fileName);
@@ -142,7 +142,7 @@ bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName)
     return UnsafeLoadFromAOTInternal(fileName, info);
 }
 
-#if defined(ANDROID_PLATFORM)
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
 bool AnFileDataManager::UnsafeLoadFromAOT(const std::string &fileName, std::function<bool
     (std::string fileName, uint8_t **buff, size_t *buffSize)> cb)
 {

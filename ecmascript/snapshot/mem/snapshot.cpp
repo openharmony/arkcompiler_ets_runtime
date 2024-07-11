@@ -164,7 +164,7 @@ bool Snapshot::DeserializeInternal(SnapshotType type, const CString &snapshotFil
     processor.DeserializeObjectExcludeString(oldSpaceBegin, hdr.oldSpaceObjSize, hdr.nonMovableObjSize,
                                              hdr.machineCodeObjSize, hdr.snapshotObjSize, hdr.hugeObjSize);
 
-#if !defined(ANDROID_PLATFORM)
+#if !defined(CROSS_PLATFORM)
     FileUnMap(MemMap(fileMap.GetOriginAddr(), hdr.pandaFileBegin));
 #endif
     std::shared_ptr<JSPandaFile> jsPandaFile;
@@ -198,7 +198,7 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
     return DeserializeInternal(type, snapshotFile, processor, fileMap);
 }
 
-#if defined(ANDROID_PLATFORM)
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
 bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, [[maybe_unused]] std::function<bool
     (std::string fileName, uint8_t **buff, size_t *buffSize)> ReadAOTCallBack, bool isBuiltins)
 {
