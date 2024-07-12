@@ -66,9 +66,9 @@ bool CpuProfiler::RegisterGetStackSignal()
     }
 #if defined(PANDA_TARGET_ARM64) && !defined(ANDROID_PLATFORM)
     constexpr const size_t stackSize = 128_KB;
-    segvStack_.ss_sp = valloc(stackSize);
+    segvStack_.ss_sp = PageMap(stackSize, PAGE_PROT_READWRITE).GetMem();
     if (segvStack_.ss_sp == nullptr) {
-        LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, valloc failed, errno = " << errno;
+        LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, PageMap failed";
         return false;
     }
     segvStack_.ss_flags = 0;
@@ -245,7 +245,7 @@ CpuProfiler::~CpuProfiler()
         params_ = nullptr;
     }
     if (segvStack_.ss_sp != nullptr) {
-        free(segvStack_.ss_sp);
+        PageUnmap(MemMap(segvStack_.ss_sp, segvStack_.ss_size));
         segvStack_.ss_sp = nullptr;
         segvStack_.ss_size = 0;
     }
