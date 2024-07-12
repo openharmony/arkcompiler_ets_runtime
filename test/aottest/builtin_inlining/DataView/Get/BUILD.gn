@@ -13,6 +13,5 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_test_action("builtinDataViewGet") {
-  deps = []
+host_aot_builtin_inlining_test_action("builtinDataViewGet") {
 }

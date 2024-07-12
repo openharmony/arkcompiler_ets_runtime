@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+declare interface ArkTools {
+  isAOTCompiled(args: any): boolean;
+}
 declare function print(arg:any):string;
 //int array
 let literalIntArrayWithHole = [0,,2,,4,,]
@@ -181,6 +184,61 @@ print(specialArray.includes(BigInt(123456))) //: true
 print(specialArray.includes(5)) //: true
 //aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
 print(specialArray.includes(5.5)) //: true
+
+print('unusual cases') //: unusual cases
+print(specialArray.includes()) //: true
+//aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+print(specialArray.includes(() => {})) //: false
+//aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+print(specialArray.includes(NaN, 0)) //: true
+//aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+print(specialArray.includes(NaN, 2000000)) //: false
+//aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+print(specialArray.includes(NaN, -2000000)) //: true
+//aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+print(specialArray.includes(NaN, -1)) //: false
+//aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+print(specialArray.includes(5, 5, 78)) //: true
+
+function notIntIndex() {
+  let specialArray = [1, 2, NaN]
+  //aot: [trace] Check Type: IndexNotInt
+  print(specialArray.includes(false, "str")) //: false
+}
+notIntIndex()
+
+// Check inside try-block
+try {
+  //aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+  print(specialArray.includes(null)) //: true
+} catch(e) { 
+}
+
+let obj = {};
+obj.valueOf = (() => { return 5; })
+//aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+print(specialArray.includes(obj)); //: false
+
+function Throwing() {
+    this.value = 2;
+    Throwing.prototype.valueOf = function() {
+        if (this.value > 0) {
+            throw new Error("positive");
+        }
+        return this.value;
+    }
+}
+let throwingObj = new Throwing();
+try {
+    //aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+    print(specialArray.includes(throwingObj)); //: false
+} catch(e) {
+    print(e);
+} finally {
+    //aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+    print(specialArray.includes(obj)); //: false
+}
+
 //===========deopt type
 function prototypeChange(){
   let tArray = [1,,3]
@@ -196,3 +254,122 @@ function lengthChange(){
 }
 //aot: [trace] Check Type: NotStableArray1
 lengthChange() //: false
+
+
+// Replace standard builtin
+function replace(a : any) {
+  return a;
+}
+
+let newArr = [1, 2, NaN]
+let true_includes = newArr.includes
+newArr.includes = replace
+
+print(newArr.includes(undefined)); //: undefined
+newArr.includes = true_includes
+print(newArr.includes(undefined)); //: false
+
+
+function doIncludes(x: any): any {
+  return newArr.includes(x);
+}
+
+function printIncludes(x: any) {
+  try {
+      print(doIncludes(x));
+  } finally {
+  }
+}
+
+if (ArkTools.isAOTCompiled(printIncludes)) {
+  // Replace standard builtin after call to standard builtin was profiled
+  newArr.includes = replace
+}
+printIncludes(2.5); //pgo: false
+//aot: [trace] Check Type: NotCallTarget1
+//aot: 2.5
+
+printIncludes("abc"); //pgo: false
+//aot: [trace] Check Type: NotCallTarget1
+//aot: abc
+
+newArr.includes = true_includes
+
+function includesCase1() {
+  print('case 1 includes') //: case 1 includes
+  let arr1 = [1, 2]
+  let arr2 = [1, 2]
+  arr2.garbage = function(x: any): any {
+      return undefined;
+  }
+  //aot: [trace] Check Type: NotStableArray1
+  print(arr1.includes(1)); //: true
+  print(arr2.includes(2)); //: true
+}
+includesCase1()
+
+
+function includesCase2() {
+  print('case 2 includes') //: case 2 includes
+  let arr1 = [1, 2]
+  let arr2 = [1, 2]
+  arr2.includes = function(x: any) {
+      return x
+  }
+
+  //aot: [trace] aot inline builtin: Object.getPrototypeOf, caller function name:#*#includesCase2@builtinArrayIncludes
+  print(Object.getPrototypeOf(arr2) === Array.prototype) //: true
+
+  //aot: [trace] Check Type: NotStableArray1
+  print(arr1.includes(1)); //: true
+  print(arr2.includes(1)); //: 1
+}
+includesCase2()
+
+
+function includesCase3() {
+  print('case 3 includes') //: case 3 includes
+  let marr = [1, 2]
+  let true_includes = marr.includes
+  let mimicArray = {
+      includes: true_includes,
+  }
+
+  //aot: [trace] Check Type: NotStableArray1
+  print(marr.includes(500)); //: false
+  Object.setPrototypeOf(marr, mimicArray)
+
+  print(marr.includes(500)); //: false
+}
+includesCase3()
+
+
+function includesCase4() {
+  print('case 4 includes') //: case 4 includes
+  let arr1 = [1, 2]
+  let arr2 = [1, 2]
+  let notArray = {
+      includes(x: any) {
+          return -100
+      }
+  }
+  Object.setPrototypeOf(arr2, notArray)
+
+  //aot: [trace] Check Type: NotStableArray1
+  print(arr1.includes(1)); //: true
+  print(arr2.includes(1)); //: -100
+}
+includesCase4()
+
+
+function includesCase5() {
+  print('case 5 includes') //: case 5 includes
+  let arr1 = [1, 2]
+  Array.prototype.includes = function(x: any) {
+      return x
+  }
+
+  //aot: [trace] Check Type: NotStableArray1
+  print(arr1.includes(1)); //: 1
+}
+includesCase5()
