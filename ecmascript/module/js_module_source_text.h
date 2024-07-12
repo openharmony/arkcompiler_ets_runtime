@@ -232,9 +232,16 @@ public:
             SharedTypes::SENDABLE_FUNCTION_MODULE;
     }
 
+    inline bool *GetLazyImportStatusArray()
+    {
+        return reinterpret_cast<bool *>(GetLazyImportStatus());
+    }
+
     inline void SetLazyImportArray(bool *lazyImportArray)
     {
-        DestoryLazyImportArray();
+        if (lazyImportArray != nullptr) {
+            DestoryLazyImportArray();
+        }
         SetLazyImportStatus(ToUintPtr(lazyImportArray));
     }
 
@@ -243,9 +250,13 @@ public:
         delete[] GetLazyImportStatusArray();
     }
 
-    inline bool *GetLazyImportStatusArray()
+    inline bool IsLazyImportModule(size_t index)
     {
-        return reinterpret_cast<bool *>(GetLazyImportStatus());
+        bool *lazyArray = GetLazyImportStatusArray();
+        if (lazyArray == nullptr) {
+            return false;
+        }
+        return lazyArray[index];
     }
 
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
