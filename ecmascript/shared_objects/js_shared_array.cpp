@@ -447,10 +447,7 @@ OperationResult JSSharedArray::GetProperty(JSThread *thread, const JSHandle<JSTa
     ObjectOperator op(thread, obj, key);
     // Out of bounds check for shared array
     if ((obj->IsJSSharedArray() && sCheckMode == SCheckMode::CHECK) && op.IsElement() && !op.IsFound()) {
-        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
-                                                               "The value of index is out of range.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
-                                         OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+        return OperationResult(thread, JSTaggedValue::Undefined(), PropertyMetaData(false));
     }
     return OperationResult(thread, JSObject::GetProperty(thread, &op), PropertyMetaData(op.IsFound()));
 }

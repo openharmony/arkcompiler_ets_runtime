@@ -137,27 +137,23 @@ ExtendTo to 8 without initValue fail. err: BusinessError: Parameter error.Not en
 Start Test indexAccess
 element1: 3
 element1 assigned to 10: 10
-Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+Index access read out of range success.
 Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
-read element while iterate array fail. err: BusinessError: The value of index is out of range., errCode: 10200001
 write element while iterate array fail. err: BusinessError: Concurrent modification exception, errCode: 10200201
 Start Test indexStringAccess
 String index element1: 3
 String index element1 assigned to 10: 10
-String Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
+String Index access read out of range success.
 String Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
-String index read element while iterate array fail. err: BusinessError: The value of index is out of range., errCode: 10200001
 String index write element while iterate array fail. err: BusinessError: Concurrent modification exception, errCode: 10200201
 Start Test testForIC
 [IC] Index access read in range success. array: 3
 [IC] Index access write in range success.
 [IC] assign readonly length no error.
-[IC] Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
 [IC] Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
 Start Test testStringForIC
 [IC] String Index access read in range success. array: 3
 [IC] String Index access write in range success.
-[IC] String Index access read out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
 [IC] String Index access write out of range failed. err: BusinessError: The value of index is out of range., code: 10200001
 Start Test arrayFrozenTest
 arrayFrozenTest [new] single string. arr: ARK
