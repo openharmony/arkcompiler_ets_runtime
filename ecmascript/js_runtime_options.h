@@ -1993,7 +1993,7 @@ private:
     bool enableJitFrame_ {false};
     bool disableCodeSign_ {false};
     bool enableBaselinePgo_ {false};
-    bool asyncLoadAbc_ {true};
+    bool asyncLoadAbc_ {false};
 };
 } // namespace panda::ecmascript
 
