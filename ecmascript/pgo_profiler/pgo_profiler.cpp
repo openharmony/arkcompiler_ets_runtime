@@ -1378,9 +1378,10 @@ void PGOProfiler::DumpCall(ApEntityId abcId, const CString &recordName, EntityId
         calleeAbcId = abcId;
         ASSERT(calleeMethodId <= 0);
         if (calleeMethodId == 0) {
-            return;
+            kind = ProfileType::Kind::MethodId;
+        } else {
+            kind = ProfileType::Kind::BuiltinFunctionId;
         }
-        kind = ProfileType::Kind::BuiltinFunctionId;
     } else if (slotValue.IsJSFunction()) {
         JSFunction *callee = JSFunction::Cast(slotValue);
         Method *calleeMethod = Method::Cast(callee->GetMethod());

@@ -1741,6 +1741,7 @@ public:
 
 protected:
     bool IsMonoBuiltins() const;
+    bool IsStringMonoBuiltins() const;
     void FetchBuiltinsTypes();
     bool CheckDuplicatedBuiltinType(ProfileType newType) const;
 
