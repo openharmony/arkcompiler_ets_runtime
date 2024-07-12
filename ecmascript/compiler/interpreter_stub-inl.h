@@ -120,12 +120,10 @@ GateRef InterpreterStubBuilder::ReadInstSigned8_0(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInstSigned16_0(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         GateRef currentInst = Load(VariableType::INT16(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
         return GetEnvironment()->GetBuilder()->SExtInt16ToInt32(currentInst);
     }
-#endif
     /* 2 : skip 8 bits of opcode and 8 bits of low bits */
     GateRef currentInst = Load(VariableType::INT8(), pc, IntPtr(2));
     GateRef currentInst1 = GetEnvironment()->GetBuilder()->SExtInt1ToInt32(currentInst);
@@ -135,12 +133,10 @@ GateRef InterpreterStubBuilder::ReadInstSigned16_0(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInstSigned32_0(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         GateRef x = Load(VariableType::INT32(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
         return GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
     }
-#endif
     /* 4 : skip 8 bits of opcode and 24 bits of low bits */
     GateRef x = Load(VariableType::INT8(), pc, IntPtr(4));
     GateRef currentInst = GetEnvironment()->GetBuilder()->SExtInt1ToInt32(x);
@@ -154,11 +150,9 @@ GateRef InterpreterStubBuilder::ReadInstSigned32_0(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst16_0(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT16(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
     }
-#endif
     /* 2 : skip 8 bits of opcode and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_1(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
@@ -167,11 +161,9 @@ GateRef InterpreterStubBuilder::ReadInst16_0(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst16_1(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT16(), pc, IntPtr(2));  // 2 : skip 2 bytes of bytecode
     }
-#endif
     /* 3 : skip 8 bits of opcode, 8 bits of prefix and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_2(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
@@ -181,11 +173,9 @@ GateRef InterpreterStubBuilder::ReadInst16_1(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst16_2(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT16(), pc, IntPtr(3));  // 3 : skip 3 bytes of bytecode
     }
-#endif
     /* 4 : skip 8 bits of opcode, first parameter of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_3(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
@@ -195,11 +185,9 @@ GateRef InterpreterStubBuilder::ReadInst16_2(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst16_3(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT16(), pc, IntPtr(4));  // 4 : skip 4 bytes of bytecode
     }
-#endif
     /* 5 : skip 8 bits of opcode, 8 bits of prefix, first parameter of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_4(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
@@ -209,11 +197,9 @@ GateRef InterpreterStubBuilder::ReadInst16_3(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst16_4(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT16(), pc, IntPtr(5));  // 5 : skip 5 bytes of bytecode
     }
-#endif
     /* 7 : skip 8 bits of opcode, 8 bits of prefix, first 2 parameters of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_5(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
@@ -223,11 +209,9 @@ GateRef InterpreterStubBuilder::ReadInst16_4(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst16_5(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT16(), pc, IntPtr(6));  // 6 : skip 6 bytes of bytecode
     }
-#endif
     /* 7 : skip 8 bits of opcode, 8 bits of prefix, first 2 parameters of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_6(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
@@ -237,11 +221,9 @@ GateRef InterpreterStubBuilder::ReadInst16_5(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst16_6(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT16(), pc, IntPtr(7));  // 7 : skip 7 bytes of bytecode
     }
-#endif
     /* 7 : skip 8 bits of opcode, 8 bits of prefix, first 2 parameters of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_7(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
@@ -251,11 +233,9 @@ GateRef InterpreterStubBuilder::ReadInst16_6(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst16_7(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT16(), pc, IntPtr(8));  // 8 : skip 8 bytes of bytecode
     }
-#endif
     /* 7 : skip 8 bits of opcode, 8 bits of prefix, first 2 parameters of 16 bits and 8 bits of low bits */
     GateRef currentInst1 = ZExtInt8ToInt16(ReadInst8_8(pc));
     GateRef currentInst2 = Int16LSL(currentInst1, Int16(8));  // 8 : set as high 8 bits
@@ -628,11 +608,9 @@ void InterpreterStubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, G
 
 GateRef InterpreterStubBuilder::ReadInst32_0(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT32(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
     }
-#endif
     GateRef currentInst = ZExtInt8ToInt32(ReadInst8_3(pc));
     GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_2(pc)));
@@ -644,11 +622,9 @@ GateRef InterpreterStubBuilder::ReadInst32_0(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst32_1(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT32(), pc, IntPtr(2));  // 2 : skip 2 bytes of bytecode
     }
-#endif
     GateRef currentInst = ZExtInt8ToInt32(ReadInst8_4(pc));
     GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_3(pc)));
@@ -660,11 +636,9 @@ GateRef InterpreterStubBuilder::ReadInst32_1(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst32_2(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT32(), pc, IntPtr(3));  // 3 : skip 3 bytes of bytecode
     }
-#endif
     GateRef currentInst = ZExtInt8ToInt32(ReadInst8_5(pc));
     GateRef currentInst1 = Int32LSL(currentInst, Int32(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int32Add(currentInst1, ZExtInt8ToInt32(ReadInst8_4(pc)));
@@ -676,11 +650,9 @@ GateRef InterpreterStubBuilder::ReadInst32_2(GateRef pc)
 
 GateRef InterpreterStubBuilder::ReadInst64_0(GateRef pc)
 {
-#ifdef __BISHENG__
     if (GetEnvironment()->IsAArch64() || GetEnvironment()->IsAmd64()) {
         return Load(VariableType::INT64(), pc, IntPtr(1));  // 1 : skip 1 byte of bytecode
     }
-#endif
     GateRef currentInst = ZExtInt8ToInt64(ReadInst8_7(pc));
     GateRef currentInst1 = Int64LSL(currentInst, Int64(8));  // 8 : set as high 8 bits
     GateRef currentInst2 = Int64Add(currentInst1, ZExtInt8ToInt64(ReadInst8_6(pc)));
