@@ -55,6 +55,13 @@ public:
 
     inline Heap *GetHeap();
 
+    inline void EnumerateRegions(const Heap *heap);
+
+    template<class Visitor>
+    inline void ProcessAllVisitor(const Visitor &visitor, int done);
+
+    inline void MergeBackForAllItem();
+
 private:
     inline void CollectRSetItemsInHeap(const Heap *heap);
 

@@ -60,11 +60,18 @@ public:
                                         uintptr_t baseOldObject);
     inline void RecordWeakReference(uint32_t threadId, JSTaggedType *ref);
     void MergeBackAndResetRSetWorkListHandler();
+    template<SharedMarkType markType>
+    inline void ProcessVisitorOfDoMark(uint32_t threadId);
+    inline void ProcessVisitor(RSetWorkListHandler *handler);
+    inline bool MarkObjectOfProcessVisitor(void *mem, WorkNode *&localBuffer);
 
 private:
     inline void MarkObjectFromJSThread(WorkNode *&localBuffer, TaggedObject *object);
     template<SharedMarkType markType>
     inline auto GenerateRSetVisitor(uint32_t threadId);
+    inline void RecordObject(JSTaggedValue value, uint32_t threadId, void *mem);
+    template<SharedMarkType markType>
+    inline bool GetVisitor(JSTaggedValue value, uint32_t threadId, void *mem);
 
     SharedGCWorkManager *sWorkManager_ {nullptr};
     std::vector<RSetWorkListHandler*> rSetHandlers_;
