@@ -22,6 +22,7 @@
 #include <securec.h>
 #include <mutex>
 
+#ifndef PANDA_TARGET_MACOS
 // Keep in sync with gdb/gdb/jit.h
 extern "C" {
 typedef enum {
@@ -442,3 +443,18 @@ static bool RegisterStubAnToDebuggerImpl(const char *fileAddr)
 
 }
 }
+#else
+namespace panda::ecmascript {
+namespace jit_debug {
+void RegisterStubAnToDebugger(const char *fileAddr)
+{
+    LOG_COMPILER(INFO) << "MACOS doesn't support RegisterStubAnToDebugger, fileAddr is" << fileAddr;
+}
+
+void UnregisterStubAnFromDebugger(const char *fileAddr)
+{
+    LOG_COMPILER(INFO) << "MACOS doesn't support RegisterStubAnToDebugger, fileAddr is" << fileAddr;
+}
+}
+}
+#endif
