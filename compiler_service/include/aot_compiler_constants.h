@@ -17,7 +17,10 @@
 #define OHOS_ARKCOMPILER_AOTCOMPILER_CONSTANTS_H
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
+
+#include "aot_compiler_error_utils.h"
 
 namespace OHOS::ArkCompiler {
 namespace Cmds {
@@ -156,11 +159,42 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-baseline-pgo",
 };
 
-enum class ErrOfCompile {
-    COMPILE_OK = (0),
-    ERR_COMPILE_FAIL = (-1),
-    ERR_COMPILE_HELP = (1),
-    COMPILE_NO_AP = (2),
+/**
+ * @param RetStatusOfCompiler return code of ark_aot_compiler
+ * @attention it must sync with ErrCode of "ets_runtime/ecmascript/aot_compiler.cpp"
+ */
+enum class RetStatusOfCompiler {
+    ERR_OK = (0),   // IMPORTANT: Only if aot compiler SUCCESS and save an/ai SUCCESS, return ERR_OK.
+    ERR_FAIL = (-1),
+    ERR_HELP = (1),
+    ERR_NO_AP = (2),
+    ERR_MERGE_AP = (3),
+    ERR_CHECK_VERSION = (4),
+    ERR_AN_EMPTY = (5),
+    ERR_AN_FAIL = (6),
+    ERR_AI_FAIL = (7),
 };
+
+struct InfoOfCompiler {
+    int32_t retCode { -1 };
+    std::string mesg;
+};
+
+const std::unordered_map<int, InfoOfCompiler> RetInfoOfCompiler {
+    {static_cast<int>(RetStatusOfCompiler::ERR_OK), {ERR_OK, "AOT compiler success"}},
+    {static_cast<int>(RetStatusOfCompiler::ERR_NO_AP), {ERR_OK_NO_AOT_FILE, "AOT compiler not run: no ap file"}},
+    {static_cast<int>(RetStatusOfCompiler::ERR_CHECK_VERSION),
+        {ERR_OK_NO_AOT_FILE, "AOT compiler not run: check version"}},
+    {static_cast<int>(RetStatusOfCompiler::ERR_MERGE_AP),
+        {ERR_AOT_COMPILER_CALL_FAILED, "AOT compiler fail: merge ap error"}},
+    {static_cast<int>(RetStatusOfCompiler::ERR_AN_EMPTY),
+        {ERR_AOT_COMPILER_CALL_FAILED, "AOT compiler fail: empty an file"}},
+    {static_cast<int>(RetStatusOfCompiler::ERR_AN_FAIL),
+        {ERR_AOT_COMPILER_CALL_FAILED, "AOT compiler fail: save an error"}},
+    {static_cast<int>(RetStatusOfCompiler::ERR_AI_FAIL),
+        {ERR_AOT_COMPILER_CALL_FAILED, "AOT compiler fail: save ai error"}},
+};
+
+const InfoOfCompiler OtherInfoOfCompiler = {ERR_AOT_COMPILER_CALL_FAILED, "AOT compiler fail: other error"};
 } // namespace OHOS::ArkCompiler
 #endif  // OHOS_ARKCOMPILER_AOTCOMPILER_CONSTANTS_H

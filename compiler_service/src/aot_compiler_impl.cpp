@@ -144,7 +144,7 @@ void AotCompilerImpl::ExecuteInChildProcess(const std::vector<std::string> &aotV
     for (auto &arg : aotVector) {
         argv.emplace_back(arg.c_str());
     }
-    LOG_SA(INFO) << "argv size : " << argv.size();
+    LOG_SA(INFO) << "ark_aot_compiler argv size : " << argv.size();
     for (const auto &arg : argv) {
         LOG_SA(INFO) << arg;
     }
@@ -153,6 +153,20 @@ void AotCompilerImpl::ExecuteInChildProcess(const std::vector<std::string> &aotV
     execv(argv[0], const_cast<char* const*>(argv.data()));
     LOG_SA(ERROR) << "execv failed : " << strerror(errno);
     exit(-1);
+}
+
+int32_t AotCompilerImpl::PrintAOTCompilerResult(const int compilerStatus)
+{
+    if (RetInfoOfCompiler.find(compilerStatus) == RetInfoOfCompiler.end()) {
+        LOG_SA(ERROR) << OtherInfoOfCompiler.mesg;
+        return OtherInfoOfCompiler.retCode;
+    }
+    if (RetInfoOfCompiler.at(compilerStatus).retCode == ERR_AOT_COMPILER_CALL_FAILED) {
+        LOG_SA(ERROR) << RetInfoOfCompiler.at(compilerStatus).mesg;
+    } else {
+        LOG_SA(INFO) << RetInfoOfCompiler.at(compilerStatus).mesg;
+    }
+    return RetInfoOfCompiler.at(compilerStatus).retCode;
 }
 
 void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
@@ -167,23 +181,16 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
         LOG_SA(ERROR) << "waitpid failed";
         ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else if (WIFEXITED(status)) {
-        int exit_status = WEXITSTATUS(status);
-        LOG_SA(INFO) << "child process exited with status: " << exit_status;
-        switch (exit_status) {
-            case static_cast<int>(ErrOfCompile::COMPILE_OK):
-                ret = ERR_OK; break;
-            case static_cast<int>(ErrOfCompile::COMPILE_NO_AP):
-                ret = ERR_OK_NO_AOT_FILE; break;
-            default:
-                ret = ERR_AOT_COMPILER_CALL_FAILED; break;
-        }
+        int exitStatus = WEXITSTATUS(status);
+        LOG_SA(INFO) << "child process exited with status: " << exitStatus;
+        ret = PrintAOTCompilerResult(exitStatus);
     } else if (WIFSIGNALED(status)) {
-        int signal_number = WTERMSIG(status);
-        LOG_SA(WARN) << "child process terminated by signal: " << signal_number;
+        int signalNumber = WTERMSIG(status);
+        LOG_SA(WARN) << "child process terminated by signal: " << signalNumber;
         ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else if (WIFSTOPPED(status)) {
-        int signal_number = WSTOPSIG(status);
-        LOG_SA(WARN) << "child process was stopped by signal: " << signal_number;
+        int signalNumber = WSTOPSIG(status);
+        LOG_SA(WARN) << "child process was stopped by signal: " << signalNumber;
         ret = ERR_AOT_COMPILER_CALL_FAILED;
     } else if (WIFCONTINUED(status)) {
         LOG_SA(WARN) << "child process was resumed";
