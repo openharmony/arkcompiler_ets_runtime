@@ -4743,9 +4743,22 @@ GateRef StubBuilder::FastTypeOf(GateRef glue, GateRef obj)
                         }
                         Bind(&objNotBigInt);
                         {
-                            result = Load(VariableType::JS_POINTER(), gConstAddr,
-                                GetGlobalConstantOffset(ConstantIndex::OBJECT_STRING_INDEX));
-                            Jump(&exit);
+                            Label objIsNativeModuleFailureInfo(env);
+                            Label objNotNativeModuleFailureInfo(env);
+                            BRANCH(IsNativeModuleFailureInfo(obj), &objIsNativeModuleFailureInfo,
+                                &objNotNativeModuleFailureInfo);
+                            Bind(&objIsNativeModuleFailureInfo);
+                            {
+                                result = Load(VariableType::JS_POINTER(), gConstAddr,
+                                    GetGlobalConstantOffset(ConstantIndex::NATIVE_MODULE_FAILURE_INFO_STRING_INDEX));
+                                Jump(&exit);
+                            }
+                            Bind(&objNotNativeModuleFailureInfo);
+                            {
+                                result = Load(VariableType::JS_POINTER(), gConstAddr,
+                                    GetGlobalConstantOffset(ConstantIndex::OBJECT_STRING_INDEX));
+                                Jump(&exit);
+                            }
                         }
                     }
                 }

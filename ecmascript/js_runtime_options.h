@@ -53,7 +53,6 @@ enum ArkProperties {
     ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21,
     // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
     DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
-    ENABLE_NATIVE_MODULE_ERROR = 1 << 23,
     ENABLE_ESM_TRACE = 1 << 24,
     ENABLE_MODULE_LOG = 1 << 25
 };
@@ -472,11 +471,6 @@ public:
     bool EnableConcurrentMark() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::CONCURRENT_MARK) != 0;
-    }
-
-    bool EnableNativeModuleError() const
-    {
-        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_NATIVE_MODULE_ERROR) != 0;
     }
 
     bool EnableSharedConcurrentMark() const

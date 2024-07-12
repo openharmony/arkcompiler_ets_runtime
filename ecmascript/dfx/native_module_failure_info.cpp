@@ -12,15 +12,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "ecmascript/dfx/native_module_error.h"
+#include "ecmascript/dfx/native_module_failure_info.h"
 
 namespace panda::ecmascript {
-JSHandle<NativeModuleError> NativeModuleError::CreateNativeModuleError(const EcmaVM *vm, const std::string &errorMsg)
+JSHandle<NativeModuleFailureInfo> NativeModuleFailureInfo::CreateNativeModuleFailureInfo(const EcmaVM *vm,
+    const std::string &failureInfo)
 {
     ObjectFactory *factory = vm->GetFactory();
-    JSHandle<NativeModuleError> nativeModuleError = factory->NewNativeModuleError();
-    JSHandle<EcmaString> errorMsgStr = factory->NewFromUtf8(errorMsg);
-    nativeModuleError->SetArkNativeModuleError(vm->GetJSThread(), JSHandle<JSTaggedValue>(errorMsgStr));
-    return nativeModuleError;
+    JSHandle<NativeModuleFailureInfo> nativeModuleFailureInfo = factory->NewNativeModuleFailureInfo();
+    JSHandle<EcmaString> failureInfoStr = factory->NewFromUtf8(failureInfo);
+    nativeModuleFailureInfo->SetArkNativeModuleFailureInfo(vm->GetJSThread(), JSHandle<JSTaggedValue>(failureInfoStr));
+    return nativeModuleFailureInfo;
 }
 }

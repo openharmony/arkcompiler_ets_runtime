@@ -18,6 +18,7 @@
 #include "ecmascript/js_object-inl.h"
 
 #include "ecmascript/accessor_data.h"
+#include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/element_accessor-inl.h"
@@ -1157,6 +1158,10 @@ JSTaggedValue JSObject::GetProperty(JSThread *thread, ObjectOperator *op)
 {
     JSHandle<JSTaggedValue> receiver = op->GetReceiver();
     JSHandle<JSTaggedValue> holder = op->GetHolder();
+    if (receiver->IsNativeModuleFailureInfo()) {
+        JSTaggedValue failureInfo = JSHandle<NativeModuleFailureInfo>::Cast(receiver)->GetArkNativeModuleFailureInfo();
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, ConvertToString(failureInfo).c_str(), JSTaggedValue::Undefined());
+    }
     if (holder->IsJSProxy()) {
         if (op->IsElement()) {
             JSHandle<JSTaggedValue> key(thread, JSTaggedValue(op->GetElementIndex()));

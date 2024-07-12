@@ -109,6 +109,7 @@ using JitTools = ohos::JitTools;
 AOTFileManager *JsStackInfo::loader = nullptr;
 JSRuntimeOptions *JsStackInfo::options = nullptr;
 bool EcmaVM::multiThreadCheck_ = false;
+bool EcmaVM::errorInfoEnhanced_ = false;
 
 #ifdef JIT_ESCAPE_ENABLE
 static struct sigaction s_oldSa[SIGSYS + 1]; // SIGSYS = 31

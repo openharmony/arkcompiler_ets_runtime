@@ -252,6 +252,9 @@ JSTaggedValue FastRuntimeStub::FastTypeOf(JSThread *thread, JSTaggedValue obj)
                 if (obj.IsBigInt()) {
                     return globalConst->GetBigIntString();
                 }
+                if (obj.IsNativeModuleFailureInfo()) {
+                    return globalConst->GetNativeModuleFailureInfoString();
+                }
                 return globalConst->GetObjectString();
             }
             if (obj.IsNumber()) {

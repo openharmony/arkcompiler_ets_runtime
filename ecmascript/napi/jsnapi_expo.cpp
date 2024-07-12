@@ -39,7 +39,7 @@
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
-#include "ecmascript/dfx/native_module_error.h"
+#include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_global_storage.h"
 #include "ecmascript/ecma_runtime_call_info.h"
@@ -162,7 +162,7 @@ using ecmascript::LinkedHashSet;
 using ecmascript::LockHolder;
 using ecmascript::MemMapAllocator;
 using ecmascript::Method;
-using ecmascript::NativeModuleError;
+using ecmascript::NativeModuleFailureInfo;
 using ecmascript::Mutex;
 using ecmascript::ObjectFactory;
 using ecmascript::OperationResult;
@@ -817,9 +817,9 @@ bool JSValueRef::IsModuleNamespaceObject([[maybe_unused]] const EcmaVM *vm)
     return JSNApiHelper::ToJSTaggedValue(this).IsModuleNamespace();
 }
 
-bool JSValueRef::IsNativeModuleErrorObject([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsNativeModuleFailureInfoObject([[maybe_unused]] const EcmaVM *vm)
 {
-    return JSNApiHelper::ToJSTaggedValue(this).IsNativeModuleError();
+    return JSNApiHelper::ToJSTaggedValue(this).IsNativeModuleFailureInfo();
 }
 
 bool JSValueRef::IsSharedArrayBuffer([[maybe_unused]] const EcmaVM *vm)
@@ -2335,13 +2335,14 @@ Local<ObjectRef> ObjectRef::NewWithNamedProperties(const EcmaVM *vm, size_t prop
     return scope.Escape(JSNApiHelper::ToLocal<ObjectRef>(obj));
 }
 
-Local<ObjectRef> ObjectRef::CreateNativeModuleError(const EcmaVM *vm, const std::string &errorMsg)
+Local<ObjectRef> ObjectRef::CreateNativeModuleFailureInfo(const EcmaVM *vm, const std::string &failureInfo)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    if (const_cast<EcmaVM*>(vm)->GetJSOptions().EnableNativeModuleError()) {
-        JSHandle<NativeModuleError> nativeModuleError = NativeModuleError::CreateNativeModuleError(vm, errorMsg);
-        return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(nativeModuleError));
+    if (EcmaVM::GetErrorInfoEnhance()) {
+        JSHandle<NativeModuleFailureInfo> nativeModuleErrorFailureInfo =
+            NativeModuleFailureInfo::CreateNativeModuleFailureInfo(vm, failureInfo);
+        return JSNApiHelper::ToLocal<ObjectRef>(JSHandle<JSTaggedValue>::Cast(nativeModuleErrorFailureInfo));
     }
     return JSValueRef::Undefined(vm);
 }
@@ -5234,6 +5235,11 @@ void JSNApi::SetSearchHapPathTracker(EcmaVM *vm,
 void JSNApi::SetMultiThreadCheck(bool multiThreadCheck)
 {
     EcmaVM::SetMultiThreadCheck(multiThreadCheck);
+}
+
+void JSNApi::SetErrorInfoEnhance(bool errorInfoEnhance)
+{
+    EcmaVM::SetErrorInfoEnhance(errorInfoEnhance);
 }
 
 void JSNApi::SetRequestAotCallback([[maybe_unused]] EcmaVM *vm, const std::function<int32_t

@@ -19,7 +19,7 @@
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
 #include "ecmascript/dfx/hprof/string_hashmap.h"
-#include "ecmascript/dfx/native_module_error.h"
+#include "ecmascript/dfx/native_module_failure_info.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
@@ -1429,10 +1429,10 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(moduleNamespace);
                 break;
             }
-            case JSType::NATIVE_MODULE_ERROR: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, NativeModuleError::SIZE, 1U);
-                JSHandle<NativeModuleError> nativeModuleError = factory->NewNativeModuleError();
-                DUMP_FOR_HANDLE(nativeModuleError);
+            case JSType::NATIVE_MODULE_FAILURE_INFO: {
+                CHECK_DUMP_FIELDS(JSObject::SIZE, NativeModuleFailureInfo::SIZE, 1U);
+                JSHandle<NativeModuleFailureInfo> nativeFailureInfo = factory->NewNativeModuleFailureInfo();
+                DUMP_FOR_HANDLE(nativeFailureInfo);
                 break;
             }
             case JSType::JS_CJS_EXPORTS: {
