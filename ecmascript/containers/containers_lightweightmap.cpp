@@ -612,7 +612,7 @@ JSTaggedValue ContainersLightWeightMap::GetValueAt(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
-    if (!index->IsInt()) {
+    if (!index->IsInteger()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
@@ -621,6 +621,9 @@ JSTaggedValue ContainersLightWeightMap::GetValueAt(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
     return JSAPILightWeightMap::GetValueAt(thread, JSHandle<JSAPILightWeightMap>::Cast(self),
                                            index->GetInt());
 }
