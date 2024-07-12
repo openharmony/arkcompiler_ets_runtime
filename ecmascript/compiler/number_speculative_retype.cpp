@@ -1772,6 +1772,21 @@ const GateMetaData *NumberSpeculativeRetype::GetNewMeta(OpCode op, TypeInfo type
     }
 }
 
+void NumberSpeculativeRetype::UpdateMeta(GateRef gate, TypeInfo newType, const GateMetaData *meta)
+{
+    if (meta == nullptr) {
+        return;
+    }
+    acc_.SetMetaData(gate, meta);
+    if (newType != TypeInfo::TAGGED) {
+        ASSERT(newType == TypeInfo::INT32 || newType == TypeInfo::FLOAT64);
+        acc_.SetGateType(gate, GateType::NJSValue());
+        acc_.SetMachineType(gate, newType == TypeInfo::INT32 ? MachineType::I32 : MachineType::F64);
+    } else {
+        ASSERT(acc_.GetGateType(gate) != GateType::NJSValue() && acc_.GetMachineType(gate) == MachineType::I64);
+    }
+}
+
 GateRef NumberSpeculativeRetype::VisitMathTaggedNumberParamsBuiltin(GateRef gate)
 {
     size_t valueNum = acc_.GetNumValueIn(gate);
@@ -1800,11 +1815,7 @@ GateRef NumberSpeculativeRetype::VisitMathTaggedNumberParamsBuiltin(GateRef gate
         type = GetNumberTypeInfo(acc_.GetValueIn(gate, 0));
     }
     const GateMetaData* meta = GetNewMeta(op, type);
-    if (meta != nullptr) {
-        acc_.SetMetaData(gate, meta);
-        acc_.SetGateType(gate, GateType::NJSValue());
-        acc_.SetMachineType(gate, type == TypeInfo::INT32 ? MachineType::I32 : MachineType::F64);
-    }
+    UpdateMeta(gate, type, meta);
     Environment env(gate, circuit_, &builder_);
     for (size_t i = 0; i < valueNum; ++i) {
         GateRef input = acc_.GetValueIn(gate, i);
