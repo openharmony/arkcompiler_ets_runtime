@@ -54,6 +54,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NotDouble3,                      NOTDOUBLE3)                     \
     V(NotNumber1,                      NOTNUMBER1)                     \
     V(NotNumber2,                      NOTNUMBER2)                     \
+    V(NotNumberOrString,               NOTNUMBERORSTRING)              \
     V(CannotStoreSpecailHole,          CANNOTSTORESPECAILHOLE)         \
     V(NotBool1,                        NOTBOOL1)                       \
     V(NotBool2,                        NOTBOOL2)                       \

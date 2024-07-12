@@ -431,6 +431,31 @@ void TypedBytecodeLowering::SpeculateNumber(const UnOpTypeInfoAccessor &tacc)
     acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
 }
 
+GateRef CheckedNumberToString(CircuitBuilder *builder, GateRef numOrStr, Label *exit)
+{
+    auto isNum = builder->TaggedIsNumber(numOrStr);
+    Label numberBranch(builder);
+    Label notNumberBranch(builder);
+
+    DEFVALUE(res, builder, VariableType::JS_ANY(), numOrStr);
+    builder->Branch(isNum, &numberBranch, &notNumberBranch, BranchWeight::ONE_WEIGHT, BranchWeight::ONE_WEIGHT,
+                    "IsNumber");
+    builder->Bind(&numberBranch);
+    {
+        res = builder->NumberToString(numOrStr);
+        builder->Jump(exit);
+    }
+    builder->Bind(&notNumberBranch);
+    {
+        builder->EcmaStringCheck(numOrStr);
+        res = numOrStr;
+        builder->Jump(exit);
+    }
+    builder->Bind(exit);
+
+    return *res;
+}
+
 template<TypedBinOp Op>
 void TypedBytecodeLowering::SpeculateNumbersOrString(const BinOpTypeInfoAccessor &tacc)
 {
@@ -439,15 +464,16 @@ void TypedBytecodeLowering::SpeculateNumbersOrString(const BinOpTypeInfoAccessor
         GateRef left = tacc.GetLeftGate();
         GateRef right = tacc.GetReightGate();
 
+        Label exit(&builder_);
         if (TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, left)) {
-            DEFVALUE(rightVal, (&builder_), VariableType::JS_ANY(), right);
-            rightVal = builder_.NumberToString(right);
-            GateRef result = builder_.TypedBinaryOp<Op>(left, *rightVal, tacc.GetParamType());
+            right = CheckedNumberToString(&builder_, right, &exit);
+            ASSERT(tacc.GetParamType() == ParamType::StringType());
+            GateRef result = builder_.TypedBinaryOp<Op>(left, right, ParamType::StringType());
             acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
         } else if (TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, right)) {
-            DEFVALUE(leftVal, (&builder_), VariableType::JS_ANY(), left);
-            leftVal = builder_.NumberToString(left);
-            GateRef result = builder_.TypedBinaryOp<Op>(*leftVal, right, tacc.GetParamType());
+            left = CheckedNumberToString(&builder_, left, &exit);
+            ASSERT(tacc.GetParamType() == ParamType::StringType());
+            GateRef result = builder_.TypedBinaryOp<Op>(left, right, ParamType::StringType());
             acc_.ReplaceHirAndDeleteIfException(tacc.GetGate(), builder_.GetStateDepend(), result);
         }
     }

@@ -59,6 +59,7 @@ group("ark_aot_js_assert_test") {
 group("ark_aot_ts_test") {
   testonly = true
   test_list = [
+    "add",
     "array",
     "array_foreach_inline",
     "ashr",
@@ -362,7 +363,6 @@ group("ark_aot_ts_assert_test") {
 
   deps = []
   assert_test_list = [
-    "add",
     "and",
     "array_bounds_check_elimination",
   ]

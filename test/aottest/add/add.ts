@@ -13,13 +13,35 @@
  * limitations under the License.
  */
 
-declare function assert_equal(a: Object, b: Object):void;
-assert_equal(1 + 1, 2);
+declare interface ArkTools {
+    isAOTCompiled(args: any): boolean;
+}
+declare function print(arg:any):string;
 
-assert_equal(1 + 1.1, 2.1);
+print(1 + 1);  //: 2
+print(1 + 1.1);  //: 2.1
+print(1 + 1.1);  //: 2.1
+print(0.1 + 1.1)  //: 1.2000000000000002
+print("hello" + "world")  //: helloworld
+print("hello" + 1)  //: hello1
 
-assert_equal(0.1 + 1.1, 1.2000000000000002);
+let addr = function (rhs:any) {
+    return "a" + rhs;
+}
 
-assert_equal("hello" + "world", "helloworld");
+let addl = function (lhs:any) {
+    return lhs + "a";
+}
 
-assert_equal("hello" + 1, "hello1");
+if (ArkTools.isAOTCompiled(addr)) {
+    print("addr compiled") //aot: addr compiled
+}
+
+if (ArkTools.isAOTCompiled(addl)) {
+    print("addl compiled") //aot: addl compiled
+}
+
+print(addr(1)) //: a1
+print(addr("1"))  //: a1
+print(addl(1))  //: 1a
+print(addl("1"))  //: 1a

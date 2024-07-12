@@ -13,6 +13,10 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_assert_test_action("add") {
+host_aot_test_action("add") {
+  is_enable_pgo = true
+  gen_expect_output = true
+  is_enable_trace_deopt = true
+  log_option = " --log-info=trace"
   deps = []
 }
