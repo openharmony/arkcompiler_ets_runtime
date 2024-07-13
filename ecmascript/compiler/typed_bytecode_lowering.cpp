@@ -1546,7 +1546,16 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
 
 void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 {
-    SuperCallTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
+    SuperCallTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
+
+    auto methodId = tacc.GetMethodId();
+    if (methodId == 0) {
+        return;
+    }
+    auto *methodLiteral = ctx_->GetJSPandaFile()->FindMethodLiteral(methodId);
+    if (!methodLiteral->IsTypedCall()) {
+        return;
+    }
     if (!tacc.IsValidCallMethodId()) {
         return;
     }
@@ -1737,6 +1746,14 @@ void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
     if (!tacc.IsHotnessFunc()) {
         return;
     }
+    auto methodId = tacc.GetMethodId();
+    if (methodId == 0) {
+        return;
+    }
+    auto *methodLiteral = ctx_->GetJSPandaFile()->FindMethodLiteral(methodId);
+    if (!methodLiteral->IsTypedCall()) {
+        return;
+    }
     uint32_t argc = tacc.GetArgc();
     GateRef gate = tacc.GetGate();
     GateRef actualArgc = Circuit::NullGate();
@@ -1895,6 +1912,14 @@ bool TypedBytecodeLowering::IsLoadVtable(GateRef func)
 template<EcmaOpcode Op, class TypeAccessor>
 void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
 {
+    auto methodId = tacc.GetMethodId();
+    if (methodId == 0) {
+        return;
+    }
+    auto *methodLiteral = ctx_->GetJSPandaFile()->FindMethodLiteral(methodId);
+    if (!methodLiteral->IsTypedCall()) {
+        return;
+    }
     if (!tacc.IsHotnessFunc()) {
         return;
     }

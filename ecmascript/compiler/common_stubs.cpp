@@ -292,20 +292,19 @@ void NewLexicalEnvStubBuilder::GenerateCircuit()
 
 void CopyRestArgsStubBuilder::GenerateCircuit()
 {
-    DEFVARIABLE(argumentsList, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(arrayObj, VariableType::JS_ANY(), Undefined());
-    DEFVARIABLE(actualRestNum, VariableType::INT32(), Int32(0));
     DEFVARIABLE(argv, VariableType::NATIVE_POINTER(), PtrArgument(1));
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(actualRestNum, VariableType::INT32(), Int32(0));
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
     GateRef startIdx = Int32Argument(2); /* 2 : 3rd parameter is index */
     GateRef numArgs = Int32Argument(3); /* 3 : 4th parameter is index */
-    Label afterArgumentsList(env);
-    Label newArgumentsObj(env);
     Label numArgsGreater(env);
     Label numArgsNotGreater(env);
     Label calcArgv(env);
     Label hasArgv(env);
+    Label afterCreateArrayObj(env);
     BRANCH(Equal(*argv, IntPtr(0)), &calcArgv, &hasArgv);
     Bind(&calcArgv);
     argv = CallNGCRuntime(glue, RTSTUB_ID(GetActualArgvNoGC), { glue });
@@ -321,23 +320,14 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
         Jump(&numArgsNotGreater);
     }
     Bind(&numArgsNotGreater);
-    // 2. Construct arguments list.
+    // 2. Construct RestArguments object.
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    newBuilder.NewArgumentsList(&argumentsList, &afterArgumentsList, args, startIdx, *actualRestNum);
-    Bind(&afterArgumentsList);
-    // 3. Construct rest array.
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef hclass = Load(VariableType::JS_POINTER(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    arrayObj = newBuilder.NewJSArrayWithSize(hclass, *actualRestNum);
-    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
-    Store(VariableType::INT32(), glue, *arrayObj, lengthOffset, *actualRestNum);
-    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-    SetPropertyInlinedProps(glue, *arrayObj, hclass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-    SetExtensibleToBitfield(glue, *arrayObj, true);
-    SetElementsArray(VariableType::JS_POINTER(), glue, *arrayObj, *argumentsList);
+    GateRef intialHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                  ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+    arrayObj = newBuilder.NewJSArrayWithSize(intialHClass, *actualRestNum);
+    newBuilder.AssignRestArg(&arrayObj, &afterCreateArrayObj, args, startIdx, *actualRestNum, intialHClass);
+    Bind(&afterCreateArrayObj);
     Return(*arrayObj);
 }
 

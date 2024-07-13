@@ -81,6 +81,8 @@ public:
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
+    void AssignRestArg(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs,
+                       GateRef intialHClass);
     void AllocLineStringObject(Variable *result, Label *exit, GateRef length, bool compressed);
     void AllocSlicedStringObject(Variable *result, Label *exit, GateRef from, GateRef length,
         FlatStringStubBuilder *flatString);

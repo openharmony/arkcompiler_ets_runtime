@@ -332,8 +332,10 @@ bool TypeOfTypeInfoAccessor::IsIllegalType() const
     return true;
 }
 
-SuperCallTypeInfoAccessor::SuperCallTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate)
-    : TypeInfoAccessor(env, circuit, gate)
+SuperCallTypeInfoAccessor::SuperCallTypeInfoAccessor(const CompilationEnv *env, Circuit *circuit, GateRef gate,
+                                                     const JSPandaFile *jsPandaFile,
+                                                     const CallMethodFlagMap *callMethodFlagMap)
+    : TypeInfoAccessor(env, circuit, gate), jsPandaFile_(jsPandaFile), callMethodFlagMap_(callMethodFlagMap)
 {
     ctor_ = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
 }

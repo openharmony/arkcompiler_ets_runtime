@@ -382,7 +382,8 @@ private:
                                            const std::shared_ptr<CString> recordNamePtr);
     void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method, int32_t bcIndex,
                                  const std::shared_ptr<CString> recordNamePtr,
-                                 std::vector<panda_file::File::EntityId> &classConstructIndexes, bool *canFastCall);
+                                 std::vector<panda_file::File::EntityId> &classConstructIndexes, bool *canFastCall,
+                                 bool *canTypedCall);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);
     void CollectClassLiteralInfo(const MethodLiteral *method, const std::vector<std::string> &classNameVec);

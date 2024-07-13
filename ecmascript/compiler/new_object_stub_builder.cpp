@@ -1312,6 +1312,36 @@ void NewObjectStubBuilder::NewArgumentsObj(Variable *result, Label *exit,
     Jump(exit);
 }
 
+void NewObjectStubBuilder::AssignRestArg(Variable *result, Label *exit,
+    GateRef sp, GateRef startIdx, GateRef numArgs, GateRef intialHClass)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(i, VariableType::INT32(), Int32(0));
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue_, result->ReadVariable(), lengthOffset, TruncInt64ToInt32(numArgs));
+    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue_, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    SetPropertyInlinedProps(glue_, result->ReadVariable(), intialHClass, accessor,
+                            Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetExtensibleToBitfield(glue_, result->ReadVariable(), true);
+    Label setArgumentsBegin(env);
+    Label setArgumentsAgain(env);
+    Label setArgumentsEnd(env);
+    GateRef elements = GetElementsArray(result->ReadVariable());
+    BRANCH(Int32UnsignedLessThan(*i, numArgs), &setArgumentsBegin, &setArgumentsEnd);
+    LoopBegin(&setArgumentsBegin);
+    {
+        GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
+        GateRef receiver = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue_, elements, *i, receiver);
+        i = Int32Add(*i, Int32(1));
+        BRANCH(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
+        Bind(&setArgumentsAgain);
+    }
+    LoopEnd(&setArgumentsBegin);
+    Bind(&setArgumentsEnd);
+    Jump(exit);
+}
+
 void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, RegionSpaceFlag spaceType, GateRef obj,
                                              GateRef hclass, GateRef trackInfo, bool isEmptyArray)
 {
