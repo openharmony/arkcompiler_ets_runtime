@@ -1186,6 +1186,16 @@ public:
         return smartGCStats_.sensitiveStatus_.load(std::memory_order_acquire);
     }
 
+    void SetRecordHeapObjectSizeBeforeSensitive(size_t objSize)
+    {
+        recordObjSizeBeforeSensitive_ = objSize;
+    }
+
+    size_t GetRecordHeapObjectSizeBeforeSensitive() const
+    {
+        return recordObjSizeBeforeSensitive_;
+    }
+
     bool CASSensitiveStatus(AppSensitiveStatus expect, AppSensitiveStatus status)
     {
         return smartGCStats_.sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
@@ -1564,6 +1574,8 @@ private:
     size_t nativeBindingSize_{0};
     size_t globalSpaceNativeLimit_ {0};
     size_t newAllocatedSharedObjectSize_ {0};
+    // Record heap object size before enter sensitive status
+    size_t recordObjSizeBeforeSensitive_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
     // parallel evacuator task number.
