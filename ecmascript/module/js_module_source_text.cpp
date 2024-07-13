@@ -1114,9 +1114,9 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
         size_t requestedModulesLen = requestedModules->GetLength();
         JSMutableHandle<JSTaggedValue> required(thread, thread->GlobalConstants()->GetUndefined());
         JSHandle<SourceTextModule> requiredModule;
-        bool *lazyFlag = module->GetLazyImportStatusArray();
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
-            if (lazyFlag[idx]) {
+            // check if requiredModule is marked lazy
+            if (module->IsLazyImportModule(idx)) {
                 continue;
             }
             required.Update(requestedModules->Get(idx));

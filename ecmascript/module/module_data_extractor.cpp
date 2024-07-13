@@ -87,16 +87,11 @@ void ModuleDataExtractor::ExtractModuleDatas(JSThread *thread, const JSPandaFile
         moduleRecord->SetRequestedModules(thread, requestModuleArray);
     }
 
-    if (recordInfo->lazyImportIdx != 0) {
-        bool *lazyImportFlags = ModuleLazyImportFlagAccessor(jsPandaFile,
-            panda_file::File::EntityId(static_cast<uint32_t>(recordInfo->lazyImportIdx)));
+    uint32_t lazyImportIdx = recordInfo->lazyImportIdx;
+    if (lazyImportIdx != 0) {
+        bool *lazyImportFlags =
+            ModuleLazyImportFlagAccessor(jsPandaFile, panda_file::File::EntityId(lazyImportIdx));
         moduleRecord->SetLazyImportArray(lazyImportFlags); // set module Lazy Import flag
-    } else {
-        bool *lazyImportArray = new bool[len]();
-        for (size_t idx = 0; idx < len; idx++) {
-            lazyImportArray[idx] = 0;
-        }
-        moduleRecord->SetLazyImportArray(lazyImportArray); // set module Lazy Import 0
     }
     // note the order can't change
     mda.EnumerateImportEntry(thread, requestModuleArray, moduleRecord);
