@@ -292,7 +292,7 @@ void SharedModuleManager::TransferSModule(JSThread *thread)
         ASSERT(module->GetStatus() == ModuleStatus::INSTANTIATED &&
             module->GetSharedType() == SharedTypes::SHARED_MODULE);
         InsertInSModuleManager(thread, requireModule, module);
-        moduleManager->RemoveModuleFromCache(requireModule.GetTaggedValue());
+        moduleManager->RemoveModuleNameFromList(requireModule.GetTaggedValue());
     }
     moduleManager->ClearInstantiatingSModuleList();
 }
@@ -346,5 +346,18 @@ JSHandle<ModuleNamespace> SharedModuleManager::SModuleNamespaceCreate(JSThread *
 {
     RuntimeLockHolder locker(thread, mutex_);
     return JSSharedModule::SModuleNamespaceCreate(thread, module, exports);
+}
+
+void SharedModuleManager::SharedNativeObjDestory()
+{
+    NameDictionary* dict = NameDictionary::Cast(resolvedSharedModules_.GetTaggedObject());
+    int size = dict->Size();
+    for (int hashIndex = 0; hashIndex < size; hashIndex++) {
+        JSTaggedValue key(dict->GetKey(hashIndex));
+        if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
+            JSTaggedValue val(dict->GetValue(hashIndex));
+            SourceTextModule::Cast(val)->DestoryLazyImportArray();
+        }
+    }
 }
 } // namespace panda::ecmascript

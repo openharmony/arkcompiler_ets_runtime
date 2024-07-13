@@ -78,6 +78,9 @@ public:
 
     JSHandle<ModuleNamespace> SModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,
                                                             const JSHandle<TaggedArray> &exports);
+
+    void SharedNativeObjDestory();
+
 private:
     SharedModuleManager() = default;
     ~SharedModuleManager() = default;

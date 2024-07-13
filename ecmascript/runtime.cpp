@@ -124,6 +124,7 @@ void Runtime::DestroyIfLastVm()
 {
     LockHolder lock(*vmCreationLock_);
     if (--vmCount_ <= 0) {
+        SharedModuleManager::GetInstance()->SharedNativeObjDestory();
         SharedHeap::GetInstance()->WaitAllTasksFinishedAfterAllJSThreadEliminated();
         DaemonThread::DestroyInstance();
         SharedHeap::DestroyInstance();

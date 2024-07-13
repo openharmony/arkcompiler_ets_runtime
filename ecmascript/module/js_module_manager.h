@@ -162,6 +162,8 @@ private:
 
     void RemoveModuleFromCache(JSTaggedValue recordName);
 
+    void RemoveModuleNameFromList(JSTaggedValue recordName);
+
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 
     uint32_t nextModuleAsyncEvaluatingOrdinal_{SourceTextModule::FIRST_ASYNC_EVALUATING_ORDINAL};

@@ -247,7 +247,8 @@ public:
 
     inline void DestoryLazyImportArray()
     {
-        delete[] GetLazyImportStatusArray();
+        delete GetLazyImportStatusArray();
+        SetLazyImportStatus(ToUintPtr(nullptr));
     }
 
     inline bool IsLazyImportModule(size_t index)
