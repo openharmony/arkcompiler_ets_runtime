@@ -217,7 +217,7 @@ JSTaggedValue JSAPIHashMap::Remove(JSThread *thread, JSHandle<JSAPIHashMap> hash
     if (nodeNum == 0) {
         return JSTaggedValue::Undefined();
     }
-    int hash = TaggedNode::Hash(thread, key);
+    uint32_t hash = static_cast<uint32_t>(TaggedNode::Hash(thread, key));
     JSHandle<JSTaggedValue> removeValue(thread, hashArray->RemoveNode(thread, hash, key));
     if (removeValue->IsHole()) {
         return JSTaggedValue::Undefined();

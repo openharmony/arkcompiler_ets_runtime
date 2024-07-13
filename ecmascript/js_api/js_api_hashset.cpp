@@ -93,7 +93,7 @@ JSTaggedValue JSAPIHashSet::Remove(JSThread *thread, JSHandle<JSAPIHashSet> hash
     if (nodeNum == 0) {
         return JSTaggedValue::False();
     }
-    int hash = TaggedNode::Hash(thread, key);
+    uint32_t hash = static_cast<uint32_t>(TaggedNode::Hash(thread, key));
     JSTaggedValue removeValue = hashArray->RemoveNode(thread, hash, key);
     if (removeValue.IsHole()) {
         return JSTaggedValue::False();

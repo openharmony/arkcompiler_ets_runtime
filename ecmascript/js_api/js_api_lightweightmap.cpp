@@ -465,7 +465,7 @@ int32_t JSAPILightWeightMap::Hash(const JSThread *thread, JSTaggedValue key)
         return EcmaStringAccessor(keyString).GetHashcode();
     }
     if (key.IsECMAObject()) {
-        uint32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
+        uint32_t hash = static_cast<uint32_t>(ECMAObject::Cast(key.GetTaggedObject())->GetHash());
         if (hash == 0) {
             hash = base::RandomGenerator::GenerateIdentityHash();
             JSHandle<ECMAObject> ecmaObj(thread, key);

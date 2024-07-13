@@ -111,8 +111,8 @@ int32_t JSAPILightWeightSet::BinarySearchHashes(uint32_t hash, int32_t size)
     int32_t high = size - 1;
     TaggedArray *hashArray = TaggedArray::Cast(GetHashes().GetTaggedObject());
     while (low <= high) {
-        uint32_t mid = static_cast<uint32_t>(low + high) >> 1U;
-        uint32_t midVal = (uint32_t)(hashArray->Get(mid).GetNumber());
+        int32_t mid = (low + high) >> 1U;
+        uint32_t midVal = (uint32_t)(hashArray->Get(static_cast<uint32_t>(mid)).GetNumber());
         if (midVal < hash) {
             low = mid + 1;
         } else {
@@ -432,7 +432,7 @@ JSTaggedValue JSAPILightWeightSet::ToString(JSThread *thread, const JSHandle<JSA
     }
     char16_t *char16tData = concatStr.data();
     auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);
-    int32_t u16strSize = concatStr.size();
+    uint32_t u16strSize = concatStr.size();
     return factory->NewFromUtf16Literal(uint16tData, u16strSize).GetTaggedValue();
 }
 
@@ -462,7 +462,7 @@ uint32_t JSAPILightWeightSet::Hash(const JSThread *thread, JSTaggedValue key)
         return EcmaStringAccessor(keyString).GetHashcode();
     }
     if (key.IsECMAObject()) {
-        uint32_t hash = ECMAObject::Cast(key.GetTaggedObject())->GetHash();
+        uint32_t hash = static_cast<uint32_t>(ECMAObject::Cast(key.GetTaggedObject())->GetHash());
         if (hash == 0) {
             hash = static_cast<uint32_t>(base::RandomGenerator::GenerateIdentityHash());
             JSHandle<ECMAObject> ecmaObj(thread, key);
