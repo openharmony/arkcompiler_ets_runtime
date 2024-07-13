@@ -555,7 +555,6 @@ public:
     GateRef IsNotUndefinedOrHoleCheck(GateRef value);
     GateRef IsDataViewCheck(GateRef obj);
     GateRef IsCallableCheck(GateRef func);
-    GateRef IsTaggedBooleanCheck(GateRef value);
     GateRef Int32UnsignedUpperBoundCheck(GateRef value, GateRef upperBound);
     GateRef Int32DivWithCheck(GateRef left, GateRef right);
     GateType GetGateTypeOfValueType(ValueType type);

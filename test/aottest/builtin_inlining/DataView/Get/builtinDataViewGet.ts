@@ -138,7 +138,7 @@ print(sample.getInt32(0)) //: 0
 sample.setFloat64(0, true)
 //aot: [trace] aot inline builtin: DataView.prototype.GetFloat64, caller function name:func_main_0@builtinDataViewGet
 print(sample.getFloat64(0)) //: 1
-//aot: [trace] Check Type: IsNotTaggedBoolean
+//aot: [trace] Check Type: NotBool1
 print(sample.getFloat64(0, 'abc')) //: 3.03865e-319
 print(sample.getFloat64('abc')) //: 1
 
@@ -146,7 +146,7 @@ print(sample.getFloat64('abc')) //: 1
 try {
     print(sample.setUint8(0, -1, 90, 78)) //: undefined
     print(sample.getUint8(0)) //: 255
-} catch(e) { 
+} catch(e) {
 }
 
 let obj = {};

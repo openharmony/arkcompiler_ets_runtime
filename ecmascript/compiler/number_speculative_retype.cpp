@@ -1953,6 +1953,10 @@ GateRef NumberSpeculativeRetype::VisitDataViewGet(GateRef gate)
         }
     }
     ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    GateRef isLittleEndian = acc_.GetValueIn(gate, 3);  // 3: isLittleEndian
+    GateRef inputIsLittleEndian = CheckAndConvertToBool(isLittleEndian, GateType::BooleanType());
+    acc_.ReplaceValueIn(gate, inputIsLittleEndian, 3); // 3: replace input value to Bool
     return Circuit::NullGate();
 }
 
@@ -2003,7 +2007,10 @@ GateRef NumberSpeculativeRetype::VisitDataViewSet(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef value = acc_.GetValueIn(gate, 2);
     GateRef inputValue = CheckAndConvertToFloat64(value, acc_.GetGateType(value), ConvertToNumber::BOOL_ONLY);
+    GateRef isLittleEndian = acc_.GetValueIn(gate, 4);  // 4: isLittleEndian
+    GateRef inputIsLittleEndian = CheckAndConvertToBool(isLittleEndian, GateType::BooleanType());
     acc_.ReplaceValueIn(gate, inputValue, 2); // 2: replace input value to Double64
+    acc_.ReplaceValueIn(gate, inputIsLittleEndian, 4); // 4: replace input value to Bool
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();

@@ -908,17 +908,12 @@ void NativeInlineLowering::TryInlineMathMinMaxBuiltin(GateRef gate, size_t argc,
         AddTraceLogs(gate, id);
     }
     if (argc == 0) {
-        GateRef ret = builder_.DoubleToTaggedDoublePtr(builder_.Double(defaultValue));
-        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), builder_.Double(defaultValue));
         return;
     }
     GateRef ret = acc_.GetValueIn(gate, firstParam);
     if (argc == 1) {
-        auto param_check = builder_.TaggedIsNumber(ret);
-        builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
-        if (acc_.GetGateType(ret).IsAnyType()) {
-            acc_.SetGateType(ret, GateType::NumberType());
-        }
+        builder_.TypeOfCheck(ret, ParamType::NumberType());
         acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
         return;
     }
@@ -972,10 +967,9 @@ void NativeInlineLowering::TryInlineDataViewGet(GateRef gate, size_t argc, Built
     builder_.DeoptCheck(builder_.TaggedIsInt(index), frameState, DeoptType::INDEXNOTINT);
     GateRef indexInt = builder_.TaggedGetInt(index);
     if (argc == 1) { // if not provide isLittleEndian, default use big endian
-        ret = builder_.DataViewGet(thisObj, indexInt, dataViewCallID, builder_.TaggedFalse(), frameState);
+        ret = builder_.DataViewGet(thisObj, indexInt, dataViewCallID, builder_.False(), frameState);
     } else if (argc == 2) { // 2: provide isLittleEndian
         GateRef isLittleEndian = acc_.GetValueIn(gate, 2); // 2: is little endian mode
-        builder_.IsTaggedBooleanCheck(isLittleEndian);
         ret = builder_.DataViewGet(thisObj, indexInt, dataViewCallID, isLittleEndian, frameState);
     }
     if (EnableTrace()) {
@@ -1007,14 +1001,13 @@ void NativeInlineLowering::TryInlineDataViewSet(GateRef gate, size_t argc, Built
     GateRef ret = Circuit::NullGate();
     if (argc == 1) { // arg counts is 1
         ret = builder_.DataViewSet(
-            thisObj, indexInt, builder_.Double(base::NAN_VALUE), dataViewCallID, builder_.TaggedFalse(), frameState);
+            thisObj, indexInt, builder_.Double(base::NAN_VALUE), dataViewCallID, builder_.False(), frameState);
     } else if (argc == 2) { // arg counts is 2
         GateRef value = acc_.GetValueIn(gate, 2); // 2: value
-        ret = builder_.DataViewSet(thisObj, indexInt, value, dataViewCallID, builder_.TaggedFalse(), frameState);
+        ret = builder_.DataViewSet(thisObj, indexInt, value, dataViewCallID, builder_.False(), frameState);
     } else if (argc == 3) { // arg counts is 3
         GateRef value = acc_.GetValueIn(gate, 2); // 2: value
         GateRef isLittleEndian = acc_.GetValueIn(gate, 3); // 3: is little endian mode
-        builder_.IsTaggedBooleanCheck(isLittleEndian);
         ret = builder_.DataViewSet(thisObj, indexInt, value, dataViewCallID, isLittleEndian, frameState);
     }
     if (EnableTrace()) {

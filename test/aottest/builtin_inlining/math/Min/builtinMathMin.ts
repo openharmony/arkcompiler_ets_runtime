@@ -221,11 +221,11 @@ try {
 }
 
 //aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin1@builtinMathMin
-//aot: [trace] Check Type: BuiltinInliningTypeGuard
+//aot: [trace] Check Type: InconsistentType1
 //: obj.valueOf
 printMin1(obj); //: -23
 //aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin1@builtinMathMin
-//aot: [trace] Check Type: BuiltinInliningTypeGuard
+//aot: [trace] Check Type: InconsistentType1
 printMin1(doubleObj); //: 2.7
 //aot: [trace] aot inline builtin: Math.min, caller function name:#*#printMin@builtinMathMin
 //aot: [trace] Check Type: NotNumber2

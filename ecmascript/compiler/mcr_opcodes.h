@@ -30,7 +30,6 @@ namespace panda::ecmascript::kungfu {
     V(IsUndefinedOrHoleCheck, IS_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                    \
     V(IsNotUndefinedOrHoleCheck, IS_NOT_UNDEFINED_OR_HOLE_CHECK, GateFlags::CHECKABLE, 1, 1, 1)             \
     V(IsDataViewCheck, IS_DATA_VIEW_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                                   \
-    V(IsTaggedBooleanCheck, IS_TAGGED_BOOLEAN_CHECK, GateFlags::CHECKABLE, 1, 1, 1)                         \
     V(TaggedIsHeapObject, TAGGED_IS_HEAP_OBJECT, GateFlags::NO_WRITE, 1, 1, 1)                              \
     V(IsMarkerCellValid, IS_MARKER_CELL_VALID, GateFlags::NO_WRITE, 1, 1, 1)                                \
     V(StringEqual, STRING_EQUAL, GateFlags::NO_WRITE, 1, 1, 2)                                              \

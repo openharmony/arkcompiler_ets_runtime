@@ -125,7 +125,6 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(IsNotMap,                        ISNOTMAP)                       \
     V(IsNotEcmaObject,                 ISNOTECMAOBJECT)                \
     V(IsNotDataView,                   ISNOTDATAVIEW)                  \
-    V(IsNotTaggedBoolean,              ISNOTTAGGEDBOOLEAN)             \
     V(IndexLessZero,                   INDEXLESSZERO)                  \
     V(ArrayBufferIsDetached,           ARRAYBUFFERISDETACHED)          \
     V(TotalSizeOverflow,               TOTALSIZEOVERFLOW)              \
