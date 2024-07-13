@@ -299,10 +299,11 @@ void JSHClass::OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject>
 }
 
 void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
-                           const PropertyAttributes &attr)
+                           const PropertyAttributes &attr, const Representation &rep)
 {
     JSHandle<JSHClass> jshclass(thread, obj->GetJSHClass());
-    JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
+    auto metadata = JSTaggedValue(attr.GetPropertyMetaData());
+    JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), metadata, rep);
     if (newClass != nullptr) {
         // The transition hclass from AOT, which does not have a prototype, needs to be reset here.
         if (newClass->IsTS()) {
@@ -337,7 +338,7 @@ JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const J
 {
     JSHandle<JSTaggedValue> key(thread->GlobalConstants()->GetHandledPreventExtensionsString());
     {
-        auto *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(0));
+        auto *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(0), Representation::NONE);
         if (newClass != nullptr) {
             newClass->SetPrototype(thread, jshclass->GetPrototype());
             return JSHandle<JSHClass>(thread, newClass);
@@ -1289,8 +1290,9 @@ JSHandle<JSHClass> JSHClass::CreateRootHClassWithCached(const JSThread* thread,
         }
         attributes.SetIsInlinedProps(true);
         attributes.SetOffset(index++);
+        auto rep = attributes.GetRepresentation();
 
-        JSHandle<JSHClass> child = SetPropertyOfObjHClass(thread, hclass, key, attributes);
+        JSHandle<JSHClass> child = SetPropertyOfObjHClass(thread, hclass, key, attributes, rep);
         child->SetParent(thread, hclass);
         child->SetPrototype(thread, JSTaggedValue::Null());
         child->SetTS(true);

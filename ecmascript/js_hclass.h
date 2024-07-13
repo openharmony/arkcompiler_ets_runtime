@@ -435,9 +435,11 @@ public:
     template<bool checkDuplicateKeys = false>
     static JSHandle<JSHClass> SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                      const JSHandle<JSTaggedValue> &key,
-                                                     const PropertyAttributes &attr);
+                                                     const PropertyAttributes &attr,
+                                                     const Representation &rep);
     static void PUBLIC_API AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj,
-                                       const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr);
+                                       const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr,
+                                       const Representation &rep = Representation::NONE);
 
     inline static void TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
                                        const JSHandle<JSObject> &obj);
@@ -1996,7 +1998,10 @@ public:
         return GetProto();
     }
 
-    inline JSHClass *FindTransitions(const JSTaggedValue &key, const JSTaggedValue &metaData);
+    inline JSHClass *FindTransitions(const JSTaggedValue &key,
+                                     const JSTaggedValue &metaData,
+                                     const Representation &rep);
+    inline JSHClass *CheckHClassForRep(JSHClass *hclass, const Representation &rep);
 
     DECL_DUMP()
 

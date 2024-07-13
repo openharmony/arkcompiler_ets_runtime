@@ -99,7 +99,8 @@ void JSHClass::AddProtoTransitions(const JSThread *thread, const JSHandle<JSHCla
     parent->SetTransitions(thread, transitions);
 }
 
-inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTaggedValue &metaData)
+inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTaggedValue &metaData,
+                                           const Representation &rep)
 {
     DISALLOW_GARBAGE_COLLECTION;
     JSTaggedValue transitions = GetTransitions();
@@ -116,7 +117,7 @@ inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTag
         auto lastMetaData = layoutInfo->GetAttr(last).GetPropertyMetaData();
         auto lastKey = layoutInfo->GetKey(last);
         if (lastMetaData == metaData.GetInt() && key == lastKey) {
-            return cachedHClass;
+            return CheckHClassForRep(cachedHClass, rep);
         }
         return nullptr;
     }
@@ -133,7 +134,7 @@ inline JSHClass *JSHClass::FindTransitions(const JSTaggedValue &key, const JSTag
         return nullptr;
     }
 
-    return JSHClass::Cast(ret.GetTaggedWeakRef());
+    return CheckHClassForRep(JSHClass::Cast(ret.GetTaggedWeakRef()), rep);
 }
 
 inline JSHClass *JSHClass::FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto)
@@ -172,6 +173,31 @@ inline void JSHClass::TryRestoreElementsKind(const JSThread *thread, JSHandle<JS
         Elements::MigrateArrayWithKind(thread, obj, oldKind, newKind);
     }
     newJsHClass->SetElementsKind(newKind);
+}
+
+inline JSHClass *JSHClass::CheckHClassForRep(JSHClass *hclass, const Representation &rep)
+{
+    if (!hclass->IsTS()) {
+        return hclass;
+    }
+    if (rep == Representation::NONE) {
+        return hclass;
+    }
+
+    int last = static_cast<int>(hclass->LastPropIndex());
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    auto lastRep = layoutInfo->GetAttr(last).GetRepresentation();
+    auto result = hclass;
+    if (lastRep == Representation::INT) {
+        if (rep != Representation::INT) {
+            result = nullptr;
+        }
+    } else if (lastRep == Representation::DOUBLE) {
+        if (rep != Representation::INT && rep != Representation::DOUBLE) {
+            result = nullptr;
+        }
+    }
+    return result;
 }
 
 inline void JSHClass::UpdatePropertyMetaData(const JSThread *thread, [[maybe_unused]] const JSTaggedValue &key,
@@ -352,9 +378,10 @@ void JSHClass::AddPropertyToNewHClass(const JSThread *thread, JSHandle<JSHClass>
 template<bool checkDuplicateKeys /* = false*/>
 JSHandle<JSHClass> JSHClass::SetPropertyOfObjHClass(const JSThread *thread, JSHandle<JSHClass> &jshclass,
                                                     const JSHandle<JSTaggedValue> &key,
-                                                    const PropertyAttributes &attr)
+                                                    const PropertyAttributes &attr, const Representation &rep)
 {
-    JSHClass *newClass = jshclass->FindTransitions(key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()));
+    JSHClass *newClass = jshclass->FindTransitions(
+        key.GetTaggedValue(), JSTaggedValue(attr.GetPropertyMetaData()), rep);
     if (newClass != nullptr) {
         newClass->SetPrototype(thread, jshclass->GetPrototype());
         return JSHandle<JSHClass>(thread, newClass);

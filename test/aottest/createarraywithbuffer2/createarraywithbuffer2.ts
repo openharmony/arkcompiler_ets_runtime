@@ -37,3 +37,23 @@ function lodash_Array_Test() {
 }
 
 lodash_Array_Test()
+
+let a = {x: 1, y: 2, z: 3}
+
+let b = {x: 1, y: 2}
+let c = {x: 1}
+
+if (ArkTools.isAOTCompiled(foo)) {
+    let d = {x: 1, y: 2, z: 3, u: 4}
+    print(d.y)
+}
+
+function foo() {
+    return a.x;
+}
+
+function result() {
+    return false;
+}
+
+print(foo())

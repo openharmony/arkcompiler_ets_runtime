@@ -28,6 +28,7 @@
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_operator.h"
+#include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tests/test_helper.h"
@@ -722,7 +723,7 @@ JSHandle<JSObject> GetterOrSetterIsUndefined(JSThread *thread, JSHandle<JSTagged
     JSHandle<JSTaggedValue> hclass1(thread, JSObjectTestCreate(thread));
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(hclass1), hclass1);
-    
+
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSFunction> getter =
         thread->GetEcmaVM()->GetFactory()->NewJSFunction(env, reinterpret_cast<void *>(TestUndefinedGetter));
@@ -1300,8 +1301,10 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
         JSObject::SetProperty(thread, obj2, keyB, JSHandle<JSTaggedValue>(thread, JSTaggedValue(2)));
 
         EXPECT_TRUE(hc0->GetTransitions().IsTaggedArray());
-        EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue()), obj1->GetClass());
-        EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue()), obj2->GetClass());
+        EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+            obj1->GetClass());
+        EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+            obj2->GetClass());
         hca.Update(JSTaggedValue(obj1->GetClass()));
         hcb.Update(JSTaggedValue(obj2->GetClass()));
 
@@ -1315,8 +1318,10 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
     // collect hc1, hc2
     vm->CollectGarbage(TriggerGCType::FULL_GC);
 
-    EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue()), hca.GetObject<JSHClass>());
-    EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue()), hcb.GetObject<JSHClass>());
+    EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+        hca.GetObject<JSHClass>());
+    EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+        hcb.GetObject<JSHClass>());
 
     JSHandle<JSObject> obj3 = factory->NewJSObject(hc0);
     JSHandle<JSObject> obj4 = factory->NewJSObject(hc0);
@@ -1328,8 +1333,10 @@ HWTEST_F_L0(JSObjectTest, UpdateWeakTransitions)
     JSObject::SetProperty(thread, obj4, keyB, JSHandle<JSTaggedValue>(thread, JSTaggedValue(6)));
 
     EXPECT_TRUE(hc0->GetTransitions().IsTaggedArray());
-    EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue()), obj3->GetClass());
-    EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue()), obj4->GetClass());
+    EXPECT_EQ(hc0->FindTransitions(keyA.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+        obj3->GetClass());
+    EXPECT_EQ(hc0->FindTransitions(keyB.GetTaggedValue(), attr.GetTaggedValue(), Representation::NONE),
+        obj4->GetClass());
     EXPECT_EQ(obj3->GetClass(), hca.GetObject<JSHClass>());
     EXPECT_EQ(obj4->GetClass(), hcb.GetObject<JSHClass>());
 }

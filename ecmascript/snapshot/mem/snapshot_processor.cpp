@@ -1685,7 +1685,9 @@ void SnapshotProcessor::DeserializeTaggedField(uint64_t *value, TaggedObject *ro
     EncodeBit encodeBit(*value);
     if (!builtinsDeserialize_ && encodeBit.IsReference() && encodeBit.IsGlobalConstOrBuiltins()) {
         size_t index = encodeBit.GetNativePointerOrObjectIndex();
-        *value = vm_->GetSnapshotEnv()->RelocateRootObjectAddr(index);
+        auto object = vm_->GetSnapshotEnv()->RelocateRootObjectAddr(index);
+        *value = object;
+        WriteBarrier<WriteBarrierType::DESERIALIZE>(vm_->GetJSThread(), reinterpret_cast<void *>(value), 0, object);
         return;
     }
 

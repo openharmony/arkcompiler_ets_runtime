@@ -845,7 +845,9 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
     if (nextInlinedPropsIndex >= 0) {
         attr.SetOffset(nextInlinedPropsIndex);
         attr.SetIsInlinedProps(true);
-        JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
+        attr.SetRepresentation(Representation::TAGGED);
+        auto rep = PropertyAttributes::TranslateToRep(valueHandle.GetTaggedValue());
+        JSHClass::AddProperty(thread, objHandle, keyHandle, attr, rep);
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
         if (actualValue.isTagged) {
             objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex, valueHandle.GetTaggedValue());
@@ -890,7 +892,9 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         }
 
         attr.SetOffset(nonInlinedProps + objHandle->GetJSHClass()->GetInlinedProperties());
-        JSHClass::AddProperty(thread, objHandle, keyHandle, attr);
+        attr.SetRepresentation(Representation::TAGGED);
+        auto rep = PropertyAttributes::TranslateToRep(valueHandle.GetTaggedValue());
+        JSHClass::AddProperty(thread, objHandle, keyHandle, attr, rep);
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
         if (actualValue.isTagged) {
             array->Set<true>(thread, nonInlinedProps, valueHandle.GetTaggedValue());

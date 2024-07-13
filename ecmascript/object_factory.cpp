@@ -3912,13 +3912,16 @@ JSHandle<JSHClass> ObjectFactory::SetLayoutInObjHClass(const JSHandle<TaggedArra
         key.Update(properties->Get(fieldOffset * 2)); // 2 : pair of key and value
         ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key");
         PropertyAttributes attributes = PropertyAttributes::Default();
-        if (properties->Get(fieldOffset * 2 + 1).IsAccessor()) {  // 2: Meaning to double
+        auto value = properties->Get(fieldOffset * 2 + 1);
+        if (value.IsAccessor()) {  // 2: Meaning to double
             attributes.SetIsAccessor(true);
         }
         attributes.SetIsInlinedProps(true);
         attributes.SetRepresentation(Representation::TAGGED);
         attributes.SetOffset(fieldOffset);
-        newObjHclass = JSHClass::SetPropertyOfObjHClass(thread_, newObjHclass, key, attributes);
+        attributes.SetRepresentation(Representation::TAGGED);
+        auto rep = PropertyAttributes::TranslateToRep(value);
+        newObjHclass = JSHClass::SetPropertyOfObjHClass(thread_, newObjHclass, key, attributes, rep);
     }
     return newObjHclass;
 }
@@ -5007,7 +5010,10 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithProperties(size_t prope
         PropertyAttributes attr(descs[i]);
         attr.SetIsInlinedProps(true);
         attr.SetOffset(i);
-        hclassHandle.Update(JSHClass::SetPropertyOfObjHClass<true>(thread_, hclassHandle, key, attr));
+        attr.SetRepresentation(Representation::TAGGED);
+        auto value = descs[i].GetValue().GetTaggedValue();
+        auto rep = PropertyAttributes::TranslateToRep(value);
+        hclassHandle.Update(JSHClass::SetPropertyOfObjHClass<true>(thread_, hclassHandle, key, attr, rep));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, JSHandle<JSTaggedValue>());
     }
     JSHandle<JSObject> object = NewJSObject(hclassHandle);
@@ -5112,7 +5118,10 @@ JSHandle<JSTaggedValue> ObjectFactory::CreateJSObjectWithNamedProperties(size_t 
         PropertyAttributes attr(PropertyAttributes::GetDefaultAttributes());
         attr.SetIsInlinedProps(true);
         attr.SetOffset(i);
-        hclassHandle.Update(JSHClass::SetPropertyOfObjHClass<true>(thread_, hclassHandle, key, attr));
+        attr.SetRepresentation(Representation::TAGGED);
+        auto value = JSNApiHelper::ToJSHandle(values[i]).GetTaggedValue();
+        auto rep = PropertyAttributes::TranslateToRep(value);
+        hclassHandle.Update(JSHClass::SetPropertyOfObjHClass<true>(thread_, hclassHandle, key, attr, rep));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, JSHandle<JSTaggedValue>());
     }
     JSHandle<JSObject> object = NewJSObject(hclassHandle);

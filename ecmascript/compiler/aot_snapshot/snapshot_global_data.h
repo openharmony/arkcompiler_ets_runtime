@@ -185,6 +185,15 @@ public:
         return protoTransTableInfo_;
     }
 
+    JSTaggedValue GetObjectLiteralHClassCache() const
+    {
+        if (hclassInfo_.IsTaggedArray()) {
+            auto hclassInfoArr = TaggedArray::Cast(hclassInfo_);
+            return hclassInfoArr->Get(hclassInfoArr->GetLength() - 1);
+        }
+        return JSTaggedValue::Undefined();
+    }
+
     void StoreHClassInfo(JSHandle<TaggedArray> info)
     {
         hclassInfo_ = info.GetTaggedValue();
