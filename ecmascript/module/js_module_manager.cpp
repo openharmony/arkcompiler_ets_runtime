@@ -931,4 +931,15 @@ void ModuleManager::RemoveModuleFromCache(JSTaggedValue recordName)
     SourceTextModule::Cast(result)->DestoryLazyImportArray();
     resolvedModules_ = NameDictionary::Remove(thread, dict, entry).GetTaggedValue();
 }
+
+// this function only remove module's name from resolvedModules List, it's content still needed by sharedmodule
+void ModuleManager::RemoveModuleNameFromList(JSTaggedValue recordName)
+{
+    JSThread *thread = vm_->GetJSThread();
+    JSHandle<NameDictionary> dict(thread, resolvedModules_.GetTaggedObject());
+    int entry = dict->FindEntry(recordName);
+    LOG_ECMA_IF(entry == -1, FATAL) << "Can not get module: " << ConvertToString(recordName) <<
+         ", when try to remove the module";
+    resolvedModules_ = NameDictionary::Remove(thread, dict, entry).GetTaggedValue();
+}
 } // namespace panda::ecmascript
