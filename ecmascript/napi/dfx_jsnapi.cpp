@@ -174,11 +174,7 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
     }
     struct DumpForSnapShotStruct *dumpStruct = new DumpForSnapShotStruct();
     dumpStruct->vm = vm;
-    dumpStruct->dumpFormat = dumpOption.dumpFormat;
-    dumpStruct->isVmMode = dumpOption.isVmMode;
-    dumpStruct->isPrivate = dumpOption.isPrivate;
-    dumpStruct->captureNumericValue = dumpOption.captureNumericValue;
-    dumpStruct->isFullGC = dumpOption.isFullGC;
+    dumpStruct->dumpOption = dumpOption;
     uv_work_t *work = new(std::nothrow) uv_work_t;
     if (work == nullptr) {
         LOG_ECMA(ERROR) << "work nullptr";
@@ -193,8 +189,7 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
         ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
             struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
             DFXJSNApi::GetHeapPrepare(dump->vm);
-            DumpSnapShotOption dumpOption = { dump->dumpFormat, dump->isVmMode, dump->isPrivate,
-                                              dump->captureNumericValue, dump->isFullGC };
+            DumpSnapShotOption dumpOption = dump->dumpOption;
             DumpHeapSnapshot(dump->vm, dumpOption);
             delete dump;
             delete work;

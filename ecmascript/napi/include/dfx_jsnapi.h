@@ -56,11 +56,7 @@ using DumpSnapShotOption = ecmascript::DumpSnapShotOption;
 using DumpFormat = ecmascript::DumpFormat;
 struct DumpForSnapShotStruct {
     const EcmaVM *vm;
-    DumpFormat dumpFormat;
-    bool isVmMode = true;
-    bool isPrivate = false;
-    bool captureNumericValue = false;
-    bool isFullGC = true;
+    DumpSnapShotOption dumpOption;
 };
 
 class PUBLIC_API DFXJSNApi {
