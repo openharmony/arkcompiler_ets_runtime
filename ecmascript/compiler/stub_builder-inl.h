@@ -1130,6 +1130,16 @@ inline GateRef StubBuilder::TruncFloatToInt64(GateRef val)
     return env_->GetBuilder()->TruncFloatToInt64(val);
 }
 
+inline void StubBuilder::CanNotConvertNotValidObject([[maybe_unused]] GateRef obj)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(CanNotConvertNotValidObject), IsEcmaObject(obj));
+}
+
+inline void StubBuilder::IsNotPropertyKey([[maybe_unused]] GateRef flag)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsNotPropertyKey), flag);
+}
+
 inline GateRef StubBuilder::ChangeInt64ToIntPtr(GateRef val)
 {
     if (env_->IsArch32Bit()) {
@@ -2303,11 +2313,11 @@ inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
 }
 
 inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver,
-                                               GateRef attr, GateRef value, Label *executeSetProp, Label *exit)
+    GateRef attr, GateRef value, Label *executeSetProp, Label *exit, GateRef SCheckModelIsCHECK)
 {
     auto *env = GetEnvironment();
     Label isJSShared(env);
-    BRANCH(IsJSShared(receiver), &isJSShared, executeSetProp);
+    BRANCH(BoolAnd(IsJSShared(receiver), SCheckModelIsCHECK), &isJSShared, executeSetProp);
     Bind(&isJSShared);
     {
         Label typeMismatch(env);

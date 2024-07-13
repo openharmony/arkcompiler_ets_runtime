@@ -260,7 +260,7 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     }                                                                                                                \
     Bind(&slowPath);                                                                                                 \
     {                                                                                                                \
-        result = CallRuntime(glue, RTSTUB_ID(DefineField), {receiver, propKey, acc});                                \
+        result = DefineField(glue, receiver, propKey, acc);                                                          \
         Jump(&exit);                                                                                                 \
     }                                                                                                                \
     Bind(&exit)
@@ -5431,7 +5431,7 @@ void BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8StubBuilder::GenerateCircu
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v0));
     
-    GateRef res = CallRuntime(glue, RTSTUB_ID(DefineField), {obj, propKey, acc});
+    GateRef res = DefineField(glue, obj, propKey, acc);
     CHECK_EXCEPTION_WITH_ACC(res);
 }
 
@@ -5445,7 +5445,7 @@ void BaselineCallRuntimeDefineFieldByIndexPrefImm8Imm32V8StubBuilder::GenerateCi
 
     GateRef propKey = IntToTaggedInt(index);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(DefineField), {obj, propKey, acc});
+    GateRef res = DefineField(glue, obj, propKey, acc);
     CHECK_EXCEPTION_WITH_ACC(res);
 }
 

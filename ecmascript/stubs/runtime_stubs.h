@@ -481,6 +481,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(ThrowRangeError)                    \
     V(InitializeGeneratorFunction)        \
     V(FunctionDefineOwnProperty)          \
+    V(DefineOwnProperty)                  \
     V(AOTEnableProtoChangeMarker)         \
     V(HasProperty)                        \
     V(DumpObject)                         \
