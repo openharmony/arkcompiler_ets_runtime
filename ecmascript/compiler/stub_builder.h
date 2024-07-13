@@ -368,8 +368,6 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetExtractLengthOfTaggedArray(GateRef array);
     // object operation
     GateRef IsJSHClass(GateRef obj);
-    void CanNotConvertNotValidObject(GateRef obj);
-    void IsNotPropertyKey(GateRef obj);
     GateRef LoadHClass(GateRef object);
     void StoreHClass(GateRef glue, GateRef object, GateRef hClass);
     void StoreHClassWithoutBarrier(GateRef glue, GateRef object, GateRef hClass);
@@ -940,9 +938,6 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     inline void SetToPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key, GateRef result,
                                      GateRef hir = Circuit::NullGate());
     GateRef HashFromHclassAndKey(GateRef glue, GateRef cls, GateRef key, GateRef hir = Circuit::NullGate());
-    GateRef CreateDataProperty(GateRef glue, GateRef obj, GateRef proKey, GateRef value);
-    GateRef CreateDataPropertyOrThrow(GateRef glue, GateRef onj, GateRef proKey, GateRef value);
-    GateRef DefineField(GateRef glue, GateRef obj, GateRef proKey, GateRef value);
     GateRef GetKeyHashCode(GateRef glue, GateRef key, GateRef hir = Circuit::NullGate());
     inline GateRef GetSortedKey(GateRef layoutInfo, GateRef index);
     inline GateRef GetSortedIndex(GateRef layoutInfo, GateRef index);
