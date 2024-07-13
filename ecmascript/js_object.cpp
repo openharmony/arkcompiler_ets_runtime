@@ -1263,6 +1263,12 @@ bool JSObject::OrdinaryGetOwnProperty(JSThread *thread, const JSHandle<JSObject>
     return true;
 }
 
+bool JSObject::DefineOwnProperty(JSThread *thread, ObjectOperator *op,
+                                 const PropertyDescriptor &desc, SCheckMode sCheckMode)
+{
+    return OrdinaryDefineOwnProperty(thread, op, desc, sCheckMode);
+}
+
 bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                                  const PropertyDescriptor &desc, SCheckMode sCheckMode)
 {
@@ -1276,6 +1282,21 @@ bool JSObject::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj
 }
 
 // 9.1.6.1 OrdinaryDefineOwnProperty (O, P, Desc)
+bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, ObjectOperator *op,
+                                         const PropertyDescriptor &desc, SCheckMode sCheckMode)
+{
+    auto obj = JSHandle<JSObject>::Cast(op->GetHolder());
+    bool extensible = obj->IsExtensible();
+    // make extensible for shared array to add element.
+    if (obj->IsJSSArray() && op->IsElement()) {
+        extensible = true;
+    }
+    PropertyDescriptor current(thread);
+    op->ToPropertyDescriptor(current);
+    // 4. Return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current).
+    return ValidateAndApplyPropertyDescriptor(op, extensible, desc, current, sCheckMode);
+}
+
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                          const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
                                          SCheckMode sCheckMode)
@@ -1284,16 +1305,7 @@ bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObje
     // 1. Let current be O.[[GetOwnProperty]](P).
     JSHandle<JSTaggedValue> objValue(obj);
     ObjectOperator op(thread, objValue, key, OperatorType::OWN);
-
-    bool extensible = obj->IsExtensible();
-    // make extensible for shared array to add element.
-    if (obj->IsJSSArray() && op.IsElement()) {
-        extensible = true;
-    }
-    PropertyDescriptor current(thread);
-    op.ToPropertyDescriptor(current);
-    // 4. Return ValidateAndApplyPropertyDescriptor(O, P, extensible, Desc, current).
-    return ValidateAndApplyPropertyDescriptor(&op, extensible, desc, current, sCheckMode);
+    return OrdinaryDefineOwnProperty(thread, &op, desc, sCheckMode);
 }
 
 bool JSObject::OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
