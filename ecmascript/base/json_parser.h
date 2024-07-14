@@ -153,6 +153,9 @@ protected:
             while (true) {
                 SkipStartWhiteSpace();
                 Tokens token = ParseToken();
+                if (current_ > range_) {
+                    THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end in JSON", JSTaggedValue::Exception());
+                }
                 switch (token) {
                     case Tokens::OBJECT:
                         if (EmptyObjectCheck()) {

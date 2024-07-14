@@ -83,3 +83,27 @@ print(JSON.parse('"\\u5555\\u6666"'));  // utf8 -> utf16
 print(JSON.parse('["\\"\\"","中文"]')[0]);  // utf16 -> utf8
 print(JSON.parse('["\\u0055\\u0066","中文"]')[0]);  // utf16 -> utf8
 print(JSON.parse('["\\u5555\\u6666","中文"]')[0]);  // utf16 -> utf16
+
+const strData9 = `{"k1":"hello","k2":3}`;
+const strErr = strData9.substring(0, strData9.length - 2);
+try {
+    JSON.parse(strErr);
+} catch (err) {
+    print(err.name)
+}
+
+const strData10 = `{"k1":"hello","k2":                    3}`;
+const strErr2 = strData10.substring(0, strData10.length - 2);
+try {
+    JSON.parse(strErr2);
+} catch (err) {
+    print(err.name)
+}
+
+const strData11 = `{"k1":"hello","k2":311111}`;
+const strErr3 = strData11.substring(0, strData11.length - 2);
+try {
+    JSON.parse(strErr3);
+} catch (err) {
+    print(err.name)
+}
