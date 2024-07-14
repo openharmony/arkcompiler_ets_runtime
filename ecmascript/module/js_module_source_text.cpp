@@ -441,7 +441,7 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleMayThrowError(JSThread *thre
     const JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
 {
     EcmaVM *vm = thread->GetEcmaVM();
-    [[maybe_unused]] LocalScope scope(vm);
+    EscapeLocalScope scope(vm);
 
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
     if (exportObject->IsNativeModuleFailureInfoObject(vm) || exportObject->IsUndefined()
@@ -452,7 +452,7 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleMayThrowError(JSThread *thre
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
             JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined())));
     }
-    return exportObject;
+    return scope.Escape(exportObject);
 }
 
 bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceTextModule> &requiredModule,
