@@ -1154,6 +1154,9 @@ void TypedBytecodeLowering::LowerTypedLdObjByIndex(GateRef gate)
 bool TypedBytecodeLowering::TryLowerTypedStObjByIndexForBuiltin(GateRef gate)
 {
     StoreBulitinObjTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, chunk_);
+    if (tacc.HasNoType()) {
+        return false;
+    }
     if (tacc.GetBuiltinsJSType() != JSType::JS_FLOAT32_ARRAY) {
         return false;
     }

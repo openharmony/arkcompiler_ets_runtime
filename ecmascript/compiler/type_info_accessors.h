@@ -1627,6 +1627,11 @@ public:
         return types_[0].IsEverOutOfBounds();
     }
 
+    bool HasNoType() const
+    {
+        return types_.empty();
+    }
+
     JSType GetBuiltinsJSType() const
     {
         if (types_[0].IsBuiltinsType()) {
