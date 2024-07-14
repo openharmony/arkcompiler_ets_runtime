@@ -35,15 +35,11 @@ class SharedModuleManager {
 public:
     static SharedModuleManager *GetInstance();
 
-    void Initialize(const EcmaVM *vm)
-    {
-        resolvedSharedModules_ = NameDictionary::CreateInSharedHeap(vm->GetJSThread(),
-            DEAULT_DICTIONART_CAPACITY).GetTaggedValue();
-    }
+    void Initialize() {};
 
     void Destroy()
     {
-        resolvedSharedModules_ = JSTaggedValue::Hole();
+        resolvedSharedModules_.clear();
     }
 
     JSTaggedValue GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc);
@@ -66,7 +62,7 @@ public:
 
     bool SearchInSModuleManager(JSThread *thread, const CString &recordName);
 
-    void InsertInSModuleManager(JSThread *thread, JSHandle<JSTaggedValue> requireModule,
+    void InsertInSModuleManager(JSThread *thread, const CString &recordName,
         JSHandle<SourceTextModule> &moduleRecord);
 
     void TransferSModule(JSThread *thread);
@@ -79,6 +75,15 @@ public:
     JSHandle<ModuleNamespace> SModuleNamespaceCreate(JSThread *thread, const JSHandle<JSTaggedValue> &module,
                                                             const JSHandle<TaggedArray> &exports);
 
+    inline void AddResolveImportedSModule(const CString &recordName, JSTaggedValue module)
+    {
+        resolvedSharedModules_.emplace(recordName, module);
+    }
+
+    inline void UpdateResolveImportedSModule(const CString &recordName, JSTaggedValue module)
+    {
+        resolvedSharedModules_[recordName] = module;
+    }
     void SharedNativeObjDestory();
 
 private:
@@ -96,18 +101,14 @@ private:
     JSHandle<JSTaggedValue> ResolveSharedImportedModuleWithMerge(JSThread *thread, const CString &fileName,
         const CString &recordName, const JSPandaFile *jsPandaFile, JSRecordInfo *recordInfo);
 
-    bool SearchInSModuleManagerUnsafe(JSThread *thread, const CString &recordName);
+    bool SearchInSModuleManagerUnsafe(const CString &recordName);
 
     JSHandle<SourceTextModule> GetSModuleUnsafe(JSThread *thread, const CString &recordName);
 
-    JSHandle<SourceTextModule> GetSModuleUnsafe(JSThread *thread, JSTaggedValue recordName);
-
     JSHandle<SourceTextModule> GetSModule(JSThread *thread, const CString &recordName);
 
-    JSHandle<SourceTextModule> GetSModule(JSThread *thread, JSTaggedValue recordName);
-
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
-    JSTaggedValue resolvedSharedModules_ {JSTaggedValue::Hole()};
+    CUnorderedMap<CString, JSTaggedValue> resolvedSharedModules_;
     CMap<CString, StateVisit> sharedModuleMutex_;
     Mutex mutex_;
 

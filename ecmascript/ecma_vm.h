@@ -254,7 +254,7 @@ public:
 
     void PushToNativePointerList(JSNativePointer *pointer, Concurrent isConcurrent = Concurrent::NO);
     void RemoveFromNativePointerList(JSNativePointer *pointer);
-    void PushToDeregisterModuleList(CString module);
+    void PushToDeregisterModuleList(const CString &module);
     void RemoveFromDeregisterModuleList(CString module);
     bool ContainInDeregisterModuleList(CString module);
     JSHandle<ecmascript::JSTaggedValue> GetAndClearEcmaUncaughtException() const;

@@ -86,10 +86,12 @@ void PatchLoader::ExecuteFuncOrPatchMain(
 
     // Resolve all patch module records.
     CMap<CString, JSHandle<JSTaggedValue>> moduleRecords {};
+    
+    ModuleManager *moduleManager = context->GetModuleManager();
+    CString fileName = jsPandaFile->GetJSPandaFileDesc();
     for (const auto &recordName : replacedRecordNames) {
-        ModuleManager *moduleManager = context->GetModuleManager();
         JSHandle<JSTaggedValue> moduleRecord = moduleManager->
-            HostResolveImportedModuleWithMergeForHotReload(jsPandaFile->GetJSPandaFileDesc(), recordName, false);
+            HostResolveImportedModuleWithMergeForHotReload(fileName, recordName, false);
         moduleRecords.emplace(recordName, moduleRecord);
     }
 
@@ -104,6 +106,7 @@ void PatchLoader::ExecuteFuncOrPatchMain(
 
         JSHandle<JSTaggedValue> moduleRecord = moduleRecords[recordName];
         SourceTextModule::Instantiate(thread, moduleRecord, false);
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
         SourceTextModule::Evaluate(thread, module);
     }

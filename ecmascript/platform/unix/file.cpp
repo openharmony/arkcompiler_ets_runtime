@@ -124,39 +124,26 @@ int FileUnMap(MemMap addr)
     return munmap(addr.GetOriginAddr(), addr.GetSize());
 }
 
-JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
-                                               JSTaggedValue request)
+CString ResolveFilenameFromNative(JSThread *thread, const CString &dirname,
+                                  CString request)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    CString fullname;
-    CString resolvedFilename;
-    CString dirnameStr = ConvertToString(EcmaString::Cast(dirname.GetTaggedObject()));
-    CString requestStr = ConvertToString(EcmaString::Cast(request.GetTaggedObject()));
-    if (requestStr.find("./") == 0) {
-        requestStr = requestStr.substr(2); // 2 : delete './'
+    std::string relativePath;
+    if (request.find("./") == 0) {
+        request = request.substr(2); // 2 : delete './'
     }
-    int suffixEnd = static_cast<int>(requestStr.find_last_of('.'));
-    if (suffixEnd == -1) {
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
-    }
-    if (requestStr[0] == '/') { // absolute FilePath
-        fullname = requestStr.substr(0, suffixEnd) + ".abc";
+    int suffixEnd = static_cast<int>(request.find_last_of('.'));
+    if (request[0] == '/') { // absolute FilePath
+        relativePath = request.substr(0, suffixEnd) + ".abc";
     } else {
-        int pos = static_cast<int>(dirnameStr.find_last_of('/'));
-        if (pos == -1) {
-            RETURN_HANDLE_IF_ABRUPT_COMPLETION(EcmaString, thread);
-        }
-        fullname = dirnameStr.substr(0, pos + 1) + requestStr.substr(0, suffixEnd) + ".abc";
+        int pos = static_cast<int>(dirname.find_last_of('/'));
+        relativePath = dirname.substr(0, pos + 1) + request.substr(0, suffixEnd) + ".abc";
     }
 
-    std::string relativePath = ConvertToStdString(fullname);
     std::string absPath = "";
-    if (RealPath(relativePath, absPath)) {
-        resolvedFilename = ConvertToString(absPath);
-        return factory->NewFromUtf8(resolvedFilename);
+    if (RealPath(relativePath.c_str(), absPath)) {
+        return absPath.c_str();
     }
-    CString msg = "resolve absolute path fail";
-    THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, EcmaString, msg.c_str());
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, "resolve absolute path fail", CString());
 }
 
 bool FileExist(const char *filename)

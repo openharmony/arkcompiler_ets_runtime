@@ -55,7 +55,7 @@ void IsModuleNamespaceObjectFuzztest([[maybe_unused]]const uint8_t *data, size_t
         JSHandle<EcmaString> moduleFilename = objectFactory->NewFromUtf8(baseFileName);
         module->SetEcmaModuleFilename(vm->GetJSThread(), moduleFilename);
         ModuleManager *moduleManager = vm->GetJSThread()->GetCurrentEcmaContext()->GetModuleManager();
-        moduleManager->AddResolveImportedModule(baseFileName, JSHandle<JSTaggedValue>::Cast(module));
+        moduleManager->AddResolveImportedModule(baseFileName, module.GetTaggedValue());
         JSHandle<ModuleNamespace> np = ModuleNamespace::ModuleNamespaceCreate(vm->GetJSThread(),
             JSHandle<JSTaggedValue>::Cast(module), localExportEntries);
         ModuleNamespace::PreventExtensions();

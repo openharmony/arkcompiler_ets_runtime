@@ -117,7 +117,7 @@ void Runtime::PostInitialization(const EcmaVM *vm)
     globalConstants_ = mainThread_->GlobalConstants();
     globalEnv_ = vm->GetGlobalEnv().GetTaggedValue();
     SharedHeap::GetInstance()->PostInitialization(globalConstants_, const_cast<EcmaVM*>(vm)->GetJSOptions());
-    SharedModuleManager::GetInstance()->Initialize(vm);
+    SharedModuleManager::GetInstance()->Initialize();
 }
 
 void Runtime::DestroyIfLastVm()

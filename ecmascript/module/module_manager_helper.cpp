@@ -19,6 +19,7 @@
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/require/js_cjs_module.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
@@ -151,19 +152,19 @@ JSTaggedValue ModuleManagerHelper::GetModuleValueFromIndexBinding(JSThread *thre
     JSHandle<ResolvedRecordIndexBinding> binding(thread, resolvedBinding);
     JSHandle<JSTaggedValue> moduleRecord(thread, binding->GetModuleRecord());
     ASSERT(moduleRecord->IsString());
+    CString record = ModulePathHelper::Utf8ConvertToString(moduleRecord.GetTaggedValue());
     // moduleRecord is string, find at current vm
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<SourceTextModule> resolvedModule;
-    if (moduleManager->IsEvaluatedModule(moduleRecord.GetTaggedValue())) {
-        resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+    if (moduleManager->IsEvaluatedModule(record)) {
+        resolvedModule = moduleManager->HostGetImportedModule(record);
     } else {
         auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
-        CString record = ConvertToString(moduleRecord.GetTaggedValue());
         CString fileName = ConvertToString(binding->GetAbcFileName());
         if (!JSPandaFileExecutor::LazyExecuteModule(thread, record, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
-        resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+        resolvedModule = moduleManager->HostGetImportedModule(record);
     }
     return GetModuleValue(thread, resolvedModule, binding->GetIndex());
 }
@@ -174,19 +175,19 @@ JSTaggedValue ModuleManagerHelper::GetModuleValueFromRecordBinding(JSThread *thr
     JSHandle<ResolvedRecordBinding> binding(thread, resolvedBinding);
     JSHandle<JSTaggedValue> moduleRecord(thread, binding->GetModuleRecord());
     ASSERT(moduleRecord->IsString());
+    CString record = ModulePathHelper::Utf8ConvertToString(moduleRecord.GetTaggedValue());
     // moduleRecord is string, find at current vm
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<SourceTextModule> resolvedModule;
-    if (moduleManager->IsEvaluatedModule(moduleRecord.GetTaggedValue())) {
-        resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+    if (moduleManager->IsEvaluatedModule(record)) {
+        resolvedModule = moduleManager->HostGetImportedModule(record);
     } else {
         auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
-        CString record = ConvertToString(moduleRecord.GetTaggedValue());
         CString fileName = ConvertToString(module->GetEcmaModuleFilename());
         if (!JSPandaFileExecutor::LazyExecuteModule(thread, record, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
-        resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+        resolvedModule = moduleManager->HostGetImportedModule(record);
     }
     return GetModuleValue(thread, resolvedModule, binding->GetBindingName());
 }
@@ -200,12 +201,13 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(JSThread *
     ASSERT(moduleRecord->IsString());
     // moduleRecord is string, find at current vm
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    CString recordName = ModulePathHelper::Utf8ConvertToString(moduleRecord.GetTaggedValue());
     JSHandle<SourceTextModule> resolvedModule;
-    if (moduleManager->IsLocalModuleLoaded(moduleRecord.GetTaggedValue())) {
-        if (moduleManager->IsEvaluatedModule(moduleRecord.GetTaggedValue())) {
-            resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+    if (moduleManager->IsLocalModuleLoaded(recordName)) {
+        if (moduleManager->IsEvaluatedModule(recordName)) {
+            resolvedModule = moduleManager->HostGetImportedModule(recordName);
         } else {
-            resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+            resolvedModule = moduleManager->HostGetImportedModule(recordName);
             SourceTextModule::Evaluate(thread, resolvedModule, nullptr);
             if (thread->HasPendingException()) {
                 return JSTaggedValue::Undefined();
@@ -213,12 +215,11 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(JSThread *
         }
     } else {
         auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
-        CString record = ConvertToString(moduleRecord.GetTaggedValue());
         CString fileName = ConvertToString(binding->GetAbcFileName());
-        if (!JSPandaFileExecutor::LazyExecuteModule(thread, record, fileName, isMergedAbc)) {
+        if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordName, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
-        resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+        resolvedModule = moduleManager->HostGetImportedModule(recordName);
     }
     return GetModuleValue(thread, resolvedModule, binding->GetIndex());
 }
@@ -231,12 +232,13 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(
     ASSERT(moduleRecord->IsString());
     // moduleRecord is string, find at current vm
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    CString recordName = ConvertToString(moduleRecord.GetTaggedValue());
     JSHandle<SourceTextModule> resolvedModule;
-    if (moduleManager->IsLocalModuleLoaded(moduleRecord.GetTaggedValue())) {
-        if (moduleManager->IsEvaluatedModule(moduleRecord.GetTaggedValue())) {
-            resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+    if (moduleManager->IsLocalModuleLoaded(recordName)) {
+        if (moduleManager->IsEvaluatedModule(recordName)) {
+            resolvedModule = moduleManager->HostGetImportedModule(recordName);
         } else {
-            resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+            resolvedModule = moduleManager->HostGetImportedModule(recordName);
             SourceTextModule::Evaluate(thread, resolvedModule, nullptr);
             if (thread->HasPendingException()) {
                 return JSTaggedValue::Undefined();
@@ -244,12 +246,11 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(
         }
     } else {
         auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
-        CString record = ConvertToString(moduleRecord.GetTaggedValue());
         CString fileName = ConvertToString(module->GetEcmaModuleFilename());
-        if (!JSPandaFileExecutor::LazyExecuteModule(thread, record, fileName, isMergedAbc)) {
+        if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordName, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
-        resolvedModule = moduleManager->HostGetImportedModule(moduleRecord.GetTaggedValue());
+        resolvedModule = moduleManager->HostGetImportedModule(recordName);
     }
     return GetModuleValue(thread, resolvedModule, binding->GetBindingName());
 }

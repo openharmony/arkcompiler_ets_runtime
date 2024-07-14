@@ -244,7 +244,7 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModule)
     ObjectFactory *factory = instance->GetFactory();
     JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
     JSHandle<JSTaggedValue> moduleRecord(thread, module.GetTaggedValue());
-    moduleManager->AddResolveImportedModule(baseFileName.c_str(), moduleRecord);
+    moduleManager->AddResolveImportedModule(baseFileName.c_str(), moduleRecord.GetTaggedValue());
     JSHandle<JSTaggedValue> res = moduleManager->HostResolveImportedModule(baseFileName.c_str());
 
     EXPECT_EQ(moduleRecord->GetRawData(), res.GetTaggedValue().GetRawData());
@@ -264,7 +264,7 @@ HWTEST_F_L0(EcmaModuleTest, PreventExtensions_IsExtensible)
     module->SetEcmaModuleFilename(thread, moduleFilename);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> moduleRecord = JSHandle<JSTaggedValue>::Cast(module);
-    moduleManager->AddResolveImportedModule(baseFileName, moduleRecord);
+    moduleManager->AddResolveImportedModule(baseFileName, moduleRecord.GetTaggedValue());
     JSHandle<ModuleNamespace> np =
     ModuleNamespace::ModuleNamespaceCreate(thread, moduleRecord, localExportEntries);
     EXPECT_FALSE(np->IsExtensible());
@@ -560,25 +560,20 @@ HWTEST_F_L0(EcmaModuleTest, CheckNativeModule)
 
 HWTEST_F_L0(EcmaModuleTest, ResolveDirPath)
 {
-    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
-
     CString inputFileName = "moduleName/ets/pages/index.abc";
     CString resName1 = "moduleName/ets/pages/";
-    JSHandle<EcmaString> res1 = objectFactory->NewFromUtf8(resName1);
-    JSHandle<EcmaString> outFileName = PathHelper::ResolveDirPath(thread, inputFileName);
-    EXPECT_EQ(outFileName, res1);
+    CString outFileName = PathHelper::ResolveDirPath(inputFileName);
+    EXPECT_EQ(outFileName, resName1);
 
     inputFileName = "moduleName\\ets\\pages\\index.abc";
     CString resName2 = "moduleName\\ets\\pages\\";
-    JSHandle<EcmaString> res2 = objectFactory->NewFromUtf8(resName2);
-    outFileName = PathHelper::ResolveDirPath(thread, inputFileName);
-    EXPECT_EQ(outFileName, res2);
+    outFileName = PathHelper::ResolveDirPath(inputFileName);
+    EXPECT_EQ(outFileName, resName2);
 
     inputFileName = "cjs";
     CString resName3 = "";
-    JSHandle<EcmaString> res3 = objectFactory->NewFromUtf8(resName3);
-    outFileName = PathHelper::ResolveDirPath(thread, inputFileName);
-    EXPECT_EQ(outFileName, res3);
+    outFileName = PathHelper::ResolveDirPath(inputFileName);
+    EXPECT_EQ(outFileName, resName3);
 }
 
 HWTEST_F_L0(EcmaModuleTest, DeleteNamespace)

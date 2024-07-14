@@ -26,7 +26,7 @@ namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 using BuiltinsPromiseJob = builtins::BuiltinsPromiseJob;
 
-JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, JSHandle<EcmaString> specifierString,
+JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const CString &specifierString,
                                                        ModuleTypes moduleType,
                                                        JSHandle<JSPromiseReactionsFunction> resolve,
                                                        JSHandle<JSPromiseReactionsFunction> reject,
@@ -34,31 +34,30 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, JSHandl
 {
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    if (moduleManager->IsLocalModuleLoaded(specifierString.GetTaggedValue())) {
-        ModuleDeregister::ReviseLoadedModuleCount(thread, specifierString.GetTaggedValue());
+    if (moduleManager->IsLocalModuleLoaded(specifierString)) {
+        ModuleDeregister::ReviseLoadedModuleCount(thread, specifierString);
         JSHandle<SourceTextModule> moduleRecord =
-            moduleManager->HostGetImportedModule(specifierString.GetTaggedValue());
+            moduleManager->HostGetImportedModule(specifierString);
         requiredModule.Update(moduleRecord);
     } else {
-        CString requestPath = ModulePathHelper::Utf8ConvertToString(specifierString.GetTaggedValue());
         JSHandle<SourceTextModule> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
         if (moduleType != ModuleTypes::JSON_MODULE) {
             // nativeModule
             JSHandle<JSTaggedValue> nativeModuleHld =
-                moduleManager->ResolveNativeModule(JSHandle<JSTaggedValue>::Cast(specifierString), "", moduleType);
+                moduleManager->ResolveNativeModule(specifierString, "", moduleType);
             moduleRecord = JSHandle<SourceTextModule>::Cast(nativeModuleHld);
             if (!SourceTextModule::LoadNativeModule(thread, moduleRecord, moduleType)) {
-                LOG_FULL(ERROR) << " dynamically loading native module" << requestPath << " failed";
+                LOG_FULL(ERROR) << " dynamically loading native module" << specifierString << " failed";
             }
         } else {
             // json
             moduleRecord = JSHandle<SourceTextModule>::Cast(ModuleDataExtractor::ParseJsonModule(
-                thread, jsPandaFile, jsPandaFile->GetJSPandaFileDesc(), requestPath));
+                thread, jsPandaFile, jsPandaFile->GetJSPandaFileDesc(), specifierString));
         }
         moduleRecord->SetStatus(ModuleStatus::EVALUATED);
         moduleRecord->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
         moduleRecord->SetRegisterCounts(1);
-        thread->GetEcmaVM()->PushToDeregisterModuleList(requestPath);
+        thread->GetEcmaVM()->PushToDeregisterModuleList(specifierString);
         requiredModule.Update(moduleRecord);
     }
 

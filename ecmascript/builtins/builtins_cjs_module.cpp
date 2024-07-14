@@ -60,20 +60,21 @@ JSTaggedValue BuiltinsCjsModule::ResolveFilename(EcmaRuntimeCallInfo *argv)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     uint32_t length = argv->GetArgsNumber();
-    JSMutableHandle<JSTaggedValue> parent(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> dirname(thread, JSTaggedValue::Undefined());
+    CString parent;
+    CString dirname;
     const JSPandaFile *jsPandaFile = EcmaInterpreter::GetNativeCallPandafile(thread);
-    ModulePathHelper::ResolveCurrentPath(thread, parent, dirname, jsPandaFile);
+    ModulePathHelper::ResolveCurrentPath(parent, dirname, jsPandaFile);
 
     if (length != 1) {  // strange arg's number
         LOG_ECMA(FATAL) << "BuiltinsCjsModule::Load : can only accept one argument";
         UNREACHABLE();
     }
     JSHandle<EcmaString> requestName = JSHandle<EcmaString>::Cast(GetCallArg(argv, 0));
-    JSHandle<EcmaString> filename = ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
-                                                              requestName.GetTaggedValue());
-
-    return filename.GetTaggedValue();
+    CString requestNameStr = ModulePathHelper::Utf8ConvertToString(requestName.GetTaggedValue());
+    CString filename = ResolveFilenameFromNative(thread, dirname, requestNameStr);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> filenameHdl = JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(filename));
+    return filenameHdl.GetTaggedValue();
 }
 
 JSTaggedValue BuiltinsCjsModule::Require(EcmaRuntimeCallInfo *msg)

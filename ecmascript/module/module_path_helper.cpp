@@ -616,17 +616,10 @@ CString ModulePathHelper::ParseThirdPartyPackage(const JSPandaFile *jsPandaFile,
  * After:  dirPath: pkg_modules/.ohpm/pkgName/pkg_modules/pkgName/xxx/
  *         fileName: pkg_modules/.ohpm/pkgName/pkg_modules/pkgName/xxx/xxx.abc
  */
-void ModulePathHelper::ResolveCurrentPath(JSThread *thread, JSMutableHandle<JSTaggedValue> &dirPath,
-    JSMutableHandle<JSTaggedValue> &fileName, const JSPandaFile *jsPandaFile)
+void ModulePathHelper::ResolveCurrentPath(CString &dirPath, CString &fileName, const JSPandaFile *jsPandaFile)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    CString fullName = jsPandaFile->GetJSPandaFileDesc();
-    JSHandle<EcmaString> dirPathName = PathHelper::ResolveDirPath(thread, fullName);
-    dirPath.Update(dirPathName.GetTaggedValue());
-
-    // Get filename from JSPandaFile
-    JSHandle<EcmaString> cbFileName = factory->NewFromUtf8(fullName);
-    fileName.Update(cbFileName.GetTaggedValue());
+    fileName = jsPandaFile->GetJSPandaFileDesc();
+    dirPath = PathHelper::ResolveDirPath(fileName);
 }
 
 CString ModulePathHelper::FindNpmEntryPoint(const JSPandaFile *jsPandaFile, const CString &packageEntryPoint)

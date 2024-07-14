@@ -23,6 +23,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/tagged_dictionary.h"
@@ -64,7 +65,7 @@ void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointe
     }
 }
 
-void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, JSTaggedValue moduleName)
+void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, const CString &moduleName)
 {
     EcmaVM *vm = thread->GetEcmaVM();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
@@ -78,9 +79,8 @@ void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, JSTaggedValue m
     if (type == LoadingTypes::STABLE_MODULE) {
         return;
     }
-    CString recordNameStr = ConvertToString(moduleName);
-    if (!vm->ContainInDeregisterModuleList(recordNameStr)) {
-        std::set<CString> increaseModule = {recordNameStr};
+    if (!vm->ContainInDeregisterModuleList(moduleName)) {
+        std::set<CString> increaseModule = {moduleName};
         IncreaseRegisterCounts(thread, module, increaseModule);
     }
 }
@@ -88,16 +88,17 @@ void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, JSTaggedValue m
 void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module)
 {
     JSTaggedValue moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
+    CString recordName = ModulePathHelper::Utf8ConvertToString(moduleRecordName);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     if (!thread->GetEcmaVM()->IsWorkerThread() &&
         (module->GetTypes() == ModuleTypes::APP_MODULE || module->GetTypes() == ModuleTypes::OHOS_MODULE)) {
         if (TryToRemoveSO(thread, module)) {
-            LOG_FULL(INFO) << "Remove native module " << ConvertToString(moduleRecordName).c_str() << " successfully.";
+            LOG_FULL(INFO) << "Remove native module " << recordName << " successfully.";
         } else {
-            LOG_FULL(INFO) << "Remove native module " << ConvertToString(moduleRecordName).c_str() << " failed.";
+            LOG_FULL(INFO) << "Remove native module " << recordName << " failed.";
         }
     }
-    moduleManager->RemoveModuleFromCache(moduleRecordName);
+    moduleManager->RemoveModuleFromCache(recordName);
 }
 
 void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,

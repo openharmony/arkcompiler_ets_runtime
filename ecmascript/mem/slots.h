@@ -66,6 +66,12 @@ public:
         return *reinterpret_cast<JSTaggedType *>(slotAddress_);
     }
 
+    JSTaggedValue GetTaggedValue() const
+    {
+        // NOLINTNEXTLINE(clang-analyzer-core.NullDereference)
+        return *reinterpret_cast<JSTaggedValue *>(slotAddress_);
+    }
+
     ObjectSlot &operator++()
     {
         slotAddress_ += sizeof(JSTaggedType);

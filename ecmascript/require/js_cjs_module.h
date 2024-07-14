@@ -54,7 +54,7 @@ public:
     static JSTaggedValue Require(JSThread *thread, JSHandle<EcmaString> &request, JSHandle<CjsModule> &parent,
                                  bool isMain);
 
-    static void RequireExecution(JSThread *thread, CString mergedFilename, CString requestEntryPoint);
+    static void RequireExecution(JSThread *thread, const CString &mergedFilename, const CString &requestEntryPoint);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_REQUIRE_JS_CJS_MODULE_H

@@ -60,15 +60,13 @@ CString PathHelper::NormalizePath(const CString &fileName)
  * Before: xxx/xxx
  * After:  xxx/
  */
-JSHandle<EcmaString> PathHelper::ResolveDirPath(JSThread *thread, CString fileName)
+CString PathHelper::ResolveDirPath(const CString &fileName)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // find last '/', '\\'
     int foundPos = static_cast<int>(fileName.find_last_of("/\\"));
     if (foundPos == -1) {
-        return factory->NewFromUtf8("");
+        return CString();
     }
-    CString dirPathStr = fileName.substr(0, foundPos + 1);
-    return factory->NewFromUtf8(dirPathStr);
+    return fileName.substr(0, foundPos + 1);
 }
 }  // namespace panda::ecmascript::base

@@ -29,6 +29,7 @@ public:
     ~ModuleManager()
     {
         InstantiatingSModuleList_.clear();
+        resolvedModules_.clear();
     }
 
     JSTaggedValue GetModuleValueInner(int32_t index);
@@ -56,18 +57,17 @@ public:
     JSTaggedValue GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule);
     // deprecated end
 
-    JSHandle<SourceTextModule> GetImportedModule(JSTaggedValue referencing);
-    JSHandle<SourceTextModule> PUBLIC_API HostGetImportedModule(const CString &referencingModule);
-    JSHandle<SourceTextModule> HostGetImportedModule(JSTaggedValue referencing);
+    JSHandle<SourceTextModule> GetImportedModule(const CString &referencing);
+    JSHandle<SourceTextModule> PUBLIC_API HostGetImportedModule(const CString &referencing);
     JSTaggedValue HostGetImportedModule(void *src);
-    bool IsLocalModuleLoaded(JSTaggedValue referencing);
-    bool IsSharedModuleLoaded(JSTaggedValue referencing);
-    bool IsModuleLoaded(JSTaggedValue referencing);
+    bool IsLocalModuleLoaded(const CString& referencing);
+    bool IsSharedModuleLoaded(const CString &referencing);
+    bool IsModuleLoaded(const CString &referencing);
 
-    bool IsEvaluatedModule(JSTaggedValue referencing);
+    bool IsEvaluatedModule(const CString &referencing);
 
-    JSHandle<JSTaggedValue> ResolveNativeModule(const JSHandle<JSTaggedValue> moduleRequest,
-        const CString &baseFileName, ModuleTypes moduleType);
+    JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequest, const CString &baseFileName,
+        ModuleTypes moduleType);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const void *buffer, size_t size, const CString &filename);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const CString &referencingModule,
         bool executeFromJob = false);
@@ -77,25 +77,23 @@ public:
         const CString &recordName, bool executeFromJob = false);
     JSHandle<JSTaggedValue> HostResolveImportedModule(const JSPandaFile *jsPandaFile, const CString &filename);
 
-    JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const std::string &key);
+    JSHandle<JSTaggedValue> LoadNativeModule(JSThread *thread, const CString &key);
 
     JSHandle<JSTaggedValue> ExecuteNativeModuleMayThrowError(JSThread *thread, const CString &recordName);
 
-    JSHandle<JSTaggedValue> ExecuteNativeModule(JSThread *thread, const std::string &recordName);
+    JSHandle<JSTaggedValue> ExecuteNativeModule(JSThread *thread, const CString &recordName);
 
-    JSHandle<JSTaggedValue> ExecuteJsonModule(JSThread *thread, const std::string &recordName,
+    JSHandle<JSTaggedValue> ExecuteJsonModule(JSThread *thread, const CString &recordName,
                                               const CString &filename, const JSPandaFile *jsPandaFile);
-    JSHandle<JSTaggedValue> ExecuteCjsModule(JSThread *thread, const std::string &recordName,
+    JSHandle<JSTaggedValue> ExecuteCjsModule(JSThread *thread, const CString &recordName,
                                              const JSPandaFile *jsPandaFile);
     JSHandle<JSTaggedValue> GetModuleNameSpaceFromFile(
-        JSThread *thread, std::string &recordNameStr, std::string &baseFileName);
+        JSThread *thread, const CString &recordNameStr, const CString &baseFileName);
 
     JSTaggedValue GetCurrentModule();
     JSHandle<JSTaggedValue> GenerateSendableFuncModule(const JSHandle<JSTaggedValue> &module);
-    void AddResolveImportedModule(JSHandle<JSTaggedValue> &record, JSHandle<JSTaggedValue> &module);
-    void AddResolveImportedModule(const CString &referencingModule, JSHandle<JSTaggedValue> moduleRecord);
 
-    JSHandle<JSTaggedValue> TryGetImportedModule(JSTaggedValue referencing);
+    JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
     void Iterate(const RootVisitor &v);
 
     bool GetExecuteMode() const
@@ -108,24 +106,30 @@ public:
     }
 
     static CString PUBLIC_API GetRecordName(JSTaggedValue module);
-    static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const std::string &key);
+    static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const CString &key);
 
     uint32_t NextModuleAsyncEvaluatingOrdinal()
     {
         uint32_t ordinal = nextModuleAsyncEvaluatingOrdinal_++;
         return ordinal;
     }
+    inline void AddResolveImportedModule(const CString &recordName, JSTaggedValue module)
+    {
+        resolvedModules_.emplace(recordName, module);
+    }
+
+    inline void UpdateResolveImportedModule(const CString &recordName, JSTaggedValue module)
+    {
+        resolvedModules_[recordName] = module;
+    }
 
     void NativeObjDestory()
     {
-        NameDictionary* dict = NameDictionary::Cast(resolvedModules_.GetTaggedObject());
-        int size = dict->Size();
-        for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-            JSTaggedValue key(dict->GetKey(hashIndex));
-            if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
-                JSTaggedValue val(dict->GetValue(hashIndex));
-                SourceTextModule::Cast(val)->DestoryLazyImportArray();
-            }
+        for (auto it = resolvedModules_.begin(); it != resolvedModules_.end(); it++) {
+            CString key = it->first;
+            ASSERT(!key.empty());
+            JSTaggedValue module = it->second;
+            SourceTextModule::Cast(module)->DestoryLazyImportArray();
         }
     }
 
@@ -149,10 +153,10 @@ private:
         bool executeFromJob = false);
 
     JSHandle<JSTaggedValue> ResolveModuleWithMerge(JSThread *thread, const JSPandaFile *jsPandaFile,
-        const JSHandle<EcmaString> recordName, bool executeFromJob = false);
+        const CString &recordName, bool executeFromJob = false);
 
     JSHandle<JSTaggedValue> CommonResolveImportedModuleWithMerge(const CString &moduleFileName,
-        const JSHandle<EcmaString> recordName, bool executeFromJob = false);
+        const CString &recordName, bool executeFromJob = false);
 
     void AddToInstantiatingSModuleList(const CString &record);
 
@@ -160,16 +164,16 @@ private:
 
     void ClearInstantiatingSModuleList();
 
-    void RemoveModuleFromCache(JSTaggedValue recordName);
+    void RemoveModuleFromCache(const CString &recordName);
 
-    void RemoveModuleNameFromList(JSTaggedValue recordName);
+    void RemoveModuleNameFromList(const CString &recordName);
 
     static constexpr uint32_t DEAULT_DICTIONART_CAPACITY = 4;
 
     uint32_t nextModuleAsyncEvaluatingOrdinal_{SourceTextModule::FIRST_ASYNC_EVALUATING_ORDINAL};
 
     EcmaVM *vm_ {nullptr};
-    JSTaggedValue resolvedModules_ {JSTaggedValue::Hole()};
+    CUnorderedMap<CString, JSTaggedValue> resolvedModules_;
     bool isExecuteBuffer_ {false};
     CVector<CString> InstantiatingSModuleList_;
 
