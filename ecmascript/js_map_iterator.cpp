@@ -121,15 +121,11 @@ JSHandle<JSTaggedValue> JSMapIterator::CreateMapIterator(JSThread *thread, const
     return iter;
 }
 
-JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTaggedValue> &items,
-                                               JSHandle<JSTaggedValue> &method)
+JSTaggedValue JSMapIterator::MapIteratorToList(JSThread *thread, JSHandle<JSTaggedValue> iterator)
 {
     JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);
-    JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, items, method);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
     JSHandle<JSMapIterator> iter(iterator);
     JSHandle<JSTaggedValue> iteratedMap(thread, iter->GetIteratedMap());
     if (iteratedMap->IsUndefined()) {
