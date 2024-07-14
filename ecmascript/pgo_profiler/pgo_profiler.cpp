@@ -554,7 +554,7 @@ void PGOProfiler::UpdateExtraProfileTypeInfo(ApEntityId abcId,
 
 void PGOProfiler::HandlePGOPreDump()
 {
-    ConcurrentGuard guard(v_, "HandlePGOPreDump");
+    LockHolder lock(recordInfoMutex_);
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
@@ -597,7 +597,7 @@ void PGOProfiler::HandlePGOPreDump()
 void PGOProfiler::HandlePGODumpByDumpThread(bool force)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfiler::HandlePGODumpByDumpThread");
-    ConcurrentGuard guard(v_, "HandlePGODumpByDumpThread");
+    LockHolder lock(recordInfoMutex_);
     if (!isEnable_ || !vm_->GetJSOptions().IsEnableProfileDump()) {
         return;
     }
@@ -1559,7 +1559,7 @@ void PGOProfiler::UpdateTransitionLayout(JSHClass* parent, JSHClass* child)
     auto prototypeHClass = JSHClass::FindProtoRootHClass(rootHClass);
     if (prototypeHClass.IsJSHClass()) {
         auto prototypeValue = prototypeHClass.GetRawData();
-        auto prototypeType = GetProfileType(prototypeValue, prototypeValue);
+        auto prototypeType = GetProfileTypeSafe(prototypeValue, prototypeValue);
         if (!prototypeType.IsNone()) {
             recordInfos_->AddRootPtType(rootType, prototypeType);
             UpdateLayout(JSHClass::Cast(prototypeHClass.GetTaggedObject()));
@@ -1940,6 +1940,7 @@ PGOProfiler::~PGOProfiler()
 
 void PGOProfiler::Reset(bool isEnable)
 {
+    LockHolder lock(recordInfoMutex_);
     isEnable_ = isEnable;
     methodCount_ = 0;
     if (recordInfos_) {

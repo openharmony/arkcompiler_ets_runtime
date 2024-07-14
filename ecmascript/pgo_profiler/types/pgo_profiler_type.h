@@ -205,6 +205,10 @@ public:
     PGOSampleTemplate CombineType(PGOSampleTemplate type)
     {
         if (IsPrimitiveType()) {
+            if (std::holds_alternative<PGOProfileType>(type.type_)) {
+                LOG_ECMA(ERROR) << "The type is PGOProfileType, but need a Type";
+                return *this;
+            }
             auto oldType = static_cast<uint32_t>(std::get<Type>(type_));
             oldType = oldType & static_cast<uint32_t>(AnyType());
             type_ =
