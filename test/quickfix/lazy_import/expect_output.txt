@@ -11,15 +11,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-this is E
-this is entry
-this is F
-F func
-this is D_Cjs
-this is A
-{"foo":"module use cjsModule"}
-this is B {"foo":"module use cjsModule"}
-this is C_Cjs
-foo5
-instance 3
-E func
+QuickFix Execute start
+QuickFix start load patch
+QuickFix load patch success
+this is base_modify
+print patch: 200
+patch foo
+QuickFix start check exception
+QuickFix have no exception
+QuickFix start unload patch
+QuickFix unload patch success
+print base: 100
+base foo
+QuickFix Execute end

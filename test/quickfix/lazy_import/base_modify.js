@@ -13,19 +13,11 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:sharedmodule
- * @tc.desc:test sharedmodule
- * @tc.type: FUNC
- * @tc.require: issue#I9BIE5
- */
+import lazy { a } from './module.js'
+import lazy { foo } from './module.js'
 
-// @ts-nocheck
-declare function print(str: any): string;
-"shared module"
-export var strA : string = "(This is strA!)";
-export var strB : string = "(This is strB!)";
-export function foo() {
-    'use sendable'
-    print("foo");
+function A() {
+    print("this is base_modify");
+    print("print patch: " + a);
+    foo()
 }

@@ -24,7 +24,7 @@
 declare function print(str: any): string;
 
 import {Test1} from "./func"
-import {strA, strB} from "./string"
+import {strA, strB, foo} from "./string"
 
 class SendableClassA {
     static staticField: string = strA;
@@ -74,3 +74,4 @@ class SendableClassB extends SendableClassA {
 
 let sObjb = new SendableClassB("ClassB:");
 sObjb.testImportFunction()
+foo();

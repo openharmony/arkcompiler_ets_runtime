@@ -110,9 +110,7 @@ JSTaggedValue SharedModuleManager::GetLazySendableModuleValueImpl(
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
         JSHandle<SourceTextModule> resolvedModule(thread, binding->GetModule().GetTaggedObject());
         SourceTextModule::Evaluate(thread, resolvedModule, nullptr);
-        if (thread->HasPendingException()) {
-            return JSTaggedValue::Undefined();
-        }
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         return ModuleManagerHelper::GetModuleValue(thread, resolvedModule, binding->GetIndex());
     } else if (resolvedBinding.IsResolvedRecordBinding()) {
         return ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(thread, module, resolvedBinding);

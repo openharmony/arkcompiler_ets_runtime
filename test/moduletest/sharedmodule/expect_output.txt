@@ -18,3 +18,4 @@ testImportFunction
 foo():(This is strA!)
 testImportFunction
 ClassB:
+foo

@@ -14,18 +14,12 @@
  */
 
 /*
- * @tc.name:sharedmodule
- * @tc.desc:test sharedmodule
+ * @tc.name:lazyimport
+ * @tc.desc:lazyimport
  * @tc.type: FUNC
- * @tc.require: issue#I9BIE5
+ * @tc.require: issueI5RC2C
  */
-
-// @ts-nocheck
-declare function print(str: any): string;
-"shared module"
-export var strA : string = "(This is strA!)";
-export var strB : string = "(This is strB!)";
-export function foo() {
-    'use sendable'
-    print("foo");
-}
+import lazy {fun} from './C_Cjs'
+export {fun};
+fun();
+print("this is G");

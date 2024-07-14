@@ -25,6 +25,7 @@ hot_reload_test_list = [
   "global_func",
   "global_var",
   "import_export",
+  "lazy_import",
   "print_string",
   "record_not_same",
   "module_var",

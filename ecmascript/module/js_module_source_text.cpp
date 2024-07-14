@@ -305,25 +305,6 @@ JSHandle<JSTaggedValue> SourceTextModule::ResolveExport(JSThread *thread, const 
     return starResolution;
 }
 
-void SourceTextModule::InstantiateCJS(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
-                                      const JSHandle<SourceTextModule> &requiredModule)
-{
-    JSTaggedValue cjsFileName(requiredModule->GetEcmaModuleFilename());
-    JSTaggedValue cjsRecordName(requiredModule->GetEcmaModuleRecordName());
-    JSMutableHandle<JSTaggedValue> cjsModuleName(thread, JSTaggedValue::Undefined());
-    // Get exported cjs module
-    bool isBundle;
-    if (cjsRecordName.IsUndefined()) {
-        cjsModuleName.Update(cjsFileName);
-        isBundle = true;
-    } else {
-        cjsModuleName.Update(cjsRecordName);
-        isBundle = false;
-    }
-    JSHandle<JSTaggedValue> cjsExports = CjsModule::SearchFromModuleCache(thread, cjsModuleName);
-    InitializeEnvironment(thread, currentModule, cjsModuleName, cjsExports, isBundle);
-}
-
 std::pair<bool, ModuleTypes> SourceTextModule::CheckNativeModule(const CString &moduleRequestName)
 {
     if (moduleRequestName[0] != '@' ||
@@ -486,74 +467,18 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     return true;
 }
 
-void SourceTextModule::InstantiateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &currentModule,
-    JSHandle<SourceTextModule> &requiredModule, ModuleTypes moduleType)
+void SourceTextModule::EvaluateNativeModule(JSThread *thread, JSHandle<SourceTextModule> nativeModule,
+                                            ModuleTypes moduleType)
 {
-    if (requiredModule->GetStatus() != ModuleStatus::EVALUATED) {
-        if (!SourceTextModule::LoadNativeModule(thread, requiredModule, moduleType)) {
-            LOG_FULL(WARN) << "LoadNativeModule " <<
-            ModulePathHelper::Utf8ConvertToString(requiredModule->GetEcmaModuleRecordName()) << " failed";
-            return;
-        }
-    }
-
-    JSHandle<JSTaggedValue> nativeModuleName(thread, requiredModule->GetEcmaModuleRecordName());
-    JSHandle<JSTaggedValue> nativeExports(thread, requiredModule->GetModuleValue(thread, 0, false));
-    InitializeEnvironment(thread, currentModule, nativeModuleName, nativeExports, false);
-}
-
-void SourceTextModule::InitializeEnvironment(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
-    JSHandle<JSTaggedValue> &moduleName, JSHandle<JSTaggedValue> &exports, bool isBundle)
-{
-    // Get esm environment
-    JSHandle<JSTaggedValue> moduleEnvironment(thread, currentModule->GetEnvironment());
-    auto globalConstants = thread->GlobalConstants();
-    if (moduleEnvironment->IsUndefined()) {
+    if (nativeModule->GetStatus() == ModuleStatus::EVALUATED) {
         return;
     }
-    JSHandle<TaggedArray> environment = JSHandle<TaggedArray>::Cast(moduleEnvironment);
-    size_t length = environment->GetLength();
-    JSHandle<TaggedArray> importEntries(thread, currentModule->GetImportEntries());
-    JSMutableHandle<ImportEntry> host(thread, globalConstants->GetUndefined());
-    JSMutableHandle<JSTaggedValue> importName(thread, globalConstants->GetUndefined());
-    // update required module
-    for (size_t idx = 0; idx < length; idx++) {
-        JSTaggedValue resolvedBinding = environment->Get(idx);
-        // if resolvedBinding.IsHole(), means that importname is * .
-        if (resolvedBinding.IsHole()) {
-            continue;
-        }
-        JSHandle<SourceTextModule> requestedModule = GetModuleFromBinding(thread, resolvedBinding);
-        JSMutableHandle<JSTaggedValue> requestedName(thread, JSTaggedValue::Undefined());
-        if (isBundle) {
-            requestedName.Update(requestedModule->GetEcmaModuleFilename());
-        } else {
-            requestedName.Update(requestedModule->GetEcmaModuleRecordName());
-        }
-        // if not the same module, then don't have to update
-        if (!JSTaggedValue::SameValue(requestedName, moduleName)) {
-            continue;
-        }
-        // rebinding here
-        host.Update(importEntries->Get(idx));
-        importName.Update(host->GetImportName());
-        JSHandle<JSTaggedValue> resolution =
-            SourceTextModule::ResolveExportObject(thread, requestedModule, exports, importName);
-        // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
-        if (resolution->IsNull() || resolution->IsString()) {
-            CString requestMod = ModulePathHelper::ReformatPath(
-                ModulePathHelper::Utf8ConvertToString(host->GetModuleRequest()));
-            CString recordStr = ModulePathHelper::ReformatPath(
-                ModulePathHelper::Utf8ConvertToString(currentModule->GetEcmaModuleRecordName()));
-            CString msg = "the requested module '" + requestMod + GetResolveErrorReason(resolution) +
-                ModulePathHelper::Utf8ConvertToString(importName.GetTaggedValue()) +
-                "' which imported by '" + recordStr + "'";
-            THROW_ERROR(thread, ErrorType::SYNTAX_ERROR, msg.c_str());
-        }
-        // iii. Call envRec.CreateImportBinding(
-        // in.[[LocalName]], resolution.[[Module]], resolution.[[BindingName]]).
-        environment->Set(thread, idx, resolution);
+    if (!SourceTextModule::LoadNativeModule(thread, nativeModule, moduleType)) {
+        LOG_FULL(INFO) << "LoadNativeModule " <<
+            ModulePathHelper::Utf8ConvertToString(nativeModule->GetEcmaModuleRecordName()) << " failed";
+        return;
     }
+    nativeModule->SetStatus(ModuleStatus::EVALUATED);
 }
 
 JSHandle<SourceTextModule> SourceTextModule::GetModuleFromBinding(JSThread *thread,
@@ -1131,8 +1056,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (SourceTextModule::IsNativeModule(moduleType)) {
-                InstantiateNativeModule(thread, module, requiredModule, moduleType);
-                requiredModule->SetStatus(ModuleStatus::EVALUATED);
+                EvaluateNativeModule(thread, requiredModule, moduleType);
                 continue;
             }
             // if requiredModule is jsonModule, then don't need to execute.
@@ -1170,10 +1094,6 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
             if (requiredModule->IsAsyncEvaluating()) {
                 module->SetPendingAsyncDependencies(module->GetPendingAsyncDependencies() + 1);
                 AddAsyncParentModule(thread, requiredModule, module);
-            }
-            // if requiredModule is CommonJS Module, instantiate here (after CommonJS execution).
-            if (moduleType == ModuleTypes::CJS_MODULE) {
-                InstantiateCJS(thread, module, requiredModule);
             }
         }
     }
@@ -1358,8 +1278,7 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (SourceTextModule::IsNativeModule(moduleType)) {
-                InstantiateNativeModule(thread, module, requiredModule, moduleType);
-                requiredModule->SetStatus(ModuleStatus::EVALUATED);
+                EvaluateNativeModule(thread, requiredModule, moduleType);
                 continue;
             }
             if (moduleType == ModuleTypes::JSON_MODULE) {
@@ -1371,11 +1290,6 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
             index += result;
             HandleConcurrentEvaluateResult(thread, requiredModule, stack, result);
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
-            [[maybe_unused]] ModuleStatus requiredModuleStatus = requiredModule->GetStatus();
-            ASSERT(requiredModuleStatus == ModuleStatus::EVALUATED);
-            if (moduleType == ModuleTypes::CJS_MODULE) {
-                InstantiateCJS(thread, module, requiredModule);
-            }
         }
     }
     return index;
@@ -1478,22 +1392,6 @@ void SourceTextModule::AddStarExportEntry(JSThread *thread, const JSHandle<Sourc
         JSHandle<TaggedArray> entries(thread, starExportEntries);
         entries->Set(thread, idx, exportEntry.GetTaggedValue());
     }
-}
-
-JSTaggedValue SourceTextModule::GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedBinding> &binding)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    ResolvedBinding *resolvedBinding = ResolvedBinding::Cast(binding.GetTaggedValue().GetTaggedObject());
-    return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedBinding->GetModule(),
-                                                     resolvedBinding->GetBindingName());
-}
-
-JSTaggedValue SourceTextModule::GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedIndexBinding> &binding)
-{
-    DISALLOW_GARBAGE_COLLECTION;
-    ResolvedIndexBinding *resolvedBinding = ResolvedIndexBinding::Cast(binding.GetTaggedValue().GetTaggedObject());
-    return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedBinding->GetModule(),
-                                                     resolvedBinding->GetIndex());
 }
 
 JSTaggedValue SourceTextModule::GetModuleValue(JSThread *thread, int32_t index, bool isThrow)

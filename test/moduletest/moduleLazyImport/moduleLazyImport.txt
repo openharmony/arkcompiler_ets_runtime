@@ -4,4 +4,5 @@ C_Cjs.js;C_Cjs;commonjs;C_Cjs.js;xxC_Cjsxx
 D_Cjs.js;D_Cjs;commonjs;D_Cjs.js;xxD_Cjsxx
 E.js;E;esm;E.js;xxExx
 F.js;F;esm;F.js;xxFxx
+G.js;G;esm;G.js;xxGxx
 moduleLazyImport.js;moduleLazyImport;esm;moduleLazyImport.js;xxmoduleLazyImportxx
