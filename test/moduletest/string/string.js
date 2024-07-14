@@ -436,3 +436,7 @@ print('trimEnd' == String.prototype.trimRight.name);
 // Test empty string search an empty string(Array.tostring).
 let indexOf = String.prototype.indexOf;
 print(0 == "".indexOf([]));
+
+Object.defineProperty(RegExp,"name",{value:1});
+RegExp.toString();
+print("native Func toString test Success!")

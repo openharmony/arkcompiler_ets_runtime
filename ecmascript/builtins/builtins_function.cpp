@@ -355,7 +355,8 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
         }
         if (method->IsNativeWithCallField()) {
             JSHandle<JSTaggedValue> nameKey = thread->GlobalConstants()->GetHandledNameString();
-            JSHandle<EcmaString> methodName(JSObject::GetProperty(thread, thisValue, nameKey).GetValue());
+            JSHandle<JSTaggedValue> name = JSObject::GetProperty(thread, thisValue, nameKey).GetValue();
+            JSHandle<EcmaString> methodName = JSTaggedValue::ToString(thread, name);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             std::string nameStr = EcmaStringAccessor(methodName).ToStdString();
             std::string startStr = "function ";
