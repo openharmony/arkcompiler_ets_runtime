@@ -609,7 +609,8 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info != nullptr);
     JSThread *thread = info->GetThread();
-    JSHandle<JSFunction> func(info->GetFunction());
+    // func need to create a new handle, because optimized EcmaRuntimeCallInfo may overwrite this position.
+    JSHandle<JSFunction> func(thread, info->GetFunction().GetTaggedValue());
     JSHandle<JSTaggedValue> newTarget(info->GetNewTarget());
     ASSERT(newTarget->IsECMAObject());
     if (!func->IsConstructor()) {

@@ -37,3 +37,30 @@
   print(result)
 
 })();
+
+let v0 = [1, 2, 3];
+
+function f3() {
+  return v0;
+}
+
+class C7 {
+  constructor(a9, a10, a11) {
+    a11 / a11;
+    return v0;
+  }
+  static toString(a21, a22) {
+    this["toString"] = a22;
+    const v23 = "2Al" / f3;
+    v0 &= a22;
+    const v24 = new f3();
+    Reflect.construct(C7, [], C7);
+    return "toString";
+  }
+}
+
+try {
+  const v39 = new C7("toString", "toString", C7);
+} catch(e) {
+  print(e);
+}
