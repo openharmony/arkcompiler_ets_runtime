@@ -62,7 +62,8 @@ namespace panda::ecmascript {
     V(ObjIsNotCallable, "obj is not Callable")                                               \
     V(SharedObjectRefersLocalObject, "shared object refers a local object")                  \
     V(InvalidRadixLength, "radix must be 2 to 36")                                           \
-    V(SetPrototypeOfFailed, "SetPrototypeOf: prototype set failed")
+    V(SetPrototypeOfFailed, "SetPrototypeOf: prototype set failed")                          \
+    V(ReviverOnlySupportUndefined, "reviver only supports undefined for SENDABLE_JSON")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \
