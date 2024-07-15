@@ -344,6 +344,7 @@ template<ObjectFastOperator::Status status>
 JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThread *thread, JSTaggedValue receiver,
                                                                           JSTaggedValue key, JSTaggedValue value)
 {
+    bool isTagged = true;
     auto *hclass = receiver.GetTaggedObject()->GetClass();
     if (LIKELY(!hclass->IsDictionaryMode())) {
         ASSERT(!TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject())->IsDictionaryMode());
@@ -374,6 +375,14 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                 if (attrVal.IsHole()) {
                     return JSTaggedValue::Hole();
                 }
+                JSHandle<JSObject> objHandle(thread, receiver);
+                JSHandle<JSTaggedValue> keyHandle(thread, key);
+                auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
+                    keyHandle, JSHandle<JSTaggedValue>(thread, value), attr);
+                receiver = objHandle.GetTaggedValue();
+                key = keyHandle.GetTaggedValue();
+                value = actualValue.value;
+                isTagged = actualValue.isTagged;
             }
             if (receiver.IsJSShared()) {
                 if (!ClassHelper::MatchFieldType(attr.GetSharedFieldType(), value)) {
@@ -381,7 +390,11 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                                                 JSTaggedValue::Exception());
                 }
             }
-            JSObject::Cast(receiver)->SetProperty(thread, hclass, attr, value);
+            if (isTagged) {
+                JSObject::Cast(receiver)->SetProperty<true>(thread, hclass, attr, value);
+            } else {
+                JSObject::Cast(receiver)->SetProperty<false>(thread, hclass, attr, value);
+            }
             return JSTaggedValue::Undefined();
         }
     }
@@ -460,7 +473,16 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                                                     JSTaggedValue::Exception());
                     }
                 }
-                JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value);
+                JSHandle<JSObject> objHandle(thread, receiver);
+                auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
+                    JSHandle<JSTaggedValue>(thread, key), JSHandle<JSTaggedValue>(thread, value), attr);
+                receiver = objHandle.GetTaggedValue();
+                hclass = objHandle->GetClass();
+                if (actualValue.isTagged) {
+                    JSObject::Cast(receiver)->SetProperty<true>(thread, hclass, attr, actualValue.value);
+                } else {
+                    JSObject::Cast(receiver)->SetProperty<false>(thread, hclass, attr, actualValue.value);
+                }
                 return JSTaggedValue::Undefined();
             }
         } else {
@@ -510,7 +532,16 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
         auto *receiverHClass = receiver.GetTaggedObject()->GetClass();
         LayoutInfo *receiverLayoutInfo = LayoutInfo::Cast(receiverHClass->GetLayout().GetTaggedObject());
         PropertyAttributes attr(receiverLayoutInfo->GetAttr(receiverHoleEntry));
-        JSObject::Cast(receiver)->SetProperty(thread, receiverHClass, attr, value);
+        JSHandle<JSObject> objHandle(thread, receiver);
+        auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
+            JSHandle<JSTaggedValue>(thread, key), JSHandle<JSTaggedValue>(thread, value), attr);
+        receiver = objHandle.GetTaggedValue();
+        receiverHClass = objHandle->GetClass();
+        if (actualValue.isTagged) {
+            JSObject::Cast(receiver)->SetProperty<true>(thread, receiverHClass, attr, actualValue.value);
+        } else {
+            JSObject::Cast(receiver)->SetProperty<false>(thread, receiverHClass, attr, actualValue.value);
+        }
         return JSTaggedValue::Undefined();
     }
 
