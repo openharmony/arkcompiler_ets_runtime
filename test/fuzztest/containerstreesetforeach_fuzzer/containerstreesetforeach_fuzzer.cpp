@@ -89,38 +89,40 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
-        if (size <= 0) {
-            return;
-        }
-        int32_t key = 0;
-        size_t maxByteLen = 4;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&key, maxByteLen, data, size) != EOK) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
+        {
+            JsiFastNativeScope scope(vm);
+            JSThread *thread = vm->GetJSThread();
+            if (size <= 0) {
+                return;
+            }
+            int32_t key = 0;
+            size_t maxByteLen = 4;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&key, maxByteLen, data, size) != EOK) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
 
-        JSHandle<JSAPITreeSet> tset = CreateJSAPITreeSet(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(tset.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(key));
-        ContainersTreeSet::Add(callInfo);
-        
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSAPITreeSet> dset = CreateJSAPITreeSet(thread);
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForEachFunc));
-        auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(tset.GetTaggedValue());
-        objCallInfo->SetCallArg(0, func.GetTaggedValue());
-        objCallInfo->SetCallArg(1, dset.GetTaggedValue());
-        ContainersTreeSet::ForEach(objCallInfo);
-
+            JSHandle<JSAPITreeSet> tset = CreateJSAPITreeSet(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(tset.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(key));
+            ContainersTreeSet::Add(callInfo);
+            
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<JSAPITreeSet> dset = CreateJSAPITreeSet(thread);
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForEachFunc));
+            auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            objCallInfo->SetFunction(JSTaggedValue::Undefined());
+            objCallInfo->SetThis(tset.GetTaggedValue());
+            objCallInfo->SetCallArg(0, func.GetTaggedValue());
+            objCallInfo->SetCallArg(1, dset.GetTaggedValue());
+            ContainersTreeSet::ForEach(objCallInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

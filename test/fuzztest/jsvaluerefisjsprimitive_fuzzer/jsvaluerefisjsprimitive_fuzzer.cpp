@@ -29,16 +29,19 @@ void IsJSPrimitiveSymbolFuzztest([[maybe_unused]]const uint8_t *data, size_t siz
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<JSTaggedValue> jsTagValue;
+        JSHandle<JSPrimitiveRef> jsPrimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_SYMBOL, jsTagValue);
+        JSHandle<JSTaggedValue> jsTagPrimitive = JSHandle<JSTaggedValue>::Cast(jsPrimitive);
+        Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jsTagPrimitive);
+        object->IsJSPrimitiveSymbol(vm);
     }
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> jsTagValue;
-    JSHandle<JSPrimitiveRef> jsPrimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_SYMBOL, jsTagValue);
-    JSHandle<JSTaggedValue> jsTagPrimitive = JSHandle<JSTaggedValue>::Cast(jsPrimitive);
-    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jsTagPrimitive);
-    object->IsJSPrimitiveSymbol(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -47,16 +50,19 @@ void IsJSPrimitiveStringFuzztest([[maybe_unused]]const uint8_t *data, size_t siz
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<JSTaggedValue> jsTagValue;
+        JSHandle<JSPrimitiveRef> jsPrimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_SYMBOL, jsTagValue);
+        JSHandle<JSTaggedValue> jsTagPrimitive = JSHandle<JSTaggedValue>::Cast(jsPrimitive);
+        Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jsTagPrimitive);
+        object->IsJSPrimitiveString(vm);
     }
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> jsTagValue;
-    JSHandle<JSPrimitiveRef> jsPrimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_SYMBOL, jsTagValue);
-    JSHandle<JSTaggedValue> jsTagPrimitive = JSHandle<JSTaggedValue>::Cast(jsPrimitive);
-    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jsTagPrimitive);
-    object->IsJSPrimitiveString(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -65,16 +71,19 @@ void IsJSPrimitiveIntFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<JSTaggedValue> jsTagValue;
+        JSHandle<JSPrimitiveRef> jsPrimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BIGINT, jsTagValue);
+        JSHandle<JSTaggedValue> jsTagPrimitive = JSHandle<JSTaggedValue>::Cast(jsPrimitive);
+        Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jsTagPrimitive);
+        object->IsJSPrimitiveInt(vm);
     }
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> jsTagValue;
-    JSHandle<JSPrimitiveRef> jsPrimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_BIGINT, jsTagValue);
-    JSHandle<JSTaggedValue> jsTagPrimitive = JSHandle<JSTaggedValue>::Cast(jsPrimitive);
-    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jsTagPrimitive);
-    object->IsJSPrimitiveInt(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

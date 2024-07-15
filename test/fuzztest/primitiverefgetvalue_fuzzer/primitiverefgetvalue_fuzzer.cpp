@@ -33,17 +33,21 @@ void PrimitiveRefGetValueFuzztest([[maybe_unused]]const uint8_t *data, size_t si
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        auto thread = vm->GetAssociatedJSThread();
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
+        JSHandle<JSHClass> jsClassHandle =
+            factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_PRIMITIVE_REF, nullHandle);
+        TaggedObject *taggedObject = factory->NewObject(jsClassHandle);
+        JSHandle<JSTaggedValue> jsTaggedValue(thread, JSTaggedValue(taggedObject));
+        Local<PrimitiveRef> jsValueRef = JSNApiHelper::ToLocal<JSPrimitiveRef>(jsTaggedValue);
+        jsValueRef->GetValue(vm);
     }
-    auto thread = vm->GetAssociatedJSThread();
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> nullHandle(thread, JSTaggedValue::Null());
-    JSHandle<JSHClass> jsClassHandle = factory->NewEcmaHClass(JSObject::SIZE, JSType::JS_PRIMITIVE_REF, nullHandle);
-    TaggedObject *taggedObject = factory->NewObject(jsClassHandle);
-    JSHandle<JSTaggedValue> jsTaggedValue(thread, JSTaggedValue(taggedObject));
-    Local<PrimitiveRef> jsValueRef = JSNApiHelper::ToLocal<JSPrimitiveRef>(jsTaggedValue);
-    jsValueRef->GetValue(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

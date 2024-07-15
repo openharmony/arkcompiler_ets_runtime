@@ -30,13 +30,16 @@ void CopyableGlobalIsEmptyFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
-        LOG_ECMA(ERROR) << "Parameter out of range.";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (data == nullptr || size <= 0) {
+            LOG_ECMA(ERROR) << "Parameter out of range.";
+            return;
+        }
+        Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
+        Global<ObjectRef> globalObject(vm, stringUtf8);
+        globalObject.IsEmpty();
     }
-    Local<StringRef> stringUtf8 = StringRef::NewFromUtf8(vm, (char *)data, (int)size);
-    Global<ObjectRef> globalObject(vm, stringUtf8);
-    globalObject.IsEmpty();
     JSNApi::DestroyJSVM(vm);
 }
 }

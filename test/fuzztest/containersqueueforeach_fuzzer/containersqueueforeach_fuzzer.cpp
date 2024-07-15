@@ -88,40 +88,43 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-
-        if (size <= 0) {
-            return;
-        }
-        double input = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-
-        JSHandle<JSAPIQueue> queue = CreateJSAPIQueue(thread);
         {
-            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(queue.GetTaggedValue());
-            callInfo->SetCallArg(0, JSTaggedValue(input));
-            ContainersQueue::Add(callInfo);
-        }
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSAPIQueue> dlist = CreateJSAPIQueue(thread);
-        {
-            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-            JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForEachFunc));
-            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(queue.GetTaggedValue());
-            callInfo->SetCallArg(0, func.GetTaggedValue());
-            callInfo->SetCallArg(1, dlist.GetTaggedValue());
-            ContainersQueue::ForEach(callInfo);
+            if (size <= 0) {
+                return;
+            }
+            double input = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+
+            JSHandle<JSAPIQueue> queue = CreateJSAPIQueue(thread);
+            {
+                EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(queue.GetTaggedValue());
+                callInfo->SetCallArg(0, JSTaggedValue(input));
+                ContainersQueue::Add(callInfo);
+            }
+
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<JSAPIQueue> dlist = CreateJSAPIQueue(thread);
+            {
+                JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+                JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForEachFunc));
+                EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(queue.GetTaggedValue());
+                callInfo->SetCallArg(0, func.GetTaggedValue());
+                callInfo->SetCallArg(1, dlist.GetTaggedValue());
+                ContainersQueue::ForEach(callInfo);
+            }
         }
         JSNApi::DestroyJSVM(vm);
     }

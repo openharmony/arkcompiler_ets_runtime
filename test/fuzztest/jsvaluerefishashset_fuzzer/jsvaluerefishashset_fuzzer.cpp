@@ -142,15 +142,18 @@ void JSValueRefIsHashSetFuzzTest([[maybe_unused]] const uint8_t *data, size_t si
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "Parameter out of range..";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "Parameter out of range..";
+            return;
+        }
+        auto thread = vm->GetAssociatedJSThread();
+        JSHandle<JSAPIHashSet> setHandle = ConstructobjectHashSet(thread);
+        JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(setHandle);
+        Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
+        tag->IsHashSet(vm);
     }
-    auto thread = vm->GetAssociatedJSThread();
-    JSHandle<JSAPIHashSet> setHandle = ConstructobjectHashSet(thread);
-    JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(setHandle);
-    Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
-    tag->IsHashSet(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

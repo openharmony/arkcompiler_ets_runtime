@@ -32,12 +32,15 @@ void JSValueRefIsJSArrayFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSHandle<JSTaggedValue> jsArrayTag = JSArray::ArrayCreate(vm->GetJSThread(), JSTaggedNumber(0));
+        Local<JSValueRef> jsArray = JSNApiHelper::ToLocal<JSTypedArray>(jsArrayTag);
+        jsArray->IsJSArray(vm);
     }
-    JSHandle<JSTaggedValue> jsArrayTag = JSArray::ArrayCreate(vm->GetJSThread(), JSTaggedNumber(0));
-    Local<JSValueRef> jsArray = JSNApiHelper::ToLocal<JSTypedArray>(jsArrayTag);
-    jsArray->IsJSArray(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -47,15 +50,18 @@ void JSValueRefIsJSPrimitiveNumberFuzzTest([[maybe_unused]]const uint8_t *data, 
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<JSTaggedValue> jstagvalue;
+        JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, jstagvalue);
+        JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
+        Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
+        object->IsJSPrimitiveNumber(vm);
     }
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> jstagvalue;
-    JSHandle<JSPrimitiveRef> jsprimitive = factory->NewJSPrimitiveRef(PrimitiveType::PRIMITIVE_NUMBER, jstagvalue);
-    JSHandle<JSTaggedValue> jspri = JSHandle<JSTaggedValue>::Cast(jsprimitive);
-    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(jspri);
-    object->IsJSPrimitiveNumber(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }

@@ -27,12 +27,15 @@ void GlobalFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    Global<JSValueRef> param;
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        Global<JSValueRef> param;
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        [[maybe_unused]]Global<JSValueRef> global(param);
     }
-    [[maybe_unused]]Global<JSValueRef> global(param);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -41,13 +44,16 @@ void GlobalOperatorEqualFuzzerTest([[maybe_unused]]const uint8_t *data, size_t s
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    Global<JSValueRef> param;
-    Global<JSValueRef> global;
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        Global<JSValueRef> param;
+        Global<JSValueRef> global;
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        global = param;
     }
-    global = param;
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -56,12 +62,15 @@ void GlobalMoveFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    Global<JSValueRef> param;
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        Global<JSValueRef> param;
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        [[maybe_unused]]Global<JSValueRef> global(std::move(param));
     }
-    [[maybe_unused]]Global<JSValueRef> global(std::move(param));
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -70,13 +79,16 @@ void GlobalOperatorEqualMoveFuzzerTest([[maybe_unused]]const uint8_t *data, size
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    Global<JSValueRef> param;
-    Global<JSValueRef> global;
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        Global<JSValueRef> param;
+        Global<JSValueRef> global;
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        global = std::move(param);
     }
-    global = std::move(param);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -85,12 +97,15 @@ void GlobalVMLocalFuzzerTest([[maybe_unused]]const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    Local<BooleanRef> current = BooleanRef::New(vm, true);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        Local<BooleanRef> current = BooleanRef::New(vm, true);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        Global<JSValueRef> global(vm, current);
     }
-    Global<JSValueRef> global(vm, current);
     JSNApi::DestroyJSVM(vm);
 }
 }

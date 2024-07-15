@@ -29,24 +29,27 @@ void LocalRegExpGetOriginalSourceFuzzTest([[maybe_unused]]const uint8_t *data, s
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = vm->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+        JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
+        jSRegExp->SetByteCodeBuffer(thread, JSTaggedValue::Undefined());
+        jSRegExp->SetOriginalSource(thread, JSTaggedValue::Undefined());
+        jSRegExp->SetGroupName(thread, JSTaggedValue::Undefined());
+        jSRegExp->SetOriginalFlags(thread, JSTaggedValue(0));
+        jSRegExp->SetLength(0);
+        JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+        Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+        object->GetOriginalSource(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = vm->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
-    JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    jSRegExp->SetByteCodeBuffer(thread, JSTaggedValue::Undefined());
-    jSRegExp->SetOriginalSource(thread, JSTaggedValue::Undefined());
-    jSRegExp->SetGroupName(thread, JSTaggedValue::Undefined());
-    jSRegExp->SetOriginalFlags(thread, JSTaggedValue(0));
-    jSRegExp->SetLength(0);
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
-    object->GetOriginalSource(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -55,24 +58,27 @@ void LocalRegExpRefGetOriginalFlagsFuzzTest([[maybe_unused]]const uint8_t *data,
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = vm->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+        JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
+        jSRegExp->SetByteCodeBuffer(thread, JSTaggedValue::Undefined());
+        jSRegExp->SetOriginalSource(thread, JSTaggedValue::Undefined());
+        jSRegExp->SetGroupName(thread, JSTaggedValue::Undefined());
+        jSRegExp->SetOriginalFlags(thread, JSTaggedValue(0));
+        jSRegExp->SetLength(0);
+        JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+        Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+        object->GetOriginalFlags(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = vm->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
-    JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    jSRegExp->SetByteCodeBuffer(thread, JSTaggedValue::Undefined());
-    jSRegExp->SetOriginalSource(thread, JSTaggedValue::Undefined());
-    jSRegExp->SetGroupName(thread, JSTaggedValue::Undefined());
-    jSRegExp->SetOriginalFlags(thread, JSTaggedValue(0));
-    jSRegExp->SetLength(0);
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
-    object->GetOriginalFlags(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -81,17 +87,20 @@ void LocalRegExpIsGlobalRefFuzzTest([[maybe_unused]]const uint8_t *data, size_t 
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSGlobalObject> globalObject = JSHandle<JSGlobalObject>::Cast(proto);
+        JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(globalObject);
+        Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+        object->IsGlobal(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSGlobalObject> globalObject = JSHandle<JSGlobalObject>::Cast(proto);
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(globalObject);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
-    object->IsGlobal(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -100,19 +109,22 @@ void LocalRegExpIsIgnoreCaseFuzzTest([[maybe_unused]]const uint8_t *data, size_t
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = vm->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+        JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
+        JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+        Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+        object->IsIgnoreCase(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = vm->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
-    JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
-    object->IsIgnoreCase(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -121,19 +133,22 @@ void LocalRegExpIsMultilineFuzzTest([[maybe_unused]]const uint8_t *data, size_t 
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = vm->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+        JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
+        JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+        Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+        object->IsMultiline(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = vm->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
-    JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
-    object->IsMultiline(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -142,19 +157,22 @@ void LocalRegExpIsDotAllFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = vm->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+        JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
+        JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+        Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+        object->IsDotAll(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = vm->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
-    JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
-    object->IsDotAll(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -163,19 +181,22 @@ void LocalRegExpIsUtf16FuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = vm->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+        JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
+        JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+        Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+        object->IsUtf16(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = vm->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
-    JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
-    object->IsUtf16(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -184,19 +205,22 @@ void LocalRegExpIsSticklFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = vm->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+        JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
+        JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+        Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
+        object->IsStick(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = vm->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
-    JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    JSHandle<JSTaggedValue> jsregtag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(jsregtag);
-    object->IsStick(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

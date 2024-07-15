@@ -30,20 +30,23 @@ void FunctionRefInheritFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> set = env->GetBuiltinsSetFunction();
+        Local<FunctionRef> setLocal = JSNApiHelper::ToLocal<FunctionRef>(set);
+        JSHandle<JSTaggedValue> map = env->GetBuiltinsMapFunction();
+        Local<FunctionRef> mapLocal = JSNApiHelper::ToLocal<FunctionRef>(map);
+        JSHandle<JSTaggedValue> setPrototype(thread, JSHandle<JSFunction>::Cast(set)->GetFunctionPrototype());
+        JSHandle<JSTaggedValue> mapPrototype(thread, JSHandle<JSFunction>::Cast(map)->GetFunctionPrototype());
+        JSHandle<JSTaggedValue> mapPrototypeProto(thread, JSTaggedValue::GetPrototype(thread, mapPrototype));
+        JSTaggedValue::SameValue(setPrototype, mapPrototypeProto);
+        mapLocal->Inherit(vm, setLocal);
     }
-    JSThread *thread = vm->GetJSThread();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> set = env->GetBuiltinsSetFunction();
-    Local<FunctionRef> setLocal = JSNApiHelper::ToLocal<FunctionRef>(set);
-    JSHandle<JSTaggedValue> map = env->GetBuiltinsMapFunction();
-    Local<FunctionRef> mapLocal = JSNApiHelper::ToLocal<FunctionRef>(map);
-    JSHandle<JSTaggedValue> setPrototype(thread, JSHandle<JSFunction>::Cast(set)->GetFunctionPrototype());
-    JSHandle<JSTaggedValue> mapPrototype(thread, JSHandle<JSFunction>::Cast(map)->GetFunctionPrototype());
-    JSHandle<JSTaggedValue> mapPrototypeProto(thread, JSTaggedValue::GetPrototype(thread, mapPrototype));
-    JSTaggedValue::SameValue(setPrototype, mapPrototypeProto);
-    mapLocal->Inherit(vm, setLocal);
     JSNApi::DestroyJSVM(vm);
     return;
 }

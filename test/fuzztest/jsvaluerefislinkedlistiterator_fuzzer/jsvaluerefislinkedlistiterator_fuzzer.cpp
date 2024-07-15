@@ -122,38 +122,41 @@ void JSValueRefIsLinkedListIteratorFuzzTest([[maybe_unused]] const uint8_t *data
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        auto thread = vm->GetAssociatedJSThread();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
+        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
+        JSHandle<JSTaggedValue> tagvalue =
+            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+        auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        objCallInfo->SetFunction(JSTaggedValue::Undefined());
+        objCallInfo->SetThis(tagvalue.GetTaggedValue());
+        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
+        [[maybe_unused]] auto prev = SetupFrame(thread, objCallInfo);
+        JSHandle<JSTaggedValue> contianer =
+            JSHandle<JSTaggedValue>(thread, containers::ContainersPrivate::Load(objCallInfo));
+        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer), contianer);
+        JSHandle<JSAPILinkedList> linkedList = JSHandle<JSAPILinkedList>::Cast(obj);
+        JSTaggedValue doubleList = TaggedDoubleList::Create(thread);
+        linkedList->SetDoubleList(thread, doubleList);
+        uint32_t elementsNum = 256;
+        for (uint32_t i = 0; i < elementsNum; i++) {
+            JSHandle<JSTaggedValue> taggedvalue(thread, JSTaggedValue(i));
+            JSAPILinkedList::Add(thread, linkedList, taggedvalue);
+        }
+        JSHandle<JSTaggedValue> taggedValueHandle(thread, linkedList.GetTaggedValue());
+        JSHandle<JSAPILinkedListIterator> linkedListIterator(thread,
+            JSAPILinkedListIterator::CreateLinkedListIterator(thread, taggedValueHandle).GetTaggedValue());
+        JSHandle<JSTaggedValue> linkedListIteratortag = JSHandle<JSTaggedValue>::Cast(linkedListIterator);
+        Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(linkedListIteratortag);
+        object->IsLinkedListIterator(vm);
     }
-    auto thread = vm->GetAssociatedJSThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-    JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-    JSHandle<JSTaggedValue> tagvalue =
-        JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-    auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    objCallInfo->SetFunction(JSTaggedValue::Undefined());
-    objCallInfo->SetThis(tagvalue.GetTaggedValue());
-    objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(containers::ContainerTag::LinkedList)));
-    [[maybe_unused]] auto prev = SetupFrame(thread, objCallInfo);
-    JSHandle<JSTaggedValue> contianer =
-        JSHandle<JSTaggedValue>(thread, containers::ContainersPrivate::Load(objCallInfo));
-    JSHandle<JSAPILinkedList> linkedList =
-        JSHandle<JSAPILinkedList>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(contianer), contianer));
-    JSTaggedValue doubleList = TaggedDoubleList::Create(thread);
-    linkedList->SetDoubleList(thread, doubleList);
-    uint32_t elementsNum = 256;
-    for (uint32_t i = 0; i < elementsNum; i++) {
-        JSHandle<JSTaggedValue> taggedvalue(thread, JSTaggedValue(i));
-        JSAPILinkedList::Add(thread, linkedList, taggedvalue);
-    }
-    JSHandle<JSTaggedValue> taggedValueHandle(thread, linkedList.GetTaggedValue());
-    JSHandle<JSAPILinkedListIterator> linkedListIterator(thread,
-        JSAPILinkedListIterator::CreateLinkedListIterator(thread, taggedValueHandle).GetTaggedValue());
-    JSHandle<JSTaggedValue> linkedListIteratortag = JSHandle<JSTaggedValue>::Cast(linkedListIterator);
-    Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(linkedListIteratortag);
-    object->IsLinkedListIterator(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

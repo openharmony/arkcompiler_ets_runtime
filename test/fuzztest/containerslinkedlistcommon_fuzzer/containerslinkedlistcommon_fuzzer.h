@@ -109,20 +109,23 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -131,25 +134,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        containers::ContainersLinkedList::GetFirst(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            containers::ContainersLinkedList::GetFirst(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -158,25 +164,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        containers::ContainersLinkedList::GetLast(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            containers::ContainersLinkedList::GetLast(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -185,25 +194,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(value));
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(value));
 
-        containers::ContainersLinkedList::AddFirst(callInfo);
+            containers::ContainersLinkedList::AddFirst(callInfo);
+            }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -212,25 +224,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        containers::ContainersLinkedList::Clear(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            containers::ContainersLinkedList::Clear(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -239,25 +254,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        containers::ContainersLinkedList::Clone(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            containers::ContainersLinkedList::Clone(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -266,37 +284,40 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        int index = 0;
-        if (size <= 0) {
-            return;
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            int index = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&index, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(index));
+            containers::ContainersLinkedList::Get(callInfo);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&index, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(index));
-        containers::ContainersLinkedList::Get(callInfo);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -305,26 +326,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(value));
-        containers::ContainersLinkedList::GetIndexOf(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(value));
+            containers::ContainersLinkedList::GetIndexOf(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -333,26 +357,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(value));
-        containers::ContainersLinkedList::GetLastIndexOf(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(value));
+            containers::ContainersLinkedList::GetLastIndexOf(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -361,26 +388,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(value));
-        containers::ContainersLinkedList::Has(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(value));
+            containers::ContainersLinkedList::Has(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -389,26 +419,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        int index = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&index, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(index));
-        callInfo->SetCallArg(1, JSTaggedValue(index + 1));
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            int index = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&index, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(index));
+            callInfo->SetCallArg(1, JSTaggedValue(index + 1));
 
-        containers::ContainersLinkedList::Insert(callInfo);
+            containers::ContainersLinkedList::Insert(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -417,36 +450,39 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+            int index = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&index, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(index));
+            containers::ContainersLinkedList::RemoveByIndex(callInfo);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
-        int index = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&index, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(index));
-        containers::ContainersLinkedList::RemoveByIndex(callInfo);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -455,26 +491,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(value));
-        containers::ContainersLinkedList::Remove(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(value));
+            containers::ContainersLinkedList::Remove(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -483,25 +522,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        containers::ContainersLinkedList::RemoveFirst(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            containers::ContainersLinkedList::RemoveFirst(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -510,25 +552,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        containers::ContainersLinkedList::RemoveLast(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            containers::ContainersLinkedList::RemoveLast(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -537,26 +582,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(value));
-        containers::ContainersLinkedList::RemoveFirstFound(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(value));
+            containers::ContainersLinkedList::RemoveFirstFound(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -565,26 +613,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(value));
-        containers::ContainersLinkedList::RemoveLastFound(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(value));
+            containers::ContainersLinkedList::RemoveLastFound(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -593,26 +644,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        int index = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&index, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(index));
-        callInfo->SetCallArg(1, JSTaggedValue(index + 1));
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            int index = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&index, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(index));
+            callInfo->SetCallArg(1, JSTaggedValue(index + 1));
 
-        containers::ContainersLinkedList::Set(callInfo);
+            containers::ContainersLinkedList::Set(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -621,25 +675,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        containers::ContainersLinkedList::Length(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            containers::ContainersLinkedList::Length(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -648,25 +705,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        containers::ContainersLinkedList::ConvertToArray(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            containers::ContainersLinkedList::ConvertToArray(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -675,31 +735,35 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        JSHandle<JSAPILinkedList> newLinkedlist = CreateJSAPILinkedList(thread);
-        auto callInfo2 = CreateEcmaRuntimeCallInfo(thread, 8);
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        auto factory = vm->GetFactory();
-        JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachFunc));
-        callInfo2->SetFunction(JSTaggedValue::Undefined());
-        callInfo2->SetThis(linkedList.GetTaggedValue());
-        callInfo2->SetCallArg(0, func.GetTaggedValue());
-        callInfo2->SetCallArg(1, newLinkedlist.GetTaggedValue());
-        containers::ContainersLinkedList::ForEach(callInfo2);
+            JSHandle<JSAPILinkedList> newLinkedlist = CreateJSAPILinkedList(thread);
+            auto callInfo2 = CreateEcmaRuntimeCallInfo(thread, 8);
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            auto factory = vm->GetFactory();
+            JSHandle<JSFunction> func =
+                factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachFunc));
+            callInfo2->SetFunction(JSTaggedValue::Undefined());
+            callInfo2->SetThis(linkedList.GetTaggedValue());
+            callInfo2->SetCallArg(0, func.GetTaggedValue());
+            callInfo2->SetCallArg(1, newLinkedlist.GetTaggedValue());
+            containers::ContainersLinkedList::ForEach(callInfo2);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -708,25 +772,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
-        int value = 0;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        LinkedListAdd(linkedList, JSTaggedValue(value), thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPILinkedList> linkedList = CreateJSAPILinkedList(thread);
+            int value = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&value, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            LinkedListAdd(linkedList, JSTaggedValue(value), thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(linkedList.GetTaggedValue());
-        containers::ContainersLinkedList::GetIteratorObj(callInfo);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(linkedList.GetTaggedValue());
+            containers::ContainersLinkedList::GetIteratorObj(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 };

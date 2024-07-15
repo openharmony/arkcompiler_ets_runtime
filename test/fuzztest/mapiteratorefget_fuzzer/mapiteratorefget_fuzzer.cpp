@@ -67,19 +67,23 @@ void MapIteratorRefGetIndexFuzzTest([[maybe_unused]] const uint8_t *data, [[mayb
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    auto thread = vm->GetAssociatedJSThread();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> builtinsMapFunc = env->GetBuiltinsMapFunction();
-    JSHandle<JSMap> jsMap(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc));
-    JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread));
-    jsMap->SetLinkedMap(thread, linkedHashMap);
-    JSHandle<JSTaggedValue> mapValue(jsMap);
-    JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread, mapValue, IterationKind::KEY);
-    JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
-    mapIterator->SetNextIndex(1);
-    Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
-    object->GetIndex();
+    {
+        JsiFastNativeScope scope(vm);
+        auto thread = vm->GetAssociatedJSThread();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSTaggedValue> builtinsMapFunc = env->GetBuiltinsMapFunction();
+        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc);
+        JSHandle<JSMap> jsMap(obj);
+        JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread));
+        jsMap->SetLinkedMap(thread, linkedHashMap);
+        JSHandle<JSTaggedValue> mapValue(jsMap);
+        JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread, mapValue, IterationKind::KEY);
+        JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
+        mapIterator->SetNextIndex(1);
+        Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
+        object->GetIndex();
+    }
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -88,20 +92,25 @@ void MapIteratorRefGetKindFuzzTest([[maybe_unused]] const uint8_t *data, [[maybe
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    auto thread = vm->GetAssociatedJSThread();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> builtinsMapFunc = env->GetBuiltinsMapFunction();
-    JSHandle<JSMap> jsMap(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc));
-    JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread));
-    jsMap->SetLinkedMap(thread, linkedHashMap);
-    JSHandle<JSTaggedValue> mapValue(jsMap);
-    JSHandle<JSTaggedValue> mapIteratorVal = JSMapIterator::CreateMapIterator(thread, mapValue, IterationKind::KEY);
-    JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
-    mapIterator->SetIterationKind(IterationKind::VALUE);
-    mapIterator->SetIterationKind(IterationKind::KEY_AND_VALUE);
-    Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
-    object->GetKind(vm);
+    {
+        JsiFastNativeScope scope(vm);
+        auto thread = vm->GetAssociatedJSThread();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSTaggedValue> builtinsMapFunc = env->GetBuiltinsMapFunction();
+        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(builtinsMapFunc), builtinsMapFunc);
+        JSHandle<JSMap> jsMap(obj);
+        JSHandle<JSTaggedValue> linkedHashMap(LinkedHashMap::Create(thread));
+        jsMap->SetLinkedMap(thread, linkedHashMap);
+        JSHandle<JSTaggedValue> mapValue(jsMap);
+        JSHandle<JSTaggedValue> mapIteratorVal =
+            JSMapIterator::CreateMapIterator(thread, mapValue, IterationKind::KEY);
+        JSHandle<JSMapIterator> mapIterator = JSHandle<JSMapIterator>::Cast(mapIteratorVal);
+        mapIterator->SetIterationKind(IterationKind::VALUE);
+        mapIterator->SetIterationKind(IterationKind::KEY_AND_VALUE);
+        Local<MapIteratorRef> object = JSNApiHelper::ToLocal<MapIteratorRef>(mapIteratorVal);
+        object->GetKind(vm);
+    }
     JSNApi::DestroyJSVM(vm);
 }
 }

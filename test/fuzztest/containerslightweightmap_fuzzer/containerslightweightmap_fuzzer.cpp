@@ -84,6 +84,8 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
+    {
+    JsiFastNativeScope scope(vm);
         auto thread = vm->GetAssociatedJSThread();
 
         if (size <= 0) {
@@ -105,7 +107,8 @@ namespace OHOS {
         callInfo->SetThis(lightWeightMap.GetTaggedValue());
         callInfo->SetCallArg(0, JSTaggedValue(input));
         ContainersLightWeightMap::LightWeightMapConstructor(callInfo);
-        JSNApi::DestroyJSVM(vm);
+        }
+    JSNApi::DestroyJSVM(vm);
     }
 }
 

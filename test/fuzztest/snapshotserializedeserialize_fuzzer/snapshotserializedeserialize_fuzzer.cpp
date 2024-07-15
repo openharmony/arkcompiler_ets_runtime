@@ -28,25 +28,27 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            if (size <= 0) {
+                return;
+            }
+            auto factory = vm->GetFactory();
+            JSHandle<TaggedArray> array = factory->NewTaggedArray(*data);
+            if (*data > 0) {
+                JSHandle<EcmaString> str = factory->NewFromStdString("str1");
+                array->Set(vm->GetAssociatedJSThread(), 0, str.GetTaggedValue());
+            }
+            const CString fileName = "snapshot";
+            Snapshot snapshotSerialize(vm);
+            // serialize
+            snapshotSerialize.Serialize(*array, nullptr, fileName);
+            // deserialize
+            Snapshot snapshotDeserialize(vm);
+            snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
+            // remove snapshot file if exist
+            std::remove(fileName.c_str());
         }
-        auto factory = vm->GetFactory();
-        JSHandle<TaggedArray> array = factory->NewTaggedArray(*data);
-        if (*data > 0) {
-            JSHandle<EcmaString> str = factory->NewFromStdString("str1");
-            array->Set(vm->GetAssociatedJSThread(), 0, str.GetTaggedValue());
-        }
-        const CString fileName = "snapshot";
-        Snapshot snapshotSerialize(vm);
-        // serialize
-        snapshotSerialize.Serialize(*array, nullptr, fileName);
-        // deserialize
-        Snapshot snapshotDeserialize(vm);
-        snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
-        // remove snapshot file if exist
-        std::remove(fileName.c_str());
-
         JSNApi::DestroyJSVM(vm);
     }
 }

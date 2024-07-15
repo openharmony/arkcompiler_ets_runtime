@@ -129,33 +129,36 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        ObjectFactory *factory = vm->GetFactory();
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            ObjectFactory *factory = vm->GetFactory();
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        JSHandle<JSAPIArrayList> arrList = CreateJSAPIArrayList(thread);
-        JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForEachFunc));
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, func.GetTaggedValue());
-        callInfo->SetCallArg(1, arrList.GetTaggedValue());
-        ContainersArrayList::ForEach(callInfo);
+            JSHandle<JSAPIArrayList> arrList = CreateJSAPIArrayList(thread);
+            JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForEachFunc));
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, func.GetTaggedValue());
+            callInfo->SetCallArg(1, arrList.GetTaggedValue());
+            ContainersArrayList::ForEach(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -164,26 +167,29 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
 
-        unsigned int inputNum = 0;
-        if (size <= 0) {
-            return;
+            unsigned int inputNum = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(callInfo);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(callInfo);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -196,27 +202,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        ContainersArrayList::Clear(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            ContainersArrayList::Clear(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -229,27 +238,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        ContainersArrayList::Clone(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            ContainersArrayList::Clone(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -262,27 +274,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        ContainersArrayList::ConvertToArray(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            ContainersArrayList::ConvertToArray(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -295,28 +310,31 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Get(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Get(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -329,27 +347,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        ContainersArrayList::GetCapacity(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            ContainersArrayList::GetCapacity(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -362,28 +383,31 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::GetIndexOf(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::GetIndexOf(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -396,27 +420,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        ContainersArrayList::GetIteratorObj(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            ContainersArrayList::GetIteratorObj(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -429,28 +456,31 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::GetLastIndexOf(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::GetLastIndexOf(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -463,27 +493,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        ContainersArrayList::GetSize(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            ContainersArrayList::GetSize(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -496,28 +529,31 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Has(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Has(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -530,29 +566,32 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        const uint32_t maxByteLen = 1;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            const uint32_t maxByteLen = 1;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::IncreaseCapacityTo(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::IncreaseCapacityTo(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -565,29 +604,32 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum));
-        callInfo->SetCallArg(1, JSTaggedValue(inputNum));
-        ContainersArrayList::Insert(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum));
+            callInfo->SetCallArg(1, JSTaggedValue(inputNum));
+            ContainersArrayList::Insert(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -600,27 +642,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        ContainersArrayList::IsEmpty(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            ContainersArrayList::IsEmpty(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -633,28 +678,31 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Remove(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Remove(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -667,32 +715,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        const uint32_t maxByteLen = 1;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        for (uint32_t i = 0; i <= inputNum; i++) {
-            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-            info->SetFunction(JSTaggedValue::Undefined());
-            info->SetThis(arrayList.GetTaggedValue());
-            info->SetCallArg(0, JSTaggedValue(inputNum));
-            ContainersArrayList::Add(info);
-        }
+            uint32_t inputNum = 0;
+            const uint32_t maxByteLen = 1;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            for (uint32_t i = 0; i <= inputNum; i++) {
+                EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+                info->SetFunction(JSTaggedValue::Undefined());
+                info->SetThis(arrayList.GetTaggedValue());
+                info->SetCallArg(0, JSTaggedValue(inputNum));
+                ContainersArrayList::Add(info);
+            }
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(0));
-        callInfo->SetCallArg(1, JSTaggedValue(inputNum));
-        ContainersArrayList::RemoveByRange(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(0));
+            callInfo->SetCallArg(1, JSTaggedValue(inputNum));
+            ContainersArrayList::RemoveByRange(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -705,32 +756,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        ObjectFactory *factory = vm->GetFactory();
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            ObjectFactory *factory = vm->GetFactory();
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
-        uint32_t inputNum = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        JSHandle<JSFunction> func =
-            factory->NewJSFunction(env, reinterpret_cast<void *>(TestReplaceAllElementsFunc));
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, func.GetTaggedValue());
-        ContainersArrayList::ReplaceAllElements(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            JSHandle<JSFunction> func =
+                factory->NewJSFunction(env, reinterpret_cast<void *>(TestReplaceAllElementsFunc));
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, func.GetTaggedValue());
+            ContainersArrayList::ReplaceAllElements(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -743,32 +797,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        const uint32_t maxByteLen = 1;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        for (uint32_t i = 0; i <= inputNum; i++) {
-            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-            info->SetFunction(JSTaggedValue::Undefined());
-            info->SetThis(arrayList.GetTaggedValue());
-            info->SetCallArg(0, JSTaggedValue(inputNum));
-            ContainersArrayList::Add(info);
-        }
+            uint32_t inputNum = 0;
+            const uint32_t maxByteLen = 1;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            for (uint32_t i = 0; i <= inputNum; i++) {
+                EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+                info->SetFunction(JSTaggedValue::Undefined());
+                info->SetThis(arrayList.GetTaggedValue());
+                info->SetCallArg(0, JSTaggedValue(inputNum));
+                ContainersArrayList::Add(info);
+            }
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum / 2)); // 2 : half
-        callInfo->SetCallArg(1, JSTaggedValue(inputNum));
-        ContainersArrayList::Set(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum / 2)); // 2 : half
+            callInfo->SetCallArg(1, JSTaggedValue(inputNum));
+            ContainersArrayList::Set(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -781,29 +838,32 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        const uint32_t maxByteLen = 1;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            const uint32_t maxByteLen = 1;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue::Undefined());
-        ContainersArrayList::Sort(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue::Undefined());
+            ContainersArrayList::Sort(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -816,32 +876,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        const uint32_t maxByteLen = 1;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        for (uint32_t i = 0; i <= inputNum; i++) {
-            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-            info->SetFunction(JSTaggedValue::Undefined());
-            info->SetThis(arrayList.GetTaggedValue());
-            info->SetCallArg(0, JSTaggedValue(inputNum));
-            ContainersArrayList::Add(info);
-        }
+            uint32_t inputNum = 0;
+            const uint32_t maxByteLen = 1;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            for (uint32_t i = 0; i <= inputNum; i++) {
+                EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+                info->SetFunction(JSTaggedValue::Undefined());
+                info->SetThis(arrayList.GetTaggedValue());
+                info->SetCallArg(0, JSTaggedValue(inputNum));
+                ContainersArrayList::Add(info);
+            }
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(0)); // start
-        callInfo->SetCallArg(1, JSTaggedValue(inputNum / 2)); // end 2 : half
-        ContainersArrayList::SubArrayList(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(0)); // start
+            callInfo->SetCallArg(1, JSTaggedValue(inputNum / 2)); // end 2 : half
+            ContainersArrayList::SubArrayList(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -854,29 +917,32 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t inputNum = 0;
-        const uint32_t maxByteLen = 1;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
-        EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
-        info->SetFunction(JSTaggedValue::Undefined());
-        info->SetThis(arrayList.GetTaggedValue());
-        info->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::Add(info);
+            uint32_t inputNum = 0;
+            const uint32_t maxByteLen = 1;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&inputNum, maxByteLen, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIArrayList> arrayList = CreateJSAPIArrayList(thread);
+            EcmaRuntimeCallInfo *info = CreateEcmaRuntimeCallInfo(thread, 6);
+            info->SetFunction(JSTaggedValue::Undefined());
+            info->SetThis(arrayList.GetTaggedValue());
+            info->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::Add(info);
 
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(arrayList.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(inputNum));
-        ContainersArrayList::TrimToCurrentLength(callInfo);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(arrayList.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(inputNum));
+            ContainersArrayList::TrimToCurrentLength(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -885,12 +951,15 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        Local<ObjectRef> origin = ObjectRef::New(vm);
-        JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
-        JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
-        JSHandle<JSTaggedValue> arryListTag = JSHandle<JSTaggedValue>::Cast(constructor);
-        Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(arryListTag);
-        (void)origin->InstanceOf(vm, value);
+        {
+            JsiFastNativeScope scope(vm);
+            Local<ObjectRef> origin = ObjectRef::New(vm);
+            JSHandle<GlobalEnv> globalEnv = vm->GetGlobalEnv();
+            JSHandle<JSFunction> constructor(globalEnv->GetObjectFunction());
+            JSHandle<JSTaggedValue> arryListTag = JSHandle<JSTaggedValue>::Cast(constructor);
+            Local<JSValueRef> value = JSNApiHelper::ToLocal<JSValueRef>(arryListTag);
+            (void)origin->InstanceOf(vm, value);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

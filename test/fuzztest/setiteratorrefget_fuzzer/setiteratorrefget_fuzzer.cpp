@@ -48,21 +48,24 @@ void SetIteratorRefGetFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        auto thread = vm->GetAssociatedJSThread();
+        JSHandle<JSSet> jsSet(thread, CreateJSSet(thread));
+        JSHandle<JSTaggedValue> jsTagSetIterator =
+            JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY);
+        JSHandle<JSSetIterator> jsSetIterator1(jsTagSetIterator);
+        JSTaggedValue::SameValue(jsSetIterator1->GetIteratedSet(), jsSet->GetLinkedSet());
+        Local<SetIteratorRef> setIterator = JSNApiHelper::ToLocal<SetIteratorRef>(jsTagSetIterator);
+        Local<JSValueRef> setIterator1 = setIterator;
+        setIterator1->IsSetIterator(vm);
+        setIterator->GetIndex();
+        setIterator->GetKind(vm);
     }
-    auto thread = vm->GetAssociatedJSThread();
-    JSHandle<JSSet> jsSet(thread, CreateJSSet(thread));
-    JSHandle<JSTaggedValue> jsTagSetIterator =
-        JSSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY);
-    JSHandle<JSSetIterator> jsSetIterator1(jsTagSetIterator);
-    JSTaggedValue::SameValue(jsSetIterator1->GetIteratedSet(), jsSet->GetLinkedSet());
-    Local<SetIteratorRef> setIterator = JSNApiHelper::ToLocal<SetIteratorRef>(jsTagSetIterator);
-    Local<JSValueRef> setIterator1 = setIterator;
-    setIterator1->IsSetIterator(vm);
-    setIterator->GetIndex();
-    setIterator->GetKind(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

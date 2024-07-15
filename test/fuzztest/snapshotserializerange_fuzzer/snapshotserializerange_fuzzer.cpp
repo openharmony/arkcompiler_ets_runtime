@@ -28,26 +28,28 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            if (size <= 0) {
+                return;
+            }
+            auto factory = vm->GetFactory();
+            CVector<TaggedType> objVector;
+            JSHandle<TaggedArray> array1 = factory->NewTaggedArray(*data);
+            JSHandle<TaggedArray> array2 = factory->NewTaggedArray(*data);
+            objVector.push_back(array1.GetTaggedType());
+            objVector.push_back(array2.GetTaggedType());
+
+            const CString fileName = "snapshot";
+            Snapshot snapshotSerialize(vm);
+            // serialize
+            snapshotSerialize.Serialize(reinterpret_cast<uintptr_t>(objVector.data()), objVector.size(), fileName);
+            // deserialize
+            Snapshot snapshotDeserialize(vm);
+            snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
+            // remove snapshot file if exist
+            std::remove(fileName.c_str());
         }
-        auto factory = vm->GetFactory();
-        CVector<TaggedType> objVector;
-        JSHandle<TaggedArray> array1 = factory->NewTaggedArray(*data);
-        JSHandle<TaggedArray> array2 = factory->NewTaggedArray(*data);
-        objVector.push_back(array1.GetTaggedType());
-        objVector.push_back(array2.GetTaggedType());
-
-        const CString fileName = "snapshot";
-        Snapshot snapshotSerialize(vm);
-        // serialize
-        snapshotSerialize.Serialize(reinterpret_cast<uintptr_t>(objVector.data()), objVector.size(), fileName);
-        // deserialize
-        Snapshot snapshotDeserialize(vm);
-        snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
-        // remove snapshot file if exist
-        std::remove(fileName.c_str());
-
         JSNApi::DestroyJSVM(vm);
     }
 }

@@ -83,27 +83,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
-        if (size <= 0) {
-            return;
-        }
-        int32_t key = 0;
-        size_t maxByteLen = 4;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&key, maxByteLen, data, size) != EOK) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
+        {
+            JsiFastNativeScope scope(vm);
+            JSThread *thread = vm->GetJSThread();
+            if (size <= 0) {
+                return;
+            }
+            int32_t key = 0;
+            size_t maxByteLen = 4;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&key, maxByteLen, data, size) != EOK) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
 
-        JSHandle<JSAPITreeSet> tset = CreateJSAPITreeSet(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(tset.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(key));
+            JSHandle<JSAPITreeSet> tset = CreateJSAPITreeSet(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(tset.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(key));
 
-        ContainersTreeSet::Add(callInfo);
+            ContainersTreeSet::Add(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

@@ -72,14 +72,17 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            if (size <= 0) {
+                LOG_ECMA(ERROR) << "illegal input!";
+                return;
+            }
+            ObjectFactory *factory = vm->GetFactory();
+            JSHandle<JSArguments> obj = factory->NewJSArguments();
+            JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(obj);
+            JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsArgumentsObject(vm);
         }
-        ObjectFactory *factory = vm->GetFactory();
-        JSHandle<JSArguments> obj = factory->NewJSArguments();
-        JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(obj);
-        JSNApiHelper::ToLocal<ObjectRef>(argumentTag)->IsArgumentsObject(vm);
         JSNApi::DestroyJSVM(vm);
     }
 

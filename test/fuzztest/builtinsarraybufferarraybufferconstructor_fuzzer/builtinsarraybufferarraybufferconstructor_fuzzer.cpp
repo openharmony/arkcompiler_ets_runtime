@@ -46,34 +46,36 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        {
+            JsiFastNativeScope scope(vm);
+            JSThread *thread = vm->GetJSThread();
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
-        int32_t input;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        const int32_t MaxMenory = 1048576;
-        if (input > MaxMenory) {
-            input = MaxMenory;
-        }
+            int32_t input;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            const int32_t MaxMenory = 1048576;
+            if (input > MaxMenory) {
+                input = MaxMenory;
+            }
 
-        JSHandle<JSFunction> arrayBuffer(thread, env->GetArrayBufferFunction().GetTaggedValue());
-        JSHandle<JSObject> globalObject(thread, env->GetGlobalObject());
+            JSHandle<JSFunction> arrayBuffer(thread, env->GetArrayBufferFunction().GetTaggedValue());
+            JSHandle<JSObject> globalObject(thread, env->GetGlobalObject());
 
-        auto ecmaRuntimeCallInfo = CreateEcmaRuntimeCallInfo(thread, arrayBuffer.GetTaggedValue(), 6);
-        ecmaRuntimeCallInfo->SetFunction(arrayBuffer.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetThis(globalObject.GetTaggedValue());
-        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(input));
-
-        builtins::BuiltinsArrayBuffer::ArrayBufferConstructor(ecmaRuntimeCallInfo);
+            auto ecmaRuntimeCallInfo = CreateEcmaRuntimeCallInfo(thread, arrayBuffer.GetTaggedValue(), 6);
+            ecmaRuntimeCallInfo->SetFunction(arrayBuffer.GetTaggedValue());
+            ecmaRuntimeCallInfo->SetThis(globalObject.GetTaggedValue());
+            ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(input));
+            builtins::BuiltinsArrayBuffer::ArrayBufferConstructor(ecmaRuntimeCallInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

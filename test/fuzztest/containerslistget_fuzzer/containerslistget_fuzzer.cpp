@@ -106,36 +106,41 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        if (size <= 0) {
-            return;
-        }
-        double input = 0;
-        const double MAXBYTELEN = 8;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (JSTaggedValue::IsImpureNaN(input)) {
-            return;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIList> list = CreateJSAPIList(thread);
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(list.GetTaggedValue());
-        callInfo1->SetCallArg(0, JSTaggedValue(input));
-        callInfo1->SetCallArg(1, JSTaggedValue(input));
-        JSTaggedValue newList = ContainersList::GetSubList(callInfo1);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(newList);
-        callInfo->SetCallArg(0, JSTaggedValue(input));
+            if (size <= 0) {
+                return;
+            }
+            double input = 0;
+            const double MAXBYTELEN = 8;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (JSTaggedValue::IsImpureNaN(input)) {
+                return;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIList> list = CreateJSAPIList(thread);
+            auto callInfo1 =
+                CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8); // 8 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(list.GetTaggedValue());
+            callInfo1->SetCallArg(0, JSTaggedValue(input));
+            callInfo1->SetCallArg(1, JSTaggedValue(input));
+            JSTaggedValue newList = ContainersList::GetSubList(callInfo1);
+            auto callInfo =
+                CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(newList);
+            callInfo->SetCallArg(0, JSTaggedValue(input));
 
-        ContainersList::Get(callInfo);
+            ContainersList::Get(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

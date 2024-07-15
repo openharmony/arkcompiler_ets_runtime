@@ -168,15 +168,18 @@ void JSValueRefIsLightWeightMapFuzzTest([[maybe_unused]] const uint8_t *data, si
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "Parameter out of range..";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "Parameter out of range..";
+            return;
+        }
+        auto thread = vm->GetAssociatedJSThread();
+        JSHandle<JSAPILightWeightMap> mapHandle = ConstructobjectLightWeightMap(thread);
+        JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);
+        Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
+        tag->IsLightWeightMap(vm);
     }
-    auto thread = vm->GetAssociatedJSThread();
-    JSHandle<JSAPILightWeightMap> mapHandle = ConstructobjectLightWeightMap(thread);
-    JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);
-    Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
-    tag->IsLightWeightMap(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -185,15 +188,18 @@ void JSValueRefIsLightWeightSetFuzzTest([[maybe_unused]] const uint8_t *data, si
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "Parameter out of range..";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "Parameter out of range..";
+            return;
+        }
+        auto thread = vm->GetAssociatedJSThread();
+        JSHandle<JSAPILightWeightSet> mapHandle = ConstructobjectLightWeightSet(thread);
+        JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);
+        Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
+        tag->IsLightWeightSet(vm);
     }
-    auto thread = vm->GetAssociatedJSThread();
-    JSHandle<JSAPILightWeightSet> mapHandle = ConstructobjectLightWeightSet(thread);
-    JSHandle<JSTaggedValue> jshashmap = JSHandle<JSTaggedValue>::Cast(mapHandle);
-    Local<JSValueRef> tag = JSNApiHelper::ToLocal<JSValueRef>(jshashmap);
-    tag->IsLightWeightSet(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

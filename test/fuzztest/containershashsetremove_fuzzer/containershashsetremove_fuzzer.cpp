@@ -84,33 +84,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t input;
-        if (size <= 0) {
-            return;
+            uint32_t input;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+
+            JSHandle<JSAPIHashSet> hashSet = CreateJSAPIHashSet(thread);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(hashSet.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(input));
+            [[maybe_unused]] JSTaggedValue resultAdd = ContainersHashSet::Add(callInfo);
+
+            EcmaRuntimeCallInfo *callInfoRemove = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfoRemove->SetFunction(JSTaggedValue::Undefined());
+            callInfoRemove->SetThis(hashSet.GetTaggedValue());
+            callInfoRemove->SetCallArg(0, JSTaggedValue(input));
+            [[maybe_unused]] JSTaggedValue resultRemove = ContainersHashSet::Remove(callInfoRemove);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-
-        JSHandle<JSAPIHashSet> hashSet = CreateJSAPIHashSet(thread);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(hashSet.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(input));
-        [[maybe_unused]] JSTaggedValue resultAdd = ContainersHashSet::Add(callInfo);
-
-        EcmaRuntimeCallInfo *callInfoRemove = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfoRemove->SetFunction(JSTaggedValue::Undefined());
-        callInfoRemove->SetThis(hashSet.GetTaggedValue());
-        callInfoRemove->SetCallArg(0, JSTaggedValue(input));
-        [[maybe_unused]] JSTaggedValue resultRemove = ContainersHashSet::Remove(callInfoRemove);
-
         JSNApi::DestroyJSVM(vm);
     }
 }

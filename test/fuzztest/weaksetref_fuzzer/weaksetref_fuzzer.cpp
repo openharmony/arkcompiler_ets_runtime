@@ -33,22 +33,25 @@ void WeakSetRefGetSizeFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakSetFunction();
+        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor);
+        JSHandle<JSWeakSet> weakSet = JSHandle<JSWeakSet>::Cast(obj);
+        JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
+        weakSet->SetLinkedSet(thread, hashSet);
+        JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
+        Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
+        JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
+        JSWeakSet::Add(thread, weakSet, value);
+        set->GetSize(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakSetFunction();
-    JSHandle<JSWeakSet> weakSet =
-        JSHandle<JSWeakSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
-    weakSet->SetLinkedSet(thread, hashSet);
-    JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
-    Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
-    JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
-    JSWeakSet::Add(thread, weakSet, value);
-    set->GetSize(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -58,22 +61,25 @@ void WeakSetRefGetTotalElementsFuzzTest([[maybe_unused]]const uint8_t *data, siz
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakSetFunction();
+        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor);
+        JSHandle<JSWeakSet> weakSet = JSHandle<JSWeakSet>::Cast(obj);
+        JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
+        weakSet->SetLinkedSet(thread, hashSet);
+        JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
+        Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
+        JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
+        JSWeakSet::Add(thread, weakSet, value);
+        set->GetTotalElements(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakSetFunction();
-    JSHandle<JSWeakSet> weakSet =
-        JSHandle<JSWeakSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
-    weakSet->SetLinkedSet(thread, hashSet);
-    JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
-    Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
-    JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
-    JSWeakSet::Add(thread, weakSet, value);
-    set->GetTotalElements(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -83,22 +89,25 @@ void WeakSetRefGetValueFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakSetFunction();
+        auto obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor);
+        JSHandle<JSWeakSet> weakSet = JSHandle<JSWeakSet>::Cast(obj);
+        JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
+        weakSet->SetLinkedSet(thread, hashSet);
+        JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
+        Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
+        JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
+        JSWeakSet::Add(thread, weakSet, value);
+        set->GetValue(vm, 0);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakSetFunction();
-    JSHandle<JSWeakSet> weakSet =
-        JSHandle<JSWeakSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
-    weakSet->SetLinkedSet(thread, hashSet);
-    JSHandle<JSTaggedValue> weakSetTag = JSHandle<JSTaggedValue>::Cast(weakSet);
-    Local<WeakSetRef> set = JSNApiHelper::ToLocal<WeakSetRef>(weakSetTag);
-    JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
-    JSWeakSet::Add(thread, weakSet, value);
-    set->GetValue(vm, 0);
     JSNApi::DestroyJSVM(vm);
     return;
 }

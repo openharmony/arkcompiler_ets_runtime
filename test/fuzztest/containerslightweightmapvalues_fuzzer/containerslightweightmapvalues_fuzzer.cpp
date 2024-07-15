@@ -86,47 +86,49 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        if (size <= 0) {
-            return;
+            if (size <= 0) {
+                return;
+            }
+            double input = 0;
+            const double maxByteLen = 4;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&input, maxByteLen, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPILightWeightMap> lightWeightMap = CreateJSAPILightWeightMap(thread);
+
+            EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(lightWeightMap.GetTaggedValue());
+            callInfo1->SetCallArg(0, JSTaggedValue(input));
+            callInfo1->SetCallArg(1, JSTaggedValue(input));
+            ContainersLightWeightMap::Set(callInfo1);
+            
+            JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+            EcmaRuntimeCallInfo *callInfo2 = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo2->SetFunction(JSTaggedValue::Undefined());
+            callInfo2->SetThis(lightWeightMap.GetTaggedValue());
+            JSHandle<JSTaggedValue> iterValues(thread, ContainersLightWeightMap::Values(callInfo2));
+            
+            EcmaRuntimeCallInfo *callInfo3 = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo3->SetFunction(JSTaggedValue::Undefined());
+            callInfo3->SetThis(iterValues.GetTaggedValue());
+            result.Update(JSAPILightWeightMapIterator::Next(callInfo3));
+            JSHandle<JSTaggedValue> valuesHandle = JSIterator::IteratorValue(thread, result);
+
+            EcmaRuntimeCallInfo *callInfo4 = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo4->SetFunction(JSTaggedValue::Undefined());
+            callInfo4->SetThis(lightWeightMap.GetTaggedValue());
+            callInfo4->SetCallArg(0, valuesHandle.GetTaggedValue());
+            ContainersLightWeightMap::HasValue(callInfo4);
         }
-        double input = 0;
-        const double maxByteLen = 4;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&input, maxByteLen, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPILightWeightMap> lightWeightMap = CreateJSAPILightWeightMap(thread);
-
-        EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(lightWeightMap.GetTaggedValue());
-        callInfo1->SetCallArg(0, JSTaggedValue(input));
-        callInfo1->SetCallArg(1, JSTaggedValue(input));
-        ContainersLightWeightMap::Set(callInfo1);
-        
-        JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
-        EcmaRuntimeCallInfo *callInfo2 = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo2->SetFunction(JSTaggedValue::Undefined());
-        callInfo2->SetThis(lightWeightMap.GetTaggedValue());
-        JSHandle<JSTaggedValue> iterValues(thread, ContainersLightWeightMap::Values(callInfo2));
-        
-        EcmaRuntimeCallInfo *callInfo3 = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo3->SetFunction(JSTaggedValue::Undefined());
-        callInfo3->SetThis(iterValues.GetTaggedValue());
-        result.Update(JSAPILightWeightMapIterator::Next(callInfo3));
-        JSHandle<JSTaggedValue> valuesHandle = JSIterator::IteratorValue(thread, result);
-
-        EcmaRuntimeCallInfo *callInfo4 = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo4->SetFunction(JSTaggedValue::Undefined());
-        callInfo4->SetThis(lightWeightMap.GetTaggedValue());
-        callInfo4->SetCallArg(0, valuesHandle.GetTaggedValue());
-        ContainersLightWeightMap::HasValue(callInfo4);
-
         JSNApi::DestroyJSVM(vm);
     }
 }
