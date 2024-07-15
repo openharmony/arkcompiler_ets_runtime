@@ -41,3 +41,4 @@ true
 {"a":"a","b":"b"}
 TypeError
 true
+TypeError: stack contains value, usually caused by circular structure
