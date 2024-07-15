@@ -321,6 +321,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::FUNCTION_PROTOTYPE_BIND:
         case OpCode::FUNCTION_PROTOTYPE_CALL:
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
+        case OpCode::FLATTEN_TREE_STRING_CHECK:
         case OpCode::HEAP_OBJECT_CHECK:
         case OpCode::ARRAY_FILTER:
         case OpCode::ARRAY_MAP:
@@ -1860,6 +1861,8 @@ GateRef NumberSpeculativeRetype::VisitBigIntAsIntN(GateRef gate)
     GateRef bits = acc_.GetValueIn(gate, 0);
     acc_.ReplaceValueIn(gate, ConvertToTagged(CheckAndConvertToFloat64(bits, GateType::NumberType(),
                                                                        ConvertToNumber::BOOL_ONLY)), 0);
+    GateRef bigint = acc_.GetValueIn(gate, 1);
+    acc_.ReplaceValueIn(gate, ConvertToTagged(bigint), 1);
     acc_.ReplaceStateIn(gate, builder_.GetState());
     acc_.ReplaceDependIn(gate, builder_.GetDepend());
     return Circuit::NullGate();

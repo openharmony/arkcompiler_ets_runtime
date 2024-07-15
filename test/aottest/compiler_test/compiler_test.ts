@@ -87,4 +87,17 @@ print(v);
 let u:number[] = [];
 print(--u);
 
+// case10: value input does not match (expected I64 actual I32)
+for (let v0 = 0; v0 < 5; v0++) {
+    try {BigInt.asIntN(v0, v0); } catch (e) {}
+}
+
+class C1 {
+    constructor(a3, a4) {
+        ("split")[3][0];
+    }
+}
+new C1("split", C1);
+new C1();
+
 print("compiler success");
