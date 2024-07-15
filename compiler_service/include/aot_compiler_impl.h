@@ -50,6 +50,7 @@ private:
     int32_t PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap);
     void DropCapabilities(const int32_t &bundleUid, const int32_t &bundleGid) const;
     void ExecuteInChildProcess(const std::vector<std::string> &aotVector) const;
+    int32_t PrintAOTCompilerResult(const int compilerStatus);
     void ExecuteInParentProcess(pid_t childPid, int32_t &ret);
     int32_t AOTLocalCodeSign(const std::string &fileName, const std::string &appSignature,
                              std::vector<int16_t> &sigData);

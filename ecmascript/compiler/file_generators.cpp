@@ -587,24 +587,29 @@ bool AOTFileGenerator::CreateDirIfNotExist(const std::string &filename)
     return panda::ecmascript::SetDirModeAsDefault(path);
 }
 
-void AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::string &appSignature)
+bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::string &appSignature)
 {
     if (aotInfo_.GetTotalCodeSize() == 0) {
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
-        return;
+        return false;
     }
     if (!CreateDirIfNotExist(filename)) {
         LOG_COMPILER(ERROR) << "Fail to access dir: " << filename;
-        return;
+        return false;
     }
     PrintMergedCodeComment();
     GenerateMergedStackmapSection();
     aotInfo_.GenerateMethodToEntryIndexMap();
-    aotInfo_.Save(filename, cfg_.GetTriple());
+    if (!aotInfo_.Save(filename, cfg_.GetTriple())) {
+        LOG_COMPILER(ERROR) << "Fail to save an file: " << filename;
+        return false;
+    }
     if (!panda::ecmascript::SetFileModeAsDefault(filename)) {
         LOG_COMPILER(ERROR) << "Fail to set an file mode:" << filename;
+        return false;
     }
     panda::ecmascript::CodeSignatureForAOTFile(filename, appSignature);
+    return true;
 }
 
 void AOTFileGenerator::SaveEmptyAOTFile(const std::string& filename, const std::string& appSignature, bool isAnFile)
@@ -709,7 +714,7 @@ bool AOTFileGenerator::isAArch64() const
     return cfg_.IsAArch64();
 }
 
-void AOTFileGenerator::SaveSnapshotFile()
+bool AOTFileGenerator::SaveSnapshotFile()
 {
     TimeScope timescope("LLVMCodeGenPass-AI", const_cast<CompilerLog *>(log_));
     Snapshot snapshot(compilationEnv_->GetEcmaVM());
@@ -721,11 +726,13 @@ void AOTFileGenerator::SaveSnapshotFile()
     CString aiPath = snapshotPath + AOTFileManager::FILE_EXTENSION_AI;
     if (!CreateDirIfNotExist(aiPath.c_str())) {
         LOG_COMPILER(ERROR) << "Fail to access dir: " << aiPath;
-        return;
+        return false;
     }
     snapshot.Serialize(aiPath);
     if (!panda::ecmascript::SetFileModeAsDefault(aiPath.c_str())) {
         LOG_COMPILER(ERROR) << "Fail to set ai file mode:" << aiPath;
+        return false;
     }
+    return true;
 }
 }  // namespace panda::ecmascript::kungfu

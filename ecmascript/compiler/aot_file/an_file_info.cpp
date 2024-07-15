@@ -26,11 +26,11 @@
 #include "macros.h"
 
 namespace panda::ecmascript {
-void AnFileInfo::Save(const std::string &filename, Triple triple)
+bool AnFileInfo::Save(const std::string &filename, Triple triple)
 {
     std::string realPath;
     if (!RealPath(filename, realPath, false)) {
-        return;
+        return false;
     }
     const char *rawPath = realPath.c_str();
     TryRemoveAnFile(rawPath);
@@ -46,6 +46,7 @@ void AnFileInfo::Save(const std::string &filename, Triple triple)
     builder.PackELFSections(file);
     builder.PackELFSegment(file);
     file.close();
+    return true;
 }
 
 bool AnFileInfo::LoadInternal(const std::string &filename)

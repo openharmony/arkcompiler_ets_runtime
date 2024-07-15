@@ -39,12 +39,21 @@
 
 namespace panda::ecmascript::kungfu {
 namespace {
+/**
+ * @param ErrCode return code of ark_aot_compiler
+ * @attention it must sync with RetStatusOfCompiler of
+ *            "ets_runtime/compiler_service/include/aot_compiler_constants.h"
+ */
 enum ErrCode {
-    ERR_OK = (0),
+    ERR_OK = (0),   // IMPORTANT: Only if aot compiler SUCCESS and save an/ai SUCCESS, return ERR_OK.
     ERR_FAIL = (-1),
     ERR_HELP = (1),
     ERR_NO_AP = (2),
     ERR_MERGE_AP = (3),
+    ERR_CHECK_VERSION = (4),
+    ERR_AN_EMPTY = (5),
+    ERR_AN_FAIL = (6),
+    ERR_AI_FAIL = (7),
 };
 
 bool CheckVersion(JSRuntimeOptions& runtimeOptions, AotCompilerStats& compilerStats, bool isPgoMerged)
@@ -149,7 +158,7 @@ int Main(const int argc, const char **argv)
         // need support multiple abc
         auto isPgoMerged = cPreprocessor.HandleMergedPgoFile(checksum);
         if (CheckVersion(runtimeOptions, compilerStats, isPgoMerged)) {
-            return ERR_OK;
+            return ERR_CHECK_VERSION;
         }
         std::string appSignature = cPreprocessor.GetMainPkgArgsAppSignature();
         if (!isPgoMerged) {
@@ -209,8 +218,15 @@ int Main(const int argc, const char **argv)
         AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, isEnableLiteCG);
 
         passManager.CompileValidFiles(generator, ret, compilerStats);
-        generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature);
-        generator.SaveSnapshotFile();
+        if (compilerStats.GetCompilerMethodCount() == 0) {
+            return ERR_AN_EMPTY;
+        }
+        if (!generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature)) {
+            return ERR_AN_FAIL;
+        }
+        if (!generator.SaveSnapshotFile()) {
+            return ERR_AI_FAIL;
+        }
         log.Print();
         if (runtimeOptions.IsTargetCompilerMode()) {
             compilerStats.PrintCompilerStatsLog();
