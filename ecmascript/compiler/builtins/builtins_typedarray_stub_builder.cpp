@@ -882,9 +882,9 @@ void BuiltinsTypedArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, 
     Label isHeapObject(env);
     Label defaultConstr(env);
     Label typedArray(env);
-    GateRef jsType = GetObjectType(LoadHClass(thisValue));
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
+    GateRef jsType = GetObjectType(LoadHClass(thisValue));
     BRANCH(IsFastTypeArray(jsType), &typedArray, slowPath);
     Bind(&typedArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);

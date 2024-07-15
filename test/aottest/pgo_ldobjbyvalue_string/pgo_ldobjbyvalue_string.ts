@@ -14,7 +14,7 @@
  */
 
 // @ts-nocheck
-declare function print(arg:any):string;
+declare function print(arg: any): string;
 
 function foo(a) {
     return a[0];
@@ -32,3 +32,12 @@ function test() {
 test();
 ArkTools.printTypedOpProfiler("LOAD_ELEMENT");
 ArkTools.clearTypedOpProfiler();
+
+let v2 = new SharedMap();
+class C3 {
+    constructor(a5, a6) {
+        ({ "length": a5, } = "-39635");
+        print(a5 % -1713856730);
+    }
+}
+const v9 = new C3(SharedMap, "-39635");
