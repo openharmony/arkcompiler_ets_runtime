@@ -100,9 +100,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::IS_NOT_UNDEFINED_OR_HOLE_CHECK:
             LowerIsNotUndefinedOrHoleCheck(gate);
             break;
-        case OpCode::IS_TAGGED_BOOLEAN_CHECK:
-            LowerIsTaggedBooleanCheck(gate);
-            break;
         case OpCode::IS_DATA_VIEW_CHECK:
             LowerIsDataViewCheck(gate);
             break;
@@ -916,16 +913,6 @@ void MCRLowering::LowerIsDataViewCheck(GateRef gate)
     GateRef obj = acc_.GetValueIn(gate, 0);
     GateRef isDataView = builder_.CheckJSType(obj, JSType::JS_DATA_VIEW);
     builder_.DeoptCheck(isDataView, frameState, DeoptType::ISNOTDATAVIEW);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-void MCRLowering::LowerIsTaggedBooleanCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef value = acc_.GetValueIn(gate, 0);
-    GateRef taggedIsBoolean = builder_.TaggedIsBoolean(value);
-    builder_.DeoptCheck(taggedIsBoolean, frameState, DeoptType::ISNOTTAGGEDBOOLEAN);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

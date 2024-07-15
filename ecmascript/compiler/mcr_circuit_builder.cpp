@@ -763,21 +763,6 @@ GateRef CircuitBuilder::IsDataViewCheck(GateRef gate)
     return ret;
 }
 
-GateRef CircuitBuilder::IsTaggedBooleanCheck(GateRef value)
-{
-    auto currentLabel = env_->GetCurrentLabel();
-    auto currentControl = currentLabel->GetControl();
-    auto currentDepend = currentLabel->GetDepend();
-    auto frameState = acc_.FindNearestFrameState(currentDepend);
-    GateRef ret = GetCircuit()->NewGate(circuit_->IsTaggedBooleanCheck(),
-                                        MachineType::I1,
-                                        {currentControl, currentDepend, value, frameState},
-                                        GateType::NJSValue());
-    currentLabel->SetControl(ret);
-    currentLabel->SetDepend(ret);
-    return ret;
-}
-
 GateRef CircuitBuilder::ValueCheckNegOverflow(GateRef value)
 {
     auto currentLabel = env_->GetCurrentLabel();

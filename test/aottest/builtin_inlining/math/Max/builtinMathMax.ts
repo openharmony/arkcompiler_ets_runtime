@@ -229,11 +229,11 @@ try {
 }
 
 //aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax1@builtinMathMax
-//aot: [trace] Check Type: BuiltinInliningTypeGuard
+//aot: [trace] Check Type: InconsistentType1
 //: obj.valueOf
 printMax1(obj); //: -23
 //aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax1@builtinMathMax
-//aot: [trace] Check Type: BuiltinInliningTypeGuard
+//aot: [trace] Check Type: InconsistentType1
 printMax1(doubleObj); //: 2.7
 //aot: [trace] aot inline builtin: Math.max, caller function name:#*#printMax@builtinMathMax
 //aot: [trace] Check Type: NotNumber2
