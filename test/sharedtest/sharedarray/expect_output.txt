@@ -207,3 +207,11 @@ instanceOf derived map result: true
 Start Test derivedFill
 1,2,0,0
 instanceOf derived fill result: true
+Start Test array read out of range
+array[0]: 1
+read out of range success.
+Start Test array for of
+1
+3
+5
+7
