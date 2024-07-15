@@ -2181,6 +2181,53 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
     return ret;
 }
 
+GateRef NewObjectStubBuilder::NewFloat32ArrayWithSize(GateRef glue, GateRef size)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    DEFVARIABLE(buffer, VariableType::JS_ANY(), Undefined());
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                          GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
+    GateRef hclass = Load(VariableType::JS_POINTER(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef obj = NewJSObject(glue, hclass);
+    result = obj;
+    GateRef ctorName = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                              ConstantIndex::FLOAT32_ARRAY_STRING_INDEX);
+    GateRef elementSize = Int32(4);  // 4: float32 primtype's byte length
+    GateRef newByteLength = Int32Mul(size, elementSize);
+    GateRef contentType = Int32(static_cast<int32_t>(ContentType::Number));
+    {
+        Label newByteArrayExit(env);
+        NewByteArray(&buffer, &newByteArrayExit, elementSize, size);
+        Bind(&newByteArrayExit);
+        GateRef onHeapHClass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                                 GlobalEnv::FLOAT32_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);
+        StoreHClass(glue, obj, onHeapHClass);
+        Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), *buffer);
+        Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET),
+              ctorName, MemoryOrder::NoBarrier());
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET),
+              newByteLength, MemoryOrder::NoBarrier());
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET),
+              Int32(0), MemoryOrder::NoBarrier());
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET),
+              size, MemoryOrder::NoBarrier());
+        Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET),
+              contentType, MemoryOrder::NoBarrier());
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef NewObjectStubBuilder::NewTypedArrayFromCtor(GateRef glue, GateRef ctor, GateRef length, Label *slowPath)
 {
     auto env = GetEnvironment();

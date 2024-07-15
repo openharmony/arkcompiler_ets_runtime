@@ -209,6 +209,11 @@ private:
     void LowerArrayConstructorCheck(GateRef gate, GateRef glue);
     void NewArrayConstructorWithNoArgs(GateRef gate, GateRef glue);
     void LowerArrayConstructor(GateRef gate, GateRef glue);
+    void LowerFloat32ArrayConstructorCheck(GateRef gate, GateRef glue);
+    void NewFloat32ArrayConstructorWithNoArgs(GateRef gate, GateRef glue);
+    void ConvertFloat32ArrayConstructorLength(GateRef len, Variable *arrayLength,
+                                              Label *arrayCreate, Label *slowPath);
+    void LowerFloat32ArrayConstructor(GateRef gate, GateRef glue);
     void LowerObjectConstructorCheck(GateRef gate, GateRef glue);
     void LowerObjectConstructor(GateRef gate, GateRef glue);
     void LowerBooleanConstructorCheck(GateRef gate, GateRef glue);

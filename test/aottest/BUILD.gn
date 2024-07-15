@@ -204,6 +204,7 @@ group("ark_aot_ts_test") {
     "pgo_call",
     "pgo_call_builtin_ctor",
     "pgo_call_js",
+    "pgo_float32array_construct",
     "pgo_class_operation",
     "pgo_class_prototype",
     "pgo_constant_value_deopt",

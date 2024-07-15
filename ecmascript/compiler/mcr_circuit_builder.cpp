@@ -1563,6 +1563,19 @@ GateRef CircuitBuilder::ArrayConstructorCheck(GateRef gate)
     return ret;
 }
 
+GateRef CircuitBuilder::Float32ArrayConstructorCheck(GateRef gate)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    auto frameState = acc_.FindNearestFrameState(currentDepend);
+    GateRef ret = GetCircuit()->NewGate(circuit_->Float32ArrayConstructorCheck(),
+        MachineType::I64, {currentControl, currentDepend, gate, frameState}, GateType::IntType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::ObjectConstructorCheck(GateRef gate)
 {
     auto currentLabel = env_->GetCurrentLabel();

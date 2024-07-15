@@ -2059,9 +2059,10 @@ JSHandle<JSFunction> ObjectFactory::NewJSNativeErrorFunction(const JSHandle<Glob
 }
 
 JSHandle<JSFunction> ObjectFactory::NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
-                                                                  const void *nativeFunc)
+                                                                  const void *nativeFunc,
+                                                                  kungfu::BuiltinsStubCSigns::ID builtinId)
 {
-    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR);
+    JSHandle<Method> target = NewMethodForNativeFunction(nativeFunc, FunctionKind::BUILTIN_CONSTRUCTOR, builtinId);
     JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetSpecificTypedArrayFunctionClass());
     return NewJSFunctionByHClass(target, hclass);
 }
