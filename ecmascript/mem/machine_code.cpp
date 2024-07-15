@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,6 +18,7 @@
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #ifdef CODE_SIGN_ENABLE
 #include "ecmascript/jit/jit.h"
 #include "jit_buffer_integrity.h"

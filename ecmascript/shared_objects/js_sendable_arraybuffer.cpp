@@ -22,6 +22,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/tagged_array.h"
+#include "ecmascript/js_tagged_value-inl.h"
 
 #include "securec.h"
 
