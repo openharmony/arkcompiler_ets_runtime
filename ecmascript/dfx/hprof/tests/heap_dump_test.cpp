@@ -82,6 +82,52 @@ public:
         return false;  // Lost the Line
     }
 
+    JSHandle<JSTypedArray> CreateNumberTypedArray(JSType jsType)
+    {
+        JSHandle<GlobalEnv> env = instance->GetGlobalEnv();
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSTaggedValue> handleTagValFunc = env->GetInt8ArrayFunction();
+        switch (jsType) {
+            case JSType::JS_INT8_ARRAY:
+                break;
+            case JSType::JS_UINT8_ARRAY:
+                handleTagValFunc = env->GetUint8ArrayFunction();
+                break;
+            case JSType::JS_UINT8_CLAMPED_ARRAY:
+                handleTagValFunc = env->GetUint8ClampedArrayFunction();
+                break;
+            case JSType::JS_INT16_ARRAY:
+                handleTagValFunc = env->GetInt16ArrayFunction();
+                break;
+            case JSType::JS_UINT16_ARRAY:
+                handleTagValFunc = env->GetUint16ArrayFunction();
+                break;
+            case JSType::JS_INT32_ARRAY:
+                handleTagValFunc = env->GetInt32ArrayFunction();
+                break;
+            case JSType::JS_UINT32_ARRAY:
+                handleTagValFunc = env->GetUint32ArrayFunction();
+                break;
+            case JSType::JS_FLOAT32_ARRAY:
+                handleTagValFunc = env->GetFloat32ArrayFunction();
+                break;
+            case JSType::JS_FLOAT64_ARRAY:
+                handleTagValFunc = env->GetFloat64ArrayFunction();
+                break;
+            case JSType::JS_BIGINT64_ARRAY:
+                handleTagValFunc = env->GetBigInt64ArrayFunction();
+                break;
+            case JSType::JS_BIGUINT64_ARRAY:
+                handleTagValFunc = env->GetBigUint64ArrayFunction();
+                break;
+            default:
+                ASSERT_PRINT(false, "wrong jsType used in CreateNumberTypedArray function");
+                break;
+        }
+        return JSHandle<JSTypedArray>::Cast(
+            factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(handleTagValFunc), handleTagValFunc));
+    }
+
 private:
     EcmaVM *instance {nullptr};
 };
@@ -343,5 +389,46 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName2)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Syntax Error\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"OutOfMemory Error\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_2.heapsnapshot", "\"Termination Error\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName3)
+{
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // JS_INT8_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_INT8_ARRAY);
+    // JS_UINT8_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_UINT8_ARRAY);
+    // JS_UINT8_CLAMPED_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_UINT8_CLAMPED_ARRAY);
+    // JS_INT16_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_INT16_ARRAY);
+    // JS_UINT16_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_UINT16_ARRAY);
+    // JS_INT32_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_INT32_ARRAY);
+    // JS_UINT32_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_UINT32_ARRAY);
+    // JS_FLOAT32_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_FLOAT32_ARRAY);
+    // JS_FLOAT64_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_FLOAT64_ARRAY);
+    // JS_BIGINT64_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_BIGINT64_ARRAY);
+    // JS_BIGUINT64_ARRAY
+    tester.CreateNumberTypedArray(JSType::JS_BIGUINT64_ARRAY);
+    
+    tester.GenerateSnapShot("testGenerateNodeName_3.heapsnapshot");
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Int8 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Uint8 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Uint8 Clamped Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Int16 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Uint16 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Int32 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Uint32 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Float32 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Float64 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"BigInt64 Array\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"BigUint64 Array\""));
 }
 }
