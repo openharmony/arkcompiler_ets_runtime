@@ -259,7 +259,9 @@ public:
                                   JSHandle<ConstantPool> constpool,
                                   int32_t index);
 
-    void UpdateConstpoolWhenDeserialAI(const std::string& fileName, JSTaggedValue constpool, int32_t index = 0);
+    void UpdateConstpoolWhenDeserialAI(const std::string& fileName,
+                                       JSHandle<ConstantPool> aiCP,
+                                       int32_t index = 0);
 
     bool HasCachedConstpool(const JSPandaFile *jsPandaFile) const;
 

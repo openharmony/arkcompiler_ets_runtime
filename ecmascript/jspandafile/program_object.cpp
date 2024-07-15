@@ -90,11 +90,12 @@ bool ConstantPool::IsAotMethodLiteralInfo(JSTaggedValue literalInfo)
         GetLiteralType() == AOTLiteralInfo::METHOD_LITERAL_TYPE);
 }
 
-void ConstantPool::UpdateConstpoolWhenDeserialAI(EcmaVM *vm, const ConstantPool *aiCP,
-                                                 ConstantPool *sharedCP, ConstantPool *unsharedCP)
+void ConstantPool::UpdateConstpoolWhenDeserialAI(EcmaVM *vm, JSHandle<ConstantPool> aiCP,
+                                                 JSHandle<ConstantPool> sharedCP, JSHandle<ConstantPool> unsharedCP)
 {
     uint32_t constpoolLen = aiCP->GetCacheLength();
     auto aiCPLength = aiCP->GetLength();
+    JSMutableHandle<JSTaggedValue> valHandle(vm->GetJSThread(), JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < constpoolLen; i++) {
         // We need preserve unshared constantPool index and shared constantPool id instead of fetching from ai.
         // Because framework abc's ai does not contain those infos.
@@ -103,19 +104,20 @@ void ConstantPool::UpdateConstpoolWhenDeserialAI(EcmaVM *vm, const ConstantPool 
             continue;
         }
         JSThread *thread = vm->GetJSThread();
-        auto val = aiCP->GetObjectFromCache(i);
-        if (IsAotMethodLiteralInfo(val)) {
-            JSHandle<AOTLiteralInfo> valHandle(thread, val);
-            JSHandle<AOTLiteralInfo> methodLiteral = CopySharedMethodAOTLiteralInfo(vm, valHandle);
+        JSTaggedValue val = aiCP->GetObjectFromCache(i);
+        valHandle.Update(val);
+        if (IsAotMethodLiteralInfo(valHandle.GetTaggedValue())) {
+            JSHandle<AOTLiteralInfo> value(thread, val);
+            JSHandle<AOTLiteralInfo> methodLiteral = CopySharedMethodAOTLiteralInfo(vm, value);
             sharedCP->SetObjectToCache(thread, i, methodLiteral.GetTaggedValue());
-        } else if (val.IsInt()) {
+        } else if (valHandle->IsInt()) {
             // For MethodInfo which does not have ihc infos, we store codeEntry directly.
-            sharedCP->SetObjectToCache(thread, i, val);
-            unsharedCP->SetObjectToCache(thread, i, val);
+            sharedCP->SetObjectToCache(thread, i, valHandle.GetTaggedValue());
+            unsharedCP->SetObjectToCache(thread, i, valHandle.GetTaggedValue());
         }
         // update method, class and object aotliteralinfo
-        if (val.IsAOTLiteralInfo()) {
-            unsharedCP->SetObjectToCache(thread, i, val);
+        if (valHandle->IsAOTLiteralInfo()) {
+            unsharedCP->SetObjectToCache(thread, i, valHandle.GetTaggedValue());
         }
     }
     unsharedCP->InitConstantPoolTail(vm->GetJSThread(), aiCP);

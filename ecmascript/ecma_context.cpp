@@ -618,20 +618,21 @@ void EcmaContext::SetUnsharedConstpool(int32_t constpoolIndex, JSTaggedValue uns
     unsharedConstpools_[constpoolIndex] = unsharedConstpool;
 }
 
-void EcmaContext::UpdateConstpoolWhenDeserialAI(const std::string& fileName, JSTaggedValue constpool, int32_t index)
+void EcmaContext::UpdateConstpoolWhenDeserialAI(const std::string& fileName,
+                                                JSHandle<ConstantPool> aiCP, int32_t index)
 {
     auto pf = JSPandaFileManager::GetInstance()->FindJSPandaFile(fileName.c_str());
     if (pf == nullptr) {
         return;
     }
     JSTaggedValue sharedConstpool = FindConstpool(pf.get(), index);
+    JSHandle<ConstantPool> sharedCPHandle = JSHandle<ConstantPool>(thread_, sharedConstpool);
     if (sharedConstpool.IsHole()) {
         return;
     }
-    JSTaggedValue unsharedConstpool = FindOrCreateUnsharedConstpool(sharedConstpool);
-    ConstantPool *unsharedCP = ConstantPool::Cast(unsharedConstpool.GetTaggedObject());
-    ConstantPool *sharedCP = ConstantPool::Cast(sharedConstpool.GetTaggedObject());
-    const ConstantPool *aiCP = ConstantPool::Cast(constpool.GetTaggedObject());
+    JSTaggedValue unsharedConstpool = FindOrCreateUnsharedConstpool(sharedCPHandle.GetTaggedValue());
+    JSHandle<ConstantPool> unsharedCP = JSHandle<ConstantPool>(thread_, unsharedConstpool);
+    JSHandle<ConstantPool> sharedCP = JSHandle<ConstantPool>(thread_, sharedCPHandle.GetTaggedValue());
     ConstantPool::UpdateConstpoolWhenDeserialAI(vm_, aiCP, sharedCP, unsharedCP);
 }
 

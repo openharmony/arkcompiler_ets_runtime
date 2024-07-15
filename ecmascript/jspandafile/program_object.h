@@ -357,7 +357,7 @@ public:
         return Barriers::GetValue<JSPandaFile *>(GetData(), GetJSPandaFileOffset());
     }
 
-    inline void InitConstantPoolTail(const JSThread *thread, const ConstantPool *constPool)
+    inline void InitConstantPoolTail(const JSThread *thread, JSHandle<ConstantPool> constPool)
     {
         SetAotArrayInfo(thread, constPool->GetAotArrayInfo());
         SetAotHClassInfo(thread, constPool->GetAotHClassInfo());
@@ -525,8 +525,8 @@ public:
 
     static JSTaggedValue PUBLIC_API GetMethodFromCache(JSTaggedValue constpool, uint32_t index);
 
-    static void PUBLIC_API UpdateConstpoolWhenDeserialAI(EcmaVM *vm, const ConstantPool *aiCP,
-        ConstantPool *sharedCP, ConstantPool *unsharedCP);
+    static void PUBLIC_API UpdateConstpoolWhenDeserialAI(EcmaVM *vm, JSHandle<ConstantPool> aiCP,
+        JSHandle<ConstantPool> sharedCP, JSHandle<ConstantPool> unsharedCP);
 
     static bool PUBLIC_API IsAotMethodLiteralInfo(JSTaggedValue literalInfo);
 

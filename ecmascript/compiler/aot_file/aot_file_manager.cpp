@@ -520,14 +520,15 @@ void AOTFileManager::ParseDeserializedData(const CString &snapshotFileName, JSTa
             JSTaggedValue cp = cpList->Get(AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE - 1);  // first constpool
             context->LoadProtoTransitionTable(cp);
         }
+        JSMutableHandle<ConstantPool> cpHandle(thread, JSTaggedValue::Undefined());
         for (uint32_t pos = 0; pos < cpLen; pos += AOTSnapshotConstants::SNAPSHOT_CP_ARRAY_ITEM_SIZE) {
             int32_t constantPoolID = cpList->Get(pos).GetInt();
-            JSTaggedValue cp = cpList->Get(pos + 1);
-            context->ResetProtoTransitionTableOnConstpool(cp);
-            cpMap.insert({constantPoolID, cp});
+            cpHandle.Update(cpList->Get(pos + 1));
+            context->ResetProtoTransitionTableOnConstpool(cpHandle.GetTaggedValue());
+            cpMap.insert({constantPoolID, cpHandle.GetTaggedValue()});
             // the arkui framework abc file constpool was patched here
             if (frameworkHelper.IsFrameworkAbcFile(fileNameStr)) {
-                context->UpdateConstpoolWhenDeserialAI(fileNameStr, cp, constantPoolID);
+                context->UpdateConstpoolWhenDeserialAI(fileNameStr, cpHandle, constantPoolID);
             }
         }
     }
