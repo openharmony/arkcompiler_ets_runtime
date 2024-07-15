@@ -99,7 +99,13 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(EcmaRuntimeCallInfo *argv, Tr
         reviverVal.Update(GetCallArg(argv, 1));
         JSHandle<JSTaggedValue> options = GetCallArg(argv, 2); // 2: two args
         JSHandle<JSTaggedValue> modeKey(factory->NewFromStdString("bigIntMode"));
+        JSHandle<JSTaggedValue> typeKey(factory->NewFromStdString("parseReturnType"));
         if (options->IsECMAObject()) {
+            JSHandle<JSTaggedValue> type = JSTaggedValue::GetProperty(thread, options, typeKey).GetValue();
+            if (transformType == TransformType::SENDABLE && type->IsInt() && type->GetInt() == 1) { // 1: map
+                THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), GET_MESSAGE_STRING(ReturnTypeNotSupportMap),
+                                            JSTaggedValue::Exception());
+            }
             JSHandle<JSTaggedValue> modeValue = JSTaggedValue::GetProperty(thread, options, modeKey).GetValue();
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (modeValue->IsInt()) {
