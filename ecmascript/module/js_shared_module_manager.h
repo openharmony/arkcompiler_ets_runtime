@@ -33,7 +33,7 @@ struct StateVisit {
 };
 class SharedModuleManager {
 public:
-    static SharedModuleManager *GetInstance();
+    static PUBLIC_API SharedModuleManager *GetInstance();
 
     void Initialize() {};
 
@@ -55,8 +55,8 @@ public:
     JSHandle<JSTaggedValue> ResolveImportedModule(JSThread *thread, const CString &referencingModule,
                                                   bool executeFromJob);
 
-    JSHandle<JSTaggedValue> ResolveImportedModuleWithMerge(JSThread *thread, const CString &fileName,
-                                                           const CString &recordName, bool executeFromJob);
+    JSHandle<JSTaggedValue> PUBLIC_API ResolveImportedModuleWithMerge(JSThread *thread, const CString &fileName,
+                                                                      const CString &recordName, bool executeFromJob);
 
     StateVisit &findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
@@ -65,7 +65,7 @@ public:
     void InsertInSModuleManager(JSThread *thread, const CString &recordName,
         JSHandle<SourceTextModule> &moduleRecord);
 
-    void TransferSModule(JSThread *thread);
+    void PUBLIC_API TransferSModule(JSThread *thread);
 
     bool IsInstaniatedSModule(JSThread *thread, const JSHandle<SourceTextModule> &module);
 

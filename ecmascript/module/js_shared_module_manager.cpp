@@ -266,8 +266,7 @@ void SharedModuleManager::TransferSModule(JSThread *thread)
     CVector<CString> instantiatingSModuleList = moduleManager->GetInstantiatingSModuleList();
     for (auto s:instantiatingSModuleList) {
         JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule(s);
-        ASSERT(module->GetStatus() == ModuleStatus::INSTANTIATED &&
-            module->GetSharedType() == SharedTypes::SHARED_MODULE);
+        ASSERT(module->GetSharedType() == SharedTypes::SHARED_MODULE);
         InsertInSModuleManager(thread, s, module);
         moduleManager->RemoveModuleNameFromList(s);
     }

@@ -304,6 +304,9 @@
       panda::ecmascript::kungfu::ArkStackMapBuilder::GenerateArkStackMap*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::Run*;
       panda::ecmascript::kungfu::PGOBCInfo::Record*;
+      panda::ecmascript::SharedModuleManager::GetInstance*;
+      panda::ecmascript::SharedModuleManager::ResolveImportedModuleWithMerge*;
+      panda::ecmascript::SharedModuleManager::TransferSModule*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolIDByMethodOffset*;
       panda::ecmascript::kungfu::PGOTypeManager::GetConstantPoolByMethodOffset*;
       panda::ecmascript::kungfu::PGOTypeManager::GetStringFromConstantPool*;
