@@ -35,7 +35,15 @@
 namespace panda::ecmascript {
 void SharedGC::RunPhases()
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::RunPhases");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::RunPhases"
+        + std::to_string(static_cast<int>(sHeap_->GetEcmaGCStats()->GetGCReason()))
+        + ";Sensitive" + std::to_string(static_cast<int>(sHeap_->GetSensitiveStatus()))
+        + ";IsInBackground" + std::to_string(sHeap_->IsInBackground())
+        + ";Startup" + std::to_string(sHeap_->OnStartupEvent())
+        + ";Old" + std::to_string(sHeap_->GetOldSpace()->GetCommittedSize())
+        + ";huge" + std::to_string(sHeap_->GetHugeObjectSpace()->GetCommittedSize())
+        + ";NonMov" + std::to_string(sHeap_->GetNonMovableSpace()->GetCommittedSize())
+        + ";TotCommit" + std::to_string(sHeap_->GetCommittedSize()));
     TRACE_GC(GCStats::Scope::ScopeId::TotalGC, sHeap_->GetEcmaGCStats());
     markingInProgress_ = sHeap_->CheckOngoingConcurrentMarking();
     Initialize();
