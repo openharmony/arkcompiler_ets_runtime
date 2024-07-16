@@ -1132,6 +1132,10 @@ JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunc
 JSHandle<JSObject> ObjectFactory::NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
                                                            const JSHandle<JSTaggedValue> &newTarget)
 {
+    if (constructor->IsJSShared() && !newTarget->IsJSShared()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "shared ctor cannot assign unshared newTarget",
+                                    JSHandle<JSObject>(thread_, JSTaggedValue::Undefined()));
+    }
     JSHandle<JSHClass> jshclass;
     if (!constructor->HasFunctionPrototype() ||
         (constructor->GetProtoOrHClass().IsHeapObject() && constructor->GetFunctionPrototype().IsECMAObject())) {

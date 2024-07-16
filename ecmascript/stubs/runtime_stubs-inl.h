@@ -3204,6 +3204,10 @@ JSTaggedValue RuntimeStubs::RuntimeDefinePrivateProperty(JSThread *thread, JSTag
     if (handleObj->IsUndefined()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "DefinePrivateProperty obj is undefined", JSTaggedValue::Exception());
     }
+    if (handleObj->IsJSShared()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "shared obj cannot use # to define private property",
+                                    JSTaggedValue::Exception());
+    }
     if (!extensible) {
         // private key should be always extensible
         handleObj->GetTaggedObject()->GetClass()->SetExtensible(true);
