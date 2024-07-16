@@ -86,19 +86,20 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(deque.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
-
-        ContainersDeque::InsertFront(callInfo);
-
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(deque.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
+            ContainersDeque::InsertFront(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -137,29 +138,30 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        constexpr uint32_t NODE_NUMBERS = 8;
-        JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
-        for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+            constexpr uint32_t NODE_NUMBERS = 8;
+            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
+            for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+                auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(deque.GetTaggedValue());
+                callInfo->SetCallArg(0, JSTaggedValue(i + input));
+                ContainersDeque::InsertFront(callInfo);
+            }
+
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            JSHandle<JSFunction> func = thread->GetEcmaVM()->GetFactory()->NewJSFunction(env,
+                reinterpret_cast<void *>(TestClass::TestForEachFunc));
             auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
             callInfo->SetFunction(JSTaggedValue::Undefined());
             callInfo->SetThis(deque.GetTaggedValue());
-            callInfo->SetCallArg(0, JSTaggedValue(i + input));
-            ContainersDeque::InsertFront(callInfo);
+            callInfo->SetCallArg(0, func.GetTaggedValue());
+            callInfo->SetCallArg(1, deque.GetTaggedValue());
+            ContainersDeque::ForEach(callInfo);
         }
-
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        JSHandle<JSFunction> func = thread->GetEcmaVM()->GetFactory()->NewJSFunction(env,
-            reinterpret_cast<void *>(TestClass::TestForEachFunc));
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(deque.GetTaggedValue());
-        callInfo->SetCallArg(0, func.GetTaggedValue());
-        callInfo->SetCallArg(1, deque.GetTaggedValue());
-
-        ContainersDeque::ForEach(callInfo);
-
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -168,33 +170,33 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(deque.GetTaggedValue());
+            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(deque.GetTaggedValue());
 
-        unsigned int input = 0;
-        if (size <= 0) {
-            return;
+            unsigned int input = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(input));
+            ContainersDeque::InsertFront(callInfo);
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(deque.GetTaggedValue());
+            ContainersDeque::GetFirst(callInfo1);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(input));
-
-        ContainersDeque::InsertFront(callInfo);
-
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(deque.GetTaggedValue());
-        ContainersDeque::GetFirst(callInfo1);
-
         JSNApi::DestroyJSVM(vm);
         return;
     }
@@ -204,33 +206,35 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(deque.GetTaggedValue());
+            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(deque.GetTaggedValue());
 
-        unsigned int input = 0;
-        if (size <= 0) {
-            return;
+            unsigned int input = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(input));
+
+            ContainersDeque::InsertFront(callInfo);
+
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(deque.GetTaggedValue());
+            ContainersDeque::GetLast(callInfo1);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(input));
-
-        ContainersDeque::InsertFront(callInfo);
-
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(deque.GetTaggedValue());
-        ContainersDeque::GetLast(callInfo1);
-
         JSNApi::DestroyJSVM(vm);
         return;
     }
@@ -240,28 +244,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(deque.GetTaggedValue());
+            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(deque.GetTaggedValue());
 
-        unsigned int input = 0;
-        if (size <= 0) {
-            return;
+            unsigned int input = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(input));
+            ContainersDeque::InsertEnd(callInfo);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(input));
-
-        ContainersDeque::InsertEnd(callInfo);
-
         JSNApi::DestroyJSVM(vm);
         return;
     }
@@ -271,35 +276,36 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(deque.GetTaggedValue());
+            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(deque.GetTaggedValue());
 
-        unsigned int input = 0;
-        if (size <= 0) {
-            return;
+            unsigned int input = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(input));
+
+            ContainersDeque::InsertEnd(callInfo);
+
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(deque.GetTaggedValue());
+            callInfo1->SetCallArg(0, JSTaggedValue(input));
+            ContainersDeque::Has(callInfo1);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(input));
-
-        ContainersDeque::InsertEnd(callInfo);
-
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(deque.GetTaggedValue());
-        callInfo1->SetCallArg(0, JSTaggedValue(input));
-        
-        ContainersDeque::Has(callInfo1);
-
         JSNApi::DestroyJSVM(vm);
         return;
     }
@@ -309,33 +315,33 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(deque.GetTaggedValue());
+            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(deque.GetTaggedValue());
 
-        unsigned int input = 0;
-        if (size <= 0) {
-            return;
+            unsigned int input = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(input));
+            ContainersDeque::InsertFront(callInfo);
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(deque.GetTaggedValue());
+            ContainersDeque::PopFirst(callInfo1);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(input));
-
-        ContainersDeque::InsertFront(callInfo);
-
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(deque.GetTaggedValue());
-        ContainersDeque::PopFirst(callInfo1);
-
         JSNApi::DestroyJSVM(vm);
         return;
     }
@@ -345,33 +351,33 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(deque.GetTaggedValue());
+            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(deque.GetTaggedValue());
 
-        unsigned int input = 0;
-        if (size <= 0) {
-            return;
+            unsigned int input = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            callInfo->SetCallArg(0, JSTaggedValue(input));
+            ContainersDeque::InsertFront(callInfo);
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(deque.GetTaggedValue());
+            ContainersDeque::PopLast(callInfo1);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        callInfo->SetCallArg(0, JSTaggedValue(input));
-
-        ContainersDeque::InsertFront(callInfo);
-
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(deque.GetTaggedValue());
-        ContainersDeque::PopLast(callInfo1);
-
         JSNApi::DestroyJSVM(vm);
         return;
     }
@@ -381,45 +387,46 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        uint32_t input = 0;
-        if (size <= 0) {
-            return;
+            uint32_t input = 0;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+
+            constexpr uint32_t NODE_NUMBERS = 8;
+            JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
+            for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+                auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(deque.GetTaggedValue());
+                callInfo->SetCallArg(0, JSTaggedValue(i + input));
+
+                ContainersDeque::InsertEnd(callInfo);
+            }
+
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(deque.GetTaggedValue());
+            JSHandle<JSTaggedValue> iterValues(thread, ContainersDeque::GetIteratorObj(callInfo1));
+
+            JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+            for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+                auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(iterValues.GetTaggedValue());
+                result.Update(JSAPIDequeIterator::Next(callInfo));
+            }
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-
-        constexpr uint32_t NODE_NUMBERS = 8;
-        JSHandle<JSAPIDeque> deque = CreateJSAPIDeque(thread);
-        for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8);
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(deque.GetTaggedValue());
-            callInfo->SetCallArg(0, JSTaggedValue(i + input));
-
-            ContainersDeque::InsertEnd(callInfo);
-        }
-
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4);
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(deque.GetTaggedValue());
-        JSHandle<JSTaggedValue> iterValues(thread, ContainersDeque::GetIteratorObj(callInfo1));
-
-        JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
-        for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4);
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(iterValues.GetTaggedValue());
-
-            result.Update(JSAPIDequeIterator::Next(callInfo));
-        }
-
         JSNApi::DestroyJSVM(vm);
         return;
     }

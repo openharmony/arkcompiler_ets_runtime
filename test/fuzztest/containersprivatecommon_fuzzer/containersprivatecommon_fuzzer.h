@@ -51,24 +51,27 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        if (size <= 0) {
-            return;
+            if (size <= 0) {
+                return;
+            }
+
+            auto factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
+            JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
+            JSHandle<JSTaggedValue> value =
+                JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
+
+            auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            objCallInfo->SetFunction(JSTaggedValue::Undefined());
+            objCallInfo->SetThis(value.GetTaggedValue());
+            objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(tag))); // 0 means the argument
+            containers::ContainersPrivate::Load(objCallInfo);
         }
-
-        auto factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        JSHandle<JSTaggedValue> globalObject = env->GetJSGlobalObject();
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("ArkPrivate"));
-        JSHandle<JSTaggedValue> value =
-            JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(globalObject), key).GetValue();
-
-        auto objCallInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        objCallInfo->SetFunction(JSTaggedValue::Undefined());
-        objCallInfo->SetThis(value.GetTaggedValue());
-        objCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int>(tag))); // 0 means the argument
-        containers::ContainersPrivate::Load(objCallInfo);
         JSNApi::DestroyJSVM(vm);
     }
 };

@@ -35,27 +35,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-        
-        uint32_t input;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        const int32_t MaxMenory = 1048576;
-        if (input > MaxMenory) {
-            input = MaxMenory;
-        }
+        {
+            JsiFastNativeScope scope(vm);
+            JSThread *thread = vm->GetJSThread();
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+            
+            uint32_t input;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            const int32_t MaxMenory = 1048576;
+            if (input > MaxMenory) {
+                input = MaxMenory;
+            }
 
-        JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
-        builtins::BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, input);
+            JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
+            builtins::BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, input);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

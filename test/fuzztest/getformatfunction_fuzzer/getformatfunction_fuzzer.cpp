@@ -34,22 +34,25 @@ void NumberGetFormatFunctionFuzzerTest([[maybe_unused]]const uint8_t *data, size
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    auto thread = vm->GetAssociatedJSThread();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> ctor = env->GetNumberFormatFunction();
-    JSHandle<JSNumberFormat> numberFormat =
-        JSHandle<JSNumberFormat>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    JSHandle<JSTaggedValue> locales(factory->NewFromASCII("zh-Hans-CN"));
-    JSHandle<JSTaggedValue> undefinedOptions(thread, JSTaggedValue::Undefined());
-    JSNumberFormat::InitializeNumberFormat(thread, numberFormat, locales, undefinedOptions);
-    JSHandle<JSTaggedValue> numberformatTagHandleVal = JSHandle<JSTaggedValue>::Cast(numberFormat);
-    Local<NumberFormatRef> object = JSNApiHelper::ToLocal<NumberFormatRef>(numberformatTagHandleVal);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        auto thread = vm->GetAssociatedJSThread();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSTaggedValue> ctor = env->GetNumberFormatFunction();
+        JSHandle<JSNumberFormat> numberFormat =
+            JSHandle<JSNumberFormat>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+        JSHandle<JSTaggedValue> locales(factory->NewFromASCII("zh-Hans-CN"));
+        JSHandle<JSTaggedValue> undefinedOptions(thread, JSTaggedValue::Undefined());
+        JSNumberFormat::InitializeNumberFormat(thread, numberFormat, locales, undefinedOptions);
+        JSHandle<JSTaggedValue> numberformatTagHandleVal = JSHandle<JSTaggedValue>::Cast(numberFormat);
+        Local<NumberFormatRef> object = JSNApiHelper::ToLocal<NumberFormatRef>(numberformatTagHandleVal);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        object->GetFormatFunction(vm);
     }
-    object->GetFormatFunction(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

@@ -44,9 +44,12 @@ namespace OHOS {
             std::cout << "memcpy_s failed!";
             UNREACHABLE();
         }
-        Local<StringRef> res = StringRef::NewFromUtf8(vm, test, (int)size);
-        Local<JSValueRef> jsValue = JSON::Parse(vm, res);
-        JSON::Stringify(vm, jsValue);
+        {
+            JsiFastNativeScope scope(vm);
+            Local<StringRef> res = StringRef::NewFromUtf8(vm, test, (int)size);
+            Local<JSValueRef> jsValue = JSON::Parse(vm, res);
+            JSON::Stringify(vm, jsValue);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

@@ -38,19 +38,22 @@ void JSValueRefIsVectorFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> vectorClass = factory->NewEcmaHClass(JSAPIVector::SIZE, JSType::JS_API_VECTOR, proto);
+        JSHandle<JSAPIVector> jsVector = JSHandle<JSAPIVector>::Cast(factory->NewJSObjectWithInit(vectorClass));
+        jsVector->SetLength(0);
+        JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsVector);
+        Local<JSValueRef> isVector = JSNApiHelper::ToLocal<JSAPIVector>(argumentTag);
+        isVector->IsVector(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> vectorClass = factory->NewEcmaHClass(JSAPIVector::SIZE, JSType::JS_API_VECTOR, proto);
-    JSHandle<JSAPIVector> jsVector = JSHandle<JSAPIVector>::Cast(factory->NewJSObjectWithInit(vectorClass));
-    jsVector->SetLength(0);
-    JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsVector);
-    Local<JSValueRef> isVector = JSNApiHelper::ToLocal<JSAPIVector>(argumentTag);
-    isVector->IsVector(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -74,23 +77,26 @@ void JSValueRefIsRegExpFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+        JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
+        jSRegExp->SetByteCodeBuffer(thread, JSTaggedValue::Undefined());
+        jSRegExp->SetOriginalSource(thread, JSTaggedValue::Undefined());
+        jSRegExp->SetGroupName(thread, JSTaggedValue::Undefined());
+        jSRegExp->SetOriginalFlags(thread, JSTaggedValue(0));
+        jSRegExp->SetLength(0);
+        JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
+        Local<JSValueRef> regexp = JSNApiHelper::ToLocal<JSRegExp>(argumentTag);
+        regexp->IsRegExp(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> jSRegExpClass = factory->NewEcmaHClass(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
-    JSHandle<JSRegExp> jSRegExp = JSHandle<JSRegExp>::Cast(factory->NewJSObject(jSRegExpClass));
-    jSRegExp->SetByteCodeBuffer(thread, JSTaggedValue::Undefined());
-    jSRegExp->SetOriginalSource(thread, JSTaggedValue::Undefined());
-    jSRegExp->SetGroupName(thread, JSTaggedValue::Undefined());
-    jSRegExp->SetOriginalFlags(thread, JSTaggedValue(0));
-    jSRegExp->SetLength(0);
-    JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jSRegExp);
-    Local<JSValueRef> regexp = JSNApiHelper::ToLocal<JSRegExp>(argumentTag);
-    regexp->IsRegExp(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -100,20 +106,23 @@ void JSValueRefIsSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+        JSHandle<JSSet> set =
+            JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+        JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
+        set->SetLinkedSet(thread, hashSet);
+        JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(set);
+        Local<SetRef> isSet = JSNApiHelper::ToLocal<SetRef>(setTag);
+        isSet->IsSet(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
-    JSHandle<JSSet> set =
-        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
-    set->SetLinkedSet(thread, hashSet);
-    JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(set);
-    Local<SetRef> isSet = JSNApiHelper::ToLocal<SetRef>(setTag);
-    isSet->IsSet(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }
@@ -123,20 +132,23 @@ void JSValueRefIsTreeMapFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> mapClass = factory->NewEcmaHClass(JSAPITreeMap::SIZE, JSType::JS_API_TREE_MAP, proto);
+        JSHandle<JSAPITreeMap> jsTreeMap = JSHandle<JSAPITreeMap>::Cast(factory->NewJSObjectWithInit(mapClass));
+        JSHandle<TaggedTreeMap> treeMap(thread, TaggedTreeMap::Create(thread));
+        jsTreeMap->SetTreeMap(thread, treeMap);
+        JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeMap);
+        Local<JSValueRef> isTreeMap = JSNApiHelper::ToLocal<JSAPITreeMap>(argumentTag);
+        isTreeMap->IsTreeMap(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> mapClass = factory->NewEcmaHClass(JSAPITreeMap::SIZE, JSType::JS_API_TREE_MAP, proto);
-    JSHandle<JSAPITreeMap> jsTreeMap = JSHandle<JSAPITreeMap>::Cast(factory->NewJSObjectWithInit(mapClass));
-    JSHandle<TaggedTreeMap> treeMap(thread, TaggedTreeMap::Create(thread));
-    jsTreeMap->SetTreeMap(thread, treeMap);
-    JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeMap);
-    Local<JSValueRef> isTreeMap = JSNApiHelper::ToLocal<JSAPITreeMap>(argumentTag);
-    isTreeMap->IsTreeMap(vm);
     JSNApi::DestroyJSVM(vm);
 }
 
@@ -145,20 +157,23 @@ void JSValueRefIsTreeSetFuzzTest([[maybe_unused]]const uint8_t *data, size_t siz
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
+        JSHandle<JSHClass> setClass = factory->NewEcmaHClass(JSAPITreeSet::SIZE, JSType::JS_API_TREE_SET, proto);
+        JSHandle<JSAPITreeSet> jsTreeSet = JSHandle<JSAPITreeSet>::Cast(factory->NewJSObjectWithInit(setClass));
+        JSHandle<TaggedTreeSet> treeSet(thread, TaggedTreeSet::Create(thread));
+        jsTreeSet->SetTreeSet(thread, treeSet);
+        JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeSet);
+        Local<JSValueRef> isTreeSet = JSNApiHelper::ToLocal<JSAPITreeSet>(argumentTag);
+        isTreeSet->IsTreeSet(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> proto = globalEnv->GetObjectFunctionPrototype();
-    JSHandle<JSHClass> setClass = factory->NewEcmaHClass(JSAPITreeSet::SIZE, JSType::JS_API_TREE_SET, proto);
-    JSHandle<JSAPITreeSet> jsTreeSet = JSHandle<JSAPITreeSet>::Cast(factory->NewJSObjectWithInit(setClass));
-    JSHandle<TaggedTreeSet> treeSet(thread, TaggedTreeSet::Create(thread));
-    jsTreeSet->SetTreeSet(thread, treeSet);
-    JSHandle<JSTaggedValue> argumentTag = JSHandle<JSTaggedValue>::Cast(jsTreeSet);
-    Local<JSValueRef> isTreeSet = JSNApiHelper::ToLocal<JSAPITreeSet>(argumentTag);
-    isTreeSet->IsTreeSet(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

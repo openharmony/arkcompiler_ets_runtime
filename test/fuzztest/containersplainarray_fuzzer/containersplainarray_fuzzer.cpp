@@ -86,22 +86,25 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        uint32_t input = 0;
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            uint32_t input = 0;
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(input));
+            ContainersPlainArray::PlainArrayConstructor(callInfo);
         }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(input));
-        ContainersPlainArray::PlainArrayConstructor(callInfo);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -114,37 +117,40 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        const uint32_t addTimes = 3;
-        for (uint32_t i = 0; i < addTimes; i++) {
-            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(plainArray.GetTaggedValue());
-            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum + i))); // set key
-            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue()); // set value
-            ContainersPlainArray::Add(callInfo);
-        }
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            const uint32_t addTimes = 3;
+            for (uint32_t i = 0; i < addTimes; i++) {
+                JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+                EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(plainArray.GetTaggedValue());
+                callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum + i))); // set key
+                callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue()); // set value
+                ContainersPlainArray::Add(callInfo);
+            }
 
-        for (uint32_t i = 0; i < addTimes; i++) {
-            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(plainArray.GetTaggedValue());
-            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum + i)));
-            ContainersPlainArray::Has(callInfo);  // expected to return true
+            for (uint32_t i = 0; i < addTimes; i++) {
+                EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(plainArray.GetTaggedValue());
+                callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum + i)));
+                ContainersPlainArray::Has(callInfo);  // expected to return true
+            }
         }
         JSNApi::DestroyJSVM(vm);
     }
@@ -158,32 +164,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForClone = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        cfForClone->SetFunction(JSTaggedValue::Undefined());
-        cfForClone->SetThis(plainArray.GetTaggedValue());
-        ContainersPlainArray::Clone(cfForClone); // expected to return new plain array
+            EcmaRuntimeCallInfo *cfForClone = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            cfForClone->SetFunction(JSTaggedValue::Undefined());
+            cfForClone->SetThis(plainArray.GetTaggedValue());
+            ContainersPlainArray::Clone(cfForClone); // expected to return new plain array
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -196,32 +205,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForClear = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        cfForClear->SetFunction(JSTaggedValue::Undefined());
-        cfForClear->SetThis(plainArray.GetTaggedValue());
-        ContainersPlainArray::Clear(cfForClear); // expected to return true
+            EcmaRuntimeCallInfo *cfForClear = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            cfForClear->SetFunction(JSTaggedValue::Undefined());
+            cfForClear->SetThis(plainArray.GetTaggedValue());
+            ContainersPlainArray::Clear(cfForClear); // expected to return true
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -234,33 +246,36 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForGet = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        cfForGet->SetFunction(JSTaggedValue::Undefined());
-        cfForGet->SetThis(plainArray.GetTaggedValue());
-        cfForGet->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum))); // set key get value
-        ContainersPlainArray::Get(cfForGet); // expected to return value
+            EcmaRuntimeCallInfo *cfForGet = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            cfForGet->SetFunction(JSTaggedValue::Undefined());
+            cfForGet->SetThis(plainArray.GetTaggedValue());
+            cfForGet->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum))); // set key get value
+            ContainersPlainArray::Get(cfForGet); // expected to return value
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -273,32 +288,36 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForGetIteratorObj = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        cfForGetIteratorObj->SetFunction(JSTaggedValue::Undefined());
-        cfForGetIteratorObj->SetThis(plainArray.GetTaggedValue());
-        ContainersPlainArray::GetIteratorObj(cfForGetIteratorObj); // expected to return iterator
+            EcmaRuntimeCallInfo *cfForGetIteratorObj =
+                CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            cfForGetIteratorObj->SetFunction(JSTaggedValue::Undefined());
+            cfForGetIteratorObj->SetThis(plainArray.GetTaggedValue());
+            ContainersPlainArray::GetIteratorObj(cfForGetIteratorObj); // expected to return iterator
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -322,37 +341,40 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        JSHandle<JSAPIPlainArray> thisArg = CreateJSAPIPlainArray(thread);
-        JSHandle<JSFunction> cbFunc = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForEachFunc));
-        EcmaRuntimeCallInfo *cfForForEach = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        cfForForEach->SetFunction(JSTaggedValue::Undefined());
-        cfForForEach->SetThis(plainArray.GetTaggedValue());
-        cfForForEach->SetCallArg(0, cbFunc.GetTaggedValue());
-        cfForForEach->SetCallArg(1, thisArg.GetTaggedValue());
-        ContainersPlainArray::ForEach(cfForForEach); // expected to return undefined
+            JSHandle<JSAPIPlainArray> thisArg = CreateJSAPIPlainArray(thread);
+            JSHandle<JSFunction> cbFunc = factory->NewJSFunction(env, reinterpret_cast<void *>(TestForEachFunc));
+            EcmaRuntimeCallInfo *cfForForEach = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            cfForForEach->SetFunction(JSTaggedValue::Undefined());
+            cfForForEach->SetThis(plainArray.GetTaggedValue());
+            cfForForEach->SetCallArg(0, cbFunc.GetTaggedValue());
+            cfForForEach->SetCallArg(1, thisArg.GetTaggedValue());
+            ContainersPlainArray::ForEach(cfForForEach); // expected to return undefined
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -365,32 +387,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForToString = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        cfForToString->SetFunction(JSTaggedValue::Undefined());
-        cfForToString->SetThis(plainArray.GetTaggedValue());
-        ContainersPlainArray::ToString(cfForToString); // expected to return string object
+            EcmaRuntimeCallInfo *cfForToString = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            cfForToString->SetFunction(JSTaggedValue::Undefined());
+            cfForToString->SetThis(plainArray.GetTaggedValue());
+            ContainersPlainArray::ToString(cfForToString); // expected to return string object
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -403,33 +428,37 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForGetIndexOfKey = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        cfForGetIndexOfKey->SetFunction(JSTaggedValue::Undefined());
-        cfForGetIndexOfKey->SetThis(plainArray.GetTaggedValue());
-        cfForGetIndexOfKey->SetCallArg(0, inputEcmaStr.GetTaggedValue()); // value
-        ContainersPlainArray::GetIndexOfKey(cfForGetIndexOfKey); // expected to return the index of key
+            EcmaRuntimeCallInfo *cfForGetIndexOfKey =
+                CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            cfForGetIndexOfKey->SetFunction(JSTaggedValue::Undefined());
+            cfForGetIndexOfKey->SetThis(plainArray.GetTaggedValue());
+            cfForGetIndexOfKey->SetCallArg(0, inputEcmaStr.GetTaggedValue()); // value
+            ContainersPlainArray::GetIndexOfKey(cfForGetIndexOfKey); // expected to return the index of key
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -442,33 +471,37 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForGetIndexOfValue = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        cfForGetIndexOfValue->SetFunction(JSTaggedValue::Undefined());
-        cfForGetIndexOfValue->SetThis(plainArray.GetTaggedValue());
-        cfForGetIndexOfValue->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum))); // key
-        ContainersPlainArray::GetIndexOfValue(cfForGetIndexOfValue); // expected to return the index of value
+            EcmaRuntimeCallInfo *cfForGetIndexOfValue =
+                CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            cfForGetIndexOfValue->SetFunction(JSTaggedValue::Undefined());
+            cfForGetIndexOfValue->SetThis(plainArray.GetTaggedValue());
+            cfForGetIndexOfValue->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum))); // key
+            ContainersPlainArray::GetIndexOfValue(cfForGetIndexOfValue); // expected to return the index of value
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -481,32 +514,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForIsEmpty = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        cfForIsEmpty->SetFunction(JSTaggedValue::Undefined());
-        cfForIsEmpty->SetThis(plainArray.GetTaggedValue());
-        ContainersPlainArray::IsEmpty(cfForIsEmpty); // expected to return true or false
+            EcmaRuntimeCallInfo *cfForIsEmpty = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            cfForIsEmpty->SetFunction(JSTaggedValue::Undefined());
+            cfForIsEmpty->SetThis(plainArray.GetTaggedValue());
+            ContainersPlainArray::IsEmpty(cfForIsEmpty); // expected to return true or false
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -519,33 +555,36 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForGetKeyAt = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        cfForGetKeyAt->SetFunction(JSTaggedValue::Undefined());
-        cfForGetKeyAt->SetThis(plainArray.GetTaggedValue());
-        cfForGetKeyAt->SetCallArg(0, inputEcmaStr.GetTaggedValue()); // value
-        ContainersPlainArray::GetKeyAt(cfForGetKeyAt); // expected to return the key
+            EcmaRuntimeCallInfo *cfForGetKeyAt = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            cfForGetKeyAt->SetFunction(JSTaggedValue::Undefined());
+            cfForGetKeyAt->SetThis(plainArray.GetTaggedValue());
+            cfForGetKeyAt->SetCallArg(0, inputEcmaStr.GetTaggedValue()); // value
+            ContainersPlainArray::GetKeyAt(cfForGetKeyAt); // expected to return the key
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -558,33 +597,36 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForRemove = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        cfForRemove->SetFunction(JSTaggedValue::Undefined());
-        cfForRemove->SetThis(plainArray.GetTaggedValue());
-        cfForRemove->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        ContainersPlainArray::Remove(cfForRemove); // expected to return the value
+            EcmaRuntimeCallInfo *cfForRemove = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            cfForRemove->SetFunction(JSTaggedValue::Undefined());
+            cfForRemove->SetThis(plainArray.GetTaggedValue());
+            cfForRemove->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            ContainersPlainArray::Remove(cfForRemove); // expected to return the value
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -597,33 +639,36 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForRemoveAt = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        cfForRemoveAt->SetFunction(JSTaggedValue::Undefined());
-        cfForRemoveAt->SetThis(plainArray.GetTaggedValue());
-        cfForRemoveAt->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        ContainersPlainArray::RemoveAt(cfForRemoveAt); // expected to return the value
+            EcmaRuntimeCallInfo *cfForRemoveAt = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            cfForRemoveAt->SetFunction(JSTaggedValue::Undefined());
+            cfForRemoveAt->SetThis(plainArray.GetTaggedValue());
+            cfForRemoveAt->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            ContainersPlainArray::RemoveAt(cfForRemoveAt); // expected to return the value
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -636,34 +681,38 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForRemoveRangeFrom = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        cfForRemoveRangeFrom->SetFunction(JSTaggedValue::Undefined());
-        cfForRemoveRangeFrom->SetThis(plainArray.GetTaggedValue());
-        cfForRemoveRangeFrom->SetCallArg(0, JSTaggedValue(0)); // set index as the head of array
-        cfForRemoveRangeFrom->SetCallArg(1, JSTaggedValue(static_cast<uint32_t>(inputNum))); // number to delete
-        ContainersPlainArray::RemoveRangeFrom(cfForRemoveRangeFrom); // expected to return the safe size
+            EcmaRuntimeCallInfo *cfForRemoveRangeFrom =
+                CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            cfForRemoveRangeFrom->SetFunction(JSTaggedValue::Undefined());
+            cfForRemoveRangeFrom->SetThis(plainArray.GetTaggedValue());
+            cfForRemoveRangeFrom->SetCallArg(0, JSTaggedValue(0)); // set index as the head of array
+            cfForRemoveRangeFrom->SetCallArg(1, JSTaggedValue(static_cast<uint32_t>(inputNum))); // number to delete
+            ContainersPlainArray::RemoveRangeFrom(cfForRemoveRangeFrom); // expected to return the safe size
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -676,34 +725,37 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForSetValueAt = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        cfForSetValueAt->SetFunction(JSTaggedValue::Undefined());
-        cfForSetValueAt->SetThis(plainArray.GetTaggedValue());
-        cfForSetValueAt->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum))); // set index to set
-        cfForSetValueAt->SetCallArg(1, JSTaggedValue(static_cast<uint32_t>(inputNum))); // set new value
-        ContainersPlainArray::SetValueAt(cfForSetValueAt); // expected to return undefined
+            EcmaRuntimeCallInfo *cfForSetValueAt = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            cfForSetValueAt->SetFunction(JSTaggedValue::Undefined());
+            cfForSetValueAt->SetThis(plainArray.GetTaggedValue());
+            cfForSetValueAt->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum))); // set index to set
+            cfForSetValueAt->SetCallArg(1, JSTaggedValue(static_cast<uint32_t>(inputNum))); // set new value
+            ContainersPlainArray::SetValueAt(cfForSetValueAt); // expected to return undefined
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -716,33 +768,36 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForGetValueAt = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        cfForGetValueAt->SetFunction(JSTaggedValue::Undefined());
-        cfForGetValueAt->SetThis(plainArray.GetTaggedValue());
-        cfForGetValueAt->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum))); // set index to get
-        ContainersPlainArray::GetValueAt(cfForGetValueAt); // expected to return value
+            EcmaRuntimeCallInfo *cfForGetValueAt = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            cfForGetValueAt->SetFunction(JSTaggedValue::Undefined());
+            cfForGetValueAt->SetThis(plainArray.GetTaggedValue());
+            cfForGetValueAt->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum))); // set index to get
+            ContainersPlainArray::GetValueAt(cfForGetValueAt); // expected to return value
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -755,32 +810,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        auto factory = vm->GetFactory();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            auto factory = vm->GetFactory();
 
-        uint32_t inputNum = 0;
-        std::string inputStr(data, data + size);
-        const uint32_t MAXBYTELEN = 4;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
-        JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(plainArray.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
-        callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
-        ContainersPlainArray::Add(callInfo);
+            uint32_t inputNum = 0;
+            std::string inputStr(data, data + size);
+            const uint32_t MAXBYTELEN = 4;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&inputNum, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPIPlainArray> plainArray = CreateJSAPIPlainArray(thread);
+            JSHandle<EcmaString> inputEcmaStr = factory->NewFromStdString(inputStr);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(plainArray.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(static_cast<uint32_t>(inputNum)));
+            callInfo->SetCallArg(1, inputEcmaStr.GetTaggedValue());
+            ContainersPlainArray::Add(callInfo);
 
-        EcmaRuntimeCallInfo *cfForGetSize = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        cfForGetSize->SetFunction(JSTaggedValue::Undefined());
-        cfForGetSize->SetThis(plainArray.GetTaggedValue());
-        ContainersPlainArray::GetSize(cfForGetSize); // expected to return the size
+            EcmaRuntimeCallInfo *cfForGetSize = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            cfForGetSize->SetFunction(JSTaggedValue::Undefined());
+            cfForGetSize->SetThis(plainArray.GetTaggedValue());
+            ContainersPlainArray::GetSize(cfForGetSize); // expected to return the size
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

@@ -34,30 +34,33 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            if (data == nullptr || size <= 0) {
+                LOG_ECMA(ERROR) << "illegal input!";
+                return;
+            }
+            uint8_t* ptr = nullptr;
+            ptr = const_cast<uint8_t*>(data);
+            JSThread *thread = vm->GetJSThread();
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakMapFunction();
+            JSHandle<JSWeakMap> weakMap =
+                JSHandle<JSWeakMap>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor),
+                                                                            constructor));
+            JSHandle<LinkedHashMap> hashMap = LinkedHashMap::Create(thread);
+            weakMap->SetLinkedMap(thread, hashMap);
+            JSHandle<JSTaggedValue> weakMapTag = JSHandle<JSTaggedValue>::Cast(weakMap);
+            Local<WeakMapRef> map = JSNApiHelper::ToLocal<WeakMapRef>(weakMapTag);
+            JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
+            JSHandle<JSTaggedValue> key(factory->NewFromASCII("key"));
+            JSWeakMap::Set(thread, weakMap, key, value);
+            map->GetSize(vm);
+            map->GetTotalElements(vm);
+            map->GetKey(vm, 0);
+            map->GetValue(vm, 0);
         }
-        uint8_t* ptr = nullptr;
-        ptr = const_cast<uint8_t*>(data);
-        JSThread *thread = vm->GetJSThread();
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakMapFunction();
-        JSHandle<JSWeakMap> weakMap =
-            JSHandle<JSWeakMap>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor),
-                                                                        constructor));
-        JSHandle<LinkedHashMap> hashMap = LinkedHashMap::Create(thread);
-        weakMap->SetLinkedMap(thread, hashMap);
-        JSHandle<JSTaggedValue> weakMapTag = JSHandle<JSTaggedValue>::Cast(weakMap);
-        Local<WeakMapRef> map = JSNApiHelper::ToLocal<WeakMapRef>(weakMapTag);
-        JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
-        JSHandle<JSTaggedValue> key(factory->NewFromASCII("key"));
-        JSWeakMap::Set(thread, weakMap, key, value);
-        map->GetSize(vm);
-        map->GetTotalElements(vm);
-        map->GetKey(vm, 0);
-        map->GetValue(vm, 0);
         JSNApi::DestroyJSVM(vm);
     }
 }

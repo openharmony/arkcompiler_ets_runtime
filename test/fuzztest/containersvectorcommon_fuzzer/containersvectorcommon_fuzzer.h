@@ -113,19 +113,21 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
 
-        ContainersVector::Add(callInfo);
-
+            ContainersVector::Add(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -134,26 +136,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
 
-        ContainersVector::Add(callInfo);
+            ContainersVector::Add(callInfo);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
 
-        ContainersVector::GetFirstElement(callInfo1);
-
-        JSNApi::DestroyJSVM(vm);
+            ContainersVector::GetFirstElement(callInfo1);
+        }
+    JSNApi::DestroyJSVM(vm);
     }
 
     static void ContainersVectorGetIndexOfFuzzTest(const uint8_t* data, size_t size)
@@ -161,26 +165,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
 
-        ContainersVector::Add(callInfo);
+            ContainersVector::Add(callInfo);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, value);
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, value);
 
-        ContainersVector::GetIndexOf(callInfo1);
-
+            ContainersVector::GetIndexOf(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -189,25 +195,27 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
 
-        ContainersVector::Add(callInfo);
+            ContainersVector::Add(callInfo);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
 
-        ContainersVector::GetLastElement(callInfo1);
-
+            ContainersVector::GetLastElement(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -216,26 +224,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
 
-        ContainersVector::Add(callInfo);
+            ContainersVector::Add(callInfo);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, value);
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, value);
 
-        ContainersVector::Has(callInfo1);
-
+            ContainersVector::Has(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -244,20 +254,22 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
-        callInfo->SetCallArg(1, JSTaggedValue(0));
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
+            callInfo->SetCallArg(1, JSTaggedValue(0));
 
-        ContainersVector::Insert(callInfo);
-
+            ContainersVector::Insert(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -266,27 +278,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
-        callInfo->SetCallArg(1, JSTaggedValue(0));
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
+            callInfo->SetCallArg(1, JSTaggedValue(0));
 
-        ContainersVector::Insert(callInfo);
+            ContainersVector::Insert(callInfo);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, value);
-
-        ContainersVector::Remove(callInfo1);
-
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, value);
+            ContainersVector::Remove(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -295,28 +308,29 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
-        callInfo->SetCallArg(1, JSTaggedValue(0));
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
+            callInfo->SetCallArg(1, JSTaggedValue(0));
 
-        ContainersVector::Insert(callInfo);
+            ContainersVector::Insert(callInfo);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, JSTaggedValue(0));
-        callInfo1->SetCallArg(1, value);
-
-        ContainersVector::Set(callInfo1);
-
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, JSTaggedValue(0));
+            callInfo1->SetCallArg(1, value);
+            ContainersVector::Set(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -325,26 +339,27 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
 
-        ContainersVector::Add(callInfo);
+            ContainersVector::Add(callInfo);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, value);
-
-        ContainersVector::GetLastIndexOf(callInfo1);
-
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, value);
+            ContainersVector::GetLastIndexOf(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -353,27 +368,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
 
-        ContainersVector::Add(callInfo);
+            ContainersVector::Add(callInfo);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, value);
-        callInfo1->SetCallArg(1, JSTaggedValue(0));
-
-        ContainersVector::GetLastIndexFrom(callInfo1);
-
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, value);
+            callInfo1->SetCallArg(1, JSTaggedValue(0));
+            ContainersVector::GetLastIndexFrom(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -382,27 +398,28 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        std::string str(data, data + size);
-        JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
-        callInfo->SetCallArg(0, value);
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            std::string str(data, data + size);
+            JSTaggedValue value = factory->NewFromStdString(str).GetTaggedValue();
+            callInfo->SetCallArg(0, value);
 
-        ContainersVector::Add(callInfo);
+            ContainersVector::Add(callInfo);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, value);
-        callInfo1->SetCallArg(1, JSTaggedValue(0));
-
-        ContainersVector::GetIndexFrom(callInfo1);
-
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, value);
+            callInfo1->SetCallArg(1, JSTaggedValue(0));
+            ContainersVector::GetIndexFrom(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -414,38 +431,39 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
+            JSHandle<JSAPIVector> vector = CreateJSAPIVector(thread);
 
-        constexpr int32_t ELEMENT_NUMS = 8;
+            constexpr int32_t ELEMENT_NUMS = 8;
 
-        uint32_t input = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
+            uint32_t input = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+
+            for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
+                auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(vector.GetTaggedValue());
+                callInfo->SetCallArg(0, JSTaggedValue(i + input));
+
+                ContainersVector::Add(callInfo);
+            }
+
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, JSTaggedValue(input % ELEMENT_NUMS));
+            callInfo1->SetCallArg(1, JSTaggedValue((input + 1) % ELEMENT_NUMS));
+            ContainersVector::RemoveByRange(callInfo1);
         }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-
-        for (int32_t i = 0; i < ELEMENT_NUMS; i++) {
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(vector.GetTaggedValue());
-            callInfo->SetCallArg(0, JSTaggedValue(i + input));
-
-            ContainersVector::Add(callInfo);
-        }
-
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, JSTaggedValue(input % ELEMENT_NUMS));
-        callInfo1->SetCallArg(1, JSTaggedValue((input + 1) % ELEMENT_NUMS));
-
-        ContainersVector::RemoveByRange(callInfo1);
-
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -491,21 +509,22 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSFunction> func =
-            factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestReplaceAllElementsFunc));
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, func.GetTaggedValue());
-
-        ContainersVector::ReplaceAllElements(callInfo1);
-
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<JSFunction> func =
+                factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestReplaceAllElementsFunc));
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, func.GetTaggedValue());
+            ContainersVector::ReplaceAllElements(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -517,23 +536,24 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        JSHandle<JSAPIVector> vec = CreateJSAPIVector(thread);
-        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSFunction> func =
-            factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachFunc));
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, func.GetTaggedValue());
-        callInfo1->SetCallArg(1, vec.GetTaggedValue());
-
-        ContainersVector::ForEach(callInfo1);
-
+            JSHandle<JSAPIVector> vec = CreateJSAPIVector(thread);
+            JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<JSFunction> func =
+                factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestForEachFunc));
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, func.GetTaggedValue());
+            callInfo1->SetCallArg(1, vec.GetTaggedValue());
+            ContainersVector::ForEach(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -545,17 +565,18 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        callInfo1->SetCallArg(0, JSTaggedValue::Undefined());
-
-        ContainersVector::Sort(callInfo1);
-
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            callInfo1->SetCallArg(0, JSTaggedValue::Undefined());
+            ContainersVector::Sort(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -567,18 +588,19 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(0));
-        callInfo->SetCallArg(1, JSTaggedValue(2)); // 2 : means the third value
-
-        ContainersVector::SubVector(callInfo);
-
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 8); // 8 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(0));
+            callInfo->SetCallArg(1, JSTaggedValue(2)); // 2 : means the third value
+            ContainersVector::SubVector(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -590,16 +612,17 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-
-        ContainersVector::Clear(callInfo);
-
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ContainersVector::Clear(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -611,16 +634,17 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-
-        ContainersVector::Clone(callInfo);
-
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ContainersVector::Clone(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -632,26 +656,27 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        uint32_t length = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
+            uint32_t length = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&length, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(length));
+            ContainersVector::SetLength(callInfo);
         }
-        if (memcpy_s(&length, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(length));
-
-        ContainersVector::SetLength(callInfo);
-
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -663,16 +688,17 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-
-        ContainersVector::GetCapacity(callInfo);
-
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ContainersVector::GetCapacity(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -684,16 +710,17 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-
-        ContainersVector::ConvertToArray(callInfo);
-
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ContainersVector::ConvertToArray(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -705,16 +732,17 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-
-        ContainersVector::IsEmpty(callInfo);
-
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ContainersVector::IsEmpty(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -726,26 +754,27 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        uint32_t capacity = 0;
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
+            uint32_t capacity = 0;
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&capacity, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(capacity));
+            ContainersVector::IncreaseCapacityTo(callInfo);
         }
-        if (memcpy_s(&capacity, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(capacity));
-
-        ContainersVector::IncreaseCapacityTo(callInfo);
-
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -757,16 +786,17 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-
-        ContainersVector::ToString(callInfo);
-
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ContainersVector::ToString(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -778,16 +808,17 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-
-        ContainersVector::TrimToCurrentLength(callInfo);
-
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            ContainersVector::TrimToCurrentLength(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -799,23 +830,24 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
 
-        constexpr int32_t ELEMENT_NUMS = 8;
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        JSHandle<JSArray> array = factory->NewJSArray();
-        JSHandle<TaggedArray> arrayElement = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole());
-        array->SetElements(thread, arrayElement);
-        array->SetArrayLength(thread, static_cast<uint32_t>(ELEMENT_NUMS));
-        auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(vector.GetTaggedValue());
-        callInfo->SetCallArg(0, array.GetTaggedValue());
-
-        ContainersVector::CopyToArray(callInfo);
-
+            constexpr int32_t ELEMENT_NUMS = 8;
+            ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+            JSHandle<JSArray> array = factory->NewJSArray();
+            JSHandle<TaggedArray> arrayElement = factory->NewTaggedArray(ELEMENT_NUMS, JSTaggedValue::Hole());
+            array->SetElements(thread, arrayElement);
+            array->SetArrayLength(thread, static_cast<uint32_t>(ELEMENT_NUMS));
+            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(vector.GetTaggedValue());
+            callInfo->SetCallArg(0, array.GetTaggedValue());
+            ContainersVector::CopyToArray(callInfo);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -827,25 +859,24 @@ public:
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
+            auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(vector.GetTaggedValue());
+            JSHandle<JSTaggedValue> iterValues(thread, ContainersVector::GetIteratorObj(callInfo1));
 
-        JSHandle<JSAPIVector> vector = GetVectorWithData(thread, data, size);
-
-        auto callInfo1 = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(vector.GetTaggedValue());
-        JSHandle<JSTaggedValue> iterValues(thread, ContainersVector::GetIteratorObj(callInfo1));
-
-        JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
-        constexpr int32_t ELEMENT_NUMS = 8;
-        for (uint32_t i = 0; i < ELEMENT_NUMS; i++) {
-            auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
-            callInfo->SetFunction(JSTaggedValue::Undefined());
-            callInfo->SetThis(iterValues.GetTaggedValue());
-
-            result.Update(JSAPIVectorIterator::Next(callInfo));
+            JSMutableHandle<JSTaggedValue> result(thread, JSTaggedValue::Undefined());
+            constexpr int32_t ELEMENT_NUMS = 8;
+            for (uint32_t i = 0; i < ELEMENT_NUMS; i++) {
+                auto callInfo = CreateEcmaRuntimeCallInfo(thread, 4); // 4 : means the argv length
+                callInfo->SetFunction(JSTaggedValue::Undefined());
+                callInfo->SetThis(iterValues.GetTaggedValue());
+                result.Update(JSAPIVectorIterator::Next(callInfo));
+            }
         }
-
         JSNApi::DestroyJSVM(vm);
     }
 };

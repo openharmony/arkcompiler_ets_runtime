@@ -36,28 +36,30 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        {
+            JsiFastNativeScope scope(vm);
+            JSThread *thread = vm->GetJSThread();
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
-        uint16_t input;
-        if (size <= 0) {
-            return;
+            uint16_t input;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+
+            JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
+            JSTaggedValue arrayBuffer =
+                BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, MAXBYTELEN);
+            JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>(thread, JSTaggedValue(input));
+            BuiltinsArrayBuffer::SetValueInBuffer(thread, arrayBuffer, 0, DataViewType::UINT16, val, false);
+            BuiltinsArrayBuffer::GetValueFromBuffer(thread, arrayBuffer, 0, DataViewType::UINT16, false);
         }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-
-        JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
-        JSTaggedValue arrayBuffer = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, MAXBYTELEN);
-
-        JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>(thread, JSTaggedValue(input));
-
-        BuiltinsArrayBuffer::SetValueInBuffer(thread, arrayBuffer, 0, DataViewType::UINT16, val, false);
-        BuiltinsArrayBuffer::GetValueFromBuffer(thread, arrayBuffer, 0, DataViewType::UINT16, false);
         JSNApi::DestroyJSVM(vm);
     }
 }

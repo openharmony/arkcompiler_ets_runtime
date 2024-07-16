@@ -36,29 +36,32 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        {
+            JsiFastNativeScope scope(vm);
+            JSThread *thread = vm->GetJSThread();
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
-        uint32_t input;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        const int32_t MaxMenory = 524288;
-        if (input > MaxMenory) {
-            input = MaxMenory;
-        }
+            uint32_t input;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            const int32_t MaxMenory = 524288;
+            if (input > MaxMenory) {
+                input = MaxMenory;
+            }
 
-        JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
-        JSTaggedValue arrayBuffer = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, input);
-        BuiltinsArrayBuffer::CloneArrayBuffer(thread, JSHandle<JSTaggedValue>(thread, arrayBuffer),
-                                              0, bufferConstructor);
+            JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
+            JSTaggedValue arrayBuffer = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, input);
+            BuiltinsArrayBuffer::CloneArrayBuffer(thread, JSHandle<JSTaggedValue>(thread, arrayBuffer),
+                                                  0, bufferConstructor);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

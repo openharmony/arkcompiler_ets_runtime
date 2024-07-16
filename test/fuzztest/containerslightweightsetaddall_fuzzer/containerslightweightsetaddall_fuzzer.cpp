@@ -81,32 +81,35 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
-        if (size <= 0) {
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
+            if (size <= 0) {
+                return;
+            }
+            double input = 0;
+            const double maxByteLen = 4;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&input, maxByteLen, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPILightWeightSet> lightWeightSet = CreateJSAPILightWeightSet(thread);
+            JSHandle<JSAPILightWeightSet> lws = CreateJSAPILightWeightSet(thread);
+            EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo->SetFunction(JSTaggedValue::Undefined());
+            callInfo->SetThis(lws.GetTaggedValue());
+            callInfo->SetCallArg(0, JSTaggedValue(input));
+            ContainersLightWeightSet::Add(callInfo);
+            
+            EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(lightWeightSet.GetTaggedValue());
+            callInfo1->SetCallArg(0, lws.GetTaggedValue());
+            ContainersLightWeightSet::AddAll(callInfo1);
         }
-        double input = 0;
-        const double maxByteLen = 4;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&input, maxByteLen, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPILightWeightSet> lightWeightSet = CreateJSAPILightWeightSet(thread);
-        JSHandle<JSAPILightWeightSet> lws = CreateJSAPILightWeightSet(thread);
-        EcmaRuntimeCallInfo *callInfo = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo->SetFunction(JSTaggedValue::Undefined());
-        callInfo->SetThis(lws.GetTaggedValue());
-        callInfo->SetCallArg(0, JSTaggedValue(input));
-        ContainersLightWeightSet::Add(callInfo);
-        
-        EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 6); // 6 : means the argv length
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(lightWeightSet.GetTaggedValue());
-        callInfo1->SetCallArg(0, lws.GetTaggedValue());
-        ContainersLightWeightSet::AddAll(callInfo1);
         JSNApi::DestroyJSVM(vm);
     }
 }

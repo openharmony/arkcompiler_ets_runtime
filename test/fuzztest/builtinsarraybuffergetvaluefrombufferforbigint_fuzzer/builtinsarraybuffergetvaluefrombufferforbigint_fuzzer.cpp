@@ -33,28 +33,31 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        {
+            JsiFastNativeScope scope(vm);
+            JSThread *thread = vm->GetJSThread();
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
-        uint32_t input;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<BigInt> bigIntNum = BigInt::Uint32ToBigInt(thread, input);
-        JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
-        JSTaggedValue arrayBuffer =
-            BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, sizeof(uint64_t));
+            uint32_t input;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<BigInt> bigIntNum = BigInt::Uint32ToBigInt(thread, input);
+            JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
+            JSTaggedValue arrayBuffer =
+                BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, sizeof(uint64_t));
 
-        JSHandle<JSTaggedValue> val(bigIntNum);
-        BuiltinsArrayBuffer::SetValueInBuffer(thread, arrayBuffer, 0, DataViewType::BIGUINT64, val, true);
-        BuiltinsArrayBuffer::GetValueFromBuffer(thread, arrayBuffer, 0, DataViewType::BIGUINT64, true);
+            JSHandle<JSTaggedValue> val(bigIntNum);
+            BuiltinsArrayBuffer::SetValueInBuffer(thread, arrayBuffer, 0, DataViewType::BIGUINT64, val, true);
+            BuiltinsArrayBuffer::GetValueFromBuffer(thread, arrayBuffer, 0, DataViewType::BIGUINT64, true);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

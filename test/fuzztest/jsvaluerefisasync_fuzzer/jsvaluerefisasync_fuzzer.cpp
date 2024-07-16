@@ -29,19 +29,22 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            if (data == nullptr || size <= 0) {
+                LOG_ECMA(ERROR) << "illegal input!";
+                return;
+            }
+            uint8_t* ptr = nullptr;
+            ptr = const_cast<uint8_t*>(data);
+            ObjectFactory *factory = vm->GetFactory();
+            MethodLiteral *methodLiteral = nullptr;
+            JSHandle<Method> method = factory->NewSMethod(methodLiteral);
+            JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
+            JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
+            Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);
+            [[maybe_unused]] auto it = object->IsAsyncGeneratorFunction(vm);
         }
-        uint8_t* ptr = nullptr;
-        ptr = const_cast<uint8_t*>(data);
-        ObjectFactory *factory = vm->GetFactory();
-        MethodLiteral *methodLiteral = nullptr;
-        JSHandle<Method> method = factory->NewSMethod(methodLiteral);
-        JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
-        JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
-        Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);
-        [[maybe_unused]] auto it = object->IsAsyncGeneratorFunction(vm);
         JSNApi::DestroyJSVM(vm);
     }
 
@@ -67,19 +70,22 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (data == nullptr || size <= 0) {
-            LOG_ECMA(ERROR) << "illegal input!";
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            if (data == nullptr || size <= 0) {
+                LOG_ECMA(ERROR) << "illegal input!";
+                return;
+            }
+            uint8_t* ptr = nullptr;
+            ptr = const_cast<uint8_t*>(data);
+            ObjectFactory *factory = vm->GetFactory();
+            MethodLiteral *methodLiteral = nullptr;
+            JSHandle<Method> method = factory->NewSMethod(methodLiteral);
+            JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
+            JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
+            Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);
+            [[maybe_unused]] auto it = object->IsAsyncGeneratorObject(vm);
         }
-        uint8_t* ptr = nullptr;
-        ptr = const_cast<uint8_t*>(data);
-        ObjectFactory *factory = vm->GetFactory();
-        MethodLiteral *methodLiteral = nullptr;
-        JSHandle<Method> method = factory->NewSMethod(methodLiteral);
-        JSHandle<JSFunction> asyncGeneratorFunction = factory->NewJSAsyncGeneratorFunction(method);
-        JSHandle<JSTaggedValue> asyncgefu = JSHandle<JSTaggedValue>::Cast(asyncGeneratorFunction);
-        Local<JSValueRef> object = JSNApiHelper::ToLocal<JSValueRef>(asyncgefu);
-        [[maybe_unused]] auto it = object->IsAsyncGeneratorObject(vm);
         JSNApi::DestroyJSVM(vm);
     }
 

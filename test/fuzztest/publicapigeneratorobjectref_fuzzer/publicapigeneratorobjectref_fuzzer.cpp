@@ -30,26 +30,29 @@ void GetGeneratorReceiverFuzzTest([[maybe_unused]]const uint8_t *data, size_t si
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+        JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+        JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
+        JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
+        JSFunction::InitializeJSFunction(thread, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
+        JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
+        generatorContext->SetMethod(thread, generatorFunc.GetTaggedValue());
+        JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
+        genObjHandleVal->SetGeneratorContext(thread, generatorContextVal.GetTaggedValue());
+        genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
+        JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+        Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+        object->GetGeneratorReceiver(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
-    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>::Cast(env->GetGeneratorFunctionClass());
-    JSHandle<JSFunction> generatorFunc = JSHandle<JSFunction>::Cast(factory->NewJSObject(hclass));
-    JSFunction::InitializeJSFunction(thread, generatorFunc, FunctionKind::GENERATOR_FUNCTION);
-    JSHandle<GeneratorContext> generatorContext = factory->NewGeneratorContext();
-    generatorContext->SetMethod(thread, generatorFunc.GetTaggedValue());
-    JSHandle<JSTaggedValue> generatorContextVal = JSHandle<JSTaggedValue>::Cast(generatorContext);
-    genObjHandleVal->SetGeneratorContext(thread, generatorContextVal.GetTaggedValue());
-    genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
-    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
-    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
-    object->GetGeneratorReceiver(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }

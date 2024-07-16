@@ -34,22 +34,25 @@ void SetRefGetTotalElementsFuzztest([[maybe_unused]]const uint8_t *data, size_t 
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+        JSHandle<JSSet> jsSet =
+            JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+        JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(vm->GetJSThread());
+        jsSet->SetLinkedSet(vm->GetJSThread(), hashSet);
+        JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsSet);
+        Local<SetRef> set = JSNApiHelper::ToLocal<SetRef>(setTag);
+        JSHandle<JSTaggedValue> fristValue(factory->NewFromASCII("vlue1"));
+        JSSet::Add(vm->GetJSThread(), jsSet, fristValue);
+        set->GetTotalElements(vm);
     }
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
-    JSHandle<JSSet> jsSet =
-        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(vm->GetJSThread());
-    jsSet->SetLinkedSet(vm->GetJSThread(), hashSet);
-    JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsSet);
-    Local<SetRef> set = JSNApiHelper::ToLocal<SetRef>(setTag);
-    JSHandle<JSTaggedValue> fristValue(factory->NewFromASCII("vlue1"));
-    JSSet::Add(vm->GetJSThread(), jsSet, fristValue);
-    set->GetTotalElements(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

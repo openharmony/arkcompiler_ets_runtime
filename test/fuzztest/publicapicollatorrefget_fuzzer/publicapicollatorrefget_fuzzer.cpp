@@ -30,22 +30,26 @@ void GetCompareFunctionFuzzTest([[maybe_unused]]const uint8_t *data, size_t size
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        JSThread *thread = vm->GetJSThread();
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<JSTaggedValue> ctor = env->GetCollatorFunction();
+        JSHandle<JSCollator> collator =
+            JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
+        JSHandle<JSTaggedValue> localeStr = thread->GlobalConstants()->GetHandledEnUsString();
+        JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
+        JSHandle<JSCollator> initCollator =
+            JSCollator::InitializeCollator(thread, collator, localeStr, undefinedHandle);
+        JSHandle<JSTaggedValue> collatorTagHandleVal = JSHandle<JSTaggedValue>::Cast(initCollator);
+        Local<CollatorRef> object = JSNApiHelper::ToLocal<CollatorRef>(collatorTagHandleVal);
+        object->GetCompareFunction(vm);
     }
-    JSThread *thread = vm->GetJSThread();
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<JSTaggedValue> ctor = env->GetCollatorFunction();
-    JSHandle<JSCollator> collator =
-        JSHandle<JSCollator>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(ctor), ctor));
-    JSHandle<JSTaggedValue> localeStr = thread->GlobalConstants()->GetHandledEnUsString();
-    JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
-    JSHandle<JSCollator> initCollator = JSCollator::InitializeCollator(thread, collator, localeStr, undefinedHandle);
-    JSHandle<JSTaggedValue> collatorTagHandleVal = JSHandle<JSTaggedValue>::Cast(initCollator);
-    Local<CollatorRef> object = JSNApiHelper::ToLocal<CollatorRef>(collatorTagHandleVal);
-    object->GetCompareFunction(vm);
     JSNApi::DestroyJSVM(vm);
     return;
 }

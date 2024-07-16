@@ -36,26 +36,29 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        JSThread *thread = vm->GetJSThread();
-        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        {
+            JsiFastNativeScope scope(vm);
+            JSThread *thread = vm->GetJSThread();
+            JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
 
-        int32_t input;
-        if (size <= 0) {
-            return;
-        }
-        if (size > MAXBYTELEN) {
-            size = MAXBYTELEN;
-        }
-        if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
+            int32_t input;
+            if (size <= 0) {
+                return;
+            }
+            if (size > MAXBYTELEN) {
+                size = MAXBYTELEN;
+            }
+            if (memcpy_s(&input, MAXBYTELEN, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
 
-        JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
-        JSTaggedValue arrayBuffer = BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, MAXBYTELEN);
-    
-        double val = JSTaggedValue(input).GetNumber();
-        BuiltinsArrayBuffer::FastSetValueInBuffer(thread, arrayBuffer, 0, DataViewType::INT32, val, true);
+            JSHandle<JSTaggedValue> bufferConstructor = env->GetArrayBufferFunction();
+            JSTaggedValue arrayBuffer =
+                BuiltinsArrayBuffer::AllocateArrayBuffer(thread, bufferConstructor, MAXBYTELEN);
+            double val = JSTaggedValue(input).GetNumber();
+            BuiltinsArrayBuffer::FastSetValueInBuffer(thread, arrayBuffer, 0, DataViewType::INT32, val, true);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

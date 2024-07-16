@@ -84,28 +84,31 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        auto thread = vm->GetAssociatedJSThread();
+        {
+            JsiFastNativeScope scope(vm);
+            auto thread = vm->GetAssociatedJSThread();
 
-        if (size <= 0) {
-            return;
-        }
-        double input = 0;
-        const double maxByteLen = 4;
-        if (size > maxByteLen) {
-            size = maxByteLen;
-        }
-        if (memcpy_s(&input, maxByteLen, data, size) != 0) {
-            std::cout << "memcpy_s failed!";
-            UNREACHABLE();
-        }
-        JSHandle<JSAPILightWeightMap> lightWeightMap = CreateJSAPILightWeightMap(thread);
+            if (size <= 0) {
+                return;
+            }
+            double input = 0;
+            const double maxByteLen = 4;
+            if (size > maxByteLen) {
+                size = maxByteLen;
+            }
+            if (memcpy_s(&input, maxByteLen, data, size) != 0) {
+                std::cout << "memcpy_s failed!";
+                UNREACHABLE();
+            }
+            JSHandle<JSAPILightWeightMap> lightWeightMap = CreateJSAPILightWeightMap(thread);
 
-        EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8);
-        callInfo1->SetFunction(JSTaggedValue::Undefined());
-        callInfo1->SetThis(lightWeightMap.GetTaggedValue());
-        callInfo1->SetCallArg(0, JSTaggedValue(input));
-        callInfo1->SetCallArg(1, JSTaggedValue(input + 1));
-        ContainersLightWeightMap::Entries(callInfo1);
+            EcmaRuntimeCallInfo *callInfo1 = CreateEcmaRuntimeCallInfo(thread, 8);
+            callInfo1->SetFunction(JSTaggedValue::Undefined());
+            callInfo1->SetThis(lightWeightMap.GetTaggedValue());
+            callInfo1->SetCallArg(0, JSTaggedValue(input));
+            callInfo1->SetCallArg(1, JSTaggedValue(input + 1));
+            ContainersLightWeightMap::Entries(callInfo1);
+        }
         JSNApi::DestroyJSVM(vm);
     }
 }

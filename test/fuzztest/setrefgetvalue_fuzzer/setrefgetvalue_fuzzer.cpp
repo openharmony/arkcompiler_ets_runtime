@@ -34,26 +34,29 @@ void SetRefGetValueFuzztest([[maybe_unused]]const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (size <= 0) {
-        LOG_ECMA(ERROR) << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (size <= 0) {
+            LOG_ECMA(ERROR) << "illegal input!";
+            return;
+        }
+        ObjectFactory *factory = vm->GetFactory();
+        JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
+        JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+        JSHandle<JSSet> jsSet =
+            JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+        JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(vm->GetJSThread());
+        jsSet->SetLinkedSet(vm->GetJSThread(), hashSet);
+        JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsSet);
+        Local<SetRef> set = JSNApiHelper::ToLocal<SetRef>(setTag);
+        JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
+        JSHandle<JSTaggedValue> fristValue(factory->NewFromASCII("vlue1"));
+        JSSet::Add(vm->GetJSThread(), jsSet, fristValue);
+        JSHandle<JSTaggedValue> secondValue(factory->NewFromASCII("vlue2"));
+        JSSet::Add(vm->GetJSThread(), jsSet, secondValue);
+        int index = size % 2; // 2:Take the remainder of 2
+        set->GetValue(vm, index);
     }
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
-    JSHandle<JSSet> jsSet =
-        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
-    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(vm->GetJSThread());
-    jsSet->SetLinkedSet(vm->GetJSThread(), hashSet);
-    JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(jsSet);
-    Local<SetRef> set = JSNApiHelper::ToLocal<SetRef>(setTag);
-    JSHandle<JSTaggedValue> value(factory->NewFromASCII("value"));
-    JSHandle<JSTaggedValue> fristValue(factory->NewFromASCII("vlue1"));
-    JSSet::Add(vm->GetJSThread(), jsSet, fristValue);
-    JSHandle<JSTaggedValue> secondValue(factory->NewFromASCII("vlue2"));
-    JSSet::Add(vm->GetJSThread(), jsSet, secondValue);
-    int index = size % 2; // 2:Take the remainder of 2
-    set->GetValue(vm, index);
     JSNApi::DestroyJSVM(vm);
 }
 }

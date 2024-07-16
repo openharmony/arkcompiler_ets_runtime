@@ -27,13 +27,16 @@ void JSValueRefIsNativePointerValueFuzzTest(const uint8_t *data, size_t size)
     RuntimeOption option;
     option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
     EcmaVM *vm = JSNApi::CreateJSVM(option);
-    if (data == nullptr || size <= 0) {
-        std::cout << "illegal input!";
-        return;
+    {
+        JsiFastNativeScope scope(vm);
+        if (data == nullptr || size <= 0) {
+            std::cout << "illegal input!";
+            return;
+        }
+        NativePointerCallback callBack = nullptr;
+        Local<NativePointerRef> res = NativePointerRef::New(vm, (void *)(data + size), callBack, (void *)data);
+        res->IsNativePointer(vm);
     }
-    NativePointerCallback callBack = nullptr;
-    Local<NativePointerRef> res = NativePointerRef::New(vm, (void *)(data + size), callBack, (void *)data);
-    res->IsNativePointer(vm);
     JSNApi::DestroyJSVM(vm);
 }
 }

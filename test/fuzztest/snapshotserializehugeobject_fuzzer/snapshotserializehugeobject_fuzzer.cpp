@@ -28,26 +28,28 @@ namespace OHOS {
         RuntimeOption option;
         option.SetLogLevel(RuntimeOption::LOG_LEVEL::ERROR);
         EcmaVM *vm = JSNApi::CreateJSVM(option);
-        if (size <= 0) {
-            return;
+        {
+            JsiFastNativeScope scope(vm);
+            if (size <= 0) {
+                return;
+            }
+            auto factory = vm->GetFactory();
+            const uint32_t hugeSize = 256 * 1024;
+            JSHandle<TaggedArray> array = factory->NewTaggedArray(hugeSize + *data); // new huge object tagged array
+            if (*data > 0) {
+                JSHandle<TaggedArray> array1 = factory->NewTaggedArray(hugeSize + *data);
+                array->Set(vm->GetAssociatedJSThread(), 0, array1.GetTaggedValue());
+            }
+            const CString fileName = "snapshot";
+            Snapshot snapshotSerialize(vm);
+            // serialize
+            snapshotSerialize.Serialize(*array, nullptr, fileName);
+            // deserialize
+            Snapshot snapshotDeserialize(vm);
+            snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
+            // remove snapshot file if exist
+            std::remove(fileName.c_str());
         }
-        auto factory = vm->GetFactory();
-        const uint32_t hugeSize = 256 * 1024;
-        JSHandle<TaggedArray> array = factory->NewTaggedArray(hugeSize + *data); // new huge object tagged array
-        if (*data > 0) {
-            JSHandle<TaggedArray> array1 = factory->NewTaggedArray(hugeSize + *data);
-            array->Set(vm->GetAssociatedJSThread(), 0, array1.GetTaggedValue());
-        }
-        const CString fileName = "snapshot";
-        Snapshot snapshotSerialize(vm);
-        // serialize
-        snapshotSerialize.Serialize(*array, nullptr, fileName);
-        // deserialize
-        Snapshot snapshotDeserialize(vm);
-        snapshotDeserialize.Deserialize(SnapshotType::VM_ROOT, fileName);
-        // remove snapshot file if exist
-        std::remove(fileName.c_str());
-
         JSNApi::DestroyJSVM(vm);
     }
 }
