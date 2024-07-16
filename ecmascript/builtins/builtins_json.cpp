@@ -189,12 +189,6 @@ JSTaggedValue BuiltinsJson::StringifyWithTransformType(EcmaRuntimeCallInfo *argv
 
     uint32_t argc = argv->GetArgsNumber();
     JSTaggedValue value = GetCallArg(argv, 0).GetTaggedValue();
-    if (argc == 1 && thread->GetCurrentEcmaContext()->IsAotEntry()) {
-        JSHandle<JSTaggedValue> handleValue(thread, value);
-        panda::ecmascript::base::FastJsonStringifier stringifier(thread);
-        JSHandle<JSTaggedValue> result = stringifier.Stringify(handleValue);
-        return result.GetTaggedValue();
-    }
     JSTaggedValue replacer = JSTaggedValue::Undefined();
     JSTaggedValue gap = JSTaggedValue::Undefined();
 

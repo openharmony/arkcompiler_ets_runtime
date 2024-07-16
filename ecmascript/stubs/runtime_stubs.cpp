@@ -25,6 +25,7 @@
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/base/fast_json_stringifier.h"
+#include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_array.h"
@@ -3693,8 +3694,9 @@ DEF_RUNTIME_STUBS(FastStringify)
 {
     RUNTIME_STUBS_HEADER(FastStringify);
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);
-    base::FastJsonStringifier fastJsonStringifier(thread);
-    JSHandle<JSTaggedValue> result = fastJsonStringifier.Stringify(value);
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    base::JsonStringifier jsonStringifier(thread);
+    JSHandle<JSTaggedValue> result = jsonStringifier.Stringify(value, undefined, undefined);
     return result.GetTaggedValue().GetRawData();
 }
 
