@@ -22,10 +22,6 @@
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::job {
-enum class QueueType : uint8_t {
-    QUEUE_PROMISE,
-    QUEUE_SCRIPT,
-};
 
 class MicroJobQueue final : public Record {
 public:

@@ -80,6 +80,12 @@ template<size_t ElementAlign, typename... Ts>
 struct AlignedStruct;
 struct AlignedPointer;
 }
+namespace job {
+enum class QueueType : uint8_t {
+    QUEUE_PROMISE,
+    QUEUE_SCRIPT,
+};
+}
 }  // namespace ecmascript
 
 struct HmsMap {
@@ -101,6 +107,7 @@ using ConcurrentCallback = void (*)(Local<JSValueRef> result, bool success, void
 using SourceMapCallback = std::function<std::string(const std::string& rawStack)>;
 using SourceMapTranslateCallback = std::function<bool(std::string& url, int& line, int& column)>;
 using DeviceDisconnectCallback = std::function<bool()>;
+using QueueType = ecmascript::job::QueueType;
 
 #define ECMA_DISALLOW_COPY(className)      \
     className(const className &) = delete; \
@@ -1539,7 +1546,8 @@ public:
     static void SetNativePtrGetter(EcmaVM *vm, void* cb);
     static void SetSourceMapCallback(EcmaVM *vm, SourceMapCallback cb);
     static void SetSourceMapTranslateCallback(EcmaVM *vm, SourceMapTranslateCallback cb);
-    static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb);
+    static void SetHostEnqueueJob(const EcmaVM* vm, Local<JSValueRef> cb,
+                                QueueType queueType = QueueType::QUEUE_PROMISE);
     static EcmaVM* CreateEcmaVM(const ecmascript::JSRuntimeOptions &options);
     static void PreFork(EcmaVM *vm);
     static void PostFork(EcmaVM *vm, const RuntimeOption &option);
