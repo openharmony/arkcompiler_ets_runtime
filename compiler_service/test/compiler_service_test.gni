@@ -32,5 +32,6 @@ aot_compiler_service_sources = [
   "${compiler_service_root}/src/aot_compiler_load_callback.cpp",
   "${compiler_service_root}/src/aot_compiler_service.cpp",
   "${compiler_service_root}/src/power_disconnected_listener.cpp",
+  "${compiler_service_root}/src/screen_status_listener.cpp",
   "${compiler_service_root}/test/mock/src/ecmascript/log_wrapper.cpp",
 ]

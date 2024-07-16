@@ -5,6 +5,7 @@
       OHOS::ArkCompiler::AotCompilerClient::AotCompiler*;
       OHOS::ArkCompiler::AotCompilerClient::StopAotCompiler*;
       OHOS::ArkCompiler::PowerDisconnectedListener::PowerDisconnectedListener*;
+      OHOS::ArkCompiler::ScreenStatusSubscriber::ScreenStatusSubscriber*;
       OHOS::ArkCompiler::AotCompilerClient::GetAOTVersion*;
       OHOS::ArkCompiler::AotCompilerClient::NeedReCompile*;
     };

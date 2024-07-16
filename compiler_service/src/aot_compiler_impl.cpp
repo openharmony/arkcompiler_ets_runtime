@@ -312,6 +312,17 @@ void AotCompilerImpl::HandlePowerDisconnected()
     }).detach();
 }
 
+void AotCompilerImpl::HandleScreenOn()
+{
+    LOG_SA(INFO) << "AotCompilerImpl::HandleScreenOn";
+    PauseAotCompiler();
+    std::thread([]() {
+        (void)AotCompilerImpl::GetInstance().StopAotCompiler();
+        sleep(40);  // wait for 40 seconds
+        AotCompilerImpl::GetInstance().AllowAotCompiler();
+    }).detach();
+}
+
 void AotCompilerImpl::PauseAotCompiler()
 {
     LOG_SA(INFO) << "AotCompilerImpl::PauseAotCompiler";

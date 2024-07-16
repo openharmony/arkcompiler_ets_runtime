@@ -47,6 +47,7 @@ ohos_shared_library("libcompiler_service") {
     "src/aot_compiler_load_callback.cpp",
     "src/aot_compiler_service.cpp",
     "src/power_disconnected_listener.cpp",
+    "src/screen_status_listener.cpp",
   ]
   external_deps = [
     "access_token:libaccesstoken_sdk",
@@ -60,6 +61,7 @@ ohos_shared_library("libcompiler_service") {
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "ipc:ipc_core",
+    "power_manager:powermgr_client",
     "runtime_core:libarkfile_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",

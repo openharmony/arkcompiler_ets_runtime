@@ -42,6 +42,8 @@ public:
 
     void HandlePowerDisconnected();
 
+    void HandleScreenOn();
+
 private:
     inline int32_t FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
                                         const std::string &keyName, int32_t &bundleID);
