@@ -111,7 +111,8 @@ class CallStubBuilder : public StubBuilder {
 public:
     explicit CallStubBuilder(StubBuilder *parent, GateRef glue, GateRef func, GateRef actualNumArgs, GateRef jumpSize,
                              Variable *result, GateRef hotnessCounter, JSCallArgs callArgs,
-                             ProfileOperation callback = ProfileOperation(), bool checkIsCallable = true)
+                             ProfileOperation callback = ProfileOperation(),
+                             bool checkIsCallable = true, GateRef hir = Circuit::NullGate())
         : StubBuilder(parent)
     {
         this->glue_ = glue;
@@ -123,6 +124,7 @@ public:
         this->callArgs_ = callArgs;
         this->callback_ = callback;
         this->checkIsCallable_ = checkIsCallable;
+        this->hir_ = hir;
     }
     explicit CallStubBuilder(Environment *env)
         : StubBuilder(env) {}
@@ -146,6 +148,7 @@ private:
     JSCallArgs callArgs_;
     ProfileOperation callback_;
     bool checkIsCallable_ {true};
+    GateRef hir_ {0};
 
     bool isFast_ {true};
     bool isBridge_ {false};

@@ -18,6 +18,7 @@
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/compiler/assembler/assembler.h"
+#include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
@@ -359,6 +360,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::ARRAY_SLICE:
             LowerArraySlice(gate);
+            break;
+        case OpCode::ARRAY_SORT:
+            LowerArraySort(gate);
             break;
         default:
             break;
@@ -3865,6 +3869,28 @@ void TypedNativeInlineLowering::CheckAndCalcuSliceIndex(GateRef length,
         builder_.Jump(exit);
     }
 }
+
+void TypedNativeInlineLowering::LowerArraySort(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef callBackFn = acc_.GetValueIn(gate, 1);
+    BuiltinsArrayStubBuilder arrayStubBuilder(&env);
+    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label slowPath(&env);
+    Label exit(&env);
+    arrayStubBuilder.SortAfterArgs(glue, thisValue, callBackFn, &result, &exit, &slowPath, gate);
+    builder_.Bind(&slowPath);
+    {
+        result.WriteVariable(builder_.CallRuntime(glue, RTSTUB_ID(ArraySort),
+                                                  Gate::InvalidGateRef, { thisValue }, gate));
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    acc_.ReplaceGate(gate, builder_.GetStateDepend(), *result);
+}
+
 
 GateRef TypedNativeInlineLowering::TargetIntCompareLoop(GateRef elements,
                                                         GateRef fromIndex,

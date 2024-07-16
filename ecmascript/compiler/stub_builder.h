@@ -173,9 +173,12 @@ public:
     // call operation
     GateRef CallRuntime(GateRef glue, int index, const std::vector<GateRef>& args);
     GateRef CallRuntime(GateRef glue, int index, GateRef argc, GateRef argv);
-    GateRef CallNGCRuntime(GateRef glue, int index, const std::vector<GateRef>& args);
-    GateRef FastCallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args);
-    GateRef CallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args);
+    GateRef CallNGCRuntime(GateRef glue, int index,
+                           const std::vector<GateRef>& args, GateRef hir = Circuit::NullGate());
+    GateRef FastCallOptimized(GateRef glue, GateRef code,
+                              const std::vector<GateRef>& args, GateRef hir = Circuit::NullGate());
+    GateRef CallOptimized(GateRef glue, GateRef code,
+                          const std::vector<GateRef>& args, GateRef hir = Circuit::NullGate());
     GateRef GetAotCodeAddr(GateRef jsFunc);
     GateRef CallStub(GateRef glue, int index, const std::initializer_list<GateRef>& args);
     GateRef CallBuiltinRuntime(GateRef glue, const std::initializer_list<GateRef>& args, bool isNew = false);
@@ -704,11 +707,13 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden = false);
-    GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, ProfileOperation callback);
+    GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
+                               ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
                               ProfileOperation callback, GateRef isInternal, bool canUseIsInternal = false);
     GateRef FastGetPropertyByName(GateRef glue, GateRef obj, GateRef key, ProfileOperation callback);
-    GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, ProfileOperation callback);
+    GateRef FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index,
+                                   ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef GetPropertyByValue(GateRef glue, GateRef receiver, GateRef keyValue, ProfileOperation callback);
     void FastSetPropertyByName(GateRef glue, GateRef obj, GateRef key, GateRef value,
         ProfileOperation callback = ProfileOperation());
@@ -884,8 +889,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     inline GateRef GetSingleCharTable(GateRef glue);
     inline GateRef IsEnableElementsKind(GateRef glue);
     inline GateRef GetGlobalEnvValue(VariableType type, GateRef env, size_t index);
-    GateRef CallGetterHelper(
-        GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback);
+    GateRef CallGetterHelper(GateRef glue, GateRef receiver, GateRef holder,
+                             GateRef accessor, ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef ConstructorCheck(GateRef glue, GateRef ctor, GateRef outPut, GateRef thisObj);
     GateRef GetCallSpreadArgs(GateRef glue, GateRef array, ProfileOperation callBack);
     GateRef GetIterator(GateRef glue, GateRef obj, ProfileOperation callback);

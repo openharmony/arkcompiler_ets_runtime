@@ -970,7 +970,7 @@ GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
 }
 
 GateRef StubBuilder::CallGetterHelper(
-    GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback)
+    GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback, GateRef hir)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -1032,7 +1032,7 @@ GateRef StubBuilder::CallGetterHelper(
             JSCallArgs callArgs(JSCallMode::CALL_GETTER);
             callArgs.callGetterArgs = { receiver };
             CallStubBuilder callBuilder(this, glue, getter, Int32(0), 0, &tmpResult, Circuit::NullGate(), callArgs,
-                callback);
+                callback, true, hir);
             if (env->IsBaselineBuiltin()) {
                 callBuilder.JSCallDispatchForBaseline(&callExit);
                 Bind(&callExit);
@@ -2939,7 +2939,8 @@ inline void StubBuilder::UpdateValueInDict(GateRef glue, GateRef elements, GateR
     SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, valueIndex, value);
 }
 
-GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index, ProfileOperation callback)
+GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver,
+                                        GateRef index, ProfileOperation callback, GateRef hir)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -3060,7 +3061,7 @@ GateRef StubBuilder::GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                     BRANCH(IsAccessor(attr), &isAccessor, &notAccessor);
                     Bind(&isAccessor);
                     {
-                        result = CallGetterHelper(glue, receiver, *holder, value, callback);
+                        result = CallGetterHelper(glue, receiver, *holder, value, callback, hir);
                         Jump(&exit);
                     }
                     Bind(&notAccessor);
@@ -4905,7 +4906,8 @@ GateRef StubBuilder::FastGetPropertyByName(GateRef glue, GateRef obj, GateRef ke
     return ret;
 }
 
-GateRef StubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, ProfileOperation callback)
+GateRef StubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef obj,
+                                            GateRef index, ProfileOperation callback, GateRef hir)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -4918,7 +4920,7 @@ GateRef StubBuilder::FastGetPropertyByIndex(GateRef glue, GateRef obj, GateRef i
     BRANCH(TaggedIsHeapObject(obj), &fastPath, &slowPath);
     Bind(&fastPath);
     {
-        result = GetPropertyByIndex(glue, obj, index, callback);
+        result = GetPropertyByIndex(glue, obj, index, callback, hir);
         Label notHole(env);
         BRANCH(TaggedIsHole(*result), &slowPath, &exit);
     }

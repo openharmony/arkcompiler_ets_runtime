@@ -163,7 +163,7 @@ void CallStubBuilder::JSCallNative(Label *exit)
         case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
-            ret = CallNGCRuntime(glue_, idxForNative, argsForNative);
+            ret = CallNGCRuntime(glue_, idxForNative, argsForNative, hir_);
             break;
         case JSCallMode::SUPER_CALL_WITH_ARGV:
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
@@ -331,11 +331,11 @@ void CallStubBuilder::CallBridge(GateRef code, GateRef expectedNum, Label *exit)
         case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
             if (IsFastAotCall()) {
-                ret = FastCallOptimized(glue_, code, argsForAot);
+                ret = FastCallOptimized(glue_, code, argsForAot, hir_);
             } else if (IsSlowAotCall()) {
-                ret = CallOptimized(glue_, code, argsForAot);
+                ret = CallOptimized(glue_, code, argsForAot, hir_);
             } else {
-                ret = CallNGCRuntime(glue_, idxForAot, argsForAot);
+                ret = CallNGCRuntime(glue_, idxForAot, argsForAot, hir_);
             }
             break;
         case JSCallMode::CALL_WITH_ARGV:
@@ -415,7 +415,7 @@ void CallStubBuilder::JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNo
             } else if (hasBaselineCode) {
                 Jump(methodNotAot);
             } else {
-                *result_ = CallNGCRuntime(glue_, idxForAsmInterpreter, argsForAsmInterpreter);
+                *result_ = CallNGCRuntime(glue_, idxForAsmInterpreter, argsForAsmInterpreter, hir_);
                 Jump(exit);
             }
             break;

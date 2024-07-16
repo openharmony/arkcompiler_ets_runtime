@@ -1836,6 +1836,20 @@ GateRef CircuitBuilder::ArrayForEach(GateRef thisValue, GateRef callBackFn, Gate
     return ret;
 }
 
+GateRef CircuitBuilder::ArraySort(GateRef thisValue, GateRef callBackFn)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArraySort(),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, callBackFn},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::ArrayFilter(
     GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset)
 {
