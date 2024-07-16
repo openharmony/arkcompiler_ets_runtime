@@ -96,6 +96,13 @@ function jsonRepeatCall() {
     let stringify9 = JSON.stringify(normalObj1);
     print("stringify9: " + stringify9);
 
+    let strSendable = '{"x":1, "x":2, "x":3, "x":"你好", "a":4, "x":"你好", "a":2}';
+    let sharedObj2 = JSON.parseSendable(strSendable);
+    print("sharedObj2.x: " + sharedObj2.x);
+    print("sharedObj2.a: " + sharedObj2.a);
+    
+    let stringify10 = JSON.stringify(sharedObj2);
+    print("stringify10: " + stringify10);
 }
 
 function testASONBigInt() {

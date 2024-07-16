@@ -377,9 +377,11 @@ protected:
             }
             hclass = factory_->NewSEcmaHClass(JSSharedObject::SIZE, fieldNum, JSType::JS_SHARED_OBJECT,
                                               JSHandle<JSTaggedValue>(jsonPrototype), JSHandle<JSTaggedValue>(layout));
-            SendableClassDefiner::AddFieldTypeToHClass(thread_, propertyArray, size, layout, hclass);
+            SendableClassDefiner::AddFieldTypeToHClass(thread_, propertyArray, size, layout, hclass,
+                                                       start, std::move(propertyList));
             JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObject(hclass);
             uint32_t index = 0;
+            size = (hclass->GetInlinedProperties() << 1);
             for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
                 obj->SetPropertyInlinedProps(thread_, index++, propertyList[start + i + 1].GetTaggedValue());
             }

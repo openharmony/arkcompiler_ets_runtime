@@ -30,6 +30,9 @@ stringify6: [1,3,5,7,9]
 stringify7: {"x":1,"y":"你好"}
 stringify8: {"x":1,"y":"你好"}
 stringify9: {"x":1,"y":"你好"}
+sharedObj2.x: 你好
+sharedObj2.a: 2
+stringify10: {"x":"你好","a":2}
 123
 1122334455667788999
 true

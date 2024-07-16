@@ -696,7 +696,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
     if (!constructorHClass->IsDictionaryMode() && staticFields > 0) {
         auto layout = JSHandle<LayoutInfo>(thread, constructorHClass->GetLayout());
-        AddFieldTypeToHClass(thread, staticFieldArray, length, layout, constructorHClass);
+        AddFieldTypeToHClass(thread, staticFieldArray, length, layout, constructorHClass, -1);
     }
 
     JSHandle<JSFunction> constructor = factory->NewSFunctionByHClass(method, constructorHClass);
@@ -859,40 +859,6 @@ JSHandle<NameDictionary> SendableClassDefiner::BuildSendableDictionaryProperties
     return dict;
 }
 
-void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
-    uint32_t length, const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass)
-{
-    ASSERT(length <= fieldTypeArray->GetLength());
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
-    uint32_t index = static_cast<uint32_t>(layout->NumberOfElements());
-    for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
-        PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
-        key.Update(fieldTypeArray->Get(i));
-        ASSERT(key->IsString());
-        SharedFieldType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
-        int entry = layout->FindElementWithCache(thread, *hclass, key.GetTaggedValue(), index);
-        if (entry != -1) {
-            attributes = layout->GetAttr(entry);
-            attributes.SetSharedFieldType(type);
-            layout->SetNormalAttr(thread, entry, attributes);
-        } else {
-            attributes.SetIsInlinedProps(true);
-            attributes.SetRepresentation(Representation::TAGGED);
-            attributes.SetSharedFieldType(type);
-            attributes.SetOffset(index);
-            layout->AddKey(thread, index++, key.GetTaggedValue(), attributes);
-        }
-    }
-    hclass->SetLayout(thread, layout);
-    hclass->SetNumberOfProps(index);
-    auto inlinedProps = hclass->GetInlinedProperties();
-    if (inlinedProps > index) {
-        // resize hclass due to duplicated key.
-        uint32_t duplicatedSize = (inlinedProps - index) * JSTaggedValue::TaggedTypeSize();
-        hclass->SetObjectSize(hclass->GetObjectSize() - duplicatedSize);
-    }
-}
-
 void SendableClassDefiner::AddFieldTypeToDict(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
     uint32_t length, JSMutableHandle<NameDictionary> &dict, PropertyAttributes attributes)
 {
@@ -908,6 +874,49 @@ void SendableClassDefiner::AddFieldTypeToDict(JSThread *thread, const JSHandle<T
         attributes.SetBoxType(PropertyBoxType::UNDEFINED);
         JSHandle<NameDictionary> newDict = NameDictionary::Put(thread, dict, key, value, attributes);
         dict.Update(newDict);
+    }
+}
+
+void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
+    uint32_t length, const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass,
+    size_t start, std::vector<JSHandle<JSTaggedValue>> &&propertyList)
+{
+    ASSERT(length <= fieldTypeArray->GetLength());
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    uint32_t index = static_cast<uint32_t>(layout->NumberOfElements());
+    for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
+        PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
+        key.Update(fieldTypeArray->Get(i));
+        ASSERT(key->IsString());
+        SharedFieldType type = FromFieldType(FieldType(fieldTypeArray->Get(i + 1).GetInt()));
+        int entry = layout->FindElementWithCache(thread, *hclass, key.GetTaggedValue(), index);
+        if (entry != -1) {
+            attributes = layout->GetAttr(entry);
+            attributes.SetSharedFieldType(type);
+            layout->SetNormalAttr(thread, entry, attributes);
+            if (start != -1 && propertyList.size() > 0) { // 重复key场景取后面的value
+                propertyList[start + (entry << 1)] = propertyList[start + i];
+                propertyList[start + (entry << 1) + 1] = propertyList[start + i + 1];
+            }
+        } else {
+            if (start != -1 && propertyList.size() > 0) {
+                propertyList[start + (index << 1)] = propertyList[start + i];
+                propertyList[start + (index << 1) + 1] = propertyList[start + i + 1];
+            }
+            attributes.SetIsInlinedProps(true);
+            attributes.SetRepresentation(Representation::TAGGED);
+            attributes.SetSharedFieldType(type);
+            attributes.SetOffset(index);
+            layout->AddKey(thread, index++, key.GetTaggedValue(), attributes);
+        }
+    }
+    hclass->SetLayout(thread, layout);
+    hclass->SetNumberOfProps(index);
+    auto inlinedProps = hclass->GetInlinedProperties();
+    if (inlinedProps > index) {
+        // resize hclass due to duplicated key.
+        uint32_t duplicatedSize = (inlinedProps - index) * JSTaggedValue::TaggedTypeSize();
+        hclass->SetObjectSize(hclass->GetObjectSize() - duplicatedSize);
     }
 }
 
@@ -937,7 +946,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
         } else if (LIKELY(fieldNum <= JSSharedObject::MAX_INLINE)) {
             iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
             JSHandle<LayoutInfo> layout = factory->CreateSLayoutInfo(fieldNum);
-            AddFieldTypeToHClass(thread, fieldTypeArray, length, layout, iHClass);
+            AddFieldTypeToHClass(thread, fieldTypeArray, length, layout, iHClass, -1);
         } else {
             iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
             JSHandle<NameDictionary> dict =
@@ -960,7 +969,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
             } else if (LIKELY(newLength <= baseMaxInlineSize)) {
                 iHClass = factory->NewSEcmaHClass(baseSize, baseType, newLength);
                 JSHandle<LayoutInfo> layout = factory->CopyAndReSortSLayoutInfo(baseLayout, baseLength, newLength);
-                AddFieldTypeToHClass(thread, fieldTypeArray, length, layout, iHClass);
+                AddFieldTypeToHClass(thread, fieldTypeArray, length, layout, iHClass, -1);
             } else {
                 iHClass = factory->NewSEcmaHClass(baseSize, baseType, 0);
                 JSHandle<NameDictionary> dict =
