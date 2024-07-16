@@ -215,7 +215,7 @@ template("host_moduletest_action") {
       outputs = [ _test_js_path_ ]
     }
   }
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  es2abc_gen_newest_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     src_js = rebase_path(_test_js_path_)
@@ -691,7 +691,7 @@ template("host_moduletest_assert_action") {
     }
   }
 
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  es2abc_gen_newest_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     src_js = rebase_path(_test_js_path_)
@@ -1100,7 +1100,7 @@ template("host_aot_js_test_action") {
   }
   extra_args += [ "--merge-abc" ]
 
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  es2abc_gen_newest_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     if (defined(invoker.run_multi_file_tests) && invoker.run_multi_file_tests) {
@@ -1966,7 +1966,7 @@ template("host_aot_js_assert_test_action") {
   }
   extra_args += [ "--merge-abc" ]
 
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  es2abc_gen_newest_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     if (defined(invoker.run_multi_file_tests) && invoker.run_multi_file_tests) {
@@ -2377,7 +2377,7 @@ template("host_aot_test_action") {
     }
   }
 
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  es2abc_gen_newest_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     if (defined(invoker.gen_ts_by_script) && invoker.gen_ts_by_script) {
@@ -3689,7 +3689,7 @@ template("host_aot_assert_test_action") {
   _test_aot_arg_slowpath_ = "$target_out_dir/slowpath/${_target_name_}"
   _test_aot_log_level = "info"
 
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  es2abc_gen_newest_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     if (defined(invoker.run_multi_file_tests) && invoker.run_multi_file_tests) {
@@ -4176,7 +4176,7 @@ template("host_pgotypeinfer_test_action") {
   }
   extra_args += [ "--merge-abc" ]
 
-  es2abc_gen_abc("es2abc_gen_${_target_name_}_abc") {
+  es2abc_gen_newest_abc("es2abc_gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
     extra_dependencies = _deps_
     if (defined(invoker.is_multi_file_tests) && invoker.is_multi_file_tests) {
@@ -4414,7 +4414,7 @@ template("host_quickfix_test_action") {
 
     abc_path = "$target_out_dir/${_target_name_}/${filename}.abc"
 
-    es2abc_gen_abc("gen_${_target_name_}_${filename}_abc") {
+    es2abc_gen_newest_abc("gen_${_target_name_}_${filename}_abc") {
       extra_visibility =
           [ ":*" ]  # Only targets in this file can depend on this.
       if (defined(invoker.is_gen_js_by_script) && invoker.is_gen_js_by_script) {
@@ -4541,7 +4541,7 @@ template("host_jit_test_action") {
   _script_args_ = rebase_path(_test_abc_path_)
   _test_expect_path_ = "./expect_output.txt"
 
-  es2abc_gen_abc("gen_${_target_name_}_abc") {
+  es2abc_gen_newest_abc("gen_${_target_name_}_abc") {
     extra_visibility = [ ":*" ]  # Only targets in this file can depend on this.
 
     if (defined(invoker.run_multi_file_tests) && invoker.run_multi_file_tests) {
