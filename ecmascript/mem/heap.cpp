@@ -516,6 +516,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
     dumpOption.isFullGC = isFullGC;
     dumpOption.isSimplify = true;
     dumpOption.isSync = true;
+    dumpOption.isBeforeFill = false;
     heapProfile->DumpHeapSnapshot(dumpOption);
     HeapProfilerInterface::Destroy(vm);
 #endif // ENABLE_DUMP_IN_FAULTLOG
@@ -1352,6 +1353,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
     dumpOption.isFullGC = isFullGC;
     dumpOption.isSimplify = true;
     dumpOption.isSync = true;
+    dumpOption.isBeforeFill = false;
     heapProfile->DumpHeapSnapshot(dumpOption);
     HeapProfilerInterface::Destroy(ecmaVm_);
 #endif // ENABLE_DUMP_IN_FAULTLOG
@@ -2439,6 +2441,7 @@ void Heap::ThresholdReachedDump()
             dumpOption.isFullGC = false;
             dumpOption.isSimplify = true;
             dumpOption.isSync = false;
+            dumpOption.isBeforeFill = false;
             heapProfile->DumpHeapSnapshot(dumpOption);
             hasOOMDump_ = false;
             HeapProfilerInterface::Destroy(ecmaVm_);

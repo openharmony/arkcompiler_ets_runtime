@@ -2441,7 +2441,8 @@ const CString JSObject::ExtractConstructorAndRecordName(JSThread *thread, Tagged
         return result;
     }
     int32_t line = debugExtractor->GetFristLine(methodId);
-    return result.append("(line:").append(std::to_string(line)).append(")");
+    std::string fileName = debugExtractor->GetSourceFile(methodId);
+    return result.append("(").append(fileName).append(std::to_string(line)).append(")");
 }
 
 JSHandle<JSTaggedValue> JSObject::SpeciesConstructor(JSThread *thread, const JSHandle<JSObject> &obj,
