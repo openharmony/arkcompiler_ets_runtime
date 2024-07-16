@@ -19,6 +19,8 @@
 #include <array>
 #include <atomic>
 
+#include "ecmascript/common.h"
+#include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/work_manager.h"
@@ -101,6 +103,7 @@ public:
     {
         return isConcurrentMarking_;
     }
+    void ProcessConcurrentMarkTask(uint32_t threadId);
     void Mark();
     void Finish();
     void ReMark();
@@ -122,19 +125,6 @@ public:
 private:
     NO_COPY_SEMANTIC(ConcurrentMarker);
     NO_MOVE_SEMANTIC(ConcurrentMarker);
-
-    class MarkerTask : public Task {
-    public:
-        MarkerTask(int32_t id, Heap *heap) : Task(id), heap_(heap) {}
-        ~MarkerTask() override = default;
-        bool Run(uint32_t threadId) override;
-
-    private:
-        NO_COPY_SEMANTIC(MarkerTask);
-        NO_MOVE_SEMANTIC(MarkerTask);
-
-        Heap *heap_ {nullptr};
-    };
 
     class RecursionScope {
     public:
@@ -160,7 +150,8 @@ private:
     }
 
     void InitializeMarking();
-    void FinishMarking(float spendTime);
+    bool ShouldNotifyMarkingFinished();  // call in GC thread.
+    void FinishMarking();   // call in GC thread.
     bool VerifyAllRegionsNonFresh();
 
     static size_t taskCounts_;
@@ -176,12 +167,15 @@ private:
     double duration_ {0.0};
     EnableConcurrentMarkType enableMarkType_ {EnableConcurrentMarkType::CONFIG_DISABLE};
 
-    bool notifyMarkingFinished_ {false};         // notify js-thread that marking is finished and sweeping is needed
-    bool vmThreadWaitMarkingFinished_ {false};   // jsMainThread waiting for concurrentGC FINISHED
+    std::atomic<int> runningTaskCount_ {0};
+    bool notifyMarkingFinished_ {false};    // Use different value from markingFinished_ to prevent JSThread waking up
+                                            // before FinishMarking finishes.
+    bool markingFinished_ {false};
     bool isConcurrentMarking_ {false};
     Mutex waitMarkingFinishedMutex_;
     ConditionVariable waitMarkingFinishedCV_;
     int32_t recursionDepth_ {0};
+    ClockScope clockScope_;
 
     friend class Heap;
 };

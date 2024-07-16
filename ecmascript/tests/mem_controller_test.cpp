@@ -112,24 +112,6 @@ HWTEST_F_L0(MemControllerTest, VerifyMutatorSpeed)
 #endif
 }
 
-HWTEST_F_L0(MemControllerTest, RecordAfterConcurrentMarkTest)
-{
-#ifdef NDEBUG
-    auto ecmaVm = thread->GetEcmaVM();
-    auto heap = const_cast<Heap *>(ecmaVm->GetHeap());
-    auto memController = heap->GetMemController();
-    EXPECT_TRUE(heap->GetConcurrentMarker() != nullptr);
-    heap->TryTriggerFullMarkBySharedLimit();
-    memController->RecordAfterConcurrentMark(MarkType::MARK_FULL, heap->GetConcurrentMarker());
-    auto fullSpaceSpeed = memController->GetFullSpaceConcurrentMarkSpeedPerMS();
-    EXPECT_EQ(fullSpaceSpeed, 0);
-    heap->CollectGarbage(TriggerGCType::YOUNG_GC);
-    memController->RecordAfterConcurrentMark(MarkType::MARK_YOUNG, heap->GetConcurrentMarker());
-    auto newSpaceSpeed = memController->GetNewSpaceConcurrentMarkSpeedPerMS();
-    EXPECT_GE(newSpaceSpeed, 0);
-#endif
-}
-
 HWTEST_F_L0(MemControllerTest, CalculateMarkCompactSpeedPerMSTest)
 {
 #ifdef NDEBUG

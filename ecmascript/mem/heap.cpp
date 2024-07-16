@@ -2103,6 +2103,7 @@ bool Heap::NeedStopCollection()
 bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
 {
     // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
+    ASSERT(heap_->GetWorkManager()->HasInitialized());
     while (!heap_->GetWorkManager()->HasInitialized());
     switch (taskPhase_) {
         case ParallelGCTaskPhase::SEMI_HANDLE_THREAD_ROOTS_TASK:
@@ -2122,13 +2123,14 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
             heap_->GetCompressGCMarker()->ProcessMarkStack(threadIndex);
             break;
         case ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK:
-            heap_->GetNonMovableMarker()->ProcessMarkStack(threadIndex);
+            heap_->GetConcurrentMarker()->ProcessConcurrentMarkTask(threadIndex);
             break;
         case ParallelGCTaskPhase::CONCURRENT_HANDLE_OLD_TO_NEW_TASK:
             heap_->GetNonMovableMarker()->ProcessOldToNew(threadIndex);
             break;
         default:
-            break;
+            LOG_GC(FATAL) << "this branch is unreachable, type: " << static_cast<int>(taskPhase_);
+            UNREACHABLE();
     }
     heap_->ReduceTaskCount();
     return true;
