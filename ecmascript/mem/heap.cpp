@@ -1028,6 +1028,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                     UNREACHABLE();
                     break;
             }
+            ASSERT(thread_->IsPropertyCacheCleared());
         }
 
         ClearIdleTask();
@@ -1097,7 +1098,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         tracing->TraceEventRecordMemory();
     }
 #endif
-    ASSERT(thread_->IsPropertyCacheCleared());
     ProcessGCListeners();
 
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
