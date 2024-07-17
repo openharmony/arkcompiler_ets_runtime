@@ -28,6 +28,7 @@ group("ark_jit_ts_test") {
     "catch_with_osr",
     "string_length",
     "ts_inline",
+    "proxy_fast_call",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]

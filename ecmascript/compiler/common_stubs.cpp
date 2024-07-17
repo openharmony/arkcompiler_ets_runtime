@@ -957,9 +957,13 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
             Label slowPath(env);
             Label isJsFcuntion(env);
             Label notCallConstructor(env);
-            Label fastCall(env);
-            Label notFastCall(env);
-            Label slowCall(env);
+            Label judgeArgNumForJSFastCall(env);
+            Label jsFastCall(env);
+            Label jsFastCallBridge(env);
+            Label hasAot(env);
+            Label judgeArgNumForJSSlowCall(env);
+            Label jsSlowCall(env);
+            Label jsSlowCallBridge(env);
             BRANCH(TaggedIsHeapObject(target), &isHeapObject, &slowPath);
             Bind(&isHeapObject);
             {
@@ -971,21 +975,44 @@ void JsProxyCallInternalStubBuilder::GenerateCircuit()
                     GateRef actualArgc = Int64Sub(argc, IntPtr(NUM_MANDATORY_JSFUNC_ARGS));
                     GateRef actualArgv =
                         PtrAdd(argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * JSTaggedValue::TaggedTypeSize()));
+                    GateRef targetMethod = GetMethodFromFunction(target);
+                    GateRef callField = GetCallFieldFromMethod(targetMethod);
+                    GateRef expectedNum = Int64And(Int64LSR(callField, Int64(MethodLiteral::NumArgsBits::START_BIT)),
+                        Int64((1LU << MethodLiteral::NumArgsBits::SIZE) - 1));
+                    GateRef expectedArgc = Int64Add(expectedNum, Int64(NUM_MANDATORY_JSFUNC_ARGS));
                     BRANCH(JudgeAotAndFastCall(target, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL),
-                        &fastCall, &notFastCall);
-                    Bind(&fastCall);
+                        &judgeArgNumForJSFastCall, &hasAot);
+                    Bind(&judgeArgNumForJSFastCall);
                     {
-                        result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
-                            { glue, target, thisTarget, actualArgc, actualArgv });
-                        Jump(&exit);
+                        BRANCH(Int64Equal(expectedArgc, argc), &jsFastCall, &jsFastCallBridge);
+                        Bind(&jsFastCall);
+                        {
+                            result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgV),
+                                { glue, target, thisTarget, actualArgc, actualArgv });
+                            Jump(&exit);
+                        }
+                        Bind(&jsFastCallBridge);
+                        {
+                            result = CallNGCRuntime(glue, RTSTUB_ID(JSFastCallWithArgVAndPushArgv),
+                                { glue, target, thisTarget, actualArgc, actualArgv, expectedNum });
+                            Jump(&exit);
+                        }
                     }
-                    Bind(&notFastCall);
+                    Bind(&hasAot);
+                    BRANCH(JudgeAotAndFastCall(target, CircuitBuilder::JudgeMethodType::HAS_AOT),
+                        &judgeArgNumForJSSlowCall, &slowPath);
+                    Bind(&judgeArgNumForJSSlowCall);
                     {
-                        BRANCH(JudgeAotAndFastCall(target, CircuitBuilder::JudgeMethodType::HAS_AOT),
-                            &slowCall, &slowPath);
-                        Bind(&slowCall);
+                        BRANCH(Int64Equal(expectedArgc, argc), &jsSlowCall, &jsSlowCallBridge);
+                        Bind(&jsSlowCall);
                         {
                             result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgV),
+                                { glue, actualArgc, target, newTarget, thisTarget, actualArgv });
+                            Jump(&exit);
+                        }
+                        Bind(&jsSlowCallBridge);
+                        {
+                            result = CallNGCRuntime(glue, RTSTUB_ID(JSCallWithArgVAndPushArgv),
                                 { glue, actualArgc, target, newTarget, thisTarget, actualArgv });
                             Jump(&exit);
                         }

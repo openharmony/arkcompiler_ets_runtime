@@ -302,6 +302,7 @@ group("ark_aot_ts_test") {
     "builtins_number2",
     "builtins_parseint",
     "constructor",
+    "proxy_fast_call",
   ]
 
   if (!is_debug) {
