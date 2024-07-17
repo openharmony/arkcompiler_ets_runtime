@@ -166,8 +166,12 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     if (!usingIterator->IsUndefined()) {
         // Fast path for MapIterator
+        JSHandle<JSTaggedValue> iterator(thread, JSTaggedValue::Hole());
         if (!mapping && items->IsJSMapIterator()) {
-            return JSMapIterator::MapIteratorToList(thread, items, usingIterator);
+            iterator = JSIterator::GetIterator(thread, items, usingIterator);
+            if (iterator->IsJSMapIterator()) {
+                return JSMapIterator::MapIteratorToList(thread, iterator);
+            }
         }
 
         //   a. If IsConstructor(C) is true, then
@@ -190,9 +194,11 @@ JSTaggedValue BuiltinsSharedArray::From(EcmaRuntimeCallInfo *argv)
         }
         JSHandle<JSObject> newArrayHandle(thread, newArray);
         //   d. Let iterator be GetIterator(items, usingIterator).
-        JSHandle<JSTaggedValue> iterator = JSIterator::GetIterator(thread, items, usingIterator);
-        //   e. ReturnIfAbrupt(iterator).
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (iterator->IsHole()) {
+            iterator = JSIterator::GetIterator(thread, items, usingIterator);
+            //   e. ReturnIfAbrupt(iterator).
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        }
         //   f. Let k be 0.
         int k = 0;
         //   g. Repeat

@@ -46,3 +46,11 @@ print(arr.length);
 
 const v1 = new Map();
 print(Array.from(v1.keys()))
+
+{
+    let mp=new Map();
+    let mpIter = mp.entries();
+    mpIter.__proto__=[1,2,3,4];
+    let res=Array.from(mpIter);
+    print(res);
+}
