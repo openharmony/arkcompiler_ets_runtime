@@ -124,6 +124,8 @@ private:
     void LowerTypedLdPrivateProperty(GateRef gate);
     void LowerTypedLdObjByName(GateRef gate);
     void LowerTypedStObjByName(GateRef gate);
+    GateRef LoadObjectFromConstantPool(GateRef gate, StoreObjByNameTypeInfoAccessor &tacc,
+                                       GateRef frameState, ConstPoolType type);
     void LowerTypedStOwnByName(GateRef gate);
     GateRef BuildNamedPropertyAccess(GateRef hir, GateRef receiver, GateRef holder, PropertyLookupResult plr);
     GateRef BuildNamedPropertyAccess(GateRef hir, GateRef receiver, GateRef holder,

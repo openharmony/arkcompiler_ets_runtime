@@ -16,3 +16,6 @@ undefined
 a
 b
 false
+1
+false
+false
