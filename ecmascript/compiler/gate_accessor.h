@@ -444,6 +444,7 @@ public:
     OnHeapMode TryGetOnHeapMode(GateRef gate) const;
     EcmaOpcode GetByteCodeOpcode(GateRef gate) const;
     void Print(GateRef gate) const DUMP_API_ATTR;
+    std::string ToString(GateRef gate) const DUMP_API_ATTR;
 #ifndef NDEBUG
     void PrintById(size_t id) const DUMP_API_ATTR ;
 #endif

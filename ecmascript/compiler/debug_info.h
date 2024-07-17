@@ -27,7 +27,8 @@ public:
     {
         return enable_;
     }
-    size_t AddComment(const char* str);
+    void AppendComment(size_t index, std::string &&str, std::string_view separator = " | ");
+    size_t AddComment(std::string &&str);
     void AddFuncDebugInfo(const std::string &name);
     const std::string &GetComment(const std::string &funcName, size_t index) const;
 
@@ -57,10 +58,17 @@ private:
             name_ = n;
         }
 
-        size_t Add(const std::string &str)
+        size_t Add(std::string &&str)
         {
-            comments_->push_back(str);
+            comments_->push_back(std::move(str));
             return comments_->size() - 1;
+        }
+
+        void Append(size_t index, std::string &&str, std::string_view separator)
+        {
+            ASSERT(comments_ != nullptr);
+            ASSERT(index < comments_->size());
+            comments_->at(index).append(separator).append(std::move(str));
         }
 
         const std::string &GetComment(size_t index)

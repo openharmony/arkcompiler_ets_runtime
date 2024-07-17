@@ -789,62 +789,19 @@ std::string Gate::GateTypeStr(GateType gateType) const
 
 void Gate::Print(std::string additionOp, bool inListPreview, size_t highlightIdx) const
 {
+    LOG_COMPILER(INFO) << ToString(additionOp, inListPreview, highlightIdx);
+}
+
+std::string Gate::ToString(std::string additionOp, bool inListPreview, size_t highlightIdx) const
+{
     auto opcode = GetOpCode();
-    if (opcode != OpCode::NOP && opcode != OpCode::DEAD) {
-        std::string log("{\"id\":" + std::to_string(id_) + ", \"op\":\"" + GateMetaData::Str(opcode) + "\", ");
-        std::string additionOpName = (opcode == OpCode::JS_BYTECODE) ? "bytecode" : "typedop";
-        log += ((additionOp.compare("") == 0) ? "" : "\"" + additionOpName + "\":\"") + additionOp;
-        log += ((additionOp.compare("") == 0) ? "" : "\", ");
-        log += "\"MType\":\"" + MachineTypeStr(GetMachineType()) + ", ";
-
-        std::ostringstream oss;
-        oss << std::hex << TryGetValue();
-        log += "bitfield=0x" + oss.str() + ", ";
-        log += "type=" + GateTypeStr(type_) + ", ";
-        log += "stamp=" + std::to_string(static_cast<uint32_t>(stamp_)) + ", ";
-        log += "mark=" + std::to_string(static_cast<uint32_t>(mark_)) + ", ";
-        log += "\",\"in\":[";
-
-        size_t idx = 0;
-        auto stateSize = GetStateCount();
-        auto dependSize = GetDependCount();
-        auto valueSize = GetInValueCount();
-        auto frameStateSize = GetInFrameStateCount();
-        auto rootSize = GetRootCount();
-        size_t start = 0;
-        size_t end = stateSize;
-        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
-        end += dependSize;
-        start += stateSize;
-        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
-        end += valueSize;
-        start += dependSize;
-        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
-        end += frameStateSize;
-        start += valueSize;
-        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
-        end += rootSize;
-        start += frameStateSize;
-        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log, true);
-
-        log += "], \"out\":[";
-
-        if (!IsFirstOutNull()) {
-            const Out *curOut = GetFirstOutConst();
-            opcode = curOut->GetGateConst()->GetOpCode();
-            log += std::to_string(curOut->GetGateConst()->GetId()) +
-                    (inListPreview ? std::string(":" + GateMetaData::Str(opcode)) : std::string(""));
-
-            while (!curOut->IsNextOutNull()) {
-                curOut = curOut->GetNextOutConst();
-                log += ", " +  std::to_string(curOut->GetGateConst()->GetId()) +
-                       (inListPreview ? std::string(":" + GateMetaData::Str(opcode))
-                                       : std::string(""));
-            }
-        }
-        log += "]},";
-        LOG_COMPILER(INFO) << std::dec << log;
+    if (opcode == OpCode::NOP || opcode == OpCode::DEAD) {
+        return "";
     }
+
+    std::ostringstream oss;
+    oss << std::dec << DumpHeader(additionOp) << DumpInputs(inListPreview, highlightIdx) << DumpOutputs(inListPreview);
+    return oss.str();
 }
 
 void Gate::ShortPrint(std::string bytecode, bool inListPreview, size_t highlightIdx) const

@@ -240,6 +240,7 @@ private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
 public:
     void Print(GateRef gate) const;
+    bool AddComment(GateRef g, std::string &&str);
 
 private:
     GateType GetGateType(GateRef gate) const;
@@ -275,7 +276,6 @@ private:
     uint8_t *GetDataPtr(size_t offset);
     Gate *LoadGatePtr(GateRef shift);
     const Gate *LoadGatePtrConst(GateRef shift) const;
-    bool AddComment(GateRef g, const char* str);
     const GateMetaData *GetMetaData(GateRef gate) const
     {
         return LoadGatePtrConst(gate)->GetMetaData();

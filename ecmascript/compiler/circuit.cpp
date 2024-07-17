@@ -76,7 +76,7 @@ Gate *Circuit::AllocateGateSpace(size_t numIns)
     return reinterpret_cast<Gate *>(AllocateSpace(Gate::GetGateSize(numIns)) + Gate::GetOutListSize(numIns));
 }
 
-bool Circuit::AddComment(GateRef g, const char* str)
+bool Circuit::AddComment(GateRef g, std::string &&str)
 {
     if (debugInfo_ == nullptr) {
         return false;
@@ -86,12 +86,12 @@ bool Circuit::AddComment(GateRef g, const char* str)
     }
     auto it = gateToDInfo_.find(g);
     if (it == gateToDInfo_.end()) {
-        ASSERT(debugInfo_ != nullptr);
-        size_t index = debugInfo_->AddComment(str);
+        size_t index = debugInfo_->AddComment(std::move(str));
         gateToDInfo_[g] = index;
-        return true;
+    } else {
+        debugInfo_->AppendComment(it->second, std::move(str));
     }
-    return false;
+    return true;
 }
 
 bool Circuit::GetDebugInfo(GateRef g, size_t &index) const
@@ -129,7 +129,7 @@ GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, size
 #endif
     GateRef result = GetGateRef(newGate);
     if (comment != nullptr) {
-        AddComment(result, comment);
+        AddComment(result, std::string(comment));
     }
     return result;
 }
