@@ -133,7 +133,8 @@ void JsStackGetter::GetNativeStack(const EcmaVM *vm, const FrameIterator &it, ch
     std::stringstream stream;
     JSFunction* function = JSFunction::Cast(it.GetFunction().GetTaggedObject());
     JSTaggedValue extraInfoValue = function->GetNativeFunctionExtraInfo();
-    JSThread *thread = vm->GetJSThread();
+    // it not allow thread check here, if enable thread check, it maybe deadlock in IsInThreadPool
+    JSThread *thread = vm->GetJSThreadNoCheck();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> nameKey = globalConst->GetHandledNameString();
     JSHandle<JSTaggedValue> func(thread, function);
@@ -148,7 +149,7 @@ void JsStackGetter::GetNativeStack(const EcmaVM *vm, const FrameIterator &it, ch
         JSNativePointer *extraInfo = JSNativePointer::Cast(extraInfoValue.GetTaggedObject());
         auto cb = vm->GetNativePtrGetter();
         if (cb != nullptr  && extraInfo != nullptr) {
-            if (!vm->GetJSThread()->CpuProfilerCheckJSTaggedType(extraInfoValue.GetRawData())) {
+            if (!vm->GetJSThreadNoCheck()->CpuProfilerCheckJSTaggedType(extraInfoValue.GetRawData())) {
                 return;
             }
             auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
@@ -200,7 +201,7 @@ RunningState JsStackGetter::GetRunningState(const FrameIterator &it, const EcmaV
         }
         if (thread->IsAsmInterpreter()) {
             // For Methods that is compiled in AOT but deoptimized at runtime, we mark it as AINT-D
-            JSHandle<Method> method = JSHandle<Method>(thread, function->GetMethod());
+            Method *method = Method::Cast(function->GetMethod());
             MethodLiteral *methodLiteral = method->GetMethodLiteral();
             if (methodLiteral != nullptr && MethodLiteral::IsAotWithCallField(methodLiteral->GetCallField())) {
                 return RunningState::AINT_D;

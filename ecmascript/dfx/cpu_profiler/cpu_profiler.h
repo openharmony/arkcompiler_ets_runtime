@@ -20,6 +20,7 @@
 
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
 #include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/js_thread.h"
 
@@ -29,6 +30,7 @@ namespace panda::ecmascript {
 const int THRESHOLD_GROWTH_FACTORY = 2; // 2:TimeDelta Threshold Growth Factory
 const int THRESHOLD_FIXED_INCREMENT = 2000; // 2000:TimeDelta Threshold Fixed Increment
 using JSTaggedType = uint64_t;
+using JsDebuggerManager = tooling::JsDebuggerManager;
 class SamplesRecord;
 
 class GcStateScope {
@@ -46,6 +48,23 @@ public:
 private:
     JSThread *thread_ = nullptr;
 };
+
+class SignalStateScope {
+public:
+    inline explicit SignalStateScope(JsDebuggerManager *jsDebuggerManager)
+    {
+        jsDebuggerManager_ = jsDebuggerManager;
+        jsDebuggerManager_->SetSignalState(true);
+    }
+
+    inline ~SignalStateScope()
+    {
+        jsDebuggerManager_->SetSignalState(false);
+    }
+private:
+    JsDebuggerManager *jsDebuggerManager_ = nullptr;
+};
+
 
 class RuntimeStateScope {
 public:

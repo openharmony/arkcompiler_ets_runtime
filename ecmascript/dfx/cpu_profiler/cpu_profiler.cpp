@@ -366,6 +366,13 @@ bool CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
 
 void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *siginfo, void *context)
 {
+    pthread_t tid = static_cast<pthread_t>(syscall(SYS_gettid));
+    const EcmaVM *vm = profilerMap_[tid];
+    if (vm == nullptr) {
+        LOG_ECMA(ERROR) << "CpuProfiler GetStackSignalHandler vm is nullptr";
+        return;
+    }
+    [[maybe_unused]] SignalStateScope scope(vm->GetJsDebuggerManager());
     if (signal != SIGPROF) {
         return;
     }
@@ -373,12 +380,6 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
     JSThread *thread = nullptr;
     {
         LockHolder lock(synchronizationMutex_);
-        pthread_t tid = static_cast<pthread_t>(syscall(SYS_gettid));
-        const EcmaVM *vm = profilerMap_[tid];
-        if (vm == nullptr) {
-            LOG_ECMA(ERROR) << "CpuProfiler GetStackSignalHandler vm is nullptr";
-            return;
-        }
         profiler = vm->GetProfiler();
         thread = vm->GetAssociatedJSThread();
         if (profiler == nullptr) {
