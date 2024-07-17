@@ -20,4 +20,5 @@ host_moduletest_action("sendablefunc") {
   is_merge = true
   src_dir = "$js_root/test/sharedtest/sendablefunc"
   src_postfix = "ts"
+  async_load_abc_test = true
 }

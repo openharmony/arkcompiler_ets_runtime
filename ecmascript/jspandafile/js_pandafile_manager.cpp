@@ -549,7 +549,11 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::GenerateJSPandaFile(JSThread *t
             methodName = JSPandaFile::ENTRY_FUNCTION_NAME;
         }
     }
-    PandaFileTranslator::TranslateClasses(thread, newJsPandaFile.get(), methodName);
+    if (newJsPandaFile->IsNewVersion() && vm->IsAsynTranslateClasses()) {
+        newJsPandaFile->TranslateClasses(thread, methodName);
+    } else {
+        PandaFileTranslator::TranslateClasses(thread, newJsPandaFile.get(), methodName);
+    }
 
     {
         LockHolder lock(jsPandaFileLock_);
