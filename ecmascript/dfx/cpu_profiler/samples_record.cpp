@@ -30,7 +30,7 @@ namespace panda::ecmascript {
 SamplesRecord::SamplesRecord()
 {
     profileInfo_ = std::make_unique<struct ProfileInfo>();
-    int tid = syscall(SYS_gettid);
+    int tid = JSThread::GetCurrentThreadId();
     if (tid != -1) {
         profileInfo_->tid = static_cast<uint64_t>(tid);
     }

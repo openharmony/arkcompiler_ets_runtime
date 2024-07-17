@@ -25,6 +25,10 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/log_wrapper.h"
 
+#if defined(ENABLE_FFRT_INTERFACES)
+#include "c/executor_task.h"
+#endif
+
 namespace panda::ecmascript {
 const int USEC_PER_SEC = 1000 * 1000;
 const int NSEC_PER_USEC = 1000;
@@ -36,27 +40,44 @@ void *SamplingProcessor::Run(void *arg)
     RunParams params = *reinterpret_cast<RunParams *>(arg);
     SamplesRecord *generator = params.generator_;
     uint32_t interval = params.interval_;
-    pthread_t pid = params.tid_;
-    pthread_t tid = pthread_self();
-    pthread_setname_np(tid, "SamplingThread");
+    pthread_t jsThreadId = params.tid_;
+    pthread_t samplingThreadId = pthread_self();
+    pthread_setname_np(samplingThreadId, "SamplingThread");
     uint64_t startTime = generator->GetThreadStartTime();
     uint64_t endTime = startTime;
     generator->AddStartTraceEvent();
     while (generator->GetIsStart()) {
-        if (pthread_kill(pid, SIGPROF) != 0) {
-            LOG(ERROR, RUNTIME) << "pthread_kill signal failed";
-            return nullptr;
-        }
-        if (generator->SemWait(0) != 0) {
-            LOG_ECMA(ERROR) << "sem_[0] wait failed";
-            return nullptr;
-        }
         startTime = GetMicrosecondsTimeStamp();
         int64_t ts = static_cast<int64_t>(interval) - static_cast<int64_t>(startTime - endTime);
         endTime = startTime;
         if (ts > 0) {
             usleep(ts);
             endTime = GetMicrosecondsTimeStamp();
+        }
+#if defined(ENABLE_FFRT_INTERFACES)
+        // when the ffrt is disabled for js thread, including main thread and worker thread,
+        // then the taskHandle is a nullptr
+        if (params.taskHandle_ != nullptr) {
+            // when there are no threads running in the ffrt task,
+            // the tid returned by ffrt_task_get_tid will be zero
+            pthread_t tid = ffrt_task_get_tid(params.taskHandle_);
+            if (tid != 0) {
+                jsThreadId = tid;
+            } else {
+                uint64_t sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
+                generator->AddEmptyStackSample(sampleTimeStamp);
+                generator->AddTraceEvent(false);
+                continue;
+            }
+        }
+#endif // defined(ENABLE_FFRT_INTERFACES)
+        if (pthread_kill(jsThreadId, SIGPROF) != 0) {
+            LOG(ERROR, RUNTIME) << "pthread_kill signal failed";
+            return nullptr;
+        }
+        if (generator->SemWait(0) != 0) {
+            LOG_ECMA(ERROR) << "sem_[0] wait failed";
+            return nullptr;
         }
         if (generator->GetMethodNodeCount() + generator->GetframeStackLength() >= MAX_NODE_COUNT) {
             LOG_ECMA(ERROR) << "SamplingProcessor::Run, exceed MAX_NODE_COUNT";
@@ -75,7 +96,7 @@ void *SamplingProcessor::Run(void *arg)
     }
     generator->SetThreadStopTime();
     generator->AddTraceEvent(true);
-    return PostSemAndLogEnd(generator, tid);
+    return PostSemAndLogEnd(generator, samplingThreadId);
 }
 
 void *SamplingProcessor::PostSemAndLogEnd(SamplesRecord *generator, pthread_t tid)
