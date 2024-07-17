@@ -1196,7 +1196,7 @@ template("host_aot_js_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ = " --aot-file=" + rebase_path(_test_aot_arg_) +
-                            " --log-level=" + _test_aot_log_level + " --log-components=compiler --compiler-opt-type-lowering=false --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
+                            " --log-level=" + _test_aot_log_level + " --log-components=compiler --compiler-opt-type-lowering=false --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false" + " --compiler-try-catch-function=true"
 
     if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
       _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
@@ -1463,7 +1463,8 @@ template("host_aot_js_test_action") {
           " --compiler-opt-type-lowering=false" +
           " --compiler-opt-inlining=false" +
           " --compiler-opt-loop-peeling=false" +
-          " --compiler-enable-litecg=true"
+          " --compiler-enable-litecg=true" +
+          " --compiler-try-catch-function=true"
 
       if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
         _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
@@ -1713,7 +1714,8 @@ template("host_aot_js_test_action") {
           " --compiler-opt-inlining=false" +
           " --compiler-opt-loop-peeling=false" +
           " --compiler-enable-litecg=true" +
-          " --compiler-target-triple=aarch64-unknown-linux-gnu"
+          " --compiler-target-triple=aarch64-unknown-linux-gnu" +
+          " --compiler-try-catch-function=true"
 
       if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
         _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
@@ -2062,7 +2064,7 @@ template("host_aot_js_assert_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ = " --aot-file=" + rebase_path(_test_aot_arg_) +
-                            " --log-level=" + _test_aot_log_level + " --log-components=compiler --compiler-opt-type-lowering=false --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
+                            " --log-level=" + _test_aot_log_level + " --log-components=compiler --compiler-opt-type-lowering=false --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false" + " --compiler-try-catch-function=true"
 
     if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
       _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
@@ -2482,7 +2484,9 @@ template("host_aot_test_action") {
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
         _test_aot_log_level + " --log-components=compiler" +
-        " --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
+        " --compiler-opt-inlining=false" +
+        " --compiler-opt-loop-peeling=false" +
+        " --compiler-try-catch-function=true"
 
     if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
       _aot_compile_options_ +=
@@ -2573,7 +2577,9 @@ template("host_aot_test_action") {
         " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
         " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
         " --compiler-opt-type-lowering=false" +
-        " --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
+        " --compiler-opt-inlining=false" +
+        " --compiler-opt-loop-peeling=false" +
+        " --compiler-try-catch-function=true"
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
@@ -2886,7 +2892,8 @@ template("host_aot_test_action") {
           " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
           " --compiler-opt-inlining=false" +
           " --compiler-opt-loop-peeling=false" +
-          " --compiler-enable-litecg=true"
+          " --compiler-enable-litecg=true" +
+          " --compiler-try-catch-function=true"
 
       if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
         _aot_compile_options_ +=
@@ -2981,7 +2988,8 @@ template("host_aot_test_action") {
           " --compiler-opt-type-lowering=false" +
           " --compiler-opt-inlining=false" +
           " --compiler-opt-loop-peeling=false" +
-          " --compiler-enable-litecg=true"
+          " --compiler-enable-litecg=true" +
+          " --compiler-try-catch-function=true"
       if (defined(invoker.is_enable_trace_deopt) &&
           invoker.is_enable_trace_deopt) {
         _aot_compile_options_ += " --compiler-trace-deopt=true"
@@ -3284,7 +3292,8 @@ template("host_aot_test_action") {
           " --compiler-opt-inlining=false" +
           " --compiler-opt-loop-peeling=false" +
           " --compiler-enable-litecg=true" +
-          " --compiler-target-triple=aarch64-unknown-linux-gnu"
+          " --compiler-target-triple=aarch64-unknown-linux-gnu" +
+          " --compiler-try-catch-function=true"
 
       if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
         _aot_compile_options_ +=
@@ -3380,7 +3389,8 @@ template("host_aot_test_action") {
           " --compiler-opt-inlining=false" +
           " --compiler-opt-loop-peeling=false" +
           " --compiler-enable-litecg=true" +
-          " --compiler-target-triple=aarch64-unknown-linux-gnu"
+          " --compiler-target-triple=aarch64-unknown-linux-gnu" +
+          " --compiler-try-catch-function=true"
       if (defined(invoker.is_enable_trace_deopt) &&
           invoker.is_enable_trace_deopt) {
         _aot_compile_options_ += " --compiler-trace-deopt=true"
@@ -3788,7 +3798,9 @@ template("host_aot_assert_test_action") {
     _aot_compile_options_ =
         " --aot-file=" + rebase_path(_test_aot_arg_) + " --log-level=" +
         _test_aot_log_level + " --log-components=compiler" +
-        " --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
+        " --compiler-opt-inlining=false" +
+        " --compiler-opt-loop-peeling=false" +
+        " --compiler-try-catch-function=true"
 
     if (defined(invoker.is_enable_pgo) && invoker.is_enable_pgo) {
       _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
@@ -3881,7 +3893,9 @@ template("host_aot_assert_test_action") {
         " --aot-file=" + rebase_path(_test_aot_arg_slowpath_) +
         " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
         " --compiler-opt-type-lowering=false" +
-        " --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
+        " --compiler-opt-inlining=false" +
+        " --compiler-opt-loop-peeling=false" +
+        " --compiler-try-catch-function=true"
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
@@ -4266,7 +4280,8 @@ template("host_pgotypeinfer_test_action") {
     script = "//arkcompiler/ets_runtime/script/run_ark_executable.py"
 
     _aot_compile_options_ = " --compiler-opt-type-lowering=false" +
-                            " --compiler-opt-loop-peeling=false"
+                            " --compiler-opt-loop-peeling=false" +
+                            " --compiler-try-catch-function=true"
 
     # Pgo Option
     _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
@@ -4315,7 +4330,8 @@ template("host_pgotypeinfer_test_action") {
 
     _aot_compile_options_ =
         " --compiler-opt-type-lowering=false" +
-        " --compiler-opt-loop-peeling=false" + " --compiler-enable-litecg=true"
+        " --compiler-opt-loop-peeling=false" +
+        " --compiler-enable-litecg=true" + " --compiler-try-catch-function=true"
 
     # Pgo Option
     _aot_compile_options_ += " --compiler-pgo-profiler-path=" +
