@@ -186,7 +186,7 @@ bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module)
         return false;
     }
 
-    CString soName = base::PathHelper::GetStrippedModuleName(ConvertToString(module->GetEcmaModuleRecordName()));
+    CString soName = base::PathHelper::GetStrippedModuleName(module->GetEcmaModuleRecordNameString());
     return unloadNativeModuleCallback(soName.c_str());
 }
 

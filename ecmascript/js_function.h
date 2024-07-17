@@ -312,7 +312,7 @@ public:
 
     JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;
-    JSTaggedValue GetRecordName() const;
+    CString GetRecordName() const;
     JSTaggedValue GetProfileTypeInfo() const
     {
         JSTaggedValue raw = GetRawProfileTypeInfo();

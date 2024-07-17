@@ -70,7 +70,7 @@ public:
     static void MethodEntry(JSThread *thread);
     static void MethodExit(JSThread *thread);
     static const JSPandaFile *GetNativeCallPandafile(JSThread *thread);
-    static std::pair<JSTaggedValue, JSTaggedValue> GetCurrentEntryPoint(JSThread *thread);
+    static std::pair<CString, CString> GetCurrentEntryPoint(JSThread *thread);
     static JSTaggedValue GetFunction(JSTaggedType *sp);
     static JSTaggedValue GetNewTarget(JSTaggedType *sp);
     static JSTaggedValue GetThis(JSTaggedType *sp);

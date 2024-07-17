@@ -365,8 +365,7 @@ void ModuleNamespace::SetModuleDeregisterProcession(JSThread *thread, const JSHa
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     JSHandle<SourceTextModule> module(thread, nameSpace->GetModule());
-    JSHandle<JSTaggedValue> moduleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
-    CString moduleStr = ConvertToString(moduleName.GetTaggedValue());
+    CString moduleStr = SourceTextModule::GetModuleName(module.GetTaggedValue());
     int srcLength = strlen(moduleStr.c_str()) + 1;
     auto moduleNameData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(srcLength);
     if (memcpy_s(moduleNameData, srcLength, moduleStr.c_str(), srcLength) != EOK) {

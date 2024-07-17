@@ -3476,9 +3476,9 @@ Local<StringRef> FunctionRef::GetSourceCode(const EcmaVM *vm, int lineNumber)
     ecmascript::CString entry = JSPandaFile::ENTRY_FUNCTION_NAME;
     if (!jsPandaFile->IsBundlePack()) {
         JSFunction *function = JSFunction::Cast(func.GetTaggedValue().GetTaggedObject());
-        JSTaggedValue recordName = function->GetRecordName();
-        ASSERT(!recordName.IsHole());
-        entry = ConvertToString(recordName);
+        ecmascript::CString recordName = function->GetRecordName();
+        ASSERT(!recordName.empty());
+        entry = recordName;
     }
 
     uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entry);

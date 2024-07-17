@@ -41,8 +41,8 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
                                                                                             currentEnvironment);
     sModule->SetSharedType(SharedTypes::SENDABLE_FUNCTION_MODULE);
     sModule->SetEnvironment(thread, sendableEnvironment);
-    sModule->SetEcmaModuleFilename(thread, currentModule->GetEcmaModuleFilename());
-    sModule->SetEcmaModuleRecordName(thread, currentModule->GetEcmaModuleRecordName());
+    sModule->SetEcmaModuleFilenameString(currentModule->GetEcmaModuleFilenameString());
+    sModule->SetEcmaModuleRecordNameString(currentModule->GetEcmaModuleRecordNameString());
     sModule->SetSendableEnv(thread, JSTaggedValue::Undefined());
     return JSHandle<JSTaggedValue>(sModule);
 }
@@ -50,15 +50,16 @@ JSHandle<JSTaggedValue> SendableClassModule::GenerateSendableFuncModule(JSThread
 JSHandle<JSTaggedValue> SendableClassModule::CloneRecordIndexBinding(JSThread *thread, JSTaggedValue indexBinding)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(indexBinding.GetTaggedObject());
+    JSHandle<ResolvedIndexBinding> binding(thread, indexBinding);
     JSHandle<SourceTextModule> resolvedModule(thread, binding->GetModule());
     if (SourceTextModule::IsSharedModule((resolvedModule))) {
         return JSHandle<JSTaggedValue>::Cast(
             factory->NewSResolvedIndexBindingRecord(resolvedModule, binding->GetIndex()));
     }
 
-    JSHandle<EcmaString> record(thread, SourceTextModule::GetModuleName(resolvedModule.GetTaggedValue()));
-    JSHandle<EcmaString> fileName(thread, resolvedModule->GetEcmaModuleFilename());
+    CString moduleName = SourceTextModule::GetModuleName(resolvedModule.GetTaggedValue());
+    JSHandle<EcmaString> record = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(moduleName);
+    JSHandle<EcmaString> fileName = factory->NewFromUtf8(resolvedModule->GetEcmaModuleFilenameString());
     int32_t index = binding->GetIndex();
     return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordIndexBindingRecord(record, fileName, index));
 }
@@ -74,7 +75,8 @@ JSHandle<JSTaggedValue> SendableClassModule::CloneRecordNameBinding(JSThread *th
             factory->NewSResolvedBindingRecord(resolvedModule, bindingName));
     }
 
-    JSHandle<EcmaString> record(thread, SourceTextModule::GetModuleName(resolvedModule.GetTaggedValue()));
+    CString moduleName = SourceTextModule::GetModuleName(resolvedModule.GetTaggedValue());
+    JSHandle<EcmaString> record = thread->GetEcmaVM()->GetFactory()->NewFromUtf8(moduleName);
     JSHandle<JSTaggedValue> bindingName(thread, resolvedBinding->GetBindingName());
     return JSHandle<JSTaggedValue>::Cast(factory->NewSResolvedRecordBindingRecord(record, bindingName));
 }
@@ -141,8 +143,7 @@ JSHandle<JSTaggedValue> SharedModuleHelper::ParseSharedModule(JSThread *thread, 
 
     bool hasTLA = jsPandaFile->GetHasTopLevelAwait(descriptor);
     moduleRecord->SetHasTLA(hasTLA);
-    JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);
-    moduleRecord->SetEcmaModuleFilename(thread, ecmaModuleFilename);
+    moduleRecord->SetEcmaModuleFilenameString(moduleFilename);
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::ECMA_MODULE);
     moduleRecord->SetIsNewBcVersion(true);

@@ -945,10 +945,10 @@ void EcmaVM::ResumeWorkerVm(uint32_t tid)
 */
 std::pair<std::string, std::string> EcmaVM::GetCurrentModuleInfo(bool needRecordName)
 {
-    std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread_);
+    std::pair<CString, CString> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread_);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, std::make_pair("", ""));
-    CString recordName = ModulePathHelper::Utf8ConvertToString(moduleInfo.first);
-    CString fileName = ModulePathHelper::Utf8ConvertToString(moduleInfo.second);
+    CString recordName = moduleInfo.first;
+    CString fileName = moduleInfo.second;
     LOG_FULL(INFO) << "Current recordName is " << recordName <<", current fileName is " << fileName;
     if (needRecordName) {
         if (fileName.length() > ModulePathHelper::BUNDLE_INSTALL_PATH_LEN &&

@@ -50,17 +50,17 @@ JSHandle<JSTaggedValue> ModuleManagerHelper::GetNativeOrCjsExports(JSThread *thr
     if (SourceTextModule::IsNativeModule(moduleType)) {
         exports.Update(module->GetModuleValue(thread, 0, false));
         if (!exports->IsJSObject()) {
-            LOG_FULL(WARN) << "Load native module failed, so is " <<
-                ConvertToString(SourceTextModule::GetModuleName(resolvedModule));
+            LOG_FULL(WARN) << "Load native module failed, so is " << SourceTextModule::GetModuleName(resolvedModule);
         }
         return exports;
     }
     if (SourceTextModule::IsCjsModule(moduleType)) {
-        JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
-        exports.Update(CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue());
+        CString cjsModuleName = SourceTextModule::GetModuleName(module.GetTaggedValue());
+        JSHandle<JSTaggedValue> moduleNameHandle(thread->GetEcmaVM()->GetFactory()->NewFromUtf8(cjsModuleName));
+        exports.Update(CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue());
         if (exports->IsHole()) {
             CString errorMsg =
-                "Loading cjs module:" + ConvertToString(SourceTextModule::GetModuleName(resolvedModule)) + ", failed";
+                "Loading cjs module:" + SourceTextModule::GetModuleName(resolvedModule) + ", failed";
             JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
             THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread,
                 ErrorType::SYNTAX_ERROR, errorMsg.c_str(), exception);
@@ -100,7 +100,7 @@ JSTaggedValue ModuleManagerHelper::GetModuleValueFromIndexBinding(JSThread *thre
     if (moduleManager->IsEvaluatedModule(recordNameStr)) {
         resolvedModule = moduleManager->HostGetImportedModule(recordNameStr);
     } else {
-        auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
+        auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = ModulePathHelper::Utf8ConvertToString((binding->GetAbcFileName()));
         if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordNameStr, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
@@ -123,8 +123,8 @@ JSTaggedValue ModuleManagerHelper::GetModuleValueFromRecordBinding(JSThread *thr
     if (moduleManager->IsEvaluatedModule(recordNameStr)) {
         resolvedModule = moduleManager->HostGetImportedModule(recordNameStr);
     } else {
-        auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
-        CString fileName = ModulePathHelper::Utf8ConvertToString((module->GetEcmaModuleFilename()));
+        auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
+        CString fileName = module->GetEcmaModuleFilenameString();
         if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordNameStr, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
@@ -151,7 +151,7 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(JSThread *
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         }
     } else {
-        auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
+        auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = ModulePathHelper::Utf8ConvertToString(binding->GetAbcFileName());
         if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordNameStr, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
@@ -178,8 +178,8 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         }
     } else {
-        auto isMergedAbc = !module->GetEcmaModuleRecordName().IsUndefined();
-        CString fileName = ModulePathHelper::Utf8ConvertToString(module->GetEcmaModuleFilename());
+        auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
+        CString fileName = module->GetEcmaModuleFilenameString();
         if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordNameStr, fileName, isMergedAbc)) {
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
@@ -203,10 +203,10 @@ JSTaggedValue ModuleManagerHelper::UpdateBindingAndGetModuleValue(JSThread *thre
         SourceTextModule::ResolveExportObject(thread, requiredModule, exports, exportName);
     // ii. If resolution is null or "ambiguous", throw a SyntaxError exception.
     if (resolution->IsNull() || resolution->IsString()) {
-        CString requestMod = ModulePathHelper::ReformatPath(
-            ModulePathHelper::Utf8ConvertToString(SourceTextModule::GetModuleName(requiredModule.GetTaggedValue())));
-        CString recordStr = ModulePathHelper::ReformatPath(
-            ModulePathHelper::Utf8ConvertToString(SourceTextModule::GetModuleName(module.GetTaggedValue())));
+        CString requestMod = ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(
+            requiredModule.GetTaggedValue()));
+        CString recordStr = ModulePathHelper::ReformatPath(SourceTextModule::GetModuleName(
+            module.GetTaggedValue()));
         CString msg = "the requested module '" + requestMod + SourceTextModule::GetResolveErrorReason(resolution) +
             ModulePathHelper::Utf8ConvertToString(bindingName) +
             "' which imported by '" + recordStr + "'";

@@ -130,6 +130,8 @@ public:
             ASSERT(!key.empty());
             JSTaggedValue module = it->second;
             SourceTextModule::Cast(module)->DestoryLazyImportArray();
+            SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
+            SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
         }
     }
 

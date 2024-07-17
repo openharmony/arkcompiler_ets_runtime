@@ -969,11 +969,11 @@ const JSPandaFile *EcmaInterpreter::GetNativeCallPandafile(JSThread *thread)
     UNREACHABLE();
 }
 
-std::pair<JSTaggedValue, JSTaggedValue> EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
+std::pair<CString, CString> EcmaInterpreter::GetCurrentEntryPoint(JSThread *thread)
 {
     FrameHandler frameHandler(thread);
-    JSMutableHandle<JSTaggedValue> recordName(thread, thread->GlobalConstants()->GetUndefined());
-    JSMutableHandle<JSTaggedValue> fileName(thread, thread->GlobalConstants()->GetUndefined());
+    CString recordName;
+    CString fileName;
 
     for (; frameHandler.HasFrame(); frameHandler.PrevJSFrame()) {
         if (frameHandler.IsEntryFrame()) {
@@ -989,18 +989,17 @@ std::pair<JSTaggedValue, JSTaggedValue> EcmaInterpreter::GetCurrentEntryPoint(JS
 
         if (module->IsSourceTextModule()) {
             SourceTextModule *sourceTextModule = SourceTextModule::Cast(module->GetTaggedObject());
-            recordName.Update(sourceTextModule->GetEcmaModuleRecordName());
-            fileName.Update(sourceTextModule->GetEcmaModuleFilename());
+            recordName = sourceTextModule->GetEcmaModuleRecordNameString();
+            fileName = sourceTextModule->GetEcmaModuleFilenameString();
         } else if (module->IsString()) {
-            recordName.Update(module);
+            recordName = ConvertToString(module.GetTaggedValue());
         } else {
             continue;
         }
-        return std::make_pair(recordName.GetTaggedValue(), fileName.GetTaggedValue());
+        return std::make_pair(recordName, fileName);
     }
     CString msg = "Unable to get recordName and fileName due to failure in getting current entry point.";
-    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), std::make_pair(JSTaggedValue::Undefined(),
-        JSTaggedValue::Undefined()));
+    THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), std::make_pair(recordName, fileName));
 }
 
 void EcmaInterpreter::UpdateProfileTypeInfoCellToFunction(JSThread *thread, JSHandle<JSFunction> &function,
