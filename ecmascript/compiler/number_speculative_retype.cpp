@@ -1569,6 +1569,7 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
     if (IsRetype()) {
         if (inputInfo == TypeInfo::TAGGED) {
             if (acc_.IsConstantNumber(input)) {
+                acc_.SetGateType(gate, acc_.GetGateType(input));
                 return Circuit::NullGate();
             }
             ASSERT(paramType.HasNumberType());

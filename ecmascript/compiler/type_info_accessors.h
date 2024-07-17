@@ -824,6 +824,7 @@ public:
 private:
     PropertyLookupResult GetAccessorPlr() const;
     PropertyLookupResult GetAccessorPlrInJIT() const;
+    bool InitPropAndCheck(JSTaggedValue &prop) const;
 
     GateRef receiver_;
     CallKind kind_ {CallKind::INVALID};

@@ -322,6 +322,7 @@ JSTaggedValue NewObjRangeTypeInfoAccessor::AotAccessorStrategy::GetHClass() cons
 JSTaggedValue NewObjRangeTypeInfoAccessor::JitAccessorStrategy::GetHClass() const
 {
     auto sampleType = parent_.pgoType_.GetPGODefineOpType();
+    ASSERT(!sampleType->IsNone());
     JSHClass *hclass = sampleType->GetReceiver();
     parent_.hclassIndex_ = parent_.ptManager_->RecordAndGetHclassIndexForJIT(hclass);
     return JSTaggedValue(sampleType->GetReceiver());
@@ -479,19 +480,27 @@ InlineTypeInfoAccessor::InlineTypeInfoAccessor(
         }
     }
 }
-
-PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const
+bool InlineTypeInfoAccessor::InitPropAndCheck(JSTaggedValue& prop) const
 {
     GateRef constData = acc_.GetValueIn(gate_, 1);
     uint16_t propIndex = acc_.GetConstantValue(constData);
     auto methodOffset = acc_.TryGetMethodOffset(gate_);
-    auto prop = compilationEnv_->GetStringFromConstantPool(methodOffset, propIndex);
+    prop = compilationEnv_->GetStringFromConstantPool(methodOffset, propIndex);
     if (prop.IsUndefined()) {
-        return PropertyLookupResult();
+        return false;
     }
     // PGO currently does not support call, so GT is still used to support inline operations.
     // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
     if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
+        return false;
+    }
+    return true;
+}
+
+PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const
+{
+    JSTaggedValue prop = JSTaggedValue::Undefined();
+    if (!InitPropAndCheck(prop)) {
         return PropertyLookupResult();
     }
 
@@ -523,15 +532,11 @@ PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const
     return plr;
 }
 
+
 PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlrInJIT() const
 {
-    GateRef constData = acc_.GetValueIn(gate_, 1);
-    uint16_t propIndex = acc_.GetConstantValue(constData);
-    auto methodOffset = acc_.TryGetMethodOffset(gate_);
-    auto prop = compilationEnv_->GetStringFromConstantPool(methodOffset, propIndex);
-    // PGO currently does not support call, so GT is still used to support inline operations.
-    // However, the original GT solution cannot support accessing the property of prototype, so it is filtered here
-    if (EcmaStringAccessor(prop).ToStdString() == "prototype") {
+    JSTaggedValue prop = JSTaggedValue::Undefined();
+    if (!InitPropAndCheck(prop)) {
         return PropertyLookupResult();
     }
 
@@ -1323,7 +1328,9 @@ JSTaggedValue CreateObjWithBufferTypeInfoAccessor::JitAccessorStrategy::GetHClas
         return JSTaggedValue::Undefined();
     }
     auto sampleType = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGODefineOpType();
-
+    if (sampleType->IsNone()) {
+        return JSTaggedValue::Undefined();
+    }
     JSObject *jsObj = JSObject::Cast(obj);
     JSHClass *oldClass = jsObj->GetClass();
     JSHClass *newClass = sampleType->GetReceiver();
