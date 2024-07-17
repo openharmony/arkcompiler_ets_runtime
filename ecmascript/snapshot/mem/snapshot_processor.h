@@ -39,6 +39,16 @@ enum class SnapshotType {
     AI
 };
 
+struct SnapshotRegionHeadInfo {
+    uint32_t regionIndex_ {0};
+    uint32_t aliveObjectSize_ {0};
+
+    static constexpr size_t RegionHeadInfoSize()
+    {
+        return sizeof(SnapshotRegionHeadInfo);
+    }
+};
+
 using ObjectEncode = std::pair<uint64_t, ecmascript::EncodeBit>;
 
 class SnapshotProcessor final {
@@ -131,6 +141,8 @@ private:
     uint32_t StatisticsSpaceObjectSize(Space* space);
     uint32_t StatisticsHugeObjectSize(HugeObjectSpace* space);
     uintptr_t AllocateObjectToLocalSpace(Space *space, size_t objectSize);
+    SnapshotRegionHeadInfo GenerateRegionHeadInfo(Region *region);
+    void ResetRegionUnusedRange(Region *region);
 
     EcmaVM *vm_ {nullptr};
     SharedHeap* sHeap_ {nullptr};
