@@ -581,7 +581,7 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     Method *method = func->GetCallTarget();
     JSTaggedValue resultValue;
     size_t numArgs = method->GetNumArgsWithCallField();
-    bool needPushArgv = numArgs != info->GetArgsNumber();
+    bool needPushArgv = numArgs > info->GetArgsNumber();
     const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), func.GetTaggedType(), true);
