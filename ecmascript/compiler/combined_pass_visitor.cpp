@@ -112,6 +112,14 @@ void CombinedPassVisitor::VisitGraph()
     for (auto useIt = uses.begin(); useIt != uses.end(); useIt++) {
         PushChangedGate(*useIt);
     }
+    std::vector<GateRef> gateList;
+    circuit_->GetAllGates(gateList);
+    for (auto gate : gateList) {
+        if (acc_.GetOpCode(gate) == OpCode::LOOP_BEGIN) {
+            PushChangedGate(gate);
+        }
+    }
+
     while (true) {
         if (!workList_.empty()) {
             Edge& current = workList_.back();

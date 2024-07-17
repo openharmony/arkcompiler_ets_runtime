@@ -497,11 +497,11 @@ TypeInfo NumberSpeculativeRetype::GetOuputForPhi(GateRef gate, bool ignoreConsta
     for (size_t i = 0; i < valueNum; ++i) {
         GateRef input = acc_.GetValueIn(gate, i);
         TypeInfo inputInfo = GetOutputTypeInfo(input);
-        if (inputInfo == TypeInfo::NONE) {
-            continue;
-        }
         if (ignoreConstant && acc_.IsConstantNumber(input)) {
             hasConstantInput = true;
+            continue;
+        }
+        if (inputInfo == TypeInfo::NONE) {
             continue;
         }
         // use less general input as phi output
@@ -1569,8 +1569,10 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
     if (IsRetype()) {
         if (inputInfo == TypeInfo::TAGGED) {
             if (acc_.IsConstantNumber(input)) {
+                TypeInfo oldType = GetOutputTypeInfo(gate);
                 acc_.SetGateType(gate, acc_.GetGateType(input));
-                return Circuit::NullGate();
+                SetOutputTypeInfo(gate, inputInfo);
+                return oldType == inputInfo ? Circuit::NullGate() : gate;
             }
             ASSERT(paramType.HasNumberType());
             return SetOutputType(gate, paramType);
