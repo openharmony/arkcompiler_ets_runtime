@@ -141,7 +141,8 @@ def out_put_std(ret_code, cmds, msg):
         0: msg,
         -6: f'{cmds}:{msg}\nAborted (core dumped)',
         -4: f'{cmds}:{msg}\nAborted (core dumped)',
-        -11: f'{cmds}:{msg}\nSegmentation fault (core dumped)'
+        -11: f'{cmds}:{msg}\nSegmentation fault (core dumped)',
+        255: f'{msg} (uncaught error)\n'
     }
     error_message = error_messages.get(ret_code, f'{cmds}: Unknown Error: {str(ret_code)}')
     if error_message != '':
