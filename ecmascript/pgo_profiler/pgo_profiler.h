@@ -521,6 +521,7 @@ private:
     uint32_t methodCount_ { 0 };
     std::chrono::system_clock::time_point saveTimestamp_;
     Mutex mutex_;
+    Mutex recordInfoMutex_;
     ConditionVariable condition_;
     WorkList dumpWorkList_;
     WorkList preDumpWorkList_;

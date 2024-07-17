@@ -35,6 +35,7 @@
 namespace panda::ecmascript::pgo {
 void PGOProfilerEncoder::Destroy()
 {
+    LockHolder lock(mutex_);
     pandaFileInfos_->Clear();
     abcFilePool_->Clear();
     if (!isProfilingInitialized_) {
@@ -73,6 +74,7 @@ bool PGOProfilerEncoder::ResetOutPath(const std::string &profileFileName)
 
 bool PGOProfilerEncoder::InitializeData()
 {
+    LockHolder lock(mutex_);
     if (!isProfilingInitialized_) {
         if (!ResetOutPath(ApNameUtils::DEFAULT_AP_NAME)) {
             return false;
