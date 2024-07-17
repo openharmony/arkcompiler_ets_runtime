@@ -23,3 +23,20 @@ var arrow_sum = (arg1:number, arg2:number):number => {
 
 print(arrow_func());
 print(arrow_sum(2, 3));
+
+class C3 {}
+const v20 = new C3();
+const v21 = new C3();
+function f26() {
+  const o39 = {
+    "a": 1,
+    "d": 1000000000000,
+    __proto__: v21,
+    toLowerCase(a32, a33, a34) {
+    },
+    "d": 2,
+    536870889: 1,
+  };
+  return o39;
+}
+f26();
