@@ -292,6 +292,24 @@ DEF_CALL_SIGNATURE(SetPropertyByValue)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(Definefunc)
+{
+    // 5 : 5 input parameters
+    CallSignature definefunc("Definefunc", 0, 5, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY());
+    *callSign = definefunc;
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
+        VariableType::NATIVE_POINTER(),    // glue
+        VariableType::JS_ANY(),            // jsFunc
+        VariableType::INT32(),             // methodId
+        VariableType::INT32(),             // length
+        VariableType::JS_ANY(),            // lexEnv
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(DeprecatedSetPropertyByValue)
 {
     // 4 : 4 input parameters
