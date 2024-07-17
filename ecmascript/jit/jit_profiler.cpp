@@ -361,7 +361,7 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
     }  else if (slotValue.IsJSFunction()) {
         JSFunction *callee = JSFunction::Cast(slotValue);
         Method *calleeMethod = Method::Cast(callee->GetMethod());
-        calleeMethodId = calleeMethod->GetMethodId().GetOffset();
+        calleeMethodId = static_cast<int>(calleeMethod->GetMethodId().GetOffset());
         calleeAbcId = PGOProfiler::GetMethodAbcId(callee);
         static_cast<JitCompilationEnv *>(compilationEnv_)
             ->UpdateFuncSlotIdMap(calleeMethodId, methodId_.GetOffset(), slotId);

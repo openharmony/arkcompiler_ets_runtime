@@ -2084,7 +2084,7 @@ void GraphColorRegAllocator::LocalRaForEachUseOperand(const Insn &insn, LocalReg
             if (base != nullptr) {
                 HandleLocalReg(*base, localRa, bbInfo, false, true);
             }
-            if (!memOpnd.IsIntactIndexed()) {
+            if (!memOpnd.IsIntactIndexed() && base != nullptr) {
                 HandleLocalReg(*base, localRa, bbInfo, true, true);
             }
             if (offset != nullptr) {

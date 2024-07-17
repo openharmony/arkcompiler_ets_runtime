@@ -198,7 +198,7 @@ JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset
     } while (calleeOffset != currMethodOffset);
     JSFunction *currFunc = *jsFunction_;
     ProfileTypeInfo *currFuncPTI = *profileTypeInfo_;
-    for (int i = funcSlotChain.size() - 1; i >= 0; --i) {
+    for (int i = static_cast<int>(funcSlotChain.size()) - 1; i >= 0; --i) {
         uint32_t slotId = funcSlotChain[i].first;
         uint32_t callerOffset = funcSlotChain[i].second;
         if (Method::Cast(currFunc->GetMethod())->GetMethodId().GetOffset() != callerOffset) {
