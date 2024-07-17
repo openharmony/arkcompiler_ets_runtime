@@ -382,7 +382,7 @@ JSTaggedValue StoreICRuntime::HandlePropertySet(JSHandle<JSTaggedValue> receiver
                                                 JSHandle<JSTaggedValue> key,
                                                 JSHandle<JSTaggedValue> value, bool isOwn, ICKind kind)
 {
-    ObjectOperator op = ConstructOp(receiver, key, value, isOwn);
+    ObjectOperator op(GetThread(), receiver, key, isOwn ? OperatorType::OWN : OperatorType::PROTOTYPE_CHAIN);
     if (!op.IsFound()) {
         if (kind == ICKind::NamedGlobalStoreIC) {
             PropertyAttributes attr = PropertyAttributes::Default(true, true, false);
@@ -391,8 +391,14 @@ JSTaggedValue StoreICRuntime::HandlePropertySet(JSHandle<JSTaggedValue> receiver
             return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not defined");
         }
     }
-
-    bool success = JSObject::SetProperty(&op, value, true);
+    bool success = false;
+    if (isOwn) {
+        bool enumerable = !(receiver->IsClassPrototype() || receiver->IsClassConstructor());
+        PropertyDescriptor desc(thread_, value, true, enumerable, true);
+        success = JSObject::DefineOwnProperty(thread_, &op, desc);
+    } else {
+        success = JSObject::SetProperty(&op, value, true);
+    }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     // ic-switch
     if (op.GetValue().IsAccessor()) {

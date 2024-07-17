@@ -500,11 +500,17 @@ public:
                                        const JSHandle<JSTaggedValue> &key, PropertyDescriptor &desc);
 
     // [[DefineOwnProperty]]
+    static bool DefineOwnProperty(JSThread *thread, ObjectOperator *op,
+                                  const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
+
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &key,
                                   const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
                                   const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
+
+    static bool OrdinaryDefineOwnProperty(JSThread *thread, ObjectOperator *op,
+                                          const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool OrdinaryDefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &obj,
                                           const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
