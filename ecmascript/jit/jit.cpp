@@ -21,6 +21,8 @@
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include "ecmascript/ic/profile_type_info.h"
+#include "libpandafile/code_data_accessor-inl.h"
+#include "libpandafile/method_data_accessor-inl.h"
 
 namespace panda::ecmascript {
 void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
@@ -172,8 +174,22 @@ Jit::~Jit()
 {
 }
 
-bool Jit::SupportJIT(const Method *method) const
+bool Jit::MethodHasTryCatch(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral) const
 {
+    auto pf = jsPandaFile->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodLiteral->GetMethodId());
+    panda_file::CodeDataAccessor cda(*pf, mda.GetCodeId().value());
+    return cda.GetTriesSize() != 0;
+}
+
+bool Jit::SupportJIT(const Method *method, EcmaVM *vm) const
+{
+    const JSPandaFile* jSPandaFile_ = method->GetJSPandaFile();
+    MethodLiteral* methodLiteral_ = method->GetMethodLiteral();
+    if (!vm->GetJSOptions().IsEnableTryCatchFunction() && MethodHasTryCatch(jSPandaFile_, methodLiteral_)) {
+        return false;
+    }
+
     FunctionKind kind = method->GetFunctionKind();
     switch (kind) {
         case FunctionKind::NORMAL_FUNCTION:
@@ -283,7 +299,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
         return;
     }
     bool isJSSharedFunction = jsFunction.GetTaggedValue().IsJSSharedFunction();
-    if (!jit->SupportJIT(method) || isJSSharedFunction) {
+    if (!jit->SupportJIT(method, vm) || isJSSharedFunction) {
         FunctionKind kind = method->GetFunctionKind();
         std::stringstream msgStr;
         msgStr << "method does not support jit:" << methodInfo << ", kind:" << static_cast<int>(kind)
