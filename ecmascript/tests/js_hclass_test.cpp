@@ -414,4 +414,28 @@ HWTEST_F_L0(JSHClassTest, SetPrototype)
     objectClass->SetPrototype(thread, objectFuncPrototype);
     EXPECT_EQ(objectClass->GetPrototype(), objectFuncPrototype.GetTaggedValue());
 }
+
+HWTEST_F_L0(JSHClassTest, ProxyHClassClone)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<JSFunction> objectFn(thread->GetGlobalEnv()->GetObjectFunction());
+    JSHandle<JSObject> target = factory->NewJSObjectByConstructor(objectFn, JSHandle<JSTaggedValue>(objectFn));
+    JSHandle<JSObject> handler = factory->NewJSObjectByConstructor(objectFn, JSHandle<JSTaggedValue>(objectFn));
+
+    JSHandle<JSProxy> proxy = JSProxy::ProxyCreate(thread,
+        JSHandle<JSTaggedValue>(target), JSHandle<JSTaggedValue>(handler));
+    
+    JSHandle<JSHClass> hclass(thread, proxy->GetClass());
+    EXPECT_FALSE(hclass->IsJSObject());
+    EXPECT_GT(hclass->GetObjectSize(), 0);
+    EXPECT_EQ(hclass->GetInlinedProperties(), 0);
+
+    JSHandle<JSHClass> newHClass = JSHClass::Clone(thread, hclass);
+    EXPECT_EQ(newHClass->GetObjectType(), hclass->GetObjectType());
+    EXPECT_EQ(newHClass->GetObjectSize(), hclass->GetObjectSize());
+    EXPECT_EQ(newHClass->GetInlinedPropsStartSize(), hclass->GetInlinedPropsStartSize());
+    EXPECT_EQ(newHClass->GetInlinedProperties(), hclass->GetInlinedProperties());
+    EXPECT_EQ(newHClass->GetLayout(), hclass->GetLayout());
+}
 }  // namespace panda::test

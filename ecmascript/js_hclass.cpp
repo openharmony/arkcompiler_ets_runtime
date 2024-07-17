@@ -134,14 +134,13 @@ void JSHClass::InitializeWithDefaultValue(const JSThread *thread, uint32_t size,
 {
     DISALLOW_GARBAGE_COLLECTION;
     ClearBitField();
-    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+    if (IsJSTypeObject(type)) {
         SetObjectSize(size + inlinedProps * JSTaggedValue::TaggedTypeSize());
         SetInlinedPropsStart(size);
-        SetLayout(thread, JSTaggedValue::Null());
     } else {
         SetObjectSize(size);
-        SetLayout(thread, JSTaggedValue::Null());
     }
+    SetLayout(thread, JSTaggedValue::Null());
     if (type >= JSType::JS_FUNCTION_FIRST && type <= JSType::JS_FUNCTION_LAST) {
         SetIsJSFunction(true);
     }
@@ -201,7 +200,7 @@ bool JSHClass::IsJSTypeShared(JSType type)
 void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps)
 {
     InitializeWithDefaultValue(thread, size, type, inlinedProps);
-    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+    if (IsJSTypeObject(type)) {
         SetLayout(thread, thread->GlobalConstants()->GetEmptyLayoutInfo());
     }
 }
@@ -211,7 +210,7 @@ void JSHClass::Initialize(const JSThread *thread, uint32_t size, JSType type,
     uint32_t inlinedProps, const JSHandle<JSTaggedValue> &layout)
 {
     InitializeWithDefaultValue(thread, size, type, inlinedProps);
-    if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+    if (IsJSTypeObject(type)) {
         SetLayout(thread, layout);
     }
     if (IsJSTypeShared(type)) {
@@ -223,7 +222,7 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
                                    bool withoutInlinedProperties, uint32_t incInlinedProperties)
 {
     JSType type = jshclass->GetObjectType();
-    uint32_t size = jshclass->GetInlinedPropsStartSize();
+    uint32_t size = IsJSTypeObject(type) ? jshclass->GetInlinedPropsStartSize() : jshclass->GetObjectSize();
     uint32_t numInlinedProps = withoutInlinedProperties ? 0 : jshclass->GetInlinedProperties() + incInlinedProperties;
     JSHandle<JSHClass> newJsHClass;
     if (jshclass.GetTaggedValue().IsInSharedHeap()) {
