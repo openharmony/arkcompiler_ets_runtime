@@ -403,6 +403,10 @@ JSTaggedValue StoreICRuntime::HandlePropertySet(JSHandle<JSTaggedValue> receiver
     // ic-switch
     if (op.GetValue().IsAccessor()) {
         op = ObjectOperator(GetThread(), receiver, key);
+        if (!op.GetValue().IsAccessor()) {
+            //Don't support switch ic type from store handler to prototype handler
+            return JSTaggedValue::Undefined();
+        }
     }
     if (!GetThread()->GetEcmaVM()->ICEnabled()) {
         icAccessor_.SetAsMega();
