@@ -15,4 +15,8 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_aot_test_action("string_add") {
   deps = []
+  is_only_typed_path = true
+  is_enable_trace_deopt = true
+  is_enable_typed_op_profiler = true
+  log_option = " --log-info=trace"
 }

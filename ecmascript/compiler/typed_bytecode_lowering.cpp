@@ -1565,7 +1565,7 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
         return;
     }
     auto *methodLiteral = ctx_->GetJSPandaFile()->FindMethodLiteral(methodId);
-    if (!methodLiteral->IsTypedCall()) {
+    if (methodLiteral == nullptr || !methodLiteral->IsTypedCall()) {
         return;
     }
     if (!tacc.IsValidCallMethodId()) {
@@ -1763,7 +1763,7 @@ void TypedBytecodeLowering::LowerTypedCall(const TypeAccessor &tacc)
         return;
     }
     auto *methodLiteral = ctx_->GetJSPandaFile()->FindMethodLiteral(methodId);
-    if (!methodLiteral->IsTypedCall()) {
+    if (methodLiteral == nullptr || !methodLiteral->IsTypedCall()) {
         return;
     }
     uint32_t argc = tacc.GetArgc();
@@ -1929,7 +1929,7 @@ void TypedBytecodeLowering::LowerTypedThisCall(const TypeAccessor &tacc)
         return;
     }
     auto *methodLiteral = ctx_->GetJSPandaFile()->FindMethodLiteral(methodId);
-    if (!methodLiteral->IsTypedCall()) {
+    if (methodLiteral == nullptr || !methodLiteral->IsTypedCall()) {
         return;
     }
     if (!tacc.IsHotnessFunc()) {

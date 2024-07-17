@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 declare function print(arg:any, arg1?:any):string;
-declare class ArkTools {
-    static isSlicedString(str: string): boolean;
-    isAOTCompiled(args: any): boolean;
-}
+declare var ArkTools:any;
 function assert (expr: unknown, msg?: string): asserts expr {
     if (!expr) throw new Error(msg);
 }
@@ -184,3 +181,28 @@ if (ArkTools.isAOTCompiled(foo)) {
     // assert(strbHasStringAddOpt == true, "Not optimize string add");
     // assert(eHasStringAddOpt == true, "Not optimize string add");
 }
+
+// const utf-16 add test
+let cn_str:string = "中文测试字符串\n"
+function foo4() {
+  for (let i = 0; i < 20; i++) {
+    cn_str += ("中文字符串测试一" + "中文字符串测试二\n") 
+  }
+  print(cn_str)
+}
+foo4()
+print("foo4 result:")
+print(ArkTools.isAOTCompiled(foo4))
+print(ArkTools.isAOTDeoptimized(foo4))
+  
+// base += case
+function foo5() {
+    for (var e = "", i = 0; i < 20; i++) {
+      e += "-";
+    }
+    print(e)
+}
+print("foo5 result:")
+foo5()
+print(ArkTools.isAOTCompiled(foo5))
+print(ArkTools.isAOTDeoptimized(foo5))
