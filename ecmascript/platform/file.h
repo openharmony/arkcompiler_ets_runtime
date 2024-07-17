@@ -73,8 +73,7 @@ MemMap PUBLIC_API FileMap(const char *fileName, int flag, int prot, int64_t offs
 MemMap PUBLIC_API FileMapForAlignAddress(const char *fileName, int flag, int prot,
                                          int64_t offset, uint32_t offStart);
 int PUBLIC_API FileUnMap(MemMap addr);
-JSHandle<EcmaString> ResolveFilenameFromNative(JSThread *thread, JSTaggedValue dirname,
-                                               JSTaggedValue request);
+CString ResolveFilenameFromNative(JSThread *thread, const CString &dirname, CString request);
 bool PUBLIC_API FileExist(const char *filename);
 int PUBLIC_API Unlink(const char *filename);
 bool TryToRemoveSO(JSThread *thread, JSHandle<SourceTextModule> module);

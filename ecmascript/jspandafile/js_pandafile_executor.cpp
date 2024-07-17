@@ -451,12 +451,12 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSpecialModule(JSThread
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
 
     if (jsPandaFile->IsCjs(recordInfo)) {
-        moduleManager->ExecuteCjsModule(thread, recordName.c_str(), jsPandaFile);
+        moduleManager->ExecuteCjsModule(thread, recordName, jsPandaFile);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, Unexpected(false));
         return JSTaggedValue::Undefined();
     }
     if (jsPandaFile->IsJson(recordInfo)) {
-        moduleManager->ExecuteJsonModule(thread, recordName.c_str(), filename, jsPandaFile);
+        moduleManager->ExecuteJsonModule(thread, recordName, filename, jsPandaFile);
         return JSTaggedValue::Undefined();
     }
     UNREACHABLE();
@@ -490,7 +490,7 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::LazyExecuteModule(
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(recordName);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     if (isNative) {
-        moduleManager->ExecuteNativeModule(thread, recordName.c_str());
+        moduleManager->ExecuteNativeModule(thread, recordName);
         return JSTaggedValue::Undefined();
     }
 

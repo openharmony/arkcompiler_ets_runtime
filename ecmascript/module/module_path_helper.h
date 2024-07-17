@@ -156,8 +156,7 @@ public:
                                           const CString &requestName, const CString &packagePath);
     static CString ParseThirdPartyPackage(const JSPandaFile *jsPandaFile, const CString &recordName,
                                           const CString &requestName);
-    static void ResolveCurrentPath(JSThread *thread, JSMutableHandle<JSTaggedValue> &dirPath,
-                                   JSMutableHandle<JSTaggedValue> &fileName, const JSPandaFile *jsPandaFile);
+    static void ResolveCurrentPath(CString &dirPath, CString &fileName, const JSPandaFile *jsPandaFile);
     static CString FindNpmEntryPoint(const JSPandaFile *jsPandaFile, const CString &packageEntryPoint);
     static CString FindPackageInTopLevel(const JSPandaFile *jsPandaFile, const CString &requestName,
                                          const CString &packagePath);

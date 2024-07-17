@@ -46,7 +46,7 @@ public:
 
     static void RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module);
 
-    static void ReviseLoadedModuleCount(JSThread *thread, JSTaggedValue moduleName);
+    static void ReviseLoadedModuleCount(JSThread *thread, const CString &moduleName);
 
     static void IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceTextModule> module,
         std::set<CString> &increaseModule);

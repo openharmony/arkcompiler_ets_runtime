@@ -93,8 +93,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest, bool executeFromJob)
 {
     CString moduleRequestName = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
-    JSHandle<JSTaggedValue> requestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
-    CString moduleRequestStr = ModulePathHelper::Utf8ConvertToString(requestStr.GetTaggedValue());
+    CString requestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
 
     CString baseFilename;
     if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
@@ -105,10 +104,10 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     }
 
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestStr);
+    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestStr);
     if (isNative) {
-        if (moduleManager->IsLocalModuleLoaded(requestStr.GetTaggedValue())) {
-            return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(requestStr.GetTaggedValue()));
+        if (moduleManager->IsLocalModuleLoaded(requestStr)) {
+            return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(requestStr));
         }
         return moduleManager->ResolveNativeModule(requestStr, baseFilename, moduleType);
     }
@@ -122,7 +121,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
 
     CString outFileName = baseFilename;
     CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(
-        thread, jsPandaFile.get(), outFileName, recordName, moduleRequestStr);
+        thread, jsPandaFile.get(), outFileName, recordName, requestStr);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
@@ -141,17 +140,17 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModule(JSThread *th
                                                                     bool executeFromJob)
 {
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (moduleManager->IsLocalModuleLoaded(moduleRequest.GetTaggedValue())) {
-        return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequest.GetTaggedValue()));
+    CString moduleRequestStr = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
+    if (moduleManager->IsLocalModuleLoaded(moduleRequestStr)) {
+        return JSHandle<JSTaggedValue>(moduleManager->HostGetImportedModule(moduleRequestStr));
     }
 
-    JSHandle<EcmaString> dirname = base::PathHelper::ResolveDirPath(thread,
+    CString dirname = base::PathHelper::ResolveDirPath(
         ModulePathHelper::Utf8ConvertToString(module->GetEcmaModuleFilename()));
-    JSHandle<EcmaString> moduleFilename = ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
-        moduleRequest.GetTaggedValue());
+    CString moduleFilename = ResolveFilenameFromNative(thread, dirname, moduleRequestStr);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return SharedModuleManager::GetInstance()->ResolveImportedModule(thread,
-        ModulePathHelper::Utf8ConvertToString(moduleFilename.GetTaggedValue()), executeFromJob);
+        moduleFilename, executeFromJob);
 }
 
 bool SourceTextModule::CheckCircularImport(const JSHandle<SourceTextModule> &module,
@@ -2219,10 +2218,8 @@ void SourceTextModule::CheckCircularImportTool(JSThread *thread, const CString &
     referenceList.push_back(circularModuleRecordName);
     JSMutableHandle<SourceTextModule> moduleRecord(thread, thread->GlobalConstants()->GetUndefined());
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<EcmaString> moduleRecordNameVal =
-        thread->GetEcmaVM()->GetFactory()->NewFromUtf8(circularModuleRecordName.c_str());
-    if (moduleManager->IsLocalModuleLoaded(moduleRecordNameVal.GetTaggedValue())) {
-        moduleRecord.Update(moduleManager->HostGetImportedModule(moduleRecordNameVal.GetTaggedValue()));
+    if (moduleManager->IsLocalModuleLoaded(circularModuleRecordName)) {
+        moduleRecord.Update(moduleManager->HostGetImportedModule(circularModuleRecordName));
     } else {
         moduleRecord.Update(moduleManager->HostResolveImportedModule(circularModuleRecordName));
         RETURN_IF_ABRUPT_COMPLETION(thread);
@@ -2291,35 +2288,30 @@ void SourceTextModule::PrintCircular(const CList<CString> &referenceList, Level 
     LOG_ECMA(INFO) << "checkCircularImport end ------------------------------------------";
 }
 
-JSHandle<JSTaggedValue> SourceTextModule::ReplaceModuleThroughFeature(JSThread *thread,
-                                                                      const CString &requestName)
+CString SourceTextModule::ReplaceModuleThroughFeature(JSThread *thread, const CString &requestName)
 {
-    auto factory = thread->GetEcmaVM()->GetFactory();
     auto vm = thread->GetEcmaVM();
     // check if module need to be mock
     if (vm->IsMockModule(requestName)) {
-        CString request = vm->GetMockModule(requestName);
-        return JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(request.c_str()));
+        return vm->GetMockModule(requestName);
     }
 
     // Load the replaced module, hms -> system hsp
     if (vm->IsHmsModule(requestName)) {
-        CString request = vm->GetHmsModule(requestName);
-        return JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(request.c_str()));
+        return vm->GetHmsModule(requestName);
     }
-    return JSHandle<JSTaggedValue>::Cast(factory->NewFromUtf8(requestName.c_str()));
+    return requestName;
 }
 
 // old way with bundle
 std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModule(JSThread *thread,
     const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest)
 {
-    JSHandle<EcmaString> dirname = base::PathHelper::ResolveDirPath(thread,
+    CString dirname = base::PathHelper::ResolveDirPath(
         ModulePathHelper::Utf8ConvertToString(module->GetEcmaModuleFilename()));
-    JSHandle<EcmaString> moduleFilename = ResolveFilenameFromNative(thread, dirname.GetTaggedValue(),
-        moduleRequest.GetTaggedValue());
+    CString moduleRequestStr = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
+    CString fileName = ResolveFilenameFromNative(thread, dirname, moduleRequestStr);
 
-    CString fileName = ModulePathHelper::Utf8ConvertToString(moduleFilename.GetTaggedValue());
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
     ASSERT(!(jsPandaFile == nullptr));
@@ -2338,15 +2330,15 @@ std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModule
     const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest)
 {
     CString moduleRequestName = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
-    JSHandle<JSTaggedValue> moduleRequestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
+    CString moduleRequestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
 
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
     if (isNative) {
-        ASSERT(moduleManager->IsLocalModuleLoaded(moduleRequestStr.GetTaggedValue()));
+        ASSERT(moduleManager->IsLocalModuleLoaded(moduleRequestStr));
         // native module cached by current context's module manager.
         return std::make_tuple(!SourceTextModule::SHARED_MODULE_TAG,
-            moduleManager->HostGetImportedModule(moduleRequestStr.GetTaggedValue()));
+            moduleManager->HostGetImportedModule(moduleRequestStr));
     }
 
     CString baseFilename = ModulePathHelper::Utf8ConvertToString(module->GetEcmaModuleFilename());

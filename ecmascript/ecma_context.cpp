@@ -437,17 +437,19 @@ void EcmaContext::CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValu
     JSHandle<CjsModule> module = factory_->NewCjsModule();
     JSHandle<JSTaggedValue> require = GetGlobalEnv()->GetCjsRequireFunction();
     JSHandle<CjsExports> exports = factory_->NewCjsExports();
-    JSMutableHandle<JSTaggedValue> filename(thread_, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> dirname(thread_, JSTaggedValue::Undefined());
+    CString fileNameStr;
+    CString dirNameStr;
     if (jsPandaFile->IsBundlePack()) {
-        ModulePathHelper::ResolveCurrentPath(thread_, dirname, filename, jsPandaFile);
+        ModulePathHelper::ResolveCurrentPath(dirNameStr, fileNameStr, jsPandaFile);
     } else {
-        filename.Update(func->GetModule());
-        ASSERT(filename->IsString());
-        CString fullName = ModulePathHelper::Utf8ConvertToString(filename.GetTaggedValue());
-        dirname.Update(PathHelper::ResolveDirPath(thread_, fullName));
+        JSTaggedValue funcFileName = func->GetModule();
+        ASSERT(funcFileName.IsString());
+        fileNameStr = ModulePathHelper::Utf8ConvertToString(funcFileName);
+        dirNameStr = PathHelper::ResolveDirPath(fileNameStr);
     }
-    CJSInfo cjsInfo(module, require, exports, filename, dirname);
+    JSHandle<JSTaggedValue> fileName = JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8(fileNameStr));
+    JSHandle<JSTaggedValue> dirName = JSHandle<JSTaggedValue>::Cast(factory_->NewFromUtf8(dirNameStr));
+    CJSInfo cjsInfo(module, require, exports, fileName, dirName);
     RequireManager::InitializeCommonJS(thread_, cjsInfo);
     if (aotFileManager_->IsLoadMain(jsPandaFile, entryPoint.data())) {
         EcmaRuntimeStatScope runtimeStateScope(vm_);

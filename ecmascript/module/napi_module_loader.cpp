@@ -50,20 +50,15 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(Ecma
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *thread, CString &abcFilePath,
     CString &requestPath, CString &modulePath, const JSPandaFile *pandaFile)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(requestPath);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     if (isNative) {
-        std::string key = ConvertToStdString(requestPath);
-        JSHandle<JSTaggedValue> moduleHandle = moduleManager->LoadNativeModule(thread, key);
+        JSHandle<JSTaggedValue> moduleHandle = moduleManager->LoadNativeModule(thread, requestPath);
         return moduleHandle;
     }
-    JSMutableHandle<JSTaggedValue> moduleName(thread, thread->GlobalConstants()->GetUndefined());
     CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, pandaFile,
         abcFilePath, modulePath, requestPath);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    JSTaggedValue entryPointValue = factory->NewFromUtf8(entryPoint).GetTaggedValue();
-    moduleName.Update(entryPointValue);
 
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entryPoint);
@@ -83,14 +78,14 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
-    if (!moduleManager->IsLocalModuleLoaded(moduleName.GetTaggedValue())) {
-        if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, abcFilePath.c_str(), entryPoint.c_str(), false, true)) {
+    if (!moduleManager->IsLocalModuleLoaded(entryPoint)) {
+        if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, abcFilePath, entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request from napi load module : " + entryPoint +
                 ", from napi load module";
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
         }
     }
-    JSHandle<SourceTextModule> moduleRecord = moduleManager->HostGetImportedModule(moduleName.GetTaggedValue());
+    JSHandle<SourceTextModule> moduleRecord = moduleManager->HostGetImportedModule(entryPoint);
     JSHandle<JSTaggedValue> nameSp = SourceTextModule::GetModuleNamespace(thread, moduleRecord);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
     return nameSp;

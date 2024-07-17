@@ -42,7 +42,11 @@ SharedModuleManager* SharedModuleManager::GetInstance()
 
 void SharedModuleManager::Iterate(const RootVisitor &v)
 {
-    v(Root::ROOT_VM, ObjectSlot(reinterpret_cast<uintptr_t>(&resolvedSharedModules_)));
+    for (auto &it : resolvedSharedModules_) {
+        ObjectSlot slot(reinterpret_cast<uintptr_t>(&it.second));
+        v(Root::ROOT_VM, slot);
+        ASSERT(slot.GetTaggedValue() == it.second);
+    }
 }
 
 JSTaggedValue SharedModuleManager::GetSendableModuleValue(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
@@ -141,19 +145,15 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModule(JSThrea
     if (SearchInSModuleManager(thread, referencingModule)) {
         return JSHandle<JSTaggedValue>(GetSModule(thread, referencingModule));
     }
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> requireModule;
     CString fileName = referencingModule;
-    if (AOTFileManager::GetAbsolutePath(referencingModule, fileName)) {
-        requireModule = JSHandle<JSTaggedValue>(factory->NewFromUtf8(fileName));
-    } else {
+    if (!AOTFileManager::GetAbsolutePath(referencingModule, fileName)) {
         CString msg = "Parse absolute shared module" + referencingModule + " path failed";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
 
     // before resolving module completely, shared-module put into isolate -thread resolvedModules_ temporarily.
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(requireModule.GetTaggedValue());
+    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(fileName);
     if (!module->IsUndefined()) {
         return module;
     }
@@ -161,7 +161,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModule(JSThrea
     ASSERT(jsPandaFile->IsModule(recordInfo));
     JSHandle<JSTaggedValue> moduleRecord = SharedModuleHelper::ParseSharedModule(thread,
         jsPandaFile, fileName, fileName, recordInfo);
-    moduleManager->AddResolveImportedModule(requireModule, moduleRecord);
+    moduleManager->AddResolveImportedModule(fileName, moduleRecord.GetTaggedValue());
     moduleManager->AddToInstantiatingSModuleList(fileName);
     return moduleRecord;
 }
@@ -200,11 +200,9 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModuleWithMerg
     if (SearchInSModuleManager(thread, recordName)) {
         return JSHandle<JSTaggedValue>(GetSModule(thread, recordName));
     }
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> requireModule = JSHandle<JSTaggedValue>(factory->NewFromUtf8(recordName));
     // before resolving module completely, shared-module put into isolate -thread resolvedModules_ temporarily.
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(requireModule.GetTaggedValue());
+    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(recordName);
     if (!module->IsUndefined()) {
         return module;
     }
@@ -212,19 +210,18 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModuleWithMerg
     ASSERT(jsPandaFile->IsModule(recordInfo));
     JSHandle<JSTaggedValue> moduleRecord = SharedModuleHelper::ParseSharedModule(thread, jsPandaFile, recordName,
                                                                                  fileName, recordInfo);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> requireModule = JSHandle<JSTaggedValue>(factory->NewFromUtf8(recordName));
     JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, requireModule);
-    moduleManager->AddResolveImportedModule(requireModule, moduleRecord);
+    moduleManager->AddResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
     moduleManager->AddToInstantiatingSModuleList(recordName);
     return moduleRecord;
 }
 
-bool SharedModuleManager::SearchInSModuleManagerUnsafe(JSThread *thread, const CString &recordName)
+bool SharedModuleManager::SearchInSModuleManagerUnsafe(const CString &recordName)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> recordNameHandle(JSHandle<JSTaggedValue>(factory->NewFromUtf8(recordName)));
-    NameDictionary *dict = NameDictionary::Cast(resolvedSharedModules_.GetTaggedObject());
-    int entry = dict->FindEntry(recordNameHandle.GetTaggedValue());
-    if (entry != -1) {
+    auto entry = resolvedSharedModules_.find(recordName);
+    if (entry != resolvedSharedModules_.end()) {
         return true;
     }
     return false;
@@ -232,20 +229,12 @@ bool SharedModuleManager::SearchInSModuleManagerUnsafe(JSThread *thread, const C
 
 JSHandle<SourceTextModule> SharedModuleManager::GetSModuleUnsafe(JSThread *thread, const CString &recordName)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> recordNameHandle(JSHandle<JSTaggedValue>(factory->NewFromUtf8(recordName)));
-    NameDictionary *dict = NameDictionary::Cast(resolvedSharedModules_.GetTaggedObject());
-    int entry = dict->FindEntry(recordNameHandle.GetTaggedValue());
-    ASSERT(entry != -1);
-    return JSHandle<SourceTextModule>(thread, dict->GetValue(entry));
-}
-
-JSHandle<SourceTextModule> SharedModuleManager::GetSModuleUnsafe(JSThread *thread, JSTaggedValue recordName)
-{
-    NameDictionary *dict = NameDictionary::Cast(resolvedSharedModules_.GetTaggedObject());
-    int entry = dict->FindEntry(recordName);
-    ASSERT(entry != -1);
-    return JSHandle<SourceTextModule>(thread, dict->GetValue(entry));
+    auto entry = resolvedSharedModules_.find(recordName);
+    if (entry == resolvedSharedModules_.end()) {
+        return JSHandle<SourceTextModule>::Cast(thread->GlobalConstants()->GetHandledUndefined());
+    }
+    JSHandle<JSTaggedValue> module(thread, entry->second);
+    return JSHandle<SourceTextModule>::Cast(module);
 }
 
 JSHandle<SourceTextModule> SharedModuleManager::GetSModule(JSThread *thread, const CString &recordName)
@@ -254,28 +243,18 @@ JSHandle<SourceTextModule> SharedModuleManager::GetSModule(JSThread *thread, con
     return GetSModuleUnsafe(thread, recordName);
 }
 
-JSHandle<SourceTextModule> SharedModuleManager::GetSModule(JSThread *thread, JSTaggedValue recordName)
-{
-    RuntimeLockHolder locker(thread, mutex_);
-    return GetSModuleUnsafe(thread, recordName);
-}
-
 bool SharedModuleManager::SearchInSModuleManager(JSThread *thread, const CString &recordName)
 {
     RuntimeLockHolder locker(thread, mutex_);
-    return SearchInSModuleManagerUnsafe(thread, recordName);
+    return SearchInSModuleManagerUnsafe(recordName);
 }
-void SharedModuleManager::InsertInSModuleManager(JSThread *thread, JSHandle<JSTaggedValue> requireModule,
+void SharedModuleManager::InsertInSModuleManager(JSThread *thread, const CString &recordName,
     JSHandle<SourceTextModule> &moduleRecord)
 {
     RuntimeLockHolder locker(thread, mutex_);
     JSHandle<JSTaggedValue> module = JSHandle<JSTaggedValue>::Cast(moduleRecord);
-    CString recordName = ModulePathHelper::Utf8ConvertToString(requireModule.GetTaggedValue());
-    if (!SearchInSModuleManagerUnsafe(thread, recordName)) {
-        JSHandle<NameDictionary> handleDict(thread, resolvedSharedModules_);
-        resolvedSharedModules_ =
-            NameDictionary::Put(thread, handleDict, requireModule, module, PropertyAttributes::Default())
-            .GetTaggedValue();
+    if (!SearchInSModuleManagerUnsafe(recordName)) {
+        AddResolveImportedSModule(recordName, module.GetTaggedValue());
         StateVisit stateVisit;
         sharedModuleMutex_.emplace(recordName, stateVisit);
     }
@@ -283,16 +262,14 @@ void SharedModuleManager::InsertInSModuleManager(JSThread *thread, JSHandle<JSTa
 
 void SharedModuleManager::TransferSModule(JSThread *thread)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     CVector<CString> instantiatingSModuleList = moduleManager->GetInstantiatingSModuleList();
     for (auto s:instantiatingSModuleList) {
-        JSHandle<JSTaggedValue> requireModule = JSHandle<JSTaggedValue>(factory->NewFromUtf8(s));
-        JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule(requireModule.GetTaggedValue());
+        JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule(s);
         ASSERT(module->GetStatus() == ModuleStatus::INSTANTIATED &&
             module->GetSharedType() == SharedTypes::SHARED_MODULE);
-        InsertInSModuleManager(thread, requireModule, module);
-        moduleManager->RemoveModuleNameFromList(requireModule.GetTaggedValue());
+        InsertInSModuleManager(thread, s, module);
+        moduleManager->RemoveModuleNameFromList(s);
     }
     moduleManager->ClearInstantiatingSModuleList();
 }
@@ -350,14 +327,11 @@ JSHandle<ModuleNamespace> SharedModuleManager::SModuleNamespaceCreate(JSThread *
 
 void SharedModuleManager::SharedNativeObjDestory()
 {
-    NameDictionary* dict = NameDictionary::Cast(resolvedSharedModules_.GetTaggedObject());
-    int size = dict->Size();
-    for (int hashIndex = 0; hashIndex < size; hashIndex++) {
-        JSTaggedValue key(dict->GetKey(hashIndex));
-        if (!key.IsUndefined() && !key.IsHole() && !key.IsNull()) {
-            JSTaggedValue val(dict->GetValue(hashIndex));
-            SourceTextModule::Cast(val)->DestoryLazyImportArray();
-        }
+    for (auto it = resolvedSharedModules_.begin(); it != resolvedSharedModules_.end(); it++) {
+        CString key = it->first;
+        ASSERT(!key.empty());
+        JSTaggedValue module = it->second;
+        SourceTextModule::Cast(module)->DestoryLazyImportArray();
     }
 }
 } // namespace panda::ecmascript

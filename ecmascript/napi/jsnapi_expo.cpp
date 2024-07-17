@@ -5457,16 +5457,14 @@ Local<ObjectRef> JSNApi::GetExportObject(EcmaVM *vm, const std::string &file, co
         }
     }
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    ObjectFactory *factory = vm->GetFactory();
-    JSHandle<EcmaString> referencingHandle = factory->NewFromUtf8(entry);
-    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(
-        referencingHandle.GetTaggedValue());
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(entry);
     if (ecmaModule->GetIsNewBcVersion()) {
-        int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key);
+        int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key.c_str());
         JSTaggedValue result = ecmaModule->GetModuleValue(thread, index, false);
         JSHandle<JSTaggedValue> exportObj(thread, result);
         return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
     }
+    ObjectFactory *factory = vm->GetFactory();
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
 
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
@@ -5479,19 +5477,16 @@ Local<ObjectRef> JSNApi::GetExportObjectFromBuffer(EcmaVM *vm, const std::string
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
-    ObjectFactory *factory = vm->GetFactory();
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<EcmaString> referencingHandle = factory->NewFromUtf8(file.c_str());
-    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(
-        referencingHandle.GetTaggedValue());
-
+    JSHandle<ecmascript::SourceTextModule> ecmaModule = moduleManager->GetImportedModule(file.c_str());
     if (ecmaModule->GetIsNewBcVersion()) {
-        int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key);
+        int index = ecmascript::ModuleManager::GetExportObjectIndex(vm, ecmaModule, key.c_str());
         JSTaggedValue result = ecmaModule->GetModuleValue(thread, index, false);
         JSHandle<JSTaggedValue> exportObj(thread, result);
         return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
     }
 
+    ObjectFactory *factory = vm->GetFactory();
     JSHandle<EcmaString> keyHandle = factory->NewFromASCII(key.c_str());
     JSTaggedValue result = ecmaModule->GetModuleValue(thread, keyHandle.GetTaggedValue(), false);
     JSHandle<JSTaggedValue> exportObj(thread, result);
@@ -5503,7 +5498,7 @@ Local<ObjectRef> JSNApi::ExecuteNativeModule(EcmaVM *vm, const std::string &key)
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> exportObj = moduleManager->LoadNativeModule(thread, key);
+    JSHandle<JSTaggedValue> exportObj = moduleManager->LoadNativeModule(thread, key.c_str());
     return JSNApiHelper::ToLocal<ObjectRef>(exportObj);
 }
 
@@ -5511,8 +5506,8 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
-    std::string recordNameStr;
-    std::string abcFilePath;
+    ecmascript::CString recordNameStr;
+    ecmascript::CString abcFilePath;
     if (module_path.size() != 0) {
         ecmascript::CString moduleName = ModulePathHelper::GetModuleNameWithPath(module_path.c_str());
         abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName);
@@ -5530,7 +5525,7 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
         abcFilePath = moduleInfo.second;
         recordNameStr = ModulePathHelper::TranslateNapiFileRequestPath(thread, path.c_str(), file.c_str());
     }
-    LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr.c_str();
+    LOG_ECMA(DEBUG) << "JSNApi::LoadModuleNameSpaceFromFile: Concated recordName " << recordNameStr;
     ecmascript::ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> moduleNamespace = moduleManager->
         GetModuleNameSpaceFromFile(thread, recordNameStr, abcFilePath);

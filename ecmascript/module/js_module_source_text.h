@@ -91,8 +91,7 @@ public:
                                                                       const JSHandle<JSTaggedValue> &moduleRequest,
                                                                       bool executeFromJob = false);
 
-    static JSHandle<JSTaggedValue> ReplaceModuleThroughFeature(JSThread *thread,
-        const CString &requestName);
+    static CString ReplaceModuleThroughFeature(JSThread *thread, const CString &requestName);
 
     // 15.2.1.16.2 GetExportedNames(exportStarSet)
     static CVector<std::string> GetExportedNames(JSThread *thread, const JSHandle<SourceTextModule> &module,

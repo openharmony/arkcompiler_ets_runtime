@@ -38,7 +38,7 @@ public:
     static constexpr char SLASH_TAG = '/';
 
     static CString NormalizePath(const CString &fileName);
-    static JSHandle<EcmaString> ResolveDirPath(JSThread *thread, CString fileName);
+    static CString ResolveDirPath(const CString &fileName);
 
     /*
      * Before: moduleName@nameSpace

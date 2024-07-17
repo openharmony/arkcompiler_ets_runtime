@@ -1153,7 +1153,7 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsModuleNamespaceObject)
     JSHandle<EcmaString> moduleFilename = objectFactory->NewFromUtf8(baseFileName);
     module->SetEcmaModuleFilename(thread_, moduleFilename);
     ModuleManager *moduleManager = thread_->GetCurrentEcmaContext()->GetModuleManager();
-    moduleManager->AddResolveImportedModule(baseFileName, JSHandle<JSTaggedValue>::Cast(module));
+    moduleManager->AddResolveImportedModule(baseFileName, module.GetTaggedValue());
     JSHandle<ModuleNamespace> np =
         ModuleNamespace::ModuleNamespaceCreate(thread_, JSHandle<JSTaggedValue>::Cast(module), localExportEntries);
     EXPECT_TRUE(ModuleNamespace::PreventExtensions());

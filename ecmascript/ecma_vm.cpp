@@ -711,7 +711,7 @@ void EcmaVM::RemoveFromNativePointerList(JSNativePointer *pointer)
     }
 }
 
-void EcmaVM::PushToDeregisterModuleList(CString module)
+void EcmaVM::PushToDeregisterModuleList(const CString &module)
 {
     deregisterModuleList_.emplace_back(module);
 }
