@@ -35,6 +35,7 @@ from typing import Optional, List, Type, Dict, Set, Tuple
 from os.path import dirname, join
 from pathlib import Path
 import xml.etree.cElementTree as XTree
+from enum import Enum, auto
 
 from regress_test_config import RegressTestConfig
 
@@ -217,9 +218,9 @@ def out_put_std(ret_code, cmds, msg):
         -6: f'{msg}:{cmds}\nAborted (core dumped)',
         -4: f'{msg}:{cmds}\nAborted (core dumped)',
         -11: f'{msg}:{cmds}\nSegmentation fault (core dumped)',
-        255: f'{msg} (uncaught error)\n'
+        255: f'{msg}:{cmds}\n(uncaught error)'
     }
-    error_message = error_messages.get(ret_code, f'{msg}: Unknown Error: {str(ret_code)}')
+    error_message = error_messages.get(ret_code, f'{cmds}:{msg}: Unknown Error: {str(ret_code)}')
     if error_message != '':
         output(str(error_message))
 
@@ -694,11 +695,36 @@ class RegressTestAot(RegressTestStep):
         return results
 
 
+class RegressOption(Enum):
+    NO_FORCE_GC = auto()
+    ELEMENTS_KIND = auto()
+
+
+def get_regress_groups():
+    groups = {}
+    with os.fdopen(os.open(RegressTestConfig.REGRESS_TEST_OPTIONS, os.O_RDONLY, stat.S_IRUSR), "r") as file:
+        for group in json.load(file):
+            groups[RegressOption[group["name"]]] = group["files"]
+    return groups
+
+
+def get_test_options(test, test_groups):
+    def match(opt):
+        return test in test_groups[opt]
+
+    def toflag(b):
+        return "true" if b else "false"
+
+    opts = []
+    opts.append("--enable-force-gc=" + toflag(not match(RegressOption.NO_FORCE_GC)))
+    opts.append("--enable-elements-kind=" + toflag(match(RegressOption.ELEMENTS_KIND)))
+    return opts
+
+
 class RegressTestRun(RegressTestStep):
     def __init__(self, args):
         RegressTestStep.__init__(self, args, "Regress Test Run ")
-        self.force_gc_files = self.get_regress_force_gc_files()
-        self.uncaught_error_files = self.get_uncaught_error_files()
+        self.test_groups = get_regress_groups()
 
     @staticmethod
     def run(args, test_reports: Optional[List[TestReport]] = None) -> List[TestReport]:
@@ -708,14 +734,6 @@ class RegressTestRun(RegressTestStep):
         test_reports = runner.run_test_case_dir(test_reports)
         runner._end()
         return test_reports
-
-    @staticmethod
-    def get_regress_force_gc_files():
-        return Utils.read_skip_list(RegressTestConfig.FORCE_GC_FILE_LIST)
-
-    @staticmethod
-    def get_uncaught_error_files():
-        return Utils.read_skip_list(RegressTestConfig.UNCAUGHT_ERROR_FILE_LIST)
 
     def run_test_case_dir(self, test_reports: List[TestReport]) -> List[TestReport]:
         with multiprocessing.Pool(processes=self.args.processes, initializer=init_worker,
@@ -744,47 +762,28 @@ class RegressTestRun(RegressTestStep):
         os.environ["LD_LIBRARY_PATH"] = self.args.ld_library_path
 
         # test environ LC_ALL/TZ
+        test_name = test_report.test_id.replace('regresstest/ark-regress/', '')
         set_test_environ(test_report.src_path)
-
-        force_gc_file = test_report.test_id.replace('regresstest/ark-regress/', '')
-        unforced_gc = force_gc_file in self.force_gc_files
-        asm_arg1 = f"--enable-force-gc={'false' if unforced_gc else 'true'}"
-
-        icu_path = f"--icu-data-path={self.args.icu_path}"
-
-        # test uncaught error
-        uncaught_error_file = force_gc_file
-        test_uncaught_error = uncaught_error_file in self.uncaught_error_files
-
+        command = []
+        command.append(self.args.ark_tool)
+        command.append(f"--icu-data-path={self.args.icu_path}")
+        command.append(f"--entry-point={entry_point}")
         if self.args.ark_aot:
-            command = [
-                self.args.ark_tool,
-                asm_arg1,
-                f"--stub-file={self.args.stub_path}",
-                icu_path,
-                f"--aot-file={aot_file}",
-                f"--entry-point={entry_point}",
-                f'{abc_file}'
-            ]
-        else:
-            command = [
-                self.args.ark_tool,
-                asm_arg1,
-                icu_path,
-                f"--entry-point={entry_point}",
-                f'{abc_file}'
-            ]
-        return self.run_test_case_file(command, test_report, expect_file, test_uncaught_error)
+            command.append(f"--stub-file={self.args.stub_path}")
+            command.append(f"--aot-file={aot_file}")
+        command += get_test_options(test_name, self.test_groups)
+        command.append(abc_file)
 
-    def run_test_case_file(self, command, test_report: TestReport, expect_file, test_uncaught_error) -> TestReport:
+        return self.run_test_case_file(command, test_report, expect_file)
+
+    def run_test_case_file(self, command, test_report: TestReport, expect_file) -> TestReport:
         expect_file_exits = os.path.exists(expect_file)
         if expect_file_exits:
-            return self.run_test_case_with_expect(command, test_report, expect_file, test_uncaught_error)
+            return self.run_test_case_with_expect(command, test_report, expect_file)
         else:
-            return self.run_test_case_with_assert(command, test_report, test_uncaught_error)
+            return self.run_test_case_with_assert(command, test_report)
 
-    def run_test_case_with_expect(self, command, test_report: TestReport, expect_file,
-                                  test_uncaught_error) -> TestReport:
+    def run_test_case_with_expect(self, command, test_report: TestReport, expect_file) -> TestReport:
         expect_output_str = read_expect_file(expect_file, test_report.src_path)
         step = StepResult(self.name, command=command)
         Utils.exec_command(command, test_report.test_id, step, self.args.timeout)
@@ -792,15 +791,8 @@ class RegressTestRun(RegressTestStep):
         err_str = step.stderr
         out_str = step.stdout
 
-        if (test_uncaught_error and ret_code == 255 and
-                (out_str == expect_output_str.strip() or
-                 err_str == expect_output_str.strip())):
-            result_message = f'PASS {test_report.test_id} \n'
-            out_put_std(ret_code, command, result_message)
-            step.is_passed = True
-        elif (ret_code == 0 and
-              (out_str == expect_output_str.strip() or
-               err_str == expect_output_str.strip())):
+        if ((ret_code == 0 or (ret_code == 255 and "/fail/" in test_case_file)) \
+            and (out_str == expect_output_str.strip() or err_str == expect_output_str.strip())):
             result_message = f'PASS {test_report.test_id} \n'
             out_put_std(ret_code, command, result_message)
             step.is_passed = True
@@ -815,17 +807,13 @@ class RegressTestRun(RegressTestStep):
         test_report.passed = step.is_passed
         return test_report
 
-    def run_test_case_with_assert(self, command, test_report: TestReport, test_uncaught_error) -> TestReport:
+    def run_test_case_with_assert(self, command, test_report: TestReport) -> TestReport:
         step = StepResult(self.name, command=command)
         Utils.exec_command(command, test_report.test_id, step, self.args.timeout)
         ret_code = step.return_code
         err_str = step.stderr
 
-        if test_uncaught_error and ret_code == 255:
-            result_message = f'PASS {test_report.test_id} \n'
-            out_put_std(ret_code, command, result_message)
-            step.is_passed = True
-        elif ret_code != 0 or (err_str and "[ecmascript] Stack overflow" not in err_str):
+        if ret_code != 0 or (err_str and "[ecmascript] Stack overflow" not in err_str):
             result_message = f'FAIL: {test_report.test_id} \nerr: {str(err_str)}'
             out_put_std(ret_code, command, result_message)
             step.is_passed = False

@@ -38,8 +38,7 @@ class RegressTestConfig:
     REGRESS_TEST_CASE_DIR = os.path.join(REGRESS_BASE_TEST_DIR, REGRESS_GIT_REPO)
     REGRESS_TEST_TOOL_DIR = os.path.join(REGRESS_TEST_CASE_DIR, TEST_TOOL_FILE_JS_NAME)
     SKIP_LIST_FILE = os.path.join(REGRESS_BASE_TEST_DIR, "regresstest_skip_tests.json")
-    FORCE_GC_FILE_LIST = os.path.join(REGRESS_BASE_TEST_DIR, "regress_skip_force_gc.json")
-    UNCAUGHT_ERROR_FILE_LIST = os.path.join(REGRESS_BASE_TEST_DIR, "regress_throw_uncaught_error.json")
+    REGRESS_TEST_OPTIONS = os.path.join(REGRESS_BASE_TEST_DIR, "regress_options.json")
     DEFAULT_LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
     ICU_PATH_DATA = f"{CODE_ROOT}/third_party/icu/ohos_icu4j/data"
     ICU_PATH = f"{CODE_ROOT}/third_party/icu/"
