@@ -5260,14 +5260,14 @@ void JSNApi::SetNativePtrGetter(EcmaVM *vm, void* cb)
     vm->SetNativePtrGetter(reinterpret_cast<ecmascript::NativePtrGetter>(cb));
 }
 
-void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb)
+void JSNApi::SetHostEnqueueJob(const EcmaVM *vm, Local<JSValueRef> cb, QueueType queueType)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     JSHandle<JSFunction> fun = JSHandle<JSFunction>::Cast(JSNApiHelper::ToJSHandle(cb));
     JSHandle<TaggedArray> array = vm->GetFactory()->EmptyArray();
     JSHandle<MicroJobQueue> job = thread->GetCurrentEcmaContext()->GetMicroJobQueue();
-    MicroJobQueue::EnqueueJob(thread, job, QueueType::QUEUE_PROMISE, fun, array);
+    MicroJobQueue::EnqueueJob(thread, job, queueType, fun, array);
 }
 
 bool JSNApi::ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file)
