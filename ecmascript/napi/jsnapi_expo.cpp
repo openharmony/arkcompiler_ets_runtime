@@ -4463,7 +4463,7 @@ bool JSNApi::StoreDebugInfo([[maybe_unused]] int tid,
     JsDebuggerManager *jsDebuggerManager = vm->GetJsDebuggerManager();
     const auto &handler = jsDebuggerManager->GetDebugLibraryHandle();
     if (handler.IsValid()) {
-        LOG_ECMA(ERROR) << "[StoreDebugInfo] handler has already loaded";
+        LOG_ECMA(INFO) << "[StoreDebugInfo] handler has already loaded";
         return false;
     }
 

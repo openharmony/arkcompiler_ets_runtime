@@ -41,7 +41,12 @@ public:
     EcmaString *GetOrInternString(EcmaVM *vm,
                                   const JSHandle<EcmaString> &firstString,
                                   const JSHandle<EcmaString> &secondString);
+    EcmaString *GetOrInternStringWithoutLock(JSThread *thread,
+                                             const JSHandle<EcmaString> &firstString,
+                                             const JSHandle<EcmaString> &secondString);
     EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress);
+    EcmaString *GetOrInternStringWithoutLock(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
+                                             bool canBeCompress);
     EcmaString *CreateAndInternStringNonMovable(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len);
     EcmaString *CreateAndInternStringReadOnly(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                               bool canBeCompress);
