@@ -3,9 +3,13 @@
 regresstest/ark-regress/mjsunit/regress/regress-95113.js
 # Issue #17902
 regresstest/ark-regress/mjsunit/regress/regress-crbug-1439691.js
+# Issue #17904
+regresstest/ark-regress/mjsunit/es6/regress/regress-lookup-transition.js
 
 # Issue #17901
 regresstest/ark-regress/intl/regress-1130489.js
+regresstest/ark-regress/intl/regress-1427932.js
+regresstest/ark-regress/mjsunit/compiler/regress-crbug-1226264.js
 regresstest/ark-regress/mjsunit/es7/regress/regress-634273.js
 regresstest/ark-regress/mjsunit/regress/regress-1098565.js
 regresstest/ark-regress/mjsunit/regress/regress-1110001.js
@@ -50,7 +54,7 @@ regresstest/ark-regress/mjsunit/regress/regress-732836.js
 regresstest/ark-regress/mjsunit/regress/regress-json-stringify-gc.js
 regresstest/ark-regress/mjsunit/regress/regress-982.js
 
-# --- end of Issue #17901
+# --- end of Issue #17827
 # Compilation error: Issue #18551
 regresstest/ark-regress/mjsunit/fixed-context-shapes-when-recompiling.js
 regresstest/ark-regress/mjsunit/compiler/minus-zero.js

@@ -4,6 +4,8 @@
 regresstest/ark-regress/mjsunit/regress/regress-95113.js
 # Issue #17902
 regresstest/ark-regress/mjsunit/regress/regress-crbug-1439691.js
+# Issue #17904
+regresstest/ark-regress/mjsunit/es6/regress/regress-lookup-transition.js
 
 # Issue #17901
 regresstest/ark-regress/intl/collator/check-co-option.js
@@ -17,6 +19,7 @@ regresstest/ark-regress/intl/localematcher/bestfit-macrolanguages.js
 regresstest/ark-regress/intl/overrides/string.js
 regresstest/ark-regress/intl/regress-1041319.js
 regresstest/ark-regress/intl/regress-1130489.js
+regresstest/ark-regress/intl/regress-1427932.js
 regresstest/ark-regress/intl/relative-time-format/check-numbering-system.js
 regresstest/ark-regress/intl/relative-time-format/numberingSystems.js
 regresstest/ark-regress/intl/relative-time-format/resolved-options.js
@@ -24,6 +27,7 @@ regresstest/ark-regress/intl/segmenter/constructor.js
 regresstest/ark-regress/mjsunit/asm/regress-740325.js
 regresstest/ark-regress/mjsunit/asm/regress-9531.js
 regresstest/ark-regress/mjsunit/compiler/regress-1104514.js
+regresstest/ark-regress/mjsunit/compiler/regress-crbug-1226264.js
 regresstest/ark-regress/mjsunit/es6/math-log1p.js
 regresstest/ark-regress/mjsunit/es6/string-fromcodepoint.js
 regresstest/ark-regress/mjsunit/es7/regress/regress-634273.js

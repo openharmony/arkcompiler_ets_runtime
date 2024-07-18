@@ -18,6 +18,7 @@ limitations under the License.
 Description: run regress test case
 """
 import argparse
+import dataclasses
 import datetime
 import json
 import logging
@@ -26,18 +27,19 @@ import os
 import platform
 import re
 import shutil
-import signal
 import stat
 import subprocess
 import sys
+from abc import ABC
+from typing import Optional, List, Type, Dict, Set, Tuple
 from os.path import dirname, join
 from pathlib import Path
-from typing import Tuple, Optional, List
 import xml.etree.cElementTree as XTree
 
 from regress_test_config import RegressTestConfig
 
 ENV_PATTERN = re.compile(r"//\s+Environment Variables:(.*)")
+
 
 def init_log_file(args):
     logging.basicConfig(filename=args.out_log, format=RegressTestConfig.DEFAULT_LOG_FORMAT, level=logging.INFO)
@@ -51,57 +53,144 @@ def parse_args():
                         help='File to test')
     parser.add_argument('--test-list', metavar='FILE', dest="test_list", default=None,
                         help='File with list of tests to run')
+    parser.add_argument('--ignore-list', metavar='FILE', dest="ignore_list", default=None,
+                        help='File with known failed tests list')
     parser.add_argument('--timeout', default=RegressTestConfig.DEFAULT_TIMEOUT, type=int,
                         help='Set a custom test timeout in seconds !!!\n')
     parser.add_argument('--processes', default=RegressTestConfig.DEFAULT_PROCESSES, type=int,
                         help='set number of processes to use. Default value: 1\n')
+    parser.add_argument('--merge-abc-binary',
+                        help="merge-abc's binary tool")
     parser.add_argument('--ark-tool',
                         help="ark's binary tool")
+    parser.add_argument('--ark-aot-tool',
+                        help="ark_aot's binary tool")
+    parser.add_argument('--ark-aot', default=False, action='store_true',
+                        help="runs in ark-aot mode")
+    parser.add_argument('--run-pgo', default=False, action='store_true',
+                        help="runs in pgo mode")
+    parser.add_argument('--enable-litecg', default=False, action='store_true',
+                        help="runs in litecg mode")
     parser.add_argument('--ark-frontend-binary',
                         help="ark frontend conversion binary tool")
-    parser.add_argument('--LD_LIBRARY_PATH',
+    parser.add_argument('--stub-path',
+                        help="stub file for run in AOT modes")
+    parser.add_argument('--LD_LIBRARY_PATH', '--libs-dir',
                         dest='ld_library_path', default=None, help='LD_LIBRARY_PATH')
     parser.add_argument('--icu-path',
                         dest='icu_path', help='icu-data-path')
     parser.add_argument('--out-dir',
                         default=None, help='target out dir')
+    parser.add_argument('--force-clone', action="store_true",
+                        default=False, help='Force to clone tests folder')
     return parser.parse_args()
 
 
-def check_args(args):
-    current_dir = os.getcwd()
+def check_ark_frontend_binary(args) -> bool:
     if args.ark_frontend_binary is None:
         print('ark_frontend_binary is required, please add this parameter')
         return False
-    else:
-        current_frontend_binary = os.path.join(current_dir, args.ark_frontend_binary)
-        test_tool_frontend_binary = os.path.join(RegressTestConfig.TEST_TOOL_FILE_DIR, args.ark_frontend_binary)
-        if not os.path.exists(current_frontend_binary) and not os.path.exists(test_tool_frontend_binary):
-            print('entered ark_frontend_binary does not exist. please confirm')
-            return False
-        else:
-            args.ark_frontend_binary = current_frontend_binary if os.path.exists(
-                current_frontend_binary) else test_tool_frontend_binary
+    return True
 
+
+def check_frontend_library(args) -> bool:
+    current_dir = str(os.getcwd())
+    current_frontend_binary = os.path.join(current_dir, str(args.ark_frontend_binary))
+    test_tool_frontend_binary = os.path.join(RegressTestConfig.TEST_TOOL_FILE_DIR, args.ark_frontend_binary)
+    if not os.path.exists(current_frontend_binary) and not os.path.exists(test_tool_frontend_binary):
+        print('entered ark_frontend_binary does not exist. please confirm')
+        return False
+    args.ark_frontend_binary = current_frontend_binary if os.path.exists(
+        current_frontend_binary) else test_tool_frontend_binary
+    args.ark_frontend_binary = os.path.abspath(args.ark_frontend_binary)
+    return True
+
+
+def check_ark_tool(args) -> bool:
+    current_dir = str(os.getcwd())
     if args.ark_tool is None:
         print('ark_tool is required, please add this parameter')
         return False
-    else:
-        current_ark_tool = os.path.join(current_dir, args.ark_tool)
-        test_tool_ark_tool = os.path.join(RegressTestConfig.TEST_TOOL_FILE_DIR, args.ark_tool)
-        if not os.path.exists(current_ark_tool) and not os.path.exists(test_tool_ark_tool):
-            print('entered ark_tool does not exist. please confirm')
+
+    current_ark_tool = os.path.join(current_dir, str(args.ark_tool))
+    test_tool_ark_tool = os.path.join(RegressTestConfig.TEST_TOOL_FILE_DIR, args.ark_tool)
+    if not os.path.exists(current_ark_tool) and not os.path.exists(test_tool_ark_tool):
+        print('entered ark_tool does not exist. please confirm')
+        return False
+
+    args.ark_tool = current_ark_tool if os.path.exists(current_ark_tool) else test_tool_ark_tool
+    args.ark_tool = os.path.abspath(args.ark_tool)
+    return True
+
+
+def check_ark_aot(args) -> bool:
+    if args.ark_aot:
+        current_dir = str(os.getcwd())
+        current_ark_aot_tool = os.path.join(current_dir, str(args.ark_aot_tool))
+        test_tool_ark_aot_tool = os.path.join(RegressTestConfig.TEST_TOOL_FILE_DIR, args.ark_aot_tool)
+        if not os.path.exists(current_ark_aot_tool) and not os.path.exists(test_tool_ark_aot_tool):
+            print(f'entered ark_aot_tool "{args.ark_aot_tool}" does not exist. Please check')
             return False
-        else:
-            args.ark_tool = current_ark_tool if os.path.exists(current_ark_tool) else test_tool_ark_tool
-    if args.ld_library_path is None:
+        args.ark_aot_tool = current_ark_aot_tool if os.path.exists(current_ark_aot_tool) else test_tool_ark_aot_tool
+        args.ark_aot_tool = os.path.abspath(args.ark_aot_tool)
+        return True
+    if args.run_pgo and not args.ark_aot:
+        print('pgo mode cannot be used without aot')
+        return False
+    return True
+
+
+def check_stub_path(args) -> bool:
+    if args.stub_path:
+        current_dir = str(os.getcwd())
+        stub_path = os.path.join(current_dir, str(args.stub_path))
+        if not os.path.exists(stub_path):
+            print(f'entered stub-file "{args.stub_path}" does not exist. Please check')
+            return False
+        args.stub_path = os.path.abspath(args.stub_path)
+    return True
+
+
+def is_ignore_file_present(ignore_path: str) -> bool:
+    if os.path.exists(ignore_path):
+        return True
+    print(f"Cannot find ignore list '{ignore_path}'")
+    return False
+
+
+def check_ignore_list(args) -> bool:
+    if args.ignore_list:
+        if os.path.isabs(args.ignore_list):
+            return is_ignore_file_present(args.ignore_list)
+        args.ignore_list = str(os.path.join(RegressTestConfig.TEST_TOOL_FILE_DIR, args.ignore_list))
+        return is_ignore_file_present(args.ignore_list)
+    return True
+
+
+def check_args(args):
+    result = check_ark_frontend_binary(args)
+    result = result and check_frontend_library(args)
+    result = result and check_ark_tool(args)
+    result = result and check_ark_aot(args)
+    result = result and check_stub_path(args)
+    result = result and check_ignore_list(args)
+
+    if not result:
+        return False
+
+    if args.ld_library_path is not None:
+        libs = args.ld_library_path.split(":")
+        current_dir = str(os.getcwd())
+        libs = [os.path.abspath(os.path.join(current_dir, str(lib))) for lib in libs]
+        args.ld_library_path = ":".join(libs)
+    else:
         args.ld_library_path = RegressTestConfig.DEFAULT_LIBS_DIR
     if args.icu_path is None:
         args.icu_path = RegressTestConfig.ICU_PATH
     if args.out_dir is None:
         args.out_dir = RegressTestConfig.PROJECT_BASE_OUT_DIR
     else:
-        args.out_dir = os.path.join(RegressTestConfig.CURRENT_PATH, args.out_dir)
+        args.out_dir = os.path.abspath(os.path.join(RegressTestConfig.CURRENT_PATH, args.out_dir))
     if not args.out_dir.endswith("/"):
         args.out_dir = f"{args.out_dir}/"
     args.regress_out_dir = os.path.join(args.out_dir, "regresstest")
@@ -112,32 +201,9 @@ def check_args(args):
     return True
 
 
-def get_skip_test_cases():
-    skip_tests_list = []
-    with os.fdopen(os.open(RegressTestConfig.SKIP_LIST_FILE, os.O_RDONLY, stat.S_IRUSR), "r") as file_object:
-        json_data = json.load(file_object)
-        for key in json_data:
-            skip_tests_list.extend(key["files"])
-    return skip_tests_list
-
-
 def remove_dir(path):
     if os.path.exists(path):
         shutil.rmtree(path)
-
-
-def git_clone(git_url, code_dir):
-    cmds = ['git', 'clone', git_url, code_dir]
-    retries = RegressTestConfig.DEFAULT_RETRIES
-    while retries > 0:
-        with subprocess.Popen(cmds) as proc:
-            ret = proc.wait()
-            if ret:
-                print(f"\n Error: Cloning '{git_url}' failed. Retry remaining '{retries}' times")
-                retries -= 1
-            else:
-                return True
-    sys.exit(1)
 
 
 def output(msg):
@@ -148,52 +214,92 @@ def output(msg):
 def out_put_std(ret_code, cmds, msg):
     error_messages = {
         0: msg,
-        -6: f'{cmds}:{msg}\nAborted (core dumped)',
-        -4: f'{cmds}:{msg}\nAborted (core dumped)',
-        -11: f'{cmds}:{msg}\nSegmentation fault (core dumped)',
+        -6: f'{msg}:{cmds}\nAborted (core dumped)',
+        -4: f'{msg}:{cmds}\nAborted (core dumped)',
+        -11: f'{msg}:{cmds}\nSegmentation fault (core dumped)',
         255: f'{msg} (uncaught error)\n'
     }
-    error_message = error_messages.get(ret_code, f'{cmds}: Unknown Error: {str(ret_code)}')
+    error_message = error_messages.get(ret_code, f'{msg}: Unknown Error: {str(ret_code)}')
     if error_message != '':
         output(str(error_message))
 
 
-def exec_command(cmd_args, timeout=RegressTestConfig.DEFAULT_TIMEOUT):
-    code_format = 'utf-8'
-    if platform.system() == "Windows":
-        code_format = 'gbk'
-    code = 0
-    msg = ""
-    try:
-        with subprocess.Popen(cmd_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True,
-                              start_new_session=True) as process:
-            cmd_string = " ".join(cmd_args)
-            output_res, errs = process.communicate(timeout=timeout)
-            ret_code = process.poll()
-            if errs.decode(code_format, 'ignore'):
-                msg += errs.decode(code_format, 'ignore')
-            if ret_code and ret_code != 1:
-                code = ret_code
-                msg += f"Command {cmd_string}:\n error: {errs.decode(code_format, 'ignore')}"
-            else:
-                msg += output_res.decode(code_format, 'ignore')
-    except subprocess.TimeoutExpired:
-        process.kill()
-        process.terminate()
-        os.kill(process.pid, signal.SIGTERM)
-        code = 1
-        msg += f"Timeout: '{cmd_string}' timed out after {timeout} seconds"
-    except Exception as error:
-        code = 1
-        msg += f"{cmd_string}: unknown error: {error}"
-    out_put_std(code, cmd_args, msg)
+@dataclasses.dataclass
+class StepResult:
+    step_name: str  # a copy of the step name
+    is_passed: bool = False  # True if passed, any other state is False
+    command: List[str] = dataclasses.field(default_factory=list)  # command to run
+    return_code: int = -1
+    stdout: Optional[str] = None  # present only if there is some output
+    stderr: Optional[str] = None  # can be present only if is_passed == False
+    fileinfo: Optional[str] = None  # content of fileinfo file if present
+
+    def report(self) -> str:
+        stdout = self.stdout if self.stdout else ''
+        stderr = self.stderr if self.stderr else ''
+        cmd = " ".join([str(cmd) for cmd in self.command])
+        result: List[str] = [
+            f"{self.step_name}:",
+            f"\tCommand: {cmd}",
+            f"\treturn code={self.return_code}",
+            f"\toutput='{stdout}'",
+            f"\terrors='{stderr}'"]
+        if self.fileinfo:
+            result.append(f"\tFileInfo:\n{self.fileinfo}")
+        return "\n".join(result)
 
 
-class RegressTestPrepare:
-    def __init__(self, args, skip_test_cases):
+@dataclasses.dataclass
+class TestReport:
+    src_path: str  # full path to the source test
+    test_id: str = ""  # path starting from regresstest
+    out_path: str = ""  # full path to intermediate files up to folder
+    passed: bool = False  # False if the test has not started or failed
+    is_skipped: bool = False  # True if the test has found in the skipped (excluded) list
+    is_ignored: bool = False  # True if the test has found in the ignored list
+    steps: List[StepResult] = dataclasses.field(default_factory=list)  # list of results
+
+    def report(self) -> str:
+        result: List[str] = [f"{self.test_id}:"]
+        if self.steps is None:
+            return ""
+        for step in self.steps:
+            result.append(f"\t{step.report()}")
+        return "\n".join(result)
+
+
+class RegressTestStep(ABC):
+    step_obj: Optional['RegressTestStep'] = None
+
+    def __init__(self, args, name):
+        print(f"--- Start step {name} ---")
         self.args = args
-        self.out_dir = args.regress_out_dir
-        self.skil_test = skip_test_cases
+        self.__start: Optional[datetime.datetime] = None
+        self.__end: Optional[datetime.datetime] = None
+        self.__duration: Optional[datetime.timedelta] = None
+        self.name: str = name
+
+    @staticmethod
+    def run(args, test_reports: Optional[List[TestReport]] = None) -> List[TestReport]:
+        pass
+
+    def get_duration(self) -> datetime.timedelta:
+        if self.__duration is None:
+            print(f"Step {self.name} not started or not completed")
+            sys.exit(1)
+        return self.__duration
+
+    def _start(self):
+        self.__start = datetime.datetime.now()
+
+    def _end(self):
+        self.__end = datetime.datetime.now()
+        self.__duration = self.__end - self.__start
+
+
+class RegressTestRepoPrepare(RegressTestStep):
+    def __init__(self, args):
+        RegressTestStep.__init__(self, args, "Repo preparation")
         self.test_list: List[str] = self.read_test_list(args.test_list)
 
     @staticmethod
@@ -207,98 +313,28 @@ class RegressTestPrepare:
         with open(filename, 'r') as stream:
             return stream.read().split("\n")
 
-    def run(self):
-        self.get_test_case()
-        self.prepare_clean_data()
-        test_list = self.get_regress_test_files()
-        self.gen_test_tool()
-        self.gen_abc_files(test_list)
-
-    def get_test_case(self):
-        if not os.path.isdir(os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, '.git')):
-            git_clone(RegressTestConfig.REGRESS_GIT_URL, RegressTestConfig.REGRESS_TEST_CASE_DIR)
-            return self.git_checkout(RegressTestConfig.REGRESS_GIT_HASH, RegressTestConfig.REGRESS_TEST_CASE_DIR)
-        return True
-
     @staticmethod
-    def change_extension(path):
-        base_path, ext = os.path.splitext(path)
-        if ext:
-            new_path = base_path + ".abc"
-        else:
-            new_path = path + ".abc"
-        return new_path
+    def run(args, test_reports: Optional[List[TestReport]] = None) -> List[TestReport]:
+        repo = RegressTestRepoPrepare(args)
+        RegressTestRepoPrepare.step_obj = repo
+        repo._start()
 
-    def gen_test_tool(self):
-        self.gen_abc_files([RegressTestConfig.REGRESS_TEST_TOOL_DIR])
+        repo.run_regress_test_prepare()
+        repo.prepare_clean_data()
+        repo.get_test_case()
+        test_list = repo.get_regress_test_files()
+        skip_list = repo.get_skip_test_cases()
+        if test_reports is None:
+            test_reports = []
+        for test in test_list:
+            shorten = Utils.get_inside_path(test)
+            test_id = f"regresstest/ark-regress/{shorten}"
+            if shorten not in skip_list:
+                report = TestReport(src_path=test, test_id=test_id)
+                test_reports.append(report)
 
-    def gen_abc_file(self, input_file_path):
-        start_index = input_file_path.find(RegressTestConfig.REGRESS_GIT_REPO)
-        if start_index != -1:
-            test_case_path = input_file_path[start_index + len(RegressTestConfig.REGRESS_GIT_REPO) + 1:]
-            file_extensions = ['.out', '.txt', '.abc']
-            pattern = r'({})$'.format('|'.join(re.escape(ext) for ext in file_extensions))
-            if re.search(pattern, test_case_path) or test_case_path in self.skil_test:
-                return
-            out_file = input_file_path.replace('.js', '.out')
-            expect_file_exits = os.path.exists(out_file)
-            src_dir = RegressTestConfig.REGRESS_TEST_CASE_DIR
-            out_dir = self.args.test_case_out_dir
-            self.mk_dst_dir(input_file_path, src_dir, out_dir)
-            output_test_case_path = self.change_extension(test_case_path)
-            output_file = os.path.join(self.args.test_case_out_dir, output_test_case_path)
-            command = [self.args.ark_frontend_binary]
-            command.extend([input_file_path, f'--output={output_file}'])
-            exec_command(command, self.args.timeout)
-            if expect_file_exits:
-                out_file_path = os.path.join(self.args.test_case_out_dir, test_case_path.replace('.js', '.out'))
-                shutil.copy(str(out_file), str(out_file_path))
-
-    def gen_abc_files(self, test_list):
-        print("\nGenerating abc file........\n")
-        with multiprocessing.Pool(processes=self.args.processes) as pool:
-            pool.imap_unordered(self.gen_abc_file, test_list)
-            pool.close()
-            pool.join()
-
-    def mk_dst_dir(self, file, src_dir, dist_dir):
-        idx = file.rfind(src_dir)
-        fpath, _ = os.path.split(file[idx:])
-        fpath = fpath.replace(src_dir, dist_dir)
-        self.mk_dir(fpath)
-
-    @staticmethod
-    def mk_dir(path):
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-    def get_regress_test_files(self):
-        result = []
-        if self.test_list:
-            for test in self.test_list:
-                test_file_name = join(dirname(RegressTestConfig.REGRESS_BASE_TEST_DIR), test)
-                result.append(test_file_name)
-            return result
-        elif self.args.test_file is not None and len(self.args.test_file) > 0:
-            test_file_list = os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, self.args.test_file)
-            result.append(test_file_list)
-            return result
-        elif self.args.test_dir is not None and len(self.args.test_dir) > 0:
-            test_file_list = os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, self.args.test_dir)
-        else:
-            test_file_list = RegressTestConfig.REGRESS_TEST_CASE_DIR
-        for dir_path, path, filenames in os.walk(test_file_list):
-            if dir_path.find(".git") != -1:
-                continue
-            for filename in filenames:
-                if filename.endswith(".js") or filename.endswith(".mjs"):
-                    result.append(os.path.join(dir_path, filename))
-        return result
-
-    def prepare_clean_data(self):
-        self.git_clean(RegressTestConfig.REGRESS_TEST_CASE_DIR)
-        self.git_pull(RegressTestConfig.REGRESS_TEST_CASE_DIR)
-        self.git_checkout(RegressTestConfig.REGRESS_GIT_HASH, RegressTestConfig.REGRESS_TEST_CASE_DIR)
+        repo._end()
+        return test_reports
 
     @staticmethod
     def git_checkout(checkout_options, check_out_dir=os.getcwd()):
@@ -323,16 +359,584 @@ class RegressTestPrepare:
         with subprocess.Popen(cmds, cwd=clean_dir) as proc:
             proc.wait()
 
+    @staticmethod
+    def git_clone(git_url, code_dir):
+        cmds = ['git', 'clone', git_url, code_dir]
+        retries = RegressTestConfig.DEFAULT_RETRIES
+        while retries > 0:
+            with subprocess.Popen(cmds) as proc:
+                ret = proc.wait()
+                if ret:
+                    print(f"\n Error: Cloning '{git_url}' failed. Retry remaining '{retries}' times")
+                    retries -= 1
+                else:
+                    return True
+        sys.exit(1)
 
-def run_regress_test_prepare(args):
-    print("\nPreparing regresstest........")
-    remove_dir(args.regress_out_dir)
-    remove_dir(RegressTestConfig.REGRESS_TEST_CASE_DIR)
-    os.makedirs(args.regress_out_dir)
-    init_log_file(args)
-    skip_tests_case = get_skip_test_cases()
-    test_prepare = RegressTestPrepare(args, skip_tests_case)
-    test_prepare.run()
+    @staticmethod
+    def get_skip_test_cases() -> List[str]:
+        return Utils.read_skip_list(RegressTestConfig.SKIP_LIST_FILE)
+
+    def get_test_case(self):
+        if not os.path.isdir(os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, '.git')):
+            self.git_clone(RegressTestConfig.REGRESS_GIT_URL, RegressTestConfig.REGRESS_TEST_CASE_DIR)
+            return self.git_checkout(RegressTestConfig.REGRESS_GIT_HASH, RegressTestConfig.REGRESS_TEST_CASE_DIR)
+        return True
+
+    def prepare_clean_data(self):
+        self.git_clean(RegressTestConfig.REGRESS_TEST_CASE_DIR)
+        self.git_pull(RegressTestConfig.REGRESS_TEST_CASE_DIR)
+        self.git_checkout(RegressTestConfig.REGRESS_GIT_HASH, RegressTestConfig.REGRESS_TEST_CASE_DIR)
+
+    def run_regress_test_prepare(self):
+        if self.args.force_clone:
+            remove_dir(self.args.regress_out_dir)
+            remove_dir(RegressTestConfig.REGRESS_TEST_CASE_DIR)
+        os.makedirs(self.args.regress_out_dir, exist_ok=True)
+        os.makedirs(RegressTestConfig.REGRESS_TEST_CASE_DIR, exist_ok=True)
+        init_log_file(self.args)
+
+    def get_regress_test_files(self) -> List[str]:
+        result: List[str] = []
+        if self.args.test_file is not None and len(self.args.test_file) > 0:
+            test_file_list = os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, self.args.test_file)
+            result.append(str(test_file_list))
+            return result
+        elif self.args.test_dir is not None and len(self.args.test_dir) > 0:
+            test_file_list = os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, self.args.test_dir)
+        else:
+            test_file_list = RegressTestConfig.REGRESS_TEST_CASE_DIR
+        for dir_path, path, filenames in os.walk(test_file_list):
+            if dir_path.find(".git") != -1:
+                continue
+            for filename in filenames:
+                if filename.endswith(".js") or filename.endswith(".mjs"):
+                    result.append(str(os.path.join(dir_path, filename)))
+        return result
+
+
+class RegressTestCompile(RegressTestStep):
+    def __init__(self, args, test_reports: List[TestReport]):
+        RegressTestStep.__init__(self, args, "Regress test compilation")
+        self.out_dir = args.out_dir
+        self.test_reports = test_reports
+        for test in self.test_reports:
+            test.out_path = os.path.dirname(os.path.join(self.out_dir, test.test_id))
+
+    @staticmethod
+    def run(args, test_reports: Optional[List[TestReport]] = None) -> List[TestReport]:
+        if test_reports is None:
+            output("No tests loaded")
+            exit(-1)
+        test_prepare = RegressTestCompile(args, test_reports)
+        RegressTestCompile.step_obj = test_prepare
+        test_prepare._start()
+        test_reports = test_prepare.gen_abc_files()
+        test_prepare._end()
+        return test_reports
+
+    @staticmethod
+    def create_files_info(test_report: TestReport) -> Tuple[str, str]:
+        src_files_info = [
+            RegressTestConfig.REGRESS_TEST_TOOL_DIR,
+            test_report.src_path
+        ]
+        file_info_content: List[str] = []
+        file_info_path = str(os.path.join(
+            test_report.out_path,
+            f"{Utils.get_file_only_name(test_report.src_path)}-filesInfo.txt"))
+        os.makedirs(test_report.out_path, exist_ok=True)
+        with os.fdopen(
+                os.open(file_info_path, flags=os.O_RDWR | os.O_CREAT, mode=stat.S_IRUSR | stat.S_IWUSR),
+                mode="w+", encoding="utf-8"
+        ) as fp:
+            for src_file_info in src_files_info:
+                line = f"{src_file_info};{Utils.get_file_only_name(src_file_info)};esm;xxx;yyy\n"
+                file_info_content.append(line)
+                fp.write(line)
+        return file_info_path, "\n".join(file_info_content)
+
+    def gen_abc_files(self) -> List[TestReport]:
+        with multiprocessing.Pool(processes=self.args.processes) as pool:
+            results = pool.imap_unordered(self.gen_abc_file, self.test_reports)
+            results = list(results)
+            pool.close()
+            pool.join()
+
+        return results
+
+    def gen_abc_file(self, test_report: TestReport) -> Optional[TestReport]:
+        if test_report.src_path == RegressTestConfig.REGRESS_TEST_TOOL_DIR:
+            return None
+        file_info_path, file_info_content = self.create_files_info(test_report)
+        out_file = change_extension(test_report.src_path, '.out')
+        expect_file_exists = os.path.exists(out_file)
+        output_file = change_extension(
+            os.path.join(test_report.out_path, Utils.get_file_name(test_report.test_id)),
+            ".abc")
+        command = [
+            self.args.ark_frontend_binary,
+            f"@{file_info_path}",
+            "--merge-abc",
+            "--module",
+            f'--output={output_file}'
+        ]
+        step_result = StepResult(self.name, command=command, fileinfo=file_info_content)
+        Utils.exec_command(command, test_report.test_id, step_result, self.args.timeout)
+        step_result.is_passed = step_result.return_code == 0
+        test_report.steps.append(step_result)
+        test_report.passed = step_result.is_passed
+        if expect_file_exists:
+            out_file_path = os.path.join(test_report.out_path, change_extension(test_report.test_id, '.out'))
+            shutil.copy(str(out_file), str(out_file_path))
+        return test_report
+
+
+class RegressTestPgo(RegressTestStep):
+    def __init__(self, args):
+        RegressTestStep.__init__(self, args, "Regress Test PGO ")
+
+    @staticmethod
+    def run(args, test_reports: Optional[List[TestReport]] = None) -> List[TestReport]:
+        pgo = RegressTestPgo(args)
+        RegressTestPgo.step_obj = pgo
+        pgo._start()
+        test_reports = pgo.generate_aps(test_reports)
+        pgo._end()
+        return test_reports
+
+    def get_test_ap_cmd(self, test_report: TestReport) -> List[str]:
+        abc_file = change_extension(
+            os.path.join(test_report.out_path, Utils.get_file_name(test_report.test_id)),
+            ".abc")
+        ap_file = change_extension(abc_file, ".ap")
+        entry_point = Utils.get_file_only_name(RegressTestConfig.TEST_TOOL_FILE_JS_NAME)
+        os.environ["LD_LIBRARY_PATH"] = self.args.ld_library_path
+        gen_ap_cmd = [
+            self.args.ark_tool,
+            "--log-level=info",
+            f"--icu-data-path={self.args.icu_path}",
+            "--enable-pgo-profiler=true",
+            "--compiler-opt-inlining=true",
+            f"--compiler-pgo-profiler-path={ap_file}",
+            "--asm-interpreter=true",
+            f"--entry-point={entry_point}",
+            f"{abc_file}",
+        ]
+        return gen_ap_cmd
+
+    def generate_ap(self, test_report: Optional[TestReport]) -> Optional[TestReport]:
+        if test_report is None or not test_report.passed:
+            return test_report
+        command = self.get_test_ap_cmd(test_report)
+        step = StepResult(self.name, command=command)
+        Utils.exec_command(command, test_report.test_id, step, self.args.timeout)
+        step.is_passed = step.return_code == 0
+        test_report.steps.append(step)
+        test_report.passed = step.is_passed
+        return test_report
+
+    def generate_aps(self, test_reports: List[TestReport]) -> List[TestReport]:
+        with multiprocessing.Pool(processes=self.args.processes) as pool:
+            results = pool.imap_unordered(self.generate_ap, test_reports)
+            results = list(results)
+            pool.close()
+            pool.join()
+
+        return results
+
+
+class Utils:
+    ark_regress = "ark-regress"
+
+    @staticmethod
+    def get_file_only_name(full_file_name: str) -> str:
+        _, file_name = os.path.split(full_file_name)
+        only_name, _ = os.path.splitext(file_name)
+        return only_name
+
+    @staticmethod
+    def get_file_name(full_file_name: str) -> str:
+        _, file_name = os.path.split(full_file_name)
+        return file_name
+
+    @staticmethod
+    def mk_dst_dir(file, src_dir, dist_dir):
+        idx = file.rfind(src_dir)
+        fpath, _ = os.path.split(file[idx:])
+        fpath = fpath.replace(src_dir, dist_dir)
+        os.makedirs(fpath, exist_ok=True)
+
+    @staticmethod
+    def get_inside_path(file_path: str, marker: Optional[str] = None) -> str:
+        if marker is None:
+            marker = Utils.ark_regress
+        index = file_path.find(marker)
+        if index > -1:
+            return file_path[index + len(marker) + 1:]
+        return file_path
+
+    @staticmethod
+    def exec_command(cmd_args, test_id: str, step_result: StepResult, timeout=RegressTestConfig.DEFAULT_TIMEOUT):
+        code_format = 'utf-8'
+        if platform.system() == "Windows":
+            code_format = 'gbk'
+        code = 0
+        cmd_string = "\n\t".join([str(arg).strip() for arg in cmd_args if arg is not None])
+        msg = [
+            f"TEST: {test_id}",
+            f"Run command:\n{cmd_string}",
+            f"Env: {os.environ.get('LD_LIBRARY_PATH')}"
+        ]
+        try:
+            with subprocess.Popen(cmd_args, stderr=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True,
+                                  start_new_session=True) as process:
+                output_res, errs = process.communicate(timeout=timeout)
+                ret_code = process.poll()
+                step_result.return_code = ret_code
+                stderr = errs.decode(code_format, 'ignore').strip()
+                stdout = output_res.decode(code_format, 'ignore').strip()
+                if stderr:
+                    step_result.stderr = stderr
+                if stdout:
+                    step_result.stdout = stdout
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.terminate()
+            code = 1
+            timeout_msg = f"Timeout: timed out after {timeout} seconds"
+            msg.append(timeout_msg)
+            step_result.return_code = code
+            step_result.stderr = timeout_msg
+        except Exception as exc:
+            code = 1
+            error_msg = f"unknown error: {exc}"
+            msg.append(error_msg)
+            step_result.return_code = code
+            step_result.stderr = error_msg
+        out_put_std(code, cmd_args, "\n".join(msg))
+
+    @staticmethod
+    def read_skip_list(skip_list_path: str) -> List[str]:
+        skip_tests_list = []
+        with os.fdopen(os.open(skip_list_path, os.O_RDONLY, stat.S_IRUSR), "r") as file_object:
+            json_data = json.load(file_object)
+            for key in json_data:
+                skip_tests_list.extend(key["files"])
+        return skip_tests_list
+
+
+class RegressTestAot(RegressTestStep):
+    def __init__(self, args):
+        RegressTestStep.__init__(self, args, "Regress Test AOT mode")
+
+    @staticmethod
+    def run(args, test_reports: Optional[List[TestReport]] = None) -> List[TestReport]:
+        aot = RegressTestAot(args)
+        RegressTestAot.step_obj = aot
+        aot._start()
+        test_reports = aot.compile_aots(test_reports)
+        aot._end()
+        return test_reports
+
+    def get_test_aot_cmd(self, test_report: TestReport) -> List[str]:
+        abc_file = change_extension(
+            os.path.join(test_report.out_path, Utils.get_file_name(test_report.test_id)),
+            ".abc")
+        ap_file = change_extension(abc_file, ".ap")
+        aot_file = change_extension(abc_file, "")
+        os.environ["LD_LIBRARY_PATH"] = self.args.ld_library_path
+        pgo = [
+            "--compiler-opt-loop-peeling=true",
+            "--compiler-fast-compile=false",
+            "--compiler-opt-track-field=true",
+            "--compiler-opt-inlining=true",
+            "--compiler-max-inline-bytecodes=45",
+            "--compiler-opt-level=2",
+            f"--compiler-pgo-profiler-path={ap_file}",
+        ]
+        litecg = [
+            "--compiler-enable-litecg=true",
+        ]
+        aot_cmd = [
+            self.args.ark_aot_tool,
+            f"--aot-file={aot_file}",
+        ]
+        aot_cmd_tail = [
+            f"{abc_file}",
+        ]
+
+        if self.args.run_pgo:
+            aot_cmd.extend(pgo)
+        if self.args.enable_litecg:
+            aot_cmd.extend(litecg)
+        aot_cmd.extend(aot_cmd_tail)
+        return aot_cmd
+
+    def compile_aot(self, test_report: Optional[TestReport]) -> Optional[TestReport]:
+        if test_report is None or not test_report.passed:
+            return test_report
+        command = self.get_test_aot_cmd(test_report)
+        step = StepResult(self.name, command=command)
+        Utils.exec_command(command, test_report.test_id, step, self.args.timeout)
+        step.is_passed = step.return_code == 0
+        test_report.steps.append(step)
+        test_report.passed = step.is_passed
+        return test_report
+
+    def compile_aots(self, test_reports: List[TestReport]) -> List[TestReport]:
+        with multiprocessing.Pool(processes=self.args.processes) as pool:
+            results = pool.imap_unordered(self.compile_aot, test_reports)
+            results = list(results)
+            pool.close()
+            pool.join()
+
+        return results
+
+
+class RegressTestRun(RegressTestStep):
+    def __init__(self, args):
+        RegressTestStep.__init__(self, args, "Regress Test Run ")
+        self.force_gc_files = self.get_regress_force_gc_files()
+        self.uncaught_error_files = self.get_uncaught_error_files()
+
+    @staticmethod
+    def run(args, test_reports: Optional[List[TestReport]] = None) -> List[TestReport]:
+        runner = RegressTestRun(args)
+        RegressTestRun.step_obj = runner
+        runner._start()
+        test_reports = runner.run_test_case_dir(test_reports)
+        runner._end()
+        return test_reports
+
+    @staticmethod
+    def get_regress_force_gc_files():
+        return Utils.read_skip_list(RegressTestConfig.FORCE_GC_FILE_LIST)
+
+    @staticmethod
+    def get_uncaught_error_files():
+        return Utils.read_skip_list(RegressTestConfig.UNCAUGHT_ERROR_FILE_LIST)
+
+    def run_test_case_dir(self, test_reports: List[TestReport]) -> List[TestReport]:
+        with multiprocessing.Pool(processes=self.args.processes, initializer=init_worker,
+                                  initargs=(self.args,)) as pool:
+            results = pool.imap_unordered(self.run_test_case, test_reports)
+            results = list(results)
+            pool.close()
+            pool.join()
+
+        return results
+
+    def run_test_case(self, test_report: TestReport) -> Optional[TestReport]:
+        self.args = worker_wrapper_args
+        if self.args is None or test_report is None or not test_report.passed:
+            return test_report
+        if test_report.src_path.endswith(RegressTestConfig.TEST_TOOL_FILE_JS_NAME):
+            return None
+
+        abc_file = change_extension(
+            os.path.join(test_report.out_path, Utils.get_file_name(test_report.test_id)),
+            ".abc")
+        aot_file = change_extension(abc_file, "")
+        expect_file = change_extension(abc_file, ".out")
+        entry_point = Utils.get_file_only_name(RegressTestConfig.TEST_TOOL_FILE_JS_NAME)
+
+        os.environ["LD_LIBRARY_PATH"] = self.args.ld_library_path
+
+        # test environ LC_ALL/TZ
+        set_test_environ(test_report.src_path)
+
+        force_gc_file = test_report.test_id.replace('regresstest/ark-regress/', '')
+        unforced_gc = force_gc_file in self.force_gc_files
+        asm_arg1 = f"--enable-force-gc={'false' if unforced_gc else 'true'}"
+
+        icu_path = f"--icu-data-path={self.args.icu_path}"
+
+        # test uncaught error
+        uncaught_error_file = force_gc_file
+        test_uncaught_error = uncaught_error_file in self.uncaught_error_files
+
+        if self.args.ark_aot:
+            command = [
+                self.args.ark_tool,
+                asm_arg1,
+                f"--stub-file={self.args.stub_path}",
+                icu_path,
+                f"--aot-file={aot_file}",
+                f"--entry-point={entry_point}",
+                f'{abc_file}'
+            ]
+        else:
+            command = [
+                self.args.ark_tool,
+                asm_arg1,
+                icu_path,
+                f"--entry-point={entry_point}",
+                f'{abc_file}'
+            ]
+        return self.run_test_case_file(command, test_report, expect_file, test_uncaught_error)
+
+    def run_test_case_file(self, command, test_report: TestReport, expect_file, test_uncaught_error) -> TestReport:
+        expect_file_exits = os.path.exists(expect_file)
+        if expect_file_exits:
+            return self.run_test_case_with_expect(command, test_report, expect_file, test_uncaught_error)
+        else:
+            return self.run_test_case_with_assert(command, test_report, test_uncaught_error)
+
+    def run_test_case_with_expect(self, command, test_report: TestReport, expect_file,
+                                  test_uncaught_error) -> TestReport:
+        expect_output_str = read_expect_file(expect_file, test_report.src_path)
+        step = StepResult(self.name, command=command)
+        Utils.exec_command(command, test_report.test_id, step, self.args.timeout)
+        ret_code = step.return_code
+        err_str = step.stderr
+        out_str = step.stdout
+
+        if (test_uncaught_error and ret_code == 255 and
+                (out_str == expect_output_str.strip() or
+                 err_str == expect_output_str.strip())):
+            result_message = f'PASS {test_report.test_id} \n'
+            out_put_std(ret_code, command, result_message)
+            step.is_passed = True
+        elif (ret_code == 0 and
+              (out_str == expect_output_str.strip() or
+               err_str == expect_output_str.strip())):
+            result_message = f'PASS {test_report.test_id} \n'
+            out_put_std(ret_code, command, result_message)
+            step.is_passed = True
+        else:
+            msg = f'FAIL: {test_report.test_id} \nexpect: [{expect_output_str}]\nbut got: [{err_str}]'
+            out_put_std(ret_code, command, msg)
+            result_message = f'{msg} \n Command: {command} \n'
+            out_put_std(ret_code, command, result_message)
+            step.is_passed = False
+
+        test_report.steps.append(step)
+        test_report.passed = step.is_passed
+        return test_report
+
+    def run_test_case_with_assert(self, command, test_report: TestReport, test_uncaught_error) -> TestReport:
+        step = StepResult(self.name, command=command)
+        Utils.exec_command(command, test_report.test_id, step, self.args.timeout)
+        ret_code = step.return_code
+        err_str = step.stderr
+
+        if test_uncaught_error and ret_code == 255:
+            result_message = f'PASS {test_report.test_id} \n'
+            out_put_std(ret_code, command, result_message)
+            step.is_passed = True
+        elif ret_code != 0 or (err_str and "[ecmascript] Stack overflow" not in err_str):
+            result_message = f'FAIL: {test_report.test_id} \nerr: {str(err_str)}'
+            out_put_std(ret_code, command, result_message)
+            step.is_passed = False
+        else:
+            result_message = f'PASS {test_report.test_id} \n'
+            out_put_std(ret_code, command, result_message)
+            step.is_passed = True
+
+        test_report.steps.append(step)
+        test_report.passed = step.is_passed
+        return test_report
+
+
+class Stats:
+    def __init__(self, args, test_reports: List[TestReport]):
+        self.args = args
+        self.pass_count = 0
+        self.fail_count = 0
+        self.test_reports = test_reports
+        self.errors: Dict[str, List[TestReport]] = {}
+
+    def read_ignore_list(self) -> Optional[Set[str]]:
+        if self.args.ignore_list is None:
+            return None
+        with os.fdopen(os.open(self.args.ignore_list, os.O_RDWR, stat.S_IRUSR), "r+") as file_object:
+            lines = file_object.readlines()
+            lines = [line.strip() for line in lines if not line.strip().startswith('#')]
+        return set(lines)
+
+    def get_new_failures(self) -> Optional[List[TestReport]]:
+        ignore_list = self.read_ignore_list()
+        if ignore_list is None:
+            return None
+        new_failures: List[TestReport] = []
+        for test_report in self.test_reports:
+            if test_report and not test_report.passed and test_report.steps:
+                if test_report.test_id not in ignore_list:
+                    new_failures.append(test_report)
+        return new_failures
+
+    def statistics(self):
+        root = XTree.Element("testsuite")
+        root.set("name", "Regression")
+
+        result_file = open_write_file(self.args.out_result, False)
+        for test_report in self.test_reports:
+            if test_report is None:
+                continue
+            testcase = XTree.SubElement(root, "testcase")
+            testcase.set("name", f"{test_report.test_id}")
+            if test_report.passed:
+                write_result_file(f"PASS: {test_report.test_id}", result_file)
+                self.pass_count += 1
+            else:
+                self.fail_count += 1
+                write_result_file(f"FAIL: {test_report.test_id}", result_file)
+                failed_step = test_report.steps[-1]
+                if failed_step.step_name not in self.errors:
+                    self.errors[failed_step.step_name] = []
+                self.errors[failed_step.step_name].append(test_report)
+                XTree.SubElement(testcase, "failure").text = f"<![CDATA[{test_report.report()}]]>"
+
+        root.set("tests", f"{self.pass_count + self.fail_count}")
+        root.set("failures", f"{self.fail_count}")
+
+        tree = XTree.ElementTree(root)
+        tree.write(self.args.junit_report, xml_declaration=True, encoding="UTF-8")
+        result_file.close()
+
+    def print_result(self, args, steps):
+        result_file = open_write_file(args.out_result, True)
+        summary_duration = datetime.timedelta()
+        for step in steps:
+            print(f"Step {step.step_obj.name} - duration {step.step_obj.get_duration()}")
+            summary_duration += step.step_obj.get_duration()
+        msg = f'\npass count: {self.pass_count}'
+        write_result_file(msg, result_file)
+        print(msg)
+        msg = f'fail count: {self.fail_count}'
+        write_result_file(msg, result_file)
+        print(msg)
+        msg = f'total count: {self.fail_count + self.pass_count}'
+        write_result_file(msg, result_file)
+        print(msg)
+        msg = f'total used time is: {str(summary_duration)}'
+        write_result_file(msg, result_file)
+        print(msg)
+        result_file.close()
+
+    def print_failed_tests(self):
+        print("=== Failed tests ===")
+        for key, values in self.errors.items():
+            print(f"{key}: {len(values)} tests")
+
+
+def change_extension(path, new_ext: str):
+    base_path, ext = os.path.splitext(path)
+    if ext:
+        new_path = base_path + new_ext
+    else:
+        new_path = path + new_ext
+    return new_path
+
+
+def get_files_by_ext(start_dir, suffix):
+    result = []
+    for dir_path, dir_names, filenames in os.walk(start_dir):
+        for filename in filenames:
+            if filename.endswith(suffix):
+                result.append(os.path.join(dir_path, filename))
+    return result
 
 
 def read_expect_file(expect_file, test_case_file):
@@ -364,91 +968,20 @@ def open_result_excel(file_path):
     return file_object
 
 
-def run_test_case_with_expect(command, test_case_file, expect_file, test_uncaught_error, timeout) -> Tuple[bool, str]:
-    ret_code = 0
-    expect_output_str = read_expect_file(expect_file, test_case_file)
-    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
-        try:
-            out, err = process.communicate(timeout=timeout)
-            out_str = out.decode('UTF-8').strip()
-            err_str = err.decode('UTF-8').strip()
-            ret_code = process.poll()
-            if (test_uncaught_error and ret_code == 255 and
-                (out_str == expect_output_str.strip() or err_str == expect_output_str.strip())):
-                result_message = f'PASS {test_case_file} \n'
-                out_put_std(ret_code, command, f'PASS: {test_case_file}')
-                return True, result_message
-            if (ret_code == 0 and (out_str == expect_output_str.strip() or err_str == expect_output_str.strip())):
-                result_message = f'PASS {test_case_file} \n'
-                out_put_std(ret_code, command, f'PASS: {test_case_file}')
-                return True, result_message
-            else:
-                msg = f'FAIL: {test_case_file} \nexpect: [{expect_output_str}]\nbut got: [{err_str}]'
-                out_put_std(ret_code, command, msg)
-                result_message = f'{msg} \n Command: {command} \n'
-                return False, result_message
-        except subprocess.TimeoutExpired as exception:
-            process.kill()
-            process.terminate()
-            os.kill(process.pid, signal.SIGTERM)
-            msg = f'FAIL: {test_case_file} \n\tError:{exception}\n\tCommand: {command}'
-            out_put_std(ret_code, command, msg)
-            return False, msg
-
-
-def run_test_case_with_assert(command, test_case_file, test_uncaught_error, timeout) -> Tuple[bool, str]:
-    ret_code = 0
-    with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
-        try:
-            out, err = process.communicate(timeout=timeout)
-            ret_code = process.poll()
-            err_str = err.decode('UTF-8')
-            if test_uncaught_error and ret_code == 255:
-                result_message = f'PASS {test_case_file} \n'
-                out_put_std(ret_code, command, result_message)
-                return True, result_message
-            if ret_code != 0 or (err_str != '' and "[ecmascript] Stack overflow" not in err_str):
-                result_message = f'FAIL: {test_case_file} \nerr: {str(err_str)}'
-                out_put_std(ret_code, command, result_message)
-                return False, result_message
-            else:
-                result_message = f'PASS {test_case_file} \n'
-                out_put_std(ret_code, command, result_message)
-                return True, result_message
-        except subprocess.TimeoutExpired as exception:
-            process.kill()
-            process.terminate()
-            os.kill(process.pid, signal.SIGTERM)
-            result_message = f'FAIL: {test_case_file}\n\tError:{exception}'
-            out_put_std(ret_code, command, result_message)
-            return False, result_message
-
-
-def run_test_case_file(command, test_case_file, expect_file, test_uncaught_error, timeout) -> Tuple[bool, str]:
-    expect_file_exits = os.path.exists(expect_file)
-    if expect_file_exits:
-        return run_test_case_with_expect(command, test_case_file, expect_file, test_uncaught_error, timeout)
-    else:
-        return run_test_case_with_assert(command, test_case_file, test_uncaught_error, timeout)
-
 def get_file_source(file):
     with open(file, encoding='ISO-8859-1') as f:
         return f.read()
 
-def setTestEnviron(case):
+
+def set_test_environ(case):
     # intl environ LC_ALL
     if 'LC_ALL' in os.environ:
         del os.environ['LC_ALL']
     if 'TZ' in os.environ:
         del os.environ['TZ']
-    if case.startswith('/'):
-        real_path = case.replace('/regresstest/ark-regress/', '')
-    else:
-        real_path = case.replace('regresstest/ark-regress/', '')
-    js_case_path = os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, real_path)
-    if not os.path.exists(js_case_path):
+    if not os.path.exists(case):
         return
-    source = get_file_source(js_case_path)
+    source = get_file_source(case)
     env_match = ENV_PATTERN.search(source)
     if env_match:
         for env_pair in env_match.group(1).strip().split():
@@ -469,139 +1002,43 @@ def init_worker(args):
     worker_wrapper_args = args
 
 
-def run_test_case(tuple_args) -> Tuple[Optional[bool], str, str]:
-    test_file, force_gc_files, uncaught_error_files, timeout = tuple_args
-    args = worker_wrapper_args
-    if args is None or test_file.endswith(RegressTestConfig.TEST_TOOL_FILE_NAME):
-        return None, "", ""
-    test_case_file = test_file.replace('abc', 'js').replace(f'{args.out_dir}', '')
-    assert_file = os.path.join(args.test_case_out_dir, RegressTestConfig.TEST_TOOL_FILE_NAME)
-    test_case = f'{assert_file}:{test_file}'
-    ld_library_path = args.ld_library_path
-    os.environ["LD_LIBRARY_PATH"] = ld_library_path
-    unforced_gc = False
-    force_gc_file = test_case_file.replace('regresstest/ark-regress/', '')
-    # test environ LC_ALL/TZ
-    setTestEnviron(test_case_file)
-    if force_gc_file in force_gc_files:
-        unforced_gc = True
-    asm_arg1 = "--enable-force-gc=true"
-    if unforced_gc:
-        asm_arg1 = "--enable-force-gc=false"
-    icu_path = f"--icu-data-path={args.icu_path}"
-    # test uncaught error
-    uncaught_error_file = force_gc_file
-    test_uncaught_error = False
-    if uncaught_error_file in uncaught_error_files:
-        test_uncaught_error = True
-    command = [args.ark_tool, asm_arg1, icu_path, test_case]
-    expect_file = test_file.replace('.abc', '.out')
-    test_res, result_message = run_test_case_file(command, test_case_file, expect_file, test_uncaught_error, timeout)
-    return test_res, result_message, test_case_file
-
-
-def run_test_case_dir(args, test_abc_files: List[str], force_gc_files, uncaught_error_files, timeout) -> Tuple[int, int]:
-    pass_count = 0
-    fail_count = 0
-
-    tests = [(test, force_gc_files, uncaught_error_files, timeout) for test in test_abc_files]
-
-    with multiprocessing.Pool(processes=args.processes, initializer=init_worker, initargs=(args, )) as pool:
-        results = pool.imap_unordered(run_test_case, tests)
-        results = list(results)
-        pool.close()
-        pool.join()
-
-    root = XTree.Element("testsuite")
-    root.set("name", "Regression")
-
-    result_file = open_write_file(args.out_result, False)
-    for test_res, result_message, test_file in results:
-        if test_res is None:
-            continue
-        testcase = XTree.SubElement(root, "testcase")
-        testcase.set("name", f"{test_file}")
-        write_result_file(result_message, result_file)
-        if test_res:
-            pass_count += 1
-        else:
-            fail_count += 1
-            XTree.SubElement(testcase, "failure").text = f"<![CDATA[{result_message}]]>"
-
-    root.set("tests", f"{pass_count + fail_count}")
-    root.set("failures", f"{fail_count}")
-
-    tree = XTree.ElementTree(root)
-    tree.write(args.junit_report, xml_declaration=True, encoding="UTF-8")
-    result_file.close()
-    return pass_count, fail_count
-
-
-def run_regress_test_case(args) -> Tuple[int, int]:
-    print("\nRunning regresstest........\n")
-    test_cast_list: List[str] = get_regress_test_files(args.test_case_out_dir, 'abc')
-    force_gc_files = get_regress_force_gc_files()
-    uncaught_error_files = get_uncaught_error_files();
-    return run_test_case_dir(args, test_cast_list, force_gc_files, uncaught_error_files, args.timeout)
-
-
-def get_regress_force_gc_files():
-    skip_force_gc_tests_list = []
-    with os.fdopen(os.open(RegressTestConfig.FORCE_GC_FILE_LIST, os.O_RDONLY, stat.S_IRUSR), "r") as file_object:
-        json_data = json.load(file_object)
-        for key in json_data:
-            skip_force_gc_tests_list.extend(key["files"])
-    return skip_force_gc_tests_list
-
-
-def get_regress_test_files(start_dir, suffix) -> List[str]:
-    result: List[str] = []
-    for dir_path, dir_names, filenames in os.walk(start_dir):
-        for filename in filenames:
-            if filename.endswith(suffix):
-                result.append(os.path.join(dir_path, filename))
-    return result
-
-
-def get_uncaught_error_files():
-    uncaught_error_tests_list = []
-    with os.fdopen(os.open(RegressTestConfig.UNCAUGHT_ERROR_FILE_LIST, os.O_RDONLY, stat.S_IRUSR), "r") as file_object:
-        json_data = json.load(file_object)
-        for key in json_data:
-            uncaught_error_tests_list.extend(key["files"])
-    return uncaught_error_tests_list
-
-
 def write_result_file(msg: str, result_file):
     result_file.write(f'{msg}\n')
 
 
 def main(args):
     if not check_args(args):
-        return
+        return 1
     print("\nStart regresstest........")
-    start_time = datetime.datetime.now()
-    run_regress_test_prepare(args)
-    pass_count, fail_count = run_regress_test_case(args)
-    end_time = datetime.datetime.now()
-    print_result(args, pass_count, fail_count, end_time, start_time)
+    steps: List[Type[RegressTestStep]] = [
+        RegressTestRepoPrepare,
+        RegressTestCompile,
+    ]
+    if args.ark_aot:
+        if args.run_pgo:
+            steps.append(RegressTestPgo)
+        steps.append(RegressTestAot)
+    steps.append(RegressTestRun)
 
+    test_reports: List[TestReport] = []
+    for step in steps:
+        test_reports = step.run(args, test_reports)
 
-def print_result(args, pass_count, fail_count, end_time, start_time):
-    result_file = open_write_file(args.out_result, True)
-    msg: str = f'\npass count: {pass_count}'
-    write_result_file(msg, result_file)
-    print(msg)
-    msg = f'fail count: {fail_count}'
-    write_result_file(msg, result_file)
-    print(msg)
-    msg = f'total count: {fail_count + pass_count}'
-    write_result_file(msg, result_file)
-    print(msg)
-    msg = f'used time is: {str(end_time - start_time)}'
-    write_result_file(msg, result_file)
-    print(msg)
-    result_file.close()
+    stats = Stats(args, test_reports)
+    stats.statistics()
+    stats.print_result(args, steps)
+    stats.print_failed_tests()
+    new_failures = stats.get_new_failures()
+    if new_failures is None:
+        return 0
+    if len(new_failures) > 0:
+        msg = [f"Found {len(new_failures)} new failures:"]
+        for failure in new_failures:
+            msg.append(f"\t{failure.test_id}")
+        output("\n".join(msg))
+    else:
+        output("No new failures have been found")
+    return len(new_failures)
 
 
 if __name__ == "__main__":
