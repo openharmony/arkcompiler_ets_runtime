@@ -543,7 +543,7 @@ void JSPandaFile::SetAllMethodLiteralToMap()
 void JSPandaFile::TranslateClasses(JSThread *thread, const CString &methodName)
 {
     const std::shared_ptr<CString> methodNamePtr = std::make_shared<CString>(methodName);
-    for (int i = 0; i < Taskpool::GetCurrentTaskpool()->GetTotalThreadNum(); i++) {
+    for (uint32_t i = 0; i < Taskpool::GetCurrentTaskpool()->GetTotalThreadNum(); i++) {
         PostInitializeMethodTask(thread, methodNamePtr);
     }
     TranslateClass(thread, methodName);
