@@ -84,11 +84,8 @@ print(time.getTime()); //: NaN
 time = new Date(50000000000)
 let true_func = time.getTime
 
-//aot: [trace] aot inline builtin: Function.prototype.call, caller function name:func_main_0@builtinDateGetTime
 print(true_func.call(time)) //: 50000000000
-//aot: [trace] aot inline builtin: Function.prototype.call, caller function name:func_main_0@builtinDateGetTime
 print(true_func.call(time, 1)) //: 50000000000
-//aot: [trace] aot inline builtin: Function.prototype.call, caller function name:func_main_0@builtinDateGetTime
 print(true_func.call(time, 1, 2)) //: 50000000000
 
 if (ArkTools.isAOTCompiled(printDateGetTimeOneParam)) {

@@ -345,6 +345,7 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                                                                           JSTaggedValue key, JSTaggedValue value)
 {
     bool isTagged = true;
+    JSTaggedValue originValue = value;
     auto *hclass = receiver.GetTaggedObject()->GetClass();
     if (LIKELY(!hclass->IsDictionaryMode())) {
         ASSERT(!TaggedArray::Cast(JSObject::Cast(receiver)->GetProperties().GetTaggedObject())->IsDictionaryMode());
@@ -376,16 +377,16 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                     return JSTaggedValue::Hole();
                 }
                 JSHandle<JSObject> objHandle(thread, receiver);
-                JSHandle<JSTaggedValue> keyHandle(thread, key);
+                JSHandle<JSTaggedValue> valueHandle(thread, value);
                 auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
-                    keyHandle, JSHandle<JSTaggedValue>(thread, value), attr);
+                    JSHandle<JSTaggedValue>(thread, key), valueHandle, attr);
                 receiver = objHandle.GetTaggedValue();
-                key = keyHandle.GetTaggedValue();
+                originValue = valueHandle.GetTaggedValue();
                 value = actualValue.value;
                 isTagged = actualValue.isTagged;
             }
             if (receiver.IsJSShared()) {
-                if (!ClassHelper::MatchFieldType(attr.GetSharedFieldType(), value)) {
+                if (!ClassHelper::MatchFieldType(attr.GetSharedFieldType(), originValue)) {
                     THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                                 JSTaggedValue::Exception());
                 }
