@@ -484,6 +484,7 @@ size_t JSPandaFile::GetClassAndMethodIndex(size_t *methodIdx)
 
 bool JSPandaFile::TranslateClassesTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "TranslateClassesTask::Run");
     jsPandaFile_->TranslateClass(thread_, *methodNamePtr_);
     jsPandaFile_->ReduceTaskCount();
     return true;

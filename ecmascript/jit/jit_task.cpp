@@ -364,6 +364,7 @@ void JitTask::WaitFinish()
 
 bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "AsyncTask::Run");
     if (IsTerminate() || !jitTask_->GetHostThread()->GetEcmaVM()->IsInitialized()) {
         return false;
     }
