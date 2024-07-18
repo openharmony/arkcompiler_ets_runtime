@@ -18,7 +18,10 @@ module_output_path = "arkcompiler/ets_runtime"
 
 test_js_path = "//arkcompiler/ets_runtime/ecmascript/dfx/hprof/tests/js_files/"
 
-test_js_files = [ "heapdump" ]
+test_js_files = [
+  "heapdump",
+  "allocation",
+]
 
 foreach(file, test_js_files) {
   es2abc_gen_abc("gen_${file}_abc") {
