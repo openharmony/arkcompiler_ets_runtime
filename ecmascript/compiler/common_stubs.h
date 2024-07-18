@@ -76,7 +76,10 @@ namespace panda::ecmascript::kungfu {
     V(TryStoreICByName)               \
     V(TryStoreICByValue)              \
     V(SetValueWithBarrier)            \
+    V(SetNotShareValueWithBarrier)    \
     V(SetValueWithEdenBarrier)        \
+    V(SetNotShareValueWithEdenBarrier) \
+    V(SetShareValueWithBarrier)       \
     V(NewLexicalEnv)                  \
     V(CopyRestArgs)                   \
     V(GetUnmappedArgs)                \

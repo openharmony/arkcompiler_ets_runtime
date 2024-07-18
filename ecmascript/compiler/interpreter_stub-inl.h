@@ -355,18 +355,6 @@ GateRef InterpreterStubBuilder::GetResumeModeFromAsyncGeneratorObject(GateRef ob
         Int32((1LU << JSAsyncGeneratorObject::ResumeModeBits::SIZE) - 1));
 }
 
-void InterpreterStubBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value)
-{
-    GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, function, offset, value);
-}
-
-void InterpreterStubBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value)
-{
-    GateRef offset = IntPtr(SourceTextModule::SENDABLE_ENV_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, module, offset, value);
-}
-
 void InterpreterStubBuilder::SetPcToFrame(GateRef glue, GateRef frame, GateRef value)
 {
     Store(VariableType::INT64(), glue, frame,
@@ -588,17 +576,18 @@ void InterpreterStubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, G
     Bind(&profileTypeInfoNotUndefined);
     {
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        BRANCH(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
+        BRANCH_UNLIKELY(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
         Bind(&slotValueUpdate);
         {
             GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
-            SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell);
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell,
+                                  MemoryOrder::NeedNotShareBarrier());
+            SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell, MemoryOrder::NeedNotShareBarrier());
             Jump(&profileTypeInfoEnd);
         }
         Bind(&slotValueNotUndefined);
         UpdateProfileTypeInfoCellType(glue, slotValue);
-        SetRawProfileTypeInfoToFunction(glue, function, slotValue);
+        SetRawProfileTypeInfoToFunction(glue, function, slotValue, MemoryOrder::NeedNotShareBarrier());
         Jump(&profileTypeInfoEnd);
     }
     Bind(&profileTypeInfoEnd);

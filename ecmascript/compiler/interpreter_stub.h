@@ -171,8 +171,6 @@ public:
     inline void SetAccToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void SetEnvToFrame(GateRef glue, GateRef frame, GateRef value);
     inline void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value);
-    inline void SetModuleToFunction(GateRef glue, GateRef function, GateRef value);
-    inline void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value);
     inline void SetFrameState(GateRef glue, GateRef sp, GateRef function, GateRef acc,
                               GateRef env, GateRef pc, GateRef prev, GateRef type);
 

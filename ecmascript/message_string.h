@@ -67,7 +67,8 @@ namespace panda::ecmascript {
     V(ReturnTypeNotSupportMap, "parseReturnType is not support MAP")                         \
     V(DefineFieldField, "DefineField: obj is not Object")                                    \
     V(IsNotPropertyKey, "key is not a property key")                                         \
-    V(CreateDataPropertyFailed, "failed to create data property")
+    V(CreateDataPropertyFailed, "failed to create data property")                            \
+    V(ValueIsNotSharedObject, "value is not a shared object")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

@@ -63,6 +63,11 @@ public:
         GHCCallConv = 1,
         WebKitJSCallConv = 2,
     };
+    // ParamAttr only works for LLVM backend.
+    enum class ParamAttr: uint8_t {
+        NoAttr = 0,
+        UnUsed
+    };
     static constexpr size_t TARGET_KIND_BIT_LENGTH = 4;
     static constexpr size_t CALL_CONV_BIT_LENGTH = 2;
     using TargetKindBit = panda::BitField<TargetKind, 0, TARGET_KIND_BIT_LENGTH>;
@@ -219,6 +224,22 @@ public:
         }
     }
 
+    void SetParamAttr(std::vector<ParamAttr> &&paramAttr)
+    {
+        if (paramCounter_ > 0 && paramsAttr_ == nullptr) {
+            paramsAttr_ = std::make_unique<std::vector<ParamAttr>>(paramAttr);
+        }
+    }
+
+    std::vector<ParamAttr> *GetParamAttr() const
+    {
+        if (paramsAttr_ != nullptr) {
+            return paramsAttr_.get();
+        } else {
+            return nullptr;
+        }
+    }
+
     size_t GetParametersCount() const
     {
         return paramCounter_;
@@ -326,6 +347,7 @@ private:
     ArgumentsOrder order_ {ArgumentsOrder::DEFAULT_ORDER};
     VariableType returnType_ {VariableType::VOID()};
     std::unique_ptr<std::vector<VariableType>> paramsType_ {nullptr};
+    std::unique_ptr<std::vector<ParamAttr>> paramsAttr_ {nullptr};
     TargetConstructor constructor_ {nullptr};
     uint64_t kind_ {0};
 };
@@ -388,7 +410,10 @@ private:
     V(TryStoreICByName)                         \
     V(TryStoreICByValue)                        \
     V(SetValueWithBarrier)                      \
+    V(SetNotShareValueWithBarrier)              \
     V(SetValueWithEdenBarrier)                  \
+    V(SetNotShareValueWithEdenBarrier)          \
+    V(SetShareValueWithBarrier)                 \
     V(NewLexicalEnv)                            \
     V(CopyRestArgs)                             \
     V(GetUnmappedArgs)                          \

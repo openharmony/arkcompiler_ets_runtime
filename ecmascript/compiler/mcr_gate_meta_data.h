@@ -359,6 +359,12 @@ public:
         UNKNOWN_BARRIER
     };
 
+    enum Share {
+        UNKNOWN_SHARE = 0,
+        NOT_SHARE,
+        IS_SHARE
+    };
+
     static MemoryOrder Default()
     {
         return Create(NOT_ATOMIC);
@@ -367,6 +373,11 @@ public:
     static MemoryOrder NeedBarrier()
     {
         return Create(NOT_ATOMIC, NEED_BARRIER);
+    }
+
+    static MemoryOrder NeedNotShareBarrier()
+    {
+        return Create(NOT_ATOMIC, NEED_BARRIER, NOT_SHARE);
     }
 
     static MemoryOrder NeedBarrierAndAtomic()
@@ -389,6 +400,16 @@ public:
         return BarrierField::Get(value_);
     }
 
+    void SetShare(Share share)
+    {
+        ShareField::Set<uint32_t>(share, &value_);
+    }
+
+    Share GetShare() const
+    {
+        return ShareField::Get(value_);
+    }
+
     void SetOrder(Order order)
     {
         OrderField::Set<uint32_t>(order, &value_);
@@ -405,16 +426,18 @@ public:
     }
 
 private:
-    static MemoryOrder Create(Order order, Barrier barrier = UNKNOWN_BARRIER)
+    static MemoryOrder Create(Order order, Barrier barrier = UNKNOWN_BARRIER, Share share = UNKNOWN_SHARE)
     {
-        uint32_t value = OrderField::Encode(order) | BarrierField::Encode(barrier);
+        uint32_t value = OrderField::Encode(order) | BarrierField::Encode(barrier) | ShareField::Encode(share);
         return MemoryOrder(value);
     }
 
     static constexpr uint32_t ORDER_BITS = 8;
     static constexpr uint32_t BARRIER_BITS = 8;
+    static constexpr uint32_t SHARE_BITS = 8;
     using OrderField = panda::BitField<Order, 0, ORDER_BITS>;
     using BarrierField = OrderField::NextField<Barrier, BARRIER_BITS>;
+    using ShareField = BarrierField::NextField<Share, SHARE_BITS>;
 
     uint32_t value_;
 };

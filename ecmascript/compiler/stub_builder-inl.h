@@ -2288,12 +2288,12 @@ inline void StubBuilder::SetValueToTaggedArrayWithRep(
 }
 
 inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array,
-                                               GateRef index, GateRef val)
+                                               GateRef index, GateRef val, MemoryOrder order)
 {
     // NOTE: need to translate MarkingBarrier
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
-    Store(valType, glue, array, dataOffset, val);
+    Store(valType, glue, array, dataOffset, val, order);
 }
 
 inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
@@ -2960,14 +2960,10 @@ inline GateRef StubBuilder::GetSendableEnvFromModule(GateRef module)
     return env_->GetBuilder()->GetSendableEnvFromModule(module);
 }
 
-inline void StubBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef sendableEnv)
-{
-    env_->GetBuilder()->SetSendableEnvToModule(glue, module, sendableEnv);
-}
-
 inline void StubBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value, MemoryOrder order)
 {
     GateRef offset = IntPtr(SourceTextModule::SENDABLE_ENV_OFFSET);
+    order.SetShare(MemoryOrder::IS_SHARE);
     Store(VariableType::JS_POINTER(), glue, module, offset, value, order);
 }
 
@@ -3073,10 +3069,11 @@ inline void StubBuilder::SetLengthToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::INT32(), glue, function, offset, value, MemoryOrder::NoBarrier());
 }
 
-inline void StubBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value)
+inline void StubBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value,
+                                                         MemoryOrder order)
 {
     GateRef offset = IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET);
-    Store(VariableType::JS_ANY(), glue, function, offset, value);
+    Store(VariableType::JS_ANY(), glue, function, offset, value, order);
 }
 
 inline void StubBuilder::SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value)

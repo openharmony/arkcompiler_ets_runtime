@@ -1024,11 +1024,16 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     LLVMValueRef pcOffset = LLVMConstInt(GetInt32T(), 0, 0);
     GateRef frameArgs = Circuit::NullGate();
     ComputeArgCountAndExtraInfo(actualNumArgs, pcOffset, frameArgs, inList, kind);
-
+    std::vector<CallSignature::ParamAttr> *paramAttr = calleeDescriptor->GetParamAttr();
     // then push the actual parameter for js function call
     for (size_t paraIdx = firstArg + 1; paraIdx < actualNumArgs; ++paraIdx) {
         GateRef gateTmp = inList[paraIdx];
         const auto gateTmpType = LLVMTypeOf(GetLValue(gateTmp));
+        if (paramAttr != nullptr && params.size() < paramAttr->size() &&
+            paramAttr->at(params.size()) == CallSignature::ParamAttr::UnUsed) {
+            params.push_back(LLVMGetUndef(gateTmpType));
+            continue;
+        }
         if (params.size() < paramTypes.size()) {  // this condition will be false for variadic arguments
             const auto paramType = paramTypes.at(params.size());
             // match parameter types and function signature types

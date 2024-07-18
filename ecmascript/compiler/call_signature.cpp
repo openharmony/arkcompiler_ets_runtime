@@ -728,28 +728,56 @@ DEF_CALL_SIGNATURE(TryStoreICByValue)
 }
 
 #define SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(name)                    \
-    /* 4 : 4 input parameters */                                            \
-    CallSignature signature("#name", 0, 4,                                  \
+    /* 6 : 4 input parameters + 2 fake parameter */                         \
+    CallSignature signature("#name", 0, 6,                                  \
         ArgumentsOrder::DEFAULT_ORDER, VariableType::VOID());               \
     *callSign = signature;                                                  \
-    std::array<VariableType, 4> params = { /* 4 : 4 input parameters */     \
+    /* 6 : 4 input parameters + 2 fake parameter */                         \
+    std::array<VariableType, 6> params = {                                  \
         VariableType::NATIVE_POINTER(),                                     \
         VariableType::JS_POINTER(),                                         \
         VariableType::NATIVE_POINTER(),                                     \
-        VariableType::JS_ANY()                                              \
+        VariableType::JS_ANY(),                                             \
+        VariableType::INT64(),                                              \
+        VariableType::INT64(),                                              \
     };                                                                      \
     callSign->SetParameters(params.data());                                 \
     callSign->SetGCLeafFunction(true);                                      \
-    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);              \
+                                                                            \
+    std::vector<CallSignature::ParamAttr> paramAttrs = {                    \
+        CallSignature::ParamAttr::NoAttr,                                   \
+        CallSignature::ParamAttr::NoAttr,                                   \
+        CallSignature::ParamAttr::NoAttr,                                   \
+        CallSignature::ParamAttr::NoAttr,                                   \
+        CallSignature::ParamAttr::UnUsed,                                   \
+        CallSignature::ParamAttr::UnUsed,                                   \
+    };                                                                      \
+    callSign->SetParamAttr(std::move(paramAttrs))
 
 DEF_CALL_SIGNATURE(SetValueWithBarrier)
 {
-    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetValueWithBarrier)
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetValueWithBarrier);
+}
+
+DEF_CALL_SIGNATURE(SetNotShareValueWithBarrier)
+{
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetNotShareValueWithBarrier);
 }
 
 DEF_CALL_SIGNATURE(SetValueWithEdenBarrier)
 {
-    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetValueWithEdenBarrier)
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetValueWithEdenBarrier);
+}
+
+DEF_CALL_SIGNATURE(SetNotShareValueWithEdenBarrier)
+{
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetNotShareValueWithEdenBarrier);
+}
+
+DEF_CALL_SIGNATURE(SetShareValueWithBarrier)
+{
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetShareValueWithBarrier);
 }
 
 #undef SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON

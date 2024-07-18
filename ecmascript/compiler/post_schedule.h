@@ -78,6 +78,9 @@ private:
     MemoryOrder::Barrier GetWriteBarrierKind(GateRef gate);
     void ReplaceBBState(ControlFlowGraph &cfg, size_t bbIdx, std::vector<GateRef> &currentBBGates,
                         std::vector<GateRef> &endBBGates);
+    MemoryOrder::Share GetShareKind(panda::ecmascript::kungfu::GateRef gate);
+
+    int SelectBarrier(MemoryOrder::Share share, std::string_view &comment);
 
     void PrintGraph(const char* title, ControlFlowGraph &cfg);
 

@@ -571,7 +571,9 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
         GateRef glue, GateRef array, GateRef index, GateRef key, GateRef val, GateRef attr);
     void SetValueToTaggedArrayWithRep(
         GateRef glue, GateRef array, GateRef index, GateRef val, GateRef rep, Label *repChange);
-    void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
+
+    void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val,
+                               MemoryOrder order = MemoryOrder::Default());
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
     GateRef IsSpecialContainer(GateRef jsType);
@@ -711,7 +713,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef IntPtrEuqal(GateRef x, GateRef y);
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
-    void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden = false);
+    void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden = false,
+                             MemoryOrder::Share share = MemoryOrder::UNKNOWN_SHARE);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
                                ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
@@ -764,12 +767,13 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     void SetCompiledCodeFlagToFunctionFromMethod(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
-    void SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value,
+                                         MemoryOrder order = MemoryOrder::Default());
     void SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value);
     void UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell);
     void SetJSObjectTaggedField(GateRef glue, GateRef object, size_t offset, GateRef value);
-    void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef sendableEnv);
-    void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value, MemoryOrder order);
+    void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value,
+                                MemoryOrder order = MemoryOrder::Default());
     void SetCompiledCodeFlagToFunction(GateRef glue, GateRef function, GateRef value);
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                   MemoryOrder order = MemoryOrder::Default());
@@ -977,6 +981,11 @@ private:
                             const BinaryOperation& intOp,
                             const BinaryOperation& floatOp,
                             ProfileOperation callback);
+    void SetShareValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef objectRegion,
+                                      GateRef valueRegion);
+
+    void SetNotShareValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef objectRegion,
+                                     GateRef valueRegion, bool withEden);
     void InitializeArguments();
     void CheckDetectorName(GateRef glue, GateRef key, Label *fallthrough, Label *slow);
     GateRef CanDoubleRepresentInt(GateRef exp, GateRef expBits, GateRef fractionBits);
