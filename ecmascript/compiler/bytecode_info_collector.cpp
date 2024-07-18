@@ -180,15 +180,21 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
     bool noGC = true;
     bool debuggerStmt = false;
     uint32_t newtargetIndex = method->GetNewTargetVregIndex();
+    bool canTypedCall = true;
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
         curPc = bcIns.GetAddress();
         auto metaData = bytecodes_.GetBytecodeMetaData(curPc);
         bool opcodeSupprotFastCall = true;
-        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr, classConstructIndexes, &opcodeSupprotFastCall);
+        bool opcodeSupportTypeByteCall = true;
+        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr, classConstructIndexes,
+                                &opcodeSupprotFastCall, &opcodeSupportTypeByteCall);
         bool vregSupportFastCall = !IsVRegUsed(bcIns, metaData, newtargetIndex);
         if (!opcodeSupprotFastCall || !vregSupportFastCall) {
             canFastCall = false;
+        }
+        if (!opcodeSupportTypeByteCall) {
+            canTypedCall = false;
         }
         if (snapshotCPData_ != nullptr) {
             snapshotCPData_->Record(bcIns, bcIndex, *recordNamePtr, method);
@@ -209,6 +215,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
     method->SetIsFastCall(canFastCall);
     method->SetNoGCBit(noGC);
     method->SetHasDebuggerStmtBit(debuggerStmt);
+    method->SetCanTypedCall(canTypedCall);
 }
 
 // static
@@ -281,7 +288,7 @@ void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(panda_file::File::
 void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
                                                     int32_t bcIndex, const std::shared_ptr<CString> recordNamePtr,
                                                     std::vector<panda_file::File::EntityId> &classConstructIndexes,
-                                                    bool *canFastCall)
+                                                    bool *canFastCall, bool *canTypedCall)
 {
     if (!(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
         BytecodeInstruction::HasId(BytecodeInstruction::GetFormat(bcIns.GetOpcode()), 0))) {
@@ -342,13 +349,17 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             case EcmaOpcode::SUPERCALLTHISRANGE_IMM8_IMM8_V8:
             case EcmaOpcode::WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8:
             case EcmaOpcode::SUPERCALLARROWRANGE_IMM8_IMM8_V8:
-            case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8:
+            case EcmaOpcode::WIDE_SUPERCALLARROWRANGE_PREF_IMM16_V8: {
+                *canFastCall = false;
+                break;
+            }
             case EcmaOpcode::SUPERCALLSPREAD_IMM8_V8:
             case EcmaOpcode::GETUNMAPPEDARGS:
             case EcmaOpcode::COPYRESTARGS_IMM8:
             case EcmaOpcode::WIDE_COPYRESTARGS_PREF_IMM16: {
                 *canFastCall = false;
-                return;
+                *canTypedCall = false;
+                break;
             }
             default:
                 break;

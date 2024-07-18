@@ -353,7 +353,9 @@ class SuperCallTypeInfoAccessor final : public TypeInfoAccessor {
 public:
     SuperCallTypeInfoAccessor(const CompilationEnv *env,
                               Circuit *circuit,
-                              GateRef gate);
+                              GateRef gate,
+                              const JSPandaFile *jsPandaFile = nullptr,
+                              const CallMethodFlagMap *callMethodFlagMap = nullptr);
     NO_COPY_SEMANTIC(SuperCallTypeInfoAccessor);
     NO_MOVE_SEMANTIC(SuperCallTypeInfoAccessor);
 
@@ -362,10 +364,26 @@ public:
         return pgoType_.IsValidCallMethodId();
     }
 
+    uint32_t GetMethodId() const
+    {
+        if (jsPandaFile_ == nullptr || callMethodFlagMap_ == nullptr) {
+            return 0;
+        }
+        auto profileType = acc_.TryGetPGOType(gate_).GetPGOSampleType();
+        if (!profileType->IsNone()) {
+            return profileType->GetProfileType().GetId();
+        }
+        return 0;
+    }
+
     GateRef GetCtor() const
     {
         return ctor_;
     }
+
+protected:
+    const JSPandaFile *jsPandaFile_;
+    const CallMethodFlagMap *callMethodFlagMap_;
 
 private:
     GateRef ctor_;

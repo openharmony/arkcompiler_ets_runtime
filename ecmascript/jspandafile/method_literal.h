@@ -225,6 +225,7 @@ public:
     using HasDebuggerStmtBit = IsNoGCBit::NextFlag; // offset 13
     using EmptyBit = HasDebuggerStmtBit::NextField<uint8_t, EMPTY_BITS>; // offset 14-29
     using IsSharedBit = EmptyBit::NextFlag; // offset 30
+    using CanTypedCall = IsSharedBit::NextFlag; // offset 31
 
     inline NO_THREAD_SANITIZE void SetHotnessCounter(int16_t counter)
     {
@@ -290,6 +291,16 @@ public:
     bool IsShared() const
     {
         return IsSharedBit::Decode(extraLiteralInfo_);
+    }
+
+    void SetCanTypedCall(bool isTypedCall)
+    {
+        extraLiteralInfo_ = CanTypedCall::Update(extraLiteralInfo_, isTypedCall);
+    }
+
+    bool IsTypedCall() const
+    {
+        return CanTypedCall::Decode(extraLiteralInfo_);
     }
 
     FunctionKind GetFunctionKind() const
