@@ -56,3 +56,17 @@ function test2()
 test2();
 print(ArkTools.isAOTDeoptimized(test2));
 
+class C3 {
+  constructor(a5) {
+  }
+}
+class C18 extends C3 {
+  constructor() {
+    super(1);
+    C3.valueOf = 1;
+  }
+}
+const v37 = new C18();
+print(C3.valueOf);
+print(ArkTools.isTSHClass(C3));
+print(ArkTools.isAOTCompiled(C18));

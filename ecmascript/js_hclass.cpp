@@ -855,7 +855,33 @@ void JSHClass::NotifyHclassChanged(const JSThread *thread, JSHandle<JSHClass> ol
     if (oldHclass.GetTaggedValue() == newHclass.GetTaggedValue()) {
         return;
     }
-    ASSERT(newHclass->IsPrototype());
+    // For now, at pgo profiling stage, we use ProfileType::Kind to mark a hclass is CHC, PHC or IHC.
+    // We can have case like the following:
+    //
+    //     class C3 {
+    //         constructor(a5) {
+    //         }
+    //     }
+    //     class C18 extends C3 {
+    //         constructor() {
+    //             super(1);
+    //             C3.valueOf = 1;
+    //         }
+    //     }
+    //     const v37 = new C18();
+    //
+    // C3 is profiled as CHC even though its IsPrototype bit is marked as true when 'class C18 extends C3' is executed.
+    // Since C3 is marked as CHC and it has ProfileType::Kind::ConstructorId,
+    // when generating hclass at aot, its child hclass and itself will not have IsPrototype bit set as true.
+    //
+    // However, we currently support hclass substitution when executing 'C3.valueOf' for C3's oldHclass at runtime.
+    // Therefore, oldHclass's IsPrototype bit is set as true; But for newHclass, it is generated at aot stage,
+    // it will not have IsPrototype bit set as true.
+    //
+    // Good neww is our AOT hclass can not be shared, hence we can set newHclass IsPrototype as true at here.
+    if (newHclass->IsTS() && !newHclass->IsPrototype()) {
+        newHclass->SetIsPrototype(true);
+    }
     JSHClass::NoticeThroughChain(thread, oldHclass, addedKey);
     JSHClass::RefreshUsers(thread, oldHclass, newHclass);
 }

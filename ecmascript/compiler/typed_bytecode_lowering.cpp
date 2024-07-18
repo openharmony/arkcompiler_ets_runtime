@@ -676,6 +676,19 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
     DeleteConstDataIfNoUser(key);
 }
 
+GateRef TypedBytecodeLowering::LoadObjectFromConstantPool(GateRef gate, StoreObjByNameTypeInfoAccessor &tacc,
+                                                          GateRef frameState, ConstPoolType type)
+{
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    GateRef module = builder_.GetModuleFromFunction(jsFunc);
+    GateRef unsharedConstpool = argAcc_.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
+    GateRef sharedConstpool = argAcc_.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
+    GateRef propKey = builder_.GetObjectFromConstPool(glue_, gate, sharedConstpool, unsharedConstpool,
+                                                      module, builder_.TruncInt64ToInt32(tacc.GetKey()),
+                                                      type);
+    return propKey;
+}
+
 void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
 {
     DISALLOW_GARBAGE_COLLECTION;
@@ -725,9 +738,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.MonoStorePropertyLookUpProto(tacc.GetReceiver(), plrGate, unsharedConstPool, holderHClassIndex,
                                                       value);
             } else {
-                auto propKey =
-                    builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL),
-                                                     tacc.GetKey());
+                GateRef propKey = LoadObjectFromConstantPool(gate, tacc, frameState, ConstPoolType::STRING);
                 builder_.MonoStoreProperty(tacc.GetReceiver(), plrGate, unsharedConstPool, holderHClassIndex, value,
                                            propKey);
             }
@@ -786,9 +797,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                 builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
                     BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
                 builder_.Bind(&isProto);
-                auto propKey =
-                    builder_.LoadObjectFromConstPool(argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL),
-                                                     tacc.GetKey());
+                GateRef propKey = LoadObjectFromConstantPool(gate, tacc, frameState, ConstPoolType::STRING);
                 builder_.CallRuntime(glue_, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
                     { receiverHC, newHolderHC, propKey }, gate);
                 builder_.Jump(&notProto);
