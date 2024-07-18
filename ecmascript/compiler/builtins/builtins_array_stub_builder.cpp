@@ -3245,8 +3245,9 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
     Label isJsArray(env);
     Label defaultConstr(env);
     Label isStability(env);
+    Label isGeneric(env);
     Label notCOWArray(env);
-    Label equalCls(env);
+    Label matchCls(env);
     BRANCH(TaggedIsUndefinedOrNull(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
@@ -3260,13 +3261,17 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
 
-    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::ARRAY_FUNCTION_INDEX);
-    GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     GateRef arrayCls = LoadHClass(thisValue);
-    BRANCH(Equal(intialHClass, arrayCls), &equalCls, slowPath);
-    Bind(&equalCls);
+    GateRef elementsKind = GetElementsKindFromHClass(arrayCls);
+    GateRef notGeneric = NotEqual(elementsKind, Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+    BRANCH(notGeneric, &matchCls, &isGeneric);
+    Bind(&isGeneric);
+    {
+        GateRef intialHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                                      ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+        BRANCH(Equal(intialHClass, arrayCls), &matchCls, slowPath);                                          
+    }
+    Bind(&matchCls);
 
     DEFVARIABLE(startPos, VariableType::INT64(), Int64(0));
     DEFVARIABLE(endPos, VariableType::INT64(), Int64(0));
