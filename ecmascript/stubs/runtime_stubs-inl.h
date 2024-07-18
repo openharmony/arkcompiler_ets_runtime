@@ -3151,6 +3151,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         } else {
             symbolHandle = factory->NewJSSymbol();
             symbolHandle->SetPrivateId(id);
+            symbolHandle->SetPrivate();
         }
         handleLexicalEnv->SetProperties(thread, index, symbolHandle.GetTaggedValue());
     }
@@ -3185,6 +3186,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreatePrivateProperty(JSThread *thread, JSTag
         } else {
             symbolHandle = factory->NewPublicSymbolWithChar("method");
             symbolHandle->SetPrivateId(id);
+            symbolHandle->SetPrivate();
         }
         handleLexicalEnv->SetProperties(thread, index, symbolHandle.GetTaggedValue());
     }

@@ -76,6 +76,9 @@ public:
     JSTaggedValue LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
     JSTaggedValue LoadValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
     JSTaggedValue LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
+private:
+    JSTaggedValue LoadOrdinaryGet(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
+    JSTaggedValue LoadGetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
 };
 
 class StoreICRuntime : public ICRuntime {
