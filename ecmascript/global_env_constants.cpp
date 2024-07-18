@@ -144,6 +144,8 @@ void GlobalEnvConstants::InitSharedRootsClasses(ObjectFactory *factory)
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::PROFILE_TYPE_INFO));
     SetConstant(ConstantIndex::AOT_LITERAL_INFO_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, 0, JSType::AOT_LITERAL_INFO));
+    SetConstant(ConstantIndex::EXTRA_PROFILE_TYPE_INFO_CLASS_INDEX,
+        factory->NewSEcmaReadOnlyHClass(hClass, ExtraProfileTypeInfo::SIZE, JSType::EXTRA_PROFILE_TYPE_INFO));
     SetConstant(ConstantIndex::PROFILE_TYPE_INFO_CELL_0_CLASS_INDEX,
         factory->NewSEcmaReadOnlyHClass(hClass, ProfileTypeInfoCell::SIZE, JSType::PROFILE_TYPE_INFO_CELL_0));
     SetConstant(ConstantIndex::PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX,

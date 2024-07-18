@@ -34,6 +34,8 @@
 #include "ecmascript/taskpool/task.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
+#include "ecmascript/js_handle.h"
+#include "ecmascript/pgo_profiler/pgo_extra_profiler.h"
 
 namespace panda::ecmascript {
 class ProfileTypeInfo;
@@ -67,8 +69,10 @@ public:
                                          JSHandle<JSTaggedValue> prototype,
                                          JSHandle<JSTaggedValue> oldPrototype,
                                          JSHandle<JSTaggedValue> baseIhc);
-    void ProfileDefineGetterSetter(
-        JSHClass *receverHClass, JSHClass *holderHClass, const JSHandle<JSTaggedValue> &func, int32_t pcOffset);
+    void ProfileDefineGetterSetter(JSHClass *receverHClass,
+                                   JSHClass *holderHClass,
+                                   const JSHandle<JSTaggedValue> &func,
+                                   int32_t pcOffset);
     void ProfileClassRootHClass(JSTaggedType ctor, JSTaggedType rootHcValue,
                                 ProfileType::Kind kind = ProfileType::Kind::ClassId);
     void UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHClass);
@@ -221,9 +225,11 @@ private:
     ProfileType GetOrInsertProfileTypeSafe(JSTaggedType root, JSTaggedType child);
     bool InsertProfileTypeSafe(JSTaggedType root, JSTaggedType child, ProfileType traceType);
     bool IsRecoredTransRootType(ProfileType type);
-
+    bool HasValidProfileTypeInfo(JSFunction *func);
     class WorkNode;
-    void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString& recordName, EntityId methodId, WorkNode* current);
+    void ProcessProfileTypeInfo(JSFunction *func, ApEntityId abcId, const CString &recordName,
+                                JSTaggedValue methodValue, WorkNode *current);
+    void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, WorkNode* current);
     WorkNode* PopFromProfileQueue();
     void MergeProfilerAndDispatchAsyncSaveTask(bool force);
     bool IsJSHClassNotEqual(JSHClass *receiver, JSHClass *hold, JSHClass *exceptRecvHClass,
@@ -251,113 +257,7 @@ private:
     };
 
     using PcOffset = int32_t;
-    class ExtraProfileTypeInfo {
-    public:
-        uintptr_t GetReceiverAddr() const
-        {
-            return reinterpret_cast<uintptr_t>(&receiver);
-        }
-
-        uintptr_t GetHolderAddr() const
-        {
-            return reinterpret_cast<uintptr_t>(&holder);
-        }
-
-        JSHClass* GetReceiverHClass() const
-        {
-            return receiver.GetTaggedObject()->GetClass();
-        }
-
-        JSHClass* GetHolderHClass() const
-        {
-            return holder.GetTaggedObject()->GetClass();
-        }
-
-        void SetReceiver(JSHClass* hclass)
-        {
-            receiver = JSTaggedValue::Cast(hclass);
-        }
-
-        void SetHolder(JSHClass* hclass)
-        {
-            holder = JSTaggedValue::Cast(hclass);
-        }
-
-        void SetReceiver(JSTaggedValue value)
-        {
-            receiver = value;
-        }
-
-        void SetHolder(JSTaggedValue value)
-        {
-            holder = value;
-        }
-
-        void SetReceiver(TaggedObject* value)
-        {
-            receiver = JSTaggedValue::Cast(value);
-        }
-
-        void SetHolder(TaggedObject* value)
-        {
-            holder = JSTaggedValue::Cast(value);
-        }
-
-        JSTaggedValue GetReceiver() const
-        {
-            return receiver;
-        }
-
-        JSTaggedValue GetHolder() const
-        {
-            return holder;
-        }
-
-        void Clear()
-        {
-            receiver = JSTaggedValue::Hole();
-            holder = JSTaggedValue::Hole();
-        }
-
-        void ClearReceiver()
-        {
-            receiver = JSTaggedValue::Hole();
-        }
-
-        void ClearHolder()
-        {
-            holder = JSTaggedValue::Hole();
-        }
-
-        bool operator==(const ExtraProfileTypeInfo& other) const
-        {
-            return receiver == other.receiver && holder == other.holder;
-        }
-
-        bool IsHole() const
-        {
-            return receiver.IsHole();
-        }
-
-        void ProcessReceiver(const WeakRootVisitor& visitor)
-        {
-            if (!receiver.IsHeapObject()) {
-                return;
-            }
-            auto obj = receiver.GetTaggedObject();
-            auto fwd = visitor(obj);
-            if (fwd == nullptr) {
-                ClearReceiver();
-            } else if (fwd != obj) {
-                SetReceiver(fwd);
-            }
-        }
-
-    private:
-        JSTaggedValue receiver {JSTaggedValue::Hole()};
-        JSTaggedValue holder {JSTaggedValue::Hole()};
-    };
-
+    
     class WorkList;
     class WorkNode {
     public:
@@ -407,60 +307,11 @@ private:
             return workList_;
         }
 
-        void SetExtraProfileTypeInfo(int32_t pcOffset, JSHClass* receiverHClass, JSHClass* holderHClass)
-        {
-            auto it = map_.find(pcOffset);
-
-            ExtraProfileTypeInfo info;
-            info.SetReceiver(receiverHClass);
-            info.SetHolder(holderHClass);
-
-            if (it == map_.end()) {
-                map_.insert(std::make_pair(pcOffset, info));
-                return;
-            }
-
-            if (it->second == info) {
-                return;
-            }
-
-            it->second.Clear();
-        }
-
-        bool HasExtraProfileTypeInfo()
-        {
-            return !map_.empty();
-        }
-
-        void ProcessExtraProfileTypeInfo(const WeakRootVisitor& visitor)
-        {
-            for (auto& iter: map_) {
-                auto& info = iter.second;
-                info.ProcessReceiver(visitor);
-            }
-        }
-
-        void IterateExtraProfileTypeInfo(const RootVisitor& visitor)
-        {
-            if (HasExtraProfileTypeInfo()) {
-                for (auto& iter: map_) {
-                    auto& info = iter.second;
-                    visitor(Root::ROOT_VM, ObjectSlot(info.GetHolderAddr()));
-                }
-            }
-        }
-
-        std::unordered_map<PcOffset, ExtraProfileTypeInfo>& GetExtraProfileTypeInfo()
-        {
-            return map_;
-        }
-
     private:
         WorkList *workList_ { nullptr };
         WorkNode *prev_ { nullptr };
         WorkNode *next_ { nullptr };
         JSTaggedType value_ { JSTaggedValue::Undefined().GetRawData() };
-        std::unordered_map<PcOffset, ExtraProfileTypeInfo> map_;
     };
 
     class WorkList {

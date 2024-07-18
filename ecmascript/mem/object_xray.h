@@ -439,6 +439,9 @@ public:
             case JSType::PROFILE_TYPE_INFO_CELL_N:
                 ProfileTypeInfoCell::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
+            case JSType::EXTRA_PROFILE_TYPE_INFO:
+                ExtraProfileTypeInfo::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
             case JSType::TAGGED_ARRAY:
             case JSType::TAGGED_DICTIONARY:
             case JSType::TEMPLATE_MAP:

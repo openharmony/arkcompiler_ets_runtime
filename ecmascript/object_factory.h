@@ -31,6 +31,7 @@
 #include "ecmascript/shared_objects/js_shared_object.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/byte_array.h"
+#include "ecmascript/pgo_profiler/pgo_extra_profiler.h"
 
 namespace panda::ecmascript {
 struct MethodLiteral;
@@ -180,6 +181,9 @@ class VTable;
 namespace kungfu {
 class TSHClassGenerator;
 }  // namespace kungfu
+namespace pgo {
+class ExtraProfileTypeInfo;
+}
 
 enum class CompletionRecordType : uint8_t;
 enum class PrimitiveType : uint8_t;
@@ -188,6 +192,7 @@ enum class MethodIndex : uint8_t;
 enum class SharedTypes : uint8_t;
 using ErrorType = base::ErrorType;
 using base::ErrorType;
+using ExtraProfileTypeInfo = pgo::ExtraProfileTypeInfo;
 
 enum class RemoveSlots { YES, NO };
 enum class GrowMode { KEEP, GROW };
@@ -708,6 +713,7 @@ public:
 
     // ---------------------------------------Used by AOT------------------------------------------------
     JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
+    JSHandle<ExtraProfileTypeInfo> NewExtraProfileTypeInfo();
     JSHandle<ProfileTypeInfoCell> NewProfileTypeInfoCell(const JSHandle<JSTaggedValue> &value);
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,

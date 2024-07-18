@@ -525,6 +525,11 @@ inline bool JSTaggedValue::IsAOTLiteralInfo() const
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsAOTLiteralInfo();
 }
 
+inline bool JSTaggedValue::IsExtraProfileTypeInfo() const
+{
+    return IsHeapObject() && GetTaggedObject()->GetClass()->IsExtraProfileTypeInfo();
+}
+
 inline bool JSTaggedValue::IsProfileTypeInfoCell() const
 {
     return IsHeapObject() && GetTaggedObject()->GetClass()->IsProfileTypeInfoCell();
