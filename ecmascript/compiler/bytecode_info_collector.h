@@ -370,8 +370,7 @@ private:
     void ProcessClasses();
     void ProcessCurrMethod();
     void CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr, MethodLiteral *method,
-                                uint32_t methodOffset, const std::shared_ptr<CString> recordNamePtr,
-                                std::vector<panda_file::File::EntityId> &classConstructIndexes);
+                                uint32_t methodOffset, const std::shared_ptr<CString> recordNamePtr);
     static bool IsVRegUsed(const BytecodeInstruction &inst, const BytecodeMetaData &metaData, uint32_t idx);
     void SetMethodPcInfoIndex(uint32_t methodOffset, const std::pair<size_t, uint32_t> &processedMethodInfo,
                               const std::shared_ptr<CString> recordNamePtr);
@@ -381,8 +380,7 @@ private:
     void CollectInnerMethodsFromNewLiteral(panda_file::File::EntityId literalId,
                                            const std::shared_ptr<CString> recordNamePtr);
     void CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method, int32_t bcIndex,
-                                 const std::shared_ptr<CString> recordNamePtr,
-                                 std::vector<panda_file::File::EntityId> &classConstructIndexes, bool *canFastCall,
+                                 const std::shared_ptr<CString> recordNamePtr, bool *canFastCall,
                                  bool *canTypedCall);
     void IterateLiteral(const MethodLiteral *method, std::vector<uint32_t> &classOffsetVector);
     void StoreClassTypeOffset(const uint32_t typeOffset, std::vector<uint32_t> &classOffsetVector);

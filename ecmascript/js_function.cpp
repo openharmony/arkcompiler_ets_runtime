@@ -627,16 +627,13 @@ JSTaggedValue JSFunction::ConstructInternal(EcmaRuntimeCallInfo *info)
 
     JSTaggedValue resultValue;
     info->SetThis(obj.GetTaggedValue());
-    if (!thread->IsWorker() && func->IsCompiledCode() && func->IsClassConstructor()) {
+    if (!thread->IsWorker() && func->IsCompiledCode()) {
         resultValue = InvokeOptimizedEntrypoint(thread, func, info);
         const JSTaggedType *curSp = thread->GetCurrentSPFrame();
         InterpretedEntryFrame *entryState = InterpretedEntryFrame::GetFrameFromSp(curSp);
         JSTaggedType *prevSp = entryState->base.prev;
         thread->SetCurrentSPFrame(prevSp);
     } else {
-        Method *method = func->GetCallTarget();
-        method->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot
-        func->ClearCompiledCodeFlags();
         resultValue = EcmaInterpreter::Execute(info);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

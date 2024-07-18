@@ -2845,7 +2845,7 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
     CVector<JSTaggedType> &values, JSHandle<JSTaggedValue> newTgt, uint32_t &size, JSHandle<JSTaggedValue> obj)
 {
     JSTaggedValue resultValue;
-    if (isAotMethod && ctor->IsClassConstructor()) {
+    if (isAotMethod) {
         uint32_t numArgs = ctor->GetCallTarget()->GetNumArgsWithCallField();
         bool needPushArgv = numArgs != size;
         const JSTaggedType *prevFp = thread->GetLastLeaveFrame();
@@ -2862,8 +2862,6 @@ JSTaggedValue RuntimeStubs::GetResultValue(JSThread *thread, bool isAotMethod, J
             resultValue = thread->GetCurrentEcmaContext()->ExecuteAot(size, values.data(), prevFp, needPushArgv);
         }
     } else {
-        ctor->GetCallTarget()->SetAotCodeBit(false); // if Construct is not ClassConstructor, don't run aot
-        ctor->ClearCompiledCodeFlags();
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, JSHandle<JSTaggedValue>(ctor), obj, newTgt, size);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -2893,7 +2891,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     uint32_t size = preArgsSize + argsCount;
     CVector<JSTaggedType> values;
     bool isCompiledCode = ctor->IsCompiledCode();
-    if (!thread->IsWorker() && isCompiledCode && ctor->IsClassConstructor()) {
+    if (!thread->IsWorker() && isCompiledCode) {
         if (ctor->IsCompiledFastCall()) {
             values.reserve(size + NUM_MANDATORY_JSFUNC_ARGS - 1);
             values.emplace_back(ctor.GetTaggedValue().GetRawData());
