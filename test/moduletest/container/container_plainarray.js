@@ -28,7 +28,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     let proxy = new Proxy(plainArray, {});
     let testArray = ["0", "1", "2", "3", "4", "5"]
     let res = true
-    proxy.add(0, "0")
+    let ret = proxy.add(0, "0")
     proxy.add(1, "1")
     proxy.add(2, "2")
     proxy.add(3, "3")
@@ -41,6 +41,7 @@ if (globalThis["ArkPrivate"] != undefined) {
         }
     }
     map.set("test plainarray add:", res)
+    map.set("test plainarray 'add' ret:", ret === undefined)
     map.set("test plainarray length:", proxy.length === 6)
     map.set("test plainarray has:", proxy.has(2))
     map.set("test plainarray getIndexOfValue:", proxy.getIndexOfValue("1") === 1)
@@ -114,8 +115,9 @@ if (globalThis["ArkPrivate"] != undefined) {
     proxy1.add(5, "5")
     proxy1.setValueAt(2, "123")
     map.set("test plainarray setValueAt and get:", proxy1.get(2) === "123")
-    proxy1.clear()
+    ret = proxy1.clear()
     map.set("test plainarray clear:", proxy1.length === 0)
+    map.set("test plainarray 'clear' ret:", ret === undefined)
     map.set("test plainarray isEmpty:", proxy1.isEmpty())
     proxy1.add(0, "0")
     proxy1.add(1, "1")

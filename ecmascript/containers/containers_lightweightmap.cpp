@@ -480,7 +480,7 @@ JSTaggedValue ContainersLightWeightMap::Clear(EcmaRuntimeCallInfo *argv)
     }
 
     JSAPILightWeightMap::Clear(thread, JSHandle<JSAPILightWeightMap>::Cast(self));
-    return JSTaggedValue::True();
+    return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue ContainersLightWeightMap::SetValueAt(EcmaRuntimeCallInfo *argv)

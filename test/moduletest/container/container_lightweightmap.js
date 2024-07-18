@@ -81,8 +81,9 @@ if (globalThis["ArkPrivate"] != undefined) {
     dProxy.increaseCapacityTo(20)
     res.set("test increaseCapacityTo:", true);
     // test clear: 0
-    dProxy.clear();
+    let ret = dProxy.clear();
     res.set("test clear:", dProxy.length == 0);
+    res.set("test 'clear' ret:", ret === undefined);
     
     let empty_fm = new fastmap();
     try {
