@@ -28,9 +28,9 @@
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
+#include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/filesystem.h"
 #include "ecmascript/platform/os.h"
@@ -130,7 +130,7 @@ int Main(const int argc, const char **argv)
         }
 
         if (IsExistsPkgInfo(cPreprocessor)) {
-            if (ohos::AotCrashInfo::IsAotEscape(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
+            if (AotCrashInfo::IsAotEscaped(cPreprocessor.GetMainPkgArgs()->GetPgoDir())) {
                 LOG_COMPILER(ERROR) << "Stop compile AOT because there are multiple crashes";
                 return ERR_FAIL;
             }

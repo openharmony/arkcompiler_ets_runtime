@@ -24,7 +24,7 @@
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/dfx/dump_code/jit_dump_elf.h"
-#include "ecmascript/ohos/aot_crash_info.h"
+#include "ecmascript/platform/aot_crash_info.h"
 
 namespace panda::ecmascript {
 
@@ -222,7 +222,7 @@ void DumpJitCode(JSHandle<MachineCode> &machineCode, JSHandle<Method> &method)
     fileName = fileName + "_" + std::to_string(addr) + "+" + std::to_string(len);
     jitDumpElf.AppendSymbolToSymTab(0, 0, len, std::string(filename));
     std::string realOutPath;
-    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(ohos::AotCrashInfo::GetSandBoxPath());
+    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(AotCrashInfo::GetSandBoxPath());
     if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
         return;
     }

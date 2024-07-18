@@ -29,7 +29,7 @@
 #include "ecmascript/ohos/aot_runtime_info.h"
 #include "macros.h"
 
-#ifdef AOT_ESCAPE_ENABLE
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
 #endif
 namespace panda::ecmascript::ohos {
@@ -74,7 +74,7 @@ public:
 
     static bool GetAotBuildCountDisable()
     {
-#ifdef AOT_ESCAPE_ENABLE
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
         return OHOS::system::GetBoolParameter(AOT_BUILD_COUNT_DISABLE, false);
 #endif
         return false;
@@ -85,8 +85,11 @@ public:
         if (!isCompileSuccess) {
             return;
         }
-        ohos::AotRuntimeInfo::GetInstance().BuildCompileRuntimeInfo(
-            ohos::AotRuntimeInfo::GetRuntimeInfoTypeStr(ohos::RuntimeInfoType::AOT_BUILD), pgoPath);
+        std::string runtimePgoRealPath = pgoPath;
+        runtimePgoRealPath.append(ohos::OhosConstants::PATH_SEPARATOR);
+        runtimePgoRealPath.append(ohos::OhosConstants::AOT_RUNTIME_INFO_NAME);
+        ohos::AotRuntimeInfo::GetInstance().BuildCompileRuntimeInfo(ohos::RuntimeInfoType::AOT_BUILD,
+            runtimePgoRealPath);
     }
 
     bool IsAotCompileSuccessOnce(const std::string &pgoRealPath = "") const

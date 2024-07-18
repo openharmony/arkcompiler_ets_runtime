@@ -24,8 +24,8 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/message_string.h"
-#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/aot_runtime_info.h"
+#include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #if defined(PANDA_TARGET_OHOS)
@@ -157,7 +157,7 @@ void JsStackInfo::DumpJitCode(JSThread *thread)
     }
     std::string fileName = "jitCode-" + std::to_string(getpid());
     std::string realOutPath;
-    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(ohos::AotCrashInfo::GetSandBoxPath());
+    std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(AotCrashInfo::GetSandBoxPath());
     if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
         return;
     }
@@ -246,12 +246,10 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, FrameType frameType, JSThread *thread)
 {
     if (JsStackInfo::loader == nullptr || JsStackInfo::options == nullptr) {
-        LOG_ECMA(ERROR) << "Loader or options initialization error.";
         return;
     }
     if (!JsStackInfo::loader->IsEnableAOT() && !JsStackInfo::options->IsEnableJIT() &&
         !JsStackInfo::options->IsEnablePGOProfiler()) {
-        LOG_ECMA(INFO) << "Neither AOT nor JIT is enabled.";
         return;
     }
     ohos::RuntimeInfoType type;
@@ -259,13 +257,13 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, FrameType frameType, JSThread *
         type = ohos::RuntimeInfoType::JS;
     } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
                frameType == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME) {
-        type = ohos::RuntimeInfoType::AOT;
+        type = ohos::RuntimeInfoType::AOT_CRASH;
     } else if (IsFastJitFunctionFrame(frameType)) {
         type = ohos::RuntimeInfoType::JIT;
     } else {
         type = ohos::RuntimeInfoType::OTHERS;
     }
-    ohos::AotRuntimeInfo::GetInstance().BuildCrashRuntimeInfo(ohos::AotRuntimeInfo::GetRuntimeInfoTypeStr(type));
+    ohos::AotRuntimeInfo::GetInstance().BuildCrashRuntimeInfo(type);
     if (isJsCrash) {
         DumpJitCode(thread);
     }

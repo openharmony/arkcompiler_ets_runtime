@@ -17,6 +17,8 @@
 #define ECMASCRIPT_COMPILER_OHOS_RUNTIME_BUILD_INFO_H
 
 #include <sys/time.h>
+#include <fcntl.h>
+#include <stdio.h>
 
 #include "ecmascript/platform/directory.h"
 #include "ecmascript/platform/file.h"
@@ -29,7 +31,7 @@
 
 namespace panda::ecmascript::ohos {
 #define RUNTIME_INFO_TYPE(V)                                         \
-    V(AOT)                                                           \
+    V(AOT_CRASH)                                                     \
     V(OTHERS)                                                        \
     V(NONE)                                                          \
     V(JIT)                                                           \
@@ -37,46 +39,27 @@ namespace panda::ecmascript::ohos {
     V(AOT_BUILD)                                                     \
 
 enum class RuntimeInfoType {
-    AOT,
+    AOT_CRASH,
     JIT,
     OTHERS,
     NONE,
     JS,
     AOT_BUILD,
 };
-struct RuntimeInfoPart {
-    std::string buildId;
-    std::string timestamp;
-    std::string type;
-    
-    RuntimeInfoPart() = default;
-    RuntimeInfoPart(const std::string &buildId, const std::string &timestamp, const std::string &type)
-        : buildId(buildId), timestamp(timestamp), type(type)
-    {
-    }
-};
-/*
- * The JSON format is as follows
- * type: "AOT_BUILD" Used at compile time,
- *       "AOT", "JIT", "OTHERS", "JS" Used at crash time.
- * {"key":
- *      [
- *          {"buildId":"xxxxxx", "timestamp":"123456789", "type":"AOT"},
- *          {"buildId":"xxxxxx", "timestamp":"123456789", "type":"AOT"}
- *      ]
- * }
- */
+
 class AotRuntimeInfo {
 public:
     constexpr static const int USEC_PER_SEC = 1000 * 1000;
     constexpr static const int NSEC_PER_USEC = 1000;
     constexpr static const int NT_GNU_BUILD_ID = 3;
     constexpr static const int CRASH_INFO_SIZE = 3;
-    
-    constexpr static const char *const RUNTIME_INFO_ARRAY_KEY = "runtime_info_array";
-    constexpr static const char *const RUNTIME_KEY_BUILDID = "buildId";
-    constexpr static const char *const RUNTIME_KEY_TIMESTAMP = "timestamp";
-    constexpr static const char *const RUNTIME_KEY_TYPE = "type";
+    constexpr static const int MAX_LENGTH = 255;
+    constexpr static const int BUFFER_SIZE = 4096;
+    constexpr static const int TIME_STAMP_SIZE = 21;
+
+    constexpr static const int RUNTIME_INDEX_BUILDID = 0;
+    constexpr static const int RUNTIME_INDEX_TIMESTAMP = 1;
+    constexpr static const int RUNTIME_INDEX_TYPE = 2;
 
     static AotRuntimeInfo &GetInstance()
     {
@@ -84,40 +67,70 @@ public:
         return singleAotRuntimeInfo;
     }
 
-    void BuildCompileRuntimeInfo(const std::string &type, const std::string &pgoPath) const
+    void BuildCompileRuntimeInfo(RuntimeInfoType type, const std::string &pgoPath) const
     {
-        std::string soBuildId = GetRuntimeBuildId();
-        if (soBuildId == "") {
+        static char soBuildId[NAME_MAX];
+        if (!GetRuntimeBuildId(soBuildId)) {
+            return;
+        }
+        if (IsCharEmpty(soBuildId)) {
             LOG_ECMA(INFO) << "can't get so buildId.";
             return;
         }
         std::string realOutPath;
-        std::string runtimePgoRealPath = pgoPath + OhosConstants::PATH_SEPARATOR + OhosConstants::AOT_RUNTIME_INFO_NAME;
-        if (!ecmascript::RealPath(runtimePgoRealPath, realOutPath, false)) {
+        if (!ecmascript::RealPath(pgoPath, realOutPath, false)) {
             LOG_ECMA(INFO) << "Build compile pgo path fail.";
             return;
         }
-        std::vector<RuntimeInfoPart> lines = GetRuntimeInfoByPath(realOutPath, soBuildId);
-        uint64_t timestamp = GetMicrosecondsTimeStamp();
-        RuntimeInfoPart buildLine = RuntimeInfoPart(soBuildId, std::to_string(timestamp), type);
-        lines.emplace_back(buildLine);
-        SetRuntimeInfo(realOutPath, lines);
-    }
-
-    void BuildCrashRuntimeInfo(const std::string &type) const
-    {
-        std::string soBuildId = GetRuntimeBuildId();
-        if (soBuildId == "") {
-            LOG_ECMA(INFO) << "can't get so buildId.";
+        static char lines[MAX_LENGTH][BUFFER_SIZE];
+        for (int i = 0; i < MAX_LENGTH; i++) {
+            memset_s(lines[i], BUFFER_SIZE, '\0', BUFFER_SIZE);
+        }
+        GetRuntimeInfoByPath(lines, realOutPath.c_str(), soBuildId);
+        static char timestamp[TIME_STAMP_SIZE] = { '\0' };
+        if (!GetMicrosecondsTimeStamp(timestamp)) {
             return;
         }
-        std::vector<RuntimeInfoPart> lines = GetCrashRuntimeInfoList();
-        uint64_t timestamp = GetMicrosecondsTimeStamp();
-        RuntimeInfoPart buildLine = RuntimeInfoPart(soBuildId, std::to_string(timestamp), type);
-        lines.emplace_back(buildLine);
-        std::string realOutPath = GetCrashSandBoxRealPath();
-        if (realOutPath == "") {
-            LOG_ECMA(INFO) << "Get crash sanbox path fail.";
+
+        int lineCount = getLength(lines, MAX_LENGTH);
+        if (lineCount < MAX_LENGTH) {
+            if (!BuildRuntimeInfoPart(lines[lineCount], soBuildId, timestamp, type)) {
+                return;
+            }
+        }
+        SetRuntimeInfo(realOutPath.c_str(), lines);
+    }
+
+    void BuildCrashRuntimeInfo(RuntimeInfoType type) const
+    {
+        static char soBuildId[NAME_MAX];
+        if (!GetRuntimeBuildId(soBuildId)) {
+            return;
+        }
+        if (IsCharEmpty(soBuildId)) {
+            return;
+        }
+        
+        static char lines[MAX_LENGTH][BUFFER_SIZE];
+        for (int i = 0; i < MAX_LENGTH; i++) {
+            memset_s(lines[i], BUFFER_SIZE, '\0', BUFFER_SIZE);
+        }
+        GetCrashRuntimeInfoList(lines);
+        static char timestamp[TIME_STAMP_SIZE] = { '\0' };
+        if (!GetMicrosecondsTimeStamp(timestamp)) {
+            return;
+        }
+        int lineCount = getLength(lines, MAX_LENGTH);
+        if (lineCount < MAX_LENGTH) {
+            if (!BuildRuntimeInfoPart(lines[lineCount], soBuildId, timestamp, type)) {
+                return;
+            }
+        }
+        static char realOutPath[PATH_MAX];
+        if (!GetCrashSandBoxRealPath(realOutPath)) {
+            return;
+        }
+        if (IsCharEmpty(realOutPath)) {
             return;
         }
         SetRuntimeInfo(realOutPath, lines);
@@ -137,34 +150,47 @@ public:
         if (IsLoadedMap()) {
             return escapeMap_;
         }
-        std::vector<RuntimeInfoPart> runtimeInfoParts;
-        if (pgoRealPath == "") {
-            runtimeInfoParts = GetCrashRuntimeInfoList();
+        char lines[MAX_LENGTH][BUFFER_SIZE];
+        if (IsCharEmpty(pgoRealPath.c_str())) {
+            GetCrashRuntimeInfoList(lines);
         } else {
-            runtimeInfoParts = GetRealPathRuntimeInfoList(pgoRealPath);
+            GetRealPathRuntimeInfoList(lines, pgoRealPath);
         }
-        for (const auto &runtimeInfoPart: runtimeInfoParts) {
-            RuntimeInfoType runtimeInfoType = GetRuntimeInfoTypeByStr(runtimeInfoPart.type);
-            escapeMap_[runtimeInfoType]++;
+        char *typeChar = new char[NAME_MAX];
+        for (int i = 0; i < MAX_LENGTH; i++) {
+            if (lines[i][0] != '\0') {
+                if (strcpy_s(typeChar, NAME_MAX, GetInfoFromBuffer(lines[i], RUNTIME_INDEX_TYPE)) !=0) {
+                    continue;
+                }
+                std::string typeStr(typeChar);
+                escapeMap_[GetRuntimeInfoTypeByStr(typeStr)]++;
+            }
         }
         SetLoadedMap(true);
         return escapeMap_;
     }
 
-    static std::string GetRuntimeInfoTypeStr(RuntimeInfoType type)
+    const char *GetRuntimeInfoTypeStr(const RuntimeInfoType type) const
     {
-        const std::map<RuntimeInfoType, const char *> strMap = {
-#define RUNTIME_INFO_TYPE_MAP(name) { RuntimeInfoType::name, #name },
-        RUNTIME_INFO_TYPE(RUNTIME_INFO_TYPE_MAP)
-#undef RUNTIME_INFO_TYPE_MAP
-        };
-        if (strMap.count(type) > 0) {
-            return strMap.at(type);
+        switch (type) {
+            case RuntimeInfoType::AOT_CRASH:
+                return "AOT_CRASH";
+            case RuntimeInfoType::JIT:
+                return "JIT";
+            case RuntimeInfoType::OTHERS:
+                return "OTHERS";
+            case RuntimeInfoType::NONE:
+                return "NONE";
+            case RuntimeInfoType::JS:
+                return "JS";
+            case RuntimeInfoType::AOT_BUILD:
+                return "AOT_BUILD";
+            default:
+                return "NONE";
         }
-        return "";
     }
     
-    static RuntimeInfoType GetRuntimeInfoTypeByStr(std::string type)
+    RuntimeInfoType GetRuntimeInfoTypeByStr(std::string &type) const
     {
         const std::map<std::string, RuntimeInfoType> strMap = {
 #define RUNTIME_INFO_TYPE_MAP(name) { #name, RuntimeInfoType::name },
@@ -177,149 +203,195 @@ public:
         return RuntimeInfoType::NONE;
     }
 
-private:
-    std::vector<RuntimeInfoPart> GetCrashRuntimeInfoList() const
+    virtual bool GetRuntimeBuildId(char *buildId) const
     {
-        std::string realOutPath = GetCrashSandBoxRealPath();
-        std::vector<RuntimeInfoPart> list;
-        if (!FileExist(realOutPath.c_str())) {
-            LOG_ECMA(INFO) << "Get crash sanbox path fail.";
-            return list;
-        }
-        std::string soBuildId = GetRuntimeBuildId();
-        if (soBuildId == "") {
-            LOG_ECMA(INFO) << "can't get so buildId.";
-            return list;
-        }
-        list = GetRuntimeInfoByPath(realOutPath, soBuildId);
-        return list;
-    }
-
-    std::vector<RuntimeInfoPart> GetRealPathRuntimeInfoList(const std::string &pgoRealPath) const
-    {
-        std::vector<RuntimeInfoPart> list;
-        std::string realOutPath;
-        std::string runtimePgoRealPath = pgoRealPath + OhosConstants::PATH_SEPARATOR +
-            OhosConstants::AOT_RUNTIME_INFO_NAME;
-        if (!ecmascript::RealPath(runtimePgoRealPath, realOutPath, false)) {
-            return list;
-        }
-        if (!FileExist(realOutPath.c_str())) {
-            LOG_ECMA(INFO) << "Get pgo real path fail.";
-            return list;
-        }
-        std::string soBuildId = GetRuntimeBuildId();
-        if (soBuildId == "") {
-            LOG_ECMA(INFO) << "can't get so buildId.";
-            return list;
-        }
-        list = GetRuntimeInfoByPath(realOutPath, soBuildId);
-        return list;
-    }
-
-    std::string GetRuntimeBuildId() const
-    {
-        std::string realPath;
         if (!FileExist(OhosConstants::RUNTIME_SO_PATH)) {
-            return "";
+            return false;
         }
-        std::string soPath = panda::os::file::File::GetExtendedFilePath(OhosConstants::RUNTIME_SO_PATH);
-        if (!ecmascript::RealPath(soPath, realPath, false)) {
-            return "";
+        static char realPath[PATH_MAX] = { '\0' };
+        if (!ecmascript::RealPathByChar(OhosConstants::RUNTIME_SO_PATH, realPath, PATH_MAX, false)) {
+            return false;
         }
-        if (!FileExist(realPath.c_str())) {
-            return "";
+        if (!FileExist(realPath)) {
+            return false;
         }
-        ecmascript::MemMap fileMap = ecmascript::FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
+        ecmascript::MemMap fileMap = ecmascript::FileMap(realPath, FILE_RDONLY, PAGE_PROT_READ);
         if (fileMap.GetOriginAddr() == nullptr) {
-            LOG_ECMA(INFO) << "runtime info file mmap failed";
-            return "";
+            return false;
         }
-        std::string buildId = ParseELFSectionsForBuildId(fileMap);
+        ParseELFSectionsForBuildId(fileMap, buildId);
         ecmascript::FileUnMap(fileMap);
         fileMap.Reset();
-        return buildId;
+        return true;
     }
 
-    uint64_t GetMicrosecondsTimeStamp() const
+    virtual bool GetMicrosecondsTimeStamp(char *timestamp) const
     {
-        struct timespec time;
-        clock_gettime(CLOCK_MONOTONIC, &time);
-        return time.tv_sec * USEC_PER_SEC + time.tv_nsec / NSEC_PER_USEC;
-    }
-
-    void SetRuntimeInfo(const std::string &realOutPath, std::vector<RuntimeInfoPart> &runtimeInfoParts) const
-    {
-        std::ofstream file(realOutPath.c_str(), std::ofstream::out);
-        JsonObjectBuilder objBuilder;
-        auto arrayObject = [runtimeInfoParts](JsonArrayBuilder &arrayBuilder) {
-            for (const auto &runtimeInfoPart : runtimeInfoParts) {
-                auto addObj = [runtimeInfoPart](JsonObjectBuilder &obj) {
-                    obj.AddProperty(RUNTIME_KEY_BUILDID, runtimeInfoPart.buildId);
-                    obj.AddProperty(RUNTIME_KEY_TIMESTAMP, runtimeInfoPart.timestamp);
-                    obj.AddProperty(RUNTIME_KEY_TYPE, runtimeInfoPart.type);
-                };
-                arrayBuilder.Add(addObj);
-            }
-        };
-        objBuilder.AddProperty(RUNTIME_INFO_ARRAY_KEY, arrayObject);
-        if (file.is_open()) {
-            file << std::move(objBuilder).Build();
-            file.close();
-        } else {
-            LOG_ECMA(INFO) << "open file to set runtime info fail :" << realOutPath.c_str();
+        time_t current_time;
+        if (time(&current_time) == -1) {
+            return false;
         }
-    }
-
-    std::vector<RuntimeInfoPart> GetRuntimeInfoByPath(const std::string &realOutPath,
-        const std::string &soBuildId) const
-    {
-        std::ifstream ifile(realOutPath.c_str());
-        std::vector<RuntimeInfoPart> infoParts;
-        if (ifile.is_open()) {
-            std::string jsonStr((std::istreambuf_iterator<char>(ifile)), std::istreambuf_iterator<char>());
-            JsonObject obj(jsonStr);
-            if (obj.GetValue<JsonObject::ArrayT>(RUNTIME_INFO_ARRAY_KEY) == nullptr) {
-                ifile.close();
-                return infoParts;
-            }
-            auto &mainArray = *obj.GetValue<JsonObject::ArrayT>(RUNTIME_INFO_ARRAY_KEY);
-            for (size_t i = 0; i < mainArray.size(); i++) {
-                if (mainArray[i].Get<JsonObject::JsonObjPointer>() == nullptr) {
-                    continue;
-                }
-                auto &innerObj = *(mainArray[i]).Get<JsonObject::JsonObjPointer>()->get();
-                auto buildId = innerObj.GetValue<JsonObject::StringT>(RUNTIME_KEY_BUILDID);
-                auto timestamp = innerObj.GetValue<JsonObject::StringT>(RUNTIME_KEY_TIMESTAMP);
-                auto type = innerObj.GetValue<JsonObject::StringT>(RUNTIME_KEY_TYPE);
-                if (buildId == nullptr || timestamp == nullptr || type == nullptr) {
-                    LOG_ECMA(INFO) << "runtime info get wrong json object info.";
-                    continue;
-                }
-                std::string buildIdStr = *buildId;
-                if (buildIdStr != soBuildId) {
-                    continue;
-                }
-                infoParts.emplace_back(RuntimeInfoPart(*buildId, *timestamp, *type));
-            }
-            ifile.close();
+        struct tm *local_time = localtime(&current_time);
+        if (local_time == NULL) {
+            return false;
         }
-        return infoParts;
+        int result = strftime(timestamp, TIME_STAMP_SIZE, "%Y-%m-%d %H:%M:%S", local_time);
+        if (result == 0) {
+            return false;
+        }
+        return true;
     }
 
-    std::string GetCrashSandBoxRealPath() const
+    virtual bool GetCrashSandBoxRealPath(char *realOutPath) const
+    {
+        if (!ecmascript::RealPathByChar(OhosConstants::SANDBOX_ARK_PROFILE_PATH, realOutPath, PATH_MAX, false)) {
+            return false;
+        }
+        if (strcat_s(realOutPath, NAME_MAX, OhosConstants::PATH_SEPARATOR) != 0) {
+            return false;
+        }
+        if (strcat_s(realOutPath, NAME_MAX, OhosConstants::AOT_RUNTIME_INFO_NAME) !=0) {
+            return false;
+        }
+        return true;
+    }
+protected:
+
+    bool IsCharEmpty(const char *value) const
+    {
+        if (value == NULL || *value == '\0') {
+            return true;
+        }
+        return false;
+    }
+
+    bool BuildRuntimeInfoPart(char *runtimeInfoPart, const char *soBuildId, const char *timestamp,
+        RuntimeInfoType type) const
+    {
+        if (strcat_s(runtimeInfoPart, NAME_MAX, soBuildId) != 0) {
+            return false;
+        }
+        if (strcat_s(runtimeInfoPart, NAME_MAX, OhosConstants::SPLIT_STR) != 0) {
+            return false;
+        }
+        if (strcat_s(runtimeInfoPart, NAME_MAX, timestamp) != 0) {
+            return false;
+        }
+        if (strcat_s(runtimeInfoPart, NAME_MAX, OhosConstants::SPLIT_STR) != 0) {
+            return false;
+        }
+        if (strcat_s(runtimeInfoPart, NAME_MAX, GetRuntimeInfoTypeStr(type)) != 0) {
+            return false;
+        }
+        return true;
+    }
+
+    char *GetInfoFromBuffer(char *line, int index) const
+    {
+        char *saveptr;
+        char buffer[BUFFER_SIZE];
+        if (strncpy_s(buffer, BUFFER_SIZE - 1, line, sizeof(buffer) - 1) != 0) {
+            return NULL;
+        }
+        char *token = strtok_r(buffer, OhosConstants::SPLIT_STR, &saveptr);
+        
+        for (int i = 0; i < index; i++) {
+            token = strtok_r(NULL, OhosConstants::SPLIT_STR, &saveptr);
+        }
+        return token;
+    }
+
+    int getLength(char lines[][BUFFER_SIZE], int maxInput) const
+    {
+        int count = 0;
+        for (int i = 0; i < maxInput; i++) {
+            if (lines[i][0] != '\0') {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    void GetCrashRuntimeInfoList(char lines[][BUFFER_SIZE]) const
+    {
+        static char realOutPath[PATH_MAX];
+        if (!GetCrashSandBoxRealPath(realOutPath)) {
+            return;
+        }
+        if (!FileExist(realOutPath)) {
+            return;
+        }
+        static char soBuildId[NAME_MAX];
+        if (!GetRuntimeBuildId(soBuildId)) {
+            return;
+        }
+        if (IsCharEmpty(soBuildId)) {
+            return;
+        }
+        GetRuntimeInfoByPath(lines, realOutPath, soBuildId);
+        return;
+    }
+
+    void GetRealPathRuntimeInfoList(char lines[][BUFFER_SIZE], const std::string &pgoRealPath) const
     {
         std::string realOutPath;
-        std::string arkProfilePath = OhosConstants::SANDBOX_ARK_PROFILE_PATH;
-        std::string sanboxPath = panda::os::file::File::GetExtendedFilePath(arkProfilePath);
-        if (!ecmascript::RealPath(sanboxPath, realOutPath, false)) {
-            return "";
+        if (!ecmascript::RealPath(pgoRealPath, realOutPath, false)) {
+            return;
         }
-        realOutPath = realOutPath + OhosConstants::PATH_SEPARATOR + OhosConstants::AOT_RUNTIME_INFO_NAME;
-        return realOutPath;
+        if (!FileExist(realOutPath.c_str())) {
+            return;
+        }
+        char soBuildId[NAME_MAX];
+        if (!GetRuntimeBuildId(soBuildId)) {
+            return;
+        }
+        if (IsCharEmpty(soBuildId)) {
+            return;
+        }
+        GetRuntimeInfoByPath(lines, realOutPath.c_str(), soBuildId);
     }
 
-    std::string ParseELFSectionsForBuildId(ecmascript::MemMap &fileMap) const
+    void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE]) const
+    {
+        int fd = open(realOutPath,  O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (fd == -1) {
+            return;
+        }
+        for (int i = 0; lines[i] != NULL && i < MAX_LENGTH; i++) {
+            if (lines[i][0] != '\0') {
+                write(fd, lines[i], strlen(lines[i]));
+                write(fd, "\n", 1);
+            }
+        }
+        close(fd);
+    }
+
+    void GetRuntimeInfoByPath(char lines[][BUFFER_SIZE], const char *realOutPath, const char *soBuildId) const
+    {
+        int fd = open(realOutPath, O_RDONLY);
+        if (fd == -1) {
+            return;
+        }
+        char buffer[BUFFER_SIZE];
+        char *saveptr;
+        char *token;
+        ssize_t bytesRead;
+        int lineCount = 0;
+        while ((bytesRead = read(fd, buffer, BUFFER_SIZE)) > 0) {
+            token = strtok_r(buffer, "\n", &saveptr);
+            while (token != NULL) {
+                if (strcmp(GetInfoFromBuffer(token, RUNTIME_INDEX_BUILDID), soBuildId) == 0 &&
+                    lineCount < MAX_LENGTH &&
+                    strcpy_s(lines[lineCount], BUFFER_SIZE, buffer) == 0) {
+                    lineCount++;
+                }
+                token = strtok_r(NULL, "\n", &saveptr);
+            }
+        }
+        close(fd);
+    }
+
+    void ParseELFSectionsForBuildId(ecmascript::MemMap &fileMap, char *buildId) const
     {
         llvm::ELF::Elf64_Ehdr *ehdr = reinterpret_cast<llvm::ELF::Elf64_Ehdr *>(fileMap.GetOriginAddr());
         char *addr = reinterpret_cast<char *>(ehdr);
@@ -327,17 +399,17 @@ private:
         ASSERT(ehdr->e_shstrndx != static_cast<llvm::ELF::Elf64_Half>(-1));
         llvm::ELF::Elf64_Shdr strdr = shdr[ehdr->e_shstrndx];
         int secId = -1;
-        std::string sectionName = ".note.gnu.build-id";
+        static const char sectionName[] = ".note.gnu.build-id";
         for (size_t i = 0; i < ehdr->e_shnum; i++) {
             llvm::ELF::Elf64_Word shName = shdr[i].sh_name;
             char *curShName = reinterpret_cast<char *>(addr) + shName + strdr.sh_offset;
-            if (sectionName.compare(curShName) == 0) {
+            if (strcmp(sectionName, curShName) == 0) {
                 secId = static_cast<int>(i);
                 break;
             }
         }
         if (secId == -1) {
-            return "";
+            return;
         }
         llvm::ELF::Elf64_Shdr secShdr = shdr[secId];
         uint64_t buildIdOffset = secShdr.sh_offset;
@@ -345,43 +417,37 @@ private:
         llvm::ELF::Elf64_Nhdr *nhdr = reinterpret_cast<llvm::ELF::Elf64_Nhdr *>(addr + buildIdOffset);
         char *curShNameForNhdr = reinterpret_cast<char *>(addr + buildIdOffset + sizeof(*nhdr));
         if (buildIdSize - sizeof(*nhdr) < nhdr->n_namesz) {
-            return "";
-        }
-        std::string curShNameStr = curShNameForNhdr;
-        if (curShNameStr.back() == '\0') {
-            curShNameStr.resize(curShNameStr.size() - 1);
+            return;
         }
 
-        if (curShNameStr != "GNU" || nhdr->n_type != NT_GNU_BUILD_ID) {
-            return "";
+        static const char gnu[] = "GNU";
+        if (strcmp(curShNameForNhdr, gnu) != 0 || nhdr->n_type != NT_GNU_BUILD_ID) {
+            return;
         }
         if ((buildIdSize - sizeof(*nhdr) - AlignValues(nhdr->n_namesz, 4) < nhdr->n_descsz) || nhdr->n_descsz == 0) {
-            return "";
+            return;
         }
         
         char *curShNameValueForNhdr = reinterpret_cast<char *>(addr + buildIdOffset + sizeof(*nhdr) +
             AlignValues(nhdr->n_namesz, 4));
-        std::string curShNameValueForNhdrStr = curShNameValueForNhdr;
-        return GetReadableBuildId(curShNameValueForNhdrStr);
+        GetReadableBuildId(curShNameValueForNhdr, buildId);
     }
 
-    std::string GetReadableBuildId(std::string &buildIdHex) const
+    void GetReadableBuildId(char *buildIdHex, char *buildId) const
     {
-        if (buildIdHex.empty()) {
-            return "";
+        if (IsCharEmpty(buildIdHex)) {
+            return;
         }
         static const char HEXTABLE[] = "0123456789abcdef";
         static const int HEXLENGTH = 16;
         static const int HEX_EXPAND_PARAM = 2;
-        const size_t len = buildIdHex.length();
-        std::string buildId(len * HEX_EXPAND_PARAM, '\0');
+        const int len = strlen(buildIdHex);
 
-        for (size_t i = 0; i < len; i++) {
+        for (int i = 0; i < len; i++) {
             unsigned int n = buildIdHex[i];
             buildId[i * HEX_EXPAND_PARAM] = HEXTABLE[(n >> 4) % HEXLENGTH]; // 4 : higher 4 bit of uint8
             buildId[i * HEX_EXPAND_PARAM + 1] = HEXTABLE[n % HEXLENGTH];
         }
-        return buildId;
     }
 
     uint64_t AlignValues(uint64_t val, uint64_t align) const

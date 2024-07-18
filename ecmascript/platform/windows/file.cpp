@@ -66,6 +66,15 @@ bool RealPath(const std::string &path, std::string &realPath, [[maybe_unused]] b
     return true;
 }
 
+bool RealPathByChar(const char *path, char *realPath, int rowLength, bool readOnly)
+{
+    (void)path;
+    (void)realPath;
+    (void)rowLength;
+    (void)readOnly;
+    return false;
+}
+
 void DPrintf(fd_t fd, const std::string &buffer)
 {
     LOG_ECMA(DEBUG) << "Unsupport dprintf fd(" << fd << ") in windows, buffer:" << buffer;

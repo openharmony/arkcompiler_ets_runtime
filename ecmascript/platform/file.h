@@ -66,6 +66,7 @@ using fd_t = int;
 std::string PUBLIC_API GetFileDelimiter();
 std::string PUBLIC_API GetPathSeparator();
 bool PUBLIC_API RealPath(const std::string &path, std::string &realPath, bool readOnly = true);
+bool PUBLIC_API RealPathByChar(const char *path, char *realPath, int rowLength, bool readOnly);
 void DPrintf(fd_t fd, const std::string &buffer);
 void Close(fd_t fd);
 void FSync(fd_t fd);

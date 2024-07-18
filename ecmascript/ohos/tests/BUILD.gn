@@ -43,15 +43,52 @@ host_unittest_action("OhosTest") {
   external_deps += [ "zlib:libz" ]
 }
 
+host_unittest_action("CrashTest") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "crash_test.cpp",
+    "mock/mock_aot_runtime_info.cpp",
+  ]
+
+  configs = [
+    "$js_root:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "$js_root:libark_jsruntime_test",
+    "$js_root/ecmascript/compiler:libark_jsoptimizer_set",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+  external_deps += [ "zlib:libz" ]
+}
+
 group("unittest") {
   testonly = true
-  deps = [ ":OhosTest" ]
+  deps = [
+    ":CrashTest",
+    ":OhosTest",
+  ]
 }
 
 group("host_unittest") {
   testonly = true
-  deps = [ ":OhosTestAction" ]
+  deps = [
+    ":CrashTestAction",
+    ":OhosTestAction",
+  ]
   if (is_mac) {
-    deps -= [ ":OhosTestAction" ]
+    deps -= [
+      ":CrashTestAction",
+      ":OhosTestAction",
+    ]
   }
 }

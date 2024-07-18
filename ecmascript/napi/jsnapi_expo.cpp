@@ -92,10 +92,10 @@
 #include "ecmascript/serializer/value_serializer.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/js_weak_container.h"
-#include "ecmascript/ohos/aot_crash_info.h"
 #include "ecmascript/ohos/aot_runtime_info.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/framework_helper.h"
+#include "ecmascript/platform/aot_crash_info.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -202,11 +202,9 @@ using ModulePathHelper = ecmascript::ModulePathHelper;
 using JsDebuggerManager = ecmascript::tooling::JsDebuggerManager;
 using FrameIterator = ecmascript::FrameIterator;
 using Concurrent = ecmascript::Concurrent;
-using CrashInfo = ecmascript::ohos::AotCrashInfo;
 using EnableAotJitListHelper = ecmascript::ohos::EnableAotJitListHelper;
 using PGOProfilerManager = ecmascript::pgo::PGOProfilerManager;
 using AotRuntimeInfo = ecmascript::ohos::AotRuntimeInfo;
-using AotCrashInfo = ecmascript::ohos::AotCrashInfo;
 
 namespace {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
