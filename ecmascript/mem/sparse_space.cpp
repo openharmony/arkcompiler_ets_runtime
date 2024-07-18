@@ -711,4 +711,46 @@ uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc &desc, bool al
 }
 #endif // ENABLE_JITFORT
 
+size_t MachineCodeSpace::CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &machineCode, uintptr_t pc)
+{
+    auto freeObject = FreeObject::Cast(curPtr);
+    size_t objSize = 0;
+    if (!freeObject->IsFreeObject()) {
+        auto obj = MachineCode::Cast(reinterpret_cast<TaggedObject*>(curPtr));
+        if (obj->IsInText(pc)) {
+            machineCode = curPtr;
+        }
+        objSize = obj->GetClass()->SizeFromJSHClass(obj);
+    } else {
+        objSize = freeObject->Available();
+    }
+    return objSize;
+}
+
+uintptr_t MachineCodeSpace::GetMachineCodeObject(uintptr_t pc)
+{
+    uintptr_t machineCode = 0;
+    allocator_->FillBumpPointer();
+
+    EnumerateRegions([&](Region *region) {
+        if (machineCode != 0) {
+            return;
+        }
+        if (region->InCollectSet() || !region->InRange(pc)) {
+            return;
+        }
+        uintptr_t curPtr = region->GetBegin();
+        uintptr_t endPtr = region->GetEnd();
+        while (curPtr < endPtr) {
+            size_t objSize = CheckMachineCodeObject(curPtr, machineCode, pc);
+            if (machineCode != 0) {
+                return;
+            }
+            curPtr += objSize;
+            CHECK_OBJECT_SIZE(objSize);
+        }
+        CHECK_REGION_END(curPtr, endPtr);
+    });
+    return machineCode;
+}
 }  // namespace panda::ecmascript
