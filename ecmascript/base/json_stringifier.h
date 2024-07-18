@@ -70,6 +70,7 @@ private:
     bool SerializeKeys(const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &replacer, bool hasContent);
     JSHandle<JSTaggedValue> SerializeHolder(const JSHandle<JSTaggedValue> &object,
                                             const JSHandle<JSTaggedValue> &value);
+    bool CheckStackPushSameValue(JSHandle<JSTaggedValue> value);
     CString gap_;
     CString result_;
     CString indent_;

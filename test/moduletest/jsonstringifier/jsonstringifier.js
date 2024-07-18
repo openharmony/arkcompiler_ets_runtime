@@ -247,3 +247,13 @@ try {
   print(err.name);
   print(err.message.includes("circular structure"));
 }
+
+try {
+    let arkPrivate = globalThis.ArkPrivate;
+    var List = arkPrivate.Load(arkPrivate.List);
+    const v10 = new List();
+    v10.add(v10);
+    print(JSON.stringify(v10));
+} catch (err) {
+    print(err);
+}

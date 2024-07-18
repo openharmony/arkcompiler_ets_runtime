@@ -292,6 +292,8 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
             }
             case JSType::JS_API_LINKED_LIST: {
                 JSHandle listHandle = JSHandle<JSAPILinkedList>(thread_, tagValue);
+                CheckStackPushSameValue(valHandle);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                 valHandle = JSHandle<JSTaggedValue>(thread_, JSAPILinkedList::ConvertToArray(thread_, listHandle));
                 SerializeJSONObject(valHandle, replacer);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -299,6 +301,8 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
             }
             case JSType::JS_API_LIST: {
                 JSHandle listHandle = JSHandle<JSAPIList>(thread_, tagValue);
+                CheckStackPushSameValue(valHandle);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                 valHandle = JSHandle<JSTaggedValue>(thread_, JSAPIList::ConvertToArray(thread_, listHandle));
                 SerializeJSONObject(valHandle, replacer);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
@@ -346,6 +350,8 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                         SerializeJSProxy(valHandle, replacer);
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     } else {
+                        CheckStackPushSameValue(valHandle);
+                        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                         SerializeJSONObject(valHandle, replacer);
                         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     }
@@ -406,11 +412,6 @@ void JsonStringifier::PopValue()
 
 bool JsonStringifier::SerializeJSONObject(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer)
 {
-    bool isContain = PushValue(value);
-    if (isContain) {
-        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
-    }
-
     CString stepback = indent_;
     indent_ += gap_;
 
@@ -939,4 +940,14 @@ bool JsonStringifier::AppendJsonString(const JSHandle<JSObject> &obj, const JSHa
     }
     return hasContent;
 }
+
+bool JsonStringifier::CheckStackPushSameValue(JSHandle<JSTaggedValue> value)
+{
+    bool isContain = PushValue(value);
+    if (isContain) {
+        THROW_TYPE_ERROR_AND_RETURN(thread_, "stack contains value, usually caused by circular structure", true);
+    }
+    return false;
+}
+
 }  // namespace panda::ecmascript::base
