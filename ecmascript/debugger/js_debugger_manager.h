@@ -129,7 +129,7 @@ public:
         return debuggerLibraryHandle_;
     }
 
-    bool GetSignalState()
+    bool GetSignalState() const
     {
         return isSignalInterrupt_;
     }

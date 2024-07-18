@@ -65,7 +65,6 @@ private:
     JsDebuggerManager *jsDebuggerManager_ = nullptr;
 };
 
-
 class RuntimeStateScope {
 public:
     inline explicit RuntimeStateScope(JSThread *thread)
