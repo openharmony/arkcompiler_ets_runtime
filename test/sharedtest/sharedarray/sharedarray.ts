@@ -718,6 +718,26 @@ function derivedFill() {
     print("instanceOf derived fill result: " + (filledArray instanceof SubSharedClass));
 }
 
+function readOutOfRange() {
+    print("Start Test array read out of range")
+    const array = new SharedArray<number>(1, 3, 5, 7);
+    print("array[0]: " + array[0]);
+    try {
+        array[9]
+        print("read out of range success.");
+    } catch (err) {
+        print("read out of range failed. err: " + err + ", code: " + err.code);
+    }
+}
+
+function forOf() {
+    print("Start Test array for of")
+    const array = new SharedArray<number>(1, 3, 5, 7);
+    for(const num of array){
+        print(num);
+    }
+}
+
 at()
 
 entries()
@@ -786,3 +806,5 @@ derivedSort()
 derivedForEach()
 derivedMap()
 derivedFill()
+readOutOfRange()
+forOf()
