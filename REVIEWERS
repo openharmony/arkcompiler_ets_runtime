@@ -12,3 +12,38 @@
 # limitations under the License.
 
 * @gongjunsong @wuzhefengh @weng-changcheng
+
+ecmascript/builtins/         @wpyhuawei  @chenjx-huawei @dov1s
+ecmascript/checkpoint/       @lukai25 @dingding5 @chentianyuu
+ecmascript/compiler/         @ginxu @zhangyukun8 @yingguofeng @linxiang8
+ecmascript/container/        @huanghello
+ecmascript/daemon/           @lukai25 @dingding5 @chentianyuu
+ecmascript/debugger/         @wanghuan2022 @yang-19970325
+ecmascript/deoptimizer/      @ginxu @zhangyukun8
+ecmascript/dfx/              @wanghuan2022
+ecmascript/ic/               @dingding5 @daihn @dov1s
+ecmascript/interpreter/      @wpyhuawei @zhangyukun8 @yingguofeng
+ecmascript/intl/             @chenjx-huawei @dov1s
+ecmascript/jit/              @xiaoweidng @KasonChan @RyanZhou97_admin
+ecmascript/jobs/             @weng-changcheng @yingguofeng
+ecmascript/js_api/           @huanghello @yuan-yao14 @xliu-huanwei
+ecmascript/mem/              @dwhuawei @chentianyuu @lukai25 @xiongluo96
+ecmascript/module/           @daihn
+ecmascript/napi/             @huanghello @yuan-yao14 @xliu-huanwei
+ecmascript/patch/            @wanghuan2022 @lijiamin2019
+ecmascript/pgo_profiler/     @yingguofeng
+ecmascript/quick_fix/        @wanghuan2022 @lijiamin2019
+ecmascript/regexp/           @wpyhuawei  @chenjx-huawei @dov1s
+ecmascript/require/          @daihn
+ecmascript/serializer/       @dwhuawei @chentianyuu @lukai25 @xiongluo96
+ecmascript/shared_mm/        @dwhuawei @chentianyuu @lukai25 @xiongluo96
+ecmascript/shared_objects/   @dwhuawei @chentianyuu @lukai25 @xiongluo96
+ecmascript/snapshot/         @dwhuawei @chentianyuu @lukai25 @xiongluo96
+ecmascript/stackmap/         @ginxu @zhangyukun8 @yingguofeng
+ecmascript/stubs/            @ginxu @zhangyukun8 @yingguofeng
+ecmascript/taskpool/         @Gymee @weng-changcheng
+
+test/regresstest/*.json                  @shirunova_viktoria @gongjunsong @wuzhefengh @weng-changcheng @zhuheng27
+test/regresstest/ignored-*               @shirunova_viktoria @kuchkovairina @gongjunsong @wuzhefengh @weng-changcheng @zhuheng27
+test/regresstest/regress_test_config.py  @shirunova_viktoria @gongjunsong @wuzhefengh @weng-changcheng @zhuheng27
+test/regresstest/run_regress_test.py     @shirunova_viktoria @gongjunsong @wuzhefengh @weng-changcheng @zhuheng27
