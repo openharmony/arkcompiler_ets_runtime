@@ -11,7 +11,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+testICTransition warmup: 0
 true
 true
+testICTransition warmup: 1
+true
+true
+testICTransition warmup: 2
+true
+true
+testICByValueTransition warmup: 0
+true
+true
+testICByValueTransition warmup: 1
+true
+true
+testICByValueTransition warmup: 2
 true
 true
