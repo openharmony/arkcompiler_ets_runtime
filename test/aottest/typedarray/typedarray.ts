@@ -30,3 +30,18 @@ let b = new B(1);
 b.x = 1 < 2
 print(typeof b.x)
 
+function callback(a1, a2, a3, a4) {
+    a4[a2] &= 1;
+    const arr2 = new Array(a3);
+    try {
+        arr2.find(callback);
+    } catch (e) { }
+}
+
+function testTypedArrayUsedAsUndefined() {
+    const arr = new Float32Array(20);
+    arr.reduceRight(callback);
+    print("testTypedArrayUsedAsUndefined success");
+}
+
+testTypedArrayUsedAsUndefined();

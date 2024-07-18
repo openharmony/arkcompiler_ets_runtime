@@ -13,3 +13,4 @@
 
 number
 boolean
+testTypedArrayUsedAsUndefined success

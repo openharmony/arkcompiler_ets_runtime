@@ -407,6 +407,7 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     GateRef glueGlobalEnv = builder_.GetGlobalEnv();
     GateRef receiver = acc_.GetValueIn(gate, 0);
+    builder_.HeapObjectCheck(receiver, frameState);
     GateRef receiverHClass = builder_.LoadHClass(receiver);
     GateRef rootHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex);
     GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex);
