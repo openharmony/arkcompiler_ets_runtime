@@ -110,6 +110,7 @@ private:
     void TryInlineArrayEvery(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineArrayPop(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
     void TryInlineArraySlice(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
+    void TryInlineArraySort(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis);
 
     bool EnableLog() const
     {

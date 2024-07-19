@@ -787,6 +787,7 @@ public:
         GateRef thisArray, GateRef fromIndex, GateRef targetElement, GateRef CallID, GateRef ArrayKind);
     GateRef ArrayIteratorBuiltin(GateRef thisArray, GateRef callID);
     GateRef ArrayForEach(GateRef thisValue, GateRef callBackFn, GateRef usingThis, uint32_t pcOffset);
+    GateRef ArraySort(GateRef thisValue, GateRef callBackFn);
     GateRef ArrayFilter(
         GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset);
     GateRef ArrayMap(GateRef thisValue, GateRef callBackFn, GateRef usingThis, GateRef frameState, uint32_t pcOffset);

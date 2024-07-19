@@ -148,6 +148,7 @@ private:
     void LowerFunctionPrototypeApply(GateRef gate);
     void LowerFunctionPrototypeBind(GateRef gate);
     void LowerFunctionPrototypeCall(GateRef gate);
+    void LowerArraySort(GateRef gate);
 
     void LowerToCommonStub(GateRef gate, CommonStubCSigns::ID id);
     void LowerToBuiltinStub(GateRef gate, BuiltinsStubCSigns::ID id);

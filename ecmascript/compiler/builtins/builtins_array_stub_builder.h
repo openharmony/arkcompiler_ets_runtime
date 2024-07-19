@@ -38,6 +38,9 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     void Sort(GateRef glue, GateRef thisValue, GateRef numArgs, Variable *result, Label *exit, Label *slowPath);
 
+    void SortAfterArgs(GateRef glue, GateRef thisValue, GateRef callbackFnHandle,
+                       Variable *result, Label *exit, Label *slowPath, GateRef hir = Circuit::NullGate());
+
     void GenArrayConstructor(GateRef glue, GateRef nativeCode, GateRef func,
         GateRef newTarget, GateRef thisValue, GateRef numArgs);
 
@@ -51,7 +54,7 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
         Variable *result, Label *exit);
 
     GateRef DoSort(GateRef glue, GateRef receiver, GateRef receiverState,
-        Variable *result, Label *exit, Label *slowPath);
+        Variable *result, Label *exit, Label *slowPath, GateRef hir = Circuit::NullGate());
 
     void FastReverse(GateRef glue, GateRef thisValue, GateRef len,
                      ElementsKind kind, Variable *result, Label *exit);

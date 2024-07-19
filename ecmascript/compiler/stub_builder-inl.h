@@ -230,23 +230,40 @@ inline GateRef StubBuilder::CallRuntime(GateRef glue, int index, GateRef argc, G
     return result;
 }
 
-inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index, const std::vector<GateRef>& args)
+inline GateRef StubBuilder::CallNGCRuntime(GateRef glue, int index,
+                                           const std::vector<GateRef>& args, GateRef hir)
 {
     const std::string name = RuntimeStubCSigns::GetRTName(index);
-    GateRef result = env_->GetBuilder()->CallNGCRuntime(glue, index, Gate::InvalidGateRef, args,
-                                                        Circuit::NullGate(), name.c_str());
+    GateRef result;
+    if (env_->GetCircuit()->IsOptimizedOrFastJit()) {
+        result = env_->GetBuilder()->CallNGCRuntime(glue, index, Gate::InvalidGateRef, args,
+                                                    hir, name.c_str());
+    } else {
+        result = env_->GetBuilder()->CallNGCRuntime(glue, index, Gate::InvalidGateRef, args,
+                                                    Circuit::NullGate(), name.c_str());
+    }
     return result;
 }
 
-inline GateRef StubBuilder::FastCallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args)
+inline GateRef StubBuilder::FastCallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args, GateRef hir)
 {
-    GateRef result = env_->GetBuilder()->FastCallOptimized(glue, code, Gate::InvalidGateRef, args, Circuit::NullGate());
+    GateRef result;
+    if (env_->GetCircuit()->IsOptimizedOrFastJit()) {
+        result = env_->GetBuilder()->FastCallOptimized(glue, code, Gate::InvalidGateRef, args, hir);
+    } else {
+        result = env_->GetBuilder()->FastCallOptimized(glue, code, Gate::InvalidGateRef, args, Circuit::NullGate());
+    }
     return result;
 }
 
-inline GateRef StubBuilder::CallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args)
+inline GateRef StubBuilder::CallOptimized(GateRef glue, GateRef code, const std::vector<GateRef>& args, GateRef hir)
 {
-    GateRef result = env_->GetBuilder()->CallOptimized(glue, code, Gate::InvalidGateRef, args, Circuit::NullGate());
+    GateRef result;
+    if (env_->GetCircuit()->IsOptimizedOrFastJit()) {
+        result = env_->GetBuilder()->CallOptimized(glue, code, Gate::InvalidGateRef, args, hir);
+    } else {
+        result = env_->GetBuilder()->CallOptimized(glue, code, Gate::InvalidGateRef, args, Circuit::NullGate());
+    }
     return result;
 }
 

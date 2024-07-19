@@ -14,26 +14,47 @@
  */
 
 declare function print(arg:any):string;
-let a = []
-let l = a.push(1)
-print(l)
-l = a.push(1, 2, 3, 4, 5)
-print(l)
+{
+  let a = []
+  let l = a.push(1)
+  print(l)
+  l = a.push(1, 2, 3, 4, 5)
+  print(l)
 
-for (let i = 0; i < 100; i++) {
-  a.push(i)
+  for (let i = 0; i < 100; i++) {
+    a.push(i)
+  }
+
+  let c = [1, 2, 3, 4]
+  a.push(...c)
+
+  print(a.length)
+
+  let b = []
+  b.push(1, 2, 3, 4)
+  b.push(1, 2, 3)
+  b.push(1, 2)
+  b.push(1)
+  b.push()
+  print(Object.values(b))
+  print(b.length)
 }
 
-let c = [1, 2, 3, 4]
-a.push(...c)
+{
+  let result;
+  let array = new Array();
+  let array_size = 100;
 
-print(a.length)
+  for (let i = 0; i < array_size; i++) {
+    array[i] = i;
+  }
 
-let b = []
-b.push(1, 2, 3, 4)
-b.push(1, 2, 3)
-b.push(1, 2)
-b.push(1)
-b.push()
-print(Object.values(b))
-print(b.length)
+  result = array.sort((a, b) => {
+    return a - b
+  });
+
+  print(result);
+
+  result = array.sort();
+  print(result);
+}

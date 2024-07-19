@@ -1383,6 +1383,13 @@ void BuiltinsArrayStubBuilder::Slice(GateRef glue, GateRef thisValue, GateRef nu
 void BuiltinsArrayStubBuilder::Sort(GateRef glue, GateRef thisValue,
     GateRef numArgs, Variable *result, Label *exit, Label *slowPath)
 {
+    GateRef callbackFnHandle = GetCallArg0(numArgs);
+    SortAfterArgs(glue, thisValue, callbackFnHandle, result, exit, slowPath);
+}
+
+void BuiltinsArrayStubBuilder::SortAfterArgs(GateRef glue, GateRef thisValue,
+    GateRef callbackFnHandle, Variable *result, Label *exit, Label *slowPath, GateRef hir)
+{
     auto env = GetEnvironment();
     Label isHeapObject(env);
     Label isJsArray(env);
@@ -1400,11 +1407,9 @@ void BuiltinsArrayStubBuilder::Sort(GateRef glue, GateRef thisValue,
     Bind(&isStability);
     BRANCH(IsJsCOWArray(thisValue), slowPath, &notCOWArray);
     Bind(&notCOWArray);
-
-    GateRef callbackFnHandle = GetCallArg0(numArgs);
     BRANCH(TaggedIsUndefined(callbackFnHandle), &argUndefined, slowPath);
     Bind(&argUndefined);
-    result->WriteVariable(DoSort(glue, thisValue, Boolean(false), result, exit, slowPath));
+    result->WriteVariable(DoSort(glue, thisValue, Boolean(false), result, exit, slowPath, hir));
     Jump(exit);
 }
 
@@ -1460,7 +1465,7 @@ void BuiltinsArrayStubBuilder::ToSorted(GateRef glue, GateRef thisValue,
 }
 
 GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, GateRef receiverState,
-    Variable *result, Label *exit, Label *slowPath)
+    Variable *result, Label *exit, Label *slowPath, GateRef hir)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1493,7 +1498,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, GateRef
             BRANCH(TaggedIsTrue(presentValueHasProp), &presentValueHasProperty, &afterGettingpresentValue);
             Bind(&presentValueHasProperty);
             {
-                presentValue = FastGetPropertyByIndex(glue, receiver, TruncInt64ToInt32(*i), ProfileOperation());
+                presentValue = FastGetPropertyByIndex(glue, receiver, TruncInt64ToInt32(*i), ProfileOperation(), hir);
                 BRANCH(HasPendingException(glue), &presentValueHasException0, &afterGettingpresentValue);
                 Bind(&presentValueHasException0);
                 {
@@ -1529,7 +1534,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, GateRef
                     Bind(&middleValueHasProperty);
                     {
                         middleValue = FastGetPropertyByIndex(glue, receiver,
-                            TruncInt64ToInt32(middleIndex), ProfileOperation());
+                            TruncInt64ToInt32(middleIndex), ProfileOperation(), hir);
                         BRANCH(HasPendingException(glue), &middleValueHasException0, &afterGettingmiddleValue);
                         Bind(&middleValueHasException0);
                         {
@@ -1602,7 +1607,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, GateRef
                         Bind(&previousValueHasProperty);
                         {
                             previousValue = FastGetPropertyByIndex(glue, receiver,
-                                TruncInt64ToInt32(Int64Sub(*j, Int64(1))), ProfileOperation());
+                                TruncInt64ToInt32(Int64Sub(*j, Int64(1))), ProfileOperation(), hir);
                             BRANCH(HasPendingException(glue), &previousValueHasException0, &afterGettingpreviousValue);
                             Bind(&previousValueHasException0);
                             {

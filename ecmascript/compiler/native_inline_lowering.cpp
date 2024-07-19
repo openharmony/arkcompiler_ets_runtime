@@ -311,6 +311,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::SetClear:
                 InlineStubBuiltin(gate, 0U, argc, id, circuit_->SetClear(), skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::ArraySort:
+                TryInlineArraySort(gate, argc, id, skipThis);
+                break;
             case BuiltinsStubCSigns::ID::ObjectIs:
                 TryInlineObjectIs(gate, argc, id, skipThis);
                 break;
@@ -1778,4 +1781,37 @@ void NativeInlineLowering::TryInlineArraySlice(GateRef gate, size_t argc, Builti
     }
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
+
+void NativeInlineLowering::TryInlineArraySort(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    if (!skipThis) {
+        return;
+    }
+    if (argc > 1) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    if (argc == 1) {
+        GateRef callBackFn = acc_.GetValueIn(gate, 1);
+        auto fnType = acc_.GetGateType(callBackFn);
+        if (!fnType.IsUndefinedType()) {
+            return;
+        }
+    }
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    if (Elements::IsHole(kind)) {
+        return;
+    }
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    GateRef ret = Circuit::NullGate();
+
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+    ret = builder_.ArraySort(thisValue, builder_.UndefineConstant());
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+}
+
 }  // namespace panda::ecmascript

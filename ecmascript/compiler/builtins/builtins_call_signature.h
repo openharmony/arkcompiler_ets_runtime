@@ -376,6 +376,7 @@ public:
         }
         // NOTE(schernykh): try to remove this switch and move StringFromCharCode to TYPED_BUILTINS_INLINE list
         switch (builtinId) {
+            case BuiltinsStubCSigns::ID::ArraySort:
             case BuiltinsStubCSigns::ID::StringFromCharCode:
             case BuiltinsStubCSigns::ID::StringSubstring:
             case BuiltinsStubCSigns::ID::StringSubStr:
