@@ -19,3 +19,4 @@ undefined
 2
 0
 success
+testArrayUsedAsProto success

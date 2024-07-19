@@ -160,6 +160,31 @@ GateRef CircuitBuilder::GetInt32OfTInt(GateRef x)
     return TruncInt64ToInt32(tagged);
 }
 
+GateRef CircuitBuilder::GetInt32OfTNumber(GateRef x)
+{
+    Label subentry(env_);
+    SubCfgEntry(&subentry);
+    Label isInt(env_);
+    Label isDouble(env_);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::INT32(), Int32(0));
+    BRANCH_CIR2(TaggedIsInt(x), &isInt, &isDouble);
+    Bind(&isInt);
+    {
+        result = GetInt32OfTInt(x);
+        Jump(&exit);
+    }
+    Bind(&isDouble);
+    {
+        result = DoubleCheckINFInRangeInt32(GetDoubleOfTDouble(x));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    GateRef ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::TaggedCastToIntPtr(GateRef x)
 {
     return env_->Is32Bit() ? GetInt32OfTInt(x) : GetInt64OfTInt(x);

@@ -2022,7 +2022,6 @@ ProfileType PGOProfiler::GetRecordProfileType(const std::shared_ptr<JSPandaFile>
     }
     ProfileType recordType {0};
     if (pf->IsBundlePack()) {
-        ASSERT(recordName == JSPandaFile::ENTRY_FUNCTION_NAME);
         recordType = CreateRecordProfileType(abcId, ProfileType::RECORD_ID_FOR_BUNDLE);
         recordInfos_->GetRecordPool()->Add(recordType, recordName);
         return recordType;

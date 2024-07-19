@@ -1170,7 +1170,12 @@ GateRef NumberSpeculativeRetype::CheckBoundAndConvertToInt32(GateRef gate, Conve
         case TypeInfo::INT1:
             result = builder_.ConvertBoolToInt32(gate, support);
             break;
-        case TypeInfo::CHAR:
+        case TypeInfo::CHAR: {
+            GateRef number = builder_.StringToNumber(gate, builder_.ConvertCharToEcmaString(gate),
+                builder_.Int32(0), acc_.GetGlueFromArgList());
+            result = builder_.GetInt32OfTNumber(number);
+            break;
+        }
         case TypeInfo::INT32:
             return gate;
         case TypeInfo::UINT32: {
@@ -1234,6 +1239,12 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
         case TypeInfo::INT1:
             result = builder_.ConvertBoolToFloat64(gate, ToConvertSupport(convert));
             break;
+        case TypeInfo::CHAR: {
+            GateRef number = builder_.StringToNumber(gate, builder_.ConvertCharToEcmaString(gate),
+                builder_.Int32(0), acc_.GetGlueFromArgList());
+            result = builder_.GetDoubleOfTNumber(number);
+            break;
+        }
         case TypeInfo::INT32:
             result = builder_.ConvertInt32ToFloat64(gate);
             break;

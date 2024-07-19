@@ -797,6 +797,7 @@ public:
     GateRef ArrayPop(GateRef thisValue, GateRef frameState);
     GateRef ArraySlice(GateRef thisValue, GateRef startIndex, GateRef endIndex, GateRef frameState);
     GateRef ToNumber(GateRef gate, GateRef value, GateRef glue);
+    GateRef StringToNumber(GateRef gate, GateRef value, GateRef radix, GateRef glue);
     GateRef IsASCIICharacter(GateRef gate);
 
     // for in
@@ -853,6 +854,7 @@ public:
     inline GateRef Int64ToBigEndianInt64(GateRef x);
     inline GateRef GetInt64OfTInt(GateRef x);
     inline GateRef GetInt32OfTInt(GateRef x);
+    inline GateRef GetInt32OfTNumber(GateRef x);
     inline GateRef TaggedCastToIntPtr(GateRef x);
     inline GateRef GetDoubleOfTInt(GateRef x);
     inline GateRef GetDoubleOfTDouble(GateRef x);

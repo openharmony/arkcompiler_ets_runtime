@@ -56,7 +56,7 @@ class OrderedCollection {
     add(elm: number):void {
       this.elms.push(elm);
     }
-    
+
     at(index: number):number{
       return this.elms[index];
     }
@@ -77,3 +77,14 @@ function testReverse() {
 }
 
 testReverse();
+
+function testArrayUsedAsProto() {
+  let v0 = [1];
+  let o = {
+    __proto__: v0
+  }
+  v0.length = 0;
+  print("testArrayUsedAsProto success")
+}
+
+testArrayUsedAsProto();
