@@ -143,7 +143,10 @@ public:
 
     bool IsAsynTranslateClasses()
     {
-        return IsPostForked() && GetJSOptions().IsAsyncLoadAbc();
+        if (!GetJSOptions().IsAsyncLoadAbcTest()) {
+            return IsPostForked() && GetJSOptions().IsAsyncLoadAbc();
+        }
+        return GetJSOptions().IsAsyncLoadAbc();
     }
 
     ObjectFactory *GetFactory() const

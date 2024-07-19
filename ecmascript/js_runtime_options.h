@@ -197,6 +197,7 @@ enum CommandValues {
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
     OPTION_COMPILER_BASELINE_PGO,
     OPTION_ASYNC_LOAD_ABC,
+    OPTION_ASYNC_LOAD_ABC_TEST,
     OPTION_PGO_TRACE,
 };
 static_assert(OPTION_SPLIT_ONE == 65);
@@ -1831,6 +1832,16 @@ public:
         return asyncLoadAbc_;
     }
 
+    void SetAsyncLoadAbcTest(bool value)
+    {
+        asyncLoadAbcTest_ = value;
+    }
+
+    bool IsAsyncLoadAbcTest() const
+    {
+        return asyncLoadAbcTest_;
+    }
+
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 1_KB;
 
@@ -1999,7 +2010,8 @@ private:
     bool enableJitFrame_ {false};
     bool disableCodeSign_ {false};
     bool enableBaselinePgo_ {false};
-    bool asyncLoadAbc_ {false};
+    bool asyncLoadAbc_ {true};
+    bool asyncLoadAbcTest_ {false};
 };
 } // namespace panda::ecmascript
 
