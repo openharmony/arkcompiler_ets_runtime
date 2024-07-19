@@ -52,7 +52,7 @@ public:
     {
         LockHolder lock(jitTaskPoolMutex_);
         compilerVm_ = vm;
-        threadId_ = compilerVm_->GetJSThread()->GetThreadId();
+        threadId_ = static_cast<int32_t>(compilerVm_->GetJSThread()->GetThreadId());
         jitTaskPoolCV_.SignalAll();
     }
 

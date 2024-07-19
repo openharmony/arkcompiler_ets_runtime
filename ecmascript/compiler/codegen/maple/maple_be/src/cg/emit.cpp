@@ -1686,6 +1686,7 @@ void Emitter::EmitIntConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst, ui
             EmitScalarConstant(*elemConst, false);
         }
 #else
+        ASSERT_NOT_NULL(elemConst);
         EmitScalarConstant(*elemConst, false);
 #endif /* USE_32BIT_REF */
         Emit("\n");

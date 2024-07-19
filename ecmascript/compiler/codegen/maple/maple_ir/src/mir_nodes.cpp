@@ -760,8 +760,10 @@ void AddroffuncNode::Dump(int32) const
     LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
     MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
     CHECK_FATAL(func != nullptr, "null ptr");
-    LogInfo::MapleLogger() << " &"
-                           << GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx())->GetName();
+    MIRSymbol *symbol = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
+    if (symbol != nullptr) {
+        LogInfo::MapleLogger() << " &" << symbol->GetName();
+    }
 }
 
 void AddroflabelNode::Dump(int32) const
