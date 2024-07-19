@@ -115,6 +115,14 @@ if (globalThis["ArkPrivate"] != undefined) {
     if (keyName != "0123456789") {
         print("Stack for in fail")
     }
+    try {
+        class MyStack extends Stack{
+            100
+        }
+        new MyStack();
+        print("Test MyStack extends Stack failed");
+    } catch (error) {
+    }
     if (!flag) {
         print("Test Stack success!!!");
     } else {
