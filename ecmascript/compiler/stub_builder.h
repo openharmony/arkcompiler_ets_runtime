@@ -774,7 +774,6 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                   MemoryOrder order = MemoryOrder::Default());
     GateRef GetGlobalObject(GateRef glue);
-    GateRef IsWorker(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
     GateRef GetHomeObjectFromFunction(GateRef function);

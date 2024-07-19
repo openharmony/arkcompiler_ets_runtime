@@ -779,7 +779,7 @@ JSTaggedValue EcmaInterpreter::GeneratorReEnterInterpreter(JSThread *thread, JSH
 {
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(JSHandle<JSTaggedValue>(thread, context->GetMethod()));
-    if (!thread->IsWorker() && func->IsCompiledCode()) {
+    if (func->IsCompiledCode()) {
         return GeneratorReEnterAot(thread, context);
     }
 

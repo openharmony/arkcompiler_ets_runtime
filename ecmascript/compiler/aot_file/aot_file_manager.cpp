@@ -43,6 +43,7 @@
 #include "ecmascript/mem/region.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/ohos/framework_helper.h"
+#include "ecmascript/ohos/ohos_preload_app_info.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
@@ -136,9 +137,23 @@ bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
         return false;
     }
 
-    AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    std::string aiFilename = anFileDataManager->GetDir();
-    aiFilename += JSFilePath::GetHapName(jsPandaFile) + AOTFileManager::FILE_EXTENSION_AI;
+    std::string aiFilename = "";
+    // device side aot compile success
+    if (AnFileDataManager::GetInstance()->IsEnable()) {
+        AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
+        aiFilename = anFileDataManager->GetDir();
+        aiFilename += JSFilePath::GetHapName(jsPandaFile) + FILE_EXTENSION_AI;
+    } else {
+        std::string moduleName = JSFilePath::GetHapName(jsPandaFile);
+        std::string hapPath = jsPandaFile->GetJSPandaFileHapPath().c_str();
+        aiFilename = OhosPreloadAppInfo::GetPreloadAOTFileName(hapPath, moduleName) + FILE_EXTENSION_AI;
+    }
+
+    if (aiFilename.empty()) {
+        LOG_ECMA(INFO) << "current thread can not find ai file";
+        return false;
+    }
+
     LoadAiFile(aiFilename);
     return true;
 }
