@@ -1478,26 +1478,83 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
     DEFVARIABLE(len, VariableType::INT32(), sourceLength);
     Label loopHead(env);
     Label loopEnd(env);
-    Label next(env);
+    Label storeTail(env);
     Label exit(env);
-    Jump(&loopHead);
+    uint8_t elemSize = 0;
+    MachineType mt = type.GetMachineType();
+    if (mt == I8) {
+        elemSize = sizeof(int8_t);
+    } else if (mt == I16) {
+        elemSize = sizeof(int16_t);
+    } else {
+        LOG_COMPILER(FATAL) << "Unhandled VariableType: " << mt;
+    };
+    const constexpr int32_t batchBytes = 2 * sizeof(int64_t); // copy 16 bytes in one iterator.
+    uint8_t elemInBatch = batchBytes / elemSize;
 
+    Jump(&loopHead);
     LoopBegin(&loopHead);
     {
-        BRANCH(Int32GreaterThan(*len, Int32(0)), &next, &exit);
-        Bind(&next);
+        // loop copy, copy 16 bytes in every iteration. Until the remain is less than 16 bytes.
+        Label body(env);
+        BRANCH_NO_WEIGHT(Int32GreaterThanOrEqual(*len, Int32(elemInBatch)), &body, &storeTail); // len>=16
+        Bind(&body);
         {
-            len = Int32Sub(*len, Int32(1));
-            GateRef i = Load(type, *sourceTmp);
-            Store(type, glue, *dstTmp, IntPtr(0), i);
+            len = Int32Sub(*len, Int32(elemInBatch));
+            GateRef elem = Load(VariableType::INT64(), *sourceTmp);
+            Store(VariableType::INT64(), glue, *dstTmp, IntPtr(0), elem);
+            elem = Load(VariableType::INT64(), PtrAdd(*sourceTmp, IntPtr(sizeof(int64_t))));
+            Store(VariableType::INT64(), glue, *dstTmp, IntPtr(sizeof(int64_t)), elem);
             Jump(&loopEnd);
         }
     }
     Bind(&loopEnd);
-    sourceTmp = PtrAdd(*sourceTmp, size);
-    dstTmp = PtrAdd(*dstTmp, size);
+    sourceTmp = PtrAdd(*sourceTmp, IntPtr(batchBytes));
+    dstTmp = PtrAdd(*dstTmp, IntPtr(batchBytes));
     LoopEnd(&loopHead, env, glue);
 
+    uint8_t elemInInt64 = sizeof(int64_t) / elemSize;
+    Bind(&storeTail);
+    {
+        // If the remain larger than 8 bytes, copy once and make the remain less than 8 bytes.
+        Label storeTail8_16(env);
+        Label storeTail0_8(env);
+        // 16 > len >= 8
+        BRANCH_NO_WEIGHT(Int32GreaterThanOrEqual(*len, Int32(elemInInt64)), &storeTail8_16, &storeTail0_8);
+        Bind(&storeTail8_16);
+        {
+            GateRef elem = Load(VariableType::INT64(), *sourceTmp);
+            Store(VariableType::INT64(), glue, *dstTmp, IntPtr(0), elem);
+            len = Int32Sub(*len, Int32(elemInInt64));
+            sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(int64_t)));
+            dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(int64_t)));
+            Jump(&storeTail0_8);
+        }
+        Bind(&storeTail0_8);
+        {
+            // Copy the remain elem by elem. Small enough so don't need the check the safe point.
+            Label tailLoopHead(env);
+            Label tailLoopEnd(env);
+            Jump(&tailLoopHead);
+            LoopBegin(&tailLoopHead);
+            {
+                Label body(env);
+                // 8 > len > 0
+                BRANCH_NO_WEIGHT(Int32GreaterThan(*len, Int32(0)), &body, &exit);
+                Bind(&body);
+                {
+                    len = Int32Sub(*len, Int32(1));
+                    GateRef i = Load(type, *sourceTmp);
+                    Store(type, glue, *dstTmp, IntPtr(0), i);
+                    Jump(&tailLoopEnd);
+                }
+            }
+            Bind(&tailLoopEnd);
+            sourceTmp = PtrAdd(*sourceTmp, size);
+            dstTmp = PtrAdd(*dstTmp, size);
+            LoopEnd(&tailLoopHead);
+        }
+    }
     Bind(&exit);
     env->SubCfgExit();
     return;

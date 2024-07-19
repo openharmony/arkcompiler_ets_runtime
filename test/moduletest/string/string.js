@@ -440,3 +440,36 @@ print(0 == "".indexOf([]));
 Object.defineProperty(RegExp,"name",{value:1});
 RegExp.toString();
 print("native Func toString test Success!")
+
+
+print("================Test unroll char copy================");
+let srcutf8 = "1234567812345678123456781234567812345678123456781234567812345678";  // bytes == 64
+let srcutf16 = "一二三四五六七八一二三四五六七八一二三四五六七八一二三四五六七八"; // bytes == 64
+
+print(srcutf8.slice(0, 0)); // bytes == 0
+print(srcutf8.slice(64, 64)); // bytes == 0
+print(srcutf8.slice(0, 6)); // bytes < 8
+print(srcutf8.slice(0, 8)); // bytes == 8
+print(srcutf8.slice(0, 14)); // bytes < 16
+print(srcutf8.slice(0, 16)); // bytes == 16
+print(srcutf8.slice(0, 21)); // bytes > 16 && bytes % 16 != 0
+print(srcutf8.slice(0, 24)); // bytes == 3 * 8
+print(srcutf8.slice(0, 26)); // bytes > 16 && bytes % 16 > 8 && bytes % 8 > 0
+print(srcutf8.slice(0, 32)); // bytes == 2 * 16
+print(srcutf8.slice(0, 50)); // bytes > 16 && bytes % 16 != 0
+print(srcutf8.slice(0, 56)); // bytes == 7 * 8
+print(srcutf8.slice(0, 64)); // bytes == 4 * 16
+
+print(srcutf16.slice(0, 0)); // bytes == 0
+print(srcutf16.slice(32, 32)); // bytes == 0
+print(srcutf16.slice(0, 3)); // bytes < 8
+print(srcutf16.slice(0, 4)); // bytes == 8
+print(srcutf16.slice(0, 7)); // bytes < 16
+print(srcutf16.slice(0, 8)); // bytes == 16
+print(srcutf16.slice(0, 10)); // bytes > 16 && bytes % 16 != 0
+print(srcutf16.slice(0, 12)); // bytes == 3 * 8
+print(srcutf16.slice(0, 13)); // bytes > 16 && bytes % 16 > 8 && bytes % 8 > 0
+print(srcutf16.slice(0, 16)); // bytes == 2 * 16
+print(srcutf16.slice(0, 25)); // bytes > 16 && bytes % 16 != 0
+print(srcutf16.slice(0, 28)); // bytes == 7 * 8
+print(srcutf16.slice(0, 32)); // bytes == 4 * 16
