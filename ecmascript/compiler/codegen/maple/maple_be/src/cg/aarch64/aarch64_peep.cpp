@@ -3091,6 +3091,7 @@ void AArch64PeepHole0::InitOpts()
     optimizations[kRemoveSxtBeforeStrOpt] = optOwnMemPool->New<RemoveSxtBeforeStrAArch64>(cgFunc);
     optimizations[kRemoveMovingtoSameRegOpt] = optOwnMemPool->New<RemoveMovingtoSameRegAArch64>(cgFunc);
     optimizations[kEnhanceStrLdrAArch64Opt] = optOwnMemPool->New<EnhanceStrLdrAArch64>(cgFunc);
+    optimizations[kAddImmZeroToMov] = optOwnMemPool->New<AddImmZeroToMov>(cgFunc);
 }
 
 void AArch64PeepHole0::Run(BB &bb, Insn &insn)
@@ -3104,6 +3105,10 @@ void AArch64PeepHole0::Run(BB &bb, Insn &insn)
         }
         case MOP_xaddrrr: {
             (static_cast<ComplexMemOperandAddAArch64 *>(optimizations[kComplexMemOperandOptAdd]))->Run(bb, insn);
+            break;
+        }
+        case MOP_xaddrri12: {
+            (static_cast<AddImmZeroToMov *>(optimizations[kAddImmZeroToMov]))->Run(bb, insn);
             break;
         }
         case MOP_wcbz:
@@ -5224,6 +5229,24 @@ void MoveCmpOpt::Run(BB &bb, Insn &insn)
     }
 }
 
+void AddImmZeroToMov::Run(BB &bb, Insn &insn)
+{
+    RegOperand *insnDefReg = &static_cast<RegOperand &>(insn.GetOperand(kInsnFirstOpnd));
+    RegOperand *insnUseReg = &static_cast<RegOperand &>(insn.GetOperand(kInsnSecondOpnd));
+    int64 immVal = static_cast<ImmOperand &>(insn.GetOperand(kInsnThirdOpnd)).GetValue();
+    if (immVal == static_cast<int64>(k0BitSize)) {
+        if (insnDefReg->GetRegisterNumber() == insnUseReg->GetRegisterNumber()) {
+            bb.RemoveInsn(insn);
+            return;
+        } else {
+            Insn *newInsn = &cgFunc->GetInsnBuilder()->BuildInsn(MOP_xmovrr, *insnDefReg, *insnUseReg);
+            bb.ReplaceInsn(insn, *newInsn);
+            return;
+        }
+    }
+    return;
+}
+
 bool InlineReadBarriersPattern::CheckCondition(Insn &insn)
 {
     /* Inline read barriers only enabled for GCONLY. */
@@ -6329,6 +6352,9 @@ void DeleteMovAfterCbzOrCbnzAArch64::ProcessBBHandle(BB *processBB, const BB &bb
 
 void DeleteMovAfterCbzOrCbnzAArch64::Run(BB &bb, Insn &insn)
 {
+    if (!cgFunc.GetRDStatus()) {
+        return;
+    }
     if (bb.GetKind() != BB::kBBIf) {
         return;
     }

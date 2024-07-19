@@ -2562,6 +2562,22 @@ private:
     CGFunc *cgFunc;
 };
 
+/*
+ * Optimize the following patterns:
+ * add x0, x0, #0x0         add x0, x1, #0x0
+ * ====>
+ * ---                      mov x0, x1
+ */
+class AddImmZeroToMov : public PeepPattern {
+public:
+    explicit AddImmZeroToMov(CGFunc &cgFunc) : PeepPattern(cgFunc), cgFunc(&cgFunc) {}
+    ~AddImmZeroToMov() override = default;
+    void Run(BB &bb, Insn &insn) override;
+
+private:
+    CGFunc *cgFunc;
+};
+
 class AArch64PeepHole : public PeepPatternMatch {
 public:
     AArch64PeepHole(CGFunc &oneCGFunc, MemPool *memPool) : PeepPatternMatch(oneCGFunc, memPool) {}
@@ -2612,6 +2628,7 @@ private:
         kRemoveSxtBeforeStrOpt,
         kRemoveMovingtoSameRegOpt,
         kEnhanceStrLdrAArch64Opt,
+        kAddImmZeroToMov,
         kPeepholeOptsNum
     };
 };
