@@ -177,7 +177,7 @@ uint32_t ElfBuilder::GetShIndex(ElfSecName section) const
         }
         idx++;
     }
-    return -1;
+    return 0;
 }
 
 int ElfBuilder::GetSecNum() const

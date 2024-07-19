@@ -56,6 +56,9 @@ public:
         dataInfo_ = nullptr;
         funAddr_.clear();
         fun2FpDelta_.clear();
+        llvmStackMap_.head.stackmapversion = 0;
+        llvmStackMap_.head.reserved0 = 0;
+        llvmStackMap_.head.reserved1 = 0;
     }
     ~LLVMStackMapParser()
     {

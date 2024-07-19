@@ -1089,6 +1089,16 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
         return isArch32 ? AsmInterpretedFrame::SizeArch32 : AsmInterpretedFrame::SizeArch64;
     }
 
+    static intptr_t GetFpOffsetAsIntptr(bool isArch32)
+    {
+        return static_cast<intptr_t>(GetFpOffset(isArch32));
+    }
+
+    static intptr_t GetSizeAsIntptr(bool isArch32)
+    {
+        return static_cast<intptr_t>(GetSize(isArch32));
+    }
+
     static uint32_t NumOfMembers()
     {
         return sizeof(AsmInterpretedFrame) / JSTaggedValue::TaggedTypeSize();
