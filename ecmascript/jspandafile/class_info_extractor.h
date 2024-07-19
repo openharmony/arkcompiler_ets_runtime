@@ -15,7 +15,7 @@
 
 #ifndef ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H
 #define ECMASCRIPT_JSPANDAFILE_CLASS_INFO_EXTRACTOR_H
-
+#include <vector>
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value_internals.h"
@@ -165,12 +165,12 @@ public:
     }
 
     static void PUBLIC_API AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
-                                                uint32_t length, const JSHandle<LayoutInfo> &layout,
+                                                uint32_t length, const JSHandle<NameDictionary> &nameDict,
                                                 const JSHandle<JSHClass> &hclass);
 
     static void PUBLIC_API AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
-                                                uint32_t length, const JSHandle<NameDictionary> &nameDict,
-                                                const JSHandle<JSHClass> &hclass);
+        uint32_t length, const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass,
+        size_t start, std::vector<JSHandle<JSTaggedValue>> &&propertyList = std::vector<JSHandle<JSTaggedValue>>());
 private:
     static SharedFieldType FromFieldType(FieldType type)
     {
