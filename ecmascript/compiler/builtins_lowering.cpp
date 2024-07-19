@@ -449,7 +449,7 @@ void BuiltinLowering::LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id)
             break;
         }
         case BUILTINS_STUB_ID(StringIteratorProtoNext): {
-            result = LowerCallRuntime(glue, gate, RTSTUB_ID(StringIteratorNext), { thisObj }, true);
+            result = builder_.CallStub(glue, gate, CommonStubCSigns::StringIteratorNext, { glue, thisObj });
             break;
         }
         case BUILTINS_STUB_ID(ArrayIteratorProtoNext): {

@@ -590,7 +590,8 @@ private:
     V(SuperCallAndCheckToBaselineFromBaseline)       \
     V(CallThisRangeAndCheckToBaselineFromBaseline)   \
     V(SameValue)                                     \
-    V(GetBaselineBuiltinFp)
+    V(GetBaselineBuiltinFp)                          \
+    V(StringIteratorNext)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \
