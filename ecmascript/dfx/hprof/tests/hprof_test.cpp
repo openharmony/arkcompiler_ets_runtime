@@ -15,6 +15,8 @@
 
 #include <cstdio>
 #include <fstream>
+#include <cstdlib>
+#include <ctime>
 
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_vm.h"
@@ -382,6 +384,41 @@ HWTEST_F_L0(HProfTest, DumpNativeSize)
                                                             9, "native_size"));
     ASSERT_TRUE(tester.ContrastJSONSectionPayload("test10.heapsnapshot", "\"nodes\":[", 8));
     ASSERT_TRUE(tester.ContrastJSONNativeSizeNum("test10.heapsnapshot", "\"nodes\":[", nativeSizeNum));
+}
+
+HWTEST_F_L0(HProfTest, TestSetDumpFormatInRandomNum)
+{
+    std::srand(std::time(nullptr));
+    for (int i = 0; i < 20; i++) {
+        size_t size = std::rand() % 128;
+        if (size <= 0) {
+            continue;
+        }
+        EcmaVM *vm = instance;
+        size_t maxEnumNum = static_cast<size_t>(DumpFormat::OTHER) + 1;
+        DumpFormat dumpFormat = static_cast<DumpFormat>(size % maxEnumNum);
+        DumpSnapShotOption dumpOption;
+        dumpOption.dumpFormat = dumpFormat;
+        dumpOption.isVmMode = true;
+        dumpOption.isPrivate = false;
+        dumpOption.captureNumericValue = false;
+        if (size > sizeof(double)) {
+            size = sizeof(double);
+        }
+        uint8_t* data = reinterpret_cast<uint8_t*>(malloc(size));
+        for (size_t j = 0; j < size - 1; j++) {
+            data[j] = size;
+        }
+        data[size - 1] = 0;
+        std::string path(data, data + size);
+        FileStream stream(path);
+        Progress *progress = nullptr;
+        DFXJSNApi::DumpHeapSnapshot(vm, &stream, dumpOption, progress);
+        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+        heapProfile->DumpHeapSnapshot(&stream, dumpOption);
+        ASSERT_TRUE(heapProfile->GetIdCount() > 0);
+        free(data);
+    }
 }
 
 HWTEST_F_L0(HProfTest, TestIdConsistency)
