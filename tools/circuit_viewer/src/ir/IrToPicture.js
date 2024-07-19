@@ -133,7 +133,7 @@ class IrToPicture {
 
     let lines = [];
     let lid = 0;
-    this.generateLine(nodes)
+    this.generateLine(nodes, lines, lid);
     this.resetPicture(nodes, isBlock);
 
     return {
@@ -141,7 +141,7 @@ class IrToPicture {
       lines: lines,
     };
   }
-  static generateLine(nodes,lines,lid){
+  static generateLine(nodes, lines, lid) {
     for (let i in nodes) { //生成连接线
       let inId = parseInt(i);
       for (let inP1 = 0; inP1 < nodes[inId].ir.in.length; inP1++) {
