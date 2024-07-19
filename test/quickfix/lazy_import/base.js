@@ -13,19 +13,12 @@
  * limitations under the License.
  */
 
-/*
- * @tc.name:sharedmodule
- * @tc.desc:test sharedmodule
- * @tc.type: FUNC
- * @tc.require: issue#I9BIE5
- */
+import { a } from './module.js'
+import { foo } from './module.js'
 
-// @ts-nocheck
-declare function print(str: any): string;
-"shared module"
-export var strA : string = "(This is strA!)";
-export var strB : string = "(This is strB!)";
-export function foo() {
-    'use sendable'
-    print("foo");
+function A() {
+    print("print base: " + a);
+    foo()
 }
+
+globalThis.A = A;

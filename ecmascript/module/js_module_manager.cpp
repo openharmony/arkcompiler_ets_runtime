@@ -145,11 +145,12 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         JSTaggedValue resolvedModule = binding->GetModule();
         JSHandle<SourceTextModule> module(thread, resolvedModule);
         if (SourceTextModule::IsNativeModule(module->GetTypes())) {
-            return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedModule, binding->GetBindingName());
+            return ModuleManagerHelper::UpdateBindingAndGetModuleValue(
+                thread, currentModuleHdl, module, index, binding->GetBindingName());
         }
         if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
-            JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
-            return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+            return ModuleManagerHelper::UpdateBindingAndGetModuleValue(
+                thread, currentModuleHdl, module, index, binding->GetBindingName());
         }
     }
     if (resolvedBinding.IsResolvedRecordIndexBinding()) {
@@ -187,10 +188,6 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
         JSTaggedValue resolvedModule = binding->GetModule();
         JSHandle<SourceTextModule> module(thread, resolvedModule);
         ASSERT(resolvedModule.IsSourceTextModule());
-        SourceTextModule::Evaluate(thread, module, nullptr);
-        if (thread->HasPendingException()) {
-            return JSTaggedValue::Undefined();
-        }
         // Support for only modifying var value of HotReload.
         // Cause patchFile exclude the record of importing modifying var. Can't reresolve moduleRecord.
         EcmaContext *context = thread->GetCurrentEcmaContext();
@@ -200,9 +197,13 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
             if (!resolvedModuleOfHotReload->IsHole()) {
                 resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
                 JSHandle<SourceTextModule> moduleOfHotReload(thread, resolvedModule);
+                SourceTextModule::Evaluate(thread, moduleOfHotReload, nullptr);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
                 return ModuleManagerHelper::GetModuleValue(thread, moduleOfHotReload, binding->GetIndex());
             }
         }
+        SourceTextModule::Evaluate(thread, module, nullptr);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         return ModuleManagerHelper::GetModuleValue(thread, module, binding->GetIndex());
     }
     if (resolvedBinding.IsResolvedBinding()) {
@@ -212,18 +213,17 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
         ModuleStatus status = module->GetStatus();
         ModuleTypes moduleType = module->GetTypes();
         if (SourceTextModule::IsNativeModule(moduleType)) {
-            SourceTextModule::InstantiateNativeModule(thread, currentModuleHdl, module, moduleType);
-            module->SetStatus(ModuleStatus::EVALUATED);
-            return ModuleManagerHelper::GetNativeModuleValue(thread, resolvedModule, binding->GetBindingName());
+            SourceTextModule::EvaluateNativeModule(thread, module, moduleType);
+            return ModuleManagerHelper::UpdateBindingAndGetModuleValue(
+                thread, currentModuleHdl, module, index, binding->GetBindingName());
         }
         if (moduleType == ModuleTypes::CJS_MODULE) {
             if (status != ModuleStatus::EVALUATED) {
                 SourceTextModule::ModuleExecution(thread, module, nullptr, 0);
                 module->SetStatus(ModuleStatus::EVALUATED);
             }
-            SourceTextModule::InstantiateCJS(thread, currentModuleHdl, module);
-            JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
-            return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+            return ModuleManagerHelper::UpdateBindingAndGetModuleValue(
+                thread, currentModuleHdl, module, index, binding->GetBindingName());
         }
     }
     if (resolvedBinding.IsResolvedRecordIndexBinding()) {

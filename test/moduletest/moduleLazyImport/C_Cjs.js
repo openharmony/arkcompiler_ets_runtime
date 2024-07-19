@@ -14,8 +14,8 @@
  */
 
 /*
- * @tc.name:cjsImportJson
- * @tc.desc:test import Json
+ * @tc.name:lazyimport
+ * @tc.desc:lazyimport
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */

@@ -14,8 +14,8 @@
  */
 
 /*
- * @tc.name:moduleCircularCheck
- * @tc.desc:check module circular import
+ * @tc.name:lazyimport
+ * @tc.desc:lazyimport
  * @tc.type: FUNC
  * @tc.require: issueI5RC2C
  */

@@ -14,13 +14,13 @@
  */
 
 /*
- * @tc.name:moduleCircularCheck
- * @tc.desc:check module circular import
+ * @tc.name:lazyimport
+ * @tc.desc:lazyimport
  * @tc.type: FUNC
  * @tc.require: issueI5RC2C
  */
 
-import {fun} from './C_Cjs'
+import lazy {fun} from './G'
 import foo from './D_Cjs'
 export let b = "3";
 print("this is B", JSON.stringify(foo));

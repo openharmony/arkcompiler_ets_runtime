@@ -312,13 +312,12 @@ public:
                          const void *buffer = nullptr, size_t size = 0, bool executeFromJob = false);
 
     // 15.2.1.16.4 Instantiate()
-    static int PUBLIC_API Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &moduleHdl,
-        bool executeFromJob = false);
-    static void InstantiateCJS(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
-                               const JSHandle<SourceTextModule> &requiredModule);
-    static void InstantiateNativeModule(JSThread *thread, JSHandle<SourceTextModule> &currentModule,
-                                        JSHandle<SourceTextModule> &requiredModule,
-                                        ModuleTypes moduleType);
+    static int PUBLIC_API Instantiate(JSThread *thread,
+                                      const JSHandle<JSTaggedValue> &moduleHdl,
+                                      bool executeFromJob = false);
+
+    static void EvaluateNativeModule(JSThread *thread, JSHandle<SourceTextModule> nativeModule,
+                                     ModuleTypes moduleType);
 
     JSTaggedValue GetModuleValue(JSThread *thread, int32_t index, bool isThrow);
     void StoreModuleValue(JSThread *thread, int32_t index, const JSHandle<JSTaggedValue> &value);
@@ -326,8 +325,6 @@ public:
     JSTaggedValue GetModuleValue(JSThread *thread, JSTaggedValue key, bool isThrow);
     void StoreModuleValue(JSThread *thread, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
-    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedBinding> &binding);
-    JSTaggedValue GetNativeModuleValue(JSThread *thread, JSHandle<ResolvedIndexBinding> &binding);
     static JSTaggedValue GetValueFromExportObject(JSThread *thread, JSHandle<JSTaggedValue> &exportObject,
         int32_t index);
 
@@ -352,6 +349,7 @@ public:
         const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
     static std::tuple<bool, JSHandle<SourceTextModule>> GetResolvedModuleWithMerge(JSThread *thread,
         const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
+
 private:
     static void SetExportName(JSThread *thread,
                               const JSHandle<JSTaggedValue> &moduleRequest, const JSHandle<SourceTextModule> &module,
@@ -372,10 +370,9 @@ private:
                                                          const JSHandle<JSTaggedValue> &exportName,
                                                          const JSHandle<SourceTextModule> &module);
     static bool CheckCircularImport(const JSHandle<SourceTextModule> &module,
-        const JSHandle<JSTaggedValue> &exportName,
-        CVector<std::pair<JSHandle<SourceTextModule>, JSHandle<JSTaggedValue>>> &resolveVector);
-    static void InitializeEnvironment(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
-        JSHandle<JSTaggedValue> &moduleName, JSHandle<JSTaggedValue> &exports, bool isBundle);
+                                    const JSHandle<JSTaggedValue> &exportName,
+                                    CVector<std::pair<JSHandle<SourceTextModule>,
+                                    JSHandle<JSTaggedValue>>> &resolveVector);
 
     static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);

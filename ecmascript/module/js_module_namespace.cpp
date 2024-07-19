@@ -19,6 +19,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/object_factory-inl.h"
+#include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_record.h"
 #include "ecmascript/module/js_module_source_text.h"
@@ -120,8 +121,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             // 9. Assert: targetModule is not undefined.
             ASSERT(!targetModule.IsUndefined());
             if (UNLIKELY(SourceTextModule::IsNativeModule(mm->GetTypes()))) {
-                result = SourceTextModule::Cast(mm.GetTaggedValue())->
-                                                GetNativeModuleValue(thread, resolvedBind);
+                result = ModuleManagerHelper::GetModuleValue(thread, mm, resolvedBind->GetBindingName());
             } else {
                 result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
                                                 GetModuleValue(thread, resolvedBind->GetBindingName(), true);
@@ -134,8 +134,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             // 9. Assert: targetModule is not undefined.
             ASSERT(!targetModule.IsUndefined());
             if (UNLIKELY(SourceTextModule::IsNativeModule(mm->GetTypes()))) {
-                result = SourceTextModule::Cast(mm.GetTaggedValue())->
-                                                GetNativeModuleValue(thread, resolvedBind);
+                result = ModuleManagerHelper::GetNativeOrCjsModuleValue(thread, targetModule, resolvedBind->GetIndex());
             } else {
                 result = SourceTextModule::Cast(targetModule.GetTaggedObject())->
                                                 GetModuleValue(thread, resolvedBind->GetIndex(), true);
