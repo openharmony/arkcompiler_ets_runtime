@@ -555,6 +555,154 @@ GateRef StubBuilder::GetKeyHashCode(GateRef glue, GateRef key, GateRef hir)
     return ret;
 }
 
+GateRef StubBuilder::CreateDataProperty(GateRef glue, GateRef obj, GateRef propKey, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    Label next(env);
+    Label objIsShared(env);
+    Label objIsNotShared(env);
+    Label isHole(env);
+    Label notHole(env);
+    Label hasPendingException(env);
+    Label isJSShared(env);
+    Label isNotJSShared(env);
+
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    DEFVARIABLE(SCheckModelIsCHECK, VariableType::BOOL(), False());
+    BRANCH(IsJSShared(obj), &isJSShared, &isNotJSShared);
+    Bind(&isNotJSShared);
+    {
+        SCheckModelIsCHECK = True();
+        Jump(&isJSShared);
+    }
+    Bind(&isJSShared);
+    auto flag = SetPropertyByValue(glue, obj, propKey, value, *SCheckModelIsCHECK, false, ProfileOperation(), true);
+    BRANCH(HasPendingException(glue), &hasPendingException, &next);
+    Bind(&hasPendingException);
+    {
+        result = False();
+        Jump(&exit);
+    }
+    Bind(&next);
+    {
+        BRANCH(TaggedIsHole(flag), &isHole, &notHole);
+        Bind(&isHole);
+        {
+            GateRef temp = CallRuntime(glue, RTSTUB_ID(DefineOwnProperty), {obj, propKey, value});
+            result = TaggedIsTrue(temp);
+            Jump(&exit);
+        }
+        Bind(&notHole);
+        {
+            result = BoolNot(TaggedIsException(flag));
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::CreateDataPropertyOrThrow(GateRef glue, GateRef obj, GateRef key, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    Label isPropertyKey(env);
+    Label isNotStringOrSymbol(env);
+    Label isNotNumber(env);
+    Label newThrow(env);
+    Label isThrow(env);
+
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    DEFVARIABLE(isPropertyKeyFlag, VariableType::BOOL(), True());
+
+    CanNotConvertNotValidObject(obj);
+    BRANCH(TaggedIsStringOrSymbol(key), &isPropertyKey, &isNotStringOrSymbol);
+    Bind(&isNotStringOrSymbol);
+    {
+        BRANCH(TaggedIsNumber(key), &isPropertyKey, &isNotNumber);
+        Bind(&isNotNumber);
+        {
+            isPropertyKeyFlag = False();
+            Jump(&isPropertyKey);
+        }
+    }
+    Bind(&isPropertyKey);
+    {
+        IsNotPropertyKey(*isPropertyKeyFlag);
+        result = CreateDataProperty(glue, obj, key, value);
+        BRANCH(*result, &exit, &isThrow);
+        Bind(&isThrow);
+        {
+            BRANCH(HasPendingException(glue), &exit, &newThrow);
+            Bind(&newThrow);
+            {
+                GateRef msgIntId = Int32(GET_MESSAGE_STRING_ID(CreateDataPropertyFailed));
+                CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(msgIntId)});
+                Jump(&exit);
+            }
+        }
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::DefineField(GateRef glue, GateRef obj, GateRef propKey, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label next(env);
+    Label newThrow(env);
+    Label isObj(env);
+    Label notObj(env);
+    Label hasPendingException(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(key, VariableType::JS_ANY(), Undefined());
+    BRANCH(IsEcmaObject(obj), &isObj, &notObj);
+    Bind(&isObj);
+    {
+        key = CallRuntime(glue, RTSTUB_ID(ToPropertyKey), {propKey});
+        BRANCH(HasPendingException(glue), &hasPendingException, &next);
+    }
+    Bind(&next);
+    {
+        CreateDataPropertyOrThrow(glue, obj, *key, value);
+        BRANCH(HasPendingException(glue), &hasPendingException, &exit);
+    }
+    Bind(&notObj);
+    {
+        BRANCH(HasPendingException(glue), &hasPendingException, &newThrow);
+    }
+    Bind(&hasPendingException);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&newThrow);
+    {
+        GateRef msgIntId = Int32(GET_MESSAGE_STRING_ID(DefineFieldField));
+        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(msgIntId)});
+        result = Exception();
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index)
 {
     auto env = GetEnvironment();
@@ -3932,7 +4080,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
         Bind(&notDictionaryElement);
         {
             Label isReceiver(env);
-            if (useOwn) {
+            if (useOwn || defineSemantics) {
                 BRANCH(Equal(*holder, receiver), &isReceiver, &ifEnd);
             } else {
                 BRANCH(Equal(*holder, receiver), &isReceiver, &afterLoop);
@@ -3941,7 +4089,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             {
                 GateRef length = GetLengthOfTaggedArray(elements);
                 Label inRange(env);
-                if (useOwn) {
+                if (useOwn || defineSemantics) {
                     BRANCH(Int64LessThan(index, length), &inRange, &ifEnd);
                 } else {
                     BRANCH(Int64LessThan(index, length), &inRange, &loopExit);
@@ -3950,7 +4098,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                 {
                     GateRef value1 = GetTaggedValueWithElementsKind(*holder, index);
                     Label notHole(env);
-                    if (useOwn) {
+                    if (useOwn || defineSemantics) {
                         BRANCH(Int64NotEqual(value1, Hole()), &notHole, &ifEnd);
                     } else {
                         BRANCH(Int64NotEqual(value1, Hole()), &notHole, &loopExit);
@@ -4014,7 +4162,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
                     Bind(&notAccessor);
                     {
                         Label holdEqualsRecv(env);
-                        if (useOwn) {
+                        if (useOwn || defineSemantics) {
                             BRANCH(Equal(*holder, receiver), &holdEqualsRecv, &ifEnd);
                         } else {
                             BRANCH(Equal(*holder, receiver), &holdEqualsRecv, &afterLoop);
@@ -4038,7 +4186,7 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
             Jump(&exit);
         }
     }
-    if (useOwn) {
+    if (useOwn || defineSemantics) {
         Bind(&ifEnd);
     } else {
         Bind(&loopExit);
@@ -4092,6 +4240,14 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
 GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value,
     bool useOwn, GateRef isInternal, ProfileOperation callback, bool canUseIsInternal, bool defineSemantics)
 {
+    return SetPropertyByName(glue, receiver, key, value, useOwn, isInternal,
+        True(), callback, canUseIsInternal, defineSemantics);
+}
+
+GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef key, GateRef value,
+    bool useOwn, GateRef isInternal, GateRef SCheckModelIsCHECK, ProfileOperation callback,
+    bool canUseIsInternal, bool defineSemantics)
+{
     auto env = GetEnvironment();
     Label entryPass(env);
     env->SubCfgEntry(&entryPass);
@@ -4105,7 +4261,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Label loopExit(env);
     Label afterLoop(env);
     Label findProperty(env);
-    if (!useOwn) {
+    if (!useOwn && !defineSemantics) {
         // a do while loop
         Jump(&loopHead);
         LoopBegin(&loopHead);
@@ -4159,7 +4315,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
     Bind(&notSIndexObj);
     {
         if (canUseIsInternal) {
-            if (useOwn) {
+            if (useOwn || defineSemantics) {
                 BRANCH(isInternal, &findProperty, &ifEnd);
             } else {
                 BRANCH(isInternal, &findProperty, &loopExit);
@@ -4196,18 +4352,24 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 BRANCH(IsAccessor(attr), &isAccessor, &notAccessor);
                 Bind(&isAccessor);
                 if (defineSemantics) {
-                    Jump(&exit);
-                } else {
-                    // auto accessor = JSObject::Cast(holder)->GetProperty(hclass, attr)
-                    GateRef accessor = JSObjectGetProperty(*holder, hclass, attr);
-                    Label shouldCall(env);
-                    // ShouldCallSetter(receiver, *holder, accessor, attr)
-                    BRANCH(ShouldCallSetter(receiver, *holder, accessor, attr), &shouldCall, &notAccessor);
-                    Bind(&shouldCall);
+                    Label isSCheckModelIsCHECK(env);
+                    Label isNotSCheckModelIsCHECK(env);
+                    BRANCH(SCheckModelIsCHECK, &isSCheckModelIsCHECK, &isNotSCheckModelIsCHECK);
+                    Bind(&isSCheckModelIsCHECK);
                     {
-                        result = CallSetterHelper(glue, receiver, accessor, value, callback);
                         Jump(&exit);
                     }
+                    Bind(&isNotSCheckModelIsCHECK);
+                }
+                // auto accessor = JSObject::Cast(holder)->GetProperty(hclass, attr)
+                GateRef accessor = JSObjectGetProperty(*holder, hclass, attr);
+                Label shouldCall(env);
+                // ShouldCallSetter(receiver, *holder, accessor, attr)
+                BRANCH(ShouldCallSetter(receiver, *holder, accessor, attr), &shouldCall, &notAccessor);
+                Bind(&shouldCall);
+                {
+                    result = CallSetterHelper(glue, receiver, accessor, value, callback);
+                    Jump(&exit);
                 }
                 Bind(&notAccessor);
                 {
@@ -4216,13 +4378,19 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     BRANCH(IsWritable(attr), &writable, &notWritable);
                     Bind(&notWritable);
                     if (defineSemantics) {
-                        Jump(&exit);
-                    } else {
-                        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
-                        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-                        result = Exception();
-                        Jump(&exit);
+                        Label isSCheckModelIsCHECK(env);
+                        Label isNotSCheckModelIsCHECK(env);
+                        BRANCH(SCheckModelIsCHECK, &isSCheckModelIsCHECK, &isNotSCheckModelIsCHECK);
+                        Bind(&isSCheckModelIsCHECK);
+                        {
+                            Jump(&exit);
+                        }
+                        Bind(&isNotSCheckModelIsCHECK);
                     }
+                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
+                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+                    result = Exception();
+                    Jump(&exit);
                     Bind(&writable);
                     {
                         Label isTS(env);
@@ -4266,7 +4434,8 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // JSObject::Cast(holder)->SetProperty(thread, hclass, attr, value)
                             // return JSTaggedValue::Undefined()
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(false, &result, glue, receiver, attr, value, &executeSetProp, &exit);
+                            CheckUpdateSharedType(false, &result, glue, receiver, attr, value,
+                                &executeSetProp, &exit, SCheckModelIsCHECK);
                             Bind(&executeSetProp);
                             JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
                             ProfilerStubBuilder(env).UpdatePropAttrWithValue(
@@ -4300,17 +4469,23 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 BRANCH(IsAccessor(attr1), &isAccessor1, &notAccessor1);
                 Bind(&isAccessor1);
                 if (defineSemantics) {
-                    Jump(&exit);
-                } else {
-                    // auto accessor = dict->GetValue(entry)
-                    GateRef accessor1 = GetValueFromDictionary<NameDictionary>(array, entry1);
-                    Label shouldCall1(env);
-                    BRANCH(ShouldCallSetter(receiver, *holder, accessor1, attr1), &shouldCall1, &notAccessor1);
-                    Bind(&shouldCall1);
+                    Label isSCheckModelIsCHECK(env);
+                    Label isNotSCheckModelIsCHECK(env);
+                    BRANCH(SCheckModelIsCHECK, &isSCheckModelIsCHECK, &isNotSCheckModelIsCHECK);
+                    Bind(&isSCheckModelIsCHECK);
                     {
-                        result = CallSetterHelper(glue, receiver, accessor1, value, callback);
                         Jump(&exit);
                     }
+                    Bind(&isNotSCheckModelIsCHECK);
+                }
+                // auto accessor = dict->GetValue(entry)
+                GateRef accessor1 = GetValueFromDictionary<NameDictionary>(array, entry1);
+                Label shouldCall1(env);
+                BRANCH(ShouldCallSetter(receiver, *holder, accessor1, attr1), &shouldCall1, &notAccessor1);
+                Bind(&shouldCall1);
+                {
+                    result = CallSetterHelper(glue, receiver, accessor1, value, callback);
+                    Jump(&exit);
                 }
                 Bind(&notAccessor1);
                 {
@@ -4319,17 +4494,23 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                     BRANCH(IsWritable(attr1), &writable1, &notWritable1);
                     Bind(&notWritable1);
                     if (defineSemantics) {
-                        Jump(&exit);
-                    } else {
-                        GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
-                        CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
-                        result = Exception();
-                        Jump(&exit);
+                        Label isSCheckModelIsCHECK(env);
+                        Label isNotSCheckModelIsCHECK(env);
+                        BRANCH(SCheckModelIsCHECK, &isSCheckModelIsCHECK, &isNotSCheckModelIsCHECK);
+                        Bind(&isSCheckModelIsCHECK);
+                        {
+                            Jump(&exit);
+                        }
+                        Bind(&isNotSCheckModelIsCHECK);
                     }
+                    GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetReadOnlyProperty));
+                    CallRuntime(glue, RTSTUB_ID(ThrowTypeError), { IntToTaggedInt(taggedId) });
+                    result = Exception();
+                    Jump(&exit);
                     Bind(&writable1);
                     {
                         Label holdEqualsRecv1(env);
-                        if (useOwn) {
+                        if (useOwn || defineSemantics) {
                             BRANCH(Equal(*holder, receiver), &holdEqualsRecv1, &ifEnd);
                         } else {
                             BRANCH(Equal(*holder, receiver), &holdEqualsRecv1, &afterLoop);
@@ -4339,7 +4520,8 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                             // dict->UpdateValue(thread, entry, value)
                             // return JSTaggedValue::Undefined()
                             Label executeSetProp(env);
-                            CheckUpdateSharedType(true, &result, glue, receiver, attr1, value, &executeSetProp, &exit);
+                            CheckUpdateSharedType(true, &result, glue, receiver, attr1,
+                                value, &executeSetProp, &exit, SCheckModelIsCHECK);
                             Bind(&executeSetProp);
                             UpdateValueInDict<NameDictionary>(glue, array, entry1, value);
                             result = Undefined();
@@ -4404,6 +4586,12 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
 
 GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
     ProfileOperation callback, bool defineSemantics)
+{
+    return SetPropertyByValue(glue, receiver, key, value, True(), useOwn, callback, defineSemantics);
+}
+
+GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value,
+    GateRef SCheckModelIsCHECK, bool useOwn, ProfileOperation callback, bool defineSemantics)
 {
     auto env = GetEnvironment();
     Label subEntry1(env);
@@ -4490,8 +4678,8 @@ GateRef StubBuilder::SetPropertyByValue(GateRef glue, GateRef receiver, GateRef 
             CheckDetectorName(glue, *varKey, &setByName, &exit);
             Bind(&setByName);
             {
-                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn, *isInternal, callback,
-                                           true, defineSemantics);
+                result = SetPropertyByName(glue, receiver, *varKey, value, useOwn, *isInternal,
+                    SCheckModelIsCHECK, callback, true, defineSemantics);
                 Jump(&exit);
             }
         }

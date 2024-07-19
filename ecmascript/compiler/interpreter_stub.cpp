@@ -420,7 +420,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     }                                                                                                                \
     Bind(&slowPath);                                                                                                 \
     {                                                                                                                \
-        result = CallRuntime(glue, RTSTUB_ID(DefineField), {receiver, propKey, acc});                                \
+        result = DefineField(glue, receiver, propKey, acc);                                                          \
         Jump(&exit);                                                                                                 \
     }                                                                                                                \
     Bind(&exit)
@@ -5587,7 +5587,7 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByValuePrefImm8V8V8)
     GateRef v1 = ReadInst8_3(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    GateRef res = CallRuntime(glue, RTSTUB_ID(DefineField), {obj, propKey, acc});  // acc as value
+    GateRef res = DefineField(glue, obj, propKey, acc);  // acc as value
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEFIELDBYVALUE_PREF_IMM8_V8_V8));
 }
 
@@ -5597,7 +5597,7 @@ DECLARE_ASM_HANDLER(HandleCallRuntimeDefineFieldByIndexPrefImm8Imm32V8)
     GateRef v0 = ReadInst8_6(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v0));
     GateRef propKey = IntToTaggedInt(index);
-    GateRef res = CallRuntime(glue, RTSTUB_ID(DefineField), {obj, propKey, acc});  // acc as value
+    GateRef res = DefineField(glue, obj, propKey, acc);  // acc as value
     CHECK_EXCEPTION_WITH_ACC(res, INT_PTR(CALLRUNTIME_DEFINEFIELDBYINDEX_PREF_IMM8_IMM32_V8));
 }
 
