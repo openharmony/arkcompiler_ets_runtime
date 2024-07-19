@@ -147,7 +147,7 @@ public:
                         if (pair.offset >= currentOffset && pair.offset < nextOffset) {
                             if (pair.column == column) {
                                 return cb(JSPtLocation(jsPandaFile_, methodId, pair.offset, url));
-                            } else if (pair.column < minColumn) {
+                            } else if (pair.column < minColumn && currentOffset < minColumnOffset) {
                                 minColumn = pair.column;
                                 minColumnOffset = currentOffset;
                                 minColumnMethodId = currentMethodId;
