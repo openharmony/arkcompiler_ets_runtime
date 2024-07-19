@@ -30,6 +30,7 @@ const enum BigIntMode {
 };
 
 let input = '{"big":1122334455667788999,"small":123,"deci":1234567890.0123456,"shortExp":1.79e+308,"longExp":1.7976931348623157e+308}';
+let input2 = '{"zerodeci1":0.0000123,"zerodeci2":0.4799123,"zerodeci3":0.7777334477383838389929292922,"zerodeci4":0.0000000000000123}';
 
 let obj = {
     "innerEntry": {
@@ -211,9 +212,39 @@ function testJSONreviver() {
     }
 }
 
+function testJSONZeroDeci() {
+    let opt1 = {
+        bigIntMode: BigIntMode.ALWAYS_PARSE_AS_BIGINT,
+    }
+    let opt2 = {
+        bigIntMode: BigIntMode.PARSE_AS_BIGINT,
+    }
+    let obj1 = JSON.parseSendable(input2, undefined, opt1);
+    print(obj1.zerodeci1);
+    print(obj1.zerodeci2);
+    print(obj1.zerodeci3);
+    print(obj1.zerodeci4);
+    let obj2 = JSON.parseSendable(input2, undefined, opt2);
+    print(obj2.zerodeci1);
+    print(obj2.zerodeci2);
+    print(obj2.zerodeci3);
+    print(obj2.zerodeci4);
+    let obj3 = JSON.parseBigInt(input2, undefined, opt1);
+    print(obj3.zerodeci1);
+    print(obj3.zerodeci2);
+    print(obj3.zerodeci3);
+    print(obj3.zerodeci4);
+    let obj4 = JSON.parseBigInt(input2, undefined, opt2);
+    print(obj4.zerodeci1);
+    print(obj4.zerodeci2);
+    print(obj4.zerodeci3);
+    print(obj4.zerodeci4);
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
 testJSONBigInt();
 testJSONNormal();
 testJSONreviver();
+testJSONZeroDeci();

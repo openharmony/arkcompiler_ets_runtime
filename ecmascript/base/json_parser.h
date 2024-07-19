@@ -454,7 +454,7 @@ protected:
             negative = true;
         }
         if (*current_ == '0') {
-            if (!CheckZeroBeginNumber(hasExponent)) {
+            if (!CheckZeroBeginNumber(hasExponent, hasDecimal)) {
                 THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Number in JSON", JSTaggedValue::Exception());
             }
         } else if (*current_ >= '1' && *current_ <= '9') {
@@ -954,10 +954,11 @@ protected:
         return true;
     }
 
-    bool CheckZeroBeginNumber(bool &hasExponent)
+    bool CheckZeroBeginNumber(bool &hasExponent, bool &hasDecimal)
     {
         if (current_++ != end_) {
             if (*current_ == '.') {
+                hasDecimal = true;
                 if (!IsDecimalsLegal(hasExponent)) {
                     return false;
                 }
