@@ -286,6 +286,7 @@ group("ark_aot_ts_test") {
     "typedarray",
     "typedarray_load_store",
     "typedarrayfill",
+    "typedarraymap",
     "typeof",
     "unaryop_special_value",
     "xor",
