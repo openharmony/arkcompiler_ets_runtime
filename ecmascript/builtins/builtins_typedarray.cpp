@@ -1098,10 +1098,23 @@ JSTaggedValue BuiltinsTypedArray::Reduce(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Reduce);
-    if (!GetThis(argv)->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "This is not a TypedArray.", JSTaggedValue::Exception());
     }
-    return BuiltinsArray::Reduce(argv);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(thisHandle));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+
+    int64_t len = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetArrayLength();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    return BuiltinsArray::ReduceInner(argv, len);
 }
 
 // 22.2.3.20
@@ -1109,10 +1122,23 @@ JSTaggedValue BuiltinsTypedArray::ReduceRight(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
     BUILTINS_API_TRACE(argv->GetThread(), TypedArray, ReduceRight);
-    if (!GetThis(argv)->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "This is not a TypedArray.", JSTaggedValue::Exception());
     }
-    return BuiltinsArray::ReduceRight(argv);
+    BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(thisHandle));
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+
+    int64_t len = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetArrayLength();
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    return BuiltinsArray::ReduceRightInner(argv, len);
 }
 
 // 22.2.3.21

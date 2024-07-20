@@ -3014,7 +3014,6 @@
         "mjsunit/es6/math-trunc.js",
         "mjsunit/es6/promise-all.js",
         "mjsunit/es6/array-species-delete.js",
-        "mjsunit/es6/typedarray-reduce.js",
         "mjsunit/es6/math-log2-log10.js",
         "mjsunit/es6/promise-lookup-getter-setter.js",
         "mjsunit/es6/instanceof-proxies.js",
