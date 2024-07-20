@@ -127,6 +127,7 @@ public:
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SaveTask::Run");
         encoder_->StartSaveTask(this);
         return true;
     }
@@ -150,6 +151,7 @@ public:
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
     {
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ResetOutPathTask::Run");
         encoder_->ResetOutPathByModuleName(moduleName_);
         return true;
     }

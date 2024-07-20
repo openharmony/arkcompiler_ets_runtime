@@ -239,6 +239,7 @@ private:
 
         bool Run([[maybe_unused]] uint32_t threadIndex) override
         {
+            ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "PGOProfilerTask::Run");
             profiler_->HandlePGODumpByDumpThread(profiler_->isForce_);
             profiler_->StopPGODump();
             return true;

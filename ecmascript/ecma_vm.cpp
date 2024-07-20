@@ -68,6 +68,7 @@
 #include "ecmascript/jspandafile/panda_file_translator.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/mem/concurrent_marker.h"
+#include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/mem.h"
@@ -406,10 +407,16 @@ EcmaVM::~EcmaVM()
         heap_ = nullptr;
     }
 
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    const Heap *heap = Runtime::GetInstance()->GetMainThread()->GetEcmaVM()->GetHeap();
     if (IsWorkerThread() && Runtime::SharedGCRequest()) {
         // destory workervm to release mem.
         thread_->SetReadyForGCIterating(false);
-        SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
+        if (sHeap->CheckCanTriggerConcurrentMarking(thread_)) {
+            sHeap->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
+        } else if (heap && !heap->InSensitiveStatus() && !sHeap->GetConcurrentMarker()->IsEnabled()) {
+            sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::WORKER_DESTRUCTION>(thread_);
+        }
     }
 
     if (debuggerManager_ != nullptr) {
