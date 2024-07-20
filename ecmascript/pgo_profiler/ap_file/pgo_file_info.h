@@ -172,7 +172,12 @@ public:
 
     static void Build(PGOProfilerHeader **header, size_t size)
     {
-        *header = reinterpret_cast<PGOProfilerHeader *>(malloc(size));
+        void* rawMemory = malloc(size);
+        if (rawMemory == nullptr) {
+            LOG_ECMA(FATAL) << "Failed to apply for memory, size :" << size;
+            UNREACHABLE();
+        }
+        *header = reinterpret_cast<PGOProfilerHeader *>(rawMemory);
         new (*header) PGOProfilerHeader();
     }
 
