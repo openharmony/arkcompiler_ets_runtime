@@ -796,7 +796,7 @@ DECLARE_ASM_HANDLER(HandleLdPrivatePropertyImm8Imm16Imm16)
 {
     auto env = GetEnvironment();
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
-    GateRef slotId = ReadInst8_0(pc);
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     GateRef levelIndex = ReadInst16_1(pc);
     GateRef slotIndex = ReadInst16_3(pc);
 
@@ -829,7 +829,7 @@ DECLARE_ASM_HANDLER(HandleStPrivatePropertyImm8Imm16Imm16V8)
 {
     auto env = GetEnvironment();
     GateRef lexicalEnv = GetEnvFromFrame(GetFrame(sp));
-    GateRef slotId = ReadInst8_0(pc);
+    GateRef slotId = ZExtInt8ToInt32(ReadInst8_0(pc));
     GateRef levelIndex = ReadInst16_1(pc);
     GateRef slotIndex = ReadInst16_3(pc);
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(ReadInst8_5(pc)));

@@ -52,3 +52,75 @@ const symbol = Symbol();
 const namedSymbol = Symbol("symbol");
 print(symbol.toString());
 print(namedSymbol.toString());
+
+// Test if the `slotid` is read correctly in the `ldprivateproperty`/`stprivateproperty`
+function testReadIcSlotInPrivatePropertyIns() {
+    let a;
+    class C3 {
+        #b;
+        constructor() {
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            this.#b = Uint8Array;
+            a = this.#b;
+        }
+    }
+
+    new C3();
+    print("testReadIcSlotInPrivatePropertyIns success")
+}
+
+testReadIcSlotInPrivatePropertyIns();
