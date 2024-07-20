@@ -62,9 +62,19 @@ public:
     {
         ASSERT(HasFrame());
         // The structure of InterpretedFrame, AsmInterpretedFrame, InterpretedEntryFrame is the same, order is pc, base.
-        FrameIterator it(sp_);
-        InterpretedFrame *state = it.GetFrame<InterpretedFrame>();
-        return state->GetPc() == nullptr;
+        FrameType type = GetFrameType();
+        if (type == FrameType::BUILTIN_ENTRY_FRAME ||
+            type == FrameType::INTERPRETER_ENTRY_FRAME ||
+            type == FrameType::ASM_INTERPRETER_ENTRY_FRAME ||
+            type == FrameType::OPTIMIZED_ENTRY_FRAME) {
+                return true;
+        } else if (type == FrameType::ASM_INTERPRETER_BRIDGE_FRAME ||
+                   type == FrameType::INTERPRETER_FRAME) {
+            FrameIterator it(sp_);
+            InterpretedFrame *state = it.GetFrame<InterpretedFrame>();
+            return state->GetPc() == nullptr;
+        }
+        return false;
     }
 
     bool IsInterpretedFrame() const
