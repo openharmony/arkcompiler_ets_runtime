@@ -3699,10 +3699,10 @@ void SourceTextModule::Dump(std::ostream &os) const
     GetNamespace().Dump(os);
     os << "\n";
     os << " - EcmaModuleFilename: ";
-    GetEcmaModuleFilename().Dump(os);
+    os << GetEcmaModuleFilenameString();
     os << "\n";
     os << " - EcmaModuleRecordName: ";
-    GetEcmaModuleRecordName().Dump(os);
+    os << GetEcmaModuleRecordNameString();
     os << "\n";
     os << " - RequestedModules: ";
     GetRequestedModules().Dump(os);
@@ -5940,8 +5940,6 @@ void SourceTextModule::DumpForSnapshot(std::vector<Reference> &vec) const
     vec.reserve(vec.size() + NUM_OF_ITEMS);
     vec.emplace_back(CString("Environment"), GetEnvironment());
     vec.emplace_back(CString("Namespace"), GetNamespace());
-    vec.emplace_back(CString("EcmaModuleFilename"), GetEcmaModuleFilename());
-    vec.emplace_back(CString("EcmaModuleRecordName"), GetEcmaModuleRecordName());
     vec.emplace_back(CString("RequestedModules"), GetRequestedModules());
     vec.emplace_back(CString("ImportEntries"), GetImportEntries());
     vec.emplace_back(CString("LocalExportEntries"), GetLocalExportEntries());

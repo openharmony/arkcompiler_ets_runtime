@@ -259,11 +259,55 @@ public:
         return lazyArray[index];
     }
 
+    inline CString GetEcmaModuleFilenameString() const
+    {
+        CString *fileName = reinterpret_cast<CString *>(GetEcmaModuleFilename());
+        if (fileName == nullptr) {
+            return CString();
+        }
+        return *fileName;
+    }
+
+    inline CString GetEcmaModuleRecordNameString() const
+    {
+        CString *recordName = reinterpret_cast<CString *>(GetEcmaModuleRecordName());
+        if (recordName == nullptr) {
+            return CString();
+        }
+        return *recordName;
+    }
+
+    inline void SetEcmaModuleFilenameString(const CString &fileName)
+    {
+        CString *ptr = new CString(fileName);
+        DestoryEcmaModuleFilenameString();
+        SetEcmaModuleFilename(ToUintPtr(ptr));
+    }
+
+    inline void SetEcmaModuleRecordNameString(const CString &recordName)
+    {
+        CString *ptr = new CString(recordName);
+        DestoryEcmaModuleRecordNameString();
+        SetEcmaModuleRecordName(ToUintPtr(ptr));
+    }
+
+    inline void DestoryEcmaModuleFilenameString()
+    {
+        CString *ptr = reinterpret_cast<CString *>(GetEcmaModuleFilename());
+        delete ptr;
+        SetEcmaModuleFilename(ToUintPtr(nullptr));
+    }
+
+    inline void DestoryEcmaModuleRecordNameString()
+    {
+        CString *ptr = reinterpret_cast<CString *>(GetEcmaModuleRecordName());
+        delete ptr;
+        SetEcmaModuleRecordName(ToUintPtr(nullptr));
+    }
+
     static constexpr size_t SOURCE_TEXT_MODULE_OFFSET = ModuleRecord::SIZE;
     ACCESSORS(Environment, SOURCE_TEXT_MODULE_OFFSET, NAMESPACE_OFFSET);
-    ACCESSORS(Namespace, NAMESPACE_OFFSET, ECMA_MODULE_FILENAME);
-    ACCESSORS(EcmaModuleFilename, ECMA_MODULE_FILENAME, ECMA_MODULE_RECORDNAME);
-    ACCESSORS(EcmaModuleRecordName, ECMA_MODULE_RECORDNAME, REQUESTED_MODULES_OFFSET);
+    ACCESSORS(Namespace, NAMESPACE_OFFSET, REQUESTED_MODULES_OFFSET);
     ACCESSORS(RequestedModules, REQUESTED_MODULES_OFFSET, IMPORT_ENTRIES_OFFSET);
     ACCESSORS(ImportEntries, IMPORT_ENTRIES_OFFSET, LOCAL_EXPORT_ENTTRIES_OFFSET);
     ACCESSORS(LocalExportEntries, LOCAL_EXPORT_ENTTRIES_OFFSET, INDIRECT_EXPORT_ENTTRIES_OFFSET);
@@ -280,7 +324,9 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(AsyncEvaluatingOrdinal, uint32_t, ASYNC_EVALUATION_OFFSET, PENDING_DEPENDENCIES_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(PendingAsyncDependencies,
         int32_t, PENDING_DEPENDENCIES_OFFSET, LAYZ_IMPORT_STATUS_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(LazyImportStatus, uintptr_t, LAYZ_IMPORT_STATUS_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(LazyImportStatus, uintptr_t, LAYZ_IMPORT_STATUS_OFFSET, ECMA_MODULE_FILENAME);
+    ACCESSORS_PRIMITIVE_FIELD(EcmaModuleFilename, uintptr_t, ECMA_MODULE_FILENAME, ECMA_MODULE_RECORDNAME);
+    ACCESSORS_PRIMITIVE_FIELD(EcmaModuleRecordName, uintptr_t, ECMA_MODULE_RECORDNAME, BIT_FIELD_OFFSET);
     ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET)
 
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -333,7 +379,7 @@ public:
                                                          const JSHandle<SourceTextModule> &module,
                                                          CVector<std::pair<JSHandle<SourceTextModule>,
                                                          JSHandle<JSTaggedValue>>> &resolveVector);
-    static JSTaggedValue GetModuleName(JSTaggedValue currentModule);
+    static CString GetModuleName(JSTaggedValue currentModule);
 
     static bool IsDynamicModule(LoadingTypes types);
 
@@ -373,6 +419,8 @@ private:
                                     const JSHandle<JSTaggedValue> &exportName,
                                     CVector<std::pair<JSHandle<SourceTextModule>,
                                     JSHandle<JSTaggedValue>>> &resolveVector);
+    static void InitializeEnvironment(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
+        CString &moduleName, JSHandle<JSTaggedValue> &exports, bool isBundle);
 
     static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);

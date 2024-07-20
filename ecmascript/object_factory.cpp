@@ -4700,8 +4700,6 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     JSTaggedValue undefinedValue = thread_->GlobalConstants()->GetUndefined();
     obj->SetEnvironment(thread_, undefinedValue);
     obj->SetNamespace(thread_, undefinedValue);
-    obj->SetEcmaModuleFilename(thread_, undefinedValue);
-    obj->SetEcmaModuleRecordName(thread_, undefinedValue);
     obj->SetRequestedModules(thread_, undefinedValue);
     obj->SetImportEntries(thread_, undefinedValue);
     obj->SetLocalExportEntries(thread_, undefinedValue);
@@ -4723,6 +4721,8 @@ JSHandle<SourceTextModule> ObjectFactory::NewSourceTextModule()
     obj->SetIsNewBcVersion(false);
     obj->SetRegisterCounts(UINT16_MAX);
     obj->SetLazyImportStatus(ToUintPtr(nullptr));
+    obj->SetEcmaModuleFilename(ToUintPtr(nullptr));
+    obj->SetEcmaModuleRecordName(ToUintPtr(nullptr));
     obj->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
     obj->SetSendableEnv(thread_, undefinedValue);
     return obj;

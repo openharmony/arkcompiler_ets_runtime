@@ -47,8 +47,7 @@ void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointe
     }
     JSHandle<SourceTextModule> module(thread, SourceTextModule::Cast(moduleVal.GetTaggedObject()));
     LoadingTypes type = module->GetLoadingTypes();
-    JSTaggedValue moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
-    CString recordNameStr = ConvertToString(moduleRecordName);
+    CString recordNameStr = SourceTextModule::GetModuleName(module.GetTaggedValue());
     if (type != LoadingTypes::DYNAMITC_MODULE) {
         LOG_FULL(INFO) << "free stable module's ModuleNameSpace" << recordNameStr;
     }
@@ -87,8 +86,7 @@ void ModuleDeregister::ReviseLoadedModuleCount(JSThread *thread, const CString &
 
 void ModuleDeregister::RemoveModule(JSThread *thread, JSHandle<SourceTextModule> module)
 {
-    JSTaggedValue moduleRecordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
-    CString recordName = ModulePathHelper::Utf8ConvertToString(moduleRecordName);
+    CString recordName = SourceTextModule::GetModuleName(module.GetTaggedValue());
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     if (!thread->GetEcmaVM()->IsWorkerThread() &&
         (module->GetTypes() == ModuleTypes::APP_MODULE || module->GetTypes() == ModuleTypes::OHOS_MODULE)) {
@@ -111,21 +109,20 @@ void ModuleDeregister::IncreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             required.Update(requestedModules->Get(idx));
             JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-            JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
+            const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
             CString moduleName;
-            if (moduleRecordName.IsUndefined()) {
+            if (moduleRecordName.empty()) {
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModule(thread, module, required);
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                moduleName = ConvertToString(requiredModule->GetEcmaModuleFilename());
+                moduleName = requiredModule->GetEcmaModuleFilenameString();
             } else {
-                ASSERT(moduleRecordName.IsString());
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                moduleName = ConvertToString(requiredModule->GetEcmaModuleRecordName());
+                moduleName = requiredModule->GetEcmaModuleRecordNameString();
             }
             if (increaseModule.find(moduleName) != increaseModule.end()) {
                 LOG_FULL(DEBUG) << "Find module cyclical loading, stop increasing.";
@@ -161,21 +158,20 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         for (size_t idx = 0; idx < requestedModulesLen; idx++) {
             required.Update(requestedModules->Get(idx));
             JSMutableHandle<SourceTextModule> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-            JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
+            const CString moduleRecordName = module->GetEcmaModuleRecordNameString();
             CString moduleName;
-            if (moduleRecordName.IsUndefined()) {
+            if (moduleRecordName.empty()) {
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModule(thread, module, required);
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                moduleName = ConvertToString(requiredModule->GetEcmaModuleFilename());
+                moduleName = requiredModule->GetEcmaModuleFilenameString();
             } else {
-                ASSERT(moduleRecordName.IsString());
                 JSHandle<JSTaggedValue> requiredVal =
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required);
                 RETURN_IF_ABRUPT_COMPLETION(thread);
                 requiredModule.Update(JSHandle<SourceTextModule>::Cast(requiredVal));
-                moduleName = ConvertToString(requiredModule->GetEcmaModuleRecordName());
+                moduleName = requiredModule->GetEcmaModuleRecordNameString();
             }
             if (decreaseModule.find(moduleName) != decreaseModule.end()) {
                 LOG_FULL(DEBUG) << "Find module cyclical loading, stop increasing.";
@@ -200,8 +196,7 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
 
     uint16_t registerNum = num - 1;
     if (registerNum == 0) {
-        LOG_FULL(INFO) << "try to remove module " <<
-            ConvertToString(SourceTextModule::GetModuleName(module.GetTaggedValue())).c_str();
+        LOG_FULL(INFO) << "try to remove module " << SourceTextModule::GetModuleName(module.GetTaggedValue());
         RemoveModule(thread, module);
     }
     module->SetRegisterCounts(registerNum);

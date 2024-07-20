@@ -921,17 +921,17 @@ JSHandle<JSHClass> JSFunction::GetOrCreateDerivedJSHClass(JSThread *thread, JSHa
     return newJSHClass;
 }
 
-JSTaggedValue JSFunction::GetRecordName() const
+CString JSFunction::GetRecordName() const
 {
     JSTaggedValue module = GetModule();
     if (module.IsSourceTextModule()) {
         return SourceTextModule::GetModuleName(module);
     }
     if (module.IsString()) {
-        return module;
+        return ConvertToString(module);
     }
     LOG_INTERPRETER(DEBUG) << "record name is undefined";
-    return JSTaggedValue::Hole();
+    return "";
 }
 
 // Those interface below is discarded

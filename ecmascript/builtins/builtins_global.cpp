@@ -984,10 +984,10 @@ JSTaggedValue BuiltinsGlobal::GetCurrentModuleName(EcmaRuntimeCallInfo *msg)
     JSThread *thread = msg->GetThread();
     BUILTINS_API_TRACE(thread, Global, GetCurrentModuleName);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread);
+    std::pair<CString, CString> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     EcmaVM *vm = thread->GetEcmaVM();
-    CString recordName = ConvertToString(moduleInfo.first);
+    CString recordName = moduleInfo.first;
     CString moduleName;
     if (vm->IsNormalizedOhmUrlPack()) {
         moduleName = ModulePathHelper::GetModuleNameWithNormalizedName(recordName);
@@ -1005,10 +1005,10 @@ JSTaggedValue BuiltinsGlobal::GetCurrentBundleName(EcmaRuntimeCallInfo *msg)
     JSThread *thread = msg->GetThread();
     BUILTINS_API_TRACE(thread, Global, GetCurrentBundleName);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
-    std::pair<JSTaggedValue, JSTaggedValue> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread);
+    std::pair<CString, CString> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     EcmaVM *vm = thread->GetEcmaVM();
-    CString recordName = ConvertToString(moduleInfo.first);
+    CString recordName = moduleInfo.first;
     CString bundleName = ModulePathHelper::GetBundleNameWithRecordName(vm, recordName);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> result = factory->NewFromUtf8(bundleName.c_str());

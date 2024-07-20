@@ -764,8 +764,8 @@ void DebuggerApi::GetIndirectExportVariables(const EcmaVM *ecmaVm, Local<ObjectR
             JSHandle<JSTaggedValue> moduleRequest(thread, ee->GetModuleRequest());
             JSHandle<JSTaggedValue> importModule;
             JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(currentModule);
-            JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
-            if (moduleRecordName.IsUndefined()) {
+            CString moduleRecordName = module->GetEcmaModuleRecordNameString();
+            if (moduleRecordName.empty()) {
                 importModule = SourceTextModule::HostResolveImportedModule(thread, module, moduleRequest);
             } else {
                 importModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest);
@@ -805,8 +805,8 @@ void DebuggerApi::GetImportVariables(const EcmaVM *ecmaVm, Local<ObjectRef> &mod
             JSHandle<JSTaggedValue> moduleRequest(thread, ee->GetModuleRequest());
             JSHandle<JSTaggedValue> importModule;
             JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(currentModule);
-            JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
-            if (moduleRecordName.IsUndefined()) {
+            CString moduleRecordName = module->GetEcmaModuleRecordNameString();
+            if (moduleRecordName.empty()) {
                 importModule = SourceTextModule::HostResolveImportedModule(thread, module, moduleRequest);
             } else {
                 importModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, moduleRequest);

@@ -260,8 +260,7 @@ HWTEST_F_L0(EcmaModuleTest, PreventExtensions_IsExtensible)
     SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry2, 1, 2);
     JSHandle<TaggedArray> localExportEntries(thread, module->GetLocalExportEntries());
     CString baseFileName = "a.abc";
-    JSHandle<EcmaString> moduleFilename = objectFactory->NewFromUtf8(baseFileName);
-    module->SetEcmaModuleFilename(thread, moduleFilename);
+    module->SetEcmaModuleFilenameString(baseFileName);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<JSTaggedValue> moduleRecord = JSHandle<JSTaggedValue>::Cast(module);
     moduleManager->AddResolveImportedModule(baseFileName, moduleRecord.GetTaggedValue());

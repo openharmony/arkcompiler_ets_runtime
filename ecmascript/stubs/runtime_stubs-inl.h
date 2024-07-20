@@ -1674,7 +1674,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     if (jsPandaFile->IsBundlePack()) {
         dirPath.Update(factory->NewFromUtf8(currentfilename).GetTaggedValue());
     } else {
-        recordName.Update(function->GetRecordName());
+        recordName.Update(factory->NewFromUtf8(function->GetRecordName()));
         dirPath.Update(factory->NewFromUtf8(currentfilename).GetTaggedValue());
     }
 

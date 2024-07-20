@@ -50,8 +50,7 @@ JSTaggedValue ModuleManager::GetCurrentModule()
     JSTaggedValue currentFunc = frameHandler.GetFunction();
     JSTaggedValue module = JSFunction::Cast(currentFunc.GetTaggedObject())->GetModule();
     if (SourceTextModule::IsSendableFunctionModule(module)) {
-        JSTaggedValue recordName = SourceTextModule::GetModuleName(module);
-        CString recordNameStr = ModulePathHelper::Utf8ConvertToString(recordName);
+        CString recordNameStr = SourceTextModule::GetModuleName(module);
         return HostGetImportedModule(recordNameStr).GetTaggedValue();
     }
     return module;
@@ -131,7 +130,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
         EcmaContext *context = thread->GetCurrentEcmaContext();
         if (context->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
             const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
-                context->FindPatchModule(ConvertToString(module->GetEcmaModuleRecordName()));
+                context->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {
                 resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
                 JSHandle<SourceTextModule> moduleOfHotReload(thread, resolvedModule);
@@ -193,7 +192,7 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JST
         EcmaContext *context = thread->GetCurrentEcmaContext();
         if (context->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
             const JSHandle<JSTaggedValue> resolvedModuleOfHotReload =
-                context->FindPatchModule(ConvertToString(module->GetEcmaModuleRecordName()));
+                context->FindPatchModule(module->GetEcmaModuleRecordNameString());
             if (!resolvedModuleOfHotReload->IsHole()) {
                 resolvedModule = resolvedModuleOfHotReload.GetTaggedValue();
                 JSHandle<SourceTextModule> moduleOfHotReload(thread, resolvedModule);
@@ -316,8 +315,9 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(JSTaggedValue key, JST
     ASSERT(resolvedModule.IsSourceTextModule());
     SourceTextModule *module = SourceTextModule::Cast(resolvedModule.GetTaggedObject());
     if (module->GetTypes() == ModuleTypes::CJS_MODULE) {
-        JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(JSTaggedValue(module)));
-        return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+        CString cjsModuleName = SourceTextModule::GetModuleName(JSTaggedValue(module));
+        JSHandle<JSTaggedValue> moduleNameHandle(thread->GetEcmaVM()->GetFactory()->NewFromUtf8(cjsModuleName));
+        return CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue();
     }
     return module->GetModuleValue(thread, binding->GetBindingName(), false);
 }
@@ -560,8 +560,7 @@ JSHandle<JSTaggedValue> ModuleManager::ResolveModuleWithMerge(
         moduleRecord = ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile);
     }
 
-    JSHandle<EcmaString> recordNameHdl = vm_->GetFactory()->NewFromUtf8(recordName);
-    JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, recordNameHdl.GetTaggedValue());
+    JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordNameString(recordName);
     ModuleDeregister::InitForDeregisterModule(moduleRecord, executeFromJob);
     return moduleRecord;
 }
@@ -603,13 +602,12 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
     SourceTextModule *module = SourceTextModule::Cast(currentModule.GetTaggedObject());
     JSTaggedValue requestedModule = module->GetRequestedModules();
     JSTaggedValue moduleName = TaggedArray::Cast(requestedModule.GetTaggedObject())->Get(index);
-    JSTaggedValue moduleRecordName = module->GetEcmaModuleRecordName();
+    CString moduleRecordName = module->GetEcmaModuleRecordNameString();
     JSHandle<JSTaggedValue> requiredModule;
-    if (moduleRecordName.IsUndefined()) {
+    if (moduleRecordName.empty()) {
         requiredModule = SourceTextModule::HostResolveImportedModule(thread,
             JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
     } else {
-        ASSERT(moduleRecordName.IsString());
         requiredModule = SourceTextModule::HostResolveImportedModuleWithMerge(thread,
             JSHandle<SourceTextModule>(thread, module), JSHandle<JSTaggedValue>(thread, moduleName));
     }
@@ -622,9 +620,9 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
     }
     // if requiredModuleST is CommonJS
     if (moduleType == ModuleTypes::CJS_MODULE) {
-        JSHandle<JSTaggedValue> cjsModuleName(thread,
-            SourceTextModule::GetModuleName(requiredModuleST.GetTaggedValue()));
-        return CjsModule::SearchFromModuleCache(thread, cjsModuleName).GetTaggedValue();
+        CString cjsModuleName = SourceTextModule::GetModuleName(requiredModuleST.GetTaggedValue());
+        JSHandle<JSTaggedValue> moduleNameHandle(thread->GetEcmaVM()->GetFactory()->NewFromUtf8(cjsModuleName));
+        return CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue();
     }
     // if requiredModuleST is ESM
     JSHandle<JSTaggedValue> moduleNamespace = SourceTextModule::GetModuleNamespace(thread, requiredModuleST);
@@ -680,9 +678,9 @@ CString ModuleManager::GetRecordName(JSTaggedValue module)
     }
     if (module.IsSourceTextModule()) {
         SourceTextModule *sourceTextModule = SourceTextModule::Cast(module.GetTaggedObject());
-        JSTaggedValue recordName = sourceTextModule->GetEcmaModuleRecordName();
-        if (recordName.IsString()) {
-            entry = ModulePathHelper::Utf8ConvertToString(recordName);
+        CString recordName = sourceTextModule->GetEcmaModuleRecordNameString();
+        if (!recordName.empty()) {
+            return recordName;
         }
     }
     return entry;
@@ -694,10 +692,10 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
     JSThread *thread = vm->GetJSThread();
     if (ecmaModule->GetLocalExportEntries().IsUndefined()) {
         CString msg = "No export named '" + key;
-        if (!ecmaModule->GetEcmaModuleRecordName().IsUndefined()) {
-            msg += "' which exported by '" + ConvertToString(ecmaModule->GetEcmaModuleRecordName()) + "'";
+        if (!ecmaModule->GetEcmaModuleRecordNameString().empty()) {
+            msg += "' which exported by '" + ecmaModule->GetEcmaModuleRecordNameString() + "'";
         } else {
-            msg += "' which exported by '" + ConvertToString(ecmaModule->GetEcmaModuleFilename()) + "'";
+            msg += "' which exported by '" + ecmaModule->GetEcmaModuleFilenameString() + "'";
         }
         ObjectFactory *factory = vm->GetFactory();
         JSTaggedValue error = factory->GetJSError(ErrorType::SYNTAX_ERROR, msg.c_str(),
@@ -810,7 +808,6 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteJsonModule(JSThread *thread, const
 JSHandle<JSTaggedValue> ModuleManager::ExecuteCjsModule(JSThread *thread, const CString &recordName,
     const JSPandaFile *jsPandaFile)
 {
-    ObjectFactory *factory = vm_->GetFactory();
     CString entryPoint = JSPandaFile::ENTRY_FUNCTION_NAME;
     CString moduleRecord = jsPandaFile->GetJSPandaFileDesc();
     if (!jsPandaFile->IsBundlePack()) {
@@ -824,8 +821,7 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteCjsModule(JSThread *thread, const 
     } else {
         JSHandle<SourceTextModule> module =
             JSHandle<SourceTextModule>::Cast(ModuleDataExtractor::ParseCjsModule(thread, jsPandaFile));
-        JSHandle<EcmaString> record = factory->NewFromASCII(moduleRecord);
-        module->SetEcmaModuleRecordName(thread, record);
+        module->SetEcmaModuleRecordNameString(moduleRecord);
         requiredModule.Update(module);
         JSPandaFileExecutor::Execute(thread, jsPandaFile, entryPoint);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, requiredModule);
@@ -870,6 +866,8 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
     }
     JSTaggedValue result = entry->second;
     SourceTextModule::Cast(result)->DestoryLazyImportArray();
+    SourceTextModule::Cast(result)->DestoryEcmaModuleFilenameString();
+    SourceTextModule::Cast(result)->DestoryEcmaModuleRecordNameString();
     resolvedModules_.erase(recordName);
 }
 

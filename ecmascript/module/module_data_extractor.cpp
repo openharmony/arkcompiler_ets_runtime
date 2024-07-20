@@ -51,8 +51,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseModule(JSThread *thread, const
     bool hasTLA = recordInfo->hasTopLevelAwait;
     moduleRecord->SetHasTLA(hasTLA);
 
-    JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);
-    moduleRecord->SetEcmaModuleFilename(thread, ecmaModuleFilename);
+    moduleRecord->SetEcmaModuleFilenameString(moduleFilename);
 
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::ECMA_MODULE);
@@ -106,8 +105,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseCjsModule(JSThread *thread, co
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
 
-    JSHandle<EcmaString> cjsModuleFilename = factory->NewFromUtf8(descriptor);
-    moduleRecord->SetEcmaModuleFilename(thread, cjsModuleFilename);
+    moduleRecord->SetEcmaModuleFilenameString(descriptor);
 
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
@@ -133,8 +131,7 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseJsonModule(JSThread *thread, c
     JSTaggedValue jsonData = JsonParse(thread, jsPandaFile, recordName);
     moduleRecord->StoreModuleValue(thread, 0, JSHandle<JSTaggedValue>(thread, jsonData)); // index = 0
 
-    JSHandle<EcmaString> ecmaModuleFilename = factory->NewFromUtf8(moduleFilename);
-    moduleRecord->SetEcmaModuleFilename(thread, ecmaModuleFilename);
+    moduleRecord->SetEcmaModuleFilenameString(moduleFilename);
 
     moduleRecord->SetStatus(ModuleStatus::UNINSTANTIATED);
     moduleRecord->SetTypes(ModuleTypes::JSON_MODULE);
@@ -150,10 +147,8 @@ JSHandle<JSTaggedValue> ModuleDataExtractor::ParseNativeModule(JSThread *thread,
     JSHandle<SourceTextModule> moduleRecord = factory->NewSourceTextModule();
 
     // set moduleRecordName as non-undefined to distinguish between merge and non-merge mode
-    JSHandle<EcmaString> falsyRecordName = factory->NewFromUtf8(moduleRequestName);
-    JSHandle<EcmaString> fileName = factory->NewFromUtf8(baseFileName);
-    moduleRecord->SetEcmaModuleRecordName(thread, falsyRecordName);
-    moduleRecord->SetEcmaModuleFilename(thread, fileName);
+    moduleRecord->SetEcmaModuleRecordNameString(moduleRequestName);
+    moduleRecord->SetEcmaModuleFilenameString(baseFileName);
     JSHandle<JSTaggedValue> defaultName = thread->GlobalConstants()->GetHandledDefaultString();
     JSHandle<LocalExportEntry> localExportEntry = factory->NewLocalExportEntry(defaultName,
         defaultName, LocalExportEntry::LOCAL_DEFAULT_INDEX, SharedTypes::UNSENDABLE_MODULE);

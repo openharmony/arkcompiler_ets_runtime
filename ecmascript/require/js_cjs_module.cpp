@@ -108,8 +108,7 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
         filename = recordName;
     } else {
-        JSHandle<JSTaggedValue> entrypointVal(thread, EcmaInterpreter::GetCurrentEntryPoint(thread).first);
-        CString currentEntryPoint = ModulePathHelper::Utf8ConvertToString(entrypointVal.GetTaggedValue());
+        CString currentEntryPoint = EcmaInterpreter::GetCurrentEntryPoint(thread).first;
         requestEntryPoint = ModulePathHelper::ConcatFileNameWithMerge(thread, jsPandaFile, filename,
                                                                       currentEntryPoint, requestStr);
         recordName = requestEntryPoint;

@@ -572,11 +572,10 @@ void PGOProfiler::HandlePGOPreDump()
         if (!methodValue.IsMethod()) {
             return;
         }
-        JSTaggedValue recordNameValue = func->GetRecordName();
-        if (!recordNameValue.IsString()) {
+        CString recordName = func->GetRecordName();
+        if (recordName.empty()) {
             return;
         }
-        CString recordName = ConvertToString(recordNameValue);
         auto abcId = GetMethodAbcId(func);
 
         if (current->HasExtraProfileTypeInfo()) {
@@ -623,12 +622,11 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
             current = PopFromProfileQueue();
             continue;
         }
-        JSTaggedValue recordNameValue = func->GetRecordName();
-        if (!recordNameValue.IsString()) {
+        CString recordName = func->GetRecordName();
+        if (recordName.empty()) {
             current = PopFromProfileQueue();
             continue;
         }
-        CString recordName = ConvertToString(recordNameValue);
         auto abcId = GetMethodAbcId(func);
 
         if (current->HasExtraProfileTypeInfo()) {

@@ -208,9 +208,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModuleWithMerg
     ASSERT(jsPandaFile->IsModule(recordInfo));
     JSHandle<JSTaggedValue> moduleRecord = SharedModuleHelper::ParseSharedModule(thread, jsPandaFile, recordName,
                                                                                  fileName, recordInfo);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSTaggedValue> requireModule = JSHandle<JSTaggedValue>(factory->NewFromUtf8(recordName));
-    JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordName(thread, requireModule);
+    JSHandle<SourceTextModule>::Cast(moduleRecord)->SetEcmaModuleRecordNameString(recordName);
     moduleManager->AddResolveImportedModule(recordName, moduleRecord.GetTaggedValue());
     moduleManager->AddToInstantiatingSModuleList(recordName);
     return moduleRecord;
@@ -274,8 +272,7 @@ void SharedModuleManager::TransferSModule(JSThread *thread)
 StateVisit &SharedModuleManager::findModuleMutexWithLock(JSThread *thread, const JSHandle<SourceTextModule> &module)
 {
     RuntimeLockHolder locker(thread, mutex_);
-    CString moduleName =
-        ModulePathHelper::Utf8ConvertToString(SourceTextModule::GetModuleName(module.GetTaggedValue()));
+    CString moduleName = SourceTextModule::GetModuleName(module.GetTaggedValue());
     auto it = sharedModuleMutex_.find(moduleName);
     if (it == sharedModuleMutex_.end()) {
         LOG_ECMA(FATAL) << " Get shared module mutex failed";
@@ -329,6 +326,8 @@ void SharedModuleManager::SharedNativeObjDestory()
         ASSERT(!key.empty());
         JSTaggedValue module = it->second;
         SourceTextModule::Cast(module)->DestoryLazyImportArray();
+        SourceTextModule::Cast(module)->DestoryEcmaModuleFilenameString();
+        SourceTextModule::Cast(module)->DestoryEcmaModuleRecordNameString();
     }
 }
 } // namespace panda::ecmascript
