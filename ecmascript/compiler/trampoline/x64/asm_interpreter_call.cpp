@@ -1227,7 +1227,8 @@ void AsmInterpreterCall::ResumeRspAndReturn(ExtendedAssembler *assembler)
     __ BindAssemblerStub(RTSTUB_ID(ResumeRspAndReturn));
     Register currentSp = r12;
     Register fpRegister = r10;
-    intptr_t offset = AsmInterpretedFrame::GetFpOffset(false) - AsmInterpretedFrame::GetSize(false);
+    intptr_t offset = AsmInterpretedFrame::GetFpOffsetAsIntptr(false) -
+        AsmInterpretedFrame::GetSizeAsIntptr(false);
     __ Movq(Operand(currentSp, static_cast<int32_t>(offset)), fpRegister);
     __ Movq(fpRegister, rsp);
     // return
