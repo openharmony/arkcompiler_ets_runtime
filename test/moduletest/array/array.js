@@ -519,8 +519,30 @@ var result_copywithin2 = arr_copywithin2.copyWithin(0, 3, 7);
 print(result_copywithin2);
 var arr_copywithin3 = arr_copywithin3.copyWithin(0, 0, 10);
 print(arr_copywithin3);
+//elementskind is generic but hclass == generic hclass
 var arr_copywithin4 = arr_copywithin4.copyWithin(3, 0, 6);
 print(arr_copywithin4);
+
+const ArraySize = 10;
+const QuarterSize = ArraySize / 4;
+let result;
+let arr_copywithin5 = [];
+let arr_copywithin6 = [];
+arr_copywithin6.proto = arr_copywithin4;
+for (let i = 0; i < ArraySize; ++i) arr_copywithin5[i] = i;
+for (let i = 0; i < ArraySize; ++i) arr_copywithin6[i] = i;
+
+for (let i = 0; i < ArraySize; i++) {
+    //elementskind is not generic
+    result = arr_copywithin5.copyWithin(0, QuarterSize * 2, QuarterSize * 3);
+}
+print(result);
+
+for (let i = 0; i < ArraySize; i++) {
+    //elementskind is generic but hclass != generic hclass
+    result = arr_copywithin6.copyWithin(0, QuarterSize * 2, QuarterSize * 3);
+}
+print(result);
 
 // Test case for every()
 var arr_every1 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
