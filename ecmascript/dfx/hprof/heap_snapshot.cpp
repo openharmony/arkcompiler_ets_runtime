@@ -131,13 +131,10 @@ void HeapSnapshot::UpdateNodes(bool isInFinish)
     FillNodes(isInFinish);
     for (auto iter = nodes_.begin(); iter != nodes_.end();) {
         if (!(*iter)->IsLive()) {
-            Node *node = entryMap_.FindAndEraseNode((*iter)->GetAddress());
-            ASSERT(*iter == node);
+            entryMap_.FindAndEraseNode((*iter)->GetAddress());
             entryIdMap_->EraseId((*iter)->GetAddress());
-            if (node != nullptr) {
-                DecreaseNodeSize(node->GetSelfSize());
-                chunk_->Delete(node);
-            }
+            DecreaseNodeSize((*iter)->GetSelfSize());
+            chunk_->Delete(*iter);
             iter = nodes_.erase(iter);
             nodeCount_--;
         } else {
@@ -215,7 +212,7 @@ void HeapSnapshot::MoveNode(uintptr_t address, TaggedObject *forwardAddress, siz
 
         Node *oldNode = entryMap_.FindAndEraseNode(Node::NewAddress(forwardAddress));
         if (oldNode != nullptr) {
-            EraseNodeUnique(oldNode);
+            oldNode->SetAddress(Node::NewAddress(TaggedObject::Cast(nullptr)));
         }
 
         // Size and name may change during its life for some types(such as string, array and etc).
