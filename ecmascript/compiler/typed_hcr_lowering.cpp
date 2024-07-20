@@ -599,9 +599,12 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
             auto arrayHClassIndexMap = compilationEnv_->GetArrayHClassIndexMap();
             auto iter = arrayHClassIndexMap.find(kind);
             ASSERT(iter != arrayHClassIndexMap.end());
-            GateRef initialIhcAddress = builder_.GetGlobalConstantValue(iter->second);
+            GateRef initialIhcAddress = builder_.GetGlobalConstantValue(iter->second.first);
+            GateRef initialIhcWithProtoAddress = builder_.GetGlobalConstantValue(iter->second.second);
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
-            ihcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
+            GateRef tryIhcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
+            GateRef tryIhcWithProtoMatches = builder_.Equal(receiverHClass, initialIhcWithProtoAddress);
+            ihcMatches = builder_.BoolOr(tryIhcMatches, tryIhcWithProtoMatches);
         } else {
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
             GateRef elementsKind = builder_.GetElementsKindByHClass(receiverHClass);

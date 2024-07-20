@@ -134,6 +134,18 @@ class ObjectFactory;
     V(JSTaggedValue, IteratorResultClass, ITERATOR_RESULT_CLASS, ecma_roots_class)                                    \
     V(JSTaggedValue, ClassPrototypeClass, CLASS_PROTOTYPE_HCLASS_INDEX, ecma_roots_class)                             \
     V(JSTaggedValue, ClassConstructorClass, CLASS_CONSTRUCTOR_HCLASS_INDEX, ecma_roots_class)                         \
+    V(JSTaggedValue, ElementNoneProtoClass, ELEMENT_NONE_PROTO_HCLASS_INDEX, ecma_roots_class)                        \
+    V(JSTaggedValue, ElementHoleProtoClass, ELEMENT_HOLE_PROTO_HCLASS_INDEX, ecma_roots_class)                        \
+    V(JSTaggedValue, ElementIntProtoClass, ELEMENT_INT_PROTO_HCLASS_INDEX, ecma_roots_class)                          \
+    V(JSTaggedValue, ElementNumberProtoClass, ELEMENT_NUMBER_PROTO_HCLASS_INDEX, ecma_roots_class)                    \
+    V(JSTaggedValue, ElementStringProtoClass, ELEMENT_STRING_PROTO_HCLASS_INDEX, ecma_roots_class)                    \
+    V(JSTaggedValue, ElementObjectProtoClass, ELEMENT_OBJECT_PROTO_HCLASS_INDEX, ecma_roots_class)                    \
+    V(JSTaggedValue, ElementTaggedProtoClass, ELEMENT_TAGGED_PROTO_HCLASS_INDEX, ecma_roots_class)                    \
+    V(JSTaggedValue, ElementHoleIntProtoClass, ELEMENT_HOLE_INT_PROTO_HCLASS_INDEX, ecma_roots_class)                 \
+    V(JSTaggedValue, ElementHoleNumberProtoClass, ELEMENT_HOLE_NUMBER_PROTO_HCLASS_INDEX, ecma_roots_class)           \
+    V(JSTaggedValue, ElementHoleStringProtoClass, ELEMENT_HOLE_STRING_PROTO_HCLASS_INDEX, ecma_roots_class)           \
+    V(JSTaggedValue, ElementHoleObjectProtoClass, ELEMENT_HOLE_OBJECT_PROTO_HCLASS_INDEX, ecma_roots_class)           \
+    V(JSTaggedValue, ElementHoleTaggedProtoClass, ELEMENT_HOLE_TAGGED_PROTO_HCLASS_INDEX, ecma_roots_class)           \
     V(JSTaggedValue, ElementNoneClass, ELEMENT_NONE_HCLASS_INDEX, ecma_roots_class)                                   \
     V(JSTaggedValue, ElementHoleClass, ELEMENT_HOLE_HCLASS_INDEX, ecma_roots_class)                                   \
     V(JSTaggedValue, ElementIntClass, ELEMENT_INT_HCLASS_INDEX, ecma_roots_class)                                     \

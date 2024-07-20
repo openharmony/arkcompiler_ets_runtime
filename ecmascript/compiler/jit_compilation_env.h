@@ -30,7 +30,7 @@ public:
     }
     JSRuntimeOptions &GetJSOptions() override;
     // thread
-    const CMap<ElementsKind, ConstantIndex> &GetArrayHClassIndexMap() const override;
+    const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &GetArrayHClassIndexMap() const override;
     const BuiltinHClassEntries &GetBuiltinHClassEntries() const override;
     JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const override;
     void SetTsManagerCompilationEnv();

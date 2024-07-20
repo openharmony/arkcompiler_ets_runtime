@@ -206,7 +206,8 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     ElementsKind kind = acc_.GetArrayMetaDataAccessor(gate).GetElementsKind();
     GateRef hclass = Circuit::NullGate();
     if (!Elements::IsGeneric(kind)) {
-        auto hclassIndex = compilationEnv_->GetArrayHClassIndexMap().at(kind);
+        // At define point, we use initial array class without IsPrototype set.
+        auto hclassIndex = compilationEnv_->GetArrayHClassIndexMap().at(kind).first;
         hclass = builder_.GetGlobalConstantValue(hclassIndex);
     } else {
         GateRef globalEnv = builder_.GetGlobalEnv();

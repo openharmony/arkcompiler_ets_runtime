@@ -267,6 +267,15 @@ JSHandle<JSHClass> JSHClass::Clone(const JSThread *thread, const JSHandle<JSHCla
     return newJsHClass;
 }
 
+JSHandle<JSHClass> JSHClass::CloneWithElementsKind(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                                   const ElementsKind kind, bool isPrototype)
+{
+    JSHandle<JSHClass> newHClass = Clone(thread, jshclass);
+    newHClass->SetIsPrototype(isPrototype);
+    newHClass->SetElementsKind(kind);
+    return newHClass;
+}
+
 // use for transition to dictionary
 JSHandle<JSHClass> JSHClass::CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass)
 {
@@ -530,7 +539,16 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JST
             // o1 becomes a prototype object of object o2 and an on-proto IC loading x from o2 will rely on the
             // stability of the prototype-chain o2 -> o1. If directly marking the o1.hclass1 as a prototype hclass,
             // the previous IC of adding property x won't trigger IC-miss and fails to notify the IC on o2.
-            JSHandle<JSHClass> newProtoClass = JSHClass::Clone(thread, hclass);
+
+            // At here, When a JSArray with initial hclass is set as a proto,
+            // we substitute its hclass with preserved proto hclass.
+            JSHandle<JSHClass> newProtoClass;
+            if (ProtoIsFastJSArray(thread, proto, hclass)) {
+                newProtoClass = JSHandle<JSHClass>(thread, thread->GetArrayInstanceHClass(hclass->GetElementsKind(),
+                                                                                          true));
+            } else {
+                newProtoClass = JSHClass::Clone(thread, hclass);
+            }
             JSTaggedValue layout = newProtoClass->GetLayout();
             // If the type of object is JSObject, the layout info value is initialized to the default value,
             // if the value is not JSObject, the layout info value is initialized to null.
@@ -550,9 +568,6 @@ void JSHClass::OptimizePrototypeForIC(const JSThread *thread, const JSHandle<JST
             // still dump for class in this path now
             if (!isChangeProto) {
                 thread->GetEcmaVM()->GetPGOProfiler()->UpdateRootProfileTypeSafe(*hclass, *newProtoClass);
-            }
-            if (proto->IsJSObject()) {
-                TryRestoreElementsKind(thread, newProtoClass, JSHandle<JSObject>::Cast(proto));
             }
         } else {
             // There is no sharing in AOT hclass. Therefore, it is not necessary or possible to clone here.
@@ -659,17 +674,21 @@ void JSHClass::TransitionForRepChange(const JSThread *thread, const JSHandle<JSO
     // 4. Maybe Transition And Maintain subtypeing check
 }
 
-JSHClass* JSHClass::GetInitialArrayHClassWithElementsKind(const JSThread *thread, const ElementsKind kind)
+bool JSHClass::IsInitialArrayHClassWithElementsKind(const JSThread *thread, const JSHClass *targetHClass,
+                                                    const ElementsKind targetKind)
 {
     const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
-    auto newKindIter = arrayHClassIndexMap.find(kind);
+    auto newKindIter = arrayHClassIndexMap.find(targetKind);
     if (newKindIter != arrayHClassIndexMap.end()) {
-        auto index = static_cast<size_t>(newKindIter->second);
-        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
+        auto indexPair = newKindIter->second;
+        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(static_cast<size_t>(indexPair.first));
+        auto hclassWithProtoVal = thread->GlobalConstants()->
+            GetGlobalConstantObject(static_cast<size_t>(indexPair.second));
         JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        return hclass;
+        JSHClass *hclassWithProto = JSHClass::Cast(hclassWithProtoVal.GetTaggedObject());
+        return (targetHClass == hclass || targetHClass == hclassWithProto);
     }
-    return nullptr;
+    return false;
 }
 
 bool JSHClass::TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
@@ -677,16 +696,21 @@ bool JSHClass::TransitToElementsKindUncheck(const JSThread *thread, const JSHand
 {
     ElementsKind current = obj->GetJSHClass()->GetElementsKind();
     // currently we only support initial array hclass
-    if (obj->GetClass() == GetInitialArrayHClassWithElementsKind(thread, current)) {
+    JSHClass *objHclass = obj->GetClass();
+    if (IsInitialArrayHClassWithElementsKind(thread, objHclass, current)) {
         const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
         auto newKindIter = arrayHClassIndexMap.find(newKind);
+        bool objHclassIsPrototype = objHclass->IsPrototype();
         if (newKindIter != arrayHClassIndexMap.end()) {
-            auto index = static_cast<size_t>(newKindIter->second);
+            auto indexPair = newKindIter->second;
+            auto index = objHclassIsPrototype ? static_cast<size_t>(indexPair.second) :
+                                                static_cast<size_t>(indexPair.first);
             auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
             JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
             obj->SynchronizedSetClass(thread, hclass);
             return true;
         }
+        LOG_ECMA(FATAL) << "Unknown newKind: " << static_cast<int32_t>(newKind);
     }
     return false;
 }
@@ -703,16 +727,9 @@ void JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSAr
     if (newKind == current) {
         return;
     }
-    // Currently, we only support fast array elementsKind
-    ASSERT(array->GetClass() == GetInitialArrayHClassWithElementsKind(thread, current));
-    const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
-    auto newKindIter = arrayHClassIndexMap.find(newKind);
-    if (newKindIter != arrayHClassIndexMap.end()) {
-        auto index = static_cast<size_t>(newKindIter->second);
-        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
-        JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        array->SynchronizedSetClass(thread, hclass);
-    }
+
+    ASSERT(IsInitialArrayHClassWithElementsKind(thread, array->GetJSHClass(), current));
+    TransitToElementsKindUncheck(thread, JSHandle<JSObject>(array), newKind);
 }
 
 bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
@@ -732,27 +749,21 @@ bool JSHClass::TransitToElementsKind(const JSThread *thread, const JSHandle<JSOb
         return false;
     }
     // Currently, we only support fast array elementsKind
-    ASSERT(object->GetClass() == GetInitialArrayHClassWithElementsKind(thread, current));
-    const auto &arrayHClassIndexMap = thread->GetArrayHClassIndexMap();
-    auto newKindIter = arrayHClassIndexMap.find(newKind);
-    if (newKindIter != arrayHClassIndexMap.end()) {
-        auto index = static_cast<size_t>(newKindIter->second);
-        auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
-        JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
-        object->SynchronizedSetClass(thread, hclass);
+    ASSERT(IsInitialArrayHClassWithElementsKind(thread, object->GetJSHClass(), current));
+    if (!TransitToElementsKindUncheck(thread, object, newKind)) {
+        return false;
+    }
 
-        if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
-            // Update TrackInfo
-            if (!thread->IsPGOProfilerEnable()) {
-                return true;
-            }
-            auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
-            thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
+    if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
+        // Update TrackInfo
+        if (!thread->IsPGOProfilerEnable()) {
             return true;
         }
+        auto trackInfoVal = JSHandle<JSArray>(object)->GetTrackInfo();
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, newKind);
         return true;
     }
-    return false;
+    return true;
 }
 
 TransitionResult JSHClass::ConvertOrTransitionWithRep(const JSThread *thread,

@@ -1567,7 +1567,7 @@ void SlowPathLowering::LowerFastStrictEqual(GateRef gate)
 void SlowPathLowering::LowerCreateEmptyArray(GateRef gate)
 {
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateEmptyArray, { glue_ });
-    GateRef newRes = LowerUpdateArrayHClass(gate, result);
+    GateRef newRes = LowerUpdateArrayHClassAtDefine(gate, result);
     ReplaceHirWithValue(gate, newRes, true);
 }
 
@@ -1583,15 +1583,15 @@ void SlowPathLowering::LowerCreateArrayWithBuffer(GateRef gate)
     GateRef index = builder_.TruncInt64ToInt32(acc_.GetValueIn(gate, 0));
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::CreateArrayWithBuffer, { glue_, index, jsFunc });
     // when elementsKind switch on, we should not update arrayHClass here.
-    GateRef newRes = LowerUpdateArrayHClass(gate, result);
+    GateRef newRes = LowerUpdateArrayHClassAtDefine(gate, result);
     ReplaceHirWithValue(gate, newRes, true);
 }
 
-GateRef SlowPathLowering::LowerUpdateArrayHClass(GateRef gate, GateRef array)
+GateRef SlowPathLowering::LowerUpdateArrayHClassAtDefine(GateRef gate, GateRef array)
 {
     ElementsKind kind = acc_.TryGetElementsKind(gate);
     if (!Elements::IsGeneric(kind)) {
-        size_t hclassIndex = static_cast<size_t>(compilationEnv_->GetArrayHClassIndexMap().at(kind));
+        size_t hclassIndex = static_cast<size_t>(compilationEnv_->GetArrayHClassIndexMap().at(kind).first);
         GateRef gConstAddr = builder_.Load(VariableType::JS_POINTER(), glue_,
             builder_.IntPtr(JSThread::GlueData::GetGlobalConstOffset(false)));
         GateRef constantIndex = builder_.IntPtr(JSTaggedValue::TaggedTypeSize() * hclassIndex);

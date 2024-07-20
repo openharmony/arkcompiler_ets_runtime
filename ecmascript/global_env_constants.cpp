@@ -419,12 +419,14 @@ void GlobalEnvConstants::InitElementKindHClass(const JSThread *thread, JSHandle<
 {
     auto map = thread->GetArrayHClassIndexMap();
     for (auto iter : map) {
-        JSHandle<JSHClass> hclass = originHClass;
+        JSHandle<JSHClass> hclassWithProto = JSHClass::CloneWithElementsKind(thread, originHClass, iter.first, true);
         if (iter.first != ElementsKind::GENERIC) {
-            hclass = JSHClass::Clone(thread, originHClass);
-            hclass->SetElementsKind(iter.first);
+            JSHandle<JSHClass> hclass = JSHClass::CloneWithElementsKind(thread, originHClass, iter.first, false);
+            SetConstant(iter.second.first, hclass);
+        } else {
+            SetConstant(iter.second.first, originHClass);
         }
-        SetConstant(iter.second, hclass);
+        SetConstant(iter.second.second, hclassWithProto);
     }
 }
 }  // namespace panda::ecmascript

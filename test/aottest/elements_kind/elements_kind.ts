@@ -88,3 +88,31 @@ function testArrayUsedAsProto() {
 }
 
 testArrayUsedAsProto();
+
+function testProto1() {
+  let a = [1, 2, 3];
+  let obj = {};
+  obj.__proto__ = a;
+  print(a[0]);
+  print(ArkTools.getElementsKind(a));
+}
+
+print(ArkTools.isAOTCompiled(testProto1));
+testProto1();
+
+
+function testProto2() {
+  let obj = {};
+  for (let i = 0; i < 4; i++) {
+    let a = [1, 2, 3];
+    if (i == 2) {
+      obj.__proto__ = a;
+      a[1] = 1.5
+    }
+    print(a[0] + 1);
+    print(ArkTools.getElementsKind(a));
+  }
+}
+
+print(ArkTools.isAOTCompiled(testProto2));
+testProto2();

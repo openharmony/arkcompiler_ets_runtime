@@ -427,6 +427,8 @@ public:
     static JSHandle<JSHClass> Clone(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
                                     bool withoutInlinedProperties = false, uint32_t incInlinedProperties = 0);
     static JSHandle<JSHClass> CloneWithoutInlinedProperties(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
+    static JSHandle<JSHClass> CloneWithElementsKind(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
+                                                    const ElementsKind kind, bool isPrototype);
 
     static void TransitionElementsToDictionary(const JSThread *thread, const JSHandle<JSObject> &obj);
     static void OptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
@@ -463,7 +465,8 @@ public:
                                        const JSHandle<JSTaggedValue> &key, PropertyAttributes attr);
     static void TransitionForElementsKindChange(const JSThread *thread, const JSHandle<JSObject> &receiver,
                                          const ElementsKind newKind);
-    static JSHClass* GetInitialArrayHClassWithElementsKind(const JSThread *thread, const ElementsKind kind);
+    static bool IsInitialArrayHClassWithElementsKind(const JSThread *thread, const JSHClass *targetHClass,
+                                                     const ElementsKind targetKind);
     static bool PUBLIC_API TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
                                              ElementsKind newKind);
     static void PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
@@ -2040,6 +2043,10 @@ public:
     static JSHandle<JSHClass> CreateSPrototypeHClass(JSThread *thread, const std::vector<PropertyDescriptor> &descs);
 
 private:
+
+    static inline bool ProtoIsFastJSArray(const JSThread *thread, const JSHandle<JSTaggedValue> proto,
+                                          const JSHandle<JSHClass> hclass);
+
     static void CreateSInlinedLayout(JSThread *thread,
                                      const std::vector<PropertyDescriptor> &descs,
                                      const JSHandle<JSHClass> &hclass,

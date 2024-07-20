@@ -109,7 +109,9 @@ bool ArrayParser::RecordTypeInfo(const PGODefineOpType &defType, const PGOTypeLo
     ptManager_->RecordLocationToElementsKind(loc, kind);
 
     auto traceId = rootType.GetId();
-    auto hclassIdx = ptManager_->GetJSThread()->GetArrayHClassIndexMap().at(kind);
+    // For PGO, we do not care whether an array isPrototype or not.
+    // This type is used at define point, we can use initial array hclass without IsPrototype bit set.
+    auto hclassIdx = ptManager_->GetJSThread()->GetArrayHClassIndexMap().at(kind).first;
     ptManager_->RecordConstantIndex(traceId, static_cast<uint32_t>(hclassIdx));
     return true;
 }

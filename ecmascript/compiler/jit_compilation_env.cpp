@@ -40,7 +40,7 @@ JSRuntimeOptions &JitCompilationEnv::GetJSOptions()
     return hostThread_->GetEcmaVM()->GetJSOptions();
 }
 
-const CMap<ElementsKind, ConstantIndex> &JitCompilationEnv::GetArrayHClassIndexMap() const
+const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &JitCompilationEnv::GetArrayHClassIndexMap() const
 {
     return hostThread_->GetArrayHClassIndexMap();
 }

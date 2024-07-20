@@ -303,7 +303,7 @@ private:
     void LowerSetGeneratorState(GateRef gate);
     GateRef GetValueFromTaggedArray(GateRef arrayGate, GateRef indexOffset);
     GateRef GetTaggedArrayFromValueIn(Environment *env, GateRef gate, size_t length);
-    GateRef LowerUpdateArrayHClass(GateRef gate, GateRef array);
+    GateRef LowerUpdateArrayHClassAtDefine(GateRef gate, GateRef array);
     void AddProfiling(GateRef gate, bool skipGenerator = true);
     GateRef FastStrictEqual(GateRef left, GateRef right);
     void LowerWideLdPatchVar(GateRef gate);

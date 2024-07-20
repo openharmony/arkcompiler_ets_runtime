@@ -271,7 +271,9 @@ void PGOProfiler::UpdateTrackElementsKind(JSTaggedValue trackInfoVal, ElementsKi
         trackInfo->SetElementsKind(mixKind);
         auto thread = vm_->GetJSThread();
         auto globalConst = thread->GlobalConstants();
-        auto constantId = thread->GetArrayHClassIndexMap().at(mixKind);
+        // Since trackinfo is only used at define point,
+        // we update cachedHClass with initial array hclass which does not have IsPrototype set.
+        auto constantId = thread->GetArrayHClassIndexMap().at(mixKind).first;
         auto hclass = globalConst->GetGlobalConstantObject(static_cast<size_t>(constantId));
         trackInfo->SetCachedHClass(vm_->GetJSThread(), hclass);
         UpdateTrackInfo(JSTaggedValue(trackInfo));
@@ -1684,7 +1686,8 @@ bool PGOProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, const CStrin
     }
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
-        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind());
+        bool receiverIsPrototype = receiver->IsPrototype();
+        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {
@@ -1720,7 +1723,8 @@ bool PGOProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, const CString &r
     auto thread = vm_->GetJSThread();
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
-        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind());
+        bool receiverIsPrototype = receiver->IsPrototype();
+        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {

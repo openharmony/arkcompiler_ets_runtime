@@ -637,22 +637,20 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
     JSTaggedType elementsKind = GetTArg(argv, argc, 1);        // 1: means the first parameter
     ASSERT(receiver->IsJSArray());
     ElementsKind kind = Elements::FixElementsKind(static_cast<ElementsKind>(elementsKind));
-    auto arrayIndexMap = thread->GetArrayHClassIndexMap();
-    if (arrayIndexMap.find(kind) != arrayIndexMap.end()) {
-        auto index = thread->GetArrayHClassIndexMap().at(kind);
-        auto globalConst = thread->GlobalConstants();
-        auto targetHClassValue = globalConst->GetGlobalConstantObject(static_cast<size_t>(index));
-        auto hclass = JSHClass::Cast(targetHClassValue.GetTaggedObject());
-        auto array = JSHandle<JSArray>(receiver);
-        array->SynchronizedSetClass(thread, hclass);
-        if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
-            // Update TrackInfo
-            if (!thread->IsPGOProfilerEnable()) {
-                return JSTaggedValue::Hole().GetRawData();
-            }
-            auto trackInfoVal = array->GetTrackInfo();
-            thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
+    auto array = JSHandle<JSArray>(receiver);
+    ASSERT(JSHClass::IsInitialArrayHClassWithElementsKind(thread, receiver->GetTaggedObject()->GetClass(),
+                                                          receiver->GetTaggedObject()->GetClass()->GetElementsKind()));
+    if (!JSHClass::TransitToElementsKindUncheck(thread, JSHandle<JSObject>(array), kind)) {
+        return JSTaggedValue::Hole().GetRawData();
+    }
+
+    if (!thread->GetEcmaVM()->IsEnableElementsKind()) {
+        // Update TrackInfo
+        if (!thread->IsPGOProfilerEnable()) {
+            return JSTaggedValue::Hole().GetRawData();
         }
+        auto trackInfoVal = JSHandle<JSArray>(receiver)->GetTrackInfo();
+        thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
     }
     return JSTaggedValue::Hole().GetRawData();
 }
