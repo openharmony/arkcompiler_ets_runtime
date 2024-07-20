@@ -50,13 +50,10 @@ JSHandle<JSTaggedValue> ModuleManagerHelper::GetNativeOrCjsExports(JSThread *thr
     if (SourceTextModule::IsNativeModule(moduleType)) {
         exports.Update(module->GetModuleValue(thread, 0, false));
         if (!exports->IsJSObject()) {
-            CString errorMsg =
-                "Loading native module:" + ConvertToString(SourceTextModule::GetModuleName(resolvedModule)) +
-                ", failed";
-            JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
-            THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread,
-                ErrorType::SYNTAX_ERROR, errorMsg.c_str(), exception);
+            LOG_FULL(WARN) << "Load native module failed, so is " <<
+                ConvertToString(SourceTextModule::GetModuleName(resolvedModule));
         }
+        return exports;
     }
     if (SourceTextModule::IsCjsModule(moduleType)) {
         JSHandle<JSTaggedValue> cjsModuleName(thread, SourceTextModule::GetModuleName(module.GetTaggedValue()));
@@ -68,6 +65,7 @@ JSHandle<JSTaggedValue> ModuleManagerHelper::GetNativeOrCjsExports(JSThread *thr
             THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread,
                 ErrorType::SYNTAX_ERROR, errorMsg.c_str(), exception);
         }
+        return exports;
     }
     return exports;
 }
