@@ -16,6 +16,7 @@
 #include "ecmascript/compiler/slowpath_lowering.h"
 
 #include "ecmascript/compiler/bytecodes.h"
+#include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/dfx/vm_thread_control.h"
@@ -2710,8 +2711,6 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
 {
     Jit::JitLockHolder lock(compilationEnv_, "SlowPathLowering");
     Environment env(gate, circuit_, &builder_);
-    DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
-    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = acc_.GetValueIn(gate, 1);
 
     FunctionKind kind = FunctionKind::LAST_FUNCTION_KIND;
@@ -2729,7 +2728,7 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
             kind = Method::Cast(obj)->GetFunctionKind();
         }
     }
-
+    GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef length = acc_.GetValueIn(gate, 2);
     GateRef lexEnv = acc_.GetValueIn(gate, 3); // 3: Get current env
     GateRef slotId = acc_.GetValueIn(gate, 0);
@@ -2737,9 +2736,9 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     StateDepend failControl;
     Label success(&builder_);
     Label failed(&builder_);
-    NewObjectStubBuilder newBuilder(&env);
-    newBuilder.NewJSFunction(glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), builder_.TruncInt64ToInt32(length),
-                             lexEnv, &result, &success, &failed, kind);
+    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::Definefunc,
+        {glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), builder_.TruncInt64ToInt32(length), lexEnv});
+    BRANCH_CIR(builder_.TaggedIsException(result), &failed, &success);
     builder_.Bind(&failed);
     {
         failControl.SetState(builder_.GetState());
@@ -2748,17 +2747,16 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     builder_.Bind(&success);
     {
 #if ECMASCRIPT_ENABLE_IC
-        builder_.UpdateProfileTypeInfoCellToFunction(glue_, result.ReadVariable(),
-            builder_.GetProfileTypeInfo(jsFunc), slotId);
+        builder_.UpdateProfileTypeInfoCellToFunction(glue_, result, builder_.GetProfileTypeInfo(jsFunc), slotId);
         if (compilationEnv_->IsJitCompiler()) {
             builder_.CallRuntime(glue_, RTSTUB_ID(JitReuseCompiledFunc), Gate::InvalidGateRef,
-                { result.ReadVariable() }, glue_);
+                { result }, glue_);
         }
 #endif
         successControl.SetState(builder_.GetState());
         successControl.SetDepend(builder_.GetDepend());
     }
-    acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, *result);
+    acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);
 }
 
 void SlowPathLowering::LowerAsyncFunctionEnter(GateRef gate)

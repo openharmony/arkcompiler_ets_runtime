@@ -108,6 +108,7 @@ namespace panda::ecmascript::kungfu {
     V(GetSingleCharCodeByIndex)       \
     V(FastStringEqual)                \
     V(FastStringAdd)                  \
+    V(Definefunc)                     \
     V(DeleteObjectProperty)           \
     V(SameValue)                      \
     V(StringIteratorNext)

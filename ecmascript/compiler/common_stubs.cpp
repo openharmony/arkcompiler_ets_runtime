@@ -55,6 +55,29 @@ void SubStubBuilder::GenerateCircuit()
     Return(operationBuilder.Sub(glue, x, y));
 }
 
+void DefinefuncStubBuilder::GenerateCircuit()
+{
+    auto env = GetEnvironment();
+    GateRef glue = PtrArgument(0);
+    GateRef jsFunc = TaggedArgument(1);
+    GateRef methodId = Int32Argument(2); // 2: 3rd argument
+    GateRef length = Int32Argument(3);   // 3: 4th argument
+    GateRef lexEnv = TaggedArgument(4);  // 4: 5th argument
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label failed(env);
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.NewJSFunction(glue, jsFunc, methodId, length, lexEnv, &result, &exit, &failed);
+    Bind(&failed);
+    {
+        result = Exception();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*result);
+}
+
 void MulStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
