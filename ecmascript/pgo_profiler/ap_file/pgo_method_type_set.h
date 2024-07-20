@@ -68,6 +68,10 @@ public:
     {
         auto result = objDefOpTypeInfos_.find(ObjDefOpTypeInfo(offset, type));
         if (result != objDefOpTypeInfos_.end()) {
+            if (type.GetProfileType().IsArrayLiteralType())  {
+                const_cast<PGODefineOpTemplate<ProfileType> *>(&((*result).GetTypeRef()))
+                    ->SetElementsKind(type.GetElementsKind());
+            }
             return;
         }
         objDefOpTypeInfos_.emplace(offset, type);
