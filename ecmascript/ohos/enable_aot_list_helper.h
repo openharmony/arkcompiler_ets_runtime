@@ -35,6 +35,7 @@
 namespace panda::ecmascript::ohos {
 class EnableAotJitListHelper {
 constexpr static const char *const AOT_BUILD_COUNT_DISABLE = "ark.aot.build.count.disable";
+constexpr static const char *const ARK_PROFILE = "ark.profile";
 public:
     static std::shared_ptr<EnableAotJitListHelper> GetInstance()
     {
@@ -48,10 +49,14 @@ public:
     }
 
     EnableAotJitListHelper() = default;
-    ~EnableAotJitListHelper() = default;
+    virtual ~EnableAotJitListHelper() = default;
 
     bool IsEnableAot(const std::string &candidate)
     {
+        // The enable logic is not only controlled by the whitelist, but also by the ark.profile switch
+        if (IsEnabledByArkProfiler()) {
+            return true;
+        }
         return (enableList_.find(candidate) != enableList_.end()) ||
                (enableList_.find(candidate + ":aot") != enableList_.end());
     }
@@ -70,6 +75,14 @@ public:
     void Clear()
     {
         enableList_.clear();
+    }
+
+    virtual bool IsEnabledByArkProfiler() const
+    {
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+        return OHOS::system::GetBoolParameter(ARK_PROFILE, false);
+#endif
+        return false;
     }
 
     static bool GetAotBuildCountDisable()
