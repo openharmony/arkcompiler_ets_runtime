@@ -162,8 +162,11 @@ public:
 
     void Remap(PGOContext &context)
     {
+        auto &valueToId = pool_->GetValueToId();
+        valueToId.clear();
         for (auto &entry : pool_->GetPool()) {
             entry.second.Remap(context);
+            valueToId[entry.second.GetData()] = entry.first;
         }
     }
 

@@ -48,17 +48,17 @@ public:
 
     bool TryAdd(const V &value, ApEntityId &entryId)
     {
-        for (auto &entry : pool_) {
-            if (entry.second.GetData() == value) {
-                entryId = entry.second.GetEntryId();
-                return true;
-            }
+        auto it = valueToId_.find(value);
+        if (it != valueToId_.end()) {
+            entryId = it->second;
+            return true;
         }
 
         entryId = ApEntityId(IsReserved(value) ? (++reservedUsed_, GetReservedId(value))
                                                : RESERVED_COUNT + pool_.size() - reservedUsed_);
 
         auto result = pool_.emplace(entryId, value);
+        valueToId_.emplace(value, entryId);
         auto &entry = result.first->second;
         entry.SetEntryId(entryId);
         return true;
@@ -98,6 +98,7 @@ public:
     void Clear()
     {
         pool_.clear();
+        valueToId_.clear();
         reservedUsed_ = 0;
     }
 
@@ -198,6 +199,11 @@ public:
         return pool_;
     }
 
+    std::unordered_map<V, ApEntityId> &GetValueToId()
+    {
+        return valueToId_;
+    }
+
 private:
     NO_COPY_SEMANTIC(PoolTemplate);
     NO_MOVE_SEMANTIC(PoolTemplate);
@@ -231,6 +237,18 @@ private:
     SupportCb supportCb_;
     GetSectionCb getSectionCb_;
     std::unordered_map<ApEntityId, Entry> pool_;
+    std::unordered_map<V, ApEntityId> valueToId_;
 };
 }  // namespace panda::ecmascript::pgo
+
+namespace std {
+using panda::ecmascript::pgo::ProfileType;
+template<>
+struct hash<ProfileType> {
+    size_t operator()(const ProfileType& type) const noexcept
+    {
+        return type.GetRaw();
+    }
+};
+} // namespace std
 #endif  // ECMASCRIPT_PGO_PROFILER_AP_FILE_POOL_TEMPLATE_H
