@@ -33,7 +33,8 @@ namespace OHOS {
             LOG_ECMA(ERROR) << "illegal input!";
             return;
         }
-        JSNApi::LoadPatch(vm, patchFileName, (void *)data, size, baseFileName, (void *)data, size);
+        JSNApi::LoadPatch(vm, patchFileName, const_cast<uint8_t *>(data), size,
+                          baseFileName, const_cast<uint8_t *>(data), size);
         JSNApi::DestroyJSVM(vm);
     }
 }

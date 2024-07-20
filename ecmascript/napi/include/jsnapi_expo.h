@@ -1557,15 +1557,15 @@ public:
     static void GetStackAfterCallNapi(EcmaVM *vm);
     static PatchErrorCode LoadPatch(EcmaVM *vm, const std::string &patchFileName, const std::string &baseFileName);
     static PatchErrorCode LoadPatch(EcmaVM *vm,
-                                    const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                                    const std::string &baseFileName, const void *baseBuffer, size_t baseSize);
+                                    const std::string &patchFileName, uint8_t *patchBuffer, size_t patchSize,
+                                    const std::string &baseFileName, uint8_t *baseBuffer, size_t baseSize);
     static PatchErrorCode UnloadPatch(EcmaVM *vm, const std::string &patchFileName);
     // check whether the exception is caused by quickfix methods.
     static bool IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, const std::string &patchFileName);
     // register quickfix query function.
     static void RegisterQuickFixQueryFunc(EcmaVM *vm, std::function<bool(std::string baseFileName,
                         std::string &patchFileName,
-                        void **patchBuffer,
+                        uint8_t **patchBuffer,
                         size_t &patchSize)> callBack);
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);

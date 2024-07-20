@@ -151,8 +151,8 @@ HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
     pfManager->AddJSPandaFile(baseFile);
     pfManager->AddJSPandaFile(patchFile);
 
-    auto result = JSNApi::LoadPatch(instance, patchFileName, (void *)patchData, sizeof(patchData),
-                                    baseFileName, (void *)baseData, sizeof(baseData));
+    auto result = JSNApi::LoadPatch(instance, patchFileName, (uint8_t *)patchData, sizeof(patchData),
+                                    baseFileName, (uint8_t *)baseData, sizeof(baseData));
     EXPECT_FALSE(result == PatchErrorCode::SUCCESS);
 
     pfManager->RemoveJSPandaFile(baseFile.get());
@@ -160,7 +160,7 @@ HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
 }
 
 bool QuickFixQueryFunc(
-    std::string baseFileName, std::string &patchFileName, void ** patchBuffer, size_t &patchBufferSize)
+    std::string baseFileName, std::string &patchFileName, uint8_t ** patchBuffer, size_t &patchBufferSize)
 {
     if (baseFileName != QUICKFIX_ABC_PATH "multi_file/base/merge.abc") {
         return false;
@@ -173,8 +173,8 @@ bool QuickFixQueryFunc(
 
     Parser parser;
     auto res = parser.Parse(data);
-    void *bufferData = reinterpret_cast<void *>((const_cast<char *>(data)));
-    *patchBuffer = &bufferData;
+    uint8_t *bufferData = reinterpret_cast<uint8_t *>((const_cast<char *>(data)));
+    *patchBuffer = bufferData;
     patchBufferSize = sizeof(data);
     return true;
 }

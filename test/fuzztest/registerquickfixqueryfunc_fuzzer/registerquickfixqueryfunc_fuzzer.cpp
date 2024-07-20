@@ -22,7 +22,7 @@ using namespace panda;
 using namespace panda::ecmascript;
 
 namespace OHOS {
-    bool QuickFixQueryFunc(std::string baseFileName, std::string &patchFileName, void **patchBuffer,
+    bool QuickFixQueryFunc(std::string baseFileName, std::string &patchFileName, uint8_t **patchBuffer,
         size_t &patchBufferSize)
     {
         if (baseFileName != "multi_file/base/merge.abc") {
@@ -35,7 +35,7 @@ namespace OHOS {
         char *bufferData = new char[strlen(data) + 1];
         size_t dataSize = strlen(data) + 1;
         strcpy_s(bufferData, dataSize, data);
-        *patchBuffer = reinterpret_cast<void *>(bufferData);
+        *patchBuffer = reinterpret_cast<uint8_t *>(bufferData);
         patchBufferSize = strlen(data);
         return true;
     }
