@@ -212,7 +212,6 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     const JSPandaFile *jsPandaFile = ctx_->GetJSPandaFile();
     CompilerLog *log = ctx_->GetCompilerLog();
     CString recordName = MethodLiteral::GetRecordName(jsPandaFile, method->GetMethodId());
-    bool hasTyps = jsPandaFile->HasTSTypes(recordName);
     const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, method->GetMethodId()));
     std::string fileName(jsPandaFile->GetJSPandaFileDesc());
     std::string fullName = methodName + "@" + std::string(recordName) + "@" + fileName;
@@ -236,8 +235,8 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     ReplaceInput(info, glue_, method);
 
     PassData data(&builder, circuit_, ctx_, log, fullName,
-                  &methodInfo, hasTyps, recordName,
-                  method, method->GetMethodId().GetOffset(), nullptr, CVector<AbcFileInfo>{},
+                  &methodInfo, recordName, method, method->GetMethodId().GetOffset(),
+                  nullptr, CVector<AbcFileInfo>{},
                   nativeAreaAllocator_, ctx_->GetPfDecoder(), passOptions_);
     PassRunner<PassData> pipeline(&data);
     pipeline.RunPass<RedundantPhiEliminationPass>();

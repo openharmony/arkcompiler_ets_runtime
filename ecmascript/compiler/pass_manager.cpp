@@ -84,7 +84,6 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName
                                << "] recordName [" << recordName << "] log:" << "\033[0m";
         }
-        bool hasTypes = jsPandaFile->HasTSTypes(recordName);
         if (compilationEnv_->GetJSOptions().IsEnableJITPGO()) {
             jitProfiler_ = compilationEnv_->GetPGOProfiler()->GetJITProfile();
             static_cast<JitCompilationEnv*>(compilationEnv_)->SetProfileTypeInfo(profileTypeInfo);
@@ -117,7 +116,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         }
 
         CallMethodFlagMap methodFlagMap;
-        data_ = new PassData(builder_, circuit_, ctx_, log_, fullName, &methodInfo, hasTypes, recordName,
+        data_ = new PassData(builder_, circuit_, ctx_, log_, fullName, &methodInfo, recordName,
             methodLiteral, methodOffset, &methodFlagMap, CVector<AbcFileInfo> {},
             compilationEnv_->GetNativeAreaAllocator(), decoder, passOptions_);
         PassRunner<PassData> pipeline(data_);
@@ -270,10 +269,6 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName
                                << "] recordName [" << recordName << "] log:" << "\033[0m";
         }
-        bool hasTypes = jsPandaFile->HasTSTypes(recordName);
-        if (UNLIKELY(!hasTypes)) {
-            LOG_COMPILER(INFO) << "record: " << recordName << " has no types";
-        }
 
         Circuit circuit(compilationEnv_->GetNativeAreaAllocator(), ctx.GetAOTModule()->GetDebugInfo(),
                         fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
@@ -288,7 +283,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
             builder.BytecodeToCircuit();
         }
 
-        PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, hasTypes, recordName,
+        PassData data(&builder, &circuit, &ctx, log_, fullName, &methodInfo, recordName,
                       methodLiteral, methodOffset, callMethodFlagMap_, fileInfos_,
                       compilationEnv_->GetNativeAreaAllocator(), decoder, passOptions_,
                       optBCRange_);
