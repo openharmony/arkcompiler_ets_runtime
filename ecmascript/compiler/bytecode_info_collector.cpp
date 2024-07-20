@@ -64,8 +64,6 @@ void BytecodeInfoCollector::ProcessClasses()
 
     auto &recordNamePtrs = bytecodeInfo_.GetRecordNamePtrs();
     auto &methodPcInfos = bytecodeInfo_.GetMethodPcInfos();
-    std::vector<panda_file::File::EntityId> methodIndexes;
-    std::vector<panda_file::File::EntityId> classConstructIndexes;
     for (const uint32_t index : classIndexes) {
         panda_file::File::EntityId classId(index);
         if (jsPandaFile_->IsExternal(classId)) {
@@ -75,10 +73,8 @@ void BytecodeInfoCollector::ProcessClasses()
         CString desc = utf::Mutf8AsCString(cda.GetDescriptor());
         const std::shared_ptr<CString> recordNamePtr = std::make_shared<CString>(JSPandaFile::ParseEntryPoint(desc));
         cda.EnumerateMethods([this, methods, &methodIdx, pf, &processedMethod,
-            &recordNamePtrs, &methodPcInfos, &recordNamePtr,
-            &methodIndexes, &classConstructIndexes] (panda_file::MethodDataAccessor &mda) {
+            &recordNamePtrs, &methodPcInfos, &recordNamePtr] (panda_file::MethodDataAccessor &mda) {
             auto methodId = mda.GetMethodId();
-            methodIndexes.emplace_back(methodId);
 
             // Generate all constpool
             compilationEnv_->FindOrCreateConstPool(jsPandaFile_, methodId);
@@ -110,7 +106,7 @@ void BytecodeInfoCollector::ProcessClasses()
             auto it = processedMethod.find(methodOffset);
             if (it == processedMethod.end()) {
                 CollectMethodPcsFromBC(codeSize, insns, methodLiteral,
-                    methodOffset, recordNamePtr, classConstructIndexes);
+                    methodOffset, recordNamePtr);
                 processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
             }
 
@@ -118,13 +114,6 @@ void BytecodeInfoCollector::ProcessClasses()
             jsPandaFile_->SetMethodLiteralToMap(methodLiteral);
             pfDecoder_.MatchAndMarkMethod(jsPandaFile_, *recordNamePtr, name.c_str(), methodId);
         });
-    }
-    // class Construct need to use new target, can not fastcall
-    for (auto index : classConstructIndexes) {
-        MethodLiteral *method = jsPandaFile_->GetMethodLiteralByIndex(index.GetOffset());
-        if (method != nullptr) {
-            method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
-        }
     }
     LOG_COMPILER(INFO) << "Total number of methods in file: " << jsPandaFile_->GetJSPandaFileDesc()
                        << " is: " << methodIdx;
@@ -157,17 +146,15 @@ void BytecodeInfoCollector::ProcessMethod(MethodLiteral *methodLiteral)
     panda_file::CodeDataAccessor codeDataAccessor(*pf, codeId.value());
     uint32_t codeSize = codeDataAccessor.GetCodeSize();
     const uint8_t *insns = codeDataAccessor.GetInstructions();
-    std::vector<panda_file::File::EntityId> classConstructIndexes;
 
-    CollectMethodPcsFromBC(codeSize, insns, methodLiteral, methodOffset, recordNamePtr, classConstructIndexes);
+    CollectMethodPcsFromBC(codeSize, insns, methodLiteral, methodOffset, recordNamePtr);
     SetMethodPcInfoIndex(methodOffset, {methodPcInfos.size() - 1, methodOffset}, recordNamePtr);
     processedMethod_.emplace(methodOffset);
 }
 
 void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const uint8_t *insArr,
                                                    MethodLiteral *method, uint32_t methodOffset,
-                                                   const std::shared_ptr<CString> recordNamePtr,
-                                                   std::vector<panda_file::File::EntityId> &classConstructIndexes)
+                                                   const std::shared_ptr<CString> recordNamePtr)
 {
     auto bcIns = BytecodeInst(insArr);
     auto bcInsLast = bcIns.JumpTo(insSz);
@@ -187,7 +174,7 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
         auto metaData = bytecodes_.GetBytecodeMetaData(curPc);
         bool opcodeSupprotFastCall = true;
         bool opcodeSupportTypeByteCall = true;
-        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr, classConstructIndexes,
+        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr,
                                 &opcodeSupprotFastCall, &opcodeSupportTypeByteCall);
         bool vregSupportFastCall = !IsVRegUsed(bcIns, metaData, newtargetIndex);
         if (!opcodeSupprotFastCall || !vregSupportFastCall) {
@@ -287,7 +274,6 @@ void BytecodeInfoCollector::CollectInnerMethodsFromNewLiteral(panda_file::File::
 
 void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &bcIns, const MethodLiteral *method,
                                                     int32_t bcIndex, const std::shared_ptr<CString> recordNamePtr,
-                                                    std::vector<panda_file::File::EntityId> &classConstructIndexes,
                                                     bool *canFastCall, bool *canTypedCall)
 {
     if (!(bcIns.HasFlag(BytecodeInstruction::Flags::STRING_ID) &&
@@ -308,7 +294,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM8_ID16_ID16_IMM16_V8:{
                 auto entityId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM8_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
-                classConstructIndexes.emplace_back(entityId);
                 classDefBCIndexes_.insert(bcIndex);
                 innerMethodId = entityId.GetOffset();
                 CollectMethods(innerMethodId, recordNamePtr);
@@ -320,7 +305,6 @@ void BytecodeInfoCollector::CollectMethodInfoFromBC(const BytecodeInstruction &b
             case BytecodeInstruction::Opcode::DEFINECLASSWITHBUFFER_IMM16_ID16_ID16_IMM16_V8: {
                 auto entityId = jsPandaFile_->ResolveMethodIndex(method->GetMethodId(),
                     (bcIns.GetId <BytecodeInstruction::Format::IMM16_ID16_ID16_IMM16_V8, 0>()).AsRawValue());
-                classConstructIndexes.emplace_back(entityId);
                 classDefBCIndexes_.insert(bcIndex);
                 innerMethodId = entityId.GetOffset();
                 CollectMethods(innerMethodId, recordNamePtr);
