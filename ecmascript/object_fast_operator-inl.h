@@ -640,6 +640,9 @@ JSTaggedValue ObjectFastOperator::SetPropertyByIndex(JSThread *thread, JSTaggedV
                 return JSTypedArray::FastSetPropertyByIndex(thread, receiver, index, value, jsType);
             }
             if (IsSpecialContainer(jsType)) {
+                if (DefineSemantics(status)) {
+                    return JSTaggedValue::Hole();
+                }
                 return SetContainerProperty(thread, holder, index, value, jsType);
             }
             return JSTaggedValue::Hole();
