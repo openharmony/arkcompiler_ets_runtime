@@ -122,13 +122,16 @@ def remove_dir(path):
 
 def git_clone(git_url, code_dir):
     cmds = ['git', 'clone', git_url, code_dir]
-    result = True
-    with subprocess.Popen(cmds) as proc:
-        ret = proc.wait()
-        if ret:
-            print(f"\n error: Cloning '{git_url}' failed.")
-            result = False
-    return result
+    retries = RegressTestConfig.DEFAULT_RETRIES
+    while retries > 0:
+        with subprocess.Popen(cmds) as proc:
+            ret = proc.wait()
+            if ret:
+                print(f"\n Error: Cloning '{git_url}' failed. Retry remaining '{retries}' times")
+                retries -= 1
+            else:
+                return True
+    sys.exit(1)
 
 
 def output(msg):
@@ -234,6 +237,7 @@ class RegressTestPrepare:
                 shutil.copy(str(out_file), str(out_file_path))
 
     def gen_abc_files(self, test_list):
+        print("\nGenerating abc file........\n")
         with multiprocessing.Pool(processes=self.args.processes) as pool:
             pool.imap_unordered(self.gen_abc_file, test_list)
             pool.close()
@@ -264,7 +268,8 @@ class RegressTestPrepare:
             if dir_path.find(".git") != -1:
                 continue
             for filename in filenames:
-                result.append(os.path.join(dir_path, filename))
+                if filename.endswith(".js") or filename.endswith(".mjs"):
+                    result.append(os.path.join(dir_path, filename))
         return result
 
     def prepare_clean_data(self):
@@ -297,6 +302,7 @@ class RegressTestPrepare:
 
 
 def run_regress_test_prepare(args):
+    print("\nPreparing regresstest........")
     remove_dir(args.regress_out_dir)
     remove_dir(RegressTestConfig.REGRESS_TEST_CASE_DIR)
     os.makedirs(args.regress_out_dir)
@@ -335,7 +341,7 @@ def open_result_excel(file_path):
     return file_object
 
 
-def run_test_case_with_expect(command, test_case_file, expect_file, timeout) -> Tuple[bool, str]:
+def run_test_case_with_expect(command, test_case_file, expect_file, test_uncaught_error, timeout) -> Tuple[bool, str]:
     ret_code = 0
     expect_output_str = read_expect_file(expect_file, test_case_file)
     with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
@@ -344,9 +350,12 @@ def run_test_case_with_expect(command, test_case_file, expect_file, timeout) -> 
             out_str = out.decode('UTF-8').strip()
             err_str = err.decode('UTF-8').strip()
             ret_code = process.poll()
-            # ret_code equals 0 means execute ok, ret_code equals 255 means uncaught error
-            if (ret_code == 0 and (out_str == expect_output_str.strip() or err_str == expect_output_str.strip())) or \
-                ret_code == 255:
+            if (test_uncaught_error and ret_code == 255 and
+                (out_str == expect_output_str.strip() or err_str == expect_output_str.strip())):
+                result_message = f'PASS {test_case_file} \n'
+                out_put_std(ret_code, command, f'PASS: {test_case_file}')
+                return True, result_message
+            if (ret_code == 0 and (out_str == expect_output_str.strip() or err_str == expect_output_str.strip())):
                 result_message = f'PASS {test_case_file} \n'
                 out_put_std(ret_code, command, f'PASS: {test_case_file}')
                 return True, result_message
@@ -365,19 +374,18 @@ def run_test_case_with_expect(command, test_case_file, expect_file, timeout) -> 
             return False, result_message
 
 
-def run_test_case_with_assert(command, test_case_file, timeout) -> Tuple[bool, str]:
+def run_test_case_with_assert(command, test_case_file, test_uncaught_error, timeout) -> Tuple[bool, str]:
     ret_code = 0
     with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
         try:
             out, err = process.communicate(timeout=timeout)
             ret_code = process.poll()
             err_str = err.decode('UTF-8')
-            # ret_code equals 0 means execute ok, ret_code equals 255 means uncaught error
-            if ret_code == 255:
-                out_put_std(ret_code, command, f'PASS: {test_case_file}')
+            if test_uncaught_error and ret_code == 255:
                 result_message = f'PASS {test_case_file} \n'
+                out_put_std(ret_code, command, result_message)
                 return True, result_message
-            elif ret_code != 0 or (err_str != '' and "[ecmascript] Stack overflow" not in err_str):
+            if ret_code != 0 or (err_str != '' and "[ecmascript] Stack overflow" not in err_str):
                 result_message = f'FAIL: {test_case_file} \nerr: {str(err_str)}'
                 out_put_std(ret_code, command, result_message)
                 return False, result_message
@@ -394,12 +402,12 @@ def run_test_case_with_assert(command, test_case_file, timeout) -> Tuple[bool, s
             return False, result_message
 
 
-def run_test_case_file(command, test_case_file, expect_file, timeout) -> Tuple[bool, str]:
+def run_test_case_file(command, test_case_file, expect_file, test_uncaught_error, timeout) -> Tuple[bool, str]:
     expect_file_exits = os.path.exists(expect_file)
     if expect_file_exits:
-        return run_test_case_with_expect(command, test_case_file, expect_file, timeout)
+        return run_test_case_with_expect(command, test_case_file, expect_file, test_uncaught_error, timeout)
     else:
-        return run_test_case_with_assert(command, test_case_file, timeout)
+        return run_test_case_with_assert(command, test_case_file, test_uncaught_error, timeout)
 
 def get_file_source(file):
     with open(file, encoding='ISO-8859-1') as f:
@@ -417,7 +425,7 @@ def setTestEnviron(case):
         real_path = case.replace('regresstest/ark-regress/', '')
     js_case_path = os.path.join(RegressTestConfig.REGRESS_TEST_CASE_DIR, real_path)
     if not os.path.exists(js_case_path):
-        return;
+        return
     source = get_file_source(js_case_path)
     env_match = ENV_PATTERN.search(source)
     if env_match:
@@ -427,7 +435,7 @@ def setTestEnviron(case):
                 os.environ['TZ'] = value
             if var.find('LC_ALL') >= 0:
                 os.environ['LC_ALL'] = value
-            break;
+            break
 
 
 # pylint: disable=invalid-name,global-statement
@@ -440,7 +448,7 @@ def init_worker(args):
 
 
 def run_test_case(tuple_args) -> Tuple[Optional[bool], str]:
-    test_file, force_gc_files, timeout = tuple_args
+    test_file, force_gc_files, uncaught_error_files, timeout = tuple_args
     args = worker_wrapper_args
     if args is None or test_file.endswith(RegressTestConfig.TEST_TOOL_FILE_NAME):
         return None, ""
@@ -459,17 +467,22 @@ def run_test_case(tuple_args) -> Tuple[Optional[bool], str]:
     if unforced_gc:
         asm_arg1 = "--enable-force-gc=false"
     icu_path = f"--icu-data-path={args.icu_path}"
+    # test uncaught error
+    uncaught_error_file = force_gc_file
+    test_uncaught_error = False
+    if uncaught_error_file in uncaught_error_files:
+        test_uncaught_error = True
     command = [args.ark_tool, asm_arg1, icu_path, test_case]
     expect_file = test_file.replace('.abc', '.out')
-    test_res, result_message = run_test_case_file(command, test_case_file, expect_file, timeout)
+    test_res, result_message = run_test_case_file(command, test_case_file, expect_file, test_uncaught_error, timeout)
     return test_res, result_message
 
 
-def run_test_case_dir(args, test_abc_files, force_gc_files, timeout) -> Tuple[int, int]:
+def run_test_case_dir(args, test_abc_files, force_gc_files, uncaught_error_files, timeout) -> Tuple[int, int]:
     pass_count = 0
     fail_count = 0
 
-    tests = [(test, force_gc_files, timeout) for test in test_abc_files]
+    tests = [(test, force_gc_files, uncaught_error_files, timeout) for test in test_abc_files]
 
     with multiprocessing.Pool(processes=args.processes, initializer=init_worker, initargs=(args, )) as pool:
         results = pool.imap_unordered(run_test_case, tests)
@@ -491,9 +504,11 @@ def run_test_case_dir(args, test_abc_files, force_gc_files, timeout) -> Tuple[in
 
 
 def run_regress_test_case(args) -> Tuple[int, int]:
+    print("\nRunning regresstest........\n")
     test_cast_list = get_regress_test_files(args.test_case_out_dir, 'abc')
     force_gc_files = get_regress_force_gc_files()
-    return run_test_case_dir(args, test_cast_list, force_gc_files, args.timeout)
+    uncaught_error_files = get_uncaught_error_files();
+    return run_test_case_dir(args, test_cast_list, force_gc_files, uncaught_error_files, args.timeout)
 
 
 def get_regress_force_gc_files():
@@ -514,6 +529,15 @@ def get_regress_test_files(start_dir, suffix):
     return result
 
 
+def get_uncaught_error_files():
+    uncaught_error_tests_list = []
+    with os.fdopen(os.open(RegressTestConfig.UNCAUGHT_ERROR_FILE_LIST, os.O_RDONLY, stat.S_IRUSR), "r") as file_object:
+        json_data = json.load(file_object)
+        for key in json_data:
+            uncaught_error_tests_list.extend(key["files"])
+    return uncaught_error_tests_list
+
+
 def write_result_file(msg, result_file):
     result_file.write(f'{str(msg)}\n')
 
@@ -521,7 +545,7 @@ def write_result_file(msg, result_file):
 def main(args):
     if not check_args(args):
         return
-    print("\nStart conducting regress test cases........\n")
+    print("\nStart regresstest........")
     start_time = datetime.datetime.now()
     run_regress_test_prepare(args)
     pass_count, fail_count = run_regress_test_case(args)
