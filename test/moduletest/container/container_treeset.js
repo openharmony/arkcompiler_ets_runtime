@@ -240,5 +240,55 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test TreeSet fail: " + flag);
     }
+    let treeSet = new fastset((first,second) =>{
+        return first > second
+    });
+    let insertArr = [
+        643,
+        811,
+        807,
+        378,
+        226,
+        195,
+        599,
+        641,
+        494,
+        964,
+        156,
+        419,
+        977,
+        20,
+        788,
+        596
+    ]
+    let addItem = function(obj){
+        treeSet.add(obj)
+    }
+    let removeItem = function(){
+        const first = treeSet.getFirstValue()
+        treeSet.remove(first)
+    }
+    for(let i = 0;i < insertArr.length;i++) {
+        addItem(insertArr[i])
+    }
+    removeItem()
+    removeItem()
+    removeItem()
+    removeItem()
+    removeItem()
+    addItem(664)
+    removeItem()
+    removeItem()
+    removeItem()
+    removeItem()
+    removeItem()
+    removeItem()
+    removeItem()
+    removeItem()
+    let resArr = []
+    treeSet.forEach(element => {
+        resArr.push(element)
+    });
+    print(resArr)
 }
 export let treesetRes = "Test TreeSet done";

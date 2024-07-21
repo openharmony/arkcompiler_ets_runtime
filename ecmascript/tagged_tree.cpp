@@ -481,6 +481,11 @@ JSHandle<Derived> TaggedTree<Derived>::Shrink(const JSThread *thread, const JSHa
 
     int length = ELEMENTS_START_INDEX + static_cast<int>(newCapacity) * (Derived::ENTRY_SIZE);
     JSHandle<Derived> newTree = AdjustTaggedTree(thread, tree, length);
+    JSTaggedValue fn = tree->GetCompare();
+    JSHandle<JSTaggedValue> compareFn = JSHandle<JSTaggedValue>(thread, fn);
+    if (!compareFn->IsUndefined() && !compareFn->IsNull()) {
+        newTree->SetCompare(thread, compareFn.GetTaggedValue());
+    }
     newTree->SetCapacity(thread, newCapacity);
     return newTree;
 }
