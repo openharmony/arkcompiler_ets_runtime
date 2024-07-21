@@ -150,10 +150,8 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
                 while (stateStackLen_ > ahead) {
                     PopRegExpState(isNegative);
                 }
-                if (isNegative) {
-                    if (MatchFailed(false)) {
-                        return false;
-                    }
+                if (isNegative && MatchFailed(false)) {
+                    return false;
                 }
                 break;
             }

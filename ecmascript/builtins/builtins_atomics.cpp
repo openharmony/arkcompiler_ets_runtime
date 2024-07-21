@@ -380,18 +380,18 @@ JSTaggedValue BuiltinsAtomics::HandleWithUint8(JSThread *thread, uint32_t size, 
     BUILTINS_API_TRACE(thread, Atomics, HandleWithUint8);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    uint8_t arg[ARGS_NUMBER] = {0};
+    arg[0] = tag;
     if (size == 3) { // the number of parameters is 3
-        auto result = op((block + indexedPosition), &tag);
+        auto result = op((block + indexedPosition), arg, ARGS_NUMBER);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     uint8_t newTag = JSTaggedValue::ToUint8(thread, newValue);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint8_t arg[ARGS_NUMBER] = {0};
-    arg[0] = tag;
     arg[1] = newTag;
-    auto result = op((block + indexedPosition), arg);
+    auto result = op((block + indexedPosition), arg, ARGS_NUMBER);
     return JSTaggedValue(result);
 }
 
@@ -403,18 +403,18 @@ JSTaggedValue BuiltinsAtomics::HandleWithInt8(JSThread *thread, uint32_t size, u
     BUILTINS_API_TRACE(thread, Atomics, HandleWithInt8);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int8_t arg[ARGS_NUMBER] = {0};
+    arg[0] = tag;
     if (size == 3) { // the number of parameters is 3
-        auto result = op(reinterpret_cast<int8_t *>(block + indexedPosition), &tag);
+        auto result = op(reinterpret_cast<int8_t *>(block + indexedPosition), arg, ARGS_NUMBER);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     int8_t newTag = JSTaggedValue::ToInt8(thread, newValue);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int8_t arg[ARGS_NUMBER] = {0};
-    arg[0] = tag;
     arg[1] = newTag;
-    auto result = op(reinterpret_cast<int8_t *>(block + indexedPosition), arg);
+    auto result = op(reinterpret_cast<int8_t *>(block + indexedPosition), arg, ARGS_NUMBER);
     return JSTaggedValue(result);
 }
 
@@ -426,18 +426,18 @@ JSTaggedValue BuiltinsAtomics::HandleWithUint16(JSThread *thread, uint32_t size,
     BUILTINS_API_TRACE(thread, Atomics, HandleWithUint16);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    uint16_t arg[ARGS_NUMBER] = {0};
+    arg[0] = tag;
     if (size == 3) { // the number of parameters is 3
-        auto result = op(reinterpret_cast<uint16_t *>(block + indexedPosition), &tag);
+        auto result = op(reinterpret_cast<uint16_t *>(block + indexedPosition), arg, ARGS_NUMBER);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     uint16_t newTag = JSTaggedValue::ToUint16(thread, newValue);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint16_t arg[ARGS_NUMBER] = {0};
-    arg[0] = tag;
     arg[1] = newTag;
-    auto result = op(reinterpret_cast<uint16_t *>(block + indexedPosition), arg);
+    auto result = op(reinterpret_cast<uint16_t *>(block + indexedPosition), arg, ARGS_NUMBER);
     return JSTaggedValue(result);
 }
 
@@ -449,18 +449,18 @@ JSTaggedValue BuiltinsAtomics::HandleWithInt16(JSThread *thread, uint32_t size, 
     BUILTINS_API_TRACE(thread, Atomics, HandleWithInt16);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int16_t arg[ARGS_NUMBER] = {0};
+    arg[0] = tag;
     if (size == 3) { // the number of parameters is 3
-        auto result = op(reinterpret_cast<int16_t *>(block + indexedPosition), &tag);
+        auto result = op(reinterpret_cast<int16_t *>(block + indexedPosition), arg, ARGS_NUMBER);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     int16_t newTag = JSTaggedValue::ToInt16(thread, newValue);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int16_t arg[ARGS_NUMBER] = {0};
-    arg[0] = tag;
     arg[1] = newTag;
-    auto result = op(reinterpret_cast<int16_t *>(block + indexedPosition), arg);
+    auto result = op(reinterpret_cast<int16_t *>(block + indexedPosition), arg, ARGS_NUMBER);
     return JSTaggedValue(result);
 }
 
@@ -472,18 +472,18 @@ JSTaggedValue BuiltinsAtomics::HandleWithUint32(JSThread *thread, uint32_t size,
     BUILTINS_API_TRACE(thread, Atomics, HandleWithUint32);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    uint32_t arg[ARGS_NUMBER] = {0};
+    arg[0] = tag;
     if (size == 3) { // the number of parameters is 3
-        auto result = op(reinterpret_cast<uint32_t *>(block + indexedPosition), &tag);
+        auto result = op(reinterpret_cast<uint32_t *>(block + indexedPosition), arg, ARGS_NUMBER);
         return JSTaggedValue(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     uint32_t newTag = JSTaggedValue::ToUint32(thread, newValue);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint32_t arg[ARGS_NUMBER] = {0};
-    arg[0] = tag;
     arg[1] = newTag;
-    auto result = op(reinterpret_cast<uint32_t *>(block + indexedPosition), arg);
+    auto result = op(reinterpret_cast<uint32_t *>(block + indexedPosition), arg, ARGS_NUMBER);
     return JSTaggedValue(result);
 }
 
@@ -495,18 +495,18 @@ JSTaggedValue BuiltinsAtomics::HandleWithInt32(JSThread *thread, uint32_t size, 
     BUILTINS_API_TRACE(thread, Atomics, HandleWithInt32);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int32_t arg[ARGS_NUMBER] = {0};
+    arg[0] = tag;
     if (size == 3) { // the number of parameters is 3
-        auto result = op(reinterpret_cast<int32_t *>(block + indexedPosition), &tag);
+        auto result = op(reinterpret_cast<int32_t *>(block + indexedPosition), arg, ARGS_NUMBER);
         return BuiltinsBase::GetTaggedInt(result);
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
     int32_t newTag = JSTaggedValue::ToInt32(thread, newValue);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int32_t arg[ARGS_NUMBER] = {0};
-    arg[0] = tag;
     arg[1] = newTag;
-    auto result = op(reinterpret_cast<int32_t *>(block + indexedPosition), arg);
+    auto result = op(reinterpret_cast<int32_t *>(block + indexedPosition), arg, ARGS_NUMBER);
     return JSTaggedValue(result);
 }
 
@@ -520,8 +520,10 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigInt64(JSThread *thread, uint32_t siz
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    int64_t arg[ARGS_NUMBER] = {0};
+    arg[0] = tag;
     if (size == 3) { // the number of parameters is 3
-        auto result = op(reinterpret_cast<int64_t *>(block + indexedPosition), &tag);
+        auto result = op(reinterpret_cast<int64_t *>(block + indexedPosition), arg, ARGS_NUMBER);
         return BigInt::Int64ToBigInt(thread, result).GetTaggedValue();
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
@@ -530,10 +532,8 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigInt64(JSThread *thread, uint32_t siz
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    int64_t arg[ARGS_NUMBER] = {0};
-    arg[0] = tag;
     arg[1] = newVal;
-    auto result = op(reinterpret_cast<int64_t *>(block + indexedPosition), arg);
+    auto result = op(reinterpret_cast<int64_t *>(block + indexedPosition), arg, ARGS_NUMBER);
     return BigInt::Int64ToBigInt(thread, result).GetTaggedValue();
 }
 
@@ -547,8 +547,10 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigUint64(JSThread *thread, uint32_t si
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    uint64_t arg[ARGS_NUMBER] = {0};
+    arg[0] = tag;
     if (size == 3) { // the number of parameters is 3
-        auto result = op(reinterpret_cast<uint64_t *>(block + indexedPosition), &tag);
+        auto result = op(reinterpret_cast<uint64_t *>(block + indexedPosition), arg, ARGS_NUMBER);
         return BigInt::Uint64ToBigInt(thread, result).GetTaggedValue();
     }
     JSHandle<JSTaggedValue> newValue = BuiltinsBase::GetCallArg(argv, BuiltinsBase::ArgsPosition::FOURTH);
@@ -557,10 +559,8 @@ JSTaggedValue BuiltinsAtomics::HandleWithBigUint64(JSThread *thread, uint32_t si
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     BuiltinsArrayBuffer::IsDetachedBuffer(thread, JSHandle<JSTypedArray>::Cast(GetCallArg(argv, 0)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    uint64_t arg[ARGS_NUMBER] = {0};
-    arg[0] = tag;
     arg[1] = newVal;
-    auto result = op(reinterpret_cast<uint64_t *>(block + indexedPosition), arg);
+    auto result = op(reinterpret_cast<uint64_t *>(block + indexedPosition), arg, ARGS_NUMBER);
     return BigInt::Uint64ToBigInt(thread, result).GetTaggedValue();
 }
 

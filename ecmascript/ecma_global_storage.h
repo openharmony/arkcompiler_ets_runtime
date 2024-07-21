@@ -57,12 +57,12 @@ public:
         prev_ = node;
     }
 
-    int32_t GetIndex() const
+    uint32_t GetIndex() const
     {
         return index_;
     }
 
-    void SetIndex(int32_t index)
+    void SetIndex(uint32_t index)
     {
         index_ = index;
     }
@@ -108,7 +108,7 @@ private:
     JSTaggedType obj_;
     Node *next_ {nullptr};
     Node *prev_ {nullptr};
-    int32_t index_ {-1};
+    uint32_t index_ {0};
     bool isUsing_ {false};
     bool isWeak_ {false};
 };
@@ -226,7 +226,7 @@ public:
     NodeList()
     {
         bool isWeak = std::is_same<T, WeakNode>::value;
-        for (int i = 0; i < GLOBAL_BLOCK_SIZE; i++) {
+        for (uint32_t i = 0; i < GLOBAL_BLOCK_SIZE; i++) {
             nodeList_[i].SetIndex(i);
             nodeList_[i].SetWeak(isWeak);
         }
@@ -378,11 +378,11 @@ public:
     }
 
 private:
-    static const int32_t GLOBAL_BLOCK_SIZE = 256;
+    static const uint32_t GLOBAL_BLOCK_SIZE = 256;
     T nodeList_[GLOBAL_BLOCK_SIZE];  // all
     T *freeList_ {nullptr};  // dispose node
     T *usedList_ {nullptr};  // usage node
-    int32_t index_ {0};
+    uint32_t index_ {0};
     NodeList<T> *next_ {nullptr};
     NodeList<T> *prev_ {nullptr};
     NodeList<T> *freeNext_ {nullptr};
