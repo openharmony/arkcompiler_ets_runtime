@@ -41,8 +41,9 @@
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/log.h"
 #include "ecmascript/log_wrapper.h"
-#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_shared_module.h"
+#include "ecmascript/module/module_logger.h"
+#include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/platform/aot_crash_info.h"
@@ -129,6 +130,9 @@ bool EcmaContext::Initialize()
     optCodeProfiler_ = new OptCodeProfiler();
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
         typedOpProfiler_ = new TypedOpProfiler();
+    }
+    if (vm_->GetJSOptions().EnableModuleLog() && !vm_->GetJSOptions().IsWorker()) {
+        moduleLogger_ = new ModuleLogger(vm_);
     }
     functionProtoTransitionTable_ = new FunctionProtoTransitionTable(thread_);
     sustainingJSHandleList_ = new SustainingJSHandleList();
@@ -244,6 +248,10 @@ EcmaContext::~EcmaContext()
     if (moduleManager_ != nullptr) {
         delete moduleManager_;
         moduleManager_ = nullptr;
+    }
+    if (moduleLogger_ != nullptr) {
+        delete moduleLogger_;
+        moduleLogger_ = nullptr;
     }
     if (ptManager_ != nullptr) {
         delete ptManager_;
@@ -384,6 +392,10 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     if (options.EnableModuleLog()) {
         LOG_FULL(INFO) << "current executing file's name " << entryPoint.data();
     }
+    ModuleLogger *moduleLogger = GetModuleLogger();
+    if (moduleLogger != nullptr) {
+        moduleLogger->SetStartTime(CString(entryPoint));
+    }
     JSHandle<Program> program = JSPandaFileManager::GetInstance()->GenerateProgram(vm_, jsPandaFile, entryPoint);
     if (program.IsEmpty()) {
         LOG_ECMA(ERROR) << "program is empty, invoke entrypoint failed";
@@ -402,6 +414,9 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     }
 #endif
 
+    if (moduleLogger != nullptr) {
+        moduleLogger->SetEndTime(CString(entryPoint));
+    }
     return result;
 }
 

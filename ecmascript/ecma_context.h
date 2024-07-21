@@ -67,6 +67,7 @@ class QuickFixManager;
 class OptCodeProfiler;
 struct CJSInfo;
 class FunctionProtoTransitionTable;
+class ModuleLogger;
 
 namespace job {
 class MicroJobQueue;
@@ -310,6 +311,11 @@ public:
     TypedOpProfiler *GetTypdOpProfiler() const
     {
         return typedOpProfiler_;
+    }
+
+    ModuleLogger *GetModuleLogger() const
+    {
+        return moduleLogger_;
     }
 
     void SetDefaultLocale(const std::string& locale)
@@ -707,6 +713,8 @@ private:
 
     // opt code loop hoist
     TypedOpProfiler *typedOpProfiler_ {nullptr};
+
+    ModuleLogger *moduleLogger_ {nullptr};
 
     std::string defaultLocale_;
     std::optional<CompareStringsOption> defaultComapreStringsOption_;

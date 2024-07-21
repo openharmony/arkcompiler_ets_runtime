@@ -1266,4 +1266,4 @@ JSTaggedValue BuiltinsArkTools::StopRuntimeStat(EcmaRuntimeCallInfo *msg)
     thread->GetCurrentEcmaContext()->SetRuntimeStatEnable(false);
     return JSTaggedValue::Undefined();
 }
-}  // namespace panda::ecmascript::builtins
+} // namespace panda::ecmascript::builtins
