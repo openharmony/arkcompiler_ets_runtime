@@ -25,8 +25,9 @@ class AtomicHelper final {
 public:
     struct SubFun {
         template<typename T>
-        T operator()(T *ptr, const T *arg) const
+        T operator()(T *ptr, const T *arg, [[maybe_unused]] uint32_t length) const
         {
+            ASSERT(length >= 1); // 1: max argnum
             std::atomic<T> *atomicValue = reinterpret_cast<std::atomic<T> *>(ptr);
             return atomicValue->fetch_sub(arg[0], std::memory_order_seq_cst);
         }
@@ -34,8 +35,9 @@ public:
 
     struct AddFun {
         template<typename T>
-        T operator()(T *ptr, const T *arg) const
+        T operator()(T *ptr, const T *arg, [[maybe_unused]] uint32_t length) const
         {
+            ASSERT(length >= 1); // 1: max argnum
             std::atomic<T> *atomicValue = reinterpret_cast<std::atomic<T> *>(ptr);
             return atomicValue->fetch_add(arg[0], std::memory_order_seq_cst);
         }
@@ -43,8 +45,9 @@ public:
 
     struct AndFun {
         template<typename T>
-        T operator()(T *ptr, const T *arg) const
+        T operator()(T *ptr, const T *arg, [[maybe_unused]] uint32_t length) const
         {
+            ASSERT(length >= 1); // 1: max argnum
             std::atomic<T> *atomicValue = reinterpret_cast<std::atomic<T> *>(ptr);
             return atomicValue->fetch_and(arg[0], std::memory_order_seq_cst);
         }
@@ -52,8 +55,9 @@ public:
 
     struct OrFun {
         template<typename T>
-        T operator()(T *ptr, const T *arg) const
+        T operator()(T *ptr, const T *arg, [[maybe_unused]] uint32_t length) const
         {
+            ASSERT(length >= 1); // 1: max argnum
             std::atomic<T> *atomicValue = reinterpret_cast<std::atomic<T> *>(ptr);
             return atomicValue->fetch_or(arg[0], std::memory_order_seq_cst);
         }
@@ -61,8 +65,9 @@ public:
 
     struct XorFun {
         template<typename T>
-        T operator()(T *ptr, const T *arg) const
+        T operator()(T *ptr, const T *arg, [[maybe_unused]] uint32_t length) const
         {
+            ASSERT(length >= 1); // 1: max argnum
             std::atomic<T> *atomicValue = reinterpret_cast<std::atomic<T> *>(ptr);
             return atomicValue->fetch_xor(arg[0], std::memory_order_seq_cst);
         }
@@ -70,8 +75,9 @@ public:
 
     struct CompareExchangeFun {
         template<typename T>
-        T operator()(T *ptr, const T *arg) const
+        T operator()(T *ptr, const T *arg, [[maybe_unused]] uint32_t length) const
         {
+            ASSERT(length >= 2); // 2: max argnum
             T a = arg[0];
             std::atomic<T> *atomicValue = reinterpret_cast<std::atomic<T> *>(ptr);
             atomicValue->compare_exchange_strong(a, arg[1], std::memory_order_seq_cst);
@@ -81,8 +87,9 @@ public:
 
     struct ExchangeFun {
         template<typename T>
-        T operator()(T *ptr, const T *arg) const
+        T operator()(T *ptr, const T *arg, [[maybe_unused]] uint32_t length) const
         {
+            ASSERT(length >= 1); // 1: max argnum
             std::atomic<T> *atomicValue = reinterpret_cast<std::atomic<T> *>(ptr);
             return atomicValue->exchange(arg[0], std::memory_order_seq_cst);
         }

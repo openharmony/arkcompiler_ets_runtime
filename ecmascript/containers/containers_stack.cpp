@@ -186,7 +186,7 @@ JSTaggedValue ContainersStack::ForEach(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSAPIStack> stack = JSHandle<JSAPIStack>::Cast(thisHandle);
-    uint32_t len = stack->GetSize();
+    int32_t len = stack->GetSize();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
@@ -202,7 +202,8 @@ JSTaggedValue ContainersStack::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
     JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
     uint32_t k = 0;
-    while (k < len + 1) {
+    uint32_t actLen = static_cast<uint32_t>(len + 1);
+    while (k < actLen) {
         JSTaggedValue kValue = stack->Get(k);
         EcmaRuntimeCallInfo *info =
             EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, 3); // 3:three args
@@ -254,7 +255,7 @@ JSTaggedValue ContainersStack::GetLength(EcmaRuntimeCallInfo *argv)
         }
     }
 
-    uint32_t len = (JSHandle<JSAPIStack>::Cast(self))->GetSize();
+    int32_t len = (JSHandle<JSAPIStack>::Cast(self))->GetSize();
     return JSTaggedValue(len + 1);
 }
 }  // namespace panda::ecmascript::containers

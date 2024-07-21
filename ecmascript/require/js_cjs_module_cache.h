@@ -65,11 +65,11 @@ public:
         return EcmaStringAccessor::StringsAreEqual(nameString, otherString);
     }
 
-    static inline int Hash(const JSTaggedValue &key)
+    static inline uint32_t Hash(const JSTaggedValue &key)
     {
         ASSERT(key.IsString());
         EcmaString *nameStr = static_cast<EcmaString *>(key.GetTaggedObject());
-        return static_cast<int>(EcmaStringAccessor(nameStr).GetHashcode());
+        return EcmaStringAccessor(nameStr).GetHashcode();
     }
 
     static const int DEFAULT_ELEMENTS_NUMBER = 64;
