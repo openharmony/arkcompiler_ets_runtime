@@ -584,7 +584,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     template<typename DictionaryT>
     GateRef GetKeyFromDictionary(GateRef elements, GateRef entry);
     GateRef GetPropAttrFromLayoutInfo(GateRef layout, GateRef entry);
-    void SetPropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr);
+    void UpdateFieldType(GateRef glue, GateRef hclass, GateRef attr);
     GateRef GetPropertiesAddrFromLayoutInfo(GateRef layout);
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef TranslateToRep(GateRef value);

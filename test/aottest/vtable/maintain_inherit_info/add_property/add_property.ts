@@ -15,9 +15,6 @@
 
 // @ts-nocheck
 declare function print(a0:any, a1?:any):string;
-declare class ArkTools {
-    static hasTSSubtyping(o:object):boolean;
-}
 
 class A {
     x:number;
@@ -39,7 +36,6 @@ class B extends A {
 let b = new B();
 b.z1 = 123;
 b.z2 = 456;
-print(ArkTools.hasTSSubtyping(b));
 print(b.x);
 print(b.y);
 print(b.z);
@@ -50,7 +46,6 @@ print(b.z2);
 A.prototype.t = 789;  // break inherit info
 let b1 = new B();
 b1.z1 = 321;         // transion success, has cleared inherit info
-print(ArkTools.hasTSSubtyping(b1));
 print(b1.x);  // occur depot
 print(b1.y);
 print(b1.z);

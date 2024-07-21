@@ -626,13 +626,8 @@ public:
                         }
                     }
                     JSHandle<JSObject> obj = JSObject::CreateObjectFromProperties(thread, properties, ihcVal);
-                    if (thread->GetEcmaVM()->IsEnablePGOProfiler()) {
-                        pgo::ApEntityId abcId(0);
-                        pgo::PGOProfilerManager::GetInstance()->GetPandaFileId(jsPandaFile->GetJSPandaFileDesc(),
-                                                                               abcId);
-                        thread->GetEcmaVM()->GetPGOProfiler()->ProfileCreateObject(obj.GetTaggedType(), abcId,
-                                                                                   id.GetOffset());
-                    }
+                    auto profiler = thread->GetEcmaVM()->GetPGOProfiler();
+                    profiler->RecordProfileType(obj->GetClass(), jsPandaFile, id.GetOffset());
                     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
                     JSMutableHandle<JSTaggedValue> valueHandle(thread, JSTaggedValue::Undefined());
                     size_t elementsLen = elements->GetLength();

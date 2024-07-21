@@ -475,6 +475,10 @@ public:
         const JSHandle<JSObject> &receiver, const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value,
         PropertyAttributes &attr);
 
+    static void UpdateFieldType(JSHClass *hclass, const PropertyAttributes &attr);
+    static JSHClass *FindFieldOwnHClass(JSHClass *hclass, const PropertyAttributes &attr);
+    static void VisitAndUpdateLayout(JSHClass *ownHClass, const PropertyAttributes &attr);
+
     static JSHandle<JSTaggedValue> EnableProtoChangeMarker(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     static JSHandle<JSTaggedValue> EnablePHCProtoChangeMarker(
         const JSThread *thread, const JSHandle<JSHClass> &protoClass);
@@ -504,21 +508,13 @@ public:
     static void RefreshUsers(const JSThread *thread, const JSHandle<JSHClass> &oldHclass,
                              const JSHandle<JSHClass> &newHclass);
 
-    void InitTSInheritInfo(const JSThread *thread);
-
-    bool PUBLIC_API HasTSSubtyping() const;
-
-    bool IsTSIHCWithInheritInfo() const;
-
-    static void CopyTSInheritInfo(const JSThread *thread, const JSHandle<JSHClass> &oldHClass,
-                                  JSHandle<JSHClass> &newHClass);
-
     static JSHandle<JSTaggedValue> ParseKeyFromPGOCString(ObjectFactory* factory,
                                                           const CString& key,
                                                           const PGOHandler& handler);
 
     inline void ClearBitField()
     {
+        SetProfileType(0ULL);
         SetBitField(0UL);
         SetBitField1(0UL);
     }
@@ -1977,9 +1973,8 @@ public:
     ACCESSORS(Parent, PARENT_OFFSET, PROTO_CHANGE_MARKER_OFFSET);
     ACCESSORS(ProtoChangeMarker, PROTO_CHANGE_MARKER_OFFSET, PROTO_CHANGE_DETAILS_OFFSET);
     ACCESSORS(ProtoChangeDetails, PROTO_CHANGE_DETAILS_OFFSET, ENUM_CACHE_OFFSET);
-    ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, SUPERS_OFFSET);
-    ACCESSORS(Supers, SUPERS_OFFSET, VTABLE_OFFSET);
-    ACCESSORS(VTable, VTABLE_OFFSET, BIT_FIELD_OFFSET);
+    ACCESSORS(EnumCache, ENUM_CACHE_OFFSET, PROFILE_TYPE);
+    ACCESSORS_PRIMITIVE_FIELD(ProfileType, uint64_t, PROFILE_TYPE, BIT_FIELD_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(BitField, uint32_t, BIT_FIELD_OFFSET, BIT_FIELD1_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
@@ -2019,13 +2014,11 @@ public:
                                                        const HClassLayoutDesc* desc);
     static bool DumpRootHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc);
     static bool DumpChildHClassByPGO(const JSHClass* hclass, HClassLayoutDesc* desc);
-    static bool UpdateRootLayoutDescByPGO(const JSHClass* hclass,
-                                          const PGOHClassTreeDesc* treeDesc,
-                                          HClassLayoutDesc* rootDesc);
+    static bool UpdateRootLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* rootDesc);
     static bool UpdateChildLayoutDescByPGO(const JSHClass* hclass, HClassLayoutDesc* childDesc);
     static CString DumpToString(JSTaggedType hclassVal);
 
-    DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, BIT_FIELD_OFFSET);
+    DECL_VISIT_OBJECT(PROTOTYPE_OFFSET, PROFILE_TYPE);
     inline JSHClass *FindProtoTransitions(const JSTaggedValue &key, const JSTaggedValue &proto);
     inline bool HasTransitions() const
     {

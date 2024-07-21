@@ -4439,8 +4439,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
                                 &executeSetProp, &exit, SCheckModelIsCHECK);
                             Bind(&executeSetProp);
                             JSObjectSetProperty(glue, *holder, hclass, attr, key, value);
-                            ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-                                glue, receiver, layOutInfo, attr, entry, value, callback);
+                            ProfilerStubBuilder(env).UpdatePropAttrWithValue(glue, receiver, attr, value, callback);
                             result = Undefined();
                             Jump(&exit);
                         }
@@ -4556,8 +4555,7 @@ GateRef StubBuilder::SetPropertyByName(GateRef glue, GateRef receiver, GateRef k
         GateRef receiverLayoutInfo = GetLayoutFromHClass(receiverHClass);
         GateRef holeAttr = GetPropAttrFromLayoutInfo(receiverLayoutInfo, *receiverHoleEntry);
         JSObjectSetProperty(glue, receiver, receiverHClass, holeAttr, key, value);
-        ProfilerStubBuilder(env).UpdatePropAttrWithValue(
-            glue, receiver, receiverLayoutInfo, holeAttr, *receiverHoleEntry, value, callback);
+        ProfilerStubBuilder(env).UpdatePropAttrWithValue(glue, receiver, holeAttr, value, callback);
         result = Undefined();
         Jump(&exit);
     }

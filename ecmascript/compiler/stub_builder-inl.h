@@ -2424,12 +2424,9 @@ inline GateRef StubBuilder::GetIhcFromAOTLiteralInfo(GateRef info)
     return Load(VariableType::JS_ANY(), info, dataOffset);
 }
 
-inline void StubBuilder::SetPropAttrToLayoutInfo(GateRef glue, GateRef layout, GateRef entry, GateRef attr)
+inline void StubBuilder::UpdateFieldType(GateRef glue, GateRef hclass, GateRef attr)
 {
-    GateRef index = Int32Add(Int32LSL(entry, Int32(LayoutInfo::ELEMENTS_INDEX_LOG2)),
-        Int32(LayoutInfo::ATTR_INDEX_OFFSET));
-    GateRef taggedAttr = Int64ToTaggedInt(attr);
-    SetValueToTaggedArray(VariableType::JS_ANY(), glue, layout, index, taggedAttr);
+    CallNGCRuntime(glue, RTSTUB_ID(UpdateFieldType), { hclass, attr });
 }
 
 inline GateRef StubBuilder::GetPropertyMetaDataFromAttr(GateRef attr)

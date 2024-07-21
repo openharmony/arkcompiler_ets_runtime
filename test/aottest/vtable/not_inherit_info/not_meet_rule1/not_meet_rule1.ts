@@ -35,5 +35,4 @@ class B {
 }
 
 let b = new B();
-print(ArkTools.hasTSSubtyping(b));
 print(b.x);

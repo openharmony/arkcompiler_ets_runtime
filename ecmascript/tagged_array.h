@@ -43,6 +43,8 @@ public:
 
     template <bool needBarrier = true>
     void Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
+
+    void Set(uint32_t idx, const JSTaggedValue &value);
     void SetBit(const JSThread* thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue& value);
 
     static inline JSHandle<TaggedArray> Append(const JSThread *thread, const JSHandle<TaggedArray> &first,

@@ -12,8 +12,6 @@
 # limitations under the License.
 
 Before breaking, B's ihclass is TS: false
-Before breaking, B's ihclass has TS inherit info: false
 A foo
 After breaking, b's hclass is TS: false
-After breaking, b's hclass has TS inherit info: false
 b foo

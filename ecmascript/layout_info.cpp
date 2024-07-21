@@ -226,16 +226,14 @@ CString LayoutInfo::GetSymbolKeyString(JSTaggedValue key)
 void LayoutInfo::DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc)
 {
     auto key = GetKey(index);
+    auto attr = GetAttr(index);
+    SetIsPGODumped(index);
+    TrackType type = attr.GetTrackType();
+    int propertyMeta = attr.GetPropertyMetaData();
     if (key.IsString()) {
-        auto attr = GetAttr(index);
-        TrackType type = attr.GetTrackType();
-        int propertyMeta = attr.GetPropertyMetaData();
         auto keyString = EcmaStringAccessor(key).ToCString();
         desc->InsertKeyAndDesc(keyString, PGOHandler(type, propertyMeta, false));
     } else if (key.IsSymbol()) {
-        auto attr = GetAttr(index);
-        TrackType type = attr.GetTrackType();
-        int propertyMeta = attr.GetPropertyMetaData();
         auto keyString = GetSymbolKeyString(key);
         if (keyString.empty()) {
             return;
@@ -247,16 +245,17 @@ void LayoutInfo::DumpFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc)
 bool LayoutInfo::UpdateFieldIndexByPGO(int index, pgo::HClassLayoutDesc* desc)
 {
     auto key = GetKey(index);
+    auto attr = GetAttr(index);
+    if (attr.IsPGODumped()) {
+        return true;
+    }
+    SetIsPGODumped(index);
+    TrackType type = attr.GetTrackType();
+    int propertyMeta = attr.GetPropertyMetaData();
     if (key.IsString()) {
-        auto attr = GetAttr(index);
-        TrackType type = attr.GetTrackType();
-        int propertyMeta = attr.GetPropertyMetaData();
         auto keyString = EcmaStringAccessor(key).ToCString();
         return desc->UpdateKeyAndDesc(keyString, PGOHandler(type, propertyMeta, false));
     } else if (key.IsSymbol()) {
-        auto attr = GetAttr(index);
-        TrackType type = attr.GetTrackType();
-        int propertyMeta = attr.GetPropertyMetaData();
         auto keyString = GetSymbolKeyString(key);
         if (keyString.empty()) {
             return false;

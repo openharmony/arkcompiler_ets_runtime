@@ -1626,18 +1626,6 @@ void TypedHCRLowering::LowerGetSuperConstructor(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), superCtor);
 }
 
-GateRef TypedHCRLowering::LoadFromVTable(GateRef receiver, size_t index)
-{
-    GateRef hclass = builder_.LoadConstOffset(
-        VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
-    GateRef vtable = builder_.LoadConstOffset(VariableType::JS_ANY(),
-        hclass, JSHClass::VTABLE_OFFSET);
-
-    GateRef itemOwner = builder_.LoadFromTaggedArray(vtable, VTable::TupleItem::OWNER + index);
-    GateRef itemOffset = builder_.LoadFromTaggedArray(vtable, VTable::TupleItem::OFFSET + index);
-    return builder_.Load(VariableType::JS_ANY(), itemOwner, builder_.TaggedGetInt(itemOffset));
-}
-
 VariableType TypedHCRLowering::GetVarType(PropertyLookupResult plr)
 {
     if (plr.GetRepresentation() == Representation::DOUBLE) {
@@ -1647,11 +1635,6 @@ VariableType TypedHCRLowering::GetVarType(PropertyLookupResult plr)
     } else {
         return kungfu::VariableType::INT64();
     }
-}
-
-GateRef TypedHCRLowering::LoadSupers(GateRef hclass)
-{
-    return builder_.LoadConstOffset(VariableType::JS_ANY(), hclass, JSHClass::SUPERS_OFFSET);
 }
 
 GateRef TypedHCRLowering::GetLengthFromSupers(GateRef supers)

@@ -14,9 +14,6 @@
  */
 
 declare function print(a0:any, a1?:any):string;
-declare class ArkTools {
-    static hasTSSubtyping(o:object):boolean;
-}
 
 class A {
     x:number;
@@ -36,7 +33,6 @@ function testVTable(o:A) {
 }
 
 let b = new B();
-print("Before breaking, B's ihclass has TS inherit info:", ArkTools.hasTSSubtyping(b));
 testVTable(b);
 
 // break TS Chain on prototype and notify through chain
@@ -45,5 +41,4 @@ Object.defineProperty(B.prototype, "foo", { value: function() {
     }
 })
 
-print("After breaking, B's ihclass has TS inherit info:", ArkTools.hasTSSubtyping(b));
 testVTable(b);  // occur deopt

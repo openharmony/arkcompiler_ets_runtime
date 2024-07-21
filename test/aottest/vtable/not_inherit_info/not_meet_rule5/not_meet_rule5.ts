@@ -38,12 +38,10 @@ class B extends A {
 }
 
 let a = new A();
-print(ArkTools.hasTSSubtyping(a));
 print(a.x());
 
 
 let b = new B();
-print(ArkTools.hasTSSubtyping(b));
 print(b.x);
 
 // Base class and Object check
@@ -55,7 +53,6 @@ class C {
 }
 
 let c = new C();
-print(ArkTools.hasTSSubtyping(c)); // false
 print(c.hasOwnProperty);
 
 class C2 {
@@ -66,7 +63,6 @@ class C2 {
 }
 
 let c2 = new C2();
-print(ArkTools.hasTSSubtyping(c2)); // false
 print(c2.isPrototypeOf);
 
 class C3 {
@@ -77,7 +73,6 @@ class C3 {
 }
 
 let c3 = new C3();
-print(ArkTools.hasTSSubtyping(c3)); // false
 print(c3.propertyIsEnumerable);
 
 class C4 {
@@ -88,7 +83,6 @@ class C4 {
 }
 
 let c4 = new C4();
-print(ArkTools.hasTSSubtyping(c4)); // false
 print(c4.toLocaleString);
 
 class C5 {
@@ -99,7 +93,6 @@ class C5 {
 }
 
 let c5 = new C5();
-print(ArkTools.hasTSSubtyping(c5)); // false
 print(c5.toString);
 
 class C6 {
@@ -110,5 +103,4 @@ class C6 {
 }
 
 let c6 = new C6();
-print(ArkTools.hasTSSubtyping(c6)); // false
 print(c6.valueOf);

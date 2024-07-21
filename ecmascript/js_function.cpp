@@ -1051,6 +1051,24 @@ void JSFunction::SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFun
     handleRaw->SetValue(thread, value, mode);
 }
 
+void JSFunction::UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<JSFunction> literalFunc,
+                                           JSHandle<JSFunction> targetFunc)
+{
+    auto profileTypeInfoCellVal = literalFunc->GetRawProfileTypeInfo();
+    ASSERT(profileTypeInfoCellVal.IsProfileTypeInfoCell());
+    auto profileTypeInfoCell = ProfileTypeInfoCell::Cast(profileTypeInfoCellVal);
+    if (profileTypeInfoCell->IsEmptyProfileTypeInfoCell(thread)) {
+        JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
+        JSHandle<ProfileTypeInfoCell> newProfileTypeInfoCell =
+            thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(handleUndefined);
+        literalFunc->SetRawProfileTypeInfo(thread, newProfileTypeInfoCell);
+        targetFunc->SetRawProfileTypeInfo(thread, newProfileTypeInfoCell);
+    } else {
+        ProfileTypeInfoCell::Cast(profileTypeInfoCell)->UpdateProfileTypeInfoCellType(thread);
+        targetFunc->SetRawProfileTypeInfo(thread, profileTypeInfoCellVal);
+    }
+}
+
 void JSFunction::SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode)
 {
     JSHandle<ProfileTypeInfoCell> handleRaw(thread, GetRawProfileTypeInfo());

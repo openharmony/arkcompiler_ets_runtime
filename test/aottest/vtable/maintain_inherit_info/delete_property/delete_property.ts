@@ -14,9 +14,6 @@
  */
 
 declare function print(a0:any, a1?:any):string;
-declare class ArkTools {
-    static hasTSSubtyping(o:object):boolean;
-}
 
 class A {
     x:number;
@@ -38,7 +35,6 @@ class B extends A {
 let b = new B();
 delete b.y;
 Reflect.deleteProperty(b, "z");
-print(ArkTools.hasTSSubtyping(b));
 print(b.x);
 print(b.y);
 print(b.z);

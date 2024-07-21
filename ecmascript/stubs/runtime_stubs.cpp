@@ -3100,6 +3100,13 @@ int32_t RuntimeStubs::FindElementWithCache(uintptr_t argGlue, JSTaggedType hclas
     return index;
 }
 
+void RuntimeStubs::UpdateFieldType(JSTaggedType hclass, uint64_t value)
+{
+    auto cls = reinterpret_cast<JSHClass *>(hclass);
+    PropertyAttributes attrValue(value);
+    JSHClass::UpdateFieldType(cls, attrValue);
+}
+
 JSTaggedType RuntimeStubs::GetActualArgvNoGC(uintptr_t argGlue)
 {
     auto thread = JSThread::GlueToJSThread(argGlue);

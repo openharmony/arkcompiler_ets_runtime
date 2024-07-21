@@ -755,28 +755,7 @@ static void DumpHClass(const JSHClass *jshclass, std::ostream &os, bool withDeta
         os << "\n";
     }
 
-    JSTaggedValue supers = jshclass->GetSupers();
-    uint32_t length = 0;
-    if (supers.IsTaggedArray()) {
-        length = WeakVector::Cast(supers.GetTaggedObject())->GetExtraLength();
-    }
-    os << " - Supers[" << std::dec << length << "]: ";
-    os << std::setw(DUMP_TYPE_OFFSET);
-    supers.DumpTaggedValue(os);
-    if (withDetail && !supers.IsUndefined()) {
-        WeakVector::Cast(supers.GetTaggedObject())->Dump(os);
-    } else {
-        os << "\n";
-    }
-
-    os << " - VTable :" << std::setw(DUMP_TYPE_OFFSET);
-    JSTaggedValue vtable = jshclass->GetVTable();
-    vtable.DumpTaggedValue(os);
-    if (withDetail && !vtable.IsUndefined()) {
-        VTable::Cast(vtable.GetTaggedObject())->Dump(os);
-    } else {
-        os << "\n";
-    }
+    os << " - ProfileType : " << std::hex << jshclass->GetProfileType() << "\n";
 
     os << " - Flags : " << std::setw(DUMP_TYPE_OFFSET);
     os << "IsCtor :" << std::boolalpha << jshclass->IsConstructor();
@@ -4866,8 +4845,6 @@ void JSHClass::DumpForSnapshot([[maybe_unused]] std::vector<Reference> &vec) con
     vec.emplace_back(CString("ProtoChangeMarker"), GetProtoChangeMarker());
     vec.emplace_back(CString("ProtoChangeDetails"), GetProtoChangeDetails());
     vec.emplace_back(CString("EnumCache"), GetEnumCache());
-    vec.emplace_back(CString("Supers"), GetSupers());
-    vec.emplace_back(CString("VTable"), GetVTable());
     vec.emplace_back(CString("BitField"), JSTaggedValue(GetBitField()));
     vec.emplace_back(CString("BitField1"), JSTaggedValue(GetBitField1()));
 }
