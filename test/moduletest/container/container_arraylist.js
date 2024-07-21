@@ -213,6 +213,24 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test arraylist trimToCurrentLength:", proxy1.getCapacity() === 6)
 
     let testlist = new arrayList();
+    try {
+        testlist.removeByIndex(0);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test RemoveByIndex exception when arraylist is empty:", res)
+    }
+    try {
+        testlist.removeByRange(0, 1);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test RemoveByRange exception when arraylist is empty:", res)
+    }
+    try {
+        testlist.subArrayList(0, 1);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test SubArrayList exception when arraylist is empty:", res)
+    }
     testlist.add(7);
     testlist.add(9);
     map.set("test arraylist JSAPIArrayList::GetProperty:", testlist[Math.floor(1)] === 9);

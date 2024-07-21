@@ -164,6 +164,10 @@ void JSAPIPlainArray::Clear(JSThread *thread)
 JSTaggedValue JSAPIPlainArray::RemoveRangeFrom(JSThread *thread, int32_t index, int32_t batchSize)
 {
     int32_t size = static_cast<int32_t>(GetLength());
+    if (size <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index < 0 || index >= size) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (size - 1)
@@ -421,6 +425,10 @@ JSTaggedValue JSAPIPlainArray::GetKeyAt(int32_t index)
 JSTaggedValue JSAPIPlainArray::GetValueAt(JSThread *thread, int32_t index)
 {
     uint32_t size = GetLength();
+    if (size == 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         ASSERT(size > 0);
         std::ostringstream oss;
@@ -463,6 +471,10 @@ JSTaggedValue JSAPIPlainArray::RemoveAt(JSThread *thread, JSTaggedValue index)
 bool JSAPIPlainArray::SetValueAt(JSThread *thread, JSTaggedValue index, JSTaggedValue value)
 {
     uint32_t size = GetLength();
+    if (size == 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+    }
     int32_t seat = index.GetNumber();
     if (seat < 0 || static_cast<uint32_t>(seat) >= size) {
         std::ostringstream oss;

@@ -210,6 +210,10 @@ JSTaggedValue JSAPILightWeightMap::GetKeyAt(JSThread *thread, const JSHandle<JSA
                                             int32_t index)
 {
     int32_t length = static_cast<int32_t>(lightWeightMap->GetSize());
+    if (length <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index < 0 || length <= index) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
@@ -225,6 +229,10 @@ JSTaggedValue JSAPILightWeightMap::GetValueAt(JSThread *thread, const JSHandle<J
                                               int32_t index)
 {
     int32_t length = static_cast<int32_t>(lightWeightMap->GetSize());
+    if (length <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index < 0 || length <= index) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
@@ -308,6 +316,10 @@ JSTaggedValue JSAPILightWeightMap::SetValueAt(JSThread *thread, const JSHandle<J
                                               int32_t index, const JSHandle<JSTaggedValue> &value)
 {
     int32_t length = static_cast<int32_t>(lightWeightMap->GetSize());
+    if (length <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index < 0 || length <= index) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)

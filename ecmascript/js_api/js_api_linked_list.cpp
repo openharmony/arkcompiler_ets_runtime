@@ -93,6 +93,10 @@ JSTaggedValue JSAPILinkedList::RemoveByIndex(JSThread *thread, JSHandle<JSAPILin
 {
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     int nodeLength = doubleList->Length();
+    if (nodeLength <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index < 0 || index >= nodeLength) {
         int size = (nodeLength > 0) ? (nodeLength - 1) : 0;
         std::ostringstream oss;
@@ -176,6 +180,10 @@ JSTaggedValue JSAPILinkedList::Set(JSThread *thread, const JSHandle<JSAPILinkedL
 {
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     int nodeLength = doubleList->Length();
+    if (nodeLength <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index < 0 || index >= nodeLength) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (nodeLength - 1)

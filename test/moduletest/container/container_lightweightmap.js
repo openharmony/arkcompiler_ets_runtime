@@ -83,6 +83,23 @@ if (globalThis["ArkPrivate"] != undefined) {
     // test clear: 0
     dProxy.clear();
     res.set("test clear:", dProxy.length == 0);
+    
+    let empty_fm = new fastmap();
+    try {
+        empty_fm.getKeyAt(0);
+    } catch(err) {
+        res.set("test GetKeyAt exception when arraylist is empty:", err == "BusinessError: Container is empty")
+    }
+    try {
+        empty_fm.getValueAt(0);
+    } catch(err) {
+        res.set("test GetValueAt exception when arraylist is empty:", err == "BusinessError: Container is empty")
+    }
+    try {
+        empty_fm.setValueAt(0);
+    } catch(err) {
+        res.set("test SetValueAt exception when arraylist is empty:", err == "BusinessError: Container is empty")
+    }
 
     flag = false;
     try {

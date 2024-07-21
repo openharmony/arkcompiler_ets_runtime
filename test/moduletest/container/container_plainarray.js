@@ -124,6 +124,25 @@ if (globalThis["ArkPrivate"] != undefined) {
     proxy1.add(4, "4")
     proxy1.add(5, "5")
     map.set("test plainarray toString:", proxy1.toString() == "0:0,1:1,2:2,3:3,4:4,5:5");
+    let empty_pa = new PlainArray();
+    try {
+        empty_pa.getValueAt(0);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test getValueAt exception when arraylist is empty:", res)
+    }
+    try {
+        empty_pa.removeRangeFrom(0, 1);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test removeRangeFrom exception when arraylist is empty:", res)
+    }
+    try {
+        empty_pa.setValueAt(0);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test setValueAt exception when arraylist is empty:", res)
+    }
 
     res = undefined;
     function elements(value, key, map) {

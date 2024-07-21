@@ -405,6 +405,26 @@ if (globalThis["ArkPrivate"] != undefined) {
     testlist.add(8);
     map.set("test list JSAPIList::GetProperty:", testlist[Math.floor(1)] === 8);
 
+    let empty_l = new List();
+    try {
+        empty_l.set(0, 1);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test Set exception when arraylist is empty:", res)
+    }
+    try {
+        empty_l.removeByIndex(0);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test removeByIndex exception when arraylist is empty:", res)
+    }
+    try {
+        empty_l.getSubList(0, 1);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test GetSubList exception when arraylist is empty:", res)
+    }
+
     flag = undefined;
     function elementsList(valueList, keyList, map) {
         if (!valueList) {
