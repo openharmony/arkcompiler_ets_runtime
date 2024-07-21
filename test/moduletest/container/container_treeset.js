@@ -116,6 +116,24 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.set("test commpare", comset.length == 0);
 
+    class Person {
+        id = 0;
+        name = '';
+        constructor(id, name) {
+            this.id = id;
+            this.name = name;
+        }
+    }
+
+    comset =  new fastset((firstValue, secondValue) => {return firstValue.id < secondValue.id});
+    let personone = new Person(3,'张三');
+    let persontwo = new Person(1,'李四');
+    let personsec = new Person(2,'王五');
+    comset.add(personone);
+    comset.add(persontwo);
+    comset.add(personsec);
+    map.set("test clear and set", comset.getFirstValue().id === 1);
+    comset.clear();
     comset =  new fastset((firstValue, secondValue) => {return firstValue > secondValue});
     comset.add("c");
     comset.add("a");
