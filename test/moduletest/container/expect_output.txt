@@ -25,6 +25,7 @@ Test Stack success!!!
 Test TreeMap success!!!
 Test TreeMap set After Clear Success
 Test TreeSet success!!!
+226,195,156,20
 Test Vector success!!!
 Test ArrayList
 Test Deque done
