@@ -27,6 +27,7 @@
 #include "system_ability.h"
 
 #include "power_disconnected_listener.h"
+#include "screen_status_listener.h"
 
 namespace OHOS::ArkCompiler {
 enum class ServiceRunningState {
@@ -51,12 +52,16 @@ private:
     void RemoveUnloadTask(const std::string &taskId);
     void DelayUnloadTask(const std::string &taskId, const int32_t delayTime);
     void RegisterPowerDisconnectedListener();
+    void RegisterScreenStatusSubscriber();
     void UnRegisterPowerDisconnectedListener();
+    void UnRegisterScreenStatusSubscriber();
 
     std::shared_ptr<AppExecFwk::EventHandler> unLoadHandler_ { nullptr };
     ServiceRunningState state_;
     std::shared_ptr<PowerDisconnectedListener> powerDisconnectedListener_ { nullptr };
+    std::shared_ptr<ScreenStatusSubscriber> screenStatusSubscriber_ { nullptr };
     bool isPowerEventSubscribered_ { false };
+    bool isScreenStatusSubscribered_ { false };
 };
 } // namespace OHOS::ArkCompiler
 #endif // OHOS_ARKCOMPILER_AOTCOMPILER_SERVICE_H

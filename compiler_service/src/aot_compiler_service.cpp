@@ -69,6 +69,7 @@ void AotCompilerService::OnStart()
     }
     state_ = ServiceRunningState::STATE_RUNNING;
     RegisterPowerDisconnectedListener();
+    RegisterScreenStatusSubscriber();
 }
 
 bool AotCompilerService::Init()
@@ -116,6 +117,7 @@ void AotCompilerService::OnStop()
     LOG_SA(INFO) << "aot compiler service has been onStop";
     state_ = ServiceRunningState::STATE_NOT_START;
     UnRegisterPowerDisconnectedListener();
+    UnRegisterScreenStatusSubscriber();
 }
 
 int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
@@ -174,6 +176,22 @@ void AotCompilerService::RegisterPowerDisconnectedListener()
     }
 }
 
+void AotCompilerService::RegisterScreenStatusSubscriber()
+{
+    LOG_SA(DEBUG) << "AotCompilerService::RegisterScreenStatusSubscriber";
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(EventFwk::CommonEventSupport::COMMON_EVENT_SCREEN_ON);
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    screenStatusSubscriber_ = std::make_shared<ScreenStatusSubscriber>(subscribeInfo);
+    if (!EventFwk::CommonEventManager::SubscribeCommonEvent(screenStatusSubscriber_)) {
+        LOG_SA(INFO) << "AotCompilerService::RegisterScreenStatusSubscriber failed";
+        screenStatusSubscriber_ = nullptr;
+    } else {
+        LOG_SA(INFO) << "AotCompilerService::RegisterScreenStatusSubscriber success";
+        isScreenStatusSubscribered_ = true;
+    }
+}
+
 void AotCompilerService::UnRegisterPowerDisconnectedListener()
 {
     LOG_SA(DEBUG) << "AotCompilerService::UnRegisterPowerDisconnectedListener";
@@ -186,5 +204,19 @@ void AotCompilerService::UnRegisterPowerDisconnectedListener()
     powerDisconnectedListener_ = nullptr;
     isPowerEventSubscribered_ = false;
     LOG_SA(INFO) << "AotCompilerService::UnRegisterPowerDisconnectedListener done";
+}
+
+void AotCompilerService::UnRegisterScreenStatusSubscriber()
+{
+    LOG_SA(DEBUG) << "AotCompilerService::UnRegisterScreenStatusSubscriber";
+    if (!isScreenStatusSubscribered_) {
+        return;
+    }
+    if (!EventFwk::CommonEventManager::UnSubscribeCommonEvent(screenStatusSubscriber_)) {
+        LOG_SA(INFO) << "AotCompilerService::UnRegisterScreenStatusSubscriber failed";
+    }
+    screenStatusSubscriber_ = nullptr;
+    isScreenStatusSubscribered_ = false;
+    LOG_SA(INFO) << "AotCompilerService::UnRegisterScreenStatusSubscriber done";
 }
 } // namespace OHOS::ArkCompiler

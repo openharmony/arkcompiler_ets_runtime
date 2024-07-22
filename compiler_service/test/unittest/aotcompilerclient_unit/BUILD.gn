@@ -41,6 +41,7 @@ ohos_unittest("AotCompilerClientUnitTest") {
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "ipc:ipc_core",
+    "power_manager:powermgr_client",
     "runtime_core:libarkfile_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",

@@ -48,6 +48,7 @@
               "safwk",
               "samgr",
               "common_event_service",
+              "power_manager",
               "ffrt"
             ],
             "third_party": [
