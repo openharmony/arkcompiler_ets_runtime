@@ -24,6 +24,7 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
+#include "ecmascript/ohos/tests/mock/mock_enable_aot_list_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -288,4 +289,44 @@ HWTEST_F_L0(OhosTest, UseMergedApWhenBothRuntimeAndMergedExist)
     unlink(mergedAp.c_str());
     rmdir(pgoDir);
 }
+
+HWTEST_F_L0(OhosTest, AotIsEnableArkProfileTrue)
+{
+    const char *whiteListTestDir = "ohos-whiteList/";
+    const char *enableListName = "ohos-whiteList/app_aot_jit_enable_list.conf";
+    std::string bundleScope = "com.bundle.scope.test";
+    std::string bundleScope1 = "com.bundle.scope.test1";
+    std::string bundleScope2 = "com.bundle.scope.test2";
+    mkdir(whiteListTestDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    ohos::EnableAotJitListHelper *helper = new MockEnableAotJitListHelper(enableListName);
+ 
+    ASSERT_TRUE(helper->IsEnableAot(bundleScope));
+    ASSERT_TRUE(helper->IsEnableAot(bundleScope1));
+    ASSERT_TRUE(helper->IsEnableAot(bundleScope2));
+
+    unlink(enableListName);
+    rmdir(whiteListTestDir);
+}
+
+HWTEST_F_L0(OhosTest, AotIsEnableArkProfileFalse)
+{
+    const char *whiteListTestDir = "ohos-whiteList/";
+    const char *enableListName = "ohos-whiteList/app_aot_jit_enable_list.conf";
+    std::string bundleScope = "com.bundle.scope.test";
+    std::string bundleScope1 = "com.bundle.scope.test1";
+    std::string bundleScope2 = "com.bundle.scope.test2";
+    mkdir(whiteListTestDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    std::ofstream file(enableListName);
+    file << bundleScope << std::endl;
+    file.close();
+    auto helper = std::make_unique<ohos::EnableAotJitListHelper>(enableListName);
+
+    ASSERT_TRUE(helper->IsEnableAot(bundleScope));
+    ASSERT_FALSE(helper->IsEnableAot(bundleScope1));
+    ASSERT_FALSE(helper->IsEnableAot(bundleScope2));
+
+    unlink(enableListName);
+    rmdir(whiteListTestDir);
+}
+
 }  // namespace panda::test

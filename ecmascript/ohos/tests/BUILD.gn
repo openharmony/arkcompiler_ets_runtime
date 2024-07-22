@@ -21,6 +21,7 @@ host_unittest_action("OhosTest") {
 
   sources = [
     # test file
+    "mock/mock_enable_aot_list_helper.cpp",
     "ohos_test.cpp",
   ]
 
