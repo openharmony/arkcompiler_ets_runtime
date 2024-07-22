@@ -177,11 +177,10 @@ public:
     static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile = true);
     static AOTFileManager *loader;
     static JSRuntimeOptions *options;
-    static void BuildCrashInfo(bool isJsCrash, FrameType frameType = FrameType::OPTIMIZED_FRAME,
-                               JSThread *thread = nullptr);
+    static void BuildCrashInfo(bool isJsCrash, uintptr_t pc = 0, JSThread *thread = nullptr);
     static inline void BuildCrashInfo(JSThread *thread)
     {
-        BuildCrashInfo(true, FrameType::OPTIMIZED_FRAME, thread); // pc is useless for JsCrash, pass 0 as placeholder
+        BuildCrashInfo(true, 0, thread); // pc is useless for JsCrash, pass 0 as placeholder
     }
     static std::unordered_map<EntityId, std::string> nameMap;
     static std::unordered_map<EntityId, std::vector<uint8>> machineCodeMap;
