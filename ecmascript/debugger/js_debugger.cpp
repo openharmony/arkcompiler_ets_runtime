@@ -27,27 +27,332 @@
 namespace panda::ecmascript::tooling {
 using panda::ecmascript::base::BuiltinsBase;
 
+std::shared_mutex JSDebugger::listMutex_;
+CUnorderedMap<CString, CUnorderedMap<std::string,
+    CUnorderedSet<JSBreakpoint, HashJSBreakpoint>>> JSDebugger::globalBpList_ {};
 bool JSDebugger::SetBreakpoint(const JSPtLocation &location, Local<FunctionRef> condFuncRef)
+{
+    // acquire write lock of global list
+    std::unique_lock<std::shared_mutex> globalListLock(listMutex_);
+    Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, condFuncRef);
+    return SetBreakpointWithMatchedUrl(location, funcRef);
+}
+
+bool JSDebugger::SetUrlNotMatchedBreakpoint(const JSPtLocation &location)
+{
+    // acquire write lock of global list
+    std::unique_lock<std::shared_mutex> globalListLock(listMutex_);
+    return SetBreakpointWithoutMatchedUrl(location);
+}
+
+std::vector<bool> JSDebugger::SetBreakpointUsingList(std::vector<JSPtLocation> &list)
+{
+    // acquire write lock of global list
+    std::unique_lock<std::shared_mutex> globalListLock(listMutex_);
+    return SetBreakpointByList(list);
+}
+
+std::vector<bool> JSDebugger::SetBreakpointByList(std::vector<JSPtLocation> &list)
+{
+    std::vector<bool> result;
+    for (const auto &location : list) {
+        if (location.GetJsPandaFile() != nullptr) {
+            // URL matched breakpoint
+            auto funcRef = location.GetCondFuncRef();
+            result.emplace_back(SetBreakpointWithMatchedUrl(location, funcRef));
+        } else if (location.GetSourceFile() == "invalid") {
+            // Invalid breakpoint (condition check failed or match location failed)
+            result.emplace_back(false);
+        } else {
+            // URL not matched breakpoint
+            result.emplace_back(SetBreakpointWithoutMatchedUrl(location));
+        }
+    }
+    DumpBreakpoints();
+    DumpGlobalBreakpoints();
+    ASSERT(list.size() == result.size());
+    return result;
+}
+
+bool JSDebugger::SetBreakpointWithMatchedUrl(const JSPtLocation &location, Global<FunctionRef> condFuncRef)
 {
     std::unique_ptr<PtMethod> ptMethod = FindMethod(location);
     if (ptMethod == nullptr) {
-        LOG_DEBUGGER(ERROR) << "SetBreakpoint: Cannot find MethodLiteral";
+        LOG_DEBUGGER(ERROR) << "SetBreakpointWithMatchedUrl: Cannot find MethodLiteral";
         return false;
     }
 
     if (location.GetBytecodeOffset() >= ptMethod->GetCodeSize()) {
-        LOG_DEBUGGER(ERROR) << "SetBreakpoint: Invalid breakpoint location";
+        LOG_DEBUGGER(ERROR) << "SetBreakpointWithMatchedUrl: Invalid breakpoint location";
         return false;
     }
+    auto ptMethodPtr = ptMethod.get();
+    JSBreakpoint jsBreakpoint{location.GetSourceFile(), ptMethod.release(), location.GetBytecodeOffset(),
+        Global<FunctionRef>(ecmaVm_, condFuncRef), location.GetSourceFile(), location.GetLine(), location.GetColumn()};
 
-    auto [_, success] = breakpoints_.emplace(location.GetSourceFile(), ptMethod.release(),
-        location.GetBytecodeOffset(), Global<FunctionRef>(ecmaVm_, condFuncRef));
+    bool success = PushBreakpointToLocal(jsBreakpoint, location);
     if (!success) {
-        // also return true
-        LOG_DEBUGGER(WARN) << "SetBreakpoint: Breakpoint already exists";
+        LOG_DEBUGGER(WARN) << "SetBreakpointWithMatchedUrl: Breakpoint already exists in localList";
     }
 
-    DumpBreakpoints();
+    auto breakpoint = SearchBreakpointInGlobalList(location, ptMethodPtr);
+    if (!breakpoint.has_value() && ecmaVm_->GetJsDebuggerManager()->IsBreakpointSyncEnabled()) {
+        // global list does not have this breakpoint, push it to the global list
+        PushBreakpointToGlobal(jsBreakpoint, location);
+    }
+    return true;
+}
+
+bool JSDebugger::SetBreakpointWithoutMatchedUrl(const JSPtLocation &location)
+{
+    // try to find this breakpoint in local list
+    auto breakpointList = SearchNoMatchBreakpointInLocalList(location);
+    if (!breakpointList.empty()) {
+        // found this breakpoint in local list, return success
+        return true;
+    }
+    // if not found in local, try to find it in global list
+    breakpointList = SearchNoMatchBreakpointInGlobalList(location);
+    if (!breakpointList.empty()) {
+        // found this breakpoint in global list, return success
+        for (const auto &breakpoint : breakpointList) {
+            PullBreakpointFromGlobal(breakpoint);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool JSDebugger::PushBreakpointToLocal(const JSBreakpoint &breakpoint, const JSPtLocation &location)
+{
+    auto pandaFileKey = location.GetJsPandaFile()->GetJSPandaFileDesc();
+    auto urlKey = location.GetSourceFile();
+    if (breakpoints_.find(pandaFileKey) == breakpoints_.end()) {
+        CUnorderedMap<std::string, CUnorderedSet<JSBreakpoint, HashJSBreakpoint>> urlHashMap;
+        CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
+        breakpointSet.emplace(breakpoint);
+        urlHashMap[urlKey] = breakpointSet;
+        breakpoints_[pandaFileKey] = urlHashMap;
+        return true;
+    } else {
+        auto urlHashMap = breakpoints_[pandaFileKey];
+        if (urlHashMap.find(urlKey) == urlHashMap.end()) {
+            CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
+            breakpointSet.emplace(breakpoint);
+            urlHashMap[urlKey] = breakpointSet;
+            breakpoints_[pandaFileKey] = urlHashMap;
+            return true;
+        } else {
+            auto [_, success] = breakpoints_[pandaFileKey][urlKey].emplace(breakpoint);
+            return success;
+        }
+    }
+}
+
+void JSDebugger::PushBreakpointToGlobal(const JSBreakpoint &breakpoint, const JSPtLocation &location)
+{
+    auto pandaFileKey = location.GetJsPandaFile()->GetJSPandaFileDesc();
+    auto urlKey = location.GetSourceFile();
+    if (globalBpList_.find(pandaFileKey) == globalBpList_.end()) {
+        CUnorderedMap<std::string, CUnorderedSet<JSBreakpoint, HashJSBreakpoint>> urlHashMap;
+        CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
+        breakpointSet.emplace(breakpoint);
+        urlHashMap[urlKey] = breakpointSet;
+        globalBpList_[pandaFileKey] = urlHashMap;
+    } else {
+        auto urlHashMap = breakpoints_[pandaFileKey];
+        if (urlHashMap.find(urlKey) == urlHashMap.end()) {
+            CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
+            breakpointSet.emplace(breakpoint);
+            urlHashMap[urlKey] = breakpointSet;
+            globalBpList_[pandaFileKey] = urlHashMap;
+        } else {
+            globalBpList_[pandaFileKey][urlKey].emplace(breakpoint);
+        }
+    }
+}
+
+bool JSDebugger::PullBreakpointFromGlobal(const JSBreakpoint &breakpoint)
+{
+    auto pandaFileKey = breakpoint.GetPtMethod()->GetJSPandaFile()->GetJSPandaFileDesc();
+    auto urlKey = breakpoint.GetUrl();
+    if (breakpoints_.find(pandaFileKey) == breakpoints_.end()) {
+        CUnorderedMap<std::string, CUnorderedSet<JSBreakpoint, HashJSBreakpoint>> urlHashMap;
+        CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
+        breakpointSet.emplace(breakpoint);
+        urlHashMap[urlKey] = breakpointSet;
+        breakpoints_[pandaFileKey] = urlHashMap;
+        return true;
+    } else {
+        auto urlHashMap = breakpoints_[pandaFileKey];
+        if (urlHashMap.find(urlKey) == urlHashMap.end()) {
+            CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
+            breakpointSet.emplace(breakpoint);
+            urlHashMap[urlKey] = breakpointSet;
+            breakpoints_[pandaFileKey] = urlHashMap;
+            return true;
+        } else {
+            auto [_, success] = breakpoints_[pandaFileKey][urlKey].emplace(breakpoint);
+            return success;
+        }
+    }
+}
+
+std::vector<JSBreakpoint> JSDebugger::SearchNoMatchBreakpointInLocalList(const JSPtLocation &location)
+{
+    std::vector<JSBreakpoint> result{};
+    if (breakpoints_.empty()) {
+        return result;
+    }
+    for (const auto &entry : breakpoints_) {
+        auto urlHashMap = breakpoints_[entry.first];
+        auto urlKey = location.GetSourceFile();
+        if (urlHashMap.find(urlKey) != urlHashMap.end()) {
+            auto breakpointSet = urlHashMap[urlKey];
+            for (const auto &bp : breakpointSet) {
+                if ((bp.GetLine() == location.GetLine()) &&
+                    (bp.GetColumn() == location.GetColumn())) {
+                    result.emplace_back(bp);
+                }
+            }
+        }
+    }
+    return result;
+}
+
+std::vector<JSBreakpoint> JSDebugger::SearchNoMatchBreakpointInGlobalList(const JSPtLocation &location)
+{
+    std::vector<JSBreakpoint> result{};
+    if (breakpoints_.empty()) {
+        return result;
+    }
+    for (const auto &entry : globalBpList_) {
+        auto urlHashMap = globalBpList_[entry.first];
+        auto urlKey = location.GetSourceFile();
+        if (urlHashMap.find(urlKey) != urlHashMap.end()) {
+            auto breakpointSet = urlHashMap[urlKey];
+            for (const auto &bp : breakpointSet) {
+                if ((bp.GetLine() == location.GetLine()) &&
+                    (bp.GetColumn() == location.GetColumn())) {
+                    result.emplace_back(bp);
+                }
+            }
+        }
+    }
+    return result;
+}
+
+std::optional<JSBreakpoint> JSDebugger::SearchBreakpointInGlobalList(const JSPtLocation &location, PtMethod *ptMethod)
+{
+    auto pandaFileKey = ptMethod->GetJSPandaFile()->GetJSPandaFileDesc();
+    if (globalBpList_.empty() || globalBpList_.find(pandaFileKey) == globalBpList_.end()) {
+        return {};
+    }
+    auto urlHashMap = globalBpList_[pandaFileKey];
+    if (urlHashMap.empty() || urlHashMap.find(location.GetSourceFile()) == urlHashMap.end()) {
+        return {};
+    }
+    for (const auto &bp : urlHashMap[location.GetSourceFile()]) {
+        if ((bp.GetBytecodeOffset() == location.GetBytecodeOffset()) &&
+            (bp.GetPtMethod()->GetJSPandaFile() == ptMethod->GetJSPandaFile()) &&
+            (bp.GetPtMethod()->GetMethodId() == ptMethod->GetMethodId())) {
+            return bp;
+        }
+    }
+    return {};
+}
+
+std::optional<JSBreakpoint> JSDebugger::SearchBreakpointInGlobalList(JSHandle<Method> method, uint32_t bcOffset)
+{
+    auto pandaFileKey = method->GetJSPandaFile()->GetJSPandaFileDesc();
+    if (globalBpList_.empty() || globalBpList_.find(pandaFileKey) == globalBpList_.end()) {
+        return {};
+    }
+    auto urlHashMap = globalBpList_.at(pandaFileKey);
+    for (const auto &entry : urlHashMap) {
+        for (const auto &bp : urlHashMap[entry.first]) {
+            if ((bp.GetBytecodeOffset() == bcOffset) &&
+                (bp.GetPtMethod()->GetJSPandaFile() == method->GetJSPandaFile()) &&
+                (bp.GetPtMethod()->GetMethodId() == method->GetMethodId())) {
+                return bp;
+            }
+        }
+    }
+    return {};
+}
+
+bool JSDebugger::RemoveUrlNotMatchedBreakpoint(const JSPtLocation &location)
+{
+    for (const auto &pandafileEntry : breakpoints_) {
+        for (const auto &urlHashMapEntry : breakpoints_[pandafileEntry.first]) {
+            if (location.GetSourceFile() == urlHashMapEntry.first) {
+                for (auto it = breakpoints_[pandafileEntry.first][urlHashMapEntry.first].begin();
+                     it != breakpoints_[pandafileEntry.first][urlHashMapEntry.first].end();) {
+                    const auto &bp = *it;
+                    if ((bp.GetLine() == location.GetLine()) && (bp.GetColumn() == location.GetColumn())) {
+                        it = breakpoints_[pandafileEntry.first][urlHashMapEntry.first].erase(it);
+                    } else {
+                        it++;
+                    }
+                }
+            }
+        }
+    }
+    {
+        std::unique_lock<std::shared_mutex> lock(listMutex_);
+        RemoveGlobalBreakpoint(location);
+    }
+    return true;
+}
+
+bool JSDebugger::RemoveGlobalBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, const JSPtLocation &location)
+{
+    auto pandaFileKey = location.GetJsPandaFile()->GetJSPandaFileDesc();
+    if (globalBpList_.empty() || globalBpList_.find(pandaFileKey) == globalBpList_.end()) {
+        return false;
+    }
+    auto urlHashMap = globalBpList_[pandaFileKey];
+    if (urlHashMap.empty() || urlHashMap.find(location.GetSourceFile()) == urlHashMap.end()) {
+        return false;
+    }
+    for (auto it = urlHashMap[location.GetSourceFile()].begin(); it != urlHashMap[location.GetSourceFile()].end();) {
+        const auto &bp = *it;
+        if ((bp.GetBytecodeOffset() == location.GetBytecodeOffset()) &&
+            (bp.GetPtMethod()->GetJSPandaFile() == ptMethod->GetJSPandaFile()) &&
+            (bp.GetPtMethod()->GetMethodId() == ptMethod->GetMethodId())) {
+            it = urlHashMap[location.GetSourceFile()].erase(it);
+        } else {
+            it++;
+        }
+    }
+    return true;
+}
+
+bool JSDebugger::RemoveGlobalBreakpoint(const JSPtLocation &location)
+{
+    for (const auto &entry : globalBpList_) {
+        if (globalBpList_[entry.first].find(location.GetSourceFile()) != globalBpList_[entry.first].end()) {
+            for (auto it = globalBpList_[entry.first][location.GetSourceFile()].begin();
+                 it != globalBpList_[entry.first][location.GetSourceFile()].end();) {
+                const auto &bp = *it;
+                if ((bp.GetLine() == location.GetLine()) && (bp.GetColumn() == location.GetColumn())) {
+                    it = globalBpList_[entry.first][location.GetSourceFile()].erase(it);
+                } else {
+                    it++;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+bool JSDebugger::RemoveGlobalBreakpoint(const std::string &url)
+{
+    for (const auto &entry : globalBpList_) {
+        if (globalBpList_[entry.first].find(url) != globalBpList_[entry.first].end()) {
+            globalBpList_[entry.first].erase(url);
+        }
+    }
     return true;
 }
 
@@ -65,7 +370,8 @@ bool JSDebugger::SetSmartBreakpoint(const JSPtLocation &location)
     }
 
     auto [_, success] = smartBreakpoints_.emplace(location.GetSourceFile(), ptMethod.release(),
-        location.GetBytecodeOffset(), Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_)));
+        location.GetBytecodeOffset(), Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_)),
+        location.GetSourceFile(), location.GetLine(), location.GetColumn());
     if (!success) {
         // also return true
         LOG_DEBUGGER(WARN) << "SetSmartBreakpoint: Breakpoint already exists";
@@ -83,32 +389,51 @@ bool JSDebugger::RemoveBreakpoint(const JSPtLocation &location)
         return false;
     }
 
-    if (!RemoveBreakpoint(ptMethod, location.GetBytecodeOffset())) {
+    if (!RemoveLocalBreakpoint(ptMethod, location.GetBytecodeOffset())) {
         LOG_DEBUGGER(ERROR) << "RemoveBreakpoint: Breakpoint not found";
         return false;
     }
 
-    DumpBreakpoints();
+    {
+        std::unique_lock<std::shared_mutex> lock(listMutex_);
+        RemoveGlobalBreakpoint(ptMethod, location);
+    }
     return true;
 }
 
 void JSDebugger::RemoveAllBreakpoints()
 {
     breakpoints_.clear();
+    if (!globalBpList_.empty()) {
+        {
+            // acquire write lock of global list
+            std::unique_lock<std::shared_mutex> globalListLock(listMutex_);
+            globalBpList_.clear();
+        }
+    }
 }
 
 bool JSDebugger::RemoveBreakpointsByUrl(const std::string &url)
 {
-    for (auto it = breakpoints_.begin(); it != breakpoints_.end();) {
-        const auto &bp = *it;
-        if (bp.GetSourceFile() == url) {
-            it = breakpoints_.erase(it);
-        } else {
-            it++;
+    for (const auto &entry : breakpoints_) {
+        if (breakpoints_[entry.first].find(url) != breakpoints_[entry.first].end()) {
+            breakpoints_[entry.first].erase(url);
         }
     }
+    return true;
+}
 
-    DumpBreakpoints();
+bool JSDebugger::RemoveAllBreakpointsByUrl(const std::string &url, bool skipGlobal)
+{
+    RemoveBreakpointsByUrl(url);
+
+    if (!skipGlobal && !globalBpList_.empty()) {
+        {
+            // acquire write lock of global list
+            std::unique_lock<std::shared_mutex> globalListLock(listMutex_);
+            RemoveGlobalBreakpoint(url);
+        }
+    }
     return true;
 }
 
@@ -144,25 +469,51 @@ bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
     if (hooks_ == nullptr) {
         return false;
     }
-
+    Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
     auto smartBreakpoint = FindSmartBreakpoint(method, bcOffset);
     if (smartBreakpoint.has_value()) {
-        JSPtLocation smartLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset,
-            smartBreakpoint.value().GetSourceFile()};
+        JSPtLocation smartLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
+            smartBreakpoint.value().GetLine(),
+            smartBreakpoint.value().GetColumn(), smartBreakpoint.value().GetSourceFile()};
         std::unique_ptr<PtMethod> ptMethod = FindMethod(smartLocation);
         RemoveSmartBreakpoint(ptMethod, bcOffset);
         hooks_->Breakpoint(smartLocation);
         return true;
     }
 
-    auto breakpoint = FindBreakpoint(method, bcOffset);
-    if (!breakpoint.has_value() || !IsBreakpointCondSatisfied(breakpoint)) {
-        return false;
+    auto breakpoint = FindLocalBreakpoint(method, bcOffset);
+    if (breakpoint.has_value()) {
+        // find breakpoint in Local list
+        if (!IsBreakpointCondSatisfied(breakpoint)) {
+            return false;
+        }
+        JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
+        breakpoint.value().GetLine(), breakpoint.value().GetColumn(),
+        breakpoint.value().GetSourceFile(), false, method->GetRecordNameStr()};
+        hooks_->Breakpoint(location);
+    } else {
+        // if not found in local, try to find it in global list
+        {
+            // acquire read lock of global list
+            std::shared_lock<std::shared_mutex> globalListLock(listMutex_);
+            breakpoint = SearchBreakpointInGlobalList(method, bcOffset);
+        }
+        if (!breakpoint.has_value()) {
+            return false;
+        }
+        if (!IsBreakpointCondSatisfied(breakpoint)) {
+            return false;
+        }
+        JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
+        breakpoint.value().GetLine(), breakpoint.value().GetColumn(),
+        breakpoint.value().GetSourceFile(), true, method->GetRecordNameStr()};
+        hooks_->Breakpoint(location);
+        
+        if (ecmaVm_->GetJsDebuggerManager()->IsBreakpointSyncEnabled()) {
+            PullBreakpointFromGlobal(breakpoint.value());
+        }
     }
-    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset,
-        breakpoint.value().GetSourceFile()};
-
-    hooks_->Breakpoint(location);
+    
     return true;
 }
 
@@ -176,13 +527,25 @@ bool JSDebugger::HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset)
     if (singleStepOnDebuggerStmt_) {
         return false;
     }
-    auto breakpointAtDebugger = FindBreakpoint(method, bcOffset);
+    auto breakpointAtDebugger = FindLocalBreakpoint(method, bcOffset);
     // if a breakpoint is set on the same line as debugger stmt,
     // the debugger stmt is ineffective
     if (breakpointAtDebugger.has_value()) {
         return false;
     }
-    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
+    {
+        // acquire read lock of global list
+        std::shared_lock<std::shared_mutex> globalListLock(listMutex_);
+        breakpointAtDebugger = SearchBreakpointInGlobalList(method, bcOffset);
+    }
+    if (breakpointAtDebugger.has_value()) {
+        return false;
+    }
+    Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
+    
+    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
+        breakpointAtDebugger.value().GetLine(),
+        breakpointAtDebugger.value().GetColumn(), breakpointAtDebugger.value().GetUrl()};
     hooks_->DebuggerStmt(location);
 
     return true;
@@ -193,8 +556,11 @@ void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Meth
     if (hooks_ == nullptr || !thread->HasPendingException()) {
         return;
     }
-
-    JSPtLocation throwLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
+    Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
+    const std::string emptyUrl = "";
+    int32_t invalidLine = -1;
+    JSPtLocation throwLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
+        invalidLine, invalidLine, emptyUrl};
 
     hooks_->Exception(throwLocation);
 }
@@ -204,19 +570,27 @@ bool JSDebugger::HandleStep(JSHandle<Method> method, uint32_t bcOffset)
     if (hooks_ == nullptr) {
         return false;
     }
-
-    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
+    Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
+    const std::string emptyUrl = "";
+    int32_t invalidLine = -1;
+    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
+        invalidLine, invalidLine, emptyUrl};
 
     return hooks_->SingleStep(location);
 }
 
-std::optional<JSBreakpoint> JSDebugger::FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const
+std::optional<JSBreakpoint> JSDebugger::FindLocalBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
 {
-    for (const auto &bp : breakpoints_) {
-        if ((bp.GetBytecodeOffset() == bcOffset) &&
-            (bp.GetPtMethod()->GetJSPandaFile() == method->GetJSPandaFile()) &&
-            (bp.GetPtMethod()->GetMethodId() == method->GetMethodId())) {
-            return bp;
+    for (const auto &pandafileEntry : breakpoints_) {
+        for (const auto &urlHashMapEntry : breakpoints_[pandafileEntry.first]) {
+            auto breakpointSet = breakpoints_[pandafileEntry.first][urlHashMapEntry.first];
+            for (const auto &bp : breakpointSet) {
+                if ((bp.GetBytecodeOffset() == bcOffset) &&
+                    (bp.GetPtMethod()->GetJSPandaFile() == method->GetJSPandaFile()) &&
+                    (bp.GetPtMethod()->GetMethodId() == method->GetMethodId())) {
+                    return bp;
+                }
+            }
         }
     }
     return {};
@@ -234,19 +608,24 @@ std::optional<JSBreakpoint> JSDebugger::FindSmartBreakpoint(JSHandle<Method> met
     return {};
 }
 
-bool JSDebugger::RemoveBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset)
+bool JSDebugger::RemoveLocalBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset)
 {
-    for (auto it = breakpoints_.begin(); it != breakpoints_.end(); ++it) {
-        const auto &bp = *it;
-        if ((bp.GetBytecodeOffset() == bcOffset) &&
-            (bp.GetPtMethod()->GetJSPandaFile() == ptMethod->GetJSPandaFile()) &&
-            (bp.GetPtMethod()->GetMethodId() == ptMethod->GetMethodId())) {
-            it = breakpoints_.erase(it);
-            return true;
+    for (const auto &pandafileEntry : breakpoints_) {
+        for (const auto &urlHashMapEntry : breakpoints_[pandafileEntry.first]) {
+            for (auto it = breakpoints_[pandafileEntry.first][urlHashMapEntry.first].begin();
+                 it != breakpoints_[pandafileEntry.first][urlHashMapEntry.first].end();) {
+                const auto &bp = *it;
+                if ((bp.GetBytecodeOffset() == bcOffset) &&
+                    (bp.GetPtMethod()->GetJSPandaFile() == ptMethod->GetJSPandaFile()) &&
+                    (bp.GetPtMethod()->GetMethodId() == ptMethod->GetMethodId())) {
+                    it = breakpoints_[pandafileEntry.first][urlHashMapEntry.first].erase(it);
+                } else {
+                    it++;
+                }
+            }
         }
     }
-
-    return false;
+    return true;
 }
 
 bool JSDebugger::RemoveSmartBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset)
@@ -288,10 +667,37 @@ std::unique_ptr<PtMethod> JSDebugger::FindMethod(const JSPtLocation &location) c
 
 void JSDebugger::DumpBreakpoints()
 {
-    LOG_DEBUGGER(INFO) << "dump breakpoints with size " << breakpoints_.size();
-    for (const auto &bp : breakpoints_) {
-        LOG_DEBUGGER(DEBUG) << bp.ToString();
+    int32_t size = 0;
+    LOG_DEBUGGER(DEBUG) << "Dumping breakpoints in local list:";
+    for (const auto &entry : breakpoints_) {
+        auto urlHashMap = breakpoints_[entry.first];
+        for (const auto &pair : urlHashMap) {
+            LOG_DEBUGGER(DEBUG) << "URL: " << pair.first;
+            for (const auto &bp : urlHashMap[pair.first]) {
+                size++;
+                LOG_DEBUGGER(DEBUG) << "Local #" << size << ": " << bp.ToString();
+            }
+        }
     }
+    LOG_DEBUGGER(INFO) << "Dumpped breakpoints in local list with size " << size;
+}
+
+void JSDebugger::DumpGlobalBreakpoints()
+{
+    // Should call this function after acquiring the lock of global list
+    int32_t size = 0;
+    LOG_DEBUGGER(DEBUG) << "Dumping breakpoints in global list:";
+    for (const auto &entry : globalBpList_) {
+        auto urlHashMap = globalBpList_[entry.first];
+        for (const auto &pair : urlHashMap) {
+            LOG_DEBUGGER(DEBUG) << "URL: " << pair.first;
+            for (const auto &bp : urlHashMap[pair.first]) {
+                size++;
+                LOG_DEBUGGER(DEBUG) << "Global #" << size << ": " << bp.ToString();
+            }
+        }
+    }
+    LOG_DEBUGGER(INFO) << "Dumpped breakpoints in global list with size " << size;
 }
 
 bool JSDebugger::IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoint) const
@@ -301,7 +707,7 @@ bool JSDebugger::IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoin
     }
     JSThread *thread = ecmaVm_->GetJSThread();
     auto condFuncRef = breakpoint.value().GetConditionFunction();
-    if (condFuncRef->IsFunction(ecmaVm_)) {
+    if (!condFuncRef->IsHole() && condFuncRef->IsFunction(ecmaVm_)) {
         LOG_DEBUGGER(INFO) << "BreakpointCondition: evaluating condition";
         auto handlerPtr = std::make_shared<FrameHandler>(ecmaVm_->GetJSThread());
         auto evalResult = DebuggerApi::EvaluateViaFuncCall(const_cast<EcmaVM *>(ecmaVm_),
