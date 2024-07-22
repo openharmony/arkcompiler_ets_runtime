@@ -55,29 +55,11 @@ bool CpuProfiler::RegisterGetStackSignal()
         LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigemptyset failed, errno = " << errno;
         return false;
     }
-#if defined(PANDA_TARGET_ARM64) && !defined(ANDROID_PLATFORM)
-    sa.sa_flags = SA_RESTART | SA_SIGINFO | SA_ONSTACK;
-#else
     sa.sa_flags = SA_RESTART | SA_SIGINFO;
-#endif
     if (sigaction(SIGPROF, &sa, nullptr) != 0) {
         LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigaction failed, errno = " << errno;
         return false;
     }
-#if defined(PANDA_TARGET_ARM64) && !defined(ANDROID_PLATFORM)
-    constexpr const size_t stackSize = 128_KB;
-    segvStack_.ss_sp = PageMap(stackSize, PAGE_PROT_READWRITE).GetMem();
-    if (segvStack_.ss_sp == nullptr) {
-        LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, PageMap failed";
-        return false;
-    }
-    segvStack_.ss_flags = 0;
-    segvStack_.ss_size = stackSize;
-    if (sigaltstack(&segvStack_, NULL) != 0) {
-        LOG_ECMA(ERROR) << "CpuProfiler::RegisterGetStackSignal, sigaltstack failed, errno = " << errno;
-        return false;
-    }
-#endif
     return true;
 }
 
@@ -243,11 +225,6 @@ CpuProfiler::~CpuProfiler()
     if (params_ != nullptr) {
         delete params_;
         params_ = nullptr;
-    }
-    if (segvStack_.ss_sp != nullptr) {
-        PageUnmap(MemMap(segvStack_.ss_sp, segvStack_.ss_size));
-        segvStack_.ss_sp = nullptr;
-        segvStack_.ss_size = 0;
     }
 }
 

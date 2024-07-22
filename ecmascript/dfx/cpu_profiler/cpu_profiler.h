@@ -130,7 +130,6 @@ private:
     std::atomic_bool isBuildNapiStack_ {false};
     bool enableVMTag_ {false};
     RunParams *params_ = nullptr;
-    stack_t segvStack_ {nullptr, 0, 0};
 };
 
 class CallNapiScope {
