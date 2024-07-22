@@ -903,23 +903,25 @@ Expr LMIRBuilder::ICmp(Type *type, Expr src1, Expr src2, IntCmpCondition cond)
     }
     PrimType originType = src1.GetNode()->GetPrimType();
     PrimType newType = originType;
-    if (!isSigned) {
-        switch (originType) {
-            case PTY_i8:
-                newType = PTY_u8;
-                break;
-            case PTY_i16:
-                newType = PTY_u16;
-                break;
-            case PTY_i32:
-                newType = PTY_u32;
-                break;
-            case PTY_i64:
-                newType = PTY_u64;
-                break;
-            default:
-                break;
-        }
+    switch (originType) {
+        case PTY_i8:
+        case PTY_u8:
+            newType = isSigned ? PTY_i8 : PTY_u8;
+            break;
+        case PTY_i16:
+        case PTY_u16:
+            newType = isSigned ? PTY_i16 : PTY_u16;
+            break;
+        case PTY_i32:
+        case PTY_u32:
+            newType = isSigned ? PTY_i32 : PTY_u32;
+            break;
+        case PTY_i64:
+        case PTY_u64:
+            newType = isSigned ? PTY_i64 : PTY_u64;
+            break;
+        default:
+            break;
     }
     Expr cmpExpr = CreateExprCompare(mirBuilder, opCode, type, src1, src2);
     static_cast<CompareNode *>(cmpExpr.GetNode())->SetOpndType(newType);
