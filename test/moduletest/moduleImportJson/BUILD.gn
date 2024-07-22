@@ -19,4 +19,5 @@ host_moduletest_action("moduleImportJson") {
   is_module = true
   is_merge = true
   is_merge_abc = true
+  async_load_abc_test = true
 }

@@ -31,11 +31,13 @@ host_moduletest_action("A") {
 host_moduletest_action("D") {
   deps = []
   is_module = true
+  async_load_abc_test = true
 }
 
 host_moduletest_action("exportas") {
   deps = []
   is_module = true
+  async_load_abc_test = true
 }
 
 host_moduletest_action("module") {
@@ -47,4 +49,5 @@ host_moduletest_action("module") {
     ":gen_exportas_abc",
   ]
   is_module = true
+  async_load_abc_test = true
 }
