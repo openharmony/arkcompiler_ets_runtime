@@ -21,6 +21,7 @@ Test LinkedList success!!!
 Test List success!!!
 Test PlainArray success!!!
 Test Queue success!!!
+6
 Test Stack success!!!
 Test TreeMap success!!!
 Test TreeMap set After Clear Success
