@@ -772,6 +772,14 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteNativeModule(JSThread *thread, con
     if (IsEvaluatedModule(recordName)) {
         JSHandle<SourceTextModule> moduleRecord = HostGetImportedModule(recordName);
         requiredModule.Update(moduleRecord);
+    } else if (IsLocalModuleLoaded(recordName)) {
+        JSHandle<SourceTextModule> nativeModule = HostGetImportedModule(recordName);
+        if (!SourceTextModule::LoadNativeModule(thread, nativeModule, nativeModule->GetTypes())) {
+            LOG_FULL(ERROR) << "loading native module " << recordName << " failed";
+        }
+        nativeModule->SetStatus(ModuleStatus::EVALUATED);
+        nativeModule->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+        requiredModule.Update(nativeModule);
     } else {
         auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(recordName);
         JSHandle<JSTaggedValue> nativeModuleHandle =
