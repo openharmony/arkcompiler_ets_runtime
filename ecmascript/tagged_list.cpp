@@ -445,7 +445,10 @@ JSTaggedValue TaggedSingleList::Sort(JSThread *thread, const JSHandle<JSTaggedVa
                                      const JSHandle<TaggedSingleList> &taggedList)
 {
     const int length = taggedList->NumberOfNodes();
-    ASSERT(length > 0);
+    const int minSortLength = 2;
+    if (length < minSortLength) {
+        return JSTaggedValue::Undefined();
+    }
     JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());

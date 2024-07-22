@@ -104,6 +104,7 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test list set:", res);
 
     let list2 = new List();
+    list2.sort();
     list2.add(4);
     list2.add(3);
     list2.add(1);

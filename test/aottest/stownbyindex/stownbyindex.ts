@@ -94,7 +94,12 @@ const exceptions = {
 	  	"1": "in 1 second",
 	},
 };
-  
+
+{
+	const v1 = new SharedInt8Array(SharedInt8Array, SharedInt8Array, SharedInt8Array);
+	let a = v1[Symbol.toStringTag];
+	let c = [a];
+}
   
 for (const unit of units) {
 	const expected = unit in exceptions
