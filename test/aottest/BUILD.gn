@@ -81,6 +81,7 @@ group("ark_aot_ts_test") {
     "classstatic",
     "class_method_signature",
     "closeiterator",
+    "combined_pass",
     "compiler_test",
     "constpool",
     "continue_from_finally",

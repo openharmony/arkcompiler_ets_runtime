@@ -74,6 +74,7 @@ public:
 protected:
     ParamType PGOSampleTypeToParamType() const;
     static ParamType PGOBuiltinTypeToParamType(ProfileType pgoType);
+    bool IsMegaType() const;
 
     const CompilationEnv *compilationEnv_ {nullptr};
     GateAccessor acc_;
@@ -913,6 +914,17 @@ public:
     GateRef GetReceiver() const
     {
         return receiver_;
+    }
+    
+    static bool IsMegaType(const PGORWOpType *pgoTypes)
+    {
+        for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
+            auto temp = pgoTypes->GetObjectInfo(i);
+            if (temp.GetReceiverType().IsMegaStateType()) {
+                return true;
+            }
+        }
+        return false;
     }
 
 protected:

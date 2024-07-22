@@ -743,7 +743,8 @@ public:
             return;
         }
         if (info.IsMegaStateType()) {
-            count_ = 0;
+            count_ = 1;
+            infos_[0] = info;
             return;
         }
         uint32_t count = 0;
