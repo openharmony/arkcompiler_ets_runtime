@@ -69,14 +69,14 @@ class PassContext;
 class PassData {
 public:
     PassData(BytecodeCircuitBuilder *builder, Circuit *circuit, PassContext *ctx, CompilerLog *log,
-             std::string methodName, MethodInfo *methodInfo = nullptr, bool hasTypes = false,
+             std::string methodName, MethodInfo *methodInfo = nullptr,
              const CString &recordName = "", MethodLiteral *methodLiteral = nullptr,
              uint32_t methodOffset = 0, CallMethodFlagMap *callMethodFlagMap = nullptr,
              const CVector<AbcFileInfo> &fileInfos = CVector<AbcFileInfo>{}, NativeAreaAllocator *allocator = nullptr,
              PGOProfilerDecoder *decoder = nullptr, PassOptions *passOptions = nullptr,
              std::string optBCRange = "")
         : builder_(builder), circuit_(circuit), ctx_(ctx), log_(log), methodName_(methodName),
-          methodInfo_(methodInfo), hasTypes_(hasTypes), recordName_(recordName), methodLiteral_(methodLiteral),
+          methodInfo_(methodInfo), recordName_(recordName), methodLiteral_(methodLiteral),
           methodOffset_(methodOffset), callMethodFlagMap_(callMethodFlagMap), fileInfos_(fileInfos),
           allocator_(allocator), decoder_(decoder), passOptions_(passOptions),
           optBCRange_(optBCRange)
@@ -160,11 +160,6 @@ public:
         return methodInfo_->GetMethodInfoIndex();
     }
 
-    bool HasTypes() const
-    {
-        return hasTypes_;
-    }
-
     const CString &GetRecordName() const
     {
         return recordName_;
@@ -215,7 +210,6 @@ private:
     CompilerLog *log_ {nullptr};
     std::string methodName_;
     MethodInfo *methodInfo_ {nullptr};
-    bool hasTypes_;
     const CString &recordName_;
     MethodLiteral *methodLiteral_ {nullptr};
     uint32_t methodOffset_;

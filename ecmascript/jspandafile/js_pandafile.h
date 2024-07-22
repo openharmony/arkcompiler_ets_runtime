@@ -41,9 +41,7 @@ public:
         int moduleRecordIdx {-1};
         bool hasTopLevelAwait {false};
         CUnorderedMap<uint32_t, uint64_t> constpoolMap;
-        bool hasTSTypes {false};
         uint32_t lazyImportIdx {0};
-        uint32_t typeSummaryOffset {0};
         uint32_t classId {CLASSID_OFFSET_NOT_FOUND};
         CString npmPackageName;
 
@@ -70,8 +68,6 @@ public:
     static constexpr char MODULE_CLASS[] = "L_ESModuleRecord;";
     static constexpr char COMMONJS_CLASS[] = "L_CommonJsRecord;";
     static constexpr char HASTLA_CLASS[] = "L_HasTopLevelAwait;";
-    static constexpr char TYPE_FLAG[] = "typeFlag";
-    static constexpr char TYPE_SUMMARY_OFFSET[] = "typeSummaryOffset";
 
     static constexpr char IS_COMMON_JS[] = "isCommonjs";
     static constexpr char IS_JSON_CONTENT[] = "jsonFileContent";
@@ -102,7 +98,7 @@ public:
 
         NO_COPY_SEMANTIC(TranslateClassesTask);
         NO_MOVE_SEMANTIC(TranslateClassesTask);
-    
+
     private:
         JSThread *thread_ {nullptr};
         JSPandaFile *jsPandaFile_ {nullptr};
@@ -414,34 +410,6 @@ public:
     static bool IsEntryOrPatch(const CString &name)
     {
         return (name == PATCH_FUNCTION_NAME_0) || (name == ENTRY_FUNCTION_NAME);
-    }
-
-    bool HasTSTypes(const CString &recordName) const
-    {
-        auto it = jsRecordInfo_.find(recordName);
-        if (it != jsRecordInfo_.end()) {
-            return it->second->hasTSTypes;
-        }
-        return false;
-    }
-
-    bool HasTSTypes(const JSRecordInfo &recordInfo) const
-    {
-        return recordInfo.hasTSTypes;
-    }
-
-    uint32_t GetTypeSummaryOffset(const CString &recordName) const
-    {
-        auto it = jsRecordInfo_.find(recordName);
-        if (it != jsRecordInfo_.end()) {
-            return it->second->typeSummaryOffset;
-        }
-        return TYPE_SUMMARY_OFFSET_NOT_FOUND;
-    }
-
-    bool HasTypeSummaryOffset(const CString &recordName) const
-    {
-        return GetTypeSummaryOffset(recordName) != TYPE_SUMMARY_OFFSET_NOT_FOUND;
     }
 
     void DeleteParsedConstpoolVM(const EcmaVM *vm)
