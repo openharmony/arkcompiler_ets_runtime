@@ -2330,6 +2330,27 @@ inline GateRef StubBuilder::IsSpecialIndexedObj(GateRef jsType)
 }
 
 inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver,
+    GateRef attr, GateRef value, Label *executeSetProp, Label *exit)
+{
+    auto *env = GetEnvironment();
+    Label isJSShared(env);
+    BRANCH(IsJSShared(receiver), &isJSShared, executeSetProp);
+    Bind(&isJSShared);
+    {
+        Label typeMismatch(env);
+        GateRef fieldType = isDicMode ? GetDictSharedFieldTypeInPropAttr(attr) : GetSharedFieldTypeInPropAttr(attr);
+        MatchFieldType(fieldType, value, executeSetProp, &typeMismatch);
+        Bind(&typeMismatch);
+        {
+            GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
+            CallRuntime(glue, RTSTUB_ID(ThrowTypeError), {IntToTaggedInt(taggedId)});
+            *result = Exception();
+            Jump(exit);
+        }
+    }
+}
+
+inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver,
     GateRef attr, GateRef value, Label *executeSetProp, Label *exit, GateRef SCheckModelIsCHECK)
 {
     auto *env = GetEnvironment();
