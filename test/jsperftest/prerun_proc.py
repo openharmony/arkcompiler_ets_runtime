@@ -21,7 +21,7 @@ import sys
 import re
 import os
 
-help = """
+HELP = """
 python prerun_proc.py __VAR__=value ... default_js_scr.js
 
 lets assume that default_js_scr.js have next lines
@@ -57,6 +57,7 @@ __MULTIPLIER__ = 3
 
 """
 
+
 def get_args():
     vars_to_replace = {}
     script_name = ""
@@ -71,7 +72,7 @@ def get_args():
             else:
                 script_name = arg
         elif(arg == "-h" or arg == "--help"):
-            print(help)
+            print(HELP)
             exit(0)
         else:
             raise RuntimeError(f"{arg} is wrong argument, please look at help")
@@ -84,21 +85,23 @@ def get_args():
 
     return script_name, vars_to_replace
 
+
 def main():
     script_name, vars_to_replace = get_args()
     data = []
 
     status = os.stat(script_name)
-    fd = os.open(script_name, os.O_RDWR|os.O_CREAT, status.st_mode)
+    fd = os.open(script_name, os.O_RDWR | os.O_CREAT, status.st_mode)
     with os.fdopen(fd, 'r') as script_file:
         data = script_file.readlines()
 
-    for i in range(len(data)):
-        for var in vars_to_replace:
+    for i, _ in enumerate(data):
+        for var in vars_to_replace.items():
             if(re.search(f"const {var} =", data[i].strip())):
-                data[i]= data[i][:data[i].find("=") + 1] + ' ' + vars_to_replace[var] + ';\n'
+                val = data.get(i)
+                data[i] = val[:val.find("=") + 1] + ' ' + vars_to_replace.get(var) + ';\n'
 
-    fd = os.open(script_name, os.O_RDWR|os.O_CREAT, status.st_mode)
+    fd = os.open(script_name, os.O_RDWR | os.O_CREAT, status.st_mode)
     with os.fdopen(fd, 'w') as script_file:
         script_file.seek(0)
         script_file.writelines(data)
