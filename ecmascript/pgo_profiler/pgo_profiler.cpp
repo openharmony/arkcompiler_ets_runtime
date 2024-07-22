@@ -159,6 +159,12 @@ void PGOProfiler::ProfileProtoTransitionPrototype(JSHandle<JSFunction> func,
     if (!isEnable_) {
         return;
     }
+
+    // fuzz test modifies prototype explicitly, add check protection
+    if (!oldPrototype->IsECMAObject()) {
+        return;
+    }
+
     auto method = func->GetMethod();
     if (Method::Cast(method)->IsNativeWithCallField()) {
         return;
