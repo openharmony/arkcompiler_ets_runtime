@@ -18,6 +18,7 @@
 
 #include <sys/time.h>
 #include <fcntl.h>
+#include <mutex>
 #include <stdio.h>
 
 #include "ecmascript/platform/directory.h"
@@ -67,13 +68,11 @@ public:
         return singleAotRuntimeInfo;
     }
 
-    void BuildCompileRuntimeInfo(RuntimeInfoType type, const std::string &pgoPath) const
+    void BuildCompileRuntimeInfo(RuntimeInfoType type, const std::string &pgoPath)
     {
-        static char soBuildId[NAME_MAX];
-        if (!GetRuntimeBuildId(soBuildId)) {
-            return;
-        }
-        if (IsCharEmpty(soBuildId)) {
+        std::unique_lock<std::mutex> lock(fileMutex_);
+        static char soBuildId[NAME_MAX] = { '\0' };
+        if (!GetRuntimeBuildId(soBuildId) || IsCharEmpty(soBuildId)) {
             LOG_ECMA(INFO) << "can't get so buildId.";
             return;
         }
@@ -101,16 +100,13 @@ public:
         SetRuntimeInfo(realOutPath.c_str(), lines);
     }
 
-    void BuildCrashRuntimeInfo(RuntimeInfoType type) const
+    void BuildCrashRuntimeInfo(RuntimeInfoType type)
     {
-        static char soBuildId[NAME_MAX];
-        if (!GetRuntimeBuildId(soBuildId)) {
+        std::unique_lock<std::mutex> lock(fileMutex_);
+        static char soBuildId[NAME_MAX] = { '\0' };
+        if (!GetRuntimeBuildId(soBuildId) || IsCharEmpty(soBuildId)) {
             return;
         }
-        if (IsCharEmpty(soBuildId)) {
-            return;
-        }
-        
         static char lines[MAX_LENGTH][BUFFER_SIZE];
         for (int i = 0; i < MAX_LENGTH; i++) {
             memset_s(lines[i], BUFFER_SIZE, '\0', BUFFER_SIZE);
@@ -126,11 +122,8 @@ public:
                 return;
             }
         }
-        static char realOutPath[PATH_MAX];
-        if (!GetCrashSandBoxRealPath(realOutPath)) {
-            return;
-        }
-        if (IsCharEmpty(realOutPath)) {
+        static char realOutPath[PATH_MAX] = { '\0' };
+        if (!GetCrashSandBoxRealPath(realOutPath) || IsCharEmpty(realOutPath)) {
             return;
         }
         SetRuntimeInfo(realOutPath, lines);
@@ -151,6 +144,9 @@ public:
             return escapeMap_;
         }
         char lines[MAX_LENGTH][BUFFER_SIZE];
+        for (int i = 0; i < MAX_LENGTH; i++) {
+            memset_s(lines[i], BUFFER_SIZE, '\0', BUFFER_SIZE);
+        }
         if (IsCharEmpty(pgoRealPath.c_str())) {
             GetCrashRuntimeInfoList(lines);
         } else {
@@ -286,12 +282,12 @@ protected:
         return true;
     }
 
-    char *GetInfoFromBuffer(char *line, int index) const
+    const char *GetInfoFromBuffer(char *line, int index) const
     {
         char *saveptr;
-        char buffer[BUFFER_SIZE];
+        char buffer[BUFFER_SIZE] = { '\0' };
         if (strncpy_s(buffer, BUFFER_SIZE - 1, line, sizeof(buffer) - 1) != 0) {
-            return NULL;
+            return "";
         }
         char *token = strtok_r(buffer, OhosConstants::SPLIT_STR, &saveptr);
         
@@ -314,14 +310,14 @@ protected:
 
     void GetCrashRuntimeInfoList(char lines[][BUFFER_SIZE]) const
     {
-        static char realOutPath[PATH_MAX];
+        static char realOutPath[PATH_MAX] = { '\0' };
         if (!GetCrashSandBoxRealPath(realOutPath)) {
             return;
         }
         if (!FileExist(realOutPath)) {
             return;
         }
-        static char soBuildId[NAME_MAX];
+        static char soBuildId[NAME_MAX] = { '\0' };
         if (!GetRuntimeBuildId(soBuildId)) {
             return;
         }
@@ -341,7 +337,7 @@ protected:
         if (!FileExist(realOutPath.c_str())) {
             return;
         }
-        char soBuildId[NAME_MAX];
+        char soBuildId[NAME_MAX] = { '\0' };
         if (!GetRuntimeBuildId(soBuildId)) {
             return;
         }
@@ -372,7 +368,7 @@ protected:
         if (fd == -1) {
             return;
         }
-        char buffer[BUFFER_SIZE];
+        char buffer[BUFFER_SIZE] = { '\0' };
         char *saveptr;
         char *token;
         ssize_t bytesRead;
@@ -382,7 +378,7 @@ protected:
             while (token != NULL) {
                 if (strcmp(GetInfoFromBuffer(token, RUNTIME_INDEX_BUILDID), soBuildId) == 0 &&
                     lineCount < MAX_LENGTH &&
-                    strcpy_s(lines[lineCount], BUFFER_SIZE, buffer) == 0) {
+                    strcpy_s(lines[lineCount], BUFFER_SIZE, token) == 0) {
                     lineCount++;
                 }
                 token = strtok_r(NULL, "\n", &saveptr);
@@ -477,6 +473,7 @@ protected:
 
     std::map<RuntimeInfoType, int> escapeMap_;
     bool isLoadedMap_ = false;
+    std::mutex fileMutex_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_OHOS_RUNTIME_BUILD_INFO_H
