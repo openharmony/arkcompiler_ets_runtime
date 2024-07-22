@@ -328,6 +328,88 @@ void AArch64GenProEpilog::AppendInstructionAllocateCallFrameDebug(AArch64reg reg
     }
 }
 
+void AArch64GenProEpilog::GenerateFrameTypeSave(SaveInfo& frameTypeInfo, int32 stackSize, int64 fpToSpDistance)
+{
+    if (!frameTypeInfo.shouldSave) {
+        return;
+    }
+    CHECK_FATAL(frameTypeInfo.offset < 0, "must be!!");
+    auto &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
+    //mov
+    auto &x10Opnd = aarchCGFunc.GetOrCreatePhysicalRegisterOperand(R10, k64BitSize, kRegTyInt);
+    auto immOpnd = &aarchCGFunc.CreateImmOperand(frameTypeInfo.idx, k64BitSize, true);
+    aarchCGFunc.SelectCopyImm(x10Opnd, *immOpnd, PTY_i64);
+    // store
+    Operand *o1 = aarchCGFunc.CreateStackMemOpnd(RSP,
+        static_cast<uint32>(frameTypeInfo.offset) + fpToSpDistance, GetPointerBitSize());
+    MemOperand *mem = static_cast<MemOperand *>(o1);
+    uint32 dataSize = GetPointerBitSize();
+    if (mem->GetMemVaryType() == kNotVary && aarchCGFunc.IsImmediateOffsetOutOfRange(*mem, dataSize)) {
+        o1 = &aarchCGFunc.SplitOffsetWithAddInstruction(*mem, dataSize, R16);
+    }
+
+    Insn &pushInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xstr, x10Opnd, *o1);
+    AppendInstructionTo(pushInsn, cgFunc);
+}
+
+void AArch64GenProEpilog::GenerateFunctionSave(SaveInfo& funcInfo, int32 stackSize, int64 fpToSpDistance)
+{
+    if (!funcInfo.shouldSave) {
+        return;
+    }
+    CHECK_FATAL(funcInfo.offset < 0, "must be!!");
+    auto &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
+    auto &mirFunc = aarchCGFunc.GetFunction();
+    CCLocInfo ploc;
+    CCImpl &parmlocator = *aarchCGFunc.GetOrCreateLocator(CCImpl::GetCallConvKind(aarchCGFunc.GetFunction()));
+    auto &x10Opnd = aarchCGFunc.GetOrCreatePhysicalRegisterOperand(R10, k64BitSize, kRegTyInt);
+    CHECK_FATAL(static_cast<size_t>(funcInfo.idx) <= mirFunc.GetFormalCount(), "should be in range");
+    for (size_t i = 0; i < mirFunc.GetFormalCount(); ++i) {
+        MIRType *ty = mirFunc.GetNthParamType(i);
+        parmlocator.LocateNextParm(*ty, ploc, (i == 0), mirFunc.GetMIRFuncType());
+        if (i != static_cast<size_t>(funcInfo.idx)) {
+            continue;
+        }
+        if (ploc.reg0 == kRinvalid) {
+            Operand* o1 = aarchCGFunc.CreateStackMemOpnd(RSP, ploc.memOffset + stackSize, k64BitSize);
+            uint32 dataSize = GetPointerBitSize();
+            if (ploc.memOffset + stackSize > kStpLdpImm64UpperBound) {
+                o1 = SplitStpLdpOffsetForCalleeSavedWithAddInstruction(cgFunc,
+                    static_cast<MemOperand &>(*o1), dataSize, R16);
+            }
+            Insn &ldrInsn = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xldr, x10Opnd, *o1);
+            AppendInstructionTo(ldrInsn, cgFunc);
+        } else {
+            auto &funcOpnd =
+                aarchCGFunc.GetOrCreatePhysicalRegisterOperand((AArch64reg)ploc.GetReg0(), k64BitSize, kRegTyInt);
+            aarchCGFunc.SelectCopy(x10Opnd, ploc.GetPrimTypeOfReg0(), funcOpnd, ploc.GetPrimTypeOfReg0());
+        }
+    }
+    Operand *o2 = aarchCGFunc.CreateStackMemOpnd(RSP,
+        static_cast<uint32>(funcInfo.offset) + fpToSpDistance, GetPointerBitSize());
+    MemOperand *mem2 = static_cast<MemOperand *>(o2);
+    uint32 dataSize = GetPointerBitSize();
+    if (mem2->GetMemVaryType() == kNotVary && aarchCGFunc.IsImmediateOffsetOutOfRange(*mem2, dataSize)) {
+        o2 = &aarchCGFunc.SplitOffsetWithAddInstruction(*mem2, dataSize, R16);
+    }
+    Insn &pushInsn2 = cgFunc.GetInsnBuilder()->BuildInsn(MOP_xstr, x10Opnd, *o2);
+    AppendInstructionTo(pushInsn2, cgFunc);
+}
+
+void AArch64GenProEpilog::GenerateSave()
+{
+    auto &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
+    auto &mirFunc = aarchCGFunc.GetFunction();
+    auto &frameTypeInfo =  mirFunc.GetFrameTypeInfo();
+    auto &funcInfo = mirFunc.GetFuncInfo();
+
+    int32 stackFrameSize =
+        static_cast<int32>(static_cast<AArch64MemLayout *>(cgFunc.GetMemlayout())->RealStackFrameSize());
+    int64 fpToSpDistance = cgFunc.GetMemlayout()->SizeOfArgsToStackPass() + cgFunc.GetFunction().GetFrameReseverdSlot();
+    GenerateFrameTypeSave(frameTypeInfo, stackFrameSize, fpToSpDistance);
+    GenerateFunctionSave(funcInfo, stackFrameSize, fpToSpDistance);
+}
+
 /*
  *  From AArch64 Reference Manual
  *  C1.3.3 Load/Store Addressing Mode
@@ -366,7 +448,7 @@ void AArch64GenProEpilog::GeneratePushRegs()
     } else {
         AppendInstructionAllocateCallFrameDebug(R29, RLR, kRegTyInt);
     }
-
+    GenerateSave();
     if (useFP) {
         if (currCG->GenerateVerboseCG()) {
             cgFunc.GetCurBB()->AppendInsn(aarchCGFunc.CreateCommentInsn("copy SP to FP"));

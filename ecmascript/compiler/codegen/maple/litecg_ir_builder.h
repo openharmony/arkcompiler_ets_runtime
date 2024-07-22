@@ -207,8 +207,8 @@ private:
     void GenPrologue(maple::litecg::Function &function);
     void AssistGenPrologue(const size_t reservedSlotsSize, FrameType frameType, maple::litecg::Function &function);
     void SaveByteCodePcOnOptJSFuncFrame(maple::litecg::Var &value);
-    void SaveJSFuncOnOptJSFuncFrame(maple::litecg::Var &value);
-    void SaveFrameTypeOnFrame(FrameType frameType);
+    void SaveJSFuncOnOptJSFuncFrame(maple::litecg::Function &function, maple::litecg::Var &value, int funcIndex);
+    void SaveFrameTypeOnFrame(maple::litecg::Function &function, FrameType frameType);
     bool IsInterpreted() const;
     bool IsBaselineBuiltin() const;
     void AddFunc();
