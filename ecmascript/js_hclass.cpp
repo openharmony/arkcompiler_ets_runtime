@@ -19,7 +19,6 @@
 #include <algorithm>
 
 #include "ecmascript/base/config.h"
-#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"

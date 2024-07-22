@@ -15,7 +15,6 @@
 
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 
-#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"

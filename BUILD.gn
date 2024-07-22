@@ -710,7 +710,6 @@ ecma_source = [
   "ecmascript/extractortool/src/source_map.cpp",
   "ecmascript/frames.cpp",
   "ecmascript/free_object.cpp",
-  "ecmascript/function_proto_transition_table.cpp",
   "ecmascript/generator_helper.cpp",
   "ecmascript/async_generator_helper.cpp",
   "ecmascript/global_env.cpp",

@@ -18,7 +18,6 @@
 #include <chrono>
 #include <memory>
 
-#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/elements.h"
 #include "ecmascript/enum_conversion.h"
 #include "ecmascript/ic/ic_handler.h"
