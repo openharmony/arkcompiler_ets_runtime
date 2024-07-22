@@ -689,10 +689,13 @@ void LLVMIRBuilder::VisitRuntimeCall(GateRef gate, const std::vector<GateRef> &i
 
 bool LLVMIRBuilder::SetDebugInfo(GateRef g, LLVMValueRef r)
 {
-    size_t index = 0;
-    if (r != nullptr && circuit_->GetDebugInfo(g, index)) {
+    if (r != nullptr) {
         LLVMValueKind k = LLVMGetValueKind(r);
         if (k == LLVMInstructionValueKind) {
+            std::string comment = acc_.ToString(g);
+            circuit_->AddComment(g, std::move(comment));
+            size_t index = 0;
+            circuit_->GetDebugInfo(g, index);
             LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(context_, index + 1, 0, dFuncMD_, NULL);
             LLVMInstructionSetDebugLoc(r, loc);
             return true;

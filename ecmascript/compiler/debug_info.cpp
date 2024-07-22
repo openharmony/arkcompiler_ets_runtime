@@ -48,13 +48,21 @@ void DebugInfo::AddFuncName(const std::string &name)
     }
 }
 
-size_t DebugInfo::AddComment(const char* str)
+size_t DebugInfo::AddComment(std::string &&str)
 {
     ASSERT(enable_);
     ASSERT(dInfos_.size() > 0);
     FuncDebugInfo *info = dInfos_.back();
-    size_t index = info->Add(str);
+    size_t index = info->Add(std::move(str));
     return index;
+}
+
+void DebugInfo::AppendComment(size_t index, std::string &&str, std::string_view separator)
+{
+    ASSERT(enable_);
+    ASSERT(dInfos_.size() > 0);
+    FuncDebugInfo *info = dInfos_.back();
+    info->Append(index, std::move(str), separator);
 }
 
 void DebugInfo::AddFuncDebugInfo(const std::string& name)

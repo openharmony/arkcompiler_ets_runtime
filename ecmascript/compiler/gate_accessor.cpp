@@ -759,6 +759,12 @@ void GateAccessor::Print(GateRef gate) const
     gatePtr->Print();
 }
 
+std::string GateAccessor::ToString(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    return gatePtr->ToString();
+}
+
 #ifndef NDEBUG
 void GateAccessor::PrintById(size_t id) const
 {

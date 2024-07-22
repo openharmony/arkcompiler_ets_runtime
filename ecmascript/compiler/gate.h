@@ -181,6 +181,7 @@ public:
     [[nodiscard]] size_t GetInFrameStateStarts() const;
     void AppendIn(const Gate *in);  // considered very slow
     void Print(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
+    std::string ToString(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
     void ShortPrint(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
     size_t PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPreview, size_t highlightIdx,
                        std::string &log, bool isEnd = false) const;
@@ -277,6 +278,78 @@ private:
         }
         return 0;
     }
+    std::string DumpHeader(const std::string& additionOp) const
+    {
+        auto opcode = GetOpCode();
+        ASSERT(opcode != OpCode::NOP && opcode != OpCode::DEAD);
+
+        std::string log("{\"id\":" + std::to_string(id_) + ", \"op\":\"" + GateMetaData::Str(opcode) + "\", ");
+        std::string additionOpName = (opcode == OpCode::JS_BYTECODE) ? "bytecode" : "typedop";
+        log += ((additionOp.compare("") == 0) ? "" : "\"" + additionOpName + "\":\"") + additionOp;
+        log += ((additionOp.compare("") == 0) ? "" : "\", ");
+        log += "\"MType\":\"" + MachineTypeStr(GetMachineType()) + ", ";
+
+        std::ostringstream oss;
+        oss << std::hex << TryGetValue();
+        log += "bitfield=0x" + oss.str() + ", ";
+        log += "type=" + GateTypeStr(type_) + ", ";
+        log += "stamp=" + std::to_string(static_cast<uint32_t>(stamp_)) + ", ";
+        log += "mark=" + std::to_string(static_cast<uint32_t>(mark_)) + ", ";
+        return log;
+    }
+    std::string DumpInputs(bool inListPreview, size_t highlightIdx) const
+    {
+        [[maybe_unused]] auto opcode = GetOpCode();
+        ASSERT(opcode != OpCode::NOP && opcode != OpCode::DEAD);
+
+        size_t idx = 0;
+        auto stateSize = GetStateCount();
+        auto dependSize = GetDependCount();
+        auto valueSize = GetInValueCount();
+        auto frameStateSize = GetInFrameStateCount();
+        auto rootSize = GetRootCount();
+        size_t start = 0;
+        size_t end = stateSize;
+
+        std::string log("\",\"in\":[");
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += dependSize;
+        start += stateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += valueSize;
+        start += dependSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += frameStateSize;
+        start += valueSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log);
+        end += rootSize;
+        start += frameStateSize;
+        idx = PrintInGate(end, idx, start, inListPreview, highlightIdx, log, true);
+        return log;
+    }
+    std::string DumpOutputs(bool inListPreview) const
+    {
+        auto opcode = GetOpCode();
+        ASSERT(opcode != OpCode::NOP && opcode != OpCode::DEAD);
+
+        std::string log("], \"out\":[");
+        if (!IsFirstOutNull()) {
+            const Out *curOut = GetFirstOutConst();
+            opcode = curOut->GetGateConst()->GetOpCode();
+            log += std::to_string(curOut->GetGateConst()->GetId()) +
+                    (inListPreview ? std::string(":" + GateMetaData::Str(opcode)) : std::string(""));
+
+            while (!curOut->IsNextOutNull()) {
+                curOut = curOut->GetNextOutConst();
+                log += ", " +  std::to_string(curOut->GetGateConst()->GetId()) +
+                        (inListPreview ? std::string(":" + GateMetaData::Str(opcode))
+                                        : std::string(""));
+            }
+        }
+        log += "]},";
+        return log;
+    }
+
     // ...
     // out(2)
     // out(1)

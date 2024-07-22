@@ -446,7 +446,7 @@ private:
 
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
-    const Circuit *circuit_ {nullptr};
+    Circuit *circuit_ {nullptr};
     GateAccessor acc_;
     BasicBlock *currentBb_ {nullptr};
     int lineNumber_ {0};
