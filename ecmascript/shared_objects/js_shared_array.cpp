@@ -471,6 +471,25 @@ bool JSSharedArray::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
     return JSObject::SetProperty(&op, value, mayThrow);
 }
 
+bool JSSharedArray::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
+                                uint32_t index, const JSHandle<JSTaggedValue> &value, bool mayThrow,
+                                SCheckMode sCheckMode)
+{
+    // Concurrent check for shared array
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(
+        thread, obj.GetTaggedValue().GetTaggedObject(), sCheckMode);
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
+    // 2 ~ 4 findProperty in Receiver, Obj and its parents
+    ObjectOperator op(thread, obj, index);
+    // Out of bounds check for shared array
+    if ((obj->IsJSSharedArray() && sCheckMode == SCheckMode::CHECK) && op.IsElement() && !op.IsFound()) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
+                                                               "The value of index is out of range.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+    }
+    return JSObject::SetProperty(&op, value, mayThrow);
+}
+
 // ecma2024 23.1.3.20 Array.prototype.sort(comparefn)
 JSTaggedValue JSSharedArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                   const JSHandle<JSTaggedValue> &fn)
