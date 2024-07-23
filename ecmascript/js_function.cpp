@@ -16,7 +16,6 @@
 #include "ecmascript/js_function.h"
 
 #include "ecmascript/base/error_type.h"
-#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/global_env.h"

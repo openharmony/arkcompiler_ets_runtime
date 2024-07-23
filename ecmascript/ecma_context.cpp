@@ -21,7 +21,6 @@
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/builtins/builtins_string.h"
-#include "ecmascript/function_proto_transition_table.h"
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
