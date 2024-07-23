@@ -100,7 +100,7 @@ public:
     {
         return isExecuteBuffer_;
     }
-    inline void SetExecuteMode(bool mode)
+    void SetExecuteMode(bool mode)
     {
         isExecuteBuffer_ = mode;
     }
