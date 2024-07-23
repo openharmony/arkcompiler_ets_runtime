@@ -73,25 +73,27 @@ void DumpMIRFunc(MIRFunction &func, const char *msg, bool printAlways = false, c
 void CgFuncPM::GenerateOutPutFile(MIRModule &m)
 {
     CHECK_FATAL(cg != nullptr, "cg is null");
-    CHECK_FATAL(cg->GetEmitter(), "emitter is null");
     CHECK_FATAL(Triple::GetTriple().GetArch() != Triple::ArchType::UnknownArch, "should have triple init before!");
+    auto codegen = cg;
     if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
-        assembler::Assembler &assm = static_cast<X64Emitter &>(*cg->GetEmitter()).GetAssembler();
-        if (!cgOptions->SuppressFileInfo()) {
-            assm.InitialFileInfo(m.GetInputFileName());
-        }
-        if (cgOptions->WithDwarf()) {
-            assm.EmitDIHeader();
-        }
+        cg->Emit([codegen, &m](Emitter *emitter) {
+            assembler::Assembler &objAssm = static_cast<X64Emitter &>(*emitter).GetAssembler();
+            if (!codegen->GetCGOptions().SuppressFileInfo()) {
+                objAssm.InitialFileInfo(m.GetInputFileName());
+            }
+            if (codegen->GetCGOptions().WithDwarf()) {
+                objAssm.EmitDIHeader();
+            }
+        });
     } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
-        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
-            if (!cgOptions->SuppressFileInfo()) {
-                cg->GetEmitter()->EmitFileInfo(m.GetInputFileName());
+        cg->template Emit<CG::EmitterType::AsmEmitter>([codegen, &m](Emitter *emitter) {
+            if (!codegen->GetCGOptions().SuppressFileInfo()) {
+                emitter->EmitFileInfo(m.GetInputFileName());
             }
-            if (cgOptions->WithDwarf()) {
-                cg->GetEmitter()->EmitDIHeader();
+            if (codegen->GetCGOptions().WithDwarf()) {
+                emitter->EmitDIHeader();
             }
-        }
+        });
     } else {
         CHECK_FATAL(false, "unsupportted target!");
     }
@@ -122,27 +124,30 @@ bool CgFuncPM::FuncLevelRun(CGFunc &cgFunc, AnalysisDataManager &serialADM)
 void CgFuncPM::PostOutPut(MIRModule &m)
 {
     if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
-        X64Emitter *x64Emitter = static_cast<X64Emitter *>(cg->GetEmitter());
-        assembler::Assembler &assm = x64Emitter->GetAssembler();
-        if (cgOptions->WithDwarf()) {
-            assm.EmitDIFooter();
-        }
-        x64Emitter->EmitGlobalVariable(*cg);
-        x64Emitter->EmitDebugInfo(*cg);
-        assm.FinalizeFileInfo();
-        assm.CloseOutput();
-    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
-        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
-            cg->GetEmitter()->EmitHugeSoRoutines(true);
+        cg->Emit([this](Emitter * emitter) {
+            X64Emitter *x64Emitter = static_cast<X64Emitter *>(emitter);
+            assembler::Assembler &assm = x64Emitter->GetAssembler();
             if (cgOptions->WithDwarf()) {
-                cg->GetEmitter()->EmitDIFooter();
+                assm.EmitDIFooter();
+            }
+            x64Emitter->EmitGlobalVariable(*cg);
+            x64Emitter->EmitDebugInfo(*cg);
+            assm.FinalizeFileInfo();
+            assm.CloseOutput();
+        });
+    } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
+        cg->template Emit<CG::EmitterType::AsmEmitter>([this, &m](Emitter* emitter) {
+            emitter->EmitHugeSoRoutines(true);
+            if (cgOptions->WithDwarf()) {
+                emitter->EmitDIFooter();
             }
             /* Emit global info */
             EmitGlobalInfo(m);
-        } else {
-            cg->GetEmitter()->Finish();
-            cg->GetEmitter()->CloseOutput();
-        }
+        });
+        cg->template Emit<CG::EmitterType::ObjEmiter>([](Emitter* emitter) {
+            emitter->Finish();
+            emitter->CloseOutput();
+        });
     } else {
         CHECK_FATAL(false, "unsupported target");
     }
@@ -408,9 +413,11 @@ void CgFuncPM::EmitGlobalInfo(MIRModule &m) const
     if (cgOptions->IsGenerateObjectMap()) {
         cg->GenerateObjectMaps(*beCommon);
     }
-    cg->GetEmitter()->EmitGlobalVariable();
-    EmitDebugInfo(m);
-    cg->GetEmitter()->CloseOutput();
+    cg->Emit([this, &m](Emitter* emitter) {
+        emitter->EmitGlobalVariable();
+        EmitDebugInfo(m);
+        emitter->CloseOutput();
+    });
 }
 
 void CgFuncPM::InitProfile(MIRModule &m) const
@@ -429,30 +436,34 @@ void CgFuncPM::CreateCGAndBeCommon(MIRModule &m, const Target *t)
 {
     DEBUG_ASSERT(cgOptions != nullptr, "New cg phase manager running FAILED  :: cgOptions unset");
     auto outputFileName = m.GetOutputFileName();
-    Emitter *emitter = nullptr;
+    Emitter *objEmitter = nullptr;
+    Emitter *asmEmitter = nullptr;
     cg = t->createCG(m, *cgOptions, cgOptions->GetEHExclusiveFunctionNameVec(), CGOptions::GetCyclePatternMap());
     CHECK_FATAL(cg, "you may not register the target");
     if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
-        assembler::Assembler *assembler = nullptr;
-        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
-            assembler = new assembler::AsmAssembler(outputFileName);
-        } else {
-            outputFileName = outputFileName.replace(outputFileName.length() - 1, 1, 1, 'o');
-            assembler = new assembler::ElfAssembler(outputFileName);
+        assembler::Assembler *asmAssembler = nullptr;
+        if (cg->GetCGOptions().IsAsmEmitterEnable()) {
+            asmAssembler = new assembler::AsmAssembler(outputFileName);
+            asmEmitter = t->createDecoupledEmitter(*cg, *asmAssembler);
         }
-        emitter = t->createDecoupledEmitter(*cg, *assembler);
+        outputFileName = outputFileName.replace(outputFileName.length() - 1, 1, 1, 'o');
+        auto objAssembler = new assembler::ElfAssembler(outputFileName);
+        objEmitter = t->createDecoupledEmitter(*cg, *objAssembler);
     } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
-        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
-            emitter = m.GetMemPool()->New<AArch64AsmEmitter>(*cg, outputFileName);
-        } else {
-            outputFileName = outputFileName.replace(outputFileName.length() - 1, 1, 1, 'o');
-            emitter = m.GetMemPool()->New<AArch64ObjEmitter>(*cg, outputFileName);
+        if (cgOptions->IsAsmEmitterEnable()) {
+            asmEmitter = m.GetMemPool()->New<AArch64AsmEmitter>(*cg, outputFileName);
         }
+        outputFileName = outputFileName.replace(outputFileName.length() - 1, 1, 1, 'o');
+        objEmitter = m.GetMemPool()->New<AArch64ObjEmitter>(*cg, outputFileName);
     } else {
         CHECK_FATAL(false, "unsupportted");
     }
-    CHECK_FATAL(emitter, "you may not register emitter");
-    cg->SetEmitter(*emitter);
+    CHECK_FATAL(objEmitter, "you may not register emitter");
+    cg->SetObjEmitter(*objEmitter);
+    if (cg->GetCGOptions().IsAsmEmitterEnable()) {
+        CHECK_FATAL(asmEmitter, "you may not register emitter");
+        cg->SetAsmEmitter(*asmEmitter);
+    }
     TargetMachine *targetMachine = t->createTargetMachine();
     CHECK_FATAL(targetMachine, "you may not register targetMachine");
     cg->SetTargetMachine(*targetMachine);
@@ -548,7 +559,9 @@ void CgFuncPM::EmitDuplicatedAsmFunc(MIRModule &m) const
             continue;
         }
 
-        (void)cg->GetEmitter()->Emit(contend + "\n");
+        cg->Emit([&contend](Emitter *emitter) {
+            emitter->Emit(contend + "\n");
+        });
     }
     duplicateAsmFileFD.close();
 }
@@ -558,14 +571,16 @@ void CgFuncPM::EmitDebugInfo(const MIRModule &m) const
     if (!cgOptions->WithDwarf()) {
         return;
     }
-    cg->GetEmitter()->SetupDBGInfo(m.GetDbgInfo());
-    cg->GetEmitter()->EmitDIHeaderFileInfo();
-    cg->GetEmitter()->EmitDIDebugInfoSection(m.GetDbgInfo());
-    cg->GetEmitter()->EmitDIDebugAbbrevSection(m.GetDbgInfo());
-    cg->GetEmitter()->EmitDIDebugARangesSection();
-    cg->GetEmitter()->EmitDIDebugRangesSection();
-    cg->GetEmitter()->EmitDIDebugLineSection();
-    cg->GetEmitter()->EmitDIDebugStrSection();
+    cg->Emit([&m](Emitter* emitter) {
+        emitter->SetupDBGInfo(m.GetDbgInfo());
+        emitter->EmitDIHeaderFileInfo();
+        emitter->EmitDIDebugInfoSection(m.GetDbgInfo());
+        emitter->EmitDIDebugAbbrevSection(m.GetDbgInfo());
+        emitter->EmitDIDebugARangesSection();
+        emitter->EmitDIDebugRangesSection();
+        emitter->EmitDIDebugLineSection();
+        emitter->EmitDIDebugStrSection();
+    });
 }
 
 bool CgFuncPM::IsFramework([[maybe_unused]] MIRModule &m) const

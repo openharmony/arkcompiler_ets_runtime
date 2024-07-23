@@ -44,13 +44,13 @@ std::map<MIRFunction *, std::pair<LabelIdx, LabelIdx>> CG::funcWrapLabels;
 
 CG::~CG()
 {
-    if (emitter != nullptr) {
+    Emit([](Emitter *emitter) {
         emitter->CloseOutput();
-    }
+    });
     delete memPool;
     memPool = nullptr;
     mirModule = nullptr;
-    emitter = nullptr;
+    emitters.clear();
     currentCGFunction = nullptr;
     instrumentationFunction = nullptr;
     dbgTraceEnter = nullptr;
@@ -311,4 +311,27 @@ const std::string CG::ExtractFuncName(const std::string &str)
     }
     return funcName;
 }
+
+void CG::EmitAllEmitters(const std::function<void(Emitter *)>& cb) const
+{
+    DEBUG_ASSERT(!emitters.empty(), "Emitter were not set");
+    DEBUG_ASSERT(emitters.size() <= 2U, "Emitters number isn't correct");
+    for (auto emitter: emitters) {
+        cb(emitter);
+    }
+}
+
+void CG::EmitAsmEmitters(const std::function<void(Emitter *)>& cb) const
+{
+    if (emitters.size() == 2U) {
+        cb(emitters[1]);
+    }
+}
+
+void CG::EmitObjEmitters(const std::function<void(Emitter *)>& cb) const
+{
+    DEBUG_ASSERT(!emitters.empty(), "ObjEmmiter wasn't set");
+    cb(emitters[0]);
+}
+
 } /* namespace maplebe */

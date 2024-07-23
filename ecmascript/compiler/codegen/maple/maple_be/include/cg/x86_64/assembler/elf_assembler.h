@@ -33,7 +33,7 @@ public:
     {
         const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
         if (emitMemoryManager.codeSpace == nullptr) {
-            outStream.open(outputFileName, std::ios::trunc | std::ios::binary);
+            outFStream.open(outputFileName, std::ios::trunc | std::ios::binary);
         }
     }
 

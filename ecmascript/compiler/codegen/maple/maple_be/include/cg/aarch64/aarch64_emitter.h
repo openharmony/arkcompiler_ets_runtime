@@ -30,6 +30,18 @@ public:
     void EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std::string &name, LabelIdx labIdx) override;
     void RecordRegInfo(FuncEmitInfo &funcEmitInfo) const;
     void Run(FuncEmitInfo &funcEmitInfo) override;
+    void CloseOutput() override
+    {
+        if (fileStream.is_open()) {
+            fileStream << outStream.str();
+            fileStream.close();
+        }
+
+        auto options = maplebe::CGOptions::GetInstance();
+        options.GetLogStream() << "~~~~~~~~~~~~~~ LiteCG aarch64 disasm begin ~~~~~~~~~~~~~~\n";
+        options.GetLogStream() << outStream.str();
+        options.GetLogStream() << "~~~~~~~~~~~~~~ LiteCG aarch64 disasm end  ~~~~~~~~~~~~~~~\n";
+    }
 
 private:
     /* cfi & dbg need target info ? */
