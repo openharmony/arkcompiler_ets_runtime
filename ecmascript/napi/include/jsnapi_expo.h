@@ -1316,8 +1316,11 @@ class ECMA_PUBLIC_API SendableMapRef : public ObjectRef {
 public:
     static Local<SendableMapRef> New(const EcmaVM *vm);
     uint32_t GetSize(const EcmaVM *vm);
+    uint32_t GetTotalElements(const EcmaVM *vm);
     Local<JSValueRef> Get(const EcmaVM *vm, Local<JSValueRef> key);
     Local<JSValueRef> Get(const EcmaVM *vm, const char *utf8);
+    Local<JSValueRef> GetKey(const EcmaVM *vm, int entry);
+    Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
     void Set(const EcmaVM *vm, Local<JSValueRef> key, Local<JSValueRef> value);
     void Set(const EcmaVM *vm, const char *utf8, Local<JSValueRef> value);
     bool Has(const EcmaVM *vm, Local<JSValueRef> key);
