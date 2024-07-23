@@ -242,7 +242,7 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
 
     callTarget = reinterpret_cast<ECMAObject*>(info->GetFunctionValue().GetTaggedObject());
     method = callTarget->GetCallTarget();
-    if (!thread->IsWorker() && isCompiledCode) {
+    if (isCompiledCode) {
         JSHandle<JSFunction> func(thread, info->GetFunctionValue());
         if (func->IsClassConstructor()) {
             {

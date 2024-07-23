@@ -482,7 +482,7 @@ public:
     bool IsJSSharedInt32Array(const EcmaVM *vm);
     bool IsJSSharedUint32Array(const EcmaVM *vm);
     bool IsJSSharedFloat32Array(const EcmaVM *vm);
-    
+
     bool IsGeneratorObject(const EcmaVM *vm);
     bool IsJSPrimitiveSymbol(const EcmaVM *vm);
 
@@ -1447,7 +1447,6 @@ public:
                             const std::string &moduleName,
                             std::function<bool(std::string fileName, uint8_t **buff, size_t *buffSize)> cb);
 #endif
-    static std::string GetPreloadAotFile(EcmaVM *vm, const std::string &moduleName);
     // context
     static EcmaContext *CreateJSContext(EcmaVM *vm);
     static void SwitchCurrentContext(EcmaVM *vm, EcmaContext *context);

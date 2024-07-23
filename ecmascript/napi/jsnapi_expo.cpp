@@ -95,6 +95,7 @@
 #include "ecmascript/ohos/aot_runtime_info.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/framework_helper.h"
+#include "ecmascript/ohos/ohos_preload_app_info.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
@@ -4727,7 +4728,12 @@ void JSNApi::LoadAotFileInternal(EcmaVM *vm, const std::string &moduleName, std:
     {
         aotFileName = ecmascript::AnFileDataManager::GetInstance()->GetDir() + moduleName;
     } else {
-        aotFileName = GetPreloadAotFile(vm, moduleName);
+        std::string hapPath = "";
+        ecmascript::SearchHapPathCallBack callback = vm->GetSearchHapPathCallBack();
+        if (callback) {
+            callback(moduleName, hapPath);
+        }
+        aotFileName = ecmascript::OhosPreloadAppInfo::GetPreloadAOTFileName(hapPath, moduleName);
     }
     if (aotFileName.empty()) {
         LOG_ECMA(INFO) << "can not find aot file";
@@ -4765,44 +4771,6 @@ void JSNApi::LoadAotFile(EcmaVM *vm, [[maybe_unused]] const std::string &bundleN
     thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName, cb);
 }
 #endif
-
-std::string JSNApi::GetPreloadAotFile(EcmaVM *vm, const std::string &moduleName)
-{
-    std::string aotFileName;
-    std::string appName;
-    std::string folderPath;
-    std::string appPath;
-    std::string hapPath;
-    ecmascript::SearchHapPathCallBack callback = vm->GetSearchHapPathCallBack();
-    if (callback) {
-        callback(moduleName, hapPath);
-    }
-    int folderEnd = -1;
-    int appEnd = -1;
-    if (hapPath.find(ecmascript::FrameworkHelper::PRELOAD_PATH_PREFIX) != std::string::npos) {
-        folderEnd = static_cast<int>(hapPath.find_last_of('/'));
-    }
-    if (folderEnd != -1) {
-        // "/system/app/AppName"
-        folderPath = hapPath.substr(0, folderEnd);
-        appEnd = static_cast<int>(folderPath.find_last_of('/'));
-        // "AppName"
-        appName = folderPath.substr(appEnd + 1);
-    }
-    if (appEnd != -1) {
-        // "/system/app"
-        appPath = hapPath.substr(0, appEnd);
-        // "/system/app/ark-cache/AppName/ModuleName"
-        aotFileName = appPath + ecmascript::FrameworkHelper::PRELOAD_AN_FOLDER + appName + "/" + moduleName;
-    }
-    std::string anFile = aotFileName + ecmascript::AOTFileManager::FILE_EXTENSION_AN;
-    std::string aiFile = aotFileName + ecmascript::AOTFileManager::FILE_EXTENSION_AI;
-    if (!ecmascript::FileExist(anFile.c_str()) || !ecmascript::FileExist(aiFile.c_str())) {
-        aotFileName.clear();
-    }
-
-    return aotFileName;
-}
 
 bool JSNApi::ExecuteInContext(EcmaVM *vm, const std::string &fileName, const std::string &entry, bool needUpdate)
 {

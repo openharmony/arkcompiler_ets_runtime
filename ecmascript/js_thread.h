@@ -858,16 +858,6 @@ public:
         glueData_.isDebugMode_ = false;
     }
 
-    bool IsWorker()
-    {
-        return glueData_.isWorker_;
-    }
-
-    void SetWorker(bool isWorker)
-    {
-        glueData_.isWorker_ = isWorker;
-    }
-
     template<typename T, typename V>
     void SetInterruptValue(V value)
     {
@@ -969,7 +959,6 @@ public:
                                                  JSTaggedValue,
                                                  base::AlignedBool,
                                                  base::AlignedBool,
-                                                 base::AlignedBool,
                                                  base::AlignedUint32,
                                                  JSTaggedValue,
                                                  base::AlignedPointer,
@@ -1010,7 +999,6 @@ public:
             InterruptVectorIndex,
             IsStartHeapSamplingIndex,
             IsDebugModeIndex,
-            IsWorkerIndex,
             IsFrameDroppedIndex,
             PropertiesGrowStepIndex,
             EntryFrameDroppedStateIndex,
@@ -1192,11 +1180,6 @@ public:
             return GetOffset<static_cast<size_t>(Index::IsDebugModeIndex)>(isArch32);
         }
 
-        static size_t GetIsWorkerOffset(bool isArch32)
-        {
-            return GetOffset<static_cast<size_t>(Index::IsWorkerIndex)>(isArch32);
-        }
-
         static size_t GetIsFrameDroppedOffset(bool isArch32)
         {
             return GetOffset<static_cast<size_t>(Index::IsFrameDroppedIndex)>(isArch32);
@@ -1281,7 +1264,6 @@ public:
         alignas(EAS) volatile uint64_t interruptVector_ {0};
         alignas(EAS) JSTaggedValue isStartHeapSampling_ {JSTaggedValue::False()};
         alignas(EAS) bool isDebugMode_ {false};
-        alignas(EAS) bool isWorker_ {false};
         alignas(EAS) bool isFrameDropped_ {false};
         alignas(EAS) uint32_t propertiesGrowStep_ {JSObjectResizingStrategy::PROPERTIES_GROW_SIZE};
         alignas(EAS) uint64_t entryFrameDroppedState_ {FrameDroppedState::StateFalse};

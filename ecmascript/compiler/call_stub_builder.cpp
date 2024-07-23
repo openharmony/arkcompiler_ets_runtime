@@ -207,8 +207,6 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
     Label checkIsBaselineCompiling(env);
     Label methodIsFastCall(env);
     Label methodNotFastCall(env);
-    // Worker/Taskpool disable aot optimization
-    Label judgeAotAndFastCall(env);
     Label checkAot(env);
     {
         newTarget_ = Undefined();
@@ -216,15 +214,13 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
         realNumArgs_ = Int64Add(ZExtInt32ToInt64(actualNumArgs_), Int64(NUM_MANDATORY_JSFUNC_ARGS));
         BRANCH(IsJsProxy(func_), &methodNotAot, &checkAot);
         Bind(&checkAot);
-        BRANCH(IsWorker(glue_), &funcCheckBaselineCode, &judgeAotAndFastCall);
-        Bind(&judgeAotAndFastCall);
         BRANCH(JudgeAotAndFastCall(func_, CircuitBuilder::JudgeMethodType::HAS_AOT_FASTCALL), &methodIsFastCall,
             &methodNotFastCall);
         Bind(&methodIsFastCall);
         {
             JSFastAotCall(exit);
         }
-        
+
         Bind(&methodNotFastCall);
         BRANCH(JudgeAotAndFastCall(func_, CircuitBuilder::JudgeMethodType::HAS_AOT), &methodisAot,
             &funcCheckBaselineCode);
@@ -232,7 +228,7 @@ void CallStubBuilder::JSCallJSFunction(Label *exit, Label *noNeedCheckException)
         {
             JSSlowAotCall(exit);
         }
-        
+
         Bind(&funcCheckBaselineCode);
         GateRef baselineCodeOffset = IntPtr(JSFunction::BASELINECODE_OFFSET);
         GateRef baselineCode = Load(VariableType::JS_POINTER(), func_, baselineCodeOffset);
@@ -378,7 +374,7 @@ void CallStubBuilder::JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNo
             PrepareIdxForAsmInterpreterWithBaselineCode() :
             PrepareIdxForAsmInterpreterWithoutBaselineCode());
     std::vector<GateRef> argsForAsmInterpreter = PrepareArgsForAsmInterpreter();
-    
+
     switch (callArgs_.mode) {
         case JSCallMode::CALL_ARG0:
         case JSCallMode::CALL_ARG1:
@@ -687,10 +683,10 @@ std::vector<GateRef> CallStubBuilder::PrepareArgsForAot(GateRef expectedNum)
 
     std::vector<GateRef> appendArgs = PrepareAppendArgsForAotStep1();
     basicArgs.insert(basicArgs.end(), appendArgs.begin(), appendArgs.end());
-    
+
     appendArgs = PrepareAppendArgsForAotStep2(expectedNum);
     basicArgs.insert(basicArgs.end(), appendArgs.begin(), appendArgs.end());
-    
+
     appendArgs = PrepareAppendArgsForAotStep3(expectedNum);
     basicArgs.insert(basicArgs.end(), appendArgs.begin(), appendArgs.end());
 

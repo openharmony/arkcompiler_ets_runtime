@@ -3147,12 +3147,6 @@ inline GateRef StubBuilder::GetGlobalObject(GateRef glue)
     return Load(VariableType::JS_ANY(), glue, offset);
 }
 
-inline GateRef StubBuilder::IsWorker(GateRef glue)
-{
-    GateRef isWorkerOffset = IntPtr(JSThread::GlueData::GetIsWorkerOffset(env_->Is32Bit()));
-    return Load(VariableType::BOOL(), glue, isWorkerOffset);
-}
-
 inline GateRef StubBuilder::GetMethodFromFunction(GateRef function)
 {
     return env_->GetBuilder()->GetMethodFromFunction(function);

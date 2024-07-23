@@ -26,8 +26,6 @@
 namespace panda::ecmascript {
 class FrameworkHelper {
 public:
-    constexpr static const char *const PRELOAD_PATH_PREFIX = "/system/";
-    constexpr static const char *const PRELOAD_AN_FOLDER = "/ark-cache/";
 
     FrameworkHelper(JSThread *thread)
         : thread_(thread),

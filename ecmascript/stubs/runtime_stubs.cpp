@@ -3497,7 +3497,7 @@ void RuntimeStubs::SaveFrameToContext(JSThread *thread, JSHandle<GeneratorContex
     JSTaggedValue function = frameHandler.GetFunction();
     JSFunction *func = JSFunction::Cast(function.GetTaggedObject());
     Method *method = func->GetCallTarget();
-    if (!thread->IsWorker() && func->IsCompiledCode()) {
+    if (func->IsCompiledCode()) {
         bool isFastCall = func->IsCompiledFastCall();  // get this flag before clear it
         uintptr_t entry = isFastCall ? thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_FastCallToAsmInterBridge)
                                      : thread->GetRTInterface(kungfu::RuntimeStubCSigns::ID_AOTCallToAsmInterBridge);

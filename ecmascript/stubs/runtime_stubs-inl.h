@@ -2891,7 +2891,7 @@ JSTaggedValue RuntimeStubs::RuntimeOptConstructGeneric(JSThread *thread, JSHandl
     uint32_t size = preArgsSize + argsCount;
     CVector<JSTaggedType> values;
     bool isCompiledCode = ctor->IsCompiledCode();
-    if (!thread->IsWorker() && isCompiledCode) {
+    if (isCompiledCode) {
         if (ctor->IsCompiledFastCall()) {
             values.reserve(size + NUM_MANDATORY_JSFUNC_ARGS - 1);
             values.emplace_back(ctor.GetTaggedValue().GetRawData());

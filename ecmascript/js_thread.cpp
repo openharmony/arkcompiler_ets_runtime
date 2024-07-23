@@ -104,7 +104,6 @@ JSThread *JSThread::Create(EcmaVM *vm)
     jsThread->glueData_.stackStart_ = GetCurrentStackPosition();
     jsThread->glueData_.isEnableElementsKind_ = vm->IsEnableElementsKind();
     jsThread->SetThreadId();
-    jsThread->SetWorker(vm->GetJSOptions().IsWorker());
 
     RegisterThread(jsThread);
     return jsThread;
@@ -679,7 +678,7 @@ void JSThread::CheckSwitchDebuggerBCStub()
 void JSThread::CheckOrSwitchPGOStubs()
 {
     bool isSwitch = false;
-    if (!IsWorker() && IsPGOProfilerEnable()) {
+    if (IsPGOProfilerEnable()) {
         if (GetBCStubStatus() == BCStubStatus::NORMAL_BC_STUB) {
             SetBCStubStatus(BCStubStatus::PROFILE_BC_STUB);
             isSwitch = true;

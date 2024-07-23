@@ -650,10 +650,7 @@ JSTaggedValue EcmaContext::FindCachedConstpoolAndLoadAiIfNeeded(const JSPandaFil
     }
     // Getting the cached constpool in runtime means the ai data has not been loaded in current thread.
     // And we need to reload it
-    // Worker/Taskpool disable aot optimization
-    if (!thread_->IsWorker() && ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
-        aotFileManager_->LoadAiFile(jsPandaFile);
-    }
+    aotFileManager_->LoadAiFile(jsPandaFile);
     return constpool;
 }
 
