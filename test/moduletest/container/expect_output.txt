@@ -13,6 +13,7 @@
 
 Test ArrayList success!!!
 Test Deque success!!!
+{}
 Test HashMap success!!!
 Test HashSet success!!!
 Test LightWeightMap success!!!

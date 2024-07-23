@@ -171,14 +171,17 @@ JSTaggedValue JSAPIDeque::Get(const uint32_t index)
 
 JSTaggedValue JSAPIDeque::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
-    ASSERT(index < GetSize());
+    int length = static_cast<int>(GetSize());
+    if (index < 0 || index >= length) {
+        return JSTaggedValue::False();
+    }
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     uint32_t capacity = elements->GetLength();
     uint32_t first = GetFirst();
     ASSERT(capacity != 0);
     uint32_t curIndex = (first + index) % capacity;
     elements->Set(thread, curIndex, value);
-    return JSTaggedValue::Undefined();
+    return JSTaggedValue::True();
 }
 
 bool JSAPIDeque::Has(JSTaggedValue value) const
