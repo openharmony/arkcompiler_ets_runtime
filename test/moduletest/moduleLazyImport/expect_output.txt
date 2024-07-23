@@ -12,6 +12,8 @@
 # limitations under the License.
 
 this is E
+this is H
+H
 this is entry
 this is F
 F func
@@ -23,3 +25,4 @@ this is C_Cjs
 foo5
 instance 3
 E func
+H

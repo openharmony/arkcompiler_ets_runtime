@@ -19,13 +19,6 @@
  * @tc.type: FUNC
  * @tc.require: issueI5RC2C
  */
-export function aaa() {
-    print("E func");
-}
-print("this is E");
-import('./H').then(ns => {
-    print(ns.h);
-}).then().catch((err) => {
-    print(err);
-}
-);
+
+export let h = "H";
+print("this is H");

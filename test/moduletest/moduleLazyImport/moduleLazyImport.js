@@ -19,6 +19,7 @@
  * @tc.type: FUNC
  * @tc.require: issueI5NO8G
  */
+import lazy {h} from './H'
 import lazy {A} from "./A"
 import { aaa } from "./E";
 import lazy {func1} from './F';
@@ -28,3 +29,4 @@ func1();
 let myClass = new A();
 myClass.myMethod();
 aaa();
+print(h);
