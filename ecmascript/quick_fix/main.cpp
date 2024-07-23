@@ -55,7 +55,7 @@ std::string GetHelper()
 }
 
 bool QuickFixQueryFuncColdPatch(std::string baseFileName, std::string &patchFileName,
-                                void ** patchBuffer, size_t &patchBufferSize)
+                                uint8_t ** patchBuffer, size_t &patchBufferSize)
 {
     return true;
 }

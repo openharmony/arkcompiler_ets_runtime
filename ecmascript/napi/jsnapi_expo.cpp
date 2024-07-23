@@ -3763,8 +3763,8 @@ PatchErrorCode JSNApi::LoadPatch(EcmaVM *vm, const std::string &patchFileName, c
 }
 
 PatchErrorCode JSNApi::LoadPatch(EcmaVM *vm,
-                                 const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                                 const std::string &baseFileName, const void *baseBuffer, size_t baseSize)
+                                 const std::string &patchFileName, uint8_t *patchBuffer, size_t patchSize,
+                                 const std::string &baseFileName, uint8_t *baseBuffer, size_t baseSize)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, PatchErrorCode::INTERNAL_ERROR);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -3801,7 +3801,7 @@ bool JSNApi::IsQuickFixCausedException(EcmaVM *vm, Local<ObjectRef> exception, c
  */
 void JSNApi::RegisterQuickFixQueryFunc(EcmaVM *vm, std::function<bool(std::string baseFileName,
                         std::string &patchFileName,
-                        void **patchBuffer,
+                        uint8_t **patchBuffer,
                         size_t &patchSize)> callBack)
 {
     CROSS_THREAD_CHECK(vm);

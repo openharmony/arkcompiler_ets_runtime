@@ -27,13 +27,13 @@ public:
 
     void RegisterQuickFixQueryFunc(const std::function<bool(std::string baseFileName,
                         std::string &patchFileName,
-                        void **patchBuffer,
+                        uint8_t **patchBuffer,
                         size_t &patchSize)> callBack);
     void LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *baseFile);
     PatchErrorCode LoadPatch(JSThread *thread, const std::string &patchFileName, const std::string &baseFileName);
     PatchErrorCode LoadPatch(JSThread *thread,
-                             const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                             const std::string &baseFileName, const void *baseBuffer, size_t baseSize);
+                             const std::string &patchFileName, uint8_t *patchBuffer, size_t patchSize,
+                             const std::string &baseFileName, uint8_t *baseBuffer, size_t baseSize);
     PatchErrorCode UnloadPatch(JSThread *thread, const std::string &patchFileName);
     bool IsQuickFixCausedException(JSThread *thread,
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
@@ -54,7 +54,7 @@ private:
     CMap<CString, PatchInfo> methodInfos_ {};
     std::function<bool(std::string baseFileName,
                         std::string &patchFileName,
-                        void **patchBuffer,
+                        uint8_t **patchBuffer,
                         size_t &patchSize)> callBack_;
     CMap<uint32_t, CString> baseClassInfo_ {};
     CString currentBaseFileName_;

@@ -32,7 +32,7 @@ QuickFixManager::~QuickFixManager()
 
 void QuickFixManager::RegisterQuickFixQueryFunc(const std::function<bool(std::string baseFileName,
                         std::string &patchFileName,
-                        void **patchBuffer,
+                        uint8_t **patchBuffer,
                         size_t &patchSize)> callBack)
 {
     callBack_ = callBack;
@@ -46,7 +46,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
     }
 
     std::string patchFileName;
-    void *patchBuffer = nullptr;
+    uint8_t *patchBuffer = nullptr;
     size_t patchSize = 0;
     CString baseFileName = baseFile->GetJSPandaFileDesc();
     bool needLoadPatch = callBack_(baseFileName.c_str(), patchFileName, &patchBuffer, patchSize);
@@ -60,7 +60,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
         return;
     }
 
-    std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+    std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFileSecure(
         thread, patchFileName.c_str(), "", patchBuffer, patchSize);
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed of: " << baseFileName;
@@ -122,8 +122,8 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
 }
 
 PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread,
-                                          const std::string &patchFileName, const void *patchBuffer, size_t patchSize,
-                                          const std::string &baseFileName, const void *baseBuffer, size_t baseSize)
+                                          const std::string &patchFileName, uint8_t *patchBuffer, size_t patchSize,
+                                          const std::string &baseFileName, uint8_t *baseBuffer, size_t baseSize)
 {
     LOG_ECMA(INFO) << "Load patch, patch: " << patchFileName << ", base:" << baseFileName;
     if (methodInfos_.find(baseFileName.c_str()) != methodInfos_.end()) {
@@ -131,14 +131,14 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread,
         return PatchErrorCode::PATCH_HAS_LOADED;
     }
 
-    std::shared_ptr<JSPandaFile> baseFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+    std::shared_ptr<JSPandaFile> baseFile = JSPandaFileManager::GetInstance()->LoadJSPandaFileSecure(
         thread, baseFileName.c_str(), "", baseBuffer, baseSize);
     if (baseFile == nullptr) {
         LOG_ECMA(ERROR) << "find base jsPandafile failed";
         return PatchErrorCode::FILE_NOT_FOUND;
     }
 
-    std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(
+    std::shared_ptr<JSPandaFile> patchFile = JSPandaFileManager::GetInstance()->LoadJSPandaFileSecure(
         thread, patchFileName.c_str(), "", patchBuffer, patchSize);
     if (patchFile == nullptr) {
         LOG_ECMA(ERROR) << "load patch jsPandafile failed";
