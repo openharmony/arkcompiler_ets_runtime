@@ -542,7 +542,7 @@ public:
         return assetPath_;
     }
 
-    void SetBundleName(const CString &bundleName)
+    inline void SetBundleName(const CString &bundleName)
     {
         bundleName_ = bundleName;
     }

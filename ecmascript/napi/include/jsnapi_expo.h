@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "data_protect.h"
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/mem/mem_common.h"

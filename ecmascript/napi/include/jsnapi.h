@@ -235,14 +235,14 @@ public:
         return isWorker_;
     }
 
-    void SetIsRestrictedWorker(bool isRestrictedWorker)
+    inline void SetIsRestrictedWorker(bool isRestrictedWorker)
     {
-        isRestrictedWorker_ = isRestrictedWorker;
+        isRestrictedWorker_.Update(isRestrictedWorker);
     }
 
     bool GetIsRestrictedWorker() const
     {
-        return isRestrictedWorker_;
+        return isRestrictedWorker_.GetBool();
     }
 
     void SetBundleName(const std::string &value)
@@ -421,7 +421,7 @@ private:
     bool enableAsmInterpreter_ {true};
     bool enableBuiltinsLazy_ {true};
     bool isWorker_ {false};
-    bool isRestrictedWorker_ {false};
+    panda_file::BoolPacProtect isRestrictedWorker_ = panda_file::BoolPacProtect();
     std::string asmOpcodeDisableRange_ {""};
     std::string bundleName_ {};
     bool enableAOT_ {false};
