@@ -337,9 +337,24 @@ void DebuggerApi::GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &ta
     }
 }
 
-bool DebuggerApi::RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url)
+bool DebuggerApi::SetBreakpointWithNoMatchUrl(JSDebugger *debugger, const JSPtLocation &location)
 {
-    return debugger->RemoveBreakpointsByUrl(url);
+    return debugger->SetUrlNotMatchedBreakpoint(location);
+}
+
+std::vector<bool> DebuggerApi::SetBreakpointByList(JSDebugger *debugger, std::vector<JSPtLocation> &list)
+{
+    return debugger->SetBreakpointUsingList(list);
+}
+
+bool DebuggerApi::RemoveBreakpointWithNoMatchUrl(JSDebugger *debugger, const JSPtLocation &location)
+{
+    return debugger->RemoveUrlNotMatchedBreakpoint(location);
+}
+
+bool DebuggerApi::RemoveAllBreakpointsByUrl(JSDebugger *debugger, const std::string &url, bool skipGlobal)
+{
+    return debugger->RemoveAllBreakpointsByUrl(url, skipGlobal);
 }
 
 // ScopeInfo
