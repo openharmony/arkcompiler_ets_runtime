@@ -19,7 +19,16 @@
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/js_date.h"
+#include "ecmascript/js_map.h"
+#include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/js_regexp.h"
+#include "ecmascript/js_set.h"
+#include "ecmascript/js_weak_container.h"
+#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
+#include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/tests/test_helper.h"
 
 namespace panda::test {
@@ -127,6 +136,110 @@ public:
         }
         return JSHandle<JSTypedArray>::Cast(
             factory->NewJSObjectByConstructor(JSHandle<JSFunction>::Cast(handleTagValFunc), handleTagValFunc));
+    }
+
+    JSHandle<JSObject> NewObject(uint32_t size, JSType type, JSHandle<JSTaggedValue> proto)
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSHClass> hclass = factory->NewEcmaHClass(size, type, proto);
+        return factory->NewJSObjectWithInit(hclass);
+    }
+
+    JSHandle<JSObject> NewSObject(uint32_t size, JSType type, JSHandle<JSTaggedValue> proto)
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        auto emptySLayout = instance->GetJSThread()->GlobalConstants()->GetHandledEmptySLayoutInfo();
+        JSHandle<JSHClass> hclass = factory->NewSEcmaHClass(size, 0, type, proto, emptySLayout);
+        return factory->NewJSObjectWithInit(hclass);
+    }
+
+    // JS_SET
+    JSHandle<JSSet> NewJSSet()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsSetObject = NewObject(JSSet::SIZE, JSType::JS_SET, proto);
+        JSHandle<JSSet> jsSet = JSHandle<JSSet>::Cast(jsSetObject);
+        JSHandle<LinkedHashSet> linkedSet(LinkedHashSet::Create(thread));
+        jsSet->SetLinkedSet(thread, linkedSet);
+        return jsSet;
+    }
+
+    // JS_SHARED_SET
+    JSHandle<JSSharedSet> NewJSSharedSet()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetSFunctionPrototype();
+        JSHandle<JSObject> jsSSetObject = NewSObject(JSSharedSet::SIZE, JSType::JS_SHARED_SET, proto);
+        JSHandle<JSSharedSet> jsSSet = JSHandle<JSSharedSet>::Cast(jsSSetObject);
+        JSHandle<LinkedHashSet> linkedSet(
+            LinkedHashSet::Create(thread, LinkedHashSet::MIN_CAPACITY, MemSpaceKind::SHARED));
+        jsSSet->SetLinkedSet(thread, linkedSet);
+        jsSSet->SetModRecord(0);
+        return jsSSet;
+    }
+
+    // JS_MAP
+    JSHandle<JSMap> NewJSMap()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsMapObject = NewObject(JSMap::SIZE, JSType::JS_MAP, proto);
+        JSHandle<JSMap> jsMap = JSHandle<JSMap>::Cast(jsMapObject);
+        JSHandle<LinkedHashMap> linkedMap(LinkedHashMap::Create(thread));
+        jsMap->SetLinkedMap(thread, linkedMap);
+        return jsMap;
+    }
+
+    // JS_SHARED_MAP
+    JSHandle<JSSharedMap> NewJSSharedMap()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetSFunctionPrototype();
+        JSHandle<JSObject> jsSMapObject = NewSObject(JSSharedMap::SIZE, JSType::JS_SHARED_MAP, proto);
+        JSHandle<JSSharedMap> jsSMap = JSHandle<JSSharedMap>::Cast(jsSMapObject);
+        JSHandle<LinkedHashMap> linkedMap(
+            LinkedHashMap::Create(thread, LinkedHashMap::MIN_CAPACITY, MemSpaceKind::SHARED));
+        jsSMap->SetLinkedMap(thread, linkedMap);
+        jsSMap->SetModRecord(0);
+        return jsSMap;
+    }
+
+    //JS_WEAK_SET
+    JSHandle<JSWeakSet> NewJSWeakSet()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsWeakSetObject = NewObject(JSWeakSet::SIZE, JSType::JS_WEAK_SET, proto);
+        JSHandle<JSWeakSet> jsWeakSet = JSHandle<JSWeakSet>::Cast(jsWeakSetObject);
+        JSHandle<LinkedHashSet> weakLinkedSet(LinkedHashSet::Create(thread));
+        jsWeakSet->SetLinkedSet(thread, weakLinkedSet);
+        return jsWeakSet;
+    }
+
+    //JS_WEAK_MAP
+    JSHandle<JSWeakMap> NewJSWeakMap()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsWeakMapObject = NewObject(JSWeakMap::SIZE, JSType::JS_WEAK_MAP, proto);
+        JSHandle<JSWeakMap> jsWeakMap = JSHandle<JSWeakMap>::Cast(jsWeakMapObject);
+        JSHandle<LinkedHashMap> weakLinkedMap(LinkedHashMap::Create(thread));
+        jsWeakMap->SetLinkedMap(thread, weakLinkedMap);
+        return jsWeakMap;
+    }
+
+    // JS_PROXY
+    JSHandle<JSProxy> NewJSProxy()
+    {
+        JSThread *thread = instance->GetJSThread();
+        ObjectFactory *factory = instance->GetFactory();
+        JSFunction *newTarget = instance->GetGlobalEnv()->GetObjectFunction().GetObject<JSFunction>();
+        JSHandle<JSTaggedValue> newTargetHandle(thread, newTarget);
+        JSHandle<JSObject> jsObject =
+            factory->NewJSObjectByConstructor(JSHandle<JSFunction>(newTargetHandle), newTargetHandle);
+        JSHandle<JSTaggedValue> emptyObj(thread, jsObject.GetTaggedValue());
+        return factory->NewJSProxy(emptyObj, emptyObj);
     }
 
 private:
@@ -467,5 +580,67 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName3)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Float64 Array\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"BigInt64 Array\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"BigUint64 Array\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName4)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    
+    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
+    // JS_SET
+    tester.NewJSSet();
+    // JS_SHARED_SET
+    tester.NewJSSharedSet();
+    // JS_MAP
+    tester.NewJSMap();
+    // JS_SHARED_MAP
+    tester.NewJSSharedMap();
+    // JS_WEAK_SET
+    tester.NewJSWeakSet();
+    // JS_WEAK_MAP
+    tester.NewJSWeakMap();
+    // JS_ARRAY
+    factory->NewJSArray();
+    // JS_TYPED_ARRAY
+    tester.NewObject(JSTypedArray::SIZE, JSType::JS_TYPED_ARRAY, proto);
+    tester.GenerateSnapShot("testGenerateNodeName_4.heapsnapshot");
+
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Set\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"SharedSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Map\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"SharedMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"WeakSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"WeakMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"JSArray\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Typed Array\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName5)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
+    // JS_REG_EXP
+    tester.NewObject(JSRegExp::SIZE, JSType::JS_REG_EXP, proto);
+    // JS_DATE
+    tester.NewObject(JSDate::SIZE, JSType::JS_DATE, proto);
+    // JS_ARGUMENTS
+    factory->NewJSArguments();
+    // JS_PROXY
+    tester.NewJSProxy();
+    // JS_PRIMITIVE_REF
+    tester.NewObject(JSPrimitiveRef::SIZE, JSType::JS_PRIMITIVE_REF, proto);
+    // JS_DATA_VIEW
+    factory->NewJSDataView(factory->NewJSArrayBuffer(10), 5, 5);
+
+    tester.GenerateSnapShot("testGenerateNodeName_5.heapsnapshot");
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Regexp\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Date\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Arguments\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Proxy\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Primitive\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"DataView\""));
 }
 }
