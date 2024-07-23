@@ -85,9 +85,18 @@ HWTEST_F_L0(CrashTest, BuildCrashRuntimeInfo)
     runtimeInfo->GetCrashSandBoxRealPath(sanboxRealPath);
 
     runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH);
+    runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH);
+    runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH);
+    runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::JS);
+    runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::JIT);
+    runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::OTHERS);
+
     std::map<ecmascript::ohos::RuntimeInfoType, int> escapeMap = runtimeInfo->CollectCrashSum();
-    ASSERT_EQ(escapeMap[ecmascript::ohos::RuntimeInfoType::AOT_CRASH], 1);
-    ASSERT_EQ(runtimeInfo->GetCompileCountByType(ecmascript::ohos::RuntimeInfoType::AOT_CRASH), 1);
+    ASSERT_EQ(escapeMap[ecmascript::ohos::RuntimeInfoType::AOT_CRASH], 3);
+    ASSERT_EQ(escapeMap[ecmascript::ohos::RuntimeInfoType::JS], 1);
+    ASSERT_EQ(escapeMap[ecmascript::ohos::RuntimeInfoType::JIT], 1);
+    ASSERT_EQ(escapeMap[ecmascript::ohos::RuntimeInfoType::OTHERS], 1);
+    ASSERT_EQ(runtimeInfo->GetCompileCountByType(ecmascript::ohos::RuntimeInfoType::AOT_CRASH), 3);
 
     unlink(sanboxRealPath);
     rmdir(MockAotRuntimeInfo::SANBOX_DIR);
@@ -107,9 +116,17 @@ HWTEST_F_L0(CrashTest, BuildCompileRuntimeInfo)
     runtimeInfo->GetCrashSandBoxRealPath(sanboxRealPath);
 
     runtimeInfo->BuildCompileRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH, sanboxRealPath);
+    runtimeInfo->BuildCompileRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH, sanboxRealPath);
+    runtimeInfo->BuildCompileRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH, sanboxRealPath);
+    runtimeInfo->BuildCompileRuntimeInfo(ecmascript::ohos::RuntimeInfoType::JS, sanboxRealPath);
+    runtimeInfo->BuildCompileRuntimeInfo(ecmascript::ohos::RuntimeInfoType::JIT, sanboxRealPath);
+    runtimeInfo->BuildCompileRuntimeInfo(ecmascript::ohos::RuntimeInfoType::OTHERS, sanboxRealPath);
     std::map<ecmascript::ohos::RuntimeInfoType, int> escapeMapRealPath = runtimeInfo->CollectCrashSum(sanboxRealPath);
-    ASSERT_EQ(escapeMapRealPath[ecmascript::ohos::RuntimeInfoType::AOT_CRASH], 1);
-    ASSERT_EQ(runtimeInfo->GetCompileCountByType(ecmascript::ohos::RuntimeInfoType::AOT_CRASH, sanboxRealPath), 1);
+    ASSERT_EQ(escapeMapRealPath[ecmascript::ohos::RuntimeInfoType::AOT_CRASH], 3);
+    ASSERT_EQ(escapeMapRealPath[ecmascript::ohos::RuntimeInfoType::JS], 1);
+    ASSERT_EQ(escapeMapRealPath[ecmascript::ohos::RuntimeInfoType::JIT], 1);
+    ASSERT_EQ(escapeMapRealPath[ecmascript::ohos::RuntimeInfoType::OTHERS], 1);
+    ASSERT_EQ(runtimeInfo->GetCompileCountByType(ecmascript::ohos::RuntimeInfoType::AOT_CRASH, sanboxRealPath), 3);
 
     unlink(sanboxRealPath);
     rmdir(MockAotRuntimeInfo::SANBOX_DIR);
