@@ -23,3 +23,4 @@
 1
 Symbol()
 Symbol(symbol)
+testReadIcSlotInPrivatePropertyIns success
