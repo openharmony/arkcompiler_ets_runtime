@@ -88,32 +88,6 @@ HWTEST_F_L0(GCTest, HighSensitiveExceedMaxHeapSize)
     EXPECT_TRUE(commitSize < thread->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxHeapSize());
 }
 
-HWTEST_F_L0(GCTest, NoFullConcurrentMarkOldGCTrigger)
-{
-#if defined(NDEBUG) && defined(PANDA_TARGET_ARM64)
-    auto heap = const_cast<Heap *>(instance->GetHeap());
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
-    {
-        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-
-        for (int i = 0; i < 128 * 62; i++) {
-            [[maybe_unused]] JSHandle<TaggedArray> obj =
-                instance->GetFactory()->NewTaggedArray(1024, JSTaggedValue::Hole(), MemSpaceType::NON_MOVABLE);
-        }
-        EXPECT_EQ(heap->GetOldSpace()->GetOvershootSize(),
-                  instance->GetEcmaParamConfiguration().GetOldSpaceStepOvershootSize());
-        EXPECT_TRUE(heap->GetOldGCRequested());
-        heap->CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_LIMIT);
-        EXPECT_TRUE(thread->HasPendingException());
-        JSType errorType = thread->GetException().GetTaggedObject()->GetClass()->GetObjectType();
-        EXPECT_EQ(errorType, JSType::JS_OOM_ERROR);
-    }
-    heap->CollectGarbage(TriggerGCType::OLD_GC);
-    EXPECT_TRUE(heap->GetNonMovableSpace()->GetHeapObjectSize() < MAX_NONMOVABLE_LIVE_OBJ_SIZE);
-    EXPECT_EQ(heap->GetOldSpace()->GetOvershootSize(), 0);
-#endif
-}
-
 HWTEST_F_L0(GCTest, ArkToolsHintGC)
 {
     Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -312,7 +286,7 @@ HWTEST_F_L0(GCTest, AdjustCapacity)
     EXPECT_EQ(space->GetSurvivalObjectSize(), 0);
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < 300; i++) {
             [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
                 10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
         }

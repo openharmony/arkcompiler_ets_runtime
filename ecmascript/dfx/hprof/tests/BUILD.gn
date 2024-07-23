@@ -62,7 +62,7 @@ host_unittest_action("HeapDumpTest") {
   }
 
   if (is_ohos && is_standard_system) {
-    test_abc_dir = "/data/test"
+    test_abc_dir = "/data/test/"
   } else {
     test_abc_dir = rebase_path(target_out_dir + "/abc_files/")
   }
