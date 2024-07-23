@@ -23,7 +23,6 @@
 
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/mem/mem_common.h"
-#include "data_protect.h"
 
 // namespace panda {
 namespace panda::ecmascript {
@@ -765,9 +764,9 @@ public:
         isWorker_ = isWorker;
     }
 
-    inline void SetIsRestrictedWorker(bool isRestrictedWorker)
+    void SetIsRestrictedWorker(bool isRestrictedWorker)
     {
-        isRestrictedWorker_.Update(isRestrictedWorker);
+        isRestrictedWorker_ = isRestrictedWorker;
     }
 
     bool IsWorker() const
@@ -777,7 +776,7 @@ public:
 
     bool IsRestrictedWorker() const
     {
-        return isRestrictedWorker_.GetBool();
+        return isRestrictedWorker_;
     }
 
     bool EnableIC() const
@@ -1913,7 +1912,7 @@ private:
     bool compilerLogTime_ {false};
     bool enableRuntimeStat_ {false};
     bool isWorker_ {false};
-    panda_file::BoolPacProtect isRestrictedWorker_ = panda_file::BoolPacProtect();
+    bool isRestrictedWorker_ {false};
     bool traceBc_ {false};
     std::string logLevel_ {"error"};
     arg_list_t logDebug_ {{"all"}};
