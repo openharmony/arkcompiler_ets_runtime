@@ -577,7 +577,7 @@ void Heap::Initialize()
     }
     size_t oldSpaceCapacity = maxHeapSize - capacities;
     globalSpaceAllocLimit_ = maxHeapSize - minSemiSpaceCapacity;
-    globalSpaceNativeLimit_ = globalSpaceAllocLimit_;
+    globalSpaceNativeLimit_ = INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT;
     oldSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     compressSpace_ = new OldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     oldSpace_->Initialize();
