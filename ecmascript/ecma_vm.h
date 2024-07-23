@@ -267,7 +267,7 @@ public:
         return optionalLogEnabled_;
     }
 
-    void Iterate(const RootVisitor &v, const RootRangeVisitor &rv);
+    void Iterate(const RootVisitor &v, const RootRangeVisitor &rv, VMRootVisitType type);
 
     const Heap *GetHeap() const
     {

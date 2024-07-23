@@ -37,7 +37,7 @@ public:
         LOG_GC(DEBUG) << "Marker::Initialize do nothing";
     }
 
-    void MarkRoots(uint32_t threadId);
+    void MarkRoots(uint32_t threadId, VMRootVisitType type = VMRootVisitType::MARK);
     void ProcessNewToEden(uint32_t threadId);                  // for HPPGC only sticky mode
     void ProcessNewToEdenNoMarkStack(uint32_t threadId);
     void ProcessOldToNew(uint32_t threadId);                  // for HPPGC only semi mode

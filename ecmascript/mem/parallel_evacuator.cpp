@@ -332,7 +332,8 @@ void ParallelEvacuator::UpdateRoot()
         }
     };
 
-    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), gcUpdateYoung, gcUpdateRangeYoung, gcUpdateDerived);
+    ObjectXRay::VisitVMRoots(heap_->GetEcmaVM(), gcUpdateYoung, gcUpdateRangeYoung, gcUpdateDerived,
+                             VMRootVisitType::UPDATE_ROOT);
 }
 
 void ParallelEvacuator::UpdateRecordWeakReference()

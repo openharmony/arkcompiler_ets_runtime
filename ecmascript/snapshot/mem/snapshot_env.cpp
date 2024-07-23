@@ -43,26 +43,24 @@ JSTaggedType SnapshotEnv::RelocateRootObjectAddr(uint32_t index)
     return value->GetRawData();
 }
 
-void SnapshotEnv::Iterate(const RootVisitor &v)
+void SnapshotEnv::Iterate(const RootVisitor &v, VMRootVisitType type)
 {
-    std::vector<std::pair<JSTaggedType, JSTaggedType>> updatedObjPair;
-    for (auto &it : rootObjectMap_) {
-        auto objectAddr = it.first;
-        ObjectSlot slot(reinterpret_cast<uintptr_t>(&objectAddr));
-        v(Root::ROOT_VM, slot);
-        // Record updated obj addr after gc
-        if (slot.GetTaggedType() != it.first) {
-            updatedObjPair.emplace_back(std::make_pair(it.first, slot.GetTaggedType()));
+    if (type == VMRootVisitType::UPDATE_ROOT) {
+        // during update root, rootObjectMap_ key need update
+        std::unordered_map<JSTaggedType, uint32_t> rootObjectMap(rootObjectMap_.size());
+        for (auto &it : rootObjectMap_) {
+            auto objectAddr = it.first;
+            ObjectSlot slot(reinterpret_cast<uintptr_t>(&objectAddr));
+            v(Root::ROOT_VM, slot);
+            rootObjectMap.emplace(slot.GetTaggedType(), it.second);
         }
-    }
-    // Update hashmap, erase old objAddr, emplace updated objAddr
-    while (!updatedObjPair.empty()) {
-        auto pair = updatedObjPair.back();
-        ASSERT(rootObjectMap_.find(pair.first) != rootObjectMap_.end());
-        uint32_t index = rootObjectMap_.find(pair.first)->second;
-        rootObjectMap_.erase(pair.first);
-        rootObjectMap_.emplace(pair.second, index);
-        updatedObjPair.pop_back();
+        std::swap(rootObjectMap_, rootObjectMap);
+        rootObjectMap.clear();
+    } else {
+        for (auto &it : rootObjectMap_) {
+            ObjectSlot slot(reinterpret_cast<uintptr_t>(&it));
+            v(Root::ROOT_VM, slot);
+        }
     }
 }
 }  // namespace panda::ecmascript

@@ -349,7 +349,7 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
     RootBaseAndDerivedVisitor derivedVisitor = []
         ([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
          [[maybe_unused]] uintptr_t baseOldObject) {};
-    ecmaVm_->Iterate(rootVisitor, rangeVisitor);
+    ecmaVm_->Iterate(rootVisitor, rangeVisitor, VMRootVisitType::HEAP_SNAPSHOT);
     thread_->Iterate(rootVisitor, rangeVisitor, derivedVisitor);
 
     bool result = JSNApi::Execute(ecmaVm_, abcFileName, "heapdump");
@@ -358,7 +358,7 @@ HWTEST_F_L0(HeapDumpTest, TestAllocationEvent)
     std::unordered_map<TaggedObject *, bool> ObjAfterExecute;
     ObjMap = &ObjAfterExecute;
     heap->IterateOverObjects(countCb);
-    ecmaVm_->Iterate(rootVisitor, rangeVisitor);
+    ecmaVm_->Iterate(rootVisitor, rangeVisitor, VMRootVisitType::HEAP_SNAPSHOT);
     thread_->Iterate(rootVisitor, rangeVisitor, derivedVisitor);
     ecmaVm_->SetHeapProfile(mockHeapProfiler.profiler_);
 

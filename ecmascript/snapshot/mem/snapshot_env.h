@@ -35,7 +35,7 @@ public:
         rootObjectMap_.clear();
     }
 
-    void Iterate(const RootVisitor &v);
+    void Iterate(const RootVisitor &v, VMRootVisitType type);
 
     void Push(JSTaggedType objectAddr, uint32_t index)
     {

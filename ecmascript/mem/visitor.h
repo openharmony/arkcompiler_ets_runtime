@@ -38,6 +38,7 @@ enum class VisitObjectArea {
 };
 
 enum class VisitType : size_t { SEMI_GC_VISIT, OLD_GC_VISIT, SNAPSHOT_VISIT, ALL_VISIT };
+enum class VMRootVisitType : uint8_t { MARK, UPDATE_ROOT, VERIFY, HEAP_SNAPSHOT };
 
 using RootVisitor = std::function<void(Root type, ObjectSlot p)>;
 using RootRangeVisitor = std::function<void(Root type, ObjectSlot start, ObjectSlot end)>;

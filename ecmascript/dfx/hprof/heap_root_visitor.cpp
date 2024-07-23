@@ -25,7 +25,7 @@ void HeapRootVisitor::VisitHeapRoots(JSThread *thread, const RootVisitor &visito
                                      const RootBaseAndDerivedVisitor &derivedVisitor)
 {
     auto ecmaVm = GetVMInstance(thread);
-    ecmaVm->Iterate(visitor, rangeVisitor);
+    ecmaVm->Iterate(visitor, rangeVisitor, VMRootVisitType::HEAP_SNAPSHOT);
     thread->Iterate(visitor, rangeVisitor, derivedVisitor);
 
     // SerializeRoot from shared heap
