@@ -15,6 +15,7 @@
 
 #include "ecmascript/serializer/value_serializer.h"
 
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/js_serializer.h"
 #include "ecmascript/shared_mm/shared_mm.h"
@@ -120,6 +121,20 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         return false;
     }
     SerializeJSTaggedValue(value.GetTaggedValue());
+    {
+        ThreadNativeScope nativeScope(thread);
+        for (auto &entry : detachCallbackInfo_) {
+            auto info = entry.second;
+            DetachFunc detachNative = reinterpret_cast<DetachFunc>(info->detachFunc);
+            if (detachNative == nullptr || !(entry.first >= 0)) {
+                LOG_ECMA(ERROR) << "ValueSerialize: SerializeNativeBindingObject detachNative == nullptr";
+                notSupport_ = true;
+                return false;
+            }
+            void *buffer = detachNative(info->env, info->nativeValue, info->hint, info->detachData);
+            data_->EmitU64(reinterpret_cast<uint64_t>(buffer), entry.first);
+        }
+    }
     if (notSupport_) {
         LOG_ECMA(ERROR) << "ValueSerialize: serialize data is incomplete";
         data_->SetIncompleteData(true);
@@ -288,22 +303,13 @@ void ValueSerializer::SerializeNativeBindingObject(TaggedObject *object)
         notSupport_ = true;
         return;
     }
-    void *enginePointer = info->env;
-    void *objPointer = info->nativeValue;
     void *hint = info->hint;
-    void *detachData = info->detachData;
     void *attachData = info->attachData;
-    DetachFunc detachNative = reinterpret_cast<DetachFunc>(info->detachFunc);
-    if (detachNative == nullptr) {
-        LOG_ECMA(ERROR) << "ValueSerialize: SerializeNativeBindingObject detachNative == nullptr";
-        notSupport_ = true;
-        return;
-    }
-    void *buffer = detachNative(enginePointer, objPointer, hint, detachData);
     AttachFunc attachNative = reinterpret_cast<AttachFunc>(info->attachFunc);
     data_->WriteEncodeFlag(EncodeFlag::NATIVE_BINDING_OBJECT);
     data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(attachNative));
-    data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(buffer));
+    ssize_t offset = data_->EmitU64(0); // 0 is a placeholder which will be filled later
+    detachCallbackInfo_.push_back({offset, info});
     data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(hint));
     data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(attachData));
 }
