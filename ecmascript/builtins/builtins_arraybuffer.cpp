@@ -720,7 +720,11 @@ void BuiltinsArrayBuffer::SetValueInBufferForBigInt(JSThread *thread,
 JSTaggedValue BuiltinsArrayBuffer::FastSetValueInBuffer(JSThread *thread, JSTaggedValue arrBuf, uint32_t byteIndex,
                                                         DataViewType type, double val, bool littleEndian)
 {
-    if (BuiltinsArrayBuffer::IsDetachedBuffer(arrBuf)) {
+    // origin type maybe native JSType or shared JSType.
+    if (arrBuf.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(arrBuf)) {
+        return JSTaggedValue::Undefined();
+    }
+    if ((arrBuf.IsArrayBuffer() || arrBuf.IsSharedArrayBuffer()) && BuiltinsArrayBuffer::IsDetachedBuffer(arrBuf)) {
         return JSTaggedValue::Undefined();
     }
     void *pointer = GetDataPointFromBuffer(arrBuf);
