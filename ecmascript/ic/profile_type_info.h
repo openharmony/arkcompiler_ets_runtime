@@ -83,6 +83,19 @@ static inline bool IsGlobalIC(ICKind kind)
 
 std::string ICKindToString(ICKind kind);
 
+class ProfileTypeAccessorLockScope {
+public:
+    ProfileTypeAccessorLockScope(JSThread *thread)
+    {
+        if (thread->GetEcmaVM()->IsEnableFastJit() || thread->GetEcmaVM()->IsEnableBaselineJit()) {
+            lockHolder_.emplace(thread->GetProfileTypeAccessorLock());
+        }
+    }
+
+private:
+    std::optional<LockHolder> lockHolder_;
+};
+
 /**
  *              ProfileTypeInfo
  *      +--------------------------------+
@@ -285,6 +298,16 @@ public:
         TaggedArray::Set(thread, idx, value);
     }
 
+    inline void SetMultiIcSlotLocked(JSThread* thread, uint32_t firstIdx, const JSTaggedValue& firstValue,
+        uint32_t secondIdx, const JSTaggedValue& secondValue)
+    {
+        ProfileTypeAccessorLockScope accessorLockScope(thread);
+        ASSERT(firstIdx < GetIcSlotLength());
+        ASSERT(secondIdx < GetIcSlotLength());
+        TaggedArray::Set(thread, firstIdx, firstValue);
+        TaggedArray::Set(thread, secondIdx, secondValue);
+    }
+
     DECL_VISIT_ARRAY(DATA_OFFSET, GetIcSlotAndOsrLength(), GetIcSlotAndOsrLength());
 
     DECL_DUMP()
@@ -343,19 +366,6 @@ private:
     {
         return GetJitCallThresholdBitfieldOffset() + JIT_CALL_CNT_OFFSET_FROM_JIT_CALL_THRESHOLD;
     }
-};
-
-class ProfileTypeAccessorLockScope {
-public:
-    ProfileTypeAccessorLockScope(JSThread *thread)
-    {
-        if (thread->GetEcmaVM()->IsEnableFastJit() || thread->GetEcmaVM()->IsEnableBaselineJit()) {
-            lockHolder_.emplace(thread->GetProfileTypeAccessorLock());
-        }
-    }
-
-private:
-    std::optional<LockHolder> lockHolder_;
 };
 
 class ProfileTypeAccessor {
