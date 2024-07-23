@@ -122,16 +122,15 @@ class JSThread {
 public:
     static constexpr int CONCURRENT_MARKING_BITFIELD_NUM = 2;
     static constexpr int CONCURRENT_MARKING_BITFIELD_MASK = 0x3;
-    static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_START = CONCURRENT_MARKING_BITFIELD_NUM;
     static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_NUM = 1;
-    static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_MASK = 0x4;
+    static constexpr int SHARED_CONCURRENT_MARKING_BITFIELD_MASK = 0x1;
     static constexpr int CHECK_SAFEPOINT_BITFIELD_NUM = 8;
     static constexpr int PGO_PROFILER_BITFIELD_START = 16;
     static constexpr int BOOL_BITFIELD_NUM = 1;
     static constexpr int BCSTUBSTATUS_BITFIELD_NUM = 2;
     static constexpr uint32_t RESERVE_STACK_SIZE = 128;
     using MarkStatusBits = BitField<MarkStatus, 0, CONCURRENT_MARKING_BITFIELD_NUM>;
-    using SharedMarkStatusBits = MarkStatusBits::NextField<SharedMarkStatus, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>;
+    using SharedMarkStatusBits = BitField<SharedMarkStatus, 0, SHARED_CONCURRENT_MARKING_BITFIELD_NUM>;
     using CheckSafePointBit = BitField<bool, 0, BOOL_BITFIELD_NUM>;
     using VMNeedSuspensionBit = BitField<bool, CHECK_SAFEPOINT_BITFIELD_NUM, BOOL_BITFIELD_NUM>;
     using VMHasSuspendedBit = VMNeedSuspensionBit::NextFlag;
@@ -461,19 +460,9 @@ public:
         return MarkStatusBits::Decode(glueData_.gcStateBitField_);
     }
 
-    SharedMarkStatus GetSharedMarkStatus() const
-    {
-        return SharedMarkStatusBits::Decode(glueData_.gcStateBitField_);
-    }
-
     void SetMarkStatus(MarkStatus status)
     {
         MarkStatusBits::Set(status, &glueData_.gcStateBitField_);
-    }
-
-    void SetSharedMarkStatus(SharedMarkStatus status)
-    {
-        SharedMarkStatusBits::Set(status, &glueData_.gcStateBitField_);
     }
 
     bool IsConcurrentMarkingOrFinished() const
@@ -481,22 +470,10 @@ public:
         return !IsReadyToConcurrentMark();
     }
 
-    bool IsSharedConcurrentMarkingOrFinished() const
-    {
-        auto status = SharedMarkStatusBits::Decode(glueData_.gcStateBitField_);
-        return status == SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED;
-    }
-
     bool IsReadyToConcurrentMark() const
     {
         auto status = MarkStatusBits::Decode(glueData_.gcStateBitField_);
         return status == MarkStatus::READY_TO_MARK;
-    }
-
-    bool IsReadyToSharedConcurrentMark() const
-    {
-        auto status = SharedMarkStatusBits::Decode(glueData_.gcStateBitField_);
-        return status == SharedMarkStatus::READY_TO_CONCURRENT_MARK;
     }
 
     bool IsMarking() const
@@ -509,6 +486,28 @@ public:
     {
         auto status = MarkStatusBits::Decode(glueData_.gcStateBitField_);
         return status == MarkStatus::MARK_FINISHED;
+    }
+
+    SharedMarkStatus GetSharedMarkStatus() const
+    {
+        return SharedMarkStatusBits::Decode(glueData_.sharedGCStateBitField_);
+    }
+
+    void SetSharedMarkStatus(SharedMarkStatus status)
+    {
+        SharedMarkStatusBits::Set(status, &glueData_.sharedGCStateBitField_);
+    }
+
+    bool IsSharedConcurrentMarkingOrFinished() const
+    {
+        auto status = SharedMarkStatusBits::Decode(glueData_.sharedGCStateBitField_);
+        return status == SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED;
+    }
+
+    bool IsReadyToSharedConcurrentMark() const
+    {
+        auto status = SharedMarkStatusBits::Decode(glueData_.sharedGCStateBitField_);
+        return status == SharedMarkStatus::READY_TO_CONCURRENT_MARK;
     }
 
     void SetPGOProfilerEnable(bool enable)
@@ -949,6 +948,7 @@ public:
                                                  BCDebuggerStubEntries,
                                                  BaselineStubEntries,
                                                  base::AlignedUint64,
+                                                 base::AlignedUint64,
                                                  base::AlignedPointer,
                                                  base::AlignedUint64,
                                                  base::AlignedUint64,
@@ -989,7 +989,8 @@ public:
             BuiltinHClassEntriesIndex,
             BcDebuggerStubEntriesIndex,
             BaselineStubEntriesIndex,
-            StateBitFieldIndex,
+            GCStateBitFieldIndex,
+            SharedGCStateBitFieldIndex,
             FrameBaseIndex,
             StackStartIndex,
             StackLimitIndex,
@@ -1034,9 +1035,14 @@ public:
             return GetOffset<static_cast<size_t>(Index::GlobalConstIndex)>(isArch32);
         }
 
-        static size_t GetStateBitFieldOffset(bool isArch32)
+        static size_t GetGCStateBitFieldOffset(bool isArch32)
         {
-            return GetOffset<static_cast<size_t>(Index::StateBitFieldIndex)>(isArch32);
+            return GetOffset<static_cast<size_t>(Index::GCStateBitFieldIndex)>(isArch32);
+        }
+
+        static size_t GetSharedGCStateBitFieldOffset(bool isArch32)
+        {
+            return GetOffset<static_cast<size_t>(Index::SharedGCStateBitFieldIndex)>(isArch32);
         }
 
         static size_t GetCurrentFrameOffset(bool isArch32)
@@ -1255,6 +1261,7 @@ public:
         alignas(EAS) BCDebuggerStubEntries bcDebuggerStubEntries_ {};
         alignas(EAS) BaselineStubEntries baselineStubEntries_ {};
         alignas(EAS) volatile uint64_t gcStateBitField_ {0ULL};
+        alignas(EAS) volatile uint64_t sharedGCStateBitField_ {0ULL};
         alignas(EAS) JSTaggedType *frameBase_ {nullptr};
         alignas(EAS) uint64_t stackStart_ {0};
         alignas(EAS) uint64_t stackLimit_ {0};
