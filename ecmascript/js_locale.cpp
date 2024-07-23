@@ -153,14 +153,19 @@ JSHandle<EcmaString> JSLocale::BestFitMatcher(JSThread *thread, const JSHandle<T
 JSHandle<TaggedArray> JSLocale::LookupSupportedLocales(JSThread *thread, const JSHandle<TaggedArray> &availableLocales,
                                                        const JSHandle<TaggedArray> &requestedLocales)
 {
-    uint32_t index = 0;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     uint32_t length = requestedLocales->GetLength();
-    // 1. Let subset be a new empty List.
-    JSHandle<TaggedArray> subset = factory->NewTaggedArray(length);
     JSMutableHandle<EcmaString> item(thread, JSTaggedValue::Undefined());
     std::vector<std::string> availableStringLocales = GetAvailableStringLocales(thread, availableLocales);
-    // 2. For each element locale of requestedLocales in List order, do
+    std::vector<std::string> convertedLocales;
+    convertedLocales.reserve(length);
+    std::vector<uint32_t> indexAvailableLocales;
+    indexAvailableLocales.reserve(length);
+    for (uint32_t i = 0; i < length; ++i) {
+        item.Update(requestedLocales->Get(thread, i));
+        convertedLocales.push_back(intl::LocaleHelper::ConvertToStdString(item));
+    }
+    // 1. For each element locale of requestedLocales in List order, do
     //    a. Let noExtensionsLocale be the String value that is locale with all Unicode locale extension sequences
     //       removed.
     //    b. Let availableLocale be BestAvailableLocale(availableLocales, noExtensionsLocale).
@@ -168,17 +173,22 @@ JSHandle<TaggedArray> JSLocale::LookupSupportedLocales(JSThread *thread, const J
     {
         ThreadNativeScope nativeScope(thread);
         for (uint32_t i = 0; i < length; ++i) {
-            item.Update(requestedLocales->Get(thread, i));
-            intl::LocaleHelper::ParsedLocale foundationResult = intl::LocaleHelper::HandleLocale(item);
+            intl::LocaleHelper::ParsedLocale foundationResult = intl::LocaleHelper::HandleLocale(convertedLocales[i]);
             std::string availableLocale =
                 intl::LocaleHelper::BestAvailableLocale(availableStringLocales, foundationResult.base);
             if (!availableLocale.empty()) {
-                subset->Set(thread, index++, item.GetTaggedValue());
+                indexAvailableLocales.push_back(i);
             }
         }
     }
+    // 2. Let subset be a new empty List.
+    JSHandle<TaggedArray> subset = factory->NewTaggedArray(indexAvailableLocales.size());
+    uint32_t index = 0;
+    for (uint32_t i = 0; i < indexAvailableLocales.size(); ++i) {
+        subset->Set(thread, index++, requestedLocales->Get(thread, indexAvailableLocales[i]));
+    }
     // 3. Return subset.
-    return TaggedArray::SetCapacity(thread, subset, index);
+    return subset;
 }
 
 // 9.2.9 BestFitSupportedLocales ( availableLocales, requestedLocales )

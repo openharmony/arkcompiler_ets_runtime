@@ -49,6 +49,7 @@ public:
     static const std::string& StdStringDefaultLocale(JSThread *thread);
     static JSHandle<EcmaString> DefaultLocale(JSThread *thread);
     static LocaleHelper::ParsedLocale HandleLocale(const JSHandle<EcmaString> &localeString);
+    static LocaleHelper::ParsedLocale HandleLocale(const std::string &localeString);
     static void HandleLocaleExtension(size_t &start, size_t &extensionEnd, const std::string result, size_t len);
     static std::string ConvertToStdString(const JSHandle<EcmaString> &ecmaStr);
 private:
