@@ -18,6 +18,7 @@
 
 #include <unordered_map>
 
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
@@ -39,12 +40,20 @@ public:
 
     void Push(JSTaggedType objectAddr, uint32_t index)
     {
+        if (multiThreadCheckValue_.exchange(JSThread::GetCurrentThreadId()) != 0) {
+            LOG_ECMA(FATAL) << "SnapshotEnv push multi-thread check fail, thread id: " << multiThreadCheckValue_;
+        }
         rootObjectMap_.emplace(objectAddr, index);
+        multiThreadCheckValue_ = 0;
     }
 
     void Remove(JSTaggedType objectAddr)
     {
+        if (multiThreadCheckValue_.exchange(JSThread::GetCurrentThreadId()) != 0) {
+            LOG_ECMA(FATAL) << "SnapshotEnv remove multi-thread check fail, thread id: " << multiThreadCheckValue_;
+        }
         rootObjectMap_.erase(objectAddr);
+        multiThreadCheckValue_ = 0;
     }
 
     uint32_t FindEnvObjectIndex(JSTaggedType objectAddr) const
@@ -68,6 +77,7 @@ private:
 
     EcmaVM *vm_;
     std::unordered_map<JSTaggedType, uint32_t> rootObjectMap_;
+    std::atomic<uint32_t> multiThreadCheckValue_ {0};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_SNAPSHOT_MEM_SNAPSHOT_ENV_H
