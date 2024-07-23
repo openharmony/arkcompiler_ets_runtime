@@ -238,10 +238,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
 {
     if ((!receiver->IsJSObject() || receiver->HasOrdinaryGet()) &&
          !receiver->IsString() && !receiver->IsNumber()) {
-        icAccessor_.SetAsMega();
-        JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
+        return LoadOrdinaryGet(receiver, key);
     }
 
     ICKind kind = GetICKind();
@@ -258,13 +255,15 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     }
 
     if (key->IsJSFunction()) { // key is a private getter
-        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-        EcmaRuntimeCallInfo* info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 0); // 0: getter has 0 argument
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        JSTaggedValue resGetter = JSFunction::Call(info);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        return resGetter;
+        return LoadGetter(receiver, key);
+    }
+
+    if (key->IsSymbol() && JSSymbol::Cast(key->GetTaggedObject())->IsPrivate()) {
+        PropertyDescriptor desc(thread_);
+        if (!JSTaggedValue::IsPropertyKey(key) ||
+            !JSTaggedValue::GetOwnProperty(thread_, receiver, key, desc)) {
+            THROW_TYPE_ERROR_AND_RETURN(thread_, "invalid or cannot find private key", JSTaggedValue::Exception());
+        }
     }
 
     ObjectOperator op(GetThread(), receiver, key);
@@ -291,6 +290,25 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
 
     UpdateLoadHandler(op, key, receiver);
     return result.GetTaggedValue();
+}
+
+JSTaggedValue LoadICRuntime::LoadOrdinaryGet(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+{
+    icAccessor_.SetAsMega();
+    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread_, key);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+    return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
+}
+
+JSTaggedValue LoadICRuntime::LoadGetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+{
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo* info =
+        EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 0); // 0: getter has 0 argument
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+    JSTaggedValue resGetter = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+    return resGetter;
 }
 
 JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)

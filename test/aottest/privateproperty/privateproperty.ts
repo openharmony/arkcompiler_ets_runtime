@@ -124,3 +124,21 @@ function testReadIcSlotInPrivatePropertyIns() {
 }
 
 testReadIcSlotInPrivatePropertyIns();
+
+// Invalid private key
+const v1 = [1];
+const v2 = [2];
+class C {
+    #m(x) {
+        x[0] = this;
+        return this;
+    }
+    constructor() {
+        try {
+            v1.#m(v2);
+        } catch(e) {
+            print(e.name + " : " + e.message);
+        }
+    }
+}
+const v3 = new C();
