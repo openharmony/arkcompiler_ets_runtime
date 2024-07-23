@@ -449,6 +449,7 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(OptStSuperByValue)                  \
     V(BigIntEqual)                        \
     V(StringEqual)                        \
+    V(StringIndexOf)                      \
     V(LdPatchVar)                         \
     V(StPatchVar)                         \
     V(DeoptHandler)                       \

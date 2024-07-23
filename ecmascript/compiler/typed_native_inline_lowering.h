@@ -155,8 +155,8 @@ private:
 
     GateRef FindFrameState(GateRef gate);
     void LowerArrayIncludesIndexOf(GateRef gate);
-    GateRef NormalCompareLoop(
-        GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength, BuiltinsStubCSigns::ID callID);
+    GateRef NormalCompareLoop(GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength,
+                              BuiltinsStubCSigns::ID callID, GateRef gate);
     GateRef IncludesUndefinedLoop(GateRef elements, GateRef fromIndex, GateRef arrayLength);
     GateRef TargetIntCompareLoop(GateRef elements,
                                  GateRef fromIndex,

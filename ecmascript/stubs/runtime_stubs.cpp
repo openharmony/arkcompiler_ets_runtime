@@ -2932,6 +2932,17 @@ DEF_RUNTIME_STUBS(StringEqual)
     return JSTaggedValue::VALUE_FALSE;
 }
 
+DEF_RUNTIME_STUBS(StringIndexOf)
+{
+    RUNTIME_STUBS_HEADER(StringIndexOf);
+    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> searchElement = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    uint32_t from = static_cast<uint32_t>(GetArg(argv, argc, 2).GetInt());  // 2: means the second parameter
+    uint32_t len = static_cast<uint32_t>(GetArg(argv, argc, 3).GetInt());  // 3: means the third parameter
+
+    return JSStableArray::IndexOf(thread, receiver, searchElement, from, len).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LdPatchVar)
 {
     RUNTIME_STUBS_HEADER(LdPatchVar);

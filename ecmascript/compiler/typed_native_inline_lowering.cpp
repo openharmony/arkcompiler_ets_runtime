@@ -2995,7 +2995,7 @@ void TypedNativeInlineLowering::LowerArrayIncludesIndexOf(GateRef gate)
             break;
         }
         default: {
-            res = NormalCompareLoop(elements, *fromIndex, targetElement, arrayLength, callID);
+            res = NormalCompareLoop(elements, *fromIndex, targetElement, arrayLength, callID, gate);
             builder_.Jump(&exit);
             break;
         }
@@ -3053,8 +3053,8 @@ GateRef TypedNativeInlineLowering::IncludesUndefinedLoop(GateRef elements, GateR
     return ret;
 }
 
-GateRef TypedNativeInlineLowering::NormalCompareLoop(
-    GateRef elements, GateRef fromIndex, GateRef targetElement, GateRef arrayLength, BuiltinsStubCSigns::ID callID)
+GateRef TypedNativeInlineLowering::NormalCompareLoop(GateRef elements, GateRef fromIndex, GateRef targetElement,
+                                                     GateRef arrayLength, BuiltinsStubCSigns::ID callID, GateRef gate)
 {
     Label entry(&builder_);
     builder_.SubCfgEntry(&entry);
@@ -3091,7 +3091,12 @@ GateRef TypedNativeInlineLowering::NormalCompareLoop(
     BRANCH_CIR(builder_.TaggedIsString(targetElement), &targetIsString, &targetMaybeBigInt);
     builder_.Bind(&targetIsString);
     {
-        res = TargetStringCompareLoop(elements, fromIndex, targetElement, arrayLength, true);
+        GateRef thisArray = acc_.GetValueIn(gate, 0);
+        GateRef result = builder_.CallRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(StringIndexOf),
+                                              Gate::InvalidGateRef, { thisArray, targetElement,
+                                              builder_.Int32ToTaggedInt(fromIndex),
+                                              builder_.Int32ToTaggedInt(arrayLength) }, gate);
+        res = builder_.TruncInt64ToInt32(builder_.TaggedPointerToInt64(result));
         builder_.Jump(&exit);
     }
     builder_.Bind(&targetMaybeBigInt);

@@ -3274,7 +3274,7 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
     {
         GateRef intialHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
                                                       ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
-        BRANCH(Equal(intialHClass, arrayCls), &matchCls, slowPath);                                          
+        BRANCH(Equal(intialHClass, arrayCls), &matchCls, slowPath);
     }
     Bind(&matchCls);
 
