@@ -230,13 +230,13 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
     for (size_t offset = JSArray::SIZE; offset < arraySize; offset += JSTaggedValue::TaggedTypeSize()) {
         builder_.StoreConstOffset(VariableType::INT64(), array, offset, builder_.Undefined());
     }
-    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass, MemoryOrder::NeedBarrierAndAtomic());
+    builder_.StoreConstOffset(VariableType::JS_POINTER(), array, 0, hclass, MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), array, ECMAObject::HASH_OFFSET,
                               builder_.Int64(JSTaggedValue(0).GetRawData()));
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::PROPERTIES_OFFSET, emptyArray,
-        MemoryOrder::NoBarrier());
+                              MemoryAttribute::NoBarrier());
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, JSObject::ELEMENTS_OFFSET, elements,
-        MemoryOrder::NeedBarrier());
+                              MemoryAttribute::NeedBarrier());
     builder_.StoreConstOffset(VariableType::INT32(), array, JSArray::LENGTH_OFFSET, length);
     if (hintLength > 0) {
         builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET,
@@ -245,7 +245,7 @@ GateRef NTypeHCRLowering::NewJSArrayLiteral(GateRef glue, GateRef gate, GateRef 
         builder_.StoreConstOffset(VariableType::INT64(), array, JSArray::TRACK_INFO_OFFSET, builder_.Undefined());
     }
     builder_.StoreConstOffset(VariableType::JS_POINTER(), array, lengthAccessorOffset, accessor,
-        MemoryOrder::NeedBarrier());
+                              MemoryAttribute::NeedBarrier());
     return builder_.FinishAllocate(array);
 }
 
@@ -257,9 +257,9 @@ GateRef NTypeHCRLowering::NewTaggedArray(size_t length, GateRef glue)
     builder_.StartAllocate();
     GateRef elements = builder_.HeapAlloc(glue, elementsSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), elements, 0, elementsHclass,
-        MemoryOrder::NeedBarrierAndAtomic());
+                              MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::JS_ANY(), elements, TaggedArray::LENGTH_OFFSET,
-        builder_.Int32ToTaggedInt(builder_.IntPtr(length)), MemoryOrder::NoBarrier());
+        builder_.Int32ToTaggedInt(builder_.IntPtr(length)), MemoryAttribute::NoBarrier());
     size_t endOffset = TaggedArray::DATA_OFFSET + length * JSTaggedValue::TaggedTypeSize();
     // initialization
     for (size_t offset = TaggedArray::DATA_OFFSET; offset < endOffset; offset += JSTaggedValue::TaggedTypeSize()) {

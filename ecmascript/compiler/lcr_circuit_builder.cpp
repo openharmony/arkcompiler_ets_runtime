@@ -105,7 +105,7 @@ GateRef CircuitBuilder::Alloca(size_t size)
 
 // memory
 void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
-    MemoryOrder order)
+                           MemoryAttribute order)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
@@ -115,7 +115,7 @@ void CircuitBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRe
     label->SetDepend(result);
 }
 
-void CircuitBuilder::StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value, MemoryOrder order)
+void CircuitBuilder::StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value, MemoryAttribute order)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
@@ -126,7 +126,7 @@ void CircuitBuilder::StoreWithoutBarrier(VariableType type, GateRef addr, GateRe
 }
 
 // memory
-GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, MemoryOrder order)
+GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, MemoryAttribute order)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();
@@ -139,7 +139,7 @@ GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, Me
 }
 
 GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, GateRef depend,
-    MemoryOrder order)
+                             MemoryAttribute order)
 {
     GateRef val = PtrAdd(base, offset);
     auto bits = LoadStoreAccessor::ToValue(order);
@@ -148,7 +148,7 @@ GateRef CircuitBuilder::Load(VariableType type, GateRef base, GateRef offset, Ga
     return result;
 }
 
-GateRef CircuitBuilder::Load(VariableType type, GateRef addr, MemoryOrder order)
+GateRef CircuitBuilder::Load(VariableType type, GateRef addr, MemoryAttribute order)
 {
     auto label = GetCurrentLabel();
     auto depend = label->GetDepend();

@@ -342,11 +342,11 @@ private:
     uint64_t bitField_;
 };
 
-class MemoryOrder {
+class MemoryAttribute {
 public:
-    MemoryOrder() = default;
-    ~MemoryOrder() = default;
-    explicit MemoryOrder(uint32_t v) : value_(v) {}
+    MemoryAttribute() = default;
+    ~MemoryAttribute() = default;
+    explicit MemoryAttribute(uint32_t v) : value_(v) {}
 
     enum Order {
         NOT_ATOMIC = 0,
@@ -365,27 +365,27 @@ public:
         IS_SHARE
     };
 
-    static MemoryOrder Default()
+    static MemoryAttribute Default()
     {
         return Create(NOT_ATOMIC);
     }
 
-    static MemoryOrder NeedBarrier()
+    static MemoryAttribute NeedBarrier()
     {
         return Create(NOT_ATOMIC, NEED_BARRIER);
     }
 
-    static MemoryOrder NeedNotShareBarrier()
+    static MemoryAttribute NeedNotShareBarrier()
     {
         return Create(NOT_ATOMIC, NEED_BARRIER, NOT_SHARE);
     }
 
-    static MemoryOrder NeedBarrierAndAtomic()
+    static MemoryAttribute NeedBarrierAndAtomic()
     {
         return Create(MEMORY_ORDER_RELEASE, NEED_BARRIER);
     }
 
-    static MemoryOrder NoBarrier()
+    static MemoryAttribute NoBarrier()
     {
         return Create(NOT_ATOMIC, NO_BARRIER);
     }
@@ -426,10 +426,10 @@ public:
     }
 
 private:
-    static MemoryOrder Create(Order order, Barrier barrier = UNKNOWN_BARRIER, Share share = UNKNOWN_SHARE)
+    static MemoryAttribute Create(Order order, Barrier barrier = UNKNOWN_BARRIER, Share share = UNKNOWN_SHARE)
     {
         uint32_t value = OrderField::Encode(order) | BarrierField::Encode(barrier) | ShareField::Encode(share);
-        return MemoryOrder(value);
+        return MemoryAttribute(value);
     }
 
     static constexpr uint32_t ORDER_BITS = 8;
@@ -447,17 +447,17 @@ public:
     static constexpr int MEMORY_ORDER_BITS = 32;
     explicit LoadStoreAccessor(uint64_t value) : bitField_(value) {}
 
-    MemoryOrder GetMemoryOrder() const
+    MemoryAttribute GetMemoryAttribute() const
     {
-        return MemoryOrder(MemoryOrderBits::Get(bitField_));
+        return MemoryAttribute(MemoryAttributeBits::Get(bitField_));
     }
 
-    static uint64_t ToValue(MemoryOrder order)
+    static uint64_t ToValue(MemoryAttribute order)
     {
-        return MemoryOrderBits::Encode(order.Value());
+        return MemoryAttributeBits::Encode(order.Value());
     }
 private:
-    using MemoryOrderBits = panda::BitField<uint32_t, 0, MEMORY_ORDER_BITS>;
+    using MemoryAttributeBits = panda::BitField<uint32_t, 0, MEMORY_ORDER_BITS>;
 
     uint64_t bitField_;
 };
@@ -465,12 +465,12 @@ private:
 class LoadStoreConstOffsetAccessor {
 public:
     static constexpr int OPRAND_OFFSET_BITS = 32;
-    static constexpr int MEMORY_ORDER_BITS = 32;
+    static constexpr int MEMORY_ATTRIBUTE_BITS = 32;
     explicit LoadStoreConstOffsetAccessor(uint64_t value) : bitField_(value) {}
 
-    MemoryOrder GetMemoryOrder() const
+    MemoryAttribute GetMemoryAttribute() const
     {
-        return MemoryOrder(MemoryOrderBits::Get(bitField_));
+        return MemoryAttribute(MemoryAttributeBits::Get(bitField_));
     }
 
     size_t GetOffset() const
@@ -478,14 +478,14 @@ public:
         return static_cast<size_t>(OprandOffsetBits::Get(bitField_));
     }
 
-    static uint64_t ToValue(size_t offset, MemoryOrder order)
+    static uint64_t ToValue(size_t offset, MemoryAttribute order)
     {
         return OprandOffsetBits::Encode(static_cast<uint32_t>(offset)) |
-               MemoryOrderBits::Encode(order.Value());
+               MemoryAttributeBits::Encode(order.Value());
     }
 private:
     using OprandOffsetBits = panda::BitField<uint32_t, 0, OPRAND_OFFSET_BITS>;
-    using MemoryOrderBits = OprandOffsetBits::NextField<uint32_t, MEMORY_ORDER_BITS>;
+    using MemoryAttributeBits = OprandOffsetBits::NextField<uint32_t, MEMORY_ATTRIBUTE_BITS>;
 
     uint64_t bitField_;
 };

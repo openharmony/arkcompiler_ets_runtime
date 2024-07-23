@@ -828,7 +828,7 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                     { receiverHC, newHolderHC, propKey }, gate);
                 builder_.Jump(&notProto);
                 builder_.Bind(&notProto);
-                MemoryOrder order = MemoryOrder::NeedBarrierAndAtomic();
+                MemoryAttribute order = MemoryAttribute::NeedBarrierAndAtomic();
                 builder_.StoreConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
                     TaggedObject::HCLASS_OFFSET, newHolderHC, order);
                 if (!tacc.GetAccessInfo(i).Plr().IsInlinedProps()) {
@@ -2286,13 +2286,13 @@ void TypedBytecodeLowering::LowerCreateEmptyObject(GateRef gate)
         builder_.StoreConstOffset(VariableType::INT64(), object, offset, builder_.Undefined());
     }
     builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass,
-        MemoryOrder::NeedBarrierAndAtomic());
+                              MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
                               builder_.Int64(JSTaggedValue(0).GetRawData()));
     builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray,
-        MemoryOrder::NoBarrier());
+                              MemoryAttribute::NoBarrier());
     builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::ELEMENTS_OFFSET, emptyArray,
-        MemoryOrder::NoBarrier());
+                              MemoryAttribute::NoBarrier());
     GateRef result = builder_.FinishAllocate(object);
 
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);

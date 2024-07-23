@@ -193,7 +193,7 @@ public:
                GateRef base,
                GateRef offset,
                GateRef value,
-               MemoryOrder order = MemoryOrder::Default());
+               MemoryAttribute order = MemoryAttribute::Default());
     // arithmetic
     GateRef TaggedCastToIntPtr(GateRef x);
     GateRef Int16Add(GateRef x, GateRef y);
@@ -359,11 +359,11 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetSetterFromAccessor(GateRef accessor);
     GateRef GetElementsArray(GateRef object);
     void SetElementsArray(VariableType type, GateRef glue, GateRef object, GateRef elementsArray,
-                          MemoryOrder order = MemoryOrder::Default());
+                          MemoryAttribute order = MemoryAttribute::Default());
     GateRef GetPropertiesArray(GateRef object);
     // SetProperties in js_object.h
     void SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray,
-                            MemoryOrder order = MemoryOrder::Default());
+                            MemoryAttribute order = MemoryAttribute::Default());
     GateRef GetHash(GateRef object);
     void SetHash(GateRef glue, GateRef object, GateRef hash);
     GateRef GetLengthOfTaggedArray(GateRef array);
@@ -522,8 +522,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetPrototypeToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef proto);
     void SetProtoChangeDetailsToHClass(VariableType type, GateRef glue, GateRef hClass,
                                        GateRef protoChange);
-    void SetLayoutToHClass(
-        VariableType type, GateRef glue, GateRef hClass, GateRef attr, MemoryOrder order = MemoryOrder::Default());
+    void SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr,
+                           MemoryAttribute order = MemoryAttribute::Default());
     void SetHClassTypeIDToHClass(GateRef glue, GateRef hClass, GateRef id);
     void SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key);
     void SetTransitionsToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef transition);
@@ -532,8 +532,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     inline void SetIsTS(GateRef glue, GateRef hClass, GateRef value);
     GateRef IsProtoTypeHClass(GateRef hClass);
     void SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
-        GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY(),
-        MemoryOrder order = MemoryOrder::Default());
+                                 GateRef value, GateRef attrOffset, VariableType type = VariableType::JS_ANY(),
+                                 MemoryAttribute order = MemoryAttribute::Default());
     GateRef GetPropertyInlinedProps(GateRef obj, GateRef hClass,
         GateRef index);
     GateRef GetInlinedPropOffsetFromHClass(GateRef hclass, GateRef attrOffset);
@@ -573,7 +573,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
         GateRef glue, GateRef array, GateRef index, GateRef val, GateRef rep, Label *repChange);
 
     void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val,
-                               MemoryOrder order = MemoryOrder::Default());
+                               MemoryAttribute order = MemoryAttribute::Default());
     void UpdateValueAndAttributes(GateRef glue, GateRef elements, GateRef index, GateRef value, GateRef attr);
     GateRef IsSpecialIndexedObj(GateRef jsType);
     GateRef IsSpecialContainer(GateRef jsType);
@@ -714,7 +714,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden = false,
-                             MemoryOrder::Share share = MemoryOrder::UNKNOWN_SHARE);
+                             MemoryAttribute::Share share = MemoryAttribute::UNKNOWN_SHARE);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
                                ProfileOperation callback, GateRef hir = Circuit::NullGate());
     GateRef GetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
@@ -751,32 +751,32 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetSendableEnvFromModule(GateRef module);
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
-                                 MemoryOrder order = MemoryOrder::Default());
+                                 MemoryAttribute order = MemoryAttribute::Default());
     void SetProtoTransRootHClassToFunction(GateRef glue, GateRef object, GateRef hclass,
-                                           MemoryOrder order = MemoryOrder::Default());
+                                           MemoryAttribute order = MemoryAttribute::Default());
     void SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value,
-                                    MemoryOrder order = MemoryOrder::Default());
+                                    MemoryAttribute order = MemoryAttribute::Default());
     void SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value,
-                                      MemoryOrder order = MemoryOrder::Default());
+                                      MemoryAttribute order = MemoryAttribute::Default());
     void SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value,
-                                 MemoryOrder order = MemoryOrder::Default());
+                                 MemoryAttribute order = MemoryAttribute::Default());
     void SetModuleToFunction(GateRef glue, GateRef function, GateRef value,
-                             MemoryOrder order = MemoryOrder::Default());
+                             MemoryAttribute order = MemoryAttribute::Default());
     void SetMethodToFunction(GateRef glue, GateRef function, GateRef value,
-                             MemoryOrder order = MemoryOrder::Default());
+                             MemoryAttribute order = MemoryAttribute::Default());
     void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
     void SetCompiledCodeFlagToFunctionFromMethod(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     void SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value,
-                                         MemoryOrder order = MemoryOrder::Default());
+                                         MemoryAttribute order = MemoryAttribute::Default());
     void SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value);
     void UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell);
     void SetJSObjectTaggedField(GateRef glue, GateRef object, size_t offset, GateRef value);
     void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value,
-                                MemoryOrder order = MemoryOrder::Default());
+                                MemoryAttribute order = MemoryAttribute::Default());
     void SetCompiledCodeFlagToFunction(GateRef glue, GateRef function, GateRef value);
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
-                                  MemoryOrder order = MemoryOrder::Default());
+                                  MemoryAttribute order = MemoryAttribute::Default());
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);

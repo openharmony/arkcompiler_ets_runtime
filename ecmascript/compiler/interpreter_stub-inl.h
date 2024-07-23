@@ -581,13 +581,14 @@ void InterpreterStubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, G
         {
             GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
             SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell,
-                                  MemoryOrder::NeedNotShareBarrier());
-            SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell, MemoryOrder::NeedNotShareBarrier());
+                                  MemoryAttribute::NeedNotShareBarrier());
+            SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell,
+                                            MemoryAttribute::NeedNotShareBarrier());
             Jump(&profileTypeInfoEnd);
         }
         Bind(&slotValueNotUndefined);
         UpdateProfileTypeInfoCellType(glue, slotValue);
-        SetRawProfileTypeInfoToFunction(glue, function, slotValue, MemoryOrder::NeedNotShareBarrier());
+        SetRawProfileTypeInfoToFunction(glue, function, slotValue, MemoryAttribute::NeedNotShareBarrier());
         Jump(&profileTypeInfoEnd);
     }
     Bind(&profileTypeInfoEnd);

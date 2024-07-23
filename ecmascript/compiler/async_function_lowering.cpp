@@ -51,7 +51,7 @@ void AsyncFunctionLowering::ProcessJumpTable()
     GateRef contextOffset = builder_.IntPtr(JSGeneratorObject::GENERATOR_CONTEXT_OFFSET);
     GateRef val = builder_.PtrAdd(newTarget, contextOffset);
     GateRef dependStart = builder_.DependRelay(ifFalseCondition, dependEntry_);
-    auto bit = LoadStoreAccessor::ToValue(MemoryOrder::Default());
+    auto bit = LoadStoreAccessor::ToValue(MemoryAttribute::Default());
     GateRef contextGate = circuit_->NewGate(circuit_->Load(bit), MachineType::I64, {dependStart, val},
                                             GateType::TaggedPointer());
     GateRef bcOffset = builder_.IntPtr(GeneratorContext::GENERATOR_BC_OFFSET_OFFSET);

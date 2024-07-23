@@ -382,7 +382,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             if (acc_.GetMachineType(lhs) != acc_.GetMachineType(rhs)) {
                 return false;
             }
-            if (acc_.GetMemoryOrder(lhs).Value() != acc_.GetMemoryOrder(rhs).Value()) {
+            if (acc_.GetMemoryAttribute(lhs).Value() != acc_.GetMemoryAttribute(rhs).Value()) {
                 return false;
             }
             break;

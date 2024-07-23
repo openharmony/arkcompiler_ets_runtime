@@ -1570,13 +1570,13 @@ void LLVMIRBuilder::VisitLoad(GateRef gate, GateRef base)
     baseAddr = CanonicalizeToPtr(baseAddr, memType);
 
     LLVMValueRef result = LLVMBuildLoad(builder_, baseAddr, "");
-    auto order = acc_.GetMemoryOrder(gate);
+    auto order = acc_.GetMemoryAttribute(gate);
     switch (order.GetOrder()) {
-        case MemoryOrder::MEMORY_ORDER_RELEASE: {
+        case MemoryAttribute::MEMORY_ORDER_RELEASE: {
             LLVMSetOrdering(result, LLVMAtomicOrderingRelease);
             break;
         }
-        case MemoryOrder::NOT_ATOMIC: {
+        case MemoryAttribute::NOT_ATOMIC: {
             break;
         }
         default: {
@@ -1601,13 +1601,13 @@ void LLVMIRBuilder::VisitStore(GateRef gate, GateRef base, GateRef value)
     baseAddr = CanonicalizeToPtr(baseAddr, ptrType);
 
     LLVMValueRef result = LLVMBuildStore(builder_, data, baseAddr);
-    auto order = acc_.GetMemoryOrder(gate);
+    auto order = acc_.GetMemoryAttribute(gate);
     switch (order.GetOrder()) {
-        case MemoryOrder::MEMORY_ORDER_RELEASE: {
+        case MemoryAttribute::MEMORY_ORDER_RELEASE: {
             LLVMSetOrdering(result, LLVMAtomicOrderingRelease);
             break;
         }
-        case MemoryOrder::NOT_ATOMIC: {
+        case MemoryAttribute::NOT_ATOMIC: {
             break;
         }
         default: {

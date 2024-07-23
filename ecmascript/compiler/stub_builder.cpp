@@ -1608,7 +1608,8 @@ GateRef StubBuilder::TaggedToElementKind(GateRef value)
     return ret;
 }
 
-void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value, MemoryOrder order)
+void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
+                        MemoryAttribute order)
 {
     if (!env_->IsAsmInterp()) {
         env_->GetBuilder()->Store(type, glue, base, offset, value, order);
@@ -1718,7 +1719,7 @@ void StubBuilder::SetValueWithRep(
 }
 
 void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden,
-                                      MemoryOrder::Share share)
+                                      MemoryAttribute::Share share)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1731,14 +1732,14 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Label fatal(env);
     Label noFatal(env);
     int msgId = GET_MESSAGE_STRING_ID(SharedObjectRefersLocalObject);
-    if (share == MemoryOrder::IS_SHARE) {
+    if (share == MemoryAttribute::IS_SHARE) {
         BRANCH(BoolNot(InSharedHeap(valueRegion)), &fatal, &noFatal);
         msgId = GET_MESSAGE_STRING_ID(ValueIsNotSharedObject);
     }
-    if (share == MemoryOrder::NOT_SHARE) {
+    if (share == MemoryAttribute::NOT_SHARE) {
         BRANCH(InSharedHeap(objectRegion), &fatal, &noFatal);
     }
-    if (share == MemoryOrder::UNKNOWN_SHARE) {
+    if (share == MemoryAttribute::UNKNOWN_SHARE) {
         BRANCH(BoolAnd(InSharedHeap(objectRegion), BoolNot(InSharedHeap(valueRegion))), &fatal, &noFatal);
     }
     Bind(&fatal);
@@ -1749,17 +1750,17 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Bind(&noFatal);
 #endif
     switch (share) {
-        case MemoryOrder::IS_SHARE: {
+        case MemoryAttribute::IS_SHARE: {
             SetShareValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion);
             Jump(&exit);
             break;
         }
-        case MemoryOrder::NOT_SHARE: {
+        case MemoryAttribute::NOT_SHARE: {
             SetNotShareValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion, withEden);
             Jump(&exit);
             break;
         }
-        case MemoryOrder::UNKNOWN_SHARE: {
+        case MemoryAttribute::UNKNOWN_SHARE: {
             Label valueIsShared(env);
             Label valueIsNotShared(env);
             BRANCH_UNLIKELY(InSharedHeap(valueRegion), &valueIsShared, &valueIsNotShared);
@@ -1850,9 +1851,7 @@ void StubBuilder::SetShareValueWithBarrier(GateRef glue, GateRef obj, GateRef of
                    &exit, &sharedMarking);
 
             Bind(&sharedMarking);
-            CallNGCRuntime(
-                    glue,
-                    RTSTUB_ID(SharedGCMarkingBarrier), { glue, value });
+            CallNGCRuntime(glue, RTSTUB_ID(SharedGCMarkingBarrier), {glue, value});
             Jump(&exit);
         }
     }
@@ -1964,9 +1963,7 @@ void StubBuilder::SetNotShareValueWithBarrier(GateRef glue, GateRef obj, GateRef
         Bind(&marking);
         {
             // Check fresh region, and directly mark value instead of call runtime.
-            CallNGCRuntime(
-                    glue,
-                    RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
+            CallNGCRuntime(glue, RTSTUB_ID(MarkingBarrier), {glue, obj, offset, value});
             Jump(&exit);
         }
     }
@@ -3593,7 +3590,7 @@ void StubBuilder::CopyAllHClass(GateRef glue, GateRef dstHClass, GateRef srcHCla
                       glue,
                       dstHClass,
                       GetLayoutFromHClass(srcHClass),
-                      MemoryOrder::NeedBarrierAndAtomic());
+                      MemoryAttribute::NeedBarrierAndAtomic());
     BRANCH(IsTSHClass(srcHClass), &isTS, &isNotTS);
     Bind(&isTS);
     {

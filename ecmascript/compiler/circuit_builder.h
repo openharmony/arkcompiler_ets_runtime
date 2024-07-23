@@ -637,13 +637,13 @@ public:
     GateRef LoadStringLength(GateRef string);
     GateRef LoadMapSize(GateRef string);
     GateRef LoadConstOffset(VariableType type, GateRef receiver, size_t offset,
-        MemoryOrder order = MemoryOrder::Default());
+                            MemoryAttribute order = MemoryAttribute::Default());
     GateRef LoadHClassFromConstpool(GateRef constpool, size_t index);
     GateRef TypedCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     GateRef TypedFastCall(GateRef hirGate, std::vector<GateRef> args, bool isNoGC);
     inline void SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array, GateRef index, GateRef val);
     GateRef StoreConstOffset(VariableType type, GateRef receiver, size_t offset, GateRef value,
-        MemoryOrder order = MemoryOrder::Default());
+                             MemoryAttribute order = MemoryAttribute::Default());
     inline GateRef StoreToTaggedArray(GateRef array, size_t index, GateRef value);
     GateRef StringEqual(GateRef x, GateRef y);
     GateRef StringAdd(GateRef x, GateRef y, uint32_t stringStatus = 0);
@@ -841,14 +841,14 @@ public:
     GateRef BinaryArithmetic(const GateMetaData* meta, MachineType machineType, GateRef left,
                              GateRef right, GateType gateType = GateType::Empty(), const char* comment = nullptr);
     GateRef BinaryCmp(const GateMetaData* meta, GateRef left, GateRef right, const char* comment = nullptr);
-    GateRef Load(VariableType type, GateRef base, GateRef offset, MemoryOrder order = MemoryOrder::Default());
+    GateRef Load(VariableType type, GateRef base, GateRef offset, MemoryAttribute order = MemoryAttribute::Default());
     GateRef Load(VariableType type, GateRef base, GateRef offset, GateRef depend,
-        MemoryOrder order = MemoryOrder::Default());
-    GateRef Load(VariableType type, GateRef addr, MemoryOrder order = MemoryOrder::Default());
+                 MemoryAttribute order = MemoryAttribute::Default());
+    GateRef Load(VariableType type, GateRef addr, MemoryAttribute order = MemoryAttribute::Default());
     void Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
-        MemoryOrder order = MemoryOrder::Default());
+               MemoryAttribute order = MemoryAttribute::Default());
     void StoreWithoutBarrier(VariableType type, GateRef addr, GateRef value,
-        MemoryOrder order = MemoryOrder::Default());
+                             MemoryAttribute order = MemoryAttribute::Default());
 
     // cast operation
     inline GateRef Int16ToBigEndianInt16(GateRef x);

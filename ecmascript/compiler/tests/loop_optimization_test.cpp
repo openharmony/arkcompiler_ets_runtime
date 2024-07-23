@@ -191,7 +191,7 @@ HWTEST_F_L0(LoopOptimizationTest, LoopLoadConstOptimizationTest)
     acc.SetGateType(arg1, GateType::TaggedPointer());
     auto arg2 = builder.Arguments(2);
     acc.SetMachineType(arg2, MachineType::ARCH);
-    auto bits = ecmascript::kungfu::LoadStoreAccessor::ToValue(ecmascript::kungfu::MemoryOrder::Default());
+    auto bits = ecmascript::kungfu::LoadStoreAccessor::ToValue(ecmascript::kungfu::MemoryAttribute::Default());
     GateRef invariant = circuit.NewGate(circuit.Load(bits), MachineType::I32,
         { circuit.GetDependRoot(), arg2 }, GateType::NJSValue());
 

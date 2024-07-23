@@ -909,7 +909,7 @@ GateRef CircuitBuilder::LoadMapSize(GateRef string)
     return ret;
 }
 
-GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset, MemoryOrder order)
+GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset, MemoryAttribute order)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
@@ -931,7 +931,7 @@ GateRef CircuitBuilder::LoadHClassFromConstpool(GateRef constpool, size_t index)
 }
 
 GateRef CircuitBuilder::StoreConstOffset(VariableType type,
-    GateRef receiver, size_t offset, GateRef value, MemoryOrder order)
+                                         GateRef receiver, size_t offset, GateRef value, MemoryAttribute order)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
