@@ -21,6 +21,7 @@
 #include "becommon.h"
 #include "label_creation.h"
 #include "alignment.h"
+#include "operand.h"
 
 namespace maplebe {
 #define DEFINE_MOP(...) {__VA_ARGS__},
@@ -232,34 +233,24 @@ void AArch64CG::DumpTargetOperand(Operand &opnd, const OpndDesc &opndDesc) const
     opnd.Accept(visitor);
 }
 
-/*
- * Find if there exist same GCTIB (both rcheader and bitmap are same)
- * for different class. If ture reuse, if not emit and record new GCTIB.
- */
-void AArch64CG::FindOrCreateRepresentiveSym(std::vector<uint64> &bitmapWords, uint32 rcHeader, const std::string &name)
+void AArch64CG::EmitGCTIBLabel(GCTIBKey *key, const std::string &gcTIBName,
+                               std::vector<uint64> &bitmapWords, uint32 rcHeader)
 {
-    GCTIBKey *key = memPool->New<GCTIBKey>(allocator, rcHeader, bitmapWords);
-    const std::string &gcTIBName = GCTIB_PREFIX_STR + name;
-    MapleUnorderedMap<GCTIBKey *, GCTIBPattern *, Hasher, EqualFn>::const_iterator iter = keyPatternMap.find(key);
-    if (iter == keyPatternMap.end()) {
-        /* Emit the GCTIB label for the class */
-        GCTIBPattern *ptn = memPool->New<GCTIBPattern>(*key, *memPool);
+    GCTIBPattern *ptn = memPool->New<GCTIBPattern>(*key, *memPool);
+    (void)keyPatternMap.insert(std::make_pair(key, ptn));
+    (void)symbolPatternMap.insert(std::make_pair(gcTIBName, ptn));
 
-        (void)keyPatternMap.insert(std::make_pair(key, ptn));
-        (void)symbolPatternMap.insert(std::make_pair(gcTIBName, ptn));
+    /* Emit GCTIB pattern */
+    std::string ptnString = "\t.type " + ptn->GetName() + ", %object\n" + "\t.data\n" + "\t.align 3\n";
+    MIRSymbol *gcTIBSymbol = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(
+        GlobalTables::GetStrTable().GetStrIdxFromName(gcTIBName));
+    if (gcTIBSymbol != nullptr && gcTIBSymbol->GetStorageClass() == kScFstatic) {
+        ptnString += "\t.local ";
+    } else {
+        ptnString += "\t.global ";
+    }
 
-        /* Emit GCTIB pattern */
-        std::string ptnString = "\t.type " + ptn->GetName() + ", %object\n" + "\t.data\n" + "\t.align 3\n";
-
-        MIRSymbol *gcTIBSymbol = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(
-            GlobalTables::GetStrTable().GetStrIdxFromName(gcTIBName));
-        if (gcTIBSymbol != nullptr && gcTIBSymbol->GetStorageClass() == kScFstatic) {
-            ptnString += "\t.local ";
-        } else {
-            ptnString += "\t.global ";
-        }
-
-        Emitter *emitter = GetEmitter();
+    Emit([&ptnString, ptn, rcHeader, &bitmapWords](Emitter *emitter) {
         emitter->Emit(ptnString);
         emitter->Emit(ptn->GetName());
         emitter->Emit("\n");
@@ -286,11 +277,26 @@ void AArch64CG::FindOrCreateRepresentiveSym(std::vector<uint64> &bitmapWords, ui
             emitter->EmitHexUnsigned(bitmapWord);
             emitter->Emit("\n");
         }
-        if (gcTIBSymbol != nullptr && gcTIBSymbol->GetStorageClass() != kScFstatic) {
-            /* add local symbol REF_XXX to every global GCTIB symbol */
-            CreateRefSymForGlobalPtn(*ptn);
-            keyPatternMap[key] = ptn;
-        }
+    });
+    if (gcTIBSymbol != nullptr && gcTIBSymbol->GetStorageClass() != kScFstatic) {
+        /* add local symbol REF_XXX to every global GCTIB symbol */
+        CreateRefSymForGlobalPtn(*ptn);
+        keyPatternMap[key] = ptn;
+    }
+}
+
+/*
+ * Find if there exist same GCTIB (both rcheader and bitmap are same)
+ * for different class. If ture reuse, if not emit and record new GCTIB.
+ */
+void AArch64CG::FindOrCreateRepresentiveSym(std::vector<uint64> &bitmapWords, uint32 rcHeader, const std::string &name)
+{
+    GCTIBKey *key = memPool->New<GCTIBKey>(allocator, rcHeader, bitmapWords);
+    const std::string &gcTIBName = GCTIB_PREFIX_STR + name;
+    MapleUnorderedMap<GCTIBKey *, GCTIBPattern *, Hasher, EqualFn>::const_iterator iter = keyPatternMap.find(key);
+    if (iter == keyPatternMap.end()) {
+        /* Emit the GCTIB label for the class */
+        EmitGCTIBLabel(key, gcTIBName, bitmapWords, rcHeader);
     } else {
         (void)symbolPatternMap.insert(make_pair(gcTIBName, iter->second));
     }
@@ -306,8 +312,9 @@ void AArch64CG::CreateRefSymForGlobalPtn(GCTIBPattern &ptn) const
     const std::string &ptnString = "\t.type " + refPtnString + ", %object\n" + "\t.data\n" + "\t.align 3\n" +
                                    "\t.local " + refPtnString + "\n" + refPtnString + ":\n" + "\t.quad " +
                                    ptn.GetName() + "\n";
-    Emitter *emitter = GetEmitter();
-    emitter->Emit(ptnString);
+    Emit([&ptnString](Emitter *emitter) {
+        emitter->Emit(ptnString);
+    });
     ptn.SetName(refPtnString);
 }
 

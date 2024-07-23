@@ -33,7 +33,7 @@ public:
     {
         const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
         if (emitMemoryManager.codeSpace == nullptr) {
-            outStream.open(outputFileName, std::ios::trunc | std::ios::binary);
+            outFStream.open(outputFileName, std::ios::trunc | std::ios::binary);
         }
     }
 
@@ -70,6 +70,8 @@ public:
                                         uint32 size) override;
     /* nothing to do in ElfAssembler. */
     void EmitDIFormSpecification(unsigned int dwform) override {};
+    void EmitDebugComment(const char* comment) override {};
+
     /* EmitDIAttrValue */
     void EmitDwFormString(const std::string &name) override;
     void EmitDwFormStrp(uint32 strLabelId, size_t strTableSize) override;

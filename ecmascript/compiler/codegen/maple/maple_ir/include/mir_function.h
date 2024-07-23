@@ -1550,6 +1550,11 @@ public:
 
     MemReferenceTable *GetOrCreateMemReferenceTable();
 
+    const MapleString* AddNewDebugComment(const std::string& dbgComment)
+    {
+        return &debugComments.emplace_back(dbgComment, module->GetMPAllocator().GetMemPool());
+    }
+
 private:
     MIRModule *module;      // the module that owns this function
     PUIdx puIdx = 0;        // the PU index of this function
@@ -1657,6 +1662,7 @@ private:
     MemReferenceTable *memReferenceTable = nullptr;
     void DumpFlavorLoweredThanMmpl() const;
     MIRFuncType *ReconstructFormals(const std::vector<MIRSymbol *> &symbols, bool clearOldArgs);
+    MapleList<MapleString> debugComments {module->GetMPAllocator().Adapter()};
 };
 }  // namespace maple
 #endif  // MAPLE_IR_INCLUDE_MIR_FUNCTION_H

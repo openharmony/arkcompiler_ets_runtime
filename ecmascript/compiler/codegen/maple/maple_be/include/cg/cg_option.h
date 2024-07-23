@@ -101,12 +101,6 @@ public:
 
     enum ABIType : uint8 { kABIHard, kABISoft, kABISoftFP };
 
-    enum EmitFileType : uint8 {
-        kAsm,
-        kObj,
-        kEmitNone,
-    };
-
     struct EmitMemoryManager {
         void *codeSpace;
         MemoryManagerAllocateDataSectionCallback allocateDataSection;
@@ -152,7 +146,7 @@ public:
     virtual ~CGOptions() = default;
     bool SolveOptions(bool isDebug);
     void DecideMplcgRealLevel(bool isDebug);
-
+    std::ostream& GetLogStream() const;
     void DumpOptions();
     std::vector<std::string> &GetSequence()
     {
@@ -372,6 +366,16 @@ public:
     void SetRunCGFlag(bool cgFlag)
     {
         runCGFlag = cgFlag;
+    }
+
+    bool IsAsmEmitterEnable() const
+    {
+        return asmEmitterEnable;
+    }
+
+    void SetAsmEmitterEnable(bool flag)
+    {
+        asmEmitterEnable = flag;
     }
 
     bool IsInsertCall() const
@@ -1452,25 +1456,6 @@ public:
         return abiType;
     }
 
-    static void SetEmitFileType(const std::string &type)
-    {
-        if (type == "asm") {
-            emitFileType = kAsm;
-        } else if (type == "obj") {
-            emitFileType = kObj;
-        } else if (type == "null") {
-            emitFileType = kEmitNone;
-            CHECK_FATAL(false, "null is not supported Currently.");
-        } else {
-            CHECK_FATAL(false, "unexpected file-type, only asm, obj, and null are supported");
-        }
-    }
-
-    static EmitFileType GetEmitFileType()
-    {
-        return emitFileType;
-    }
-
     static void EnableLongCalls()
     {
         genLongCalls = true;
@@ -1646,6 +1631,7 @@ private:
 
     bool insertCall = false;
     bool runCGFlag = true;
+    bool asmEmitterEnable = false;
     bool generateObjectMap = true;
     uint32 parserOption = 0;
     int32 optimizeLevel = 0;
@@ -1718,7 +1704,6 @@ private:
     /* if true do SimulateSched */
     static bool simulateSched;
     static ABIType abiType;
-    static EmitFileType emitFileType;
     /* if true generate adrp/ldr/blr */
     static bool genLongCalls;
     static bool functionSections;

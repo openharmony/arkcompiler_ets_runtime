@@ -983,7 +983,7 @@ void ElfAssembler::WriteElfFile()
             continue;
         }
         SetFileOffset(section->GetOffset());
-        section->WriteSection(outStream);
+        section->WriteSection(outFStream);
     }
 
     /* write section table */

@@ -497,6 +497,7 @@ public:
     void CloseOutput() override
     {
         if (fileStream.is_open()) {
+            fileStream << outStream.str();
             fileStream.close();
         }
     }

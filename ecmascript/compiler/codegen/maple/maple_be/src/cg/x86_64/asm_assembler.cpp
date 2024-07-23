@@ -372,6 +372,13 @@ void AsmAssembler::EmitDIFormSpecification(unsigned int dwform)
     }
 }
 
+void AsmAssembler::EmitDebugComment(const char* comment)
+{
+    Emit("\t// ");
+    Emit(comment);
+    Emit("\n");
+}
+
 void AsmAssembler::EmitDwFormString(const std::string &name)
 {
     Emit("\"");

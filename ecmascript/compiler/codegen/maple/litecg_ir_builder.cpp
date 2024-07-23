@@ -244,6 +244,9 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
     for (size_t instIdx = bb.size(); instIdx > 0; instIdx--) {
         GateRef gate = bb[instIdx - 1];
         OpCode opcode = acc_.GetOpCode(gate);
+        if (IsLogEnabled()) {
+            lmirBuilder_->SetCurrentDebugComment(acc_.ToString(gate));
+        }
         switch (opcode) {
             case OpCode::STATE_ENTRY:
                 HandleGoto(gate);
@@ -545,6 +548,9 @@ void LiteCGIRBuilder::HandleBB(const std::vector<GateRef> &bb, std::unordered_se
                 if (illegalOpHandlers_.find(acc_.GetOpCode(gate)) == illegalOpHandlers_.end()) {
                     LOG_COMPILER(FATAL) << "can't process opcode: " << acc_.GetOpCode(gate) << std::endl;
                 }
+        }
+        if (IsLogEnabled()) {
+            lmirBuilder_->ClearCurrentDebugComment();
         }
     }
 }
