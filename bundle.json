@@ -16,7 +16,8 @@
         "syscap": [],
         "features": [
           "ets_runtime_feature_enable_pgo",
-          "ets_runtime_feature_pgo_path"
+          "ets_runtime_feature_pgo_path",
+          "ets_runtime_feature_enable_list"
         ],
         "adapted_system_type": [
             "standard"

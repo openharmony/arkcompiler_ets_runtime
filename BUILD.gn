@@ -1355,7 +1355,7 @@ ohos_shared_library("libark_jsruntime_test") {
 
 ohos_prebuilt_etc("app_aot_jit_enable_list") {
   relative_install_dir = "ark"
-  if (js_runtime_feature_enable_list) {
+  if (ets_runtime_feature_enable_list) {
     source = "$js_root/ecmascript/ohos/app_aot_jit_enable_list.conf"
   } else {
     source = "$js_root/ecmascript/ohos/app_aot_jit_enable_list_default.conf"
