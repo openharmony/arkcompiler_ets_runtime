@@ -38,6 +38,7 @@ void ReleaseModule(Module *module)
     }
     // clean current globals
     GlobalTables::Reset();
+    memPoolCtrler.FreeFixedSizeMemBlockMemory();
 }
 
 bool Expr::IsDread() const

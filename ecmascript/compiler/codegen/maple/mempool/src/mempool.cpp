@@ -61,6 +61,12 @@ MemPoolCtrler::~MemPoolCtrler()
     FreeMem();
 }
 
+void MemPoolCtrler::FreeFixedSizeMemBlockMemory()
+{
+    FreeMem();
+    sysMemoryMgr->ReleaseMemory();
+}
+
 // Allocate a new memory pool and register it in controller
 MemPool *MemPoolCtrler::NewMemPool(const std::string &name, bool isLocalPool)
 {

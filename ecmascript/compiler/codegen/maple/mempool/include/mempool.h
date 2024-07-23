@@ -59,6 +59,7 @@ class SysMemoryManager {
 public:
     virtual ~SysMemoryManager() = default;
     virtual uint8_t *RealAllocMemory(size_t size) = 0;
+    virtual void ReleaseMemory() = 0;
 };
 
 class MallocSysMemoryManager : public SysMemoryManager {
@@ -79,6 +80,14 @@ public:
         for (void *ptr : mallocMemories) {
             free(ptr);
         }
+        mallocMemories.clear();
+    }
+    void ReleaseMemory() override
+    {
+        for (void *ptr : mallocMemories) {
+            free(ptr);
+        }
+        mallocMemories.clear();
     }
     std::forward_list<void *> mallocMemories;
 };
@@ -103,6 +112,7 @@ public:
     MemBlock *AllocMemBlock(const MemPool &pool, size_t size);
     MemBlock *AllocFixMemBlock(const MemPool &pool);
     MemBlock *AllocBigMemBlock(const MemPool &pool, size_t size) const;
+    void FreeFixedSizeMemBlockMemory();
 
 private:
     struct MemBlockCmp {
