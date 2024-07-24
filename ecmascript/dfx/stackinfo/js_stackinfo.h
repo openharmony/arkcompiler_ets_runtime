@@ -164,6 +164,11 @@ private:
 };
 
 class JsStackInfo {
+private:
+    struct LastBuilderCache {
+        const JSPandaFile *pf{nullptr};
+        DebugInfoExtractor *extractor{nullptr};
+    };
 public:
     static std::string BuildInlinedMethodTrace(const JSPandaFile *pf, std::map<uint32_t, uint32_t> &methodOffsets);
     static inline std::string BuildJsStackTrace(JSThread *thread, bool needNative)
@@ -174,7 +179,8 @@ public:
     }
     static std::string BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj);
     static std::vector<JsFrameInfo> BuildJsStackInfo(JSThread *thread, bool currentStack = false);
-    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile = true);
+    static std::string BuildMethodTrace(Method *method, uint32_t pcOffset, LastBuilderCache &lastCache,
+                                        bool enableStackSourceFile = true);
     static AOTFileManager *loader;
     static JSRuntimeOptions *options;
     static void BuildCrashInfo(bool isJsCrash, FrameType frameType = FrameType::OPTIMIZED_FRAME,
@@ -189,7 +195,10 @@ public:
 
 private:
     static std::string BuildJsStackTraceInfo(JSThread *thread, Method *method, FrameIterator &it,
-                                             uint32_t pcOffset, const JSHandle<JSObject> &jsErrorObj);
+                                             uint32_t pcOffset, const JSHandle<JSObject> &jsErrorObj,
+                                             LastBuilderCache &lastCache);
+    static constexpr int32_t InitialLength = 50;
+    static constexpr int32_t InitialDeeps = 5;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_DFX_STACKINFO_JS_STACKINFO_H

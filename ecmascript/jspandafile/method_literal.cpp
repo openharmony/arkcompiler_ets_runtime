@@ -92,9 +92,9 @@ std::string MethodLiteral::ParseFunctionName(const JSPandaFile *jsPandaFile, Ent
         return std::string();
     }
 
-    std::string methodName(GetMethodName(jsPandaFile, methodId));
+    std::string_view methodName(GetMethodName(jsPandaFile, methodId));
     if (LIKELY(methodName[0] != '#')) {
-        return methodName;
+        return std::string(methodName);
     }
 
     size_t index = methodName.find_last_of('#');
@@ -103,7 +103,7 @@ std::string MethodLiteral::ParseFunctionName(const JSPandaFile *jsPandaFile, Ent
         index = methodName.find_last_of('^');
         methodName = methodName.substr(0, index);  // #...#functionName^1
     }
-    return methodName;
+    return std::string(methodName);
 }
 
 // It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.

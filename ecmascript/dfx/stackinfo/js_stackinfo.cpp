@@ -51,19 +51,28 @@ bool IsFastJitFunctionFrame(uintptr_t frameType)
            static_cast<FrameType>(frameType) == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME;
 }
 
-std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, bool enableStackSourceFile)
+std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, LastBuilderCache &lastCache,
+                                          bool enableStackSourceFile)
 {
     std::string data;
+    data.reserve(InitialLength);
     data.append("    at ");
     std::string name = method->ParseFunctionName();
     if (name.empty()) {
-        name = "anonymous";
+        data.append("anonymous (");
+    } else {
+        data.append(name).append(" (");
     }
-    data += name;
-    data.append(" (");
     // source file
-    DebugInfoExtractor *debugExtractor =
-        JSPandaFileManager::GetInstance()->GetJSPtExtractor(method->GetJSPandaFile());
+    DebugInfoExtractor *debugExtractor = nullptr;
+    const JSPandaFile *pandaFile = method->GetJSPandaFile();
+    if (pandaFile == lastCache.pf) {
+        debugExtractor = lastCache.extractor;
+    } else {
+        debugExtractor = JSPandaFileManager::GetInstance()->GetJSPtExtractor(pandaFile);
+        lastCache.pf = pandaFile;
+        lastCache.extractor = debugExtractor;
+    }
     if (enableStackSourceFile) {
         const std::string &sourceFile = debugExtractor->GetSourceFile(method->GetMethodId());
         if (sourceFile.empty()) {
@@ -91,8 +100,7 @@ std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, boo
         !debugExtractor->MatchColumnWithOffset(callbackColumnFunc, methodId, pcOffset)) {
         data.push_back('?');
     }
-    data.push_back(')');
-    data.push_back('\n');
+    data.append(")\n");
     return data;
 }
 
@@ -183,9 +191,12 @@ void AssembleJitCodeMap(JSThread *thread, const JSHandle<JSObject> &jsErrorObj, 
 std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, const JSHandle<JSObject> &jsErrorObj)
 {
     std::string data;
+    data.reserve(InitialDeeps * InitialLength);
     JSTaggedType *current = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
     FrameIterator it(current, thread);
     uintptr_t baselineNativePc = 0;
+
+    LastBuilderCache lastCache;
     for (; !it.Done(); it.Advance<GCVisitedFlag::HYBRID_STACK>()) {
         if (it.GetFrameType() == FrameType::BASELINE_BUILTIN_FRAME) {
             auto *frame = it.GetFrame<BaselineBuiltinFrame>();
@@ -209,7 +220,7 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
             } else {
                 pcOffset = it.GetBytecodeOffset();
             }
-            data += BuildJsStackTraceInfo(thread, method, it, pcOffset, jsErrorObj);
+            data += BuildJsStackTraceInfo(thread, method, it, pcOffset, jsErrorObj, lastCache);
         } else if (needNative) {
             auto addr = method->GetNativePointer();
             std::stringstream strm;
@@ -228,7 +239,8 @@ std::string JsStackInfo::BuildJsStackTrace(JSThread *thread, bool needNative, co
 }
 
 std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method, FrameIterator &it,
-                                               uint32_t pcOffset, const JSHandle<JSObject> &jsErrorObj)
+                                               uint32_t pcOffset, const JSHandle<JSObject> &jsErrorObj,
+                                               LastBuilderCache &lastCache)
 {
     const JSPandaFile *pf = method->GetJSPandaFile();
     std::map<uint32_t, uint32_t> methodOffsets = it.GetInlinedMethodInfo();
@@ -240,7 +252,7 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
         }
     }
     return BuildInlinedMethodTrace(pf, methodOffsets) +
-           BuildMethodTrace(method, pcOffset, thread->GetEnableStackSourceFile());
+           BuildMethodTrace(method, pcOffset, lastCache, thread->GetEnableStackSourceFile());
 }
 
 void JsStackInfo::BuildCrashInfo(bool isJsCrash, FrameType frameType, JSThread *thread)
