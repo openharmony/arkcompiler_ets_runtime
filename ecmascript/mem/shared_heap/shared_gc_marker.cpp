@@ -59,7 +59,7 @@ void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm)
         },
         [this](Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
             this->HandleLocalDerivedRoots(type, base, derived, baseOldObject);
-        });
+        }, VMRootVisitType::MARK);
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 

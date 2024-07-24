@@ -129,9 +129,9 @@ public:
     ~ObjectXRay() = default;
 
     static inline void VisitVMRoots(EcmaVM *vm, const RootVisitor &visitor, const RootRangeVisitor &rangeVisitor,
-        const RootBaseAndDerivedVisitor &derivedVisitor)
+        const RootBaseAndDerivedVisitor &derivedVisitor, VMRootVisitType type)
     {
-        vm->Iterate(visitor, rangeVisitor);
+        vm->Iterate(visitor, rangeVisitor, type);
         vm->GetAssociatedJSThread()->Iterate(visitor, rangeVisitor, derivedVisitor);
     }
 

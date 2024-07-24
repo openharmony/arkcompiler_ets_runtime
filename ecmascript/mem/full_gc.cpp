@@ -111,7 +111,7 @@ void FullGC::Mark()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "FullGC::Mark");
     TRACE_GC(GCStats::Scope::ScopeId::Mark, heap_->GetEcmaVM()->GetEcmaGCStats());
-    heap_->GetCompressGCMarker()->MarkRoots(MAIN_THREAD_INDEX);
+    heap_->GetCompressGCMarker()->MarkRoots(MAIN_THREAD_INDEX, VMRootVisitType::UPDATE_ROOT);
     heap_->GetCompressGCMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     heap_->WaitRunningTaskFinished();
     // MarkJitCodeMap must be call after other mark work finish to make sure which jserror object js alive.

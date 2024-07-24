@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 Marker::Marker(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {}
 
-void Marker::MarkRoots(uint32_t threadId)
+void Marker::MarkRoots(uint32_t threadId, VMRootVisitType type)
 {
     TRACE_GC(GCStats::Scope::ScopeId::MarkRoots, heap_->GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::MarkRoots");
@@ -33,7 +33,7 @@ void Marker::MarkRoots(uint32_t threadId)
         },
         [this](Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
             this->HandleDerivedRoots(type, base, derived, baseOldObject);
-        });
+        }, type);
     workManager_->PushWorkNodeToGlobal(threadId, false);
 }
 

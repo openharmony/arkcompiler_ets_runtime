@@ -77,7 +77,7 @@ void STWYoungGC::Mark()
     } else {
         heap_->GetSemiGCMarker()->ProcessOldToNew(0, region);
         heap_->GetSemiGCMarker()->ProcessSnapshotRSet(MAIN_THREAD_INDEX);
-        heap_->GetSemiGCMarker()->MarkRoots(MAIN_THREAD_INDEX);
+        heap_->GetSemiGCMarker()->MarkRoots(MAIN_THREAD_INDEX, VMRootVisitType::UPDATE_ROOT);
         heap_->GetSemiGCMarker()->ProcessMarkStack(MAIN_THREAD_INDEX);
     }
     heap_->WaitRunningTaskFinished();
