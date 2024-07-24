@@ -734,10 +734,10 @@ bool CgPeepHole0::PhaseRun(maplebe::CGFunc &f)
     ReachingDefinition *reachingDef = nullptr;
     if (Globals::GetInstance()->GetOptimLevel() >= CGOptions::kLevel2) {
         reachingDef = GET_ANALYSIS(CgReachingDefinition, f);
-    }
-    if (reachingDef == nullptr || !f.GetRDStatus()) {
-        GetAnalysisInfoHook()->ForceEraseAnalysisPhase(f.GetUniqueID(), &CgReachingDefinition::id);
-        return false;
+        if (reachingDef == nullptr || !f.GetRDStatus()) {
+            GetAnalysisInfoHook()->ForceEraseAnalysisPhase(f.GetUniqueID(), &CgReachingDefinition::id);
+            return false;
+        }
     }
 
     auto *peep = GetPhaseMemPool()->New<PeepHoleOptimizer>(&f);
