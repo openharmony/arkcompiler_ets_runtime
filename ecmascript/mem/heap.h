@@ -1377,6 +1377,7 @@ private:
     static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8;
     static constexpr double IDLE_FULLGC_SPACE_USAGE_LIMIT_RATE = 0.7;
     static constexpr size_t NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT = DEFAULT_SHARED_HEAP_SIZE / 10; // 10 : ten times.
+    static constexpr size_t INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT = 100_MB;
     void RecomputeLimits();
     void AdjustOldSpaceLimit();
     // record lastRegion for each space, which will be used in ReclaimRegions()
