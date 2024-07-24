@@ -168,7 +168,7 @@ static void AddAnonymousEdge(TaggedObject *obj, std::vector<Reference> &vec)
         return;
     }
     ObjectXRay::VisitObjectBody<VisitType::SNAPSHOT_VISIT>(obj, hclass,
-        [&vec]([[maybe_unused]] TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
+        [&vec]([[maybe_unused]]TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
             if (area != VisitObjectArea::NORMAL) {
                 return;
             }

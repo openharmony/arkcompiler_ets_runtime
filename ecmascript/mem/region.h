@@ -756,7 +756,7 @@ public:
 
     struct alignas(JSTaggedValue::TaggedTypeSize()) PackedPtr : public base::AlignedPointer {
         uint8_t spaceFlag_;
-        uint16_t gcFlags_;
+        uint16_t  gcFlags_;
     };
 
     struct PackedData : public base::AlignedStruct<JSTaggedValue::TaggedTypeSize(),

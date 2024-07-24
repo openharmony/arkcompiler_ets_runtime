@@ -73,7 +73,7 @@ static constexpr size_t INT32_HEX_DIGITS = INT32_BITS / 4;
 static constexpr size_t INT16_HEX_DIGITS = INT16_BITS / 4;
 static constexpr size_t INT8_HEX_DIGITS = INT8_BITS / 4;
 
-static constexpr int EXPONENTBIAS = DOUBLE_EXPONENT_BIAS + DOUBLE_SIGNIFICAND_SIZE;
+static constexpr int EXPONENTBIAS =  DOUBLE_EXPONENT_BIAS + DOUBLE_SIGNIFICAND_SIZE;
 static constexpr int kDENORMAL = -EXPONENTBIAS + 1;
 static constexpr uint64_t kINFINITY = 0x7FF0'0000'0000'0000;
 
@@ -134,7 +134,7 @@ public:
 
     static int inline Exponent(double x)
     {
-        uint64_t value = base::bit_cast<uint64_t>(x);
+        uint64_t value =  base::bit_cast<uint64_t>(x);
         if (IsDenormal(value)) {
             return kDENORMAL;
         }
@@ -144,7 +144,7 @@ public:
 
     static uint64_t inline Significand(double x)
     {
-        uint64_t value = base::bit_cast<uint64_t>(x);
+        uint64_t value =  base::bit_cast<uint64_t>(x);
         uint64_t significand = value & DOUBLE_SIGNIFICAND_MASK;
         if (!IsDenormal(value)) {
             return significand + DOUBLE_HIDDEN_BIT;

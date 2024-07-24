@@ -28,7 +28,7 @@ bool DateParse::ParseDateString(const char *str, int length, int *time)
     bool isIso = IsIsoDateTime(&proxy, &dayValue);
     bool result;
     if (isIso) {
-        result = ParseIsoDateTime(&proxy, &dayValue, &timeValue, &timeZone);
+        result =  ParseIsoDateTime(&proxy, &dayValue, &timeValue, &timeZone);
     } else {
         result = ParseLegacyDates(&proxy, &dayValue, &timeValue, &timeZone);
     }

@@ -51,7 +51,7 @@ public:
         return GetLength();
     }
 
-    inline void SetArrayLength([[maybe_unused]] const JSThread *thread, uint32_t length)
+    inline void SetArrayLength([[maybe_unused]]const JSThread *thread, uint32_t length)
     {
         SetLength(length);
     }

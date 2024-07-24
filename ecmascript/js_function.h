@@ -550,7 +550,7 @@ public:
 class JSAsyncGeneratorFunction : public JSFunction {
 public:
     CAST_CHECK(JSAsyncGeneratorFunction, IsAsyncGeneratorFunction);
-    static constexpr size_t SIZE = JSFunction::SIZE;
+    static constexpr size_t  SIZE = JSFunction::SIZE;
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, SIZE, SIZE)
     DECL_DUMP()
 };

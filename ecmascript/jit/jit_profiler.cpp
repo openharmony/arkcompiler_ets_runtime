@@ -705,7 +705,7 @@ void JITProfiler::ConvertICByValueWithHandler(ApEntityId abcId, int32_t bcOffset
                 return;
             }
             if (HandlerBase::IsTypedArrayElement(handlerInfo)) {
-                OnHeapMode onHeap = HandlerBase::IsOnHeap(handlerInfo) ? OnHeapMode::ON_HEAP : OnHeapMode::NOT_ON_HEAP;
+                OnHeapMode onHeap =  HandlerBase::IsOnHeap(handlerInfo) ? OnHeapMode::ON_HEAP : OnHeapMode::NOT_ON_HEAP;
                 AddBuiltinsInfo(abcId, bcOffset, hclass, hclass, onHeap);
                 return;
             }

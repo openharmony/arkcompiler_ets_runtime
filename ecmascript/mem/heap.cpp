@@ -314,7 +314,7 @@ void SharedHeap::WaitGCFinishedAfterAllJSThreadEliminated()
     }
 }
 
-void SharedHeap::DaemonCollectGarbage([[maybe_unused]] TriggerGCType gcType, [[maybe_unused]] GCReason gcReason)
+void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[maybe_unused]]GCReason gcReason)
 {
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     ASSERT(gcType == TriggerGCType::SHARED_GC);
