@@ -25,3 +25,11 @@ function f10(a11, a12, a13) {
   }
 }
 print("compiler succ")
+
+class C3 {
+  static b;
+}
+Object.defineProperty(C3, "d", { value: 1.2 });
+class C32 extends C3 {
+}
+print("compiler succ")

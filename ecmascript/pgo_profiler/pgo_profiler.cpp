@@ -219,11 +219,10 @@ void PGOProfiler::UpdateRootProfileTypeSafe(JSHClass* oldHClass, JSHClass* newHC
     if (!isEnable_) {
         return;
     }
-    auto oldRootHClass = JSHClass::FindRootHClass(oldHClass);
-    ProfileType oldPt = GetProfileType(oldRootHClass);
+    ProfileType oldPt = GetProfileType(oldHClass);
     if (oldPt.IsRootType()) {
         newHClass->SetProfileType(oldPt.GetRaw());
-        oldRootHClass->SetProfileType(0);
+        oldHClass->SetProfileType(0);
     }
 }
 
