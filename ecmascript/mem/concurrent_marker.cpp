@@ -16,7 +16,6 @@
 #include "ecmascript/mem/concurrent_marker.h"
 
 #include "ecmascript/mem/allocator-inl.h"
-#include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mark_word.h"
@@ -64,7 +63,8 @@ void ConcurrentMarker::Mark()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ConcurrentMarker::Mark");
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarking);
     InitializeMarking();
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<MarkerTask>(heap_->GetJSThread()->GetThreadId(), heap_));
+    clockScope_.Reset();
+    heap_->PostParallelGCTask(ParallelGCTaskPhase::CONCURRENT_HANDLE_GLOBAL_POOL_TASK);
 }
 
 void ConcurrentMarker::Finish()
@@ -88,34 +88,33 @@ void ConcurrentMarker::ReMark()
 void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep
 {
     LockHolder lock(waitMarkingFinishedMutex_);
-    if (notifyMarkingFinished_) {
-        TriggerGCType gcType;
-        if (heap_->IsConcurrentFullMark()) {
-            gcType = TriggerGCType::OLD_GC;
-        } else if (heap_->IsEdenMark()) {
-            gcType = TriggerGCType::EDEN_GC;
-        } else {
-            gcType = TriggerGCType::YOUNG_GC;
-        }
-        heap_->CollectGarbage(gcType,
-                              GCReason::ALLOCATION_LIMIT);
+    ASSERT(markingFinished_);
+    TriggerGCType gcType;
+    if (heap_->IsConcurrentFullMark()) {
+        gcType = TriggerGCType::OLD_GC;
+    } else if (heap_->IsEdenMark()) {
+        gcType = TriggerGCType::EDEN_GC;
+    } else {
+        gcType = TriggerGCType::YOUNG_GC;
     }
+    heap_->CollectGarbage(gcType, GCReason::ALLOCATION_LIMIT);
 }
 
 void ConcurrentMarker::WaitMarkingFinished()  // call in EcmaVm thread, wait for mark finished
 {
     LockHolder lock(waitMarkingFinishedMutex_);
-    if (!notifyMarkingFinished_) {
-        vmThreadWaitMarkingFinished_ = true;
+    while (!markingFinished_) {
         waitMarkingFinishedCV_.Wait(&waitMarkingFinishedMutex_);
     }
 }
 
 void ConcurrentMarker::Reset(bool revertCSet)
 {
+    ASSERT(runningTaskCount_ == 0);
     Finish();
     thread_->SetMarkStatus(MarkStatus::READY_TO_MARK);
     isConcurrentMarking_ = false;
+    markingFinished_ = false;
     notifyMarkingFinished_ = false;
     if (revertCSet) {
         // Partial gc clear cset when evacuation allocator finalize
@@ -136,6 +135,7 @@ void ConcurrentMarker::Reset(bool revertCSet)
 
 void ConcurrentMarker::InitializeMarking()
 {
+    ASSERT(runningTaskCount_ == 0);
     MEM_ALLOCATE_AND_GC_TRACE(vm_, ConcurrentMarkingInitialize);
     heap_->Prepare();
     ASSERT(VerifyAllRegionsNonFresh());
@@ -177,28 +177,21 @@ void ConcurrentMarker::InitializeMarking()
     heap_->GetNonMovableMarker()->MarkRoots(MAIN_THREAD_INDEX);
 }
 
-bool ConcurrentMarker::MarkerTask::Run(uint32_t threadId)
+bool ConcurrentMarker::ShouldNotifyMarkingFinished()
 {
-    // Synchronizes-with. Ensure that WorkManager::Initialize must be seen by MarkerThreads.
-    while (!heap_->GetWorkManager()->HasInitialized());
-    ClockScope clockScope;
-    heap_->GetNonMovableMarker()->ProcessMarkStack(threadId);
-    heap_->WaitRunningTaskFinished();
-    heap_->GetConcurrentMarker()->FinishMarking(clockScope.TotalSpentTime());
-    DecreaseTaskCounts();
-    return true;
+    if (runningTaskCount_.fetch_sub(1, std::memory_order_relaxed) != 1) {
+        return false;
+    }
+    return reinterpret_cast<std::atomic<bool>*>(&notifyMarkingFinished_)
+        ->exchange(true, std::memory_order_relaxed) == false;
 }
 
-void ConcurrentMarker::FinishMarking(float spendTime)
+void ConcurrentMarker::FinishMarking()
 {
     LockHolder lock(waitMarkingFinishedMutex_);
-    thread_->SetMarkStatus(MarkStatus::MARK_FINISHED);
-    thread_->SetCheckSafePointStatus();
-    if (vmThreadWaitMarkingFinished_) {
-        vmThreadWaitMarkingFinished_ = false;
-        waitMarkingFinishedCV_.Signal();
-    }
-    notifyMarkingFinished_ = true;
+    ASSERT(!markingFinished_);
+    ASSERT(notifyMarkingFinished_);
+    float spendTime = clockScope_.TotalSpentTime();
     if (heap_->IsYoungMark()) {
         heapObjectSize_ = heap_->GetNewSpace()->GetHeapObjectSize();
     } else if (heap_->IsConcurrentFullMark()) {
@@ -209,6 +202,20 @@ void ConcurrentMarker::FinishMarking(float spendTime)
     SetDuration(spendTime);
     if (heap_->IsFullMarkRequested()) {
         heap_->SetFullMarkRequestedState(false);
+    }
+    thread_->SetMarkStatus(MarkStatus::MARK_FINISHED);
+    thread_->SetCheckSafePointStatus();
+    markingFinished_ = true;
+    waitMarkingFinishedCV_.Signal();
+    DecreaseTaskCounts();
+}
+
+void ConcurrentMarker::ProcessConcurrentMarkTask(uint32_t threadId)
+{
+    runningTaskCount_.fetch_add(1, std::memory_order_relaxed);
+    heap_->GetNonMovableMarker()->ProcessMarkStack(threadId);
+    if (ShouldNotifyMarkingFinished()) {
+        FinishMarking();
     }
 }
 

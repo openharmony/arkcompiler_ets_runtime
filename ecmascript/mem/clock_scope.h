@@ -30,6 +30,11 @@ public:
         start_ = Clock::now();
     }
 
+    void Reset()
+    {
+        start_ = Clock::now();
+    }
+
     Duration GetPauseTime() const
     {
         return Clock::now() - start_;

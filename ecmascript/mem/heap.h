@@ -1581,8 +1581,6 @@ private:
 
     // parallel evacuator task number.
     uint32_t maxEvacuateTaskCount_ {0};
-    Mutex waitTaskFinishedMutex_;
-    ConditionVariable waitTaskFinishedCV_;
 
     // Application status
 
