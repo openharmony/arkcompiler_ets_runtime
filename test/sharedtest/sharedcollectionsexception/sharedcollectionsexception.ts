@@ -682,17 +682,12 @@ function concurrencyErrorTest() {
 }
 
 // common bindTest
-try {
-  print("Start Test SharedArray")
-  bindErrorTest();
-  print("Start Test SharedMap")
-  bindErrorTestMap();
+bindErrorTest();
+print("Start Test SharedMap")
+bindErrorTestMap();
 
-  print("Start Test SharedSet")
-  bindErrorTestSet();
-} catch (err) {
-    print("Bind error. err: " + err);
-}
+print("Start Test SharedSet")
+bindErrorTestSet();
 
 print("Start Test SharedArray")
 createErrorTest();
