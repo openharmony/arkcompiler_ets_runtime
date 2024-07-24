@@ -234,7 +234,7 @@ public:
     {
         return isBreakpointSyncEnabled_;
     }
-    
+
     void EnableSerializationTimeoutCheck()
     {
         isSerializationTimeoutCheckEnabled_ = true;
@@ -283,7 +283,7 @@ private:
 
     NotificationManager notificationManager_;
     HotReloadManager hotReloadManager_;
-    // Serialization / DeSerialization Timeout check
+    // Serialization / DeSerialization Timeout flag
     bool isSerializationTimeoutCheckEnabled_ { false };
     // in milliseconds
     static constexpr int32_t DEFAULT_THRESHOLD = 8;
