@@ -472,8 +472,8 @@ JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
-    JSHandle<JSObject> receiver(thread, obj.GetTaggedValue());
-    ElementsKind kind = receiver->GetClass()->GetElementsKind();
+    JSHClass *hclass = obj->GetTaggedObject()->GetClass();
+    ElementsKind kind = hclass->GetElementsKind();
     return JSTaggedValue(static_cast<uint32_t>(kind));
 }
 

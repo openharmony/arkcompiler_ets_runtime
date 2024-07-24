@@ -33,7 +33,7 @@ JSHandle<GlobalEnv> AOTCompilationEnv::GetGlobalEnv() const
     return vm_->GetGlobalEnv();
 }
 
-const CMap<ElementsKind, ConstantIndex> &AOTCompilationEnv::GetArrayHClassIndexMap() const
+const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &AOTCompilationEnv::GetArrayHClassIndexMap() const
 {
     return thread_->GetArrayHClassIndexMap();
 }

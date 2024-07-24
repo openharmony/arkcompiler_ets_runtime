@@ -985,7 +985,8 @@ bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
     }
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
-        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind());
+        bool receiverIsPrototype = receiver->IsPrototype();
+        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {
@@ -1021,7 +1022,8 @@ bool JITProfiler::AddBuiltinsInfoByNameInProt(ApEntityId abcId, int32_t bcOffset
     auto thread = vm_->GetJSThread();
     JSHClass *exceptRecvHClass = nullptr;
     if (builtinsId == BuiltinTypeId::ARRAY) {
-        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind());
+        bool receiverIsPrototype = receiver->IsPrototype();
+        exceptRecvHClass = thread->GetArrayInstanceHClass(receiver->GetElementsKind(), receiverIsPrototype);
     } else if (builtinsId == BuiltinTypeId::STRING) {
         exceptRecvHClass = receiver;
     } else {

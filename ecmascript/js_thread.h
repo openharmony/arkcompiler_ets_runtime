@@ -315,7 +315,7 @@ public:
         return &glueData_.builtinEntries_;
     }
 
-    const CMap<ElementsKind, ConstantIndex> &GetArrayHClassIndexMap() const
+    const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &GetArrayHClassIndexMap() const
     {
         return arrayHClassIndexMap_;
     }
@@ -345,7 +345,7 @@ public:
 
     JSHClass *GetBuiltinInstanceHClass(BuiltinTypeId type) const;
     JSHClass *GetBuiltinExtraHClass(BuiltinTypeId type) const;
-    JSHClass *GetArrayInstanceHClass(ElementsKind kind) const;
+    JSHClass *GetArrayInstanceHClass(ElementsKind kind, bool isPrototype) const;
 
     PUBLIC_API JSHClass *GetBuiltinPrototypeHClass(BuiltinTypeId type) const;
     PUBLIC_API JSHClass *GetBuiltinPrototypeOfPrototypeHClass(BuiltinTypeId type) const;
@@ -1511,7 +1511,7 @@ private:
         glueData_.currentContext_ = context;
     }
 
-    void SetArrayHClassIndexMap(const CMap<ElementsKind, ConstantIndex> &map)
+    void SetArrayHClassIndexMap(const CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> &map)
     {
         arrayHClassIndexMap_ = map;
     }
@@ -1596,7 +1596,8 @@ private:
     bool isMainThread_ {false};
     bool fullMarkRequest_ {false};
 
-    CMap<ElementsKind, ConstantIndex> arrayHClassIndexMap_;
+    // { ElementsKind, (hclass, hclassWithProto) }
+    CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> arrayHClassIndexMap_;
     CMap<JSHClass *, GlobalIndex> ctorHclassEntries_;
 
     CVector<EcmaContext *> contexts_;

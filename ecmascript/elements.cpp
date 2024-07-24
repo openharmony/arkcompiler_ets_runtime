@@ -20,21 +20,14 @@
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
-CMap<ElementsKind, ConstantIndex> Elements::InitializeHClassMap()
+CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> Elements::InitializeHClassMap()
 {
-    CMap<ElementsKind, ConstantIndex> result;
-    result.emplace(ElementsKind::NONE, ConstantIndex::ELEMENT_NONE_HCLASS_INDEX);
-    result.emplace(ElementsKind::HOLE, ConstantIndex::ELEMENT_HOLE_HCLASS_INDEX);
-    result.emplace(ElementsKind::INT, ConstantIndex::ELEMENT_INT_HCLASS_INDEX);
-    result.emplace(ElementsKind::NUMBER, ConstantIndex::ELEMENT_NUMBER_HCLASS_INDEX);
-    result.emplace(ElementsKind::STRING, ConstantIndex::ELEMENT_STRING_HCLASS_INDEX);
-    result.emplace(ElementsKind::OBJECT, ConstantIndex::ELEMENT_OBJECT_HCLASS_INDEX);
-    result.emplace(ElementsKind::TAGGED, ConstantIndex::ELEMENT_TAGGED_HCLASS_INDEX);
-    result.emplace(ElementsKind::HOLE_INT, ConstantIndex::ELEMENT_HOLE_INT_HCLASS_INDEX);
-    result.emplace(ElementsKind::HOLE_NUMBER, ConstantIndex::ELEMENT_HOLE_NUMBER_HCLASS_INDEX);
-    result.emplace(ElementsKind::HOLE_STRING, ConstantIndex::ELEMENT_HOLE_STRING_HCLASS_INDEX);
-    result.emplace(ElementsKind::HOLE_OBJECT, ConstantIndex::ELEMENT_HOLE_OBJECT_HCLASS_INDEX);
-    result.emplace(ElementsKind::HOLE_TAGGED, ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
+    CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> result;
+#define INIT_ARRAY_HCLASS_INDEX_MAPS(name)                                                                       \
+    result.emplace(ElementsKind::name, std::make_pair(ConstantIndex::ELEMENT_##name##_HCLASS_INDEX,              \
+                                                      ConstantIndex::ELEMENT_##name##_PROTO_HCLASS_INDEX));
+    ELEMENTS_KIND_INIT_HCLASS_LIST(INIT_ARRAY_HCLASS_INDEX_MAPS)
+#undef INIT_ARRAY_HCLASS_INDEX_MAPS
     return result;
 }
 

@@ -20,3 +20,16 @@ undefined
 0
 success
 testArrayUsedAsProto success
+true
+1
+2
+true
+2
+6
+2
+6
+2
+6
+2
+6
+

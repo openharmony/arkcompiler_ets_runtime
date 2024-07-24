@@ -21,6 +21,21 @@
 #include "ecmascript/mem/c_containers.h"
 
 namespace panda::ecmascript {
+
+#define ELEMENTS_KIND_INIT_HCLASS_LIST(V)           \
+    V(NONE)                                         \
+    V(HOLE)                                         \
+    V(INT)                                          \
+    V(NUMBER)                                       \
+    V(STRING)                                       \
+    V(OBJECT)                                       \
+    V(TAGGED)                                       \
+    V(HOLE_INT)                                     \
+    V(HOLE_NUMBER)                                  \
+    V(HOLE_STRING)                                  \
+    V(HOLE_OBJECT)                                  \
+    V(HOLE_TAGGED)
+
 enum class ElementsKind : uint8_t {
     NONE = 0x00UL,
     HOLE = 0x01UL,
@@ -40,7 +55,7 @@ enum class ElementsKind : uint8_t {
 
 class PUBLIC_API Elements {
 public:
-    static CMap<ElementsKind, ConstantIndex> InitializeHClassMap();
+    static CMap<ElementsKind, std::pair<ConstantIndex, ConstantIndex>> InitializeHClassMap();
 
     static std::string GetString(ElementsKind kind);
     static bool IsInt(ElementsKind kind);

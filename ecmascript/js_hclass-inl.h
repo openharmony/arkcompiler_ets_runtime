@@ -30,6 +30,22 @@ inline JSHClass *JSHClass::Cast(const TaggedObject *object)
     return static_cast<JSHClass *>(const_cast<TaggedObject *>(object));
 }
 
+bool JSHClass::ProtoIsFastJSArray(const JSThread *thread, const JSHandle<JSTaggedValue> proto,
+                                  const JSHandle<JSHClass> hclass)
+{
+    // Since we currently only support ElementsKind for JSArray initial hclass,
+    // if an object's hclass has a non-generic ElementsKind, it must be one of the JSArray initial hclass.
+    // if an object's hclass has a Generic ElementsKind, it might be the JSArray initial generic elementskind hclass,
+    // which therefore needs further hclass comparison.
+    if (proto->IsJSArray()) {
+        JSTaggedValue genericArrayHClass = thread->GlobalConstants()->GetElementHoleTaggedClass();
+        if (!Elements::IsGeneric(hclass->GetElementsKind()) || hclass.GetTaggedValue() == genericArrayHClass) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void JSHClass::AddTransitions(const JSThread *thread, const JSHandle<JSHClass> &parent, const JSHandle<JSHClass> &child,
                               const JSHandle<JSTaggedValue> &key, PropertyAttributes attributes)
 {
