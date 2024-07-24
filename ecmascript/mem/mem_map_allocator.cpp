@@ -77,16 +77,41 @@ void MemMapAllocator::InitializeHugeRegionMap(size_t alignment)
 #endif
 }
 
+static bool PageProtectMem(bool machineCodeSpace, void *mem, size_t size)
+{
+    if (!machineCodeSpace) {
+        return PageProtect(mem, size, PAGE_PROT_READWRITE);
+    }
+
+    // MachineCode and HugeMachineCode space pages:
+#if defined(PANDA_TARGET_ARM64) && defined(PANDA_TARGET_OHOS)
+#ifdef ENABLE_JITFORT
+    // if JitFort enabled, Jit code will be in JitFort space, so only need READWRITE here
+    return PageProtect(mem, size, PAGE_PROT_READWRITE);
+#else
+    // else Jit code will be in MachineCode space, need EXEC_READWRITE and MAP_EXECUTABLE (0x1000)
+    void *addr = PageMapExecFortSpace(mem, size, PAGE_PROT_EXEC_READWRITE);
+    if (addr != mem) {
+        return false;
+    }
+    return true;
+#endif
+#else
+    // not running phone kernel. Jit code will be MachineCode space
+    return PageProtect(mem, size, PAGE_PROT_EXEC_READWRITE);
+#endif
+}
+
 MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t alignment,
                                  const std::string &spaceName, bool regular, bool isMachineCode)
 {
     MemMap mem;
+    PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
     if (regular) {
         mem = memMapPool_.GetRegularMemFromCommitted(size);
         if (mem.GetMem() != nullptr) {
-            int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
-            PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
-            if (!PageProtect(mem.GetMem(), mem.GetSize(), prot)) {
+            bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize());
+            if (!res) {
                 return MemMap();
             }
             PageTag(mem.GetMem(), size, type, spaceName, threadId);
@@ -100,9 +125,8 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         mem = memMapPool_.GetMemFromCache(size);
         if (mem.GetMem() != nullptr) {
             memMapTotalSize_ += size;
-            int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
-            PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
-            if (!PageProtect(mem.GetMem(), mem.GetSize(), prot)) {
+            bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize());
+            if (!res) {
                 return MemMap();
             }
             PageTag(mem.GetMem(), size, type, spaceName, threadId);
@@ -119,9 +143,8 @@ MemMap MemMapAllocator::Allocate(const uint32_t threadId, size_t size, size_t al
         mem = memMapFreeList_.GetMemFromList(size);
     }
     if (mem.GetMem() != nullptr) {
-        int prot = isMachineCode ? PAGE_PROT_EXEC_READWRITE : PAGE_PROT_READWRITE;
-        PageTagType type = isMachineCode ? PageTagType::MACHINE_CODE : PageTagType::HEAP;
-        if (!PageProtect(mem.GetMem(), mem.GetSize(), prot)) {
+        bool res = PageProtectMem(isMachineCode, mem.GetMem(), mem.GetSize());
+        if (!res) {
             return MemMap();
         }
         PageTag(mem.GetMem(), mem.GetSize(), type, spaceName, threadId);

@@ -145,7 +145,7 @@ void MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
         ", size:" << stackMapOrOffsetTableSizeAlign <<
         ", funcEntry addr:" << reinterpret_cast<void*>(GetFuncEntryDesAddress()) << ", count:" << cnt;
 
-#ifndef ENABLE_JIT_FORT
+#ifndef ENABLE_JITFORT
     //todo
     size_t pageSize = 4096; // 4096 : pageSize
     uintptr_t startPage = reinterpret_cast<uintptr_t>(textStart) & ~(pageSize - 1);
