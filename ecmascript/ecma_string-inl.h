@@ -291,14 +291,14 @@ inline uint16_t *EcmaString::GetDataUtf16Writable()
     return GetData();
 }
 
-inline size_t EcmaString::GetUtf8Length(bool modify) const
+inline size_t EcmaString::GetUtf8Length(bool modify, bool isGetBufferSize) const
 {
     if (!IsUtf16()) {
         return GetLength() + 1;  // add place for zero in the end
     }
     CVector<uint16_t> tmpBuf;
     const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
-    return base::utf_helper::Utf16ToUtf8Size(data, GetLength(), modify);
+    return base::utf_helper::Utf16ToUtf8Size(data, GetLength(), modify, isGetBufferSize);
 }
 
 template<bool verify>
@@ -502,9 +502,9 @@ inline const uint16_t *EcmaStringAccessor::GetDataUtf16()
     return string_->GetDataUtf16();
 }
 
-inline size_t EcmaStringAccessor::GetUtf8Length() const
+inline size_t EcmaStringAccessor::GetUtf8Length(bool isGetBufferSize) const
 {
-    return string_->GetUtf8Length();
+    return string_->GetUtf8Length(true, isGetBufferSize);
 }
 
 inline void EcmaStringAccessor::ReadData(EcmaString *dst, EcmaString *src,

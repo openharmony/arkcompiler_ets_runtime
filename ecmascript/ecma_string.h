@@ -198,7 +198,7 @@ private:
         SetMixHashcode(MixHashcode(hashcode, isInteger));
     }
 
-    inline size_t GetUtf8Length(bool modify = true) const;
+    inline size_t GetUtf8Length(bool modify = true, bool isGetBufferSize = false) const;
 
     inline void SetIsInternString()
     {
@@ -1156,7 +1156,7 @@ public:
     }
 
     // require is LineString
-    inline size_t GetUtf8Length() const;
+    inline size_t GetUtf8Length(bool isGetBufferSize = false) const;
 
     size_t ObjectSize() const
     {
