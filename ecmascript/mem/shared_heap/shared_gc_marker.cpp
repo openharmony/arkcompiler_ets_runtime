@@ -115,7 +115,7 @@ void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
     auto cb = [&](ObjectSlot slot) {
         MarkValue(threadId, slot);
     };
-    auto visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+    EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
                                         VisitObjectArea area) {
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end, cb)) {

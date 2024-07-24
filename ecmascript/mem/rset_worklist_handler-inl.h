@@ -126,7 +126,7 @@ inline void RSetWorkListHandler::WaitFinishedThenMergeBack()
 
 inline bool RSetWorkListHandler::TryMergeBack()
 {
-    return (reinterpret_cast<std::atomic<bool>*>(&initialized_)->exchange(false) == true);
+    return reinterpret_cast<std::atomic<bool>*>(&initialized_)->exchange(false, std::memory_order_relaxed) == true;
 }
 
 inline void RSetWorkListHandler::MergeBackForAllItem()

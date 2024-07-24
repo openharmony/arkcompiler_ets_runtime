@@ -79,7 +79,7 @@ void DaemonThread::WaitFinished()
     if (IsRunning()) {
         CheckAndPostTask(TerminateDaemonTask(nullptr));
         thread_->join();
-        thread_.release();
+        thread_.reset();
         Taskpool::GetCurrentTaskpool()->Destroy(GetThreadId());
     }
     ASSERT(!IsInRunningState());
