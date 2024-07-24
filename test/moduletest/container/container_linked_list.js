@@ -312,6 +312,20 @@ if (globalThis["ArkPrivate"] != undefined) {
     }
     map.set("test linkedlist removeByIndex:", flag);
 
+    let empty_ll = new LinkedList();
+    try {
+        empty_ll.set(0, 1);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test Set exception when arraylist is empty:", res)
+    }
+    try {
+        empty_ll.removeByIndex(0);
+    } catch(err) {
+        res = (err =="BusinessError: Container is empty")
+        map.set("test removeByIndex exception when arraylist is empty:", res)
+    }
+
     testArray3.splice(5, 1);
 
     res = true;

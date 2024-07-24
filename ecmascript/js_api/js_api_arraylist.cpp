@@ -175,6 +175,10 @@ int JSAPIArrayList::GetLastIndexOf(JSThread *thread, const JSHandle<JSAPIArrayLi
 JSTaggedValue JSAPIArrayList::RemoveByIndex(JSThread *thread, const JSHandle<JSAPIArrayList> &arrayList, int index)
 {
     int length = arrayList->GetLength().GetInt();
+    if (length <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index < 0 || index >= length) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
@@ -218,6 +222,10 @@ JSTaggedValue JSAPIArrayList::RemoveByRange(JSThread *thread, const JSHandle<JSA
     int32_t startIndex = JSTaggedValue::ToInt32(thread, value1);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, value2);
     int32_t length = arrayList->GetLength().GetInt();
+    if (length <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     int32_t size = length > endIndex ? endIndex : length;
     if (startIndex < 0 || startIndex >= size) {
         std::ostringstream oss;
@@ -299,6 +307,10 @@ JSTaggedValue JSAPIArrayList::SubArrayList(JSThread *thread, const JSHandle<JSAP
     int fromIndex = JSTaggedValue::ToInt32(thread, value1);
     int toIndex = JSTaggedValue::ToInt32(thread, value2);
     int32_t size = length > toIndex ? toIndex : length;
+    if (length <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (fromIndex < 0 || fromIndex >= size) {
         std::ostringstream oss;
         oss << "The value of \"fromIndex\" is out of range. It must be >= 0 && <= " << (size - 1)
