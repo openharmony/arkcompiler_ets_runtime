@@ -23,6 +23,7 @@
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
+#include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {
 const std::string PUBLIC_API COMMON_HELP_HEAD_MSG =
@@ -73,7 +74,6 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-value-numbering:     Enable tracing value numbering for aot runtime. Default: 'false'\n"
     "--compiler-max-inline-bytecodes       Set max bytecodes count which aot function can be inlined. Default: '25'\n"
     "--compiler-deopt-threshold:           Set max count which aot function can occur deoptimization. Default: '10'\n"
-    "--compiler-device-state               Compiler device state for aot. Check device screen state. Default: 'false'\n"
     "--compiler-stress-deopt:              Enable stress deopt for aot compiler. Default: 'false'\n"
     "--compiler-opt-code-profiler:         Enable opt code Bytecode Statistics for aot runtime. Default: 'false'\n"
     "--compiler-opt-bc-range:              Range list for EcmaOpCode range Example '1:2,5:8'\n"
@@ -222,6 +222,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-max-inline-bytecodes", required_argument, nullptr, OPTION_COMPILER_MAX_INLINE_BYTECODES},
         {"compiler-deopt-threshold", required_argument, nullptr, OPTION_COMPILER_DEOPT_THRESHOLD},
         {"compiler-device-state", required_argument, nullptr, OPTION_COMPILER_DEVICE_STATE},
+        {"compiler-thermal-level", required_argument, nullptr, OPTION_COMPILER_THERMAL_LEVEL},
         {"compiler-stress-deopt", required_argument, nullptr, OPTION_COMPILER_STRESS_DEOPT},
         {"compiler-opt-code-profiler", required_argument, nullptr, OPTION_COMPILER_OPT_CODE_PROFILER},
         {"compiler-opt-bc-range", required_argument, nullptr, OPTION_COMPILER_OPT_BC_RANGE},
@@ -511,6 +512,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetDeviceState(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_THERMAL_LEVEL:
+                ret = ParseIntParam("compiler-thermal-level", &argInt);
+                if (ret) {
+                    SetThermalLevel(argInt);
                 } else {
                     return false;
                 }
@@ -1389,6 +1398,15 @@ void JSRuntimeOptions::ParseListArgParam(const std::string &option, arg_list_t *
     return;
 }
 
+void JSRuntimeOptions::BindCPUCoreForTargetCompilation()
+{
+    if (!deviceIsScreenOff_ || deviceThermalLevel_ > 0) {
+        BindSmallCpuCore();
+    } else {
+        BindMidCpuCore();
+    }
+}
+
 void JSRuntimeOptions::SetOptionsForTargetCompilation()
 {
     if (IsTargetCompilerMode()) {
@@ -1406,6 +1424,7 @@ void JSRuntimeOptions::SetOptionsForTargetCompilation()
             SetEnableOptPGOType(false);
             SetPGOProfilerPath("");
         }
+        BindCPUCoreForTargetCompilation();
     }
     if (IsCompilerPipelineHostAOT()) {
         SetTargetTriple("aarch64-unknown-linux-gnu");
