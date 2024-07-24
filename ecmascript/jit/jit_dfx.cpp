@@ -47,6 +47,18 @@ JitDfx *JitDfx::GetInstance()
     return &instance;
 }
 
+void JitDfx::Init(const JSRuntimeOptions &options, std::string &bundleName)
+{
+    if (options.IsEnableJitDfxDump()) {
+        EnableDump();
+    }
+    ResetCompilerTime();
+    ResetBlockUIEventTime();
+    SetBundleName(ConvertToString(bundleName));
+    // main thread
+    SetPidNumber(JSThread::GetCurrentThreadId());
+}
+
 void JitDfx::EnableDump()
 {
     isEnableDump_ = true;

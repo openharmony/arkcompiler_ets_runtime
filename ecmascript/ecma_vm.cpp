@@ -180,7 +180,9 @@ void EcmaVM::PostFork()
     pgo::PGOTrace::GetInstance()->SetEnable(ohos::AotTools::GetPgoTraceEnable());
     AotCrashInfo::GetInstance().SetOptionPGOProfiler(&options_, bundleName);
     ResetPGOProfiler();
-    ohos::JitTools::GetInstance().SetJitEnable(this, bundleName);
+    processStartRealtime_ = InitializeStartRealTime();
+
+    Jit::GetInstance()->SetJitEnablePostFork(this, bundleName);
 #ifdef ENABLE_POSTFORK_FORCEEXPAND
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
@@ -317,7 +319,7 @@ bool EcmaVM::Initialize()
     callTimer_ = new FunctionCallTimer();
     strategy_ = new ThroughputJSObjectResizingStrategy();
     if (IsEnableFastJit() || IsEnableBaselineJit()) {
-        ohos::JitTools::GetInstance().EnableJit(this);
+        Jit::GetInstance()->ConfigJit(this);
     }
     initialized_ = true;
     return true;

@@ -205,4 +205,9 @@ int CloseLib(void *handle)
     return dlclose(handle);
 }
 
+char *LoadLibError()
+{
+    return dlerror();
+}
+
 }  // namespace panda::ecmascript

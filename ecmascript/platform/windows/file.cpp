@@ -199,4 +199,10 @@ int CloseLib([[maybe_unused]] void *handle)
     LOG_ECMA(INFO) << "Unsupport CloseLib";
     return 0;
 }
+
+char *LoadLibError()
+{
+    LOG_ECMA(INFO) << "Unsupport LoadLibError";
+    return nullptr;
+}
 }  // namespace panda::ecmascript

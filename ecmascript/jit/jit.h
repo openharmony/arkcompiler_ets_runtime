@@ -38,11 +38,23 @@ enum class CompilerTier : uint8_t {
     FAST,
 };
 
+struct ThreadTaskInfo {
+    std::deque<std::shared_ptr<JitTask>> installJitTasks_;
+    bool skipInstallTask_ { false };
+
+    std::atomic<uint32_t> jitTaskCnt_;
+    ConditionVariable jitTaskCntCv_;
+};
+
 class Jit {
 public:
     Jit() {}
     ~Jit();
     static PUBLIC_API Jit *GetInstance();
+    void SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName);
+    void ConfigJit(EcmaVM *vm);
+    void SwitchProfileStubs(EcmaVM *vm);
+    void ConfigOptions(EcmaVM *vm) const;
     void SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit);
     bool PUBLIC_API IsEnableFastJit() const;
     bool PUBLIC_API IsEnableBaselineJit() const;
@@ -201,19 +213,19 @@ public:
     };
 
 private:
-    bool SupportJIT(const Method *method, EcmaVM *vm) const;
+    bool SupportJIT(JSHandle<JSFunction> &jsFunction, EcmaVM *vm, CompilerTier tier) const;
     bool initialized_ { false };
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };
     bool isApp_ { false };
     bool isProfileNeedDump_ { true };
     uint32_t hotnessThreshold_ { 0 };
+    std::string bundleName_;
 
-    std::unordered_map<uint32_t, std::deque<std::shared_ptr<JitTask>>> installJitTasks_;
-    std::unordered_map<uint32_t, std::pair<std::atomic<uint32_t>, ConditionVariable>> jitTaskCnt_;
-    Mutex installJitTasksDequeMtx_;
+    std::unordered_map<uint32_t, ThreadTaskInfo> threadTaskInfo_;
+    RecursiveMutex threadTaskInfoLock_;
+
     Mutex setEnableLock_;
-    Mutex jitTaskCntMtx_;
 
     JitDfx *jitDfx_ { nullptr };
     static constexpr int MIN_CODE_SPACE_SIZE = 1_KB;

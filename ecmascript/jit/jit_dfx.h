@@ -52,6 +52,7 @@ class JitDfx {
 public:
     using ThreadId = uint32_t;
     static JitDfx *GetInstance();
+    void Init(const JSRuntimeOptions &options, std::string &bundleName);
     void EnableDump();
     bool IsEnableDump() const
     {
@@ -81,6 +82,22 @@ public:
     ThreadId GetPidNumber() const
     {
         return pidNum_;
+    }
+
+    void RecordSpentTimeAndPrintStatsLogInJsThread(int time)
+    {
+        SetTotalTimeOnMainThread(time);
+        PrintJitStatsLog();
+    }
+
+    void RecordSpentTimeAndPrintStatsLogInJitThread(int compilerTime, CString methodName, bool isBaselineJit,
+        int mainThreadCompileTime)
+    {
+        SetTotalTimeOnJitThread(compilerTime);
+        if (ReportBlockUIEvent(mainThreadCompileTime)) {
+            SetBlockUIEventInfo(methodName, isBaselineJit, mainThreadCompileTime, compilerTime);
+        }
+        PrintJitStatsLog();
     }
 
     void SetTotalTimeOnMainThread(int time)
