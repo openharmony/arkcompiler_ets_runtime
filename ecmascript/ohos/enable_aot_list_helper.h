@@ -29,7 +29,7 @@
 #include "ecmascript/ohos/aot_runtime_info.h"
 #include "macros.h"
 
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#ifdef AOT_ESCAPE_ENABLE
 #include "parameters.h"
 #endif
 namespace panda::ecmascript::ohos {
@@ -79,7 +79,7 @@ public:
 
     virtual bool IsEnabledByArkProfiler() const
     {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#ifdef AOT_ESCAPE_ENABLE
         return OHOS::system::GetBoolParameter(ARK_PROFILE, false);
 #endif
         return false;
@@ -87,7 +87,7 @@ public:
 
     static bool GetAotBuildCountDisable()
     {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#ifdef AOT_ESCAPE_ENABLE
         return OHOS::system::GetBoolParameter(AOT_BUILD_COUNT_DISABLE, false);
 #endif
         return false;
