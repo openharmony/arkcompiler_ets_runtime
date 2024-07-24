@@ -113,14 +113,14 @@ bool JSDebugger::SetBreakpointWithoutMatchedUrl(const JSPtLocation &location)
     }
     // if not found in local, try to find it in global list
     breakpointList = SearchNoMatchBreakpointInGlobalList(location);
-    if (!breakpointList.empty()) {
-        // found this breakpoint in global list, return success
-        for (const auto &breakpoint : breakpointList) {
-            PullBreakpointFromGlobal(breakpoint);
-        }
-        return true;
+    if (breakpointList.empty()) {
+        return false;
     }
-    return false;
+    // found this breakpoint in global list, return success
+    for (const auto &breakpoint : breakpointList) {
+        PullBreakpointFromGlobal(breakpoint);
+    }
+    return true;
 }
 
 bool JSDebugger::PushBreakpointToLocal(const JSBreakpoint &breakpoint, const JSPtLocation &location)
@@ -134,19 +134,17 @@ bool JSDebugger::PushBreakpointToLocal(const JSBreakpoint &breakpoint, const JSP
         urlHashMap[urlKey] = breakpointSet;
         breakpoints_[pandaFileKey] = urlHashMap;
         return true;
-    } else {
-        auto urlHashMap = breakpoints_[pandaFileKey];
-        if (urlHashMap.find(urlKey) == urlHashMap.end()) {
-            CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
-            breakpointSet.emplace(breakpoint);
-            urlHashMap[urlKey] = breakpointSet;
-            breakpoints_[pandaFileKey] = urlHashMap;
-            return true;
-        } else {
-            auto [_, success] = breakpoints_[pandaFileKey][urlKey].emplace(breakpoint);
-            return success;
-        }
     }
+    auto urlHashMap = breakpoints_[pandaFileKey];
+    if (urlHashMap.find(urlKey) == urlHashMap.end()) {
+        CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
+        breakpointSet.emplace(breakpoint);
+        urlHashMap[urlKey] = breakpointSet;
+        breakpoints_[pandaFileKey] = urlHashMap;
+        return true;
+    }
+    auto [_, success] = breakpoints_[pandaFileKey][urlKey].emplace(breakpoint);
+    return success;
 }
 
 void JSDebugger::PushBreakpointToGlobal(const JSBreakpoint &breakpoint, const JSPtLocation &location)
@@ -159,17 +157,17 @@ void JSDebugger::PushBreakpointToGlobal(const JSBreakpoint &breakpoint, const JS
         breakpointSet.emplace(breakpoint);
         urlHashMap[urlKey] = breakpointSet;
         globalBpList_[pandaFileKey] = urlHashMap;
-    } else {
-        auto urlHashMap = breakpoints_[pandaFileKey];
-        if (urlHashMap.find(urlKey) == urlHashMap.end()) {
-            CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
-            breakpointSet.emplace(breakpoint);
-            urlHashMap[urlKey] = breakpointSet;
-            globalBpList_[pandaFileKey] = urlHashMap;
-        } else {
-            globalBpList_[pandaFileKey][urlKey].emplace(breakpoint);
-        }
+        return;
     }
+    auto urlHashMap = breakpoints_[pandaFileKey];
+    if (urlHashMap.find(urlKey) == urlHashMap.end()) {
+        CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
+        breakpointSet.emplace(breakpoint);
+        urlHashMap[urlKey] = breakpointSet;
+        globalBpList_[pandaFileKey] = urlHashMap;
+        return;
+    }
+    globalBpList_[pandaFileKey][urlKey].emplace(breakpoint);
 }
 
 bool JSDebugger::PullBreakpointFromGlobal(const JSBreakpoint &breakpoint)
@@ -183,19 +181,17 @@ bool JSDebugger::PullBreakpointFromGlobal(const JSBreakpoint &breakpoint)
         urlHashMap[urlKey] = breakpointSet;
         breakpoints_[pandaFileKey] = urlHashMap;
         return true;
-    } else {
-        auto urlHashMap = breakpoints_[pandaFileKey];
-        if (urlHashMap.find(urlKey) == urlHashMap.end()) {
-            CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
-            breakpointSet.emplace(breakpoint);
-            urlHashMap[urlKey] = breakpointSet;
-            breakpoints_[pandaFileKey] = urlHashMap;
-            return true;
-        } else {
-            auto [_, success] = breakpoints_[pandaFileKey][urlKey].emplace(breakpoint);
-            return success;
-        }
     }
+    auto urlHashMap = breakpoints_[pandaFileKey];
+    if (urlHashMap.find(urlKey) == urlHashMap.end()) {
+        CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpointSet;
+        breakpointSet.emplace(breakpoint);
+        urlHashMap[urlKey] = breakpointSet;
+        breakpoints_[pandaFileKey] = urlHashMap;
+        return true;
+    }
+    auto [_, success] = breakpoints_[pandaFileKey][urlKey].emplace(breakpoint);
+    return success;
 }
 
 std::vector<JSBreakpoint> JSDebugger::SearchNoMatchBreakpointInLocalList(const JSPtLocation &location)
@@ -311,16 +307,17 @@ bool JSDebugger::RemoveGlobalBreakpoint(const std::unique_ptr<PtMethod> &ptMetho
     if (globalBpList_.empty() || globalBpList_.find(pandaFileKey) == globalBpList_.end()) {
         return false;
     }
-    auto urlHashMap = globalBpList_[pandaFileKey];
-    if (urlHashMap.empty() || urlHashMap.find(location.GetSourceFile()) == urlHashMap.end()) {
+    if (globalBpList_[pandaFileKey].empty() ||
+        globalBpList_[pandaFileKey].find(location.GetSourceFile()) == globalBpList_[pandaFileKey].end()) {
         return false;
     }
-    for (auto it = urlHashMap[location.GetSourceFile()].begin(); it != urlHashMap[location.GetSourceFile()].end();) {
+    for (auto it = globalBpList_[pandaFileKey][location.GetSourceFile()].begin();
+         it != globalBpList_[pandaFileKey][location.GetSourceFile()].end();) {
         const auto &bp = *it;
         if ((bp.GetBytecodeOffset() == location.GetBytecodeOffset()) &&
             (bp.GetPtMethod()->GetJSPandaFile() == ptMethod->GetJSPandaFile()) &&
             (bp.GetPtMethod()->GetMethodId() == ptMethod->GetMethodId())) {
-            it = urlHashMap[location.GetSourceFile()].erase(it);
+            it = globalBpList_[pandaFileKey][location.GetSourceFile()].erase(it);
         } else {
             it++;
         }
