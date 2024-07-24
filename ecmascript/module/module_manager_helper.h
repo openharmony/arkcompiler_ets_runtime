@@ -42,6 +42,12 @@ public:
     static JSTaggedValue PUBLIC_API GetModuleValueFromRecordBinding(JSThread *thread,
                                                                     JSHandle<SourceTextModule> module,
                                                                     JSTaggedValue resolvedBinding);
+    
+    static JSHandle<SourceTextModule> GetResolvedRecordIndexBindingModule(
+        JSThread *thread, JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordIndexBinding> binding);
+
+    static JSHandle<SourceTextModule> GetResolvedRecordBindingModule(
+        JSThread *thread, JSHandle<SourceTextModule> module, JSHandle<ResolvedRecordBinding> binding);
 
     static JSTaggedValue GetLazyModuleValueFromIndexBinding(JSThread *thread,
                                                             JSHandle<SourceTextModule> module,

@@ -77,6 +77,7 @@
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/module_logger.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -184,6 +185,10 @@ void EcmaVM::PostFork()
     heap_->NotifyPostFork();
     heap_->NotifyFinishColdStartSoon();
 #endif
+    ModuleLogger *moduleLogger = thread_->GetCurrentEcmaContext()->GetModuleLogger();
+    if (moduleLogger != nullptr) {
+        moduleLogger->PostModuleLoggerTask(thread_->GetThreadId(), this);
+    }
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
     int arkProperties = OHOS::system::GetIntParameter<int>("persist.ark.properties", -1);
     GetJSOptions().SetArkProperties(arkProperties);

@@ -29,8 +29,10 @@
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
+#include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
+#include "ecmascript/module/module_tools.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/tagged_dictionary.h"
 #ifdef PANDA_TARGET_WINDOWS
@@ -119,6 +121,10 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     }
     ASSERT(moduleEnvironment.IsTaggedArray());
     JSTaggedValue resolvedBinding = TaggedArray::Cast(moduleEnvironment.GetTaggedObject())->Get(index);
+    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    if (moduleLogger != nullptr) {
+        return ModuleTools::ProcessModuleLoadInfo(thread, currentModuleHdl, resolvedBinding, index);
+    }
     if (resolvedBinding.IsResolvedIndexBinding()) {
         ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
         JSTaggedValue resolvedModule = binding->GetModule();
@@ -613,6 +619,11 @@ JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedV
     }
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     JSHandle<SourceTextModule> requiredModuleST = JSHandle<SourceTextModule>::Cast(requiredModule);
+    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    if (moduleLogger != nullptr) {
+        return ModuleTools::ProcessModuleNameSpaceLoadInfo(thread,
+            JSHandle<SourceTextModule>(thread, module), requiredModuleST);
+    }
     ModuleTypes moduleType = requiredModuleST->GetTypes();
     // if requiredModuleST is Native module
     if (SourceTextModule::IsNativeModule(moduleType)) {

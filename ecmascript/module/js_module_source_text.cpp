@@ -25,6 +25,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_promise.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_namespace.h"
@@ -388,6 +389,10 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *t
         CString traceInfo = "LoadNativeModule: " + moduleRequestName;
         ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
     }
+    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    if (moduleLogger != nullptr) {
+        moduleLogger->SetStartTime(moduleRequestName);
+    }
     CString soName = PathHelper::GetStrippedModuleName(moduleRequestName);
 
     CString fileName = requiredModule->GetEcmaModuleFilenameString();
@@ -405,11 +410,23 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *t
     // some function(s) may not registered in global object for non-main thread
     if (!maybeFuncRef->IsFunction(vm)) {
         LOG_FULL(WARN) << "Not found require func";
+        if (enableESMTrace) {
+            ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+        }
+        if (moduleLogger != nullptr) {
+            moduleLogger->SetEndTime(moduleRequestName);
+        }
         return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     }
 
     Local<FunctionRef> funcRef = maybeFuncRef;
     auto exportObject = funcRef->Call(vm, JSValueRef::Undefined(vm), arguments.data(), arguments.size());
+    if (enableESMTrace) {
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+    }
+    if (moduleLogger != nullptr) {
+        moduleLogger->SetEndTime(moduleRequestName);
+    }
     return exportObject;
 }
 
@@ -962,6 +979,10 @@ JSTaggedValue SourceTextModule::Evaluate(JSThread *thread, const JSHandle<Source
     if (!thread->HasPendingException() && !executeFromJob) {
         job::MicroJobQueue::ExecutePendingJob(thread, thread->GetCurrentEcmaContext()->GetMicroJobQueue());
     }
+    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
+    if ((moduleLogger != nullptr) && !executeFromJob) {
+        moduleLogger->InsertEntryPointModule(module);
+    }
     // Return capability.[[Promise]].
     return capability->GetPromise();
 }
@@ -1023,6 +1044,7 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
     module->SetPendingAsyncDependencies(0);
     index++;
     stack.emplace_back(module);
+    ModuleLogger *moduleLogger = thread->GetCurrentEcmaContext()->GetModuleLogger();
     if (!module->GetRequestedModules().IsUndefined()) {
         JSHandle<TaggedArray> requestedModules(thread, module->GetRequestedModules());
         size_t requestedModulesLen = requestedModules->GetLength();
@@ -1042,6 +1064,9 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
                 requiredModule = JSHandle<SourceTextModule>::Cast(
                     SourceTextModule::HostResolveImportedModuleWithMerge(thread, module, required));
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
+            }
+            if (moduleLogger != nullptr) {
+                moduleLogger->InsertParentModule(module, requiredModule);
             }
             ModuleTypes moduleType = requiredModule->GetTypes();
             if (SourceTextModule::IsNativeModule(moduleType)) {
