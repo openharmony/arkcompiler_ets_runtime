@@ -172,23 +172,18 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, Format_001)
     TestHelper::TearDownFrame(thread, prev);
     // jsDate supports zero to eleven, the month should be added with one
     JSHandle<JSFunction> jsFunction(thread, result1);
-    JSArray *jsArray =
-        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
-    JSHandle<JSObject> jsObject(thread, jsArray);
 
     double days = BuiltinsDateCreate(2020, 10, 1);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<double>(days)));
     PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(jsFunction), true, true, true);
-    JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
-    JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
 
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetFunction(jsFunction.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetThis(jsFunction.GetTaggedValue());
     ecmaRuntimeCallInfo2->SetCallArg(0, value.GetTaggedValue());
 
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 = JSFunction::Call(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultStr(thread, result2);
     EXPECT_STREQ("Sun, 11/1/2020, 24:00:00", EcmaStringAccessor(resultStr).ToCString().c_str());
@@ -212,23 +207,16 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, Format_002)
     TestHelper::TearDownFrame(thread, prev);
 
     JSHandle<JSFunction> jsFunction(thread, result1);
-    JSArray *jsArray =
-        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
-    JSHandle<JSObject> jsObject(thread, jsArray);
-
     double days = BuiltinsDateCreate(2020, 5, 11);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<double>(days)));
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(jsFunction), true, true, true);
-    JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
-    JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
 
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetFunction(jsFunction.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetThis(jsFunction.GetTaggedValue());
     ecmaRuntimeCallInfo2->SetCallArg(0, value.GetTaggedValue());
 
     prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 =  JSFunction::Call(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev);
     JSHandle<EcmaString> resultStr(thread, result2);
     CString resStr = EcmaStringAccessor(resultStr).ToCString();
@@ -421,24 +409,17 @@ HWTEST_F_L0(BuiltinsDateTimeFormatTest, SupportedLocalesOf_002)
 
 static JSTaggedValue JSDateTime(JSThread *thread, JSTaggedValue &formatResult)
 {
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     double days = 1665187200000;
     // jsDate supports zero to eleven, the month should be added with one
     JSHandle<JSFunction> jsFunction(thread, formatResult);
-    JSArray *jsArray =
-        JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetTaggedValue().GetTaggedObject());
-    JSHandle<JSObject> jsObject(thread, jsArray);
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<double>(days)));
-    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(jsFunction), true, true, true);
-    JSHandle<JSTaggedValue> joinKey(factory->NewFromASCII("join"));
-    JSArray::DefineOwnProperty(thread, jsObject, joinKey, desc);
     auto ecmaRuntimeCallInfo2 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
-    ecmaRuntimeCallInfo2->SetFunction(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo2->SetThis(jsObject.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetFunction(jsFunction.GetTaggedValue());
+    ecmaRuntimeCallInfo2->SetThis(jsFunction.GetTaggedValue());
     ecmaRuntimeCallInfo2->SetCallArg(0, value.GetTaggedValue());
 
     [[maybe_unused]] auto prev2 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo2);
-    JSTaggedValue result2 = BuiltinsArray::ToString(ecmaRuntimeCallInfo2);
+    JSTaggedValue result2 =  JSFunction::Call(ecmaRuntimeCallInfo2);
     TestHelper::TearDownFrame(thread, prev2);
     return result2;
 }
