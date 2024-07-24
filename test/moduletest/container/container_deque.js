@@ -138,5 +138,13 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test Deque fail: " + flag);
     }
+    const v1 = new Deque();
+    const v2 = [Deque,Deque];
+    class C4{
+    ["100"] = v2
+    }
+    const v5 = new C4();
+    Object.assign(v1,v5)
+    print(JSON.stringify(v1))
 }
 export let dequeRes = "Test Deque done";
