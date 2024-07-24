@@ -1190,7 +1190,9 @@ GateRef BuiltinsStringStubBuilder::CreateStringBySingleCharCode(GateRef glue, Ga
     BRANCH(canStoreAsUtf8, &utf8, &utf16);
     Bind(&utf8);
     {
-        newBuilder.AllocLineStringObject(&result, &afterNew, Int32(1), true);
+        GateRef singleCharTable = GetSingleCharTable(glue);
+        result = GetValueFromTaggedArray(singleCharTable, charCode);
+        Jump(&exit);
     }
     Bind(&utf16);
     {

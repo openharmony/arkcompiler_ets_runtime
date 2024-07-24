@@ -38,3 +38,40 @@ function testHolyArray() {
     print(arrayTest[9] === undefined);
 }
 testHolyArray();
+
+function testStringIndex() {
+    class A {
+        constructor() {
+            var gotoFn = {
+                0: {}
+            };
+        
+            this.gotoFn = gotoFn;
+        }
+        
+        search(string) {
+            var state = 0;
+            var results = [];
+            for (var i=0; i<string.length; i++) {
+                var l = string[i];
+                if (!(l in this.gotoFn[state])) {
+                    continue;
+                }
+                state = this.gotoFn[state][l];
+            }
+        
+            return results;
+        };
+    }
+
+
+    let words = ""
+    for (let i = 0; i < 100; i++) {
+        words += "should find keyword" + i + " at position " + i + "and"
+    }
+    let ac = new A();
+    for (let i = 0; i < 100; i++) {
+        ac.search(words)
+    }
+}
+testStringIndex();
