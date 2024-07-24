@@ -207,6 +207,7 @@ public:
 
     void UpdateMainMethodIndex(uint32_t mainMethodIndex, const CString &recordName = ENTRY_FUNCTION_NAME)
     {
+        LockHolder lock(jsRecordInfoMutex_);
         if (IsBundlePack()) {
             jsRecordInfo_.begin()->second->mainMethodIndex = mainMethodIndex;
         } else {
@@ -471,6 +472,7 @@ private:
     Mutex recordNameMapMutex_;
     Mutex waitTranslateClassFinishedMutex_;
     Mutex classIndexMutex_;
+    Mutex jsRecordInfoMutex_;
     ConditionVariable waitTranslateClassFinishedCV_;
     uint32_t runningTaskCount_ {0};
     size_t classIndex_ {0};

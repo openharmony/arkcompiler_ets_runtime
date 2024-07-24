@@ -54,4 +54,5 @@ host_moduletest_action("moduleUseCjs") {
     ":gen_someArgsCjs_abc",
   ]
   is_module = true
+  async_load_abc_test = true
 }

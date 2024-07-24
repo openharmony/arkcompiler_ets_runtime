@@ -18,6 +18,7 @@ host_moduletest_action("A") {
   entry_point = "--entry-point=A"
   is_module = true
   is_merge = true
+  async_load_abc_test = true
 }
 
 host_moduletest_action("merge") {
@@ -25,4 +26,5 @@ host_moduletest_action("merge") {
   entry_point = "--entry-point=merge"
   is_module = true
   is_merge = true
+  async_load_abc_test = true
 }
