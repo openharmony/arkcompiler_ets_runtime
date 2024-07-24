@@ -32,6 +32,9 @@ test_js_files = [
   "truck",
   "vehicle",
   "typedarray_length",
+  "merge_file_1",
+  "merge_file_2",
+  "merge_file_3",
 ]
 
 foreach(file, test_js_files) {
@@ -56,7 +59,7 @@ host_unittest_action("PGOProfilerTest") {
 
   sources = [
     # test file
-    #"pgo_profiler_test.cpp",
+    "pgo_profiler_test.cpp",
   ]
 
   configs = [

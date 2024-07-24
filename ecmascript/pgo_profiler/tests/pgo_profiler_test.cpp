@@ -23,6 +23,7 @@
 
 #include "ecmascript/base/file_header.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/js_symbol.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
@@ -775,7 +776,7 @@ HWTEST_F_L0(PGOProfilerTest, UseClassTypeTest)
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
-        ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        ASSERT_TRUE(!decoder.Match(pf_.get(), targetRecordName, methodId));
         auto callback = [methodName](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
             if (type->IsScalarOpType()) {
@@ -814,7 +815,7 @@ HWTEST_F_L0(PGOProfilerTest, DefineClassTypeTest)
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
-        ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        ASSERT_TRUE(!decoder.Match(pf_.get(), targetRecordName, methodId));
         auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
             if (type->IsScalarOpType()) {
@@ -870,7 +871,7 @@ HWTEST_F_L0(PGOProfilerTest, OpTypeTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         if (std::string(methodName) != "sun" && std::string(methodName) != "sun1") {
             decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
-            ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+            ASSERT_TRUE(!decoder.Match(pf_.get(), targetRecordName, methodId));
         }
         auto callback = [methodName, types, &index](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
@@ -916,7 +917,7 @@ HWTEST_F_L0(PGOProfilerTest, ArrayProfileTest)
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
-        ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        ASSERT_TRUE(!decoder.Match(pf_.get(), targetRecordName, methodId));
         auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsScalarOpType()) {
                 auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
@@ -983,7 +984,7 @@ HWTEST_F_L0(PGOProfilerTest, ObjectLiteralProfileTest)
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
-        ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        ASSERT_TRUE(!decoder.Match(pf_.get(), targetRecordName, methodId));
         auto callback = [methodName, &decoder, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsScalarOpType()) {
                 auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
@@ -1031,7 +1032,7 @@ HWTEST_F_L0(PGOProfilerTest, ArraySizeProfileTest)
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
-        ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        ASSERT_TRUE(!decoder.Match(pf_.get(), targetRecordName, methodId));
         auto callback = [methodName, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsDefineOpType()) {
                 auto defineOptype = reinterpret_cast<const PGODefineOpType *>(type);
@@ -1068,7 +1069,7 @@ HWTEST_F_L0(PGOProfilerTest, StringEqualProfileTest)
         auto methodId = methodLiteral->GetMethodId();
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
-        ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+        ASSERT_TRUE(!decoder.Match(pf_.get(), targetRecordName, methodId));
         auto callback = [methodName, jsPandaFile = pf_](uint32_t offset, const PGOType *type) {
             if (type->IsScalarOpType()) {
                 auto sampleType = *reinterpret_cast<const PGOSampleType *>(type);
@@ -1107,7 +1108,7 @@ HWTEST_F_L0(PGOProfilerTest, BuiltinsTest)
         auto methodName = methodLiteral->GetMethodName(pf_.get(), methodId);
         if (std::string(methodName) != "ArrayList") {
             decoder.MatchAndMarkMethod(pf_.get(), targetRecordName, methodName, methodId);
-            ASSERT_TRUE(decoder.Match(pf_.get(), targetRecordName, methodId));
+            ASSERT_TRUE(!decoder.Match(pf_.get(), targetRecordName, methodId));
         }
         auto callback = [methodName](uint32_t offset, const PGOType *type) {
             ASSERT_NE(offset, 0);
@@ -1206,13 +1207,16 @@ HWTEST_F_L0(PGOProfilerTest, RuntimeMerge)
 HWTEST_F_L0(PGOProfilerTest, ProfdumpMerge)
 {
     mkdir("ark-profiler20/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    ExecuteAndLoadJSPandaFile("ark-profiler20/truck.ap", "truck");
-    ExecuteAndLoadJSPandaFile("ark-profiler20/call_test.ap", "call_test");
+
+    ExecuteAndLoadJSPandaFile("ark-profiler20/merge_file_1.ap", "merge_file_1");
+    ExecuteAndLoadJSPandaFile("ark-profiler20/merge_file_2.ap", "merge_file_2");
+    ExecuteAndLoadJSPandaFile("ark-profiler20/merge_file_3.ap", "merge_file_3");
 
     // Loader
     PGOProfilerDecoder loader("ark-profiler20/merged.ap", DECODER_THRESHOLD);
-    ASSERT_TRUE(PGOProfilerManager::MergeApFiles("ark-profiler20/truck.ap:ark-profiler20/call_test.ap",
-                                                 "ark-profiler20/merged.ap", 1, ApGenMode::OVERWRITE));
+    ASSERT_TRUE(PGOProfilerManager::MergeApFiles(
+        "ark-profiler20/merge_file_1.ap:ark-profiler20/merge_file_2.ap:ark-profiler20/merge_file_3.ap",
+        "ark-profiler20/merged.ap", 1, ApGenMode::OVERWRITE));
 
     CString expectRecordName = "sample_test";
 #if defined(SUPPORT_ENABLE_ASM_INTERP)
@@ -1224,8 +1228,9 @@ HWTEST_F_L0(PGOProfilerTest, ProfdumpMerge)
     uint32_t checksum = pf_->GetChecksum();
     ASSERT_TRUE(!loader.LoadAndVerify(checksum));
 #endif
-    unlink("ark-profiler20/truck.ap");
-    unlink("ark-profiler20/call_test.ap");
+    unlink("ark-profiler20/merge_file_1.ap");
+    unlink("ark-profiler20/merge_file_2.ap");
+    unlink("ark-profiler20/merge_file_3.ap");
     unlink("ark-profiler20/merged.ap");
     rmdir("ark-profiler20/");
 }
@@ -1281,5 +1286,30 @@ HWTEST_F_L0(PGOProfilerTest, TypedArrayOnHeap)
     }
     unlink("ark-profiler24/modules.ap");
     rmdir("ark-profiler24/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, ProfileTypeConstructor)
+{
+    mkdir("ark-profiler25/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "typedarray_length";
+    ExecuteAndLoadJSPandaFile("ark-profiler25/", targetRecordName);
+    ASSERT_NE(pf_, nullptr);
+    ApEntityId inValidId = 555;
+    ApEntityId validId = 64;
+    // Loader
+    PGOProfilerDecoder decoder("ark-profiler25/modules.ap", 1);
+    ASSERT_TRUE(decoder.LoadFull());
+
+    ProfileType recordType;
+    bool isValid = true;
+    auto invalidType = ProfileTypeRef(inValidId);
+    recordType = ProfileType(decoder.GetRecordDetailInfos(), invalidType, &isValid);
+    ASSERT_TRUE(!isValid);
+
+    auto validType = ProfileTypeRef(validId);
+    recordType = ProfileType(decoder.GetRecordDetailInfos(), validType, &isValid);
+    ASSERT_TRUE(isValid);
+    unlink("ark-profiler25/modules.ap");
+    rmdir("ark-profiler25/");
 }
 }  // namespace panda::test
