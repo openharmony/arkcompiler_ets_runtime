@@ -33,6 +33,11 @@ using JSTaggedType = uint64_t;
 using JsDebuggerManager = tooling::JsDebuggerManager;
 class SamplesRecord;
 
+struct TaskInfo {
+    const EcmaVM *vm_ { nullptr };
+    void *taskHandle_ { nullptr };
+};
+
 class GcStateScope {
 public:
     inline explicit GcStateScope(JSThread *thread)
@@ -108,7 +113,7 @@ public:
     explicit CpuProfiler(const EcmaVM *vm, const int interval = CPUPROFILER_DEFAULT_INTERVAL);
     virtual ~CpuProfiler();
 
-    static CMap<pthread_t, const EcmaVM *> profilerMap_;
+    static CMap<pthread_t, struct TaskInfo> profilerMap_;
     static EcmaVM *GetVmbyTid(pthread_t tid);
 private:
     static Mutex synchronizationMutex_;

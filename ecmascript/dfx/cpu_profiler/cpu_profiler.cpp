@@ -26,9 +26,13 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
 
+#if defined(ENABLE_FFRT_INTERFACES)
+#include "c/executor_task.h"
+#endif
+
 namespace panda::ecmascript {
 Mutex CpuProfiler::synchronizationMutex_;
-CMap<pthread_t, const EcmaVM *> CpuProfiler::profilerMap_ = CMap<pthread_t, const EcmaVM *>();
+CMap<pthread_t, struct TaskInfo> CpuProfiler::profilerMap_ = CMap<pthread_t, struct TaskInfo>();
 CpuProfiler::CpuProfiler(const EcmaVM *vm, const int interval) : vm_(vm), interval_(interval)
 {
     enableVMTag_ = const_cast<EcmaVM *>(vm)->GetJSOptions().EnableCpuProfilerVMTag();
@@ -73,10 +77,20 @@ bool CpuProfiler::StartCpuProfilerForInfo()
     if (!RegisterGetStackSignal()) {
         return false;
     }
-    tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
+    // when the ffrt is enabled for the thread, the tid_ will be task id
+    tid_ = static_cast<pthread_t>(JSThread::GetCurrentThreadId());
+    void *taskHandle = nullptr;
+    // when the ffrt is enabled for the thread,
+    // we record the task handle, which can be used to obtain the running thread id in the task
+#if defined(ENABLE_FFRT_INTERFACES)
+    taskHandle = ffrt_get_cur_task();
+    TaskInfo taskInfo { vm_, taskHandle };
+#else
+    TaskInfo taskInfo { vm_, nullptr };
+#endif // defined(ENABLE_FFRT_INTERFACES)
     {
         LockHolder lock(synchronizationMutex_);
-        profilerMap_[tid_] = vm_;
+        profilerMap_[tid_] = taskInfo;
     }
 
     JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
@@ -89,7 +103,7 @@ bool CpuProfiler::StartCpuProfilerForInfo()
     generator_->SetIsStart(true);
     uint64_t startTime = SamplingProcessor::GetMicrosecondsTimeStamp();
     generator_->SetThreadStartTime(startTime);
-    params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
+    params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self(), taskHandle);
     if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
         LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForInfo, pthread_create failed, errno = " << errno;
         return false;
@@ -121,10 +135,20 @@ bool CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     if (!RegisterGetStackSignal()) {
         return false;
     }
-    tid_ = static_cast<pthread_t>(syscall(SYS_gettid));
+    // when the ffrt is enabled for the thread, the tid_ will be task id
+    tid_ = static_cast<pthread_t>(JSThread::GetCurrentThreadId());
+    void *taskHandle = nullptr;
+    // when the ffrt is enabled for the thread,
+    // we record the task handle, which can be used to obtain the running thread id in the task
+#if defined(ENABLE_FFRT_INTERFACES)
+    taskHandle = ffrt_get_cur_task();
+    TaskInfo taskInfo { vm_, taskHandle };
+#else
+    TaskInfo taskInfo { vm_, nullptr };
+#endif // defined(ENABLE_FFRT_INTERFACES)
     {
         LockHolder lock(synchronizationMutex_);
-        profilerMap_[tid_] = vm_;
+        profilerMap_[tid_] = taskInfo;
     }
 
     JSPandaFileManager *pandaFileManager = JSPandaFileManager::GetInstance();
@@ -137,7 +161,7 @@ bool CpuProfiler::StartCpuProfilerForFile(const std::string &fileName)
     generator_->SetIsStart(true);
     uint64_t startTime = SamplingProcessor::GetMicrosecondsTimeStamp();
     generator_->SetThreadStartTime(startTime);
-    params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self());
+    params_ = new RunParams(generator_, static_cast<uint32_t>(interval_), pthread_self(), taskHandle);
     if (pthread_create(&tid_, nullptr, SamplingProcessor::Run, params_) != 0) {
         LOG_ECMA(ERROR) << "CpuProfiler::StartCpuProfilerForFile, pthread_create failed, errno = " << errno;
         return false;
@@ -350,8 +374,8 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
     JSThread *thread = nullptr;
     {
         LockHolder lock(synchronizationMutex_);
-        pthread_t tid = static_cast<pthread_t>(syscall(SYS_gettid));
-        const EcmaVM *vm = profilerMap_[tid];
+        pthread_t tid = static_cast<pthread_t>(JSThread::GetCurrentThreadId());
+        const EcmaVM *vm = profilerMap_[tid].vm_;
         if (vm == nullptr) {
             LOG_ECMA(ERROR) << "CpuProfiler GetStackSignalHandler vm is nullptr";
             return;
@@ -530,6 +554,6 @@ bool CpuProfiler::GetOutToFile()
 EcmaVM* CpuProfiler::GetVmbyTid(pthread_t tid)
 {
     LockHolder lock(synchronizationMutex_);
-    return const_cast<EcmaVM *>(profilerMap_[tid]);
+    return const_cast<EcmaVM *>(profilerMap_[tid].vm_);
 }
 } // namespace panda::ecmascript

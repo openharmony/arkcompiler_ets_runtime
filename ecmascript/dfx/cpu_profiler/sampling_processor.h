@@ -42,9 +42,10 @@ struct RunParams {
     SamplesRecord *generator_;
     uint32_t interval_;
     pthread_t tid_;
+    void *taskHandle_;
 
-    RunParams(SamplesRecord *generator, uint32_t interval, pthread_t tid)
-        :generator_(generator), interval_(interval), tid_(tid) {};
+    RunParams(SamplesRecord *generator, uint32_t interval, pthread_t tid, void *taskHandle)
+        :generator_(generator), interval_(interval), tid_(tid), taskHandle_(taskHandle) {};
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_DFX_CPU_PROFILER_SAMPLING_PROCESSOR_H
