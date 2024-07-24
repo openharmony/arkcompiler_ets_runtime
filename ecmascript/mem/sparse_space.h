@@ -223,6 +223,17 @@ public:
         mergeSize_ = 0;
     }
 
+    void IncreaseCommittedOverSizeLimit(size_t size)
+    {
+        committedOverSizeLimit_ += size;
+    }
+
+    void ResetCommittedOverSizeLimit()
+    {
+        DecreaseOutOfMemoryOvershootSize(committedOverSizeLimit_);
+        committedOverSizeLimit_ = 0;
+    }
+
     template<class Callback>
     void EnumerateCollectRegionSet(const Callback &cb) const
     {
@@ -249,6 +260,7 @@ private:
     CVector<Region *> collectRegionSet_;
     Mutex lock_;
     size_t mergeSize_ {0};
+    size_t committedOverSizeLimit_ {0};
 };
 
 class NonMovableSpace : public SparseSpace {

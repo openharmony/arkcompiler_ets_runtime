@@ -183,6 +183,12 @@ public:
         outOfMemoryOvershootSize_ += size;
     }
 
+    void DecreaseOutOfMemoryOvershootSize(size_t size)
+    {
+        ASSERT(outOfMemoryOvershootSize_ >= size);
+        outOfMemoryOvershootSize_ -= size;
+    }
+
     MemSpaceType GetSpaceType() const
     {
         return spaceType_;
