@@ -221,7 +221,7 @@ bool StringBuilderOptimizer::HasConcatOrPhiUse(GateRef gate)
             continue;
         }
         auto op = acc_.GetOpCode(use);
-        if (op == OpCode::STRING_ADD || op == OpCode::VALUE_SELECTOR) {
+        if ((op == OpCode::STRING_ADD && HasConcatOrPhiUse(use)) || op == OpCode::VALUE_SELECTOR) {
             return true;
         }
     }

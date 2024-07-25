@@ -1322,7 +1322,7 @@ void NewObjectStubBuilder::AssignRestArg(Variable *result, Label *exit,
     LoopBegin(&setArgumentsBegin);
     {
         GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
-        GateRef receiver = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
+        GateRef receiver = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(JSTaggedValue::TaggedTypeSize()), idx));
         SetValueToTaggedArray(VariableType::JS_ANY(), glue_, elements, *i, receiver);
         i = Int32Add(*i, Int32(1));
         BRANCH(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
