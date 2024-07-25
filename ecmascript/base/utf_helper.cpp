@@ -215,7 +215,7 @@ Utf8Char ConvertUtf16ToUtf8(uint16_t d0, uint16_t d1, bool modify, bool isWriteB
     return {UtfLength::FOUR, {ch0, ch1, ch2, ch3}};
 }
 
-size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify)
+size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify, bool isGetBufferSize)
 {
     size_t res = 1;  // zero byte
     // when utf16 data length is only 1 and code in 0xd800-0xdfff,
@@ -228,7 +228,9 @@ size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify)
 
     for (uint32_t i = 0; i < length; ++i) {
         if (utf16[i] == 0) {  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-            if (modify) {
+            if (isGetBufferSize) {
+                res += UtfLength::ONE;
+            } else if (modify) {
                 res += UtfLength::TWO;  // special case for U+0000 => C0 80
             }
         } else if (utf16[i] <= UTF8_1B_MAX) {  // NOLINT(cppcoreguidelines-pro-bounds-pointer-arithmetic)

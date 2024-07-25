@@ -862,7 +862,7 @@ public:
     std::string ToString(const EcmaVM *vm);
     std::string DebuggerToString(const EcmaVM *vm);
     uint32_t Length(const EcmaVM *vm);
-    int32_t Utf8Length(const EcmaVM *vm);
+    int32_t Utf8Length(const EcmaVM *vm, bool isGetBufferSize = false);
     int WriteUtf8(const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer = false);
     int WriteUtf16(const EcmaVM *vm, char16_t *buffer, int length);
     int WriteLatin1(const EcmaVM *vm, char *buffer, int length);

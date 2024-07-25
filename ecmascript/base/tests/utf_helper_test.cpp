@@ -311,6 +311,14 @@ HWTEST_F_L0(UtfHelperTest, Utf16ToUtf8Size_001)
     length = Utf16ToUtf8Size(utf16ValuePtr3, 1, true);
     EXPECT_EQ(length - 1, 2U);
 
+    // if isGetBufferSize is true, special case for U+0000 => 00
+    uint16_t utf16Value12[1] = {0x00};
+    const uint16_t *utf16ValuePtr12 = utf16Value12;
+    length = Utf16ToUtf8Size(utf16ValuePtr12, 1, false, true);
+    EXPECT_EQ(length - 1, 1U);
+    length = Utf16ToUtf8Size(utf16ValuePtr12, 1, true, true);
+    EXPECT_EQ(length - 1, 1U);
+
     // code point lie in [0x00, 0x7F], it needs to be represented by one UTF8 code.
     uint16_t utf16Value4[1] = {0x00};
     uint16_t utf16Value5[1] = {0x7F};

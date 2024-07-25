@@ -2025,12 +2025,12 @@ uint32_t StringRef::Length([[maybe_unused]] const EcmaVM *vm)
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetLength();
 }
 
-int32_t StringRef::Utf8Length(const EcmaVM *vm)
+int32_t StringRef::Utf8Length(const EcmaVM *vm, bool isGetBufferSize)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<EcmaString> strHandle(vm->GetJSThread(), EcmaString::Cast(JSNApiHelper::ToJSTaggedValue(this)));
-    return EcmaStringAccessor(EcmaStringAccessor::Flatten(vm, strHandle)).GetUtf8Length();
+    return EcmaStringAccessor(EcmaStringAccessor::Flatten(vm, strHandle)).GetUtf8Length(isGetBufferSize);
 }
 
 int StringRef::WriteUtf8([[maybe_unused]] const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer)

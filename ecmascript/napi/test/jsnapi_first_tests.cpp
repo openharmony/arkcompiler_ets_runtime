@@ -358,7 +358,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_003)
 
     // isWriteBuffer == false, \u0000 ==> C080
     Local<StringRef> testString1 = StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
-    EXPECT_EQ(testString1->Utf8Length(vm_), 5);
+    EXPECT_EQ(testString1->Utf8Length(vm_, false), 5);
     char buffer1[4];
     testString1->WriteUtf8(vm_, buffer1, 4, false);
     EXPECT_EQ(buffer1[0], 'a');
@@ -368,7 +368,7 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_003)
 
     // isWriteBuffer == true, \u0000 ==> 0x00U
     Local<StringRef> testString2 = StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
-    EXPECT_EQ(testString2->Utf8Length(vm_), 5);
+    EXPECT_EQ(testString2->Utf8Length(vm_, true), 4);
     char buffer2[4];
     testString2->WriteUtf8(vm_, buffer2, 4, true);
     EXPECT_EQ(buffer2[0], 'a');
