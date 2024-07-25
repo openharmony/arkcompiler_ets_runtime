@@ -26,6 +26,7 @@ bar
 false
 1
 [trace] Check Type: InconsistentHClass6
+[trace] Check Type: InconsistentHClass6
 1
 [trace] Opcode: LOAD_PROPERTY Count:1
 true
