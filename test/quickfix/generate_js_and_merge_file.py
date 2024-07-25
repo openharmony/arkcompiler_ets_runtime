@@ -45,7 +45,7 @@ replace_config5 = [
     {"id": "REPLACE_FUNC_FOO2", "start": 1, "end": 34999, "isFunc": True, "msg": "patch"},
 ]
 
-aot_multi_constantpool_test_path = "ets_runtime/test/aottest/aot_multi_constantpool_test/"
+AOT_MULTI_CONSTANTPOOL_TEST_PATH = "ets_runtime/test/aottest/aot_multi_constantpool_test/"
 
 file_list = [
     {
@@ -117,27 +117,27 @@ file_list = [
         "replace_config": replace_config2,
     },
     {
-        "file_name": aot_multi_constantpool_test_path
+        "file_name": AOT_MULTI_CONSTANTPOOL_TEST_PATH
             + "multi_constantpool_func/multi_constantpool_func.ts",
         "replace_config": replace_config1,
     },
     {
-        "file_name": aot_multi_constantpool_test_path
+        "file_name": AOT_MULTI_CONSTANTPOOL_TEST_PATH
             + "multi_constantpool_constructor/multi_constantpool_constructor.ts",
         "replace_config": replace_config2,
     },
     {
-        "file_name": aot_multi_constantpool_test_path
+        "file_name": AOT_MULTI_CONSTANTPOOL_TEST_PATH
             + "multi_constantpool_class/multi_constantpool_class.ts",
         "replace_config": replace_config2,
     },
     {
-        "file_name": aot_multi_constantpool_test_path
+        "file_name": AOT_MULTI_CONSTANTPOOL_TEST_PATH
             + "multi_constantpool_funccall/multi_constantpool_funccall.ts",
         "replace_config": replace_config1,
     },
     {
-        "file_name": aot_multi_constantpool_test_path
+        "file_name": AOT_MULTI_CONSTANTPOOL_TEST_PATH
             + "multi_constantpool_closure/multi_constantpool_closure.ts",
         "replace_config": replace_config3,
     },
@@ -152,6 +152,7 @@ def generate_var(var_begin, var_end):
             str_var_list.append("\n")
     return ''.join(str_var_list)
 
+
 def generate_funcs(var_begin, var_end, msg):
     str_func_list = []
     for i in range(var_begin, var_end + 1):
@@ -160,6 +161,7 @@ def generate_funcs(var_begin, var_end, msg):
         str_func_list.append('var a{0} = "{1}";\n\tprint("{2} foo{3}")\n'.format(i, i, msg, i))
         str_func_list.append('}\n')
     return ''.join(str_func_list)
+
 
 def read_file_content(input_file):
     input_fd = os.open(input_file, os.O_RDONLY, 0o755)
