@@ -89,6 +89,7 @@ MemMap PUBLIC_API PageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignme
 #endif
 void PUBLIC_API PageUnmap(MemMap it);
 MemMap PUBLIC_API MachineCodePageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0);
+void PUBLIC_API *PageMapExecFortSpace(void *addr, size_t size, int prot);
 void PUBLIC_API MachineCodePageUnmap(MemMap it);
 void PageRelease(void *mem, size_t size);
 void PUBLIC_API PagePreRead(void *mem, size_t size);
