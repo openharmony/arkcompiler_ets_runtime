@@ -1780,8 +1780,9 @@ GateRef NewObjectStubBuilder::NewThisObjectChecked(GateRef glue, GateRef ctor)
     return ret;
 }
 
+// The caller should ensure that the IC slot for LoadTrackInfo is valid (slotId is not 0xff or slotValue is not Hole).
 GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
-    GateRef profileTypeInfo, GateRef slotId, GateRef arrayLiteral, ProfileOperation callback)
+    GateRef profileTypeInfo, GateRef slotId, GateRef slotValue, GateRef arrayLiteral, ProfileOperation callback)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1791,7 +1792,6 @@ GateRef NewObjectStubBuilder::LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceI
 
     Label uninitialized(env);
     Label fastpath(env);
-    GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
     BRANCH(TaggedIsHeapObject(slotValue), &fastpath, &uninitialized);
     Bind(&fastpath);
     {
@@ -1929,10 +1929,15 @@ GateRef NewObjectStubBuilder::CreateEmptyArray(GateRef glue, GateRef jsFunc, Tra
     Label slowpath(env);
     Label mayFastpath(env);
     Label createArray(env);
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &mayFastpath);
+    Label profileNotUndefined(env);
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &profileNotUndefined);
+    Bind(&profileNotUndefined);
+    GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+    BRANCH(TaggedIsHole(slotValue), &slowpath, &mayFastpath);
     Bind(&mayFastpath);
     {
-        trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, Circuit::NullGate(), callback);
+        trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo,
+            slotId, slotValue, Circuit::NullGate(), callback);
         hclass = Load(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
         trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
@@ -1969,10 +1974,14 @@ GateRef NewObjectStubBuilder::CreateArrayWithBuffer(GateRef glue, GateRef index,
     Label slowpath(env);
     Label mayFastpath(env);
     Label createArray(env);
-    BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &mayFastpath);
+    Label profileNotUndefined(env);
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &slowpath, &profileNotUndefined);
+    Bind(&profileNotUndefined);
+    GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+    BRANCH(TaggedIsHole(slotValue), &slowpath, &mayFastpath);
     Bind(&mayFastpath);
     {
-        trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, obj, callback);
+        trackInfo = LoadTrackInfo(glue, jsFunc, traceIdInfo, profileTypeInfo, slotId, slotValue, obj, callback);
         hclass = Load(VariableType::JS_ANY(), *trackInfo, IntPtr(TrackInfo::CACHED_HCLASS_OFFSET));
         trackInfo = env->GetBuilder()->CreateWeakRef(*trackInfo);
         Jump(&createArray);
