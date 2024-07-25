@@ -21,9 +21,9 @@ namespace panda::ecmascript::base {
  */
 CString PathHelper::NormalizePath(const CString &fileName)
 {
-    if (fileName.find(DOUBLE_SLASH_TAG) == CString::npos &&
+    if (fileName.empty() || (fileName.find(DOUBLE_SLASH_TAG) == CString::npos &&
         fileName.find(CURRENT_DIREATORY_TAG) == CString::npos &&
-        fileName[fileName.size() - 1] != SLASH_TAG) {
+        fileName[fileName.size() - 1] != SLASH_TAG)) {
         return fileName;
     }
     CString res = "";
