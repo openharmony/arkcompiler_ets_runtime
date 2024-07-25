@@ -295,6 +295,9 @@ public:
     ~MachineCodeSpace() override;
     NO_COPY_SEMANTIC(MachineCodeSpace);
     NO_MOVE_SEMANTIC(MachineCodeSpace);  // Note: Expand() left for define
+    uintptr_t GetMachineCodeObject(uintptr_t pc);
+    size_t CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &machineCode, uintptr_t pc);
+
 #ifdef ENABLE_JITFORT
     void FreeRegion(Region *current, bool isMain = true) override;
     uintptr_t Allocate(size_t size, MachineCodeDesc &desc, bool allowGC = true);

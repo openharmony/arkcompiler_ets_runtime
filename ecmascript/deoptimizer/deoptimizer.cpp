@@ -535,6 +535,25 @@ JSTaggedType Deoptimizier::ConstructAsmInterpretFrame()
     return reinterpret_cast<JSTaggedType>(frameWriter.GetTop());
 }
 
+void Deoptimizier::ResetJitHotness(JSFunction *jsFunc) const
+{
+    if (jsFunc->GetMachineCode().IsMachineCodeObject()) {
+        JSTaggedValue profileTypeInfoVal = jsFunc->GetProfileTypeInfo();
+        if (!profileTypeInfoVal.IsUndefined()) {
+            ProfileTypeInfo *profileTypeInfo = ProfileTypeInfo::Cast(profileTypeInfoVal.GetTaggedObject());
+            profileTypeInfo->SetJitHotnessCnt(0);
+            constexpr uint16_t thresholdStep = 4;
+            constexpr uint16_t thresholdLimit = ProfileTypeInfo::JIT_DISABLE_FLAG / thresholdStep;
+            uint16_t threshold = profileTypeInfo->GetJitHotnessThreshold();
+            threshold = threshold >= thresholdLimit ? ProfileTypeInfo::JIT_DISABLE_FLAG : threshold * thresholdStep;
+            profileTypeInfo->SetJitHotnessThreshold(threshold);
+            ProfileTypeInfoCell::Cast(jsFunc->GetRawProfileTypeInfo())->SetMachineCode(thread_, JSTaggedValue::Hole());
+            Method *method = Method::Cast(jsFunc->GetMethod().GetTaggedObject());
+            LOG_JIT(DEBUG) << "reset jit hotness for func: " << method->GetMethodName() << ", threshold:" << threshold;
+        }
+    }
+}
+
 void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *method)
 {
     if (func->GetMachineCode().IsMachineCodeObject()) {
@@ -548,6 +567,7 @@ void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *me
         func->SetCodeEntry(entry);
         method->ClearAOTStatusWhenDeopt(entry);
         func->ClearCompiledCodeFlags();
+        ResetJitHotness(func);
     }  // Do not change the func code entry if the method is not aot or deopt has happened already
 }
 

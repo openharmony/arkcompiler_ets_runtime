@@ -16,6 +16,7 @@
 #include "ecmascript/mem/space-inl.h"
 
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/region-inl.h"
@@ -105,6 +106,25 @@ HugeMachineCodeSpace::HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *heap
     : HugeObjectSpace(heap, heapRegionAllocator, initialCapacity,
         maximumCapacity, MemSpaceType::HUGE_MACHINE_CODE_SPACE)
 {
+}
+
+uintptr_t HugeMachineCodeSpace::GetMachineCodeObject(uintptr_t pc) const
+{
+    uintptr_t machineCode = 0;
+    EnumerateRegions([&](Region *region) {
+        if (machineCode != 0) {
+            return;
+        }
+        if (!region->InRange(pc)) {
+            return;
+        }
+        uintptr_t curPtr = region->GetBegin();
+        auto obj = MachineCode::Cast(reinterpret_cast<TaggedObject*>(curPtr));
+        if (obj->IsInText(pc)) {
+            machineCode = curPtr;
+        }
+    });
+    return machineCode;
 }
 
 #ifdef ENABLE_JITFORT

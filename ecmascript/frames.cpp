@@ -117,40 +117,15 @@ JSTaggedValue FrameIterator::GetFunction() const
 
 AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr) const
 {
-    // get CallSiteInfo with jsfunction for jit compiled function
     FrameType type = GetFrameType();
     if (type == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME ||
-        type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
-        auto frame = GetFrame<OptimizedJSFunctionFrame>();
-        JSTaggedValue func = frame->GetFunction();
-        if (!func.IsHeapObject()) {
-            return {};
-        }
-        // cast to jsfunction directly. JSFunction::Cast may fail,
-        // as jsfunction class may set forwardingAddress in Evacuate, but forwarding obj not init.
-        JSFunction *jsfunc = reinterpret_cast<JSFunction*>(func.GetTaggedObject());
-        // machineCode non move
-        JSTaggedValue machineCode = jsfunc->GetMachineCode();
-        if (machineCode.IsMachineCodeObject() &&
-            MachineCode::Cast(machineCode.GetTaggedObject())->IsInText(retAddr)) {
-            return MachineCode::Cast(machineCode.GetTaggedObject())->CalCallSiteInfo(retAddr);
-        }
-    } else if (type == FrameType::FASTJIT_FUNCTION_FRAME ||
+        type == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
+        type == FrameType::FASTJIT_FUNCTION_FRAME ||
         type == FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME) {
-        auto frame = GetFrame<FASTJITFunctionFrame>();
-        JSTaggedValue func = frame->GetFunction();
-        if (!func.IsHeapObject()) {
-            return {};
-        }
-        // cast to jsfunction directly. JSFunction::Cast may fail,
-        // as jsfunction class may set forwardingAddress in Evacuate, but forwarding obj not init.
-        JSFunction *jsfunc = reinterpret_cast<JSFunction*>(func.GetTaggedObject());
-        // machineCode non move
-        JSTaggedValue machineCode = jsfunc->GetMachineCode();
-        if (machineCode.IsMachineCodeObject() &&
-            MachineCode::Cast(machineCode.GetTaggedObject())->IsInText(retAddr)) {
-            return MachineCode::Cast(machineCode.GetTaggedObject())->CalCallSiteInfo(retAddr);
-        }
+        auto machineCode = thread_->GetEcmaVM()->GetHeap()->GetMachineCodeObject(retAddr);
+        ASSERT(machineCode != nullptr);
+        const_cast<FrameIterator*>(this)->machineCode_ = reinterpret_cast<JSTaggedType>(machineCode);
+        return reinterpret_cast<MachineCode*>(machineCode_)->CalCallSiteInfo(retAddr);
     }
     return {};
 }
@@ -664,6 +639,11 @@ ARK_INLINE void OptimizedJSFunctionFrame::GCIterate(const FrameIterator &it,
         }
     }
 
+    auto machineCodeSlot = ObjectSlot(ToUintPtr(it.GetMachineCodeSlot()));
+    if (machineCodeSlot.GetTaggedType() != JSTaggedValue::VALUE_UNDEFINED) {
+        visitor(Root::ROOT_FRAME, machineCodeSlot);
+    }
+
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {
 #ifndef NDEBUG
@@ -720,6 +700,11 @@ ARK_INLINE void FASTJITFunctionFrame::GCIterate(const FrameIterator &it,
             uintptr_t end = ToUintPtr(argv + argc);
             rangeVisitor(Root::ROOT_FRAME, ObjectSlot(start), ObjectSlot(end));
         }
+    }
+
+    auto machineCodeSlot = ObjectSlot(ToUintPtr(it.GetMachineCodeSlot()));
+    if (machineCodeSlot.GetTaggedType() != JSTaggedValue::VALUE_UNDEFINED) {
+        visitor(Root::ROOT_FRAME, machineCodeSlot);
     }
 
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);

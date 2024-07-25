@@ -327,17 +327,21 @@ void Jit::ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &jsFunction)
     if (machineCode.IsHole()) {
         return;
     }
+
+    ProfileTypeInfo *profileTypeInfo = ProfileTypeInfo::Cast(profCell->GetValue().GetTaggedObject());
+    if (profileTypeInfo->GetJitHotnessThreshold() == ProfileTypeInfo::JIT_DISABLE_FLAG) {
+        // disable reuse as disable jit in deopt
+        return;
+    }
     if (machineCode.IsUndefined()) {
         LOG_JIT(DEBUG) << "reset fuction jit hotness count";
         // if old gc triggered, jit hotness cnt need to be recounted
-        ProfileTypeInfo::Cast(profCell->GetValue().GetTaggedObject())->SetJitHotnessCnt(0);
+        profileTypeInfo->SetJitHotnessCnt(0);
         profCell->SetMachineCode(thread, JSTaggedValue::Hole());
         return;
     }
     JSHandle<MachineCode> machineCodeHandle(thread, machineCode.GetTaggedObject());
     JSHandle<Method> method(thread, Method::Cast(jsFunction->GetMethod().GetTaggedObject()));
-    LOG_JIT(DEBUG) << "reuse fuction machine code : " << method->GetJSPandaFile()->GetJSPandaFileDesc()
-        << ":" << method->GetRecordNameStr() << "." << CString(method->GetMethodName());
     uintptr_t codeAddr = machineCodeHandle->GetFuncAddr();
     FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes *>(machineCodeHandle->GetFuncEntryDes());
     jsFunction->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);

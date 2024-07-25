@@ -1355,6 +1355,7 @@ public:
     void InstallEdenAllocator();
     void DumpHeapSnapshotBeforeOOM(bool isFullGC = true);
     std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+    MachineCode *GetMachineCodeObject(uintptr_t pc) const;
 
     PUBLIC_API GCListenerId AddGCListener(FinishGCListener listener, void *data);
     PUBLIC_API void RemoveGCListener(GCListenerId listenerId);

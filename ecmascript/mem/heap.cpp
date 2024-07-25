@@ -2349,6 +2349,17 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
     partialGC_->workManager_ = workManager;
 }
 
+MachineCode *Heap::GetMachineCodeObject(uintptr_t pc) const
+{
+    MachineCodeSpace *machineCodeSpace = GetMachineCodeSpace();
+    MachineCode *machineCode = reinterpret_cast<MachineCode*>(machineCodeSpace->GetMachineCodeObject(pc));
+    if (machineCode != nullptr) {
+        return machineCode;
+    }
+    HugeMachineCodeSpace *hugeMachineCodeSpace = GetHugeMachineCodeSpace();
+    return reinterpret_cast<MachineCode*>(hugeMachineCodeSpace->GetMachineCodeObject(pc));
+}
+
 std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCallSiteInfo(uintptr_t retAddr) const
 {
     MachineCodeSpace *machineCodeSpace = GetMachineCodeSpace();

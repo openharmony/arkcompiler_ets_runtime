@@ -306,6 +306,7 @@ class HugeMachineCodeSpace : public HugeObjectSpace {
 public:
     HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                          size_t maximumCapacity);
+    uintptr_t GetMachineCodeObject(uintptr_t pc) const;
 #ifdef ENABLE_JITFORT
     uintptr_t Allocate(size_t objectSize, JSThread *thread, size_t instructionsSize, uintptr_t &instructionsAddr,
         AllocateEventType allocType = AllocateEventType::NORMAL);

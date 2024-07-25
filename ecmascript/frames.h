@@ -2042,6 +2042,11 @@ public:
         return IsOptimizedJSFunctionFrame() || IsFastJitFunctionFrame();
     }
 
+    JSTaggedType *GetMachineCodeSlot() const
+    {
+        return const_cast<JSTaggedType*>(&machineCode_);
+    }
+
 private:
     JSTaggedType *current_ {nullptr};
     const JSThread *thread_ {nullptr};
@@ -2051,6 +2056,9 @@ private:
     uint8_t *stackMapAddr_ {nullptr};
     int fpDeltaPrevFrameSp_ {0};
     kungfu::CalleeRegAndOffsetVec calleeRegInfo_;
+
+    // cache current machine code, it's nonmovable
+    JSTaggedType machineCode_ {JSTaggedValue::VALUE_UNDEFINED};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_FRAMES_H
