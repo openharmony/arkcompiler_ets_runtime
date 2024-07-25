@@ -186,7 +186,7 @@ HWTEST_F_L0(ContainersPlainArrayTest, AddAndHas)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersPlainArray::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsTrue());
+        EXPECT_TRUE(result.IsUndefined());
         EXPECT_EQ(tArray1->GetSize(), static_cast<int>(i + 1));
     }
     EXPECT_EQ(tArray1->GetSize(), static_cast<int>(NODE_NUMBERS));
@@ -225,7 +225,7 @@ HWTEST_F_L0(ContainersPlainArrayTest, AddAndHas)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersPlainArray::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsTrue());
+        EXPECT_TRUE(result.IsUndefined());
     }
     EXPECT_EQ(tArray->GetSize(), static_cast<int>(NODE_NUMBERS));
     // test get
@@ -262,7 +262,7 @@ HWTEST_F_L0(ContainersPlainArrayTest, Iterator)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersPlainArray::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsTrue());
+        EXPECT_TRUE(result.IsUndefined());
         EXPECT_EQ(array->GetSize(), static_cast<int>(i + 1));
     }
     // test iterator
@@ -309,7 +309,7 @@ HWTEST_F_L0(ContainersPlainArrayTest, Iterator)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersPlainArray::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsTrue());
+        EXPECT_TRUE(result.IsUndefined());
         EXPECT_EQ(array->GetSize(), static_cast<int>(NODE_NUMBERS + i + 1));
     }
     EXPECT_EQ(array->GetSize(), static_cast<int>(NODE_NUMBERS * 2));
@@ -330,7 +330,7 @@ HWTEST_F_L0(ContainersPlainArrayTest, GetIndexOfKeyAndGetIndexOfValue)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersPlainArray::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsTrue());
+        EXPECT_TRUE(result.IsUndefined());
         EXPECT_EQ(pArray->GetSize(), static_cast<int>(i + 1));
     }
     // test GetIndexOfKey
@@ -376,7 +376,7 @@ HWTEST_F_L0(ContainersPlainArrayTest, GetIndexOfKeyAndGetIndexOfValue)
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
         JSTaggedValue result = ContainersPlainArray::Add(callInfo);
         TestHelper::TearDownFrame(thread, prev);
-        EXPECT_TRUE(result.IsTrue());
+        EXPECT_TRUE(result.IsUndefined());
         EXPECT_EQ(pArray->GetSize(), static_cast<int>(NODE_NUMBERS + i + 1));
     }
     EXPECT_EQ(pArray->GetSize(), static_cast<int>(NODE_NUMBERS * 2));
@@ -416,7 +416,7 @@ HWTEST_F_L0(ContainersPlainArrayTest, RemoveRangeFrom)
     JSHandle<JSAPIPlainArray> pArray = CreateJSAPIPlainArray();
     for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
         JSTaggedValue result = PlainArrayAdd(pArray, JSTaggedValue(i), JSTaggedValue(i + 1));
-        EXPECT_TRUE(result.IsTrue());
+        EXPECT_TRUE(result.IsUndefined());
         EXPECT_EQ(pArray->GetSize(), static_cast<int>(i + 1));
     }
 

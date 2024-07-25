@@ -473,7 +473,7 @@ JSTaggedValue ContainersLightWeightSet::Clear(EcmaRuntimeCallInfo *argv)
     }
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
     set->Clear(thread);
-    return JSTaggedValue::True();
+    return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue ContainersLightWeightSet::ToString(EcmaRuntimeCallInfo *argv)

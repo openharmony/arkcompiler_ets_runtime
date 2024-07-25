@@ -77,7 +77,7 @@ JSTaggedValue ContainersPlainArray::Add(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSAPIPlainArray::Add(thread, JSHandle<JSAPIPlainArray>::Cast(self), key, value);
-    return JSTaggedValue::True();
+    return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue ContainersPlainArray::Clear(EcmaRuntimeCallInfo *argv)
@@ -98,7 +98,7 @@ JSTaggedValue ContainersPlainArray::Clear(EcmaRuntimeCallInfo *argv)
     }
     JSAPIPlainArray *array = JSAPIPlainArray::Cast(self->GetTaggedObject());
     array->Clear(thread);
-    return JSTaggedValue::True();
+    return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue ContainersPlainArray::Clone(EcmaRuntimeCallInfo *argv)
