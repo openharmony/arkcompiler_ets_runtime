@@ -343,7 +343,7 @@ void MovableMarker::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls)
     auto callbackWithCSet = [this, region](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end,
-                               [&](ObjectSlot slot, [[maybe_unused]] TaggedObject *root) {
+                               [&](ObjectSlot slot, [[maybe_unused]]TaggedObject *root) {
                                    SetLocalToShareRSet(slot, region);
                                })) {
                 return;

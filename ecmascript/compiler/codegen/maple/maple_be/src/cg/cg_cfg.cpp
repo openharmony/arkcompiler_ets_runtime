@@ -616,7 +616,7 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
     return nullptr;
 }
 
-bool CGCFG::InLSDA([[maybe_unused]] LabelIdx label, [[maybe_unused]] const EHFunc *ehFunc)
+bool CGCFG::InLSDA(LabelIdx label [[maybe_unused]], const EHFunc *ehFunc [[maybe_unused]])
 {
     /* the function have no exception handle module */
     if (ehFunc == nullptr) {

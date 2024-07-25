@@ -738,7 +738,7 @@ public:
         // 1. schedule FINISH_ALLOCATE first
         ScheduleGate(gate, region);
         GateRef curGate = acc_.GetDep(gate);
-        [[maybe_unused]] GateRef output = acc_.GetValueIn(gate, 0);
+        [[maybe_unused]]GateRef output = acc_.GetValueIn(gate, 0);
         // 2. schedule all gates from end to start
         while (acc_.GetOpCode(curGate) != OpCode::START_ALLOCATE) {
             [[maybe_unused]] auto& curInfo = linearizer_->GetGateInfo(curGate);

@@ -34,7 +34,7 @@ JitTaskpool *JitTaskpool::GetCurrentTaskpool()
     return taskpool;
 }
 
-uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]] uint32_t threadNum) const
+uint32_t JitTaskpool::TheMostSuitableThreadNum([[maybe_unused]]uint32_t threadNum) const
 {
     return 1;
 }

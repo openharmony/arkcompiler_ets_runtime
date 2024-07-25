@@ -571,10 +571,10 @@ ARK_INLINE void OptimizedFrame::GCIterate(const FrameIterator &it,
     }
 }
 
-ARK_INLINE void BaselineBuiltinFrame::GCIterate([[maybe_unused]] const FrameIterator &it,
-    [[maybe_unused]] const RootVisitor &visitor,
+ARK_INLINE void BaselineBuiltinFrame::GCIterate([[maybe_unused]]const FrameIterator &it,
+    [[maybe_unused]]const RootVisitor &visitor,
     [[maybe_unused]] const RootRangeVisitor &rangeVisitor,
-    [[maybe_unused]] const RootBaseAndDerivedVisitor &derivedVisitor) const
+    [[maybe_unused]]const RootBaseAndDerivedVisitor &derivedVisitor) const
 {
     bool ret = it.IteratorStackMap(visitor, derivedVisitor);
     if (!ret) {

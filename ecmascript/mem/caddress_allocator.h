@@ -42,7 +42,7 @@ public:
     CAddressAllocator() = default;
 
     template<typename U>
-    explicit CAddressAllocator([[maybe_unused]] const CAddressAllocator<U> &other)
+    explicit CAddressAllocator(const CAddressAllocator<U> &other [[maybe_unused]])
     {
     }
 

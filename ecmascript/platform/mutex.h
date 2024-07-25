@@ -34,7 +34,7 @@ namespace panda::ecmascript {
 
 class PUBLIC_API Mutex {
 public:
-    explicit Mutex(bool is_init = true);
+    explicit  Mutex(bool is_init = true);
 
     ~Mutex();
 

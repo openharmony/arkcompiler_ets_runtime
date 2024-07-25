@@ -211,7 +211,7 @@ public:
 
     static void CallContainersArgs3(ExtendedAssembler *assembler);
 
-    static void CallReturnWithArgv([[maybe_unused]] ExtendedAssembler *assembler);
+    static void CallReturnWithArgv([[maybe_unused]]ExtendedAssembler *assembler);
 
 private:
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,

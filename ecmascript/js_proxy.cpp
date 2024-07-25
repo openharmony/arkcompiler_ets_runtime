@@ -1032,7 +1032,7 @@ JSTaggedValue JSProxy::ConstructInternal(EcmaRuntimeCallInfo *info)
 
     JSTaggedType *currentSp = reinterpret_cast<JSTaggedType *>(info);
     InterpretedEntryFrame *currentEntryState = InterpretedEntryFrame::GetFrameFromSp(currentSp);
-    JSTaggedType *prevSp = currentEntryState->base.prev;
+    JSTaggedType *prevSp =  currentEntryState->base.prev;
     thread->SetCurrentSPFrame(prevSp);
 
     EcmaRuntimeCallInfo *runtimeInfo =

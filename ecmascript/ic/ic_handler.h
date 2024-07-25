@@ -60,7 +60,7 @@ public:
     using RepresentationBit = OffsetBit::NextField<Representation, PropertyAttributes::REPRESENTATION_NUM>; // [17, 19)
     using AttrIndexBit = RepresentationBit::NextField<uint32_t, PropertyAttributes::OFFSET_BITFIELD_NUM>;   // [19, 29)
     using IsOnHeapBit = AttrIndexBit::NextFlag;                                                             // [29, 30)
-    using NeedSkipInPGODumpBit = IsOnHeapBit::NextFlag;                                                     // [30, 31)
+    using NeedSkipInPGODumpBit  = IsOnHeapBit::NextFlag;                                                    // [30, 31)
     static_assert(NeedSkipInPGODumpBit::END_BIT <= MAX_BIT_SIZE, "load handler overflow");
 
     // For Store

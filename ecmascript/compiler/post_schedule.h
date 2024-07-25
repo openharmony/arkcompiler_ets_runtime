@@ -83,7 +83,7 @@ private:
 
     bool enableLog_ {false};
     std::string methodName_;
-    [[maybe_unused]] Chunk* chunk_ {nullptr};
+    [[maybe_unused]]Chunk* chunk_ {nullptr};
     Circuit* circuit_ {nullptr};
     CircuitBuilder builder_;
     GateAccessor acc_;

@@ -52,7 +52,7 @@ ProfileType::ProfileType(PGOContext &context, ProfileTypeRef typeRef)
     }
 }
 
-ProfileType &ProfileType::Remap([[maybe_unused]] const PGOContext &context)
+ProfileType &ProfileType::Remap([[maybe_unused]]const PGOContext &context)
 {
     if ((GetAbcId() >= PGOAbcFilePool::RESERVED_COUNT) && (!context.GetAbcIdRemap().empty())) {
         if (GetAbcId() >= context.GetAbcIdRemap().size() + PGOAbcFilePool::RESERVED_COUNT) {
