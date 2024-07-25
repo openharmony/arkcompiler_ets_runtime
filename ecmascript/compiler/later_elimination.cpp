@@ -33,6 +33,7 @@ GateRef LaterElimination::VisitGate(GateRef gate)
 {
     auto opcode = acc_.GetOpCode(gate);
     switch (opcode) {
+        case OpCode::GET_ENV:
         case OpCode::GET_GLOBAL_ENV:
         case OpCode::GET_GLOBAL_ENV_OBJ:
         case OpCode::GET_GLOBAL_ENV_OBJ_HCLASS:
