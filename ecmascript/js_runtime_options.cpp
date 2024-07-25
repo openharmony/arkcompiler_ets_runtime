@@ -191,6 +191,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-jitfort:            Enable jit fort memory space. Default: 'false'\n"
     "--compiler-codesign-disable:          Disable codesign for jit fort. Default: 'true'\n"
     "--compiler-enable-async-copytofort:   Enable jit fort allocation and code copy in Jit thread. Default: 'true'\n"
+    "--compiler-pgo-force-dump:            Enable pgo dump not interrupted by GC. Default: 'true'\n"
     "--async-load-abc:                     Enable asynchronous load abc. Default: 'true'\n"
     "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n\n";
 
@@ -324,6 +325,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-enable-jitfort", required_argument, nullptr, OPTION_ENABLE_JITFORT},
         {"compiler-codesign-disable", required_argument, nullptr, OPTION_CODESIGN_DISABLE},
         {"compiler-enable-async-copytofort", required_argument, nullptr, OPTION_ENABLE_ASYNC_COPYTOFORT},
+        {"compiler-pgo-force-dump", required_argument, nullptr, OPTION_COMPILER_PGO_FORCE_DUMP},
         {"async-load-abc", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC},
         {"async-load-abc-test", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC_TEST},
         {nullptr, 0, nullptr, 0},
@@ -1258,6 +1260,13 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
+            case OPTION_COMPILER_PGO_FORCE_DUMP:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetPgoForceDump(argBool);
+                } else {
+                    return false;
+                }
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
                 return false;
