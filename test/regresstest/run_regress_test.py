@@ -33,6 +33,7 @@ import sys
 from os.path import dirname, join
 from pathlib import Path
 from typing import Tuple, Optional, List
+import xml.etree.cElementTree as XTree
 
 from regress_test_config import RegressTestConfig
 
@@ -105,6 +106,7 @@ def check_args(args):
         args.out_dir = f"{args.out_dir}/"
     args.regress_out_dir = os.path.join(args.out_dir, "regresstest")
     args.out_result = os.path.join(args.regress_out_dir, 'result.txt')
+    args.junit_report = os.path.join(args.regress_out_dir, 'report.xml')
     args.out_log = os.path.join(args.regress_out_dir, 'test.log')
     args.test_case_out_dir = os.path.join(args.regress_out_dir, RegressTestConfig.REGRESS_GIT_REPO)
     return True
@@ -467,11 +469,11 @@ def init_worker(args):
     worker_wrapper_args = args
 
 
-def run_test_case(tuple_args) -> Tuple[Optional[bool], str]:
+def run_test_case(tuple_args) -> Tuple[Optional[bool], str, str]:
     test_file, force_gc_files, uncaught_error_files, timeout = tuple_args
     args = worker_wrapper_args
     if args is None or test_file.endswith(RegressTestConfig.TEST_TOOL_FILE_NAME):
-        return None, ""
+        return None, "", ""
     test_case_file = test_file.replace('abc', 'js').replace(f'{args.out_dir}', '')
     assert_file = os.path.join(args.test_case_out_dir, RegressTestConfig.TEST_TOOL_FILE_NAME)
     test_case = f'{assert_file}:{test_file}'
@@ -495,10 +497,10 @@ def run_test_case(tuple_args) -> Tuple[Optional[bool], str]:
     command = [args.ark_tool, asm_arg1, icu_path, test_case]
     expect_file = test_file.replace('.abc', '.out')
     test_res, result_message = run_test_case_file(command, test_case_file, expect_file, test_uncaught_error, timeout)
-    return test_res, result_message
+    return test_res, result_message, test_case_file
 
 
-def run_test_case_dir(args, test_abc_files, force_gc_files, uncaught_error_files, timeout) -> Tuple[int, int]:
+def run_test_case_dir(args, test_abc_files: List[str], force_gc_files, uncaught_error_files, timeout) -> Tuple[int, int]:
     pass_count = 0
     fail_count = 0
 
@@ -510,22 +512,34 @@ def run_test_case_dir(args, test_abc_files, force_gc_files, uncaught_error_files
         pool.close()
         pool.join()
 
+    root = XTree.Element("testsuite")
+    root.set("name", "Regression")
+
     result_file = open_write_file(args.out_result, False)
-    for test_res, result_message in results:
+    for test_res, result_message, test_file in results:
         if test_res is None:
             continue
+        testcase = XTree.SubElement(root, "testcase")
+        testcase.set("name", f"{test_file}")
         write_result_file(result_message, result_file)
         if test_res:
             pass_count += 1
         else:
             fail_count += 1
+            XTree.SubElement(testcase, "failure").text = f"<![CDATA[{result_message}]]>"
+
+    root.set("tests", f"{pass_count + fail_count}")
+    root.set("failures", f"{fail_count}")
+
+    tree = XTree.ElementTree(root)
+    tree.write(args.junit_report, xml_declaration=True, encoding="UTF-8")
     result_file.close()
     return pass_count, fail_count
 
 
 def run_regress_test_case(args) -> Tuple[int, int]:
     print("\nRunning regresstest........\n")
-    test_cast_list = get_regress_test_files(args.test_case_out_dir, 'abc')
+    test_cast_list: List[str] = get_regress_test_files(args.test_case_out_dir, 'abc')
     force_gc_files = get_regress_force_gc_files()
     uncaught_error_files = get_uncaught_error_files();
     return run_test_case_dir(args, test_cast_list, force_gc_files, uncaught_error_files, args.timeout)
@@ -540,8 +554,8 @@ def get_regress_force_gc_files():
     return skip_force_gc_tests_list
 
 
-def get_regress_test_files(start_dir, suffix):
-    result = []
+def get_regress_test_files(start_dir, suffix) -> List[str]:
+    result: List[str] = []
     for dir_path, dir_names, filenames in os.walk(start_dir):
         for filename in filenames:
             if filename.endswith(suffix):
@@ -558,8 +572,8 @@ def get_uncaught_error_files():
     return uncaught_error_tests_list
 
 
-def write_result_file(msg, result_file):
-    result_file.write(f'{str(msg)}\n')
+def write_result_file(msg: str, result_file):
+    result_file.write(f'{msg}\n')
 
 
 def main(args):
@@ -575,7 +589,7 @@ def main(args):
 
 def print_result(args, pass_count, fail_count, end_time, start_time):
     result_file = open_write_file(args.out_result, True)
-    msg = f'\npass count: {pass_count}'
+    msg: str = f'\npass count: {pass_count}'
     write_result_file(msg, result_file)
     print(msg)
     msg = f'fail count: {fail_count}'
