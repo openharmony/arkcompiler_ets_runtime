@@ -16,7 +16,6 @@
 #include "ecmascript/serializer/value_serializer.h"
 
 #include "ecmascript/base/array_helper.h"
-#include "ecmascript/js_serializer.h"
 #include "ecmascript/shared_mm/shared_mm.h"
 
 namespace panda::ecmascript {

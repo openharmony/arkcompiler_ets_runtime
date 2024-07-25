@@ -16,7 +16,6 @@
 #ifndef ECMASCRIPT_SERIALIZER_BASE_DESERIALIZER_H
 #define ECMASCRIPT_SERIALIZER_BASE_DESERIALIZER_H
 
-#include "ecmascript/js_serializer.h"
 #include "ecmascript/serializer/serialize_data.h"
 
 namespace panda::ecmascript {

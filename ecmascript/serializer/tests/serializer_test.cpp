@@ -25,7 +25,6 @@
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_regexp.h"
-#include "ecmascript/js_serializer.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_typed_array.h"
@@ -830,16 +829,6 @@ public:
         JSHandle<JSTaggedValue> res = deserializer.ReadValue();
         EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize SharedFunction fail";
         EXPECT_TRUE(res->IsJSSharedFunction()) << "[NotJSSharedFunction] Deserialize SharedFunction fail";
-        Destroy();
-    }
-
-    void ConcurrentFunctionTest(std::pair<uint8_t *, size_t> data)
-    {
-        Init();
-        JSDeserializer deserializer(thread, data.first, data.second);
-        JSHandle<JSTaggedValue> res = deserializer.Deserialize();
-        EXPECT_TRUE(!res.IsEmpty()) << "[Empty] Deserialize ConcurrentFunction fail";
-        EXPECT_TRUE(res->IsJSFunction()) << "[NotJSFunction] Deserialize ConcurrentFunction fail";
         Destroy();
     }
 
