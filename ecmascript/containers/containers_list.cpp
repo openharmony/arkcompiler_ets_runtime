@@ -220,7 +220,7 @@ JSTaggedValue ContainersList::Get(EcmaRuntimeCallInfo *argv)
     if (index->IsDouble()) {
         index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
     }
-    return JSAPIList::FastGet(thread, index->GetInt(), jsAPIList);
+    return jsAPIList->Get(index->GetInt());
 }
 
 JSTaggedValue ContainersList::GetIndexOf(EcmaRuntimeCallInfo *argv)
