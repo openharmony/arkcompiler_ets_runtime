@@ -312,7 +312,10 @@ public:
             std::lock_guard<std::mutex> guard(curFunctionMutex);
             auto tid = std::this_thread::get_id();
             auto pair = curFunctionMap.find(tid);
-            return pair->second;
+            if (pair != curFunctionMap.end()) {
+                return pair->second;
+            }
+            return nullptr;
         }
         return curFunction;
     }
