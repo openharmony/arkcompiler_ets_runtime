@@ -20,25 +20,16 @@
 #include "ecmascript/mem/free_object_list.h"
 
 namespace panda::ecmascript {
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeObjectSet<T>::Free(uintptr_t begin, size_t size)
-#else
-void FreeObjectSet::Free(uintptr_t begin, size_t size)
-#endif
 {
-#ifdef ENABLE_JITFORT
     auto freeObject = T::Cast(begin);
-#else
-    auto freeObject = FreeObject::Cast(begin);
-#endif
     ASSERT(freeObject->IsFreeObject());
     freeObject->SetNext(freeObject_);
     freeObject_ = freeObject;
     available_ += size;
 }
 
-#ifdef ENABLE_JITFORT
 template void FreeObjectSet<FreeObject>::Free(uintptr_t, size_t);
 template <>
 void FreeObjectSet<MemDesc>::Free(uintptr_t begin, size_t size)
@@ -53,26 +44,17 @@ void FreeObjectSet<MemDesc>::Free(uintptr_t begin, size_t size)
     freeObject_ = freeObject;
     available_ += size;
 }
-#endif
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeObjectSet<T>::Rebuild()
-#else
-void FreeObjectSet::Rebuild()
-#endif
 {
-#ifdef ENABLE_JITFORT
     freeObject_ = T::Cast(INVALID_OBJPTR);
-#else
-    freeObject_ = INVALID_OBJECT;
-#endif
     available_ = 0;
     isAdded_ = false;
     next_ = nullptr;
     prev_ = nullptr;
 }
-#ifdef ENABLE_JITFORT
+
 template void FreeObjectSet<FreeObject>::Rebuild();
 template <>
 void FreeObjectSet<MemDesc>::Rebuild()
@@ -90,31 +72,17 @@ void FreeObjectSet<MemDesc>::Rebuild()
     next_ = nullptr;
     prev_ = nullptr;
 }
-#endif
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 T *FreeObjectSet<T>::ObtainSmallFreeObject(size_t size)
-#else
-FreeObject *FreeObjectSet::ObtainSmallFreeObject(size_t size)
-#endif
 {
-#ifdef ENABLE_JITFORT
     T *curFreeObject = T::Cast(INVALID_OBJPTR);
     if (freeObject_ != T::Cast(INVALID_OBJPTR)) {
-#else
-    FreeObject *curFreeObject = INVALID_OBJECT;
-    if (freeObject_ != INVALID_OBJECT) {
-#endif
         freeObject_->AsanUnPoisonFreeObject();
         if (freeObject_->Available() >= size) {
             curFreeObject = freeObject_;
             freeObject_ = freeObject_->GetNext();
-#ifdef ENABLE_JITFORT
             curFreeObject->SetNext(T::Cast(INVALID_OBJPTR));
-#else
-            curFreeObject->SetNext(INVALID_OBJECT);
-#endif
             available_ -= curFreeObject->Available();
             // It need to mark unpoison when object being allocated in freelist.
             ASAN_UNPOISON_MEMORY_REGION(curFreeObject, curFreeObject->Available());
@@ -124,25 +92,16 @@ FreeObject *FreeObjectSet::ObtainSmallFreeObject(size_t size)
     }
     return curFreeObject;
 }
-#ifdef ENABLE_JITFORT
+
 template FreeObject *FreeObjectSet<FreeObject>::ObtainSmallFreeObject(size_t);
 template MemDesc *FreeObjectSet<MemDesc>::ObtainSmallFreeObject(size_t);
 
 template <typename T>
 T *FreeObjectSet<T>::ObtainLargeFreeObject(size_t size)
-#else
-FreeObject *FreeObjectSet::ObtainLargeFreeObject(size_t size)
-#endif
 {
-#ifdef ENABLE_JITFORT
     T *prevFreeObject = freeObject_;
     T *curFreeObject = freeObject_;
     while (curFreeObject != T::Cast(INVALID_OBJPTR)) {
-#else
-    FreeObject *prevFreeObject = freeObject_;
-    FreeObject *curFreeObject = freeObject_;
-    while (curFreeObject != INVALID_OBJECT) {
-#endif
         curFreeObject->AsanUnPoisonFreeObject();
         if (curFreeObject->Available() >= size) {
             if (curFreeObject == freeObject_) {
@@ -151,11 +110,7 @@ FreeObject *FreeObjectSet::ObtainLargeFreeObject(size_t size)
                 prevFreeObject->SetNext(curFreeObject->GetNext());
                 prevFreeObject->AsanPoisonFreeObject();
             }
-#ifdef ENABLE_JITFORT
             curFreeObject->SetNext(T::Cast(INVALID_OBJPTR));
-#else
-            curFreeObject->SetNext(INVALID_OBJECT);
-#endif
             available_ -= curFreeObject->Available();
             ASAN_UNPOISON_MEMORY_REGION(curFreeObject, curFreeObject->Available());
             return curFreeObject;
@@ -166,21 +121,14 @@ FreeObject *FreeObjectSet::ObtainLargeFreeObject(size_t size)
         prevFreeObject = curFreeObject;
         curFreeObject = curFreeObject->GetNext();
     }
-#ifdef ENABLE_JITFORT
     return T::Cast(INVALID_OBJPTR);
-#else
-    return INVALID_OBJECT;
-#endif
 }
-#ifdef ENABLE_JITFORT
+
 template FreeObject *FreeObjectSet<FreeObject>::ObtainLargeFreeObject(size_t);
 template MemDesc *FreeObjectSet<MemDesc>::ObtainLargeFreeObject(size_t);
 
 template <typename T>
 T *FreeObjectSet<T>::LookupSmallFreeObject(size_t size)
-#else
-FreeObject *FreeObjectSet::LookupSmallFreeObject(size_t size)
-#endif
 {
     if (freeObject_ != INVALID_OBJECT) {
         freeObject_->AsanUnPoisonFreeObject();
@@ -192,40 +140,29 @@ FreeObject *FreeObjectSet::LookupSmallFreeObject(size_t size)
     }
     return INVALID_OBJECT;
 }
-#ifdef ENABLE_JITFORT
+
 template FreeObject *FreeObjectSet<FreeObject>::LookupSmallFreeObject(size_t);
 
 template <typename T>
 T *FreeObjectSet<T>::LookupLargeFreeObject(size_t size)
-#else
-FreeObject *FreeObjectSet::LookupLargeFreeObject(size_t size)
-#endif
 {
     if (available_ < size) {
         return INVALID_OBJECT;
     }
-#ifdef ENABLE_JITFORT
     T *curFreeObject = freeObject_;
-#else
-    FreeObject *curFreeObject = freeObject_;
-#endif
     while (curFreeObject != INVALID_OBJECT) {
         curFreeObject->AsanUnPoisonFreeObject();
         if (curFreeObject->Available() >= size) {
             curFreeObject->AsanPoisonFreeObject();
             return curFreeObject;
         }
-#ifdef ENABLE_JITFORT
         T *preFreeObject = curFreeObject;
-#else
-        FreeObject *preFreeObject = curFreeObject;
-#endif
         curFreeObject = curFreeObject->GetNext();
         preFreeObject->AsanPoisonFreeObject();
     }
     return INVALID_OBJECT;
 }
-#ifdef ENABLE_JITFORT
+
 template FreeObject *FreeObjectSet<FreeObject>::LookupLargeFreeObject(size_t);
-#endif
+
 }  // namespace panda::ecmascript

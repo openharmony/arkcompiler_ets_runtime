@@ -71,52 +71,28 @@ uintptr_t BumpPointerAllocator::Allocate(size_t size)
     return result;
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 FreeListAllocator<T>::FreeListAllocator(BaseHeap *heap) : heap_(heap)
-#else
-FreeListAllocator::FreeListAllocator(BaseHeap *heap) : heap_(heap)
-#endif
 {
-#ifdef ENABLE_JITFORT
     freeList_ = std::make_unique<FreeObjectList<T>>();
-#else
-    freeList_ = std::make_unique<FreeObjectList>();
-#endif
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeListAllocator<T>::Initialize(Region *region)
-#else
-void FreeListAllocator::Initialize(Region *region)
-#endif
 {
     bpAllocator_.Reset(region->GetBegin(), region->GetEnd());
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeListAllocator<T>::Reset(BaseHeap *heap)
-#else
-void FreeListAllocator::Reset(BaseHeap *heap)
-#endif
 {
     heap_ = heap;
-#ifdef ENABLE_JITFORT
     freeList_ = std::make_unique<FreeObjectList<T>>();
-#else
-    freeList_ = std::make_unique<FreeObjectList>();
-#endif
     FreeBumpPoint();
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeListAllocator<T>::AddFree(Region *region)
-#else
-void FreeListAllocator::AddFree(Region *region)
-#endif
 {
     auto begin = region->GetBegin();
     auto end = region->GetEnd();
@@ -124,23 +100,15 @@ void FreeListAllocator::AddFree(Region *region)
     bpAllocator_.Reset(begin, end);
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 uintptr_t FreeListAllocator<T>::Allocate(size_t size)
-#else
-uintptr_t FreeListAllocator::Allocate(size_t size)
-#endif
 {
     auto ret = bpAllocator_.Allocate(size);
     if (LIKELY(ret != 0)) {
         allocationSizeAccumulator_ += size;
         return ret;
     }
-#ifdef ENABLE_JITFORT
     T *object = freeList_->Allocate(size);
-#else
-    FreeObject *object = freeList_->Allocate(size);
-#endif
     if (object != nullptr) {
         ret = Allocate(object, size);
     }
@@ -148,12 +116,8 @@ uintptr_t FreeListAllocator::Allocate(size_t size)
 }
 
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 uintptr_t FreeListAllocator<T>::Allocate(T *object, size_t size)
-#else
-uintptr_t FreeListAllocator::Allocate(FreeObject *object, size_t size)
-#endif
 {
     uintptr_t begin = object->GetBegin();
     uintptr_t end = object->GetEnd();
@@ -172,12 +136,8 @@ uintptr_t FreeListAllocator::Allocate(FreeObject *object, size_t size)
     }
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeListAllocator<T>::FreeBumpPoint()
-#else
-void FreeListAllocator::FreeBumpPoint()
-#endif
 {
     auto begin = bpAllocator_.GetTop();
     auto size = bpAllocator_.Available();
@@ -185,12 +145,8 @@ void FreeListAllocator::FreeBumpPoint()
     Free(begin, size, true);
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeListAllocator<T>::FillBumpPointer()
-#else
-void FreeListAllocator::FillBumpPointer()
-#endif
 {
     size_t size = bpAllocator_.Available();
     if (size != 0) {
@@ -198,42 +154,26 @@ void FreeListAllocator::FillBumpPointer()
     }
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeListAllocator<T>::ResetBumpPointer(uintptr_t begin, uintptr_t end, uintptr_t top)
-#else
-void FreeListAllocator::ResetBumpPointer(uintptr_t begin, uintptr_t end, uintptr_t top)
-#endif
 {
     bpAllocator_.Reset(begin, end, top);
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeListAllocator<T>::ResetTopPointer(uintptr_t top)
-#else
-void FreeListAllocator::ResetTopPointer(uintptr_t top)
-#endif
 {
     bpAllocator_.ResetTopPointer(top);
 }
 
 // The object will be marked with poison after being put into the freelist when is_asan is true.
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeListAllocator<T>::Free(uintptr_t begin, size_t size, bool isAdd)
-#else
-void FreeListAllocator::Free(uintptr_t begin, size_t size, bool isAdd)
-#endif
 {
     ASSERT(heap_ != nullptr);
     ASSERT(size >= 0);
     if (size != 0) {
-#ifdef ENABLE_JITFORT
         T::FillFreeObject(heap_, begin, size);
-#else
-        FreeObject::FillFreeObject(heap_, begin, size);
-#endif
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);
         freeList_->Free(begin, size, isAdd);
 #ifdef ARK_ASAN_ON
@@ -241,17 +181,11 @@ void FreeListAllocator::Free(uintptr_t begin, size_t size, bool isAdd)
 #endif
     }
 }
-#ifdef ENABLE_JITFORT
 template <>
 void FreeListAllocator<MemDesc>::Free(uintptr_t begin, size_t size, bool isAdd);
-#endif
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 uintptr_t FreeListAllocator<T>::LookupSuitableFreeObject(size_t size)
-#else
-uintptr_t FreeListAllocator::LookupSuitableFreeObject(size_t size)
-#endif
 {
     auto freeObject = freeList_->LookupSuitableFreeObject(size);
     if (freeObject != nullptr) {
@@ -260,29 +194,17 @@ uintptr_t FreeListAllocator::LookupSuitableFreeObject(size_t size)
     return 0;
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 void FreeListAllocator<T>::RebuildFreeList()
-#else
-void FreeListAllocator::RebuildFreeList()
-#endif
 {
     bpAllocator_.Reset();
     freeList_->Rebuild();
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 inline void FreeListAllocator<T>::CollectFreeObjectSet(Region *region)
-#else
-inline void FreeListAllocator::CollectFreeObjectSet(Region *region)
-#endif
 {
-#ifdef ENABLE_JITFORT
     region->EnumerateFreeObjectSets([&](FreeObjectSet<T> *set) {
-#else
-    region->EnumerateFreeObjectSets([&](FreeObjectSet *set) {
-#endif
         if (set == nullptr || set->Empty()) {
             return;
         }
@@ -291,19 +213,11 @@ inline void FreeListAllocator::CollectFreeObjectSet(Region *region)
     freeList_->IncreaseWastedSize(region->GetWastedSize());
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 inline bool FreeListAllocator<T>::MatchFreeObjectSet(Region *region, size_t size)
-#else
-inline bool FreeListAllocator::MatchFreeObjectSet(Region *region, size_t size)
-#endif
 {
     bool ret = false;
-#ifdef ENABLE_JITFORT
     region->REnumerateFreeObjectSets([&](FreeObjectSet<T> *set) {
-#else
-    region->REnumerateFreeObjectSets([&](FreeObjectSet *set) {
-#endif
         if (set == nullptr || set->Empty()) {
             return true;
         }
@@ -313,18 +227,10 @@ inline bool FreeListAllocator::MatchFreeObjectSet(Region *region, size_t size)
     return ret;
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 inline void FreeListAllocator<T>::DetachFreeObjectSet(Region *region)
-#else
-inline void FreeListAllocator::DetachFreeObjectSet(Region *region)
-#endif
 {
-#ifdef ENABLE_JITFORT
     region->EnumerateFreeObjectSets([&](FreeObjectSet<T> *set) {
-#else
-    region->EnumerateFreeObjectSets([&](FreeObjectSet *set) {
-#endif
         if (set == nullptr || set->Empty()) {
             return;
         }
@@ -333,22 +239,14 @@ inline void FreeListAllocator::DetachFreeObjectSet(Region *region)
     freeList_->DecreaseWastedSize(region->GetWastedSize());
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 size_t FreeListAllocator<T>::GetAvailableSize() const
-#else
-size_t FreeListAllocator::GetAvailableSize() const
-#endif
 {
     return freeList_->GetFreeObjectSize() + bpAllocator_.Available();
 }
 
-#ifdef ENABLE_JITFORT
 template <typename T>
 size_t FreeListAllocator<T>::GetWastedSize() const
-#else
-size_t FreeListAllocator::GetWastedSize() const
-#endif
 {
     return freeList_->GetWastedSize();
 }

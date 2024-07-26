@@ -82,12 +82,28 @@ public:
         return false;
     }
 
-    static bool GetCodeSignDisable()
+    static bool GetCodeSignDisable(bool value)
     {
     #ifdef CODE_SIGN_ENABLE
-        return OHOS::system::GetBoolParameter("ark.jit.codesign.disable", false);
+        return OHOS::system::GetBoolParameter("persist.ark.jit.codesign.disable", true);
     #endif
-        return false;
+        return value;
+    }
+
+    static bool GetEnableJitFort(bool value)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitfort", false);
+    #endif
+        return value;
+    }
+
+    static bool GetEnableAsyncCopyToFort(bool value)
+    {
+    #ifdef GET_PARAMETER_FOR_JIT
+        return OHOS::system::GetBoolParameter("persist.ark.jit.enable.async.copytofort", true);
+    #endif
+        return value;
     }
 
     static bool GetSkipJitLogEnable()

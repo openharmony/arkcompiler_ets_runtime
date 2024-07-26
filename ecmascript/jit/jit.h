@@ -55,9 +55,16 @@ public:
     void ConfigJit(EcmaVM *vm);
     void SwitchProfileStubs(EcmaVM *vm);
     void ConfigOptions(EcmaVM *vm) const;
+    void ConfigJitFortOptions(EcmaVM *vm);
     void SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit);
     bool PUBLIC_API IsEnableFastJit() const;
     bool PUBLIC_API IsEnableBaselineJit() const;
+    bool IsEnableJitFort() const;
+    void SetEnableJitFort(bool isEnableJitFort);
+    bool IsDisableCodeSign() const;
+    void SetDisableCodeSign(bool isEnableCodeSign);
+    bool IsEnableAsyncCopyToFort() const;
+    void SetEnableAsyncCopyToFort(bool isEnableiAsyncCopyToFort);
     void Initialize();
 
     static void Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier = CompilerTier::FAST,
@@ -224,6 +231,9 @@ private:
 
     std::unordered_map<uint32_t, ThreadTaskInfo> threadTaskInfo_;
     RecursiveMutex threadTaskInfoLock_;
+    bool isEnableJitFort_ { false };
+    bool isDisableCodeSign_ { false };
+    bool isEnableAsyncCopyToFort_ { true };
 
     Mutex setEnableLock_;
 

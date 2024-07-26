@@ -272,7 +272,8 @@ public:
     static MemMapAllocator *GetInstance();
 
     MemMap Allocate(const uint32_t threadId, size_t size, size_t alignment,
-                    const std::string &spaceName, bool regular, bool isMachineCode);
+                    const std::string &spaceName, bool regular, bool isMachineCode,
+                    bool isEnableJitFort);
 
     void CacheOrFree(void *mem, size_t size, bool isRegular, size_t cachedSize);
 

@@ -291,14 +291,9 @@ public:
 
     void InvokeAllocationInspector(Address object, size_t objectSize);
 
-#ifdef ENABLE_JITFORT
 protected:
     static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
 private:
-#else
-private:
-    static constexpr size_t HUGE_OBJECT_BITSET_SIZE = 16;
-#endif
     EcmaList<Region> hugeNeedFreeList_ {};
 };
 
@@ -307,10 +302,10 @@ public:
     HugeMachineCodeSpace(Heap *heap, HeapRegionAllocator *regionAllocator, size_t initialCapacity,
                          size_t maximumCapacity);
     uintptr_t GetMachineCodeObject(uintptr_t pc) const;
-#ifdef ENABLE_JITFORT
-    uintptr_t Allocate(size_t objectSize, JSThread *thread, size_t instructionsSize, uintptr_t &instructionsAddr,
+    uintptr_t Allocate(size_t objectSize, JSThread *thread, void *desc,
         AllocateEventType allocType = AllocateEventType::NORMAL);
-#endif
+    uintptr_t Allocate(size_t objectSize, JSThread *thread);
+    Region *AllocateFort(size_t objectSize, JSThread *thread, void *desc);
 };
 
 }  // namespace panda::ecmascript

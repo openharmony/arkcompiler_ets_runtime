@@ -47,10 +47,10 @@ struct MachineCodeDesc {
 #ifdef CODE_SIGN_ENABLE
     uintptr_t codeSigner {0};
 #endif
-#ifdef ENABLE_JITFORT
     uintptr_t instructionsAddr {0};
     size_t instructionsSize {0};
-#endif
+    bool isHugeObj {false};
+    uintptr_t hugeObjRegion {0};
 };
 
 class MachineCode;
@@ -112,6 +112,42 @@ using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVecto
 //                      |            ArkStackMap            |
 //                      |              ...                  |
 //                      +-----------------------------------+
+//
+//==================================================================
+// HugeMachineCode object layout for JitFort (see space.cpp AllocateFort())
+//
+//   ^                  +-----------------------------------+          +
+//   |                  |              MarkWord             |          |
+//   |                  +-----------------------------------+          |
+//   |                  |             OSR offset            |          |
+//   |                  +-----------------------------------+          |
+//   |                  |               ...                 |          |
+//   |                  |                                   |          |
+// mutable              +-----------------------------------+          |
+// Page aligned         |          instructions size        |          |
+//   |                  +-----------------------------------+          |
+//   |                  |          instructions addr        |---+      |
+//   |                  +-----------------------------------+   |      | 256 kByte (Region)
+//   |                  |               ...                 |   |      |      multiples
+//   |                  |                                   |   |      |
+//   |                  +-----------------------------------+   |      |
+//   |                  |            FuncEntryDesc          |   |      |
+//   |                  |                                   |   |      |
+//   |                  +-----------------------------------+   |      |  if JitFort is disabled
+//   |                  |             ArkStackMap           |   |      |  Jit generated native code
+//   |                  |                                   |   |      |  location is placed between
+//   v     Page Aligned +-----------------------------------+   |      |  FuncEntryDesc and ArkStackMap
+//   ^     if JitFort   |                                   |<--+      |  instead and is mutable
+//   |     enabled      |            JitFort space          |          |
+//   |                  |    (Jit generated native code)    |          |
+// immutable            |                                   |          |
+// JitFort space        |                                   |          |
+//   |                  |                                   |          |
+//   |                  |                                   |          |
+//   |                  |                                   |          |
+//   v                  +-----------------------------------+          v
+//
+//
 class MachineCode : public TaggedObject {
 public:
     NO_COPY_SEMANTIC(MachineCode);
@@ -128,12 +164,8 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(OsrMask, uint32_t, OSRMASK_OFFSET, PAYLOADSIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(PayLoadSizeInBytes, uint32_t, PAYLOADSIZE_OFFSET, FUNCENTRYDESSIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(FuncEntryDesSize, uint32_t, FUNCENTRYDESSIZE_OFFSET, INSTRSIZ_OFFSET);
-#ifdef ENABLE_JITFORT
     ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, INSTRADDR_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(InstructionsAddr, uint64_t, INSTRADDR_OFFSET, STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET);
-#else
-    ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET);
-#endif
     ACCESSORS_PRIMITIVE_FIELD(StackMapOrOffsetTableSize, uint32_t,
         STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET, FUNCADDR_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(FuncAddr, uint64_t, FUNCADDR_OFFSET, PADDING_OFFSET);
@@ -155,31 +187,18 @@ public:
             PAYLOAD_OFFSET;
     }
 
-    uintptr_t GetText() const
-    {
-#ifdef ENABLE_JITFORT
-        return GetInstructionsAddr();
-#else
-        return GetFuncEntryDesAddress() + GetFuncEntryDesSize();
-#endif
-    }
-
-    uint8_t *GetStackMapOrOffsetTableAddress() const
-    {
-#ifdef ENABLE_JITFORT
-        // stackmap immediately follows FuncEntryDesc area
-        return reinterpret_cast<uint8_t*>(GetFuncEntryDesAddress() + GetFuncEntryDesSize());
-#else
-        return reinterpret_cast<uint8_t*>(GetText() + GetInstructionsSize());
-#endif
-    }
+    uintptr_t GetText() const;
+    uint8_t *GetStackMapOrOffsetTableAddress() const;
 
     size_t GetTextSize() const
     {
         return GetInstructionsSize();
     }
 
-    void SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
+    bool SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
+    bool SetText(const MachineCodeDesc &desc,
+        size_t rodataSizeBeforeTextAlign, size_t codeSizeAlign, size_t rodataSizeAfterTextAlign);
+    bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
 
     template <VisitType visitType>
     void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)
@@ -221,7 +240,7 @@ public:
         Barriers::SetPrimitive(this, OSR_EXECUTE_CNT_OFFSET, count);
     }
 private:
-    void SetBaselineCodeData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
+    bool SetBaselineCodeData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_MACHINE_CODE_H

@@ -16,6 +16,7 @@
 #include "ecmascript/mem/heap_region_allocator.h"
 
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem_map_allocator.h"
@@ -43,7 +44,8 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     auto tid = thread ? thread->GetThreadId() : JSThread::GetCurrentThreadId();
     auto pool = MemMapAllocator::GetInstance()->Allocate(tid, capacity, DEFAULT_REGION_SIZE,
                                                          ToSpaceTypeName(space->GetSpaceType()),
-                                                         isRegular, isMachineCode);
+                                                         isRegular, isMachineCode,
+                                                         Jit::GetInstance()->IsEnableJitFort());
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
         if (thread != nullptr) {
@@ -64,7 +66,6 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
     uintptr_t mem = ToUintPtr(mapMem);
     // Check that the address is 256K byte aligned
     LOG_ECMA_IF(AlignUp(mem, PANDA_POOL_ALIGNMENT_IN_BYTES) != mem, FATAL) << "region not align by 256KB";
-
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     uintptr_t begin = AlignUp(mem + sizeof(Region), static_cast<size_t>(MemAlignment::MEM_ALIGN_REGION));
     uintptr_t end = mem + capacity;

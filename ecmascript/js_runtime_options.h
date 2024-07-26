@@ -186,6 +186,9 @@ enum CommandValues {
     OPTION_COMPILER_CHECK_PGO_VERSION,
     OPTION_COMPILER_OPT_ESCAPE_ANALYSIS,
     OPTION_COMPILER_TRACE_ESCAPE_ANALYSIS,
+    OPTION_ENABLE_JITFORT,
+    OPTION_CODESIGN_DISABLE,
+    OPTION_ENABLE_ASYNC_COPYTOFORT,
     OPTION_LAST,
     OPTION_COMPILER_OPT_INDUCTION_VARIABLE,
     OPTION_COMPILER_TRACE_INDUCTION_VARIABLE,
@@ -643,6 +646,26 @@ public:
     bool GetDisableCodeSign() const
     {
         return disableCodeSign_;
+    }
+
+    void SetEnableJitFort(bool value)
+    {
+        enableJitFort_ = value;
+    }
+
+    bool GetEnableJitFort() const
+    {
+        return enableJitFort_;
+    }
+
+    void SetEnableAsyncCopyToFort(bool value)
+    {
+        enableAsyncCopyToFort_ = value;
+    }
+
+    bool GetEnableAsyncCopyToFort() const
+    {
+        return enableAsyncCopyToFort_;
     }
 
     void ParseAsmInterOption()
@@ -2008,7 +2031,9 @@ private:
     bool checkPgoVersion_ {false};
     bool enableJitFastCompile_ {false};
     bool enableJitFrame_ {false};
-    bool disableCodeSign_ {false};
+    bool disableCodeSign_ {true};
+    bool enableJitFort_ {false};
+    bool enableAsyncCopyToFort_ {true};
     bool enableBaselinePgo_ {false};
     bool asyncLoadAbc_ {true};
     bool asyncLoadAbcTest_ {false};

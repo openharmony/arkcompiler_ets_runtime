@@ -89,15 +89,7 @@ inline void NonMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object
     if (heap_->IsEdenMark() && !objectRegion->InEdenSpace()) {
         return;
     }
-#ifdef ENABLE_JITFORT
-    if (objectRegion->InMachineCodeSpace()) {
-        LOG_JIT(DEBUG) << "MarkObject MachineCode " << object
-            << " instructionsAddr " << (void *)((MachineCode*)object)->GetInstructionsAddr()
-            << " end " << (void *)(((MachineCode*)object)->GetInstructionsAddr() +
-                                   ((MachineCode*)object)->GetInstructionsSize())
-            << " size " <<((MachineCode *)object)->GetInstructionsSize();
-    }
-#endif
+
     if (objectRegion->IsFreshRegion()) {
         // This should only happen in MarkRoot from js thread.
         ASSERT(JSThread::GetCurrent() != nullptr);
@@ -456,15 +448,6 @@ inline SlotStatus CompressGCMarker::MarkObject(uint32_t threadId, TaggedObject *
     Region *objectRegion = Region::ObjectAddressToRange(object);
     if (!NeedEvacuate(objectRegion)) {
         if (!objectRegion->InSharedHeap() && objectRegion->AtomicMark(object)) {
-#ifdef ENABLE_JITFORT
-            if (objectRegion->InMachineCodeSpace()) {
-                LOG_JIT(DEBUG) << "CompressGC MarkObject MachineCode " << object
-                    << " instructionsAddr " << (void *)((MachineCode*)object)->GetInstructionsAddr()
-                    << " end " << (void *)(((MachineCode*)object)->GetInstructionsAddr() +
-                                           ((MachineCode*)object)->GetInstructionsSize())
-                    << " size " <<((MachineCode *)object)->GetInstructionsSize();
-            }
-#endif
             workManager_->Push(threadId, object);
         }
         return SlotStatus::CLEAR_SLOT;

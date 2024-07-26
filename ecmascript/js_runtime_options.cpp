@@ -188,6 +188,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-trace-induction-variable:  Enable tracing induction variable for aot compiler. Default: 'false'\n"
     "--compiler-memory-analysis:           Enable memory analysis for aot compiler. Default: 'true'\n"
     "--compiler-enable-jit-fast-compile:   Enable jit fast compile. Default: 'false'\n"
+    "--compiler-enable-jitfort:            Enable jit fort memory space. Default: 'false'\n"
+    "--compiler-codesign-disable:          Disable codesign for jit fort. Default: 'true'\n"
+    "--compiler-enable-async-copytofort:   Enable jit fort allocation and code copy in Jit thread. Default: 'true'\n"
     "--async-load-abc:                     Enable asynchronous load abc. Default: 'true'\n"
     "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n\n";
 
@@ -318,6 +321,9 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-baselinejit-hotness-threshold", required_argument, nullptr, OPTION_COMPILER_BASELINEJIT_HOTNESS_THRESHOLD},
         {"compiler-force-baselinejit-compile-main", required_argument, nullptr, OPTION_COMPILER_FORCE_BASELINEJIT_COMPILE_MAIN},
         {"compiler-enable-jit-fast-compile", required_argument, nullptr, OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE},
+        {"compiler-enable-jitfort", required_argument, nullptr, OPTION_ENABLE_JITFORT},
+        {"compiler-codesign-disable", required_argument, nullptr, OPTION_CODESIGN_DISABLE},
+        {"compiler-enable-async-copytofort", required_argument, nullptr, OPTION_ENABLE_ASYNC_COPYTOFORT},
         {"async-load-abc", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC},
         {"async-load-abc-test", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC_TEST},
         {nullptr, 0, nullptr, 0},
@@ -1224,6 +1230,30 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetAsyncLoadAbcTest(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_JITFORT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableJitFort(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_CODESIGN_DISABLE:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetDisableCodeSign(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_ENABLE_ASYNC_COPYTOFORT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetEnableAsyncCopyToFort(argBool);
                 } else {
                     return false;
                 }

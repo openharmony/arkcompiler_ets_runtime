@@ -261,6 +261,9 @@ public:
             jitTask_->ReleaseSustainingJSHandle();
         }
 
+        bool AllocFromFortAndCopy();
+        bool CopyCodeToFort();
+
     private:
         std::shared_ptr<JitTask> jitTask_ { nullptr };
     };
