@@ -28,3 +28,6 @@ TypeError: function.toString() target is incompatible object
 test proxy constructor success!
 false
 TypeError: ProxyCreate: handler is not Object
+typeof key:  string {"arr":[],"key":"0","value":"abc"}
+typeof key:  string {"arr":[],"key":"length","value":1}
+typeof key:  string {"arr":[],"key":"0","value":"def"}
