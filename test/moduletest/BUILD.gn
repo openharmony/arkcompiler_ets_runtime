@@ -60,6 +60,7 @@ group("ark_js_moduletest") {
     "datecompare",
     "dateparse",
     "decodeuricomponent",
+    "definefield",
     "definefunc",
     "deleteobjproperty",
     "div",
@@ -282,6 +283,7 @@ group("ark_asm_test") {
 
     # "datetimezonetitleid",
     "decodeuricomponent",
+    "definefield",
     "definefunc",
     "deleteobjproperty",
     "div",
@@ -468,6 +470,7 @@ group("ark_asm_single_step_test") {
     "container",
     "dataproperty",
     "decodeuricomponent",
+    "definefield",
     "dynamicimport",
     "dyninstruction",
     "ecmastringtable",

@@ -555,6 +555,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetUnsharedConstpool(GateRef array, GateRef index);
     GateRef GetValueFromMutantTaggedArray(GateRef elements, GateRef index);
     void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver, GateRef attr,
+                               GateRef value, Label *executeSetProp, Label *exit);
+    void CheckUpdateSharedType(bool isDicMode, Variable *result, GateRef glue, GateRef receiver, GateRef attr,
                                GateRef value, Label *executeSetProp, Label *exit, GateRef SCheckModelIsCHECK);
     void MatchFieldType(Variable *result, GateRef glue, GateRef fieldType, GateRef value, Label *executeSetProp,
                                Label *exit);
@@ -728,17 +730,17 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void FastSetPropertyByIndex(GateRef glue, GateRef obj, GateRef index, GateRef value);
     GateRef SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,
         GateRef value, bool useOwn, ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
+    GateRef DefinePropertyByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value);
     GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
         GateRef value, bool useOwn, GateRef isInternal, ProfileOperation callback = ProfileOperation(),
         bool canUseIsInternal = false, bool defineSemantics = false); // Crawl prototype chain
-    GateRef SetPropertyByName(GateRef glue, GateRef receiver, GateRef key,
-        GateRef value, bool useOwn, GateRef isInternal, GateRef SCheckModelIsCHECK,
-        ProfileOperation callback = ProfileOperation(), bool canUseIsInternal = false, bool defineSemantics = false);
+    GateRef DefinePropertyByName(GateRef glue, GateRef receiver, GateRef key,
+        GateRef value, GateRef isInternal, GateRef SCheckModelIsCHECK,
+        ProfileOperation callback = ProfileOperation());
     GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value, bool useOwn,
         ProfileOperation callback = ProfileOperation(), bool defineSemantics = false);
-    GateRef SetPropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value,
-        GateRef SCheckModelIsCHECK, bool useOwn, ProfileOperation callback = ProfileOperation(),
-        bool defineSemantics = false);
+    GateRef DefinePropertyByValue(GateRef glue, GateRef receiver, GateRef key, GateRef value,
+        GateRef SCheckModelIsCHECK, ProfileOperation callback = ProfileOperation());
     GateRef GetParentEnv(GateRef object);
     GateRef GetSendableParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
