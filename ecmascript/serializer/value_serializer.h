@@ -63,6 +63,7 @@ private:
     bool defaultCloneShared_ {false};
     bool notSupport_ {false};
     bool supportJSNativePointer_ {false};
+    std::vector<std::pair<ssize_t, panda::JSNApi::NativeBindingInfo *>> detachCallbackInfo_;
     CUnorderedSet<uintptr_t> transferDataSet_;
     CUnorderedSet<uintptr_t> cloneArrayBufferSet_;
     CUnorderedSet<uintptr_t> cloneSharedSet_;

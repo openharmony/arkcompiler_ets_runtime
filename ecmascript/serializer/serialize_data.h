@@ -167,22 +167,30 @@ public:
         return true;
     }
 
-    bool RawDataEmit(const void *data, size_t length)
+    ssize_t RawDataEmit(const void *data, size_t length)
+    {
+        return RawDataEmit(data, length, bufferSize_);
+    }
+
+    ssize_t RawDataEmit(const void *data, size_t length, ssize_t offset)
     {
         if (length <= 0) {
-            return false;
+            return -1;
         }
-        if ((bufferSize_ + length) > bufferCapacity_) {
+        if ((offset + length) > bufferCapacity_) {
             if (!AllocateBuffer(length)) {
-                return false;
+                return -1;
             }
         }
-        if (memcpy_s(buffer_ + bufferSize_, bufferCapacity_ - bufferSize_, data, length) != EOK) {
+        if (memcpy_s(buffer_ + offset, bufferCapacity_ - offset, data, length) != EOK) {
             LOG_FULL(ERROR) << "Failed to memcpy_s Data";
-            return false;
+            return -1;
         }
-        bufferSize_ += length;
-        return true;
+        ssize_t res = offset;
+        if (bufferSize_ == offset) {
+            bufferSize_ += length;
+        }
+        return res;
     }
 
     void EmitChar(uint8_t c)
@@ -190,9 +198,14 @@ public:
         RawDataEmit(&c, U8_SIZE);
     }
 
-    void EmitU64(uint64_t c)
+    ssize_t EmitU64(uint64_t c)
     {
-        RawDataEmit(reinterpret_cast<uint8_t *>(&c), U64_SIZE);
+        return RawDataEmit(reinterpret_cast<uint8_t *>(&c), U64_SIZE);
+    }
+
+    ssize_t EmitU64(uint64_t c, ssize_t offset)
+    {
+        return RawDataEmit(reinterpret_cast<uint8_t *>(&c), U64_SIZE, offset);
     }
 
     void WriteUint8(uint8_t data)
@@ -234,9 +247,9 @@ public:
         EmitU64(value.GetRawData());
     }
 
-    void WriteJSTaggedType(JSTaggedType value)
+    ssize_t WriteJSTaggedType(JSTaggedType value)
     {
-        EmitU64(value);
+        return EmitU64(value);
     }
 
     JSTaggedType ReadJSTaggedType(size_t &position)
