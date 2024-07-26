@@ -487,6 +487,7 @@ public:
     bool IsByteArray() const;
     bool IsConstantPool() const;
     bool IsAOTLiteralInfo() const;
+    bool IsExtraProfileTypeInfo() const;
     bool IsProfileTypeInfoCell() const;
     bool IsProfileTypeInfoCell0() const;
     bool IsVTable() const;

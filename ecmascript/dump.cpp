@@ -131,6 +131,7 @@
 #include "ecmascript/js_displaynames.h"
 #include "ecmascript/js_list_format.h"
 #include "ecmascript/mem/object_xray.h"
+#include "ecmascript/pgo_profiler/pgo_extra_profiler.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_bigint.h"
 #include "ecmascript/js_collator.h"
@@ -146,6 +147,7 @@
 namespace panda::ecmascript {
 using MicroJobQueue = panda::ecmascript::job::MicroJobQueue;
 using PendingJob = panda::ecmascript::job::PendingJob;
+using ExtraProfileTypeInfo = panda::ecmascript::pgo::ExtraProfileTypeInfo;
 
 static constexpr uint32_t DUMP_TYPE_OFFSET = 12;
 static constexpr uint32_t DUMP_PROPERTY_OFFSET = 20;
@@ -561,6 +563,8 @@ CString JSHClass::DumpJSType(JSType type)
             return "ProfileTypeInfoCell";
         case JSType::VTABLE:
             return "VTable";
+        case JSType::EXTRA_PROFILE_TYPE_INFO:
+            return "ExtraProfileTypeInfo";
         case JSType::SOURCE_TEXT_MODULE_RECORD:
             return "SourceTextModuleRecord";
         case JSType::RESOLVEDBINDING_RECORD:
@@ -813,6 +817,9 @@ static void DumpObject(TaggedObject *obj, std::ostream &os)
             break;
         case JSType::VTABLE:
             VTable::Cast(obj)->Dump(os);
+            break;
+        case JSType::EXTRA_PROFILE_TYPE_INFO:
+            ExtraProfileTypeInfo::Cast(obj)->Dump(os);
             break;
         case JSType::LINE_STRING:
         case JSType::CONSTANT_STRING:
@@ -1750,6 +1757,16 @@ void ProfileTypeInfo::Dump(std::ostream &os) const
             os << "\n";
         }
     }
+}
+
+void ExtraProfileTypeInfo::Dump(std::ostream &os) const
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    os << " - Receiver: ";
+    GetReceiverObject().Dump(os);
+    os << " - Holder: ";
+    GetHolderObject().Dump(os);
+    os << "\n";
 }
 
 void ProfileTypeInfoCell::Dump(std::ostream &os) const
@@ -4899,6 +4916,12 @@ void ProfileTypeInfoCell::DumpForSnapshot(std::vector<Reference> &vec) const
 {
     vec.emplace_back(CString("Value"), GetValue());
     vec.emplace_back(CString("Handle"), GetHandle());
+}
+
+void ExtraProfileTypeInfo::DumpForSnapshot(std::vector<Reference> &vec) const
+{
+    vec.emplace_back(CString("Receiver"), GetReceiverObject());
+    vec.emplace_back(CString("Holder"), GetHolderObject());
 }
 
 void VTable::DumpForSnapshot(std::vector<Reference> &vec) const

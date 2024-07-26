@@ -221,6 +221,7 @@ group("ark_aot_ts_test") {
     "pgo_forof_string",
     "pgo_forof_typed_array",
     "pgo_function_prototype",
+    "pgo_gettersetter",
     "pgo_inherited_function_operation",
     "pgo_ldobjbyvalue_array",
     "pgo_ldobjbyvalue_string",

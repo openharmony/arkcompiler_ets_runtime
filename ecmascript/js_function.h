@@ -302,6 +302,12 @@ public:
         GetClass()->SetClassConstructor(flag);
     }
 
+    inline bool HasProfileTypeInfo(JSThread *thread) const
+    {
+        return GetRawProfileTypeInfo().IsProfileTypeInfoCell() &&
+               !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo())->IsEmptyProfileTypeInfoCell(thread);
+    }
+
     void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
                               void *data, size_t nativeBindingsize = 0, Concurrent isConcurrent = Concurrent::NO);
     void SetSFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,

@@ -943,6 +943,11 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(info);
                 break;
             }
+            case JSType::EXTRA_PROFILE_TYPE_INFO: {
+                JSHandle<ExtraProfileTypeInfo> info = factory->NewExtraProfileTypeInfo();
+                DUMP_FOR_HANDLE(info);
+                break;
+            }
             case JSType::TAGGED_DICTIONARY: {
                 JSHandle<TaggedArray> dict = factory->NewDictionaryArray(4);
                 DUMP_FOR_HANDLE(dict);

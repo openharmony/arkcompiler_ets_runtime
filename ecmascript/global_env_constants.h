@@ -92,6 +92,7 @@ class ObjectFactory;
     V(JSTaggedValue, LinkedNode, LINKED_NODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, RBTreeNode, RB_TREENODE_CLASS_INDEX, ecma_roots_class)                                           \
     V(JSTaggedValue, ClassLiteralClass, CLASS_LITERAL_HCLASS_INDEX, ecma_roots_class)                                 \
+    V(JSTaggedValue, ExtraProfileTypeInfoClass, EXTRA_PROFILE_TYPE_INFO_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, ProfileTypeInfoCell0Class, PROFILE_TYPE_INFO_CELL_0_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, ProfileTypeInfoCell1Class, PROFILE_TYPE_INFO_CELL_1_CLASS_INDEX, ecma_roots_class)               \
     V(JSTaggedValue, ProfileTypeInfoCellNClass, PROFILE_TYPE_INFO_CELL_N_CLASS_INDEX, ecma_roots_class)               \
