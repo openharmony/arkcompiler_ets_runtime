@@ -354,6 +354,12 @@ bool JSSharedArray::PropertyKeyToArrayIndex(JSThread *thread, const JSHandle<JST
 bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array,
                                       const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc)
 {
+    if (!desc.GetValue()->IsSharedType() || (desc.HasGetter() && !desc.GetGetter()->IsSharedType()) ||
+        (desc.HasSetter() && !desc.GetSetter()->IsSharedType())) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::TYPE_ERROR,
+                                                               "Parameter error. Only accept sendable value.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+    }
     // 1. Assert: IsPropertyKey(P) is true.
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key!");
     // 2. If P is "length", then
