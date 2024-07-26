@@ -186,6 +186,7 @@ group("ark_aot_ts_test") {
     "map",
     "mod",
     "modules",
+    "mono_builtin",
     "mul",
     "multi_module_compilation",
     "neg",

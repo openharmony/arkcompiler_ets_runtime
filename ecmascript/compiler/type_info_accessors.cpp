@@ -568,10 +568,6 @@ uint32_t InlineTypeInfoAccessor::GetCallMethodId() const
     uint32_t methodOffset = 0;
     if (IsNormalCall() && IsValidCallMethodId()) {
         methodOffset = GetFuncMethodOffsetFromPGO();
-        if (methodOffset == base::PGO_POLY_INLINE_REP) {
-            methodOffset = 0;
-            return methodOffset;
-        }
     }
     if (IsCallAccessor()) {
         const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
@@ -1200,13 +1196,31 @@ LoadBulitinObjTypeInfoAccessor::LoadBulitinObjTypeInfoAccessor(const Compilation
     FetchBuiltinsTypes();
 }
 
+bool AccBuiltinObjTypeInfoAccessor::IsStringMonoBuiltins() const
+{
+    for (auto type : types_) {
+        if (!type.IsBuiltinsString()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool AccBuiltinObjTypeInfoAccessor::IsMonoBuiltins() const
 {
     if (types_.size() == 0) {
         return false;
     }
+
+    if (IsStringMonoBuiltins()) {
+        return true;
+    }
+
     for (size_t i = 0; i < types_.size(); i++) {
-        if (!types_[0].IsBuiltinsType()) {
+        if (!types_[i].IsBuiltinsType()) {
+            return false;
+        }
+        if (types_[i].GetBuiltinsType() != types_[0].GetBuiltinsType()) {
             return false;
         }
     }

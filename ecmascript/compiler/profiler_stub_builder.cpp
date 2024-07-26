@@ -281,7 +281,7 @@ void ProfilerStubBuilder::ProfileCall(
                 Bind(&resetSlot);
                 {
                     // NOTICE-PGO: lx about poly
-                    GateRef nonType = IntToTaggedInt(Int64(0));
+                    GateRef nonType = IntToTaggedInt(Int32(0));
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, nonType);
                     TryPreDumpInner(glue, func, profileTypeInfo);
                     Jump(&exit);
