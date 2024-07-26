@@ -359,9 +359,9 @@ bool PostSchedule::VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx,
     std::vector<GateRef> currentBBGates;
     std::vector<GateRef> barrierBBGates;
     std::vector<GateRef> endBBGates;
-    MemoryOrder::Barrier kind = GetWriteBarrierKind(gate);
+    MemoryAttribute::Barrier kind = GetWriteBarrierKind(gate);
     switch (kind) {
-        case MemoryOrder::Barrier::UNKNOWN_BARRIER: {
+        case MemoryAttribute::Barrier::UNKNOWN_BARRIER: {
             LoweringStoreUnknownBarrierAndPrepareScheduleGate(gate, currentBBGates, barrierBBGates, endBBGates);
             ReplaceBBState(cfg, bbIdx, currentBBGates, endBBGates);
             ScheduleEndBB(endBBGates, cfg, bbIdx, instIdx);
@@ -369,12 +369,12 @@ bool PostSchedule::VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx,
             ScheduleCurrentBB(currentBBGates, cfg, bbIdx, instIdx);
             return true;
         }
-        case MemoryOrder::Barrier::NEED_BARRIER: {
+        case MemoryAttribute::Barrier::NEED_BARRIER: {
             LoweringStoreWithBarrierAndPrepareScheduleGate(gate, currentBBGates);
             ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
             return false;
         }
-        case MemoryOrder::Barrier::NO_BARRIER: {
+        case MemoryAttribute::Barrier::NO_BARRIER: {
             LoweringStoreNoBarrierAndPrepareScheduleGate(gate, currentBBGates);
             ReplaceGateDirectly(currentBBGates, cfg, bbIdx, instIdx);
             return false;
@@ -387,13 +387,36 @@ bool PostSchedule::VisitStore(GateRef gate, ControlFlowGraph &cfg, size_t bbIdx,
     return false;
 }
 
-MemoryOrder::Barrier PostSchedule::GetWriteBarrierKind(GateRef gate)
+MemoryAttribute::Barrier PostSchedule::GetWriteBarrierKind(GateRef gate)
 {
-    MemoryOrder order = acc_.GetMemoryOrder(gate);
+    MemoryAttribute mAttr = acc_.GetMemoryAttribute(gate);
     if (!acc_.IsGCRelated(gate)) {
-        return MemoryOrder::Barrier::NO_BARRIER;
+        return MemoryAttribute::Barrier::NO_BARRIER;
     }
-    return order.GetBarrier();
+    return mAttr.GetBarrier();
+}
+
+int PostSchedule::SelectBarrier(MemoryAttribute::ShareFlag share, std::string_view &comment)
+{
+    int index = 0;
+    switch (share) {
+        case MemoryAttribute::UNKNOWN:
+            index = CommonStubCSigns::SetValueWithBarrier;
+            comment = "store barrier\0";
+            break;
+        case MemoryAttribute::SHARED:
+            index = CommonStubCSigns::SetSValueWithBarrier;
+            comment = "store share barrier\0";
+            break;
+        case MemoryAttribute::NON_SHARE:
+            index = CommonStubCSigns::SetNonSValueWithBarrier;
+            comment = "store not share barrier\0";
+            break;
+        default:
+            UNREACHABLE();
+            return -1;
+    }
+    return index;
 }
 
 void PostSchedule::LoweringStoreNoBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
@@ -405,13 +428,19 @@ void PostSchedule::LoweringStoreNoBarrierAndPrepareScheduleGate(GateRef gate, st
     GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
     GateRef addr = builder_.PtrAdd(base, offset);
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryOrder(gate));
+    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryAttribute(gate));
     GateRef store = builder_.GetDepend();
     {
         PrepareToScheduleNewGate(store, currentBBGates);
         PrepareToScheduleNewGate(addr, currentBBGates);
     }
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+MemoryAttribute::ShareFlag PostSchedule::GetShareKind(panda::ecmascript::kungfu::GateRef gate)
+{
+    MemoryAttribute mAttr = acc_.GetMemoryAttribute(gate);
+    return mAttr.GetShare();
 }
 
 void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, std::vector<GateRef> &currentBBGates)
@@ -424,18 +453,19 @@ void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, 
     GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
     GateRef addr = builder_.PtrAdd(base, offset);
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryOrder(gate));
+    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryAttribute(gate));
     GateRef store = builder_.GetDepend();
-
-    int index = CommonStubCSigns::SetValueWithBarrier;
+    MemoryAttribute::ShareFlag share = GetShareKind(gate);
+    std::string_view comment;
+    int index = SelectBarrier(share, comment);
     const CallSignature *cs = CommonStubCSigns::Get(index);
     ASSERT(cs->IsCommonStub());
     GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
     GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
     GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
     GateRef storeBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
-                                         { glue, base, offset, value, reseverdFrameArgs, reseverdPc },
-                                         Circuit::NullGate(), "store barrier");
+                                         {glue, base, offset, value, reseverdFrameArgs, reseverdPc},
+                                         Circuit::NullGate(), comment.data());
     {
         PrepareToScheduleNewGate(storeBarrier, currentBBGates);
         PrepareToScheduleNewGate(reseverdPc, currentBBGates);
@@ -460,7 +490,7 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     GateRef value = acc_.GetValueIn(gate, 3);  // 3: value
     GateRef addr = builder_.PtrAdd(base, offset);
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryOrder(gate));
+    builder_.StoreWithoutBarrier(type, addr, value, acc_.GetMemoryAttribute(gate));
     GateRef store = builder_.GetDepend();
 
     GateRef intVal = builder_.ChangeTaggedPointerToInt64(value);
@@ -488,7 +518,9 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     GateRef ifFalse = exit.GetControl();
     builder_.Bind(&isHeapObject);
     {
-        int index = CommonStubCSigns::SetValueWithBarrier;
+        MemoryAttribute::ShareFlag share = GetShareKind(gate);
+        std::string_view comment;
+        int index = SelectBarrier(share, comment);
         const CallSignature *cs = CommonStubCSigns::Get(index);
         ASSERT(cs->IsCommonStub());
         GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
@@ -496,7 +528,7 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
         GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
         GateRef storeBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
                                              { glue, base, offset, value, reseverdFrameArgs, reseverdPc },
-                                             Circuit::NullGate(), "store barrier");
+                                             Circuit::NullGate(), comment.data());
         builder_.Jump(&exit);
         {
             GateRef ordinaryBlock = isHeapObject.GetControl();

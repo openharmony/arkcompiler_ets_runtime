@@ -75,9 +75,12 @@ private:
                                                            std::vector<GateRef> &endBBGates);
 
     void PrepareToScheduleNewGate(GateRef gate, std::vector<GateRef> &gates);
-    MemoryOrder::Barrier GetWriteBarrierKind(GateRef gate);
+    MemoryAttribute::Barrier GetWriteBarrierKind(GateRef gate);
     void ReplaceBBState(ControlFlowGraph &cfg, size_t bbIdx, std::vector<GateRef> &currentBBGates,
                         std::vector<GateRef> &endBBGates);
+    MemoryAttribute::ShareFlag GetShareKind(panda::ecmascript::kungfu::GateRef gate);
+
+    int SelectBarrier(MemoryAttribute::ShareFlag share, std::string_view &comment);
 
     void PrintGraph(const char* title, ControlFlowGraph &cfg);
 

@@ -1193,10 +1193,10 @@ inline GateRef StubBuilder::GetElementsArray(GateRef object)
 }
 
 inline void StubBuilder::SetElementsArray(VariableType type, GateRef glue, GateRef object, GateRef elementsArray,
-                                          MemoryOrder order)
+                                          MemoryAttribute mAttr)
 {
     GateRef elementsOffset = IntPtr(JSObject::ELEMENTS_OFFSET);
-    Store(type, glue, object, elementsOffset, elementsArray, order);
+    Store(type, glue, object, elementsOffset, elementsArray, mAttr);
 }
 
 inline GateRef StubBuilder::GetPropertiesArray(GateRef object)
@@ -1207,10 +1207,10 @@ inline GateRef StubBuilder::GetPropertiesArray(GateRef object)
 
 // SetProperties in js_object.h
 inline void StubBuilder::SetPropertiesArray(VariableType type, GateRef glue, GateRef object, GateRef propsArray,
-                                            MemoryOrder order)
+                                            MemoryAttribute mAttr)
 {
     GateRef propertiesOffset = IntPtr(JSObject::PROPERTIES_OFFSET);
-    Store(type, glue, object, propertiesOffset, propsArray, order);
+    Store(type, glue, object, propertiesOffset, propsArray, mAttr);
 }
 
 inline GateRef StubBuilder::GetHash(GateRef object)
@@ -1222,7 +1222,7 @@ inline GateRef StubBuilder::GetHash(GateRef object)
 inline void StubBuilder::SetHash(GateRef glue, GateRef object, GateRef hash)
 {
     GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
-    Store(VariableType::INT64(), glue, object, hashOffset, hash, MemoryOrder::NoBarrier());
+    Store(VariableType::INT64(), glue, object, hashOffset, hash, MemoryAttribute::NoBarrier());
 }
 
 inline GateRef StubBuilder::GetLengthOfTaggedArray(GateRef array)
@@ -2092,11 +2092,11 @@ inline void StubBuilder::SetProtoChangeDetailsToHClass(VariableType type,
     Store(type, glue, hClass, offset, protoChange);
 }
 
-inline void StubBuilder::SetLayoutToHClass(
-    VariableType type, GateRef glue, GateRef hClass, GateRef attr, MemoryOrder order)
+inline void StubBuilder::SetLayoutToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef attr,
+                                           MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSHClass::LAYOUT_OFFSET);
-    Store(type, glue, hClass, offset, attr, order);
+    Store(type, glue, hClass, offset, attr, mAttr);
 }
 
 inline void StubBuilder::SetEnumCacheToHClass(VariableType type, GateRef glue, GateRef hClass, GateRef key)
@@ -2149,8 +2149,8 @@ inline GateRef StubBuilder::IsProtoTypeHClass(GateRef hClass)
         Int32((1LU << JSHClass::IsPrototypeBit::SIZE) - 1)));
 }
 
-inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass,
-    GateRef value, GateRef attrOffset, VariableType type, MemoryOrder order)
+inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, GateRef hClass, GateRef value,
+                                                 GateRef attrOffset, VariableType type, MemoryAttribute mAttr)
 {
     ASM_ASSERT_WITH_GLUE(GET_MESSAGE_STRING_ID(IsNotDictionaryMode), BoolNot(IsDictionaryModeByHClass(hClass)), glue);
     GateRef bitfield = Load(VariableType::INT32(), hClass,
@@ -2162,7 +2162,7 @@ inline void StubBuilder::SetPropertyInlinedProps(GateRef glue, GateRef obj, Gate
         Int32Add(inlinedPropsStart, attrOffset), Int32(JSTaggedValue::TaggedTypeSize()));
 
     // NOTE: need to translate MarkingBarrier
-    Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value, order);
+    Store(type, glue, obj, ZExtInt32ToPtr(propOffset), value, mAttr);
     EXITENTRY();
 }
 
@@ -2288,12 +2288,12 @@ inline void StubBuilder::SetValueToTaggedArrayWithRep(
 }
 
 inline void StubBuilder::SetValueToTaggedArray(VariableType valType, GateRef glue, GateRef array,
-                                               GateRef index, GateRef val)
+                                               GateRef index, GateRef val, MemoryAttribute mAttr)
 {
     // NOTE: need to translate MarkingBarrier
     GateRef offset = PtrMul(ZExtInt32ToPtr(index), IntPtr(JSTaggedValue::TaggedTypeSize()));
     GateRef dataOffset = PtrAdd(offset, IntPtr(TaggedArray::DATA_OFFSET));
-    Store(valType, glue, array, dataOffset, val);
+    Store(valType, glue, array, dataOffset, val, mAttr);
 }
 
 inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index)
@@ -2960,15 +2960,11 @@ inline GateRef StubBuilder::GetSendableEnvFromModule(GateRef module)
     return env_->GetBuilder()->GetSendableEnvFromModule(module);
 }
 
-inline void StubBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef sendableEnv)
-{
-    env_->GetBuilder()->SetSendableEnvToModule(glue, module, sendableEnv);
-}
-
-inline void StubBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value, MemoryOrder order)
+inline void StubBuilder::SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value, MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(SourceTextModule::SENDABLE_ENV_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, module, offset, value, order);
+    mAttr.SetShare(MemoryAttribute::SHARED);
+    Store(VariableType::JS_POINTER(), glue, module, offset, value, mAttr);
 }
 
 inline GateRef StubBuilder::GetHomeObjectFromJSFunction(GateRef object)
@@ -3011,52 +3007,52 @@ inline GateRef StubBuilder::GetCallFieldFromMethod(GateRef method)
 }
 
 inline void StubBuilder::SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
-                                                 MemoryOrder order)
+                                                 MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSFunction::LEXICAL_ENV_OFFSET);
-    Store(VariableType::JS_ANY(), glue, object, offset, lexicalEnv, order);
+    Store(VariableType::JS_ANY(), glue, object, offset, lexicalEnv, mAttr);
 }
 
 inline void StubBuilder::SetProtoTransRootHClassToFunction(GateRef glue, GateRef object, GateRef hclass,
-                                                           MemoryOrder order)
+                                                           MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSFunction::PROTO_TRANS_ROOT_HCLASS_OFFSET);
-    Store(VariableType::JS_ANY(), glue, object, offset, hclass, order);
+    Store(VariableType::JS_ANY(), glue, object, offset, hclass, mAttr);
 }
 
 inline void StubBuilder::SetProtoOrHClassToFunction(GateRef glue, GateRef function, GateRef value,
-                                                    MemoryOrder order)
+                                                    MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET);
-    Store(VariableType::JS_ANY(), glue, function, offset, value, order);
+    Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
 inline void StubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value,
-                                                 MemoryOrder order)
+                                                 MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSFunction::HOME_OBJECT_OFFSET);
-    Store(VariableType::JS_ANY(), glue, function, offset, value, order);
+    Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
 inline void StubBuilder::SetModuleToFunction(GateRef glue, GateRef function, GateRef value,
-                                             MemoryOrder order)
+                                             MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSFunction::ECMA_MODULE_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, function, offset, value, order);
+    Store(VariableType::JS_POINTER(), glue, function, offset, value, mAttr);
 }
 
 inline void StubBuilder::SetWorkNodePointerToFunction(GateRef glue, GateRef function, GateRef value,
-                                                      MemoryOrder order)
+                                                      MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSFunction::WORK_NODE_POINTER_OFFSET);
-    Store(VariableType::NATIVE_POINTER(), glue, function, offset, value, order);
+    Store(VariableType::NATIVE_POINTER(), glue, function, offset, value, mAttr);
 }
 
 inline void StubBuilder::SetMethodToFunction(GateRef glue, GateRef function, GateRef value,
-                                             MemoryOrder order)
+                                             MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSFunctionBase::METHOD_OFFSET);
-    Store(VariableType::JS_ANY(), glue, function, offset, value, order);
+    Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
 inline void StubBuilder::SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value)
@@ -3070,13 +3066,14 @@ inline void StubBuilder::SetCodeEntryToFunction(GateRef glue, GateRef function, 
 inline void StubBuilder::SetLengthToFunction(GateRef glue, GateRef function, GateRef value)
 {
     GateRef offset = IntPtr(JSFunctionBase::LENGTH_OFFSET);
-    Store(VariableType::INT32(), glue, function, offset, value, MemoryOrder::NoBarrier());
+    Store(VariableType::INT32(), glue, function, offset, value, MemoryAttribute::NoBarrier());
 }
 
-inline void StubBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value)
+inline void StubBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value,
+                                                         MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSFunction::RAW_PROFILE_TYPE_INFO_OFFSET);
-    Store(VariableType::JS_ANY(), glue, function, offset, value);
+    Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
 inline void StubBuilder::SetValueToProfileTypeInfoCell(GateRef glue, GateRef profileTypeInfoCell, GateRef value)
@@ -3135,10 +3132,10 @@ inline void StubBuilder::SetCompiledCodeFlagToFunction(GateRef glue, GateRef fun
     Store(VariableType::INT32(), glue, function, bitFieldOffset, newVal);
 }
 
-inline void StubBuilder::SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value, MemoryOrder order)
+inline void StubBuilder::SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value, MemoryAttribute mAttr)
 {
     GateRef offset = IntPtr(JSFunction::MACHINECODE_OFFSET);
-    Store(VariableType::JS_ANY(), glue, function, offset, value, order);
+    Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
 inline GateRef StubBuilder::GetGlobalObject(GateRef glue)

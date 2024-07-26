@@ -2114,7 +2114,7 @@ GateRef TypedHCRLowering::AllocateLineString(GateRef glue, GateRef length, GateR
     GateRef lineString =
         builder_.HeapAlloc(glue, *size, GateType::TaggedValue(), RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), lineString, 0, stringClass,
-        MemoryOrder::NeedBarrierAndAtomic());
+                              MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
     builder_.StoreConstOffset(VariableType::INT32(), lineString, EcmaString::MIX_HASHCODE_OFFSET, builder_.Int32(0));
     auto ret = builder_.FinishAllocate(lineString);
@@ -2154,7 +2154,7 @@ GateRef TypedHCRLowering::AllocateSlicedString(GateRef glue, GateRef flatString,
     GateRef slicedString = builder_.HeapAlloc(glue, size, GateType::TaggedValue(),
         RegionSpaceFlag::IN_SHARED_OLD_SPACE);
     builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, 0, stringClass,
-        MemoryOrder::NeedBarrierAndAtomic());
+                              MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), slicedString, EcmaString::MIX_LENGTH_OFFSET, *mixLength);
     builder_.StoreConstOffset(VariableType::INT32(), slicedString, EcmaString::MIX_HASHCODE_OFFSET, builder_.Int32(0));
     builder_.StoreConstOffset(VariableType::JS_POINTER(), slicedString, SlicedString::PARENT_OFFSET, flatString);
@@ -3188,8 +3188,8 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
         { receiverHC, newHolderHC, key }, gate);
     builder_.Jump(&notProto);
     builder_.Bind(&notProto);
-    MemoryOrder order = MemoryOrder::NeedBarrierAndAtomic();
-    builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, TaggedObject::HCLASS_OFFSET, newHolderHC, order);
+    MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
+    builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, TaggedObject::HCLASS_OFFSET, newHolderHC, mAttr);
     if (!plr.IsInlinedProps()) {
         auto properties =
             builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);
@@ -3323,7 +3323,7 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
         builder_.StartAllocate();
         GateRef newObj = builder_.HeapAlloc(glue, objSize, GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
         builder_.StoreConstOffset(VariableType::JS_POINTER(), newObj, JSObject::HCLASS_OFFSET, hclass,
-            MemoryOrder::NeedBarrierAndAtomic());
+                                  MemoryAttribute::NeedBarrierAndAtomic());
         builder_.StoreConstOffset(VariableType::INT64(), newObj,
             JSObject::HASH_OFFSET, builder_.Int64(JSTaggedValue(0).GetRawData()));
         builder_.StoreConstOffset(VariableType::INT64(), newObj, JSObject::PROPERTIES_OFFSET, emptyArray);

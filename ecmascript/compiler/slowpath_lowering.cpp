@@ -1253,7 +1253,7 @@ void SlowPathLowering::LowerExceptionHandler(GateRef hirGate)
     GateRef depend = acc_.GetDep(hirGate);
     GateRef exceptionOffset = builder_.Int64(JSThread::GlueData::GetExceptionOffset(false));
     GateRef val = builder_.Int64Add(glue_, exceptionOffset);
-    auto bit = LoadStoreAccessor::ToValue(MemoryOrder::Default());
+    auto bit = LoadStoreAccessor::ToValue(MemoryAttribute::Default());
     GateRef loadException = circuit_->NewGate(circuit_->Load(bit), VariableType::JS_ANY().GetMachineType(),
         { depend, val }, VariableType::JS_ANY().GetGateType());
     acc_.SetDep(loadException, depend);
@@ -1282,7 +1282,7 @@ void SlowPathLowering::LowerLdGlobal(GateRef gate)
 {
     GateRef offset = builder_.Int64(JSThread::GlueData::GetGlobalObjOffset(false));
     GateRef val = builder_.Int64Add(glue_, offset);
-    auto bit = LoadStoreAccessor::ToValue(MemoryOrder::Default());
+    auto bit = LoadStoreAccessor::ToValue(MemoryAttribute::Default());
     GateRef newGate = circuit_->NewGate(circuit_->Load(bit), VariableType::JS_ANY().GetMachineType(),
         { builder_.GetDepend(), val }, VariableType::JS_ANY().GetGateType());
     ReplaceHirWithValue(gate, newGate);

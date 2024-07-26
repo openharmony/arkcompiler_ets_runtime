@@ -425,7 +425,7 @@ GateRef TypedNativeInlineLowering::AllocateArrayIterator(GateRef glue,
         GateType::TaggedValue(), RegionSpaceFlag::IN_YOUNG_SPACE);
 
     builder_.StoreConstOffset(VariableType::JS_POINTER(), iterator, TaggedObject::HCLASS_OFFSET,
-        iteratorHClass, MemoryOrder::NeedBarrierAndAtomic());
+                              iteratorHClass, MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::HASH_OFFSET,
         builder_.Int64(JSTaggedValue(0).GetRawData()));
     builder_.StoreConstOffset(VariableType::INT64(), iterator, JSObject::PROPERTIES_OFFSET, emptyArray);
@@ -1147,13 +1147,13 @@ GateRef AllocateNewNumber(const CompilationEnv *compilationEnv, CircuitBuilder *
                                         RegionSpaceFlag::IN_YOUNG_SPACE);
     // Initialization:
     builder->StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, protoOrHclass,
-                              MemoryOrder::NeedBarrierAndAtomic());
+                              MemoryAttribute::NeedBarrierAndAtomic());
     builder->StoreConstOffset(VariableType::INT64(), object, JSObject::HASH_OFFSET,
                               builder->Int64(JSTaggedValue(0).GetRawData()));
     builder->StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::PROPERTIES_OFFSET, emptyArray,
-                              MemoryOrder::NoBarrier());
+                              MemoryAttribute::NoBarrier());
     builder->StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::ELEMENTS_OFFSET, emptyArray,
-                              MemoryOrder::NoBarrier());
+                              MemoryAttribute::NoBarrier());
     builder->StoreConstOffset(VariableType::JS_ANY(), object, JSPrimitiveRef::VALUE_OFFSET, result);
     auto offset = JSPrimitiveRef::VALUE_OFFSET + JSTaggedValue::TaggedTypeSize();
     // Initialize inlined properties:
@@ -2119,7 +2119,7 @@ void TypedNativeInlineLowering::LowerBigIntConstructorInt32(GateRef gate)
                                         RegionSpaceFlag::IN_SHARED_NON_MOVABLE);
     // initialization
     builder_.StoreConstOffset(VariableType::JS_POINTER(), object, JSObject::HCLASS_OFFSET, hclass,
-                              MemoryOrder::NeedBarrierAndAtomic());
+                              MemoryAttribute::NeedBarrierAndAtomic());
     builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::LENGTH_OFFSET, builder_.Int32(length));
     builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::BIT_FIELD_OFFSET, sign);
     builder_.StoreConstOffset(VariableType::INT32(), object, BigInt::DATA_OFFSET, value);

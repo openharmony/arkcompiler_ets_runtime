@@ -387,7 +387,7 @@ public:
     uint32_t GetTrueWeight(GateRef gate) const;
     uint32_t GetFalseWeight(GateRef gate) const;
     bool HasBranchWeight(GateRef gate) const;
-    MemoryOrder GetMemoryOrder(GateRef gate) const;
+    MemoryAttribute GetMemoryAttribute(GateRef gate) const;
     size_t GetIndex(GateRef gate) const;
     size_t GetJSType(GateRef gate) const;
     uint32_t GetArraySize(GateRef gate) const;

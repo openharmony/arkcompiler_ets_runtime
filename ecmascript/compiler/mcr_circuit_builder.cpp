@@ -909,11 +909,11 @@ GateRef CircuitBuilder::LoadMapSize(GateRef string)
     return ret;
 }
 
-GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset, MemoryOrder order)
+GateRef CircuitBuilder::LoadConstOffset(VariableType type, GateRef receiver, size_t offset, MemoryAttribute mAttr)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, order);
+    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, mAttr);
     auto ret = GetCircuit()->NewGate(circuit_->LoadConstOffset(bits), type.GetMachineType(),
                                      { currentDepend, receiver }, type.GetGateType());
     currentLabel->SetDepend(ret);
@@ -931,11 +931,11 @@ GateRef CircuitBuilder::LoadHClassFromConstpool(GateRef constpool, size_t index)
 }
 
 GateRef CircuitBuilder::StoreConstOffset(VariableType type,
-    GateRef receiver, size_t offset, GateRef value, MemoryOrder order)
+                                         GateRef receiver, size_t offset, GateRef value, MemoryAttribute mAttr)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentDepend = currentLabel->GetDepend();
-    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, order);
+    auto bits = LoadStoreConstOffsetAccessor::ToValue(offset, mAttr);
     auto ret = GetCircuit()->NewGate(circuit_->StoreConstOffset(bits), type.GetMachineType(),
         { currentDepend, receiver, value }, type.GetGateType());
     currentLabel->SetDepend(ret);

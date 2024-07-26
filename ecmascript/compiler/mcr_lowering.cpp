@@ -168,7 +168,7 @@ void MCRLowering::LowerLoadConstOffset(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-    GateRef result = builder_.Load(type, receiver, offset, acc_.GetMemoryOrder(gate));
+    GateRef result = builder_.Load(type, receiver, offset, acc_.GetMemoryAttribute(gate));
     acc_.ReplaceGate(gate, Circuit::NullGate(), builder_.GetDepend(), result);
 }
 
@@ -197,7 +197,7 @@ void MCRLowering::LowerStoreConstOffset(GateRef gate)
     GateRef value = acc_.GetValueIn(gate, 1);
     GateRef offset = builder_.IntPtr(acc_.GetOffset(gate));
     VariableType type = VariableType(acc_.GetMachineType(gate), acc_.GetGateType(gate));
-    builder_.Store(type, glue_, receiver, offset, value, acc_.GetMemoryOrder(gate));
+    builder_.Store(type, glue_, receiver, offset, value, acc_.GetMemoryAttribute(gate));
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 

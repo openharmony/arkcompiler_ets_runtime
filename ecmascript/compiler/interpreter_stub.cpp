@@ -4859,7 +4859,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         {
             GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
             SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(module));
-            SetModuleToFunction(glue, result, smodule);
+            SetModuleToFunction(glue, result, smodule, MemoryAttribute::DefaultWithShareBarrier());
             Jump(&afterSendableFunc);
         }
         Bind(&isNotSendableFunc);
@@ -4905,7 +4905,7 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         {
             GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
             SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(module));
-            SetModuleToFunction(glue, result, smodule);
+            SetModuleToFunction(glue, result, smodule, MemoryAttribute::DefaultWithShareBarrier());
             Jump(&afterSendableFunc);
         }
         Bind(&isNotSendableFunc);

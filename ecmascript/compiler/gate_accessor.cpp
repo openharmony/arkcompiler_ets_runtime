@@ -132,7 +132,7 @@ uint32_t GateAccessor::GetFalseWeight(GateRef gate) const
     return accessor.GetFalseWeight();
 }
 
-MemoryOrder GateAccessor::GetMemoryOrder(GateRef gate) const
+MemoryAttribute GateAccessor::GetMemoryAttribute(GateRef gate) const
 {
     auto op = GetOpCode(gate);
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
@@ -141,19 +141,19 @@ MemoryOrder GateAccessor::GetMemoryOrder(GateRef gate) const
         case OpCode::STORE_WITHOUT_BARRIER:
         case OpCode::STORE: {
             auto accessor = LoadStoreAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
-            return accessor.GetMemoryOrder();
+            return accessor.GetMemoryAttribute();
         }
         case OpCode::LOAD_CONST_OFFSET:
         case OpCode::STORE_CONST_OFFSET: {
             auto accessor = LoadStoreConstOffsetAccessor(gatePtr->GetOneParameterMetaData()->GetValue());
-            return accessor.GetMemoryOrder();
+            return accessor.GetMemoryAttribute();
         }
         default: {
             UNREACHABLE();
             break;
         }
     }
-    return MemoryOrder::Default();
+    return MemoryAttribute::Default();
 }
 
 bool GateAccessor::HasBranchWeight(GateRef gate) const
