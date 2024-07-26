@@ -28,6 +28,7 @@
 #include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/shared_mm/shared_mm.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
 
@@ -116,7 +117,11 @@ void BaseDeserializer::DeserializeNativeBindingObject(NativeBindingInfo *info)
     void *hint = info->hint_;
     void *attachData = info->attachData_;
     bool root = info->root_;
-    Local<JSValueRef> attachVal = af(engine_, bufferPointer, hint, attachData);
+    Local<JSValueRef> attachVal;
+    {
+        ThreadNativeScope nativeScope(thread_);
+        attachVal = af(engine_, bufferPointer, hint, attachData);
+    }
     if (attachVal.IsEmpty()) {
         LOG_ECMA(ERROR) << "NativeBindingObject is empty";
         attachVal = JSValueRef::Undefined(thread_->GetEcmaVM());

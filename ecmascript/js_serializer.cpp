@@ -26,6 +26,7 @@
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
@@ -1558,8 +1559,12 @@ JSHandle<JSTaggedValue> JSDeserializer::ReadNativeBindingObject()
     if (!ReadNativePointer(&attachData)) {
         return JSHandle<JSTaggedValue>();
     }
-    Local<JSValueRef> attachVal = attachFunc(engine_, reinterpret_cast<void *>(bufferPointer),
-        reinterpret_cast<void *>(hint), reinterpret_cast<void *>(attachData));
+    Local<JSValueRef> attachVal;
+    {
+        ThreadNativeScope nativeScope(thread_);
+        attachVal = attachFunc(engine_, reinterpret_cast<void *>(bufferPointer),
+                               reinterpret_cast<void *>(hint), reinterpret_cast<void *>(attachData));
+    }
     if (attachVal.IsEmpty()) {
         LOG_ECMA(ERROR) << "NativeBindingObject is empty";
         attachVal = JSValueRef::Undefined(thread_->GetEcmaVM());
