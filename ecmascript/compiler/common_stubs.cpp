@@ -55,6 +55,15 @@ void SubStubBuilder::GenerateCircuit()
     Return(operationBuilder.Sub(glue, x, y));
 }
 
+void DefineFieldStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef receiver = TaggedArgument(1);
+    GateRef propKey = TaggedArgument(2);    // 2: 3rd argument
+    GateRef acc = TaggedArgument(3);        // 3: 4th argument
+    Return(DefineField(glue, receiver, propKey, acc));
+}
+
 void DefinefuncStubBuilder::GenerateCircuit()
 {
     auto env = GetEnvironment();

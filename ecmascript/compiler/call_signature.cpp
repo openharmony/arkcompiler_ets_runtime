@@ -311,6 +311,23 @@ DEF_CALL_SIGNATURE(Definefunc)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(DefineField)
+{
+    // 4 : 4 input parameters
+    CallSignature defineField("DefineField", 0, 4, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::JS_ANY());
+    *callSign = defineField;
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
+        VariableType::NATIVE_POINTER(),    // glue
+        VariableType::JS_ANY(),            // receiver
+        VariableType::JS_ANY(),            // key
+        VariableType::JS_ANY(),            // acc
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(ConvertCharToInt32)
 {
     // 2 : 2 input parameters
@@ -3014,4 +3031,5 @@ DEF_CALL_SIGNATURE(CreateJSTypedArrayValues)
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
+
 }  // namespace panda::ecmascript::kungfu

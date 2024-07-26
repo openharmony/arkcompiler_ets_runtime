@@ -625,10 +625,12 @@ private:
     V(GetBaselineBuiltinFp)                          \
     V(StringIteratorNext)                            \
     V(Definefunc)                                    \
+    V(DefineField)                                   \
     V(ConvertCharToInt32)                            \
     V(ConvertCharToDouble)                           \
     V(ASMFastWriteBarrier)                           \
     V(ASMWriteBarrierWithEden)
+
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \
     public:                                                        \
