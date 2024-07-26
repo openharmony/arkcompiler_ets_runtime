@@ -599,8 +599,6 @@ icu::Locale JSLocale::BuildICULocale(const std::string &bcp47Locale)
 {
     UErrorCode status = U_ZERO_ERROR;
     icu::Locale icuLocale = icu::Locale::forLanguageTag(bcp47Locale, status);
-    ASSERT_PRINT(U_SUCCESS(status), "forLanguageTag failed");
-    ASSERT_PRINT(!icuLocale.isBogus(), "icuLocale is bogus");
     return icuLocale;
 }
 

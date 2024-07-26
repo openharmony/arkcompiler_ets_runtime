@@ -19,7 +19,6 @@ regresstest/ark-regress/intl/localematcher/bestfit-macrolanguages.js
 regresstest/ark-regress/intl/overrides/string.js
 regresstest/ark-regress/intl/regress-1041319.js
 regresstest/ark-regress/intl/regress-1130489.js
-regresstest/ark-regress/intl/regress-1427932.js
 regresstest/ark-regress/intl/relative-time-format/check-numbering-system.js
 regresstest/ark-regress/intl/relative-time-format/numberingSystems.js
 regresstest/ark-regress/intl/relative-time-format/resolved-options.js
