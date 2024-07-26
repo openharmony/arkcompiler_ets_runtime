@@ -3448,9 +3448,6 @@ void SlowPathLowering::LowerFastCall(GateRef gate, GateRef glue, GateRef func, G
             if (!isNew) {
                 BRANCH_CIR(builder_.IsClassConstructor(func), &slowPath, &notCallConstructor);
                 builder_.Bind(&notCallConstructor);
-            } else {
-                BRANCH_CIR(builder_.IsClassConstructor(func), &isCallConstructor, &slowPath);
-                builder_.Bind(&isCallConstructor);
             }
             GateRef method = builder_.GetMethodFromFunction(func);
             BRANCH_CIR(builder_.JudgeAotAndFastCall(func,

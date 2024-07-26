@@ -1266,6 +1266,11 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
         return;
     }
     JSTaggedValue phc1Root = JSHClass::FindProtoRootHClass(ihc1);
+    auto transitionProtoType = GetProfileType(JSHClass::Cast(phc1Root.GetTaggedObject()), true);
+    if (!transitionProtoType.IsRootType()) {
+        LOG_ECMA(DEBUG) << "Set as the prototype of a function again after transition happened for this prototype!";
+        return;
+    }
 
     auto thread = vm_->GetJSThread();
     auto *transitionTable = thread->GetCurrentEcmaContext()->GetFunctionProtoTransitionTable();
@@ -1274,6 +1279,7 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
     if ((ihc0 == 0) || (baseIhc == 0)) {
         return;
     }
+
     auto ihc0Obj = JSHClass::Cast(JSTaggedValue(ihc0).GetTaggedObject());
     auto baseIhcObj = JSHClass::Cast(JSTaggedValue(baseIhc).GetTaggedObject());
     UpdateLayout(ihc0Obj);
@@ -1282,12 +1288,10 @@ void PGOProfiler::TryDumpProtoTransitionType(JSHClass *hclass)
 
     auto ihc0RootType = GetProfileType(ihc0Obj);
     ASSERT(ihc0RootType.IsRootType());
-    auto transitionProtoType = GetProfileType(JSHClass::Cast(phc1Root.GetTaggedObject()), true);
-    ASSERT(transitionProtoType.IsRootType());
     auto baseRootHClass = JSHClass::FindRootHClass(baseIhcObj);
     auto baseRootType = GetProfileType(baseRootHClass, true);
     if (!baseRootType.IsRootType()) {
-        LOG_ECMA(WARN) << "Unsupported prototypes which cannot be recorded!";
+        LOG_ECMA(DEBUG) << "Unsupported prototypes which cannot be recorded!";
         return;
     }
     auto baseType = GetProfileType(baseIhcObj);

@@ -197,3 +197,31 @@ function Test6() {
   }
 }
 Test6()
+print("======================PART7=======================")
+function Test7() {
+  let proto = {}
+  for (let i = 0; i < 2; i++) {
+      function foo() {
+          this.x = 1
+      }
+      foo.prototype = proto
+      let obj = new foo()
+      print(obj.x)
+  }
+}
+Test7()
+print("======================PART8=======================")
+function Test8() {
+  let proto = {}
+  for (let i = 0; i < 2; i++) {
+      function foo() {
+          this.x = 1
+      }
+      foo.prototype = proto
+      let obj = new foo()
+      print(obj.x)
+      print(obj.y)
+      proto.y = 2
+  }
+}
+Test8()
