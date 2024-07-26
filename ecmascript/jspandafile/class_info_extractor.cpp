@@ -704,7 +704,7 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
     if (!constructorHClass->IsDictionaryMode() && staticFields > 0) {
         auto layout = JSHandle<LayoutInfo>(thread, constructorHClass->GetLayout());
-        AddFieldTypeToHClass(thread, staticFieldArray, length, layout, constructorHClass, -1);
+        AddFieldTypeToHClass(thread, staticFieldArray, length, layout, constructorHClass, ~0U);
     }
 
     JSHandle<JSFunction> constructor = factory->NewSFunctionByHClass(method, constructorHClass);
@@ -902,12 +902,12 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
             attributes = layout->GetAttr(entry);
             attributes.SetSharedFieldType(type);
             layout->SetNormalAttr(thread, entry, attributes);
-            if (start != -1 && propertyList.size() > 0) { // 重复key场景取后面的value
-                propertyList[start + (entry << 1)] = propertyList[start + i];
-                propertyList[start + (entry << 1) + 1] = propertyList[start + i + 1];
+            if (start != ~0U && propertyList.size() > 0) {
+                propertyList[start + (static_cast<uint32_t>(entry) << 1)] = propertyList[start + i];
+                propertyList[start + (static_cast<uint32_t>(entry) << 1) + 1] = propertyList[start + i + 1];
             }
         } else {
-            if (start != -1 && propertyList.size() > 0) {
+            if (start != ~0U && propertyList.size() > 0) {
                 propertyList[start + (index << 1)] = propertyList[start + i];
                 propertyList[start + (index << 1) + 1] = propertyList[start + i + 1];
             }
@@ -954,7 +954,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
         } else if (LIKELY(fieldNum <= JSSharedObject::MAX_INLINE)) {
             iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, fieldNum);
             JSHandle<LayoutInfo> layout = factory->CreateSLayoutInfo(fieldNum);
-            AddFieldTypeToHClass(thread, fieldTypeArray, length, layout, iHClass, -1);
+            AddFieldTypeToHClass(thread, fieldTypeArray, length, layout, iHClass, ~0U);
         } else {
             iHClass = factory->NewSEcmaHClass(JSSharedObject::SIZE, JSType::JS_SHARED_OBJECT, 0);
             JSHandle<NameDictionary> dict =
@@ -977,7 +977,7 @@ void SendableClassDefiner::DefineSendableInstanceHClass(JSThread *thread, const 
             } else if (LIKELY(newLength <= baseMaxInlineSize)) {
                 iHClass = factory->NewSEcmaHClass(baseSize, baseType, newLength);
                 JSHandle<LayoutInfo> layout = factory->CopyAndReSortSLayoutInfo(baseLayout, baseLength, newLength);
-                AddFieldTypeToHClass(thread, fieldTypeArray, length, layout, iHClass, -1);
+                AddFieldTypeToHClass(thread, fieldTypeArray, length, layout, iHClass, ~0U);
             } else {
                 iHClass = factory->NewSEcmaHClass(baseSize, baseType, 0);
                 JSHandle<NameDictionary> dict =
