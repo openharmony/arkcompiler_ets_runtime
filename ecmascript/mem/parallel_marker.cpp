@@ -95,7 +95,7 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
     if (!heap_->IsFullMark()) {
         return;
     }
-    auto Visitor = [this, threadId](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
+    JitCodeMapVisitor visitor = [this, threadId](std::map<JSTaggedType, JitCodeVector *> &jitCodeMaps) {
         auto it = jitCodeMaps.begin();
         while (it != jitCodeMaps.end()) {
             JSTaggedType jsError = it->first;
@@ -111,7 +111,7 @@ void NonMovableMarker::MarkJitCodeMap(uint32_t threadId)
             ++it;
         }
     };
-    ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), Visitor);
+    ObjectXRay::VisitJitCodeMap(heap_->GetEcmaVM(), visitor);
     ProcessMarkStack(threadId);
     heap_->WaitRunningTaskFinished();
 }
@@ -123,8 +123,8 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
     auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
         MarkValue(threadId, s, rootRegion, needBarrier);
     };
-    auto visitor = [this, threadId, isFullMark, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                    VisitObjectArea area) {
+    EcmaObjectRangeVisitor visitor = [this, threadId, isFullMark, cb](TaggedObject *root, ObjectSlot start,
+                                                                      ObjectSlot end, VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
         bool needBarrier = isFullMark && !rootRegion->InGeneralNewSpaceOrCSet();
         if (area == VisitObjectArea::IN_OBJECT) {
@@ -138,11 +138,7 @@ void NonMovableMarker::ProcessMarkStack(uint32_t threadId)
     };
     SemiSpace *newSpace = heap_->GetNewSpace();
     TaggedObject *obj = nullptr;
-    while (true) {
-        obj = nullptr;
-        if (!workManager_->Pop(threadId, &obj)) {
-            break;
-        }
+    while (workManager_->Pop(threadId, &obj)) {
         Region *region = Region::ObjectAddressToRange(obj);
         if (region->IsHalfFreshRegion()) {
             ASSERT(region->InYoungSpace());
@@ -169,8 +165,10 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
     auto cb = [&](ObjectSlot s, Region *rootRegion, bool needBarrier) {
         MarkValue(threadId, s, rootRegion, needBarrier);
     };
-    auto visitor = [this, threadId, isFullMark, &visitAddrNum, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                                                   VisitObjectArea area) {
+    EcmaObjectRangeVisitor visitor = [this, threadId, isFullMark, &visitAddrNum, cb](TaggedObject *root,
+                                                                                     ObjectSlot start,
+                                                                                     ObjectSlot end,
+                                                                                     VisitObjectArea area) {
         Region *rootRegion = Region::ObjectAddressToRange(root);
         visitAddrNum += end.SlotAddress() - start.SlotAddress();
         bool needBarrier = isFullMark && !rootRegion->InGeneralNewSpaceOrCSet();
@@ -186,17 +184,7 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
     TaggedObject *obj = nullptr;
     double startTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs();
     double costTime = startTime;
-    while (true) {
-        obj = nullptr;
-        if (!workManager_->Pop(threadId, &obj)) {
-            if (heap_->GetJSThread()->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
-                costTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs() - startTime;
-                heap_->GetIncrementalMarker()->UpdateMarkingSpeed(visitAddrNum, costTime);
-                heap_->GetIncrementalMarker()->SetMarkingFinished(true);
-            }
-            break;
-        }
-
+    while (workManager_->Pop(threadId, &obj)) {
         JSHClass *jsHclass = obj->GetClass();
         Region *region = Region::ObjectAddressToRange(obj);
         auto size = jsHclass->SizeFromJSHClass(obj);
@@ -206,8 +194,13 @@ void NonMovableMarker::ProcessIncrementalMarkStack(uint32_t threadId, uint32_t m
         if (heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark() && visitAddrNum >= markStepSize) {
             costTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs() - startTime;
             heap_->GetIncrementalMarker()->UpdateMarkingSpeed(visitAddrNum, costTime);
-            break;
+            return;
         }
+    }
+    if (heap_->GetJSThread()->IsMarking() && heap_->GetIncrementalMarker()->IsTriggeredIncrementalMark()) {
+        costTime = heap_->GetIncrementalMarker()->GetCurrentTimeInMs() - startTime;
+        heap_->GetIncrementalMarker()->UpdateMarkingSpeed(visitAddrNum, costTime);
+        heap_->GetIncrementalMarker()->SetMarkingFinished(true);
     }
 }
 
@@ -220,8 +213,8 @@ void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto cb = [&](ObjectSlot s, TaggedObject *root) { MarkValue(threadId, root, s); };
-    auto visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                        VisitObjectArea area) {
+    EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start,
+                                                          ObjectSlot end, VisitObjectArea area) {
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end, cb)) {
                 return;
@@ -232,12 +225,7 @@ void SemiGCMarker::ProcessMarkStack(uint32_t threadId)
         }
     };
     TaggedObject *obj = nullptr;
-    while (true) {
-        obj = nullptr;
-        if (!workManager_->Pop(threadId, &obj)) {
-            break;
-        }
-
+    while (workManager_->Pop(threadId, &obj)) {
         auto jsHclass = obj->GetClass();
         ObjectXRay::VisitObjectBody<VisitType::SEMI_GC_VISIT>(obj, jsHclass, visitor);
     }
@@ -247,8 +235,8 @@ void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
 {
     TRACE_GC(GCStats::Scope::ScopeId::ProcessMarkStack, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto cb = [&](ObjectSlot s, [[maybe_unused]] TaggedObject *root) { MarkValue(threadId, s); };
-    auto visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                       VisitObjectArea area) {
+    EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start,
+                                                          ObjectSlot end, VisitObjectArea area) {
         if (area == VisitObjectArea::IN_OBJECT) {
             if (VisitBodyInObj(root, start, end, cb)) {
                 return;
@@ -259,12 +247,7 @@ void CompressGCMarker::ProcessMarkStack(uint32_t threadId)
         }
     };
     TaggedObject *obj = nullptr;
-    while (true) {
-        obj = nullptr;
-        if (!workManager_->Pop(threadId, &obj)) {
-            break;
-        }
-
+    while (workManager_->Pop(threadId, &obj)) {
         auto jsHClass = obj->GetClass();
         ObjectSlot objectSlot(ToUintPtr(obj));
         MarkObject(threadId, jsHClass, objectSlot);
