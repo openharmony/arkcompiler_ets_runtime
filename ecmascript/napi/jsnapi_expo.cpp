@@ -3903,6 +3903,10 @@ void JSNApi::SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string>
     }
     vm->SetPkgNameList(pkgNameList);
 }
+std::string JSNApi::GetPkgName(EcmaVM *vm, const std::string &moduleName)
+{
+    return vm->GetPkgName(moduleName.c_str()).c_str();
+}
 
 void JSNApi::SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
     std::vector<std::vector<std::string>>> &list)
