@@ -1761,10 +1761,10 @@ function test127() {
 function test128() {
     let a = [0, 1, 2];
     a.unshift(-2, -1);
-    if (a.length == 5 && ArkTools.getElementsKind(a) == HOLEINT) {
+    if (a.length == 5 && ArkTools.getElementsKind(a) == PACKEDINT) {
         print("test128 - success");
     } else {
-        print("test128 - failed, expected: " + HOLEINT + " , but get: " + ArkTools.getElementsKind(a));
+        print("test128 - failed, expected: " + PACKEDINT + " , but get: " + ArkTools.getElementsKind(a));
     }
 }
 

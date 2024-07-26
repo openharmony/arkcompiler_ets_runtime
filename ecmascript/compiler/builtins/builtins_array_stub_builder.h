@@ -43,6 +43,8 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     void GenArrayConstructor(GateRef glue, GateRef nativeCode, GateRef func,
         GateRef newTarget, GateRef thisValue, GateRef numArgs);
+    
+    void ElementsKindHclassCompare(GateRef glue, GateRef arrayCls, Label *matchCls, Label *slowPath);
 
     GateRef IsConcatSpreadable(GateRef glue, GateRef obj);
 
