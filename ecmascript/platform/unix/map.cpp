@@ -110,14 +110,4 @@ size_t PageSize()
 {
     return getpagesize();
 }
-
-void *PageMapExecFortSpace(void *addr, size_t size, int prot)
-{
-    void *res = mmap(addr, size, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_EXECUTABLE, -1, 0);
-    if (res == MAP_FAILED) {
-        LOG_ECMA(ERROR) << "PageMapExecFortSpace mmap failed, addr = " << addr << ", size = " << size <<
-            ", prot = " << prot << ", error code is " << errno;
-    }
-    return res;
-}
 }  // namespace panda::ecmascript

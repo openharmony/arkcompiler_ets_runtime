@@ -61,4 +61,10 @@ void BindSmallCpuCore()
 {
     LOG_ECMA(INFO) << "Bind Small Core in macos not support";
 }
+
+void *PageMapExecFortSpace(void *addr, [[maybe_unused]] size_t size, [[maybe_unused]] int prot)
+{
+    // basically no op
+    return addr;
+}
 }  // namespace panda::ecmascript

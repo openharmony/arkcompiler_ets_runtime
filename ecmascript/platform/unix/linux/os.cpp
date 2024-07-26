@@ -17,6 +17,7 @@
 
 #include <malloc.h>
 #include <sched.h>
+#include <sys/mman.h>
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/sysinfo.h>
@@ -73,5 +74,15 @@ void BindSmallCpuCore()
     if (sched_setaffinity(0, sizeof(cpuset), &cpuset) == -1) {
         LOG_ECMA(ERROR) << "Set CPU affinity failed";
     }
+}
+
+void *PageMapExecFortSpace(void *addr, size_t size, int prot)
+{
+    void *res = mmap(addr, size, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_EXECUTABLE, -1, 0);
+    if (res == MAP_FAILED) {
+        LOG_ECMA(ERROR) << "PageMapExecFortSpace mmap failed, addr = " << addr << ", size = " << size <<
+            ", prot = " << prot << ", error code is " << errno;
+    }
+    return res;
 }
 }  // namespace panda::ecmascript
