@@ -88,6 +88,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
         case OpCode::TYPE_OF_CHECK:
         case OpCode::ARRAY_CONSTRUCTOR_CHECK:
+        case OpCode::FLOAT32_ARRAY_CONSTRUCTOR_CHECK:
         case OpCode::OBJECT_CONSTRUCTOR_CHECK:
         case OpCode::BOOLEAN_CONSTRUCTOR_CHECK:
         case OpCode::PROTO_CHANGE_MARKER_CHECK:
@@ -399,6 +400,7 @@ bool EarlyElimination::CheckReplacement(GateRef lhs, GateRef rhs)
             break;
         }
         case OpCode::ARRAY_CONSTRUCTOR_CHECK:
+        case OpCode::FLOAT32_ARRAY_CONSTRUCTOR_CHECK:
         case OpCode::OBJECT_CONSTRUCTOR_CHECK:
         case OpCode::BOOLEAN_CONSTRUCTOR_CHECK: {
             if (acc_.GetValueIn(lhs) != acc_.GetValueIn(rhs)) {

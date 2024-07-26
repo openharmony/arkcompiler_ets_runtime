@@ -647,6 +647,19 @@ GateRef CircuitBuilder::BuiltinConstructor(BuiltinsStubCSigns::ID id, GateRef ga
             }
             break;
         }
+        case BuiltinsStubCSigns::ID::Float32ArrayConstructor: {
+            if (acc_.GetNumValueIn(gate) == 1) {
+                newGate = GetCircuit()->NewGate(circuit_->Float32ArrayConstructor(1), MachineType::I64,
+                                                { currentControl, currentDepend, acc_.GetValueIn(gate, 0)},
+                                                GateType::TaggedValue());
+            } else {
+                ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: num value in
+                newGate = GetCircuit()->NewGate(circuit_->Float32ArrayConstructor(2), MachineType::I64,
+                    { currentControl, currentDepend, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)},
+                    GateType::TaggedValue());
+            }
+            break;
+        }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();

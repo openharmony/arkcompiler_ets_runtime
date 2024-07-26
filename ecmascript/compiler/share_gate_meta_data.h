@@ -116,6 +116,7 @@ enum class TypedCallTargetCheckOp : uint8_t;
     V(NewBuiltinCtorFail1,             NEWBUILTINCTORFAIL1)            \
     V(NewBuiltinCtorObject,            NEWBUILTINCTOROBJECT)           \
     V(NewBuiltinCtorArray,             NEWBUILTINCTORARRAY)            \
+    V(NewBuiltinCtorFloat32Array,      NEWBUILTINCTORFLOAT32ARRAY)     \
     V(NewBuiltinCtorBoolean,           NEWBUILTINCTORBOOLEAN)          \
     V(IsUndefinedOrHole,               ISUNDEFINEDORHOLE)              \
     V(IsNotUndefinedOrHole,            ISNOTUNDEFINEDORHOLE)           \

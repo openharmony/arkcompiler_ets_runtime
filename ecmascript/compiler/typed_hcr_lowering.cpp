@@ -166,6 +166,12 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::ARRAY_CONSTRUCTOR:
             LowerArrayConstructor(gate, glue);
             break;
+        case OpCode::FLOAT32_ARRAY_CONSTRUCTOR_CHECK:
+            LowerFloat32ArrayConstructorCheck(gate, glue);
+            break;
+        case OpCode::FLOAT32_ARRAY_CONSTRUCTOR:
+            LowerFloat32ArrayConstructor(gate, glue);
+            break;
         case OpCode::LOAD_BUILTIN_OBJECT:
             LowerLoadBuiltinObject(gate);
             break;
@@ -2354,6 +2360,109 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
             builder_.SetExtensibleToBitfield(glue, *res, true);
             builder_.Jump(&exit);
         }
+    }
+    builder_.Bind(&slowPath);
+    {
+        size_t range = acc_.GetNumValueIn(gate);
+        std::vector<GateRef> args(range);
+        for (size_t i = 0; i < range; ++i) {
+            args[i] = acc_.GetValueIn(gate, i);
+        }
+        res = LowerCallRuntime(glue, gate, RTSTUB_ID(OptNewObjRange), args, true);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), *res);
+}
+
+void TypedHCRLowering::LowerFloat32ArrayConstructorCheck(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = GetFrameState(gate);
+    GateRef newTarget = acc_.GetValueIn(gate, 0);
+    GateRef glueGlobalEnvOffset = builder_.IntPtr(
+        JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
+    GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    GateRef arrayFunc =
+        builder_.GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv, GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
+    GateRef check = builder_.Equal(arrayFunc, newTarget);
+    builder_.DeoptCheck(check, frameState, DeoptType::NEWBUILTINCTORFLOAT32ARRAY);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void TypedHCRLowering::NewFloat32ArrayConstructorWithNoArgs(GateRef gate, GateRef glue)
+{
+    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+    newBuilder.SetParameters(glue, 0);
+    GateRef res = newBuilder.NewFloat32ArrayWithSize(glue, builder_.Int32(0));
+    ReplaceGateWithPendingException(glue, gate, builder_.GetState(), builder_.GetDepend(), res);
+}
+
+void TypedHCRLowering::ConvertFloat32ArrayConstructorLength(GateRef len, Variable *arrayLength,
+                                                            Label *arrayCreate, Label *slowPath)
+{
+    Label argIsNumber(&builder_);
+    BRANCH_CIR(builder_.TaggedIsNumber(len), &argIsNumber, slowPath);
+    builder_.Bind(&argIsNumber);
+    {
+        Label argIsInt(&builder_);
+        Label argIsDouble(&builder_);
+        BRANCH_CIR(builder_.TaggedIsInt(len), &argIsInt, &argIsDouble);
+        builder_.Bind(&argIsInt);
+        {
+            Label validIntLength(&builder_);
+            GateRef intLen = builder_.GetInt64OfTInt(len);
+            GateRef isGEZero = builder_.Int64GreaterThanOrEqual(intLen, builder_.Int64(0));
+            GateRef isLEMaxLen = builder_.Int64LessThanOrEqual(intLen, builder_.Int64(JSObject::MAX_GAP));
+            BRANCH_CIR(builder_.BoolAnd(isGEZero, isLEMaxLen), &validIntLength, slowPath);
+            builder_.Bind(&validIntLength);
+            {
+                *arrayLength = intLen;
+                builder_.Jump(arrayCreate);
+            }
+        }
+        builder_.Bind(&argIsDouble);
+        {
+            Label validDoubleLength(&builder_);
+            Label GetDoubleToIntValue(&builder_);
+            GateRef doubleLength = builder_.GetDoubleOfTDouble(len);
+            GateRef doubleToInt = builder_.DoubleToInt(doubleLength, &GetDoubleToIntValue);
+            GateRef intToDouble = builder_.CastInt64ToFloat64(builder_.SExtInt32ToInt64(doubleToInt));
+            GateRef doubleEqual = builder_.DoubleEqual(doubleLength, intToDouble);
+            GateRef doubleLEMaxLen =
+                builder_.DoubleLessThanOrEqual(doubleLength, builder_.Double(JSObject::MAX_GAP));
+            BRANCH_CIR(builder_.BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, slowPath);
+            builder_.Bind(&validDoubleLength);
+            {
+                *arrayLength = builder_.SExtInt32ToInt64(doubleToInt);
+                builder_.Jump(arrayCreate);
+            }
+        }
+    }
+}
+
+void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
+{
+    Environment env(gate, circuit_, &builder_);
+    if (acc_.GetNumValueIn(gate) == 1) {
+        NewFloat32ArrayConstructorWithNoArgs(gate, glue);
+        return;
+    }
+    ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: new target and arg0
+    DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
+    Label slowPath(&builder_);
+    Label exit(&builder_);
+    GateRef arg0 = acc_.GetValueIn(gate, 1);
+    DEFVALUE(arrayLength, (&builder_), VariableType::INT64(), builder_.Int64(0));
+    Label arrayCreate(&builder_);
+    ConvertFloat32ArrayConstructorLength(arg0, &arrayLength, &arrayCreate, &slowPath);
+    builder_.Bind(&arrayCreate);
+    {
+        GateRef truncedLength = builder_.TruncInt64ToInt32(*arrayLength);
+        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+        newBuilder.SetParameters(glue, 0);
+        res = newBuilder.NewFloat32ArrayWithSize(glue, truncedLength);
+        builder_.Jump(&exit);
     }
     builder_.Bind(&slowPath);
     {

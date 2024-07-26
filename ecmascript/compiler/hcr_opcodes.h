@@ -38,6 +38,7 @@ namespace panda::ecmascript::kungfu {
     V(RuntimeCallWithArgv, RUNTIME_CALL_WITH_ARGV, GateFlags::NONE_FLAG, 0, 1, value)            \
     V(SaveRegister, SAVE_REGISTER, GateFlags::NONE_FLAG, 0, 1, value)                            \
     V(ArrayConstructor, ARRAY_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)                    \
+    V(Float32ArrayConstructor, FLOAT32_ARRAY_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)     \
     V(ObjectConstructor, OBJECT_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)                  \
     V(BooleanConstructor, BOOLEAN_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)                \
     V(BaselineCall, BASELINE_CALL, GateFlags::NONE_FLAG, 0, 1, value)

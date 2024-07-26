@@ -2373,7 +2373,8 @@ void Builtins::Initialize##Type(const JSHandle<GlobalEnv> &env, const JSHandle<J
     arrFuncInstanceHClass->SetHasConstructor(false);                                                            \
     /* %TypedArray% = new Function() */                                                                         \
     JSHandle<JSFunction> arrayFunction = factory_->NewSpecificTypedArrayFunction(                               \
-        env, reinterpret_cast<void *>(BuiltinsTypedArray::Type##Constructor));                                  \
+        env, reinterpret_cast<void *>(BuiltinsTypedArray::Type##Constructor),                                   \
+        kungfu::BuiltinsStubCSigns::Type##Constructor);                                                         \
     InitializeCtor(env, arrFuncPrototype, arrayFunction, #Type, FunctionLength::THREE);                         \
                                                                                                                 \
     arrayFunction->SetProtoOrHClass(thread_, arrFuncInstanceHClass.GetTaggedValue());                           \

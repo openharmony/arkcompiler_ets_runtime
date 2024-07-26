@@ -67,6 +67,7 @@ namespace panda::ecmascript::kungfu {
     V(TypedArrayEntries, TYPED_ARRAY_ENTRIES, GateFlags::NO_WRITE, 1, 1, 1)                     \
     V(TypedArrayKeys, TYPED_ARRAY_KEYS, GateFlags::NO_WRITE, 1, 1, 1)                           \
     V(TypedArrayValues, TYPED_ARRAY_VALUES, GateFlags::NO_WRITE, 1, 1, 1)                       \
+    V(Float32ArrayConstructorCheck, FLOAT32_ARRAY_CONSTRUCTOR_CHECK, GateFlags::CHECKABLE, 1, 1, 1)          \
     V(MigrateFromRawValueToHeapValues, MIGRATE_FROM_RAWVALUE_TO_HEAPVALUES, GateFlags::NONE_FLAG, 1, 1, 3)   \
     V(MigrateFromHeapValueToRawValue, MIGRATE_FROM_HEAPVALUE_TO_RAWVALUE, GateFlags::NONE_FLAG, 1, 1, 3)     \
     V(MigrateFromHoleIntToHoleNumber, MIGRATE_FROM_HOLEINT_TO_HOLENUMBER, GateFlags::NONE_FLAG, 1, 1, 1)     \

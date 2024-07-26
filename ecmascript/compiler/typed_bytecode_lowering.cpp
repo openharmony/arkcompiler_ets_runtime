@@ -1574,6 +1574,14 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
             }
             constructGate = builder_.BuiltinConstructor(BuiltinsStubCSigns::ID::BooleanConstructor, gate);
         }
+    } else if (tacc.IsBuiltinId(BuiltinsStubCSigns::ID::Float32ArrayConstructor)) {
+        if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
+            AddProfiling(gate);
+            if (!Uncheck()) {
+                builder_.Float32ArrayConstructorCheck(ctor);
+            }
+            constructGate = builder_.BuiltinConstructor(BuiltinsStubCSigns::ID::Float32ArrayConstructor, gate);
+        }
     }
     if (constructGate == Circuit::NullGate()) {
         return false;
@@ -2198,7 +2206,7 @@ void TypedBytecodeLowering::LowerGetIterator(GateRef gate)
     }
     GetIteratorTypeInfoAccessor tacc(compilationEnv_, circuit_, gate, GetCalleePandaFile(gate), callMethodFlagMap_);
     BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinMethodId();
-    if (IS_INVALID_ID(id) && id == BuiltinsStubCSigns::ID::NONE) {
+    if (IS_INVALID_ID(id) || id == BuiltinsStubCSigns::ID::NONE) {
         return;
     }
     AddProfiling(gate);

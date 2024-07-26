@@ -288,6 +288,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::LEX_VAR_IS_HOLE_CHECK:
         case OpCode::TYPE_OF_CHECK:
         case OpCode::ARRAY_CONSTRUCTOR:
+        case OpCode::FLOAT32_ARRAY_CONSTRUCTOR:
         case OpCode::OBJECT_CONSTRUCTOR:
         case OpCode::BOOLEAN_CONSTRUCTOR:
         case OpCode::LD_LOCAL_MODULE_VAR:

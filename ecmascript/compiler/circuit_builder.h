@@ -562,6 +562,7 @@ public:
     GateRef InsertLoadArrayLength(GateRef array, GateRef length, bool isTypedArray);
     GateRef InsertTypedArrayCheck(GateRef array, TypedArrayMetaDataAccessor accessor);
     GateRef ArrayConstructorCheck(GateRef gate);
+    GateRef Float32ArrayConstructorCheck(GateRef gate);
     GateRef ObjectConstructorCheck(GateRef gate);
     GateRef BooleanConstructorCheck(GateRef gate);
     GateRef InsertTypedBinaryop(GateRef left, GateRef right, TypedBinOp op);

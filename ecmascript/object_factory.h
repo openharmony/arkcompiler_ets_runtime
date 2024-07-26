@@ -248,7 +248,9 @@ public:
     JSHandle<JSFunction> NewJSNativeErrorFunction(const JSHandle<GlobalEnv> &env, const void *nativeFunc = nullptr);
 
     JSHandle<JSFunction> NewSpecificTypedArrayFunction(const JSHandle<GlobalEnv> &env,
-                                                       const void *nativeFunc = nullptr);
+                                                       const void *nativeFunc = nullptr,
+                                                       kungfu::BuiltinsStubCSigns::ID builtinId =
+                                                       kungfu::BuiltinsStubCSigns::INVALID);
 
     JSHandle<JSObject> OrdinaryNewJSObjectCreate(const JSHandle<JSTaggedValue> &proto);
 
