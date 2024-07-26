@@ -618,7 +618,8 @@ private:
     V(SameValue)                                     \
     V(GetBaselineBuiltinFp)                          \
     V(StringIteratorNext)                            \
-    V(Definefunc)
+    V(Definefunc)                                    \
+    V(DefineField)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \
