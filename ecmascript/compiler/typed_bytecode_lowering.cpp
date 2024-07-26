@@ -828,9 +828,9 @@ void TypedBytecodeLowering::LowerTypedStObjByName(GateRef gate)
                     { receiverHC, newHolderHC, propKey }, gate);
                 builder_.Jump(&notProto);
                 builder_.Bind(&notProto);
-                MemoryAttribute order = MemoryAttribute::NeedBarrierAndAtomic();
+                MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
                 builder_.StoreConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
-                    TaggedObject::HCLASS_OFFSET, newHolderHC, order);
+                    TaggedObject::HCLASS_OFFSET, newHolderHC, mAttr);
                 if (!tacc.GetAccessInfo(i).Plr().IsInlinedProps()) {
                     auto properties = builder_.LoadConstOffset(VariableType::JS_ANY(), tacc.GetReceiver(),
                                                                JSObject::PROPERTIES_OFFSET);

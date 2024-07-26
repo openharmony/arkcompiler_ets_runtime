@@ -1030,7 +1030,7 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         GateRef gateTmp = inList[paraIdx];
         const auto gateTmpType = LLVMTypeOf(GetLValue(gateTmp));
         if (paramAttr != nullptr && params.size() < paramAttr->size() &&
-            paramAttr->at(params.size()) == CallSignature::ParamAttr::UnUsed) {
+            paramAttr->at(params.size()) == CallSignature::ParamAttr::Dead) {
             params.push_back(LLVMGetUndef(gateTmpType));
             continue;
         }

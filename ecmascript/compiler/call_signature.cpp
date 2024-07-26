@@ -750,8 +750,8 @@ DEF_CALL_SIGNATURE(TryStoreICByValue)
         CallSignature::ParamAttr::NoAttr,                                   \
         CallSignature::ParamAttr::NoAttr,                                   \
         CallSignature::ParamAttr::NoAttr,                                   \
-        CallSignature::ParamAttr::UnUsed,                                   \
-        CallSignature::ParamAttr::UnUsed,                                   \
+        CallSignature::ParamAttr::Dead,                                     \
+        CallSignature::ParamAttr::Dead,                                     \
     };                                                                      \
     callSign->SetParamAttr(std::move(paramAttrs))
 
@@ -760,9 +760,9 @@ DEF_CALL_SIGNATURE(SetValueWithBarrier)
     SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetValueWithBarrier);
 }
 
-DEF_CALL_SIGNATURE(SetNotShareValueWithBarrier)
+DEF_CALL_SIGNATURE(SetNonSValueWithBarrier)
 {
-    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetNotShareValueWithBarrier);
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetNonSValueWithBarrier);
 }
 
 DEF_CALL_SIGNATURE(SetValueWithEdenBarrier)
@@ -770,14 +770,14 @@ DEF_CALL_SIGNATURE(SetValueWithEdenBarrier)
     SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetValueWithEdenBarrier);
 }
 
-DEF_CALL_SIGNATURE(SetNotShareValueWithEdenBarrier)
+DEF_CALL_SIGNATURE(SetNonSValueWithEdenBarrier)
 {
-    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetNotShareValueWithEdenBarrier);
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetNonSValueWithEdenBarrier);
 }
 
-DEF_CALL_SIGNATURE(SetShareValueWithBarrier)
+DEF_CALL_SIGNATURE(SetSValueWithBarrier)
 {
-    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetShareValueWithBarrier);
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetSValueWithBarrier);
 }
 
 #undef SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON

@@ -811,13 +811,13 @@ void SetValueWithBarrierStubBuilder::GenerateCircuit()
     Return();
 }
 
-void SetNotShareValueWithBarrierStubBuilder::GenerateCircuit()
+void SetNonSValueWithBarrierStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::NOT_SHARE);
+    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::NON_SHARE);
     Return();
 }
 
@@ -831,23 +831,23 @@ void SetValueWithEdenBarrierStubBuilder::GenerateCircuit()
     Return();
 }
 
-void SetNotShareValueWithEdenBarrierStubBuilder::GenerateCircuit()
+void SetNonSValueWithEdenBarrierStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, true, MemoryAttribute::NOT_SHARE);
+    SetValueWithBarrier(glue, obj, offset, value, true, MemoryAttribute::NON_SHARE);
     Return();
 }
 
-void SetShareValueWithBarrierStubBuilder::GenerateCircuit()
+void SetSValueWithBarrierStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
     GateRef obj = TaggedArgument(1);
     GateRef offset = PtrArgument(2); // 2 : 3rd para
     GateRef value = TaggedArgument(3); // 3 : 4th para
-    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::IS_SHARE);
+    SetValueWithBarrier(glue, obj, offset, value, false, MemoryAttribute::SHARED);
     Return();
 }
 

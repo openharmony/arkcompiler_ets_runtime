@@ -53,11 +53,11 @@ public:
     void NewLexicalEnv(Variable *result, Label *exit, GateRef numSlots, GateRef parent);
     void NewJSObject(Variable *result, Label *exit, GateRef hclass, GateRef size);
     void NewJSObject(Variable *result, Label *exit, GateRef hclass,
-                     MemoryAttribute order = MemoryAttribute::Default());
+                     MemoryAttribute mAttr = MemoryAttribute::Default());
     void NewSObject(Variable *result, Label *exit, GateRef hclass,
-                    MemoryAttribute order = MemoryAttribute::Default());
-    GateRef NewJSObject(GateRef glue, GateRef hclass, MemoryAttribute order = MemoryAttribute::Default());
-    GateRef NewSObject(GateRef glue, GateRef hclass, MemoryAttribute order = MemoryAttribute::Default());
+                    MemoryAttribute mAttr = MemoryAttribute::Default());
+    GateRef NewJSObject(GateRef glue, GateRef hclass, MemoryAttribute mAttr = MemoryAttribute::Default());
+    GateRef NewSObject(GateRef glue, GateRef hclass, MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef NewJSProxy(GateRef glue, GateRef target, GateRef handler);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
@@ -95,7 +95,7 @@ public:
                          GateRef arraySize);
     // Note: The size is the num of bytes, it is required to be divisible by 8.
     void InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start, GateRef end,
-                                    MemoryAttribute order = MemoryAttribute::Default());
+                                    MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef FastNewThisObject(GateRef glue, GateRef ctor);
     GateRef FastSuperAllocateThis(GateRef glue, GateRef superCtor, GateRef newTarget);
     GateRef NewThisObjectChecked(GateRef glue, GateRef ctor);

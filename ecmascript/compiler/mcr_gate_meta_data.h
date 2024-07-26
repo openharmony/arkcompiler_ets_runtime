@@ -359,10 +359,10 @@ public:
         UNKNOWN_BARRIER
     };
 
-    enum Share {
-        UNKNOWN_SHARE = 0,
-        NOT_SHARE,
-        IS_SHARE
+    enum ShareFlag {
+        UNKNOWN = 0,
+        NON_SHARE,
+        SHARED
     };
 
     static MemoryAttribute Default()
@@ -375,9 +375,14 @@ public:
         return Create(NOT_ATOMIC, NEED_BARRIER);
     }
 
+    static MemoryAttribute DefaultWithShareBarrier()
+    {
+        return Create(NOT_ATOMIC, UNKNOWN_BARRIER, SHARED);
+    }
+
     static MemoryAttribute NeedNotShareBarrier()
     {
-        return Create(NOT_ATOMIC, NEED_BARRIER, NOT_SHARE);
+        return Create(NOT_ATOMIC, NEED_BARRIER, NON_SHARE);
     }
 
     static MemoryAttribute NeedBarrierAndAtomic()
@@ -400,12 +405,12 @@ public:
         return BarrierField::Get(value_);
     }
 
-    void SetShare(Share share)
+    void SetShare(ShareFlag share)
     {
         ShareField::Set<uint32_t>(share, &value_);
     }
 
-    Share GetShare() const
+    ShareFlag GetShare() const
     {
         return ShareField::Get(value_);
     }
@@ -426,7 +431,7 @@ public:
     }
 
 private:
-    static MemoryAttribute Create(Order order, Barrier barrier = UNKNOWN_BARRIER, Share share = UNKNOWN_SHARE)
+    static MemoryAttribute Create(Order order, Barrier barrier = UNKNOWN_BARRIER, ShareFlag share = UNKNOWN)
     {
         uint32_t value = OrderField::Encode(order) | BarrierField::Encode(barrier) | ShareField::Encode(share);
         return MemoryAttribute(value);
@@ -437,7 +442,7 @@ private:
     static constexpr uint32_t SHARE_BITS = 8;
     using OrderField = panda::BitField<Order, 0, ORDER_BITS>;
     using BarrierField = OrderField::NextField<Barrier, BARRIER_BITS>;
-    using ShareField = BarrierField::NextField<Share, SHARE_BITS>;
+    using ShareField = BarrierField::NextField<ShareFlag, SHARE_BITS>;
 
     uint32_t value_;
 };
@@ -452,9 +457,9 @@ public:
         return MemoryAttribute(MemoryAttributeBits::Get(bitField_));
     }
 
-    static uint64_t ToValue(MemoryAttribute order)
+    static uint64_t ToValue(MemoryAttribute mAttr)
     {
-        return MemoryAttributeBits::Encode(order.Value());
+        return MemoryAttributeBits::Encode(mAttr.Value());
     }
 private:
     using MemoryAttributeBits = panda::BitField<uint32_t, 0, MEMORY_ORDER_BITS>;
@@ -478,10 +483,10 @@ public:
         return static_cast<size_t>(OprandOffsetBits::Get(bitField_));
     }
 
-    static uint64_t ToValue(size_t offset, MemoryAttribute order)
+    static uint64_t ToValue(size_t offset, MemoryAttribute mAttr)
     {
         return OprandOffsetBits::Encode(static_cast<uint32_t>(offset)) |
-               MemoryAttributeBits::Encode(order.Value());
+               MemoryAttributeBits::Encode(mAttr.Value());
     }
 private:
     using OprandOffsetBits = panda::BitField<uint32_t, 0, OPRAND_OFFSET_BITS>;

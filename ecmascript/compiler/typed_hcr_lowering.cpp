@@ -3188,8 +3188,8 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
         { receiverHC, newHolderHC, key }, gate);
     builder_.Jump(&notProto);
     builder_.Bind(&notProto);
-    MemoryAttribute order = MemoryAttribute::NeedBarrierAndAtomic();
-    builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, TaggedObject::HCLASS_OFFSET, newHolderHC, order);
+    MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
+    builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, TaggedObject::HCLASS_OFFSET, newHolderHC, mAttr);
     if (!plr.IsInlinedProps()) {
         auto properties =
             builder_.LoadConstOffset(VariableType::JS_ANY(), receiver, JSObject::PROPERTIES_OFFSET);

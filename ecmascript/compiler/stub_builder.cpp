@@ -1609,13 +1609,13 @@ GateRef StubBuilder::TaggedToElementKind(GateRef value)
 }
 
 void StubBuilder::Store(VariableType type, GateRef glue, GateRef base, GateRef offset, GateRef value,
-                        MemoryAttribute order)
+                        MemoryAttribute mAttr)
 {
     if (!env_->IsAsmInterp()) {
-        env_->GetBuilder()->Store(type, glue, base, offset, value, order);
+        env_->GetBuilder()->Store(type, glue, base, offset, value, mAttr);
     } else {
         auto depend = env_->GetCurrentLabel()->GetDepend();
-        auto bit = LoadStoreAccessor::ToValue(order);
+        auto bit = LoadStoreAccessor::ToValue(mAttr);
         GateRef result = env_->GetCircuit()->NewGate(
             env_->GetCircuit()->Store(bit), MachineType::NOVALUE,
             { depend, glue, base, offset, value }, type.GetGateType());
@@ -1719,7 +1719,7 @@ void StubBuilder::SetValueWithRep(
 }
 
 void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden,
-                                      MemoryAttribute::Share share)
+                                      MemoryAttribute::ShareFlag share)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1732,14 +1732,14 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Label fatal(env);
     Label noFatal(env);
     int msgId = GET_MESSAGE_STRING_ID(SharedObjectRefersLocalObject);
-    if (share == MemoryAttribute::IS_SHARE) {
+    if (share == MemoryAttribute::SHARED) {
         BRANCH(BoolNot(InSharedHeap(valueRegion)), &fatal, &noFatal);
-        msgId = GET_MESSAGE_STRING_ID(ValueIsNotSharedObject);
+        msgId = GET_MESSAGE_STRING_ID(ValueIsNonSObject);
     }
-    if (share == MemoryAttribute::NOT_SHARE) {
+    if (share == MemoryAttribute::NON_SHARE) {
         BRANCH(InSharedHeap(objectRegion), &fatal, &noFatal);
     }
-    if (share == MemoryAttribute::UNKNOWN_SHARE) {
+    if (share == MemoryAttribute::UNKNOWN) {
         BRANCH(BoolAnd(InSharedHeap(objectRegion), BoolNot(InSharedHeap(valueRegion))), &fatal, &noFatal);
     }
     Bind(&fatal);
@@ -1750,28 +1750,28 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     Bind(&noFatal);
 #endif
     switch (share) {
-        case MemoryAttribute::IS_SHARE: {
-            SetShareValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion);
+        case MemoryAttribute::SHARED: {
+            SetSValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion);
             Jump(&exit);
             break;
         }
-        case MemoryAttribute::NOT_SHARE: {
-            SetNotShareValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion, withEden);
+        case MemoryAttribute::NON_SHARE: {
+            SetNonSValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion, withEden);
             Jump(&exit);
             break;
         }
-        case MemoryAttribute::UNKNOWN_SHARE: {
+        case MemoryAttribute::UNKNOWN: {
             Label valueIsShared(env);
             Label valueIsNotShared(env);
             BRANCH_UNLIKELY(InSharedHeap(valueRegion), &valueIsShared, &valueIsNotShared);
             Bind(&valueIsShared);
             {
-                SetShareValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion);
+                SetSValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion);
                 Jump(&exit);
             }
             Bind(&valueIsNotShared);
             {
-                SetNotShareValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion, withEden);
+                SetNonSValueWithBarrier(glue, obj, offset, value, objectRegion, valueRegion, withEden);
                 Jump(&exit);
             }
             break;
@@ -1783,8 +1783,8 @@ void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset,
     env->SubCfgExit();
 }
 
-void StubBuilder::SetShareValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value,
-                                           GateRef objectRegion, GateRef valueRegion)
+void StubBuilder::SetSValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef objectRegion,
+                                       GateRef valueRegion)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -1859,8 +1859,8 @@ void StubBuilder::SetShareValueWithBarrier(GateRef glue, GateRef obj, GateRef of
     env->SubCfgExit();
 }
 
-void StubBuilder::SetNotShareValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value,
-                                              GateRef objectRegion, GateRef valueRegion, bool withEden)
+void StubBuilder::SetNonSValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value,
+                                          GateRef objectRegion, GateRef valueRegion, bool withEden)
 {
     auto env = GetEnvironment();
     Label entry(env);

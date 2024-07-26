@@ -68,7 +68,7 @@ namespace panda::ecmascript {
     V(DefineFieldField, "DefineField: obj is not Object")                                    \
     V(IsNotPropertyKey, "key is not a property key")                                         \
     V(CreateDataPropertyFailed, "failed to create data property")                            \
-    V(ValueIsNotSharedObject, "value is not a shared object")
+    V(ValueIsNonSObject, "value is not a shared object")
 
 #define DEBUG_CHECK_MESSAGE_STRING_LIST(V)                                                   \
     V(IsCallable)                                                                            \

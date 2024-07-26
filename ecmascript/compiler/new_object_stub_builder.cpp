@@ -106,7 +106,7 @@ GateRef NewObjectStubBuilder::NewJSArrayWithSize(GateRef hclass, GateRef size)
     return result;
 }
 
-void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hclass, MemoryAttribute order)
+void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hclass, MemoryAttribute mAttr)
 {
     auto env = GetEnvironment();
 
@@ -117,7 +117,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     AllocateInYoung(result, &hasPendingException, &noException, hclass);
     Bind(&noException);
     {
-        if (order.Value() == MemoryAttribute::NoBarrier().Value()) {
+        if (mAttr.Value() == MemoryAttribute::NoBarrier().Value()) {
             StoreHClassWithoutBarrier(glue_, result->ReadVariable(), hclass);
         } else {
             StoreHClass(glue_, result->ReadVariable(), hclass);
@@ -136,7 +136,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
         Bind(&initialize);
         Label afterInitialize(env);
         InitializeWithSpeicalValue(&afterInitialize,
-            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_), order);
+            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_), mAttr);
         Bind(&afterInitialize);
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
@@ -153,7 +153,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     }
 }
 
-void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hclass, MemoryAttribute order)
+void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hclass, MemoryAttribute mAttr)
 {
     auto env = GetEnvironment();
 
@@ -162,7 +162,7 @@ void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hcl
     AllocateInSOld(result, &afterAllocate, hclass);
     Bind(&afterAllocate);
     {
-        if (order.Value() == MemoryAttribute::NoBarrier().Value()) {
+        if (mAttr.Value() == MemoryAttribute::NoBarrier().Value()) {
             StoreHClassWithoutBarrier(glue_, result->ReadVariable(), hclass);
         } else {
             StoreHClass(glue_, result->ReadVariable(), hclass);
@@ -181,7 +181,7 @@ void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hcl
         Bind(&initialize);
         Label afterInitialize(env);
         InitializeWithSpeicalValue(&afterInitialize,
-            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_), order);
+            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_), mAttr);
         Bind(&afterInitialize);
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
@@ -286,7 +286,7 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     Jump(exit);
 }
 
-GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass, MemoryAttribute order)
+GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass, MemoryAttribute mAttr)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -295,7 +295,7 @@ GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass, MemoryAt
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     SetGlue(glue);
-    NewJSObject(&result, &exit, hclass, order);
+    NewJSObject(&result, &exit, hclass, mAttr);
 
     Bind(&exit);
     auto ret = *result;
@@ -303,7 +303,7 @@ GateRef NewObjectStubBuilder::NewJSObject(GateRef glue, GateRef hclass, MemoryAt
     return ret;
 }
 
-GateRef NewObjectStubBuilder::NewSObject(GateRef glue, GateRef hclass, MemoryAttribute order)
+GateRef NewObjectStubBuilder::NewSObject(GateRef glue, GateRef hclass, MemoryAttribute mAttr)
 {
     auto env = GetEnvironment();
     Label entry(env);
@@ -312,7 +312,7 @@ GateRef NewObjectStubBuilder::NewSObject(GateRef glue, GateRef hclass, MemoryAtt
 
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
     SetGlue(glue);
-    NewSObject(&result, &exit, hclass, order);
+    NewSObject(&result, &exit, hclass, mAttr);
 
     Bind(&exit);
     auto ret = *result;
@@ -1530,7 +1530,7 @@ GateRef NewObjectStubBuilder::NewTrackInfo(GateRef glue, GateRef cachedHClass, G
 }
 
 void NewObjectStubBuilder::InitializeWithSpeicalValue(Label *exit, GateRef object, GateRef value, GateRef start,
-                                                      GateRef end, MemoryAttribute order)
+                                                      GateRef end, MemoryAttribute mAttr)
 {
     {
         ASM_ASSERT(GET_MESSAGE_STRING_ID(InitializeWithSpeicalValue),
@@ -1552,7 +1552,7 @@ void NewObjectStubBuilder::InitializeWithSpeicalValue(Label *exit, GateRef objec
     {
         // Now use 2 as loop unroll factor, so only store once if reminder is not 0.
         // But if using other loop unroll factor, the store head should also be refactored.
-        Store(VariableType::INT64(), glue_, object, ZExtInt32ToPtr(start), value, order);
+        Store(VariableType::INT64(), glue_, object, ZExtInt32ToPtr(start), value, mAttr);
         startOffset = Int32Add(start, Int32(tSize));
         Jump(&enterLoop);
     }
@@ -1567,7 +1567,7 @@ void NewObjectStubBuilder::InitializeWithSpeicalValue(Label *exit, GateRef objec
         {
             auto off = *startOffset;
             for (auto i = 0; i < LOOP_UNROLL_FACTOR; i++) {
-                Store(VariableType::INT64(), glue_, object, ZExtInt32ToPtr(off), value, order);
+                Store(VariableType::INT64(), glue_, object, ZExtInt32ToPtr(off), value, mAttr);
                 off = Int32Add(off, Int32(tSize));
             }
             startOffset = Int32Add(*startOffset, Int32(LOOP_UNROLL_FACTOR * tSize));
@@ -2232,15 +2232,15 @@ GateRef NewObjectStubBuilder::NewFloat32ArrayWithSize(GateRef glue, GateRef size
         StoreHClass(glue, obj, onHeapHClass);
         Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), *buffer);
         Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET),
-              ctorName, MemoryOrder::NoBarrier());
+              ctorName, MemoryAttribute::NoBarrier());
         Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET),
-              newByteLength, MemoryOrder::NoBarrier());
+              newByteLength, MemoryAttribute::NoBarrier());
         Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET),
-              Int32(0), MemoryOrder::NoBarrier());
+              Int32(0), MemoryAttribute::NoBarrier());
         Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET),
-              size, MemoryOrder::NoBarrier());
+              size, MemoryAttribute::NoBarrier());
         Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET),
-              contentType, MemoryOrder::NoBarrier());
+              contentType, MemoryAttribute::NoBarrier());
         Jump(&exit);
     }
     Bind(&exit);

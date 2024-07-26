@@ -66,7 +66,7 @@ public:
     // ParamAttr only works for LLVM backend.
     enum class ParamAttr: uint8_t {
         NoAttr = 0,
-        UnUsed
+        Dead
     };
     static constexpr size_t TARGET_KIND_BIT_LENGTH = 4;
     static constexpr size_t CALL_CONV_BIT_LENGTH = 2;
@@ -410,10 +410,10 @@ private:
     V(TryStoreICByName)                         \
     V(TryStoreICByValue)                        \
     V(SetValueWithBarrier)                      \
-    V(SetNotShareValueWithBarrier)              \
+    V(SetNonSValueWithBarrier)                  \
     V(SetValueWithEdenBarrier)                  \
-    V(SetNotShareValueWithEdenBarrier)          \
-    V(SetShareValueWithBarrier)                 \
+    V(SetNonSValueWithEdenBarrier)              \
+    V(SetSValueWithBarrier)                     \
     V(NewLexicalEnv)                            \
     V(CopyRestArgs)                             \
     V(GetUnmappedArgs)                          \

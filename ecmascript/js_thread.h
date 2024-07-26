@@ -1468,8 +1468,8 @@ public:
         SetFastStubEntry(kungfu::CommonStubCSigns::SetValueWithBarrier, setValueStub);
         auto markStub = GetRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrierWithEden);
         RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrier, markStub);
-        auto setNotShareValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetNotShareValueWithEdenBarrier);
-        SetFastStubEntry(kungfu::CommonStubCSigns::SetNotShareValueWithBarrier, setNotShareValueStub);
+        auto setNotShareValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithEdenBarrier);
+        SetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithBarrier, setNotShareValueStub);
     }
 
 #ifndef NDEBUG
