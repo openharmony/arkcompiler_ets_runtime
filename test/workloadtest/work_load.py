@@ -261,6 +261,7 @@ def main(args):
     print("\nWait a moment..........\n")
     start_time = datetime.datetime.now()
     prepare_workload_code(args.code_path)
+    print("run_interpreter: " + str(args.run_interpreter))
     tools_type = 'dev'
     if args.tools_type:
         tools_type = args.tools_type
@@ -281,6 +282,8 @@ def main(args):
         if code_v:
             execute_args.append('--code-v')
             execute_args.append(code_v)
+        if args.run_interpreter:
+            execute_args.append('--run-interpreter')
         execute_args.append('--run')
         execute_args.append('--run-count')
         execute_args.append(run_count)
