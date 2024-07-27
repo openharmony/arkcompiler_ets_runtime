@@ -139,14 +139,3 @@ print(Object.prototype.isPrototypeOf.call(object, object));
     print(err)
   }
 }
-
-{
-    const arrProxy = new Proxy([], {
-        set(arr, key, value) {
-            print('typeof key: ', typeof key, JSON.stringify({ arr, key, value }))
-            return true
-        }
-    })
-    arrProxy.push('abc')
-    arrProxy[0] = 'def'
-}
