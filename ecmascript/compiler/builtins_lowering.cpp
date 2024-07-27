@@ -352,9 +352,26 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithObjectType(GateRef gate, Builti
         }
     }
     GateRef obj = acc_.GetValueIn(gate, 2);  // 2: receiver obj
-    GateRef check1 = builder_.IsSpecificObjectType(obj, expectType);
-    GateRef check2 = LowerCallTargetCheckDefault(gate, id);
-    return builder_.BoolAnd(check1, check2);
+
+    auto env = builder_.GetCurrentEnvironment();
+    Label entry(&builder_);
+    env->SubCfgEntry(&entry);
+
+    DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.False());
+    Label heapObject(&builder_);
+    Label exit(&builder_);
+    BRANCH_CIR(builder_.TaggedIsHeapObjectOp(obj), &heapObject, &exit);
+    builder_.Bind(&heapObject);
+    {
+        GateRef check1 = builder_.IsSpecificObjectType(obj, expectType);
+        GateRef check2 = LowerCallTargetCheckDefault(gate, id);
+        result = builder_.BoolAnd(check1, check2);
+        builder_.Jump(&exit);
+    }
+    builder_.Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
 }
 
 GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
