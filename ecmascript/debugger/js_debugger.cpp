@@ -540,9 +540,7 @@ bool JSDebugger::HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset)
     }
     Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
     
-    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
-        breakpointAtDebugger.value().GetLine(),
-        breakpointAtDebugger.value().GetColumn(), breakpointAtDebugger.value().GetUrl()};
+    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
     hooks_->DebuggerStmt(location);
 
     return true;
@@ -553,11 +551,7 @@ void JSDebugger::HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Meth
     if (hooks_ == nullptr || !thread->HasPendingException()) {
         return;
     }
-    Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
-    const std::string emptyUrl = "";
-    int32_t invalidLine = -1;
-    JSPtLocation throwLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
-        invalidLine, invalidLine, emptyUrl};
+    JSPtLocation throwLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
 
     hooks_->Exception(throwLocation);
 }
@@ -567,11 +561,7 @@ bool JSDebugger::HandleStep(JSHandle<Method> method, uint32_t bcOffset)
     if (hooks_ == nullptr) {
         return false;
     }
-    Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
-    const std::string emptyUrl = "";
-    int32_t invalidLine = -1;
-    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
-        invalidLine, invalidLine, emptyUrl};
+    JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
 
     return hooks_->SingleStep(location);
 }
