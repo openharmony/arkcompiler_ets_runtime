@@ -225,3 +225,36 @@ function Test8() {
   }
 }
 Test8()
+print("======================PART9=======================")
+function Test9() {
+  function Base() {
+    this.w = 1    // store: this.x --> type: MONO_STORE_PROPERTY * 2
+  }
+  Base.prototype.add = () => { print("add") } // store: Base.prototype.add --> type: MONO_STORE_PROPERTY
+  function Derived1() {
+    this.x = 2    // deopt
+  }
+  function Derived2() {
+    this.y = 3    // deopt
+  }
+  let p1 = new Base()
+  let p2 = new Base()
+
+  Derived1.prototype = p1
+  p1.u = 1                 // deopt
+  p1.v = 2
+  Derived2.prototype = p1
+
+  let obj1 = new Derived1()
+  let obj2 = new Derived2()
+  print(obj1.w)
+  print(obj1.x)
+  print(obj1.u)
+  print(obj2.w)
+  print(obj2.y)
+  print(obj2.u)
+}
+Test9();
+ArkTools.printTypedOpProfiler("MONO_STORE_PROPERTY");
+ArkTools.clearTypedOpProfiler();
+print(ArkTools.isAOTDeoptimized(Test9));

@@ -1563,9 +1563,12 @@ void PGOProfiler::UpdateTransitionLayout(JSHClass* parent, JSHClass* child)
     if (!rootType.IsRootType()) {
         return;
     }
+    // If the child hclass is set as a prototype, it will become the root hclass. Need to give up.
+    if (GetProfileType(child).IsRootType()) {
+        return;
+    }
     CStack<JSHClass *> hclassVec;
     hclassVec.emplace(child);
-    ASSERT(!GetProfileType(child).IsRootType());
     hclassVec.emplace(parent);
 
     while (!GetProfileType(parent).IsRootType()) {
