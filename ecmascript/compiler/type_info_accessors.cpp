@@ -619,6 +619,9 @@ bool ObjAccByNameTypeInfoAccessor::GeneratePlrInJIT(JSHClass* hclass, ObjectAcce
 void StorePrivatePropertyTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         parent_.types_.emplace_back(std::make_tuple(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
@@ -630,6 +633,9 @@ void StorePrivatePropertyTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesD
 void StorePrivatePropertyTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsJITClassType()) {
@@ -710,6 +716,9 @@ bool StorePrivatePropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAc
 void LoadPrivatePropertyTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         parent_.types_.emplace_back(std::make_pair(std::make_pair(temp.GetReceiverRootType(), temp.GetReceiverType()),
@@ -720,6 +729,9 @@ void LoadPrivatePropertyTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDu
 void LoadPrivatePropertyTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsJITClassType()) {
@@ -816,6 +828,9 @@ LoadObjByNameTypeInfoAccessor::LoadObjByNameTypeInfoAccessor(const CompilationEn
 void LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsBuiltinsType()) {
@@ -829,6 +844,9 @@ void LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 void LoadObjByNameTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsJITClassType()) {
@@ -945,6 +963,9 @@ StoreObjByNameTypeInfoAccessor::StoreObjByNameTypeInfoAccessor(const Compilation
 void StoreObjByNameTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         parent_.types_.emplace_back(std::make_tuple(
@@ -958,6 +979,9 @@ void StoreObjByNameTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 void StoreObjByNameTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsJITClassType()) {
@@ -1063,6 +1087,9 @@ JSTaggedValue InstanceOfTypeInfoAccessor::GetKeyTaggedValue() const
 void InstanceOfTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsBuiltinsType()) {
@@ -1076,6 +1103,9 @@ void InstanceOfTypeInfoAccessor::AotAccessorStrategy::FetchPGORWTypesDual()
 void InstanceOfTypeInfoAccessor::JitAccessorStrategy::FetchPGORWTypesDual()
 {
     const PGORWOpType *pgoTypes = parent_.acc_.TryGetPGOType(parent_.gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsJITClassType()) {
@@ -1230,6 +1260,9 @@ bool AccBuiltinObjTypeInfoAccessor::IsMonoBuiltins() const
 void AccBuiltinObjTypeInfoAccessor::FetchBuiltinsTypes()
 {
     const PGORWOpType *pgoTypes = acc_.TryGetPGOType(gate_).GetPGORWOpType();
+    if (IsMegaType(pgoTypes)) {
+        return;
+    }
     for (uint32_t i = 0; i < pgoTypes->GetCount(); ++i) {
         auto temp = pgoTypes->GetObjectInfo(i);
         if (temp.GetReceiverType().IsBuiltinsType()) {
