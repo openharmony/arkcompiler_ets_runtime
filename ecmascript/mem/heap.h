@@ -129,9 +129,11 @@ public:
 
     virtual AppSensitiveStatus GetSensitiveStatus() const = 0;
 
-    virtual bool SetOnStartupEvent(bool startup) = 0;
+    virtual bool FinishStartupEvent() = 0;
 
     virtual bool OnStartupEvent() const = 0;
+
+    virtual void NotifyPostFork() = 0;
 
     virtual void TryTriggerIdleCollection() = 0;
 
@@ -456,10 +458,13 @@ public:
         return smartGCStats_.sensitiveStatus_;
     }
 
-    bool SetOnStartupEvent(bool onStartup) override
+    bool FinishStartupEvent() override
     {
         LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
-        smartGCStats_.onStartupEvent_ = onStartup;
+        if (!smartGCStats_.onStartupEvent_) {
+            return false;
+        }
+        smartGCStats_.onStartupEvent_ = false;
         if (!InSensitiveStatus()) {
             smartGCStats_.sensitiveStatusCV_.Signal();
         }
@@ -470,6 +475,12 @@ public:
     bool OnStartupEvent() const override
     {
         return smartGCStats_.onStartupEvent_;
+    }
+
+    void NotifyPostFork() override
+    {
+        LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
+        smartGCStats_.onStartupEvent_ = true;
     }
 
     void WaitSensitiveStatusFinished()
@@ -1195,21 +1206,21 @@ public:
         return smartGCStats_.sensitiveStatus_.compare_exchange_strong(expect, status, std::memory_order_seq_cst);
     }
 
-    bool SetOnStartupEvent(bool onStartup) override
+    bool FinishStartupEvent() override
     {
-        sHeap_->SetOnStartupEvent(onStartup);
-        bool expect = OnStartupEvent();
-        return smartGCStats_.onStartupEvent_.compare_exchange_strong(expect, onStartup, std::memory_order_release);
+        sHeap_->FinishStartupEvent();
+        return smartGCStats_.onStartupEvent_.exchange(false, std::memory_order_relaxed) == true;
     }
 
     bool OnStartupEvent() const override
     {
-        return smartGCStats_.onStartupEvent_.load(std::memory_order_acquire);
+        return smartGCStats_.onStartupEvent_.load(std::memory_order_relaxed);
     }
 
-    void NotifyPostFork()
+    void NotifyPostFork() override
     {
-        smartGCStats_.onStartupEvent_.store(true, std::memory_order_release);
+        sHeap_->NotifyPostFork();
+        smartGCStats_.onStartupEvent_.store(true, std::memory_order_relaxed);
         LOG_GC(INFO) << "SmartGC: enter app cold start";
     }
 

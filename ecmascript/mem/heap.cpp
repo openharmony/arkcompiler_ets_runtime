@@ -2017,7 +2017,7 @@ void Heap::NotifyMemoryPressure(bool inHighMemoryPressure)
 
 void Heap::NotifyFinishColdStart(bool isMainThread)
 {
-    if (!SetOnStartupEvent(false)) {
+    if (!FinishStartupEvent()) {
         return;
     }
     ASSERT(!OnStartupEvent());

@@ -519,7 +519,7 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
         return nullptr;
     }
     size_t newTlabSize = sNonMovableTlab_->ComputeSize();
-    object = SharedHeap::GetInstance()->AllocateSNonMovableTlab(thread, newTlabSize);
+    object = sHeap_->AllocateSNonMovableTlab(thread, newTlabSize);
     if (object == nullptr) {
         sNonMovableTlab_->DisableNewTlab();
         return nullptr;
@@ -528,7 +528,8 @@ TaggedObject *Heap::AllocateSharedNonMovableSpaceFromTlab(JSThread *thread, size
     sNonMovableTlab_->Reset(begin, begin + newTlabSize, begin + size);
     auto topAddress = sNonMovableTlab_->GetTopAddress();
     auto endAddress = sNonMovableTlab_->GetEndAddress();
-    thread_->ReSetSNonMovableSpaceAllocationAddress(topAddress, endAddress);
+    thread->ReSetSNonMovableSpaceAllocationAddress(topAddress, endAddress);
+    sHeap_->TryTriggerConcurrentMarking(thread);
     return object;
 }
 
@@ -545,7 +546,7 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
         return nullptr;
     }
     size_t newTlabSize = sOldTlab_->ComputeSize();
-    object = SharedHeap::GetInstance()->AllocateSOldTlab(thread, newTlabSize);
+    object = sHeap_->AllocateSOldTlab(thread, newTlabSize);
     if (object == nullptr) {
         sOldTlab_->DisableNewTlab();
         return nullptr;
@@ -554,7 +555,8 @@ TaggedObject *Heap::AllocateSharedOldSpaceFromTlab(JSThread *thread, size_t size
     sOldTlab_->Reset(begin, begin + newTlabSize, begin + size);
     auto topAddress = sOldTlab_->GetTopAddress();
     auto endAddress = sOldTlab_->GetEndAddress();
-    thread_->ReSetSOldSpaceAllocationAddress(topAddress, endAddress);
+    thread->ReSetSOldSpaceAllocationAddress(topAddress, endAddress);
+    sHeap_->TryTriggerConcurrentMarking(thread);
     return object;
 }
 
@@ -755,11 +757,13 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+        CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
+            "SharedHeap::AllocateNonMovableOrHugeObject");
+        object->SetClass(thread, hclass);
+        TryTriggerConcurrentMarking(thread);
+    } else {
+        object->SetClass(thread, hclass);
     }
-    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
-        "SharedHeap::AllocateNonMovableOrHugeObject");
-    object->SetClass(thread, hclass);
-    TryTriggerConcurrentMarking(thread);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
@@ -776,10 +780,10 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
+        CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
+            "SharedHeap::AllocateNonMovableOrHugeObject");
+        TryTriggerConcurrentMarking(thread);
     }
-    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sNonMovableSpace_,
-        "SharedHeap::AllocateNonMovableOrHugeObject");
-    TryTriggerConcurrentMarking(thread);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
@@ -802,10 +806,12 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+        CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+        object->SetClass(thread, hclass);
+        TryTriggerConcurrentMarking(thread);
+    } else {
+        object->SetClass(thread, hclass);
     }
-    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
-    object->SetClass(thread, hclass);
-    TryTriggerConcurrentMarking(thread);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
 #endif
@@ -822,9 +828,9 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+        CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
+        TryTriggerConcurrentMarking(thread);
     }
-    CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
-    TryTriggerConcurrentMarking(thread);
     return object;
 }
 
