@@ -20,10 +20,13 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_date.h"
+#include "ecmascript/js_iterator.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_primitive_ref.h"
+#include "ecmascript/js_promise.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_set.h"
+#include "ecmascript/js_string_iterator.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/napi/include/jsnapi.h"
@@ -240,6 +243,40 @@ public:
             factory->NewJSObjectByConstructor(JSHandle<JSFunction>(newTargetHandle), newTargetHandle);
         JSHandle<JSTaggedValue> emptyObj(thread, jsObject.GetTaggedValue());
         return factory->NewJSProxy(emptyObj, emptyObj);
+    }
+
+    // JS_FORIN_ITERATOR
+    JSHandle<JSForInIterator> NewJSForInIterator()
+    {
+        JSThread *thread = instance->GetJSThread();
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSTaggedValue> arrayEmpty(thread, factory->NewJSArray().GetTaggedValue());
+        JSHandle<JSTaggedValue> keys(thread, factory->EmptyArray().GetTaggedValue());
+        JSHandle<JSTaggedValue> hclass(thread, JSTaggedValue::Undefined());
+        return factory->NewJSForinIterator(arrayEmpty, keys, hclass);
+    }
+
+    // JS_REG_EXP_ITERATOR
+    JSHandle<JSRegExpIterator> NewJSRegExpIterator()
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<EcmaString> emptyString = factory->GetEmptyString();
+        JSHandle<JSTaggedValue> jsRegExp(NewObject(JSRegExp::SIZE, JSType::JS_REG_EXP, proto));
+        return factory->NewJSRegExpIterator(jsRegExp, emptyString, false, false);
+    }
+
+    // PROMISE_ITERATOR_RECORD
+    JSHandle<PromiseIteratorRecord> NewPromiseIteratorRecord()
+    {
+        JSThread *thread = instance->GetJSThread();
+        ObjectFactory *factory = instance->GetFactory();
+        JSFunction *newTarget = instance->GetGlobalEnv()->GetObjectFunction().GetObject<JSFunction>();
+        JSHandle<JSTaggedValue> newTargetHandle(thread, newTarget);
+        JSHandle<JSObject> jsObject =
+            factory->NewJSObjectByConstructor(JSHandle<JSFunction>(newTargetHandle), newTargetHandle);
+        JSHandle<JSTaggedValue> emptyObj(thread, jsObject.GetTaggedValue());
+        return factory->NewPromiseIteratorRecord(emptyObj, false);
     }
 
 private:
@@ -642,5 +679,74 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName5)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Proxy\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"Primitive\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_5.heapsnapshot", "\"DataView\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName6)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    // JS_FORIN_ITERATOR
+    tester.NewJSForInIterator();
+    // JS_MAP_ITERATOR
+    factory->NewJSMapIterator(tester.NewJSMap(), IterationKind::KEY);
+    // JS_SHARED_MAP_ITERATOR
+    factory->NewJSMapIterator(tester.NewJSSharedMap(), IterationKind::KEY);
+    // JS_SET_ITERATOR
+    factory->NewJSSetIterator(tester.NewJSSet(), IterationKind::KEY);
+    // JS_SHARED_SET_ITERATOR
+    factory->NewJSSetIterator(tester.NewJSSharedSet(), IterationKind::KEY);
+    // JS_REG_EXP_ITERATOR
+    tester.NewJSRegExpIterator();
+    // JS_ARRAY_ITERATOR
+    factory->NewJSArrayIterator(JSHandle<JSObject>::Cast(factory->NewJSArray()), IterationKind::KEY);
+    // JS_STRING_ITERATOR
+    JSStringIterator::CreateStringIterator(thread_, factory->GetEmptyString());
+
+    tester.GenerateSnapShot("testGenerateNodeName_6.heapsnapshot");
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_6.heapsnapshot", "\"ForinInterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_6.heapsnapshot", "\"MapIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_6.heapsnapshot", "\"SharedMapIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_6.heapsnapshot", "\"SetIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_6.heapsnapshot", "\"SharedSetIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_6.heapsnapshot", "\"RegExpIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_6.heapsnapshot", "\"ArrayIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_6.heapsnapshot", "\"StringIterator\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName7)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    // JS_ARRAY_BUFFER
+    factory->NewJSArrayBuffer(10);
+    // JS_SHARED_ARRAY_BUFFER
+    factory->NewJSSharedArrayBuffer(10);
+    // PROMISE_REACTIONS
+    factory->NewPromiseReaction();
+    // PROMISE_CAPABILITY
+    factory->NewPromiseCapability();
+    // PROMISE_ITERATOR_RECORD
+    tester.NewPromiseIteratorRecord();
+    // PROMISE_RECORD
+    factory->NewPromiseRecord();
+    // RESOLVING_FUNCTIONS_RECORD
+    factory->NewResolvingFunctionsRecord();
+    // JS_PROMISE
+    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
+    tester.NewObject(JSPromise::SIZE, JSType::JS_PROMISE, proto);
+    // ASYNC_GENERATOR_REQUEST
+    factory->NewAsyncGeneratorRequest();
+
+    tester.GenerateSnapShot("testGenerateNodeName_7.heapsnapshot");
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"ArrayBuffer\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"SharedArrayBuffer\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"PromiseReaction\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"PromiseCapability\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"PromiseIteratorRecord\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"PromiseRecord\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"ResolvingFunctionsRecord\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"Promise\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"AsyncGeneratorRequest\""));
 }
 }
