@@ -547,14 +547,7 @@ OperationResult JSProxy::GetProperty(JSThread *thread, const JSHandle<JSProxy> &
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(
         thread, OperationResult(thread, exceptionHandle.GetTaggedValue(), PropertyMetaData(false)));
-    if (key->IsNumber()) {
-        JSTaggedValue k = key->IsInt()
-                              ? base::NumberHelper::Int32ToString(thread, key->GetInt(), base::INT32_BITS)
-                              : base::NumberHelper::DoubleToString(thread, key->GetDouble(), base::DECIMAL);
-        info->SetCallArg(targetHandle.GetTaggedValue(), k, receiver.GetTaggedValue());
-    } else {
-        info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue(), receiver.GetTaggedValue());
-    }
+    info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue(), receiver.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
     JSHandle<JSTaggedValue> resultHandle(thread, trapResult);
 
@@ -625,15 +618,8 @@ bool JSProxy::SetProperty(JSThread *thread, const JSHandle<JSProxy> &proxy, cons
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     EcmaRuntimeCallInfo *info = EcmaInterpreter::NewRuntimeCallInfo(thread, trap, handlerTag, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-    if (key->IsNumber()) {
-        JSTaggedValue k = key->IsInt()
-                              ? base::NumberHelper::Int32ToString(thread, key->GetInt(), base::INT32_BITS)
-                              : base::NumberHelper::DoubleToString(thread, key->GetDouble(), base::DECIMAL);
-        info->SetCallArg(targetHandle.GetTaggedValue(), k, value.GetTaggedValue(), receiver.GetTaggedValue());
-    } else {
-        info->SetCallArg(targetHandle.GetTaggedValue(), key.GetTaggedValue(),
-                         value.GetTaggedValue(), receiver.GetTaggedValue());
-    }
+    info->SetCallArg(
+        targetHandle.GetTaggedValue(), key.GetTaggedValue(), value.GetTaggedValue(), receiver.GetTaggedValue());
     JSTaggedValue trapResult = JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     bool booleanTrapResult = trapResult.ToBoolean();
