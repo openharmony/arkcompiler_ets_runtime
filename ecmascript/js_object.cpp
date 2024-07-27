@@ -236,7 +236,10 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     JSHandle<TaggedArray> elements(thread, obj->GetElements());
     ASSERT(!obj->GetJSHClass()->IsDictionaryElement());
     uint32_t length = elements->GetLength();
-    ASSERT(!obj->IsJSShared());
+    if (obj->IsJSShared()) {
+        THROW_TYPE_ERROR(const_cast<JSThread *>(thread),
+                         "shared obj does not support transition from elements to dictionary");
+    }
     JSMutableHandle<NumberDictionary> dict(thread, NumberDictionary::Create(thread));
     auto attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes());
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
@@ -440,6 +443,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
     if (index >= capacity || !attr.IsDefaultAttributes()) {
         if (!receiver->IsJSSArray() && (ShouldTransToDict(capacity, index) || !attr.IsDefaultAttributes())) {
             JSObject::ElementsToDictionary(thread, receiver);
+            RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
             JSHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue(static_cast<int32_t>(index)));
             JSHandle<NumberDictionary> dict(thread, receiver->GetElements());
             JSHandle<NumberDictionary> newKey = NumberDictionary::Put(thread, dict, keyHandle, value, attr);
@@ -1213,6 +1217,7 @@ bool JSObject::DeleteProperty(JSThread *thread, const JSHandle<JSObject> &obj, c
     // 6. Return false.
     if (op.IsConfigurable() || sCheckMode == SCheckMode::SKIP) {
         op.DeletePropertyInHolder();
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         obj->GetClass()->SetHasDeleteProperty(true);
         return true;
     }
