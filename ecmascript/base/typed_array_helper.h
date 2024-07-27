@@ -97,11 +97,6 @@ public:
                                const JSHandle<JSTaggedValue> &secondValue);
     static bool IsNativeArrayIterator(JSThread *thread,
         const JSHandle<JSTaggedValue> &obj, JSHandle<JSTaggedValue> &iterMethod);
-    static JSTaggedValue findCommon(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> thisObjVal, int64_t len);
-    static JSTaggedValue findIndexCommon(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> thisObjVal, uint64_t len);
-    static JSTaggedValue findLastCommon(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> thisObjVal, int64_t len);
-    static JSTaggedValue findLastIndexCommon(EcmaRuntimeCallInfo *argv,
-                                             JSHandle<JSTaggedValue> thisObjVal, int64_t len);
     static JSTaggedValue someCommon(EcmaRuntimeCallInfo *argv, JSHandle<JSTaggedValue> thisObjVal, int64_t len);
 
     #define DEFINE_GET_ONHEAP_HCLASS_FROM_TYPE(Type)                                                          \

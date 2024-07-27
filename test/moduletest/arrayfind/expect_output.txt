@@ -33,5 +33,3 @@ undefined
 1
 spray
 4
-true
-true

@@ -753,42 +753,22 @@ JSTaggedValue BuiltinsTypedArray::Filter(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Find(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, TypedArray, Find);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "This is not a TypedArray.", JSTaggedValue::Exception());
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Find);
+    if (!GetThis(argv)->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
-
-    // 1. Let O be ToObject(this value).
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-    // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetArrayLength();
-    return TypedArrayHelper::findCommon(argv, thisObjVal, len);
+    return BuiltinsArray::Find(argv);
 }
 
 // 22.2.3.11
 JSTaggedValue BuiltinsTypedArray::FindIndex(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, TypedArray, FindIndex);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "This is not a TypedArray.", JSTaggedValue::Exception());
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, FindIndex);
+    if (!GetThis(argv)->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
-
-    // 1. Let O be ToObject(this value).
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-    // 3. Let len be ToLength(Get(O, "length")).
-    uint64_t len = static_cast<uint64_t>(JSHandle<JSTypedArray>::Cast(thisObjVal)->GetArrayLength());
-    return TypedArrayHelper::findIndexCommon(argv, thisObjVal, len);
+    return BuiltinsArray::FindIndex(argv);
 }
 
 // 22.2.3.12
@@ -2093,41 +2073,21 @@ JSTaggedValue BuiltinsTypedArray::ToReversed(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::FindLast(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, TypedArray, FindLast);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "This is not a TypedArray.", JSTaggedValue::Exception());
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, FindLast);
+    if (!GetThis(argv)->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
-
-    // 1. Let O be ToObject(this value).
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-    // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetArrayLength();
-    return TypedArrayHelper::findLastCommon(argv, thisObjVal, len);
+    return BuiltinsArray::FindLast(argv);
 }
 
 // 23.2.3.14
 JSTaggedValue BuiltinsTypedArray::FindLastIndex(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
-    JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, TypedArray, FindLastIndex);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    if (!thisHandle->IsTypedArray()) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "This is not a TypedArray.", JSTaggedValue::Exception());
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, FindLastIndex);
+    if (!GetThis(argv)->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
     }
-
-    // 1. Let O be ToObject(this value).
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-    // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetArrayLength();
-    return TypedArrayHelper::findLastIndexCommon(argv, thisObjVal, len);
+    return BuiltinsArray::FindLastIndex(argv);
 }
 }  // namespace panda::ecmascript::builtins
