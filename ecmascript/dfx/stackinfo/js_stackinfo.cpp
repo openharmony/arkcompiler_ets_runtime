@@ -255,7 +255,7 @@ std::string JsStackInfo::BuildJsStackTraceInfo(JSThread *thread, Method *method,
            BuildMethodTrace(method, pcOffset, lastCache, thread->GetEnableStackSourceFile());
 }
 
-void JsStackInfo::BuildCrashInfo(bool isJsCrash, FrameType frameType, JSThread *thread)
+void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
 {
     if (JsStackInfo::loader == nullptr || JsStackInfo::options == nullptr) {
         return;
@@ -267,11 +267,8 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, FrameType frameType, JSThread *
     ohos::RuntimeInfoType type;
     if (isJsCrash) {
         type = ohos::RuntimeInfoType::JS;
-    } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME ||
-               frameType == FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME) {
+    } else if (pc != 0 && JsStackInfo::loader != nullptr && JsStackInfo::loader->InsideAOT(pc)) {
         type = ohos::RuntimeInfoType::AOT_CRASH;
-    } else if (IsFastJitFunctionFrame(frameType)) {
-        type = ohos::RuntimeInfoType::JIT;
     } else {
         type = ohos::RuntimeInfoType::OTHERS;
     }
