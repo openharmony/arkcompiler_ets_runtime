@@ -1575,6 +1575,7 @@ public:
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list);
+    static std::string GetPkgName(EcmaVM *vm, const std::string &moduleName);
     static void SetPkgAliasList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetHmsModuleList(EcmaVM *vm, const std::vector<panda::HmsMap> &list);
     static void SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::string &entryPoint);
