@@ -42,6 +42,7 @@ namespace panda::ecmascript {
 #endif
 
 class SharedHeap;
+class SharedLocalSpace;
 
 class SharedSparseSpace : public Space {
 public:
@@ -58,6 +59,7 @@ public:
     uintptr_t AllocateWithoutGC(JSThread *thread, size_t size);
 
     uintptr_t Allocate(JSThread *thread, size_t size, bool allowGC = true);
+    uintptr_t TryAllocateAndExpand(JSThread *thread, size_t size, bool expand);
 
     // For work deserialize
     void ResetTopPointer(uintptr_t top);
@@ -110,36 +112,26 @@ public:
 
     void InvokeAllocationInspector(Address object, size_t size, size_t alignedSize);
 
-    template<class Callback>
-    void EnumerateReclaimRegions(const Callback &cb) const
-    {
-        for (Region *current : reclaimRegionList_) {
-            if (current != nullptr) {
-                cb(current);
-            }
-        }
-    }
+    void DetachFreeObjectSet(Region *region);
 
-    void ReclaimRegions();
 protected:
+    bool Expand(JSThread *thread);
     FreeListAllocator<FreeObject> *allocator_;
     SweepState sweepState_ = SweepState::NO_SWEEP;
+    SharedHeap *sHeap_ {nullptr};
 
 private:
     static constexpr double LIVE_OBJECT_SIZE_RATIO = 0.8;
 
     uintptr_t AllocateWithExpand(JSThread *thread, size_t size);
     uintptr_t TryAllocate(JSThread *thread, size_t size);
-    bool Expand(JSThread *thread);
     // For sweeping
     uintptr_t AllocateAfterSweepingCompleted(JSThread *thread, size_t size);
 
     Mutex lock_;
     Mutex allocateLock_;
-    SharedHeap *sHeap_ {nullptr};
     std::vector<Region *> sweepingList_;
     std::vector<Region *> sweptList_;
-    std::set<Region*> reclaimRegionList_;
     size_t liveObjectSize_ {0};
     size_t triggerLocalFullMarkLimit_ {0};
 };
@@ -156,8 +148,40 @@ class SharedOldSpace : public SharedSparseSpace {
 public:
     SharedOldSpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity);
     ~SharedOldSpace() override = default;
+    size_t GetMergeSize() const
+    {
+        return mergeSize_;
+    }
+
+    void IncreaseMergeSize(size_t size)
+    {
+        mergeSize_ += size;
+    }
+
+    void ResetMergeSize()
+    {
+        mergeSize_ = 0;
+    }
+
+    void Merge(SharedLocalSpace *localSpace);
     NO_COPY_SEMANTIC(SharedOldSpace);
     NO_MOVE_SEMANTIC(SharedOldSpace);
+    Mutex lock_;
+    size_t mergeSize_ {0};
+};
+
+class SharedLocalSpace : public SharedSparseSpace {
+public:
+    SharedLocalSpace() = delete;
+    SharedLocalSpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity);
+    ~SharedLocalSpace() override = default;
+    NO_COPY_SEMANTIC(SharedLocalSpace);
+    NO_MOVE_SEMANTIC(SharedLocalSpace);
+
+    uintptr_t Allocate(size_t size, bool isExpand = true);
+    bool AddRegionToList(Region *region);
+    void FreeBumpPoint();
+    void Stop();
 };
 
 class SharedReadOnlySpace : public Space {

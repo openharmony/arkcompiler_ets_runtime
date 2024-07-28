@@ -27,30 +27,40 @@ SharedConcurrentSweeper::SharedConcurrentSweeper(SharedHeap *heap, EnableConcurr
 {
 }
 
-void SharedConcurrentSweeper::PostTask()
+void SharedConcurrentSweeper::PostTask(bool isFullGC)
 {
     auto tid = DaemonThread::GetInstance()->GetThreadId();
     if (ConcurrentSweepEnabled()) {
-        Taskpool::GetCurrentTaskpool()->PostTask(
-            std::make_unique<SweeperTask>(tid, this, SHARED_OLD_SPACE));
+        if (!isFullGC) {
+            Taskpool::GetCurrentTaskpool()->PostTask(
+                std::make_unique<SweeperTask>(tid, this, SHARED_OLD_SPACE));
+        }
         Taskpool::GetCurrentTaskpool()->PostTask(
             std::make_unique<SweeperTask>(tid, this, SHARED_NON_MOVABLE));
     }
 }
 
-void SharedConcurrentSweeper::Sweep()
+void SharedConcurrentSweeper::Sweep(bool isFullGC)
 {
+    isFullGC_ = isFullGC;
     if (ConcurrentSweepEnabled()) {
         // Add all region to region list. Ensure all task finish
-        sHeap_->GetOldSpace()->PrepareSweeping();
+        if (!isFullGC_) {
+            sHeap_->GetOldSpace()->PrepareSweeping();
+            for (int spaceIndex = 0; spaceIndex < SHARED_SWEEPING_SPACE_NUM; spaceIndex++) {
+                remainingTaskNum_[spaceIndex] = SHARED_SWEEPING_SPACE_NUM;
+            }
+        } else {
+            remainingTaskNum_[0] = 0;  // No need sweep shared old space in FullGC.
+            remainingTaskNum_[1] = 1;  // Need sweep nonmovable space in FullGC.
+        }
         sHeap_->GetNonMovableSpace()->PrepareSweeping();
         // Prepare
         isSweeping_ = true;
-        for (int spaceIndex = 0; spaceIndex < SHARED_SWEEPING_SPACE_NUM; spaceIndex++) {
-            remainingTaskNum_[spaceIndex] = SHARED_SWEEPING_SPACE_NUM;
-        }
     } else {
-        sHeap_->GetOldSpace()->Sweep();
+        if (!isFullGC_) {
+            sHeap_->GetOldSpace()->Sweep();
+        }
         sHeap_->GetNonMovableSpace()->Sweep();
     }
     sHeap_->GetHugeObjectSpace()->Sweep();
@@ -72,7 +82,8 @@ void SharedConcurrentSweeper::WaitAllTaskFinished()
     if (!isSweeping_) {
         return;
     }
-    for (int spaceIndex = 0; spaceIndex < SHARED_SWEEPING_SPACE_NUM; spaceIndex++) {
+    int spaceIndex = isFullGC_ ? 1 : 0;
+    for (; spaceIndex < SHARED_SWEEPING_SPACE_NUM; spaceIndex++) {
         if (remainingTaskNum_[spaceIndex] > 0) {
             LockHolder holder(mutexs_[spaceIndex]);
             while (remainingTaskNum_[spaceIndex] > 0) {
@@ -88,7 +99,8 @@ void SharedConcurrentSweeper::EnsureAllTaskFinished()
     if (!isSweeping_) {
         return;
     }
-    for (int spaceIndex = 0; spaceIndex < SHARED_SWEEPING_SPACE_NUM; spaceIndex++) {
+    int spaceIndex = isFullGC_ ? 1 : 0;
+    for (; spaceIndex < SHARED_SWEEPING_SPACE_NUM; spaceIndex++) {
         int type = spaceIndex + SHARED_SWEEPING_SPACE_BEGIN;
         WaitingTaskFinish(static_cast<MemSpaceType>(type));
     }
@@ -127,7 +139,9 @@ void SharedConcurrentSweeper::WaitingTaskFinish(MemSpaceType type)
 
 void SharedConcurrentSweeper::TryFillSweptRegion()
 {
-    sHeap_->GetOldSpace()->TryFillSweptRegion();
+    if (!isFullGC_) {
+        sHeap_->GetOldSpace()->TryFillSweptRegion();
+    }
     sHeap_->GetNonMovableSpace()->TryFillSweptRegion();
 }
 
@@ -135,10 +149,14 @@ bool SharedConcurrentSweeper::SweeperTask::Run([[maybe_unused]] uint32_t threadI
 {
     if (type_ == SHARED_NON_MOVABLE) {
         sweeper_->AsyncSweepSpace(SHARED_NON_MOVABLE, false);
-        sweeper_->AsyncSweepSpace(SHARED_OLD_SPACE, false);
+        if (!sweeper_->isFullGC_) {
+            sweeper_->AsyncSweepSpace(SHARED_OLD_SPACE, false);
+        }
     } else {
         ASSERT(type_ == SHARED_OLD_SPACE);
-        sweeper_->AsyncSweepSpace(SHARED_OLD_SPACE, false);
+        if (!sweeper_->isFullGC_) {
+            sweeper_->AsyncSweepSpace(SHARED_OLD_SPACE, false);
+        }
         sweeper_->AsyncSweepSpace(SHARED_NON_MOVABLE, false);
     }
     

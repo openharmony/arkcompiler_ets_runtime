@@ -29,8 +29,8 @@ public:
     NO_COPY_SEMANTIC(SharedConcurrentSweeper);
     NO_MOVE_SEMANTIC(SharedConcurrentSweeper);
 
-    void PostTask();
-    void Sweep();
+    void PostTask(bool isFullGC);
+    void Sweep(bool isFullGC);
 
     void WaitAllTaskFinished();
     // Help to finish sweeping task. It can be called through js thread
@@ -100,6 +100,7 @@ private:
     SharedHeap *sHeap_;
     EnableConcurrentSweepType enableType_ {EnableConcurrentSweepType::CONFIG_DISABLE};
     bool isSweeping_ {false};
+    bool isFullGC_ {false};
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_CONCURRENT_SWEEPER_H

@@ -450,8 +450,7 @@ JSTaggedValue BuiltinsSharedTypedArray::CopyWithin(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The copyWithin method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(
-        thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(thread, thisHandle);
     return BuiltinsArray::CopyWithin(argv);
 }
 
@@ -493,8 +492,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Every(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     // 3. Let len be ToLength(Get(O, "length")).
@@ -559,8 +557,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Fill(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The fill method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(
-        thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(thread, thisHandle);
     return BuiltinsArray::Fill(argv);
 }
 
@@ -590,8 +587,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Filter(EcmaRuntimeCallInfo *argv)
     if (!callbackFnHandle->IsCallable()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
 
     // 6. If thisArg was supplied, let T be thisArg; else let T be undefined.
     JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
@@ -665,8 +661,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Find(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The find method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
     return BuiltinsArray::Find(argv);
 }
 
@@ -680,8 +675,7 @@ JSTaggedValue BuiltinsSharedTypedArray::FindIndex(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The findIndex method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
     return BuiltinsArray::FindIndex(argv);
 }
 
@@ -701,8 +695,7 @@ JSTaggedValue BuiltinsSharedTypedArray::ForEach(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     // 3. Let len be ToLength(Get(O, "length")).
@@ -761,8 +754,7 @@ JSTaggedValue BuiltinsSharedTypedArray::IndexOf(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The indexOf method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
     return BuiltinsArray::IndexOf(argv);
 }
 
@@ -778,8 +770,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Join(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The join method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
 
     uint32_t length = JSHandle<JSTypedArray>::Cast(thisHandle)->GetArrayLength();
     JSHandle<JSTaggedValue> sepHandle = GetCallArg(argv, 0);
@@ -930,8 +921,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Map(EcmaRuntimeCallInfo *argv)
     }
     // 3. ReturnIfAbrupt(valid).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
 
     JSHandle<JSTypedArray> thisObj(thisHandle);
     // 4. Let len be the value of O’s [[ArrayLength]] internal slot.
@@ -996,8 +986,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Reduce(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The reduce method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
     return BuiltinsArray::Reduce(argv);
 }
 
@@ -1017,8 +1006,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Reverse(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // 2. ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(
-        thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(thread, thisHandle);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     // 3. Let len be O.[[ArrayLength]]
@@ -1083,8 +1071,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Set(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The set method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(
-        thread, target.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(thread, target);
 
     // 5. Assert: target has a [[ViewedArrayBuffer]] internal slot.
     // 6. Let targetOffset be ToInteger (offset).
@@ -1339,8 +1326,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Slice(EcmaRuntimeCallInfo *argv)
 
     // 3. ReturnIfAbrupt(valid).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
 
     JSHandle<JSTypedArray> thisObj(thisHandle);
     // 4. Let len be the value of O’s [[ArrayLength]] internal slot.
@@ -1472,8 +1458,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Some(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The some method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
     return BuiltinsArray::Some(argv);
 }
 
@@ -1493,8 +1478,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Sort(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(
-        thread, thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray, ModType::WRITE> scope(thread, thisHandle);
 
     JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
     JSHandle<JSTaggedValue> buffer;
@@ -1569,8 +1553,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Subarray(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The subarray method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
 
     // 4. Assert: O has a [[ViewedArrayBuffer]] internal slot.
     // 6. Let srcLength be the value of O’s [[ArrayLength]] internal slot.
@@ -1650,8 +1633,7 @@ JSTaggedValue BuiltinsSharedTypedArray::ToLocaleString(EcmaRuntimeCallInfo *argv
         auto error = ContainerError::BindError(thread, "The toLocaleString method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
     return BuiltinsArray::ToLocaleString(argv);
 }
 
@@ -1665,8 +1647,7 @@ JSTaggedValue BuiltinsSharedTypedArray::ToString(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The toString method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
     return BuiltinsArray::ToString(argv);
 }
 
@@ -1733,8 +1714,7 @@ JSTaggedValue BuiltinsSharedTypedArray::At(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     // ReturnIfAbrupt(O).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
 
     // 3. Let len be O.[[ArrayLength]].
     uint32_t len = JSHandle<JSTypedArray>::Cast(thisObjHandle)->GetArrayLength();
@@ -1770,8 +1750,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Includes(EcmaRuntimeCallInfo *argv)
         auto error = ContainerError::BindError(thread, "The includes method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread,
-        thisHandle.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, thisHandle);
     return BuiltinsArray::Includes(argv);
 }
 }  // namespace panda::ecmascript::builtins

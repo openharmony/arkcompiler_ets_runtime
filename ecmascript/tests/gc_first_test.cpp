@@ -174,6 +174,7 @@ HWTEST_F_L0(GCTest, NativeBindingCheckGCTest)
 
 HWTEST_F_L0(GCTest, SharedGC)
 {
+#ifdef NDEBUG
     constexpr size_t ALLOCATE_COUNT = 100;
     constexpr size_t ALLOCATE_SIZE = 512;
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -189,7 +190,29 @@ HWTEST_F_L0(GCTest, SharedGC)
     size_t oldSizeBefore = sHeap->GetOldSpace()->GetHeapObjectSize();
     EXPECT_TRUE(oldSizeBefore > oldSizebase);
     sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
-    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    auto oldSizeAfter = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizeAfter);
+    EXPECT_EQ(oldSizebase, oldSizeAfter);
+#endif
+}
+
+HWTEST_F_L0(GCTest, SharedFullGC)
+{
+    constexpr size_t ALLOCATE_COUNT = 100;
+    constexpr size_t ALLOCATE_SIZE = 512;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    auto oldSizebase = sHeap->GetOldSpace()->GetHeapObjectSize();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < ALLOCATE_COUNT; i++) {
+            factory->NewSOldSpaceTaggedArray(ALLOCATE_SIZE, JSTaggedValue::Undefined());
+        }
+    }
+    size_t oldSizeBefore = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizebase);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     auto oldSizeAfter = sHeap->GetOldSpace()->GetHeapObjectSize();
     EXPECT_TRUE(oldSizeBefore > oldSizeAfter);
     EXPECT_EQ(oldSizebase, oldSizeAfter);
@@ -204,4 +227,23 @@ HWTEST_F_L0(GCTest, SharedGCSuspendAll)
     }
     EXPECT_TRUE(thread->IsInRunningState());
 }
+
+HWTEST_F_L0(GCTest, SerializeGCCheck)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        JSHandle<EcmaString> key1(factory->NewFromASCII("error1"));
+        JSHandle<EcmaString> key2(factory->NewFromASCII("error2"));
+        JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
+        std::vector<JSTaggedType> stringVec;
+        stringVec.push_back(reinterpret_cast<JSTaggedType>(key1.GetTaggedValue().GetTaggedObject()));
+        stringVec.push_back(reinterpret_cast<JSTaggedType>(key2.GetTaggedValue().GetTaggedObject()));
+        stringVec.push_back(reinterpret_cast<JSTaggedType>(msg.GetTaggedValue().GetTaggedObject()));
+        Runtime::GetInstance()->PushSerializationRoot(thread, stringVec);
+    }
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+};
+
 }  // namespace panda::test

@@ -22,9 +22,9 @@
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
-void SharedGCMarker::MarkRoots(uint32_t threadId, SharedMarkType markType)
+void SharedGCMarkerBase::MarkRoots(uint32_t threadId, SharedMarkType markType)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkRoots");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkRoots");
     MarkSerializeRoots(threadId);
     MarkSharedModule(threadId);
     MarkStringCache(threadId);
@@ -45,9 +45,9 @@ void SharedGCMarker::MarkRoots(uint32_t threadId, SharedMarkType markType)
     });
 }
 
-void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm)
+void SharedGCMarkerBase::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkLocalVMRoots");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkLocalVMRoots");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     heap->GetSweeper()->EnsureAllTaskFinished();
     heap->WaitClearTaskFinished();
@@ -63,34 +63,34 @@ void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm)
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 
-void SharedGCMarker::CollectLocalVMRSet(EcmaVM *localVm)
+void SharedGCMarkerBase::CollectLocalVMRSet(EcmaVM *localVm)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::CollectLocalVMRSet");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::CollectLocalVMRSet");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     RSetWorkListHandler *handler = new RSetWorkListHandler(heap);
     heap->SetRSetWorkListHandler(handler);
     rSetHandlers_.emplace_back(handler);
 }
 
-void SharedGCMarker::MarkSerializeRoots(uint32_t threadId)
+void SharedGCMarkerBase::MarkSerializeRoots(uint32_t threadId)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkSerializeRoots");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkSerializeRoots");
     auto callback = [this, threadId](Root type, ObjectSlot slot) {this->HandleRoots(threadId, type, slot);};
     Runtime::GetInstance()->IterateSerializeRoot(callback);
 }
 
-void SharedGCMarker::MarkStringCache(uint32_t threadId)
+void SharedGCMarkerBase::MarkStringCache(uint32_t threadId)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkStringCache");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkStringCache");
     auto cacheStringCallback = [this, threadId](Root type, ObjectSlot start, ObjectSlot end) {
         this->HandleLocalRangeRoots(threadId, type, start, end);
     };
     Runtime::GetInstance()->IterateCachedStringRoot(cacheStringCallback);
 }
 
-void SharedGCMarker::MarkSharedModule(uint32_t threadId)
+void SharedGCMarkerBase::MarkSharedModule(uint32_t threadId)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkSharedModule");
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkSharedModule");
     auto visitor = [this, threadId](Root type, ObjectSlot slot) {this->HandleRoots(threadId, type, slot);};
     SharedModuleManager::GetInstance()->Iterate(visitor);
 }
@@ -137,12 +137,58 @@ void SharedGCMarker::ProcessMarkStack(uint32_t threadId)
         Region *region = Region::ObjectAddressToRange(obj);
         ASSERT(region->InSharedSweepableSpace());
         region->IncreaseAliveObjectSafe(size);
-        MarkObject(threadId, hclass);
+        ObjectSlot objectSlot(ToUintPtr(obj));
+        MarkObject(threadId, hclass, objectSlot);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, visitor);
     }
 }
 
-void SharedGCMarker::MergeBackAndResetRSetWorkListHandler()
+void SharedGCMovableMarker::ProcessMarkStack(uint32_t threadId)
+{
+#ifndef NDEBUG
+    DaemonThread *dThread = DaemonThread::GetInstance();
+    if (UNLIKELY(!dThread->IsRunning())) {
+        // This DAEMON_THREAD_INDEX not means in daemon thread, but the daemon thread is terminated, and
+        // SharedGC is directly running in the current js thread, this maybe happen only AppSpawn
+        // trigger GC after PreFork (which is not expected), and at this time ParallelGC is disabled
+        ASSERT(threadId == DAEMON_THREAD_INDEX);
+    } else {
+        if (os::thread::GetCurrentThreadId() != dThread->GetThreadId()) {
+            ASSERT(threadId != 0);
+        } else {
+            ASSERT(threadId == 0);
+        }
+    }
+#endif
+    auto cb = [&](ObjectSlot slot) {
+        MarkValue(threadId, slot);
+    };
+    EcmaObjectRangeVisitor visitor = [this, threadId, cb](TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                        VisitObjectArea area) {
+        if (area == VisitObjectArea::IN_OBJECT) {
+            if (VisitBodyInObj(root, start, end, cb)) {
+                return;
+            }
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            MarkValue(threadId, slot);
+        }
+    };
+    TaggedObject *obj = nullptr;
+    while (true) {
+        obj = nullptr;
+        if (!sWorkManager_->Pop(threadId, &obj)) {
+            break;
+        }
+        JSHClass *hclass = obj->SynchronizedGetClass();
+        [[maybe_unused]] Region *region = Region::ObjectAddressToRange(obj);
+        ObjectSlot objectSlot(ToUintPtr(obj));
+        MarkObject(threadId, hclass, objectSlot);
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclass, visitor);
+    }
+}
+
+void SharedGCMarkerBase::MergeBackAndResetRSetWorkListHandler()
 {
     for (RSetWorkListHandler *handler : rSetHandlers_) {
         handler->MergeBack();
@@ -151,8 +197,15 @@ void SharedGCMarker::MergeBackAndResetRSetWorkListHandler()
     rSetHandlers_.clear();
 }
 
-void SharedGCMarker::ResetWorkManager(SharedGCWorkManager *workManager)
+void SharedGCMarkerBase::ResetWorkManager(SharedGCWorkManager *workManager)
 {
     sWorkManager_ = workManager;
 }
+
+SharedGCMarker::SharedGCMarker(SharedGCWorkManager *workManger)
+    : SharedGCMarkerBase(workManger) {}
+
+SharedGCMovableMarker::SharedGCMovableMarker(SharedGCWorkManager *workManger, SharedHeap *sHeap)
+    : SharedGCMarkerBase(workManger), sHeap_(sHeap) {}
+
 }  // namespace panda::ecmascript

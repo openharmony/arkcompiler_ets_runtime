@@ -36,7 +36,7 @@ using base::ArrayHelper;
 JSTaggedValue JSSharedArray::LengthGetter([[maybe_unused]] JSThread *thread, const JSHandle<JSObject> &self,
                                           SCheckMode checkMode)
 {
-    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, self.GetTaggedValue().GetTaggedObject(),
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, JSHandle<JSTaggedValue>::Cast(self),
                                                              checkMode);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     return JSTaggedValue(JSSharedArray::Cast(*self)->GetLength());
@@ -445,7 +445,7 @@ OperationResult JSSharedArray::GetProperty(JSThread *thread, const JSHandle<JSTa
                                            const JSHandle<JSTaggedValue> &key, SCheckMode sCheckMode)
 {
     // Add Concurrent check for shared array
-    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, obj.GetTaggedValue().GetTaggedObject(),
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, obj,
                                                              sCheckMode);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
                                       OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
@@ -464,7 +464,7 @@ bool JSSharedArray::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
 {
     // Concurrent check for shared array
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(
-        thread, obj.GetTaggedValue().GetTaggedObject(), sCheckMode);
+        thread, obj, sCheckMode);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     // 2 ~ 4 findProperty in Receiver, Obj and its parents
     ObjectOperator op(thread, obj, key);
@@ -483,7 +483,7 @@ bool JSSharedArray::SetProperty(JSThread *thread, const JSHandle<JSTaggedValue> 
 {
     // Concurrent check for shared array
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(
-        thread, obj.GetTaggedValue().GetTaggedObject(), sCheckMode);
+        thread, obj, sCheckMode);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     // 2 ~ 4 findProperty in Receiver, Obj and its parents
     ObjectOperator op(thread, obj, index);

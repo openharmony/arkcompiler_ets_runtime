@@ -68,7 +68,8 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
         UNREACHABLE();
     }
 #endif
-    thread->CheckSafepointIfSuspended();
+    // Shared old space cannot use this allocate func. Shared full gc may happen in trigger and thread state update.
+    // Shared old space pointer might change by shared full gc.
     // jit thread no heap
     allowGC = allowGC && (!thread->IsJitThread());
     if (allowGC) {
@@ -95,6 +96,21 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
     return object;
 }
 
+uintptr_t SharedSparseSpace::TryAllocateAndExpand(JSThread *thread, size_t size, bool expand)
+{
+    uintptr_t object = TryAllocate(thread, size);
+    CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    if (sweepState_ == SweepState::SWEEPING) {
+        object = AllocateAfterSweepingCompleted(thread, size);
+        CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    }
+    if (expand) {
+        object = AllocateWithExpand(thread, size);
+        CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    }
+    return object;
+}
+
 uintptr_t SharedSparseSpace::AllocateNoGCAndExpand(JSThread *thread, size_t size)
 {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
@@ -112,15 +128,15 @@ uintptr_t SharedSparseSpace::AllocateNoGCAndExpand(JSThread *thread, size_t size
     return object;
 }
 
-uintptr_t SharedSparseSpace::TryAllocate(JSThread *thread, size_t size)
+uintptr_t SharedSparseSpace::TryAllocate([[maybe_unused]] JSThread *thread, size_t size)
 {
-    RuntimeLockHolder lock(thread, allocateLock_);
+    LockHolder lock(allocateLock_);
     return allocator_->Allocate(size);
 }
 
 uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
 {
-    RuntimeLockHolder lock(thread, allocateLock_);
+    LockHolder lock(allocateLock_);
     // In order to avoid expand twice by different threads, try allocate first.
     CheckAndTriggerLocalFullMark(thread);
     auto object = allocator_->Allocate(size);
@@ -165,9 +181,9 @@ void SharedSparseSpace::MergeDeserializeAllocateRegions(const std::vector<Region
     }
 }
 
-uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(JSThread *thread, size_t size)
+uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted([[maybe_unused]] JSThread *thread, size_t size)
 {
-    RuntimeLockHolder lock(thread, allocateLock_);
+    LockHolder lock(allocateLock_);
     if (sweepState_ != SweepState::SWEEPING) {
         return allocator_->Allocate(size);
     }
@@ -182,29 +198,10 @@ uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted(JSThread *thread, si
     return allocator_->Allocate(size);
 }
 
-void SharedSparseSpace::ReclaimRegions()
-{
-    EnumerateReclaimRegions([this](Region *region) {
-        region->DeleteCrossRegionRSet();
-        region->DeleteOldToNewRSet();
-        region->DeleteLocalToShareRSet();
-        region->DeleteSweepingOldToNewRSet();
-        region->DeleteSweepingLocalToShareRSet();
-        region->DestroyFreeObjectSets();
-        heapRegionAllocator_->FreeRegion(region, 0);
-    });
-    reclaimRegionList_.clear();
-}
-
 void SharedSparseSpace::PrepareSweeping()
 {
     liveObjectSize_ = 0;
     EnumerateRegions([this](Region *current) {
-        if (current->AliveObject() == 0) {
-            RemoveRegion(current);
-            reclaimRegionList_.emplace(current);
-            return;
-        }
         IncreaseLiveObjectSize(current->AliveObject());
         current->ResetWasted();
         AddSweepingRegion(current);
@@ -319,6 +316,11 @@ void SharedSparseSpace::FreeRegion(Region *current, bool isMain)
     }
 }
 
+void SharedSparseSpace::DetachFreeObjectSet(Region *region)
+{
+    allocator_->DetachFreeObjectSet(region);
+}
+
 void SharedSparseSpace::FreeLiveRange(uintptr_t freeStart, uintptr_t freeEnd, bool isMain)
 {
     // No need to clear rememberset here, because shared region has no remember set now.
@@ -394,6 +396,75 @@ SharedNonMovableSpace::SharedNonMovableSpace(SharedHeap *heap, size_t initialCap
 SharedOldSpace::SharedOldSpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SharedSparseSpace(heap, MemSpaceType::SHARED_OLD_SPACE, initialCapacity, maximumCapacity)
 {
+}
+
+void SharedOldSpace::Merge(SharedLocalSpace *localSpace)
+{
+    localSpace->FreeBumpPoint();
+    LockHolder lock(lock_);
+    size_t oldCommittedSize = committedSize_;
+    localSpace->EnumerateRegions([&](Region *region) {
+        localSpace->DetachFreeObjectSet(region);
+        localSpace->RemoveRegion(region);
+        localSpace->DecreaseLiveObjectSize(region->AliveObject());
+        AddRegion(region);
+        IncreaseLiveObjectSize(region->AliveObject());
+        allocator_->CollectFreeObjectSet(region);
+    });
+    size_t hugeSpaceCommitSize = sHeap_->GetHugeObjectSpace()->GetCommittedSize();
+    if (committedSize_ + hugeSpaceCommitSize > GetOverShootMaximumCapacity()) {
+        LOG_ECMA_MEM(ERROR) << "Merge::Committed size " << committedSize_ << " of old space is too big. ";
+        if (sHeap_->CanThrowOOMError()) {
+            sHeap_->ShouldThrowOOMError(true);
+        }
+        IncreaseMergeSize(committedSize_ - oldCommittedSize);
+        // if throw OOM, temporarily increase space size to avoid vm crash
+        IncreaseOutOfMemoryOvershootSize(committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity());
+    }
+
+    localSpace->GetRegionList().Clear();
+    allocator_->IncreaseAllocatedSize(localSpace->GetTotalAllocatedSize());
+}
+
+SharedLocalSpace::SharedLocalSpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity)
+    : SharedSparseSpace(heap, MemSpaceType::SHARED_LOCAL_SPACE, initialCapacity, maximumCapacity) {}
+
+bool SharedLocalSpace::AddRegionToList(Region *region)
+{
+    if (committedSize_ >= maximumCapacity_) {
+        LOG_ECMA_MEM(FATAL) << "AddRegionTotList::Committed size " << committedSize_ << " of local space is too big.";
+        return false;
+    }
+    AddRegion(region);
+    allocator_->CollectFreeObjectSet(region);
+    IncreaseLiveObjectSize(region->AliveObject());
+    return true;
+}
+
+void SharedLocalSpace::FreeBumpPoint()
+{
+    allocator_->FreeBumpPoint();
+}
+
+void SharedLocalSpace::Stop()
+{
+    Region *currentRegion = GetCurrentRegion();
+    if (currentRegion != nullptr) {
+        currentRegion->SetHighWaterMark(currentRegion->GetBegin() + currentRegion->AliveObject());
+    }
+}
+
+uintptr_t SharedLocalSpace::Allocate(size_t size, bool isExpand)
+{
+    auto object = allocator_->Allocate(size);
+    if (object == 0) {
+        // Shared Full GC will compress all regions and cannot recognize all threads' region.
+        if (isExpand && Expand(Runtime::GetInstance()->GetMainThread())) {
+            object = allocator_->Allocate(size);
+        }
+    }
+    // Alive size not increase here, use shared marker to increase size.
+    return object;
 }
 
 SharedReadOnlySpace::SharedReadOnlySpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity)

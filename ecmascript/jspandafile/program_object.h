@@ -519,7 +519,7 @@ public:
         JSHandle<Method> method = factory->NewSMethod(
             jsPandaFile, methodLiteral, constpoolHandle, entryIndex, isLoadedAOT && hasEntryIndex);
 
-        CASSetObjectToCache(thread, constpool, index, method.GetTaggedValue());
+        CASSetObjectToCache(thread, constpoolHandle.GetTaggedValue(), index, method.GetTaggedValue());
         return method.GetTaggedValue();
     }
 
@@ -755,7 +755,7 @@ public:
                 jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
 
             val = JSTaggedValue(string);
-            CASSetObjectToCache(thread, constpool, index, val);
+            CASSetObjectToCache(thread, constpoolHandle.GetTaggedValue(), index, val);
         }
 
         return val;

@@ -79,7 +79,7 @@ void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
     if (spaceType_ == MemSpaceType::OLD_SPACE || spaceType_ == MemSpaceType::NON_MOVABLE ||
         spaceType_ == MemSpaceType::MACHINE_CODE_SPACE || spaceType_ == MemSpaceType::LOCAL_SPACE ||
         spaceType_ == MemSpaceType::APPSPAWN_SPACE || spaceType_ == MemSpaceType::SHARED_NON_MOVABLE ||
-        spaceType_ == MemSpaceType::SHARED_OLD_SPACE) {
+        spaceType_ == MemSpaceType::SHARED_OLD_SPACE || spaceType_ == MemSpaceType::SHARED_LOCAL_SPACE) {
         region->DestroyFreeObjectSets();
     }
     // regions of EdenSpace are allocated in EdenSpace constructor and fixed, not allocate by heapRegionAllocator_

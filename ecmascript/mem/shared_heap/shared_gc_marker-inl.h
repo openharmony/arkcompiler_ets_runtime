@@ -21,18 +21,20 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/region-inl.h"
+#include "ecmascript/mem/tlab_allocator-inl.h"
 
 namespace panda::ecmascript {
-inline void SharedGCMarker::MarkObject(uint32_t threadId, TaggedObject *object)
+inline void SharedGCMarker::MarkObject(uint32_t threadId, TaggedObject *object, [[maybe_unused]] ObjectSlot &slot)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     ASSERT(objectRegion->InSharedHeap());
     if (!objectRegion->InSharedReadOnlySpace() && objectRegion->AtomicMark(object)) {
+        ASSERT(objectRegion->InSharedSweepableSpace());
         sWorkManager_->Push(threadId, object);
     }
 }
 
-inline void SharedGCMarker::MarkObjectFromJSThread(WorkNode *&localBuffer, TaggedObject *object)
+inline void SharedGCMarkerBase::MarkObjectFromJSThread(WorkNode *&localBuffer, TaggedObject *object)
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     ASSERT(objectRegion->InSharedHeap());
@@ -46,30 +48,30 @@ inline void SharedGCMarker::MarkValue(uint32_t threadId, ObjectSlot &slot)
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsInSharedSweepableSpace()) {
         if (!value.IsWeakForHeapObject()) {
-            MarkObject(threadId, value.GetTaggedObject());
+            MarkObject(threadId, value.GetTaggedObject(), slot);
         } else {
             RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
         }
     }
 }
 
-inline void SharedGCMarker::HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
+inline void SharedGCMarkerBase::HandleRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsInSharedSweepableSpace()) {
-        MarkObject(threadId, value.GetTaggedObject());
+        MarkObject(threadId, value.GetTaggedObject(), slot);
     }
 }
 
-inline void SharedGCMarker::HandleLocalRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
+inline void SharedGCMarkerBase::HandleLocalRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot slot)
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsInSharedSweepableSpace()) {
-        MarkObject(threadId, value.GetTaggedObject());
+        MarkObject(threadId, value.GetTaggedObject(), slot);
     }
 }
 
-inline void SharedGCMarker::HandleLocalRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
+inline void SharedGCMarkerBase::HandleLocalRangeRoots(uint32_t threadId, [[maybe_unused]] Root type, ObjectSlot start,
     ObjectSlot end)
 {
     for (ObjectSlot slot = start; slot < end; slot++) {
@@ -78,21 +80,29 @@ inline void SharedGCMarker::HandleLocalRangeRoots(uint32_t threadId, [[maybe_unu
             if (value.IsWeakForHeapObject()) {
                 LOG_ECMA_MEM(FATAL) << "Weak Reference in SharedGCMarker roots";
             }
-            MarkObject(threadId, value.GetTaggedObject());
+            MarkObject(threadId, value.GetTaggedObject(), slot);
         }
     }
 }
 
-inline void SharedGCMarker::HandleLocalDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
-                                                    [[maybe_unused]] ObjectSlot derived,
-                                                    [[maybe_unused]] uintptr_t baseOldObject)
+void SharedGCMarker::HandleLocalDerivedRoots([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base,
+                                             [[maybe_unused]] ObjectSlot derived,
+                                             [[maybe_unused]] uintptr_t baseOldObject)
 {
     // It is only used to update the derived value. The mark of share GC does not need to update slot
 }
 
+void SharedGCMovableMarker::HandleLocalDerivedRoots([[maybe_unused]] Root type, ObjectSlot base,
+                                                    ObjectSlot derived, uintptr_t baseOldObject)
+{
+    if (JSTaggedValue(base.GetTaggedType()).IsHeapObject()) {
+        derived.Update(base.GetTaggedType() + derived.GetTaggedType() - baseOldObject);
+    }
+}
+
 template <typename Callback>
-ARK_INLINE bool SharedGCMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
-                                               Callback callback)
+ARK_INLINE bool SharedGCMarkerBase::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,
+                                                   Callback callback)
 {
     auto hclass = root->SynchronizedGetClass();
     int index = 0;
@@ -109,28 +119,30 @@ ARK_INLINE bool SharedGCMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot st
     return true;
 }
 
-inline void SharedGCMarker::RecordWeakReference(uint32_t threadId, JSTaggedType *slot)
+inline void SharedGCMarkerBase::RecordWeakReference(uint32_t threadId, JSTaggedType *slot)
 {
     sWorkManager_->PushWeakReference(threadId, slot);
 }
 
-inline void SharedGCMarker::RecordObject(JSTaggedValue value, uint32_t threadId, void *mem)
+inline void SharedGCMarkerBase::RecordObject(JSTaggedValue value, uint32_t threadId, void *mem)
 {
     if (value.IsWeakForHeapObject()) {
         RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(mem));
     } else {
-        MarkObject(threadId, value.GetTaggedObject());
+        ObjectSlot slot(ToUintPtr(mem));
+        MarkObject(threadId, value.GetTaggedObject(), slot);
     }
 }
 
 template<SharedMarkType markType>
-inline bool SharedGCMarker::GetVisitor(JSTaggedValue value, uint32_t threadId, void *mem)
+inline bool SharedGCMarkerBase::GetVisitor(JSTaggedValue value, uint32_t threadId, void *mem)
 {
     if (value.IsInSharedSweepableSpace()) {
         if constexpr (markType == SharedMarkType::CONCURRENT_MARK_INITIAL_MARK) {
             // For now if record weak references from local to share in marking root, the slots
             // may be invalid due to LocalGC, so just mark them as strong-reference.
-            MarkObject(threadId, value.GetHeapObject());
+            ObjectSlot slot(ToUintPtr(mem));
+            MarkObject(threadId, value.GetHeapObject(), slot);
         } else {
             static_assert(markType == SharedMarkType::NOT_CONCURRENT_MARK);
             RecordObject(value, threadId, mem);
@@ -141,19 +153,18 @@ inline bool SharedGCMarker::GetVisitor(JSTaggedValue value, uint32_t threadId, v
 }
 
 template<SharedMarkType markType>
-inline auto SharedGCMarker::GenerateRSetVisitor(uint32_t threadId)
+inline auto SharedGCMarkerBase::GenerateRSetVisitor(uint32_t threadId)
 {
     auto visitor = [this, threadId](void *mem) -> bool {
         ObjectSlot slot(ToUintPtr(mem));
         JSTaggedValue value(slot.GetTaggedType());
-        
         return GetVisitor<markType>(value, threadId, mem);
     };
     return visitor;
 }
 
 template<SharedMarkType markType>
-inline void SharedGCMarker::ProcessVisitorOfDoMark(uint32_t threadId)
+inline void SharedGCMarkerBase::ProcessVisitorOfDoMark(uint32_t threadId)
 {
     auto rSetVisitor = GenerateRSetVisitor<markType>(threadId);
     auto visitor = [rSetVisitor](Region *region, RememberedSet *rSet) {
@@ -166,7 +177,7 @@ inline void SharedGCMarker::ProcessVisitorOfDoMark(uint32_t threadId)
 }
 
 template<SharedMarkType markType>
-inline void SharedGCMarker::DoMark(uint32_t threadId)
+inline void SharedGCMarkerBase::DoMark(uint32_t threadId)
 {
     if constexpr (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
         ProcessVisitorOfDoMark<markType>(threadId);
@@ -174,7 +185,7 @@ inline void SharedGCMarker::DoMark(uint32_t threadId)
     ProcessMarkStack(threadId);
 }
 
-inline bool SharedGCMarker::MarkObjectOfProcessVisitor(void *mem, WorkNode *&localBuffer)
+inline bool SharedGCMarkerBase::MarkObjectOfProcessVisitor(void *mem, WorkNode *&localBuffer)
 {
     ObjectSlot slot(ToUintPtr(mem));
     JSTaggedValue value(slot.GetTaggedType());
@@ -189,7 +200,7 @@ inline bool SharedGCMarker::MarkObjectOfProcessVisitor(void *mem, WorkNode *&loc
     return false;
 }
 
-inline void SharedGCMarker::ProcessVisitor(RSetWorkListHandler *handler)
+inline void SharedGCMarkerBase::ProcessVisitor(RSetWorkListHandler *handler)
 {
     WorkNode *&localBuffer = handler->GetHeap()->GetMarkingObjectLocalBuffer();
     auto rSetVisitor = [this, &localBuffer](void *mem) -> bool {
@@ -201,13 +212,110 @@ inline void SharedGCMarker::ProcessVisitor(RSetWorkListHandler *handler)
     handler->ProcessAll(visitor);
 }
 
-inline void SharedGCMarker::ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler)
+inline void SharedGCMarkerBase::ProcessThenMergeBackRSetFromBoundJSThread(RSetWorkListHandler *handler)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::ProcessRSet");
     ASSERT(JSThread::GetCurrent() == handler->GetHeap()->GetEcmaVM()->GetJSThread());
     ASSERT(JSThread::GetCurrent()->IsInRunningState());
     ProcessVisitor(handler);
     handler->WaitFinishedThenMergeBack();
+}
+
+void SharedGCMovableMarker::MarkObject(uint32_t threadId, TaggedObject *object, ObjectSlot &slot)
+{
+    Region *objectRegion = Region::ObjectAddressToRange(object);
+    ASSERT(objectRegion->InSharedHeap());
+    if (!NeedEvacuate(objectRegion)) {
+        if (!objectRegion->InSharedReadOnlySpace() && objectRegion->AtomicMark(object)) {
+            auto hclass = object->GetClass();
+            auto size = hclass->SizeFromJSHClass(object);
+            objectRegion->IncreaseAliveObject(size);
+            sWorkManager_->Push(threadId, object);
+        }
+        return;
+    }
+
+    MarkWord markWord(object);
+    if (markWord.IsForwardingAddress()) {
+        TaggedObject *dst = markWord.ToForwardingAddress();
+        slot.Update(dst);
+        return;
+    }
+    return EvacuateObject(threadId, object, markWord, slot);
+}
+
+void SharedGCMovableMarker::MarkValue(uint32_t threadId, ObjectSlot &slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsInSharedSweepableSpace()) {
+        if (!value.IsWeakForHeapObject()) {
+            MarkObject(threadId, value.GetTaggedObject(), slot);
+        } else {
+            RecordWeakReference(threadId, reinterpret_cast<JSTaggedType *>(slot.SlotAddress()));
+        }
+    }
+}
+
+bool SharedGCMovableMarker::NeedEvacuate(Region *region)
+{
+    return region->InSharedOldSpace();
+}
+
+void SharedGCMovableMarker::EvacuateObject(uint32_t threadId, TaggedObject *object,
+    const MarkWord &markWord, ObjectSlot slot)
+{
+    JSHClass *klass = markWord.GetJSHClass();
+    size_t size = klass->SizeFromJSHClass(object);
+    uintptr_t forwardAddress = AllocateForwardAddress(threadId, size);
+    auto oldValue = markWord.GetValue();
+    auto result = Barriers::AtomicSetPrimitive(object, 0, oldValue,
+                                               MarkWord::FromForwardingAddress(forwardAddress));
+    if (result == oldValue) {
+        UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot);
+        return;
+    }
+    UpdateForwardAddressIfFailed(object, forwardAddress, size, slot);
+}
+
+uintptr_t SharedGCMovableMarker::AllocateDstSpace(uint32_t threadId, size_t size)
+{
+    uintptr_t forwardAddress = 0;
+    forwardAddress = sWorkManager_->GetTlabAllocator(threadId)->Allocate(size, SHARED_COMPRESS_SPACE);
+    if (UNLIKELY(forwardAddress == 0)) {
+        LOG_ECMA_MEM(FATAL) << "EvacuateObject alloc failed: "
+                            << " size: " << size;
+        UNREACHABLE();
+    }
+    return forwardAddress;
+}
+
+void SharedGCMovableMarker::UpdateForwardAddressIfSuccess(uint32_t threadId, TaggedObject *object, JSHClass *klass,
+    uintptr_t toAddress, size_t size, const MarkWord &markWord, ObjectSlot slot)
+{
+    if (memcpy_s(ToVoidPtr(toAddress + HEAD_SIZE), size - HEAD_SIZE, ToVoidPtr(ToUintPtr(object) + HEAD_SIZE),
+        size - HEAD_SIZE) != EOK) {
+        LOG_FULL(FATAL) << "memcpy_s failed";
+    }
+    sWorkManager_->IncreaseAliveSize(threadId, size);
+
+    *reinterpret_cast<MarkWordType *>(toAddress) = markWord.GetValue();
+    if (klass->HasReferenceField()) {
+        sWorkManager_->Push(threadId, reinterpret_cast<TaggedObject *>(toAddress));
+    }
+    slot.Update(reinterpret_cast<TaggedObject *>(toAddress));
+}
+
+void SharedGCMovableMarker::UpdateForwardAddressIfFailed(TaggedObject *object, uintptr_t toAddress, size_t size,
+    ObjectSlot slot)
+{
+    FreeObject::FillFreeObject(sHeap_, toAddress, size);
+    TaggedObject *dst = MarkWord(object).ToForwardingAddress();
+    slot.Update(dst);
+}
+
+uintptr_t SharedGCMovableMarker::AllocateForwardAddress(uint32_t threadId, size_t size)
+{
+    return AllocateDstSpace(threadId, size);
 }
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_SHARED_HEAP_SHARED_GC_MARKER_INL_H

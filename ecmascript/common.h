@@ -40,6 +40,7 @@ enum TriggerGCType {
     // GC is expected to compress objects into appspawn space;
     APPSPAWN_FULL_GC,
     SHARED_GC,
+    SHARED_FULL_GC,
     GC_TYPE_LAST
 };
 
