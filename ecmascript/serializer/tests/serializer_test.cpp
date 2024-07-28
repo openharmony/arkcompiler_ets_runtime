@@ -851,11 +851,12 @@ public:
         OperationResult result2 = JSObject::GetProperty(thread, res, key2);
         JSHandle<JSTaggedValue> value2 = result2.GetRawValue();
         EXPECT_TRUE(value2->IsJSFunction());
-
+        EXPECT_TRUE(JSHandle<JSFunction>::Cast(value2)->GetWorkNodePointer() == reinterpret_cast<uintptr_t>(nullptr));
         JSHandle<JSTaggedValue> key3(factory->NewFromASCII("key"));
         OperationResult result3 = JSObject::GetProperty(thread, res, key3);
         JSHandle<JSTaggedValue> value3 = result3.GetRawValue();
         EXPECT_TRUE(value3->IsJSFunction());
+        EXPECT_TRUE(JSHandle<JSFunction>::Cast(value3)->GetWorkNodePointer() == reinterpret_cast<uintptr_t>(nullptr));
 
         Destroy();
     }
