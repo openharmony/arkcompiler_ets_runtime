@@ -63,7 +63,6 @@
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/js_serializer.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_tagged_number.h"
@@ -138,7 +137,6 @@ using ecmascript::JSPandaFileManager;
 using ecmascript::JSPrimitiveRef;
 using ecmascript::JSPromise;
 using ecmascript::JSRegExp;
-using ecmascript::JSSerializer;
 using ecmascript::JSSet;
 using ecmascript::JSSymbol;
 using ecmascript::JSTaggedNumber;

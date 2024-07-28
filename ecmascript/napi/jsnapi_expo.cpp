@@ -63,7 +63,6 @@
 #include "ecmascript/js_promise.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/js_serializer.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_tagged_number.h"
@@ -149,7 +148,6 @@ using ecmascript::JSProxy;
 using ecmascript::ObjectFastOperator;
 using ecmascript::JSRegExp;
 using ecmascript::JSRuntimeOptions;
-using ecmascript::JSSerializer;
 using ecmascript::JSSet;
 using ecmascript::JSSetIterator;
 using ecmascript::JSSymbol;
@@ -5122,7 +5120,6 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
     JSHandle<JSTaggedValue> arkValue = JSNApiHelper::ToJSHandle(value);
     JSHandle<JSTaggedValue> arkTransfer = JSNApiHelper::ToJSHandle(transfer);
     JSHandle<JSTaggedValue> arkCloneList = JSNApiHelper::ToJSHandle(cloneList);
-#if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
     bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
     std::chrono::system_clock::time_point startTime;
     std::chrono::system_clock::time_point endTime;
@@ -5143,25 +5140,12 @@ void *JSNApi::SerializeValue(const EcmaVM *vm, Local<JSValueRef> value, Local<JS
     } else {
         return reinterpret_cast<void *>(data.release());
     }
-#else
-    ecmascript::Serializer serializer(thread);
-    std::unique_ptr<ecmascript::SerializationData> data;
-    if (serializer.WriteValue(thread, arkValue, arkTransfer)) {
-        data = serializer.Release();
-    }
-    if (data == nullptr) {
-        return nullptr;
-    } else {
-        return reinterpret_cast<void *>(data.release());
-    }
-#endif
 }
 
 Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void *hint)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
-#if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
     std::unique_ptr<ecmascript::SerializeData> data(reinterpret_cast<ecmascript::SerializeData *>(recoder));
     ecmascript::BaseDeserializer deserializer(thread, data.release(), hint);
     bool serializationTimeoutCheckEnabled = IsSerializationTimeoutCheckEnabled(vm);
@@ -5176,25 +5160,13 @@ Local<JSValueRef> JSNApi::DeserializeValue(const EcmaVM *vm, void *recoder, void
         GenerateTimeoutTraceIfNeeded(vm, startTime, endTime, false);
     }
     return JSNApiHelper::ToLocal<ObjectRef>(result);
-#else
-    std::unique_ptr<ecmascript::SerializationData> data(reinterpret_cast<ecmascript::SerializationData *>(recoder));
-    ecmascript::Deserializer deserializer(thread, data.release(), hint);
-    JSHandle<JSTaggedValue> result = deserializer.ReadValue();
-    return JSNApiHelper::ToLocal<ObjectRef>(result);
-#endif
 }
 
 void JSNApi::DeleteSerializationData(void *data)
 {
-#if ECMASCRIPT_ENABLE_VALUE_SERIALIZER
     ecmascript::SerializeData *value = reinterpret_cast<ecmascript::SerializeData *>(data);
     delete value;
     value = nullptr;
-#else
-    ecmascript::SerializationData *value = reinterpret_cast<ecmascript::SerializationData *>(data);
-    delete value;
-    value = nullptr;
-#endif
 }
 
 void HostPromiseRejectionTracker(const EcmaVM *vm,

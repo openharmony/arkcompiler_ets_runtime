@@ -26,6 +26,10 @@ namespace panda::ecmascript {
 constexpr size_t INITIAL_CAPACITY = 64;
 constexpr int CAPACITY_INCREASE_RATE = 2;
 constexpr uint32_t RESERVED_INDEX = 0;
+
+typedef void* (*DetachFunc)(void *enginePointer, void *objPointer, void *hint, void *detachData);
+typedef Local<JSValueRef> (*AttachFunc)(void *enginePointer, void *buffer, void *hint, void *attachData);
+
 enum class EncodeFlag : uint8_t {
     // 0x00~0x06 represent new object to different space:
     // 0x00: old space

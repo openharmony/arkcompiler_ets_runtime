@@ -531,7 +531,6 @@ host_unittest_action("EcmaVm_018_Test") {
 
   sources = [
     # test file
-    "js_serializer_test.cpp",
     "js_set_iterator_test.cpp",
     "js_set_test.cpp",
     "js_stable_array_test.cpp",

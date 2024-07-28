@@ -16,7 +16,6 @@
 #include "jsnapideserializevalue_fuzzer.h"
 
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_serializer.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
 using namespace panda;

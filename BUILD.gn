@@ -799,7 +799,6 @@ ecma_source = [
   "ecmascript/js_proxy.cpp",
   "ecmascript/js_regexp_iterator.cpp",
   "ecmascript/js_runtime_options.cpp",
-  "ecmascript/js_serializer.cpp",
   "ecmascript/js_set.cpp",
   "ecmascript/js_set_iterator.cpp",
   "ecmascript/js_stable_array.cpp",
