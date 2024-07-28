@@ -121,5 +121,11 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test Queue fail: " + flag);
     }
+
+    let size_test = new Queue();
+    for (var i = 0; i < 6; i++) {
+        size_test.add(i);
+    }
+    print(size_test.length);
 }
 export let queueRes = "Test Queue done";

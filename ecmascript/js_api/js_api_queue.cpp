@@ -225,9 +225,9 @@ bool JSAPIQueue::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIQueue> &ob
 OperationResult JSAPIQueue::GetProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,
                                         const JSHandle<JSTaggedValue> &key)
 {
-    int length = static_cast<int>(obj->GetLength().GetArrayLength());
-    int index = key->GetInt();
-    if (index < 0 || index >= length) {
+    uint32_t length = obj->GetSize();
+    double index = key->GetNumber();
+    if (index < 0 || static_cast<uint32_t>(index) >= length) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
             << ". Received value is: " << index;
@@ -237,7 +237,7 @@ OperationResult JSAPIQueue::GetProperty(JSThread *thread, const JSHandle<JSAPIQu
                                                                         PropertyMetaData(false)));
     }
 
-    return OperationResult(thread, obj->Get(thread, index), PropertyMetaData(false));
+    return OperationResult(thread, obj->Get(thread, static_cast<uint32_t>(index)), PropertyMetaData(false));
 }
 
 bool JSAPIQueue::SetProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,
