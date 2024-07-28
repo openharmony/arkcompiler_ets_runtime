@@ -449,6 +449,9 @@ inline SlotStatus CompressGCMarker::MarkObject(uint32_t threadId, TaggedObject *
     if (!NeedEvacuate(objectRegion)) {
         if (!objectRegion->InSharedHeap() && objectRegion->AtomicMark(object)) {
             workManager_->Push(threadId, object);
+            auto hclass = object->GetClass();
+            auto size = hclass->SizeFromJSHClass(object);
+            objectRegion->IncreaseAliveObject(size);
         }
         return SlotStatus::CLEAR_SLOT;
     }
