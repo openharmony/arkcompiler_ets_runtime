@@ -123,7 +123,7 @@ private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
     static constexpr int LOOP_UNROLL_FACTOR = 2;
     GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
-        GateRef profileTypeInfo, GateRef slotId, GateRef arrayLiteral, ProfileOperation callback);
+        GateRef profileTypeInfo, GateRef slotId, GateRef slotValue, GateRef arrayLiteral, ProfileOperation callback);
     GateRef LoadArrayHClassSlowPath(
         GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo, GateRef arrayLiteral, ProfileOperation callback);
     GateRef CreateEmptyArrayCommon(GateRef glue, GateRef hclass, GateRef trackInfo);
