@@ -25,6 +25,9 @@
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/dfx/dump_code/jit_dump_elf.h"
 #include "ecmascript/platform/aot_crash_info.h"
+#ifdef CODE_SIGN_ENABLE
+#include "jit_code_signer_base.h"
+#endif
 
 namespace panda::ecmascript {
 
@@ -401,7 +404,7 @@ bool JitTask::AsyncTask::CopyCodeToFort()
         } else {
             LOG_JIT(DEBUG) << "     JitVerifyAndCopy success!!";
         }
-        delete reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
+        delete reinterpret_cast<OHOS::Security::CodeSign::JitCodeSignerBase*>(desc.codeSigner);
     }
 #else
     if (memcpy_s(pText, codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
