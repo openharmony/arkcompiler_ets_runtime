@@ -24,6 +24,11 @@ namespace panda {
 namespace ecmascript {
 enum BarrierMode { SKIP_BARRIER, WRITE_BARRIER, READ_BARRIER };
 
+enum CheckIdleGCType {
+    VSYNC,
+    LOOPER
+};
+
 /*
  * TriggerGCType is categorized according to the scope the GC expects to cover.
  * Different GC algorithms may be applied to different GC types.

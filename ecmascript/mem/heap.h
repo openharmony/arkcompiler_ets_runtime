@@ -60,12 +60,14 @@ class ThreadLocalAllocationBuffer;
 class JSThread;
 class DaemonThread;
 class GlobalEnvConstants;
+class SharedMemController;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
 using GCListenerId = std::vector<std::pair<FinishGCListener, void *>>::const_iterator;
 using Clock = std::chrono::high_resolution_clock;
 using AppFreezeFilterCallback = std::function<bool(const int32_t pid)>;
+using BytesAndDuration = std::pair<uint64_t, double>;
 
 enum class IdleTaskType : uint8_t {
     NO_TASK,
@@ -169,6 +171,12 @@ public:
 
     virtual bool ObjectExceedMaxHeapSize() const = 0;
 
+    virtual bool ReachIdleOldGCThresholds() const = 0;
+
+    virtual bool InLowAllocationUsageState() = 0;
+
+    virtual bool ShouldTriggerFullGC() = 0;
+
     MarkType GetMarkType() const
     {
         return markType_;
@@ -270,19 +278,14 @@ public:
         return heapAliveSizeAfterGC_;
     }
 
-    void updateIdleGCTimePoint()
+    void UpdateFullGCTimePoint()
     {
-        lastIdleGCTimestamp_ = Clock::now();
+        lastFullGCTimestamps_ = Clock::now();
     }
 
-    bool ShouldCheckIdleGC() const
+    void SetNeedCheckFullGCForIdle(bool need)
     {
-        if (heapAliveSizeAfterGC_ == 0 || GetCommittedSize() <= MIN_BACKGROUNG_GC_LIMIT) {
-            return false;
-        }
-        bool reachMinGrowSize = GetHeapObjectSize() - heapAliveSizeAfterGC_ > (GetCommittedSize() >
-            IDLE_GC_SMALL_SIZE_LIMIT ? IDLE_GC_LARGE_INCREASE_SIZE : IDLE_GC_SMALL_INCREASE_SIZE);
-        return reachMinGrowSize;
+        needCheckFullGCForIdle_ = need;
     }
 
     size_t GetGlobalSpaceAllocLimit() const
@@ -321,6 +324,8 @@ public:
         bool NonMovableObjNearOOM = false);
     void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
     void SetAppFreezeFilterCallback(AppFreezeFilterCallback cb);
+    bool ShouldCheckIdleFullGC();
+    bool ShouldCheckIdleOldGC() const;
 
 protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
@@ -384,7 +389,9 @@ protected:
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
-    Clock::time_point lastIdleGCTimestamp_;
+    Clock::time_point lastFullGCTimestamps_;
+    Clock::time_point lastCheckIdleFullGCTimestamps_;
+    bool needCheckFullGCForIdle_ {false};
     int32_t recursionDepth_ {0};
 };
 
@@ -497,6 +504,12 @@ public:
     }
 
     bool ObjectExceedMaxHeapSize() const override;
+
+    bool ReachIdleOldGCThresholds() const override;
+
+    bool InLowAllocationUsageState() override;
+
+    bool ShouldTriggerFullGC() override;
 
     bool CheckAndTriggerSharedGC(JSThread *thread);
 
@@ -691,6 +704,11 @@ public:
     }
     inline void SwapOldSpace();
 
+    SharedMemController *GetSharedMemController() const
+    {
+        return sharedMemController_;
+    }
+
     void PrepareRecordRegionsForReclaim();
 
     template<class Callback>
@@ -797,6 +815,8 @@ private:
     SharedGCMovableMarker *sharedGCMovableMarker_ {nullptr};
     size_t growingFactor_ {0};
     size_t growingStep_ {0};
+
+    SharedMemController *sharedMemController_ {nullptr};
 };
 
 class Heap : public BaseHeap {
@@ -1024,7 +1044,8 @@ public:
      */
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
     bool CheckAndTriggerOldGC(size_t size = 0);
-    void CheckAndTriggerGCForIdle(int idletime);
+    static void IdleGCTask();
+    bool CheckAndTriggerGCForIdle(int idletime, CheckIdleGCType type);
     bool CheckAndTriggerHintGC();
     TriggerGCType SelectGCType() const;
     /*
@@ -1197,6 +1218,12 @@ public:
     void HandleExitHighSensitiveEvent();
 
     bool ObjectExceedMaxHeapSize() const override;
+
+    bool ReachIdleOldGCThresholds() const override;
+
+    bool InLowAllocationUsageState() override;
+
+    bool ShouldTriggerFullGC() override;
 
     bool NeedStopCollection() override;
 
@@ -1387,8 +1414,6 @@ private:
     static constexpr int BACKGROUND_GROW_LIMIT = 2_MB;
     // Threadshold that HintGC will actually trigger GC.
     static constexpr double SURVIVAL_RATE_THRESHOLD = 0.5;
-    static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8;
-    static constexpr double IDLE_FULLGC_SPACE_USAGE_LIMIT_RATE = 0.7;
     static constexpr size_t NEW_ALLOCATED_SHARED_OBJECT_SIZE_LIMIT = DEFAULT_SHARED_HEAP_SIZE / 10; // 10 : ten times.
     static constexpr size_t INIT_GLOBAL_SPACE_NATIVE_SIZE_LIMIT = 100_MB;
     void RecomputeLimits();

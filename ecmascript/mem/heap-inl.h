@@ -25,6 +25,7 @@
 #include "ecmascript/mem/concurrent_sweeper.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/mem_controller.h"
+#include "ecmascript/mem/shared_mem_controller.h"
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/tagged_object.h"
 #include "ecmascript/mem/thread_local_allocation_buffer.h"
@@ -756,6 +757,15 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon)
     GetEcmaGCStats()->RecordStatisticAfterGC();
     GetEcmaGCStats()->PrintGCStatistic();
     ProcessAllGCListeners();
+
+    sharedMemController_->UpdateAllocationAfterGC();
+    sharedMemController_->UpdateObjectUsageRateAfterGC();
+    if (GetGCType() == TriggerGCType::SHARED_FULL_GC) {
+        UpdateFullGCTimePoint();
+        SetNeedCheckFullGCForIdle(false);
+    } else {
+        SetNeedCheckFullGCForIdle(true);
+    }
 }
 
 TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass)

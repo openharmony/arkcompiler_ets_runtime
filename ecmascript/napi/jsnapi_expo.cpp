@@ -4799,7 +4799,22 @@ void JSNApi::NotifyLoadModule(const EcmaVM *vm)
 void JSNApi::NotifyUIIdle(const EcmaVM *vm, int idleTime)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerGCForIdle(idleTime);
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerGCForIdle(idleTime,
+        ecmascript::CheckIdleGCType::VSYNC);
+}
+
+void JSNApi::NotifyLooperIdle(const EcmaVM *vm, int idleTime)
+{
+    if (vm->IsPostForked()) {
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+        const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerGCForIdle(idleTime,
+            ecmascript::CheckIdleGCType::LOOPER);
+    }
+}
+
+bool JSNApi::IsJSMainThreadOfEcmaVM(const EcmaVM *vm)
+{
+    return vm->GetJSThread()->IsMainThreadFast();
 }
 
 void JSNApi::SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb)

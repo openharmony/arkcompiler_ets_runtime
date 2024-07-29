@@ -37,6 +37,7 @@
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem_controller.h"
+#include "ecmascript/mem/shared_mem_controller.h"
 #include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"
@@ -215,6 +216,7 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     growingFactor_ = config_.GetSharedHeapLimitGrowingFactor();
     growingStep_ = config_.GetSharedHeapLimitGrowingStep();
+    sharedMemController_ = new SharedMemController(this);
 
     dThread_ = dThread;
 }
@@ -279,6 +281,11 @@ void SharedHeap::Destroy()
         delete sharedGCMovableMarker_;
         sharedGCMovableMarker_ = nullptr;
     }
+    if (sharedMemController_ != nullptr) {
+        delete sharedMemController_;
+        sharedMemController_ = nullptr;
+    }
+
     dThread_ = nullptr;
 }
 
@@ -1232,6 +1239,14 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             static_cast<int>(GetMachineCodeSpace()->GetHeapObjectSize());
         Jit::GetInstance()->CheckMechineCodeSpaceMemory(GetEcmaVM()->GetJSThread(), remainSize);
     }
+
+    if (gcType == TriggerGCType::FULL_GC) {
+        UpdateFullGCTimePoint();
+        SetNeedCheckFullGCForIdle(false);
+    } else if (gcType != TriggerGCType::YOUNG_GC && gcType != TriggerGCType::EDEN_GC) {
+        SetNeedCheckFullGCForIdle(true);
+        memController_->UpdateObjectUsageRateAfterGC();
+    }
 }
 
 void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
@@ -1295,6 +1310,36 @@ void BaseHeap::FatalOutOfMemoryError(size_t size, std::string functionName)
     GetEcmaGCStats()->PrintGCMemoryStatistic();
     LOG_ECMA_MEM(FATAL) << "OOM fatal when trying to allocate " << size << " bytes"
                         << " function name: " << functionName.c_str();
+}
+
+
+bool BaseHeap::ShouldCheckIdleFullGC()
+{
+    if (!needCheckFullGCForIdle_) {
+        return false;
+    }
+    Clock::time_point nowTimePoint = Clock::now();
+    bool triggerFullGCInterval = (lastFullGCTimestamps_ == Clock::time_point::min() ||
+            std::chrono::duration_cast<std::chrono::seconds>(nowTimePoint - lastFullGCTimestamps_).count() >=
+                MIN_TRIGGER_IDLE_FULL_GC_INTERVAL);
+    bool checkInterval = lastCheckIdleFullGCTimestamps_ == Clock::time_point::min() ||
+        std::chrono::duration_cast<std::chrono::milliseconds>(nowTimePoint - lastCheckIdleFullGCTimestamps_).count() >=
+            MIN_CHECK_IDLE_FULL_GC_INTERVAL;
+    bool result = triggerFullGCInterval && checkInterval;
+    if (result) {
+        lastCheckIdleFullGCTimestamps_ = nowTimePoint;
+    }
+    return result;
+}
+
+bool BaseHeap::ShouldCheckIdleOldGC() const
+{
+    if (heapAliveSizeAfterGC_ == 0) {
+        return false;
+    }
+    size_t expectHeapSize = std::max(static_cast<size_t>(heapAliveSizeAfterGC_ * IDLE_SPACE_SIZE_MIN_INC_RATIO),
+        heapAliveSizeAfterGC_ + IDLE_SPACE_SIZE_MIN_INC_STEP);
+    return GetHeapObjectSize() >= expectHeapSize;
 }
 
 void Heap::CheckNonMovableSpaceOOM()
@@ -1590,49 +1635,141 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
     return false;
 }
 
-void Heap::CheckAndTriggerGCForIdle(int idleTime)
+bool Heap::ReachIdleOldGCThresholds() const
 {
-    if (idleTime != 0) {
-        return;
+    bool isFullMarking = IsConcurrentFullMark() && GetJSThread()->IsMarking();
+    bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimitForIdle();
+    if (isNativeSizeLargeTrigger) {
+        return true;
     }
-    // idleTime equal 0, This means that the next few frames are idle
-    if (ShouldCheckIdleGC()) {
-        if (GetHeapObjectSize() < GetCommittedSize() * IDLE_FULLGC_SPACE_USAGE_LIMIT_RATE && !NeedStopCollection()) {
-            CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+
+    size_t idleSizeLimit = static_cast<size_t>(oldSpace_->GetInitialCapacity() *
+                                                IDLE_SPACE_SIZE_LIMIT_RATE);
+    size_t currentSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
+    if (currentSize >= idleSizeLimit) {
+        return true;
+    }
+
+    size_t maxCapacity = oldSpace_->GetMaximumCapacity() + oldSpace_->GetOvershootSize() +
+                        oldSpace_->GetOutOfMemoryOvershootSize();
+    size_t currentCapacity = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize();
+    size_t idleCapacityLimit = static_cast<size_t>(maxCapacity * IDLE_SPACE_SIZE_LIMIT_RATE);
+    if (currentCapacity >= idleCapacityLimit) {
+        return true;
+    }
+
+    size_t oldSpaceAllocLimit = globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize();
+    size_t idleOldSpaceAllocLimit = static_cast<size_t>(oldSpaceAllocLimit * IDLE_SPACE_SIZE_LIMIT_RATE);
+    if (GetHeapObjectSize() > idleOldSpaceAllocLimit) {
+        return true;
+    }
+    return false;
+}
+
+bool Heap::ShouldTriggerFullGC()
+{
+    bool lowMemUsageState = InLowAllocationUsageState();
+    double lastGCOldSpaceObjectUsageRate = memController_->GetLastGCOldSpaceObjectUsageRate();
+    bool isLowObjectUsageRate = lastGCOldSpaceObjectUsageRate < OBJECT_USAGE_RATE_OF_FULLGC;
+    bool isMidObjectUsageRate = lastGCOldSpaceObjectUsageRate < OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC;
+    return isLowObjectUsageRate || (isMidObjectUsageRate && lowMemUsageState);
+}
+
+bool Heap::InLowAllocationUsageState()
+{
+    memController_->RecordAllocationForIdle();
+    return memController_->CheckLowAllocationUsageState();
+}
+
+
+bool SharedHeap::InLowAllocationUsageState()
+{
+    sharedMemController_->RecordAllocationForIdle();
+    return sharedMemController_->CheckLowAllocationUsageState();
+}
+
+bool SharedHeap::ReachIdleOldGCThresholds() const
+{
+    size_t expectSizeLimit = GetOldSpace()->GetInitialCapacity() * IDLE_SPACE_SIZE_LIMIT_RATE;
+    size_t currentOldSize = GetOldSpace()->GetHeapObjectSize();
+    size_t expectGlobalSizeLimit = GetGlobalSpaceAllocLimit() * IDLE_SPACE_SIZE_LIMIT_RATE;
+    return currentOldSize > expectSizeLimit || GetHeapObjectSize() > expectGlobalSizeLimit;
+}
+
+bool SharedHeap::ShouldTriggerFullGC()
+{
+    bool lowMemUsageState = InLowAllocationUsageState();
+    double lastGCOldSpaceObjectUsageRate = sharedMemController_->GetLastGCOldSpaceObjectUsageRate();
+    bool isLowObjectUsageRate = lastGCOldSpaceObjectUsageRate < OBJECT_USAGE_RATE_OF_FULLGC;
+    bool isMidObjectUsageRate = lastGCOldSpaceObjectUsageRate < OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC;
+    return isLowObjectUsageRate || (isMidObjectUsageRate && lowMemUsageState);
+}
+
+/*
+ * The CheckAndTriggerGCForIdle method is to trigger memory reclamation when the main thread is idle.
+ * There are two cases:
+ * 1,Reduce the probability of triggering memory reclamation when executing business code, resulting in stalling.
+ * 2,Reduce the normal memory of the process in the standing scene.
+ *
+ * idleTime:
+ * In the vsync scenario, only 0 is meaningful.
+ * In the looper scenario，Expected next idletime No task.
+ * idleType:
+ * - VSYNC Triggered when the system draws frames idle
+ * - LOOPER Triggered when the background cyclic task queue completes
+ *
+ * OLD GC Trigger strategy:
+ * 1,Minimum increment
+ * 2,IDLE_SPACE_SIZE_LIMIT_RATE of the original threshold was reached
+ * In addition: The actual object usage after the last oldGC is less than OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC
+ * then convert to once FULL GC
+ *
+ * FULL GC Trigger strategy:
+ * 1,Minimum trigger interval, Trigger a maximum of once within MIN_TRIGGER_IDLE_FULL_GC_INTERVAL seconds
+ * 2,oldGC has been triggered at least once since the last fullGC
+ * 3,The actual usage of the last oldGC object was less than OBJECT_USAGE_RATE_OF_FULLGC
+ *
+ */
+bool Heap::CheckAndTriggerGCForIdle(int idleTime, CheckIdleGCType idleType)
+{
+    LOG_GC(DEBUG) << "recv once idle time,type=" << idleType << ",time=" << idleTime;
+    bool needCheckOldGC = (idleType == CheckIdleGCType::VSYNC || idleTime > IDLE_MIN_SLEEP_TIME_FOR_OLD_GC);
+    bool needCheckFullGC = idleTime > IDLE_MIN_SLEEP_TIME_FOR_FULL_GC;
+    if (idleType == CheckIdleGCType::VSYNC && idleTime != 0) {
+        return false;
+    }
+    if (needCheckOldGC && ShouldCheckIdleOldGC() && ReachIdleOldGCThresholds() && !NeedStopCollection()) {
+        double memUsageOfLastOldGC = memController_->GetLastGCOldSpaceObjectUsageRate();
+        LOG_GC(INFO) << "Triggered once local OldGC on idleTime and memUsageOfLastOldGC:" << memUsageOfLastOldGC;
+        if (memUsageOfLastOldGC < OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC) {
+            CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
         } else {
-            //check for oldGC
-            bool isFullMarking = IsConcurrentFullMark() && GetJSThread()->IsMarking();
-            bool isNativeSizeLargeTrigger = isFullMarking ? false : GlobalNativeSizeLargerThanLimitForIdle();
-
-            size_t idleSizeLimit = static_cast<size_t>(oldSpace_->GetInitialCapacity() *
-                                                        IDLE_SPACE_SIZE_LIMIT_RATE);
-            size_t currentSize = oldSpace_->GetHeapObjectSize() + hugeObjectSpace_->GetHeapObjectSize();
-
-            size_t maxCapacity = oldSpace_->GetMaximumCapacity() + oldSpace_->GetOvershootSize() +
-                                oldSpace_->GetOutOfMemoryOvershootSize();
-            size_t currentCapacity = oldSpace_->GetCommittedSize() + hugeObjectSpace_->GetCommittedSize();
-            size_t idleCapacityLimit = static_cast<size_t>(maxCapacity * IDLE_SPACE_SIZE_LIMIT_RATE);
-
-            size_t oldSpaceAllocLimit = globalSpaceAllocLimit_ + oldSpace_->GetOvershootSize();
-            size_t idleOldSpaceAllocLimit = static_cast<size_t>(oldSpaceAllocLimit * IDLE_SPACE_SIZE_LIMIT_RATE);
-
-            bool needOldGC = currentSize >= idleSizeLimit || isNativeSizeLargeTrigger ||
-                currentCapacity >= idleCapacityLimit || GetHeapObjectSize() > idleOldSpaceAllocLimit;
-            if (needOldGC && !NeedStopCollection()) {
-                CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
-            }
+            CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
         }
+        return true;
     }
-
-    if (sHeap_->ShouldCheckIdleGC()) {
-        size_t expectSizeLimit = sHeap_->GetOldSpace()->GetInitialCapacity() * IDLE_SPACE_SIZE_LIMIT_RATE;
-        size_t currentOldSize = sHeap_->GetOldSpace()->GetHeapObjectSize();
-        size_t expectGlobalSizeLimit = sHeap_->GetGlobalSpaceAllocLimit() * IDLE_SPACE_SIZE_LIMIT_RATE;
-        if ((currentOldSize > expectSizeLimit || sHeap_->GetHeapObjectSize() > expectGlobalSizeLimit) &&
-            !NeedStopCollection()) {
+    if (needCheckOldGC && sHeap_->ShouldCheckIdleOldGC() && sHeap_->ReachIdleOldGCThresholds() &&
+        !NeedStopCollection()) {
+        double memUsageOfLastOldGC = sHeap_->GetSharedMemController()->GetLastGCOldSpaceObjectUsageRate();
+        LOG_GC(INFO) << "Triggered once local SharedGC on idleTime and memUsageOfLastOldGC:" << memUsageOfLastOldGC;
+        if (memUsageOfLastOldGC < OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC) {
             sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::IDLE>(thread_);
+        } else {
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread_);
         }
+        return true;
     }
+    if (needCheckFullGC && ShouldCheckIdleFullGC() && ShouldTriggerFullGC() && !NeedStopCollection()) {
+        LOG_GC(INFO) << "Triggered once local fullGC on idleTime";
+        CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+        return true;
+    }
+    if (needCheckFullGC && sHeap_->ShouldCheckIdleFullGC() && sHeap_->ShouldTriggerFullGC() && !NeedStopCollection()) {
+        LOG_GC(INFO) << "Triggered once shared fullGC on idleTime";
+        sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread_);
+        return true;
+    }
+    return false;
 }
 
 bool Heap::CheckAndTriggerHintGC()
