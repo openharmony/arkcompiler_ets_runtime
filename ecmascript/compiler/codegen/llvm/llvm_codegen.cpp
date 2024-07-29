@@ -692,7 +692,7 @@ static void DecodeDebugInfo(uint64_t addr, uint64_t secIndex, char* outString, s
         std::string debugInfo = "\t\t;";
         debugInfo += module->GetDebugInfo()->GetComment(funcName, info.Line - 1);
         size_t len = strlen(outString);
-        if (len + debugInfo.size() <= outStringSize) {
+        if (len + debugInfo.size() < outStringSize) {
             if (strcpy_s(outString + len, outStringSize - len, debugInfo.c_str()) != EOK) {
                 LOG_FULL(FATAL) << "strcpy_s failed";
                 UNREACHABLE();
@@ -732,7 +732,7 @@ void LLVMAssembler::Disassemble(const std::map<uintptr_t, std::string> &addr2nam
         size_t numBytes = it.second;
         uint64_t instrOffset = 0;
 
-        const size_t outStringSize = 256;
+        const size_t outStringSize = 512;
         char outString[outStringSize] = {'\0'};
         std::string methodName;
 
