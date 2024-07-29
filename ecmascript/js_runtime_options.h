@@ -201,7 +201,6 @@ enum CommandValues {
     OPTION_ASYNC_LOAD_ABC,
     OPTION_ASYNC_LOAD_ABC_TEST,
     OPTION_PGO_TRACE,
-    OPTION_COMPILER_TRY_CATCH_FUNCTION,
     OPTION_COMPILER_PGO_FORCE_DUMP,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
@@ -1308,16 +1307,6 @@ public:
         return enableOptInlining_;
     }
 
-    void SetEnableTryCatchFunction(bool value)
-    {
-        enableTryCatchFunction_ = value;
-    }
-
-    bool IsEnableTryCatchFunction() const
-    {
-        return enableTryCatchFunction_;
-    }
-
     void SetEnableOptPGOType(bool value)
     {
         enableOptPGOType_ = value;
@@ -1970,7 +1959,6 @@ private:
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
-    bool enableTryCatchFunction_ {false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};
     bool enableAPPJIT_ {false};

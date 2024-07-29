@@ -21,8 +21,6 @@
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include "ecmascript/ic/profile_type_info.h"
-#include "libpandafile/code_data_accessor-inl.h"
-#include "libpandafile/method_data_accessor-inl.h"
 #include "ecmascript/ohos/jit_tools.h"
 
 namespace panda::ecmascript {
@@ -298,24 +296,9 @@ Jit::~Jit()
 {
 }
 
-bool Jit::MethodHasTryCatch(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral) const
-{
-    auto pf = jsPandaFile->GetPandaFile();
-    panda_file::MethodDataAccessor mda(*pf, methodLiteral->GetMethodId());
-    panda_file::CodeDataAccessor cda(*pf, mda.GetCodeId().value());
-    return cda.GetTriesSize() != 0;
-}
-
-bool Jit::SupportJIT(JSHandle<JSFunction> &jsFunction, EcmaVM *vm, CompilerTier tier) const
+bool Jit::SupportJIT(JSHandle<JSFunction> &jsFunction, CompilerTier tier) const
 {
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    const JSPandaFile* jSPandaFile_ = method->GetJSPandaFile();
-    MethodLiteral* methodLiteral_ = method->GetMethodLiteral();
-    if (!vm->GetJSOptions().IsEnableTryCatchFunction() && MethodHasTryCatch(jSPandaFile_, methodLiteral_)) {
-        LOG_JIT(DEBUG) << "method does not support compile try catch function:" <<
-            method->GetRecordNameStr() + "." + method->GetMethodName();
-        return false;
-    }
     if (jsFunction.GetTaggedValue().IsJSSharedFunction()) {
         LOG_JIT(DEBUG) << "method does not support compile shared function:" <<
             method->GetRecordNameStr() + "." + method->GetMethodName();
@@ -441,7 +424,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 
         return;
     }
-    if (!jit->SupportJIT(jsFunction, vm, tier)) {
+    if (!jit->SupportJIT(jsFunction, tier)) {
         return;
     }
     bool needCompile = jit->CheckJitCompileStatus(jsFunction, methodName, tier);

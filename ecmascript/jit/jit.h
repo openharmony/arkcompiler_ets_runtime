@@ -88,7 +88,6 @@ public:
     void Destroy();
     void CheckMechineCodeSpaceMemory(JSThread *thread, int remainSize);
     void ChangeTaskPoolState(bool inBackground);
-    bool MethodHasTryCatch(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral) const;
 
     // dfx for jit warmup compile
     static void CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction);
@@ -220,7 +219,7 @@ public:
     };
 
 private:
-    bool SupportJIT(JSHandle<JSFunction> &jsFunction, EcmaVM *vm, CompilerTier tier) const;
+    bool SupportJIT(JSHandle<JSFunction> &jsFunction, CompilerTier tier) const;
     bool initialized_ { false };
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };

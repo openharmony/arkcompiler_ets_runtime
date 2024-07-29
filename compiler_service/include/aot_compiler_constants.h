@@ -78,7 +78,6 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-opt-value-numbering",
     "compiler-opt-new-value-numbering",
     "compiler-opt-inlining",
-    "compiler-try-catch-function",
     "compiler-opt-pgotype",
     "compiler-opt-track-field",
     "entry-point",
