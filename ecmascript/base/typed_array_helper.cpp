@@ -1081,7 +1081,12 @@ int32_t TypedArrayHelper::SortCompare(JSThread *thread, const JSHandle<JSTaggedV
         info->SetCallArg(firstValue.GetTaggedValue(), secondValue.GetTaggedValue());
         JSTaggedValue callResult = JSFunction::Call(info);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
-        if (BuiltinsArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
+        if (buffer->IsSendableArrayBuffer() &&
+            BuiltinsSendableArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "The buffer is detached sendable buffer.", 0);
+        }
+        if (!buffer->IsSendableArrayBuffer() &&
+            BuiltinsArrayBuffer::IsDetachedBuffer(buffer.GetTaggedValue())) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "The buffer is detached buffer.", 0);
         }
         JSHandle<JSTaggedValue> testResult(thread, callResult);
