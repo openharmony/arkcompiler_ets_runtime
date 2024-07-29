@@ -47,6 +47,10 @@ HWTEST_F_L0(BuiltinsTest, FunctionInit)
 
     JSHandle<JSFunction> functionFunction(env->GetFunctionFunction());
     ASSERT_NE(*functionFunction, nullptr);
+
+    JSHandle<JSFunction> instanceFunction(env->GetHasInstanceFunction());
+    ASSERT_NE(*functionFunction, nullptr);
+    EXPECT_TRUE(!env->GetTaggedHasInstanceFunction().IsUndefined());
 }
 
 HWTEST_F_L0(BuiltinsTest, NumberInit)

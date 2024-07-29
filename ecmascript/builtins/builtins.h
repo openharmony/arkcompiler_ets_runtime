@@ -362,6 +362,11 @@ private:
     void SetInlineFunction(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj, std::string_view key,
                            EcmaEntrypoint func, uint32_t index, int length,
                            kungfu::BuiltinsStubCSigns::ID builtinId = kungfu::BuiltinsStubCSigns::INVALID) const;
+
+    JSHandle<JSFunction> SetInlineFunctionAndRetJSFunction(const JSHandle<GlobalEnv> &env,
+        const JSHandle<JSObject> &obj, std::string_view key,
+        EcmaEntrypoint func, uint32_t index, int length,
+        kungfu::BuiltinsStubCSigns::ID builtinId) const;
     
     void SetFunctionPrototype(const JSHandle<JSFunction> &ctor, const JSTaggedValue &prototype) const;
 
