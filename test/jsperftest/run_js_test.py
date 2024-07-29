@@ -208,15 +208,16 @@ def append_row_data(report_file, case_test_data):
         jis_case_file_name_with_class = Constants.JS_FILE_SUPER_LINK_DICT['/'.join([class_name, api_name])]
         js_file_super_link = '/'.join([Constants.HYPERLINK_HEAD, jis_case_file_name_with_class])
         new_row = [js_case_name, scene, excute_status, cast_to_float_or_str(exec_time), yesterday_excute_time,
-                   is_degraded_str,cast_to_float_or_str(v_8_excute_time),
-                   cast_to_float_or_str(v_8_jitless_excute_time),cast_to_float_or_str(ark_divide_v_8),
-                   cast_to_float_or_str(ark_divide_v_8_with_jitless),js_file_super_link, ' ']
+                   is_degraded_str, cast_to_float_or_str(v_8_excute_time),
+                   cast_to_float_or_str(v_8_jitless_excute_time), cast_to_float_or_str(ark_divide_v_8),
+                   cast_to_float_or_str(ark_divide_v_8_with_jitless), js_file_super_link, ' ']
         ws.append(new_row)
         check(is_degraded_str, ark_divide_v_8, ark_divide_v_8_with_jitless, ws)
     wb.save(report_file)
     return Constants.RET_OK
 
-def check(is_degraded_str,ark_divide_v_8,ark_divide_v_8_with_jitless,ws):
+
+def check(is_degraded_str, ark_divide_v_8, ark_divide_v_8_with_jitless, ws):
     if is_degraded_str is str(True):
         ws.cell(row=ws.max_row, column=6).fill = PatternFill(start_color='FF0000', end_color='FF0000',
                                                              fill_type=Constants.SOLID)
@@ -229,6 +230,7 @@ def check(is_degraded_str,ark_divide_v_8,ark_divide_v_8_with_jitless,ws):
              abs(float(ark_divide_v_8_with_jitless) - 2) <= Constants.COMPARISON_ACCURACY)):
         ws.cell(row=ws.max_row, column=10).fill = PatternFill(start_color='FF00FF', end_color='FF00FF',
                                                               fill_type=Constants.SOLID)
+
 
 def get_ark_js_cmd(abc_file: str) -> List[str]:
     """Get command for ark js vm"""
@@ -270,7 +272,7 @@ def prepare_for_ark_run(class_name: str, api_name: str) -> Tuple[str, str]:
 
 def run_es2panda(abc_file: str, js_file: str) -> int:
     """Run es2panda for one benchmark file"""
-    cmd = [Constants.ES2ABC_PATH, "--output", abc_file,  js_file]
+    cmd = [Constants.ES2ABC_PATH, "--output", abc_file, js_file]
     logger.info("run cmd: %s", cmd)
     ret = subprocess.run(cmd, check=False)
     if ret.returncode != 0:
@@ -495,6 +497,7 @@ def process_args(args: argparse.Namespace) -> argparse.Namespace:
         raise RuntimeError(f"error bad  parameters --iterations: {args.iterations}")
     return args
 
+
 def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -622,6 +625,7 @@ def get_yesterday_excute_times(yesterday_report):
             main_key = '/'.join([js_case, scene]).lower()
             excute_time = ws.cell(row=row_num, column=4).value
             Constants.YESTERDAY_EXCUTE_TIME_DICT[main_key] = excute_time
+
 
 def update_data_by_log(data: dict, log_path: str, js_name: str) -> dict:
     """Update execution time data by log file"""
@@ -774,6 +778,7 @@ def get_v_8_jitless_excute_times(jspath, v_8_based_report_file_path, iterations)
 
     return Constants.RET_OK
 
+
 def hdc_send(source: str, destination: str) -> int:
     """Run hdc send command"""
     hdc_cmd: List[str] = [Constants.HDC_PATH, "file", "send"]
@@ -786,6 +791,7 @@ def hdc_run(cmd: List[str]) -> int:
     """Run command on device via hdc shell"""
     hdc_cmd = [Constants.HDC_PATH, "shell"] + cmd
     return subprocess.run(hdc_cmd).returncode
+
 
 def prepare_device():
     """Preapare device workdir for js perf testing"""
