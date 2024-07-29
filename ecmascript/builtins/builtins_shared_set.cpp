@@ -45,9 +45,9 @@ JSTaggedValue BuiltinsSharedSet::Constructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
     ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
-    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
     // 3.returnIfAbrupt()
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
     JSHandle<JSSharedSet> set = JSHandle<JSSharedSet>::Cast(obj);
     // 3.ReturnIfAbrupt(set).
     // 4.Set set’s [[SetData]] internal slot to a new empty List.
