@@ -185,6 +185,7 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
             concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
         }
         func->SetRawProfileTypeInfo(thread_, thread_->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
+        func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
     }
     UpdateMaybeWeak(ObjectSlot(objAddr + fieldOffset), addr, isWeak);
     if (!isRoot) {
