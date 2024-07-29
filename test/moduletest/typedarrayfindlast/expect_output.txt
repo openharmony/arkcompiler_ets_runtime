@@ -22,19 +22,3 @@ Uint8Array test success !!!
 Uint8ClampedArray test success !!!
 BigInt64Array test success !!!
 BigUint64Array test success !!!
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true
-true

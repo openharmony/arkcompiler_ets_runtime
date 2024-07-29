@@ -140,8 +140,6 @@ private:
     static void HandleArray(JSHandle<JSObject> &newArrayHandle, uint32_t &actualDeleteCount,
                             JSThread *thread, uint32_t &start, JSHandle<JSObject> &thisObjHandle,
                             JSHandle<JSTaggedValue> &holeHandle);
-    static JSHandle<TaggedArray> BackupBeforeCopyFromArray(JSThread *thread, JSHandle<JSObject> &obj,
-                                                           uint32_t copyLen);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H

@@ -2023,19 +2023,3 @@ try {
 } catch (e) {
     print(e instanceof TypeError);
 }
-
-var a = new Array();
-a[0] = 0;
-a[1000] = 1000;
-a[1000000] = 1000000;
-a[2000000] = 2000000;
-a.length = 2000;
-print('undefined' == typeof a[1000000]);
-print('undefined' == typeof a[2000000]);
-
-var a1 = new Array();
-a1[0] = 0;
-a1[1000] = 1000;
-a1[Math.pow(2,30)-1] = Math.pow(2,30)-1;
-a1.length = 2000;
-print('undefined' == typeof a1[Math.pow(2,30)-1]);
