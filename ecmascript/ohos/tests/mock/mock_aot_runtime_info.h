@@ -27,9 +27,9 @@ public:
     MockAotRuntimeInfo();
     ~MockAotRuntimeInfo();
 
-    bool GetRuntimeBuildId(char *buildId) const override;
-    bool GetMicrosecondsTimeStamp(char *timestamp) const override;
-    bool GetCrashSandBoxRealPath(char *realOutPath) const override;
+    bool GetRuntimeBuildId(char *buildId, int length) const override;
+    bool GetMicrosecondsTimeStamp(char *timestamp, size_t length) const override;
+    bool GetCrashSandBoxRealPath(char *realOutPath, size_t length) const override;
 
     bool BuildRuntimeInfoPart(char *runtimeInfoPart, const char *soBuildId, const char *timestamp,
         ecmascript::ohos::RuntimeInfoType type) const;

@@ -72,7 +72,7 @@ public:
     {
         std::unique_lock<std::mutex> lock(fileMutex_);
         static char soBuildId[NAME_MAX] = { '\0' };
-        if (!GetRuntimeBuildId(soBuildId) || IsCharEmpty(soBuildId)) {
+        if (!GetRuntimeBuildId(soBuildId, NAME_MAX) || IsCharEmpty(soBuildId)) {
             LOG_ECMA(INFO) << "can't get so buildId.";
             return;
         }
@@ -87,7 +87,7 @@ public:
         }
         GetRuntimeInfoByPath(lines, realOutPath.c_str(), soBuildId);
         static char timestamp[TIME_STAMP_SIZE] = { '\0' };
-        if (!GetMicrosecondsTimeStamp(timestamp)) {
+        if (!GetMicrosecondsTimeStamp(timestamp, TIME_STAMP_SIZE)) {
             return;
         }
 
@@ -104,7 +104,7 @@ public:
     {
         std::unique_lock<std::mutex> lock(fileMutex_);
         static char soBuildId[NAME_MAX] = { '\0' };
-        if (!GetRuntimeBuildId(soBuildId) || IsCharEmpty(soBuildId)) {
+        if (!GetRuntimeBuildId(soBuildId, NAME_MAX) || IsCharEmpty(soBuildId)) {
             return;
         }
         static char lines[MAX_LENGTH][BUFFER_SIZE];
@@ -113,7 +113,7 @@ public:
         }
         GetCrashRuntimeInfoList(lines);
         static char timestamp[TIME_STAMP_SIZE] = { '\0' };
-        if (!GetMicrosecondsTimeStamp(timestamp)) {
+        if (!GetMicrosecondsTimeStamp(timestamp, TIME_STAMP_SIZE)) {
             return;
         }
         int lineCount = getLength(lines, MAX_LENGTH);
@@ -123,7 +123,7 @@ public:
             }
         }
         static char realOutPath[PATH_MAX] = { '\0' };
-        if (!GetCrashSandBoxRealPath(realOutPath) || IsCharEmpty(realOutPath)) {
+        if (!GetCrashSandBoxRealPath(realOutPath, PATH_MAX) || IsCharEmpty(realOutPath)) {
             return;
         }
         SetRuntimeInfo(realOutPath, lines);
@@ -199,7 +199,7 @@ public:
         return RuntimeInfoType::NONE;
     }
 
-    virtual bool GetRuntimeBuildId(char *buildId) const
+    virtual bool GetRuntimeBuildId(char *buildId, int length) const
     {
         if (!FileExist(OhosConstants::RUNTIME_SO_PATH)) {
             return false;
@@ -215,13 +215,13 @@ public:
         if (fileMap.GetOriginAddr() == nullptr) {
             return false;
         }
-        ParseELFSectionsForBuildId(fileMap, buildId);
+        ParseELFSectionsForBuildId(fileMap, buildId, length);
         ecmascript::FileUnMap(fileMap);
         fileMap.Reset();
         return true;
     }
 
-    virtual bool GetMicrosecondsTimeStamp(char *timestamp) const
+    virtual bool GetMicrosecondsTimeStamp(char *timestamp, size_t length) const
     {
         time_t current_time;
         if (time(&current_time) == -1) {
@@ -231,16 +231,16 @@ public:
         if (local_time == NULL) {
             return false;
         }
-        int result = strftime(timestamp, TIME_STAMP_SIZE, "%Y-%m-%d %H:%M:%S", local_time);
+        size_t result = strftime(timestamp, length, "%Y-%m-%d %H:%M:%S", local_time);
         if (result == 0) {
             return false;
         }
         return true;
     }
 
-    virtual bool GetCrashSandBoxRealPath(char *realOutPath) const
+    virtual bool GetCrashSandBoxRealPath(char *realOutPath, size_t length) const
     {
-        if (!ecmascript::RealPathByChar(OhosConstants::SANDBOX_ARK_PROFILE_PATH, realOutPath, PATH_MAX, false)) {
+        if (!ecmascript::RealPathByChar(OhosConstants::SANDBOX_ARK_PROFILE_PATH, realOutPath, length, false)) {
             return false;
         }
         if (strcat_s(realOutPath, NAME_MAX, OhosConstants::PATH_SEPARATOR) != 0) {
@@ -311,14 +311,14 @@ protected:
     void GetCrashRuntimeInfoList(char lines[][BUFFER_SIZE]) const
     {
         static char realOutPath[PATH_MAX] = { '\0' };
-        if (!GetCrashSandBoxRealPath(realOutPath)) {
+        if (!GetCrashSandBoxRealPath(realOutPath, PATH_MAX)) {
             return;
         }
         if (!FileExist(realOutPath)) {
             return;
         }
         static char soBuildId[NAME_MAX] = { '\0' };
-        if (!GetRuntimeBuildId(soBuildId)) {
+        if (!GetRuntimeBuildId(soBuildId, NAME_MAX)) {
             return;
         }
         if (IsCharEmpty(soBuildId)) {
@@ -338,7 +338,7 @@ protected:
             return;
         }
         char soBuildId[NAME_MAX] = { '\0' };
-        if (!GetRuntimeBuildId(soBuildId)) {
+        if (!GetRuntimeBuildId(soBuildId, NAME_MAX)) {
             return;
         }
         if (IsCharEmpty(soBuildId)) {
@@ -387,7 +387,7 @@ protected:
         close(fd);
     }
 
-    void ParseELFSectionsForBuildId(ecmascript::MemMap &fileMap, char *buildId) const
+    void ParseELFSectionsForBuildId(ecmascript::MemMap &fileMap, char *buildId, int length) const
     {
         llvm::ELF::Elf64_Ehdr *ehdr = reinterpret_cast<llvm::ELF::Elf64_Ehdr *>(fileMap.GetOriginAddr());
         char *addr = reinterpret_cast<char *>(ehdr);
@@ -426,10 +426,10 @@ protected:
         
         char *curShNameValueForNhdr = reinterpret_cast<char *>(addr + buildIdOffset + sizeof(*nhdr) +
             AlignValues(nhdr->n_namesz, 4));
-        GetReadableBuildId(curShNameValueForNhdr, buildId);
+        GetReadableBuildId(curShNameValueForNhdr, buildId, length);
     }
 
-    void GetReadableBuildId(char *buildIdHex, char *buildId) const
+    void GetReadableBuildId(char *buildIdHex, char *buildId, int length) const
     {
         if (IsCharEmpty(buildIdHex)) {
             return;
@@ -440,9 +440,13 @@ protected:
         const int len = strlen(buildIdHex);
 
         for (int i = 0; i < len; i++) {
+            int lowHexExpand = i * HEX_EXPAND_PARAM + 1;
+            if (lowHexExpand >= length) {
+                break;
+            }
             unsigned int n = buildIdHex[i];
-            buildId[i * HEX_EXPAND_PARAM] = HEXTABLE[(n >> 4) % HEXLENGTH]; // 4 : higher 4 bit of uint8
-            buildId[i * HEX_EXPAND_PARAM + 1] = HEXTABLE[n % HEXLENGTH];
+            buildId[lowHexExpand - 1] = HEXTABLE[(n >> 4) % HEXLENGTH]; // 4 : higher 4 bit of uint8
+            buildId[lowHexExpand] = HEXTABLE[n % HEXLENGTH];
         }
     }
 

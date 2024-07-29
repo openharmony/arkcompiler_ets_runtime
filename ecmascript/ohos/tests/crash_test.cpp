@@ -57,7 +57,7 @@ HWTEST_F_L0(CrashTest, CrashGetBuildId)
 {
     char soBuildId[NAME_MAX];
     ohos::AotRuntimeInfo *runtimeInfo = new MockAotRuntimeInfo();
-    runtimeInfo->GetRuntimeBuildId(soBuildId);
+    runtimeInfo->GetRuntimeBuildId(soBuildId, NAME_MAX);
     ASSERT_TRUE(std::string(soBuildId).size() > 0);
     ASSERT_EQ(std::string(soBuildId), "abcd1234567890");
 }
@@ -66,7 +66,7 @@ HWTEST_F_L0(CrashTest, GetMicrosecondsTimeStamp)
 {
     char timestamp[ohos::AotRuntimeInfo::TIME_STAMP_SIZE];
     ohos::AotRuntimeInfo *runtimeInfo = new MockAotRuntimeInfo();
-    runtimeInfo->GetMicrosecondsTimeStamp(timestamp);
+    runtimeInfo->GetMicrosecondsTimeStamp(timestamp, ohos::AotRuntimeInfo::TIME_STAMP_SIZE);
     ASSERT_TRUE(std::string(timestamp).size() > 0);
     ASSERT_EQ(std::string(timestamp), "1970-01-01 00:00:00");
 }
@@ -76,13 +76,13 @@ HWTEST_F_L0(CrashTest, BuildCrashRuntimeInfo)
     char timestamp[ohos::AotRuntimeInfo::TIME_STAMP_SIZE];
     char soBuildId[NAME_MAX];
     ohos::AotRuntimeInfo *runtimeInfo = new MockAotRuntimeInfo();
-    runtimeInfo->GetMicrosecondsTimeStamp(timestamp);
-    runtimeInfo->GetRuntimeBuildId(soBuildId);
+    runtimeInfo->GetMicrosecondsTimeStamp(timestamp, ohos::AotRuntimeInfo::TIME_STAMP_SIZE);
+    runtimeInfo->GetRuntimeBuildId(soBuildId, NAME_MAX);
     char sanboxRealPath[PATH_MAX];
     mkdir(MockAotRuntimeInfo::SANBOX_DIR, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     std::ofstream file(sanboxRealPath);
     file.close();
-    runtimeInfo->GetCrashSandBoxRealPath(sanboxRealPath);
+    runtimeInfo->GetCrashSandBoxRealPath(sanboxRealPath, NAME_MAX);
 
     runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH);
     runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH);
@@ -107,13 +107,13 @@ HWTEST_F_L0(CrashTest, BuildCompileRuntimeInfo)
     char timestamp[ohos::AotRuntimeInfo::TIME_STAMP_SIZE];
     char soBuildId[NAME_MAX];
     ohos::AotRuntimeInfo *runtimeInfo = new MockAotRuntimeInfo();
-    runtimeInfo->GetMicrosecondsTimeStamp(timestamp);
-    runtimeInfo->GetRuntimeBuildId(soBuildId);
+    runtimeInfo->GetMicrosecondsTimeStamp(timestamp, ohos::AotRuntimeInfo::TIME_STAMP_SIZE);
+    runtimeInfo->GetRuntimeBuildId(soBuildId, NAME_MAX);
     char sanboxRealPath[PATH_MAX];
     mkdir(MockAotRuntimeInfo::SANBOX_DIR, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     std::ofstream file(sanboxRealPath);
     file.close();
-    runtimeInfo->GetCrashSandBoxRealPath(sanboxRealPath);
+    runtimeInfo->GetCrashSandBoxRealPath(sanboxRealPath, NAME_MAX);
 
     runtimeInfo->BuildCompileRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH, sanboxRealPath);
     runtimeInfo->BuildCompileRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH, sanboxRealPath);
