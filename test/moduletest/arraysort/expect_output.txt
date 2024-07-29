@@ -52,4 +52,5 @@ This is not a TypedArray.
 [{"name":"And","value":45},{"name":"Edward","value":21},{"name":"Magnetic","value":13},{"name":"Sharpe","value":37},{"name":"The","value":-12},{"name":"Zeros","value":37}]
 10
 [{"name":"Eagle","grade":13},{"name":"Sam","grade":14},{"name":"Alex","grade":15},{"name":"Devlin","grade":15}]
+1.67,2.63
 sort Test Success!

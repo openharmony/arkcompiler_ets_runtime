@@ -63,7 +63,7 @@ int TimSort::CountRunAndMakeAscending(JSThread *thread, JSHandle<TaggedArray> &a
     int runLength = 2;
     JSMutableHandle<JSTaggedValue> runHiValue(thread, array->Get(runHi));
     JSMutableHandle<JSTaggedValue> previousValue(thread, array->Get(runHi - 1));
-    int32_t order = ArrayHelper::SortCompare(thread, fn, runHiValue, previousValue);
+    double order = ArrayHelper::SortCompare(thread, fn, runHiValue, previousValue);
     bool isDescending = order < 0 ? true : false;
     previousValue.Update(runHiValue.GetTaggedValue());
     for (int i = runHi + 1; i < hi; i++) {
@@ -212,7 +212,7 @@ int TimSort::GallopLeft(JSHandle<TaggedArray> &array,
     JSHandle<JSTaggedValue> baseHintElement(thread_, array->Get(base + hint));
     JSMutableHandle<JSTaggedValue> offsetElement(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mElement(thread_, JSTaggedValue::Undefined());
-    int32_t order = ArrayHelper::SortCompare(thread_, fn_, key, baseHintElement);
+    double order = ArrayHelper::SortCompare(thread_, fn_, key, baseHintElement);
     if (order > 0) {
         int maxOfs = len - hint;
         while (ofs < maxOfs) {
@@ -275,7 +275,7 @@ int TimSort::GallopRight(JSHandle<TaggedArray> &array,
     JSHandle<JSTaggedValue> baseHintElement(thread_, array->Get(base + hint));
     JSMutableHandle<JSTaggedValue> offsetElement(thread_, JSTaggedValue::Undefined());
     JSMutableHandle<JSTaggedValue> mElement(thread_, JSTaggedValue::Undefined());
-    int32_t order = ArrayHelper::SortCompare(thread_, fn_, key, baseHintElement);
+    double order = ArrayHelper::SortCompare(thread_, fn_, key, baseHintElement);
     if (order < 0) {
         int maxOfs = hint + 1;
         while (ofs < maxOfs) {

@@ -336,4 +336,8 @@ arr[515]="p2";
 arr[516]="p3";
 arr[517]="p4";
 arr.sort();
+
+//for cmp return type is double
+let arr34 = [2.63, 1.67];
+print(arr34.sort((a, b)=> a - b));
 print("sort Test Success!")
