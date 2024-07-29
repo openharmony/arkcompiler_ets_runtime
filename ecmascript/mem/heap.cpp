@@ -2030,7 +2030,6 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
         static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
     // overshoot size should be larger than 0.
     GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
-    GetNewSpace()->SetWaterLineWithoutGC();
 
     if (isMainThread && CheckCanTriggerConcurrentMarking()) {
         markType_ = MarkType::MARK_FULL;
@@ -2072,7 +2071,6 @@ void Heap::HandleExitHighSensitiveEvent()
             static_cast<int64_t>(config_.GetOldSpaceStepOvershootSize()) - semiRemainSize;
         // overshoot size should be larger than 0.
         GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
-        GetNewSpace()->SetWaterLineWithoutGC();
 
         // fixme: IncrementalMarking and IdleCollection is currently not enabled
         TryTriggerIncrementalMarking();

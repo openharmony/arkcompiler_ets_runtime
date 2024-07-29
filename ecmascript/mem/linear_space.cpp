@@ -417,23 +417,6 @@ void SemiSpace::SetWaterLine()
     }
 }
 
-void SemiSpace::SetWaterLineWithoutGC()
-{
-    waterLine_ = allocator_.GetTop();
-    Region *last = GetCurrentRegion();
-    if (last != nullptr) {
-        last->SetGCFlag(RegionGCFlags::HAS_AGE_MARK);
-
-        EnumerateRegions([&last](Region *current) {
-            if (current != last) {
-                current->SetGCFlag(RegionGCFlags::BELOW_AGE_MARK);
-            }
-        });
-        survivalObjectSize_ += allocateAfterLastGC_;
-    }
-    allocateAfterLastGC_ = 0;
-}
-
 size_t SemiSpace::GetHeapObjectSize() const
 {
     return survivalObjectSize_ + allocateAfterLastGC_;
