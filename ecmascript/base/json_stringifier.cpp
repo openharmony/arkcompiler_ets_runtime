@@ -55,7 +55,7 @@ JSHandle<JSTaggedValue> JsonStringifier::Stringify(const JSHandle<JSTaggedValue>
             // FastPath
             JSHandle<JSArray> arr(replacer);
             len = arr->GetArrayLength();
-        }  else if (replacer->IsJSSharedArray()) {
+        } else if (replacer->IsJSSharedArray()) {
             JSHandle<JSSharedArray> arr(replacer);
             len = arr->GetArrayLength();
         } else {
