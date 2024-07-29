@@ -202,6 +202,7 @@ enum CommandValues {
     OPTION_ASYNC_LOAD_ABC_TEST,
     OPTION_PGO_TRACE,
     OPTION_COMPILER_TRY_CATCH_FUNCTION,
+    OPTION_COMPILER_PGO_FORCE_DUMP,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
 
@@ -1865,6 +1866,16 @@ public:
         return asyncLoadAbcTest_;
     }
 
+    bool IsPgoForceDump() const
+    {
+        return forceDump_;
+    }
+
+    void SetPgoForceDump(bool value)
+    {
+        forceDump_ = value;
+    }
+
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
@@ -2037,6 +2048,7 @@ private:
     bool enableBaselinePgo_ {false};
     bool asyncLoadAbc_ {true};
     bool asyncLoadAbcTest_ {false};
+    bool forceDump_ {true};
 };
 } // namespace panda::ecmascript
 

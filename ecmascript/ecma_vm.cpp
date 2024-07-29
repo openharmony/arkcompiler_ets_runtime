@@ -176,6 +176,7 @@ void EcmaVM::PostFork()
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     DaemonThread::GetInstance()->StartRunning();
     heap_->EnableParallelGC();
+    options_.SetPgoForceDump(false);
     std::string bundleName = PGOProfilerManager::GetInstance()->GetBundleName();
     pgo::PGOTrace::GetInstance()->SetEnable(ohos::AotTools::GetPgoTraceEnable());
     AotCrashInfo::GetInstance().SetOptionPGOProfiler(&options_, bundleName);

@@ -743,10 +743,13 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
     auto codeSize = method->GetCodeSize();
     BytecodeInstruction bcIns(pcStart);
     auto bcInsLast = bcIns.JumpTo(codeSize);
+    bool isForceDump = vm_->GetJSOptions().IsPgoForceDump();
 
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
-        if (IsGCWaitingWithLock()) {
-            break;
+        if (!isForceDump) {
+            if (IsGCWaitingWithLock()) {
+                break;
+            }
         }
         auto opcode = bcIns.GetOpcode();
         auto bcOffset = bcIns.GetAddress() - pcStart;
