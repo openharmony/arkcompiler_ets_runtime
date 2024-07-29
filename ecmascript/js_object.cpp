@@ -2711,13 +2711,24 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         propsLen++;
     }
     if (propsLen <= PropertyAttributes::MAX_FAST_PROPS_CAPACITY) {
+        JSHandle<JSHClass> hclass;
+        bool isLiteral = false;
         if (ihcVal.IsJSHClass()) {
-            auto hclass = JSHandle<JSHClass>(thread, ihcVal);
+            hclass = JSHandle<JSHClass>(thread, ihcVal);
+        } else {
+            hclass = factory->GetObjectLiteralHClass(properties, propsLen);
+            isLiteral = true;
+        }
+        if (hclass->IsTS()) {
             if (CheckPropertiesForRep(properties, propsLen, hclass)) {
+                return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass);
+            } else if (!isLiteral) {
+                hclass = factory->GetObjectLiteralHClass(properties, propsLen);
+                // if check failed, get literal object again
                 return CreateObjectFromPropertiesByIHClass(thread, properties, propsLen, hclass);
             }
         }
-        return CreateObjectFromProperties(thread, properties, propsLen);
+        return CreateObjectFromProperties(thread, hclass, properties, propsLen);
     } else {
         JSHandle<JSObject> obj = factory->NewEmptyJSObject(0); // 0: no inline field
         JSHClass::TransitionToDictionary(thread, obj);
@@ -2741,11 +2752,11 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
 }
 
 JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread,
+                                                        const JSHandle<JSHClass> &hclass,
                                                         const JSHandle<TaggedArray> &properties,
                                                         uint32_t propsLen)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto hclass = factory->GetObjectLiteralHClass(properties, propsLen);
     JSHandle<JSObject> obj = factory->NewOldSpaceObjLiteralByHClass(hclass);
     ASSERT_PRINT(obj->IsECMAObject(), "Obj is not a valid object");
 

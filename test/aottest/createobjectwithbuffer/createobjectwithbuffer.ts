@@ -41,3 +41,14 @@ class A {
 
 let a = new A();
 a.Measure();
+
+const o46 = {
+    3503: 4096,
+    "maxByteLength": 4096,
+};
+
+const o48 = {
+    "maxByteLength": 3012855560,
+};
+
+print(o46[3503]);
