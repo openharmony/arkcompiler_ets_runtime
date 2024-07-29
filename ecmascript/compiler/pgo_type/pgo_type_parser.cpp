@@ -93,7 +93,7 @@ void ClassParser::GenerateHClass(const PGOHClassGenerator &generator, const PGOT
 
         auto phValue = ptManager_->QueryHClass(protoPt, protoPt);
         JSHandle<JSHClass> phclass(thread, phValue);
-        JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
+        JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObjectWithInit(phclass);
         generator.GenerateIHClass(iSampleType, prototype);
     }
 }
@@ -179,7 +179,7 @@ void FunctionParser::GenerateHClass(const PGOHClassGenerator &generator, const P
 
         auto phValue = ptManager_->QueryHClass(protoPt, protoPt);
         JSHandle<JSHClass> phclass(thread, phValue);
-        JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
+        JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObjectWithInit(phclass);
         generator.GenerateIHClass(iSampleType, prototype);
     }
 }
@@ -248,7 +248,7 @@ void PGOTypeParser::GenerateHClassForClassType(ProfileType rootType, ProfileType
     }
     auto thread = ptManager_->GetJSThread();
     JSHandle<JSHClass> phclass(thread, phValue);
-    JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
+    JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObjectWithInit(phclass);
     PGOSampleType rootSampleType(rootType);
     generator.GenerateIHClass(rootSampleType, prototype);
 }
@@ -265,7 +265,7 @@ void PGOTypeParser::GenerateHClassForPrototype(ProfileType rootType, const PGOHC
         auto phc = ptManager_->QueryHClass(rootType, rootType);
         auto thread = ptManager_->GetJSThread();
         JSHandle<JSHClass> phclass(thread, phc);
-        JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObject(phclass);
+        JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObjectWithInit(phclass);
         ptManager_->RecordHClass(classType, classType, prototype.GetTaggedType());
     }
 }
