@@ -722,6 +722,7 @@ void ModulePathHelper::TranstaleExpressionInput(const JSPandaFile *jsPandaFile, 
     // all we need to do is to find the corresponding mapping result.
     // EXCEPTION: @ohos. @hms. is translated all by runtime.
     if (jsPandaFile->FindOhmUrlInPF(requestPath, outEntryPoint)) {
+        // this path for moduleName(xxx or xxx/xxx) -> moduleName/Index;
         requestPath = outEntryPoint;
     } else {
         ParseCrossModuleFile(jsPandaFile, requestPath);
@@ -782,6 +783,7 @@ CString ModulePathHelper::TranslateExpressionInputWithEts(JSThread *thread, cons
 /*
  * input requestPath: moduleName/src/main/xxx/xxx/xxx
  *                    moduleName/xxx/xxx
+ * moduleName : singleLevelName or twoLevelName
  * output requestPath: @bundle.bundleName/moduleName/xxx/xxx/xxx
  *                     @bundle.bundleName/moduleName/xxx/xxx
  */
@@ -790,10 +792,20 @@ void ModulePathHelper::ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CStr
     size_t pos = requestPath.find(PathHelper::SLASH_TAG);
     CString moduleName = requestPath.substr(0, pos);
     CString outEntryPoint;
-    if (jsPandaFile->FindOhmUrlInPF(moduleName, outEntryPoint)) {
+    // try get mapped module path by single level moduleName.
+    bool isModuleName = jsPandaFile->FindOhmUrlInPF(moduleName, outEntryPoint);
+    if (!isModuleName) {
+        // retry get mapped module path by two level moduleName
+        pos = requestPath.find(PathHelper::SLASH_TAG, pos + 1);
+        moduleName = requestPath.substr(0, pos);
+        isModuleName = jsPandaFile->FindOhmUrlInPF(moduleName, outEntryPoint);
+    }
+    if (isModuleName) {
         // outEntryPoint: @bundle.bundleName/moduleName/Index
         CString relativePath = requestPath.substr(pos);
+        // get rid of Index, get pure perfix(@bundle.bundleName/moduleName).
         size_t index = outEntryPoint.rfind(PathHelper::SLASH_TAG);
+        // get rid of src/main. Concat perfix and input relative path.
         if (relativePath.find(PHYCICAL_FILE_PATH, 0) == 0) {
             requestPath = outEntryPoint.substr(0, index) + PathHelper::SLASH_TAG +
                 requestPath.substr(pos + PHYCICAL_FILE_PATH_LEN);
