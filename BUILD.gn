@@ -837,6 +837,7 @@ ecma_source = [
   "ecmascript/mem/shared_heap/shared_concurrent_marker.cpp",
   "ecmascript/mem/shared_heap/shared_concurrent_sweeper.cpp",
   "ecmascript/mem/shared_heap/shared_gc.cpp",
+  "ecmascript/mem/shared_heap/shared_full_gc.cpp",
   "ecmascript/mem/shared_heap/shared_gc_marker.cpp",
   "ecmascript/mem/shared_heap/shared_space.cpp",
   "ecmascript/mem/stw_young_gc.cpp",

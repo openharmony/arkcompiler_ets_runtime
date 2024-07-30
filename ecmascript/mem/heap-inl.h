@@ -264,6 +264,11 @@ void Heap::MergeToOldSpaceSync(LocalSpace *localSpace)
     oldSpace_->Merge(localSpace);
 }
 
+void SharedHeap::MergeToOldSpaceSync(SharedLocalSpace *localSpace)
+{
+    sOldSpace_->Merge(localSpace);
+}
+
 TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
@@ -596,6 +601,17 @@ void Heap::SwapOldSpace()
 #endif
 }
 
+void SharedHeap::SwapOldSpace()
+{
+    sCompressSpace_->SetInitialCapacity(sOldSpace_->GetInitialCapacity());
+    auto *oldSpace = sCompressSpace_;
+    sCompressSpace_ = sOldSpace_;
+    sOldSpace_ = oldSpace;
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    sOldSpace_->SwapAllocationCounter(sCompressSpace_);
+#endif
+}
+
 void Heap::ReclaimRegions(TriggerGCType gcType)
 {
     activeSemiSpace_->EnumerateRegionsWithRecord([] (Region *region) {
@@ -739,6 +755,7 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon)
     AdjustGlobalSpaceAllocLimit();
     GetEcmaGCStats()->RecordStatisticAfterGC();
     GetEcmaGCStats()->PrintGCStatistic();
+    ProcessAllGCListeners();
 }
 
 TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass)
@@ -805,7 +822,7 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, JSHClass *hc
     TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
     if (object == nullptr) {
-        object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+        object = AllocateInSOldSpace(thread, size);
         CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
         object->SetClass(thread, hclass);
         TryTriggerConcurrentMarking(thread);
@@ -827,9 +844,34 @@ TaggedObject *SharedHeap::AllocateOldOrHugeObject(JSThread *thread, size_t size)
     TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedOldSpaceFromTlab(thread, size);
     if (object == nullptr) {
-        object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+        object = AllocateInSOldSpace(thread, size);
         CHECK_SOBJ_AND_THROW_OOM_ERROR(thread, object, size, sOldSpace_, "SharedHeap::AllocateOldOrHugeObject");
         TryTriggerConcurrentMarking(thread);
+    }
+    return object;
+}
+
+TaggedObject *SharedHeap::AllocateInSOldSpace(JSThread *thread, size_t size)
+{
+    // jit thread no heap
+    bool allowGC = !thread->IsJitThread();
+    if (allowGC) {
+        auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+        localHeap->TryTriggerFullMarkBySharedSize(size);
+    }
+    TaggedObject *object = reinterpret_cast<TaggedObject *>(sOldSpace_->TryAllocateAndExpand(thread, size, false));
+     // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
+    if (object == nullptr) {
+        if (allowGC) {
+            CheckAndTriggerSharedGC(thread);
+        }
+        object = reinterpret_cast<TaggedObject *>(sOldSpace_->TryAllocateAndExpand(thread, size, true));
+        if (object == nullptr) {
+            if (allowGC) {
+                CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
+            }
+            object = reinterpret_cast<TaggedObject *>(sOldSpace_->TryAllocateAndExpand(thread, size, true));
+        }
     }
     return object;
 }
@@ -896,7 +938,7 @@ TaggedObject *SharedHeap::AllocateSOldTlab(JSThread *thread, size_t size)
     if (sOldSpace_->GetCommittedSize() > sOldSpace_->GetInitialCapacity() / 2) { // 2: half
         object = reinterpret_cast<TaggedObject *>(sOldSpace_->AllocateNoGCAndExpand(thread, size));
     } else {
-        object = reinterpret_cast<TaggedObject *>(sOldSpace_->Allocate(thread, size));
+        object = AllocateInSOldSpace(thread, size);
     }
     return object;
 }
@@ -928,7 +970,7 @@ void SharedHeap::TriggerConcurrentMarking(JSThread *thread)
 template<TriggerGCType gcType, GCReason gcReason>
 void SharedHeap::CollectGarbage(JSThread *thread)
 {
-    ASSERT(gcType == TriggerGCType::SHARED_GC);
+    ASSERT(gcType == TriggerGCType::SHARED_GC || gcType == TriggerGCType::SHARED_FULL_GC);
 #ifndef NDEBUG
     ASSERT(!thread->HasLaunchedSuspendAll());
 #endif

@@ -624,7 +624,7 @@ JSTaggedValue TypedArrayHelper::CreateSharedFromTypedArray(EcmaRuntimeCallInfo *
         if (allocateResult == JSTaggedValue::Exception()) {
             return allocateResult;
         }
-        JSTaggedValue checkResult = CheckBufferAndType(buffer, thread, obj, srcArray);
+        JSTaggedValue checkResult = CheckBufferAndType(srcData.GetTaggedValue(), thread, obj, srcArray);
         if (checkResult == JSTaggedValue::Exception()) {
             return checkResult;
         }

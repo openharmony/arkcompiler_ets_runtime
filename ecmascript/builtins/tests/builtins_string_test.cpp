@@ -944,7 +944,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
 
     JSHandle<EcmaString> replaceStr1 = factory->NewFromASCII("abc$$");
     JSHandle<EcmaString> expected1 = factory->NewFromASCII("Twas the night before abc$...");
-
+    args[0] = searchStr.GetTaggedValue();
     args[1] = replaceStr1.GetTaggedValue();
     auto result1 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
@@ -954,7 +954,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
 
     JSHandle<EcmaString> replaceStr2 = factory->NewFromASCII("abc$$dd");
     JSHandle<EcmaString> expected2 = factory->NewFromASCII("Twas the night before abc$dd...");
-
+    args[0] = searchStr.GetTaggedValue();
     args[1] = replaceStr2.GetTaggedValue();
     auto result2 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
@@ -964,7 +964,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
 
     JSHandle<EcmaString> replaceStr3 = factory->NewFromASCII("abc$&dd");
     JSHandle<EcmaString> expected3 = factory->NewFromASCII("Twas the night before abcXmasdd...");
-
+    args[0] = searchStr.GetTaggedValue();
     args[1] = replaceStr3.GetTaggedValue();
     auto result3 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
@@ -975,7 +975,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace)
     JSHandle<EcmaString> replaceStr4 = factory->NewFromASCII("abc$`dd");
     JSHandle<EcmaString> expected4 =
         factory->NewFromASCII("Twas the night before abcTwas the night before dd...");
-
+    args[0] = searchStr.GetTaggedValue();
     args[1] = replaceStr4.GetTaggedValue();
     auto result4 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
@@ -1001,7 +1001,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
     JSHandle<EcmaString> replaceStr2 = factory->NewFromASCII("abc$`dd$\'$ff");
     JSHandle<EcmaString> expected2 =
         factory->NewFromASCII("Twas the night before abcTwas the night before dd...$ff...");
-
+    args[0] = searchStr.GetTaggedValue();
     args[1] = replaceStr2.GetTaggedValue();
     auto result2 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
@@ -1013,7 +1013,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
     JSHandle<EcmaString> replaceStr3 = factory->NewFromASCII("abc$`dd$\'$");
     JSHandle<EcmaString> expected3 =
         factory->NewFromASCII("Twas the night before abcTwas the night before dd...$...");
-
+    args[0] = searchStr.GetTaggedValue();
     args[1] = replaceStr3.GetTaggedValue();
     auto result3 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 
@@ -1024,7 +1024,7 @@ HWTEST_F_L0(BuiltinsStringTest, Replace2)
     JSHandle<EcmaString> replaceStr4 = factory->NewFromASCII("abc$`dd$$");
     JSHandle<EcmaString> expected4 =
         factory->NewFromASCII("Twas the night before abcTwas the night before dd$...");
-
+    args[0] = searchStr.GetTaggedValue();
     args[1] = replaceStr4.GetTaggedValue();
     auto result4 = StringAlgorithm(thread, thisStr.GetTaggedValue(), args, 8, AlgorithmType::REPLACE);
 

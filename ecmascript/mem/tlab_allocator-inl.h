@@ -137,5 +137,41 @@ bool TlabAllocator::ExpandCompressFromOld(size_t size)
     }
     return false;
 }
+
+SharedTlabAllocator::SharedTlabAllocator(SharedHeap *sHeap)
+    : sHeap_(sHeap)
+{
+    size_t maxOldSpaceCapacity = sHeap->GetOldSpace()->GetMaximumCapacity();
+    sLocalSpace_ = new SharedLocalSpace(sHeap, maxOldSpaceCapacity, maxOldSpaceCapacity);
+}
+
+inline void SharedTlabAllocator::Finalize()
+{
+    sHeap_->MergeToOldSpaceSync(sLocalSpace_);
+}
+
+uintptr_t SharedTlabAllocator::Allocate(size_t size, MemSpaceType space)
+{
+    uintptr_t result = 0;
+    switch (space) {
+        case SHARED_COMPRESS_SPACE:
+            result = AllocateInCompressSpace(size);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    return result;
+}
+
+uintptr_t SharedTlabAllocator::AllocateInCompressSpace(size_t size)
+{
+    ASSERT(AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT)) == size);
+    size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
+    uintptr_t result = sLocalSpace_->Allocate(size, true);
+    ASSERT(result != 0);
+    return result;
+}
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_TLAB_ALLOCATOR_INL_H

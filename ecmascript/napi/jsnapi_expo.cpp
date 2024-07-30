@@ -261,6 +261,7 @@ Local<ObjectRef> JSValueRef::ToObject(const EcmaVM *vm)
 Local<ObjectRef> JSValueRef::ToEcmaObject(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     if (obj->IsECMAObject()) {
@@ -274,10 +275,10 @@ Local<ObjectRef> JSValueRef::ToEcmaObject(const EcmaVM *vm)
 Local<StringRef> JSValueRef::ToString(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     if (!obj->IsString()) {
-        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         obj = JSHandle<JSTaggedValue>(JSTaggedValue::ToString(thread, obj));
         RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     }
@@ -287,14 +288,16 @@ Local<StringRef> JSValueRef::ToString(const EcmaVM *vm)
 Local<NativePointerRef> JSValueRef::ToNativePointer(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     // The function just get handle' value, and will not read and write js object. Don't need to switch state.
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, ERROR);
     return JSNApiHelper::ToLocal<NativePointerRef>(obj);
 }
 
-bool JSValueRef::BooleaValue([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::BooleaValue(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).ToBoolean();
 }
 
@@ -319,13 +322,13 @@ int64_t JSValueRef::IntegerValue(const EcmaVM *vm)
 uint32_t JSValueRef::Uint32Value(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> tagged = JSNApiHelper::ToJSHandle(this);
     uint32_t number = 0;
     if (!tagged->IsECMAObject()) {
         number = JSTaggedValue::ToUint32(thread, tagged);
     } else {
         // EcmaObject may call [Symbol.toPrimitive].
-        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         number = JSTaggedValue::ToUint32(thread, tagged);
     }
     RETURN_VALUE_IF_ABRUPT(thread, 0);
@@ -335,13 +338,13 @@ uint32_t JSValueRef::Uint32Value(const EcmaVM *vm)
 int32_t JSValueRef::Int32Value(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> tagged = JSNApiHelper::ToJSHandle(this);
     int32_t number = 0;
     if (!tagged->IsECMAObject()) {
         number = JSTaggedValue::ToInt32(thread, tagged);
     } else {
         // EcmaObject may call [Symbol.toPrimitive].
-        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         number = JSTaggedValue::ToInt32(thread, tagged);
     }
     RETURN_VALUE_IF_ABRUPT(thread, 0);
@@ -510,8 +513,9 @@ bool JSValueRef::IsNumber()
     return JSNApiHelper::ToJSTaggedValue(this).IsNumber();
 }
 
-bool JSValueRef::IsBigInt([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsBigInt(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsBigInt();
 }
 
@@ -530,485 +534,577 @@ bool JSValueRef::IsBoolean()
     return JSNApiHelper::ToJSTaggedValue(this).IsBoolean();
 }
 
-bool JSValueRef::IsString([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsString(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsString();
 }
 
-bool JSValueRef::IsSymbol([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSymbol(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsSymbol();
 }
 
-bool JSValueRef::IsObject([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsObject(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsECMAObject();
 }
 
-bool JSValueRef::IsArray([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsArray(const EcmaVM *vm)
 {
     CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsArray(thread);
 }
 
-bool JSValueRef::IsJSArray([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSArray(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSArray();
 }
 
-bool JSValueRef::IsConstructor([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsConstructor(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
     return value.IsHeapObject() && value.IsConstructor();
 }
 
-bool JSValueRef::IsFunction([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsFunction(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
     return value.IsCallable();
 }
 
-bool JSValueRef::IsJSFunction([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSFunction(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSTaggedValue value = JSNApiHelper::ToJSTaggedValue(this);
     return value.IsJSFunction();
 }
 
-bool JSValueRef::IsProxy([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsProxy(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSProxy();
 }
 
-bool JSValueRef::IsPromise([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsPromise(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSPromise();
 }
 
-bool JSValueRef::IsDataView([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsDataView(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsDataView();
 }
 
-bool JSValueRef::IsTypedArray([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsTypedArray(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsTypedArray();
 }
 
-bool JSValueRef::IsNativePointer([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsNativePointer(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSNativePointer();
 }
 
-bool JSValueRef::IsDate([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsDate(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsDate();
 }
 
-bool JSValueRef::IsError([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsError(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSError();
 }
 
-bool JSValueRef::IsMap([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsMap(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSMap();
 }
 
-bool JSValueRef::IsSet([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSet(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSet();
 }
 
-bool JSValueRef::IsWeakRef([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsWeakRef(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSWeakRef();
 }
 
-bool JSValueRef::IsWeakMap([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsWeakMap(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSWeakMap();
 }
 
-bool JSValueRef::IsWeakSet([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsWeakSet(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSWeakSet();
 }
 
-bool JSValueRef::IsRegExp([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsRegExp(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSRegExp();
 }
 
-bool JSValueRef::IsArrayIterator([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsArrayIterator(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSArrayIterator();
 }
 
-bool JSValueRef::IsStringIterator([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsStringIterator(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsStringIterator();
 }
 
-bool JSValueRef::IsSetIterator([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSetIterator(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSetIterator();
 }
 
-bool JSValueRef::IsMapIterator([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsMapIterator(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSMapIterator();
 }
 
-bool JSValueRef::IsArrayBuffer([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsArrayBuffer(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsArrayBuffer();
 }
 
-bool JSValueRef::IsBuffer([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsBuffer(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsArrayBuffer();
 }
 
-bool JSValueRef::IsUint8Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsUint8Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSUint8Array();
 }
 
-bool JSValueRef::IsInt8Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsInt8Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSInt8Array();
 }
 
-bool JSValueRef::IsUint8ClampedArray([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsUint8ClampedArray(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSUint8ClampedArray();
 }
 
-bool JSValueRef::IsInt16Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsInt16Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSInt16Array();
 }
 
-bool JSValueRef::IsUint16Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsUint16Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSUint16Array();
 }
 
-bool JSValueRef::IsInt32Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsInt32Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSInt32Array();
 }
 
-bool JSValueRef::IsUint32Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsUint32Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSUint32Array();
 }
 
-bool JSValueRef::IsFloat32Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsFloat32Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSFloat32Array();
 }
 
-bool JSValueRef::IsFloat64Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsFloat64Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSFloat64Array();
 }
 
-bool JSValueRef::IsBigInt64Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsBigInt64Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSBigInt64Array();
 }
 
-bool JSValueRef::IsBigUint64Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsBigUint64Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSBigUint64Array();
 }
 
-bool JSValueRef::IsJSSharedInt8Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSSharedInt8Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt8Array();
 }
 
 bool JSValueRef::IsJSSharedUint8Array([[maybe_unused]]const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint8Array();
 }
 
 bool JSValueRef::IsJSSharedUint8ClampedArray([[maybe_unused]]const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint8ClampedArray();
 }
 
-bool JSValueRef::IsJSSharedInt16Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSSharedInt16Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt16Array();
 }
 
-bool JSValueRef::IsJSSharedUint16Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSSharedUint16Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint16Array();
 }
 
-bool JSValueRef::IsJSSharedInt32Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSSharedInt32Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedInt32Array();
 }
 
-bool JSValueRef::IsJSSharedFloat32Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSSharedFloat32Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedFloat32Array();
 }
 
-bool JSValueRef::IsJSSharedUint32Array([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSSharedUint32Array(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedUint32Array();
 }
 
-bool JSValueRef::IsJSPrimitiveRef([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSPrimitiveRef(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSPrimitiveRef();
 }
 
-bool JSValueRef::IsJSPrimitiveNumber([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSPrimitiveNumber(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsNumber();
 }
 
-bool JSValueRef::IsJSPrimitiveInt([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSPrimitiveInt(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsInt();
 }
 
-bool JSValueRef::IsJSPrimitiveBoolean([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSPrimitiveBoolean(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsBoolean();
 }
 
-bool JSValueRef::IsJSPrimitiveString([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSPrimitiveString(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsString();
 }
 
-bool JSValueRef::IsJSPrimitiveSymbol([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSPrimitiveSymbol(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
     return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsSymbol();
 }
 
-bool JSValueRef::IsGeneratorObject([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsGeneratorObject(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsGeneratorObject();
 }
 
-bool JSValueRef::IsModuleNamespaceObject([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsModuleNamespaceObject(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsModuleNamespace();
 }
 
-bool JSValueRef::IsNativeModuleFailureInfoObject([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsNativeModuleFailureInfoObject(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsNativeModuleFailureInfo();
 }
 
-bool JSValueRef::IsSharedArrayBuffer([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSharedArrayBuffer(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsSharedArrayBuffer();
 }
 
-bool JSValueRef::IsSendableArrayBuffer([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSendableArrayBuffer(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsSendableArrayBuffer();
 }
 
-bool JSValueRef::IsJSLocale([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSLocale(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSLocale();
 }
 
-bool JSValueRef::IsJSDateTimeFormat([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSDateTimeFormat(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSDateTimeFormat();
 }
 
-bool JSValueRef::IsJSRelativeTimeFormat([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSRelativeTimeFormat(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSRelativeTimeFormat();
 }
 
-bool JSValueRef::IsJSIntl([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSIntl(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSIntl();
 }
 
-bool JSValueRef::IsJSNumberFormat([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSNumberFormat(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSNumberFormat();
 }
 
-bool JSValueRef::IsJSCollator([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSCollator(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSCollator();
 }
 
-bool JSValueRef::IsJSPluralRules([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSPluralRules(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSPluralRules();
 }
 
-bool JSValueRef::IsJSListFormat([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSListFormat(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSListFormat();
 }
 
-bool JSValueRef::IsAsyncGeneratorObject([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsAsyncGeneratorObject(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsAsyncGeneratorObject();
 }
 
-bool JSValueRef::IsAsyncFunction([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsAsyncFunction(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAsyncFunction();
 }
 
-bool JSValueRef::IsConcurrentFunction([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsConcurrentFunction(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> funcVal = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> transFunc = JSHandle<JSFunction>::Cast(funcVal);
     return transFunc->GetFunctionKind() == ecmascript::FunctionKind::CONCURRENT_FUNCTION;
 }
 
-bool JSValueRef::IsArgumentsObject([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsArgumentsObject(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsArguments();
 }
 
-bool JSValueRef::IsGeneratorFunction([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsGeneratorFunction(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsGeneratorFunction();
 }
 
-bool JSValueRef::IsAsyncGeneratorFunction([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsAsyncGeneratorFunction(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsAsyncGeneratorFunction();
 }
 
-bool JSValueRef::IsArrayList([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsArrayList(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIArrayList();
 }
 
-bool JSValueRef::IsDeque([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsDeque(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIDeque();
 }
 
-bool JSValueRef::IsHashMap([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsHashMap(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIHashMap();
 }
 
-bool JSValueRef::IsHashSet([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsHashSet(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIHashSet();
 }
 
-bool JSValueRef::IsLightWeightMap([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsLightWeightMap(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILightWeightMap();
 }
 
-bool JSValueRef::IsLightWeightSet([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsLightWeightSet(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILightWeightSet();
 }
 
-bool JSValueRef::IsLinkedList([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsLinkedList(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILinkedList();
 }
 
-bool JSValueRef::IsLinkedListIterator([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsLinkedListIterator(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPILinkedListIterator();
 }
 
-bool JSValueRef::IsList([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsList(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIList();
 }
 
-bool JSValueRef::IsPlainArray([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsPlainArray(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIPlainArray();
 }
 
-bool JSValueRef::IsQueue([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsQueue(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIQueue();
 }
 
-bool JSValueRef::IsStack([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsStack(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIStack();
 }
 
-bool JSValueRef::IsTreeMap([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsTreeMap(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPITreeMap();
 }
 
-bool JSValueRef::IsTreeSet([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsTreeSet(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPITreeSet();
 }
 
-bool JSValueRef::IsVector([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsVector(const EcmaVM *vm)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSAPIVector();
 }
 
-bool JSValueRef::IsSendableObject([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSendableObject(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return IsJSShared(vm) && IsObject(vm);
 }
 
-bool JSValueRef::IsJSShared([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsJSShared(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSShared();
 }
 
-bool JSValueRef::IsSharedArray([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSharedArray(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedArray();
 }
 
-bool JSValueRef::IsSharedTypedArray([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSharedTypedArray(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsSharedTypedArray();
 }
 
-bool JSValueRef::IsSharedSet([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSharedSet(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedSet();
 }
 
-bool JSValueRef::IsSharedMap([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSharedMap(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedMap();
 }
 
-bool JSValueRef::IsSharedMapIterator([[maybe_unused]] const EcmaVM *vm)
+bool JSValueRef::IsSharedMapIterator(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return JSNApiHelper::ToJSTaggedValue(this).IsJSSharedMapIterator();
 }
 
@@ -1019,8 +1115,8 @@ bool JSValueRef::IsHeapObject()
 
 void *JSValueRef::GetNativePointerValue(const EcmaVM* vm, bool &isNativePointer)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     if (IsJSShared(vm)) {
-        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
         return GetNativePointerValueImpl(vm, isNativePointer);
     } else {
         return GetNativePointerValueImpl(vm, isNativePointer);
@@ -1030,6 +1126,7 @@ void *JSValueRef::GetNativePointerValue(const EcmaVM* vm, bool &isNativePointer)
 // private
 void *JSValueRef::GetNativePointerValueImpl(const EcmaVM* vm, bool &isNativePointer)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     if (!IsNativePointer(vm)) {
         isNativePointer = false;
         return nullptr;
@@ -1040,8 +1137,9 @@ void *JSValueRef::GetNativePointerValueImpl(const EcmaVM* vm, bool &isNativePoin
     return JSHandle<JSNativePointer>(nativePointer)->GetExternalPointer();
 }
 
-bool JSValueRef::IsDetachedArraybuffer([[maybe_unused]] const EcmaVM *vm, bool &isArrayBuffer)
+bool JSValueRef::IsDetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     // arraybuffer is not shared. Do not need to switch state
     if (!IsArrayBuffer(vm)) {
         isArrayBuffer = false;
@@ -1054,6 +1152,7 @@ bool JSValueRef::IsDetachedArraybuffer([[maybe_unused]] const EcmaVM *vm, bool &
 
 void JSValueRef::DetachedArraybuffer(const EcmaVM *vm, bool &isArrayBuffer)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     if (IsArrayBuffer(vm)) {
         JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
         if (arrayBuffer->IsDetach()) {
@@ -1080,6 +1179,7 @@ void JSValueRef::GetDataViewInfo(const EcmaVM *vm,
                                  JSValueRef **arrayBuffer,
                                  size_t *byteOffset)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     if (!IsDataView(vm)) {
         isDataView = false;
         return;
@@ -1092,7 +1192,6 @@ void JSValueRef::GetDataViewInfo(const EcmaVM *vm,
     }
     if (data || arrayBuffer) {
         JSThread* thread = vm->GetJSThread();
-        ecmascript::ThreadManagedScope managedScope(thread);
         JSHandle<JSArrayBuffer> retArrayBuffer(thread, dataView->GetViewedArrayBuffer());
         if (data) {
             JSTaggedValue bufferData = retArrayBuffer->GetArrayBufferData();
@@ -1301,16 +1400,18 @@ Local<MapRef> MapRef::New(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<MapRef>(mapTag);
 }
 
-int32_t MapRef::GetSize([[maybe_unused]] const EcmaVM *vm)
+int32_t MapRef::GetSize(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
     return map->GetSize();
 }
 
-int32_t MapRef::GetTotalElements([[maybe_unused]] const EcmaVM *vm)
+int32_t MapRef::GetTotalElements(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSMap> map(JSNApiHelper::ToJSHandle(this));
     return static_cast<int>((map->GetSize())) +
         LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
@@ -1389,8 +1490,8 @@ Local<JSValueRef> SendableMapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
-    return JSNApiHelper::ToLocal<JSValueRef>(
-        JSHandle<JSTaggedValue>(thread, map->Get(thread, JSNApiHelper::ToJSTaggedValue(*key))));
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread,
+        ecmascript::JSSharedMap::Get(thread, map, JSNApiHelper::ToJSTaggedValue(*key))));
 }
 
 Local<JSValueRef> SendableMapRef::Get(const EcmaVM *vm, const char *utf8)
@@ -1400,7 +1501,7 @@ Local<JSValueRef> SendableMapRef::Get(const EcmaVM *vm, const char *utf8)
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> key(factory->NewFromUtf8(utf8));
-    auto result = JSHandle<JSTaggedValue>(thread, map->Get(thread, key.GetTaggedValue()));
+    auto result = JSHandle<JSTaggedValue>(thread, ecmascript::JSSharedMap::Get(thread, map, key.GetTaggedValue()));
     return JSNApiHelper::ToLocal<JSValueRef>(result);
 }
 
@@ -1427,7 +1528,7 @@ bool SendableMapRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
-    bool result = map->Has(thread, JSNApiHelper::ToJSTaggedValue(*key));
+    bool result = ecmascript::JSSharedMap::Has(thread, map, JSNApiHelper::ToJSTaggedValue(*key));
     return result;
 }
 
@@ -1438,7 +1539,7 @@ bool SendableMapRef::Has(const EcmaVM *vm, const char *utf8)
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> key(factory->NewFromUtf8(utf8));
-    bool result = map->Has(thread, key.GetTaggedValue());
+    bool result = ecmascript::JSSharedMap::Has(thread, map, key.GetTaggedValue());
     return result;
 }
 
@@ -1464,15 +1565,16 @@ uint32_t SendableMapRef::GetSize(const EcmaVM *vm)
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
-    return map->GetSize(thread);
+    return ecmascript::JSSharedMap::GetSize(thread, map);
 }
 
 uint32_t SendableMapRef::GetTotalElements(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
-    return static_cast<int>((map->GetSize(thread))) +
+    return static_cast<int>(ecmascript::JSSharedMap::GetSize(thread, map)) +
            LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
 }
 
@@ -1482,7 +1584,8 @@ Local<JSValueRef> SendableMapRef::GetKey(const EcmaVM *vm, int entry)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(map, FATAL);
-    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, map->GetKey(thread, entry)));
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread,
+        ecmascript::JSSharedMap::GetKey(thread, map, entry)));
 }
 
 Local<JSValueRef> SendableMapRef::GetValue(const EcmaVM *vm, int entry)
@@ -1491,7 +1594,8 @@ Local<JSValueRef> SendableMapRef::GetValue(const EcmaVM *vm, int entry)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(map, FATAL);
-    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, map->GetValue(thread, entry)));
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread,
+        ecmascript::JSSharedMap::GetValue(thread, map, entry)));
 }
 
 Local<SendableMapIteratorRef> SendableMapRef::GetEntries(const EcmaVM *vm)
@@ -1538,6 +1642,7 @@ int32_t MapIteratorRef::GetIndex()
 Local<JSValueRef> MapIteratorRef::GetKind(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSMapIterator> jsMapIter(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsMapIter, FATAL);
     IterationKind iterKind = jsMapIter->GetIterationKind();
@@ -1574,6 +1679,7 @@ Local<MapIteratorRef> MapIteratorRef::New(const EcmaVM *vm, Local<MapRef> map)
 ecmascript::EcmaRuntimeCallInfo *MapIteratorRef::GetEcmaRuntimeCallInfo(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSMapIterator> jsMapIter(JSNApiHelper::ToJSHandle(this));
     JSHandle<LinkedHashMap> linkedHashMap(vm->GetJSThread(), jsMapIter->GetIteratedMap());
     uint32_t size = linkedHashMap->GetLength();
@@ -1624,6 +1730,7 @@ int32_t SetIteratorRef::GetIndex()
 Local<JSValueRef> SetIteratorRef::GetKind(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSSetIterator> jsSetIter(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(jsSetIter, FATAL);
     IterationKind iterKind = jsSetIter->GetIterationKind();
@@ -1660,6 +1767,7 @@ Local<SetIteratorRef> SetIteratorRef::New(const EcmaVM *vm, Local<SetRef> set)
 ecmascript::EcmaRuntimeCallInfo *SetIteratorRef::GetEcmaRuntimeCallInfo(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSSetIterator> jsSetIter(JSNApiHelper::ToJSHandle(this));
     JSHandle<LinkedHashSet> linkedHashSet(vm->GetJSThread(), jsSetIter->GetIteratedSet());
     uint32_t size = linkedHashSet->GetLength();
@@ -1672,6 +1780,7 @@ ecmascript::EcmaRuntimeCallInfo *SetIteratorRef::GetEcmaRuntimeCallInfo(const Ec
 Local<ArrayRef> SetIteratorRef::Next(const EcmaVM *vm, ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> nextTagValResult(vm->GetJSThread(), JSSetIterator::Next(ecmaRuntimeCallInfo));
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> iteratorVal(vm->GetJSThread(),
@@ -1724,16 +1833,18 @@ Local<BufferRef> BufferRef::New(
     return JSNApiHelper::ToLocal<ArrayBufferRef>(JSHandle<JSTaggedValue>(arrayBuffer));
 }
 
-int32_t BufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
+int32_t BufferRef::ByteLength(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     return arrayBuffer->GetArrayBufferByteLength();
 }
 
-void *BufferRef::GetBuffer([[maybe_unused]] const EcmaVM *vm)
+void *BufferRef::GetBuffer(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     JSTaggedValue bufferData = arrayBuffer->GetArrayBufferData();
     if (!bufferData.IsJSNativePointer()) {
@@ -1745,6 +1856,7 @@ void *BufferRef::GetBuffer([[maybe_unused]] const EcmaVM *vm)
 JSTaggedValue BufferRef::BufferToStringCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo)
 {
     JSThread *thread = ecmaRuntimeCallInfo->GetThread();
+    ecmascript::ThreadManagedScope managedScope(thread);
     [[maybe_unused]] LocalScope scope(thread->GetEcmaVM());
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSTaggedValue> arrayBuff = ecmaRuntimeCallInfo->GetThis();
@@ -2005,21 +2117,24 @@ Local<StringRef> StringRef::NewFromUtf16(const EcmaVM *vm, const char16_t *utf16
     return JSNApiHelper::ToLocal<StringRef>(current);
 }
 
-std::string StringRef::ToString([[maybe_unused]] const EcmaVM *vm)
+std::string StringRef::ToString(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).ToStdString();
 }
 
-std::string StringRef::DebuggerToString([[maybe_unused]] const EcmaVM *vm)
+std::string StringRef::DebuggerToString(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, "");
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).DebuggerToStdString();
 }
 
-uint32_t StringRef::Length([[maybe_unused]] const EcmaVM *vm)
+uint32_t StringRef::Length(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetLength();
 }
 
@@ -2031,23 +2146,26 @@ int32_t StringRef::Utf8Length(const EcmaVM *vm, bool isGetBufferSize)
     return EcmaStringAccessor(EcmaStringAccessor::Flatten(vm, strHandle)).GetUtf8Length(isGetBufferSize);
 }
 
-int StringRef::WriteUtf8([[maybe_unused]] const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer)
+int StringRef::WriteUtf8(const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
         .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length, isWriteBuffer);
 }
 
-int StringRef::WriteUtf16([[maybe_unused]] const EcmaVM *vm, char16_t *buffer, int length)
+int StringRef::WriteUtf16(const EcmaVM *vm, char16_t *buffer, int length)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
         .WriteToUtf16(reinterpret_cast<uint16_t *>(buffer), length);
 }
 
-int StringRef::WriteLatin1([[maybe_unused]] const EcmaVM *vm, char *buffer, int length)
+int StringRef::WriteLatin1(const EcmaVM *vm, char *buffer, int length)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this))
         .WriteToOneByte(reinterpret_cast<uint8_t *>(buffer), length);
 }
@@ -2141,9 +2259,10 @@ void BigIntRef::BigIntToUint64(const EcmaVM *vm, uint64_t *value, bool *lossless
     BigInt::BigIntToUint64(thread, bigintVal, value, lossless);
 }
 
-void BigIntRef::GetWordsArray([[maybe_unused]] const EcmaVM *vm, bool* signBit, size_t wordCount, uint64_t* words)
+void BigIntRef::GetWordsArray(const EcmaVM *vm, bool* signBit, size_t wordCount, uint64_t* words)
 {
     DCHECK_SPECIAL_VALUE(this);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<BigInt> bigintVal(JSNApiHelper::ToJSHandle(this));
     uint32_t len = bigintVal->GetLength();
     uint32_t count = 0;
@@ -2162,9 +2281,10 @@ void BigIntRef::GetWordsArray([[maybe_unused]] const EcmaVM *vm, bool* signBit, 
     *signBit = bigintVal->GetSign();
 }
 
-uint32_t BigIntRef::GetWordsArraySize([[maybe_unused]] const EcmaVM *vm)
+uint32_t BigIntRef::GetWordsArraySize(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<BigInt> bigintVal(JSNApiHelper::ToJSHandle(this));
     uint32_t len = bigintVal->GetLength();
     return len % 2 != 0 ? len / 2 + 1 : len / 2; // 2 : len is odd or even
@@ -2782,20 +2902,22 @@ void ObjectRef::SetNativePointerFieldCount(const EcmaVM *vm, int32_t count)
     object->SetNativePointerFieldCount(thread, count);
 }
 
-int32_t ObjectRef::GetNativePointerFieldCount([[maybe_unused]] const EcmaVM *vm)
+int32_t ObjectRef::GetNativePointerFieldCount(const EcmaVM *vm)
 {
     // ObjectRef::New may return special value if exception occurs.
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
     return object->GetNativePointerFieldCount();
 }
 
-void *ObjectRef::GetNativePointerField([[maybe_unused]] const EcmaVM *vm, int32_t index)
+void *ObjectRef::GetNativePointerField(const EcmaVM *vm, int32_t index)
 {
     // ObjectRef::New may return special value if exception occurs.
     // So we need do special value check before use it.
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSObject> object(JSNApiHelper::ToJSHandle(this));
     return object->GetNativePointerField(index);
 }
@@ -2895,7 +3017,7 @@ Local<ArrayBufferRef> ArrayBufferRef::New(
     return JSNApiHelper::ToLocal<ArrayBufferRef>(JSHandle<JSTaggedValue>(arrayBuffer));
 }
 
-int32_t ArrayBufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
+int32_t ArrayBufferRef::ByteLength(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -2904,9 +3026,10 @@ int32_t ArrayBufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
     return arrayBuffer->GetArrayBufferByteLength();
 }
 
-void *ArrayBufferRef::GetBuffer([[maybe_unused]] const EcmaVM *vm)
+void *ArrayBufferRef::GetBuffer(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     JSTaggedValue bufferData = arrayBuffer->GetArrayBufferData();
     if (!bufferData.IsJSNativePointer()) {
@@ -2918,14 +3041,16 @@ void *ArrayBufferRef::GetBuffer([[maybe_unused]] const EcmaVM *vm)
 void ArrayBufferRef::Detach(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     // arraybuffer is not shared. Do not need to switch state
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     arrayBuffer->Detach(thread);
 }
 
-bool ArrayBufferRef::IsDetach([[maybe_unused]] const EcmaVM *vm)
+bool ArrayBufferRef::IsDetach(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     return arrayBuffer->IsDetach();
 }
@@ -2950,7 +3075,7 @@ Local<SendableArrayBufferRef> SendableArrayBufferRef::New(
     return JSNApiHelper::ToLocal<SendableArrayBufferRef>(JSHandle<JSTaggedValue>(arrayBuffer));
 }
 
-int32_t SendableArrayBufferRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
+int32_t SendableArrayBufferRef::ByteLength(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -2967,16 +3092,18 @@ void SendableArrayBufferRef::Detach(const EcmaVM *vm)
     arrayBuffer->Detach(thread);
 }
 
-bool SendableArrayBufferRef::IsDetach([[maybe_unused]] const EcmaVM *vm)
+bool SendableArrayBufferRef::IsDetach(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, false);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     return arrayBuffer->IsDetach();
 }
 
-void *SendableArrayBufferRef::GetBuffer([[maybe_unused]] const EcmaVM *vm)
+void *SendableArrayBufferRef::GetBuffer(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, nullptr);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSendableArrayBuffer> arrayBuffer(JSNApiHelper::ToJSHandle(this));
     JSTaggedValue bufferData = arrayBuffer->GetArrayBufferData();
     if (!bufferData.IsJSNativePointer()) {
@@ -3013,9 +3140,10 @@ Local<StringRef> DateRef::ToString(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<StringRef>(dateStrHandle);
 }
 
-double DateRef::GetTime([[maybe_unused]] const EcmaVM *vm)
+double DateRef::GetTime(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0.0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSDate> date(JSNApiHelper::ToJSHandle(this));
     if (!date->IsDate()) {
         LOG_ECMA(ERROR) << "Not a Date Object";
@@ -3024,25 +3152,28 @@ double DateRef::GetTime([[maybe_unused]] const EcmaVM *vm)
 }
 
 // ---------------------------------- TypedArray -----------------------------------
-uint32_t TypedArrayRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
+uint32_t TypedArrayRef::ByteLength(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetByteLength();
 }
 
-uint32_t TypedArrayRef::ByteOffset([[maybe_unused]] const EcmaVM *vm)
+uint32_t TypedArrayRef::ByteOffset(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetByteOffset();
 }
 
-uint32_t TypedArrayRef::ArrayLength([[maybe_unused]] const EcmaVM *vm)
+uint32_t TypedArrayRef::ArrayLength(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetArrayLength();
@@ -3058,25 +3189,28 @@ Local<ArrayBufferRef> TypedArrayRef::GetArrayBuffer(const EcmaVM *vm)
     return JSNApiHelper::ToLocal<ArrayBufferRef>(arrayBuffer);
 }
 
-uint32_t SendableTypedArrayRef::ByteLength([[maybe_unused]] const EcmaVM *vm)
+uint32_t SendableTypedArrayRef::ByteLength(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetByteLength();
 }
 
-uint32_t SendableTypedArrayRef::ByteOffset([[maybe_unused]] const EcmaVM *vm)
+uint32_t SendableTypedArrayRef::ByteOffset(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetByteOffset();
 }
 
-uint32_t SendableTypedArrayRef::ArrayLength([[maybe_unused]] const EcmaVM *vm)
+uint32_t SendableTypedArrayRef::ArrayLength(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedTypedArray> typedArray(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(typedArray, FATAL);
     return typedArray->GetArrayLength();
@@ -3167,6 +3301,7 @@ Local<FunctionRef> FunctionRef::NewConcurrent(EcmaVM *vm, InternalFunctionCallba
 static void InitClassFunction(EcmaVM *vm, JSHandle<JSFunction> &func, bool callNapi)
 {
     CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<GlobalEnv> env = vm->GetGlobalEnv();
     auto globalConst = thread->GlobalConstants();
     JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
@@ -3570,7 +3705,7 @@ Local<ArrayRef> ArrayRef::New(const EcmaVM *vm, uint32_t length)
     return JSNApiHelper::ToLocal<ArrayRef>(array);
 }
 
-uint32_t ArrayRef::Length([[maybe_unused]] const EcmaVM *vm)
+uint32_t ArrayRef::Length(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     return JSArray::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())->GetArrayLength();
@@ -3612,9 +3747,10 @@ Local<SendableArrayRef> SendableArrayRef::New(const EcmaVM *vm, uint32_t length)
     return JSNApiHelper::ToLocal<SendableArrayRef>(array);
 }
 
-uint32_t SendableArrayRef::Length([[maybe_unused]] const EcmaVM *vm)
+uint32_t SendableArrayRef::Length(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return ecmascript::JSSharedArray::Cast(JSNApiHelper::ToJSTaggedValue(this).GetTaggedObject())->GetArrayLength();
 }
 
@@ -3734,6 +3870,7 @@ JsiFastNativeScope::~JsiFastNativeScope()
 // ------------------------------------ JsiRuntimeCallInfo -----------------------------------------------
 void *JsiRuntimeCallInfo::GetData()
 {
+    ecmascript::ThreadManagedScope managedScope(thread_);
     JSHandle<JSTaggedValue> constructor = BuiltinsBase::GetConstructor(reinterpret_cast<EcmaRuntimeCallInfo *>(this));
     if (!constructor->IsJSFunction()) {
         return nullptr;
@@ -4619,7 +4756,7 @@ bool JSNApi::StopDebugger([[maybe_unused]] int tid)
 #endif // ECMASCRIPT_SUPPORT_DEBUGGER
 }
 
-bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
+bool JSNApi::IsMixedDebugEnabled(const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     return vm->GetJsDebuggerManager()->IsMixedDebugEnabled();
@@ -4628,7 +4765,7 @@ bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
-void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const void *nativeAddress)
+void JSNApi::NotifyNativeCalling(const EcmaVM *vm, [[maybe_unused]] const void *nativeAddress)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
@@ -4638,7 +4775,7 @@ void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unus
 #endif
 }
 
-void JSNApi::NotifyNativeReturn([[maybe_unused]] const EcmaVM *vm,  [[maybe_unused]] const void *nativeAddress)
+void JSNApi::NotifyNativeReturn(const EcmaVM *vm,  [[maybe_unused]] const void *nativeAddress)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
@@ -4648,7 +4785,7 @@ void JSNApi::NotifyNativeReturn([[maybe_unused]] const EcmaVM *vm,  [[maybe_unus
 #endif
 }
 
-void JSNApi::NotifyLoadModule([[maybe_unused]] const EcmaVM *vm)
+void JSNApi::NotifyLoadModule(const EcmaVM *vm)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
     CROSS_THREAD_AND_EXCEPTION_CHECK(vm);
@@ -5675,16 +5812,18 @@ bool ProxyRef::IsRevoked()
 }
 
 // ---------------------------------- SetRef --------------------------------------
-int32_t SetRef::GetSize([[maybe_unused]] const EcmaVM *vm)
+int32_t SetRef::GetSize(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
     return set->GetSize();
 }
 
-int32_t SetRef::GetTotalElements([[maybe_unused]] const EcmaVM *vm)
+int32_t SetRef::GetTotalElements(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSSet> set(JSNApiHelper::ToJSHandle(this));
     return static_cast<int>(set->GetSize()) +
         LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
@@ -5724,16 +5863,18 @@ void SetRef::Add(const EcmaVM *vm, Local<JSValueRef> value)
 }
 
 // ---------------------------------- WeakMapRef --------------------------------------
-int32_t WeakMapRef::GetSize([[maybe_unused]] const EcmaVM *vm)
+int32_t WeakMapRef::GetSize(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
     return weakMap->GetSize();
 }
 
-int32_t WeakMapRef::GetTotalElements([[maybe_unused]] const EcmaVM *vm)
+int32_t WeakMapRef::GetTotalElements(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSWeakMap> weakMap(JSNApiHelper::ToJSHandle(this));
     return weakMap->GetSize() +
                 LinkedHashMap::Cast(weakMap->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
@@ -5791,16 +5932,18 @@ bool WeakMapRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
 }
 
 // ---------------------------------- WeakSetRef --------------------------------------
-int32_t WeakSetRef::GetSize([[maybe_unused]] const EcmaVM *vm)
+int32_t WeakSetRef::GetSize(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
     return weakSet->GetSize();
 }
 
-int32_t WeakSetRef::GetTotalElements([[maybe_unused]] const EcmaVM *vm)
+int32_t WeakSetRef::GetTotalElements(const EcmaVM *vm)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSWeakSet> weakSet(JSNApiHelper::ToJSHandle(this));
     return weakSet->GetSize() +
                 LinkedHashSet::Cast(weakSet->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
@@ -5898,6 +6041,7 @@ Local<StringRef> ExternalStringCache::GetCachedString(const EcmaVM *vm, uint32_t
     auto instance = ecmascript::Runtime::GetInstance();
     ASSERT(instance != nullptr);
 
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<EcmaString> str = instance->GetCachedString(vm->GetJSThread(), propertyIndex);
     return JSNApiHelper::ToLocal<StringRef>(JSHandle<JSTaggedValue>(str));
 }
@@ -5907,7 +6051,7 @@ bool ExternalStringCache::HasCachedString(const EcmaVM *vm, uint32_t propertyInd
     SINGLE_THREAD_CHECK_WITH_RETURN(vm, false);
     auto instance = ecmascript::Runtime::GetInstance();
     ASSERT(instance != nullptr);
-
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return instance->HasCachedString(propertyIndex);
 }
 } // namespace panda

@@ -1338,12 +1338,12 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
     EcmaStringTable *stringTable = vm_->GetEcmaStringTable();
     JSThread *thread = vm_->GetJSThread();
     ASSERT(deserializeStringVector_.empty());
-    auto oldSpace = sHeap_->GetOldSpace();
     auto hugeSpace = sHeap_->GetHugeObjectSpace();
     auto globalConst = const_cast<GlobalEnvConstants *>(thread->GlobalConstants());
     auto lineStringClass = globalConst->GetLineStringClass();
     auto constantStringClass = globalConst->GetConstantStringClass();
     while (stringBegin < stringEnd) {
+        // str is from snapshot file, which is in native heap.
         EcmaString *str = reinterpret_cast<EcmaString *>(stringBegin);
         int index = JSTaggedValue(*(reinterpret_cast<JSTaggedType *>(str))).GetInt();
         if (index == 1) {
@@ -1371,7 +1371,7 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
                 if (UNLIKELY(strSize > MAX_REGULAR_HEAP_OBJECT_SIZE)) {
                     newObj = hugeSpace->Allocate(thread, strSize);
                 } else {
-                    newObj = oldSpace->Allocate(thread, strSize, false);
+                    newObj = sHeap_->GetOldSpace()->TryAllocateAndExpand(thread, strSize, true);
                 }
                 if (newObj == 0) {
                     LOG_ECMA_MEM(FATAL) << "Snapshot Allocate OldSharedSpace OOM";

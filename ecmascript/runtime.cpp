@@ -333,6 +333,9 @@ void Runtime::ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor)
                     freeSharedConstpoolIndex_.insert(constpoolIndex);
                     continue;
                 }
+                if (fwd != reinterpret_cast<TaggedObject *>(obj)) {
+                    constpoolIter->second = JSTaggedValue(fwd);
+                }
             }
             ++constpoolIter;
         }

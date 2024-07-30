@@ -40,18 +40,20 @@ enum MemSpaceType {
     READ_ONLY_SPACE,
     APPSPAWN_SPACE,
     HUGE_MACHINE_CODE_SPACE,
-    SHARED_NON_MOVABLE,
     SHARED_OLD_SPACE,
+    SHARED_NON_MOVABLE,
     SHARED_READ_ONLY_SPACE,
     SHARED_HUGE_OBJECT_SPACE,
+    SHARED_LOCAL_SPACE,
+    SHARED_COMPRESS_SPACE,
     SPACE_TYPE_LAST,  // Count of different types
 
-    SHARED_BEGIN = SHARED_NON_MOVABLE,
+    SHARED_BEGIN = SHARED_OLD_SPACE,
     SHARED_END = SHARED_HUGE_OBJECT_SPACE,
     // Free region means memory maybe always in use and can not be evacuated
     FREE_LIST_NUM = MACHINE_CODE_SPACE - OLD_SPACE + 1,
-    SHARED_SWEEPING_SPACE_BEGIN = SHARED_NON_MOVABLE,
-    SHARED_SWEEPING_SPACE_END = SHARED_OLD_SPACE,
+    SHARED_SWEEPING_SPACE_BEGIN = SHARED_OLD_SPACE,
+    SHARED_SWEEPING_SPACE_END = SHARED_NON_MOVABLE,
     SHARED_SWEEPING_SPACE_NUM = SHARED_SWEEPING_SPACE_END - SHARED_SWEEPING_SPACE_BEGIN + 1,
 };
 
@@ -105,6 +107,10 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "shared read only space";
         case SHARED_HUGE_OBJECT_SPACE:
             return "shared huge object space";
+        case SHARED_COMPRESS_SPACE:
+            return "compress space";
+        case SHARED_LOCAL_SPACE:
+            return "shared local space";
         default:
             return "unknown space";
     }

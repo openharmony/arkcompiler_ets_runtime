@@ -29,7 +29,7 @@ void JSSharedSet::Add(JSThread *thread, const JSHandle<JSSharedSet> &set, const 
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     [[maybe_unused]] ConcurrentApiScope<JSSharedSet, ModType::WRITE> scope(thread,
-        set.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(set));
     RETURN_IF_ABRUPT_COMPLETION(thread);
 
     JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject()));
@@ -40,7 +40,7 @@ void JSSharedSet::Add(JSThread *thread, const JSHandle<JSSharedSet> &set, const 
 bool JSSharedSet::Delete(JSThread *thread, const JSHandle<JSSharedSet> &set, const JSHandle<JSTaggedValue> &value)
 {
     [[maybe_unused]] ConcurrentApiScope<JSSharedSet, ModType::WRITE> scope(thread,
-        set.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(set));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject()));
     int entry = setHandle->FindElement(thread, value.GetTaggedValue());
@@ -54,33 +54,33 @@ bool JSSharedSet::Delete(JSThread *thread, const JSHandle<JSSharedSet> &set, con
 void JSSharedSet::Clear(JSThread *thread, const JSHandle<JSSharedSet> &set)
 {
     [[maybe_unused]] ConcurrentApiScope<JSSharedSet, ModType::WRITE> scope(thread,
-        set.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(set));
     RETURN_IF_ABRUPT_COMPLETION(thread);
     JSHandle<LinkedHashSet> setHandle(thread, LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject()));
     JSHandle<LinkedHashSet> newSet = LinkedHashSet::Clear(thread, setHandle);
     set->SetLinkedSet(thread, newSet);
 }
 
-bool JSSharedSet::Has(JSThread *thread, JSTaggedValue value) const
+bool JSSharedSet::Has(JSThread *thread, const JSHandle<JSSharedSet> &set, JSTaggedValue value)
 {
-    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, reinterpret_cast<const TaggedObject*>(this));
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, JSHandle<JSTaggedValue>::Cast(set));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
-    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->Has(thread, value);
+    return LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->Has(thread, value);
 }
 
-uint32_t JSSharedSet::GetSize(JSThread *thread) const
+uint32_t JSSharedSet::GetSize(JSThread *thread, const JSHandle<JSSharedSet> &set)
 {
-    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, reinterpret_cast<const TaggedObject*>(this));
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, JSHandle<JSTaggedValue>::Cast(set));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, 0);
-    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->NumberOfElements();
+    return LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->NumberOfElements();
 }
 
-JSTaggedValue JSSharedSet::GetValue(JSThread *thread, int entry) const
+JSTaggedValue JSSharedSet::GetValue(JSThread *thread, const JSHandle<JSSharedSet> &set, int entry)
 {
-    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, reinterpret_cast<const TaggedObject*>(this));
-    ASSERT_PRINT(entry >= 0 && static_cast<uint32_t>(entry) < GetSize(thread),
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, JSHandle<JSTaggedValue>::Cast(set));
+    ASSERT_PRINT(entry >= 0 && static_cast<uint32_t>(entry) < GetSize(thread, set),
         "entry must be non-negative integer less than capacity");
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Undefined());
-    return LinkedHashSet::Cast(GetLinkedSet().GetTaggedObject())->GetValue(entry);
+    return LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->GetValue(entry);
 }
 }  // namespace panda::ecmascript

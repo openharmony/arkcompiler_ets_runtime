@@ -67,7 +67,7 @@ JSHandle<JSTaggedValue> BaseDeserializer::DeserializeJSTaggedValue()
 
     // initialize concurrent func here
     for (auto func : concurrentFunctions_) {
-        func->InitializeForConcurrentFunction(thread_);
+        JSFunction::InitializeForConcurrentFunction(thread_, func);
     }
     concurrentFunctions_.clear();
 
@@ -95,7 +95,8 @@ uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
 {
     size_t objSize = data_->ReadUint32(position_);
     uintptr_t res = RelocateObjectAddr(space, objSize);
-    objectVector_.push_back(res);
+    JSHandle<JSTaggedValue> resHandle(thread_, JSTaggedValue(reinterpret_cast<TaggedObject *>(res)));
+    objectVector_.push_back(resHandle);
     DeserializeObjectField(res, res + objSize);
     return res;
 }
@@ -182,7 +183,8 @@ void BaseDeserializer::HandleNewObjectEncodeFlag(SerializedObjectSpace space,  u
         FunctionKind funcKind = func->GetFunctionKind();
         if (funcKind == FunctionKind::CONCURRENT_FUNCTION || object->GetClass()->IsJSSharedFunction()) {
             // defer initialize concurrent function
-            concurrentFunctions_.push_back(reinterpret_cast<JSFunction *>(object));
+            JSHandle<JSFunction> funcHandle(thread_, func);
+            concurrentFunctions_.push_back(funcHandle);
         }
         func->SetRawProfileTypeInfo(thread_, thread_->GlobalConstants()->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
         func->SetWorkNodePointer(reinterpret_cast<uintptr_t>(nullptr));
@@ -250,10 +252,10 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         }
         case (uint8_t)EncodeFlag::REFERENCE: {
             uint32_t valueIndex = data_->ReadUint32(position_);
-            uintptr_t valueAddr = objectVector_[valueIndex];
+            JSTaggedType valueAddr = objectVector_[valueIndex].GetTaggedType();
             UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
             WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
-                                                        static_cast<JSTaggedType>(valueAddr));
+                                                        valueAddr);
             break;
         }
         case (uint8_t)EncodeFlag::WEAK: {
@@ -339,8 +341,12 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             break;
         }
         case (uint8_t)EncodeFlag::SHARED_OBJECT: {
-            JSTaggedType value = data_->ReadJSTaggedType(position_);
-            objectVector_.push_back(value);
+            uint32_t index = data_->ReadUint32(position_);
+            std::vector<JSTaggedType> &valueVector = Runtime::GetInstance()->GetSerializeRootMapValue(thread_,
+                data_->GetDataIndex());
+            JSTaggedType value = valueVector[index];
+            JSHandle<JSTaggedValue> valueHandle(thread_, JSTaggedValue(value));
+            objectVector_.push_back(valueHandle);
             bool isErrorMsg = GetAndResetIsErrorMsg();
             if (isErrorMsg) {
                 // defer new js error

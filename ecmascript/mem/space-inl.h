@@ -103,6 +103,8 @@ RegionSpaceFlag Space::GetRegionFlag() const
             flags = RegionSpaceFlag::IN_SHARED_NON_MOVABLE;
             break;
         case MemSpaceType::SHARED_OLD_SPACE:
+        case MemSpaceType::SHARED_LOCAL_SPACE:
+        case MemSpaceType::SHARED_COMPRESS_SPACE:
             flags = RegionSpaceFlag::IN_SHARED_OLD_SPACE;
             break;
         case MemSpaceType::SHARED_READ_ONLY_SPACE:

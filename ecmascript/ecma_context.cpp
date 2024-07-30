@@ -959,6 +959,9 @@ void EcmaContext::Iterate(const RootVisitor &v, const RootRangeVisitor &rv)
     if (propertiesCache_ != nullptr) {
         propertiesCache_->Clear();
     }
+    if (regExpParserCache_ != nullptr) {
+        regExpParserCache_->Clear();
+    }
     if (!vm_->GetJSOptions().EnableGlobalLeakCheck() && currentHandleStorageIndex_ != -1) {
         // IterateHandle when disableGlobalLeakCheck.
         int32_t nid = currentHandleStorageIndex_;

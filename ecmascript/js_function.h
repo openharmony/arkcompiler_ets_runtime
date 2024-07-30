@@ -329,7 +329,7 @@ public:
 
     void SetJitCompiledFuncEntry(JSThread *thread, JSHandle<MachineCode> &machineCode, bool isFastCall);
 
-    void InitializeForConcurrentFunction(JSThread *thread);
+    static void InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFunction> &func);
 
     bool IsSendableOrConcurrentFunction() const;
     bool IsSharedFunction() const;

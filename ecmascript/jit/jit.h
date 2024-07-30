@@ -195,18 +195,28 @@ public:
         {
             ASSERT(!thread->IsJitThread());
             if (Jit::GetInstance()->IsEnableFastJit() || Jit::GetInstance()->IsEnableBaselineJit()) {
-                Clock::time_point start = Clock::now();
-                thread_->GetJitLock()->Lock();
-                Jit::GetInstance()->GetJitDfx()->SetLockHoldingTime(
-                    std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - start).count());
+                LockJit(thread_);
                 locked_ = true;
             }
+        }
+
+        static void LockJit(JSThread *thread)
+        {
+            Clock::time_point start = Clock::now();
+            thread->GetJitLock()->Lock();
+            Jit::GetInstance()->GetJitDfx()->SetLockHoldingTime(
+            std::chrono::duration_cast<std::chrono::microseconds>(Clock::now() - start).count());
+        }
+
+        static void UnlockJit(JSThread *thread)
+        {
+            thread->GetJitLock()->Unlock();
         }
 
         ~JitGCLockHolder()
         {
             if (locked_) {
-                thread_->GetJitLock()->Unlock();
+                UnlockJit(thread_);
                 locked_ = false;
             }
         }

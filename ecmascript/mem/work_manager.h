@@ -32,6 +32,7 @@ class SharedHeap;
 class Stack;
 class SemiSpaceCollector;
 class TlabAllocator;
+class SharedTlabAllocator;
 class Region;
 class WorkSpaceChunk;
 
@@ -45,6 +46,13 @@ enum ParallelGCTaskPhase {
     CONCURRENT_HANDLE_OLD_TO_NEW_TASK,
     UNDEFINED_TASK,
     TASK_LAST  // Count of different Task phase
+};
+
+enum SharedParallelMarkPhase {
+    SHARED_MARK_TASK,
+    SHARED_COMPRESS_TASK,
+    SHARED_UNDEFINED_TASK,
+    SHARED_TASK_LAST  // Count of different Task phase
 };
 
 class WorkNode {
@@ -157,6 +165,11 @@ public:
     }
 
     WorkNode *AllocateWorkNode();
+    virtual size_t Finish()
+    {
+        LOG_ECMA(FATAL) << " WorkManagerBase Finish";
+        return 0;
+    }
 
     Mutex mtx_;
 private:
@@ -177,7 +190,7 @@ public:
     ~WorkManager() override;
 
     void Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase);
-    size_t Finish();
+    size_t Finish() override;
     void Finish(size_t &aliveSize, size_t &promotedSize);
 
     bool Push(uint32_t threadId, TaggedObject *object);
@@ -253,6 +266,8 @@ struct SharedGCWorkNodeHolder {
     WorkNode *inNode_ {nullptr};
     WorkNode *outNode_ {nullptr};
     ProcessQueue *weakQueue_ {nullptr};
+    SharedTlabAllocator *allocator_ {nullptr};
+    size_t aliveSize_ = 0;
 };
 
 class SharedGCWorkManager : public WorkManagerBase {
@@ -260,8 +275,18 @@ public:
     SharedGCWorkManager(SharedHeap *heap, uint32_t threadNum);
     ~SharedGCWorkManager() override;
 
-    void Initialize();
-    void Finish();
+    void Initialize(TriggerGCType gcType, SharedParallelMarkPhase taskPhase);
+    size_t Finish() override;
+
+    inline SharedTlabAllocator *GetTlabAllocator(uint32_t threadId) const
+    {
+        return works_.at(threadId).allocator_;
+    }
+
+    inline void IncreaseAliveSize(uint32_t threadId, size_t size)
+    {
+        works_.at(threadId).aliveSize_ += size;
+    }
 
     bool Push(uint32_t threadId, TaggedObject *object);
     bool PushToLocalMarkingBuffer(WorkNode *&markingBuffer, TaggedObject *object);
@@ -301,6 +326,7 @@ private:
     std::array<ContinuousStack<JSTaggedType> *, MAX_TASKPOOL_THREAD_NUM + 1> continuousQueue_;
     GlobalWorkStack workStack_;
     std::atomic<bool> initialized_ {false};
+    SharedParallelMarkPhase sharedTaskPhase_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_WORK_MANAGER_H

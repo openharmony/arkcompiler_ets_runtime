@@ -91,6 +91,7 @@ static constexpr size_t IDLE_GC_YOUNG_SPACE = 3_MB;
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);
 static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = base::MathHelper::GetIntLog2(TAGGED_TYPE_SIZE);
+constexpr size_t HEAD_SIZE = TaggedObject::TaggedObjectSize();
 
 template<typename T>
 constexpr inline bool IsAligned(T value, size_t alignment)

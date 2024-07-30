@@ -30,15 +30,15 @@ public:
                     const JSHandle<JSTaggedValue> &value);
     static void Clear(JSThread *thread, const JSHandle<JSSharedMap> &map);
 
-    bool Has(JSThread *thread, JSTaggedValue key) const;
+    static bool Has(JSThread *thread, const JSHandle<JSSharedMap> &map, JSTaggedValue key);
 
-    JSTaggedValue Get(JSThread *thread, JSTaggedValue key) const;
+    static JSTaggedValue Get(JSThread *thread, const JSHandle<JSSharedMap> &map, JSTaggedValue key);
 
-    uint32_t GetSize(JSThread *thread) const;
+    static uint32_t GetSize(JSThread *thread, const JSHandle<JSSharedMap> &map);
 
-    JSTaggedValue GetKey(JSThread *thread, uint32_t entry) const;
+    static JSTaggedValue GetKey(JSThread *thread, const JSHandle<JSSharedMap> &map, uint32_t entry);
 
-    JSTaggedValue GetValue(JSThread *thread, uint32_t entry) const;
+    static JSTaggedValue GetValue(JSThread *thread, const JSHandle<JSSharedMap> &map, uint32_t entry);
 
     static constexpr size_t LINKED_MAP_OFFSET = JSObject::SIZE;
     ACCESSORS(LinkedMap, LINKED_MAP_OFFSET, MOD_RECORD_OFFSET)

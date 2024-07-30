@@ -16,6 +16,7 @@
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/mem/heap-inl.h"
 
 namespace panda::ecmascript {
 RuntimeLockHolder::RuntimeLockHolder(JSThread *thread, Mutex &mtx)
@@ -24,6 +25,9 @@ RuntimeLockHolder::RuntimeLockHolder(JSThread *thread, Mutex &mtx)
     if (mtx_.TryLock()) {
         return;
     }
+#ifndef NDEBUG
+    SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread_);
+#endif
     ThreadStateTransitionScope<JSThread, ThreadState::WAIT> ts(thread_);
     mtx.Lock();
 }

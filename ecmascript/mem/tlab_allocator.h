@@ -21,7 +21,15 @@
 namespace panda::ecmascript {
 class Heap;
 
-class TlabAllocator {
+class TlabAllocatorBase {
+public:
+    TlabAllocatorBase() = default;
+    ~TlabAllocatorBase() = default;
+    NO_COPY_SEMANTIC(TlabAllocatorBase);
+    NO_MOVE_SEMANTIC(TlabAllocatorBase);
+};
+
+class TlabAllocator : public TlabAllocatorBase {
 public:
     TlabAllocator() = delete;
     inline explicit TlabAllocator(Heap *heap);
@@ -51,6 +59,30 @@ private:
     BumpPointerAllocator youngAllocator_;
 
     LocalSpace *localSpace_;
+};
+
+class SharedTlabAllocator : public TlabAllocatorBase {
+public:
+    SharedTlabAllocator() = delete;
+    inline explicit SharedTlabAllocator(SharedHeap *sHeap);
+    ~SharedTlabAllocator()
+    {
+        delete sLocalSpace_;
+    }
+
+    NO_COPY_SEMANTIC(SharedTlabAllocator);
+    NO_MOVE_SEMANTIC(SharedTlabAllocator);
+
+    inline void Finalize();
+
+    inline uintptr_t Allocate(size_t size, MemSpaceType space);
+
+private:
+    inline uintptr_t AllocateInCompressSpace(size_t size);
+    inline bool ExpandCompressFromOld(size_t size);
+
+    SharedHeap *sHeap_;
+    SharedLocalSpace *sLocalSpace_;
 };
 }  // namespace panda::ecmascript
 
