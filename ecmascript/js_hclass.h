@@ -596,8 +596,7 @@ public:
 
     inline bool IsJSObject() const
     {
-        JSType jsType = GetObjectType();
-        return (JSType::JS_OBJECT_FIRST <= jsType && jsType <= JSType::JS_OBJECT_LAST);
+        return IsJSTypeObject(GetObjectType());
     }
 
     inline bool IsOnlyJSObject() const
@@ -1928,8 +1927,7 @@ public:
 
     inline uint32_t GetInlinedProperties() const
     {
-        JSType type = GetObjectType();
-        if (JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST) {
+        if (IsJSObject()) {
             uint32_t bits = GetBitField1();
             return static_cast<uint32_t>(ObjectSizeInWordsBits::Decode(bits) - InlinedPropsStartBits::Decode(bits));
         } else {
@@ -2070,7 +2068,12 @@ private:
 
     void InitializeWithDefaultValue(const JSThread *thread, uint32_t size, JSType type, uint32_t inlinedProps);
 
-    bool IsJSTypeShared(JSType type);
+    static bool IsJSTypeObject(JSType type)
+    {
+        return JSType::JS_OBJECT_FIRST <= type && type <= JSType::JS_OBJECT_LAST;
+    }
+
+    static bool IsJSTypeShared(JSType type);
 
     inline void Copy(const JSThread *thread, const JSHClass *jshclass);
 

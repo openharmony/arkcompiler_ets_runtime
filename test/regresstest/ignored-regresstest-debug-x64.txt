@@ -3,8 +3,6 @@
 regresstest/ark-regress/mjsunit/regress/regress-95113.js
 # Issue #17902
 regresstest/ark-regress/mjsunit/regress/regress-crbug-1439691.js
-# Issue #17904
-regresstest/ark-regress/mjsunit/es6/regress/regress-lookup-transition.js
 
 # Issue #17901
 regresstest/ark-regress/intl/regress-1130489.js
