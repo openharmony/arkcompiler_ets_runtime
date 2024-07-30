@@ -149,7 +149,6 @@ group("ark_asm_test") {
     "arrayforeach",
     "arrayjoin",
     "arrayprotochange",
-    "asmstackoverflow",
     "assignproxy",
     "async",
     "bigint",
@@ -229,6 +228,7 @@ group("ark_asm_test") {
 
   if (!is_debug) {
     release_test_list = [
+      "asmstackoverflow",
       "hugearray",
       "multiconstpoolarray",
       "multiconstpoolclass",
@@ -255,7 +255,6 @@ group("ark_asm_single_step_test") {
     "arrayforeach",
     "arrayjoin",
     "arrayprotochange",
-    "asmstackoverflow",
     "assignproxy",
     "async",
     "bigint",
@@ -327,6 +326,7 @@ group("ark_asm_single_step_test") {
 
   if (!is_debug) {
     release_test_list = [
+      "asmstackoverflow",
       "multiconstpoolarray",
       "multiconstpoolclass",
       "multiconstpoolconstructor",
