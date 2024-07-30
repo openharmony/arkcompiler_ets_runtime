@@ -9853,4 +9853,37 @@ void StubBuilder::SetCompiledCodeFlagToFunctionFromMethod(GateRef glue, GateRef 
         Int32(JSFunctionBase::IsFastCallBit::START_BIT)));
     SetCompiledCodeFlagToFunction(glue, function, compiledCodeFlag);
 }
+
+void StubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
+                                                      GateRef profileTypeInfo, GateRef slotId)
+{
+    Label subEntry(env_);
+    env_->SubCfgEntry(&subEntry);
+
+    Label profileTypeInfoNotUndefined(env_);
+    Label slotValueUpdate(env_);
+    Label slotValueNotUndefined(env_);
+    Label profileTypeInfoEnd(env_);
+    NewObjectStubBuilder newBuilder(env_);
+    BRANCH(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
+    Bind(&profileTypeInfoNotUndefined);
+    {
+        GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
+        BRANCH(TaggedIsUndefined(slotValue), &slotValueUpdate, &slotValueNotUndefined);
+        Bind(&slotValueUpdate);
+        {
+            GateRef newProfileTypeInfoCell = newBuilder.NewProfileTypeInfoCell(glue, Undefined());
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, newProfileTypeInfoCell);
+            SetRawProfileTypeInfoToFunction(glue, function, newProfileTypeInfoCell);
+            Jump(&profileTypeInfoEnd);
+        }
+        Bind(&slotValueNotUndefined);
+        UpdateProfileTypeInfoCellType(glue, slotValue);
+        SetRawProfileTypeInfoToFunction(glue, function, slotValue);
+        Jump(&profileTypeInfoEnd);
+    }
+    Bind(&profileTypeInfoEnd);
+
+    env_->SubCfgExit();
+}
 }  // namespace panda::ecmascript::kungfu

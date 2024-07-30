@@ -977,6 +977,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     inline void StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
     GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum,
                          GateRef hir = Circuit::NullGate());
+    void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
+                                             GateRef profileTypeInfo, GateRef slotId);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

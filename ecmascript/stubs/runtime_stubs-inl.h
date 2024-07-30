@@ -958,6 +958,42 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
     return cls.GetTaggedValue();
 }
 
+void RuntimeStubs::SetProfileTypeInfoCellToFunction(JSThread *thread, const JSHandle<JSFunction> &jsFunc,
+                                                    const JSHandle<JSFunction> &definedFunc, uint16_t slotId)
+{
+    if (slotId == ProfileTypeInfo::INVALID_SLOT_INDEX) {  // do nothing for invalid slotId
+        return;
+    }
+
+    ASSERT(definedFunc->IsJSFunction());
+    ASSERT(!definedFunc->IsSharedFunction());
+    ASSERT(jsFunc->IsJSFunction());
+    ASSERT(!jsFunc->IsSharedFunction());
+
+    auto profileTypeInfo = jsFunc->GetProfileTypeInfo();
+    if (profileTypeInfo.IsUndefined()) {
+        JSHandle<Method> method(thread, jsFunc->GetMethod());
+        uint32_t slotSize = method->GetSlotSize();
+        profileTypeInfo = RuntimeNotifyInlineCache(thread, jsFunc, slotSize);
+    }
+
+    ASSERT(!profileTypeInfo.IsUndefined());
+
+    JSHandle<ProfileTypeInfo> profileTypeArray(thread, profileTypeInfo);
+    JSTaggedValue slotValue = profileTypeArray->Get(slotId);
+    if (slotValue.IsUndefined()) {
+        JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
+        JSHandle<ProfileTypeInfoCell> newProfileTypeInfoCell =
+            thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(handleUndefined);
+        profileTypeArray->Set(thread, slotId, newProfileTypeInfoCell);
+        definedFunc->SetRawProfileTypeInfo(thread, newProfileTypeInfoCell);
+    } else {
+        auto cellPtr = ProfileTypeInfoCell::Cast(slotValue.GetTaggedObject());
+        cellPtr->UpdateProfileTypeInfoCellType(thread);
+        definedFunc->SetRawProfileTypeInfo(thread, slotValue);
+    }
+}
+
 JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
                                                      const JSHandle<JSTaggedValue> &base,
                                                      const JSHandle<JSTaggedValue> &constpool,

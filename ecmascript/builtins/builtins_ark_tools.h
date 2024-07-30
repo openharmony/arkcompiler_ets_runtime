@@ -46,6 +46,8 @@
     V("timeInUs",                       TimeInUs,                       0, INVALID)       \
     V("getElementsKind",                GetElementsKind,                1, INVALID)       \
     V("isAOTCompiled",                  IsAOTCompiled,                  1, INVALID)       \
+    V("isSameProfileTypeInfo",          IsSameProfileTypeInfo,          2, INVALID)       \
+    V("isProfileTypeInfoValid",         IsProfileTypeInfoValid,         1, INVALID)       \
     V("isAOTDeoptimized",               IsAOTDeoptimized,               1, INVALID)       \
     V("printTypedOpProfiler",           PrintTypedOpProfiler,           1, INVALID)       \
     V("clearTypedOpProfiler",           ClearTypedOpProfiler,           0, INVALID)       \
@@ -203,6 +205,12 @@ public:
 
     // ArkTools.isAOTCompiledAssert(func)
     static JSTaggedValue IsAOTCompiled(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.isSameProfileTypeInfo(func1, func2)
+    static JSTaggedValue IsSameProfileTypeInfo(EcmaRuntimeCallInfo *info);
+
+    // ArkTools.isProfileTypeInfoValid(func)
+    static JSTaggedValue IsProfileTypeInfoValid(EcmaRuntimeCallInfo *info);
 
     // ArkTools.isAOTCompiledAssert(func)
     static JSTaggedValue IsAOTDeoptimized(EcmaRuntimeCallInfo *info);
