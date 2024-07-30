@@ -473,21 +473,26 @@ void JSHClass::SetPrototype(const JSThread *thread, JSTaggedValue proto)
     SetPrototype(thread, protoHandle);
 }
 
-JSHandle<JSTaggedValue> JSHClass::SetPrototypeWithNotification(const JSThread *thread,
-                                                               const JSHandle<JSTaggedValue> &hclass,
-                                                               const JSHandle<JSTaggedValue> &proto)
+JSHandle<JSHClass> JSHClass::SetPrototypeWithNotification(const JSThread *thread,
+                                                          const JSHandle<JSHClass> &hclass,
+                                                          const JSHandle<JSTaggedValue> &proto)
 {
-    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, JSHandle<JSHClass>::Cast(hclass), proto);
-    JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>::Cast(hclass), newClass);
-    return JSHandle<JSTaggedValue>(newClass);
+    // `hclass` can become prototype inside `TransitionProto` if `hclass` is HClass of `proto`.
+    // In this case we don't need to notify
+    auto wasPrototype = hclass->IsPrototype();
+    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
+    if (wasPrototype) {
+        ASSERT(hclass->IsPrototype());
+        JSHClass::NotifyHclassChanged(thread, hclass, newClass);
+    }
+    return newClass;
 }
 
 void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject> &object,
                                       const JSHandle<JSTaggedValue> &proto)
 {
     JSHandle<JSHClass> hclass(thread, object->GetJSHClass());
-    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
-    JSHClass::NotifyHclassChanged(thread, hclass, newClass);
+    auto newClass = SetPrototypeWithNotification(thread, hclass, proto);
     object->SynchronizedSetClass(thread, *newClass);
     JSHClass::TryRestoreElementsKind(thread, newClass, object);
     thread->NotifyStableArrayElementsGuardians(object, StableArrayChangeKind::PROTO);

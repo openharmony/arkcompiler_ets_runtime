@@ -84,4 +84,11 @@ const std::string &DebugInfo::GetComment(const std::string &funcName, size_t ind
     }
     return FuncDebugInfo::EmptyComment();
 }
+
+const std::string &DebugInfo::GetComment(size_t index) const
+{
+    ASSERT(!dInfos_.empty());
+    auto *info = dInfos_.back();
+    return info->GetComment(index);
+}
 }  // namespace panda::ecmascript::kungfu

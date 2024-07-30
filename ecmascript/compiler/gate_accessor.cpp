@@ -756,7 +756,8 @@ EcmaOpcode GateAccessor::GetByteCodeOpcode(GateRef gate) const
 void GateAccessor::Print(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    gatePtr->Print();
+    auto comment = circuit_->GetComment(gate);
+    gatePtr->Print("", false, -1, comment);
 }
 
 std::string GateAccessor::ToString(GateRef gate) const

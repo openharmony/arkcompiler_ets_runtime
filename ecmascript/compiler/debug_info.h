@@ -31,6 +31,7 @@ public:
     size_t AddComment(std::string &&str);
     void AddFuncDebugInfo(const std::string &name);
     const std::string &GetComment(const std::string &funcName, size_t index) const;
+    const std::string &GetComment(size_t index) const;
 
 private:
     class FuncDebugInfo {

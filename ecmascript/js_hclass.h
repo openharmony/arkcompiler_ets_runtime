@@ -1992,9 +1992,9 @@ public:
     ACCESSORS_PRIMITIVE_FIELD(BitField1, uint32_t, BIT_FIELD1_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
-    static JSHandle<JSTaggedValue> SetPrototypeWithNotification(const JSThread *thread,
-                                                                const JSHandle<JSTaggedValue> &hclass,
-                                                                const JSHandle<JSTaggedValue> &proto);
+    static JSHandle<JSHClass> SetPrototypeWithNotification(const JSThread *thread,
+                                                           const JSHandle<JSHClass> &hclass,
+                                                           const JSHandle<JSTaggedValue> &proto);
     static void SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject> &object,
                                        const JSHandle<JSTaggedValue> &proto);
     void SetPrototype(const JSThread *thread, JSTaggedValue proto);

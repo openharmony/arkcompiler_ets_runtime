@@ -185,11 +185,11 @@ bool JSFunction::PrototypeSetter(JSThread *thread, const JSHandle<JSObject> &sel
     JSTaggedValue protoOrHClass = func->GetProtoOrHClass();
     if (protoOrHClass.IsJSHClass()) {
         // need transition
-        JSHandle<JSTaggedValue> hclass(thread, protoOrHClass);
-        JSHandle<JSTaggedValue> newClass = JSHClass::SetPrototypeWithNotification(thread, hclass, value);
+        JSHandle<JSHClass> hclass(thread, JSHClass::Cast(protoOrHClass.GetTaggedObject()));
+        JSHandle<JSHClass> newClass = JSHClass::SetPrototypeWithNotification(thread, hclass, value);
         func->SetProtoOrHClass(thread, newClass);
         // Forbide to profile for changing the function prototype after an instance of the function has been created
-        if (!JSHClass::Cast(hclass->GetTaggedObject())->IsTS() && thread->GetEcmaVM()->IsEnablePGOProfiler()) {
+        if (!hclass->IsTS() && thread->GetEcmaVM()->IsEnablePGOProfiler()) {
             EntityId ctorMethodId = Method::Cast(func->GetMethod().GetTaggedObject())->GetMethodId();
             thread->GetEcmaVM()->GetPGOProfiler()->InsertSkipCtorMethodIdSafe(ctorMethodId);
         }
