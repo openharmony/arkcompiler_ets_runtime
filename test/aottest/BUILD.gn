@@ -75,6 +75,7 @@ group("ark_aot_ts_test") {
     "binaryop_special_value",
     "builtinmath",
     "builtins_string",
+    "call_builtin_objects",
     "call_same_bytecode_func",
     "callithisrange",
     "calls",
