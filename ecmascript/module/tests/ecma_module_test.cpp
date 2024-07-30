@@ -819,4 +819,35 @@ HWTEST_F_L0(EcmaModuleTest, ConcatPreviewTestUnifiedOhmUrl)
     CString res = ModulePathHelper::ConcatPreviewTestUnifiedOhmUrl(bundleName, pkgName, path, version);
     EXPECT_EQ(res, exceptOutUrl);
 }
+
+HWTEST_F_L0(EcmaModuleTest, NeedTranslateToNormalized)
+{
+    CString requestName = "@ohos:hilog";
+    bool res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "@app:com.example.myapplication/entry";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "@bundle:com.example.myapplication/library";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "@package:pkg_modules/.ohpm/json5@2.2.3/pkg_modules/json5/dist/index";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "@normalized:N&&&har/Index&1.0.0";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, false);
+
+    requestName = "json5";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, true);
+
+    requestName = "library";
+    res = ModulePathHelper::NeedTranslateToNormalized(requestName);
+    EXPECT_EQ(res, true);
+}
 }  // namespace panda::test

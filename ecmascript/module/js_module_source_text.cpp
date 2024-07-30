@@ -353,9 +353,9 @@ void SourceTextModule::MakeNormalizedAppArgs(const EcmaVM *vm, std::vector<Local
 }
 
 void SourceTextModule::MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
-    const CString &soPath, const CString &moduleName)
+    const CString &soPath, const CString &moduleName, const CString &requestName)
 {
-    if (vm->IsNormalizedOhmUrlPack()) {
+    if (!StringHelper::StringStartWith(requestName, ModulePathHelper::REQUIRE_NAPI_APP_PREFIX)) {
         return MakeNormalizedAppArgs(vm, arguments, soPath, moduleName);
     }
     size_t pos = soPath.find_last_of(PathHelper::SLASH_TAG);
@@ -402,7 +402,7 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleImpl(EcmaVM *vm, JSThread *t
 
     arguments.emplace_back(StringRef::NewFromUtf8(vm, soName.c_str()));
     if (moduleType == ModuleTypes::APP_MODULE) {
-        MakeAppArgs(vm, arguments, soName, moduleName);
+        MakeAppArgs(vm, arguments, soName, moduleName, moduleRequestName);
     } else if (moduleType == ModuleTypes::INTERNAL_MODULE) {
         MakeInternalArgs(vm, arguments, moduleRequestName);
     }

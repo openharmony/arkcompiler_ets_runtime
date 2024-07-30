@@ -166,7 +166,7 @@ public:
     static void MakeNormalizedAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
         const CString &soPath, const CString &moduleName);
     static void MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
-        const CString &soPath, const CString &moduleName);
+        const CString &soPath, const CString &moduleName, const CString &requestName);
     static void MakeInternalArgs(const EcmaVM *vm, std::vector<Local<JSValueRef>> &arguments,
                                  const CString &moduleRequestName);
     static Local<JSValueRef> LoadNativeModuleImpl(EcmaVM *vm, JSThread *thread,

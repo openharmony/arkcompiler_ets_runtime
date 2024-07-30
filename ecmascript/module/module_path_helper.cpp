@@ -63,7 +63,8 @@ CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, cons
     } else if (IsImportFile(requestName)) {
         // this branch save for import "xxx.js" in npm
         CString inputPath = requestName;
-        CString entryPoint = ConcatImportFileNormalizedOhmurlWithRecordName(jsPandaFile, recordName, requestName);
+        CString entryPoint = ConcatImportFileNormalizedOhmurlWithRecordName(thread, jsPandaFile, baseFileName,
+            recordName, requestName);
         if (entryPoint.empty()) {
             THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, inputPath, recordName, requestName);
         }
@@ -79,35 +80,44 @@ CString ModulePathHelper::ConcatMergeFileNameToNormalized(JSThread *thread, cons
  * Before: requestName: ../xxx1/xxx2 || ./xxx1
  * After:  &entryPath&version
  */
-CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(const JSPandaFile *jsPandaFile,
-    const CString &recordName, CString &requestName)
+CString ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(JSThread *thread,
+    const JSPandaFile *jsPandaFile, CString &baseFileName, const CString &recordName, const CString &requestName)
 {
     CString entryPoint;
     CVector<CString> res = SplitNormalizedRecordName(recordName);
     CString path = PathHelper::NORMALIZED_OHMURL_TAG + res[NORMALIZED_IMPORT_PATH_INDEX];
     CString version = res[NORMALIZED_VERSION_INDEX];
-    requestName = RemoveSuffix(requestName);
-    size_t pos = requestName.find(PathHelper::CURRENT_DIREATORY_TAG);
+    CString moduleRequestName = requestName;
+    moduleRequestName = RemoveSuffix(moduleRequestName);
+    size_t pos = moduleRequestName.find(PathHelper::CURRENT_DIREATORY_TAG);
     if (pos == 0) {
-        requestName = requestName.substr(CURRENT_DIREATORY_TAG_LEN);
+        moduleRequestName = moduleRequestName.substr(CURRENT_DIREATORY_TAG_LEN);
     }
     pos = path.rfind(PathHelper::SLASH_TAG);
     if (pos != CString::npos) {
-        entryPoint = path.substr(0, pos + 1) + requestName;
+        entryPoint = path.substr(0, pos + 1) + moduleRequestName;
     } else {
-        entryPoint = requestName;
+        entryPoint = moduleRequestName;
     }
     entryPoint = PathHelper::NormalizePath(entryPoint);
-    requestName = ConcatImportFileNormalizedOhmurl(entryPoint, "", version);
-    if (jsPandaFile->HasRecord(requestName)) {
-        return requestName;
+    moduleRequestName = ConcatImportFileNormalizedOhmurl(entryPoint, "", version);
+    if (jsPandaFile->HasRecord(moduleRequestName)) {
+        return moduleRequestName;
     }
     // requestName may be a folder
     entryPoint += PACKAGE_ENTRY_FILE;
     entryPoint = PathHelper::NormalizePath(entryPoint);
-    requestName = ConcatImportFileNormalizedOhmurl(entryPoint, "", version);
-    if (jsPandaFile->HasRecord(requestName)) {
-        return requestName;
+    moduleRequestName = ConcatImportFileNormalizedOhmurl(entryPoint, "", version);
+    if (jsPandaFile->HasRecord(moduleRequestName)) {
+        return moduleRequestName;
+    }
+
+    // requestName may be a packageName
+    moduleRequestName = requestName;
+    ConcatOtherNormalizedOhmurl(thread->GetEcmaVM(), jsPandaFile, baseFileName, moduleRequestName);
+    moduleRequestName = ParseNormalizedOhmUrl(thread, baseFileName, recordName, moduleRequestName);
+    if (jsPandaFile->HasRecord(moduleRequestName)) {
+        return moduleRequestName;
     }
     return CString();
 }
@@ -896,7 +906,8 @@ CString ModulePathHelper::TranslateExpressionToNormalized(JSThread *thread, cons
     EcmaVM *vm = thread->GetEcmaVM();
     CString inputPath = requestPath;
     if (IsImportFile(requestPath)) {
-        CString entryPoint = ConcatImportFileNormalizedOhmurlWithRecordName(jsPandaFile, recordName, requestPath);
+        CString entryPoint = ConcatImportFileNormalizedOhmurlWithRecordName(thread, jsPandaFile, baseFileName,
+            recordName, requestPath);
         if (entryPoint.empty()) {
             THROW_MODULE_NOT_FOUND_ERROR_WITH_RETURN_VALUE(thread, inputPath, recordName, requestPath);
         }
