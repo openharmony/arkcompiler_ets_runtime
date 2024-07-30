@@ -238,6 +238,7 @@ private:
     bool isProfileNeedDump_ { true };
     uint32_t hotnessThreshold_ { 0 };
     std::string bundleName_;
+    bool isEnableAppPGO_ { true };
 
     std::unordered_map<uint32_t, ThreadTaskInfo> threadTaskInfo_;
     RecursiveMutex threadTaskInfoLock_;
