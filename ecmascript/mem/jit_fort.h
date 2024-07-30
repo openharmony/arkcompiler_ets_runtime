@@ -66,6 +66,7 @@ public:
     void SortLiveMemDescList();
     void UpdateFreeSpace();
     JitFortRegion *ObjectAddressToRange(uintptr_t objAddress);
+    static void InitJitFortResource();
 
 private:
     FreeListAllocator<MemDesc> *allocator_ {nullptr};
