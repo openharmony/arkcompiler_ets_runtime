@@ -28,3 +28,20 @@
   array.__proto__.push(6);
   print(pop());
 })();
+
+/*
+ * @tc.name:arraypush
+ * @tc.desc:test Array function while SetCapacity
+ * @tc.type: FUNC
+ * @tc.require: issues:IAFERE
+ */
+
+function testSetCapacity() {
+  let arr = new Array();
+  for (let i = 0; i < 100000; i++) {
+      arr.push(i);
+  }
+  print("Test completed");
+}
+
+testSetCapacity();
