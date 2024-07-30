@@ -94,6 +94,18 @@ bool Circuit::AddComment(GateRef g, std::string &&str)
     return true;
 }
 
+std::string_view Circuit::GetComment(GateRef gate)
+{
+    if (debugInfo_ == nullptr || !debugInfo_->IsEnable()) {
+        return "";
+    }
+    size_t index;
+    if (!GetDebugInfo(gate, index)) {
+        return "";
+    }
+    return debugInfo_->GetComment(index);
+}
+
 bool Circuit::GetDebugInfo(GateRef g, size_t &index) const
 {
     auto it = gateToDInfo_.find(g);

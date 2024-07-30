@@ -159,6 +159,9 @@ class LogParser {
         }
         cutResult.push('inNum=[' + ir.in[0].length + ',' + ir.in[1].length + ',' + ir.in[2].length + ',' + ir.in[3].length + ',' + ir.in[4].length + ']');
         cutResult.push('outNum=' + ir.out.length);
+        if ('comment' in ir) {
+          cutResult.push('//' + ir.comment);
+        }
         ir.maxDetailWidth = 0;
         for (let detail of cutResult) {
           let w = X2DFast.gi().getTextWidth(detail, 14);
