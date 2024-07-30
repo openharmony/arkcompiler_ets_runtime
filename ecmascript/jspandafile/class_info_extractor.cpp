@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,8 +16,11 @@
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
+// ???
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "ecmascript/layout_info.h"
 #include "ecmascript/shared_objects/js_sendable_arraybuffer.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_shared_map.h"

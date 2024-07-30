@@ -14,6 +14,8 @@
  */
 
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
+
+#include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/region-inl.h"

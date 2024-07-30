@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,8 +21,10 @@
 #include <string_view>
 #include <vector>
 
+#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/mem/mem_common.h"
+#include "libpandabase/os/file.h"
 
 // namespace panda {
 namespace panda::ecmascript {

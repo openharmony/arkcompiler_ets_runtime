@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,10 +24,15 @@
 #include "ecmascript/frames.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/taskpool/taskpool.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "c/executor_task.h"
+#endif
+
+#if !defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
+    #error "ECMASCRIPT_SUPPORT_CPUPROFILER not defined"
 #endif
 
 namespace panda::ecmascript {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/jit/jit_task.h"
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/compiler/baseline/baseline_compiler.h"
 

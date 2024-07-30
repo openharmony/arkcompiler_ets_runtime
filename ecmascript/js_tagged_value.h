@@ -482,7 +482,7 @@ public:
     bool IsSlicedString() const;
     bool IsStringOrSymbol() const;
     bool IsLexicalEnv() const;
-    bool IsTaggedArray() const;
+    bool PUBLIC_API IsTaggedArray() const;
     bool IsDictionary() const;
     bool IsByteArray() const;
     bool IsConstantPool() const;
@@ -558,7 +558,7 @@ public:
     bool IsInternalAccessor() const;
     bool IsAccessor() const;
     bool IsJSGlobalEnv() const;
-    bool IsJSProxy() const;
+    bool PUBLIC_API IsJSProxy() const;
     bool CheckIsJSProxy() const;
     bool IsJSHClass() const;
     bool IsForinIterator() const;

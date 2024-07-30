@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,15 +24,11 @@
 #include "ecmascript/compiler/gate.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/lcr_gate_meta_data.h"
-#include "ecmascript/compiler/pgo_type/pgo_type_location.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/global_env_constants.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/constpool_value.h"
-#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
@@ -829,7 +825,7 @@ public:
     inline GateRef IntPtrAnd(GateRef x, GateRef y);
     inline GateRef IntPtrNot(GateRef x);
     inline GateRef IntPtrEqual(GateRef x, GateRef y);
-    inline GateRef DoubleTrunc(GateRef gate, GateRef value, const char* comment = nullptr);
+    GateRef DoubleTrunc(GateRef gate, GateRef value, const char* comment = nullptr);
     GateRef AddWithOverflow(GateRef left, GateRef right);
     GateRef SubWithOverflow(GateRef left, GateRef right);
     GateRef MulWithOverflow(GateRef left, GateRef right);
@@ -861,11 +857,11 @@ public:
     inline GateRef GetDoubleOfTInt(GateRef x);
     inline GateRef GetDoubleOfTDouble(GateRef x);
     inline GateRef GetBooleanOfTBoolean(GateRef x);
-    inline GateRef GetDoubleOfTNumber(GateRef x);
-    inline GateRef DoubleToInt(GateRef x, Label *exit);
-    inline GateRef DoubleToInt(GateRef glue, GateRef x, size_t typeBits);
-    inline GateRef DoubleCheckINFInRangeInt32(GateRef x);
-    inline GateRef DoubleInRangeInt32(GateRef x);
+    GateRef GetDoubleOfTNumber(GateRef x);
+    GateRef DoubleToInt(GateRef x, Label *exit);
+    GateRef DoubleToInt(GateRef glue, GateRef x, size_t typeBits);
+    GateRef DoubleCheckINFInRangeInt32(GateRef x);
+    GateRef DoubleInRangeInt32(GateRef x);
     inline GateRef Int32ToTaggedPtr(GateRef x);
     inline GateRef Int64ToTaggedPtr(GateRef x);
     inline GateRef Int32ToTaggedInt(GateRef x);

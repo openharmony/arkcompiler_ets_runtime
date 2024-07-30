@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,9 +16,10 @@
 #ifndef ECMASCRIPT_TAGGED_ARRAY_H
 #define ECMASCRIPT_TAGGED_ARRAY_H
 
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/js_hclass.h"
+#include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/mem/barriers.h"
+#include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
 class ObjectFactory;
@@ -33,42 +34,42 @@ public:
 
     JSTaggedValue Get(uint32_t idx) const;
 
+    JSTaggedValue Get([[maybe_unused]] const JSThread *thread, uint32_t idx) const;
+
     uint32_t GetIdx(const JSTaggedValue &value) const;
     JSTaggedValue GetBit(uint32_t idx, uint32_t bitOffset) const;
 
     template<typename T>
     void Set(const JSThread *thread, uint32_t idx, const JSHandle<T> &value);
 
-    JSTaggedValue Get(const JSThread *thread, uint32_t idx) const;
-
     template <bool needBarrier = true>
-    void Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
+    void PUBLIC_API Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
 
     void Set(uint32_t idx, const JSTaggedValue &value);
     void SetBit(const JSThread* thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue& value);
 
-    static inline JSHandle<TaggedArray> Append(const JSThread *thread, const JSHandle<TaggedArray> &first,
+    static JSHandle<TaggedArray> Append(const JSThread *thread, const JSHandle<TaggedArray> &first,
                                                const JSHandle<TaggedArray> &second);
-    static inline JSHandle<TaggedArray> AppendSkipHole(const JSThread *thread, const JSHandle<TaggedArray> &first,
+    static JSHandle<TaggedArray> AppendSkipHole(const JSThread *thread, const JSHandle<TaggedArray> &first,
                                                        const JSHandle<TaggedArray> &second, uint32_t copyLength);
 
-    static inline size_t ComputeSize(size_t elemSize, uint32_t length)
+    static size_t ComputeSize(size_t elemSize, uint32_t length)
     {
         ASSERT(elemSize != 0);
         size_t size = DATA_OFFSET + elemSize * length;
         return size;
     }
 
-    inline JSTaggedType *GetData() const
+    JSTaggedType *GetData() const
     {
         return reinterpret_cast<JSTaggedType *>(ToUintPtr(this) + DATA_OFFSET);
     }
 
-    inline bool IsDictionaryMode() const;
+    bool IsDictionaryMode() const;
 
     bool HasDuplicateEntry() const;
 
-    inline bool IsGeneralNewAndNotMarking(const JSThread *thread);
+    bool IsGeneralNewAndNotMarking(const JSThread *thread);
 
     static JSHandle<TaggedArray> SetCapacity(const JSThread *thread, const JSHandle<TaggedArray> &array,
                                              uint32_t capa);
@@ -76,22 +77,22 @@ public:
     static JSHandle<TaggedArray> SetCapacityInOldSpace(const JSThread *thread, const JSHandle<TaggedArray> &array,
                                                        uint32_t capa);
 
-    static inline void RemoveElementByIndex(const JSThread *thread, JSHandle<TaggedArray> &srcArray,
+    static void RemoveElementByIndex(const JSThread *thread, JSHandle<TaggedArray> &srcArray,
                                             uint32_t index, uint32_t effectiveLength, bool noNeedBarrier = false);
-    static inline void InsertElementByIndex(const JSThread *thread, JSHandle<TaggedArray> &srcArray,
+    static void InsertElementByIndex(const JSThread *thread, JSHandle<TaggedArray> &srcArray,
         const JSHandle<JSTaggedValue> &value, uint32_t index, uint32_t effectiveLength);
-    static inline void CopyTaggedArrayElement(const JSThread *thread, JSHandle<TaggedArray> &srcElements,
+    static void CopyTaggedArrayElement(const JSThread *thread, JSHandle<TaggedArray> &srcElements,
                                               JSHandle<TaggedArray> &dstElements, uint32_t effectiveLength);
 
-    inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length, uint32_t extraLength = 0);
-    inline void FillRangeWithSpecialValue(JSTaggedValue initValue, uint32_t start, uint32_t end);
+    void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t length, uint32_t extraLength = 0);
+    void FillRangeWithSpecialValue(JSTaggedValue initValue, uint32_t start, uint32_t end);
 
-    static inline bool ShouldTrim(uint32_t oldLength, uint32_t newLength)
+    static bool ShouldTrim(uint32_t oldLength, uint32_t newLength)
     {
         ASSERT(oldLength >= newLength);
         return (oldLength - newLength > MAX_END_UNUSED);
     }
-    inline void Trim(const JSThread *thread, uint32_t newLength);
+    void Trim(const JSThread *thread, uint32_t newLength);
 
     static constexpr size_t LENGTH_OFFSET = TaggedObjectSize();
     ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, EXTRA_LENGTH_OFFSET)
@@ -122,7 +123,7 @@ private:
 // Used by JSArrays with specified elementsKind.
 class MutantTaggedArray : public TaggedArray {
 public:
-    inline void InitializeWithSpecialValue(JSTaggedType initValue, uint32_t length, uint32_t extraLength = 0);
+    void InitializeWithSpecialValue(JSTaggedType initValue, uint32_t length, uint32_t extraLength = 0);
 
     DECL_VISIT_ARRAY(DATA_OFFSET, 0, GetLength());
     CAST_CHECK(MutantTaggedArray, IsMutantTaggedArray)

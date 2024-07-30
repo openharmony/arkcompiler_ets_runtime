@@ -22,6 +22,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/ohos/aot_runtime_info.h"

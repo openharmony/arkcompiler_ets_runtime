@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -42,8 +42,8 @@
 #include "ecmascript/message_string.h"
 #include "ecmascript/mem/slots.h"
 #include "ecmascript/mem/visitor.h"
+#include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/property_attributes.h"
-#include "ecmascript/sendable_env.h"
 
 namespace panda::ecmascript::kungfu {
 using JSFunction = panda::ecmascript::JSFunction;
@@ -2962,12 +2962,6 @@ inline GateRef StubBuilder::GetPropertiesFromSendableEnv(GateRef object, GateRef
 inline GateRef StubBuilder::GetKeyFromLexivalEnv(GateRef lexicalEnv, GateRef levelIndex, GateRef slotIndex)
 {
     return env_->GetBuilder()->GetKeyFromLexivalEnv(lexicalEnv, levelIndex, slotIndex);
-}
-
-inline void StubBuilder::SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value)
-{
-    GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
-    SetValueToTaggedArray(VariableType::JS_ANY(), glue, object, valueIndex, value);
 }
 
 inline void StubBuilder::SetPropertiesToSendableEnv(GateRef glue, GateRef object, GateRef index, GateRef value)

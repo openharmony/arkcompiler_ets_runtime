@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,7 +17,6 @@
 #define ECMASCRIPT_HANDLE_SCOPE_H
 
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_thread.h"
 #ifdef ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK
 #include "ecmascript/platform/backtrace.h"
 #include "ecmascript/log_wrapper.h"
@@ -25,6 +24,7 @@
 #endif
 
 namespace panda::ecmascript {
+class JSThread;
 /*
  * Handles are only valid within a HandleScope. When a handle is created for an object a cell is allocated in the
  * current HandleScope.

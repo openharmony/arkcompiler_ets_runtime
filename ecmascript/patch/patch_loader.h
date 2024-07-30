@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,7 +18,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_thread.h"
+#include "ecmascript/method.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/napi/include/jsnapi.h"
 
@@ -29,6 +29,7 @@ using LiteralDataAccessor = panda_file::LiteralDataAccessor;
 using LiteralValue = panda_file::LiteralDataAccessor::LiteralValue;
 using LiteralTag = panda_file::LiteralTag;
 class ConstantPool;
+class JSThread;
 
 struct BaseMethodIndex {
     uint32_t constpoolNum {UINT32_MAX};

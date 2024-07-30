@@ -18,6 +18,8 @@
 
 #include "ecmascript/mem/rset_worklist_handler.h"
 
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {

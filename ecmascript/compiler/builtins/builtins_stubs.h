@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,11 +16,10 @@
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_STUB_H
 #define ECMASCRIPT_COMPILER_BUILTINS_STUB_H
 
-#include "ecmascript/base/config.h"
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/interpreter_stub.h"
+#include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/ecma_string.h"
 
 namespace panda::ecmascript::kungfu {
 class BuiltinsStubBuilder : public StubBuilder {
@@ -65,66 +64,9 @@ public:
         return Load(VariableType::JS_ANY(), info, thisOffset);
     }
 
-    inline GateRef GetCallArg0(GateRef numArg)
-    {
-        auto env = GetEnvironment();
-        Label subentry(env);
-        env->SubCfgEntry(&subentry);
-        DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-        Label isValid(env);
-        Label exit(env);
-        BRANCH(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(0)), &isValid, &exit);
-        Bind(&isValid);
-        {
-            result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG0_OR_ARGV));
-            Jump(&exit);
-        }
-        Bind(&exit);
-        auto res = *result;
-        env->SubCfgExit();
-        return res;
-    }
-
-    inline GateRef GetCallArg1(GateRef numArg)
-    {
-        auto env = GetEnvironment();
-        Label subentry(env);
-        env->SubCfgEntry(&subentry);
-        DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-        Label isValid(env);
-        Label exit(env);
-        BRANCH(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(1)), &isValid, &exit);
-        Bind(&isValid);
-        {
-            result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG1));
-            Jump(&exit);
-        }
-        Bind(&exit);
-        auto res = *result;
-        env->SubCfgExit();
-        return res;
-    }
-
-    inline GateRef GetCallArg2(GateRef numArg)
-    {
-        auto env = GetEnvironment();
-        Label subentry(env);
-        env->SubCfgEntry(&subentry);
-        DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-        Label isValid(env);
-        Label exit(env);
-        // 2: 2 args
-        BRANCH(Int32GreaterThan(TruncPtrToInt32(numArg), Int32(2)), &isValid, &exit);
-        Bind(&isValid);
-        {
-            result = TaggedArgument(static_cast<size_t>(BuiltinsArgs::ARG2));
-            Jump(&exit);
-        }
-        Bind(&exit);
-        auto res = *result;
-        env->SubCfgExit();
-        return res;
-    }
+    GateRef GetCallArg0(GateRef numArg);
+    GateRef GetCallArg1(GateRef numArg);
+    GateRef GetCallArg2(GateRef numArg);
 
     inline GateRef GetArgv()
     {

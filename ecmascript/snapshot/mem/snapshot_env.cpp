@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/global_env.h"
 
 namespace panda::ecmascript {

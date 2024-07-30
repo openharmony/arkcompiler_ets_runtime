@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,7 +17,11 @@
 
 #include "ecmascript/runtime.h"
 #include "ecmascript/builtin_entries.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/enum_conversion.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/ts_types/builtin_type_id.h"
@@ -37,8 +41,9 @@
 #include "ecmascript/ecma_param_configuration.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/properties_cache.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/log_wrapper.h"
+#include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/mark_word.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/platform/file.h"
@@ -337,6 +342,18 @@ void JSThread::CloseStackTraceFd()
         FSync(reinterpret_cast<fd_t>(stackTraceFd_));
         Close(reinterpret_cast<fd_t>(stackTraceFd_));
         stackTraceFd_ = -1;
+    }
+}
+
+void JSThread::SetJitCodeMap(JSTaggedType exception,  MachineCode* machineCode, std::string &methodName,
+    uintptr_t offset)
+{
+    auto it = jitCodeMaps_.find(exception);
+    if (it != jitCodeMaps_.end()) {
+        it->second->push_back(std::make_tuple(machineCode, methodName, offset));
+    } else {
+        JitCodeVector *jitCode = new JitCodeVector {std::make_tuple(machineCode, methodName, offset)};
+        jitCodeMaps_.emplace(exception, jitCode);
     }
 }
 

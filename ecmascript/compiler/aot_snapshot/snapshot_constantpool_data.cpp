@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,6 +17,8 @@
 
 #include "ecmascript/compiler/pgo_type/pgo_type_location.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
+#include "ecmascript/ecma_context.h"
+#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ts_types/global_type_info.h"
 #include "ecmascript/global_env_constants-inl.h"

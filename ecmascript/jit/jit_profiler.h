@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/compiler/compilation_env.h"
 #include "ecmascript/elements.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/mem/c_containers.h"

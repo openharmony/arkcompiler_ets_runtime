@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,13 +22,13 @@
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const JSHandle<EcmaString> &firstString,

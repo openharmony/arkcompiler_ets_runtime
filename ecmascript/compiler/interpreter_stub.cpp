@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -29,6 +29,7 @@
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/profile_type_info.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"

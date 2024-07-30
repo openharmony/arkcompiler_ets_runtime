@@ -18,6 +18,7 @@
 
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/compiler/assembler/macro_assembler.h"
+#include "ecmascript/method.h"
 
 namespace panda::ecmascript::kungfu {
 enum class SpecialRegister : uint8_t {

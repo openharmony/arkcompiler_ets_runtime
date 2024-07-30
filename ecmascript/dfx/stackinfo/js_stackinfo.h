@@ -19,6 +19,7 @@
 #include <csignal>
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/extractortool/src/source_map.h"
+#include "ecmascript/frames.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/dfx/dump_code/jit_dump_elf.h"

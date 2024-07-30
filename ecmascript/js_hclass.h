@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -416,7 +416,11 @@ public:
     using BitField1LastBit = IsAllTaggedPropBit;
     static_assert(BitField1LastBit::START_BIT + BitField1LastBit::SIZE <= sizeof(uint32_t) * BITS_PER_BYTE, "Invalid");
 
-    static JSHClass *Cast(const TaggedObject *object);
+    static JSHClass *Cast(const TaggedObject *object)
+    {
+        ASSERT(JSTaggedValue(object).IsJSHClass());
+        return static_cast<JSHClass *>(const_cast<TaggedObject *>(object));
+    }
 
     inline size_t SizeFromJSHClass(TaggedObject *header);
     inline bool HasReferenceField();

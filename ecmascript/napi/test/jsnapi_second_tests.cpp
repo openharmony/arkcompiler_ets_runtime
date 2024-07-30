@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,12 +34,14 @@
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/linked_hash_table.h"

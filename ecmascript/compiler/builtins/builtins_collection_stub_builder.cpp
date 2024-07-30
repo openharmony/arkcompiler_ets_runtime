@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,7 +15,6 @@
 
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 
-#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/js_map.h"

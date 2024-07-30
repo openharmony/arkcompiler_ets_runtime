@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,8 +17,10 @@
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"

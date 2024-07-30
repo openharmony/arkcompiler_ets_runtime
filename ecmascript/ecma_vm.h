@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,16 +20,14 @@
 
 #include "ecmascript/base/config.h"
 #include "ecmascript/builtins/builtins_method_index.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/js_runtime_options.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/gc_key_stats.h"
+#include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/taskpool/taskpool.h"
 
 namespace panda {
@@ -62,6 +60,12 @@ class EcmaStringTable;
 class SnapshotEnv;
 class SnapshotSerialize;
 class SnapshotProcessor;
+class JSThread;
+
+namespace pgo {
+    class PGOProfiler;
+} // namespace pgo
+
 using PGOProfiler = pgo::PGOProfiler;
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 class HeapProfilerInterface;
@@ -195,47 +199,9 @@ public:
         return const_cast<EcmaVM *>(vm);
     }
 
-    void CheckThread() const
-    {
-        // Exclude GC thread
-        if (thread_ == nullptr) {
-            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
-        }
-        if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
-            thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
-                LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
-                                    << " thread:" << thread_->GetThreadId()
-                                    << " currentThread:" << JSThread::GetCurrentThreadId();
-        }
-    }
-
-    JSThread *GetAndFastCheckJSThread() const
-    {
-        if (thread_ == nullptr) {
-            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
-        }
-        if (thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
-            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
-                                    << " thread:" << thread_->GetThreadId()
-                                    << " currentThread:" << JSThread::GetCurrentThreadId();
-        }
-        return thread_;
-    }
-
-    bool CheckSingleThread() const
-    {
-        if (thread_ == nullptr) {
-            LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
-            return false;
-        }
-        if (thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
-            LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
-                            << " thread:" << thread_->GetThreadId()
-                            << " currentThread:" << JSThread::GetCurrentThreadId();
-            return false;
-        }
-        return true;
-    }
+    void PUBLIC_API CheckThread() const;
+    JSThread *GetAndFastCheckJSThread() const;
+    bool CheckSingleThread() const;
 
     ARK_INLINE JSThread *GetJSThread() const
     {
@@ -708,10 +674,7 @@ public:
         return aotFileManager_;
     }
 
-    uint32_t GetTid() const
-    {
-        return thread_->GetThreadId();
-    }
+    uint32_t GetTid() const;
 
     std::vector<NativePointerCallbackData> &GetConcurrentNativePointerCallbacks()
     {
@@ -852,20 +815,7 @@ public:
         aotSnapShotStatsMap_[tag] += count;
     }
 
-    void PrintAOTSnapShotStats()
-    {
-        static constexpr int nameRightAdjustment = 30;
-        static constexpr int numberRightAdjustment = 30;
-        LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << "AOT Snapshot Genre"
-                       << std::setw(numberRightAdjustment) << "Count";
-        LOG_ECMA(ERROR) << "==========================================================================";
-        for (const auto &iter: aotSnapShotStatsMap_) {
-            LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << iter.first
-                           << std::setw(numberRightAdjustment) << iter.second;
-        }
-        LOG_ECMA(ERROR) << "==========================================================================";
-        aotSnapShotStatsMap_.clear();
-    }
+    void PrintAOTSnapShotStats();
 
 protected:
 

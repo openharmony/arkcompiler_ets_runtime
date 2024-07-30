@@ -20,6 +20,7 @@
 #include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/mem.h"

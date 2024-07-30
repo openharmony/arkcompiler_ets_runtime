@@ -155,6 +155,7 @@
       panda::ecmascript::EcmaStringAccessor::CreateLineString*;
       panda::ecmascript::EcmaStringAccessor::EcmaStringAccessor*;
       panda::ecmascript::EcmaStringAccessor::ToStdString*;
+      panda::ecmascript::EcmaVM::CheckThread*;
       panda::ecmascript::EcmaVM::GetGlobalEnv*;
       panda::ecmascript::EcmaVM::IsEnableElementsKind*;
       panda::ecmascript::EcmaVM::IsEnablePGOProfiler*;
@@ -206,6 +207,8 @@
       panda::ecmascript::JSPandaFile::GetRecordNameWithBundlePack*;
       panda::ecmascript::JSPandaFile::IsFirstMergedAbc*;
       panda::ecmascript::JSProxy::IsArray*;
+      panda::ecmascript::JSTaggedValue::IsTaggedArray*;
+      panda::ecmascript::JSTaggedValue::IsJSProxy*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
       panda::ecmascript::JSTaggedValue::IsInSharedHeap*;
       panda::ecmascript::JITProfiler::ProfileBytecode*;

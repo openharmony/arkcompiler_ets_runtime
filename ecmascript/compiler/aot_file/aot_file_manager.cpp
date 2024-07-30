@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -26,7 +26,7 @@
 #include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/common_stubs.h"
+#include "ecmascript/compiler/common_stub_csigns.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/ecma_vm.h"
@@ -56,6 +56,19 @@ using SnapshotGlobalData = kungfu::SnapshotGlobalData;
 #if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
 JsAotReaderCallback AOTFileManager::jsAotReader_ = nullptr;
 #endif
+
+void AOTLiteralInfo::InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t capacity, uint32_t extraLength)
+{
+    TaggedArray::InitializeWithSpecialValue(initValue, capacity + RESERVED_LENGTH, extraLength);
+    SetIhc(JSTaggedValue::Undefined());
+    SetChc(JSTaggedValue::Undefined());
+    SetLiteralType(JSTaggedValue(INVALID_LITERAL_TYPE));
+}
+
+void AOTLiteralInfo::SetObjectToCache(JSThread *thread, uint32_t index, JSTaggedValue value)
+{
+    Set(thread, index, value);
+}
 
 void AOTFileManager::Iterate(const RootVisitor &v)
 {
@@ -424,7 +437,7 @@ void AOTFileManager::AdjustBCStubAndDebuggerStubEntries(JSThread *thread,
     auto defaultBCStubDes = stubs[BytecodeStubCSigns::SingleStepDebugging];
     auto defaultBCDebuggerStubDes = stubs[BytecodeStubCSigns::BCDebuggerEntry];
     auto defaultBCDebuggerExceptionStubDes = stubs[BytecodeStubCSigns::BCDebuggerExceptionEntry];
-    ASSERT(defaultBCStubDes.kind_ == CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);
+    ASSERT(defaultBCStubDes.kind_ == kungfu::CallSignature::TargetKind::BYTECODE_HELPER_HANDLER);
     if (asmInterOpt.handleStart >= 0 && asmInterOpt.handleStart <= asmInterOpt.handleEnd) {
         for (int i = asmInterOpt.handleStart; i <= asmInterOpt.handleEnd; i++) {
             thread->SetBCStubEntry(static_cast<size_t>(i), defaultBCStubDes.codeAddr_);

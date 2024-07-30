@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,7 +18,6 @@
 #include "ecmascript/base/config.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
-#include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/file_generators.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
 #include "ecmascript/compiler/pass.h"
@@ -29,7 +28,7 @@
 #include "ecmascript/js_runtime_options.h"
 #include "ecmascript/log.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/compiler/baseline/baseline_stubs.h"
+#include "ecmascript/compiler/baseline/baseline_stub_csigns.h"
 
 namespace panda::ecmascript::kungfu {
 class StubPassData : public PassData {

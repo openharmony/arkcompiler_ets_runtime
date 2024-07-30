@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,6 +24,7 @@
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/tracing/tracing.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/mem/c_string.h"
 #include "ecmascript/mem/heap-inl.h"

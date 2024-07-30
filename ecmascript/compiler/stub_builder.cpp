@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -35,12 +35,14 @@
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_thread.h"
+#include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "ecmascript/property_attributes.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_table.h"
+#include "ecmascript/transitions_dictionary.h"
 
 namespace panda::ecmascript::kungfu {
 void StubBuilder::Jump(Label *label)
@@ -5193,6 +5195,12 @@ GateRef StubBuilder::DefinePropertyByValue(GateRef glue, GateRef receiver, GateR
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+void StubBuilder::SetPropertiesToLexicalEnv(GateRef glue, GateRef object, GateRef index, GateRef value)
+{
+    GateRef valueIndex = Int32Add(index, Int32(LexicalEnv::RESERVED_ENV_LENGTH));
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue, object, valueIndex, value);
 }
 
 void StubBuilder::NotifyHClassChanged(GateRef glue, GateRef oldHClass, GateRef newHClass)

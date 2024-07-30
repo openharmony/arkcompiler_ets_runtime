@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,6 +17,7 @@
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
 #include "ecmascript/ecma_string.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/tagged_array-inl.h"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,8 +18,10 @@
 
 #include <atomic>
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
+#include "ecmascript/js_array.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/class_literal.h"
@@ -532,59 +534,10 @@ public:
 
     static JSTaggedValue GetClassLiteralFromCache(JSThread *thread, JSHandle<ConstantPool> constpool,
         uint32_t literal, CString entry, JSHandle<JSTaggedValue> sendableEnv = JSHandle<JSTaggedValue>(),
-        ClassKind kind = ClassKind::NON_SENDABLE)
-    {
-        [[maybe_unused]] EcmaHandleScope handleScope(thread);
-        // Do not use cache when sendable for get wrong obj from cache,
-        // shall be fix or refactor during shared object implements
-        JSTaggedValue val = constpool->GetObjectFromCache(literal);
-        JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
-
-        // For AOT
-        bool isLoadedAOT = jsPandaFile->IsLoadedAOT();
-        JSHandle<AOTLiteralInfo> entryIndexes(thread, JSTaggedValue::Undefined());
-        if (isLoadedAOT && val.IsAOTLiteralInfo()) {
-            entryIndexes = JSHandle<AOTLiteralInfo>(thread, val);
-            val = JSTaggedValue::Hole();
-        }
-
-        if (val.IsHole()) {
-            EcmaVM *vm = thread->GetEcmaVM();
-            ObjectFactory *factory = vm->GetFactory();
-            ASSERT(jsPandaFile->IsNewVersion());
-            panda_file::File::EntityId literalId = constpool->GetEntityId(literal);
-            bool needSetAotFlag = isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined();
-            JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(thread,
-                jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes, nullptr, sendableEnv, kind);
-            JSHandle<ClassLiteral> classLiteral;
-            if (kind == ClassKind::SENDABLE) {
-                classLiteral = factory->NewSClassLiteral();
-            } else {
-                classLiteral = factory->NewClassLiteral();
-            }
-            classLiteral->SetArray(thread, literalArray);
-            val = classLiteral.GetTaggedValue();
-            if (kind == ClassKind::SENDABLE) {
-                CASSetObjectToCache(thread, constpool.GetTaggedValue(), literal, val);
-            } else {
-                constpool->SetObjectToCache(thread, literal, val);
-            }
-        }
-
-        return val;
-    }
+        ClassKind kind = ClassKind::NON_SENDABLE);
 
     static JSHandle<TaggedArray> GetFieldLiteral(JSThread *thread, JSHandle<ConstantPool> constpool,
-                                                 uint32_t literal, CString entry)
-    {
-        JSPandaFile *jsPandaFile = constpool->GetJSPandaFile();
-        JSHandle<AOTLiteralInfo> entryIndexes(thread, JSTaggedValue::Undefined());
-        ASSERT(jsPandaFile->IsNewVersion());
-        panda_file::File::EntityId literalId(literal);
-        JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(
-            thread, jsPandaFile, literalId, constpool, entry, false, entryIndexes);
-        return literalArray;
-    }
+                                                 uint32_t literal, CString entry);
 
     template <ConstPoolType type>
     static JSTaggedValue GetLiteralFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index, CString entry)
@@ -714,52 +667,9 @@ public:
         return GetLiteralFromCache<type>(thread, constpool, index, entry);
     }
 
-    static JSTaggedValue PUBLIC_API GetStringFromCacheForJit(JSThread *thread, JSTaggedValue constpool, uint32_t index)
-    {
-        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-        auto val = taggedPool->Get(index);
-        if (val.IsHole()) {
-            JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
-            panda_file::File::EntityId id = taggedPool->GetEntityId(index);
-            auto foundStr = jsPandaFile->GetStringData(id);
+    static JSTaggedValue PUBLIC_API GetStringFromCacheForJit(JSThread *thread, JSTaggedValue constpool, uint32_t index);
 
-            EcmaVM *vm = thread->GetEcmaVM();
-            ObjectFactory *factory = vm->GetFactory();
-            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::SHARED_OLD_SPACE,
-                jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
-            val = JSTaggedValue(string);
-        }
-        return val;
-    }
-
-    static JSTaggedValue PUBLIC_API GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index)
-    {
-        const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
-        auto val = taggedPool->Get(index);
-        if (val.IsHole()) {
-            if (!taggedPool->GetJSPandaFile()->IsNewVersion()) {
-                JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool);
-                taggedPool = ConstantPool::Cast(unsharedCp.GetTaggedObject());
-                return taggedPool->Get(index);
-            }
-            [[maybe_unused]] EcmaHandleScope handleScope(thread);
-
-            JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
-            panda_file::File::EntityId id = taggedPool->GetEntityId(index);
-            auto foundStr = jsPandaFile->GetStringData(id);
-
-            EcmaVM *vm = thread->GetEcmaVM();
-            ObjectFactory *factory = vm->GetFactory();
-            JSHandle<ConstantPool> constpoolHandle(thread, constpool);
-            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::SHARED_OLD_SPACE,
-                jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
-
-            val = JSTaggedValue(string);
-            CASSetObjectToCache(thread, constpoolHandle.GetTaggedValue(), index, val);
-        }
-
-        return val;
-    }
+    static JSTaggedValue PUBLIC_API GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index);
 
     DECL_VISIT_ARRAY(DATA_OFFSET, GetCacheLength(), GetLength());
 
