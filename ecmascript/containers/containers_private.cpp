@@ -905,6 +905,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeBitVector(JSThread* thread)
     JSHandle<JSTaggedValue> lengthKey(thread, globalConst->GetLengthString());
     SetGetter(thread, prototype, lengthKey, lengthGetter);
 
+    SetFunctionAtSymbol(thread, env, prototype, env->GetIteratorSymbol(), "[Symbol.iterator]",
+                        ContainersBitVector::GetIteratorObj, FuncLength::ONE);
     ContainersPrivate::InitializeBitVectorIterator(thread, env, globalConst);
 
     globalConst->SetConstant(ConstantIndex::BITVECTOR_FUNCTION_INDEX, bitVectorFunction.GetTaggedValue());
