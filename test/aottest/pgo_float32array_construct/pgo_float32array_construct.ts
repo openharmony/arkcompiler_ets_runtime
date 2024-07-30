@@ -26,3 +26,15 @@ function test() {
 
 test()
 print(ArkTools.isAOTCompiled(test))  // pgo:false, aot:true
+
+function test2() {
+    let float32 = new Float32Array([20, 30, 40]);
+    let x = new Float32Array([20, 30, 40]);
+    let y = new Float32Array(x);
+
+    float32[0] = 1.1;
+    x[1] = 2.2;
+    y[2] = 3.3;
+}
+test2();
+print(ArkTools.isAOTCompiled(test2))  // pgo:false, aot:true

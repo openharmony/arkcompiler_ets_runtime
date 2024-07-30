@@ -435,6 +435,25 @@ GateRef CircuitBuilder::CallSetter(GateRef hirGate, GateRef receiver, GateRef ho
     return callGate;
 }
 
+GateRef CircuitBuilder::Float32ArrayConstructor(GateRef hirGate, std::vector<GateRef> args)
+{
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    uint64_t bitfield = args.size();
+    uint64_t pcOffset = acc_.TryGetPcOffset(hirGate);
+    ASSERT(pcOffset != 0);
+    args.insert(args.begin(), currentDepend);
+    args.insert(args.begin(), currentControl);
+    AppendFrameArgs(args, hirGate);
+    auto callGate = GetCircuit()->NewGate(circuit_->Float32ArrayConstructor(bitfield, pcOffset),
+        MachineType::I64, args.size(), args.data(), GateType::AnyType());
+    currentLabel->SetControl(callGate);
+    currentLabel->SetDepend(callGate);
+    return callGate;
+}
+
 GateRef CircuitBuilder::Construct(GateRef hirGate, std::vector<GateRef> args)
 {
     ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE || acc_.GetOpCode(hirGate) == OpCode::REFLECT_CONSTRUCT);
@@ -473,7 +492,8 @@ GateRef CircuitBuilder::CallInternal(GateRef hirGate, std::vector<GateRef> args,
 GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
                                 bool needPushArgv)
 {
-    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE);
+    ASSERT(acc_.GetOpCode(hirGate) == OpCode::JS_BYTECODE ||
+           acc_.GetOpCode(hirGate) == OpCode::FLOAT32_ARRAY_CONSTRUCTOR);
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
@@ -649,14 +669,10 @@ GateRef CircuitBuilder::BuiltinConstructor(BuiltinsStubCSigns::ID id, GateRef ga
         }
         case BuiltinsStubCSigns::ID::Float32ArrayConstructor: {
             if (acc_.GetNumValueIn(gate) == 1) {
-                newGate = GetCircuit()->NewGate(circuit_->Float32ArrayConstructor(1), MachineType::I64,
-                                                { currentControl, currentDepend, acc_.GetValueIn(gate, 0)},
-                                                GateType::TaggedValue());
+                newGate = Float32ArrayConstructor(gate, { acc_.GetValueIn(gate, 0)});
             } else {
                 ASSERT(acc_.GetNumValueIn(gate) == 2); // 2: num value in
-                newGate = GetCircuit()->NewGate(circuit_->Float32ArrayConstructor(2), MachineType::I64,
-                    { currentControl, currentDepend, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)},
-                    GateType::TaggedValue());
+                newGate = Float32ArrayConstructor(gate, { acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1)});
             }
             break;
         }

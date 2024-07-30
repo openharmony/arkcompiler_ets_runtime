@@ -2187,21 +2187,26 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
     return ret;
 }
 
+GateRef NewObjectStubBuilder::NewFloat32ArrayObj(GateRef glue, GateRef glueGlobalEnv)
+{
+    GateRef arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                          GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
+    GateRef hclass = Load(VariableType::JS_POINTER(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    GateRef obj = NewJSObject(glue, hclass);
+    return obj;
+}
+
 GateRef NewObjectStubBuilder::NewFloat32ArrayWithSize(GateRef glue, GateRef size)
 {
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
-
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
-    Label exit(env);
     DEFVARIABLE(buffer, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
     GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
     GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-    GateRef arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                          GlobalEnv::FLOAT32_ARRAY_FUNCTION_INDEX);
-    GateRef hclass = Load(VariableType::JS_POINTER(), arrayFunc, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    GateRef obj = NewJSObject(glue, hclass);
+    GateRef obj = NewFloat32ArrayObj(glue, glueGlobalEnv);
     result = obj;
     GateRef ctorName = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                               ConstantIndex::FLOAT32_ARRAY_STRING_INDEX);
