@@ -145,7 +145,6 @@ public:
     void SetOverShootSize(size_t size);
     bool AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread);
     void SetWaterLine();
-    void SetWaterLineWithoutGC();
 
     uintptr_t GetWaterLine() const
     {
