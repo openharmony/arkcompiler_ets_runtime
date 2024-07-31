@@ -46,3 +46,113 @@ declare function print(arg:any):string;
         print("throw exception");
     }
 }
+
+function unshift() {
+  for (var i = 0; i < 10; i++) {
+    [0, 0, 0, 0, 0, 0, 0].unshift(0);
+	  [0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0].unshift(0);
+  }
+}
+
+function forEach() {
+  let array = [];
+  for (let i = 0; i < 10; i++) array.push(i);
+  array.forEach(function(item){
+      item += 1;
+  });
+}
+
+function spliced() {
+  let array = [];
+  for (let i = 0; i < 10; i++) array.push(i);
+  array.splice(0, 10);
+}
+
+function toSpliced() {
+  let array = [];
+  for (let i = 0; i < 10; i++) array.push(i);
+  let b = array.toSpliced(0, 2);
+}
+
+function some() {
+  let array = [];
+  for (let i = 0; i < 10; i++) array.push(i);
+  for (let i = 0; i < 10; i++) {
+      const condition = (element) => element < 10;
+      array.some(condition);
+  }
+}
+
+function every() {
+  let array = [];
+  for (let i = 0; i < 10; i++) array.push(i);
+  const condition = (element) => element < 10;
+  array.every(condition);
+}
+
+function reduceRight() {
+  const array1 = [
+      [0, 1],
+      [2, 3],
+      [4, 5],
+    ];
+  for (let i = 0; i < 5; i++) {
+      const result = array1.reduceRight((accumulator, currentValue) =>
+      accumulator.concat(currentValue),
+    );
+  }
+}
+
+function findLastIndex() {
+  let array = [];
+  for (let i = 0; i < 10; i++) array.push(i);
+  for (let i = 0; i < 10; i++) {
+      const condition = (element) => element < 10;
+      array.findLastIndex(condition);
+  }
+}
+
+function findLast() {
+  let array = [];
+  for (let i = 0; i < 10; i++) array.push(i);
+  for (let i = 0; i < 10; i++) {
+      const condition = (element) => element < 10;
+      array.findLast(condition);
+  }
+}
+
+function flatMap() {
+  let array = [];
+  for (let i = 0; i < 10; i++) array.push(i);
+  for (let i = 0; i < 10; i++) {
+      array.flatMap((num) => (num % 2 == 0 ? [num, num] : num));
+  }
+}
+
+function testGenericFastPath() {
+  for (var i = 0; i < 10; i++) {
+    let a = [0, 0, , undefined, 0, 0, 0];	// elementsKind is generic
+    a.unshift(0); // undefined can set array generic
+  }
+}
+
+function testGenericSlowPath() {
+  for (var i = 0; i < 10; i++) {
+    let a = [0, 0, , undefined, 0, 0, 0];
+    a.x = 1; // elementsKind is generic but transition
+    a.unshift(0);
+  }
+}
+  
+unshift();
+forEach();
+spliced();
+toSpliced();
+some();
+every();
+reduceRight();
+findLastIndex();
+findLast();
+flatMap();
+testGenericFastPath();
+testGenericSlowPath();
