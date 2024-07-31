@@ -16,6 +16,7 @@
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/base/json_parser.h"
 #include "ecmascript/base/json_helper.h"
+#include "ecmascript/linked_hash_table.h"
 
 namespace panda::ecmascript::base {
 
@@ -103,6 +104,33 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     }
                     Advance();
                     continue;
+                case Tokens::MAP:
+                    if (EmptyObjectCheck()) {
+                        if (transformType_ == TransformType::SENDABLE) {
+                            parseValue = JSHandle<JSTaggedValue>(CreateSharedMap());
+                        } else {
+                            parseValue = JSHandle<JSTaggedValue>(CreateMap());
+                        }
+                        GetNextNonSpaceChar();
+                        break;
+                    }
+                    continuationList.emplace_back(std::move(continuation));
+                    continuation = JsonContinuation(ContType::MAP, propertyList.size());
+
+                    SkipStartWhiteSpace();
+                    if (UNLIKELY(*current_ != '"')) {
+                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP Prop in JSON",
+                                                      JSTaggedValue::Exception());
+                    }
+                    propertyList.emplace_back(ParseString(true));
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                    SkipStartWhiteSpace();
+                    if (UNLIKELY(*current_ != ':')) {
+                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP in JSON",
+                                                      JSTaggedValue::Exception());
+                    }
+                    Advance();
+                    continue;
                 case Tokens::ARRAY:
                     if (EmptyArrayCheck()) {
                         if (transformType_ == TransformType::SENDABLE) {
@@ -129,11 +157,12 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     break;
                 case Tokens::NUMBER:
-                    parseValue = JSHandle<JSTaggedValue>(thread_, ParseNumber(IsInObjOrArray(continuation.type_)));
+                    parseValue = JSHandle<JSTaggedValue>(thread_,
+                                                         ParseNumber(IsInObjOrArrayOrMap(continuation.type_)));
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     break;
                 case Tokens::STRING:
-                    parseValue = ParseString(IsInObjOrArray(continuation.type_));
+                    parseValue = ParseString(IsInObjOrArrayOrMap(continuation.type_));
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     break;
                 default:
@@ -201,6 +230,40 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     }
                     if (UNLIKELY(*current_ != '}')) {
                         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
+                                                      JSTaggedValue::Exception());
+                    }
+                    Advance();
+                    propertyList.resize(continuation.index_);
+                    continuation = std::move(continuationList.back());
+                    continuationList.pop_back();
+                    continue;
+                }
+                case ContType::MAP: {
+                    propertyList.emplace_back(parseValue);
+                    SkipStartWhiteSpace();
+                    if (*current_ == ',') {
+                        GetNextNonSpaceChar();
+                        if (UNLIKELY(*current_ != '"')) {
+                            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP Prop in JSON",
+                                                          JSTaggedValue::Exception());
+                        }
+                        propertyList.emplace_back(ParseString(true));
+                        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+                        SkipStartWhiteSpace();
+                        if (UNLIKELY(*current_ != ':')) {
+                            THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP in JSON",
+                                                          JSTaggedValue::Exception());
+                        }
+                        Advance();
+                        break;
+                    }
+                    if (UNLIKELY(transformType_ == TransformType::SENDABLE)) {
+                        parseValue = CreateSJsonMap(continuation, propertyList);
+                    } else {
+                        parseValue = CreateJsonMap(continuation, propertyList);
+                    }
+                    if (UNLIKELY(*current_ != '}')) {
+                        THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected MAP in JSON",
                                                       JSTaggedValue::Exception());
                     }
                     Advance();
@@ -326,6 +389,86 @@ JSHandle<JSTaggedValue> JsonParser<T>::CreateSJsonObject(JsonContinuation contin
 }
 
 template<typename T>
+JSHandle<JSSharedMap> JsonParser<T>::CreateSharedMap()
+{
+    JSHandle<JSTaggedValue> proto = GetSMapPrototype();
+    auto emptySLayout = thread_->GlobalConstants()->GetHandledEmptySLayoutInfo();
+    JSHandle<JSHClass> mapClass = factory_->NewSEcmaHClass(JSSharedMap::SIZE, 0,
+                                                           JSType::JS_SHARED_MAP, proto,
+                                                           emptySLayout);
+    JSHandle<JSObject> obj = factory_->NewSharedOldSpaceJSObjectWithInit(mapClass);
+    JSHandle<JSSharedMap> jsMap = JSHandle<JSSharedMap>::Cast(obj);
+    JSHandle<LinkedHashMap> linkedMap(
+        LinkedHashMap::Create(thread_, LinkedHashMap::MIN_CAPACITY, MemSpaceKind::SHARED));
+    jsMap->SetLinkedMap(thread_, linkedMap);
+    jsMap->SetModRecord(0);
+    return jsMap;
+}
+
+template<typename T>
+JSHandle<JSMap> JsonParser<T>::CreateMap()
+{
+    JSHandle<JSTaggedValue> constructor = env_->GetBuiltinsMapFunction();
+    JSHandle<JSMap> map =
+        JSHandle<JSMap>::Cast(factory_->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashMap> linkedMap = LinkedHashMap::Create(thread_);
+    map->SetLinkedMap(thread_, linkedMap);
+    return JSHandle<JSMap>(thread_, *map);
+}
+
+template<typename T>
+JSHandle<JSTaggedValue> JsonParser<T>::CreateJsonMap(JsonContinuation continuation,
+                                                     std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    size_t start = continuation.index_;
+    size_t size = propertyList.size() - start;
+    uint32_t fieldNum = size / 2;
+    JSHandle<JSMap> map = CreateMap();
+    if (fieldNum == 0) {
+        return JSHandle<JSTaggedValue>(map);
+    }
+    for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
+        JSMap::Set(thread_, map, propertyList[start + i], propertyList[start + i + 1]);
+        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
+    }
+    return JSHandle<JSTaggedValue>(map);
+}
+
+template<typename T>
+JSHandle<JSTaggedValue> JsonParser<T>::CreateSJsonMap(JsonContinuation continuation,
+                                                      std::vector<JSHandle<JSTaggedValue>> &propertyList)
+{
+    size_t start = continuation.index_;
+    size_t size = propertyList.size() - start;
+    uint32_t fieldNum = size / 2; // 2: key-value pair
+    JSHandle<JSSharedMap> jsMap = CreateSharedMap();
+    if (fieldNum == 0) {
+        return JSHandle<JSTaggedValue>(jsMap);
+    } else if (LIKELY(fieldNum <= JSSharedMap::MAX_INLINE)) {
+        for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
+            JSSharedMap::Set(thread_, jsMap, propertyList[start + i], propertyList[start + i + 1]);
+        }
+        return JSHandle<JSTaggedValue>(jsMap);
+    }
+    // build in dict mode
+    JSMutableHandle<NameDictionary> dict(
+        thread_, NameDictionary::CreateInSharedHeap(thread_, NameDictionary::ComputeHashTableSize(fieldNum)));
+    JSMutableHandle<JSTaggedValue> propKey(thread_, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> propValue(thread_, JSTaggedValue::Undefined());
+    // create dict and set key value
+    for (size_t i = 0; i < size; i += 2) { // 2: prop name and value
+        PropertyAttributes attributes = PropertyAttributes::Default(false, false, false);
+        propKey.Update(propertyList[start + i]);
+        propValue.Update(propertyList[start + i + 1]);
+        JSHandle<NameDictionary> newDict = NameDictionary::PutIfAbsent(thread_, dict, propKey,
+                                                                       propValue, attributes);
+        dict.Update(newDict);
+    }
+    jsMap->SetProperties(thread_, dict);
+    return JSHandle<JSTaggedValue>(jsMap);
+}
+
+template<typename T>
 JSTaggedValue JsonParser<T>::SetPropertyByValue(const JSHandle<JSTaggedValue> &receiver,
     const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value)
 {
@@ -359,7 +502,7 @@ JSTaggedValue JsonParser<T>::ParseNumber(bool inObjorArr)
                                           JSTaggedValue::Exception());
         }
         if (isFast) {
-            return parseOptions_ == ParseOptions::ALWAYSPARSEASBIGINT ?
+            return parseOptions_.bigIntMode == BigIntMode::ALWAYS_PARSE_AS_BIGINT ?
                 BigInt::Int32ToBigInt(thread_, fastInteger).GetTaggedValue() : JSTaggedValue(fastInteger);
         }
     }
@@ -408,11 +551,11 @@ JSTaggedValue JsonParser<T>::ConvertToNumber(const std::string &str, bool negati
     if (negative && v == 0) {
         return JSTaggedValue(-0.0);
     }
-    if (parseOptions_ == ParseOptions::DEFAULT) {
+    if (parseOptions_.bigIntMode == BigIntMode::DEFAULT) {
         return JSTaggedValue::TryCastDoubleToInt32(v);
     }
     if (NumberHelper::IsSafeIntegerNumber(v)) {
-        if (parseOptions_ == ParseOptions::ALWAYSPARSEASBIGINT) {
+        if (parseOptions_.bigIntMode == BigIntMode::ALWAYS_PARSE_AS_BIGINT) {
             JSTaggedValue value =  BigInt::DoubleToBigInt(thread_, v);
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
             if (value.IsBigInt()) {
@@ -428,12 +571,12 @@ JSTaggedValue JsonParser<T>::ConvertToNumber(const std::string &str, bool negati
 }
 
 template<typename T>
-bool JsonParser<T>::ParseStringLength(size_t &length, bool &isAscii, bool inObjorArr)
+bool JsonParser<T>::ParseStringLength(size_t &length, bool &isAscii, bool inObjOrArrOrMap)
 {
-    Text last = inObjorArr ? range_ : end_;
+    Text last = inObjOrArrOrMap ? range_ : end_;
     for (Text current = current_; current < last; ++current) {
         T c = *current;
-        if (inObjorArr && c == '"') {
+        if (inObjOrArrOrMap && c == '"') {
             end_ = current;
             return true;
         } else if (c == '\\') {
@@ -448,7 +591,7 @@ bool JsonParser<T>::ParseStringLength(size_t &length, bool &isAscii, bool inObjo
         }
         ++length;
     }
-    return !inObjorArr;
+    return !inObjOrArrOrMap;
 }
 
 template<typename T>
@@ -597,11 +740,11 @@ void JsonParser<T>::CopyCharWithBackslash(Char *&p)
 }
 
 template<typename T>
-JSHandle<JSTaggedValue> JsonParser<T>::ParseStringWithBackslash(bool inObjorArr)
+JSHandle<JSTaggedValue> JsonParser<T>::ParseStringWithBackslash(bool inObjOrArrOrMap)
 {
     size_t length = 0;
     bool isAscii = true;
-    if (UNLIKELY(!ParseStringLength(length, isAscii, inObjorArr))) {
+    if (UNLIKELY(!ParseStringLength(length, isAscii, inObjOrArrOrMap))) {
         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected string in JSON",
             JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
     }
@@ -661,7 +804,7 @@ Tokens JsonParser<T>::ParseToken()
 {
     switch (*current_) {
         case '{':
-            return Tokens::OBJECT;
+            return parseOptions_.returnType == ParseReturnType::MAP ? Tokens::MAP : Tokens::OBJECT;
         case '[':
             return Tokens::ARRAY;
         case '"':
@@ -981,10 +1124,10 @@ void Utf8JsonParser::UpdatePointersListener(void *utf8Parser)
     }
 }
 
-JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjorArr)
+JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjOrArrOrMap)
 {
     bool isFastString = true;
-    if (inObjorArr) {
+    if (inObjOrArrOrMap) {
         if (UNLIKELY(!ReadJsonStringRange(isFastString))) {
             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
                 JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
@@ -1011,7 +1154,7 @@ JSHandle<JSTaggedValue> Utf8JsonParser::ParseString(bool inObjorArr)
                 sourceString_, offset, strLength));
         }
     }
-    return ParseStringWithBackslash(inObjorArr);
+    return ParseStringWithBackslash(inObjOrArrOrMap);
 }
 
 bool Utf8JsonParser::ReadJsonStringRange(bool &isFastString)
@@ -1065,11 +1208,11 @@ void Utf16JsonParser::ParticalParseString(std::string& str, Text current, Text n
     str += StringHelper::U16stringToString(std::u16string(current, nextCurrent));
 }
 
-JSHandle<JSTaggedValue> Utf16JsonParser::ParseString(bool inObjorArr)
+JSHandle<JSTaggedValue> Utf16JsonParser::ParseString(bool inObjOrArrOrMap)
 {
     bool isFastString = true;
     bool isAscii = true;
-    if (inObjorArr) {
+    if (inObjOrArrOrMap) {
         if (UNLIKELY(!ReadJsonStringRange(isFastString, isAscii))) {
             THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected end Text in JSON",
                 JSHandle<JSTaggedValue>(thread_, JSTaggedValue::Exception()));
@@ -1108,7 +1251,7 @@ JSHandle<JSTaggedValue> Utf16JsonParser::ParseString(bool inObjorArr)
                 reinterpret_cast<const uint16_t *>(value.data()), value.size()));
         }
     }
-    return ParseStringWithBackslash(inObjorArr);
+    return ParseStringWithBackslash(inObjOrArrOrMap);
 }
 
 bool Utf16JsonParser::ReadJsonStringRange(bool &isFastString, bool &isAscii)

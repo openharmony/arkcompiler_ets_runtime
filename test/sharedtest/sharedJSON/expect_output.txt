@@ -83,4 +83,17 @@ TypeError: reviver only supports undefined for SENDABLE_JSON
 0.4799123
 0.7777334477383838
 1.23e-14
-
+ASON support MAP Test Start
+112233445566778899
+true
+[object SendableMap]
+SyntaxError: Unexpected MAP Prop in JSON
+SyntaxError: Unexpected MAP in JSON
+[object SendableMap]
+sendableMap5 size: 2
+sendableMap5 x: 你好
+sendableMap5 a: 2
+sendableMap6 arr: 1,2,3
+sendableMap6 boolA: true
+sendableMap6 boolB: false
+sendableMap6 nullText: null

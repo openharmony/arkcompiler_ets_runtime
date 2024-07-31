@@ -26,8 +26,8 @@ public:
 
     static bool Delete(const JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JSTaggedValue> &key);
 
-    static void Set(JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JSTaggedValue> &key,
-                    const JSHandle<JSTaggedValue> &value);
+    static void PUBLIC_API Set(JSThread *thread, const JSHandle<JSMap> &map, const JSHandle<JSTaggedValue> &key,
+                               const JSHandle<JSTaggedValue> &value);
     static void Clear(const JSThread *thread, const JSHandle<JSMap> &map);
 
     bool Has(JSThread *thread, JSTaggedValue key) const;

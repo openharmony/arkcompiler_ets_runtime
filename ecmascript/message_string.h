@@ -63,7 +63,6 @@ namespace panda::ecmascript {
     V(InvalidRadixLength, "radix must be 2 to 36")                                           \
     V(SetPrototypeOfFailed, "SetPrototypeOf: prototype set failed")                          \
     V(ReviverOnlySupportUndefined, "reviver only supports undefined for SENDABLE_JSON")      \
-    V(ReturnTypeNotSupportMap, "parseReturnType is not support MAP")                         \
     V(DefineFieldField, "DefineField: obj is not Object")                                    \
     V(IsNotPropertyKey, "key is not a property key")                                         \
     V(CreateDataPropertyFailed, "failed to create data property")                            \
