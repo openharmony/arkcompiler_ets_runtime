@@ -429,8 +429,10 @@ void OldSpace::Merge(LocalSpace *localSpace)
             localHeap_->ShouldThrowOOMError(true);
         }
         IncreaseMergeSize(committedSize_ - oldCommittedSize);
+        size_t committedOverSizeLimit = committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity();
+        IncreaseCommittedOverSizeLimit(committedOverSizeLimit);
         // if throw OOM, temporarily increase space size to avoid vm crash
-        IncreaseOutOfMemoryOvershootSize(committedSize_ + hugeSpaceCommitSize - GetOverShootMaximumCapacity());
+        IncreaseOutOfMemoryOvershootSize(committedOverSizeLimit);
     }
 
     localSpace->GetRegionList().Clear();

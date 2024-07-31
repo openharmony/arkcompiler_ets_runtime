@@ -1008,6 +1008,11 @@ void Heap::EnableParallelGC()
 
 TriggerGCType Heap::SelectGCType() const
 {
+    if (shouldThrowOOMError_) {
+        // Force Full GC after failed Old GC to avoid OOM
+        return FULL_GC;
+    }
+
     // If concurrent mark is enabled, the TryTriggerConcurrentMarking decide which GC to choose.
     if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToConcurrentMark()) {
         return YOUNG_GC;
@@ -1180,11 +1185,14 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         CheckNonMovableSpaceOOM();
     }
     // OOMError object is not allowed to be allocated during gc process, so throw OOMError after gc
-    if (shouldThrowOOMError_) {
+    if (shouldThrowOOMError_ && gcType_ == TriggerGCType::FULL_GC) {
         sweeper_->EnsureAllTaskFinished();
-        DumpHeapSnapshotBeforeOOM(false);
-        StatisticHeapDetail();
-        ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
+        oldSpace_->ResetCommittedOverSizeLimit();
+        if (oldSpace_->CommittedSizeExceed()) {
+            DumpHeapSnapshotBeforeOOM(false);
+            StatisticHeapDetail();
+            ThrowOutOfMemoryError(thread_, oldSpace_->GetMergeSize(), " OldSpace::Merge");
+        }
         oldSpace_->ResetMergeSize();
         shouldThrowOOMError_ = false;
     }
