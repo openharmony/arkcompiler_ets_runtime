@@ -616,6 +616,17 @@ void Builtins::SetInlineFunction(const JSHandle<GlobalEnv> &env, const JSHandle<
     obj->SetPropertyInlinedProps(thread_, index, function.GetTaggedValue());
 }
 
+JSHandle<JSFunction> Builtins::SetInlineFunctionAndRetJSFunction(const JSHandle<GlobalEnv> &env,
+    const JSHandle<JSObject> &obj, std::string_view key,
+    EcmaEntrypoint func, uint32_t index, int length,
+    kungfu::BuiltinsStubCSigns::ID builtinId) const
+{
+    JSHandle<JSTaggedValue> keyString(factory_->NewFromUtf8ReadOnly(key));
+    JSHandle<JSFunction> function(NewFunction(env, keyString, func, length, builtinId));
+    obj->SetPropertyInlinedProps(thread_, index, function.GetTaggedValue());
+    return function;
+}
+
 void Builtins::SetInlineAccessor(const JSHandle<JSObject> &obj, uint32_t index,
                                  const JSHandle<JSTaggedValue> &getter, const JSHandle<JSTaggedValue> &setter) const
 {
@@ -653,9 +664,11 @@ void Builtins::InitializeFunctionPrototype(const JSHandle<GlobalEnv> &env, JSHan
     // 19.2.3.5 Function.prototype.toString ( )
     SetInlineFunction(env, funcFuncPrototypeObj, thread_->GlobalConstants()->GetHandledToStringString(),
                       Function::FunctionPrototypeToString, fieldIndex++, FunctionLength::ZERO);
-    SetInlineFunction(env, funcFuncPrototypeObj, "[Symbol.hasInstance]",
-                      Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE,
-                      BUILTINS_STUB_ID(FunctionPrototypeHasInstance));
+    JSHandle<JSFunction> function = SetInlineFunctionAndRetJSFunction(
+        env, funcFuncPrototypeObj, "[Symbol.hasInstance]",
+        Function::FunctionPrototypeHasInstance, fieldIndex++, FunctionLength::ONE,
+        BUILTINS_STUB_ID(FunctionPrototypeHasInstance));
+    env->SetHasInstanceFunction(thread_, function);
 }
 
 void Builtins::InitializeFunction(const JSHandle<GlobalEnv> &env, JSHandle<JSTaggedValue> &objFuncPrototypeVal) const
