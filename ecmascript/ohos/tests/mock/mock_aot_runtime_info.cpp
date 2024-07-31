@@ -20,33 +20,33 @@ MockAotRuntimeInfo::MockAotRuntimeInfo()
 {}
 MockAotRuntimeInfo::~MockAotRuntimeInfo()
 {}
-bool MockAotRuntimeInfo::GetRuntimeBuildId(char *buildId) const
+bool MockAotRuntimeInfo::GetRuntimeBuildId(char *buildId, int length) const
 {
     char tmp[NAME_MAX] = "abcd1234567890";
-    if (strcpy_s(buildId, NAME_MAX, tmp) != 0) {
+    if (strcpy_s(buildId, length, tmp) != 0) {
         return false;
     }
     return true;
 }
 
-bool MockAotRuntimeInfo::GetMicrosecondsTimeStamp(char *timestamp) const
+bool MockAotRuntimeInfo::GetMicrosecondsTimeStamp(char *timestamp, size_t length) const
 {
     char tmp[ecmascript::ohos::AotRuntimeInfo::TIME_STAMP_SIZE] = "1970-01-01 00:00:00";
-    if (strcpy_s(timestamp, ecmascript::ohos::AotRuntimeInfo::TIME_STAMP_SIZE, tmp) != 0) {
+    if (strcpy_s(timestamp, length, tmp) != 0) {
         return false;
     }
     return true;
 }
 
-bool MockAotRuntimeInfo::GetCrashSandBoxRealPath(char *realOutPath) const
+bool MockAotRuntimeInfo::GetCrashSandBoxRealPath(char *realOutPath, size_t length) const
 {
-    if (strcpy_s(realOutPath, NAME_MAX, SANBOX_DIR) != 0) {
+    if (strcpy_s(realOutPath, length, SANBOX_DIR) != 0) {
         return false;
     }
-    if (strcat_s(realOutPath, NAME_MAX, "/") != 0) {
+    if (strcat_s(realOutPath, length, "/") != 0) {
         return false;
     }
-    if (strcat_s(realOutPath, NAME_MAX, AOT_RUNTIME_INFO) != 0) {
+    if (strcat_s(realOutPath, length, AOT_RUNTIME_INFO) != 0) {
         return false;
     }
     return true;

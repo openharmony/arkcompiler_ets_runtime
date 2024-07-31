@@ -91,7 +91,7 @@ struct CallThisArgvWithReturnArgs {
 struct JSCallArgs {
     JSCallArgs() {}
     JSCallArgs(JSCallMode m) : mode(m) {}
-    JSCallMode mode;
+    JSCallMode mode {JSCallMode::CALL_ARG0};
     union {
         CallArgs callArgs;
         CallArgsWithThis callArgsWithThis;
@@ -152,7 +152,7 @@ private:
 
     bool isFast_ {true};
     bool isBridge_ {false};
-    bool isForBaseline_;
+    bool isForBaseline_ {false};
     GateRef sp_ {0};
     GateRef method_ {0};
     GateRef numArgs_ {0};
