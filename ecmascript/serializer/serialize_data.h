@@ -178,7 +178,7 @@ public:
 
     ssize_t RawDataEmit(const void *data, size_t length, ssize_t offset)
     {
-        if (length <= 0) {
+        if (length <= 0 || offset < 0) {
             return -1;
         }
         if ((offset + length) > bufferCapacity_) {
@@ -191,7 +191,7 @@ public:
             return -1;
         }
         ssize_t res = offset;
-        if (bufferSize_ == offset) {
+        if (bufferSize_ == static_cast<size_t>(offset)) {
             bufferSize_ += length;
         }
         return res;
