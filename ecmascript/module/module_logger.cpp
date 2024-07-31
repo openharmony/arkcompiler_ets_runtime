@@ -116,6 +116,7 @@ void ModuleLogger::PrintSummary() const
     std::string path;
     if (!CreateResultFile(path)) {
         LOG_ECMA(ERROR) << "open file fail, no log anymore";
+        return;
     }
     std::ofstream fileHandle;
     fileHandle.open(path, std::ios_base::app);
@@ -132,6 +133,7 @@ void ModuleLogger::PrintUsedFileInfo() const
     std::string path;
     if (!OpenResultFile(path)) {
         LOG_ECMA(ERROR) << "open file fail, no log anymore";
+        return;
     }
     std::ofstream fileHandle;
     fileHandle.open(path, std::ios_base::app);
@@ -168,6 +170,7 @@ void ModuleLogger::PrintUnusedFileInfo() const
     std::string path;
     if (!OpenResultFile(path)) {
         LOG_ECMA(ERROR) << "open file fail, no log anymore";
+        return;
     }
     std::ofstream fileHandle;
     fileHandle.open(path, std::ios_base::app);
