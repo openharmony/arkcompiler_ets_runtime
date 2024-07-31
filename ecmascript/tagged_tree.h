@@ -19,7 +19,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/tagged_array.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 enum TreeColor : uint8_t { BLACK = 0, RED };

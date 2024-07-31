@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef ECMASCRIPT_TAGGED_ARRAY_INL_H
-#define ECMASCRIPT_TAGGED_ARRAY_INL_H
+#define ECMASCRIPT_TAGGED_ARRAY_CPP
 
 #include "ecmascript/tagged_array.h"
+#include "ecmascript/tagged_array-inl.h"
 
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/js_thread.h"
@@ -24,15 +24,6 @@
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
-JSTaggedValue TaggedArray::Get(uint32_t idx) const
-{
-    ASSERT(idx < GetLength());
-    // Note: Here we can't statically decide the element type is a primitive or heap object, especially for
-    //       dynamically-typed languages like JavaScript. So we simply skip the read-barrier.
-    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
-    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), offset));
-}
 
 JSTaggedValue TaggedArray::Get([[maybe_unused]] const JSThread *thread, uint32_t idx) const
 {
@@ -70,23 +61,6 @@ void TaggedArray::SetBit(const JSThread *thread, uint32_t idx, uint32_t bitOffse
     }
     Set<false>(thread, idx, JSTaggedValue(element));
 }
-
-template <bool needBarrier>
-void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value)
-{
-    ASSERT(idx < GetLength());
-    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
-
-    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    if (needBarrier && value.IsHeapObject()) {
-        Barriers::SetObject<true>(thread, GetData(), offset, value.GetRawData());
-    } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
-        Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetRawData());
-    }
-}
-
-template void TaggedArray::Set<true>(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
-template void TaggedArray::Set<false>(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
 
 void TaggedArray::Set(uint32_t idx, const JSTaggedValue &value)
 {
@@ -271,4 +245,3 @@ void MutantTaggedArray::InitializeWithSpecialValue(JSTaggedType initValue, uint3
     }
 }
 }  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_TAGGED_ARRAY_INL_H

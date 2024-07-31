@@ -40,10 +40,10 @@ public:
     JSTaggedValue GetBit(uint32_t idx, uint32_t bitOffset) const;
 
     template<typename T>
-    void Set(const JSThread *thread, uint32_t idx, const JSHandle<T> &value);
+    inline void Set(const JSThread *thread, uint32_t idx, const JSHandle<T> &value);
 
     template <bool needBarrier = true>
-    void PUBLIC_API Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
+    inline void Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
 
     void Set(uint32_t idx, const JSTaggedValue &value);
     void SetBit(const JSThread* thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue& value);
