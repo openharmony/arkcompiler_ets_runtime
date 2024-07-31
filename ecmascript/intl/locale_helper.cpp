@@ -397,38 +397,42 @@ void LocaleHelper::HandleLocaleExtension(size_t &start, size_t &extensionEnd, co
 
 LocaleHelper::ParsedLocale LocaleHelper::HandleLocale(const JSHandle<EcmaString> &localeString)
 {
-    std::string result = ConvertToStdString(localeString);
-    size_t len = result.size();
+    return LocaleHelper::HandleLocale(ConvertToStdString(localeString));
+}
+
+LocaleHelper::ParsedLocale LocaleHelper::HandleLocale(const std::string &localeString)
+{
+    size_t len = localeString.size();
     ParsedLocale parsedResult;
 
     // a. The single-character subtag ’x’ as the primary subtag indicates
     //    that the language tag consists solely of subtags whose meaning is
     //    defined by private agreement.
     // b. Extensions cannot be used in tags that are entirely private use.
-    if (IsPrivateSubTag(result, len)) {
-        parsedResult.base = result;
+    if (IsPrivateSubTag(localeString, len)) {
+        parsedResult.base = localeString;
         return parsedResult;
     }
     // If cannot find "-u-", return the whole string as base.
-    size_t foundExtension = result.find("-u-");
+    size_t foundExtension = localeString.find("-u-");
     if (foundExtension == std::string::npos) {
-        parsedResult.base = result;
+        parsedResult.base = localeString;
         return parsedResult;
     }
     // Let privateIndex be Call(%StringProto_indexOf%, foundLocale, « "-x-" »).
-    size_t privateIndex = result.find("-x-");
+    size_t privateIndex = localeString.find("-x-");
     if (privateIndex != std::string::npos && privateIndex < foundExtension) {
-        parsedResult.base = result;
+        parsedResult.base = localeString;
         return parsedResult;
     }
-    const std::string basis = result.substr(0, foundExtension);
+    const std::string basis = localeString.substr(0, foundExtension);
     size_t extensionEnd = len;
     ASSERT(len > INTL_INDEX_TWO);
     size_t start = foundExtension + 1;
-    HandleLocaleExtension(start, extensionEnd, result, len);
-    const std::string end = result.substr(extensionEnd);
+    HandleLocaleExtension(start, extensionEnd, localeString, len);
+    const std::string end = localeString.substr(extensionEnd);
     parsedResult.base = basis + end;
-    parsedResult.extension = result.substr(foundExtension, extensionEnd - foundExtension);
+    parsedResult.extension = localeString.substr(foundExtension, extensionEnd - foundExtension);
     return parsedResult;
 }
 
