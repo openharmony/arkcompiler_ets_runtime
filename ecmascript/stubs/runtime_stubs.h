@@ -495,8 +495,6 @@ private:
         uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj, JSTaggedValue value);
     static inline JSTaggedValue RuntimeTestIn(JSThread *thread, JSTaggedValue lexicalEnv,
         uint32_t levelIndex, uint32_t slotIndex, JSTaggedValue obj);
-    static inline bool IsNeedNotifyHclassChangedForAotTransition(JSThread *thread, const JSHandle<JSHClass> &hclass,
-                                                                 JSTaggedValue key);
     static inline JSTaggedValue RuntimeUpdateAOTHClass(JSThread *thread, const JSHandle<JSHClass> &oldhclass,
         const JSHandle<JSHClass> &newhclass, JSTaggedValue key);
     static inline JSTaggedValue RuntimeNotifyDebuggerStatement(JSThread *thread);

@@ -304,13 +304,19 @@ void JSHClass::AddProperty(const JSThread *thread, const JSHandle<JSObject> &obj
         JSHandle<JSHClass> newHClass(thread, newClass);
         TryRestoreElementsKind(thread, newHClass, obj);
 #if ECMASCRIPT_ENABLE_IC
-        JSHClass::NotifyHclassChanged(thread, jshclass, JSHandle<JSHClass>(thread, newClass), key.GetTaggedValue());
-#endif
         // The transition hclass from AOT, which does not have protochangemarker, needs to be reset here
         if (newClass->IsTS() && newClass->IsPrototype()) {
-            JSHClass::RefreshUsers(thread, jshclass, JSHandle<JSHClass>(thread, newClass));
-            JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, newClass));
+            if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, jshclass, key.GetTaggedValue())) {
+                JSHClass::EnableProtoChangeMarker(thread, JSHandle<JSHClass>(thread, newClass));
+                JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key.GetTaggedValue());
+            } else {
+                JSHClass::RefreshUsers(thread, jshclass, newHClass);
+            }
+            JSHClass::EnablePHCProtoChangeMarker(thread, newHClass);
+        } else {
+            JSHClass::NotifyHclassChanged(thread, jshclass, newHClass, key.GetTaggedValue());
         }
+#endif
         return;
     }
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
@@ -1655,5 +1661,17 @@ void JSHClass::CreateSDictLayout(JSThread *thread,
     hclass->SetNumberOfProps(0);
     hclass->SetIsDictionaryMode(true);
 }
-
+bool JSHClass::IsNeedNotifyHclassChangedForAotTransition(const JSThread *thread, const JSHandle<JSHClass> &hclass,
+                                                         JSTaggedValue key)
+{
+    JSMutableHandle<JSObject> protoHandle(thread, hclass->GetPrototype());
+    while (protoHandle.GetTaggedValue().IsHeapObject()) {
+        JSHClass *protoHclass = protoHandle->GetJSHClass();
+        if (JSHClass::FindPropertyEntry(thread, protoHclass, key) != -1) {
+            return true;
+        }
+        protoHandle.Update(protoHclass->GetPrototype());
+    }
+    return false;
+}
 }  // namespace panda::ecmascript

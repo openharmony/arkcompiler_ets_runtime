@@ -892,7 +892,9 @@ bool RuntimeStubs::ShouldUseAOTHClass(const JSHandle<JSTaggedValue> &ihc,
                                       const JSHandle<JSTaggedValue> &chc,
                                       const JSHandle<ClassLiteral> &classLiteral)
 {
-    return !(ihc->IsUndefined() || chc->IsUndefined() || classLiteral->GetIsAOTUsed());
+    // In the case of incomplete data collection in PGO, AOT may not create ihc and chc at the same time.
+    // Therefore, there is no need to check for the existence of both at this point.
+    return (!ihc->IsUndefined() || !chc->IsUndefined()) && !classLiteral->GetIsAOTUsed();
 }
 // clone class may need re-set inheritance relationship due to extends may be a variable.
 JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
@@ -942,9 +944,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
 
     if (ShouldUseAOTHClass(ihc, chc, classLiteral)) {
         classLiteral->SetIsAOTUsed(true);
-        JSHandle<JSHClass> chclass(chc);
-        cls = ClassHelper::DefineClassWithIHClass(thread, extractor,
-                                                  lexenv, ihc, chclass);
+        cls = ClassHelper::DefineClassWithIHClass(thread, base, extractor, lexenv, ihc, chc);
     } else {
         cls = ClassHelper::DefineClassFromExtractor(thread, base, extractor, lexenv);
     }
@@ -3112,31 +3112,15 @@ JSTaggedValue RuntimeStubs::RuntimeNotifyConcurrentResult(JSThread *thread, JSTa
     return JSTaggedValue::Undefined();
 }
 
-bool RuntimeStubs::IsNeedNotifyHclassChangedForAotTransition(JSThread *thread, const JSHandle<JSHClass> &hclass,
-                                                             JSTaggedValue key)
-{
-    JSMutableHandle<JSObject> protoHandle(thread, hclass->GetPrototype());
-    while (true) {
-        if (!protoHandle.GetTaggedValue().IsHeapObject()) {
-            break;
-        }
-        JSHClass *protoHclass = protoHandle->GetJSHClass();
-        if (JSHClass::FindPropertyEntry(thread, protoHclass, key) != -1) {
-            return true;
-        }
-        protoHandle.Update(protoHclass->GetPrototype());
-    }
-    return false;
-}
-
 JSTaggedValue RuntimeStubs::RuntimeUpdateAOTHClass(JSThread *thread,
     const JSHandle<JSHClass> &oldhclass, const JSHandle<JSHClass> &newhclass, JSTaggedValue key)
 {
 #if ECMASCRIPT_ENABLE_IC
-    if (IsNeedNotifyHclassChangedForAotTransition(thread, oldhclass, key)) {
+    if (JSHClass::IsNeedNotifyHclassChangedForAotTransition(thread, oldhclass, key)) {
         JSHClass::NotifyHclassChanged(thread, oldhclass, newhclass, key);
+    } else {
+        JSHClass::RefreshUsers(thread, oldhclass, newhclass);
     }
-    JSHClass::RefreshUsers(thread, oldhclass, newhclass);
     JSHClass::EnablePHCProtoChangeMarker(thread, newhclass);
 #endif
     return JSTaggedValue::Undefined();

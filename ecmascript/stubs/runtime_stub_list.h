@@ -474,6 +474,7 @@ namespace panda::ecmascript {
     V(FunctionPrototypeBind)              \
     V(FunctionPrototypeCall)              \
     V(SetPrototypeTransition)             \
+    V(UpdateAOTHcAndTryResotreEleKind)    \
     V(GetSharedModule)
 
 #define RUNTIME_STUB_LIST(V)                     \

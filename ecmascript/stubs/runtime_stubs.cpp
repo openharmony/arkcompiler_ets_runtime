@@ -3000,11 +3000,22 @@ DEF_RUNTIME_STUBS(NotifyConcurrentResult)
 DEF_RUNTIME_STUBS(UpdateAOTHClass)
 {
     RUNTIME_STUBS_HEADER(UpdateAOTHClass);
-    JSTaggedValue oldhc = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
-    JSTaggedValue newhc = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSHClass> oldhclass = GetHArg<JSHClass>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSHClass> newhclass = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
     JSTaggedValue key = GetArg(argv, argc, 2);  // 2: means the second parameter
-    JSHandle<JSHClass> oldhclass(thread, oldhc);
-    JSHandle<JSHClass> newhclass(thread, newhc);
+    return RuntimeUpdateAOTHClass(thread, oldhclass, newhclass, key).GetRawData();
+}
+
+
+DEF_RUNTIME_STUBS(UpdateAOTHcAndTryResotreEleKind)
+{
+    RUNTIME_STUBS_HEADER(UpdateAOTHClass);
+    JSHandle<JSObject> receiver = GetHArg<JSObject>(argv, argc, 0); // 0: means the zeroth parameter
+    JSHandle<JSHClass> oldhclass = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+    JSHandle<JSHClass> newhclass = GetHArg<JSHClass>(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue key = GetArg(argv, argc, 3);  // 3: means the third parameter
+
+    JSHClass::TryRestoreElementsKind(thread, newhclass, receiver);
     return RuntimeUpdateAOTHClass(thread, oldhclass, newhclass, key).GetRawData();
 }
 
