@@ -50,6 +50,7 @@ inline void NonMovableMarker::MarkValue(uint32_t threadId, ObjectSlot &slot, Reg
 {
     JSTaggedValue value(slot.GetTaggedType());
     if (value.IsHeapObject()) {
+        ASSERT(!value.IsHole()); // check that value is not zero
         TaggedObject *obj = nullptr;
         if (!value.IsWeakForHeapObject()) {
             obj = value.GetTaggedObject();

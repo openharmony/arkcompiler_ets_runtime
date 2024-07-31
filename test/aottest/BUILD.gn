@@ -206,6 +206,7 @@ group("ark_aot_ts_test") {
     "ordinaryhasinstance",
     "pgo_aot_call_deopt_bridge",
     "pgo_aot_newobj",
+    "pgo_array_prototype",
     "pgo_builtins",
     "pgo_call",
     "pgo_call_builtin_ctor",
