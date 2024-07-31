@@ -25,13 +25,14 @@ namespace panda::ecmascript::kungfu {
 class StubCompiler {
 public:
     StubCompiler(std::string &triple, std::string &filePath, size_t optLevel, size_t relocMode,
-                 CompilerLog *log, MethodLogList *logList)
+                 CompilerLog *log, MethodLogList *logList, bool concurrentCompile)
         : triple_(triple),
           filePath_(filePath),
           optLevel_(optLevel),
           relocMode_(relocMode),
           log_(log),
-          logList_(logList)
+          logList_(logList),
+          concurrentCompile_(concurrentCompile)
     {
     }
 
@@ -57,6 +58,7 @@ private:
     size_t relocMode_ {2}; // 2 : default relocation mode-- PIC
     CompilerLog *log_ {nullptr};
     MethodLogList *logList_ {nullptr};
+    bool concurrentCompile_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_STUB_COMPILER_H

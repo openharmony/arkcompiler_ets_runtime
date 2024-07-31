@@ -192,7 +192,9 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-enable-async-copytofort:   Enable jit fort allocation and code copy in Jit thread. Default: 'true'\n"
     "--compiler-pgo-force-dump:            Enable pgo dump not interrupted by GC. Default: 'true'\n"
     "--async-load-abc:                     Enable asynchronous load abc. Default: 'true'\n"
-    "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n\n";
+    "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n"
+    "--compiler-enable-concurrent:         Enable concurrent compile(only support in ark_stub_compiler). "
+    "                                      Default: 'true'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
@@ -326,6 +328,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
         {"compiler-pgo-force-dump", required_argument, nullptr, OPTION_COMPILER_PGO_FORCE_DUMP},
         {"async-load-abc", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC},
         {"async-load-abc-test", required_argument, nullptr, OPTION_ASYNC_LOAD_ABC_TEST},
+        {"compiler-enable-concurrent", required_argument, nullptr, OPTION_COMPILER_ENABLE_CONCURRENT},
         {nullptr, 0, nullptr, 0},
     };
 
@@ -1246,6 +1249,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
                     SetEnableAsyncCopyToFort(argBool);
+                } else {
+                    return false;
+                }
+                break;
+            case OPTION_COMPILER_ENABLE_CONCURRENT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetConcurrentCompile(argBool);
                 } else {
                     return false;
                 }
