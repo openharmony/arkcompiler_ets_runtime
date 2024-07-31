@@ -92,7 +92,7 @@ void RBTreeNode::InOrderTraverse(JSThread *thread, const JSHandle<RBTreeNode> &t
         JSHandle<LinkedNode> linkedNode = TaggedHashArray::CreateLinkedNodeFrom(thread, treeNode);
         // the elements from each bin must either stay at same index,
         // or move with a power of two offset in the new table
-        if ((linkedNode->GetHash().GetInt() & bit) == 0) {
+        if ((static_cast<uint32_t>(linkedNode->GetHash().GetInt()) & static_cast<uint32_t>(bit)) == 0) {
             if (nodeStruct.lowerTail.GetTaggedValue().IsHole()) {
                 nodeStruct.lowerHead = linkedNode;
             } else {

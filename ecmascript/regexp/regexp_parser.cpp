@@ -1618,7 +1618,8 @@ int RegExpParser::IsIdentFirst(uint32_t c)
     if (c < CACHE_SIZE) {
         return (ID_START_TABLE_ASCII[c >> 5] >> (c & 31)) & 1; // 5: Shift five bits 31: and operation binary of 31
     } else {
-        return static_cast<int>(u_isIDStart(c));
+        auto uchar = static_cast<UChar32>(c);
+        return static_cast<int>(u_isIDStart(uchar));
     }
 }
 
