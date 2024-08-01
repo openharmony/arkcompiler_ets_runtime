@@ -115,3 +115,53 @@ Object.defineProperty(Array.prototype, '0', {
 let arr = [, 2, 3];
 arr.pop();
 print(arr[1]);
+
+// TestTypedArrayFindLast
+{
+	const LOOP_TIME = 20;
+
+	function func(element, Last, array) {
+		return element <= 0;
+	}
+
+	function TestTypedArrayFindLast(e) {
+		let arr = new e([-5, 10, 20, 30, -40, 50.5, -60.6]);
+		let result = arr.findLast(func);
+	}
+
+	for (let i = 0; i < LOOP_TIME; i++) {
+		TestTypedArrayFindLast(Int8Array);
+	}
+
+	for (let i = 0; i < LOOP_TIME; i++) {
+		TestTypedArrayFindLast(Uint8Array);
+	}
+
+	for (let i = 0; i < LOOP_TIME; i++) {
+		TestTypedArrayFindLast(Uint8ClampedArray);
+	}
+
+	for (let i = 0; i < LOOP_TIME; i++) {
+		TestTypedArrayFindLast(Int16Array);
+	}
+
+	for (let i = 0; i < LOOP_TIME; i++) {
+		TestTypedArrayFindLast(Uint16Array);
+	}
+
+	for (let i = 0; i < LOOP_TIME; i++) {
+		TestTypedArrayFindLast(Int32Array);
+	}
+
+	for (let i = 0; i < LOOP_TIME; i++) {
+		TestTypedArrayFindLast(Uint32Array);
+	}
+
+	for (let i = 0; i < LOOP_TIME; i++) {
+		TestTypedArrayFindLast(Float32Array);
+	}
+
+	for (let i = 0; i < LOOP_TIME; i++) {
+		TestTypedArrayFindLast(Float64Array);
+	}
+}

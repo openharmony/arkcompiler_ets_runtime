@@ -223,7 +223,6 @@ namespace panda::ecmascript {
     V(NameDictionaryGetAllEnumKeys)       \
     V(NumberDictionaryGetAllEnumKeys)     \
     V(PropertiesSetValue)                 \
-    V(TaggedArraySetValue)                \
     V(JSArrayReduceUnStable)              \
     V(JSArrayFilterUnStable)              \
     V(JSArrayMapUnStable)                 \
