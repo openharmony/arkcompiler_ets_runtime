@@ -335,16 +335,16 @@ bool SourceMap::VlqRevCode(const std::string& vStr, std::vector<int32_t>& ans)
 
 bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int& column)
 {
-    if (url.rfind(".js") != std::string::npos) {
-        return true;
-    }
-
     std::string tmp = sources_[url];
     if (tmp.empty() || tmp.size() < REAL_SOURCE_SIZE + 1) {
         LOG_ECMA(ERROR) << "Translate failed, url: " << url;
         return false;
     }
     tmp = tmp.substr(REAL_SOURCE_INDEX, tmp.size() - REAL_SOURCE_SIZE - 1);
+    if (url.rfind(".js") != std::string::npos) {
+        url = tmp;
+        return true;
+    }
     auto iterData = sourceMaps_.find(url);
     if (iterData != sourceMaps_.end()) {
         if (iterData->second == nullptr) {
