@@ -3867,8 +3867,8 @@ template("host_aot_assert_test_action") {
       _aot_compile_options_,
       "--script-args",
       _script_args_,
-      "--expect-sub-output",
-      "ts aot compile success",
+      "--expect-output",
+      "0",
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -3906,6 +3906,11 @@ template("host_aot_assert_test_action") {
         " --log-level=" + _test_aot_log_level + " --log-components=compiler" +
         " --compiler-opt-type-lowering=false" +
         " --compiler-opt-inlining=false" + " --compiler-opt-loop-peeling=false"
+
+    if (defined(invoker.aot_log_option)) {
+      _aot_compile_options_ += invoker.aot_log_option
+    }
+
     if (defined(invoker.is_enable_trace_deopt) &&
         invoker.is_enable_trace_deopt) {
       _aot_compile_options_ += " --compiler-trace-deopt=true"
@@ -3946,8 +3951,8 @@ template("host_aot_assert_test_action") {
       _aot_compile_options_,
       "--script-args",
       _script_args_,
-      "--expect-sub-output",
-      "ts aot compile success",
+      "--expect-output",
+      "0",
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
