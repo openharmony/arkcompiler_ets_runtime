@@ -191,7 +191,7 @@ public:
             return -1;
         }
         ssize_t res = offset;
-        if (bufferSize_ == offset) {
+        if (bufferSize_ == static_cast<size_t>(offset)) {
             bufferSize_ += length;
         }
         return res;

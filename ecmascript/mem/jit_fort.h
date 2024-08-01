@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_MEM_JIT_FORT_H
 #define ECMASCRIPT_MEM_JIT_FORT_H
 
+#include <array>
 #include "ecmascript/mem/mem_common.h"
 
 namespace panda::ecmascript {
