@@ -202,7 +202,7 @@ JSHandle<JSTaggedValue> PropertyAccessor::GetKeysFast()
     ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
     uint32_t arraySize = keyLength_ + EnumCache::ENUM_CACHE_HEADER_SIZE;
     JSHandle<TaggedArray> keyArray = factory->NewTaggedArray(arraySize);
-    JSHandle<TaggedQueue> shadowQueue = factory->NewTaggedQueue(shadowKeyLength_);
+    JSHandle<TaggedQueue> shadowQueue = factory->NewTaggedQueue(shadowKeyLength_ + 1);
     uint32_t keysNum = EnumCache::ENUM_CACHE_HEADER_SIZE;
     JSMutableHandle<JSTaggedValue> current(thread_, receiver_);
     while (current->IsHeapObject()) {

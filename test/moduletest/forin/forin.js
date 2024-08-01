@@ -126,3 +126,14 @@ try {
 } catch (err) {
     print(err instanceof TypeError);
 }
+
+// Redefine testcast
+Object.prototype.prop0 = 0;
+let obj = {prop1:1,prop2:2};
+Object.defineProperty(obj,
+    'prop0', { enumerable: false, configurable: true, value: 0 });
+for (var p in obj)
+    print(p);
+
+
+
