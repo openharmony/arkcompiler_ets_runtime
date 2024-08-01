@@ -815,7 +815,7 @@ public:
         aotSnapShotStatsMap_[tag] += count;
     }
 
-    void PrintAOTSnapShotStats();
+    void PUBLIC_API PrintAOTSnapShotStats();
 
 protected:
 
