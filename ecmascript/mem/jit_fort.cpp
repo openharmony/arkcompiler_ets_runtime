@@ -27,45 +27,6 @@ FreeListAllocator<MemDesc>::FreeListAllocator(BaseHeap *heap, MemDescPool *pool,
     freeList_ = std::make_unique<FreeObjectList<MemDesc>>(fort);
 }
 
-template <>
-uintptr_t FreeListAllocator<MemDesc>::Allocate(MemDesc *object, size_t size)
-{
-    uintptr_t begin = object->GetBegin();
-    uintptr_t end = object->GetEnd();
-    uintptr_t remainSize = end - begin - size;
-    ASSERT(remainSize >= 0);
-    memDescPool_->ReturnDescToPool(object);
-
-    // Keep a longest freeObject between bump-pointer and free object that just allocated
-    allocationSizeAccumulator_ += size;
-    if (remainSize <= bpAllocator_.Available()) {
-        Free(begin + size, remainSize, true);
-        return begin;
-    } else {
-        FreeBumpPoint();
-        bpAllocator_.Reset(begin, end);
-        auto ret = bpAllocator_.Allocate(size);
-        return ret;
-    }
-}
-
-template <>
-void FreeListAllocator<MemDesc>::FillBumpPointer()
-{
-    return;
-}
-
-template <>
-void FreeListAllocator<MemDesc>::Free(uintptr_t begin, size_t size, bool isAdd)
-{
-    ASSERT(size >= 0);
-    if (size != 0) {
-        ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);
-        freeList_->Free(begin, size, isAdd);
-        ASAN_POISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);
-    }
-}
-
 JitFort::JitFort()
 {
     jitFortMem_ = PageMap(JIT_FORT_REG_SPACE_MAX, PageProtectProt(Jit::GetInstance()->IsDisableCodeSign()),
@@ -87,8 +48,8 @@ JitFort::~JitFort()
 
 void JitFort::InitRegions()
 {
-    auto numRegions = JIT_FORT_REG_SPACE_MAX/DEFAULT_REGION_SIZE;
-    for (auto i = 0; i < numRegions; i++) {
+    constexpr size_t numRegions = JIT_FORT_REG_SPACE_MAX / DEFAULT_REGION_SIZE;
+    for (size_t i = 0; i < numRegions; i++) {
         uintptr_t mem = reinterpret_cast<uintptr_t>(jitFortMem_.GetMem()) + i*DEFAULT_REGION_SIZE;
         uintptr_t end = mem + DEFAULT_REGION_SIZE;
         JitFortRegion *region = new JitFortRegion(nullptr, mem, end, RegionSpaceFlag::IN_MACHINE_CODE_SPACE,
@@ -277,7 +238,7 @@ void MemDescPool::Expand()
     void *block = malloc(sizeof(MemDesc) * MEMDESCS_PER_BLOCK);
     if (block) {
         memDescBlocks_.push_back(block);
-        for (auto i = 0; i < MEMDESCS_PER_BLOCK; ++i) {
+        for (size_t i = 0; i < MEMDESCS_PER_BLOCK; ++i) {
             Add(new (ToVoidPtr(reinterpret_cast<uintptr_t>(block) + i*sizeof(MemDesc))) MemDesc());
         }
     }
