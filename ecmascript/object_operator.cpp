@@ -619,6 +619,7 @@ void ObjectOperator::TransitionForAttributeChanged(const JSHandle<JSObject> &rec
         uint32_t index = GetIndex();
         if (!receiver->GetJSHClass()->IsDictionaryElement()) {
             JSObject::ElementsToDictionary(thread_, receiver);
+            RETURN_IF_ABRUPT_COMPLETION(thread_);
             auto dict = NumberDictionary::Cast(receiver->GetElements().GetTaggedObject());
             index = static_cast<uint32_t>(dict->FindEntry(JSTaggedValue(index)));
             PropertyAttributes origin = dict->GetAttributes(index);
@@ -667,11 +668,13 @@ bool ObjectOperator::UpdateValueAndDetails(const JSHandle<JSObject> &receiver, c
     }
     if (attr.IsWritable()) {
         TransitionForAttributeChanged(receiver, attr);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         return UpdateDataValue(receiver, value, isInternalAccessor);
     }
     bool res = UpdateDataValue(receiver, value, isInternalAccessor);
     if (res) {
         TransitionForAttributeChanged(receiver, attr);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
     }
     return res;
 }
@@ -795,6 +798,7 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
         if (!desc.HasValue()) {
             if (attrChanged) {
                 TransitionForAttributeChanged(receiver, attr);
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
             }
             return true;
         }
@@ -894,6 +898,7 @@ bool ObjectOperator::AddProperty(const JSHandle<JSObject> &receiver, const JSHan
         uint32_t oldLen = receiver.GetTaggedValue().IsJSArray() ?
             JSArray::Cast(*receiver)->GetArrayLength() : 0;
         bool ret = JSObject::AddElementInternal(thread_, receiver, elementIndex_, value, attr);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
         ElementsKind newKind = receiver->GetClass()->GetElementsKind();
         uint32_t newLen = receiver.GetTaggedValue().IsJSArray() ?
             JSArray::Cast(*receiver)->GetArrayLength() : 0;
@@ -940,6 +945,7 @@ void ObjectOperator::DeleteElementInHolder() const
     if (!ElementAccessor::IsDictionaryMode(obj)) {
         ElementAccessor::Set(thread_, obj, index_, holeHandle, true, ElementsKind::HOLE);
         JSObject::ElementsToDictionary(thread_, JSHandle<JSObject>(holder_));
+        RETURN_IF_ABRUPT_COMPLETION(thread_);
     } else {
         TaggedArray *elements = TaggedArray::Cast(obj->GetElements().GetTaggedObject());
         JSHandle<NumberDictionary> dictHandle(thread_, elements);

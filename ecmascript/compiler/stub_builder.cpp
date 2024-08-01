@@ -3718,6 +3718,15 @@ GateRef StubBuilder::AddElementInternal(GateRef glue, GateRef receiver, GateRef 
                 {
                     GateRef res = CallRuntime(glue, RTSTUB_ID(NumberDictionaryPut),
                         { receiver, elements, IntToTaggedInt(index), value, Int64ToTaggedInt(attr), TaggedTrue() });
+                    Label isPendingException(env);
+                    Label noPendingException(env);
+                    BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
+                    Bind(&isPendingException);
+                    {
+                        result = False();
+                        Jump(&exit);
+                    }
+                    Bind(&noPendingException);
                     SetElementsArray(VariableType::JS_POINTER(), glue, receiver, res);
                     result = True();
                     Jump(&exit);

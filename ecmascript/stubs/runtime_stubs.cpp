@@ -448,6 +448,7 @@ DEF_RUNTIME_STUBS(NumberDictionaryPut)
     JSHandle<JSObject> objHandle(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(receiver)));
     if (needTransToDict.IsTrue()) {
         JSObject::ElementsToDictionary(thread, objHandle);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
         JSHandle<NumberDictionary> dict(thread, objHandle->GetElements());
         return NumberDictionary::Put(thread, dict, keyHandle, valueHandle, propAttr).GetTaggedValue().GetRawData();
     } else {

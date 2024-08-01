@@ -1183,6 +1183,7 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
                 keyName.Update(JSTaggedValue::ToString(thread, keyUnknow).GetTaggedValue());
                 RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
                 RecurseAndApply(thread, obj, keyName, receiver, transformType);
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             }
         } else {
             // Let keys be ? EnumerableOwnPropertyNames(val, key).
@@ -1193,6 +1194,7 @@ JSHandle<JSTaggedValue> Internalize::InternalizeJsonProperty(JSThread *thread, c
             for (uint32_t i = 0; i < namesLength; i++) {
                 keyName.Update(ownerNames->Get(i));
                 RecurseAndApply(thread, obj, keyName, receiver, transformType);
+                RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
             }
         }
     }
@@ -1220,6 +1222,7 @@ bool Internalize::RecurseAndApply(JSThread *thread, const JSHandle<JSObject> &ho
     if (value->IsUndefined()) {
         SCheckMode sCheckMode = transformType == TransformType::SENDABLE ? SCheckMode::SKIP : SCheckMode::CHECK;
         changeResult = JSObject::DeleteProperty(thread, holder, name, sCheckMode);
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     } else {
         // Perform ? CreateDataProperty(val, P, newElement)
         changeResult = JSObject::CreateDataProperty(thread, holder, name, value);

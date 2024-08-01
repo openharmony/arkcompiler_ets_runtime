@@ -725,7 +725,7 @@ JSTaggedValue BuiltinsArrayBuffer::FastSetValueInBuffer(JSThread *thread, JSTagg
     if (arrBuf.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(arrBuf)) {
         return JSTaggedValue::Undefined();
     }
-    if ((arrBuf.IsArrayBuffer() || arrBuf.IsSharedArrayBuffer()) && BuiltinsArrayBuffer::IsDetachedBuffer(arrBuf)) {
+    if (!arrBuf.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(arrBuf)) {
         return JSTaggedValue::Undefined();
     }
     void *pointer = GetDataPointFromBuffer(arrBuf);

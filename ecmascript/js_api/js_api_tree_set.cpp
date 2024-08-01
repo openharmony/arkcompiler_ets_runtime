@@ -74,6 +74,9 @@ bool JSAPITreeSet::Has(JSThread *thread, const JSHandle<JSAPITreeSet> &set, cons
 void JSAPITreeSet::Clear(const JSThread *thread, const JSHandle<JSAPITreeSet> &set)
 {
     int cap = set->GetSize();
+    if (cap == 0) {
+        return;
+    }
     JSTaggedValue fn = TaggedTreeSet::Cast(set->GetTreeSet().GetTaggedObject())->GetCompare();
     JSHandle<JSTaggedValue> compareFn = JSHandle<JSTaggedValue>(thread, fn);
     JSTaggedValue internal = TaggedTreeSet::Create(thread, cap);
