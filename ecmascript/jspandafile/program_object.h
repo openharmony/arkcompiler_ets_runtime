@@ -32,6 +32,7 @@
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
+#include "ecmascript/tagged_array-inl.h"
 
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
