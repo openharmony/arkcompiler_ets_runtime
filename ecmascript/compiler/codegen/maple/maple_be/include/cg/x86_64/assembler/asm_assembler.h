@@ -40,10 +40,20 @@ class AsmAssembler : public Assembler {
 public:
     explicit AsmAssembler(const std::string &outputFileName) : Assembler()
     {
-        outStream.open(outputFileName, std::ios::trunc);
+        outFStream.open(outputFileName, std::ios::trunc);
     }
 
     ~AsmAssembler() = default;
+
+    void CloseOutput() override
+    {
+        Assembler::CloseOutput();
+
+        auto options = maplebe::CGOptions::GetInstance();
+        options.GetLogStream() << "~~~~~~~~~~~~~~ LiteCG x64 disasm begin ~~~~~~~~~~~~~~\n";
+        options.GetLogStream() << outStream.str();
+        options.GetLogStream() << "~~~~~~~~~~~~~~ LiteCG x64 disasm end  ~~~~~~~~~~~~~~~\n";
+    }
 
     void InitialFileInfo(const std::string &inputFileName) override;
     void EmitFunctionHeader(int64 symIdx, SymbolAttr funcAttr, const std::string *secName) override;

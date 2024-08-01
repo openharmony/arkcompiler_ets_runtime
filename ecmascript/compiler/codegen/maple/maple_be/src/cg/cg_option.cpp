@@ -102,12 +102,11 @@ bool CGOptions::debugSched = false;
 bool CGOptions::bruteForceSched = false;
 bool CGOptions::simulateSched = false;
 CGOptions::ABIType CGOptions::abiType = kABIHard;
-CGOptions::EmitFileType CGOptions::emitFileType = kAsm;
 bool CGOptions::genLongCalls = false;
 bool CGOptions::functionSections = false;
 bool CGOptions::useFramePointer = false;
 bool CGOptions::gcOnly = false;
-bool CGOptions::quiet = false;
+bool CGOptions::quiet = true;
 bool CGOptions::doPatchLongBranch = false;
 bool CGOptions::doPreSchedule = false;
 bool CGOptions::emitBlockMarker = true;
@@ -131,6 +130,11 @@ CGOptions &CGOptions::GetInstance()
 {
     static CGOptions instance;
     return instance;
+}
+
+std::ostream& CGOptions::GetLogStream() const
+{
+    return LogInfo::MapleLogger();
 }
 
 void CGOptions::DecideMplcgRealLevel(bool isDebug)
@@ -209,6 +213,7 @@ bool CGOptions::SolveOptions(bool isDebug)
 
     if (opts::cg::verboseAsm.IsEnabledByUser()) {
         opts::cg::verboseAsm ? SetOption(CGOptions::kVerboseAsm) : ClearOption(CGOptions::kVerboseAsm);
+        SetAsmEmitterEnable(true);
     }
 
     if (opts::cg::verboseCg.IsEnabledByUser()) {
@@ -557,10 +562,6 @@ bool CGOptions::SolveOptions(bool isDebug)
 
     if (opts::cg::floatAbi.IsEnabledByUser()) {
         SetABIType(opts::cg::floatAbi);
-    }
-
-    if (opts::cg::filetype.IsEnabledByUser()) {
-        SetEmitFileType(opts::cg::filetype);
     }
 
     if (opts::cg::longCalls.IsEnabledByUser()) {

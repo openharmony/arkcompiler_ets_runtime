@@ -40,9 +40,7 @@ LiteCG::LiteCG(Module &mirModule, const std::vector<std::string> &litecgOptions)
         cgOptions->SolveOptions(false);
     }
     cgOptions->EnableLiteCG();
-    cgOptions->SetEmitFileType("obj");
     cgOptions->SetOption(CGOptions::kDoCg);
-    cgOptions->SetQuiet(true);
     Triple::GetTriple().Init(module.IsAArch64());
     // module information prepare
     std::string moduleName = module.GetFileName();
@@ -58,12 +56,6 @@ LiteCG::LiteCG(Module &mirModule, const std::vector<std::string> &litecgOptions)
 
     // Setup output file name
     module.SetOutputFileName(moduleName + ".s");
-}
-
-LiteCG &LiteCG::SetOutputType(OutputType config)
-{
-    cgOptions->SetEmitFileType((config == kAsm) ? "asm" : "obj");
-    return *this;
 }
 
 LiteCG &LiteCG::SetTargetType(TargetType config)

@@ -226,13 +226,8 @@ public:
         : memPool(memPoolCtrler.NewMemPool("maplecg mempool", false /* isLocalPool */)),
           allocator(memPool),
           mirModule(&mod),
-          emitter(nullptr),
-          labelOrderCnt(0),
-          cgOption(cgOptions),
-          instrumentationFunction(nullptr),
-          fileGP(nullptr)
+          cgOption(cgOptions)
     {
-        isLibcore = false;
         DefineDebugTraceFunctions();
         isLmbc = (mirModule->GetFlavor() == MIRFlavor::kFlavorLmbc);
     }
@@ -373,14 +368,36 @@ public:
         return mirModule;
     }
 
-    void SetEmitter(Emitter &emitter)
+    void SetObjEmitter(Emitter &emitter)
     {
-        this->emitter = &emitter;
+        DEBUG_ASSERT(emitters.empty(), "ObjEmitter already exist");
+        emitters.push_back(&emitter);
     }
 
-    Emitter *GetEmitter() const
+    void SetAsmEmitter(Emitter &emitter)
     {
-        return emitter;
+        DEBUG_ASSERT(emitters.size() == 1U, "AsmEmitter need to be added after objEmmiter");
+        emitters.push_back(&emitter);
+    }
+
+    enum EmitterType: uint8_t {
+        ObjEmiter = 0,
+        AsmEmitter = 1,
+        All
+    };
+
+    // NOTE: It's would de better to remove EmmiterType and always use EmitterType::All,
+    //       but it's need to unify interfaces. It's better because, it's harder to make a error.
+    template <EmitterType emitType = EmitterType::All>
+    void Emit(const std::function<void(Emitter*)> &cb) const
+    {
+        if constexpr (emitType == EmitterType::All) {
+            EmitAllEmitters(cb);
+        } else if constexpr (emitType == EmitterType::AsmEmitter) {
+            EmitAsmEmitters(cb);
+        } else if constexpr (emitType == EmitterType::ObjEmiter) {
+            EmitObjEmitters(cb);
+        }
     }
 
     MIRModule *GetMIRModule() const
@@ -575,19 +592,24 @@ protected:
     MapleAllocator allocator;
 
 private:
+    void EmitAllEmitters(const std::function<void(Emitter *)>& cb) const;
+    void EmitAsmEmitters(const std::function<void(Emitter *)>& cb) const;
+    void EmitObjEmitters(const std::function<void(Emitter *)>& cb) const;
+
+private:
     MIRModule *mirModule;
-    Emitter *emitter;
+    std::vector<Emitter *> emitters;
     TargetMachine *targetMachine = nullptr;
-    LabelIDOrder labelOrderCnt;
+    LabelIDOrder labelOrderCnt = 0;
     static CGFunc *currentCGFunction; /* current cg function being compiled */
     CGOptions cgOption;
-    MIRSymbol *instrumentationFunction;
+    MIRSymbol *instrumentationFunction = nullptr;
     MIRSymbol *dbgTraceEnter = nullptr;
     MIRSymbol *dbgTraceExit = nullptr;
     MIRSymbol *dbgFuncProfile = nullptr;
-    MIRSymbol *fileGP; /* for lmbc, one local %GP per file */
+    MIRSymbol *fileGP = nullptr; /* for lmbc, one local %GP per file */
     static std::map<MIRFunction *, std::pair<LabelIdx, LabelIdx>> funcWrapLabels;
-    bool isLibcore;
+    bool isLibcore = false;
     bool isLmbc;
 }; /* class CG */
 } /* namespace maplebe */
