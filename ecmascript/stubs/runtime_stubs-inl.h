@@ -574,6 +574,9 @@ JSTaggedValue RuntimeStubs::RuntimeSetObjectWithProto(JSThread *thread, const JS
     if (!proto->IsECMAObject() && !proto->IsNull()) {
         return JSTaggedValue::False();
     }
+    if (UNLIKELY(proto->IsJSShared())) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetProtoWithSendable), JSTaggedValue::Exception());
+    }
     JSObject::SetPrototype(thread, obj, proto);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue::True();

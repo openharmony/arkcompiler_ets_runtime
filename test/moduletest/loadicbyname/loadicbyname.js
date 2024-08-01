@@ -100,32 +100,20 @@ print("================Test proto SharedTypedArray IC================");
 function testProtoIc(ctor) {
   for (let i = 0; i < 100; i++) { };
   let obj = new ctor(100);
-  let obj1 = {
-    __proto__: obj,
+  try {
+    let obj1 = {
+      __proto__: obj,
+    };
+    let obj2 = {
+      __proto__: obj1,
+    };
+    let obj3 = {
+      __proto__: obj2,
+    };
+    print(ctor.name, 'set proto with sendable object success.');
+  } catch (err) {
+    print(ctor.name, 'set proto with sendable object failed. err: ' + err);
   }
-  let obj2 = {
-    __proto__: obj1,
-  }
-  let obj3 = {
-    __proto__: obj2
-  }
-  let reduce = obj.reduce;
-  let reduce1 = obj1.reduce;
-  let reduce2 = obj2.reduce;
-  let reduce3 = obj3.reduce;
-  if (reduce != ctor.prototype.reduce) {
-    print("Error in obj.reduce");
-  }
-  if (reduce1 != ctor.prototype.reduce) {
-    print("Error in obj1.reduce");
-  }
-  if (reduce2 != ctor.prototype.reduce) {
-    print("Error in obj2.reduce");
-  }
-  if (reduce3 != ctor.prototype.reduce) {
-    print("Error in obj3.reduce");
-  }
-  print(ctor.name, "test prototype ic success")
 }
 
 [
