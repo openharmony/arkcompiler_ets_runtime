@@ -173,7 +173,8 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
             isApp_ = options.IsEnableAPPJIT();
             hotnessThreshold_ = options.GetJitHotnessThreshold();
             initJitCompiler_(options);
-            JitTaskpool::GetCurrentTaskpool()->Initialize();
+            bool enableCodeSign = !ohos::JitTools::GetCodeSignDisable(options.GetDisableCodeSign());
+            JitTaskpool::GetCurrentTaskpool()->Initialize(enableCodeSign);
         }
     }
 }
@@ -554,6 +555,7 @@ void *Jit::CreateJitCompilerTask(JitTask *jitTask)
 
 int Jit::JitVerifyAndCopy(void *codeSigner, void *jit_memory, void *tmpBuffer, int size)
 {
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Jit::JitVerifyAndCopy");
     ASSERT(jitVerifyAndCopy_ != nullptr);
     LOG_JIT(DEBUG) << "In Jit::JitVerifyAndCopy "
         << std::hex << (uintptr_t)codeSigner << " "

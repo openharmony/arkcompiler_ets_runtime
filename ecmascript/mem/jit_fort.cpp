@@ -17,6 +17,9 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/jit/jit.h"
+#if defined(CODE_SIGN_ENABLE) && !defined(JIT_FORT_DISABLE)
+#include <sys/prctl.h>
+#endif
 
 namespace panda::ecmascript {
 
@@ -238,6 +241,19 @@ JitFortRegion *JitFort::ObjectAddressToRange(uintptr_t objAddress)
         region = region->GetNext();
     }
     return region;
+}
+
+void JitFort::InitJitFortResource()
+{
+#if defined(CODE_SIGN_ENABLE) && !defined(JIT_FORT_DISABLE)
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::InitJitFortResource");
+    constexpr int prSetJitFort = 0x6a6974;
+    constexpr int jitFortInit = 5;
+    int res = prctl(prSetJitFort, jitFortInit, 0);
+    if (res < 0) {
+        LOG_JIT(ERROR) << "Failed to init jitfort resource";
+    }
+#endif
 }
 
 MemDescPool::MemDescPool(uintptr_t fortBegin, size_t fortSize)
