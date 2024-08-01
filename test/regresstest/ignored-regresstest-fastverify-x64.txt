@@ -50,7 +50,6 @@ regresstest/ark-regress/mjsunit/regress/regress-733059.js
 regresstest/ark-regress/mjsunit/regress/regress-906406.js
 regresstest/ark-regress/mjsunit/regress/regress-982.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-1166095.js
-regresstest/ark-regress/mjsunit/regress/regress-crbug-1417495.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-412203.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-493779.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-500497.js

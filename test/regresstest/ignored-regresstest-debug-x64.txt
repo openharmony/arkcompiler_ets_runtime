@@ -14,7 +14,6 @@ regresstest/ark-regress/mjsunit/regress/regress-2073.js
 regresstest/ark-regress/mjsunit/regress/regress-430201.js
 regresstest/ark-regress/mjsunit/regress/regress-524.js
 regresstest/ark-regress/mjsunit/regress/regress-689016.js
-regresstest/ark-regress/mjsunit/regress/regress-crbug-1417495.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-800810.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-820312.js
 regresstest/ark-regress/mjsunit/regress/regress-v8-6716.js

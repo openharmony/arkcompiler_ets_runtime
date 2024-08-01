@@ -3155,7 +3155,6 @@
         "mjsunit/regress/regress-475705.js",
         "mjsunit/regress/negative_lookup.js",
         "mjsunit/regress/regress-14433.js",
-        "mjsunit/regress/regress-crbug-1417495.js",
         "mjsunit/regress/regress-crbug-1504702-a.js",
         "mjsunit/regress/regress-187.js",
         "mjsunit/regress/regress-crbug-178790.js",
