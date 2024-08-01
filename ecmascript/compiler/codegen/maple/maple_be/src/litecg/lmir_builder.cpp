@@ -335,6 +335,16 @@ void LMIRBuilder::SetFuncFramePointer(const String &val)
     module.CurFunction()->GetFuncAttrs().SetFramePointer(val);
 }
 
+void LMIRBuilder::SetCurrentDebugComment(const std::string& comment)
+{
+    mirBuilder.SetCurrentDebugComment(comment);
+}
+
+void LMIRBuilder::ClearCurrentDebugComment()
+{
+    mirBuilder.ClearCurrentDebugComment();
+}
+
 MIRPreg *LMIRBuilder::LiteCGGetPreg(Function &func, int32_t pRegNo)
 {
     return func.GetPregItem(pRegNo);

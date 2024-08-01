@@ -138,6 +138,7 @@ public:
     virtual void EmitDIDebugInfoSectionAbbrevId(bool verbose, uint32 abbrevId, const std::string &dieTagName,
                                                 uint32 offset, uint32 size) = 0;
     virtual void EmitDIFormSpecification(unsigned int dwform) = 0;
+    virtual void EmitDebugComment(const char* comment) = 0;
     /* EmitDIAttrValue */
     virtual void EmitDwFormString(const std::string &name) = 0;
     /* strTableSize is used to calculate unique id for the debug string */
@@ -390,6 +391,7 @@ protected:
     std::string fileName;
     std::unordered_map<int64, const std::string> globalSymMap; /* store global variable symbols */
     std::unordered_map<int64, const std::string> localSymMap;  /* store local variable symbols for each function */
+    std::string currDbgComment;
 };
 } /* namespace assembler */
 

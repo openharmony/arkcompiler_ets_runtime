@@ -413,7 +413,7 @@ void CgFuncPM::EmitGlobalInfo(MIRModule &m) const
     if (cgOptions->IsGenerateObjectMap()) {
         cg->GenerateObjectMaps(*beCommon);
     }
-    cg->Emit([this, &m](Emitter* emitter) {
+    cg->template Emit<CG::EmitterType::AsmEmitter>([this, &m](Emitter* emitter) {
         emitter->EmitGlobalVariable();
         EmitDebugInfo(m);
         emitter->CloseOutput();

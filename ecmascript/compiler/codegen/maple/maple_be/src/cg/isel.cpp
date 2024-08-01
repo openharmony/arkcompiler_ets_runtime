@@ -647,7 +647,9 @@ void MPISel::doMPIS()
     for (StmtNode *stmt = secondStmt; stmt != nullptr; stmt = stmt->GetNext()) {
         auto function = CreateProductFunction<HandleStmtFactory>(stmt->GetOpCode());
         CHECK_FATAL(function != nullptr, "unsupported opCode or has been lowered before");
+        cgFunc->GetInsnBuilder()->SetDebugComment(stmt->GetDebugComment());
         function(*stmt, *this);
+        cgFunc->GetInsnBuilder()->ClearDebugComment();
     }
     HandleFuncExit();
 }

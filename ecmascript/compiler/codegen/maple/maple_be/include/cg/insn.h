@@ -400,6 +400,16 @@ public:
         comment += str;
     }
 
+    void SetDebugComment(const MapleString *str)
+    {
+        debugComment = str;
+    }
+
+    const MapleString *GetDebugComment() const
+    {
+        return debugComment;
+    }
+
     void MarkAsSaveRetValToLocal()
     {
         flags |= kOpDassignToSaveRetValToLocal;
@@ -795,6 +805,7 @@ private:
     /* record the stack cleared by MCC_ClearLocalStackRef or MCC_DecRefResetPair */
     int64 clearStackOffset[kMaxStackOffsetSize] = {-1, -1};
     DepNode *depNode = nullptr; /* For dependence analysis, pointing to a dependence node. */
+    const MapleString *debugComment = nullptr;
     MapleString comment;
     bool isThrow = false;
     bool doNotRemove = false;          /* caller reg cross call */

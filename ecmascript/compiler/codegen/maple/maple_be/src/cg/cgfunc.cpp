@@ -1998,6 +1998,7 @@ void CGFunc::GenerateInstruction()
             continue;
         }
         bool tempLoad = isVolLoad;
+        GetInsnBuilder()->SetDebugComment(stmt->GetDebugComment());
         auto function = CreateProductFunction<HandleStmtFactory>(stmt->GetOpCode());
         CHECK_FATAL(function != nullptr, "unsupported opCode or has been lowered before");
         function(*stmt, *this);
@@ -2042,6 +2043,7 @@ void CGFunc::GenerateInstruction()
         if (curBB != tmpBB) {
             lastSrcLoc = 0;
         }
+        GetInsnBuilder()->ClearDebugComment();
     }
 
     /* Set lastbb's frequency */

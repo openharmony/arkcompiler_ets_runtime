@@ -24,6 +24,7 @@ Insn &InsnBuilder::BuildInsn(MOperator opCode, const InsnDesc &idesc)
 {
     auto *newInsn = mp->New<Insn>(*mp, opCode);
     newInsn->SetInsnDescrption(idesc);
+    newInsn->SetDebugComment(currDedugComment);
     IncreaseInsnNum();
     return *newInsn;
 }

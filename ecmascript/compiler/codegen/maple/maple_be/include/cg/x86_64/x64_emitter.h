@@ -76,6 +76,7 @@ public:
 private:
     assembler::Assembler &assmbler;
     std::vector<uint32> stringPtr;
+    const MapleString *currDebugComment { nullptr };
 };
 } /* namespace maplebe */
 

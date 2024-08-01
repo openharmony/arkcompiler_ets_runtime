@@ -51,6 +51,16 @@ public:
         return createdInsnNum;
     }
 
+    void SetDebugComment(const MapleString* comment)
+    {
+        currDedugComment = comment;
+    }
+
+    void ClearDebugComment()
+    {
+        currDedugComment = nullptr;
+    }
+
 protected:
     MemPool *mp;
 
@@ -60,6 +70,7 @@ private:
         createdInsnNum++;
     }
     uint32 createdInsnNum = 0;
+    const MapleString *currDedugComment { nullptr };
 };
 
 constexpr uint32 baseVirtualRegNO = 200; /* avoid conflicts between virtual and physical */

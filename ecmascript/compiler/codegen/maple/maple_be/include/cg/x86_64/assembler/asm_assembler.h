@@ -83,6 +83,8 @@ public:
     void EmitDIDebugInfoSectionAbbrevId(bool verbose, uint32 abbrevId, const std::string &dieTagName, uint32 offset,
                                         uint32 size) override;
     void EmitDIFormSpecification(unsigned int dwform) override;
+    void EmitDebugComment(const char* comment) override;
+
     /* EmitDIAttrValue */
     void EmitDwFormString(const std::string &name) override;
     void EmitDwFormStrp(uint32 strLabelId, size_t strTableSize) override;
@@ -373,9 +375,7 @@ public:
 private:
     void EmitComment(std::string comment)
     {
-        Emit("\t//  ");
-        Emit(comment);
-        Emit("\n");
+        EmitDebugComment(comment.c_str());
     }
 
     void EmitSizeDirective(uint8 elemSize, int64 value, bool isSymbol, bool isLocal = false)
