@@ -43,9 +43,9 @@ JSTaggedValue BuiltinsSharedMap::Constructor(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> constructor = GetConstructor(argv);
     ASSERT(constructor->IsJSSharedFunction() && constructor.GetTaggedValue().IsInSharedHeap());
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), newTarget);
-    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
     // 3.returnIfAbrupt()
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
     JSHandle<JSSharedMap> map = JSHandle<JSSharedMap>::Cast(obj);
 
     // 4.Set map’s [[MapData]] internal slot to a new empty List.
