@@ -186,7 +186,7 @@ Start Test arrayFromSet
 Create from normal set: foo,bar,baz
 Create from shared set: foo,bar,baz
 Start Test arrayFromNormalMap
-Start test arrayFromSharedMap
+Start test arrayFromSendableMap
 create from sharedMap with non-sendable array failed. err: BusinessError: Parameter error.Only accept sendable value., code: 401
 create from sharedMapper.values(): a,b
 create from sharedMapper.values(): 1,2

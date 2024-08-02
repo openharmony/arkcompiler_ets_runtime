@@ -213,9 +213,9 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedSet::Constructor),
                                        setFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
 
-    InitializeSCtor(setIHClass, setFunction, "SharedSet", FunctionLength::ZERO);
+    InitializeSCtor(setIHClass, setFunction, "SendableSet", FunctionLength::ZERO);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedSet"));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SendableSet"));
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(setFunction), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -238,7 +238,7 @@ void Builtins::InitializeSSet(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     setPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, valuesFunc.GetTaggedValue());
 
     // @@ToStringTag
-    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8ReadOnly("SharedSet"));
+    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8ReadOnly("SendableSet"));
     setPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
 
     // 23.1.3.10get SharedSet.prototype.size
@@ -279,9 +279,9 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
     JSHandle<JSFunction> mapFunction =
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedMap::Constructor),
                                        mapFuncHClass, FunctionKind::BUILTIN_CONSTRUCTOR);
-    InitializeSCtor(mapIHClass, mapFunction, "SharedMap", FunctionLength::ZERO);
+    InitializeSCtor(mapIHClass, mapFunction, "SendableMap", FunctionLength::ZERO);
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedMap"));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SendableMap"));
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(mapFunction), true, false, true);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -295,7 +295,7 @@ void Builtins::InitializeSMap(const JSHandle<GlobalEnv> &env, const JSHandle<JSO
                      entry.GetLength(), entry.GetBuiltinStubId());
     }
     // @@ToStringTag
-    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8ReadOnly("SharedMap"));
+    JSHandle<JSTaggedValue> strTag(factory_->NewFromUtf8ReadOnly("SendableMap"));
     mapPrototype->SetPropertyInlinedProps(thread_, fieldIndex++, strTag.GetTaggedValue());
 
     // 23.1.3.10get SharedMap.prototype.size
@@ -940,11 +940,11 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
         factory_->NewSFunctionByHClass(reinterpret_cast<void *>(BuiltinsSharedArray::ArrayConstructor), arrayFuncHClass,
                                        FunctionKind::BUILTIN_CONSTRUCTOR);
 
-    InitializeSCtor(arrFuncInstanceHClass, arrayFunction, "SharedArray", FunctionLength::ZERO);
+    InitializeSCtor(arrFuncInstanceHClass, arrayFunction, "SendableArray", FunctionLength::ZERO);
 
     arrFuncPrototype->SetPropertyInlinedProps(thread_, protoFieldIndex++, arrayFunction.GetTaggedValue());
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedArray"));
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SendableArray"));
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(arrayFunction), false, false, false);
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     RETURN_IF_ABRUPT_COMPLETION(thread_);
@@ -983,7 +983,8 @@ void Builtins::InitializeSharedArray(const JSHandle<GlobalEnv> &env, const JSHan
     env->SetSharedArrayPrototype(thread_, arrFuncPrototype);
 }
 
-#define BUILTIN_SHARED_TYPED_ARRAY_DEFINE_INITIALIZE(Type, ctorName, TYPE, bytesPerElement)                     \
+// todo: remove sendableName when refactor
+#define BUILTIN_SHARED_TYPED_ARRAY_DEFINE_INITIALIZE(Type, ctorName, TYPE, bytesPerElement, sendableName)       \
 void Builtins::InitializeS##Type(const JSHandle<GlobalEnv> &env, const JSHandle<JSHClass> &arrFuncClass) const  \
 {                                                                                                               \
     [[maybe_unused]] EcmaHandleScope scope(thread_);                                                            \
@@ -1005,9 +1006,9 @@ void Builtins::InitializeS##Type(const JSHandle<GlobalEnv> &env, const JSHandle<
     JSHandle<JSFunction> arrayFunction = factory_->NewSFunctionByHClass(                                        \
         reinterpret_cast<void *>(BuiltinsSharedTypedArray::Type##Constructor), specificTypedArrayFuncClass,     \
         FunctionKind::BUILTIN_CONSTRUCTOR);                                                                     \
-    InitializeSCtor(arrFuncInstanceHClass, arrayFunction, #ctorName, FunctionLength::THREE);                    \
+    InitializeSCtor(arrFuncInstanceHClass, arrayFunction, #sendableName, FunctionLength::THREE);                \
     JSHandle<JSObject> globalObject(thread_, env->GetGlobalObject());                                           \
-    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(#ctorName));                               \
+    JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(#sendableName));                           \
     PropertyDescriptor desc(thread_, JSHandle<JSTaggedValue>::Cast(arrayFunction), false, false, false);        \
     JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                                       \
     RETURN_IF_ABRUPT_COMPLETION(thread_);                                                                       \
@@ -1095,7 +1096,7 @@ void Builtins::InitializeSTypedArray(const JSHandle<GlobalEnv> &env, const JSHan
     JSHandle<JSHClass> specificTypedArrayFuncClass = CreateSSpecificTypedArrayFuncHClass(typedArrayFunction);
     env->SetSharedSpecificTypedArrayFunctionClass(thread_, specificTypedArrayFuncClass);
 
-#define BUILTIN_SHARED_TYPED_ARRAY_CALL_INITIALIZE(Type, ctorName, TYPE, bytesPerElement) \
+#define BUILTIN_SHARED_TYPED_ARRAY_CALL_INITIALIZE(Type, ctorName, TYPE, bytesPerElement, sendableName) \
     InitializeS##Type(env, typedArrFuncInstanceHClass);
     BUILTIN_SHARED_TYPED_ARRAY_TYPES(BUILTIN_SHARED_TYPED_ARRAY_CALL_INITIALIZE)
 #undef BUILTIN_SHARED_TYPED_ARRAY_CALL_INITIALIZE
