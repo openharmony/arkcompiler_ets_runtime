@@ -96,21 +96,6 @@ public:
     
     JSTaggedValue StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                            JSHandle<JSTaggedValue> value);
-private:
-    JSTaggedValue HandleOrdinarySet(JSHandle<JSTaggedValue> &receiver,
-                                    JSHandle<JSTaggedValue> &key,
-                                    JSHandle<JSTaggedValue> &value);
-    JSTaggedValue HandleGlobalStoreIC(JSTaggedValue &box, JSHandle<JSTaggedValue> &key,
-                                      JSHandle<JSTaggedValue> &value);
-    JSTaggedValue HandleSharedArraySet(JSHandle<JSTaggedValue> &receiver,
-                                       JSHandle<JSTaggedValue> &key,
-                                       JSHandle<JSTaggedValue> &value);
-    JSTaggedValue HandlePrivateSetter(JSHandle<JSTaggedValue> &receiver,
-                                      JSHandle<JSTaggedValue> &key,
-                                      JSHandle<JSTaggedValue> &value);
-    JSTaggedValue HandlePropertySet(JSHandle<JSTaggedValue> receiver,
-                                    JSHandle<JSTaggedValue> key,
-                                    JSHandle<JSTaggedValue> value, bool isOwn, ICKind kind);
 };
 }  // namespace panda::ecmascript
 

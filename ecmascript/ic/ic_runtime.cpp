@@ -353,55 +353,58 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
     }
 }
 
-JSTaggedValue StoreICRuntime::HandleOrdinarySet(JSHandle<JSTaggedValue> &receiver,
-                                                JSHandle<JSTaggedValue> &key,
-                                                JSHandle<JSTaggedValue> &value)
+JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
+                                        JSHandle<JSTaggedValue> value, bool isOwn)
 {
-    icAccessor_.SetAsMega();
-    bool success = JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-    return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-}
-
-JSTaggedValue StoreICRuntime::HandleGlobalStoreIC(JSTaggedValue &box, JSHandle<JSTaggedValue> &key,
-                                                  JSHandle<JSTaggedValue> &value)
-{
-    ASSERT(box.IsPropertyBox());
-    SlowRuntimeStub::TryUpdateGlobalRecord(thread_, key.GetTaggedValue(), value.GetTaggedValue());
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-    if (icAccessor_.GetICState() != ProfileTypeAccessor::ICState::MEGA) {
-        icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
+    ICKind kind = GetICKind();
+    if (IsValueIC(kind)) {
+        key = JSTaggedValue::ToPropertyKey(GetThread(), key);
     }
-    return JSTaggedValue::Undefined();
-}
+    if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
+        icAccessor_.SetAsMega();
+        bool success = JSTaggedValue::SetProperty(GetThread(), receiver, key, value, true);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
+    }
+    if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
+        return StoreTypedArrayValueMiss(receiver, key, value);
+    }
 
-JSTaggedValue StoreICRuntime::HandleSharedArraySet(JSHandle<JSTaggedValue> &receiver,
-                                                   JSHandle<JSTaggedValue> &key,
-                                                   JSHandle<JSTaggedValue> &value)
-{
-    bool success = JSSharedArray::SetProperty(thread_, receiver, key, value, true, SCheckMode::CHECK);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-    return success ? JSTaggedValue::Undefined() : JSTaggedValue::Exception();
-}
+    // global variable find from global record firstly
+    if (kind == ICKind::NamedGlobalStoreIC || kind == ICKind::NamedGlobalTryStoreIC) {
+        JSTaggedValue box = SlowRuntimeStub::LdGlobalRecord(thread_, key.GetTaggedValue());
+        if (!box.IsUndefined()) {
+            ASSERT(box.IsPropertyBox());
+            SlowRuntimeStub::TryUpdateGlobalRecord(thread_, key.GetTaggedValue(), value.GetTaggedValue());
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+            if (icAccessor_.GetICState() != ProfileTypeAccessor::ICState::MEGA) {
+                icAccessor_.AddGlobalRecordHandler(JSHandle<JSTaggedValue>(thread_, box));
+            }
+            return JSTaggedValue::Undefined();
+        }
+    }
+    UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
 
-JSTaggedValue StoreICRuntime::HandlePrivateSetter(JSHandle<JSTaggedValue> &receiver,
-                                                  JSHandle<JSTaggedValue> &key,
-                                                  JSHandle<JSTaggedValue> &value)
-{
-    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo* info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 1); // 1: setter has 1 argument
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-    info->SetCallArg(value.GetTaggedValue());
-    JSTaggedValue resSetter = JSFunction::Call(info);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-    return resSetter;
-}
+    // fixme(hzzhouzebin) Open IC for SharedArray later.
+    if (receiver->IsJSSharedArray()) {
+        bool success = JSSharedArray::SetProperty(thread_, receiver, key, value, true, SCheckMode::CHECK);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        if (success) {
+            return JSTaggedValue::Undefined();
+        }
+        return JSTaggedValue::Exception();
+    }
+    if (key->IsJSFunction()) { // key is a private setter
+        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo* info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 1); // 1: setter has 1 argument
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        info->SetCallArg(value.GetTaggedValue());
+        JSTaggedValue resSetter = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+        return resSetter;
+    }
 
-JSTaggedValue StoreICRuntime::HandlePropertySet(JSHandle<JSTaggedValue> receiver,
-                                                JSHandle<JSTaggedValue> key,
-                                                JSHandle<JSTaggedValue> value, bool isOwn, ICKind kind)
-{
     ObjectOperator op(GetThread(), receiver, key, isOwn ? OperatorType::OWN : OperatorType::PROTOTYPE_CHAIN);
     if (!op.IsFound()) {
         if (kind == ICKind::NamedGlobalStoreIC) {
@@ -443,39 +446,6 @@ JSTaggedValue StoreICRuntime::HandlePropertySet(JSHandle<JSTaggedValue> receiver
         return JSTaggedValue::Undefined();
     }
     return JSTaggedValue::Exception();
-}
-
-JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
-                                        JSHandle<JSTaggedValue> value, bool isOwn)
-{
-    ICKind kind = GetICKind();
-    if (IsValueIC(kind)) {
-        key = JSTaggedValue::ToPropertyKey(GetThread(), key);
-    }
-    if (!receiver->IsJSObject() || receiver->HasOrdinaryGet()) {
-        return HandleOrdinarySet(receiver, key, value);
-    }
-    if (receiver->IsTypedArray() || receiver->IsSharedTypedArray()) {
-        return StoreTypedArrayValueMiss(receiver, key, value);
-    }
-
-    // global variable find from global record firstly
-    if (kind == ICKind::NamedGlobalStoreIC || kind == ICKind::NamedGlobalTryStoreIC) {
-        JSTaggedValue box = SlowRuntimeStub::LdGlobalRecord(thread_, key.GetTaggedValue());
-        if (!box.IsUndefined()) {
-            return HandleGlobalStoreIC(box, key, value);
-        }
-    }
-    UpdateReceiverHClass(JSHandle<JSTaggedValue>(GetThread(), JSHandle<JSObject>::Cast(receiver)->GetClass()));
-
-    // fixme(hzzhouzebin) Open IC for SharedArray later.
-    if (receiver->IsJSSharedArray()) {
-        return HandleSharedArraySet(receiver, key, value);
-    }
-    if (key->IsJSFunction()) { // key is a private setter
-        return HandlePrivateSetter(receiver, key, value);
-    }
-    return HandlePropertySet(receiver, key, value, isOwn, kind);
 }
 
 JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
