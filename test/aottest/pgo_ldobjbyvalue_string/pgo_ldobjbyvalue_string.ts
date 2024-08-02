@@ -33,11 +33,11 @@ test();
 ArkTools.printTypedOpProfiler("LOAD_ELEMENT");
 ArkTools.clearTypedOpProfiler();
 
-let v2 = new SharedMap();
+let v2 = new SendableMap();
 class C3 {
     constructor(a5, a6) {
         ({ "length": a5, } = "-39635");
         print(a5 % -1713856730);
     }
 }
-const v9 = new C3(SharedMap, "-39635");
+const v9 = new C3(SendableMap, '-39635');

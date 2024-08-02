@@ -32,7 +32,7 @@ class NormalClass {
 
 function bindErrorTest() {
     print("Start bindErrorTest");
-    const array1 = new SharedArray<number>(5, 12, 8, 130, 44);
+    const array1 = new SendableArray<number>(5, 12, 8, 130, 44);
     const normal = new NormalClass(10);
     const unbouondAt = array1.at;
     const boundAt = unbouondAt.bind(normal);
@@ -251,10 +251,10 @@ function bindErrorTest() {
     }
 }
 
-// SharedMap ut
+// SendableMap ut
 function bindErrorTestMap() {
     print("Start map bindErrorTest");
-    const map0 = new SharedMap<string>([["key", "value"]]);
+    const map0 = new SendableMap<string>([['key', 'value']]);
     const normal = new NormalClass(10);
 
     const unboundClear = map0.clear;
@@ -339,10 +339,10 @@ function bindErrorTestMap() {
     }
 }
 
-// SharedSet ut
+// SendableSet ut
 function bindErrorTestSet() {
     print("Start set bindErrorTest");
-    const set0 = new SharedSet<number>([0, 1, 2]);
+    const set0 = new SendableSet<number>([0, 1, 2]);
     const normal = new NormalClass(10);
 
     const unboundAdd = set0.add;
@@ -409,32 +409,32 @@ function bindErrorTestSet() {
     }
 }
 
-// for SharedArray
+// for SendableArray
 function createErrorTest(): void {
     print("Start createErrorTest");
     try {
-        const arr = new SharedArray<string>(-1);
+        const arr = new SendableArray<string>(-1);
         print("Init with small first element: -1 success.");
     } catch (err) {
         print("Init with small first element: -1, err: " + err + ", errCode: " + err.code);
     }
 
     try {
-        const arr = new SharedArray<string>(0xffff);
+        const arr = new SendableArray<string>(0xffff);
         print("Init with big first element: 0xffff success.");
     } catch (err) {
         print("Init with big first element: 0xffff, err: " + err + ", errCode: " + err.code);
     }
 
     try {
-        const arr = new SharedArray<string>(0xffffffffff);
+        const arr = new SendableArray<string>(0xffffffffff);
         print("Init exceed max length success.");
     } catch (err) {
         print("Init exceed max length: err: " + err + ", errCode: " + err.code);
     }
 
     try {
-        const arr = new SharedArray<NormalClass>(new NormalClass(1), new NormalClass(2));
+        const arr = new SendableArray<NormalClass>(new NormalClass(1), new NormalClass(2));
         print("Create with non-sendable element success.");
     } catch (err) {
         print("Create with non-sendable element fail. err: " + err + ", errCode: " + err.code);
@@ -444,20 +444,20 @@ function createErrorTest(): void {
 function fromErrorTest(): void {
     print("Start fromErrorTest");
     try {
-        SharedArray.from<NormalClass>(Array.from([new NormalClass(1), new NormalClass(2)]));
+        SendableArray.from<NormalClass>(Array.from([new NormalClass(1), new NormalClass(2)]));
         print("Create from non-sendable iterator success.");
     } catch (err) {
         print("Create from non-sendable iterator fail. err: " + err + ", errCode: " + err.code);
     }
 
     try {
-        SharedArray.from<NormalClass>([new NormalClass(1), new NormalClass(2)]);
+        SendableArray.from<NormalClass>([new NormalClass(1), new NormalClass(2)]);
         print("Create from non-sendable element success.");
     } catch (err) {
         print("Create from non-sendable element fail. err: " + err + ", errCode: " + err.code);
     }
     try {
-        SharedArray.from<number, NormalClass>([1, 2, 3], (x: number) => new NormalClass(x));
+        SendableArray.from<number, NormalClass>([1, 2, 3], (x: number) => new NormalClass(x));
         print("Create from mapper: non-sendable element success.");
     } catch (err) {
         print("Create from mapper: non-sendable element fail. err: " + err + ", errCode: " + err.code);
@@ -467,7 +467,7 @@ function fromErrorTest(): void {
 function staticCreateErrorTest(): void {
     print("Start staticCreateErrorTest");
     try {
-        SharedArray.create<NormalClass>(4, new NormalClass(1), new NormalClass(2));
+        SendableArray.create<NormalClass>(4, new NormalClass(1), new NormalClass(2));
         print("Static create with non-sendable initialValue success.");
     } catch (err) {
         print("Static create from non-sendable initialValue fail. err: " + err + ", errCode: " + err.code);
@@ -476,7 +476,7 @@ function staticCreateErrorTest(): void {
 
 function atErrorTest() {
     print("Start atErrorTest");
-    const array1 = new SharedArray<number>(5, 12, 8, 130, 44);
+    const array1 = new SendableArray<number>(5, 12, 8, 130, 44);
     try {
         print("at invalid index success: " + array1.at("hi"));
     } catch (err) {
@@ -486,7 +486,7 @@ function atErrorTest() {
 
 function concatErrorTest(): void {
     print("Start concatErrorTest");
-    let array: SharedArray<number> = new SharedArray<number>(1, 3, 5);
+    let array: SendableArray<number> = new SendableArray<number>(1, 3, 5);
     let normalArray = new Array<NormalClass>(new NormalClass(2), new NormalClass(4), new NormalClass(6));
 
     try {
@@ -508,24 +508,24 @@ function directCallConstructor() {
     print("Start directCallConstructor");
 
     try {
-        SharedArray<number>();
-        print("direct call SharedArray ctor with empty success.");
+        SendableArray<number>();
+        print('direct call SendableArray ctor with empty success.');
     } catch (err) {
-        print("direct call SharedArray ctor with empty fail. err: " + err + ", errCode: " + err.code);
+        print('direct call SendableArray ctor with empty fail. err: ' + err + ', errCode: ' + err.code);
     }
 
     try {
-        SharedArray<number>(5);
-        print("direct call SharedArray ctor with length.");
+        SendableArray<number>(5);
+        print('direct call SendableArray ctor with length.');
     } catch (err) {
-        print("direct call SharedArray ctor with length fail. err: " + err + ", errCode: " + err.code);
+        print('direct call SendableArray ctor with length fail. err: ' + err + ', errCode: ' + err.code);
     }
 
     try {
-        SharedArray<number>(5, 10);
-        print("direct call SharedArray ctor with elements.");
+        SendableArray<number>(5, 10);
+        print('direct call SendableArray ctor with elements.');
     } catch (err) {
-        print("direct call SharedArray ctor with elements fail. err: " + err + ", errCode: " + err.code);
+        print('direct call SendableArray ctor with elements fail. err: ' + err + ', errCode: ' + err.code);
     }
 }
 
@@ -533,24 +533,24 @@ function directCallConstructorMap() {
     print("Start map directCallConstructor");
 
     try {
-        SharedMap<number, number>();
-        print("direct call SharedMap ctor with empty success.");
+        SendableMap<number, number>();
+        print('direct call SendableMap ctor with empty success.');
     } catch (err) {
-        print("direct call SharedMap ctor with empty fail. err: " + err + ", errCode: " + err.code);
+        print('direct call SendableMap ctor with empty fail. err: ' + err + ', errCode: ' + err.code);
     }
 
     try {
-        SharedMap<number, number>(5);
-        print("direct call SharedMap ctor with length.");
+        SendableMap<number, number>(5);
+        print('direct call SendableMap ctor with length.');
     } catch (err) {
-        print("direct call SharedMap ctor with length fail. err: " + err + ", errCode: " + err.code);
+        print('direct call SendableMap ctor with length fail. err: ' + err + ', errCode: ' + err.code);
     }
 
     try {
-        SharedMap<number, number>([[5, 10]]);
-        print("direct call SharedMap ctor with elements.");
+        SendableMap<number, number>([[5, 10]]);
+        print('direct call SendableMap ctor with elements.');
     } catch (err) {
-        print("direct call SharedMap ctor with elements fail. err: " + err + ", errCode: " + err.code);
+        print('direct call SendableMap ctor with elements fail. err: ' + err + ', errCode: ' + err.code);
     }
 }
 
@@ -558,30 +558,30 @@ function directCallConstructorSet() {
     print("Start set directCallConstructor");
 
     try {
-        SharedSet<number>();
-        print("direct call SharedSet ctor with empty success.");
+        SendableSet<number>();
+        print('direct call SendableSet ctor with empty success.');
     } catch (err) {
-        print("direct call SharedSet ctor with empty fail. err: " + err + ", errCode: " + err.code);
+        print('direct call SendableSet ctor with empty fail. err: ' + err + ', errCode: ' + err.code);
     }
 
     try {
-        SharedSet<number>(5);
-        print("direct call SharedSet ctor with length.");
+        SendableSet<number>(5);
+        print('direct call SendableSet ctor with length.');
     } catch (err) {
-        print("direct call SharedSet ctor with length fail. err: " + err + ", errCode: " + err.code);
+        print('direct call SendableSet ctor with length fail. err: ' + err + ', errCode: ' + err.code);
     }
 
     try {
-        SharedSet<number>(5, 10);
-        print("direct call SharedSet ctor with elements.");
+        SendableSet<number>(5, 10);
+        print('direct call SendableSet ctor with elements.');
     } catch (err) {
-        print("direct call SharedSet ctor with elements fail. err: " + err + ", errCode: " + err.code);
+        print('direct call SendableSet ctor with elements fail. err: ' + err + ', errCode: ' + err.code);
     }
 }
 
 function fillErrorTest() {
     print("Start Test fillErrorTest")
-    const array1 = new SharedArray<number>(1, 2, 3, 4);
+    const array1 = new SendableArray<number>(1, 2, 3, 4);
     try {
         array1.fill(new NormalClass(2), 2, 4);
         print("fill array with non-sendable object and position success.");
@@ -605,7 +605,7 @@ function fillErrorTest() {
 
 function mapErrorTest() {
     print("Start mapErrorTest")
-    const array = new SharedArray<number>(1, 4, 9, 16);
+    const array = new SendableArray<number>(1, 4, 9, 16);
     try {
         array.map<NormalClass>((x: number) => new NormalClass(x));
         print("map array with non-sendable success.");
@@ -616,7 +616,7 @@ function mapErrorTest() {
 
 function pushErrorTest() {
     print("Start pushErrorTest")
-    let array: SharedArray<number> = new SharedArray<number>(1, 3, 5);
+    let array: SendableArray<number> = new SendableArray<number>(1, 3, 5);
     try {
         array.push(new NormalClass(5));
         print("push array with non-sendable element success.");
@@ -627,7 +627,7 @@ function pushErrorTest() {
 
 function unshiftErrorTest() {
     print("Start Test unshiftErrorTest")
-    const array = new SharedArray<number>(1, 2, 3);
+    const array = new SendableArray<number>(1, 2, 3);
     try {
         array.unshift(new NormalClass(4), new NormalClass(5));
         print("unshift array with non-sendable element success.");
@@ -638,7 +638,7 @@ function unshiftErrorTest() {
 
 function extendToErrorTest() {
     print("Start Test extendToErrorTest")
-    const array = new SharedArray<number>(1, 2, 3);
+    const array = new SendableArray<number>(1, 2, 3);
     try {
         array.extendTo(5, new NormalClass(4));
         print("extendTo array with non-sendable element success.");
@@ -648,16 +648,16 @@ function extendToErrorTest() {
 }
 
 function concurrencyErrorTest() {
-    const array1 = new SharedArray<number>(1, 2, 3);
+    const array1 = new SendableArray<number>(1, 2, 3);
     try {
-        array1.forEach((key: number, _: number, array: SharedArray) => {
-            array.push(5);
+        array1.forEach((key: number, _: number, array: SendableArray) => {
+          array.push(5);
         });
       } catch (err) {
         print("add element while iterate array fail. err: " + err + ", errCode: " + err.code);
       }
       try {
-        array1.forEach((key: number, _: number, array: SharedArray) => {
+        array1.forEach((key: number, _: number, array: SendableArray) => {
           if (key % 2 == 0) {
             array.pop();
           }
@@ -666,15 +666,15 @@ function concurrencyErrorTest() {
         print("pop element while iterate array fail. err: " + err + ", errCode: " + err.code);
       }
       try {
-        array1.forEach((key: number, _: number, array: SharedArray) => {
-            array.shrinkTo(0);
+        array1.forEach((key: number, _: number, array: SendableArray) => {
+          array.shrinkTo(0);
         });
       } catch (err) {
         print("shrink while iterate array fail. err: " + err + ", errCode: " + err.code);
       }
       try {
-        array1.forEach((key: number, _: number, array: SharedArray) => {
-            array.extendTo(array1.length + 1, 100);
+        array1.forEach((key: number, _: number, array: SendableArray) => {
+          array.extendTo(array1.length + 1, 100);
         });
       } catch (err) {
         print("extend while iterate array fail. err: " + err + ", errCode: " + err.code);
@@ -683,13 +683,13 @@ function concurrencyErrorTest() {
 
 // common bindTest
 bindErrorTest();
-print("Start Test SharedMap")
+print('Start Test SendableMap');
 bindErrorTestMap();
 
-print("Start Test SharedSet")
+print('Start Test SendableSet');
 bindErrorTestSet();
 
-print("Start Test SharedArray")
+print('Start Test SendableArray');
 createErrorTest();
 fromErrorTest();
 atErrorTest();

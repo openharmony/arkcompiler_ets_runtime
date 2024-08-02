@@ -14,8 +14,8 @@
  */
 
 /*
- * @tc.name:sharedmap
- * @tc.desc:test sharedmap
+ * @tc.name:sendablemap
+ * @tc.desc:test sendablemap
  * @tc.type: FUNC
  * @tc.require: issue#I93TZC
  */
@@ -23,20 +23,20 @@
 // @ts-nocheck
 declare function print(str: any): string;
 
-function FillMap(map: SharedMap): void {
+function FillMap(map: SendableMap): void {
   for (let i = 0; i < 5; i++) {
-    map.set(i, "value" + i);
+    map.set(i, 'value' + i);
   }
 }
-let sharedMap: SharedMap = new SharedMap<number, string>();
+let sharedMap: SendableMap = new SendableMap<number, string>();
 
 // Basic tests
 print("===Basic test begin===")
 FillMap(sharedMap);
 print("map size is " + sharedMap.size);
-print(SharedMap[Symbol.species] == SharedMap);
-print(SharedMap.name == "SharedMap");
-print(SharedMap[Symbol.species] == Map);
+print(SendableMap[Symbol.species] == SendableMap);
+print(SendableMap.name == 'SendableMap');
+print(SendableMap[Symbol.species] == Map);
 
 const keyIter = sharedMap.keys();
 let nextEntry = keyIter.next();
@@ -66,11 +66,11 @@ print("values next:" + nextEntry.value + ", done: " + nextEntry.done);
 nextEntry = valueIter.next();
 print("values next:" + nextEntry.value + ", done: " + nextEntry.done);
 
-sharedMap.forEach((value: string, key: number, map: SharedMap) => {
-  print("map key[forEach]:" + "key:" + key + ", value:" + value);
+sharedMap.forEach((value: string, key: number, map: SendableMap) => {
+  print('map key[forEach]:' + 'key:' + key + ', value:' + value);
 });
 
-print(sharedMap[Symbol.toStringTag] == "SharedMap")
+print(sharedMap[Symbol.toStringTag] == 'SendableMap');
 for (let iter of sharedMap[Symbol.iterator]()) {
   print("map key[Symbol.iterator]:" + iter);
 }
@@ -172,18 +172,18 @@ print("===Concurrent modification during iteration Test(forEach) begin===")
 sharedMap.clear();
 FillMap(sharedMap);
 print("map size is " + sharedMap.size);
-sharedMap.forEach((_: string, key: number, map: SharedMap) => {
-  print("map key[forEach]: " + key);
-})
+sharedMap.forEach((_: string, key: number, map: SendableMap) => {
+  print('map key[forEach]: ' + key);
+});
 try {
-  sharedMap.forEach((_: string, key: number, map: SharedMap) => {
-    map.set(key + 5, "value" + key + 5);
+  sharedMap.forEach((_: string, key: number, map: SendableMap) => {
+    map.set(key + 5, 'value' + key + 5);
   });
 } catch (e) {
   print("Set Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 try {
-  sharedMap.forEach((_: string, key: number, map: SharedMap) => {
+  sharedMap.forEach((_: string, key: number, map: SendableMap) => {
     if (key % 2 == 0) {
       map.delete(key);
     }
@@ -192,7 +192,7 @@ try {
   print("Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 try {
-  sharedMap.forEach((_: string, key: number, map: SharedMap) => {
+  sharedMap.forEach((_: string, key: number, map: SendableMap) => {
     map.clear();
   });
 } catch (e) {
@@ -209,7 +209,11 @@ class SObject {
 
 try {
   let sObj = new SObject();
-  sharedMap = new SharedMap([["str", 1], [sObj, undefined], [true, null]]);
+  sharedMap = new SendableMap([
+    ['str', 1],
+    [sObj, undefined],
+    [true, null],
+  ]);
   print("sharedMap set[shared] element success");
 } catch (e) {
   print("sharedMap set[unshared]: " + e + ", errCode: " + e.code);
@@ -217,107 +221,115 @@ try {
 
 try {
   let obj = {}
-  sharedMap = new SharedMap([["str", 1], [obj, 2]]);
+  sharedMap = new SendableMap([
+    ['str', 1],
+    [obj, 2],
+  ]);
 } catch (e) {
   print("sharedMap set[unshared]: " + e + ", errCode: " + e.code);
 }
 
 try {
   let sym = Symbol("testSymbol")
-  sharedMap = new SharedMap([["str", 1], [sym, 2]]);
+  sharedMap = new SendableMap([
+    ['str', 1],
+    [sym, 2],
+  ]);
 } catch (e) {
   print("sharedMap set[unshared]: " + e + ", errCode: " + e.code);
 }
 print("===Type check end===");
 
 print("===Class inheritance test begin ===");
-class SubSharedMap<K, V> extends SharedMap {
-  desc: string = "I'am SubSharedMap";
+class SubSendableMap<K, V> extends SendableMap {
+  desc: string = "I'am SubSendableMap";
   constructor(entries?: [K, V][] | null) {
-    "use sendable";
-    super(entries)
+    'use sendable';
+    super(entries);
   }
 }
 
-let subSharedMap = new SubSharedMap<number, string>();
-subSharedMap.set(1, "one");
-print(subSharedMap.has(1));
-print(subSharedMap.size);
+let subSendableMap = new SubSendableMap<number, string>();
+subSendableMap.set(1, 'one');
+print(subSendableMap.has(1));
+print(subSendableMap.size);
 
 try {
-  subSharedMap["extension"] = "value";
+  subSendableMap['extension'] = 'value';
 } catch(e) {
   print("add extension(.): " + e);
 }
 try {
-  subSharedMap.extension = "value";
+  subSendableMap.extension = 'value';
 } catch(e) {
   print("add extension([]): " + e);
 }
 
 try {
   let obj = {};
-  subSharedMap = new SubSharedMap<string, Object>([["object", obj]]);
-  print(subSharedMap.size);
+  subSendableMap = new SubSendableMap<string, Object>([['object', obj]]);
+  print(subSendableMap.size);
 } catch (e) {
-  print("SubSharedMap set[unshared]: " + e + ", errCode: " + e.code);
+  print('SubSendableMap set[unshared]: ' + e + ', errCode: ' + e.code);
 }
 
-subSharedMap = new SubSharedMap<number, string>([
-  [1, "one"],
-  [2, "two"],
-  [3, "three"]]);
-print(subSharedMap.size);
-for (const [key, value] of subSharedMap.entries()) {
-  print("SubSharedMap [key, value][for-of]: " + "[" + key + ", " + value + "]");
+subSendableMap = new SubSendableMap<number, string>([
+  [1, 'one'],
+  [2, 'two'],
+  [3, 'three'],
+]);
+print(subSendableMap.size);
+for (const [key, value] of subSendableMap.entries()) {
+  print('SubSendableMap [key, value][for-of]: ' + '[' + key + ', ' + value + ']');
 }
 
 try {
-  subSharedMap.forEach((value: string, key: number, map: SubSharedMap) => {
+  subSendableMap.forEach((value: string, key: number, map: SubSendableMap) => {
     if (key % 2 == 0) {
       map.delete(key);
     }
   });
 } catch (e) {
-  print("SubSharedMap Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
+  print('SubSendableMap Delete Scenario[forEach]: ' + e + ', errCode: ' + e.code);
 }
 
-class SubSubSharedMap<K, V> extends SubSharedMap {
+class SubSubSendableMap<K, V> extends SubSendableMap {
   constructor(entries?: [K, V][] | null) {
-    "use sendable";
-    super(entries)
+    'use sendable';
+    super(entries);
   }
 }
 
-let subSubSharedMap = new SubSubSharedMap<number, string>();
-subSubSharedMap.set(1, "one");
-print(subSubSharedMap.has(1));
-print(subSubSharedMap.size);
+let subSubSendableMap = new SubSubSendableMap<number, string>();
+subSubSendableMap.set(1, 'one');
+print(subSubSendableMap.has(1));
+print(subSubSendableMap.size);
 
 try {
   let obj = {};
-  subSubSharedMap = new SubSubSharedMap<string, Object>([["object", obj]]);
-  print(subSubSharedMap.size);
+  subSubSendableMap = new SubSubSendableMap<string, Object>([['object', obj]]);
+  print(subSubSendableMap.size);
 } catch (e) {
-  print("SubSubSharedMap set[unshared]: " + e + ", errCode: " + e.code);
+  print('SubSubSendableMap set[unshared]: ' + e + ', errCode: ' + e.code);
 }
 
-subSubSharedMap = new SubSubSharedMap<number, string>([
-  [1, "one"],
-  [2, "two"],
-  [3, "three"]]);
-print(subSharedMap.size);
-for (const [key, value] of subSharedMap.entries()) {
-  print("SubSubSharedMap [key, value][for-of]: " + "[" + key + ", " + value + "]");
+subSubSendableMap = new SubSubSendableMap<number, string>([
+  [1, 'one'],
+  [2, 'two'],
+  [3, 'three'],
+]);
+print(subSendableMap.size);
+for (const [key, value] of subSendableMap.entries()) {
+  print('SubSubSendableMap [key, value][for-of]: ' + '[' + key + ', ' + value + ']');
 }
 
 try {
-  subSubSharedMap.forEach((value: string, key: number, map: SubSubSharedMap) => {
+  subSubSendableMap.forEach((value: string, key: number, map: SubSubSendableMap) => {
     if (key % 2 == 0) {
       map.delete(key);
     }
   });
 } catch (e) {
-  print("SubSubSharedMap Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
+  print('SubSubSendableMap Delete Scenario[forEach]: ' + e + ', errCode: ' + e.code);
 }
 print("===Class inheritance test end ===");

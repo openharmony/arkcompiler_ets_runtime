@@ -96,7 +96,7 @@ const exceptions = {
 };
 
 {
-	const v1 = new SharedInt8Array(SharedInt8Array, SharedInt8Array, SharedInt8Array);
+	const v1 = new SendableInt8Array(SendableInt8Array, SendableInt8Array, SendableInt8Array);
 	let a = v1[Symbol.toStringTag];
 	let c = [a];
 }
