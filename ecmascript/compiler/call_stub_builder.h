@@ -182,7 +182,7 @@ private:
     std::vector<GateRef> PrepareArgsForAot(GateRef expectedNum);
     std::vector<GateRef> PrepareBasicArgsForAot();
     std::vector<GateRef> PrepareAppendArgsForAotStep1();
-    std::vector<GateRef> PrepareAppendArgsForAotStep2(GateRef expectedNum);
+    std::vector<GateRef> PrepareAppendArgsForAotStep2();
     std::vector<GateRef> PrepareAppendArgsForAotStep3(GateRef expectedNum);
 
     int PrepareIdxForAsmInterpreterForBaselineWithBaselineCode();

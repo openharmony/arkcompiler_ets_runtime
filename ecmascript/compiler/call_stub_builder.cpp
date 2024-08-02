@@ -348,7 +348,7 @@ void CallStubBuilder::CallBridge(GateRef code, GateRef expectedNum, Label *exit)
             break;
         case JSCallMode::SUPER_CALL_WITH_ARGV:
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
-            ret = CallRuntime(glue_, idxForAot, argsForAot);
+            ret = CallNGCRuntime(glue_, idxForAot, argsForAot, hir_);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -658,19 +658,17 @@ int CallStubBuilder::PrepareIdxForAot()
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
+        case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
             if (IsFastAotCall()) {
                 return RTSTUB_ID(JSFastCallWithArgV);
             } else if (IsFastAotCallWithBridge()) {
                 return RTSTUB_ID(JSFastCallWithArgVAndPushArgv);
-            } else if (IsSlowAotCall() && isForBaseline_) {
+            } else if (IsSlowAotCall()) {
                 return RTSTUB_ID(JSCallWithArgV);
             } else {
                 return RTSTUB_ID(JSCallWithArgVAndPushArgv);
             }
-        case JSCallMode::SUPER_CALL_WITH_ARGV:
-            return RTSTUB_ID(SuperCall);
-        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
-            return RTSTUB_ID(SuperCallSpread);
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -684,7 +682,7 @@ std::vector<GateRef> CallStubBuilder::PrepareArgsForAot(GateRef expectedNum)
     std::vector<GateRef> appendArgs = PrepareAppendArgsForAotStep1();
     basicArgs.insert(basicArgs.end(), appendArgs.begin(), appendArgs.end());
 
-    appendArgs = PrepareAppendArgsForAotStep2(expectedNum);
+    appendArgs = PrepareAppendArgsForAotStep2();
     basicArgs.insert(basicArgs.end(), appendArgs.begin(), appendArgs.end());
 
     appendArgs = PrepareAppendArgsForAotStep3(expectedNum);
@@ -745,7 +743,11 @@ std::vector<GateRef> CallStubBuilder::PrepareBasicArgsForAot()
             }
         case JSCallMode::SUPER_CALL_WITH_ARGV:
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
-            return {};
+            if (isFast_) {
+                return { glue_, func_ };
+            } else {
+                return { glue_, ZExtInt32ToInt64(actualNumArgs_), func_};
+            }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -826,23 +828,15 @@ std::vector<GateRef> CallStubBuilder::PrepareAppendArgsForAotStep1()
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             return { callArgs_.callThisArgvWithReturnArgs.thisValue };
         case JSCallMode::SUPER_CALL_WITH_ARGV:
-            return {
-                callArgs_.superCallArgs.thisFunc,
-                callArgs_.superCallArgs.array,
-                IntToTaggedInt(callArgs_.superCallArgs.argc)
-            };
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
-            return {
-                callArgs_.superCallArgs.thisFunc,
-                callArgs_.superCallArgs.array
-            };
+            return {};
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }
 }
 
-std::vector<GateRef> CallStubBuilder::PrepareAppendArgsForAotStep2(GateRef expectedNum)
+std::vector<GateRef> CallStubBuilder::PrepareAppendArgsForAotStep2()
 {
     switch (callArgs_.mode) {
         case JSCallMode::CALL_THIS_WITH_ARGV:
@@ -856,10 +850,6 @@ std::vector<GateRef> CallStubBuilder::PrepareAppendArgsForAotStep2(GateRef expec
             [[fallthrough]];
         case JSCallMode::CALL_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
-            if (IsFastAotCallWithBridge()) {
-                return { expectedNum };
-            }
-            [[fallthrough]];
         case JSCallMode::CALL_ARG0:
         case JSCallMode::CALL_ARG1:
         case JSCallMode::CALL_ARG2:
@@ -876,9 +866,22 @@ std::vector<GateRef> CallStubBuilder::PrepareAppendArgsForAotStep2(GateRef expec
         case JSCallMode::CALL_SETTER:
         case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
+            return {};
         case JSCallMode::SUPER_CALL_WITH_ARGV:
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
-            return {};
+            if (isFast_) {
+                return {
+                    callArgs_.superCallArgs.thisObj,
+                    callArgs_.superCallArgs.argc,
+                    callArgs_.superCallArgs.argv
+                };
+            } else {
+                return {
+                    callArgs_.superCallArgs.newTarget,
+                    callArgs_.superCallArgs.thisObj,
+                    callArgs_.superCallArgs.argv
+                };
+            }
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
@@ -897,18 +900,14 @@ std::vector<GateRef> CallStubBuilder::PrepareAppendArgsForAotStep3(GateRef expec
         case JSCallMode::CALL_THIS_ARG1:
         case JSCallMode::CALL_THIS_ARG2:
         case JSCallMode::CALL_THIS_ARG3:
-        case JSCallMode::CALL_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_ARG0:
         case JSCallMode::DEPRECATED_CALL_ARG1:
         case JSCallMode::DEPRECATED_CALL_ARG2:
         case JSCallMode::DEPRECATED_CALL_ARG3:
-        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
         case JSCallMode::CALL_GETTER:
         case JSCallMode::CALL_SETTER:
         case JSCallMode::CALL_THIS_ARG2_WITH_RETURN:
         case JSCallMode::CALL_THIS_ARG3_WITH_RETURN:
-        case JSCallMode::SUPER_CALL_WITH_ARGV:
-        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
             return {};
         case JSCallMode::CALL_THIS_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_THIS_WITH_ARGV:
@@ -920,6 +919,11 @@ std::vector<GateRef> CallStubBuilder::PrepareAppendArgsForAotStep3(GateRef expec
             break;
         case JSCallMode::CALL_THIS_ARGV_WITH_RETURN:
             retArgs.push_back(callArgs_.callThisArgvWithReturnArgs.argv);
+            break;
+        case JSCallMode::CALL_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";
