@@ -83,13 +83,13 @@ static void SaveFunc2CalleeOffsetInfo(void *object, std::string funcName, kungfu
     state.SaveFunc2CalleeOffsetInfo(funcName, calleeRegInfo);
 }
 
-static void SavePC2DeoptInfo(void *object, uint64_t pc, std::vector<uint64_t> deoptInfo)
+static void SavePC2DeoptInfo(void *object, uint64_t pc, std::vector<uint8_t> deoptInfo)
 {
     struct CodeInfo &state = *static_cast<struct CodeInfo *>(object);
     state.SavePC2DeoptInfo(pc, deoptInfo);
 }
 
-void SavePC2CallSiteInfo(void *object, uint64_t pc, std::vector<uint64_t> callSiteInfo)
+void SavePC2CallSiteInfo(void *object, uint64_t pc, std::vector<uint8_t> callSiteInfo)
 {
     struct CodeInfo &state = *static_cast<struct CodeInfo *>(object);
     state.SavePC2CallSiteInfo(pc, callSiteInfo);

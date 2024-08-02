@@ -377,7 +377,7 @@ public:
     virtual void Sqrtsd_r(Reg srcReg, Reg destReg) = 0;
     /* end of X64 instructions */
     /* process stackmap */
-    virtual void RecordStackmap(const std::vector<uint64> &referenceMap, const std::vector<uint64> &deoptInfo) = 0;
+    virtual void RecordStackmap(const std::vector<uint8> &referenceMap, const std::vector<uint8> &deoptInfo) = 0;
     virtual uint32 GetCurModulePC() = 0;
     virtual void SetLastModulePC(uint32 pc) = 0;
 

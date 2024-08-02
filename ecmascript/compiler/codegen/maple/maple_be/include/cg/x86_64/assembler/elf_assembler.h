@@ -358,8 +358,8 @@ public:
     void Sqrtsd_r(Reg srcReg, Reg destReg) override;
     /* end of X64 instructions */
     /* process stackmap */
-    void RecordStackmap(const std::vector<uint64> &referenceMap,
-                        const std::vector<uint64> &deoptVreg2LocationInfo) override;
+    void RecordStackmap(const std::vector<uint8> &referenceMap,
+                        const std::vector<uint8> &deoptVreg2LocationInfo) override;
     uint32 GetCurModulePC() override;
     void SetLastModulePC(uint32 pc) override;
 
