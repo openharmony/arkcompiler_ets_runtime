@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/ts_types/global_type_info.h"
 #include "ecmascript/global_env_constants-inl.h"
@@ -165,6 +166,54 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
     snapshotConstantPool->SetObjectToCache(thread_, constantPoolIndex, aotLiteralInfo.GetTaggedValue());
 }
 
+bool BaseSnapshotInfo::CheckAOTPropertiesForRep(const JSHandle<TaggedArray> &properties,
+                                                const JSHandle<JSHClass> &hclass)
+{
+    auto layout = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    for (size_t i = 0; i < properties->GetLength(); i++) {
+        auto attr = layout->GetAttr(i);
+        auto value = JSObject::ConvertValueWithRep(attr, properties->Get(i));
+        // If value.first is false, indicating that value cannot be converted to the expected value of
+        // representation. For example, the representation is INT, but the value type is string.
+        if (!value.first) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool BaseSnapshotInfo::CheckAOTIhcPropertiesForRep(JSThread *thread, const JSHandle<JSTaggedValue> &ihc,
+                                                   const JSHandle<ClassInfoExtractor> &extractor)
+{
+    if (ihc->IsUndefinedOrNull()) {
+        return false;
+    }
+    JSHandle<JSObject> prototype;
+    if (ihc->IsJSHClass()) {
+        JSHandle<JSHClass> ihclass(ihc);
+        prototype = JSHandle<JSObject>(thread, ihclass->GetProto());
+    } else {
+        prototype = JSHandle<JSObject>(ihc);
+    }
+
+    ASSERT(!prototype->GetJSHClass()->IsDictionaryMode());
+    JSHandle<TaggedArray> nonStaticProperties(thread, extractor->GetNonStaticProperties());
+    JSHandle<JSHClass> protohclass(thread, prototype->GetJSHClass());
+    return CheckAOTPropertiesForRep(nonStaticProperties, protohclass);
+}
+
+bool BaseSnapshotInfo::CheckAOTChcPropertiesForRep(JSThread *thread, const JSHandle<JSTaggedValue> &chc,
+                                                   const JSHandle<ClassInfoExtractor> &extractor)
+{
+    if (chc->IsUndefinedOrNull()) {
+        return false;
+    }
+    JSHandle<JSHClass> chclass(thread, JSHClass::Cast(chc->GetTaggedObject()));
+    ASSERT(!chclass->IsDictionaryMode());
+    JSHandle<TaggedArray> staticProperties(thread, extractor->GetStaticProperties());
+    return CheckAOTPropertiesForRep(staticProperties, chclass);
+}
+
 void StringSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalData, const std::set<uint32_t>&)
 {
     for (auto item : info_) {
@@ -246,13 +295,26 @@ void ClassLiteralSnapshotInfo::StoreDataToGlobalData(SnapshotGlobalData &globalD
         JSHandle<ConstantPool> snapshotCp(thread_, snapshotCpArr->Get(snapshotCpArrIdx));
 
         uint32_t methodId = cp->GetEntityId(data.ctorMethodOffset_).GetOffset();
-        JSHandle<JSTaggedValue> ihc = thread_->GlobalConstants()->GetHandledUndefined();
-        JSHandle<JSTaggedValue> chc = thread_->GlobalConstants()->GetHandledUndefined();
+        JSHandle<JSTaggedValue> undefinedHandle = thread_->GlobalConstants()->GetHandledUndefined();
+        JSHandle<JSTaggedValue> ihc = undefinedHandle;
+        JSHandle<JSTaggedValue> chc = undefinedHandle;
         if (hasAbcId) {
             ProfileType pt(abcId, methodId, ProfileType::Kind::ClassId, true);
             ProfileType ctorPt(abcId, methodId, ProfileType::Kind::ConstructorId, true);
             ihc = TryGetHClass(pt, pt);
             chc = TryGetHClass(ctorPt, ctorPt);
+
+            auto method = ConstantPool::GetMethodFromCache(thread_, cp.GetTaggedValue(), data.ctorMethodOffset_);
+            auto *factory = thread_->GetEcmaVM()->GetFactory();
+            auto extractor = factory->NewClassInfoExtractor(JSHandle<JSTaggedValue>(thread_, method));
+            ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(thread_, extractor, arrayHandle,
+                arrayHandle->GetLength());
+            if (!CheckAOTIhcPropertiesForRep(thread_, ihc, extractor)) {
+                ihc = undefinedHandle;
+            }
+            if (!CheckAOTChcPropertiesForRep(thread_, chc, extractor)) {
+                chc = undefinedHandle;
+            }
         }
 
         CollectLiteralInfo(arrayHandle, data.constantPoolIdx_, snapshotCp, skippedMethods, ihc, chc);
