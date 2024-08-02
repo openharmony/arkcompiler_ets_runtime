@@ -146,7 +146,7 @@ public:
 
     static void FilterDuplicatedKeys(JSThread *thread, const JSHandle<TaggedArray> &keys,
                                      const JSHandle<TaggedArray> &properties);
-    
+
     static SharedFieldType FromTaggedValue(JSTaggedValue value)
     {
         if (value.IsNull()) {
