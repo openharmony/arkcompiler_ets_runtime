@@ -1258,6 +1258,24 @@ JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
     return JSTaggedValue::True();
 }
 
+JSTaggedValue BuiltinsArkTools::WaitAllJitCompileFinish(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    auto jit = Jit::GetInstance();
+    if (!jit->IsEnableFastJit()) {
+        return JSTaggedValue::False();
+    }
+    while (Jit::GetInstance()->GetRunningTaskCnt(thread->GetEcmaVM())) {
+        thread->CheckSafepoint();
+    }
+    thread->SetPGOProfilerEnable(false);
+    thread->CheckOrSwitchPGOStubs();
+    thread->GetEcmaVM()->GetJSOptions().SetEnablePGOProfiler(false);
+    return JSTaggedValue::True();
+}
+
 JSTaggedValue BuiltinsArkTools::StartRuntimeStat(EcmaRuntimeCallInfo *msg)
 {
     JSThread *thread = msg->GetThread();
