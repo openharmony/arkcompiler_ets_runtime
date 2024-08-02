@@ -19,3 +19,4 @@ string is sendable
 number is sendable
 bigInt is sendable
 function is not sendable
+sendableFunc is sendable

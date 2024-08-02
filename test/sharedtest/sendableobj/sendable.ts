@@ -24,10 +24,9 @@
 declare function print(str: any): string;
 declare function isSendable(obj: lang.ISendable | Object): boolean;
 
-@Sendable
 class SendableClass {
     constructor() {
-        "is sendable"
+        "use sendable"
     }
 }
 
@@ -86,5 +85,15 @@ if (isSendable(func)) {
     print("function is sendable");
 } else {
     print("function is not sendable");
+}
+
+function sendableFunc()
+{
+    "use sendable"
+}
+if (isSendable(func)) {
+    print("sendableFunc is sendable");
+} else {
+    print("sendableFunc is not sendable");
 }
 
