@@ -36,19 +36,25 @@ ProfileTypeRef &ProfileTypeRef::Remap([[maybe_unused]] const PGOContext &context
     UNREACHABLE();
 }
 
-ProfileType::ProfileType(PGOContext &context, ProfileTypeRef typeRef)
+ProfileType::ProfileType(PGOContext &context, ProfileTypeRef typeRef, bool *isValid)
 {
+    if (isValid != nullptr) {
+        *isValid = true;
+    }
     if (!context.GetHeader()->SupportWideProfileType()) {
         ProfileTypeLegacy legacy(typeRef);
         UpdateId(legacy.GetId());
         UpdateKind(legacy.GetKind());
-    } else {
-        const auto *typeEntry = context.GetProfileTypePool()->GetEntry(typeRef.GetId());
-        if (typeEntry == nullptr) {
-            LOG_ECMA(ERROR) << "Profile type ref: " << typeRef.GetTypeString() << " not found in ap file.";
-        } else {
-            type_ = typeEntry->GetProfileType().GetRaw();
+        return;
+    }
+    const auto *typeEntry = context.GetProfileTypePool()->GetEntry(typeRef.GetId());
+    if (typeEntry == nullptr) {
+        if (isValid != nullptr) {
+            *isValid = false;
         }
+        LOG_ECMA(ERROR) << "Profile type ref: " << typeRef.GetTypeString() << " not found in ap file.";
+    } else {
+        type_ = typeEntry->GetProfileType().GetRaw();
     }
 }
 
