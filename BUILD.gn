@@ -659,6 +659,7 @@ ecma_source = [
   "ecmascript/compiler/aot_file/binary_buffer_parser.cpp",
   "ecmascript/compiler/aot_file/module_section_des.cpp",
   "ecmascript/compiler/aot_file/aot_file_manager.cpp",
+  "ecmascript/compiler/aot_file/aot_version.cpp",
   "ecmascript/compiler/aot_snapshot/aot_snapshot.cpp",
   "ecmascript/compiler/aot_snapshot/snapshot_constantpool_data.cpp",
   "ecmascript/compiler/aot_snapshot/snapshot_global_data.cpp",
