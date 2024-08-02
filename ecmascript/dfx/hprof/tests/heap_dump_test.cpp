@@ -19,6 +19,21 @@
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/js_api/js_api_arraylist.h"
+#include "ecmascript/js_api/js_api_arraylist_iterator.h"
+#include "ecmascript/js_api/js_api_deque.h"
+#include "ecmascript/js_api/js_api_hashmap.h"
+#include "ecmascript/js_api/js_api_hashset.h"
+#include "ecmascript/js_api/js_api_lightweightmap.h"
+#include "ecmascript/js_api/js_api_lightweightset.h"
+#include "ecmascript/js_api/js_api_linked_list.h"
+#include "ecmascript/js_api/js_api_list.h"
+#include "ecmascript/js_api/js_api_plain_array.h"
+#include "ecmascript/js_api/js_api_queue.h"
+#include "ecmascript/js_api/js_api_stack.h"
+#include "ecmascript/js_api/js_api_tree_map.h"
+#include "ecmascript/js_api/js_api_tree_set.h"
+#include "ecmascript/js_api/js_api_vector.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_map.h"
@@ -27,13 +42,15 @@
 #include "ecmascript/js_regexp.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_string_iterator.h"
+#include "ecmascript/js_typed_array.h"
 #include "ecmascript/js_weak_container.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
-#include "ecmascript/js_typed_array.h"
-#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/tagged_hash_array.h"
+#include "ecmascript/tagged_tree.h"
 #include "ecmascript/tests/test_helper.h"
 
 namespace panda::test {
@@ -279,6 +296,195 @@ public:
             factory->NewJSObjectByConstructor(JSHandle<JSFunction>(newTargetHandle), newTargetHandle);
         JSHandle<JSTaggedValue> emptyObj(thread, jsObject.GetTaggedValue());
         return factory->NewPromiseIteratorRecord(emptyObj, false);
+    }
+
+    // JS_API_ARRAY_LIST
+    JSHandle<JSAPIArrayList> NewJSAPIArrayList()
+    {
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsAPIArrayListObject = NewObject(JSAPIArrayList::SIZE, JSType::JS_API_ARRAY_LIST, proto);
+        JSHandle<JSAPIArrayList> jsAPIArrayList = JSHandle<JSAPIArrayList>::Cast(jsAPIArrayListObject);
+        jsAPIArrayList->SetLength(instance->GetJSThread(), JSTaggedValue(0));
+        return jsAPIArrayList;
+    }
+
+    // JS_API_HASH_MAP
+    JSHandle<JSAPIHashMap> NewJSAPIHashMap()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSObject> jsAPIHashMapObject = NewObject(JSAPIHashMap::SIZE, JSType::JS_API_HASH_MAP, proto);
+        JSHandle<JSAPIHashMap> jsAPIHashMap = JSHandle<JSAPIHashMap>::Cast(jsAPIHashMapObject);
+        jsAPIHashMap->SetTable(thread, TaggedHashArray::Create(thread));
+        jsAPIHashMap->SetSize(0);
+        return jsAPIHashMap;
+    }
+
+    // JS_API_HASH_SET
+    JSHandle<JSAPIHashSet> NewJSAPIHashSet()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSObject> jsAPIHashSetObject = NewObject(JSAPIHashSet::SIZE, JSType::JS_API_HASH_SET, proto);
+        JSHandle<JSAPIHashSet> jsAPIHashSet = JSHandle<JSAPIHashSet>::Cast(jsAPIHashSetObject);
+        jsAPIHashSet->SetTable(thread, TaggedHashArray::Create(thread));
+        jsAPIHashSet->SetSize(0);
+        return jsAPIHashSet;
+    }
+
+    // JS_API_LIGHT_WEIGHT_MAP
+    JSHandle<JSAPILightWeightMap> NewJSAPILightWeightMap()
+    {
+        JSThread *thread = instance->GetJSThread();
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSObject> jsAPILightWeightMapObject =
+            NewObject(JSAPILightWeightMap::SIZE, JSType::JS_API_LIGHT_WEIGHT_MAP, proto);
+        JSHandle<JSAPILightWeightMap> jsAPILightWeightMap =
+            JSHandle<JSAPILightWeightMap>::Cast(jsAPILightWeightMapObject);
+        JSHandle<JSTaggedValue> hashArray =
+            JSHandle<JSTaggedValue>(factory->NewTaggedArray(JSAPILightWeightMap::DEFAULT_CAPACITY_LENGTH));
+        JSHandle<JSTaggedValue> keyArray =
+            JSHandle<JSTaggedValue>(factory->NewTaggedArray(JSAPILightWeightMap::DEFAULT_CAPACITY_LENGTH));
+        JSHandle<JSTaggedValue> valueArray =
+            JSHandle<JSTaggedValue>(factory->NewTaggedArray(JSAPILightWeightMap::DEFAULT_CAPACITY_LENGTH));
+        jsAPILightWeightMap->SetHashes(thread, hashArray);
+        jsAPILightWeightMap->SetKeys(thread, keyArray);
+        jsAPILightWeightMap->SetValues(thread, valueArray);
+        jsAPILightWeightMap->SetLength(0);
+        return jsAPILightWeightMap;
+    }
+
+    // JS_API_LIGHT_WEIGHT_SET
+    JSHandle<JSAPILightWeightSet> NewJSAPILightWeightSet()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSObject> jsAPILightWeightSetObject =
+            NewObject(JSAPILightWeightSet::SIZE, JSType::JS_API_LIGHT_WEIGHT_SET, proto);
+        JSHandle<JSAPILightWeightSet> jsAPILightWeightSet =
+            JSHandle<JSAPILightWeightSet>::Cast(jsAPILightWeightSetObject);
+        JSHandle<TaggedArray> hashes =
+            JSAPILightWeightSet::CreateSlot(thread, JSAPILightWeightSet::DEFAULT_CAPACITY_LENGTH);
+        JSHandle<TaggedArray> values =
+            JSAPILightWeightSet::CreateSlot(thread, JSAPILightWeightSet::DEFAULT_CAPACITY_LENGTH);
+        jsAPILightWeightSet->SetHashes(thread, hashes);
+        jsAPILightWeightSet->SetValues(thread, values);
+        jsAPILightWeightSet->SetLength(0);
+        return jsAPILightWeightSet;
+    }
+
+    // JS_API_TREE_MAP
+    JSHandle<JSAPITreeMap> NewJSAPITreeMap()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSObject> jsAPITreeMapObject = NewObject(JSAPITreeMap::SIZE, JSType::JS_API_TREE_MAP, proto);
+        JSHandle<JSAPITreeMap> jsAPITreeMap = JSHandle<JSAPITreeMap>::Cast(jsAPITreeMapObject);
+        JSHandle<TaggedTreeMap> treeMap(thread, TaggedTreeMap::Create(thread));
+        jsAPITreeMap->SetTreeMap(thread, treeMap);
+        return jsAPITreeMap;
+    }
+
+    // JS_API_TREE_SET
+    JSHandle<JSAPITreeSet> NewJSAPITreeSet()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSObject> jsAPITreeSetObject = NewObject(JSAPITreeSet::SIZE, JSType::JS_API_TREE_SET, proto);
+        JSHandle<JSAPITreeSet> jsAPITreeSet = JSHandle<JSAPITreeSet>::Cast(jsAPITreeSetObject);
+        JSHandle<TaggedTreeSet> treeSet(thread, TaggedTreeSet::Create(thread));
+        jsAPITreeSet->SetTreeSet(thread, treeSet);
+        return jsAPITreeSet;
+    }
+
+    // JS_API_QUEUE
+    JSHandle<JSAPIQueue> NewJSAPIQueue()
+    {
+        JSThread *thread = instance->GetJSThread();
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsAPIQueueObject = NewObject(JSAPIQueue::SIZE, JSType::JS_API_QUEUE, proto);
+        JSHandle<JSAPIQueue> jsAPIQueue = JSHandle<JSAPIQueue>::Cast(jsAPIQueueObject);
+        JSHandle<TaggedArray> newElements = factory->NewTaggedArray(JSAPIQueue::DEFAULT_CAPACITY_LENGTH);
+        jsAPIQueue->SetLength(thread, JSTaggedValue(0));
+        jsAPIQueue->SetFront(0);
+        jsAPIQueue->SetTail(0);
+        jsAPIQueue->SetElements(thread, newElements);
+        return jsAPIQueue;
+    }
+    // JS_API_DEQUE
+    JSHandle<JSAPIDeque> NewJSAPIDeque()
+    {
+        ObjectFactory *factory = instance->GetFactory();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsAPIDequeObject = NewObject(JSAPIDeque::SIZE, JSType::JS_API_DEQUE, proto);
+        JSHandle<JSAPIDeque> jsAPIDeque = JSHandle<JSAPIDeque>::Cast(jsAPIDequeObject);
+        JSHandle<TaggedArray> newElements = factory->NewTaggedArray(JSAPIDeque::DEFAULT_CAPACITY_LENGTH);
+        jsAPIDeque->SetFirst(0);
+        jsAPIDeque->SetLast(0);
+        jsAPIDeque->SetElements(instance->GetJSThread(), newElements);
+        return jsAPIDeque;
+    }
+    // JS_API_STACK
+    JSHandle<JSAPIStack> NewJSAPIStack()
+    {
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsAPIStackObject = NewObject(JSAPIStack::SIZE, JSType::JS_API_STACK, proto);
+        JSHandle<JSAPIStack> jsAPIStack = JSHandle<JSAPIStack>::Cast(jsAPIStackObject);
+        jsAPIStack->SetTop(0);
+        return jsAPIStack;
+    }
+
+    // JS_API_PLAIN_ARRAY
+    JSHandle<JSAPIPlainArray> NewJSAPIPlainArray()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSObject> jsAPIPlainArrayObject = NewObject(JSAPIPlainArray::SIZE, JSType::JS_API_PLAIN_ARRAY, proto);
+        JSHandle<JSAPIPlainArray> jsAPIPlainArray = JSHandle<JSAPIPlainArray>::Cast(jsAPIPlainArrayObject);
+        JSHandle<TaggedArray> keys =
+                JSAPIPlainArray::CreateSlot(thread, JSAPIPlainArray::DEFAULT_CAPACITY_LENGTH);
+        JSHandle<TaggedArray> values =
+                JSAPIPlainArray::CreateSlot(thread, JSAPIPlainArray::DEFAULT_CAPACITY_LENGTH);
+        jsAPIPlainArray->SetKeys(thread, keys);
+        jsAPIPlainArray->SetValues(thread, values);
+        jsAPIPlainArray->SetLength(0);
+        return jsAPIPlainArray;
+    }
+
+    // JS_API_LIST
+    JSHandle<JSAPIList> NewJSAPIList()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSObject> jsAPIListObject = NewObject(JSAPIList::SIZE, JSType::JS_API_LIST, proto);
+        JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(jsAPIListObject);
+        JSHandle<JSTaggedValue> taggedSingleList(thread, TaggedSingleList::Create(thread));
+        jsAPIList->SetSingleList(thread, taggedSingleList);
+        return jsAPIList;
+    }
+
+    // JS_API_LINKED_LIST
+    JSHandle<JSAPILinkedList> NewJSAPILinkedList()
+    {
+        JSThread *thread = instance->GetJSThread();
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetObjectFunctionPrototype();
+        JSHandle<JSObject> jsAPILinkedListObject = NewObject(JSAPILinkedList::SIZE, JSType::JS_API_LINKED_LIST, proto);
+        JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(jsAPILinkedListObject);
+        JSHandle<JSTaggedValue> linkedlist(thread, TaggedDoubleList::Create(thread));
+        jsAPILinkedList->SetDoubleList(thread, linkedlist);
+        return jsAPILinkedList;
+    }
+
+    // JS_API_VECTOR
+    JSHandle<JSAPIVector> NewJSAPIVector()
+    {
+        JSHandle<JSTaggedValue> proto = instance->GetGlobalEnv()->GetFunctionPrototype();
+        JSHandle<JSObject> jsAPIVectorObject = NewObject(JSAPIVector::SIZE, JSType::JS_API_VECTOR, proto);
+        JSHandle<JSAPIVector> jsAPIVector = JSHandle<JSAPIVector>::Cast(jsAPIVectorObject);
+        jsAPIVector->SetLength(0);
+        return jsAPIVector;
     }
 
 private:
@@ -750,5 +956,99 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName7)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"ResolvingFunctionsRecord\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"Promise\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_7.heapsnapshot", "\"AsyncGeneratorRequest\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName8)
+{
+    auto factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    // JS_API_ARRAY_LIST
+    auto jsAPIArrayList = tester.NewJSAPIArrayList();
+    // JS_API_ARRAYLIST_ITERATOR
+    factory->NewJSAPIArrayListIterator(jsAPIArrayList);
+    // JS_API_HASH_MAP
+    auto jsAPIHashMap = tester.NewJSAPIHashMap();
+    // JS_API_HASHMAP_ITERATOR
+    factory->NewJSAPIHashMapIterator(jsAPIHashMap, IterationKind::KEY);
+    // JS_API_HASH_SET
+    auto jsAPIHashSet = tester.NewJSAPIHashSet();
+    // JS_API_HASHSET_ITERATOR
+    factory->NewJSAPIHashSetIterator(jsAPIHashSet, IterationKind::KEY);
+    // JS_API_LIGHT_WEIGHT_MAP
+    auto jsAPILightWeightMap = tester.NewJSAPILightWeightMap();
+    // JS_API_LIGHT_WEIGHT_MAP_ITERATOR
+    factory->NewJSAPILightWeightMapIterator(jsAPILightWeightMap, IterationKind::KEY);
+    // JS_API_LIGHT_WEIGHT_SET
+    auto jsAPILightWeightSet = tester.NewJSAPILightWeightSet();
+    // JS_API_LIGHT_WEIGHT_SET_ITERATOR
+    factory->NewJSAPILightWeightSetIterator(jsAPILightWeightSet, IterationKind::KEY);
+
+    tester.GenerateSnapShot("testGenerateNodeName_8.heapsnapshot");
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"ArrayList\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"ArrayListIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"HashMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"HashSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"HashMapIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"HashSetIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"LightWeightMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"LightWeightMapIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"LightWeightSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_8.heapsnapshot", "\"LightWeightSetIterator\""));
+}
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName9)
+{
+    auto factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    // JS_API_TREE_MAP
+    auto jsAPITreeMap = tester.NewJSAPITreeMap();
+    // JS_API_TREEMAP_ITERATOR
+    factory->NewJSAPITreeMapIterator(jsAPITreeMap, IterationKind::KEY);
+    // JS_API_TREE_SET
+    auto jsAPITreeSet = tester.NewJSAPITreeSet();
+    // JS_API_TREESET_ITERATOR
+    factory->NewJSAPITreeSetIterator(jsAPITreeSet, IterationKind::KEY);
+    // JS_API_VECTOR
+    auto jsAPIVector = tester.NewJSAPIVector();
+    // JS_API_VECTOR_ITERATOR
+    factory->NewJSAPIVectorIterator(jsAPIVector);
+    // JS_API_QUEUE
+    auto jsAPIQueue = tester.NewJSAPIQueue();
+    // JS_API_QUEUE_ITERATOR
+    factory->NewJSAPIQueueIterator(jsAPIQueue);
+    // JS_API_DEQUE
+    auto jsAPIDeque = tester.NewJSAPIDeque();
+    // JS_API_DEQUE_ITERATOR
+    factory->NewJSAPIDequeIterator(jsAPIDeque);
+    // JS_API_STACK
+    auto jsAPIStack = tester.NewJSAPIStack();
+    // JS_API_STACK_ITERATOR
+    factory->NewJSAPIStackIterator(jsAPIStack);
+    // JS_API_LIST
+    tester.NewJSAPIList();
+    // JS_API_LINKED_LIST
+    tester.NewJSAPILinkedList();
+    // JS_API_PLAIN_ARRAY
+    auto jsAPIPlainArray = tester.NewJSAPIPlainArray();
+    // JS_API_PLAIN_ARRAY_ITERATOR
+    factory->NewJSAPIPlainArrayIterator(jsAPIPlainArray, IterationKind::KEY);
+
+    tester.GenerateSnapShot("testGenerateNodeName_9.heapsnapshot");
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"TreeMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"TreeMapIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"TreeSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"TreeSetIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"Vector\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"VectorIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"Queue\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"QueueIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"Deque\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"DequeIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"Stack\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"StackIterator\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"List\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"LinkedList\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"PlainArray\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"PlainArrayIterator\""));
 }
 }
