@@ -352,9 +352,9 @@ GateRef TSInlineLowering::BuildAccessor(InlineTypeInfoAccessor &info)
     auto currentLabel = env.GetCurrentLabel();
     auto state = currentLabel->GetControl();
     auto depend = currentLabel->GetDepend();
+    GateRef frameState = acc_.GetFrameState(gate);
     GateRef holder = circuit_->NewGate(circuit_->LookUpHolder(), MachineType::I64,
-                                       { state, depend, receiver, builder_.Int32(holderHCIndex), unsharedConstPool},
-                                       GateType::AnyType());
+        { state, depend, receiver, builder_.Int32(holderHCIndex), unsharedConstPool, frameState }, GateType::AnyType());
 
     if (info.IsCallGetter()) {
         accessor = circuit_->NewGate(circuit_->LoadGetter(), MachineType::I64,

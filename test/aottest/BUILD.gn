@@ -331,6 +331,7 @@ group("ark_aot_ts_test") {
       #"ts_inline_accessor_deopt",
       #"ts_inline_accessor_extends",
       #"ts_inline_accessor_same_name",
+      #"ts_inline_accessor_symbol",
       #"ts_inline_change_target",
       #"ts_inline_deopt",
       #"ts_inline_deopt_loop",

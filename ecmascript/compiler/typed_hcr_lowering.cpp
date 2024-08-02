@@ -1697,6 +1697,7 @@ void TypedHCRLowering::LowerLookupHolder(GateRef gate)
     GateRef unsharedConstPool = acc_.GetValueIn(gate, 2);  // 2: constpool
     GateRef holderHC = builder_.LoadHClassFromConstpool(unsharedConstPool,
         acc_.GetConstantValue(holderHCIndex));
+    GateRef frameState = acc_.GetFrameState(gate);
     DEFVALUE(holder, (&builder_), VariableType::JS_ANY(), receiver);
     Label loopHead(&builder_);
     Label exit(&builder_);
@@ -1704,6 +1705,7 @@ void TypedHCRLowering::LowerLookupHolder(GateRef gate)
     builder_.Jump(&loopHead);
 
     builder_.LoopBegin(&loopHead);
+    builder_.DeoptCheck(builder_.TaggedIsNotNull(*holder), frameState, DeoptType::INCONSISTENTHCLASS13);
     auto curHC = builder_.LoadHClass(*holder);
     BRANCH_CIR(builder_.Equal(curHC, holderHC), &exit, &lookUpProto);
 

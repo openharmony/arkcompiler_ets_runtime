@@ -57,6 +57,7 @@ namespace panda::ecmascript::kungfu {
     V(InconsistentHClass10,            INCONSISTENTHCLASS10)           \
     V(InconsistentHClass11,            INCONSISTENTHCLASS11)           \
     V(InconsistentHClass12,            INCONSISTENTHCLASS12)           \
+    V(InconsistentHClass13,            INCONSISTENTHCLASS13)           \
     V(NotEcmaObject1,                  NOTECMAOBJECT1)                 \
     V(NotNewObj1,                      NOTNEWOBJ1)                     \
     V(NotNewObj2,                      NOTNEWOBJ2)                     \
