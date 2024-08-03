@@ -125,8 +125,8 @@ private:
     EntityId methodId_;
     uint32_t bytecodeOffset_ {0};
     Global<FunctionRef> condFuncRef_;
-    int32_t line_;
-    int32_t column_;
+    int32_t line_ {-1};
+    int32_t column_ {-1};
     std::string sourceFile_; // mainly used for breakpoint
     bool needResetBreakpoint_ {false};
     CString recordName_ {};
