@@ -150,6 +150,13 @@ void PGOMethodInfo::ProcessToText(std::string &text) const
     text += GetMethodName();
 }
 
+void PGOMethodInfo::ProcessToJson(ProfileType::VariantMap &function) const
+{
+    std::string methodName = GetMethodName();
+    std::string functionName = methodName + "(" + std::to_string(GetMethodId().GetOffset()) + ")";
+    function.insert(std::make_pair(DumpJsonUtils::FUNCTION_NAME, functionName));
+}
+
 std::vector<std::string> PGOMethodInfo::ParseFromText(const std::string &infoString)
 {
     std::vector<std::string> infoStrings = StringHelper::SplitString(infoString, DumpUtils::ELEMENT_SEPARATOR);
@@ -472,6 +479,27 @@ void PGOMethodInfoMap::ProcessToText(uint32_t threshold, const CString &recordNa
         profilerString += (DumpUtils::SPACE + DumpUtils::ARRAY_END + DumpUtils::NEW_LINE);
         stream << profilerString;
     }
+}
+
+void PGOMethodInfoMap::ProcessToJson(uint32_t threshold, ProfileType::jModuleType &jModule) const
+{
+    std::vector<ProfileType::VariantMap> functionArray;
+    for (auto methodInfoIter : methodInfos_) {
+        auto methodInfo = methodInfoIter.second;
+        if (methodInfo->IsFilter(threshold)) {
+            continue;
+        }
+        ProfileType::VariantMap function;
+        methodInfo->ProcessToJson(function);
+        auto iter = methodTypeInfos_.find(methodInfo->GetMethodId());
+        if (iter != methodTypeInfos_.end()) {
+            ProfileType::VariantVector typeArray;
+            iter->second->ProcessToJson(typeArray);
+            function.insert(std::make_pair(DumpJsonUtils::TYPE, typeArray));
+        }
+        functionArray.push_back(function);
+    }
+    jModule.insert(std::make_pair(DumpJsonUtils::FUNCTION, functionArray));
 }
 
 bool PGOMethodIdSet::ParseFromBinary(PGOContext &context, void **buffer)

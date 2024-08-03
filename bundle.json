@@ -50,7 +50,8 @@
               "samgr",
               "common_event_service",
               "power_manager",
-              "ffrt"
+              "ffrt",
+              "cJSON"
             ],
             "third_party": [
             ]

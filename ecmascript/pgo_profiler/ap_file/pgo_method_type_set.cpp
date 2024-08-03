@@ -199,4 +199,30 @@ void PGOMethodTypeSet::ProcessToText(std::string &text) const
         text += (DumpUtils::SPACE + DumpUtils::ARRAY_END);
     }
 }
+
+void PGOMethodTypeSet::ProcessToJson(ProfileType::VariantVector &typeArray) const
+{
+    for (auto typeInfoIter : scalarOpTypeInfos_) {
+        if (typeInfoIter.GetType().IsNone()) {
+            continue;
+        }
+        ProfileType::StringMap type;
+        type.insert(std::make_pair(DumpJsonUtils::TYPE_OFFSET, std::to_string(typeInfoIter.GetOffset())));
+        typeInfoIter.GetType().GetTypeJson(type);
+        typeArray.push_back(type);
+    }
+    for (auto rwScalarOpTypeInfoIter : rwScalarOpTypeInfos_) {
+        if (rwScalarOpTypeInfoIter.GetCount() == 0) {
+            continue;
+        }
+        ProfileType::MapVector sameOffsetTypeArray;
+        rwScalarOpTypeInfoIter.ProcessToJson(sameOffsetTypeArray);
+        typeArray.push_back(sameOffsetTypeArray);
+    }
+    for (const auto &defTypeInfoIter : objDefOpTypeInfos_) {
+        std::vector<ProfileType::StringMap> sameOffsetTypeArray;
+        defTypeInfoIter.ProcessToJson(sameOffsetTypeArray);
+        typeArray.push_back(sameOffsetTypeArray);
+    }
+}
 } // namespace panda::ecmascript::pgo

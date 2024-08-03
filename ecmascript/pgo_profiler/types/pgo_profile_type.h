@@ -74,6 +74,12 @@ public:
     using IsRootBits = KindBits::NextFlag;  // 50
     using EverOutOfBoundsBits = IsRootBits::NextFlag; // 51
 
+    using StringMap = std::multimap<std::string, std::string>;
+    using MapVector = std::vector<std::vector<StringMap>>;
+    using VariantVector = std::vector<std::variant<StringMap, MapVector, std::vector<StringMap>>>;
+    using VariantMap = std::multimap<std::string, std::variant<std::string, VariantVector>>;
+    using jModuleType = std::multimap<std::string, std::variant<std::string, std::vector<VariantMap>>>;
+
     class BuiltinsId {
     public:
         static constexpr uint32_t BUILTINS_ID_NUM = 16;
@@ -96,6 +102,15 @@ public:
         JSType GetBuiltinsId() const
         {
             return BuiltinsIdBits::Decode(id_);
+        }
+
+        virtual std::string GetIdToString() const
+        {
+            std::stringstream ss;
+            ss << "(";
+            ss << GetId();
+            ss << ")";
+            return ss.str();
         }
 
     protected:
@@ -134,6 +149,17 @@ public:
         {
             return NewElementsKindBits::Decode(id_);
         }
+
+        std::string GetIdToString() const override
+        {
+            std::stringstream ss;
+            ss << "(";
+            ss << static_cast<uint32_t>(BuiltinsId::GetBuiltinsId()) << ", ";
+            ss << static_cast<uint32_t>(GetElementsKind()) << ", ";
+            ss << static_cast<uint32_t>(GetTransitionElementsKind());
+            ss << ")";
+            return ss.str();
+        }
     };
 
     class BuiltinsTypedArrayId : public BuiltinsId {
@@ -154,6 +180,19 @@ public:
         OnHeapMode GetOnHeapMode() const
         {
             return OnHeapModeBits::Decode(id_);
+        }
+
+        std::string GetIdToString() const override
+        {
+            std::stringstream ss;
+            ss << "(";
+            ss << static_cast<uint32_t>(BuiltinsId::GetBuiltinsId()) << ", ";
+            auto builtinsArrayId = BuiltinsArrayId(GetId());
+            ss << static_cast<uint32_t>(builtinsArrayId.GetElementsKind()) << ", ";
+            ss << static_cast<uint32_t>(builtinsArrayId.GetTransitionElementsKind()) << ", ";
+            ss << static_cast<uint32_t>(GetOnHeapMode());
+            ss << ")";
+            return ss.str();
         }
     };
 
@@ -365,6 +404,25 @@ public:
                 ", kind: " << std::showbase << std::dec << static_cast<uint32_t>(GetKind()) <<
                 ", abcId: " << GetAbcId() << ", id: " << GetId() << ")";
         return stream.str();
+    }
+
+    void GetTypeJson(StringMap &type) const
+    {
+        type.insert(std::make_pair(DumpJsonUtils::IS_ROOT, IsRootType() ? "true" : "false"));
+        type.insert(std::make_pair(DumpJsonUtils::KIND, std::to_string(static_cast<double>(GetKind()))));
+        type.insert(std::make_pair(DumpJsonUtils::ABC_ID, std::to_string(GetAbcId())));
+        std::string strId;
+        if (IsBuiltinsArray()) {
+            auto arrayId = BuiltinsArrayId(GetId());
+            strId = arrayId.GetIdToString();
+        } else if (IsBuiltinsTypeArray()) {
+            auto typedArrayId = BuiltinsTypedArrayId(GetId());
+            strId = typedArrayId.GetIdToString();
+        } else {
+            auto builtinsId = BuiltinsId(GetId());
+            strId = builtinsId.GetIdToString();
+        }
+        type.insert(std::make_pair(DumpJsonUtils::ID, strId));
     }
 
     friend std::ostream& operator<<(std::ostream& os, const ProfileType& type)
