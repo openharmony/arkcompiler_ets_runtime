@@ -36,7 +36,7 @@ Call boundValues failed. err: BusinessError: The values method cannot be bound.,
 Call boundIncludes failed. err: BusinessError: The includes method cannot be bound., errCode: 10200011
 Call boundShrinkTo failed. err: BusinessError: Parameter error.Not enough parameter., errCode: 401
 Call boundExtendTo failed. err: BusinessError: Parameter error.Not enough parameters., errCode: 401
-Start Test SharedMap
+Start Test SendableMap
 Start map bindErrorTest
 Call boundClear failed. err: BusinessError: The clear method cannot be bound., errCode: 10200011
 Call boundDelete failed. err: BusinessError: The delete method cannot be bound., errCode: 10200011
@@ -47,7 +47,7 @@ Call boundHas failed. err: BusinessError: The has method cannot be bound., errCo
 Call boundKeys failed. err: BusinessError: The keys method cannot be bound., errCode: 10200011
 Call boundSet failed. err: BusinessError: The set method cannot be bound., errCode: 10200011
 Call boundValues failed. err: BusinessError: The values method cannot be bound., errCode: 10200011
-Start Test SharedSet
+Start Test SendableSet
 Start set bindErrorTest
 Call boundAdd failed. err: BusinessError: The add method cannot be bound., errCode: 10200011
 Call boundClear failed. err: BusinessError: The clear method cannot be bound., errCode: 10200011
@@ -56,7 +56,7 @@ Call boundEntries failed. err: BusinessError: The entries method cannot be bound
 Call boundForEach failed. err: BusinessError: The forEach method cannot be bound., errCode: 10200011
 Call boundHas failed. err: BusinessError: The has method cannot be bound., errCode: 10200011
 Call boundValues failed. err: BusinessError: The values method cannot be bound., errCode: 10200011
-Start Test SharedArray
+Start Test SendableArray
 Start createErrorTest
 Init with small first element: -1 success.
 Init with big first element: 0xffff success.
@@ -86,17 +86,17 @@ Static create from non-sendable initialValue fail. err: BusinessError: Parameter
 Start Test extendToErrorTest
 extendTo array with non-sendable element fail. err: BusinessError: Parameter error.Only accept sendable value., errCode: 401
 Start directCallConstructor
-direct call SharedArray ctor with empty fail. err: BusinessError: The ArkTS Array's constructor cannot be directly invoked., errCode: 10200012
-direct call SharedArray ctor with length fail. err: BusinessError: The ArkTS Array's constructor cannot be directly invoked., errCode: 10200012
-direct call SharedArray ctor with elements fail. err: BusinessError: The ArkTS Array's constructor cannot be directly invoked., errCode: 10200012
+direct call SendableArray ctor with empty fail. err: BusinessError: The ArkTS Array's constructor cannot be directly invoked., errCode: 10200012
+direct call SendableArray ctor with length fail. err: BusinessError: The ArkTS Array's constructor cannot be directly invoked., errCode: 10200012
+direct call SendableArray ctor with elements fail. err: BusinessError: The ArkTS Array's constructor cannot be directly invoked., errCode: 10200012
 Start map directCallConstructor
-direct call SharedMap ctor with empty fail. err: BusinessError: The ArkTS Map's constructor cannot be directly invoked., errCode: 10200012
-direct call SharedMap ctor with length fail. err: BusinessError: The ArkTS Map's constructor cannot be directly invoked., errCode: 10200012
-direct call SharedMap ctor with elements fail. err: BusinessError: The ArkTS Map's constructor cannot be directly invoked., errCode: 10200012
+direct call SendableMap ctor with empty fail. err: BusinessError: The ArkTS Map's constructor cannot be directly invoked., errCode: 10200012
+direct call SendableMap ctor with length fail. err: BusinessError: The ArkTS Map's constructor cannot be directly invoked., errCode: 10200012
+direct call SendableMap ctor with elements fail. err: BusinessError: The ArkTS Map's constructor cannot be directly invoked., errCode: 10200012
 Start set directCallConstructor
-direct call SharedSet ctor with empty fail. err: BusinessError: The ArkTS Set's constructor cannot be directly invoked., errCode: 10200012
-direct call SharedSet ctor with length fail. err: BusinessError: The ArkTS Set's constructor cannot be directly invoked., errCode: 10200012
-direct call SharedSet ctor with elements fail. err: BusinessError: The ArkTS Set's constructor cannot be directly invoked., errCode: 10200012
+direct call SendableSet ctor with empty fail. err: BusinessError: The ArkTS Set's constructor cannot be directly invoked., errCode: 10200012
+direct call SendableSet ctor with length fail. err: BusinessError: The ArkTS Set's constructor cannot be directly invoked., errCode: 10200012
+direct call SendableSet ctor with elements fail. err: BusinessError: The ArkTS Set's constructor cannot be directly invoked., errCode: 10200012
 add element while iterate array fail. err: BusinessError: Concurrent modification exception, errCode: 10200201
 pop element while iterate array fail. err: BusinessError: Concurrent modification exception, errCode: 10200201
 shrink while iterate array fail. err: BusinessError: Concurrent modification exception, errCode: 10200201

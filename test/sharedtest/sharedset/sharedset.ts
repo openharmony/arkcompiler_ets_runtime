@@ -14,8 +14,8 @@
  */
 
 /*
- * @tc.name:sharedset
- * @tc.desc:test sharedset
+ * @tc.name:sendableset
+ * @tc.desc:test sendableset
  * @tc.type: FUNC
  * @tc.require: issue#I93TZC
  */
@@ -23,20 +23,20 @@
 // @ts-nocheck
 declare function print(str: any): string;
 
-function FillSet(set: SharedSet): void {
+function FillSet(set: SendableSet): void {
   for (let i = 0; i < 5; i++) {
     set.add(i);
   }
 }
-let sharedSet: SharedSet = new SharedSet<number>();
+let sharedSet: SendableSet = new SendableSet<number>();
 
 // Basic tests
 print("===Basic test begin===")
 FillSet(sharedSet);
 print("set size is " + sharedSet.size);
-print(SharedSet[Symbol.species] == SharedSet)
-print(SharedSet.name == "SharedSet")
-print(SharedSet[Symbol.species] == Set)
+print(SendableSet[Symbol.species] == SendableSet);
+print(SendableSet.name == 'SendableSet');
+print(SendableSet[Symbol.species] == Set);
 
 const keyIter = sharedSet.keys();
 let nextEntry = keyIter.next();
@@ -66,11 +66,11 @@ print("values next:" + nextEntry.value + ", done: " + nextEntry.done);
 nextEntry = valueIter.next();
 print("values next:" + nextEntry.value + ", done: " + nextEntry.done);
 
-sharedSet.forEach((key: number, value: number, set: SharedSet) => {
-  print("set key[forEach]:" + "key:" + key + ", value:" + value);
+sharedSet.forEach((key: number, value: number, set: SendableSet) => {
+  print('set key[forEach]:' + 'key:' + key + ', value:' + value);
 });
 
-print(sharedSet[Symbol.toStringTag] == "SharedSet")
+print(sharedSet[Symbol.toStringTag] == 'SendableSet');
 for (let iter of sharedSet[Symbol.iterator]()) {
   print("set key[Symbol.iterator]:" + iter);
 }
@@ -178,18 +178,18 @@ print("===Concurrent modification during iteration Test(forEach) begin===")
 sharedSet.clear();
 FillSet(sharedSet);
 print("set size is " + sharedSet.size);
-sharedSet.forEach((key: number, _: number, set: SharedSet) => {
-  print("set key[forEach]: " + key);
-})
+sharedSet.forEach((key: number, _: number, set: SendableSet) => {
+  print('set key[forEach]: ' + key);
+});
 try {
-  sharedSet.forEach((key: number, _: number, set: SharedSet) => {
+  sharedSet.forEach((key: number, _: number, set: SendableSet) => {
     set.add(key + 5);
   });
 } catch (e) {
   print("Add Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 try {
-  sharedSet.forEach((key: number, _: number, set: SharedSet) => {
+  sharedSet.forEach((key: number, _: number, set: SendableSet) => {
     if (key % 2 == 0) {
       set.delete(key);
     }
@@ -198,7 +198,7 @@ try {
   print("Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
 }
 try {
-  sharedSet.forEach((key: number, _: number, set: SharedSet) => {
+  sharedSet.forEach((key: number, _: number, set: SendableSet) => {
     set.clear();
   });
 } catch (e) {
@@ -215,7 +215,7 @@ class SObject {
 
 try {
   let sObj = new SObject();
-  sharedSet = new SharedSet(["str", 1, sObj, undefined, true, null]);
+  sharedSet = new SendableSet(['str', 1, sObj, undefined, true, null]);
   print("sharedSet add[shared] element success");
 } catch (e) {
   print("sharedSet add[unshared]: " + e + ", errCode: " + e.code);
@@ -223,34 +223,34 @@ try {
 
 try {
   let obj = {}
-  sharedSet = new SharedSet([obj]);
+  sharedSet = new SendableSet([obj]);
 } catch (e) {
   print("sharedSet add[unshared]: " + e + ", errCode: " + e.code);
 }
 
 try {
   let sym = Symbol("testSymbol")
-  sharedSet = new SharedSet([sym, 2]);
+  sharedSet = new SendableSet([sym, 2]);
 } catch (e) {
   print("sharedSet add[unshared]: " + e + ", errCode: " + e.code);
 }
 print("===Type check end===");
 
 print("===Class inheritance test begin ===");
-class SubSharedSet<T> extends SharedSet {
-  desc: string = "I'am SubSharedSet";
+class SubSendableSet<T> extends SendableSet {
+  desc: string = "I'am SubSendableSet";
   constructor(entries?: T[] | null) {
-    "use sendable";
-    super(entries)
+    'use sendable';
+    super(entries);
   }
 }
 
-let subSharedset = new SubSharedSet<number>();
+let subSharedset = new SubSendableSet<number>();
 subSharedset.add(1);
 print(subSharedset.has(1));
 print(subSharedset.size);
 
-subSharedset = new SubSharedSet<number>([1, 2, 3]);
+subSharedset = new SubSendableSet<number>([1, 2, 3]);
 print(subSharedset.has(1));
 print(subSharedset.has(2));
 print(subSharedset.has(3));
@@ -258,69 +258,69 @@ print(subSharedset.size);
 
 try {
   let obj = {};
-  subSharedset = new SubSharedSet<Object>([obj]);
+  subSharedset = new SubSendableSet<Object>([obj]);
   print(subSharedset.size);
 } catch (e) {
-  print("SubSharedSet add[unshared]: " + e + ", errCode: " + e.code);
+  print('SubSendableSet add[unshared]: ' + e + ', errCode: ' + e.code);
 }
 
-subSharedset = new SubSharedSet<string>(["one", "two", "three"]);
+subSharedset = new SubSendableSet<string>(['one', 'two', 'three']);
 for (const [key, _] of subSharedset.entries()) {
-  print("SubSharedSet key[for-of]: " + key);
+  print('SubSendableSet key[for-of]: ' + key);
 }
 
 try {
-  subSharedset = new SubSharedSet<number>([1, 2, 3, 4]);
+  subSharedset = new SubSendableSet<number>([1, 2, 3, 4]);
   print(subSharedset.size);
-  subSharedset.forEach((key: number, _: number, set: SubSharedSet) => {
+  subSharedset.forEach((key: number, _: number, set: SubSendableSet) => {
     if (key % 2 == 0) {
       set.delete(key);
     }
   });
 } catch (e) {
-  print("SubSharedSet Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
+  print('SubSendableSet Delete Scenario[forEach]: ' + e + ', errCode: ' + e.code);
 }
 
-class SubSubSharedSet<T> extends SubSharedSet {
+class SubSubSendableSet<T> extends SubSendableSet {
   constructor(entries?: T[] | null) {
-    "use sendable";
-    super(entries)
+    'use sendable';
+    super(entries);
   }
 }
 
-let subSubSharedSet = new SubSubSharedSet<number>([1, 2, 3]);
-print(subSubSharedSet.has(1));
-print(subSubSharedSet.has(2));
-print(subSubSharedSet.has(3));
-print(subSubSharedSet.size);
+let subSubSendableSet = new SubSubSendableSet<number>([1, 2, 3]);
+print(subSubSendableSet.has(1));
+print(subSubSendableSet.has(2));
+print(subSubSendableSet.has(3));
+print(subSubSendableSet.size);
 
 try {
-  subSubSharedSet["extension"] = "value";
+  subSubSendableSet['extension'] = 'value';
 } catch(e) {
   print("add extension(.): " + e);
 }
 try {
-  subSubSharedSet.extension = "value";
+  subSubSendableSet.extension = 'value';
 } catch(e) {
   print("add extension([]): " + e);
 }
 
 try {
   let obj = {};
-  subSubSharedSet = new SubSubSharedSet<Object>([obj]);
-  print(subSubSharedSet.size);
+  subSubSendableSet = new SubSubSendableSet<Object>([obj]);
+  print(subSubSendableSet.size);
 } catch (e) {
-  print("SubSubSharedSet add[unshared]: " + e + ", errCode: " + e.code);
+  print('SubSubSendableSet add[unshared]: ' + e + ', errCode: ' + e.code);
 }
 
 try {
-  subSubSharedSet = new SubSubSharedSet<number>([1, 2, 3, 4]);
-  subSubSharedSet.forEach((key: number, _: number, set: SubSubSharedSet) => {
+  subSubSendableSet = new SubSubSendableSet<number>([1, 2, 3, 4]);
+  subSubSendableSet.forEach((key: number, _: number, set: SubSubSendableSet) => {
     if (key % 2 == 0) {
       set.delete(key);
     }
   });
 } catch (e) {
-  print("SubSubSharedSet Delete Scenario[forEach]: " + e + ", errCode: " + e.code);
+  print('SubSubSendableSet Delete Scenario[forEach]: ' + e + ', errCode: ' + e.code);
 }
 print("===Class inheritance test end ===");
