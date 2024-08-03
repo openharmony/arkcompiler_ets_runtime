@@ -143,6 +143,7 @@ public:
     uintptr_t AllocateSync(size_t size);
 
     void SetOverShootSize(size_t size);
+    void AddOverShootSize(size_t size);
     bool AdjustCapacity(size_t allocatedSizeSinceGC, JSThread *thread);
     void SetWaterLine();
 
