@@ -42,6 +42,20 @@ namespace panda::ecmascript {
     case (uint8_t)SerializedObjectSpace::SHARED_NON_MOVABLE_SPACE:        \
     case (uint8_t)SerializedObjectSpace::SHARED_HUGE_SPACE
 
+BaseDeserializer::BaseDeserializer(JSThread *thread, SerializeData *data, void *hint)
+    : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint)
+{
+    sheap_ = SharedHeap::GetInstance();
+    uint32_t index = data_->GetDataIndex();
+    if (index != 0) {
+        valueVector_ = Runtime::GetInstance()->GetSerializeRootMapValue(thread_, index);
+        if (valueVector_ == nullptr) {
+            LOG_ECMA(FATAL) << "Unknown serializer root index: " << index;
+            UNREACHABLE();
+        }
+    }
+}
+
 JSHandle<JSTaggedValue> BaseDeserializer::ReadValue()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "Deserialize dataSize: " + std::to_string(data_->Size()));
@@ -96,8 +110,7 @@ uintptr_t BaseDeserializer::DeserializeTaggedObject(SerializedObjectSpace space)
 {
     size_t objSize = data_->ReadUint32(position_);
     uintptr_t res = RelocateObjectAddr(space, objSize);
-    JSHandle<JSTaggedValue> resHandle(thread_, JSTaggedValue(reinterpret_cast<TaggedObject *>(res)));
-    objectVector_.push_back(resHandle);
+    objectVector_.push_back(static_cast<JSTaggedType>(res));
     DeserializeObjectField(res, res + objSize);
     return res;
 }
@@ -253,7 +266,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         }
         case (uint8_t)EncodeFlag::REFERENCE: {
             uint32_t valueIndex = data_->ReadUint32(position_);
-            JSTaggedType valueAddr = objectVector_[valueIndex].GetTaggedType();
+            JSTaggedType valueAddr = objectVector_[valueIndex];
             UpdateMaybeWeak(slot, valueAddr, GetAndResetWeak());
             WriteBarrier<WriteBarrierType::DESERIALIZE>(thread_, reinterpret_cast<void *>(objAddr), fieldOffset,
                                                         valueAddr);
@@ -343,11 +356,17 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
         }
         case (uint8_t)EncodeFlag::SHARED_OBJECT: {
             uint32_t index = data_->ReadUint32(position_);
-            std::vector<JSTaggedType> &valueVector = Runtime::GetInstance()->GetSerializeRootMapValue(thread_,
-                data_->GetDataIndex());
-            JSTaggedType value = valueVector[index];
-            JSHandle<JSTaggedValue> valueHandle(thread_, JSTaggedValue(value));
-            objectVector_.push_back(valueHandle);
+            if (UNLIKELY(valueVector_ == nullptr)) {
+                LOG_ECMA(FATAL) << "Deserializer valueVector is nullptr.";
+                UNREACHABLE();
+            }
+            size_t vectorSize = valueVector_->size();
+            if (index >= vectorSize) {
+                LOG_ECMA(FATAL) << "Shared object index invalid, index: " << index << " vectorSize: " << vectorSize;
+                UNREACHABLE();
+            }
+            JSTaggedType value = (*valueVector_)[index];
+            objectVector_.push_back(value);
             bool isErrorMsg = GetAndResetIsErrorMsg();
             if (isErrorMsg) {
                 // defer new js error

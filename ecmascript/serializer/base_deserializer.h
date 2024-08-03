@@ -78,11 +78,8 @@ struct JSErrorInfo {
 
 class BaseDeserializer {
 public:
-    explicit BaseDeserializer(JSThread *thread, SerializeData *data, void *hint = nullptr)
-        : thread_(thread), heap_(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())), data_(data), engine_(hint)
-    {
-        sheap_ = SharedHeap::GetInstance();
-    }
+    explicit BaseDeserializer(JSThread *thread, SerializeData *data, void *hint = nullptr);
+
     ~BaseDeserializer()
     {
         objectVector_.clear();
@@ -225,7 +222,8 @@ private:
     uintptr_t machineCodeSpaceBeginAddr_ {0};
     uintptr_t sOldSpaceBeginAddr_ {0};
     uintptr_t sNonMovableSpaceBeginAddr_ {0};
-    CVector<JSHandle<JSTaggedValue>> objectVector_;
+    std::vector<JSTaggedType> *valueVector_ {nullptr};
+    CVector<JSTaggedType> objectVector_;
     CVector<Region *> regionVector_;
     size_t oldRegionIndex_ {0};
     size_t nonMovableRegionIndex_ {0};
