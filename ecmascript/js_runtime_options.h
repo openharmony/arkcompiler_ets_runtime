@@ -228,6 +228,16 @@ public:
         enableArkTools_ = value;
     }
 
+    bool IsOpenArkTools() const
+    {
+        return openArkTools_;
+    }
+
+    void SetopenArkTools(bool value)
+    {
+        openArkTools_ = value;
+    }
+
     bool WasSetEnableArkTools() const
     {
         return WasOptionSet(OPTION_ENABLE_ARK_TOOLS);
@@ -436,6 +446,9 @@ public:
             }
             if (key == "jsHeap") {
                 heapSize_ = static_cast<size_t>(stoi(value)) * 1_MB;
+            }
+            if (key == "openArkTools") {
+                openArkTools_ = true;
             }
         }
     }
@@ -1914,6 +1927,7 @@ private:
     void ParseListArgParam(const std::string& option, arg_list_t* argListStr, std::string delimiter);
 
     bool enableArkTools_ {true};
+    bool openArkTools_ {false};
     std::string stubFile_ {"stub.an"};
     std::string compilerPkgInfo_ {};
     std::string compilerExternalPkgInfo_ {};
