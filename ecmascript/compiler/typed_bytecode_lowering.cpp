@@ -357,6 +357,9 @@ template<TypedBinOp Op>
 void TypedBytecodeLowering::LowerTypedBinOp(GateRef gate)
 {
     BinOpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
+    if (Op == TypedBinOp::TYPED_SHR && tacc.GetParamType().IsIntOverflowType()) {
+        return;
+    }
     if (tacc.HasNumberType()) {
         SpeculateNumbers<Op>(tacc);
     } else if (tacc.IsStringType()) {
@@ -371,6 +374,9 @@ void TypedBytecodeLowering::LowerTypedUnOp(GateRef gate)
 {
     UnOpTypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     // NOTICE-PGO: wx add support for PrimitiveNumberType
+    if (Op == TypedUnOp::TYPED_NEG && tacc.GetParamType().IsIntOverflowType()) {
+        return;
+    }
     if (tacc.HasNumberType()) {
         SpeculateNumber<Op>(tacc);
     }

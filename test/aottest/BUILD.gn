@@ -118,6 +118,7 @@ group("ark_aot_ts_test") {
     "duplicatekey",
     "elements_kind",
     "elements_kind_update",
+    "shr_overflow",
     "equal_nan",
     "exception_case1",
     "exception_case10",
