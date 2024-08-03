@@ -301,6 +301,13 @@ bool JSDebugger::RemoveUrlNotMatchedBreakpoint(const JSPtLocation &location)
     return true;
 }
 
+void JSDebugger::RemoveGlobalFuncRef(const JSBreakpoint &breakpoint)
+{
+    if (!breakpoint.GetConditionFunction()->IsHole()) {
+        breakpoint.GetConditionFunction().FreeGlobalHandleAddr();
+    }
+}
+
 bool JSDebugger::RemoveGlobalBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, const JSPtLocation &location)
 {
     auto pandaFileKey = location.GetJsPandaFile()->GetJSPandaFileDesc();
@@ -317,6 +324,7 @@ bool JSDebugger::RemoveGlobalBreakpoint(const std::unique_ptr<PtMethod> &ptMetho
         if ((bp.GetBytecodeOffset() == location.GetBytecodeOffset()) &&
             (bp.GetPtMethod()->GetJSPandaFile() == ptMethod->GetJSPandaFile()) &&
             (bp.GetPtMethod()->GetMethodId() == ptMethod->GetMethodId())) {
+            RemoveGlobalFuncRef(bp);
             it = globalBpList_[pandaFileKey][location.GetSourceFile()].erase(it);
         } else {
             it++;
@@ -333,6 +341,7 @@ bool JSDebugger::RemoveGlobalBreakpoint(const JSPtLocation &location)
                  it != globalBpList_[entry.first][location.GetSourceFile()].end();) {
                 const auto &bp = *it;
                 if ((bp.GetLine() == location.GetLine()) && (bp.GetColumn() == location.GetColumn())) {
+                    RemoveGlobalFuncRef(bp);
                     it = globalBpList_[entry.first][location.GetSourceFile()].erase(it);
                 } else {
                     it++;
@@ -347,6 +356,9 @@ bool JSDebugger::RemoveGlobalBreakpoint(const std::string &url)
 {
     for (const auto &entry : globalBpList_) {
         if (globalBpList_[entry.first].find(url) != globalBpList_[entry.first].end()) {
+            for (auto &bp : globalBpList_[entry.first][url]) {
+                RemoveGlobalFuncRef(bp);
+            }
             globalBpList_[entry.first].erase(url);
         }
     }
@@ -466,9 +478,10 @@ bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
     if (hooks_ == nullptr) {
         return false;
     }
-    Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
+    
     auto smartBreakpoint = FindSmartBreakpoint(method, bcOffset);
     if (smartBreakpoint.has_value()) {
+        Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
         JSPtLocation smartLocation {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
             smartBreakpoint.value().GetLine(),
             smartBreakpoint.value().GetColumn(), smartBreakpoint.value().GetSourceFile()};
@@ -484,12 +497,16 @@ bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
         if (!IsBreakpointCondSatisfied(breakpoint)) {
             return false;
         }
+        Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
         JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
         breakpoint.value().GetLine(), breakpoint.value().GetColumn(),
         breakpoint.value().GetSourceFile(), false, method->GetRecordNameStr()};
         hooks_->Breakpoint(location);
     } else {
         // if not found in local, try to find it in global list
+        if (globalBpList_.empty()) {
+            return false;
+        }
         {
             // acquire read lock of global list
             std::shared_lock<std::shared_mutex> globalListLock(listMutex_);
@@ -501,6 +518,7 @@ bool JSDebugger::HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset)
         if (!IsBreakpointCondSatisfied(breakpoint)) {
             return false;
         }
+        Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
         JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset, funcRef,
         breakpoint.value().GetLine(), breakpoint.value().GetColumn(),
         breakpoint.value().GetSourceFile(), true, method->GetRecordNameStr()};
@@ -538,7 +556,6 @@ bool JSDebugger::HandleDebuggerStmt(JSHandle<Method> method, uint32_t bcOffset)
     if (breakpointAtDebugger.has_value()) {
         return false;
     }
-    Global<FunctionRef> funcRef = Global<FunctionRef>(ecmaVm_, FunctionRef::Undefined(ecmaVm_));
     
     JSPtLocation location {method->GetJSPandaFile(), method->GetMethodId(), bcOffset};
     hooks_->DebuggerStmt(location);
