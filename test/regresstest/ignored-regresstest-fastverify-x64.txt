@@ -24,7 +24,6 @@ regresstest/ark-regress/intl/segmenter/constructor.js
 regresstest/ark-regress/mjsunit/asm/regress-740325.js
 regresstest/ark-regress/mjsunit/asm/regress-9531.js
 regresstest/ark-regress/mjsunit/compiler/regress-1104514.js
-regresstest/ark-regress/mjsunit/compiler/regress-crbug-1226264.js
 regresstest/ark-regress/mjsunit/es6/math-log1p.js
 regresstest/ark-regress/mjsunit/es6/string-fromcodepoint.js
 regresstest/ark-regress/mjsunit/es7/regress/regress-634273.js
