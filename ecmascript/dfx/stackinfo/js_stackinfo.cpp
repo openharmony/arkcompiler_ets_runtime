@@ -1594,7 +1594,7 @@ bool GetArkNativeFrameInfo([[maybe_unused]] int pid, [[maybe_unused]] uintptr_t 
 
 uint8_t* JSSymbolExtractor::GetData()
 {
-    return data_.get();
+    return data_;
 }
 
 uintptr_t JSSymbolExtractor::GetLoadOffset()
@@ -1612,29 +1612,32 @@ bool JSSymbolExtractor::ParseHapFileData([[maybe_unused]] std::string& hapName)
     bool ret = false;
 #if defined(PANDA_TARGET_OHOS)
     if (hapName.empty()) {
+        LOG_ECMA(ERROR) << "Get file data failed, path empty.";
         return false;
     }
+    bool newCreate = false;
+    std::shared_ptr<Extractor> extractor = ExtractorUtil::GetExtractor(hapName, newCreate);
+    if (extractor == nullptr) {
+        LOG_ECMA(ERROR) << "GetExtractor failed, hap path: " << hapName;
+        return false;
+    }
+
+    std::string pandaFilePath = "ets/modules.abc";
+    auto data = extractor->GetSafeData(pandaFilePath);
+    if (!data) {
+        LOG_ECMA(ERROR) << "GetSafeData failed, hap path: " << hapName;
+        return false;
+    }
+
+    data_ = data->GetDataPtr();
+    dataSize_ = data->GetDataLen();
+    loadOffset_ = static_cast<uintptr_t>(data->GetOffset());
+    ret = true;
     auto zipFile = std::make_unique<ZipFile>(hapName);
     if (zipFile == nullptr || !zipFile->Open()) {
         return false;
     }
     auto &entrys = zipFile->GetAllEntries();
-    for (const auto &entry : entrys) {
-        std::string fileName = entry.first;
-        if (fileName.rfind("modules.abc") != std::string::npos) {
-            ZipPos offset = 0;
-            uint32_t length = 0;
-            if (!zipFile->GetDataOffsetRelative(fileName, offset, length)) {
-                break;
-            }
-
-            loadOffset_ = static_cast<uintptr_t>(offset);
-            if (zipFile->ExtractToBufByName(fileName, data_, dataSize_)) {
-                ret = true;
-                break;
-            }
-        }
-    }
     if (ret) {
         std::string filePath = "ets/sourceMaps.map";
         if (entrys.find(filePath) == entrys.end()) {
@@ -1763,7 +1766,7 @@ JSPandaFile* JSSymbolExtractor::GetJSPandaFile(uint8_t *data, size_t dataSize)
 
 void JSSymbolExtractor::CreateJSPandaFile()
 {
-    auto pf = panda_file::OpenPandaFileFromSecureMemory(data_.get(), dataSize_);
+    auto pf = panda_file::OpenPandaFileFromSecureMemory(data_, dataSize_);
     if (pf == nullptr) {
         LOG_ECMA(ERROR) << "Failed to open panda file.";
         return;
