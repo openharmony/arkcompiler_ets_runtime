@@ -158,7 +158,7 @@ private:
     CVector<MethodInfo> methodInfo_;
     uintptr_t loadOffset_ {0};
     uintptr_t dataSize_ {0};
-    std::unique_ptr<uint8_t[]> data_ {nullptr};
+    uint8_t* data_ {nullptr};
     std::shared_ptr<JSPandaFile> jsPandaFile_ {nullptr};
     std::unique_ptr<DebugInfoExtractor> debugExtractor_ {nullptr};
     std::shared_ptr<SourceMap> sourceMap_ {nullptr};
