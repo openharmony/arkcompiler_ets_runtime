@@ -41,9 +41,9 @@ typedef void (*MemoryManagerSaveFunc2FPtoPrevSPDeltaCallback)(void *object, std:
 typedef void (*MemoryManagerSaveFunc2CalleeOffsetInfoCallback)(void *object, std::string funcName,
                                                                std::vector<std::pair<uint16_t, int32_t>> calleeRegInfo);
 
-typedef void (*MemoryManagerSavePC2DeoptInfoCallback)(void *object, uint64_t pc, std::vector<uint64_t> deoptInfo);
+typedef void (*MemoryManagerSavePC2DeoptInfoCallback)(void *object, uint64_t pc, std::vector<uint8_t> deoptInfo);
 
-typedef void (*MemoryManagerSavePC2CallSiteInfoCallback)(void *object, uint64_t pc, std::vector<uint64_t> callSiteInfo);
+typedef void (*MemoryManagerSavePC2CallSiteInfoCallback)(void *object, uint64_t pc, std::vector<uint8_t> callSiteInfo);
 
 class CGOptions {
 public:

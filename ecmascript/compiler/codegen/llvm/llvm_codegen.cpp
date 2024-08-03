@@ -283,14 +283,14 @@ void CodeInfo::SaveFunc2CalleeOffsetInfo(std::string funcName, kungfu::CalleeReg
         std::pair<std::string, FuncInfo>(funcName, {0, 0, calleeRegInfo}));
 }
 
-void CodeInfo::SavePC2DeoptInfo(uint64_t pc, std::vector<uint64_t> deoptInfo)
+void CodeInfo::SavePC2DeoptInfo(uint64_t pc, std::vector<uint8_t> deoptInfo)
 {
-    pc2DeoptInfo.insert(std::pair<uint64_t, std::vector<uint64_t>>(pc, deoptInfo));
+    pc2DeoptInfo.insert(std::pair<uint64_t, std::vector<uint8_t>>(pc, deoptInfo));
 }
 
-void CodeInfo::SavePC2CallSiteInfo(uint64_t pc, std::vector<uint64_t> callSiteInfo)
+void CodeInfo::SavePC2CallSiteInfo(uint64_t pc, std::vector<uint8_t> callSiteInfo)
 {
-    pc2CallsiteInfo.insert(std::pair<uint64_t, std::vector<uint64_t>>(pc, callSiteInfo));
+    pc2CallsiteInfo.insert(std::pair<uint64_t, std::vector<uint8_t>>(pc, callSiteInfo));
 }
 
 const std::map<std::string, CodeInfo::FuncInfo> &CodeInfo::GetFuncInfos() const
@@ -298,12 +298,12 @@ const std::map<std::string, CodeInfo::FuncInfo> &CodeInfo::GetFuncInfos() const
     return func2FuncInfo;
 }
 
-const std::map<uint64_t, std::vector<uint64_t>> &CodeInfo::GetPC2DeoptInfo() const
+const std::map<uint64_t, std::vector<uint8_t>> &CodeInfo::GetPC2DeoptInfo() const
 {
     return pc2DeoptInfo;
 }
 
-const std::unordered_map<uint64_t, std::vector<uint64_t>> &CodeInfo::GetPC2CallsiteInfo() const
+const std::unordered_map<uint64_t, std::vector<uint8_t>> &CodeInfo::GetPC2CallsiteInfo() const
 {
     return pc2CallsiteInfo;
 }
