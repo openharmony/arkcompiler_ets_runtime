@@ -15,6 +15,32 @@
 #include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
 
 namespace panda::ecmascript::kungfu {
+static int64_t DecodeSLEB128(const std::vector<uint8_t> &bytes, size_t &index)
+{
+    uint64_t res = 0;
+    uint64_t shift = 0;
+    constexpr uint8_t FLAG_MASK = 0x40;
+    constexpr uint8_t LOW_7_BITS_MASK = 0x7f;
+    constexpr uint8_t NEXT_BYTE_FLAG_MASK = 0x80;
+    constexpr uint8_t DATA_BITS_SHIFT = 7;
+    constexpr uint64_t BIT_SIZE_64 = 64;
+    bool needDecodeNextByte = false;
+    uint8_t byte = 0;
+    do {
+        byte = bytes[index];
+        needDecodeNextByte = ((byte & NEXT_BYTE_FLAG_MASK) != 0);
+        uint8_t low7Bit = (byte & LOW_7_BITS_MASK);
+        res |= (static_cast<uint64_t>(low7Bit) << shift);
+        shift += DATA_BITS_SHIFT;
+        index++;
+    } while (needDecodeNextByte);
+
+    if (shift < BIT_SIZE_64 && (byte & FLAG_MASK) != 0) {
+        res |= UINT64_MAX << shift;
+    }
+    return static_cast<int64_t>(res);
+}
+
 void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(
     std::vector<LLVMStackMapType::Pc2CallSiteInfo> &pc2StackMapsVec,
     std::vector<LLVMStackMapType::Pc2Deopt> &pc2DeoptInfoVec, Triple triple) const
@@ -23,12 +49,13 @@ void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(
     for (const auto &callSiteInfo : pc2CallSiteInfoVec_) {
         LLVMStackMapType::Pc2CallSiteInfo pc2CallSiteInfo;
         for (const auto &elem : callSiteInfo) {
-            const std::vector<uint64_t> &litecgCallSiteInfo = elem.second;
+            const std::vector<uint8_t> &litecgCallSiteInfo = elem.second;
             LLVMStackMapType::CallSiteInfo llvmCallSiteInfo;
-            // parse std::vector<uint64_t>
-            for (size_t i = 0; i < litecgCallSiteInfo.size(); i += 2) { // add 2 each time for kind and value
-                uint64_t kind = litecgCallSiteInfo[i];
-                uint64_t value = litecgCallSiteInfo[i + 1];
+            // parse std::vector<uint8_t>
+            size_t index = 0;
+            while (index < litecgCallSiteInfo.size()) {
+                int64_t kind = DecodeSLEB128(litecgCallSiteInfo, index);
+                int64_t value = DecodeSLEB128(litecgCallSiteInfo, index);
                 if (kind == 2) {  // kind is 2 means register
                     llvmCallSiteInfo.push_back(std::pair<uint16_t, uint32_t>(0xFFFFU, static_cast<int32_t>(value)));
                 } else if (kind == 1) { // stack
@@ -46,13 +73,14 @@ void LiteCGStackMapInfo::ConvertToLLVMStackMapInfo(
     for (const auto &deoptInfo : pc2DeoptVec_) {
         LLVMStackMapType::Pc2Deopt pc2DeoptInfo;
         for (const auto &elem : deoptInfo) {
-            const std::vector<uint64_t> &litecgDeoptInfo = elem.second;
+            const std::vector<uint8_t> &litecgDeoptInfo = elem.second;
             LLVMStackMapType::DeoptInfoType llvmDeoptInfo;
-            // parse std::vector<uint64_t>
-            for (size_t i = 0; i < litecgDeoptInfo.size(); i += 3) { // add 3 each time for deoptVreg, kind and value
-                uint64_t deoptVreg = litecgDeoptInfo[i];
-                uint64_t kind = litecgDeoptInfo[i + 1];
-                uint64_t value = litecgDeoptInfo[i + 2];
+            // parse std::vector<uint8_t>
+            size_t index = 0;
+            while (index < litecgDeoptInfo.size()) {
+                int64_t deoptVreg = DecodeSLEB128(litecgDeoptInfo, index);
+                int64_t kind = DecodeSLEB128(litecgDeoptInfo, index);
+                int64_t value = DecodeSLEB128(litecgDeoptInfo, index);
                 llvmDeoptInfo.push_back(static_cast<int32_t>(deoptVreg));
                 if (kind == 2) { // kind is 2 means register
                     llvmDeoptInfo.push_back(std::pair<uint16_t, uint32_t>(0xFFFFU, static_cast<int32_t>(value)));

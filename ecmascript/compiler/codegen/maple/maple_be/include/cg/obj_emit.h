@@ -160,8 +160,8 @@ public:
     virtual ~ObjFuncEmitInfo() = default;
 
     struct StackMapInfo {
-        const std::vector<uint64> referenceMap;
-        const std::vector<uint64> deoptInfo;
+        const std::vector<uint8> referenceMap;
+        const std::vector<uint8> deoptInfo;
     };
 
     uint32 GetEndOffset() const
@@ -366,13 +366,13 @@ public:
         return itr->second;
     }
 
-    void RecordOffset2StackMapInfo(size_t offset, const std::vector<uint64> &referenceMap,
-                                   const std::vector<uint64> deoptInfo)
+    void RecordOffset2StackMapInfo(size_t offset, const std::vector<uint8> &referenceMap,
+                                   const std::vector<uint8> deoptInfo)
     {
         offset2StackMapInfo.insert(std::pair<size_t, StackMapInfo>(offset, {referenceMap, deoptInfo}));
     }
 
-    const MapleUnorderedMap<size_t, StackMapInfo> &GetOffset2StackMapInfo() const
+    MapleUnorderedMap<size_t, StackMapInfo> &GetOffset2StackMapInfo()
     {
         return offset2StackMapInfo;
     }

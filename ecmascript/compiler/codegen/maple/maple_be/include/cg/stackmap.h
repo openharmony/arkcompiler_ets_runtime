@@ -41,7 +41,31 @@ struct DeoptVregLocationInfo {
     DeoptVregLocationInfo(int32 vreg, LocationInfo info) : deoptVreg(vreg), locationInfo(info) {}
 };
 
-class DeoptInfo {
+class DataEncoder {
+public:
+    void EncodeLEB128(int64 value, std::vector<uint8_t> &res) const
+    {
+        bool needDecodeNextByte = true;
+        while (needDecodeNextByte) {
+            uint8 byte = static_cast<uint8>(static_cast<uint64_t>(value) & LOW_7_BITS_MASK);
+            value >>= DATA_BITS_SHIFT;
+            if ((value == 0 && (byte & FLAG_MASK) == 0) ||
+                (value == -1 && (byte & FLAG_MASK) != 0)) {
+                needDecodeNextByte = false;
+            } else {
+                byte |= NEXT_BYTE_FLAG_MASK;
+            }
+            res.push_back(byte);
+        }
+    }
+private:
+    const uint8 FLAG_MASK = 0x40;
+    const uint8 LOW_7_BITS_MASK = 0x7f;
+    const uint8 NEXT_BYTE_FLAG_MASK = 0x80;
+    const uint8 DATA_BITS_SHIFT = 7;
+};
+
+class DeoptInfo : public DataEncoder {
 public:
     DeoptInfo(MapleAllocator &alloc) : deoptVreg2Opnd(alloc.Adapter()), deoptVreg2LocationInfo(alloc.Adapter()) {}
     ~DeoptInfo() = default;
@@ -85,13 +109,13 @@ public:
         }
     }
 
-    std::vector<uint64> SerializeInfo() const
+    std::vector<uint8> SerializeInfo() const
     {
-        std::vector<uint64> info;
+        std::vector<uint8> info;
         for (const auto &elem : deoptVreg2LocationInfo) {
-            info.push_back(static_cast<uint64_t>(elem.deoptVreg));
-            info.push_back(static_cast<uint64_t>(elem.locationInfo.locationKind));
-            info.push_back(static_cast<uint64_t>(elem.locationInfo.value));
+            EncodeLEB128(static_cast<int64_t>(elem.deoptVreg), info);
+            EncodeLEB128(static_cast<int64_t>(elem.locationInfo.locationKind), info);
+            EncodeLEB128(static_cast<int64_t>(elem.locationInfo.value), info);
         }
         return info;
     }
@@ -102,7 +126,7 @@ private:
     MapleVector<DeoptVregLocationInfo> deoptVreg2LocationInfo;
 };
 
-class ReferenceMap {
+class ReferenceMap : public DataEncoder {
 public:
     ReferenceMap(MapleAllocator &alloc) : referenceLocations(alloc.Adapter()) {}
     ~ReferenceMap() = default;
@@ -132,12 +156,12 @@ public:
         }
     }
 
-    std::vector<uint64> SerializeInfo() const
+    std::vector<uint8> SerializeInfo() const
     {
-        std::vector<uint64> info;
+        std::vector<uint8> info;
         for (const auto &elem : referenceLocations) {
-            info.push_back(static_cast<uint64_t>(elem.locationKind));
-            info.push_back(static_cast<uint64_t>(elem.value));
+            EncodeLEB128(static_cast<int64_t>(elem.locationKind), info);
+            EncodeLEB128(static_cast<int64_t>(elem.value), info);
         }
         return info;
     }

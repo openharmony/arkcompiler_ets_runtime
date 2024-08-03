@@ -260,7 +260,7 @@ void AArch64ObjEmitter::AppendGlobalLabel()
             emitMemoryManager.funcAddressSaver(emitMemoryManager.codeSpace, funcName, offset);
         }
         if (emitMemoryManager.codeSpace != nullptr) {
-            const auto &offset2StackMapInfo = content->GetOffset2StackMapInfo();
+            auto &offset2StackMapInfo = content->GetOffset2StackMapInfo();
             for (const auto &elem : offset2StackMapInfo) {
                 const auto &stackMapInfo = elem.second;
                 emitMemoryManager.pc2CallSiteInfoSaver(
@@ -268,6 +268,7 @@ void AArch64ObjEmitter::AppendGlobalLabel()
                 emitMemoryManager.pc2DeoptInfoSaver(emitMemoryManager.codeSpace, content->GetStartOffset() + elem.first,
                                                     stackMapInfo.deoptInfo);
             }
+            offset2StackMapInfo.clear();
         }
 
         offset += content->GetTextDataSize();
