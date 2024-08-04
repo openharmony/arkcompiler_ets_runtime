@@ -220,6 +220,12 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
 {
     TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys().GetTaggedObject());
     uint32_t size = obj->GetLength();
+    if (size == 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, OperationResult(thread,
+                                                                        JSTaggedValue::Exception(),
+                                                                        PropertyMetaData(false)));
+    }
     int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         std::ostringstream oss;
