@@ -364,8 +364,6 @@ void TypedBytecodeLowering::LowerTypedBinOp(GateRef gate)
         SpeculateNumbers<Op>(tacc);
     } else if (tacc.IsStringType()) {
         SpeculateStrings<Op>(tacc);
-    } else if (tacc.IsNumberOrStringType()) {
-        SpeculateNumbersOrString<Op>(tacc);
     }
 }
 
@@ -1097,8 +1095,10 @@ void TypedBytecodeLowering::LowerTypedLdStringLength(const LoadBulitinObjTypeInf
     GateRef gate = tacc.GetGate();
     GateRef str = tacc.GetReceiver();
     AddProfiling(gate);
-    if (!Uncheck()) {
-        builder_.EcmaStringCheck(str);
+    if (!TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, str)) {
+        if (!Uncheck()) {
+            builder_.EcmaStringCheck(str);
+        }
     }
     GateRef result = builder_.LoadStringLength(str);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
@@ -1268,7 +1268,9 @@ GateRef TypedBytecodeLowering::LoadStringByIndex(const LoadBulitinObjTypeInfoAcc
     GateRef propKey = tacc.GetKey();
     acc_.SetGateType(propKey, GateType::NumberType());
     if (!Uncheck()) {
-        builder_.EcmaStringCheck(receiver);
+        if (!TypeInfoAccessor::IsTrustedStringType(compilationEnv_, circuit_, chunk_, acc_, receiver)) {
+            builder_.EcmaStringCheck(receiver);
+        }
         GateRef length = builder_.LoadStringLength(receiver);
         propKey = builder_.IndexCheck(length, propKey);
         receiver = builder_.FlattenTreeStringCheck(receiver);
@@ -1561,13 +1563,7 @@ bool TypedBytecodeLowering::TryLowerNewBuiltinConstructor(GateRef gate)
     GateRef ctor = tacc.GetValue();
     GateRef constructGate = Circuit::NullGate();
     if (tacc.IsBuiltinId(BuiltinsStubCSigns::ID::ArrayConstructor)) {
-        if (acc_.GetNumValueIn(gate) <= 2) { // 2: ctor and first arg
-            AddProfiling(gate);
-            if (!Uncheck()) {
-                builder_.ArrayConstructorCheck(ctor);
-            }
-            constructGate = builder_.BuiltinConstructor(BuiltinsStubCSigns::ID::ArrayConstructor, gate);
-        }
+        return false;
     } else if (tacc.IsBuiltinId(BuiltinsStubCSigns::ID::ObjectConstructor)) {
         AddProfiling(gate);
         if (!Uncheck()) {

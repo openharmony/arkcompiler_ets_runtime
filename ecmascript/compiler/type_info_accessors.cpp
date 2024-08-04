@@ -206,6 +206,14 @@ bool TypeInfoAccessor::IsTrustedStringType(
     if (op == OpCode::NUMBER_TO_STRING) {
         return true;
     }
+    if (op == OpCode::TYPED_BINARY_OP) {
+        auto binaryOp = acc.GetTypedBinaryOp(gate);
+        if (binaryOp == TypedBinOp::TYPED_ADD) {
+            auto value = acc.GetTypedBinaryAccessor(gate);
+            return value.GetParamType().IsStringType();
+        }
+    }
+
     if (op == OpCode::JS_BYTECODE) {
         EcmaOpcode ecmaOpcode = acc.GetByteCodeOpcode(gate);
         switch (ecmaOpcode) {
