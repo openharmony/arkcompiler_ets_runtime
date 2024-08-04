@@ -1859,7 +1859,7 @@ void Heap::TryTriggerConcurrentMarking()
         }
         return;
     }
-    size_t semiSpaceCapacity = activeSemiSpace_->GetInitialCapacity();
+    size_t semiSpaceCapacity = activeSemiSpace_->GetInitialCapacity() + activeSemiSpace_->GetOvershootSize();
     size_t semiSpaceCommittedSize = activeSemiSpace_->GetCommittedSize();
     bool triggerMark = semiSpaceCapacity <= semiSpaceCommittedSize;
     if (!triggerMark) {
