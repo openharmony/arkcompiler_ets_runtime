@@ -110,6 +110,7 @@ void BytecodeInfoCollector::ProcessClasses()
             if (it == processedMethod.end()) {
                 CollectMethodPcsFromBC(codeSize, insns, methodLiteral,
                     methodOffset, recordNamePtr);
+                ASSERT(methodPcInfos.size() > 0);
                 processedMethod[methodOffset] = std::make_pair(methodPcInfos.size() - 1, methodOffset);
             }
 
@@ -151,6 +152,7 @@ void BytecodeInfoCollector::ProcessMethod(MethodLiteral *methodLiteral)
     const uint8_t *insns = codeDataAccessor.GetInstructions();
 
     CollectMethodPcsFromBC(codeSize, insns, methodLiteral, methodOffset, recordNamePtr);
+    ASSERT(methodPcInfos.size() > 0);
     SetMethodPcInfoIndex(methodOffset, {methodPcInfos.size() - 1, methodOffset}, recordNamePtr);
     processedMethod_.emplace(methodOffset);
 }

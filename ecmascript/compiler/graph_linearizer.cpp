@@ -268,6 +268,7 @@ public:
         std::iota(semiDom_.begin(), semiDom_.end(), 0);
         semiDom_[0] = semiDom_.size();
 
+        ASSERT(dfsList_.size() > 0);
         for (size_t idx = dfsList_.size() - 1; idx >= 1; idx--) {
             for (const auto &preRegion : regionList[dfsList_[idx]]->preds_) {
                 size_t preRegionIdx = bbDfsTimestampToIdx_[preRegion->id_];

@@ -197,6 +197,7 @@ bool LexicalEnvSpecializationPass::caclulateDistanceToTarget(GateRef startEnv, G
         } else {
             --dis;
         }
+        ASSERT(acc_.GetNumValueIn(curEnv) > 0);
         curEnv = acc_.GetValueIn(curEnv, acc_.GetNumValueIn(curEnv) - 1); // 1: env value in
     }
     return false;

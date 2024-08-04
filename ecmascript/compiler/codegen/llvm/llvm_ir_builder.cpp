@@ -2875,6 +2875,7 @@ void LLVMIRBuilder::VisitDeoptCheck(GateRef gate)
         ASSERT(acc_.GetOpCode(frameState) == OpCode::FRAME_STATE);
         GateRef frameValues = acc_.GetValueIn(frameState, 1); // 1: frame values
         const size_t numValueIn = acc_.GetNumValueIn(frameValues);
+        ASSERT(numValueIn > 1);
         const size_t envIndex = numValueIn - 2; // 2: env valueIn index
         const size_t accIndex = numValueIn - 1; // 1: acc valueIn index
         GateRef env = acc_.GetValueIn(frameValues, envIndex);

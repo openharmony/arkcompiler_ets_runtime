@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/compiler/pass_manager.h"
+#include <cstddef>
 
 namespace panda::ecmascript::kungfu {
 // slowPath Lowering Process
@@ -250,6 +251,7 @@ private:
     GateRef GetSuperCallArgs(const std::vector<GateRef> &args, bool isSuperCallSpread);
     void LowerIsTrueOrFalse(GateRef gate, bool flag);
     void LowerNewObjRange(GateRef gate);
+    bool IsDependIfStateMent(GateRef gate, size_t idx);
     void LowerConditionJump(GateRef gate, bool isEqualJump);
     void LowerGetNextPropName(GateRef gate);
     void LowerCopyDataProperties(GateRef gate);

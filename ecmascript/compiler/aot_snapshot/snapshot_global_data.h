@@ -189,6 +189,7 @@ public:
     {
         if (hclassInfo_.IsTaggedArray()) {
             auto hclassInfoArr = TaggedArray::Cast(hclassInfo_);
+            ASSERT(hclassInfoArr->GetLength() > 0);
             return hclassInfoArr->Get(hclassInfoArr->GetLength() - 1);
         }
         return JSTaggedValue::Undefined();

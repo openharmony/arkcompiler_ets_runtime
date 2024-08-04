@@ -412,8 +412,7 @@ bool PGOMethodInfoMap::ParseFromText(Chunk *chunk, uint32_t threshold, const std
         }
         std::string methodName = infoStrings[PGOMethodInfo::METHOD_NAME_INDEX];
 
-        size_t len = methodName.size();
-        void *infoAddr = chunk->Allocate(PGOMethodInfo::Size(len));
+        void *infoAddr = chunk->Allocate(PGOMethodInfo::Size(methodName.size()));
         auto info = new (infoAddr) PGOMethodInfo(PGOMethodId(methodId), count, mode, methodName.c_str());
         methodInfos_.emplace(methodId, info);
 
@@ -429,6 +428,7 @@ bool PGOMethodInfoMap::ParseFromText(Chunk *chunk, uint32_t threshold, const std
                 LOG_ECMA(ERROR) << "Type info: " << typeInfos << " parse failed";
                 return false;
             }
+            ASSERT(end > start + 1);
             auto typeContent = typeInfos.substr(start + 1, end - (start + 1) - 1);
             auto typeInfoSet = chunk->New<PGOMethodTypeSet>();
             if (!typeInfoSet->ParseFromText(typeContent)) {
@@ -731,6 +731,7 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
             toMethodInfos = recordInfosIter->second;
         }
 
+        ASSERT(toMethodInfos != nullptr);
         toMethodInfos->Merge(chunk_.get(), fromMethodInfos);
     }
 
@@ -783,6 +784,7 @@ void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         recordType.UpdateId(recordId);
         recordType.UpdateKind(ProfileType::Kind::RecordClassId);
         PGOMethodInfoMap *methodInfos = nativeAreaAllocator_.New<PGOMethodInfoMap>();
+        ASSERT(methodInfos != nullptr);
         if (methodInfos->ParseFromBinary(chunk_.get(), *this, &addr)) {
             recordInfos_.emplace(recordType, methodInfos);
         }
@@ -906,6 +908,7 @@ bool PGORecordDetailInfos::ParseFromText(std::ifstream &stream)
         if (start == std::string::npos || end == std::string::npos || start > end) {
             return false;
         }
+        ASSERT(end > start + 1);
         auto content = details.substr(start + 1, end - (start + 1) - 1);
         std::vector<std::string> infoStrings = StringHelper::SplitString(content, DumpUtils::BLOCK_SEPARATOR);
         if (infoStrings.size() <= 0) {
@@ -922,6 +925,7 @@ bool PGORecordDetailInfos::ParseFromText(std::ifstream &stream)
         } else {
             methodInfos = methodInfosIter->second;
         }
+        ASSERT(methodInfos != nullptr);
         if (!methodInfos->ParseFromText(chunk_.get(), hotnessThreshold_, infoStrings)) {
             return false;
         }
