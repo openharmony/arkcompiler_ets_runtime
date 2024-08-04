@@ -22,10 +22,10 @@
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
 #include "ecmascript/compiler/aot_file/an_file_info.h"
 #include "ecmascript/compiler/aot_file/aot_file_info.h"
-#include "ecmascript/compiler/aot_snapshot/snapshot_constantpool_data.h"
 #include "ecmascript/compiler/aot_file/binary_buffer_parser.h"
 #include "ecmascript/compiler/aot_file/module_section_des.h"
 #include "ecmascript/compiler/aot_file/stub_file_info.h"
+#include "ecmascript/compiler/aot_snapshot/snapshot_constantpool_data.h"
 #include "ecmascript/compiler/binary_section.h"
 #include "ecmascript/deoptimizer/calleeReg.h"
 #include "ecmascript/js_function.h"
@@ -42,18 +42,20 @@ namespace kungfu {
     class ArkStackMapParser;
 } // namespace kungfu
 
-/*                AOTLiteralInfo (TaggedArray)
- *    +--------------------------------------------------+------
- *    |      AOT Function CodeEntry of 1st Method        |    ^
- *    |     (NO_FUNC_ENTRY_VALUE if NoMethodEntry)       |    |
- *    |                    ...                           | MethodsCache
- *    |                    ...                           |    |
- *    |      AOT Function CodeEntry of nth Method        |    v
- *    +--------------------------------------------------+------
- *    |      AOT Instance Hclass (IHC) (JSTaggedValue)   |
- *    |    AOT Constructor Hclass (CHC) (JSTaggedValue)  |
- *    +--------------------------------------------------+
- *
+/*                  AOTLiteralInfo
+ *      +-----------------------------------+----
+ *      |              ...                  |  ^
+ *      |              ...                  |  |
+ *      | cache(store function entry index) |  AOT Function Entry Index, if its value is -1,
+ *      |              ...                  |  means the function has not been compiled with AOT.
+ *      |              ...                  |  v
+ *      +-----------------------------------+----
+ *      |         Literal Type              |  JSTaggedValue(int32_t)
+ *      +-----------------------------------+----
+ *      |      AOT Instance Hclass (IHC)    |  JSTaggedValue(HClass)
+ *      +-----------------------------------+----
+ *      |   AOT Constructor Hclass (CHC)    |  JSTaggedValue(HClass)
+ *      +-----------------------------------+----
  */
 class AOTLiteralInfo : public TaggedArray {
 public:
@@ -66,10 +68,10 @@ public:
     static constexpr int32_t METHOD_LITERAL_TYPE = 1;
     static constexpr int32_t INVALID_LITERAL_TYPE = 0;
 
-    static AOTLiteralInfo *Cast(TaggedObject *object)
+    static AOTLiteralInfo* Cast(TaggedObject* object)
     {
         ASSERT(JSTaggedValue(object).IsTaggedArray());
-        return static_cast<AOTLiteralInfo *>(object);
+        return static_cast<AOTLiteralInfo*>(object);
     }
 
     static size_t ComputeSize(uint32_t cacheSize)
@@ -121,8 +123,8 @@ public:
     {
         return Get(index);
     }
-private:
 
+private:
     inline size_t GetIhcOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - AOT_IHC_INDEX);
@@ -141,7 +143,7 @@ private:
 
 class AOTFileManager {
 public:
-    explicit AOTFileManager(EcmaVM *vm);
+    explicit AOTFileManager(EcmaVM* vm);
     virtual ~AOTFileManager();
 
     static constexpr char FILE_EXTENSION_AN[] = ".an";
@@ -152,36 +154,40 @@ public:
     static void SetJsAotReader(JsAotReaderCallback cb);
     static JsAotReaderCallback GetJsAotReader();
 #endif
-    void LoadStubFile(const std::string &fileName);
-    static bool LoadAnFile(const std::string &fileName);
+    void LoadStubFile(const std::string& fileName);
+    static bool LoadAnFile(const std::string& fileName);
     static AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr);
     static bool TryReadLock();
     static bool InsideStub(uintptr_t pc);
     static bool InsideAOT(uintptr_t pc);
     bool IsEnableAOT() const;
-    void Iterate(const RootVisitor &v);
+    void Iterate(const RootVisitor& v);
 
-    const std::shared_ptr<AnFileInfo> GetAnFileInfo(const JSPandaFile *jsPandaFile) const;
-    bool IsLoadMain(const JSPandaFile *jsPandaFile, const CString &entry) const;
+    const std::shared_ptr<AnFileInfo> GetAnFileInfo(const JSPandaFile* jsPandaFile) const;
+    bool IsLoadMain(const JSPandaFile* jsPandaFile, const CString& entry) const;
     uint32_t GetFileIndex(uint32_t anFileInfoIndex, CString abcNormalizedName) const;
     std::list<CString> GetPandaFiles(uint32_t aotFileInfoIndex);
-    uint32_t GetAnFileIndex(const JSPandaFile *jsPandaFile) const;
-    void BindPreloadedPandaFilesInAotFile(const std::string &moduleName);
-    bool HasPandaFile(uint32_t aotFileInfoIndex, const CString &abcNormalizedName) const;
-    void BindPandaFileInAotFile(const std::string &aotFileBaseName, JSPandaFile *jsPandaFile) const;
-    void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JSPandaFile *jsPandaFile,
+    uint32_t GetAnFileIndex(const JSPandaFile* jsPandaFile) const;
+    void BindPreloadedPandaFilesInAotFile(const std::string& moduleName);
+    bool HasPandaFile(uint32_t aotFileInfoIndex, const CString& abcNormalizedName) const;
+    void BindPandaFileInAotFile(const std::string& aotFileBaseName, JSPandaFile* jsPandaFile) const;
+    void SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc,
+                             const JSPandaFile* jsPandaFile,
                              std::string_view entryPoint);
-    void SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction *function,
-                         Method *method, uint32_t entryIndex = 0, bool *canFastCall = nullptr);
-    bool LoadAiFile([[maybe_unused]] const std::string &filename);
-    bool LoadAiFile(const JSPandaFile *jsPandaFile);
+    void SetAOTFuncEntry(const JSPandaFile* jsPandaFile,
+                         JSFunction* function,
+                         Method* method,
+                         uint32_t entryIndex = 0,
+                         bool* canFastCall = nullptr);
+    bool LoadAiFile([[maybe_unused]] const std::string& filename);
+    bool LoadAiFile(const JSPandaFile* jsPandaFile);
     kungfu::ArkStackMapParser* GetStackMapParser() const;
-    static JSTaggedValue GetAbsolutePath(JSThread *thread, JSTaggedValue relativePathVal);
-    static bool GetAbsolutePath(const CString &relativePathCstr, CString &absPathCstr);
+    static JSTaggedValue GetAbsolutePath(JSThread* thread, JSTaggedValue relativePathVal);
+    static bool GetAbsolutePath(const CString& relativePathCstr, CString& absPathCstr);
     static bool RewriteDataSection(uintptr_t dataSec, size_t size, uintptr_t newData, size_t newSize);
-    void ParseDeserializedData(const CString &snapshotFileName, JSTaggedValue deserializedData);
-    JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile *jsPandaFile, int32_t cpID);
-    const Heap *GetHeap();
+    void ParseDeserializedData(const CString& snapshotFileName, JSTaggedValue deserializedData);
+    JSHandle<JSTaggedValue> GetDeserializedConstantPool(const JSPandaFile* jsPandaFile, int32_t cpID);
+    const Heap* GetHeap();
 
     static void DumpAOTInfo() DUMP_API_ATTR;
 
@@ -211,5 +217,5 @@ private:
     friend class AnFileInfo;
     friend class StubFileInfo;
 };
-}  // namespace panda::ecmascript
+} // namespace panda::ecmascript
 #endif // ECMASCRIPT_COMPILER_AOT_FILE_AOT_FILE_MANAGER_H
