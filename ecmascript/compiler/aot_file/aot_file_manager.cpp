@@ -42,6 +42,7 @@
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/message_string.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/ohos/ohos_preload_app_info.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
@@ -138,7 +139,7 @@ bool AOTFileManager::LoadAiFile([[maybe_unused]] const std::string &filename)
 
 bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
 {
-    uint32_t anFileInfoIndex = GetAnFileIndex(jsPandaFile);
+    uint32_t anFileInfoIndex = jsPandaFile->GetAOTFileInfoIndex();
     // this abc file does not have corresponding an file
     if (anFileInfoIndex == INVALID_INDEX) {
         return false;
@@ -153,9 +154,10 @@ bool AOTFileManager::LoadAiFile(const JSPandaFile *jsPandaFile)
     std::string aiFilename = "";
     // device side aot compile success
     if (AnFileDataManager::GetInstance()->IsEnable()) {
-        AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-        aiFilename = anFileDataManager->GetDir();
-        aiFilename += JSFilePath::GetHapName(jsPandaFile) + FILE_EXTENSION_AI;
+        std::string moduleName(vm_->GetModuleName());
+        std::string aotFileName;
+        JSNApi::LoadAotFileInternal(vm_, moduleName, aotFileName);
+        aiFilename = aotFileName + FILE_EXTENSION_AI;
     } else {
         std::string moduleName = JSFilePath::GetHapName(jsPandaFile);
         std::string hapPath = jsPandaFile->GetJSPandaFileHapPath().c_str();
