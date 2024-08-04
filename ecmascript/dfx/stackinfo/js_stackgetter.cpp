@@ -155,12 +155,18 @@ void JsStackGetter::GetNativeStack(const EcmaVM *vm, const FrameIterator &it, ch
             }
             auto addr = cb(reinterpret_cast<void *>(extraInfo->GetData()));
             stream << addr;
-            CheckAndCopy(functionName, size, methodNameStr.c_str());
+            if (!CheckAndCopy(functionName, size, methodNameStr.c_str())) {
+                return;
+            }
             const uint8_t methodNameStrLength = methodNameStr.size();
-            CheckAndCopy(functionName + methodNameStrLength, size - methodNameStrLength, "(");
+            if (!CheckAndCopy(functionName + methodNameStrLength, size - methodNameStrLength, "(")) {
+                return;
+            }
             const uint8_t napiBeginLength = 1; // 1:the length of "("
-            CheckAndCopy(functionName + methodNameStrLength + napiBeginLength,
-                size - methodNameStrLength - napiBeginLength, stream.str().c_str());
+            if (!CheckAndCopy(functionName + methodNameStrLength + napiBeginLength,
+                size - methodNameStrLength - napiBeginLength, stream.str().c_str())) {
+                return;
+            }
             uint8_t srcLength = stream.str().size();
             CheckAndCopy(functionName + methodNameStrLength + napiBeginLength + srcLength,
                 size - methodNameStrLength - napiBeginLength - srcLength, ")");
