@@ -15,7 +15,6 @@
 
 #include "ecmascript/builtins/builtins_bigint.h"
 
-#include "ecmascript/js_bigint.h"
 #include "ecmascript/js_primitive_ref.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_number_format.h"

@@ -14,15 +14,11 @@
  */
 
 #include "ecmascript/builtins/builtins_map.h"
-
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsMap::MapConstructor(EcmaRuntimeCallInfo *argv)

@@ -16,9 +16,6 @@
 #include "ecmascript/builtins/builtins_math.h"
 #include <random>
 #include <sys/time.h>
-
-#include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript::builtins {

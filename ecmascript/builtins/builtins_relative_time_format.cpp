@@ -15,8 +15,6 @@
 
 #include "ecmascript/builtins/builtins_relative_time_format.h"
 
-#include "ecmascript/intl/locale_helper.h"
-
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsRelativeTimeFormat::RelativeTimeFormatConstructor(EcmaRuntimeCallInfo *argv)
 {

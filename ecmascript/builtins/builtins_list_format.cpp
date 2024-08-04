@@ -16,13 +16,8 @@
 #include "ecmascript/builtins/builtins_list_format.h"
 
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_list_format.h"
-#include "ecmascript/js_intl.h"
-#include "ecmascript/js_locale.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsListFormat::ListFormatConstructor(EcmaRuntimeCallInfo *argv)

@@ -17,24 +17,11 @@
 
 #include <typeinfo>
 
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/builtins/builtins_bigint.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
-#include "ecmascript/base/typed_array_helper.h"
 
-#include "securec.h"
 #include "cstdio"
 #include "cstring"
 

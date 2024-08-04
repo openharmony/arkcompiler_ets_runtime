@@ -14,18 +14,11 @@
  */
 
 #include "ecmascript/builtins/builtins_async_from_sync_iterator.h"
-#include "ecmascript/builtins/builtins_promise.h"
-#include "ecmascript/builtins/builtins_promise_handler.h"
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_promise.h"
-#include "ecmascript/js_function.h"
 
 namespace panda::ecmascript::builtins {
 

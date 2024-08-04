@@ -14,14 +14,7 @@
  */
 
 #include "ecmascript/builtins/builtins_errors.h"
-
-#include "ecmascript/base/error_helper.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_iterator.h"
 
 namespace panda::ecmascript::builtins {
 using ErrorHelper = base::ErrorHelper;

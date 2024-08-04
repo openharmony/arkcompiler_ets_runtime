@@ -14,16 +14,9 @@
  */
 
 #include "ecmascript/builtins/builtins_string_iterator.h"
-
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/js_string_iterator.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsStringIterator::Next(EcmaRuntimeCallInfo *argv)

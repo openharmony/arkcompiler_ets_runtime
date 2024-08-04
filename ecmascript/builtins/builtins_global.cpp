@@ -20,18 +20,11 @@
 #include <string>
 #include <vector>
 
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/mem/c_containers.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/stubs/runtime_stubs.h"
-#include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/js_module_manager.h"

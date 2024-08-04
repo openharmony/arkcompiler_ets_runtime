@@ -14,17 +14,12 @@
  */
 
 #include "ecmascript/builtins/builtins_promise_handler.h"
-
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_async_function.h"
-#include "ecmascript/js_handle.h"
 #include "ecmascript/js_promise.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/mem/assert_scope.h"
 
 namespace panda::ecmascript::builtins {
 // es6 25.4.1.3.2 Promise Resolve Functions

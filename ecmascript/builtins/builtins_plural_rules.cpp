@@ -17,10 +17,7 @@
 
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_locale.h"
-#include "ecmascript/js_object.h"
 #include "ecmascript/js_plural_rules.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsPluralRules::PluralRulesConstructor(EcmaRuntimeCallInfo *argv)

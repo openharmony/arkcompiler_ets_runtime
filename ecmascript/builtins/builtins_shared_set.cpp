@@ -15,17 +15,12 @@
 
 #include "ecmascript/builtins/builtins_shared_set.h"
 
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
-#include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsSharedSet::Constructor(EcmaRuntimeCallInfo *argv)

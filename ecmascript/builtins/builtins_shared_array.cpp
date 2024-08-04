@@ -17,35 +17,12 @@
 
 #include <cmath>
 
-#include "ecmascript/base/array_helper.h"
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/base/typed_array_helper-inl.h"
-#include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_string.h"
-#include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/ecma_string.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_map_iterator.h"
-#include "ecmascript/js_object.h"
 #include "ecmascript/js_stable_array.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/mem/tagged_object.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
-#include "ecmascript/shared_objects/concurrent_api_scope.h"
-#include "ecmascript/shared_objects/js_shared_array.h"
-#include "ecmascript/shared_objects/js_shared_array_iterator.h"
-#include "ecmascript/tagged_array-inl.h"
-#include "jsnapi_expo.h"
 
 namespace panda::ecmascript::builtins {
 namespace {
