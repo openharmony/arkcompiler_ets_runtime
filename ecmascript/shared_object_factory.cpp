@@ -52,6 +52,10 @@ void ObjectFactory::NewSObjectHook() const
         } else {
             sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
         }
+        if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
+            sHeap_->WaitGCFinished(thread_);
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread_);
+        }
     }
 #endif
 }
