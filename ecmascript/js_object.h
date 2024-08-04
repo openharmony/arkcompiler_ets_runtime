@@ -656,6 +656,7 @@ public:
                                                                     const JSHandle<TaggedArray> &properties,
                                                          JSTaggedValue ihc = JSTaggedValue::Undefined());
     static JSHandle<JSObject> CreateObjectFromProperties(const JSThread *thread,
+                                                         const JSHandle<JSHClass> &hclass,
                                                          const JSHandle<TaggedArray> &properties,
                                                          uint32_t propsLen);
     static JSHandle<JSObject> CreateObjectFromPropertiesByIHClass(const JSThread *thread,
