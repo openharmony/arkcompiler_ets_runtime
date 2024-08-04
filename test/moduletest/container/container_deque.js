@@ -146,5 +146,11 @@ if (globalThis["ArkPrivate"] != undefined) {
     const v5 = new C4();
     Object.assign(v1,v5)
     print(JSON.stringify(v1))
+    const v6 = new Deque()
+    try {
+        v6[4294967295]
+    } catch (error) {
+        print(error)
+    }
 }
 export let dequeRes = "Test Deque done";
