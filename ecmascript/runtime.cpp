@@ -197,6 +197,9 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
             ASSERT(current == mainThread_ || current->IsDaemonThread());
             return;
         }
+        if (threads_.size() < 1) {
+            return;
+        }
         barrier.Initialize(threads_.size() - 1);
         for (auto i: threads_) {
             if (i == current) {
