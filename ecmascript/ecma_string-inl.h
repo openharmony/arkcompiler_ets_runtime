@@ -23,6 +23,7 @@
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/object_factory-inl.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
 
 namespace panda::ecmascript {
 /* static */
@@ -203,11 +204,32 @@ inline EcmaString *EcmaString::CreateConstantString(const EcmaVM *vm, const uint
     return string;
 }
 
+/*
+ * In the multi-thread optimization scenario, start the application.
+ * 1.The thread executes until CheckThread () acquires the lock.
+ * 2.At this time, the thread receives the SIGPROF signal, interrupts the current program execution,
+ * and enters the signal processing function.
+ * 3.When CreateTreeString()->GetJSThread()->CheckThread() is executed, the lock cannot be obtained
+ * and the system has to wait, causing a deadlock.
+ * Therefore, if the function is executed during signal processing, the thread ID is directly obtained and
+ * the thread detection is not performed, thereby avoiding deadlock.
+ */
+
+inline void GetDebuggerThread(const EcmaVM *vm, JSThread **thread)
+{
+    if (vm->GetJsDebuggerManager()->GetSignalState()) {
+        *thread = vm->GetJSThreadNoCheck();
+    } else {
+        *thread = vm->GetJSThread();
+    }
+}
+
 inline EcmaString *EcmaString::CreateTreeString(const EcmaVM *vm,
     const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, uint32_t length, bool compressed)
 {
     ECMA_STRING_CHECK_LENGTH_AND_TRHOW(vm, length);
-    auto thread = vm->GetJSThread();
+    JSThread *thread = nullptr;
+    GetDebuggerThread(vm, &thread);
     auto string = TreeEcmaString::Cast(vm->GetFactory()->AllocTreeStringObject());
     string->SetLength(length, compressed);
     string->SetRawHashcode(0);
