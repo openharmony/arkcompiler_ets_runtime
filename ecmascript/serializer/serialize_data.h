@@ -176,9 +176,9 @@ public:
         return RawDataEmit(data, length, bufferSize_);
     }
 
-    ssize_t RawDataEmit(const void *data, size_t length, ssize_t offset)
+    ssize_t RawDataEmit(const void *data, size_t length, size_t offset)
     {
-        if (length <= 0 || offset < 0) {
+        if (length <= 0) {
             return -1;
         }
         if ((offset + length) > bufferCapacity_) {
@@ -191,7 +191,7 @@ public:
             return -1;
         }
         ssize_t res = offset;
-        if (bufferSize_ == static_cast<size_t>(offset)) {
+        if (bufferSize_ == offset) {
             bufferSize_ += length;
         }
         return res;
@@ -207,7 +207,7 @@ public:
         return RawDataEmit(reinterpret_cast<uint8_t *>(&c), U64_SIZE);
     }
 
-    ssize_t EmitU64(uint64_t c, ssize_t offset)
+    ssize_t EmitU64(uint64_t c, size_t offset)
     {
         return RawDataEmit(reinterpret_cast<uint8_t *>(&c), U64_SIZE, offset);
     }
