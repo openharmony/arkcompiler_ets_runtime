@@ -140,6 +140,7 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
                 break;
             }
             case RegExpOpCode::OP_MATCH: {
+                ASSERT(stateStackLen_ > 0);
                 // jump to match ahead
                 uint32_t ahead = stateStackLen_ - 1;
                 auto stateStack = reinterpret_cast<RegExpState *>(stateStack_);
@@ -189,6 +190,7 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
                 if (stateStackLen_ > 0 && PeekRegExpState()->type_ == StateType::STATE_PUSH) {
                     DropRegExpState();
                 } else {
+                    ASSERT(currentStack_ > 0);
                     PushRegExpState(StateType::STATE_POP, 0, stack_[currentStack_ - 1]);
                 }
                 if (PopStack() != reinterpret_cast<uintptr_t>(GetCurrentPtr())) {
@@ -206,6 +208,7 @@ bool RegExpExecutor::ExecuteInternal(const DynChunk &byteCode, uint32_t pcEnd)
                 break;
             }
             case RegExpOpCode::OP_POP: {
+                ASSERT(currentStack_ > 0);
                 PushRegExpState(StateType::STATE_POP, 0, stack_[currentStack_ - 1]);
                 PopStack();
                 Advance(opCode);

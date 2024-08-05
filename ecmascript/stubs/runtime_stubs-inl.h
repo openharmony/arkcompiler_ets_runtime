@@ -1052,6 +1052,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     uint32_t arrayLength = fieldTypeArray->GetLength();
+    ASSERT(arrayLength > 0);
     auto instanceFieldNums = static_cast<uint32_t>(fieldTypeArray->Get(arrayLength - 1).GetInt());
     // Don't trim array, because define class maybe called on muilt-time in the same vm or diferrent vm
     uint32_t instanceLength = instanceFieldNums * 2;  // 2: key and value

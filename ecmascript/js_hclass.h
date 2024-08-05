@@ -1864,6 +1864,7 @@ public:
 
     inline uint32_t LastPropIndex() const
     {
+        ASSERT(NumberOfProps() > 0);
         return NumberOfProps() - 1;
     }
 
