@@ -186,7 +186,8 @@ void JitFort::CollectFreeRanges(JitFortRegion *region)
 
 bool JitFort::InRange(uintptr_t address) const
 {
-    return address >= jitFortBegin_ && address <= (jitFortBegin_ + jitFortSize_ - 1);
+    return address >= jitFortBegin_ && (jitFortBegin_ + jitFortSize_) > 1 &&
+        address <= (jitFortBegin_ + jitFortSize_ - 1);
 }
 
 // Used by JitFort::UpdateFreeSpace call path to find corresponding
