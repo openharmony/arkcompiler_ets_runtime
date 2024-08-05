@@ -77,6 +77,7 @@ LogicalImmediate LogicalImmediate::Create(uint64_t imm, int width)
 
     // Or the CTO value into the low bits, which must be below the Nth bit
     // bit mentioned above.
+    ASSERT(cto > 0);
     nImms |= (cto - 1);
 
     // Extract the seventh bit and toggle it to create the N field.

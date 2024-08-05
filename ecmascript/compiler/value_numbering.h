@@ -44,6 +44,7 @@ private:
     size_t HashCode(GateRef gate);
     void SetEntry(size_t hash, GateRef gate)
     {
+        ASSERT(entriesLength_ > 0);
         entries_[hash & (entriesLength_ - 1)] = gate;
     }
     static const uint32_t CACHE_LENGTH_BIT = 8;

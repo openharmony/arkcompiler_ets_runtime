@@ -99,7 +99,10 @@ size_t ArgumentAccessor::GetFunctionArgIndex(const size_t currentVreg, const boo
             return static_cast<size_t>(CommonArgIdx::THIS_OBJECT);
         }
     }
-    return currentVreg - numCommonArgs + static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS);
+     
+    size_t numOfArgs = static_cast<size_t>(CommonArgIdx::NUM_OF_ARGS);
+    ASSERT(currentVreg + numOfArgs >= numCommonArgs);
+    return currentVreg + numOfArgs - numCommonArgs;
 }
 
 void ArgumentAccessor::CollectArgs()

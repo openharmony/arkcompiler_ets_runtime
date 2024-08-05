@@ -748,7 +748,7 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb)
     const BytecodeInfo& bytecodeInfo = iterator.GetBytecodeInfo();
     FrameLiveOut* liveout;
     auto bcId = iterator.Index();
-    if (iterator.IsInRange(bcId - 1)) {
+    if (bcId != 0 && iterator.IsInRange(bcId - 1)) {
         liveout = frameStateBuilder_.GetOrOCreateBCEndLiveOut(bcId - 1);
     } else {
         liveout = frameStateBuilder_.GetOrOCreateBBLiveOut(bb.id);

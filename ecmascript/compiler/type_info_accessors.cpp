@@ -463,10 +463,9 @@ CallThisRangeTypeInfoAccessor::CallThisRangeTypeInfoAccessor(const CompilationEn
 {
     constexpr size_t fixedInputsNum = 1;
     constexpr size_t callTargetIndex = 1;  // 1: acc
-    ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
     size_t numIns = acc_.GetNumValueIn(gate);
+    ASSERT(numIns >= fixedInputsNum + callTargetIndex);
     argc_ = numIns - callTargetIndex - fixedInputsNum;
-    ASSERT(numIns > 0);
     func_ = acc_.GetValueIn(gate, numIns - callTargetIndex); // acc
 }
 

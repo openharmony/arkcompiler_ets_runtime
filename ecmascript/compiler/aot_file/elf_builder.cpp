@@ -40,6 +40,7 @@ void ElfBuilder::AddShStrTabSection()
         if (copySize == 0) {
             UNREACHABLE();
         }
+        ASSERT(size >= i);
         if ((copySize != 0) && ((memcpy_s(dst + i, size - i + 1, str.data(), copySize)) != EOK)) {
             UNREACHABLE();
         }
@@ -429,6 +430,7 @@ void ElfBuilder::MergeSymtabSections(std::ofstream &file,
         strTabSize += des.GetSecSize(ElfSecName::STRTAB);
         if (des.HasAsmStubStrTab()) {
             const std::vector<std::pair<std::string, uint32_t>> &asmStubELFInfo = des.GetAsmStubELFInfo();
+            ASSERT(asmStubELFInfo.size() > 0);
             uint32_t asmStubSymTabNum = asmStubELFInfo.size() - 1;
             std::unique_ptr<Elf64_Sym []> syms = std::make_unique<Elf64_Sym []>(asmStubSymTabNum);
             ASSERT(asmStubStrName_.size() == asmStubSymTabNum);
