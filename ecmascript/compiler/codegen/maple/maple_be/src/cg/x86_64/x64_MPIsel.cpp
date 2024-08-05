@@ -820,6 +820,7 @@ void X64MPIsel::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
     auto *p2nrets = &intrnNode.GetReturnVec();
     if (p2nrets->size() == k1ByteSize) {
         StIdx stIdx = (*p2nrets)[0].first;
+        CHECK_NULL_FATAL(cgFunc->GetBecommon().GetMIRModule().CurFunction());
         MIRSymbol *sym =
             cgFunc->GetBecommon().GetMIRModule().CurFunction()->GetSymTab()->GetSymbolFromStIdx(stIdx.Idx());
         MemOperand &memOperand = GetOrCreateMemOpndFromSymbol(*sym, 1);

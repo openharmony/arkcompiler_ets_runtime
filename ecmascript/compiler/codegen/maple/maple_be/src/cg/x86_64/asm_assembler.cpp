@@ -188,7 +188,8 @@ void AsmAssembler::EmitDirectString(const std::string &ustr, bool belongsToDataS
             Emit(buf);
         } else {
             /* all others, print as number */
-            (void)snprintf_s(buf, sizeof(buf), 4, "\\%03o", (*str) & 0xFF); /* 4: max store chars */
+            /* 4: max store chars */
+            (void)snprintf_s(buf, sizeof(buf), 4, "\\%03o", static_cast<unsigned char>(*str) & 0xFF);
             buf[kLastChar] = '\0';
             Emit(buf);
         }

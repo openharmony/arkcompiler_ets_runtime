@@ -20,6 +20,7 @@ namespace maple {
 // This is for compiler-generated metadata 1-level struct
 void MIRBuilder::AddIntFieldConst(const MIRStructType &sType, MIRAggConst &newConst, uint32 fieldID, int64 constValue)
 {
+    DEBUG_ASSERT(fieldID > 0, "must not be zero");
     auto *fieldConst =
         GlobalTables::GetIntConstTable().GetOrCreateIntConst(constValue, *sType.GetElemType(fieldID - 1));
     newConst.AddItem(fieldConst, fieldID);
@@ -30,6 +31,7 @@ void MIRBuilder::AddAddrofFieldConst(const MIRStructType &structType, MIRAggCons
                                      const MIRSymbol &fieldSymbol)
 {
     AddrofNode *fieldExpr = CreateExprAddrof(0, fieldSymbol, mirModule->GetMemPool());
+    DEBUG_ASSERT(fieldID > 0, "must not be zero");
     auto *fieldConst = mirModule->GetMemPool()->New<MIRAddrofConst>(fieldExpr->GetStIdx(), fieldExpr->GetFieldID(),
                                                                     *structType.GetElemType(fieldID - 1));
     newConst.AddItem(fieldConst, fieldID);
@@ -42,10 +44,12 @@ void MIRBuilder::AddAddroffuncFieldConst(const MIRStructType &structType, MIRAgg
     MIRConst *fieldConst = nullptr;
     MIRFunction *vMethod = funcSymbol.GetFunction();
     if (vMethod->IsAbstract()) {
+        DEBUG_ASSERT(fieldID > 0, "must not be zero");
         fieldConst = GlobalTables::GetIntConstTable().GetOrCreateIntConst(0, *structType.GetElemType(fieldID - 1));
     } else {
         AddroffuncNode *addrofFuncExpr =
             CreateExprAddroffunc(funcSymbol.GetFunction()->GetPuidx(), mirModule->GetMemPool());
+        DEBUG_ASSERT(fieldID > 0, "must not be zero");
         fieldConst = mirModule->GetMemPool()->New<MIRAddroffuncConst>(addrofFuncExpr->GetPUIdx(),
                                                                       *structType.GetElemType(fieldID - 1));
     }

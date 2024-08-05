@@ -93,6 +93,7 @@ void CGCFG::BuildCFG()
                 break;
             }
             case BB::kBBIgoto: {
+                CHECK_NULL_FATAL(CG::GetCurCGFunc()->GetMirModule().CurFunction());
                 for (auto lidx :
                      CG::GetCurCGFunc()->GetMirModule().CurFunction()->GetLabelTab()->GetAddrTakenLabels()) {
                     BB *igotobb = cgFunc->GetBBFromLab2BBMap(lidx);

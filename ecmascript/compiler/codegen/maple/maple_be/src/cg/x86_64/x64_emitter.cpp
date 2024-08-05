@@ -1689,6 +1689,7 @@ uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFi
     }
     if (structType.GetKind() == kTypeStruct) {
         /* The reason of subtracting one is that fieldIdx adds one at the end of the cycle. */
+        DEBUG_ASSERT(fieldIdx > 0, "must not be zero");
         subStructFieldCounts = fieldIdx - 1;
     } else if (structType.GetKind() == kTypeUnion) {
         subStructFieldCounts = static_cast<uint32>(beCommon->GetStructFieldCount(structType.GetTypeIndex()));
@@ -1797,6 +1798,7 @@ void X64Emitter::EmitAddrofElement(MIRConst &mirConst, bool belongsToDataSec)
 {
     MIRAddrofConst &symAddr = static_cast<MIRAddrofConst &>(mirConst);
     StIdx stIdx = symAddr.GetSymbolIndex();
+    CHECK_NULL_FATAL(CG::GetCurCGFunc()->GetMirModule().CurFunction());
     MIRSymbol *symAddrSym =
         stIdx.IsGlobal()
             ? GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx())
@@ -2219,6 +2221,7 @@ void X64Emitter::EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt 
             /* it is a <pair> */
             assmbler.EmitLabel(mfunc->GetPuidx(), (*it).second.first);
         } else {
+            CHECK_NULL_FATAL(GetCG()->GetMIRModule()->CurFunction());
             PUIdx pIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
             assmbler.EmitLabel(pIdx, attr.GetId()); /* maybe deadbeef */
         }
@@ -2296,7 +2299,7 @@ void X64Emitter::EmitDwFormData8(const DBGDieAttr &attr, DwAt attrName, DwTag ta
             MapleMap<MIRFunction *, std::pair<LabelIdx, LabelIdx>>::iterator it = CG::GetFuncWrapLabels().find(mfunc);
             uint32 endLabelFuncPuIdx;
             uint32 startLabelFuncPuIdx;
-            uint32 endLabelIdx;
+            uint32 endLabelIdx = 0;
             uint32 startLabelIdx;
             if (it != CG::GetFuncWrapLabels().end()) {
                 /* end label */
@@ -2304,8 +2307,8 @@ void X64Emitter::EmitDwFormData8(const DBGDieAttr &attr, DwAt attrName, DwTag ta
                 endLabelIdx = (*it).second.second;
             } else {
                 /* maybe deadbeef */
+                CHECK_NULL_FATAL(GetCG()->GetMIRModule()->CurFunction());
                 endLabelFuncPuIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
-                endLabelIdx = (*it).second.second;
             }
             if (it != CG::GetFuncWrapLabels().end()) {
                 /* start label */
@@ -2315,6 +2318,7 @@ void X64Emitter::EmitDwFormData8(const DBGDieAttr &attr, DwAt attrName, DwTag ta
                 DBGDieAttr *lowpc = LFindAttribute(attrvec, static_cast<DwAt>(DW_AT_low_pc));
                 CHECK_FATAL(lowpc != nullptr, "lowpc is null in Emitter::EmitDIAttrValue");
                 /* maybe deadbeef */
+                CHECK_NULL_FATAL(GetCG()->GetMIRModule()->CurFunction());
                 startLabelFuncPuIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
                 startLabelIdx = lowpc->GetId();
             }
