@@ -25,7 +25,20 @@ for (let i = 0; i < 20; i++) {
 }
 
 ArkTools.jitCompileAsync(f);
-let res = ArkTools.waitJitCompileFinish(f);
-print(res)
+print(ArkTools.waitJitCompileFinish(f))
 
 print(f(ss))
+
+function f2() {
+    let v1 = 0, v18 = 0, v28 = 1;
+    for (; v28--;) {
+        ({ "length": v18, ...v1 } = "123456789");
+    }
+    return [v18, v1];
+}
+
+f2();
+ArkTools.jitCompileAsync(f2);
+print(ArkTools.waitJitCompileFinish(f2))
+
+print(f2())
