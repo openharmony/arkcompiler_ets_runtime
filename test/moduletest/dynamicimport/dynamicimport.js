@@ -59,3 +59,11 @@ _f_8();
 import('./1.json').then(m => {
     print(m.default.name);
 }).then().catch();
+
+// Dynamic Loading Reload Test
+import('./aaa.js').then(m => {
+    print("dynamic import aaa.js 1st time");
+})
+import('./aaa.js').then(m => {
+    print("dynamic import aaa.js 2nd time");
+})

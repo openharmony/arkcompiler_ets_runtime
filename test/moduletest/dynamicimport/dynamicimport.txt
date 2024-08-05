@@ -4,3 +4,6 @@ C.js;C;esm;C.js;xxCxx
 dynamicimport.js;dynamicimport;esm;dynamicimport.js;xxdynamicimportxx
 throwerror.js;throwerror;esm;throwerror.js;xxthrowerrorxx
 1.json;1;esm;1.json;xx1xx
+aaa.js;aaa;esm;aaa.js;xxaaaxx
+bbb.js;bbb;esm;bbb.js;xxbbbxx
+ccc.js;ccc;esm;ccc.js;xxcccxx
