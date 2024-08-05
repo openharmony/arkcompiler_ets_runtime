@@ -92,14 +92,14 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     SkipStartWhiteSpace();
                     if (UNLIKELY(*current_ != '"')) {
                         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object Prop in JSON",
-                                                        JSTaggedValue::Exception());
+                                                      JSTaggedValue::Exception());
                     }
                     propertyList.emplace_back(ParseString(true));
                     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
                     SkipStartWhiteSpace();
                     if (UNLIKELY(*current_ != ':')) {
                         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Object in JSON",
-                                                        JSTaggedValue::Exception());
+                                                      JSTaggedValue::Exception());
                     }
                     Advance();
                     continue;
@@ -150,7 +150,7 @@ JSTaggedValue JsonParser<T>::ParseJSONText()
                     ASSERT(propertyList.empty());
                     if (current_ <= range_) {
                         THROW_SYNTAX_ERROR_AND_RETURN(thread_, "Unexpected Text in JSON",
-                                                        JSTaggedValue::Exception());
+                                                      JSTaggedValue::Exception());
                     }
                     return parseValue.GetTaggedValue();
                 case ContType::ARRAY: {
@@ -769,7 +769,7 @@ bool JsonParser<T>::ReadNumberRange(bool &isFast, int32_t &fastInteger)
         int32_t i = 0;
         if (numberLength <= INTEGER_MAX_LEN && (*advance == ',' || *advance == ']' || *advance == '}')) {
             for (; current != advance; current++) {
-                i = (i * 10) + ((*current) - '0');
+                i = (i * 10U) + ((*current) - '0');
             }
             fastInteger = i * sign;
             current_ = advance;
