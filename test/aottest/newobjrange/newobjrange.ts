@@ -18,3 +18,10 @@ declare function print(arg:any):string;
 
 let a = new EventInfo()
 print(a)
+
+function foo() {
+    let c = new Number(7, Number)
+    print(c)
+}
+foo()
+print(ArkTools.isAOTCompiled(foo))

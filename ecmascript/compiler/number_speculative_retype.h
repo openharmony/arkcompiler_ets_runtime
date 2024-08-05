@@ -159,7 +159,7 @@ private:
     GateRef TryConvertConstant(GateRef gate, bool needInt32);
     GateRef TryConvertConstantToInt32(GateRef gate);
     GateRef ConvertTaggedToNJSValue(GateRef gate, TypeInfo output);
-    TypeInfo GetOuputForPhi(GateRef gate, bool ignoreConstant);
+    TypeInfo GetOutputForPhi(GateRef gate, bool ignoreConstant);
 
     TypeInfo GetOutputTypeInfo(GateRef gate) const
     {
