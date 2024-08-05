@@ -88,7 +88,7 @@ JitFort::~JitFort()
 void JitFort::InitRegions()
 {
     auto numRegions = JIT_FORT_REG_SPACE_MAX/DEFAULT_REGION_SIZE;
-    for (auto i = 0; i < numRegions; i++) {
+    for (size_t i = 0; i < numRegions; i++) {
         uintptr_t mem = reinterpret_cast<uintptr_t>(jitFortMem_.GetMem()) + i*DEFAULT_REGION_SIZE;
         uintptr_t end = mem + DEFAULT_REGION_SIZE;
         JitFortRegion *region = new JitFortRegion(nullptr, mem, end, RegionSpaceFlag::IN_MACHINE_CODE_SPACE,
@@ -277,7 +277,7 @@ void MemDescPool::Expand()
     void *block = malloc(sizeof(MemDesc) * MEMDESCS_PER_BLOCK);
     if (block) {
         memDescBlocks_.push_back(block);
-        for (auto i = 0; i < MEMDESCS_PER_BLOCK; ++i) {
+        for (size_t i = 0; i < MEMDESCS_PER_BLOCK; ++i) {
             Add(new (ToVoidPtr(reinterpret_cast<uintptr_t>(block) + i*sizeof(MemDesc))) MemDesc());
         }
     }

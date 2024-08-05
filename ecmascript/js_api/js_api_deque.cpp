@@ -171,7 +171,7 @@ JSTaggedValue JSAPIDeque::Get(const uint32_t index)
 
 JSTaggedValue JSAPIDeque::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
-    int length = static_cast<int>(GetSize());
+    uint32_t length = static_cast<uint32_t>(GetSize());
     if (index < 0 || index >= length) {
         return JSTaggedValue::False();
     }
