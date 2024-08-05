@@ -1155,6 +1155,7 @@ void LSRALinearScanRegAllocator::UpdateActiveAllocateInfo(const LiveInterval &li
             if (splitSafePos == li.GetFirstDef() && (li.GetSplitParent() != nullptr || li.IsUseBeforeDef())) {
                 rangeStartPos = 0;
             } else if (splitSafePos > li.GetFirstDef()) {
+                DEBUG_ASSERT(splitSafePos > 0, "must not be zero");
                 rangeStartPos = splitSafePos - 1;
             } else {
                 rangeStartPos = UINT32_MAX;

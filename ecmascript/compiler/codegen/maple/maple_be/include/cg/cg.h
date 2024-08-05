@@ -532,10 +532,7 @@ public:
     {
         return nullptr;
     };
-    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const
-    {
-        return nullptr;
-    }
+    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const = 0;
 
     /* Object map generation helper */
     std::vector<int64> GetReferenceOffsets64(const BECommon &beCommon, MIRStructType &structType);

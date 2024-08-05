@@ -248,7 +248,9 @@ void Clone::DoClone()
         MIRSymbol *symbol = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(gStrIdx);
         if (symbol != nullptr) {
             GStrIdx gStrIdxOfFunc = GlobalTables::GetStrTable().GetStrIdxFromName(std::string(funcName.c_str()));
-            MIRFunction *oriFunc = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(gStrIdxOfFunc)->GetFunction();
+            MIRSymbol *symb = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(gStrIdxOfFunc);
+            DEBUG_ASSERT(symb != NULL, "symb is null");
+            MIRFunction *oriFunc = symb->GetFunction();
             mirModule->SetCurFunction(oriFunc);
             (void)clonedNewFuncMap.insert(CloneFunctionNoReturn(*oriFunc)->GetName());
         }

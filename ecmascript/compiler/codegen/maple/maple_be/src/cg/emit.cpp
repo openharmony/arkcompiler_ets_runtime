@@ -135,6 +135,7 @@ using namespace cfi;
 
 void Emitter::EmitLabelRef(LabelIdx labIdx)
 {
+    CHECK_NULL_FATAL(GetCG()->GetMIRModule()->CurFunction());
     PUIdx pIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
     char *idx = strdup(std::to_string(pIdx).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");
@@ -160,6 +161,7 @@ void Emitter::EmitLabelPair(const LabelPair &pairLabel)
 
 void Emitter::EmitLabelForFunc(const MIRFunction *func, LabelIdx labIdx)
 {
+    DEBUG_ASSERT(func != nullptr, "null ptr check");
     char *idx = strdup(std::to_string(func->GetPuidx()).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");
     outStream << ".L." << idx << "__" << labIdx;
@@ -358,6 +360,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
     MIRType *mirType = mirSymbol.GetType();
     std::string symName;
     if (mirSymbol.GetStorageClass() == kScPstatic && mirSymbol.IsLocal()) {
+        GetCG()->GetMIRModule()->CurFunction();
         PUIdx pIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
         symName = mirSymbol.GetName() + std::to_string(pIdx);
     } else {
@@ -662,6 +665,7 @@ void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
                 }
                 case PTY_f32: {
                     MIRFloatConst *floatConst = safe_cast<MIRFloatConst>(st->GetKonst());
+                    DEBUG_ASSERT(floatConst != nullptr, "floatConst should not be nullptr");
                     uint32 value = static_cast<uint32>(floatConst->GetIntValue());
                     emitter->Emit("\t.word").Emit(value).Emit("\n");
                     break;
@@ -729,7 +733,7 @@ void Emitter::EmitStr(const std::string &mplStr, bool emitAscii, bool emitNewlin
             Emit(buf);
         } else {
             /* all others, print as number */
-            int ret = snprintf_s(buf, sizeof(buf), k4BitSize, "\\%03o", (*str) & 0xFF);
+            int ret = snprintf_s(buf, sizeof(buf), k4BitSize, "\\%03o", static_cast<unsigned char>(*str) & 0xFF);
             if (ret < 0) {
                 FATAL(kLncFatal, "snprintf_s failed");
             }
@@ -857,6 +861,7 @@ void Emitter::EmitScalarConstant(MIRConst &mirConst, bool newLine, bool flag32, 
         case kConstAddrof: {
             MIRAddrofConst &symAddr = static_cast<MIRAddrofConst &>(mirConst);
             StIdx stIdx = symAddr.GetSymbolIndex();
+            CHECK_NULL_FATAL(CG::GetCurCGFunc()->GetMirModule().CurFunction());
             MIRSymbol *symAddrSym =
                 stIdx.IsGlobal()
                     ? GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx())
@@ -869,6 +874,7 @@ void Emitter::EmitScalarConstant(MIRConst &mirConst, bool newLine, bool flag32, 
                 str = ".quad";
             }
             if (stIdx.IsGlobal() == false && symAddrSym->GetStorageClass() == kScPstatic) {
+                CHECK_NULL_FATAL(GetCG()->GetMIRModule()->CurFunction());
                 PUIdx pIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
                 (void)Emit("\t" + str + "\t" + symAddrSym->GetName() + std::to_string(pIdx));
             } else {
@@ -1701,6 +1707,7 @@ void Emitter::EmitConstantTable(const MIRSymbol &mirSymbol, MIRConst &mirConst,
     uint32 itabConflictIndex = 0;
     for (size_t i = 0; i < aggConst.GetConstVec().size(); ++i) {
         MIRConst *elemConst = aggConst.GetConstVecItem(i);
+        DEBUG_ASSERT(elemConst != nullptr, "null ptr check");
         if (i == 0 && StringUtils::StartsWith(stName, ITAB_CONFLICT_PREFIX_STR)) {
 #ifdef USE_32BIT_REF
             itabConflictIndex = static_cast<uint64>((safe_cast<MIRIntConst>(elemConst))->GetValue()) & 0xffff;
@@ -1783,6 +1790,7 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
             DEBUG_ASSERT(false, "should not run here");
         }
     }
+    DEBUG_ASSERT(static_cast<int64>(arrayType.GetSizeArrayItem(0)) > 0, "must not be zero");
     int64 iNum = (arrayType.GetSizeArrayItem(0) > 0) ? (static_cast<int64>(arrayType.GetSizeArrayItem(0)) - uNum) : 0;
     if (iNum > 0) {
         if (!cg->GetMIRModule()->IsCModule()) {
@@ -1867,6 +1875,7 @@ void Emitter::EmitStructConstant(MIRConst &mirConst, uint32 &subStructFieldCount
         }
         MIRType *elemType = structType.GetElemType(i);
         if (structType.GetKind() == kTypeUnion) {
+            CHECK_NULL_FATAL(elemConst);
             elemType = &(elemConst->GetType());
         }
         MIRType *nextElemType = nullptr;
@@ -2275,6 +2284,7 @@ void Emitter::EmitLocalVariable(const CGFunc &cgFunc)
 {
     /* function local pstatic initialization */
     if (cg->GetMIRModule()->IsCModule()) {
+        CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
         MIRSymbolTable *lSymTab = cgFunc.GetMirModule().CurFunction()->GetSymTab();
         if (lSymTab != nullptr) {
             size_t lsize = lSymTab->GetSymbolTableSize();
@@ -2288,6 +2298,7 @@ void Emitter::EmitLocalVariable(const CGFunc &cgFunc)
                      * Local static names can repeat.
                      * Append the current program unit index to the name.
                      */
+                    CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
                     PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
                     std::string localname = st->GetName() + std::to_string(pIdx);
                     static std::vector<std::string> emittedLocalSym;

@@ -594,7 +594,7 @@ DBGDie *DebugInfo::GetOrCreateFuncDeclDie(MIRFunction *func)
 
     // Function Name
     MIRSymbol *sym = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
-
+    DEBUG_ASSERT(sym != nullptr, "nullptr check");
     die->AddAttr(DW_AT_name, DW_FORM_strp, funcnameidx);
     die->AddAttr(DW_AT_decl_file, DW_FORM_data4, sym->GetSrcPosition().FileNum());
     die->AddAttr(DW_AT_decl_line, DW_FORM_data4, sym->GetSrcPosition().LineNum());

@@ -244,6 +244,7 @@ TokenKind MIRLexer::GetTokenWithPrefixDollar()
     } else {
         // for error reporting.
         const uint32 printLength = 2;
+        DEBUG_ASSERT(curIdx > 0, "must not be zero");
         name = line.substr(curIdx - 1, printLength);
         return TK_invalid;
     }

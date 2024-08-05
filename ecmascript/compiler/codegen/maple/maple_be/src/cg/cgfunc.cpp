@@ -64,6 +64,7 @@ void MemRWNodeHelper::GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mi
         MIRPtrType *pointerType = nullptr;
         if (iassignMirType->GetPrimType() == PTY_agg) {
             auto *addrSym = mirFunc.GetLocalOrGlobalSymbol(addrofNode.GetStIdx());
+            DEBUG_ASSERT(addrSym != nullptr, "addrSym should not be nullptr");
             auto *addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrSym->GetTyIdx());
             addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrMirType->GetTypeIndex());
             DEBUG_ASSERT(addrMirType->GetKind() == kTypePointer, "non-pointer");
@@ -120,6 +121,7 @@ Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
         return cgFunc.SelectFloatConst(*mirFloatConst, parent);
     } else if (mirConst->GetKind() == kConstDoubleConst) {
         auto *mirDoubleConst = safe_cast<MIRDoubleConst>(mirConst);
+        DEBUG_ASSERT(mirDoubleConst != nullptr, "nullptr check");
         return cgFunc.SelectDoubleConst(*mirDoubleConst, parent);
     } else {
         CHECK_FATAL(false, "NYI");
@@ -327,6 +329,7 @@ Operand *HandleBxor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 Operand *HandleAbs(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     (void)parent;
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr.Opnd(0) should not be nullptr");
     return cgFunc.SelectAbs(static_cast<UnaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)));
 }
 
@@ -358,6 +361,7 @@ Operand *HandleDepositBits(const BaseNode &parent, BaseNode &expr, CGFunc &cgFun
 
 Operand *HandleLnot(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "nullptr check");
     return cgFunc.SelectLnot(static_cast<UnaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
@@ -412,12 +416,14 @@ Operand *HandleCeil(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 
 Operand *HandleFloor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr.Opnd(0) should not be nullptr");
     return cgFunc.SelectFloor(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
 Operand *HandleRetype(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     (void)parent;
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "nullptr check");
     return cgFunc.SelectRetype(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)));
 }
 
@@ -714,6 +720,7 @@ Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
         }
         case INTRN_MPL_READ_ARRAYCLASS_CACHE_ENTRY: {
             auto addrOfNode = static_cast<AddrofNode *>(intrinsicopNode.Opnd(0));
+            CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
             MIRSymbol *st = cgFunc.GetMirModule().CurFunction()->GetLocalOrGlobalSymbol(addrOfNode->GetStIdx());
             auto constNode = static_cast<ConstvalNode *>(intrinsicopNode.Opnd(1));
             CHECK_FATAL(constNode != nullptr, "null ptr check");
@@ -1891,6 +1898,7 @@ void CGFunc::CreateLmbcFormalParamInfo()
                 tyIdx = lmbcFunc.GetFormalDefVec()[idx].formalTyIdx;
                 type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
             } else {
+                CHECK_NULL_FATAL(GetBecommon().GetMIRModule().CurFunction());
                 FormalDef vec =
                     const_cast<MIRFunction *>(GetBecommon().GetMIRModule().CurFunction())->GetFormalDefAt(idx);
                 tyIdx = vec.formalTyIdx;
@@ -2071,6 +2079,7 @@ MIRSymbol *CGFunc::GetRetRefSymbol(BaseNode &expr)
         return nullptr;
     }
     auto &retExpr = static_cast<AddrofNode &>(expr);
+    CHECK_NULL_FATAL(mirModule.CurFunction());
     MIRSymbol *symbol = mirModule.CurFunction()->GetLocalOrGlobalSymbol(retExpr.GetStIdx());
     DEBUG_ASSERT(symbol != nullptr, "get symbol in mirmodule failed");
     if (symbol->IsRefType()) {
@@ -2190,6 +2199,7 @@ bool CGFunc::MemBarOpt(const StmtNode &membar)
         } else if (stmt->GetOpCode() == OP_call) {
             auto *callNode = static_cast<CallNode *>(stmt);
             MIRFunction *fn = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode->GetPUIdx());
+            CHECK_NULL_FATAL(GetMirModule().CurFunction());
             MIRSymbol *fsym = GetMirModule().CurFunction()->GetLocalOrGlobalSymbol(fn->GetStIdx(), false);
             DEBUG_ASSERT(fsym != nullptr, "null ptr check");
             if (fsym->GetName() == "MCC_WriteRefFieldNoDec") {

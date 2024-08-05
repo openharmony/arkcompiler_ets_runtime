@@ -807,6 +807,7 @@ static constexpr uint64 RoundUpConst(uint64 offset, uint32 align)
 {
     uint64 tempFirst = static_cast<uint64>(-align);
     CHECK_FATAL((offset <= UINT64_MAX - align), "must not be zero");
+    DEBUG_ASSERT(offset + align > 0, "offset and align should not be zero");
     uint64 tempSecond = static_cast<uint64>(offset + align - 1);
     return tempFirst & tempSecond;
 }
@@ -1254,6 +1255,7 @@ static void DumpConstructorsAsCxx(MethodVector methods, int indent)
         j = 0;
         for (auto &p : funcType->GetParamTypeList()) {
             GlobalTables::GetTypeTable().GetTypeFromTyIdx(p)->DumpAsCxx(indent + 1);
+            DEBUG_ASSERT(paramTypeListSize > 0, "paramTypeListSize should not be zero");
             if (j != paramTypeListSize - 1) {
                 LogInfo::MapleLogger() << ", ";
             }
@@ -1263,6 +1265,7 @@ static void DumpConstructorsAsCxx(MethodVector methods, int indent)
             LogInfo::MapleLogger() << ", ...";
         }
         LogInfo::MapleLogger() << ")";
+        DEBUG_ASSERT(methods.size() >  0, "methods.size() should not be zero");
         if (methods.size() - 1 != i++) {
             LogInfo::MapleLogger() << ";" << '\n';
         }
@@ -1323,6 +1326,7 @@ size_t MIRStructType::GetSize() const
                 bitOfst = RoundUp(bitOfst, GetPrimTypeBitSize(bitfType->GetPrimType()));
                 byteOfst = bitOfst >> shiftNum;
             } else {
+                DEBUG_ASSERT(bitfType->GetFieldSize() > 0, "bitfType->GetFieldSize() should not be zero");
                 CHECK_FATAL((bitOfst <= UINT32_MAX - bitfType->GetFieldSize()), "must not be zero");
                 if (RoundDown(bitOfst + bitfType->GetFieldSize() - 1, GetPrimTypeBitSize(bitfType->GetPrimType())) !=
                     RoundDown(bitOfst, GetPrimTypeBitSize(bitfType->GetPrimType()))) {

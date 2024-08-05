@@ -31,6 +31,7 @@ bool CgGenProEpiLog::PhaseRun(maplebe::CGFunc &f)
     if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
         genPE = f.GetCG()->CreateGenProEpilog(f, *GetPhaseMemPool());
     }
+    CHECK_NULL_FATAL(genPE);
     genPE->Run();
     return false;
 }

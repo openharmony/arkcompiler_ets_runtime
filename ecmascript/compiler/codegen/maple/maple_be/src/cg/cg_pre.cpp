@@ -135,6 +135,7 @@ void CGPre::CreateSortedOccs()
                 case kOccDef:
                 case kOccStore:
                 case kOccMembar: {
+                    DEBUG_ASSERT(realOccIt != workCand->GetRealOccs().end(), "realOccIt should not be end");
                     ++realOccIt;
                     if (realOccIt != workCand->GetRealOccs().end()) {
                         nextRealOcc = *realOccIt;
@@ -144,6 +145,7 @@ void CGPre::CreateSortedOccs()
                     break;
                 }
                 case kOccExit: {
+                    DEBUG_ASSERT(exitOccIt != exitOccs.end(), "must be valid iterator");
                     ++exitOccIt;
                     if (exitOccIt != exitOccs.end()) {
                         nextExitOcc = *exitOccIt;
@@ -153,6 +155,7 @@ void CGPre::CreateSortedOccs()
                     break;
                 }
                 case kOccPhiocc: {
+                    DEBUG_ASSERT(phiIt != phiOccs.end(), "must be valid iterator");
                     ++phiIt;
                     if (phiIt != phiOccs.end()) {
                         nextPhiOcc = *phiIt;
@@ -162,6 +165,7 @@ void CGPre::CreateSortedOccs()
                     break;
                 }
                 case kOccPhiopnd: {
+                    DEBUG_ASSERT(phiOpndIt != phiOpnds.end(), "phiOpndIt should not be end");
                     ++phiOpndIt;
                     if (phiOpndIt != phiOpnds.end()) {
                         nextPhiOpndOcc = *phiOpndIt;

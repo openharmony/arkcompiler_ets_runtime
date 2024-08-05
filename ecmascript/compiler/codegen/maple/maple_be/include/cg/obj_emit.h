@@ -469,6 +469,7 @@ public:
     void RegisterSection(Section *section)
     {
         sections.push_back(section);
+        DEBUG_ASSERT(sections.size() > 0, "sections not empty");
         section->SetIndex(sections.size() - 1);
     }
 

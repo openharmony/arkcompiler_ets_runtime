@@ -1499,6 +1499,7 @@ void AArch64CGFunc::SelectAsm(AsmNode &node)
         RegFieldPair regFieldPair = node.asmOutputs[i].second;
         if (regFieldPair.IsReg()) {
             PregIdx pregIdx = static_cast<PregIdx>(regFieldPair.GetPregIdx());
+            CHECK_NULL_FATAL(mirModule.CurFunction());
             MIRPreg *mirPreg = mirModule.CurFunction()->GetPregTab()->PregFromPregIdx(pregIdx);
             RegOperand *outOpnd = isOutputTempNode
                                       ? rPOpnd
@@ -1523,6 +1524,7 @@ void AArch64CGFunc::SelectAsm(AsmNode &node)
             if (stIdx.IsGlobal()) {
                 var = GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
             } else {
+                CHECK_NULL_FATAL(mirModule.CurFunction());
                 var = mirModule.CurFunction()->GetSymbolTabItem(stIdx.Idx());
             }
             CHECK_FATAL(var != nullptr, "var should not be nullptr");
@@ -3611,6 +3613,7 @@ Operand &AArch64CGFunc::SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &p
         }
         case OP_addrof: {
             AddrofNode *addrofNode = static_cast<AddrofNode *>(opnd0);
+            CHECK_NULL_FATAL(mirModule.CurFunction());
             MIRSymbol &symbol = *mirModule.CurFunction()->GetLocalOrGlobalSymbol(addrofNode->GetStIdx());
             DEBUG_ASSERT(addrofNode->GetFieldID() == 0, "For debug SelectCGArrayElemAdd.");
 
@@ -7578,6 +7581,7 @@ void AArch64CGFunc::SelectParmListNotC(StmtNode &naryNode, ListOperand &srcOpnds
     for (uint32 pnum = 0; i < naryNode.NumOpnds(); ++i, ++pnum) {
         MIRType *ty = nullptr;
         BaseNode *argExpr = naryNode.Opnd(i);
+        DEBUG_ASSERT(argExpr != nullptr, "argExpr should not be nullptr");
         PrimType primType = argExpr->GetPrimType();
         DEBUG_ASSERT(primType != PTY_void, "primType should not be void");
         /* use alloca  */
@@ -7641,6 +7645,7 @@ void AArch64CGFunc::SelectParmListWrapper(StmtNode &naryNode, ListOperand &srcOp
  */
 Operand *AArch64CGFunc::SelectClearStackCallParam(const AddrofNode &expr, int64 &offsetValue)
 {
+    CHECK_NULL_FATAL(mirModule.CurFunction());
     MIRSymbol *symbol = GetMirModule().CurFunction()->GetLocalOrGlobalSymbol(expr.GetStIdx());
     PrimType ptype = expr.GetPrimType();
     regno_t vRegNO = NewVReg(kRegTyInt, GetPrimTypeSize(ptype));
@@ -7990,6 +7995,7 @@ void AArch64CGFunc::SelectIcall(IcallNode &icallNode)
     CallReturnVector *p2nrets = &icallNode.GetReturnVec();
     if (p2nrets->size() == k1ByteSize) {
         StIdx stIdx = (*p2nrets)[0].first;
+        CHECK_NULL_FATAL(mirModule.CurFunction());
         MIRSymbol *sym = GetBecommon().GetMIRModule().CurFunction()->GetSymTab()->GetSymbolFromStIdx(stIdx.Idx());
         if (sym != nullptr && (GetBecommon().GetTypeSize(sym->GetTyIdx().GetIdx()) > k16ByteSize)) {
             SetStackProtectInfo(kRetureStackSlot);
@@ -10482,6 +10488,7 @@ void AArch64CGFunc::SaveReturnValueInLocal(CallReturnVector &retVals, size_t ind
     /* for O0 ,corss-BB var is not support, do extra store/load but why new BB */
     if (GetCG()->GetOptimizeLevel() == CGOptions::kLevel0) {
         MIRSymbol *symbol = GetFunction().GetLocalOrGlobalSymbol(pair.first);
+        DEBUG_ASSERT(symbol != nullptr, "symbol should not be nullptr");
         MIRType *sPty = symbol->GetType();
         PrimType ty = symbol->GetType()->GetPrimType();
         if (sPty->GetKind() == kTypeStruct || sPty->GetKind() == kTypeUnion) {

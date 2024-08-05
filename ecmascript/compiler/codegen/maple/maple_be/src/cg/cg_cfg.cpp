@@ -93,6 +93,7 @@ void CGCFG::BuildCFG()
                 break;
             }
             case BB::kBBIgoto: {
+                CHECK_NULL_FATAL(CG::GetCurCGFunc()->GetMirModule().CurFunction());
                 for (auto lidx :
                      CG::GetCurCGFunc()->GetMirModule().CurFunction()->GetLabelTab()->GetAddrTakenLabels()) {
                     BB *igotobb = cgFunc->GetBBFromLab2BBMap(lidx);
@@ -580,6 +581,7 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
                 (curBB.GetPrev()->GetKind() == BB::kBBGoto || curBB.GetPrev()->GetKind() == BB::kBBIf)) {
                 origLastInsn = curBB.GetPrev()->GetLastMachineInsn();
             }
+            ASSERT_NOT_NULL(origLastInsn);
             LabelIdx label = insnVisitor->GetJumpLabel(*origLastInsn);
             for (BB *bb : curBB.GetSuccs()) {
                 if (bb->GetLabIdx() == label) {

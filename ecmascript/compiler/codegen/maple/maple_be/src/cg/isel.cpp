@@ -352,6 +352,7 @@ Operand *HandleBior(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 
 Operand *HandleBxor(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
+    DEBUG_ASSERT(expr.Opnd(1) != nullptr, "nullptr check");
     return iSel.SelectBxor(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                            *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
@@ -399,6 +400,7 @@ Operand *HandleConstStr(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 
 Operand *HandleTrunc(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "null ptr check");
     return iSel.SelectCvt(parent, static_cast<TypeCvtNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
@@ -415,6 +417,7 @@ Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
         return iSel.SelectFloatingConst(*mirDoubleConst, constValNode.GetPrimType());
     } else if (mirConst->GetKind() == kConstFloatConst) {
         auto *mirFloatConst = safe_cast<MIRFloatConst>(mirConst);
+        DEBUG_ASSERT(mirFloatConst != nullptr, "nullptr check");
         return iSel.SelectFloatingConst(*mirFloatConst, constValNode.GetPrimType());
     } else {
         CHECK_FATAL(false, "NIY");
@@ -526,6 +529,7 @@ Operand *HandleMax(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 }
 Operand *HandleRetype(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr.Opnd(0) should not be nullptr");
     return iSel.SelectRetype(static_cast<TypeCvtNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
@@ -553,6 +557,7 @@ Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 
 Operand *HandleSqrt(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr.Opnd(0) should not be nullptr");
     return iSel.SelectSqrt(static_cast<UnaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
@@ -719,6 +724,7 @@ std::pair<FieldID, MIRType *> MPISel::GetFieldIdAndMirTypeFromMirNode(const Base
         MIRType *iassignMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iassign.GetTyIdx());
         MIRPtrType *pointerType = nullptr;
         if (iassignMirType->GetPrimType() == PTY_agg) {
+            CHECK_NULL_FATAL(cgFunc->GetMirModule().CurFunction());
             MIRSymbol *addrSym = cgFunc->GetMirModule().CurFunction()->GetLocalOrGlobalSymbol(addrofNode.GetStIdx());
             MIRType *addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrSym->GetTyIdx());
             addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrMirType->GetTypeIndex());
@@ -791,6 +797,7 @@ void MPISel::SelectDassignoff(DassignoffNode &stmt, Operand &opnd0)
     MIRSymbol *symbol = cgFunc->GetFunction().GetLocalOrGlobalSymbol(stmt.stIdx);
     PrimType primType = stmt.GetPrimType();
     uint32 bitSize = GetPrimTypeBitSize(primType);
+    DEBUG_ASSERT(symbol != nullptr, "symbol should not be nullptr");
     MemOperand &memOpnd = GetOrCreateMemOpndFromSymbol(*symbol, bitSize, stmt.offset);
 
     SelectCopy(memOpnd, opnd0, primType);

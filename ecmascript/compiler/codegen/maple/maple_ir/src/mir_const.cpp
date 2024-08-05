@@ -92,6 +92,7 @@ void MIRAddroffuncConst::Dump(const MIRSymbolTable *) const
     LogInfo::MapleLogger() << "addroffunc " << GetPrimTypeName(PTY_ptr);
     MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
     CHECK_FATAL(func != nullptr, "null ptr");
+    CHECK_NULL_FATAL(GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx()));
     LogInfo::MapleLogger() << " &"
                            << GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx())->GetName();
 }

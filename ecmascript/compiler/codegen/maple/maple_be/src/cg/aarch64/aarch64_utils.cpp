@@ -25,6 +25,7 @@ MemOperand *GetOrCreateMemOperandForNewMOP(CGFunc &cgFunc, const Insn &loadIns, 
     MOperator loadMop = loadIns.GetMachineOpcode();
 
     DEBUG_ASSERT(loadIns.IsLoad() && AArch64CG::kMd[newLoadMop].IsLoad(), "ins and Mop must be load");
+    DEBUG_ASSERT(memOp != nullptr, "memOp shoule not be nullptr");
 
     MemOperand *newMemOp = memOp;
 

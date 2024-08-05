@@ -315,7 +315,7 @@ public:
             if (pair != curFunctionMap.end()) {
                 return pair->second;
             }
-            return nullptr;
+            CHECK_FATAL(false, "NYI");
         }
         return curFunction;
     }
