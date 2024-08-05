@@ -613,6 +613,7 @@ CString JSDate::StrToTargetLength(const CString &str, int length)
     CString sub;
     if (str[0] == NEG) {
         sub.reserve(length + 1);
+        ASSERT(str.length() > 0);
         len = static_cast<int>(str.length() - 1);
         sub += NEG;
     } else {

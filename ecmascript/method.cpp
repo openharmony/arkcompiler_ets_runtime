@@ -65,6 +65,7 @@ MethodLiteral *Method::GetMethodLiteral() const
     if (IsAotWithCallField() || IsDeoptimized()) {
         ASSERT(!IsNativeWithCallField());
         const JSPandaFile *jsPandaFile = GetJSPandaFile();
+        ASSERT(jsPandaFile != nullptr);
         return jsPandaFile->FindMethodLiteral(GetMethodId().GetOffset());
     }
     return reinterpret_cast<MethodLiteral *>(GetCodeEntryOrLiteral());
@@ -79,6 +80,7 @@ uint32_t Method::FindCatchBlock(uint32_t pc) const
 {
     ASSERT(!IsNativeWithCallField());
     auto *pandaFile = GetJSPandaFile()->GetPandaFile();
+    ASSERT(pandaFile != nullptr);
     panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
     panda_file::CodeDataAccessor cda(*pandaFile, mda.GetCodeId().value());
 
@@ -98,6 +100,7 @@ uint32_t Method::FindCatchBlock(uint32_t pc) const
 bool Method::HasCatchBlock() const
 {
     auto *pandaFile = GetJSPandaFile()->GetPandaFile();
+    ASSERT(pandaFile != nullptr);
     panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
     panda_file::CodeDataAccessor cda(*pandaFile, mda.GetCodeId().value());
     return cda.GetTriesSize() != 0;

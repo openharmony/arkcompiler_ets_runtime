@@ -39,6 +39,7 @@ void TaggedHashArray::Clear(JSThread *thread)
 JSTaggedValue TaggedHashArray::GetNode(JSThread *thread, int hash, JSTaggedValue key)
 {
     uint32_t nodeLength = GetLength();
+    ASSERT(nodeLength > 0);
     JSTaggedValue nodeValue = Get(((nodeLength - 1) & hash));
     JSTaggedValue hashValue = JSTaggedValue(hash);
     if (nodeValue.IsHole()) {
@@ -174,6 +175,7 @@ JSTaggedValue TaggedHashArray::SetVal(JSThread *thread, JSHandle<TaggedHashArray
                                       JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value)
 {
     uint32_t length = table->GetLength();
+    ASSERT(length > 0);
     uint32_t index = (length - 1) & hash;
     JSHandle<JSTaggedValue> node(thread, table->Get(index));
     if (node->IsHole()) {
