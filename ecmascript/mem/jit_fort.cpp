@@ -74,10 +74,11 @@ bool JitFort::AddRegion()
     return false;
 }
 
-uintptr_t JitFort::Allocate(size_t size)
+uintptr_t JitFort::Allocate(MachineCodeDesc *desc)
 {
     LockHolder lock(mutex_);
 
+    size_t size = desc->instructionsSize;
     auto ret = allocator_->Allocate(size);
     if (ret == ToUintPtr(nullptr)) {
         if (AddRegion()) {
@@ -85,30 +86,52 @@ uintptr_t JitFort::Allocate(size_t size)
             ret = allocator_->Allocate(size);
         }
     }
+    if (ret == ToUintPtr(nullptr)) {
+        LOG_JIT(DEBUG) << "JitFort:: Allocate return nullptr for size " << size;
+        return ret;
+    }
+    // Record allocation to keep it from being collected by the next
+    // JitFort::UpdateFreeSpace in case corresponding Machine code object is not
+    // marked for sweep yet by then.
+    desc->memDesc = RecordLiveJitCodeNoLock(ret, size);
+    LOG_JIT(DEBUG) << "JitFort:: Allocate " << (void *)ret << " - " << (void *)(ret+size-1) <<
+        " size " << size << " MachineCodeGC " << IsMachineCodeGC();
     return ret;
 }
 
-void JitFort::RecordLiveJitCode(uintptr_t addr, size_t size)
+MemDesc *JitFort::RecordLiveJitCodeNoLock(uintptr_t addr, size_t size, bool installed)
 {
-    LockHolder lock(liveJitCodeBlksLock_);
     // check duplicate
     for (size_t i = 0; i < liveJitCodeBlks_.size(); ++i) {
         if (liveJitCodeBlks_[i]->GetBegin() == addr && liveJitCodeBlks_[i]->Available() == size) {
             LOG_JIT(DEBUG) << "RecordLiveJitCode duplicate " << (void *)addr << " size " << size;
-            return;
+            return nullptr;
+        }
+        if (liveJitCodeBlks_[i]->GetBegin() == addr) {
+            LOG_JIT(FATAL) << "RecordLiveJitCode duplicate addr " << std::hex << addr << std::dec << " size " <<
+                size << " existing entry size " << liveJitCodeBlks_[i]->Available() << std::endl;
+            return nullptr;
         }
     }
     MemDesc *desc = memDescPool_->GetDescFromPool();
     desc->SetMem(addr);
     desc->SetSize(size);
+    desc->SetInstalled(installed);
     liveJitCodeBlks_.emplace_back(desc);
+    return desc;
+}
+
+MemDesc *JitFort::RecordLiveJitCode(uintptr_t addr, size_t size, bool installed)
+{
+    LockHolder lock(mutex_);
+    return RecordLiveJitCodeNoLock(addr, size, installed);
 }
 
 void JitFort::SortLiveMemDescList()
 {
     if (liveJitCodeBlks_.size()) {
         std::sort(liveJitCodeBlks_.begin(), liveJitCodeBlks_.end(), [](MemDesc *first, MemDesc *second) {
-            return second->GetBegin() < first->GetBegin();  // descending order
+            return first->GetBegin() < second->GetBegin();  // ascending order
         });
     }
 }
@@ -124,7 +147,6 @@ void JitFort::SortLiveMemDescList()
  * thread AllocateMachineCode if an Old/Full GC is in progress.
  *
  * The following must be done before calling UpdateFreeSpace:
- * - JitFort::RebuildFreeList() called to clear JitFort allocator freeList
  * - MachineCodeSpace::FreeRegion completed (whether sync or aync) on all regions
 */
 void JitFort::UpdateFreeSpace()
@@ -138,7 +160,6 @@ void JitFort::UpdateFreeSpace()
     if (!IsMachineCodeGC()) {
         return;
     }
-    SetMachineCodeGC(false);
 
     LOG_JIT(DEBUG) << "UpdateFreeSpace enter: " << "Fort space allocated: "
         << allocator_->GetAllocatedSize()
@@ -151,29 +172,48 @@ void JitFort::UpdateFreeSpace()
         CollectFreeRanges(region);
         region = region->GetNext();
     }
-    liveJitCodeBlks_.clear();
     LOG_JIT(DEBUG) << "UpdateFreeSpace exit: allocator_->GetAvailableSize  "
         << allocator_->GetAvailableSize();
+
+    SetMachineCodeGC(false);
 }
 
 void JitFort::CollectFreeRanges(JitFortRegion *region)
 {
     LOG_JIT(DEBUG) << "region " << (void*)(region->GetBegin());
     uintptr_t freeStart = region->GetBegin();
-    while (!liveJitCodeBlks_.empty()) {
-        MemDesc *desc = liveJitCodeBlks_.back();
+    for (auto it = liveJitCodeBlks_.begin(); it !=  liveJitCodeBlks_.end();) {
+        MemDesc* desc = *it;
+        if (desc->GetBegin() < region->GetBegin()) {
+            // Skip entries for fort mem awaiting installation that's already processed
+            // by a previous call to CollectFreeRange. Do not use desc->IsInstalled()
+            // to check here because an entry's IsInstalled flag can change from false to
+            // true (if JSThread installs its corresponding MachineCode object) during
+            // the time a GC thread runs UpdateFreeSpace
+            it++;
+            continue;
+        }
         if (desc->GetBegin() >= region->GetBegin() && desc->GetBegin() < region->GetEnd()) {
             uintptr_t freeEnd = desc->GetBegin();
             LOG_JIT(DEBUG) << " freeStart = " << (void *)freeStart
                 << " freeEnd = "<< (void*)freeEnd
                 << " desc->GetBegin() = " << (void *)(desc->GetBegin())
                 << " desc->GetEnd() = " << (void *)(desc->GetEnd());
+            if (freeStart != freeEnd && freeEnd <= freeStart) {
+                    LOG_JIT(FATAL) << "CollectFreeRanges Abort: freeEnd smaller than freeStart";
+                    return;
+            }
             if (freeStart != freeEnd) {
                 allocator_->Free(freeStart, freeEnd - freeStart, true);
             }
             freeStart = freeEnd + desc->Available();
-            memDescPool_->ReturnDescToPool(desc);
-            liveJitCodeBlks_.pop_back();
+            if (desc->IsInstalled()) {
+                it = liveJitCodeBlks_.erase(it);
+                memDescPool_->ReturnDescToPool(desc);
+            } else {
+                // retain liveJitCodeBlks entry for fort mem awaiting installation to keep from being freed
+                it++;
+            }
         } else {
             break;
         }
@@ -181,6 +221,7 @@ void JitFort::CollectFreeRanges(JitFortRegion *region)
     uintptr_t freeEnd = region->GetEnd();
     if (freeStart != freeEnd) {
         allocator_->Free(freeStart, freeEnd - freeStart, true);
+        LOG_JIT(DEBUG) << " freeStart = " << (void *)freeStart << " freeEnd = " << (void*)freeEnd;
     }
 }
 
