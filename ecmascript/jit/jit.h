@@ -86,6 +86,7 @@ public:
     void ClearTask(EcmaContext *ecmaContext);
     void ClearTaskWithVm(EcmaVM *vm);
     void Destroy();
+    uint32_t GetRunningTaskCnt(EcmaVM *vm);
     void CheckMechineCodeSpaceMemory(JSThread *thread, int remainSize);
     void ChangeTaskPoolState(bool inBackground);
 

@@ -130,7 +130,8 @@
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)                                                             \
     V("jitCompileSync",                            JitCompileSync,                            1, INVALID)     \
     V("jitCompileAsync",                           JitCompileAsync,                           1, INVALID)     \
-    V("waitJitCompileFinish",                      WaitJitCompileFinish,                      1, INVALID)
+    V("waitJitCompileFinish",                      WaitJitCompileFinish,                      1, INVALID)     \
+    V("waitAllJitCompileFinish",                   WaitAllJitCompileFinish,                   0, INVALID)
 
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_SCOPE_LOCK_STATS(V)                                   \
@@ -381,6 +382,7 @@ public:
     static JSTaggedValue JitCompileSync(EcmaRuntimeCallInfo *info);
     static JSTaggedValue JitCompileAsync(EcmaRuntimeCallInfo *info);
     static JSTaggedValue WaitJitCompileFinish(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue WaitAllJitCompileFinish(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue StartRuntimeStat(EcmaRuntimeCallInfo *info);
     static JSTaggedValue StopRuntimeStat(EcmaRuntimeCallInfo *info);
