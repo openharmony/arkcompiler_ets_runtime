@@ -17,7 +17,9 @@
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/builtins/builtins_date_time_format.h"
 #include "ecmascript/builtins/builtins_list_format.h"
+#include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
 #include "ecmascript/builtins/builtins_sharedarraybuffer.h"
+#include "ecmascript/builtins/builtins_shared_typedarray.h"
 #include "ecmascript/builtins/builtins_typedarray.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_vm.h"
@@ -25,6 +27,8 @@
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_typed_array.h"
 #include "ecmascript/tests/test_helper.h"
@@ -46,6 +50,23 @@ public:
 
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
         JSTaggedValue result = BuiltinsArrayBuffer::ArrayBufferConstructor(ecmaRuntimeCallInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        return result;
+    }
+
+    static JSTaggedValue CreateBuiltinsSendableArrayBuffer(JSThread *thread, int32_t length)
+    {
+        JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSFunction> arrayBuffer(thread, env->GetSBuiltininArrayBufferFunction().GetTaggedValue());
+        JSHandle<JSObject> globalObject(thread, env->GetGlobalObject());
+        // 6 : test case
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, arrayBuffer.GetTaggedValue(), 6);
+        ecmaRuntimeCallInfo->SetFunction(arrayBuffer.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetThis(globalObject.GetTaggedValue());
+        ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(length));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+        JSTaggedValue result = BuiltinsSendableArrayBuffer::ArrayBufferConstructor(ecmaRuntimeCallInfo);
         TestHelper::TearDownFrame(thread, prev);
         return result;
     }
@@ -87,6 +108,29 @@ public:
 
         EXPECT_TRUE(result.IsECMAObject());
         JSTypedArray *int8arr = JSTypedArray::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData()));
+        return int8arr;
+    }
+
+    static JSSharedTypedArray *CreateSharedTypedArray(JSThread *thread, const JSHandle<TaggedArray> &array)
+    {
+        auto ecmaVM = thread->GetEcmaVM();
+        JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+
+        JSHandle<JSTaggedValue> jsarray(JSSharedArray::CreateArrayFromList(thread, array));
+        JSHandle<JSFunction> int8_array(env->GetSharedInt8ArrayFunction());
+        JSHandle<JSObject> globalObject(thread, env->GetGlobalObject());
+        //  6 : test case
+        auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue(*int8_array), 6);
+        ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue(*int8_array));
+        ecmaRuntimeCallInfo1->SetThis(JSTaggedValue(*globalObject));
+        ecmaRuntimeCallInfo1->SetCallArg(0, jsarray.GetTaggedValue());
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+        JSTaggedValue result = BuiltinsSharedTypedArray::Int8ArrayConstructor(ecmaRuntimeCallInfo1);
+        TestHelper::TearDownFrame(thread, prev);
+
+        EXPECT_TRUE(result.IsECMAObject());
+        JSSharedTypedArray *int8arr = JSSharedTypedArray::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData()));
         return int8arr;
     }
 
