@@ -535,7 +535,10 @@ config("ark_jsruntime_common_config") {
 
   # is_asan: skynet config; run_with_asan: est_runtime enable asan config
   if (is_asan) {
-    defines += [ "ECMASCRIPT_ENABLE_ASAN_DFX_CONFIG" ]
+    defines += [
+      "ECMASCRIPT_ENABLE_ASAN_DFX_CONFIG",
+      "ECMASCRIPT_ENABLE_ASAN_THREAD_CHECK",
+    ]
   }
 
   code_encrypto_enable = true

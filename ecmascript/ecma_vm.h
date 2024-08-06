@@ -205,9 +205,14 @@ public:
 
     ARK_INLINE JSThread *GetJSThread() const
     {
+        // default enable multi-thread check in asan
+#ifdef ECMASCRIPT_ENABLE_ASAN_THREAD_CHECK
+        CheckThread();
+#else
         if (options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck()) {
             CheckThread();
         }
+#endif
         return thread_;
     }
 
