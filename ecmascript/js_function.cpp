@@ -1122,9 +1122,9 @@ JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
 void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFunction> &func)
 {
     JSHandle<Method> method(thread, func->GetMethod());
-    JSTaggedValue sendableEnv = JSTaggedValue::Undefined();
+    JSMutableHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
     if (!func->GetModule().IsUndefined()) {
-        sendableEnv = SourceTextModule::Cast(func->GetModule())->GetSendableEnv();
+        sendableEnv.Update(SourceTextModule::Cast(func->GetModule())->GetSendableEnv());
     }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     if (jsPandaFile == nullptr) {
