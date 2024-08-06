@@ -146,13 +146,14 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
     bool isInOldGen = region->InOldSpace();
     bool isBelowAgeMark = region->BelowAgeMark();
     bool pgoEnabled = heap_->GetJSThread()->IsPGOProfilerEnable();
+    bool inHeapProfiler = heap_->InHeapProfiler();
     size_t promotedSize = 0;
     size_t edenToYoungSize = 0;
     if (WholeRegionEvacuate(region)) {
         return;
     }
     region->IterateAllMarkedBits([this, &region, &isInOldGen, &isBelowAgeMark, isInEden, &pgoEnabled,
-                                  &promotedSize, &allocator, &trackSet, &edenToYoungSize](void *mem) {
+                                  &promotedSize, &allocator, &trackSet, &edenToYoungSize, inHeapProfiler](void *mem) {
         ASSERT(region->InRange(ToUintPtr(mem)));
         auto header = reinterpret_cast<TaggedObject *>(mem);
         auto klass = header->GetClass();
@@ -183,7 +184,9 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) {
             LOG_FULL(FATAL) << "memcpy_s failed";
         }
-        heap_->OnMoveEvent(reinterpret_cast<uintptr_t>(mem), reinterpret_cast<TaggedObject *>(address), size);
+        if (inHeapProfiler) {
+            heap_->OnMoveEvent(reinterpret_cast<uintptr_t>(mem), reinterpret_cast<TaggedObject *>(address), size);
+        }
         if (pgoEnabled) {
             if (actualPromoted && klass->IsJSArray()) {
                 auto trackInfo = JSArray::Cast(header)->GetTrackInfo();
@@ -192,63 +195,16 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         }
         Barriers::SetPrimitive(header, 0, MarkWord::FromForwardingAddress(address));
 
-        if (UNLIKELY(heap_->ShouldVerifyHeap())) {
-            VerifyHeapObject(reinterpret_cast<TaggedObject *>(address));
-        }
         if (actualPromoted) {
             SetObjectFieldRSet<false>(reinterpret_cast<TaggedObject *>(address), klass);
         } else if (isInEden) {
             SetObjectFieldRSet<true>(reinterpret_cast<TaggedObject *>(address), klass);
-        }
-        if (region->HasLocalToShareRememberedSet()) {
+        } else if (region->HasLocalToShareRememberedSet()) {
             UpdateLocalToShareRSet(reinterpret_cast<TaggedObject *>(address), klass);
         }
     });
     promotedSize_.fetch_add(promotedSize);
     edenToYoungSize_.fetch_add(edenToYoungSize);
-}
-
-void ParallelEvacuator::VerifyHeapObject(TaggedObject *object)
-{
-    auto klass = object->GetClass();
-    ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(object, klass,
-        [&](TaggedObject *root, ObjectSlot start, ObjectSlot end, VisitObjectArea area) {
-            if (area == VisitObjectArea::IN_OBJECT) {
-                if (VisitBodyInObj(root, start, end, [&](ObjectSlot slot) { VerifyValue(object, slot); })) {
-                    return;
-                };
-            }
-            for (ObjectSlot slot = start; slot < end; slot++) {
-                VerifyValue(object, slot);
-            }
-        });
-}
-
-void ParallelEvacuator::VerifyValue(TaggedObject *object, ObjectSlot slot)
-{
-    JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsHeapObject()) {
-        if (value.IsWeakForHeapObject()) {
-            return;
-        }
-        Region *objectRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
-        if (objectRegion->InSharedHeap()) {
-            return;
-        }
-        if (!heap_->IsConcurrentFullMark() && objectRegion->InGeneralOldSpace()) {
-            return;
-        }
-
-        if (heap_->IsEdenMark() && !objectRegion->InEdenSpace()) {
-            return;
-        }
-
-        if (!objectRegion->Test(value.GetTaggedObject()) && !objectRegion->InAppSpawnSpace()) {
-            LOG_GC(FATAL) << "Miss mark value: " << value.GetTaggedObject()
-                                << ", body address:" << slot.SlotAddress()
-                                << ", header address:" << object;
-        }
-    }
 }
 
 void ParallelEvacuator::UpdateReference()

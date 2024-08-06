@@ -253,10 +253,14 @@ void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
     if constexpr (SetEdenObject) {
         if (region->InYoungSpace() && valueRegion->InEdenSpace()) {
             region->AtomicInsertNewToEdenRSet(slot.SlotAddress());
+        } else if (valueRegion->InSharedSweepableSpace()) {
+            region->AtomicInsertLocalToShareRSet(slot.SlotAddress());
         }
     } else {
         if (valueRegion->InGeneralNewSpace()) {
             region->InsertOldToNewRSet(slot.SlotAddress());
+        }  else if (valueRegion->InSharedSweepableSpace()) {
+            region->InsertLocalToShareRSet(slot.SlotAddress());
         } else if (valueRegion->InCollectSet() || JSTaggedValue(value).IsWeakForHeapObject()) {
             region->InsertCrossRegionRSet(slot.SlotAddress());
         }

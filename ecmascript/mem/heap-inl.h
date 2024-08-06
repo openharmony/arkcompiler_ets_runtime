@@ -264,6 +264,15 @@ void Heap::MergeToOldSpaceSync(LocalSpace *localSpace)
     oldSpace_->Merge(localSpace);
 }
 
+bool Heap::InHeapProfiler()
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    return GetEcmaVM()->GetHeapProfile() != nullptr;
+#else
+    return false;
+#endif
+}
+
 void SharedHeap::MergeToOldSpaceSync(SharedLocalSpace *localSpace)
 {
     sOldSpace_->Merge(localSpace);

@@ -27,7 +27,7 @@ static constexpr size_t MIN_BUFFER_SIZE = 31_KB;
 static constexpr size_t SMALL_OBJECT_SIZE = 8_KB;
 
 TlabAllocator::TlabAllocator(Heap *heap)
-    : heap_(heap), enableExpandYoung_(true)
+    : heap_(heap), enableExpandYoung_(true), enableStealOldRegion_(true)
 {
     size_t maxOldSpaceCapacity = heap->GetOldSpace()->GetMaximumCapacity();
     localSpace_ = new LocalSpace(heap, maxOldSpaceCapacity, maxOldSpaceCapacity);
@@ -99,7 +99,9 @@ uintptr_t TlabAllocator::AllocateInOldSpace(size_t size)
     uintptr_t result = localSpace_->Allocate(size, false);
     if (result == 0) {
         // 2. Expand region from old space
-        ExpandCompressFromOld(size);
+        if (enableStealOldRegion_) {
+            enableStealOldRegion_ = ExpandCompressFromOld(size);
+        }
         result = localSpace_->Allocate(size, true);
     }
     ASSERT(result != 0);
