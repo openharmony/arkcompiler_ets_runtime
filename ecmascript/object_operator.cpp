@@ -748,9 +748,11 @@ bool ObjectOperator::UpdateDataValue(const JSHandle<JSObject> &receiver, const J
             offset += hclass->GetInlinedProperties();
         }
         attr.SetOffset(offset);
-
+        JSHandle<JSObject> objHandle(receiver_);
+        ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
         auto actualValue =
-            JSHClass::ConvertOrTransitionWithRep(thread_, JSHandle<JSObject>(receiver_), key_, value, attr);
+            JSHClass::ConvertOrTransitionWithRep(thread_, objHandle, key_, value, attr);
+        JSObject::TryMigrateToGenericKindForJSObject(thread_, objHandle, oldKind);
         if (actualValue.isTransition) {
             SetIsTransition(true);
         }
@@ -1071,8 +1073,11 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
     // Not need AddProperty,just SetProperty
     if (receiverHoleEntry_ != -1) {
         attr.SetOffset(receiverHoleEntry_);
+        JSHandle<JSObject> objHandle(receiver_);
+        ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
         auto actualValue =
-            JSHClass::ConvertOrTransitionWithRep(thread_, JSHandle<JSObject>(receiver_), key_, value, attr);
+            JSHClass::ConvertOrTransitionWithRep(thread_, objHandle, key_, value, attr);
+        JSObject::TryMigrateToGenericKindForJSObject(thread_, objHandle, oldKind);
         if (actualValue.isTransition) {
             SetIsTransition(true);
         }

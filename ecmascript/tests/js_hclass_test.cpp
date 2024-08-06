@@ -158,7 +158,9 @@ HWTEST_F_L0(JSHClassTest, TransitionElementsToDictionary)
     JSObject::SetProperty(thread, JSHandle<JSTaggedValue>(jsObject), objKey3, objValue3);
     // class is not dictionary mode
     EXPECT_FALSE(jsObject->GetJSHClass()->IsDictionaryMode());
+    ElementsKind oldKind = jsObject->GetJSHClass()->GetElementsKind();
     JSHClass::TransitionElementsToDictionary(thread, jsObject);
+    JSObject::TryMigrateToGenericKindForJSObject(thread, jsObject, oldKind);
     auto resultDict = NameDictionary::Cast(jsObject->GetProperties().GetTaggedObject());
     EXPECT_TRUE(resultDict != nullptr);
     EXPECT_EQ(resultDict->EntriesCount(), 3); // 3 : 3 entry
@@ -263,7 +265,9 @@ HWTEST_F_L0(JSHClassTest, AddProperty)
         JSHandle<JSTaggedValue> keyHandleI(
             factory->ConcatFromString(keyHandle, JSTaggedValue::ToString(thread, keyValue)));
         attr.SetOffset(i);
+        ElementsKind oldKind = Obj->GetJSHClass()->GetElementsKind();
         JSHClass::AddProperty(thread, Obj, keyHandleI, attr);
+        JSObject::TryMigrateToGenericKindForJSObject(thread, Obj, oldKind);
     }
     EXPECT_TRUE(objClass1 == objClass);
     std::vector<JSTaggedValue> keyVector;
@@ -293,7 +297,9 @@ HWTEST_F_L0(JSHClassTest, TransitionExtension)
     JSObject::SetProperty(thread, Obj2, keyHandle1, JSHandle<JSTaggedValue>(thread, JSTaggedValue(8)));
     JSObject::SetProperty(thread, Obj2, keyHandle2, JSHandle<JSTaggedValue>(thread, JSTaggedValue(9)));
     // obj has key "PreventExtensions"
+    ElementsKind oldKind = Obj1->GetJSHClass()->GetElementsKind();
     JSHClass::AddProperty(thread, Obj1, preExtensionsKey, attr);
+    JSObject::TryMigrateToGenericKindForJSObject(thread, Obj1, oldKind);
     JSHandle<JSHClass> newClass1 = JSHClass::TransitionExtension(thread, obj1Class);
     JSHandle<JSHClass> objClass(thread, Obj1->GetClass());
     EXPECT_TRUE(newClass1 == objClass);
@@ -323,9 +329,15 @@ HWTEST_F_L0(JSHClassTest, TransitionProto)
     JSHandle<JSHClass> objClass = CreateJSHClass(thread);
     JSHandle<JSObject> Obj = factory->NewJSObject(objClass);
     // obj has no key "prototype"
+    ElementsKind oldKind = Obj->GetJSHClass()->GetElementsKind();
     JSHClass::AddProperty(thread, Obj, obj1Key, attr);
+    JSObject::TryMigrateToGenericKindForJSObject(thread, Obj, oldKind);
+    oldKind = Obj->GetJSHClass()->GetElementsKind();
     JSHClass::AddProperty(thread, Obj, obj2Key, attr);
+    JSObject::TryMigrateToGenericKindForJSObject(thread, Obj, oldKind);
+    oldKind = Obj->GetJSHClass()->GetElementsKind();
     JSHClass::AddProperty(thread, Obj, obj3Key, attr);
+    JSObject::TryMigrateToGenericKindForJSObject(thread, Obj, oldKind);
     JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, objClass, funcPrototype);
     EXPECT_EQ(newClass->GetPrototype(), funcPrototype.GetTaggedValue());
     JSHandle<TransitionsDictionary> transitionDictionary(thread, objClass->GetTransitions());
@@ -394,7 +406,9 @@ HWTEST_F_L0(JSHClassTest, UpdatePropertyMetaData)
     JSHandle<JSHClass> objClass = CreateJSHClass(thread);
     JSHandle<JSObject> Obj = factory->NewJSObject(objClass);
     // Set Transitions
+    ElementsKind oldKind = Obj->GetJSHClass()->GetElementsKind();
     JSHClass::AddProperty(thread, Obj, objKey, oldAttr);
+    JSObject::TryMigrateToGenericKindForJSObject(thread, Obj, oldKind);
     // update metaData
     objClass->UpdatePropertyMetaData(thread, objKey.GetTaggedValue(), newAttr);
     LayoutInfo *layoutInfo = LayoutInfo::Cast(objClass->GetLayout().GetTaggedObject());

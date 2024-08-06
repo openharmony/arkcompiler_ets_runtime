@@ -760,6 +760,8 @@ public:
 
     static void SetSProperties(JSThread *thread, JSHandle<JSObject> obj, const std::vector<PropertyDescriptor> &descs);
 
+    static void PUBLIC_API TryMigrateToGenericKindForJSObject(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                                  const ElementsKind oldKind);
 protected:
     static void ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> obj);
 
@@ -772,6 +774,7 @@ private:
     friend class RuntimeStubs;
     friend class JSSharedArray;
 
+    static bool HasMutantTaggedArrayElements(const JSHandle<JSObject> &obj);
     PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);
     static bool PUBLIC_API AddElementInternal(
         JSThread *thread, const JSHandle<JSObject> &receiver, uint32_t index, const JSHandle<JSTaggedValue> &value,

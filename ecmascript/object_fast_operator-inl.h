@@ -379,8 +379,10 @@ JSTaggedValue ObjectFastOperator::TrySetPropertyByNameThroughCacheAtLocal(JSThre
                 }
                 JSHandle<JSObject> objHandle(thread, receiver);
                 JSHandle<JSTaggedValue> valueHandle(thread, value);
+                ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
                 auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
                     JSHandle<JSTaggedValue>(thread, key), valueHandle, attr);
+                JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
                 receiver = objHandle.GetTaggedValue();
                 originValue = valueHandle.GetTaggedValue();
                 value = actualValue.value;
@@ -476,8 +478,10 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
                     }
                 }
                 JSHandle<JSObject> objHandle(thread, receiver);
+                ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
                 auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
                     JSHandle<JSTaggedValue>(thread, key), JSHandle<JSTaggedValue>(thread, value), attr);
+                JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
                 receiver = objHandle.GetTaggedValue();
                 hclass = objHandle->GetClass();
                 if (actualValue.isTagged) {
@@ -535,8 +539,10 @@ JSTaggedValue ObjectFastOperator::SetPropertyByName(JSThread *thread, JSTaggedVa
         LayoutInfo *receiverLayoutInfo = LayoutInfo::Cast(receiverHClass->GetLayout().GetTaggedObject());
         PropertyAttributes attr(receiverLayoutInfo->GetAttr(receiverHoleEntry));
         JSHandle<JSObject> objHandle(thread, receiver);
+        ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle,
             JSHandle<JSTaggedValue>(thread, key), JSHandle<JSTaggedValue>(thread, value), attr);
+        JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
         receiver = objHandle.GetTaggedValue();
         receiverHClass = objHandle->GetClass();
         if (actualValue.isTagged) {
@@ -883,8 +889,12 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         attr.SetIsInlinedProps(true);
         attr.SetRepresentation(Representation::TAGGED);
         auto rep = PropertyAttributes::TranslateToRep(valueHandle.GetTaggedValue());
+        ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr, rep);
+        JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
+        oldKind = objHandle->GetJSHClass()->GetElementsKind();
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
+        JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
         if (actualValue.isTagged) {
             objHandle->SetPropertyInlinedProps<true>(thread, nextInlinedPropsIndex, valueHandle.GetTaggedValue());
         } else {
@@ -930,8 +940,12 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         attr.SetOffset(nonInlinedProps + objHandle->GetJSHClass()->GetInlinedProperties());
         attr.SetRepresentation(Representation::TAGGED);
         auto rep = PropertyAttributes::TranslateToRep(valueHandle.GetTaggedValue());
+        ElementsKind oldKind = objHandle->GetJSHClass()->GetElementsKind();
         JSHClass::AddProperty(thread, objHandle, keyHandle, attr, rep);
+        JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
+        oldKind = objHandle->GetJSHClass()->GetElementsKind();
         auto actualValue = JSHClass::ConvertOrTransitionWithRep(thread, objHandle, keyHandle, valueHandle, attr);
+        JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
         if (actualValue.isTagged) {
             array->Set<true>(thread, nonInlinedProps, valueHandle.GetTaggedValue());
         } else {

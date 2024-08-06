@@ -173,19 +173,9 @@ inline JSHClass *JSHClass::FindProtoTransitions(const JSTaggedValue &key, const 
     return JSHClass::Cast(ret.GetTaggedWeakRef());
 }
 
-inline void JSHClass::TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
-                                             const JSHandle<JSObject> &obj)
+inline void JSHClass::RestoreElementsKindToGeneric(JSHClass *newJsHClass)
 {
-    ElementsKind newKind = ElementsKind::GENERIC;
-    ElementsKind oldKind;
-    uint32_t bits = newJsHClass->GetBitField();
-    auto decode = ObjectTypeBits::Decode(bits);
-    if (decode == JSType::JS_ARRAY &&
-        obj->GetElements().IsMutantTaggedArray()) {
-        oldKind = ElementsKindBits::Decode(bits);
-        Elements::MigrateArrayWithKind(thread, obj, oldKind, newKind);
-    }
-    newJsHClass->SetElementsKind(newKind);
+    newJsHClass->SetElementsKind(ElementsKind::GENERIC);
 }
 
 inline JSHClass *JSHClass::CheckHClassForRep(JSHClass *hclass, const Representation &rep)

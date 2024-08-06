@@ -1315,6 +1315,8 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
             Jump(&endSetPrototypeCheck);
         }
         Bind(&endSetPrototypeCheck);
+        GateRef oldKind = GetElementsKindFromHClass(LoadHClass(receiver));
+        RestoreElementsKindToGeneric(glue, newClass);
         StoreHClass(glue, receiver, newClass);
 #if ECMASCRIPT_ENABLE_IC
         Label needUpdateAOTHClass(env);
@@ -1324,16 +1326,15 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
         Branch(updateCondition, &needUpdateAOTHClass, &normalNotify);
         Bind(&needUpdateAOTHClass);
         {
-            // Use single CallRuntime here to perform both function: UpadteAOTHClass and
-            // TryRestoreElementsKind, reducing the overhead of one CallRuntime
-            CallRuntime(glue, RTSTUB_ID(UpdateAOTHcAndTryResotreEleKind),
-                        { receiver, hclass, newClass, key });
+            TryMigrateToGenericKindForJSObject(glue, receiver, oldKind);
+            CallRuntime(glue, RTSTUB_ID(UpdateAOTHClass),
+                        { hclass, newClass, key });
             Jump(&endUpdate);
         }
         Bind(&normalNotify);
         {
             // Because we currently only supports Fast ElementsKind
-            CallRuntime(glue, RTSTUB_ID(TryRestoreElementsKind), { receiver, newClass });
+            TryMigrateToGenericKindForJSObject(glue, receiver, oldKind);
             NotifyHClassChanged(glue, hclass, newClass);
             Jump(&endUpdate);
         }
@@ -1359,9 +1360,9 @@ void StubBuilder::JSHClassAddProperty(GateRef glue, GateRef receiver, GateRef ke
 #if ECMASCRIPT_ENABLE_IC
         NotifyHClassChanged(glue, hclass, newJshclass);
 #endif
-        StoreHClass(glue, receiver, newJshclass);
         // Because we currently only supports Fast ElementsKind
-        CallRuntime(glue, RTSTUB_ID(TryRestoreElementsKind), { receiver, newJshclass });
+        RestoreElementsKindToGeneric(glue, newJshclass);
+        StoreHClass(glue, receiver, newJshclass);
         Jump(&exit);
     }
     Bind(&exit);
@@ -1428,7 +1429,9 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
             attr = SetIsInlinePropsFieldInPropAttr(*attr, Int32(1)); // 1: set inInlineProps true
             attr = SetTaggedRepInPropAttr(*attr);
             attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
+            GateRef oldKind = GetElementsKindFromHClass(LoadHClass(receiver));
             JSHClassAddProperty(glue, receiver, key, *attr, value);
+            TryMigrateToGenericKindForJSObject(glue, receiver, oldKind);
             GateRef newHclass = LoadHClass(receiver);
             GateRef newLayoutInfo = GetLayoutFromHClass(newHclass);
             GateRef offset = GetInlinedPropOffsetFromHClass(hclass, numberOfProps);
@@ -1516,7 +1519,9 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
                 attr = SetOffsetFieldInPropAttr(*attr, numberOfProps);
                 attr = SetTaggedRepInPropAttr(*attr);
                 attr = ProfilerStubBuilder(env).UpdateTrackTypeInPropAttr(*attr, value, callback);
+                GateRef oldKind = GetElementsKindFromHClass(LoadHClass(receiver));
                 JSHClassAddProperty(glue, receiver, key, *attr, value);
+                TryMigrateToGenericKindForJSObject(glue, receiver, oldKind);
                 SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, outProps, value);
                 Jump(&exit);
             }
@@ -3027,9 +3032,11 @@ GateRef StubBuilder::StoreWithTransition(GateRef glue, GateRef receiver, GateRef
     GateRef oldHClass = LoadHClass(receiver);
     GateRef prototype = GetPrototypeFromHClass(oldHClass);
     StorePrototype(glue, newHClass, prototype);
-    StoreHClass(glue, receiver, newHClass);
     // Because we currently only supports Fast ElementsKind
-    CallRuntime(glue, RTSTUB_ID(TryRestoreElementsKind), { receiver, newHClass });
+    GateRef oldKind = GetElementsKindFromHClass(LoadHClass(receiver));
+    RestoreElementsKindToGeneric(glue, newHClass);
+    StoreHClass(glue, receiver, newHClass);
+    TryMigrateToGenericKindForJSObject(glue, receiver, oldKind);
     BRANCH(HandlerBaseIsInlinedProperty(handlerInfo), &handlerInfoIsInlinedProps, &handlerInfoNotInlinedProps);
     Bind(&handlerInfoNotInlinedProps);
     {
@@ -3679,9 +3686,11 @@ void StubBuilder::TransitionForRepChange(GateRef glue, GateRef receiver, GateRef
 #if ECMASCRIPT_ENABLE_IC
     NotifyHClassChanged(glue, hclass, newJshclass);
 #endif
-    StoreHClass(glue, receiver, newJshclass);
     // Because we currently only supports Fast ElementsKind
-    CallRuntime(glue, RTSTUB_ID(TryRestoreElementsKind), { receiver, newJshclass });
+    GateRef oldKind = GetElementsKindFromHClass(LoadHClass(receiver));
+    RestoreElementsKindToGeneric(glue, newJshclass);
+    StoreHClass(glue, receiver, newJshclass);
+    TryMigrateToGenericKindForJSObject(glue, receiver, oldKind);
     env->SubCfgExit();
 }
 
@@ -3708,6 +3717,31 @@ void StubBuilder::TransitToElementsKind(GateRef glue, GateRef receiver, GateRef 
         {
             CallRuntime(glue, RTSTUB_ID(UpdateHClassForElementsKind), { receiver, newKind });
             MigrateArrayWithKind(glue, receiver, elementsKind, newKind);
+            Jump(&exit);
+        }
+    }
+
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+void StubBuilder::TryMigrateToGenericKindForJSObject(GateRef glue, GateRef receiver, GateRef oldKind)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+
+    Label isJSArray(env);
+    BRANCH(TaggedIsJSArray(receiver), &isJSArray, &exit);
+    Bind(&isJSArray);
+    {
+        Label elementsIsMutantTaggedArray(env);
+        GateRef elements = GetElementsArray(receiver);
+        BRANCH(IsMutantTaggedArray(elements), &elementsIsMutantTaggedArray, &exit);
+        Bind(&elementsIsMutantTaggedArray);
+        {
+            MigrateArrayWithKind(glue, receiver, oldKind, Int32(static_cast<int32_t>(ElementsKind::GENERIC)));
             Jump(&exit);
         }
     }
@@ -9167,6 +9201,12 @@ GateRef StubBuilder::NumberToString(GateRef glue, GateRef number)
     DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
     res = CallRuntime(glue, RTSTUB_ID(NumberToString), { number });
     return *res;
+}
+
+void StubBuilder::RestoreElementsKindToGeneric(GateRef glue, GateRef jsHClass)
+{
+    GateRef newKind = Int32(static_cast<int32_t>(ElementsKind::GENERIC));
+    SetElementsKindToJSHClass(glue, jsHClass, newKind);
 }
 
 GateRef StubBuilder::GetTaggedValueWithElementsKind(GateRef receiver, GateRef index)
