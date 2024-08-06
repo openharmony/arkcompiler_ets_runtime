@@ -203,6 +203,62 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValue)
     EXPECT_EQ(exportValueHandle.GetTaggedValue(), importDefaultValue);
 }
 
+HWTEST_F_L0(EcmaModuleTest, GetExportedNames)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = factory->NewSourceTextModule();
+    JSHandle<TaggedArray> exportStarSet = factory->NewTaggedArray(2);
+    exportStarSet->Set(thread, 0, module.GetTaggedValue());
+
+    CVector<std::string> exportedNames = SourceTextModule::GetExportedNames(thread, module, exportStarSet);
+    EXPECT_EQ(exportedNames.size(), 0);
+}
+
+HWTEST_F_L0(EcmaModuleTest, FindByExport)
+{
+    CString localName1 = "foo";
+    CString localName2 = "foo2";
+    CString localName3 = "foo3";
+    CString exportName1 = "bar";
+    CString exportName2 = "bar2";
+    CString value = "hello world";
+    CString value2 = "hello world2";
+
+    ObjectFactory* objFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> localNameHandle1 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName1));
+    JSHandle<JSTaggedValue> localNameHandle2 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName2));
+    JSHandle<JSTaggedValue> exportNameHandle1 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName1));
+    JSHandle<JSTaggedValue> exportNameHandle2 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName2));
+    JSHandle<LocalExportEntry> localExportEntry1 =
+        objFactory->NewLocalExportEntry(exportNameHandle1, localNameHandle1, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                        SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry1, 0, 2);
+
+    JSHandle<LocalExportEntry> localExportEntry2 =
+        objFactory->NewLocalExportEntry(exportNameHandle2, localNameHandle2, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                        SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry2, 1, 2);
+
+    JSHandle<JSTaggedValue> storeKey = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName1));
+    JSHandle<JSTaggedValue> valueHandle = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value));
+    module->StoreModuleValue(thread, storeKey, valueHandle);
+
+    JSHandle<JSTaggedValue> storeKey2 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName2));
+    JSHandle<JSTaggedValue> valueHandle2 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(value2));
+    module->StoreModuleValue(thread, storeKey2, valueHandle2);
+
+    // FindByExport cannot find key from exportEntries, returns Hole()
+    JSHandle<JSTaggedValue> loadKey1 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(localName3));
+    JSTaggedValue loadValue1 = module->GetModuleValue(thread, loadKey1.GetTaggedValue(), false);
+    EXPECT_EQ(JSTaggedValue::Hole(), loadValue1);
+
+    // FindByExport retrieves the key from exportEntries and returns the value corresponding to the key
+    JSHandle<JSTaggedValue> loadKey2 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName1));
+    JSTaggedValue loadValue2 = module->GetModuleValue(thread, loadKey2.GetTaggedValue(), false);
+    EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue2);
+}
+
 HWTEST_F_L0(EcmaModuleTest, GetRecordName1)
 {
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module_base.abc";
