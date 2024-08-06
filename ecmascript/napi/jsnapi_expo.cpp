@@ -3544,7 +3544,11 @@ void FunctionRef::SetData(const EcmaVM *vm, void *data, NativePointerCallback de
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
     JSHandle<JSFunction> function(funcValue);
-    function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+    if (function->IsJSShared()) {
+        function->SetSFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+    } else {
+        function->SetFunctionExtraInfo(thread, nullptr, deleter, data, 0);
+    }
 }
 
 void* FunctionRef::GetData(const EcmaVM *vm)
