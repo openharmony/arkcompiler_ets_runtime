@@ -29,6 +29,7 @@ public:
     static constexpr int METHOD_TYPE_INFO_COUNT = 2;
     static constexpr int METHOD_OFFSET_INDEX = 0;
     static constexpr int METHOD_TYPE_INDEX = 1;
+    static constexpr uint32_t MAX_METHOD_TYPE_SIZE = 512 * 1024 * 1024;
 
     PGOMethodTypeSet() = default;
 
