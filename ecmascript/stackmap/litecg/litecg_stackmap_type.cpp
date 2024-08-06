@@ -18,28 +18,25 @@ namespace panda::ecmascript::kungfu {
 static int64_t DecodeSLEB128(const std::vector<uint8_t> &bytes, size_t &index)
 {
     uint64_t res = 0;
-    bool isNegative = false;
     uint64_t shift = 0;
     constexpr uint8_t FLAG_MASK = 0x40;
     constexpr uint8_t LOW_7_BITS_MASK = 0x7f;
     constexpr uint8_t NEXT_BYTE_FLAG_MASK = 0x80;
     constexpr uint8_t DATA_BITS_SHIFT = 7;
+    constexpr uint64_t BIT_SIZE_64 = 64;
     bool needDecodeNextByte = false;
+    uint8_t byte = 0;
     do {
-        needDecodeNextByte = ((bytes[index] & NEXT_BYTE_FLAG_MASK) != 0);
-        uint8_t low7Bit = (bytes[index] & LOW_7_BITS_MASK);
+        byte = bytes[index];
+        needDecodeNextByte = ((byte & NEXT_BYTE_FLAG_MASK) != 0);
+        uint8_t low7Bit = (byte & LOW_7_BITS_MASK);
         res |= (static_cast<uint64_t>(low7Bit) << shift);
         shift += DATA_BITS_SHIFT;
-        if (needDecodeNextByte) {
-            index++;
-        } else {
-            isNegative = ((bytes[index] & FLAG_MASK) != 0);
-        }
+        index++;
     } while (needDecodeNextByte);
 
-    index++;
-    if (isNegative) {
-        res |= static_cast<uint64_t>(-static_cast<int64_t>(1 << shift));
+    if (shift < BIT_SIZE_64 && (byte & FLAG_MASK) != 0) {
+        res |= UINT64_MAX << shift;
     }
     return static_cast<int64_t>(res);
 }
