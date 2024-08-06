@@ -195,7 +195,10 @@ EdenSpace::~EdenSpace()
 void EdenSpace::Initialize()
 {
     auto region = AllocRegion();
-    ASSERT(region != nullptr);
+    if (UNLIKELY(region == nullptr)) {
+        LOG_GC(ERROR) << "region is nullptr";
+        return;
+    }
     AddRegion(region);
     allocator_.Reset(region->GetBegin(), region->GetEnd());
     localHeap_->InstallEdenAllocator();
