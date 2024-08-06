@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "ecmascript/builtins/builtins_shared_object.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_handle.h"
@@ -22,8 +23,17 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
+using BuiltinsSharedObject = ecmascript::builtins::BuiltinsSharedObject;
+
 class BuiltinsSharedObjectTest : public BaseTestWithScope<false> {
 };
+
+HWTEST_F_L0(BuiltinsSharedObjectTest, SharedObjectConstructor)
+{
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+    JSTaggedValue result = BuiltinsSharedObject::SharedObjectConstructor(ecmaRuntimeCallInfo);
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue::Exception().GetRawData());
+}
 
 HWTEST_F_L0(BuiltinsSharedObjectTest, SharedObject)
 {

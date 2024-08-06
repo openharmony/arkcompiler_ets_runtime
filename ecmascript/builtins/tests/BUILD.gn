@@ -570,6 +570,29 @@ host_unittest_action("BuiltinsNatural_006_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("BuiltinsNatural_007_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "builtins_sendable_arraybuffer_test.cpp",
+    "builtins_shared_function_test.cpp",
+  ]
+
+  configs = [ "../../../:ecma_test_config" ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../../:libark_jsruntime_test",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
 host_unittest_action("BuiltinsSharedObject_Test") {
   module_out_path = module_output_path
 
@@ -622,6 +645,7 @@ group("unittest") {
     ":BuiltinsNatural_004_Test",
     ":BuiltinsNatural_005_Test",
     ":BuiltinsNatural_006_Test",
+    ":BuiltinsNatural_007_Test",
     ":BuiltinsSharedObject_Test",
   ]
 }
@@ -653,6 +677,7 @@ group("host_unittest") {
     ":BuiltinsNatural_004_TestAction",
     ":BuiltinsNatural_005_TestAction",
     ":BuiltinsNatural_006_TestAction",
+    ":BuiltinsNatural_007_TestAction",
     ":BuiltinsSharedObject_TestAction",
   ]
   if (is_mac) {
@@ -679,6 +704,7 @@ group("host_unittest") {
       ":BuiltinsNatural_004_TestAction",
       ":BuiltinsNatural_005_TestAction",
       ":BuiltinsNatural_006_TestAction",
+      ":BuiltinsNatural_007_TestAction",
       ":BuiltinsSharedObject_TestAction",
     ]
   }
