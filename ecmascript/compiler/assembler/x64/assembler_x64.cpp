@@ -304,94 +304,94 @@ void AssemblerX64::Mov(const Operand &src, Register dst)
 void AssemblerX64::EmitJmp(int32_t offset)
 {
     offset--;
-    if (InRange8(offset - sizeof(int8_t))) {
+    if (InRange8(offset - SIZE_OF_INT8)) {
         // EB: Jmp rel8
         EmitU8(0xEB);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         // E9: Jmp rel32
         EmitU8(0xE9);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
 void AssemblerX64::EmitJa(int32_t offset)
 {
     offset--;
-    if (InRange8(offset - sizeof(int8_t))) {
+    if (InRange8(offset - SIZE_OF_INT8)) {
         // 77 : Ja rel8
         EmitU8(0x77);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 87 : ja rel32
         EmitU8(0x0F);
         EmitU8(0x87);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
 void AssemblerX64::EmitJb(int32_t offset)
 {
     offset--;
-    if (InRange8(offset - sizeof(int8_t))) {
+    if (InRange8(offset - SIZE_OF_INT8)) {
         // 72 : Jb rel8
         EmitU8(0x72);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 82 : Jb rel32
         EmitU8(0x0F);
         EmitU8(0x82);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
 void AssemblerX64::EmitJz(int32_t offset)
 {
     offset--;
-    if (InRange8(offset - sizeof(int8_t))) {
+    if (InRange8(offset - SIZE_OF_INT8)) {
         // 74 : Jz rel8
         EmitU8(0x74);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 84 : Jz rel32
         EmitU8(0x0F);
         EmitU8(0x84);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
 void AssemblerX64::EmitJne(int32_t offset)
 {
     offset--;
-    if (InRange8(offset - sizeof(int8_t))) {
+    if (InRange8(offset - SIZE_OF_INT8)) {
         // 75 : Jne rel8;
         EmitU8(0x75);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 85 : Jne rel32
         EmitU8(0x0F);
         EmitU8(0x85);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
 void AssemblerX64::EmitJbe(int32_t offset)
 {
     offset--;
-    if (InRange8(offset - sizeof(int8_t))) {
+    if (InRange8(offset - SIZE_OF_INT8)) {
         // 76 : Jbe rel8;
         EmitU8(0x76);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 86 : Jne rel32
         EmitU8(0x0F);
         EmitU8(0x86);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
@@ -401,13 +401,13 @@ void AssemblerX64::EmitJnz(int32_t offset)
     if (InRange8(offset)) {
         // 75 : Jnz rel8
         EmitU8(0x75);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 85: Jnz rel32
         EmitU8(0x0F);
         EmitU8(0x85);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
@@ -417,13 +417,13 @@ void AssemblerX64::EmitJle(int32_t offset)
     if (InRange8(offset)) {
         // 7E : Jle rel8
         EmitU8(0x7E);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 8E: Jle rel32
         EmitU8(0x0F);
         EmitU8(0x8E);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
@@ -433,13 +433,13 @@ void AssemblerX64::EmitJae(int32_t offset)
     if (InRange8(offset)) {
         // 73 : Jae rel8
         EmitU8(0x73);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 83: Jae rel32
         EmitU8(0x0F);
         EmitU8(0x83);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
@@ -449,13 +449,13 @@ void AssemblerX64::EmitJg(int32_t offset)
     if (InRange8(offset)) {
         // 7F : Jg rel8
         EmitU8(0x7F);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 8F: Jg rel32
         EmitU8(0x0F);
         EmitU8(0x8F);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
@@ -465,13 +465,13 @@ void AssemblerX64::EmitJge(int32_t offset)
     if (InRange8(offset)) {
         // 7D : Jg rel8
         EmitU8(0x7D);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 8F: Jg rel32
         EmitU8(0x0F);
         EmitU8(0x8D);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
@@ -481,13 +481,13 @@ void AssemblerX64::EmitJe(int32_t offset)
     if (InRange8(offset)) {
         // 74 : Je rel8
         EmitU8(0x74);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 84: Je rel32
         EmitU8(0x0F);
         EmitU8(0x84);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 
@@ -496,7 +496,7 @@ void AssemblerX64::EmitCall(int32_t offset)
     offset--;
     // E8: call rel32
     EmitU8(0xE8);
-    EmitI32(offset - sizeof(int32_t));
+    EmitI32(offset - SIZE_OF_INT32);
 }
 
 void AssemblerX64::EmitJnb(int32_t offset)
@@ -505,13 +505,13 @@ void AssemblerX64::EmitJnb(int32_t offset)
     if (InRange8(offset)) {
         // 73 : Jnb rel8
         EmitU8(0x73);
-        EmitI8(offset - sizeof(int8_t));
+        EmitI8(offset - SIZE_OF_INT8);
     } else {
         offset--;
         // 0F 83: Jnb rel32
         EmitU8(0x0F);
         EmitU8(0x83);
-        EmitI32(offset - sizeof(int32_t));
+        EmitI32(offset - SIZE_OF_INT32);
     }
 }
 

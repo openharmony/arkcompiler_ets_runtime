@@ -254,6 +254,9 @@ private:
     static constexpr size_t LOW_BITS_SIZE = 3;
     static constexpr size_t LOW_BITS_MASK = (1 << LOW_BITS_SIZE) - 1;
 
+    static constexpr int32_t SIZE_OF_INT8 = static_cast<int32_t>(sizeof(int8_t));
+    static constexpr int32_t SIZE_OF_INT32 = static_cast<int32_t>(sizeof(int32_t));
+
     static uint8_t GetModrm(int32_t mode, Register rm)
     {
         // [r/m]
