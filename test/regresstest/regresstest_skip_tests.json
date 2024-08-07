@@ -2,6 +2,7 @@
     {
         "reason": "Not support with",
         "files": [
+          "intl/regress-1074578.js",
           "mjsunit/regress-v8-13459.js",
           "mjsunit/compiler/regress-665680.js",
           "mjsunit/compiler/regress-669517.js",
