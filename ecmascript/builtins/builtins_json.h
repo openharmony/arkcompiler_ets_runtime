@@ -36,7 +36,7 @@ public:
 private:
     static JSTaggedValue ParseWithTransformType(const EcmaVM *vm, JSHandle<JSTaggedValue> &msg,
                                                 JSHandle<JSTaggedValue> &reviverVal, TransformType transformType,
-                                                ParseOptions mode);
+                                                ParseOptions options);
 };
 
 class BuiltinsSendableJson : public base::BuiltinsBase {

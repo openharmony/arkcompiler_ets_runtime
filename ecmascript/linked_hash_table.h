@@ -346,7 +346,7 @@ public:
     {
         return static_cast<LinkedHashMap *>(obj);
     }
-    static JSHandle<LinkedHashMap> Create(const JSThread *thread, int numberOfElements = MIN_CAPACITY,
+    static JSHandle<LinkedHashMap> PUBLIC_API Create(const JSThread *thread, int numberOfElements = MIN_CAPACITY,
         MemSpaceKind spaceKind = MemSpaceKind::LOCAL);
 
     static JSHandle<LinkedHashMap> Delete(const JSThread *thread, const JSHandle<LinkedHashMap> &obj,

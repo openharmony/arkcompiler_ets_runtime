@@ -28,11 +28,13 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_map.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
+#include "ecmascript/shared_objects/js_shared_map.h"
 
 namespace panda::ecmascript::base {
 constexpr unsigned int UNICODE_DIGIT_LENGTH = 4;
@@ -52,6 +54,7 @@ enum class Tokens : uint8_t {
         LITERAL_FALSE,
         LITERAL_NULL,
         TOKEN_ILLEGAL,
+        MAP,
     };
 
 struct JsonContinuation {
@@ -59,6 +62,7 @@ struct JsonContinuation {
         RETURN = 0,
         ARRAY,
         OBJECT,
+        MAP,
     };
     JsonContinuation(ContinuationType type, size_t index) : type_(type), index_(index) {}
 
@@ -69,13 +73,16 @@ struct JsonContinuation {
 template<typename T>
 class JsonParser {
 protected:
+    using BigIntMode =  base::JsonHelper::BigIntMode;
+    using ParseReturnType = base::JsonHelper::ParseReturnType;
     using ParseOptions =  base::JsonHelper::ParseOptions;
     using TransformType = base::JsonHelper::TransformType;
     using Text = const T *;
     using ContType = JsonContinuation::ContinuationType;
     // Instantiation of the class is prohibited
     JsonParser() = default;
-    JsonParser(JSThread *thread, TransformType transformType, ParseOptions options = ParseOptions::DEFAULT)
+    JsonParser(JSThread *thread, TransformType transformType,
+               ParseOptions options = ParseOptions())
         : thread_(thread), transformType_(transformType), parseOptions_(options)
     {
     }
@@ -85,9 +92,9 @@ protected:
 
     JSHandle<JSTaggedValue> Launch(Text begin, Text end);
 
-    inline bool IsInObjOrArray(ContType type)
+    inline bool IsInObjOrArrayOrMap(ContType type)
     {
-        return type == ContType::ARRAY || type == ContType::OBJECT;
+        return type == ContType::ARRAY || type == ContType::OBJECT || type == ContType::MAP;
     }
 
     inline bool EmptyArrayCheck()
@@ -109,6 +116,13 @@ protected:
         return jsonPrototype;
     }
 
+    JSHandle<JSTaggedValue> GetSMapPrototype()
+    {
+        auto globalEnv = thread_->GetEcmaVM()->GetGlobalEnv();
+        JSHandle<JSTaggedValue> proto = globalEnv->GetSharedMapPrototype();
+        return proto;
+    }
+
     JSTaggedValue ParseJSONText();
 
     JSHandle<JSTaggedValue> CreateJsonArray(JsonContinuation continuation,
@@ -122,7 +136,17 @@ protected:
 
     JSHandle<JSTaggedValue> CreateSJsonObject(JsonContinuation continuation,
                                               std::vector<JSHandle<JSTaggedValue>> &propertyList);
+    
+    JSHandle<JSSharedMap> CreateSharedMap();
 
+    JSHandle<JSMap> CreateMap();
+
+    JSHandle<JSTaggedValue> CreateJsonMap(JsonContinuation continuation,
+                                          std::vector<JSHandle<JSTaggedValue>> &propertyList);
+
+    JSHandle<JSTaggedValue> CreateSJsonMap(JsonContinuation continuation,
+                                           std::vector<JSHandle<JSTaggedValue>> &propertyList);
+    
     JSTaggedValue SetPropertyByValue(const JSHandle<JSTaggedValue> &receiver, const JSHandle<JSTaggedValue> &key,
                                      const JSHandle<JSTaggedValue> &value);
 
@@ -196,7 +220,7 @@ protected:
     ObjectFactory *factory_ {nullptr};
     GlobalEnv *env_ {nullptr};
     TransformType transformType_ {TransformType::NORMAL};
-    ParseOptions parseOptions_ {ParseOptions::DEFAULT};
+    ParseOptions parseOptions_;
     JSHandle<JSHClass> initialJSArrayClass_;
     JSHandle<JSHClass> initialJSObjectClass_;
 };
@@ -204,7 +228,8 @@ protected:
 class PUBLIC_API Utf8JsonParser final : public JsonParser<uint8_t> {
 public:
     Utf8JsonParser() = default;
-    Utf8JsonParser(JSThread *thread, TransformType transformType, ParseOptions options = ParseOptions::DEFAULT)
+    Utf8JsonParser(JSThread *thread, TransformType transformType,
+                   ParseOptions options = ParseOptions())
         : JsonParser(thread, transformType, options) {}
     ~Utf8JsonParser() = default;
     NO_COPY_SEMANTIC(Utf8JsonParser);
@@ -217,7 +242,7 @@ private:
 
     static void UpdatePointersListener(void *utf8Parser);
 
-    JSHandle<JSTaggedValue> ParseString(bool inObjorArr = false) override;
+    JSHandle<JSTaggedValue> ParseString(bool inObjOrArrOrMap  = false) override;
 
     bool ReadJsonStringRange(bool &isFastString);
 
@@ -230,7 +255,8 @@ private:
 class Utf16JsonParser final : public JsonParser<uint16_t> {
 public:
     Utf16JsonParser() = default;
-    Utf16JsonParser(JSThread *thread, TransformType transformType, ParseOptions options = ParseOptions::DEFAULT)
+    Utf16JsonParser(JSThread *thread, TransformType transformType,
+                    ParseOptions options = ParseOptions())
         : JsonParser(thread, transformType, options) {}
     ~Utf16JsonParser() = default;
     NO_COPY_SEMANTIC(Utf16JsonParser);
@@ -240,7 +266,7 @@ public:
 
 private:
     void ParticalParseString(std::string& str, Text current, Text nextCurrent) override;
-    JSHandle<JSTaggedValue> ParseString(bool inObjorArr = false) override;
+    JSHandle<JSTaggedValue> ParseString(bool inObjOrArrOrMap = false) override;
 
     bool ReadJsonStringRange(bool &isFastString, bool &isAscii);
 

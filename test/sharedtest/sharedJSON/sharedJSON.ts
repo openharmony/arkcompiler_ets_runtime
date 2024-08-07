@@ -29,6 +29,11 @@ const enum BigIntMode {
     ALWAYS_PARSE_AS_BIGINT = 2,
 };
 
+const enum ParseReturnType {
+    OBJECT = 0,
+    MAP = 1,
+};
+
 let input = '{"big":1122334455667788999,"small":123,"deci":1234567890.0123456,"shortExp":1.79e+308,"longExp":1.7976931348623157e+308}';
 let input2 = '{"zerodeci1":0.0000123,"zerodeci2":0.4799123,"zerodeci3":0.7777334477383838389929292922,"zerodeci4":0.0000000000000123}';
 
@@ -248,6 +253,56 @@ function testJSONZeroDeci() {
     print(obj4.zerodeci4);
 }
 
+function testASONMap() {
+    let jsonText1 = '{"text":"ASON support MAP Test Start","largeNumber":112233445566778899,"people":{"name":"Mary","sex":"1","height":"165"}}';
+    let options1 = {
+        bigIntMode: BigIntMode.PARSE_AS_BIGINT,
+        parseReturnType: ParseReturnType.MAP, 
+    }
+    let map = JSON.parseSendable(jsonText1, undefined, options1) as Map<string, object>;
+
+    print(map.get("text"));
+    print(map.get("largeNumber"));
+    print((typeof map.get("largeNumber") === "bigint"));
+    print(map.get("people"));
+
+    let options2 = {
+        bigIntMode: BigIntMode.DEFAULT,
+        parseReturnType: ParseReturnType.MAP, 
+    }
+
+    let jsonText2 = '{';
+    try {
+        let map2 = JSON.parseSendable(jsonText2, undefined, options2) as Map<string, object>;
+    } catch (error) {
+        print(error);
+    }
+
+    let jsonText3 = '{"city"}';
+    try {
+        let map3 = JSON.parseSendable(jsonText3, undefined, options2) as Map<string, object>;
+    } catch (error) {
+        print(error);
+    }
+
+    let jsonText4 = '{}';
+    let map4 = JSON.parseSendable(jsonText4, undefined, options2) as Map<string, object>;
+    print(map4);
+
+    let jsonText5 = '{"x":1, "x":2, "x":3, "x":"你好", "a":4, "x":"你好", "a":2}';
+    let map5 = JSON.parseSendable(jsonText5, undefined, options2) as Map<string, object>;
+    print("sendableMap5 size: " + map5.size);
+    print("sendableMap5 x: " + map5.get("x"));
+    print("sendableMap5 a: " + map5.get("a"));
+
+    let jsonText6 = '{"arr": [1,2,3], "boolA":true, "boolB":false, "nullText":null}';
+    let map6 = JSON.parseSendable(jsonText6, undefined, options2) as Map<string, object>;
+    print("sendableMap6 arr: " + map6.get("arr"));
+    print("sendableMap6 boolA: " + map6.get("boolA"));
+    print("sendableMap6 boolB: " + map6.get("boolB"));
+    print("sendableMap6 nullText: " + map6.get("nullText"));
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
@@ -255,3 +310,4 @@ testJSONBigInt();
 testJSONNormal();
 testJSONreviver();
 testJSONZeroDeci();
+testASONMap();

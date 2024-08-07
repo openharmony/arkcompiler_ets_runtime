@@ -184,6 +184,7 @@
       panda::ecmascript::GetPathSeparator*;
       panda::ecmascript::Heap::AddGCListener*;
       panda::ecmascript::Heap::RemoveGCListener*;
+      panda::ecmascript::LinkedHashMap::Create*;
       panda::ecmascript::JSAPIArrayList::Set*;
       panda::ecmascript::JSAPIDeque::Set*;
       panda::ecmascript::JSAPILinkedList::Set*;
@@ -196,6 +197,7 @@
       panda::ecmascript::JSArray::ArrayCreate*;
       panda::ecmascript::JSArray::CheckAndCopyArray*;
       panda::ecmascript::JSFunction::GetOrCreateInitialJSHClass*;
+      panda::ecmascript::JSMap::Set*;
       panda::ecmascript::JSObject::AddElementInternal*;
       panda::ecmascript::JSObject::CallSetter*;
       panda::ecmascript::JSObject::CreateObjectFromProperties*;
@@ -210,6 +212,7 @@
       panda::ecmascript::JSPandaFile::GetRecordNameWithBundlePack*;
       panda::ecmascript::JSPandaFile::IsFirstMergedAbc*;
       panda::ecmascript::JSProxy::IsArray*;
+      panda::ecmascript::JSSharedMap::Set*;
       panda::ecmascript::JSTaggedValue::IsTaggedArray*;
       panda::ecmascript::JSTaggedValue::IsJSProxy*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
@@ -269,6 +272,7 @@
       panda::ecmascript::ObjectFactory::NewJSArray*;
       panda::ecmascript::ObjectFactory::NewJSSArray*;
       panda::ecmascript::ObjectFactory::NewJSObject*;
+      panda::ecmascript::ObjectFactory::NewJSObjectByConstructor*;
       panda::ecmascript::ObjectFactory::NewJsonFixedArray*;
       panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;
       panda::ecmascript::ObjectFactory::NewTaggedArray*;

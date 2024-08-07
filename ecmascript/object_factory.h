@@ -556,8 +556,8 @@ public:
                                bool needSetAotFlag, bool *canFastCall = nullptr);
 
     // used for creating jsobject by constructor
-    JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
-                                                const JSHandle<JSTaggedValue> &newTarget);
+    JSHandle<JSObject> PUBLIC_API NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
+                                                           const JSHandle<JSTaggedValue> &newTarget);
     JSHandle<JSObject> NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
         const JSHandle<JSFunction> &constructor, uint32_t inlinedProps);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
