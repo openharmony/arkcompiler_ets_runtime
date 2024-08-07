@@ -2053,7 +2053,7 @@ void Heap::ChangeGCParams(bool inBackground)
         if (sHeap_->GetHeapObjectSize() - sHeap_->GetHeapAliveSizeAfterGC() > BACKGROUND_GROW_LIMIT &&
             sHeap_->GetCommittedSize() >= MIN_BACKGROUNG_GC_LIMIT &&
             doubleOne * sHeap_->GetHeapObjectSize() / sHeap_->GetCommittedSize() <= MIN_OBJECT_SURVIVAL_RATE) {
-            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::SWITCH_BACKGROUND>(thread_);
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::SWITCH_BACKGROUND>(thread_);
         }
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
             SetMemGrowingType(MemGrowingType::CONSERVATIVE);
