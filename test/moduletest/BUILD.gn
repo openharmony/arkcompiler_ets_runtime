@@ -188,6 +188,7 @@ group("ark_js_moduletest") {
     "sharedmap",
     "sharedJSON",
     "sharedic",
+    "sendable",
   ]
 
   deps = []
@@ -380,6 +381,7 @@ group("ark_asm_test") {
     "sharedmap",
     "sharedJSON",
     "sharedic",
+    "sendable",
   ]
 
   deps = []
@@ -553,6 +555,7 @@ group("ark_asm_single_step_test") {
     "sharedset",
     "sharedmap",
     "sharedJSON",
+    "sendable",
   ]
 
   deps = []
