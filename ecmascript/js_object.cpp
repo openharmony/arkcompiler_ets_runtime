@@ -2904,7 +2904,12 @@ void *ECMAObject::GetNativePointerField(int32_t index) const
     if (value.IsTaggedArray()) {
         auto array = TaggedArray::Cast(value);
         if (static_cast<int32_t>(array->GetExtraLength()) > index) {
-            auto pointer = JSNativePointer::Cast(array->Get(index).GetTaggedObject());
+            auto jsValue = array->Get(index);
+            if (UNLIKELY(!jsValue.IsJSNativePointer())) {
+                LOG_FULL(ERROR) << "jsValue is not js native pointer";
+                return nullptr;
+            }
+            auto pointer = JSNativePointer::Cast(jsValue.GetTaggedObject());
             return pointer->GetExternalPointer();
         }
     }
