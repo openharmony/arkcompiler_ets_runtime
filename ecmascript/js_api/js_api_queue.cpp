@@ -244,13 +244,13 @@ bool JSAPIQueue::SetProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,
                              const JSHandle<JSTaggedValue> &key,
                              const JSHandle<JSTaggedValue> &value)
 {
-    int length = static_cast<int>(obj->GetLength().GetArrayLength());
-    int index = key->GetInt();
-    if (index < 0 || index >= length) {
+    uint32_t length = obj->GetSize();
+    double index = key->GetNumber();
+    if (index < 0 || static_cast<uint32_t>(index) >= length) {
         return false;
     }
 
-    obj->Set(thread, index, value.GetTaggedValue());
+    obj->Set(thread, static_cast<uint32_t>(index), value.GetTaggedValue());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     return true;
 }
