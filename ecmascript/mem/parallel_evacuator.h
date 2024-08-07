@@ -122,17 +122,22 @@ private:
 
     class UpdateNewRegionWorkload : public Workload {
     public:
-        UpdateNewRegionWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
+        UpdateNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
+            : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
         ~UpdateNewRegionWorkload() override = default;
         bool Process(bool isMain) override;
+    private:
+        bool isYoungGC_;
     };
 
     class UpdateAndSweepNewRegionWorkload : public Workload {
     public:
-        UpdateAndSweepNewRegionWorkload(ParallelEvacuator *evacuator, Region *region)
-            : Workload(evacuator, region) {}
+        UpdateAndSweepNewRegionWorkload(ParallelEvacuator *evacuator, Region *region, bool isYoungGC)
+            : Workload(evacuator, region), isYoungGC_(isYoungGC) {}
         ~UpdateAndSweepNewRegionWorkload() override = default;
         bool Process(bool isMain) override;
+    private:
+        bool isYoungGC_;
     };
 
     std::unordered_set<JSTaggedType> &ArrayTrackInfoSet(uint32_t threadIndex)
@@ -166,11 +171,18 @@ private:
     void UpdateRoot();
     void UpdateWeakReference();
     void UpdateRecordWeakReference();
+    template<TriggerGCType gcType>
+    void UpdateWeakReferenceOpt();
+    template<TriggerGCType gcType>
+    void UpdateRecordWeakReferenceOpt();
     template<bool IsEdenGC>
     void UpdateRSet(Region *region);
     void UpdateNewToEdenRSetReference(Region *region);
+    template<TriggerGCType gcType>
     void UpdateNewRegionReference(Region *region);
+    template<TriggerGCType gcType>
     void UpdateAndSweepNewRegionReference(Region *region);
+    template<TriggerGCType gcType>
     void UpdateNewObjectField(TaggedObject *object, JSHClass *cls);
 
     template<typename Callback>
@@ -180,7 +192,11 @@ private:
     inline bool UpdateOldToNewObjectSlot(ObjectSlot &slot);
     inline bool UpdateNewToEdenObjectSlot(ObjectSlot &slot);
     inline void UpdateObjectSlot(ObjectSlot &slot);
+    template<TriggerGCType gcType>
+    inline void UpdateObjectSlotOpt(ObjectSlot &slot);
     inline void UpdateWeakObjectSlot(TaggedObject *object, ObjectSlot &slot);
+    template<TriggerGCType gcType>
+    inline bool UpdateWeakObjectSlotOpt(JSTaggedValue value, ObjectSlot &slot);
 
     inline std::unique_ptr<Workload> GetWorkloadSafe();
     inline void AddWorkload(std::unique_ptr<Workload> region);
