@@ -1235,8 +1235,7 @@ void PGOProfiler::DumpICByValueWithHandler(ApEntityId abcId, const CString &reco
             }
             AddObjectInfo(abcId, recordName, methodId, bcOffset, hclass, hclass, transitionHClass);
         }
-    } else {
-        ASSERT(secondValue.IsPrototypeHandler());
+    } else if (secondValue.IsPrototypeHandler()) {
         PrototypeHandler *prototypeHandler = PrototypeHandler::Cast(secondValue.GetTaggedObject());
         auto cellValue = prototypeHandler->GetProtoCell();
         if (!cellValue.IsProtoChangeMarker()) {
