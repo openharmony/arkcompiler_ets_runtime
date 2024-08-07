@@ -1244,6 +1244,7 @@ public:
 
     inline uint32_t GetArgsNumber() const
     {
+        ECMA_ASSERT(numArgs_ >= FIRST_ARGS_INDEX);
         return numArgs_ - FIRST_ARGS_INDEX;
     }
 
