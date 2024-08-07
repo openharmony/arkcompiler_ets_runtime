@@ -31,6 +31,12 @@ public:
     static constexpr int METHOD_TYPE_INDEX = 1;
 
     PGOMethodTypeSet() = default;
+    void Clear()
+    {
+        scalarOpTypeInfos_.clear();
+        rwScalarOpTypeInfos_.clear();
+        objDefOpTypeInfos_.clear();
+    }
 
     void AddType(uint32_t offset, PGOSampleType type)
     {
