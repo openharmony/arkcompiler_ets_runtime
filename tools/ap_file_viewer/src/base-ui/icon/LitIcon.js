@@ -80,7 +80,7 @@ export class LitIcon extends HTMLElement {
         switch (name) {
             case 'name':
                 if (this.use) {
-                    this.use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', `./base-ui/icon.svg#icon-${value}`);
+                    this.use.href.baseVal = `./base-ui/icon.svg#icon-${value}`;
                 }
                 break;
             case 'path':
