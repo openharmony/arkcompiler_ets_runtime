@@ -168,6 +168,12 @@ OperationResult JSAPIStack::GetProperty(JSThread *thread, const JSHandle<JSAPISt
                                         const JSHandle<JSTaggedValue> &key)
 {
     int length = obj->GetTop() + 1;
+    if (length == 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, OperationResult(thread,
+                                                                        JSTaggedValue::Exception(),
+                                                                        PropertyMetaData(false)));
+    }
     int index = key->GetInt();
     if (index < 0 || index >= length) {
         std::ostringstream oss;

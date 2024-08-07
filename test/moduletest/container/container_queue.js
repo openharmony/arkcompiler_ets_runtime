@@ -24,6 +24,9 @@ import {testdProxyArray1}  from "./utility";
 var Queue = undefined;
 if (globalThis["ArkPrivate"] != undefined) {
     Queue = ArkPrivate.Load(ArkPrivate.Queue);
+    let v4 = new Queue();
+    v4[3829299154] = Queue;
+    print(v4.length);
     let queue = new Queue();
     let proxy = new Proxy(queue, {});
     let res = true

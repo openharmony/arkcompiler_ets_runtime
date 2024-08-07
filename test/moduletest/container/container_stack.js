@@ -128,5 +128,11 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test Stack fail: " + flag);
     }
+    const v5 = new Stack()
+    try {
+        v5[2147483649]
+    } catch (error) {
+        print(error)
+    }
 }
 export let stackRes = "Test Stack done";
