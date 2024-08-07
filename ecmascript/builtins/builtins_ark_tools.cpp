@@ -35,6 +35,20 @@
 #include "builtins_typedarray.h"
 #include "ecmascript/jit/jit.h"
 
+#if defined(PANDA_TARGET_ARM64)
+    /* Note: If not open ArkTools option(set by `persist.ark.mem_config_property openArkTools`),  */
+    /*       ArkTools return Empty Implementation                                                 */
+    // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+    #define RETURN_IF_DISALLOW_ARKTOOLS(thread)                                 \
+        do {                                                                    \
+            if (!((thread)->GetEcmaVM()->GetJSOptions().IsOpenArkTools())) {    \
+                return JSTaggedValue::Undefined();                              \
+            }                                                                   \
+        } while (0)
+#else
+    #define RETURN_IF_DISALLOW_ARKTOOLS(thread) static_cast<void>(0) // NOLINT(cppcoreguidelines-macro-usage)
+#endif
+
 namespace panda::ecmascript::builtins {
 using StringHelper = base::StringHelper;
 
@@ -45,6 +59,7 @@ JSTaggedValue BuiltinsArkTools::ObjectDump(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
@@ -69,6 +84,7 @@ JSTaggedValue BuiltinsArkTools::CompareHClass(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj1 = GetCallArg(info, 0);
@@ -89,6 +105,7 @@ JSTaggedValue BuiltinsArkTools::DumpHClass(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
@@ -104,6 +121,7 @@ JSTaggedValue BuiltinsArkTools::IsTSHClass(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     ASSERT(info->GetArgsNumber() == 1);
@@ -117,6 +135,7 @@ JSTaggedValue BuiltinsArkTools::GetHClass(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     ASSERT(info->GetArgsNumber() == 1);
@@ -129,6 +148,7 @@ JSTaggedValue BuiltinsArkTools::IsSlicedString(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     ASSERT(info->GetArgsNumber() == 1);
@@ -141,6 +161,7 @@ JSTaggedValue BuiltinsArkTools::IsNotHoleProperty(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] DisallowGarbageCollection noGc;
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     ASSERT(info->GetArgsNumber() == 2);  // 2 : object and key
@@ -160,6 +181,7 @@ JSTaggedValue BuiltinsArkTools::HiddenStackSourceFile(EcmaRuntimeCallInfo *info)
     [[maybe_unused]] DisallowGarbageCollection noGc;
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     thread->SetEnableStackSourceFile(false);
     return JSTaggedValue::True();
 }
@@ -168,6 +190,7 @@ JSTaggedValue BuiltinsArkTools::ExcutePendingJob(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     thread->GetCurrentEcmaContext()->ExecutePromisePendingJob();
@@ -178,6 +201,7 @@ JSTaggedValue BuiltinsArkTools::GetLexicalEnv(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     ASSERT(info->GetArgsNumber() == 1);
@@ -211,6 +235,7 @@ JSTaggedValue BuiltinsArkTools::RemoveAOTFlag(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     ASSERT(info->GetArgsNumber() == 1);
@@ -228,6 +253,7 @@ JSTaggedValue BuiltinsArkTools::CheckCircularImport(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<EcmaString> str = JSTaggedValue::ToString(thread, GetCallArg(info, 0));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -247,6 +273,7 @@ JSTaggedValue BuiltinsArkTools::HashCode(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> key = GetCallArg(info, 0);
     return JSTaggedValue(LinkedHash::Hash(thread, key.GetTaggedValue()));
@@ -257,6 +284,7 @@ JSTaggedValue BuiltinsArkTools::StartCpuProfiler(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     auto vm = thread->GetEcmaVM();
@@ -290,6 +318,7 @@ JSTaggedValue BuiltinsArkTools::StartCpuProfiler(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::StopCpuProfiler(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     auto vm = thread->GetEcmaVM();
     DFXJSNApi::StopCpuProfilerForFile(vm);
@@ -358,6 +387,7 @@ JSTaggedValue BuiltinsArkTools::IsPrototype(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
@@ -370,6 +400,7 @@ JSTaggedValue BuiltinsArkTools::IsAOTCompiled(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
@@ -382,6 +413,7 @@ JSTaggedValue BuiltinsArkTools::IsSameProfileTypeInfo(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func0 = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
     JSHandle<JSFunction> func1 = JSHandle<JSFunction>::Cast(GetCallArg(info, 1));
@@ -393,6 +425,7 @@ JSTaggedValue BuiltinsArkTools::IsProfileTypeInfoValid(EcmaRuntimeCallInfo *info
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
     return JSTaggedValue(func->GetProfileTypeInfo().IsTaggedArray());
@@ -402,6 +435,7 @@ JSTaggedValue BuiltinsArkTools::IsOnHeap(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
@@ -413,6 +447,7 @@ JSTaggedValue BuiltinsArkTools::IsAOTDeoptimized(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
@@ -432,6 +467,7 @@ JSTaggedValue BuiltinsArkTools::CheckDeoptStatus(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
@@ -464,6 +500,7 @@ JSTaggedValue BuiltinsArkTools::PrintTypedOpProfiler(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> opStrVal = GetCallArg(info, 0);
@@ -479,6 +516,7 @@ JSTaggedValue BuiltinsArkTools::ClearTypedOpProfiler(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     TypedOpProfiler *profiler = thread->GetCurrentEcmaContext()->GetTypdOpProfiler();
@@ -492,6 +530,7 @@ JSTaggedValue BuiltinsArkTools::GetElementsKind(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
@@ -504,6 +543,7 @@ JSTaggedValue BuiltinsArkTools::IsRegExpReplaceDetectorValid(EcmaRuntimeCallInfo
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     return JSTaggedValue(PropertyDetector::IsRegExpReplaceDetectorValid(env));
 }
@@ -512,6 +552,7 @@ JSTaggedValue BuiltinsArkTools::IsRegExpFlagsDetectorValid(EcmaRuntimeCallInfo *
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     return JSTaggedValue(PropertyDetector::IsRegExpFlagsDetectorValid(env));
 }
@@ -520,6 +561,7 @@ JSTaggedValue BuiltinsArkTools::IsNumberStringNotRegexpLikeDetectorValid(EcmaRun
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     return JSTaggedValue(PropertyDetector::IsNumberStringNotRegexpLikeDetectorValid(env));
 }
@@ -528,6 +570,7 @@ JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInf
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> kind = GetCallArg(info, 0);
@@ -561,6 +604,8 @@ JSTaggedValue BuiltinsArkTools::IsSymbolIteratorDetectorValid(EcmaRuntimeCallInf
 
 JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     ClockScope scope;
     return JSTaggedValue(scope.GetCurTime());
 }
@@ -569,6 +614,7 @@ JSTaggedValue BuiltinsArkTools::TimeInUs([[maybe_unused]] EcmaRuntimeCallInfo *i
 JSTaggedValue BuiltinsArkTools::StartScopeLockStats(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     auto vm = thread->GetEcmaVM();
     vm->StartCollectingScopeLockStats();
     LOG_FULL(INFO) << "Start Collecting ArkCompiler Scope-Lock Stats";
@@ -578,6 +624,7 @@ JSTaggedValue BuiltinsArkTools::StartScopeLockStats(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::StopScopeLockStats(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     auto vm = thread->GetEcmaVM();
     LOG_FULL(INFO) << "Stop Collecting ArkCompiler Scope-Lock Stats: "
                    << " ThreadStateTransition count: " << vm->GetUpdateThreadStateTransCount()
@@ -596,6 +643,8 @@ JSTaggedValue BuiltinsArkTools::StopScopeLockStats(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter PrepareFunctionForOptimization()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -603,6 +652,8 @@ JSTaggedValue BuiltinsArkTools::PrepareFunctionForOptimization([[maybe_unused]] 
 JSTaggedValue BuiltinsArkTools::OptimizeFunctionOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter OptimizeFunctionOnNextCall()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -610,6 +661,8 @@ JSTaggedValue BuiltinsArkTools::OptimizeFunctionOnNextCall([[maybe_unused]] Ecma
 JSTaggedValue BuiltinsArkTools::OptimizeMaglevOnNextCall([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter OptimizeMaglevOnNextCall()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -617,6 +670,8 @@ JSTaggedValue BuiltinsArkTools::OptimizeMaglevOnNextCall([[maybe_unused]] EcmaRu
 JSTaggedValue BuiltinsArkTools::DeoptimizeFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter DeoptimizeFunction()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -624,6 +679,8 @@ JSTaggedValue BuiltinsArkTools::DeoptimizeFunction([[maybe_unused]] EcmaRuntimeC
 JSTaggedValue BuiltinsArkTools::OptimizeOsr([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter OptimizeOsr()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -631,6 +688,8 @@ JSTaggedValue BuiltinsArkTools::OptimizeOsr([[maybe_unused]] EcmaRuntimeCallInfo
 JSTaggedValue BuiltinsArkTools::NeverOptimizeFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter NeverOptimizeFunction()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -638,6 +697,8 @@ JSTaggedValue BuiltinsArkTools::NeverOptimizeFunction([[maybe_unused]] EcmaRunti
 JSTaggedValue BuiltinsArkTools::HeapObjectVerify([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter HeapObjectVerify()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -645,6 +706,8 @@ JSTaggedValue BuiltinsArkTools::HeapObjectVerify([[maybe_unused]] EcmaRuntimeCal
 JSTaggedValue BuiltinsArkTools::DisableOptimizationFinalization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter DisableOptimizationFinalization()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -652,6 +715,8 @@ JSTaggedValue BuiltinsArkTools::DisableOptimizationFinalization([[maybe_unused]]
 JSTaggedValue BuiltinsArkTools::DeoptimizeNow([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter DeoptimizeNow()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -659,6 +724,8 @@ JSTaggedValue BuiltinsArkTools::DeoptimizeNow([[maybe_unused]] EcmaRuntimeCallIn
 JSTaggedValue BuiltinsArkTools::WaitForBackgroundOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter WaitForBackgroundOptimization()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -666,6 +733,8 @@ JSTaggedValue BuiltinsArkTools::WaitForBackgroundOptimization([[maybe_unused]] E
 JSTaggedValue BuiltinsArkTools::Gc([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter Gc()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -673,6 +742,8 @@ JSTaggedValue BuiltinsArkTools::Gc([[maybe_unused]] EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::PGOAssertType([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter PGOAssertType";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -680,6 +751,7 @@ JSTaggedValue BuiltinsArkTools::ToLength([[maybe_unused]] EcmaRuntimeCallInfo *i
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> key = GetCallArg(info, 0);
     return JSTaggedValue::ToLength(thread, key);
@@ -690,6 +762,7 @@ JSTaggedValue BuiltinsArkTools::HasHoleyElements([[maybe_unused]] EcmaRuntimeCal
     LOG_ECMA(DEBUG) << "Enter HasHoleyElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
     if (!array->IsJSArray()) {
@@ -710,6 +783,7 @@ JSTaggedValue BuiltinsArkTools::HasDictionaryElements([[maybe_unused]] EcmaRunti
     LOG_ECMA(DEBUG) << "Enter HasDictionaryElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> objValue = GetCallArg(info, 0);
     JSHandle<JSObject> obj = JSHandle<JSObject>::Cast(objValue);
@@ -721,6 +795,7 @@ JSTaggedValue BuiltinsArkTools::HasSmiElements([[maybe_unused]] EcmaRuntimeCallI
     LOG_ECMA(DEBUG) << "Enter HasSmiElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
     if (!array->IsJSArray()) {
@@ -741,6 +816,7 @@ JSTaggedValue BuiltinsArkTools::HasDoubleElements([[maybe_unused]] EcmaRuntimeCa
     LOG_ECMA(DEBUG) << "Enter HasDoubleElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
     if (!array->IsJSArray()) {
@@ -761,6 +837,7 @@ JSTaggedValue BuiltinsArkTools::HasObjectElements([[maybe_unused]] EcmaRuntimeCa
     LOG_ECMA(DEBUG) << "Enter HasObjectElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
     if (!array->IsJSArray()) {
@@ -780,6 +857,7 @@ JSTaggedValue BuiltinsArkTools::ArrayBufferDetach([[maybe_unused]] EcmaRuntimeCa
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> obj1 = GetCallArg(info, 0);
     JSHandle<JSArrayBuffer> arrBuf = JSHandle<JSArrayBuffer>::Cast(obj1);
@@ -790,6 +868,7 @@ JSTaggedValue BuiltinsArkTools::ArrayBufferDetach([[maybe_unused]] EcmaRuntimeCa
 JSTaggedValue BuiltinsArkTools::HaveSameMap([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> obj1 = GetCallArg(info, 0);
     JSHandle<JSTaggedValue> obj2 = GetCallArg(info, 1);
@@ -824,6 +903,7 @@ JSTaggedValue BuiltinsArkTools::CreatePrivateSymbol([[maybe_unused]] EcmaRuntime
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> symbolName = GetCallArg(info, 0);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -836,6 +916,7 @@ JSTaggedValue BuiltinsArkTools::IsArray([[maybe_unused]] EcmaRuntimeCallInfo *in
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> array = GetCallArg(info, 0);
     return JSTaggedValue(array->IsJSArray());
@@ -845,6 +926,7 @@ JSTaggedValue BuiltinsArkTools::CreateDataProperty([[maybe_unused]] EcmaRuntimeC
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     uint32_t secondArg = 2;
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> key = GetCallArg(info, 1);
@@ -859,6 +941,7 @@ JSTaggedValue BuiltinsArkTools::FunctionGetInferredName([[maybe_unused]] EcmaRun
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> obj = GetCallArg(info, 0);
     if (obj->IsJSFunction()) {
@@ -873,6 +956,7 @@ JSTaggedValue BuiltinsArkTools::StringLessThan([[maybe_unused]] EcmaRuntimeCallI
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSTaggedValue> x = GetCallArg(info, 0);
     JSHandle<JSTaggedValue> y = GetCallArg(info, 1);
@@ -884,6 +968,8 @@ JSTaggedValue BuiltinsArkTools::StringMaxLength([[maybe_unused]] EcmaRuntimeCall
 {
     LOG_ECMA(DEBUG) << "Enter StringMaxLength()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue(static_cast<uint32_t>(EcmaString::MAX_STRING_LENGTH) - 1);
 }
 
@@ -891,6 +977,8 @@ JSTaggedValue BuiltinsArkTools::ArrayBufferMaxByteLength([[maybe_unused]] EcmaRu
 {
     LOG_ECMA(DEBUG) << "Enter ArrayBufferMaxByteLength()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue(INT_MAX);
 }
 
@@ -898,18 +986,24 @@ JSTaggedValue BuiltinsArkTools::TypedArrayMaxLength([[maybe_unused]] EcmaRuntime
 {
     LOG_ECMA(DEBUG) << "Enter TypedArrayMaxLength()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue(BuiltinsTypedArray::MAX_ARRAY_INDEX);
 }
 
 JSTaggedValue BuiltinsArkTools::MaxSmi([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter MaxSmi()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue(INT_MAX);
 }
 
 JSTaggedValue BuiltinsArkTools::Is64Bit([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter Is64Bit()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     bool is64Bit = sizeof(void*) == 8;
     return JSTaggedValue(is64Bit);
 }
@@ -918,6 +1012,8 @@ JSTaggedValue BuiltinsArkTools::Is64Bit([[maybe_unused]] EcmaRuntimeCallInfo *in
 JSTaggedValue BuiltinsArkTools::FinalizeOptimization([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter FinalizeOptimization()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -925,6 +1021,8 @@ JSTaggedValue BuiltinsArkTools::FinalizeOptimization([[maybe_unused]] EcmaRuntim
 JSTaggedValue BuiltinsArkTools::EnsureFeedbackVectorForFunction([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter EnsureFeedbackVectorForFunction()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -932,6 +1030,8 @@ JSTaggedValue BuiltinsArkTools::EnsureFeedbackVectorForFunction([[maybe_unused]]
 JSTaggedValue BuiltinsArkTools::CompileBaseline([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter CompileBaseline()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -939,6 +1039,8 @@ JSTaggedValue BuiltinsArkTools::CompileBaseline([[maybe_unused]] EcmaRuntimeCall
 JSTaggedValue BuiltinsArkTools::DebugGetLoadedScriptIds([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter DebugGetLoadedScriptIds()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -946,6 +1048,8 @@ JSTaggedValue BuiltinsArkTools::DebugGetLoadedScriptIds([[maybe_unused]] EcmaRun
 JSTaggedValue BuiltinsArkTools::ToFastProperties([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter ToFastProperties()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -953,6 +1057,8 @@ JSTaggedValue BuiltinsArkTools::AbortJS([[maybe_unused]] EcmaRuntimeCallInfo *in
 {
     LOG_ECMA(FATAL) << "AbortJS()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -961,6 +1067,8 @@ JSTaggedValue BuiltinsArkTools::InternalizeString([[maybe_unused]] EcmaRuntimeCa
 {
     LOG_ECMA(DEBUG) << "Enter InternalizeString()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -969,6 +1077,8 @@ JSTaggedValue BuiltinsArkTools::HandleDebuggerStatement([[maybe_unused]] EcmaRun
 {
     LOG_ECMA(DEBUG) << "Enter HandleDebuggerStatement()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -977,6 +1087,8 @@ JSTaggedValue BuiltinsArkTools::SetAllocationTimeout([[maybe_unused]] EcmaRuntim
 {
     LOG_ECMA(DEBUG) << "Enter SetAllocationTimeout()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -985,6 +1097,8 @@ JSTaggedValue BuiltinsArkTools::HasFastProperties([[maybe_unused]] EcmaRuntimeCa
 {
     LOG_ECMA(DEBUG) << "Enter HasFastProperties()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::True();
 }
 
@@ -993,6 +1107,8 @@ JSTaggedValue BuiltinsArkTools::HasOwnConstDataProperty([[maybe_unused]] EcmaRun
 {
     LOG_ECMA(DEBUG) << "Enter HasOwnConstDataProperty()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::True();
 }
 
@@ -1001,6 +1117,8 @@ JSTaggedValue BuiltinsArkTools::GetHoleNaNUpper([[maybe_unused]] EcmaRuntimeCall
 {
     LOG_ECMA(DEBUG) << "Enter GetHoleNaNUpper()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Null();
 }
 
@@ -1009,6 +1127,8 @@ JSTaggedValue BuiltinsArkTools::GetHoleNaNLower([[maybe_unused]] EcmaRuntimeCall
 {
     LOG_ECMA(DEBUG) << "Enter GetHoleNaNLower()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Null();
 }
 
@@ -1017,6 +1137,8 @@ JSTaggedValue BuiltinsArkTools::SystemBreak([[maybe_unused]] EcmaRuntimeCallInfo
 {
     LOG_ECMA(DEBUG) << "Enter SystemBreak()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1025,6 +1147,8 @@ JSTaggedValue BuiltinsArkTools::ScheduleBreak([[maybe_unused]] EcmaRuntimeCallIn
 {
     LOG_ECMA(DEBUG) << "Enter ScheduleBreak()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1033,6 +1157,8 @@ JSTaggedValue BuiltinsArkTools::EnqueueMicrotask([[maybe_unused]] EcmaRuntimeCal
 {
     LOG_ECMA(DEBUG) << "Enter EnqueueMicrotask()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1041,6 +1167,8 @@ JSTaggedValue BuiltinsArkTools::DebugPrint([[maybe_unused]] EcmaRuntimeCallInfo 
 {
     LOG_ECMA(DEBUG) << "Enter DebugPrint()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1049,6 +1177,8 @@ JSTaggedValue BuiltinsArkTools::GetOptimizationStatus([[maybe_unused]] EcmaRunti
 {
     LOG_ECMA(DEBUG) << "Enter GetOptimizationStatus()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1057,6 +1187,8 @@ JSTaggedValue BuiltinsArkTools::GetUndetectable([[maybe_unused]] EcmaRuntimeCall
 {
     LOG_ECMA(DEBUG) << "Enter GetUndetectable()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1065,6 +1197,8 @@ JSTaggedValue BuiltinsArkTools::SetKeyedProperty([[maybe_unused]] EcmaRuntimeCal
 {
     LOG_ECMA(DEBUG) << "Enter SetKeyedProperty()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1073,6 +1207,8 @@ JSTaggedValue BuiltinsArkTools::DisassembleFunction([[maybe_unused]] EcmaRuntime
 {
     LOG_ECMA(DEBUG) << "Enter DisassembleFunction()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1081,6 +1217,8 @@ JSTaggedValue BuiltinsArkTools::TryMigrateInstance([[maybe_unused]] EcmaRuntimeC
 {
     LOG_ECMA(DEBUG) << "Enter TryMigrateInstance()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1089,6 +1227,8 @@ JSTaggedValue BuiltinsArkTools::InLargeObjectSpace([[maybe_unused]] EcmaRuntimeC
 {
     LOG_ECMA(DEBUG) << "Enter InLargeObjectSpace()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::True();
 }
 
@@ -1097,6 +1237,8 @@ JSTaggedValue BuiltinsArkTools::PerformMicrotaskCheckpoint([[maybe_unused]] Ecma
 {
     LOG_ECMA(DEBUG) << "Enter PerformMicrotaskCheckpoint()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1105,6 +1247,8 @@ JSTaggedValue BuiltinsArkTools::IsJSReceiver([[maybe_unused]] EcmaRuntimeCallInf
 {
     LOG_ECMA(DEBUG) << "Enter IsJSReceiver()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::False();
 }
 
@@ -1113,6 +1257,8 @@ JSTaggedValue BuiltinsArkTools::IsDictPropertyConstTrackingEnabled([[maybe_unuse
 {
     LOG_ECMA(DEBUG) << "Enter IsDictPropertyConstTrackingEnabled()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::False();
 }
 
@@ -1121,6 +1267,8 @@ JSTaggedValue BuiltinsArkTools::AllocateHeapNumber([[maybe_unused]] EcmaRuntimeC
 {
     LOG_ECMA(DEBUG) << "Enter AllocateHeapNumber()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue(0);
 }
 
@@ -1129,6 +1277,8 @@ JSTaggedValue BuiltinsArkTools::ConstructConsString([[maybe_unused]] EcmaRuntime
 {
     LOG_ECMA(DEBUG) << "Enter ConstructConsString()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1137,6 +1287,8 @@ JSTaggedValue BuiltinsArkTools::CompleteInobjectSlackTracking([[maybe_unused]] E
 {
     LOG_ECMA(DEBUG) << "Enter CompleteInobjectSlackTracking()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1145,6 +1297,8 @@ JSTaggedValue BuiltinsArkTools::NormalizeElements([[maybe_unused]] EcmaRuntimeCa
 {
     LOG_ECMA(DEBUG) << "Enter NormalizeElements()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1153,6 +1307,8 @@ JSTaggedValue BuiltinsArkTools::Call([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter Call()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1161,6 +1317,8 @@ JSTaggedValue BuiltinsArkTools::DebugPushPromise([[maybe_unused]] EcmaRuntimeCal
 {
     LOG_ECMA(DEBUG) << "Enter DebugPushPromise()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1169,6 +1327,8 @@ JSTaggedValue BuiltinsArkTools::SetForceSlowPath([[maybe_unused]] EcmaRuntimeCal
 {
     LOG_ECMA(DEBUG) << "Enter SetForceSlowPath()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1177,6 +1337,8 @@ JSTaggedValue BuiltinsArkTools::NotifyContextDisposed([[maybe_unused]] EcmaRunti
 {
     LOG_ECMA(DEBUG) << "Enter NotifyContextDisposed()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1185,14 +1347,18 @@ JSTaggedValue BuiltinsArkTools::OptimizeObjectForAddingMultipleProperties([[mayb
 {
     LOG_ECMA(DEBUG) << "Enter OptimizeObjectForAddingMultipleProperties()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
 // empty function for regress-xxx test cases
 JSTaggedValue BuiltinsArkTools::IsBeingInterpreted([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(DEBUG) << "Enter OptimizeObjectForAddingMultipleProperties()";
+    LOG_ECMA(DEBUG) << "Enter IsBeingInterpreted()";
     ASSERT(info);
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
@@ -1200,12 +1366,15 @@ JSTaggedValue BuiltinsArkTools::IsBeingInterpreted([[maybe_unused]] EcmaRuntimeC
 JSTaggedValue BuiltinsArkTools::ClearFunctionFeedback([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
     LOG_ECMA(DEBUG) << "Enter ClearFunctionFeedback()";
+    [[maybe_unused]] JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     return JSTaggedValue::Undefined();
 }
 
 JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
@@ -1221,6 +1390,7 @@ JSTaggedValue BuiltinsArkTools::JitCompileSync(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
@@ -1236,6 +1406,7 @@ JSTaggedValue BuiltinsArkTools::JitCompileAsync(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::WaitJitCompileFinish(EcmaRuntimeCallInfo *info)
 {
     JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     JSHandle<JSTaggedValue> thisValue = GetCallArg(info, 0);
@@ -1279,6 +1450,7 @@ JSTaggedValue BuiltinsArkTools::WaitAllJitCompileFinish(EcmaRuntimeCallInfo *inf
 JSTaggedValue BuiltinsArkTools::StartRuntimeStat(EcmaRuntimeCallInfo *msg)
 {
     JSThread *thread = msg->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     BUILTINS_API_TRACE(thread, Global, StartRuntimeStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
@@ -1289,6 +1461,7 @@ JSTaggedValue BuiltinsArkTools::StartRuntimeStat(EcmaRuntimeCallInfo *msg)
 JSTaggedValue BuiltinsArkTools::StopRuntimeStat(EcmaRuntimeCallInfo *msg)
 {
     JSThread *thread = msg->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     BUILTINS_API_TRACE(thread, Global, StopRuntimeStat);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
