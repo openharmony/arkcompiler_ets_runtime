@@ -61,6 +61,7 @@ void SharedGC::RunPhases()
     }
     Finish();
     sHeap_->NotifyHeapAliveSizeAfterGC(sHeap_->GetHeapObjectSize());
+    sHeap_->ResetNativeSizeAfterLastGC();
 }
 
 void SharedGC::Initialize()

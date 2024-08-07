@@ -215,7 +215,8 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     growingFactor_ = config_.GetSharedHeapLimitGrowingFactor();
     growingStep_ = config_.GetSharedHeapLimitGrowingStep();
-
+    incNativeSizeTriggerSharedCM_= config_.GetStepNativeSizeInc();
+    incNativeSizeTriggerSharedGC_ = config_.GetMaxNativeSizeInc();
     dThread_ = dThread;
 }
 
@@ -723,6 +724,8 @@ void Heap::Initialize()
     evacuator_ = new ParallelEvacuator(this);
     incrementalMarker_ = new IncrementalMarker(this);
     gcListeners_.reserve(16U);
+    nativeSizeTriggerGCThreshold_ = config_.GetMaxNativeSizeInc();
+    incNativeSizeTriggerGC_ = config_.GetStepNativeSizeInc();
 }
 
 void Heap::ResetTlab()
@@ -1158,6 +1161,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             // Only when the gc type is not semiGC and after the old space sweeping has been finished,
             // the limits of old space and global space can be recomputed.
             RecomputeLimits();
+            ResetNativeSizeAfterLastGC();
             OPTIONAL_LOG(ecmaVm_, INFO) << " GC after: is full mark" << IsConcurrentFullMark()
                                         << " global object size " << GetHeapObjectSize()
                                         << " global committed size " << GetCommittedSize()
@@ -1921,9 +1925,12 @@ void Heap::TryTriggerConcurrentMarking()
     }
 }
 
-void Heap::TryTriggerFullMarkByNativeSize()
+void Heap::TryTriggerFullMarkOrGCByNativeSize()
 {
-    if (GlobalNativeSizeLargerThanLimit()) {
+    // In high sensitive scene and native size larger than limit, trigger old gc directly
+    if (InSensitiveStatus() && GlobalNativeSizeLargerToTriggerGC()) {
+        CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+    } else if (GlobalNativeSizeLargerThanLimit()) {
         if (concurrentMarker_->IsEnabled()) {
             SetFullMarkRequestedState(true);
             TryTriggerConcurrentMarking();
