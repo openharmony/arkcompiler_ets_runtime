@@ -99,6 +99,7 @@ void JitFort::RecordLiveJitCode(uintptr_t addr, size_t size)
         }
     }
     MemDesc *desc = memDescPool_->GetDescFromPool();
+    ASSERT(desc != NULL);
     desc->SetMem(addr);
     desc->SetSize(size);
     liveJitCodeBlks_.emplace_back(desc);

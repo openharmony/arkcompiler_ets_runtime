@@ -406,6 +406,7 @@ bool MIRParser::ParseClassType(TyIdx &styidx, const GStrIdx &strIdx)
         for (size_t i = 0; i < classType.GetMethods().size(); ++i) {
             StIdx stIdx = classType.GetMethodsElement(i).first;
             MIRSymbol *st = GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
+            DEBUG_ASSERT(st != NULL, "st is null");
             DEBUG_ASSERT(st->GetSKind() == kStFunc, "unexpected st->sKind");
             st->GetFunction()->SetClassTyIdx(styidx);
         }
