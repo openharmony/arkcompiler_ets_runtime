@@ -194,6 +194,63 @@ void ParallelEvacuator::UpdateWeakObjectSlot(TaggedObject *value, ObjectSlot &sl
     slot.Update(weakRef);
 }
 
+template<TriggerGCType gcType>
+void ParallelEvacuator::UpdateObjectSlotOpt(ObjectSlot &slot)
+{
+    JSTaggedValue value(slot.GetTaggedType());
+    if (value.IsHeapObject()) {
+        if (UpdateWeakObjectSlotOpt<gcType>(value, slot)) {
+            return;
+        }
+        MarkWord markWord(value.GetTaggedObject());
+        if (markWord.IsForwardingAddress()) {
+            auto dst = reinterpret_cast<JSTaggedType>(markWord.ToForwardingAddress());
+            slot.Update(dst);
+        }
+    }
+}
+
+template<TriggerGCType gcType>
+bool ParallelEvacuator::UpdateWeakObjectSlotOpt(JSTaggedValue value, ObjectSlot &slot)
+{
+    // if need to update slot as non-weak then return FALSE, else return TRUE
+    Region *objectRegion = Region::ObjectAddressToRange(value.GetRawData());
+    ASSERT(objectRegion != nullptr);
+    if constexpr (gcType == TriggerGCType::YOUNG_GC) {
+        if (!objectRegion->InGeneralNewSpace()) {
+            return true;
+        }
+    } else if constexpr (gcType == TriggerGCType::OLD_GC) {
+        if (!objectRegion->InGeneralNewSpaceOrCSet()) {
+            if (value.IsWeakForHeapObject() && !objectRegion->InSharedHeap() &&
+                    (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(value.GetRawData()))) {
+                slot.Clear();
+            }
+            return true;
+        }
+    } else {
+        LOG_GC(FATAL) << "UpdateWeakObjectSlotOpt: not support gcType yet";
+        UNREACHABLE();
+    }
+    if (objectRegion->InNewToNewSet()) {
+        if (value.IsWeakForHeapObject() && !objectRegion->Test(value.GetRawData())) {
+            slot.Clear();
+        }
+        return true;
+    }
+    if (value.IsWeakForHeapObject()) {
+        MarkWord markWord(value.GetWeakReferent());
+        if (markWord.IsForwardingAddress()) {
+            auto dst = static_cast<JSTaggedType>(ToUintPtr(markWord.ToForwardingAddress()));
+            slot.Update(JSTaggedValue(dst).CreateAndGetWeakRef().GetRawData());
+        } else {
+            slot.Clear();
+        }
+        return true;
+    }
+    return false;
+}
+
 void ParallelEvacuator::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls)
 {
     Region *region = Region::ObjectAddressToRange(object);

@@ -270,6 +270,7 @@ public:
     bool NonAtomicMark(void *address);
     void ClearMark(void *address);
     bool Test(void *addr) const;
+    bool Test(uintptr_t addr) const;
     // ONLY used for heap verification.
     bool TestNewToEden(uintptr_t addr);
     bool TestOldToNew(uintptr_t addr);
