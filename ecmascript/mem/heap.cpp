@@ -214,9 +214,11 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     sCompressSpace_ = new SharedOldSpace(this, oldSpaceCapacity, oldSpaceCapacity);
     sReadOnlySpace_ = new SharedReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
+    sharedMemController_ = new SharedMemController(this);
     growingFactor_ = config_.GetSharedHeapLimitGrowingFactor();
     growingStep_ = config_.GetSharedHeapLimitGrowingStep();
-    sharedMemController_ = new SharedMemController(this);
+    incNativeSizeTriggerSharedCM_= config_.GetIncNativeSizeTriggerSharedCM();
+    incNativeSizeTriggerSharedGC_ = config_.GetIncNativeSizeTriggerGC();
 
     dThread_ = dThread;
 }
@@ -729,6 +731,7 @@ void Heap::Initialize()
     evacuator_ = new ParallelEvacuator(this);
     incrementalMarker_ = new IncrementalMarker(this);
     gcListeners_.reserve(16U);
+    incNativeSizeTriggerLocalGC_ = config_.GetIncNativeSizeTriggerGC();
 }
 
 void Heap::ResetTlab()
@@ -2059,7 +2062,9 @@ void Heap::TryTriggerConcurrentMarking()
 void Heap::TryTriggerFullMarkByNativeSize()
 {
     if (GlobalNativeSizeLargerThanLimit()) {
-        if (concurrentMarker_->IsEnabled()) {
+        if (GetGlobalNativeSize() > incNativeSizeTriggerLocalGC_) {
+            CollectGarbage(TriggerGCType::OLD_GC, GCReason::ALLOCATION_FAILED);
+        } else if (concurrentMarker_->IsEnabled()) {
             SetFullMarkRequestedState(true);
             TryTriggerConcurrentMarking();
         } else {
