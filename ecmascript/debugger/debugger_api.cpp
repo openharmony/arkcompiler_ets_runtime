@@ -924,7 +924,7 @@ bool DebuggerApi::IsExceptionCaught(const EcmaVM *ecmaVm)
             return false;
         }
         auto method = frameHandler.GetMethod();
-        if (method->FindCatchBlock(frameHandler.GetBytecodeOffset() != INVALID_INDEX)) {
+        if (method->FindCatchBlock(frameHandler.GetBytecodeOffset()) != INVALID_INDEX) {
             return true;
         }
     }
