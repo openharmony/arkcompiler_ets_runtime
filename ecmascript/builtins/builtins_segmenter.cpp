@@ -16,14 +16,7 @@
 #include "builtins_segmenter.h"
 
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/js_intl.h"
-#include "ecmascript/js_locale.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/js_segmenter.h"
 #include "ecmascript/js_segments.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::builtins {
 // 18.1.1 Intl.Segmenter ( [ locales [ , options ] ] )

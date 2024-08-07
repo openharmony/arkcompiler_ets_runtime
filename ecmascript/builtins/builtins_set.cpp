@@ -14,17 +14,11 @@
  */
 
 #include "builtins_set.h"
-
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_set.h"
 #include "ecmascript/js_set_iterator.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
-
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsSet::SetConstructor(EcmaRuntimeCallInfo *argv)
 {

@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/builtins/builtins_async_iterator.h"
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_iterator.h"

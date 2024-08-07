@@ -17,27 +17,12 @@
 
 #include <cmath>
 #include "ecmascript/base/typed_array_helper-inl.h"
-#include "ecmascript/base/typed_array_helper.h"
 #include "ecmascript/builtins/builtins_array.h"
-#include "ecmascript/builtins/builtins_arraybuffer.h"
-#include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
-#include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/element_accessor-inl.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_array_iterator.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_iterator.h"
 #include "ecmascript/js_stable_array.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
-#include "ecmascript/shared_objects/js_shared_typed_array.h"
+
 
 namespace panda::ecmascript::builtins {
 using TypedArrayHelper = base::TypedArrayHelper;

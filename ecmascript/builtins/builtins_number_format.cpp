@@ -15,16 +15,8 @@
 
 #include "ecmascript/builtins/builtins_number_format.h"
 
-#include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_intl.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_locale.h"
 #include "ecmascript/js_number_format.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::builtins {
 // 13.2.1 Intl.NumberFormat  ( [ locales [ , options ] ] )
