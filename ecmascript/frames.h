@@ -1094,6 +1094,11 @@ struct AsmInterpretedFrame : public base::AlignedStruct<JSTaggedValue::TaggedTyp
         return static_cast<intptr_t>(GetFpOffset(isArch32));
     }
 
+    static intptr_t GetFunctionOffsetAsIntptr(bool isArch32)
+    {
+        return static_cast<intptr_t>(GetFunctionOffset(isArch32));
+    }
+
     static intptr_t GetSizeAsIntptr(bool isArch32)
     {
         return static_cast<intptr_t>(GetSize(isArch32));
