@@ -13,17 +13,11 @@
  * limitations under the License.
  */
 
-function foo() {
-    let v39 = 0;
-    const v74 = v39--;
-    let v79;
-    try {
-        i42[2] =-1024;
-        for (let i88 = 10, i89 = 10;; (() => {
-            const o92= {};
-        })()) {}
-    } catch (e) {
-        print(e)
+"use strict";
+let i, j;
+let cnt = 0;
+for (i = 0; i < 10000; i++) {
+    for (j = 0; j < 10000; j++) {
+        cnt = cnt + i + j;
     }
 }
-foo()
