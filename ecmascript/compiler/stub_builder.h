@@ -718,6 +718,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetRepInPropAttr(GateRef attr);
     GateRef IsIntRepInPropAttr(GateRef attr);
     GateRef IsDoubleRepInPropAttr(GateRef attr);
+    GateRef IsTaggedRepInPropAttr(GateRef attr);
     GateRef SetTaggedRepInPropAttr(GateRef attr);
     template<class T>
     void SetHClassBit(GateRef glue, GateRef hClass, GateRef value);
@@ -789,11 +790,14 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value,
                                 MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetCompiledCodeFlagToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetTaskConcurrentFuncFlagToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetBitFieldToFunction(GateRef glue, GateRef function, GateRef value);
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                   MemoryAttribute mAttr = MemoryAttribute::Default());
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
+    GateRef GetLengthFromFunction(GateRef function);
     GateRef GetHomeObjectFromFunction(GateRef function);
     GateRef GetEntryIndexOfGlobalDictionary(GateRef entry);
     GateRef GetBoxFromGlobalDictionary(GateRef object, GateRef entry);
@@ -979,6 +983,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     inline GateRef GetSortedIndex(GateRef layoutInfo, GateRef index);
     inline GateRef GetSortedIndex(GateRef attr);
     inline void StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
+    GateRef DefineFunc(GateRef glue, GateRef constpool, GateRef index,
+                       FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum,
                          GateRef hir = Circuit::NullGate());
     void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,

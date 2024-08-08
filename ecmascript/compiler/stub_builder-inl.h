@@ -2807,6 +2807,12 @@ inline GateRef StubBuilder::IsDoubleRepInPropAttr(GateRef rep)
     return Int32Equal(rep, Int32(static_cast<int32_t>(Representation::DOUBLE)));
 }
 
+inline GateRef StubBuilder::IsTaggedRepInPropAttr(GateRef attr)
+{
+    GateRef rep = GetRepInPropAttr(attr);
+    return BoolAnd(BoolNot(IsDoubleRepInPropAttr(rep)), BoolNot(IsIntRepInPropAttr(rep)));
+}
+
 inline GateRef StubBuilder::SetTaggedRepInPropAttr(GateRef attr)
 {
     GateRef mask = Int64LSL(
@@ -3084,6 +3090,11 @@ inline void StubBuilder::SetLengthToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::INT32(), glue, function, offset, value, MemoryAttribute::NoBarrier());
 }
 
+inline GateRef StubBuilder::GetLengthFromFunction(GateRef function)
+{
+    return Load(VariableType::JS_NOT_POINTER(), function, IntPtr(JSFunctionBase::LENGTH_OFFSET));
+}
+
 inline void StubBuilder::SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value,
                                                          MemoryAttribute mAttr)
 {
@@ -3145,6 +3156,24 @@ inline void StubBuilder::SetCompiledCodeFlagToFunction(GateRef glue, GateRef fun
     GateRef mask = Int32(JSFunctionBase::COMPILED_CODE_FASTCALL_BITS << JSFunctionBase::IsCompiledCodeBit::START_BIT);
     GateRef newVal = Int32Or(Int32And(oldVal, Int32Not(mask)), value);
     Store(VariableType::INT32(), glue, function, bitFieldOffset, newVal);
+}
+
+inline void StubBuilder::SetTaskConcurrentFuncFlagToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef bitFieldOffset = IntPtr(JSFunctionBase::BIT_FIELD_OFFSET);
+    GateRef oldVal = Load(VariableType::INT32(), function, bitFieldOffset);
+    GateRef mask = Int32LSL(
+        Int32((1LU << JSFunctionBase::TaskConcurrentFuncFlagBit::SIZE) - 1),
+        Int32(JSFunctionBase::TaskConcurrentFuncFlagBit::START_BIT));
+    GateRef newVal = Int32Or(Int32And(oldVal, Int32Not(mask)),
+        Int32LSL(ZExtInt1ToInt32(value), Int32(JSFunctionBase::TaskConcurrentFuncFlagBit::START_BIT)));
+    Store(VariableType::INT32(), glue, function, bitFieldOffset, newVal);
+}
+
+inline void StubBuilder::SetBitFieldToFunction(GateRef glue, GateRef function, GateRef value)
+{
+    GateRef bitFieldOffset = IntPtr(JSFunctionBase::BIT_FIELD_OFFSET);
+    Store(VariableType::INT32(), glue, function, bitFieldOffset, value);
 }
 
 inline void StubBuilder::SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value, MemoryAttribute mAttr)

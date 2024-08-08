@@ -1,4 +1,4 @@
-# Copyright (c) 2023 Huawei Device Co., Ltd.
+# Copyright (c) 2024 Huawei Device Co., Ltd.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -11,30 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-3
-1
-2
-0
-lighter
-1
-normal
-2
-regular
-3
-medium
-func
-Cannot get source code of funtion
-wode
-55
-hhh
-wwww
-func1
-Cannot get source code of funtion
-index
-0
-next
-Cannot get source code of funtion
-isDone
-false
-val
-2
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_moduletest_action("createobject") {
+  deps = []
+}

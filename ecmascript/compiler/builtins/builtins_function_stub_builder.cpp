@@ -485,4 +485,228 @@ GateRef BuiltinsFunctionStubBuilder::NewTaggedArrayFromArgs(GateRef glue, GateRe
     env->SubCfgExit();
     return ret;
 }
+
+void BuiltinsFunctionStubBuilder::InitializeSFunction(GateRef glue, GateRef func, GateRef kind, FunctionKind getKind)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label hasAccess(env);
+
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
+    GateRef hclass = LoadHClass(func);
+
+    if (JSFunction::IsNormalFunctionAndCanSkipWbWhenInitialization(getKind)) {
+        SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+        SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+        if (JSFunction::HasAccessor(getKind)) {
+            auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                       ConstantIndex::FUNCTION_NAME_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+            funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                  ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+            Jump(&exit);
+        }
+    } else {
+        SetLexicalEnvToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+        SetHomeObjectToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+        SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+        SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+        SetMethodToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+
+        BRANCH(HasAccessor(kind), &hasAccess, &exit);
+        Bind(&hasAccess);
+        {
+            auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                       ConstantIndex::FUNCTION_NAME_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+            funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                  ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
+                                    Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto emptyProfileTypeInfoCell = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                           ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX);
+    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell);
+    env->SubCfgExit();
+    return;
+}
+
+void BuiltinsFunctionStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, GateRef kind, FunctionKind getKind)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label hasProto(env);
+    Label notProto(env);
+    Label hasAccess(env);
+    Label isBase(env);
+    Label notBase(env);
+    Label isGenerator(env);
+    Label notClassConstructor(env);
+
+    DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
+    GateRef hclass = LoadHClass(func);
+
+    if (JSFunction::IsNormalFunctionAndCanSkipWbWhenInitialization(getKind)) {
+        SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+        SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+        if (JSFunction::HasPrototype(getKind)) {
+            auto funcprotoAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                            ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR);
+            if (getKind == FunctionKind::BASE_CONSTRUCTOR || getKind == FunctionKind::GENERATOR_FUNCTION ||
+                getKind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
+                SetPropertyInlinedProps(glue, func, hclass, funcprotoAccessor,
+                                        Int32(JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX),
+                                        VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+                auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                           ConstantIndex::FUNCTION_NAME_ACCESSOR);
+                SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
+                                        Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                                        MemoryAttribute::NoBarrier());
+                funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                      ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+                SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
+                                        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                                        MemoryAttribute::NoBarrier());
+                if (getKind != FunctionKind::BASE_CONSTRUCTOR) {
+                    thisObj = CallRuntime(glue, RTSTUB_ID(InitializeGeneratorFunction), {kind});
+                    SetProtoOrHClassToFunction(glue, func, *thisObj);
+                }
+            } else if (!JSFunction::IsClassConstructor(getKind)) {
+                CallRuntime(glue, RTSTUB_ID(FunctionDefineOwnProperty), {func, funcprotoAccessor, kind});
+            }
+            Jump(&exit);
+        } else if (JSFunction::HasAccessor(getKind)) {
+            auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                       ConstantIndex::FUNCTION_NAME_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+            funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                  ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+            Jump(&exit);
+        }
+    } else {
+        SetLexicalEnvToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+        SetHomeObjectToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+        SetProtoOrHClassToFunction(glue, func, Hole(), MemoryAttribute::NoBarrier());
+        SetProtoTransRootHClassToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+        SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
+        SetMethodToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+
+        BRANCH(HasPrototype(kind), &hasProto, &notProto);
+        Bind(&hasProto);
+        {
+            auto funcprotoAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                            ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR);
+            BRANCH(IsBaseKind(kind), &isBase, &notBase);
+            Bind(&isBase);
+            {
+                SetPropertyInlinedProps(glue, func, hclass, funcprotoAccessor,
+                                        Int32(JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX),
+                                        VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+                auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                           ConstantIndex::FUNCTION_NAME_ACCESSOR);
+                SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
+                                        Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                                        MemoryAttribute::NoBarrier());
+                funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                      ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+                SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
+                                        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                                        MemoryAttribute::NoBarrier());
+                BRANCH(IsGeneratorKind(kind), &isGenerator, &exit);
+                Bind(&isGenerator);
+                {
+                    thisObj = CallRuntime(glue, RTSTUB_ID(InitializeGeneratorFunction), {kind});
+                    SetProtoOrHClassToFunction(glue, func, *thisObj);
+                    Jump(&exit);
+                }
+            }
+            Bind(&notBase);
+            {
+                BRANCH(IsClassConstructorKind(kind), &exit, &notClassConstructor);
+                Bind(&notClassConstructor);
+                {
+                    CallRuntime(glue, RTSTUB_ID(FunctionDefineOwnProperty), {func, funcprotoAccessor, kind});
+                    Jump(&exit);
+                }
+            }
+        }
+        Bind(&notProto);
+        {
+            BRANCH(HasAccessor(kind), &hasAccess, &exit);
+            Bind(&hasAccess);
+            {
+                auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                           ConstantIndex::FUNCTION_NAME_ACCESSOR);
+                SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
+                                        VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+                funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                      ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
+                SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
+                                        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
+                                        VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto emptyProfileTypeInfoCell = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                           ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX);
+    SetRawProfileTypeInfoToFunction(glue, func, emptyProfileTypeInfoCell);
+    env->SubCfgExit();
+    return;
+}
+
+void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod(GateRef glue,
+    GateRef func, GateRef method, GateRef hclass)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    SetCallableToBitfield(glue, hclass, true);
+    SetMethodToFunction(glue, func, method);
+
+    SetBitFieldToFunction(glue, func, Int32(0));
+    SetMachineCodeToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
+
+    Label hasCompiledStatus(env);
+    Label tryInitFuncCodeEntry(env);
+    BRANCH(IsAotWithCallField(method), &hasCompiledStatus, &tryInitFuncCodeEntry);
+    Bind(&hasCompiledStatus);
+    {
+        SetCompiledCodeFlagToFunctionFromMethod(glue, func, method);
+        Jump(&tryInitFuncCodeEntry);
+    }
+    // Notice: we set code entries for all function to deal with these situations
+    // 1) AOT compiled method, set AOT compiled code entry
+    // 2) define func with the deopted method, set the AOTToAsmInterpBridge
+    Bind(&tryInitFuncCodeEntry);
+    {
+        SetCodeEntryToFunction(glue, func, method);
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    env->SubCfgExit();
+    return;
+}
 }  // namespace panda::ecmascript::kungfu

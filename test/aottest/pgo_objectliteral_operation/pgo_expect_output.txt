@@ -14,3 +14,27 @@
 3
 1
 2
+0
+lighter
+1
+normal
+2
+regular
+3
+medium
+func
+Cannot get source code of funtion
+wode
+55
+hhh
+wwww
+func1
+Cannot get source code of funtion
+index
+0
+next
+Cannot get source code of funtion
+isDone
+false
+val
+2
