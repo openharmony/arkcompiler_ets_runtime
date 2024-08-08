@@ -102,6 +102,8 @@ print(literalDoubleArrayWithHole.indexOf(returnNotConstantDouble(0))) //: 2
 print(nDoubleArray.indexOf(4.5)) //: 4
 //aot: [trace] aot inline builtin: Array.prototype.indexOf, caller function name:func_main_0@builtinArrayIndexOf
 print(literalDoubleArrayWithHole.indexOf(undefined)) //: -1
+//aot: [trace] aot inline builtin: Array.prototype.indexOf, caller function name:func_main_0@builtinArrayIndexOf
+print(nIntArray.indexOf(nIntArray.length)) //: -1
 
 //indexOf string
 //aot: [trace] aot inline builtin: Array.prototype.indexOf, caller function name:func_main_0@builtinArrayIndexOf
