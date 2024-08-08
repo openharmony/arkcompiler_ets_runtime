@@ -506,20 +506,36 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
     return obj;
 }
 
+JSHandle<JSNativePointer> ObjectFactory::NewSReadOnlyJSNativePointer(void* externalPointer)
+{
+    NewSObjectHook();
+    auto jsNativePointerClass =
+        JSHClass::Cast(thread_->GlobalConstants()->GetSJSNativePointerClass().GetTaggedObject());
+    jsNativePointerClass->SetIsJSShared(true);
+    TaggedObject* header = sHeap_->AllocateReadOnlyOrHugeObject(thread_, jsNativePointerClass);
+    JSHandle<JSNativePointer> obj(thread_, header);
+    obj->SetExternalPointer(externalPointer);
+    obj->SetDeleter(nullptr);
+    obj->SetData(nullptr);
+    obj->SetBindingSize(0);
+    obj->SetNativeFlag(NativeFlag::NO_DIV);
+    return obj;
+}
+
 JSHandle<AccessorData> ObjectFactory::NewSInternalAccessor(void *setter, void *getter)
 {
     NewSObjectHook();
-    TaggedObject *header = sHeap_->AllocateNonMovableOrHugeObject(thread_,
+    TaggedObject *header = sHeap_->AllocateReadOnlyOrHugeObject(thread_,
         JSHClass::Cast(thread_->GlobalConstants()->GetInternalAccessorClass().GetTaggedObject()));
     JSHandle<AccessorData> obj(thread_, AccessorData::Cast(header));
     obj->SetGetter(thread_, JSTaggedValue::Undefined());
     obj->SetSetter(thread_, JSTaggedValue::Undefined());
     if (setter != nullptr) {
-        JSHandle<JSNativePointer> setFunc = NewSJSNativePointer(setter, nullptr, nullptr, true);
+        JSHandle<JSNativePointer> setFunc = NewSReadOnlyJSNativePointer(setter);
         obj->SetSetter(thread_, setFunc.GetTaggedValue());
     }
     if (getter != nullptr) {
-        JSHandle<JSNativePointer> getFunc = NewSJSNativePointer(getter, nullptr, nullptr, true);
+        JSHandle<JSNativePointer> getFunc = NewSReadOnlyJSNativePointer(getter);
         obj->SetGetter(thread_, getFunc);
     }
     return obj;

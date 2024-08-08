@@ -870,6 +870,8 @@ public:
                                                   size_t nativeBindingsize = 0,
                                                   NativeFlag flag = NativeFlag::NO_DIV);
 
+    JSHandle<JSNativePointer> NewSReadOnlyJSNativePointer(void *externalPointer);
+
     JSHandle<AccessorData> NewSInternalAccessor(void *setter, void *getter);
 
     JSHandle<JSSymbol> NewSWellKnownSymbol(const JSHandle<JSTaggedValue> &name);

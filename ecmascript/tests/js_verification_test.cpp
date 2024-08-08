@@ -81,4 +81,25 @@ HWTEST_F_L0(JSVerificationTest, VerifyHeapObjects)
     VerifyObjectVisitor objVerifier(heap, &failCount);
     const_cast<SemiSpace *>(heap->GetNewSpace())->IterateOverObjects(objVerifier);  // newspace reference the old space
 }
-}  // namespace panda::test
+
+HWTEST_F_L0(JSVerificationTest, NoBarrierInternalAccessor)
+{
+    auto ecmaVm = thread->GetEcmaVM();
+    auto heap = const_cast<Heap*>(ecmaVm->GetHeap());
+    auto objectFactory = ecmaVm->GetFactory();
+    EXPECT_EQ(heap->VerifyHeapObjects(), 0U);
+    size_t failCount = 0;
+    {
+        EcmaHandleScope handleScope(thread);
+        auto newArray = objectFactory->NewTaggedArray(5, JSTaggedValue::Undefined(), MemSpaceType::SEMI_SPACE);
+        newArray->Set<false>(thread, 0, thread->GlobalConstants()->GetFunctionNameAccessor());
+        newArray->Set<false>(thread, 1, thread->GlobalConstants()->GetFunctionPrototypeAccessor());
+        newArray->Set<false>(thread, 2, thread->GlobalConstants()->GetFunctionLengthAccessor());
+        newArray->Set<false>(thread, 3, thread->GlobalConstants()->GetArrayLengthAccessor());
+        newArray->Set<false>(thread, 4, thread->GlobalConstants()->GetSharedArrayLengthAccessor());
+        VerifyObjectVisitor(heap, &failCount, VerifyKind::VERIFY_MARK_YOUNG)(
+            newArray.GetTaggedValue().GetTaggedObject());
+    }
+    EXPECT_EQ(failCount, 0U);
+}
+} // namespace panda::test
