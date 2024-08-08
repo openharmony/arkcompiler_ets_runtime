@@ -192,6 +192,7 @@ template<ObjectFastOperator::Status status>
 JSTaggedValue FastRuntimeStub::SetPropertyByName(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                  JSTaggedValue value)
 {
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return ObjectFastOperator::SetPropertyByName<status>(thread, receiver, key, value);
 }
 
@@ -199,6 +200,7 @@ template<ObjectFastOperator::Status status>
 JSTaggedValue FastRuntimeStub::SetPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                   JSTaggedValue value)
 {
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return ObjectFastOperator::SetPropertyByIndex<status>(thread, receiver, index, value);
 }
 
@@ -206,6 +208,7 @@ template<ObjectFastOperator::Status status>
 JSTaggedValue FastRuntimeStub::SetPropertyByValue(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key,
                                                   JSTaggedValue value)
 {
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     return ObjectFastOperator::SetPropertyByValue<status>(thread, receiver, key, value);
 }
 
