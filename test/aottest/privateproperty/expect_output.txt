@@ -23,5 +23,7 @@
 1
 Symbol()
 Symbol(symbol)
+3
+3
 testReadIcSlotInPrivatePropertyIns success
 TypeError : invalid or cannot find private key

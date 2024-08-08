@@ -16,6 +16,7 @@ group("ark_aot_builtin_inlining_number_test") {
   test_list = [
     "Constructor",
     "ParseFloat",
+    "ParseFloatNumber",
   ]
 
   deps = []

@@ -964,62 +964,57 @@ size_t Gate::PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPrev
     return idx;
 }
 
-void Gate::PrintWithBytecode() const
+std::string Gate::GetBytecodeStr() const
 {
-    auto opcode = GetOpCode();
-    std::string bytecodeStr = "";
-    switch (opcode) {
+    switch (GetOpCode()) {
         case OpCode::JS_BYTECODE: {
-            bytecodeStr = GetJSBytecodeMetaData()->Str();
-            break;
+            return GetJSBytecodeMetaData()->Str();
         }
         case OpCode::TYPED_BINARY_OP: {
             auto typedOp = TypedBinaryAccessor(GetOneParameterMetaData()->GetValue()).GetTypedBinOp();
-            bytecodeStr = GateMetaData::Str(typedOp);
-            break;
+            return GateMetaData::Str(typedOp);
         }
         case OpCode::TYPED_UNARY_OP: {
             auto typedOp = TypedUnaryAccessor(GetOneParameterMetaData()->GetValue()).GetTypedUnOp();
-            bytecodeStr = GateMetaData::Str(typedOp);
-            break;
+            return GateMetaData::Str(typedOp);
         }
         case OpCode::TYPED_CONDITION_JUMP: {
             auto typedOp = TypedJumpAccessor(GetOneParameterMetaData()->GetValue()).GetTypedJumpOp();
-            bytecodeStr = GateMetaData::Str(typedOp);
-            break;
+            return GateMetaData::Str(typedOp);
         }
         case OpCode::LOAD_ELEMENT: {
             auto typedOp = static_cast<TypedLoadOp>(GetOneParameterMetaData()->GetValue());
-            bytecodeStr = GateMetaData::Str(typedOp);
-            break;
+            return GateMetaData::Str(typedOp);
         }
         case OpCode::STORE_ELEMENT: {
             auto typedOp = static_cast<TypedStoreOp>(GetOneParameterMetaData()->GetValue());
-            bytecodeStr = GateMetaData::Str(typedOp);
-            break;
+            return GateMetaData::Str(typedOp);
         }
         case OpCode::TYPED_CALLTARGETCHECK_OP: {
             TypedCallTargetCheckAccessor accessor(GetOneParameterMetaData()->GetValue());
             auto typedOp = accessor.GetCallTargetCheckOp();
-            bytecodeStr = GateMetaData::Str(typedOp);
-            break;
+            return GateMetaData::Str(typedOp);
         }
         case OpCode::CONVERT:
         case OpCode::CHECK_AND_CONVERT: {
             ValuePairTypeAccessor accessor(GetOneParameterMetaData()->GetValue());
-            bytecodeStr = GateMetaData::Str(accessor.GetSrcType()) + "_TO_" +
+            return GateMetaData::Str(accessor.GetSrcType()) + "_TO_" +
                 GateMetaData::Str(accessor.GetDstType());
-            break;
         }
         default:
-            break;
+            return "";
     }
-    PrintGateWithAdditionOp(bytecodeStr);
+    return "";
 }
 
-void Gate::PrintGateWithAdditionOp(std::string additionOp) const
+void Gate::PrintWithBytecode(std::string_view comment) const
 {
-    Print(additionOp);
+    PrintGateWithAdditionOp(GetBytecodeStr(), comment);
+}
+
+void Gate::PrintGateWithAdditionOp(std::string additionOp, std::string_view comment) const
+{
+    Print(additionOp, false, -1, comment);
 }
 
 MarkCode Gate::GetMark(TimeStamp stamp) const

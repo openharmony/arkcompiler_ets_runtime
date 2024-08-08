@@ -186,8 +186,8 @@ public:
     void ShortPrint(std::string bytecode = "", bool inListPreview = false, size_t highlightIdx = -1) const;
     size_t PrintInGate(size_t numIns, size_t idx, size_t size, bool inListPreview, size_t highlightIdx,
                        std::ostringstream &log, bool isEnd = false) const;
-    void PrintGateWithAdditionOp(std::string additionOp) const;
-    void PrintWithBytecode() const;
+    void PrintGateWithAdditionOp(std::string additionOp, std::string_view comment) const;
+    void PrintWithBytecode(std::string_view comment) const;
     void CheckNullInput() const;
     void CheckStateInput() const;
     void CheckValueInput(bool isArch64) const;
@@ -284,6 +284,7 @@ private:
     void DumpInputs(std::ostringstream &oss, bool inListPreview, size_t highlightIdx) const;
 
     void DumpOutputs(std::ostringstream &oss, bool inListPreview) const;
+    std::string GetBytecodeStr() const;
 
     // ...
     // out(2)

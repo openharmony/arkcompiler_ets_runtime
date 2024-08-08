@@ -236,12 +236,40 @@ public:
         isOsr_ = true;
     }
 
+#ifndef NDEBUG
+    class ScopedComment {
+    public:
+        explicit ScopedComment(std::string &&str, std::string_view *comment);
+
+        ~ScopedComment()
+        {
+            *comment_ = old_;
+        }
+    private:
+        std::string_view old_;
+        std::string str_;
+        std::string_view *comment_;
+    };
+
+    ScopedComment VisitGateBegin(GateRef visitedGate);
+    ScopedComment CommentBegin(std::string &&str);
+#else
+    size_t VisitGateBegin([[maybe_unused]] GateRef visitedGate)
+    {
+        return 0;
+    }
+    size_t CommentBegin([[maybe_unused]] GateRef visitedGate)
+    {
+        return 0;
+    }
+#endif
+
 private:
     static const size_t CIRCUIT_SPACE = 1U << 30U;  // 1GB
 public:
     void Print(GateRef gate) const;
     bool AddComment(GateRef g, std::string &&str);
-    std::string_view GetComment(GateRef gate);
+    std::string_view GetComment(GateRef gate) const;
 
 private:
     GateType GetGateType(GateRef gate) const;
@@ -312,6 +340,7 @@ private:
     DebugInfo* debugInfo_ {nullptr};
 #ifndef NDEBUG
     ChunkVector<GateRef> allGates_;
+    std::string_view currentComment_ {};
 #endif
 
     friend class GateAccessor;

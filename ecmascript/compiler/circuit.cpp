@@ -94,7 +94,7 @@ bool Circuit::AddComment(GateRef g, std::string &&str)
     return true;
 }
 
-std::string_view Circuit::GetComment(GateRef gate)
+std::string_view Circuit::GetComment(GateRef gate) const
 {
     if (debugInfo_ == nullptr || !debugInfo_->IsEnable()) {
         return "";
@@ -143,6 +143,11 @@ GateRef Circuit::NewGate(const GateMetaData *meta, MachineType machineType, size
     if (comment != nullptr) {
         AddComment(result, std::string(comment));
     }
+#ifndef NDEBUG
+    if (UNLIKELY(debugInfo_ != nullptr && !currentComment_.empty())) {
+        AddComment(result, std::string(currentComment_));
+    }
+#endif
     return result;
 }
 
@@ -182,7 +187,7 @@ void Circuit::PrintAllGatesWithBytecode() const
     std::vector<GateRef> gateList;
     GetAllGates(gateList);
     for (const auto &gate : gateList) {
-        LoadGatePtrConst(gate)->PrintWithBytecode();
+        LoadGatePtrConst(gate)->PrintWithBytecode(GetComment(gate));
     }
 }
 
@@ -417,6 +422,29 @@ GateId Circuit::GetId(GateRef gate) const
 {
     return LoadGatePtrConst(gate)->GetId();
 }
+
+#ifndef NDEBUG
+Circuit::ScopedComment::ScopedComment(std::string &&str, std::string_view *comment)
+    : old_(*comment), comment_(comment)
+{
+    if (comment->empty()) {
+        str_ = std::move(str);
+    } else {
+        str_ = std::string{*comment} + " " + std::move(str);
+    }
+    *comment_ = {str_};
+}
+
+Circuit::ScopedComment Circuit::VisitGateBegin(GateRef visitedGate)
+{
+    return ScopedComment("old " + std::to_string(GetId(visitedGate)), &currentComment_);
+}
+
+Circuit::ScopedComment Circuit::CommentBegin(std::string &&str)
+{
+    return ScopedComment(std::move(str), &currentComment_);
+}
+#endif
 
 void Circuit::Print(GateRef gate) const
 {

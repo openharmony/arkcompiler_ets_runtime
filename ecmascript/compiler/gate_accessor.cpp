@@ -773,7 +773,7 @@ void GateAccessor::PrintById(size_t id) const
     GateRef gate = circuit_->GetGateRefById(id);
     if (gate != Circuit::NullGate()) {
         Gate *gatePtr = circuit_->LoadGatePtr(gate);
-        gatePtr->PrintWithBytecode();
+        gatePtr->PrintWithBytecode(circuit_->GetComment(gate));
     } else {
         LOG_COMPILER(INFO) << "id overflow!";
     }
@@ -783,7 +783,7 @@ void GateAccessor::PrintById(size_t id) const
 void GateAccessor::PrintWithBytecode(GateRef gate) const
 {
     Gate *gatePtr = circuit_->LoadGatePtr(gate);
-    gatePtr->PrintWithBytecode();
+    gatePtr->PrintWithBytecode(circuit_->GetComment(gate));
 }
 
 void GateAccessor::ShortPrint(GateRef gate) const
@@ -1307,6 +1307,10 @@ void GateAccessor::ReplaceHirAndDeleteIfException(GateRef hirGate,
     if (ifException != Circuit::NullGate()) {
         ReplaceGate(ifException, circuit_->DeadGate());
     }
+    #ifndef NDEBUG
+        GetCircuit()->AddComment(value,  "old V " + std::to_string(GetId(hirGate)));
+        GetCircuit()->AddComment(replacement.Depend(),  "old D " + std::to_string(GetId(hirGate)));
+    #endif
 }
 
 UseIterator GateAccessor::DeleteGate(const UseIterator &useIt)
@@ -1550,6 +1554,9 @@ void GateAccessor::ReplaceGate(GateRef gate, GateRef state, GateRef depend, Gate
             UNREACHABLE();
         }
     }
+#ifndef NDEBUG
+    GetCircuit()->AddComment(value,  "old V " + std::to_string(GetId(gate)));
+#endif
     DeleteGate(gate);
 }
 
@@ -1585,6 +1592,9 @@ void GateAccessor::ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef re
             it = ReplaceIn(it, replacement);
         }
     }
+#ifndef NDEBUG
+    GetCircuit()->AddComment(replacement,  "old V " + std::to_string(GetId(gate)));
+#endif
     DeleteGate(gate);
 }
 
