@@ -300,18 +300,13 @@ inline uintptr_t MovableMarker::AllocateDstSpace(uint32_t threadId, size_t size,
 }
 
 inline void MovableMarker::UpdateForwardAddressIfSuccess(uint32_t threadId, TaggedObject *object, JSHClass *klass,
-    uintptr_t toAddress, size_t size, const MarkWord &markWord, ObjectSlot slot, bool isPromoted)
+    uintptr_t toAddress, size_t size, ObjectSlot slot, bool isPromoted)
 {
-    if (memcpy_s(ToVoidPtr(toAddress + HEAD_SIZE), size - HEAD_SIZE, ToVoidPtr(ToUintPtr(object) + HEAD_SIZE),
-        size - HEAD_SIZE) != EOK) {
-        LOG_FULL(FATAL) << "memcpy_s failed";
-    }
     workManager_->IncreaseAliveSize(threadId, size);
     if (isPromoted) {
         workManager_->IncreasePromotedSize(threadId, size);
     }
 
-    *reinterpret_cast<MarkWordType *>(toAddress) = markWord.GetValue();
     heap_->OnMoveEvent(reinterpret_cast<intptr_t>(object), reinterpret_cast<TaggedObject *>(toAddress), size);
     if (klass->HasReferenceField()) {
         workManager_->Push(threadId, reinterpret_cast<TaggedObject *>(toAddress));
@@ -326,6 +321,16 @@ inline bool MovableMarker::UpdateForwardAddressIfFailed(TaggedObject *object, ui
     TaggedObject *dst = MarkWord(object).ToForwardingAddress();
     slot.Update(dst);
     return Region::ObjectAddressToRange(dst)->InYoungSpace();
+}
+
+inline void MovableMarker::RawCopyObject(uintptr_t fromAddress, uintptr_t toAddress, size_t size,
+    const MarkWord &markWord)
+{
+    if (memcpy_s(ToVoidPtr(toAddress + HEAD_SIZE), size - HEAD_SIZE, ToVoidPtr(fromAddress + HEAD_SIZE),
+        size - HEAD_SIZE) != EOK) {
+        LOG_FULL(FATAL) << "memcpy_s failed";
+    }
+    *reinterpret_cast<MarkWordType *>(toAddress) = markWord.GetValue();
 }
 
 void MovableMarker::UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls)
@@ -403,11 +408,13 @@ inline SlotStatus SemiGCMarker::EvacuateObject(uint32_t threadId, TaggedObject *
     bool isPromoted = ShouldBePromoted(object);
 
     uintptr_t forwardAddress = AllocateDstSpace(threadId, size, isPromoted);
+    RawCopyObject(ToUintPtr(object), forwardAddress, size, markWord);
+
     auto oldValue = markWord.GetValue();
     auto result = Barriers::AtomicSetPrimitive(object, 0, oldValue,
                                                MarkWord::FromForwardingAddress(forwardAddress));
     if (result == oldValue) {
-        UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot, isPromoted);
+        UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, slot, isPromoted);
         return isPromoted ? SlotStatus::CLEAR_SLOT : SlotStatus::KEEP_SLOT;
     }
     bool keepSlot = UpdateForwardAddressIfFailed(object, forwardAddress, size, slot);
@@ -495,11 +502,13 @@ inline SlotStatus CompressGCMarker::EvacuateObject(uint32_t threadId, TaggedObje
     JSHClass *klass = markWord.GetJSHClass();
     size_t size = klass->SizeFromJSHClass(object);
     uintptr_t forwardAddress = AllocateForwardAddress(threadId, size, klass, object);
+    RawCopyObject(ToUintPtr(object), forwardAddress, size, markWord);
+
     auto oldValue = markWord.GetValue();
     auto result = Barriers::AtomicSetPrimitive(object, 0, oldValue,
                                                MarkWord::FromForwardingAddress(forwardAddress));
     if (result == oldValue) {
-        UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot);
+        UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, slot);
         Region *region = Region::ObjectAddressToRange(object);
         if (region->HasLocalToShareRememberedSet()) {
             UpdateLocalToShareRSet(reinterpret_cast<TaggedObject *>(forwardAddress), klass);

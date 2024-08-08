@@ -267,11 +267,13 @@ void SharedGCMovableMarker::EvacuateObject(uint32_t threadId, TaggedObject *obje
     JSHClass *klass = markWord.GetJSHClass();
     size_t size = klass->SizeFromJSHClass(object);
     uintptr_t forwardAddress = AllocateForwardAddress(threadId, size);
+    RawCopyObject(ToUintPtr(object), forwardAddress, size, markWord);
+
     auto oldValue = markWord.GetValue();
     auto result = Barriers::AtomicSetPrimitive(object, 0, oldValue,
                                                MarkWord::FromForwardingAddress(forwardAddress));
     if (result == oldValue) {
-        UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, markWord, slot);
+        UpdateForwardAddressIfSuccess(threadId, klass, forwardAddress, size, slot);
         return;
     }
     UpdateForwardAddressIfFailed(object, forwardAddress, size, slot);
@@ -289,16 +291,20 @@ uintptr_t SharedGCMovableMarker::AllocateDstSpace(uint32_t threadId, size_t size
     return forwardAddress;
 }
 
-void SharedGCMovableMarker::UpdateForwardAddressIfSuccess(uint32_t threadId, TaggedObject *object, JSHClass *klass,
-    uintptr_t toAddress, size_t size, const MarkWord &markWord, ObjectSlot slot)
+inline void SharedGCMovableMarker::RawCopyObject(uintptr_t fromAddress, uintptr_t toAddress, size_t size,
+    const MarkWord &markWord)
 {
-    if (memcpy_s(ToVoidPtr(toAddress + HEAD_SIZE), size - HEAD_SIZE, ToVoidPtr(ToUintPtr(object) + HEAD_SIZE),
+    if (memcpy_s(ToVoidPtr(toAddress + HEAD_SIZE), size - HEAD_SIZE, ToVoidPtr(fromAddress + HEAD_SIZE),
         size - HEAD_SIZE) != EOK) {
         LOG_FULL(FATAL) << "memcpy_s failed";
     }
-    sWorkManager_->IncreaseAliveSize(threadId, size);
-
     *reinterpret_cast<MarkWordType *>(toAddress) = markWord.GetValue();
+}
+
+void SharedGCMovableMarker::UpdateForwardAddressIfSuccess(uint32_t threadId, JSHClass *klass, uintptr_t toAddress,
+    size_t size, ObjectSlot slot)
+{
+    sWorkManager_->IncreaseAliveSize(threadId, size);
     if (klass->HasReferenceField()) {
         sWorkManager_->Push(threadId, reinterpret_cast<TaggedObject *>(toAddress));
     }
