@@ -572,6 +572,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetFieldTypeFromHandler(GateRef attr);
     GateRef ClearSharedStoreKind(GateRef handlerInfo);
     GateRef UpdateSOutOfBoundsForHandler(GateRef handlerInfo);
+    void RestoreElementsKindToGeneric(GateRef glue, GateRef jsHClass);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
     void FastSetValueWithElementsKind(GateRef glue, GateRef elements, GateRef rawValue,
                                       GateRef index, ElementsKind kind);
@@ -629,6 +630,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef CheckHClassForRep(GateRef hClass, GateRef rep);
     void TransitionForRepChange(GateRef glue, GateRef receiver, GateRef key, GateRef attr);
     void TransitToElementsKind(GateRef glue, GateRef receiver, GateRef value, GateRef kind);
+    void TryMigrateToGenericKindForJSObject(GateRef glue, GateRef receiver, GateRef oldKind);
     GateRef TaggedToRepresentation(GateRef value);
     GateRef TaggedToElementKind(GateRef value);
     GateRef LdGlobalRecord(GateRef glue, GateRef key);
@@ -813,6 +815,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetMethodFromConstPool(GateRef glue, GateRef constpool, GateRef index);
     GateRef GetArrayLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
     GateRef GetObjectLiteralFromConstPool(GateRef glue, GateRef constpool, GateRef index, GateRef module);
+    void SetElementsKindToJSHClass(GateRef glue, GateRef jsHclass, GateRef elementsKind);
     void SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible);
     void SetCallableToBitfield(GateRef glue, GateRef obj, bool isCallable);
 

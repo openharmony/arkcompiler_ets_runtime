@@ -678,16 +678,6 @@ DEF_RUNTIME_STUBS(GetTaggedValueWithElementsKind)
     return value.GetRawData();
 }
 
-DEF_RUNTIME_STUBS(TryRestoreElementsKind)
-{
-    RUNTIME_STUBS_HEADER(TryRestoreElementsKind);
-    JSHandle<JSObject> receiver = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
-    JSHandle<JSHClass> hclass = JSHandle<JSHClass>(GetHArg<JSTaggedValue>(argv, argc, 1));
-
-    JSHClass::TryRestoreElementsKind(thread, hclass, receiver);
-    return JSTaggedValue::Hole().GetRawData();
-}
-
 DEF_RUNTIME_STUBS(NewMutantTaggedArray)
 {
     RUNTIME_STUBS_HEADER(NewMutantTaggedArray);
@@ -2980,19 +2970,6 @@ DEF_RUNTIME_STUBS(UpdateAOTHClass)
     return RuntimeUpdateAOTHClass(thread, oldhclass, newhclass, key).GetRawData();
 }
 
-
-DEF_RUNTIME_STUBS(UpdateAOTHcAndTryResotreEleKind)
-{
-    RUNTIME_STUBS_HEADER(UpdateAOTHClass);
-    JSHandle<JSObject> receiver = GetHArg<JSObject>(argv, argc, 0); // 0: means the zeroth parameter
-    JSHandle<JSHClass> oldhclass = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSHClass> newhclass = GetHArg<JSHClass>(argv, argc, 2);  // 2: means the second parameter
-    JSTaggedValue key = GetArg(argv, argc, 3);  // 3: means the third parameter
-
-    JSHClass::TryRestoreElementsKind(thread, newhclass, receiver);
-    return RuntimeUpdateAOTHClass(thread, oldhclass, newhclass, key).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(DefineField)
 {
     RUNTIME_STUBS_HEADER(DefineField);
@@ -3946,7 +3923,9 @@ DEF_RUNTIME_STUBS(SetPrototypeTransition)
     RUNTIME_STUBS_HEADER(SetPrototypeTransition);
     JSHandle<JSObject> obj = GetHArg<JSObject>(argv, argc, 0); // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> proto = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the third parameter
+    ElementsKind oldKind = obj->GetJSHClass()->GetElementsKind();
     JSHClass::SetPrototypeTransition(thread, obj, proto);
+    JSObject::TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
     return JSTaggedValue::Hole().GetRawData();
 }
 

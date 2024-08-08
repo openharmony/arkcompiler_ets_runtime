@@ -3454,6 +3454,15 @@ inline GateRef StubBuilder::GetMixHashcode(GateRef string)
     return Load(VariableType::INT32(), string, IntPtr(EcmaString::MIX_HASHCODE_OFFSET));
 }
 
+inline void StubBuilder::SetElementsKindToJSHClass(GateRef glue, GateRef jsHclass, GateRef elementsKind)
+{
+    GateRef bitfield = Load(VariableType::INT32(), jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET));
+    GateRef encodeValue = Int32LSL(elementsKind, Int32(JSHClass::ElementsKindBits::START_BIT));
+    GateRef mask = Int32(((1LU << JSHClass::ElementsKindBits::SIZE) - 1) << JSHClass::ElementsKindBits::START_BIT);
+    bitfield = Int32Or(Int32And(bitfield, Int32Not(mask)), encodeValue);
+    Store(VariableType::INT32(), glue, jsHclass, IntPtr(JSHClass::BIT_FIELD_OFFSET), bitfield);
+}
+
 inline void StubBuilder::SetExtensibleToBitfield(GateRef glue, GateRef obj, bool isExtensible)
 {
     GateRef jsHclass = LoadHClass(obj);

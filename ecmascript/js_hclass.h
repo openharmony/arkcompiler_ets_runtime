@@ -449,8 +449,8 @@ public:
                                        const JSHandle<JSTaggedValue> &key, const PropertyAttributes &attr,
                                        const Representation &rep = Representation::NONE);
 
-    inline static void TryRestoreElementsKind(const JSThread *thread, JSHandle<JSHClass> newJsHClass,
-                                       const JSHandle<JSObject> &obj);
+    inline static void RestoreElementsKindToGeneric(JSHClass *newJsHClass);
+
     static JSHandle<JSHClass> TransitionExtension(const JSThread *thread, const JSHandle<JSHClass> &jshclass);
     static void ReBuildFunctionInheritanceRelationship(const JSThread *thread,
                                                        const JSHandle<JSTaggedValue> &proto,

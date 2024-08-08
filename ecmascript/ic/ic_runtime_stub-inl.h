@@ -324,15 +324,17 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
         newHClass = JSHClass::Cast(transitionHandler->GetTransitionHClass().GetTaggedObject());
         handlerInfo = JSTaggedValue::UnwrapToUint64(transitionHandler->GetHandlerInfo());
     }
-
-    receiver->SynchronizedSetClass(thread, newHClass);
     JSHandle<JSHClass> newHClassHandle(thread, newHClass);
     JSHandle<JSObject> objHandle(thread, receiver);
-    JSHClass::TryRestoreElementsKind(thread, newHClassHandle, objHandle);
+    ElementsKind oldKind = receiver->GetJSHClass()->GetElementsKind();
+    JSHClass::RestoreElementsKindToGeneric(newHClass);
+    objHandle->SynchronizedSetClass(thread, newHClass);
+    JSObject::TryMigrateToGenericKindForJSObject(thread, objHandle, oldKind);
+
     ASSERT(HandlerBase::IsField(handlerInfo));
 
     if (!HandlerBase::IsInlinedProps(handlerInfo)) {
-        TaggedArray *array = TaggedArray::Cast(receiver->GetProperties().GetTaggedObject());
+        TaggedArray *array = TaggedArray::Cast(objHandle->GetProperties().GetTaggedObject());
         int capacity = static_cast<int>(array->GetLength());
         int index = HandlerBase::GetOffset(handlerInfo);
         if (index >= capacity) {
@@ -357,7 +359,7 @@ void ICRuntimeStub::StoreWithTransition(JSThread *thread, JSObject *receiver, JS
         array->Set(thread, index, value);
         return;
     }
-    StoreField(thread, receiver, value, handlerInfo);
+    StoreField(thread, *objHandle, value, handlerInfo);
 }
 
 JSTaggedValue ICRuntimeStub::StoreTransWithProto(JSThread *thread, JSObject *receiver, JSTaggedValue value,

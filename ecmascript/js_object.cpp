@@ -222,8 +222,10 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
     }
 
     receiver->SetProperties(thread, dict);
+    ElementsKind oldKind = receiver->GetJSHClass()->GetElementsKind();
     // change HClass
     JSHClass::TransitionToDictionary(thread, receiver);
+    JSObject::TryMigrateToGenericKindForJSObject(thread, receiver, oldKind);
 
     // trim in-obj properties space
     TrimInlinePropsSpace(thread, receiver, numberInlinedProps);
@@ -256,7 +258,9 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     }
     obj->SetElements(thread, dict);
 
+    ElementsKind oldKind = obj->GetJSHClass()->GetElementsKind();
     JSHClass::TransitionElementsToDictionary(thread, obj);
+    TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
 }
 
 inline bool JSObject::ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj)
@@ -1525,8 +1529,10 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         }
     }
+    ElementsKind oldKind = obj->GetJSHClass()->GetElementsKind();
     // map transition
     JSHClass::SetPrototypeTransition(thread, obj, proto);
+    TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
     return true;
 }
 
@@ -1566,8 +1572,10 @@ bool JSObject::PreventExtensions(JSThread *thread, const JSHandle<JSObject> &obj
 #if ECMASCRIPT_ENABLE_IC
         JSHClass::NotifyHclassChanged(thread, jshclass, newHclass);
 #endif
+        ElementsKind oldKind = obj->GetJSHClass()->GetElementsKind();
+        JSHClass::RestoreElementsKindToGeneric(*newHclass);
         obj->SynchronizedSetClass(thread, *newHclass);
-        JSHClass::TryRestoreElementsKind(thread, newHclass, obj);
+        TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
     }
 
     return true;
@@ -2737,7 +2745,9 @@ JSHandle<JSObject> JSObject::CreateObjectFromProperties(const JSThread *thread, 
         return CreateObjectFromProperties(thread, hclass, properties, propsLen);
     } else {
         JSHandle<JSObject> obj = factory->NewEmptyJSObject(0); // 0: no inline field
+        ElementsKind oldKind = obj->GetJSHClass()->GetElementsKind();
         JSHClass::TransitionToDictionary(thread, obj);
+        JSObject::TryMigrateToGenericKindForJSObject(thread, obj, oldKind);
 
         JSMutableHandle<NameDictionary> dict(
             thread, NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(propsLen)));
@@ -3013,5 +3023,13 @@ bool JSObject::ElementsAndPropertiesIsEmpty() const
         return true;
     }
     return false;
+}
+
+void JSObject::TryMigrateToGenericKindForJSObject(const JSThread *thread, const JSHandle<JSObject> &obj,
+                                                  const ElementsKind oldKind)
+{
+    if (obj->IsJSArray() && HasMutantTaggedArrayElements(obj)) {
+        Elements::MigrateArrayWithKind(thread, obj, oldKind, ElementsKind::GENERIC);
+    }
 }
 }  // namespace panda::ecmascript
