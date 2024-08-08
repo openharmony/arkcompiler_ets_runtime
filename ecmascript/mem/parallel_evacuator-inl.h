@@ -321,7 +321,7 @@ int ParallelEvacuator::CalculateEvacuationThreadNum()
     uint32_t length = workloads_.size();
     uint32_t regionPerThread = 8;
     uint32_t maxThreadNum = std::min(heap_->GetMaxEvacuateTaskCount(),
-        Taskpool::GetCurrentTaskpool()->GetTotalThreadNum());
+        GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum());
     return static_cast<int>(std::min(std::max(1U, length / regionPerThread), maxThreadNum));
 }
 
@@ -331,7 +331,7 @@ int ParallelEvacuator::CalculateUpdateThreadNum()
     double regionPerThread = 1.0 / 4;
     length = std::pow(length, regionPerThread);
     uint32_t maxThreadNum = std::min(heap_->GetMaxEvacuateTaskCount(),
-        Taskpool::GetCurrentTaskpool()->GetTotalThreadNum());
+        GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum());
     return static_cast<int>(std::min(std::max(1U, length), maxThreadNum));
 }
 }  // namespace panda::ecmascript

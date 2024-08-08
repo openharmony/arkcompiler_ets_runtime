@@ -128,6 +128,7 @@ void EcmaVM::PostFork()
     RandomGenerator::InitRandom(GetAssociatedJSThread());
     heap_->SetHeapMode(HeapMode::SHARE);
     GetAssociatedJSThread()->PostFork();
+    GCWorkerPool::GetCurrentTaskpool()->Initialize();
     Taskpool::GetCurrentTaskpool()->Initialize();
     SetPostForked(true);
     LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
@@ -246,6 +247,7 @@ bool EcmaVM::Initialize()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "EcmaVM::Initialize");
     stringTable_ = Runtime::GetInstance()->GetEcmaStringTable();
     InitializePGOProfiler();
+    GCWorkerPool::GetCurrentTaskpool()->Initialize();
     Taskpool::GetCurrentTaskpool()->Initialize();
 #ifndef PANDA_TARGET_WINDOWS
     RuntimeStubs::Initialize(thread_);
@@ -330,6 +332,7 @@ EcmaVM::~EcmaVM()
     // clear c_address: c++ pointer delete
     ClearBufferData();
     heap_->WaitAllTasksFinished();
+    GCWorkerPool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
     Taskpool::GetCurrentTaskpool()->Destroy(thread_->GetThreadId());
 
     if (pgoProfiler_ != nullptr) {
@@ -449,7 +452,7 @@ void EcmaVM::CheckThread() const
         LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
         UNREACHABLE();
     }
-    if (!Taskpool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool(std::this_thread::get_id()) &&
+    if (!GCWorkerPool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool(std::this_thread::get_id()) &&
         thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()

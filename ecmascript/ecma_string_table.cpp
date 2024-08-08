@@ -22,7 +22,7 @@ uint32_t EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &vis
 {
     StartSweepWeakRefTask();
     uint32_t curSweepCount = sweepWeakRefCount_.load(std::memory_order_relaxed);
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweepWeakRefTask>(this, visitor, curSweepCount));
+    GCWorkerPool::GetCurrentTaskpool()->PostTask(std::make_unique<SweepWeakRefTask>(this, visitor, curSweepCount));
     return curSweepCount;
 }
 

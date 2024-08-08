@@ -314,6 +314,11 @@ template("libark_jsruntime_intl_common_set") {
 
     external_deps = []
     deps = []
+    defines = []
+    if (is_ohos && is_standard_system && !is_arkui_x) {
+      defines += [ "ENABLE_FFRT_INTERFACES" ]
+      external_deps += [ "ffrt:libffrt" ]
+    }
     if (!is_arkui_x) {
       external_deps += [ "runtime_core:arkfile_header_deps" ]
     } else {

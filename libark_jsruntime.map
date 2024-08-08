@@ -97,6 +97,7 @@
       panda::ecmascript::DebugInfoExtractor::*;
       panda::ecmascript::JSRuntimeOptions::*;
       panda::ecmascript::Taskpool::*;
+      panda::ecmascript::GCWorkerPool::*;
       panda::ecmascript::JSThread::*;
       panda::ecmascript::Chunk::*;
       panda::ecmascript::WorkSpaceChunk::*;

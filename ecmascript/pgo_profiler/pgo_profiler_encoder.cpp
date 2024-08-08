@@ -31,6 +31,7 @@
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/mutex.h"
+#include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript::pgo {
 void PGOProfilerEncoder::Destroy()

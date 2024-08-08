@@ -102,7 +102,7 @@ void ParallelEvacuator::EvacuateSpace()
         LockHolder holder(mutex_);
         parallel_ = CalculateEvacuationThreadNum();
         for (int i = 0; i < parallel_; i++) {
-            Taskpool::GetCurrentTaskpool()->PostTask(
+            GCWorkerPool::GetCurrentTaskpool()->PostTask(
                 std::make_unique<EvacuationTask>(heap_->GetJSThread()->GetThreadId(), this));
         }
     }
@@ -293,7 +293,7 @@ void ParallelEvacuator::UpdateReference()
         LockHolder holder(mutex_);
         parallel_ = CalculateUpdateThreadNum();
         for (int i = 0; i < parallel_; i++) {
-            Taskpool::GetCurrentTaskpool()->PostTask(
+            GCWorkerPool::GetCurrentTaskpool()->PostTask(
                 std::make_unique<UpdateReferenceTask>(heap_->GetJSThread()->GetThreadId(), this));
         }
     }
@@ -338,7 +338,7 @@ void ParallelEvacuator::UpdateRoot()
 
 void ParallelEvacuator::UpdateRecordWeakReference()
 {
-    auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+    auto totalThreadCount = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
     for (uint32_t i = 0; i < totalThreadCount; i++) {
         ProcessQueue *queue = heap_->GetWorkManager()->GetWeakReferenceQueue(i);
 

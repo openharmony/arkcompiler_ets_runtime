@@ -28,7 +28,7 @@
 #include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/napi/include/jsnapi.h"
-#include "ecmascript/taskpool/taskpool.h"
+#include "ecmascript/platform/mutex.h"
 
 namespace panda {
 class JSNApi;
