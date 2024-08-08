@@ -216,6 +216,19 @@ public:
     {
         return false;
     }
+
+    void SetDebugComment(const MapleString* str)
+    {
+        debugComment = str;
+    }
+
+    const MapleString* GetDebugComment() const
+    {
+        return debugComment;
+    }
+
+private:
+    const MapleString* debugComment {nullptr};
 };
 
 class UnaryNode : public BaseNode {

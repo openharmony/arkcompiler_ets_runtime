@@ -191,7 +191,8 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
     AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
     CG *currCG = cgFunc.GetCG();
     /* emit header of this function */
-    currCG->Emit([this, &cgFunc, &aarchCGFunc, currCG, &funcEmitInfo](Emitter *emitter) {
+    currCG->template Emit<CG::EmitterType::AsmEmitter>(
+    [this, &cgFunc, &aarchCGFunc, currCG, &funcEmitInfo](Emitter *emitter) {
         // insert for  __cxx_global_var_init
         if (cgFunc.GetName() == "__cxx_global_var_init") {
             (void)emitter->Emit("\t.section\t.init_array,\"aw\"\n");
@@ -283,6 +284,17 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
 
             FOR_BB_INSNS(insn, bb)
             {
+                auto dbgComment = insn->GetDebugComment();
+                if (currDebugComment != dbgComment) {
+                    currDebugComment = dbgComment;
+                    if (dbgComment != nullptr) {
+                        emitter->Emit("\t// ");
+                        emitter->Emit(dbgComment->c_str());
+                        emitter->Emit("\n ");
+                    } else {
+                        emitter->Emit("\t// \n");
+                    }
+                }
                 if (insn->IsCfiInsn()) {
                     EmitAArch64CfiInsn(*emitter, *insn);
                 } else if (insn->IsDbgInsn()) {

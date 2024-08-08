@@ -256,6 +256,15 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
         }
     }
 
+    auto dbgComment = insn.GetDebugComment();
+    if (currDebugComment != dbgComment) {
+        currDebugComment = dbgComment;
+        if (dbgComment != nullptr) {
+            assmbler.EmitDebugComment(dbgComment->c_str());
+        } else {
+            assmbler.EmitDebugComment("");
+        }
+    }
     switch (mop) {
         /* mov */
         case x64::MOP_movb_r_r:

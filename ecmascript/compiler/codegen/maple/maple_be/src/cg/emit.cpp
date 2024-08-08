@@ -3821,7 +3821,8 @@ void LabelOperand::Dump() const
 }
 
 /* new phase manager */
-bool CgEmission::PhaseRun(maplebe::CGFunc &f) {
+bool CgEmission::PhaseRun(maplebe::CGFunc &f)
+{
     if (Triple::GetTriple().IsAarch64BeOrLe()) {
         f.GetCG()->template Emit<CG::EmitterType::AsmEmitter>([&f](Emitter *emitter) {
             AsmFuncEmitInfo funcEmitInfo(f);
