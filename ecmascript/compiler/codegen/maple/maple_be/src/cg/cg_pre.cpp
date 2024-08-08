@@ -135,6 +135,7 @@ void CGPre::CreateSortedOccs()
                 case kOccDef:
                 case kOccStore:
                 case kOccMembar: {
+                    DEBUG_ASSERT(realOccIt != workCand->GetRealOccs().end(), "realOccIt should not be end");
                     ++realOccIt;
                     if (realOccIt != workCand->GetRealOccs().end()) {
                         nextRealOcc = *realOccIt;
@@ -164,6 +165,7 @@ void CGPre::CreateSortedOccs()
                     break;
                 }
                 case kOccPhiopnd: {
+                    DEBUG_ASSERT(phiOpndIt != phiOpnds.end(), "phiOpndIt should not be end");
                     ++phiOpndIt;
                     if (phiOpndIt != phiOpnds.end()) {
                         nextPhiOpndOcc = *phiOpndIt;

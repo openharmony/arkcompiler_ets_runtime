@@ -114,6 +114,7 @@ MemDesc *JitFort::RecordLiveJitCodeNoLock(uintptr_t addr, size_t size, bool inst
         }
     }
     MemDesc *desc = memDescPool_->GetDescFromPool();
+    ASSERT(desc != NULL);
     desc->SetMem(addr);
     desc->SetSize(size);
     desc->SetInstalled(installed);
