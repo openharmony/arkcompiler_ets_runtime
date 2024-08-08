@@ -2454,26 +2454,30 @@ void TypedHCRLowering::LowerFloat32ArrayConstructor(GateRef gate, GateRef glue)
     DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     Label slowPath(&builder_);
     Label exit(&builder_);
+    GateRef ctor = acc_.GetValueIn(gate, 0);
     GateRef arg0 = acc_.GetValueIn(gate, 1);
     DEFVALUE(arrayLength, (&builder_), VariableType::INT64(), builder_.Int64(0));
+    Label arrayCreateByLength(&builder_);
     Label arrayCreate(&builder_);
-    ConvertFloat32ArrayConstructorLength(arg0, &arrayLength, &arrayCreate, &slowPath);
-    builder_.Bind(&arrayCreate);
+    ConvertFloat32ArrayConstructorLength(arg0, &arrayLength, &arrayCreateByLength, &arrayCreate);
+    NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
+    newBuilder.SetParameters(glue, 0);
+    builder_.Bind(&arrayCreateByLength);
     {
         GateRef truncedLength = builder_.TruncInt64ToInt32(*arrayLength);
-        NewObjectStubBuilder newBuilder(builder_.GetCurrentEnvironment());
-        newBuilder.SetParameters(glue, 0);
         res = newBuilder.NewFloat32ArrayWithSize(glue, truncedLength);
         builder_.Jump(&exit);
     }
-    builder_.Bind(&slowPath);
+    builder_.Bind(&arrayCreate);
     {
-        size_t range = acc_.GetNumValueIn(gate);
-        std::vector<GateRef> args(range);
-        for (size_t i = 0; i < range; ++i) {
-            args[i] = acc_.GetValueIn(gate, i);
-        }
-        res = LowerCallRuntime(glue, gate, RTSTUB_ID(OptNewObjRange), args, true);
+        GateRef glueGlobalEnvOffset = builder_.IntPtr(
+            JSThread::GlueData::GetGlueGlobalEnvOffset(builder_.GetCurrentEnvironment()->Is32Bit()));
+        GateRef glueGlobalEnv = builder_.Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+        GateRef thisObj = newBuilder.NewFloat32ArrayObj(glue, glueGlobalEnv);
+        GateRef argc = builder_.Int64(4); // 4: means func newtarget thisObj arg0
+        GateRef argv = builder_.IntPtr(0);
+        std::vector<GateRef> args { glue, argc, argv, ctor, ctor, thisObj, arg0 };
+        res = builder_.CallNew(gate, args);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
