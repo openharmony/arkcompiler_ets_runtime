@@ -205,6 +205,7 @@ enum CommandValues {
     OPTION_PGO_TRACE,
     OPTION_COMPILER_PGO_FORCE_DUMP,
     OPTION_COMPILER_ENABLE_CONCURRENT,
+    OPTION_OPEN_ARK_TOOLS,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
 
@@ -228,19 +229,24 @@ public:
         enableArkTools_ = value;
     }
 
+    bool WasSetEnableArkTools() const
+    {
+        return WasOptionSet(OPTION_ENABLE_ARK_TOOLS);
+    }
+
     bool IsOpenArkTools() const
     {
         return openArkTools_;
     }
 
-    void SetopenArkTools(bool value)
+    void SetOpenArkTools(bool value)
     {
         openArkTools_ = value;
     }
 
-    bool WasSetEnableArkTools() const
+    bool WasSetOpenArkTools() const
     {
-        return WasOptionSet(OPTION_ENABLE_ARK_TOOLS);
+        return WasOptionSet(OPTION_OPEN_ARK_TOOLS);
     }
 
     bool IsEnableRuntimeStat() const
