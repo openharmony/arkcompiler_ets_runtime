@@ -111,6 +111,7 @@ bool TypedBytecodeLowering::CheckIsInOptBCIgnoreRange(int32_t index, EcmaOpcode 
 
 void TypedBytecodeLowering::Lower(GateRef gate)
 {
+    [[maybe_unused]] auto scopedGate = circuit_->VisitGateBegin(gate);
     // not all opcode will visit heap, but now jit lock all opcode
     Jit::JitLockHolder lock(compilationEnv_, "TypedBytecodeLowering::Lower");
 
@@ -651,6 +652,7 @@ void TypedBytecodeLowering::LowerTypedLdPrivateProperty(GateRef gate)
     GateRef key = builder_.GetKeyFromLexivalEnv(
         tacc.GetLexicalEnv(), builder_.TaggedGetInt(levelIndex), builder_.TaggedGetInt(slotIndex));
 
+    builder_.HeapObjectCheck(key, frameState);
     if (tacc.IsAccessor()) {
         builder_.DeoptCheck(builder_.IsJSFunction(key), frameState, DeoptType::NOTJSFUNCTION);
         result = builder_.CallPrivateGetter(gate, receiver, key);
@@ -688,6 +690,7 @@ void TypedBytecodeLowering::LowerTypedStPrivateProperty(GateRef gate)
     GateRef key = builder_.GetKeyFromLexivalEnv(
         tacc.GetLexicalEnv(), builder_.TaggedGetInt(levelIndex), builder_.TaggedGetInt(slotIndex));
 
+    builder_.HeapObjectCheck(key, frameState);
     if (tacc.IsAccessor()) {
         builder_.DeoptCheck(builder_.IsJSFunction(key), frameState, DeoptType::NOTJSFUNCTION);
         builder_.CallPrivateSetter(gate, receiver, key, value);

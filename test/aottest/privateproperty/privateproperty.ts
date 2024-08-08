@@ -53,6 +53,27 @@ const namedSymbol = Symbol("symbol");
 print(symbol.toString());
 print(namedSymbol.toString());
 
+class BitwiseAnd {
+    #setterCalledWith: number = 0;
+    get #field() {
+        return 0b010111;
+    }
+    set #field(value) {
+        this.#setterCalledWith = value;
+    }
+    compoundAssignment() {
+        return this.#field &= 0b101011;
+    }
+    setterCalledWithValue() {
+        return this.#setterCalledWith;
+    }
+}
+
+const o = new BitwiseAnd();
+// Check that CALL_PRIVATE_GETTER/CALL_PRIVATE_SETTER are processed correctly in NumberSpeculativeRetype
+print(o.compoundAssignment());
+print(o.setterCalledWithValue());
+
 // Test if the `slotid` is read correctly in the `ldprivateproperty`/`stprivateproperty`
 function testReadIcSlotInPrivatePropertyIns() {
     let a;

@@ -40,6 +40,7 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
 {
     GateRef glue = acc_.GetGlueFromArgList();
     auto op = acc_.GetOpCode(gate);
+    [[maybe_unused]] auto scopedGate = circuit_->VisitGateBegin(gate);
     switch (op) {
         case OpCode::PRIMITIVE_TYPE_CHECK:
             LowerPrimitiveTypeCheck(gate);

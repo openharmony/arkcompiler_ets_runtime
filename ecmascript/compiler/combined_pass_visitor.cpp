@@ -97,6 +97,9 @@ void CombinedPassVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, Gat
             it = acc_.ReplaceIn(it, replacement);
         }
     }
+#ifndef NDEBUG
+    acc_.GetCircuit()->AddComment(replacement,  "old V " + std::to_string(acc_.GetId(gate)));
+#endif
 }
 
 void CombinedPassVisitor::VistDependSelectorForLoop(GateRef gate)
@@ -161,6 +164,7 @@ void CombinedPassVisitor::ReVisitGate(GateRef gate)
 
 GateRef CombinedPassVisitor::VisitGate(GateRef gate)
 {
+    [[maybe_unused]] auto scopedGate = circuit_->VisitGateBegin(gate);
     auto skip = passList_.end();
     for (auto i = passList_.begin(); i != passList_.end();) {
         if (i == skip) {
