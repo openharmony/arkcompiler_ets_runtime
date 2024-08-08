@@ -426,6 +426,7 @@ host_unittest_action("BuiltinsNatural_001_Test") {
     "builtins_atomics_test.cpp",
     "builtins_boolean_test.cpp",
     "builtins_dataview_test.cpp",
+    "builtins_shared_array_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
