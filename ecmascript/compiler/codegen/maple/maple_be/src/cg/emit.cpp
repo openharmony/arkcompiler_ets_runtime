@@ -2028,6 +2028,29 @@ void Emitter::EmitLiteral(const MIRSymbol &literal, const std::map<GStrIdx, MIRT
     EmitAsmLabel(literal, kAsmSize);
 }
 
+std::string Emitter::GetLayoutTypeString(uint32_t type)
+{
+    switch (type) {
+        case kLayoutBootHot:
+            return "BootHot";
+        case kLayoutBothHot:
+            return "BothHot";
+        case kLayoutRunHot:
+            return "RunHot";
+        case kLayoutStartupOnly:
+            return "StartupOnly";
+        case kLayoutUsedOnce:
+            return "UsedOnce";
+        case kLayoutExecuted:
+            return "UsedMaybe";
+        case kLayoutUnused:
+            return "Unused";
+        default:
+            std::cerr << "no such type" << std::endl;
+            return "";
+    }
+}
+
 void Emitter::EmitFuncLayoutInfo(const MIRSymbol &layout)
 {
     /*
@@ -2095,29 +2118,8 @@ void Emitter::EmitStaticFields(const std::vector<MIRSymbol *> &fields)
 void Emitter::EmitLiterals(std::vector<std::pair<MIRSymbol *, bool>> &literals,
                            const std::map<GStrIdx, MIRType *> &strIdx2Type)
 {
-    /*
-     * load literals profile
-     * currently only used here, so declare it as local
-     */
-    if (!cg->GetMIRModule()->GetProfile().GetLiteralProfileSize()) {
-        for (const auto &literalPair : literals) {
-            EmitLiteral(*(literalPair.first), strIdx2Type);
-        }
-        return;
-    }
     /* emit hot literal start symbol */
     EmitBlockMarker("__MBlock_literal_hot_begin", "", false);
-    /*
-     * emit literals into .data section
-     * emit literals in the profile first
-     */
-    for (auto &literalPair : literals) {
-        if (cg->GetMIRModule()->GetProfile().CheckLiteralHot(literalPair.first->GetName())) {
-            /* it's in the literal profiling data, means it's "hot" */
-            EmitLiteral(*(literalPair.first), strIdx2Type);
-            literalPair.second = true;
-        }
-    }
     /* emit hot literal end symbol */
     EmitBlockMarker("__MBlock_literal_hot_end", "", false);
 
@@ -2145,13 +2147,6 @@ void Emitter::GetHotAndColdMetaSymbolInfo(const std::vector<MIRSymbol *> &mirSym
         std::string name = mirSymbol->GetName().substr(prefixStr.length());
         std::string klassJDescriptor;
         namemangler::DecodeMapleNameToJDescriptor(name, klassJDescriptor);
-        if (prefixStr == kFieldsInfoPrefixStr) {
-            isHot = cg->GetMIRModule()->GetProfile().CheckFieldHot(klassJDescriptor);
-        } else if (prefixStr == kMethodsInfoPrefixStr) {
-            isHot = cg->GetMIRModule()->GetProfile().CheckMethodHot(klassJDescriptor);
-        } else {
-            isHot = cg->GetMIRModule()->GetProfile().CheckClassHot(klassJDescriptor);
-        }
         if (isHot && !forceCold) {
             hotFieldInfoSymbolVec.emplace_back(mirSymbol);
         } else {

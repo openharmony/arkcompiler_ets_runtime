@@ -16,7 +16,6 @@
 #ifndef MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_MEM_REFERENCE_H
 #define MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_MEM_REFERENCE_H
 
-#include "deps.h"
 #include "aarch64_insn.h"
 
 namespace maplebe {
@@ -29,22 +28,6 @@ public:
         auto *memOpnd2 = static_cast<MemOperand *>(memInsn2.GetMemOpnd());
         if (memOpnd1 != nullptr && memOpnd2 != nullptr) {
             if (memOpnd1->IsVolatile() || memOpnd2->IsVolatile()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // If the two memory reference sets do not have the same element(ostIdx),
-    // there is no alias, return false.
-    static bool HasMemoryReferenceAlias(const MemDefUseSet &refSet1, const MemDefUseSet &refSet2)
-    {
-        // Process conservatively when no alias info is available
-        if (refSet1.empty() || refSet2.empty()) {
-            return true;
-        }
-        for (const auto &ostIdx : refSet2) {
-            if (refSet1.find(ostIdx) != refSet1.end()) {
                 return true;
             }
         }
@@ -148,50 +131,11 @@ public:
         return true;
     }
 
-    static bool HasAliasMemoryDep(const Insn &fromMemInsn, const Insn &toMemInsn, DepType depType)
-    {
-        const MemDefUse *fromReferenceOsts = fromMemInsn.GetReferenceOsts();
-        const MemDefUse *toReferenceOsts = toMemInsn.GetReferenceOsts();
-        // Process conservatively when no alias info is available
-        if (fromReferenceOsts == nullptr || toReferenceOsts == nullptr) {
-            return true;
-        }
-        const MemDefUseSet &fromMemDefSet = fromReferenceOsts->GetDefSet();
-        const MemDefUseSet &fromMemUseSet = fromReferenceOsts->GetUseSet();
-        const MemDefUseSet &toMemDefSet = toReferenceOsts->GetDefSet();
-        const MemDefUseSet &toMemUseSet = toReferenceOsts->GetUseSet();
-
-        switch (depType) {
-            // Check write->read dependency
-            case kDependenceTypeTrue:
-                return HasMemoryReferenceAlias(fromMemDefSet, toMemUseSet);
-            // Check read->write dependency
-            case kDependenceTypeAnti:
-                return HasMemoryReferenceAlias(fromMemUseSet, toMemDefSet);
-            // Check write->write dependency
-            case kDependenceTypeOutput:
-                return HasMemoryReferenceAlias(fromMemDefSet, toMemDefSet);
-            case kDependenceTypeNone: {
-                if (HasMemoryReferenceAlias(fromMemDefSet, toMemDefSet) ||
-                    HasMemoryReferenceAlias(fromMemDefSet, toMemUseSet) ||
-                    HasMemoryReferenceAlias(fromMemUseSet, toMemDefSet)) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-            default:
-                CHECK_FATAL(false, "invalid memory dependency type");
-        }
-    }
-
     // The entrance: if memory dependency needs to be build, return true.
     // fromMemInsn & toMemInsn: will be [load, store, adrp, call]
     // baseDefInsns: for basic memory dependency analysis, they define the base address and can be nullptr.
-    // depType: for memory analysis based on me-alias-info, only consider TRUE, ANTI, OUTPUT and NONE dependency type
-    //          from fromMemInsn to toMemInsn, if it is NONE, we take care of both def and use sets.
     static bool NeedBuildMemoryDependency(const Insn &fromMemInsn, const Insn &toMemInsn, Insn *baseDefInsn1,
-                                          Insn *baseDefInsn2, DepType depType)
+                                          Insn *baseDefInsn2)
     {
         // 0. Check volatile
         if (HasVolatile(fromMemInsn, toMemInsn)) {
@@ -201,8 +145,7 @@ public:
         if (!HasBasicMemoryDep(fromMemInsn, toMemInsn, baseDefInsn1, baseDefInsn2)) {
             return false;
         }
-        // 2. Do alias analysis of memory-related instructions based on me-alias-info
-        return HasAliasMemoryDep(fromMemInsn, toMemInsn, depType);
+        return true;
     }
 };
 }  // namespace maplebe

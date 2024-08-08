@@ -20,7 +20,7 @@
 #include "mir_preg.h"
 #include "mir_function.h"
 #include "mpl_number.h"
-#include "class_hierarchy.h"
+#include "scc.h"
 
 // This file defines the data structure OriginalSt that represents a program
 // symbol occurring in the code of the program being optimized.
@@ -538,9 +538,6 @@ public:
     OriginalSt *FindOrCreateAddrofSymbolOriginalSt(OriginalSt *ost);
     OriginalSt *FindOrCreateExtraLevOriginalSt(const VersionSt *vst, TyIdx ptyidx, FieldID fld,
                                                const OffsetType &offset = OffsetType(kOffsetUnknown));
-    OriginalSt *FindOrCreateExtraLevSymOrRegOriginalSt(const VersionSt *vst, TyIdx tyIdx, FieldID fld,
-                                                       const OffsetType &offset = OffsetType(kOffsetUnknown),
-                                                       const KlassHierarchy *klassHierarchy = nullptr);
     OriginalSt *FindExtraLevOriginalSt(const MapleVector<OriginalSt *> &nextLevelOsts, const MIRType *type, FieldID fld,
                                        const OffsetType &offset = OffsetType(kOffsetUnknown)) const;
     OriginalSt *FindExtraLevOriginalSt(const VersionSt *vst, const MIRType *type, FieldID fld,

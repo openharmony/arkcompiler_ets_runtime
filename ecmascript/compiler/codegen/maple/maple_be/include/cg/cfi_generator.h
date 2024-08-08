@@ -62,9 +62,6 @@ private:
     void GenerateRegisterStateDirective(BB &bb);
     virtual void GenerateRegisterSaveDirective(BB &bb, Insn &stackDefInsn) {}
     virtual void GenerateRegisterRestoreDirective(BB &bb, Insn &stackRevertInsn) {}
-
-    /* It inserts a start location information for each function in debugging mode */
-    void InsertFirstLocation(BB &bb);
 };
 } /* namespace maplebe */
 #endif /* MAPLEBE_INCLUDE_CG_CFI_GENERATOR_H */

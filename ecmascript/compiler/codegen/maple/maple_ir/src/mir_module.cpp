@@ -20,7 +20,6 @@
 #include "mir_builder.h"
 #include "debug_info.h"
 #include "intrinsics.h"
-#include "bin_mplt.h"
 
 namespace maple {
 #if MIR_FEATURE_FULL  // to avoid compilation error when MIR_FEATURE_FULL=0
@@ -66,7 +65,6 @@ MIRModule::~MIRModule()
     }
     ReleasePragmaMemPool();
     delete memPool;
-    delete binMplt;
 }
 
 MemPool *MIRModule::CurFuncCodeMemPool() const
@@ -479,49 +477,6 @@ const std::string &MIRModule::GetFileNameFromFileNum(uint32 fileNum) const
     return GlobalTables::GetStrTable().GetStringFromStrIdx(nameIdx);
 }
 
-void MIRModule::DumpToHeaderFile(bool binaryMplt, const std::string &outputName)
-{
-    std::string outfileName;
-    std::string fileNameLocal = !outputName.empty() ? outputName : fileName;
-    std::string::size_type lastDot = fileNameLocal.find_last_of('.');
-    if (lastDot == std::string::npos) {
-        outfileName = fileNameLocal.append(".mplt");
-    } else {
-        outfileName = fileNameLocal.substr(0, lastDot).append(".mplt");
-    }
-    if (binaryMplt) {
-        BinaryMplt binaryMpltTmp(*this);
-        binaryMpltTmp.Export(outfileName);
-    } else {
-        std::ofstream mpltFile;
-        mpltFile.open(outfileName, std::ios::trunc);
-        std::streambuf *backup = LogInfo::MapleLogger().rdbuf();
-        LogInfo::MapleLogger().rdbuf(mpltFile.rdbuf());  // change cout's buffer to that of file
-        for (std::pair<std::u16string, MIRSymbol *> entity : GlobalTables::GetConstPool().GetConstU16StringPool()) {
-            LogInfo::MapleLogger() << "var $";
-            entity.second->DumpAsLiteralVar();
-            LogInfo::MapleLogger() << '\n';
-        }
-        for (auto it = classList.begin(); it != classList.end(); ++it) {
-            TyIdx curTyIdx(*it);
-            MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(curTyIdx);
-            const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(type->GetNameStrIdx());
-            if (type->GetKind() == kTypeClass || type->GetKind() == kTypeInterface) {
-                auto *structType = static_cast<MIRStructType *>(type);
-                // skip imported class/interface and incomplete types
-                if (!structType->IsImported() && !structType->IsIncomplete()) {
-                    LogInfo::MapleLogger() << "type $" << name << " ";
-                    type->Dump(1, true);
-                    LogInfo::MapleLogger() << '\n';
-                }
-            }
-        }
-        /* restore cout */
-        LogInfo::MapleLogger().rdbuf(backup);
-        mpltFile.close();
-    }
-}
-
 void MIRModule::DumpTypeTreeToCxxHeaderFile(MIRType &ty, std::unordered_set<MIRType *> &dumpedClasses) const
 {
     if (dumpedClasses.find(&ty) != dumpedClasses.end()) {
@@ -641,48 +596,6 @@ MIRFunction *MIRModule::FindEntryFunction()
         }
     }
     return nullptr;
-}
-
-// given the phase name (including '.' at beginning), output the program in the
-// module to the file with given file suffix, and file stem from
-// this->fileName appended with phaseName
-void MIRModule::OutputAsciiMpl(const char *phaseName, const char *suffix,
-                               const std::unordered_set<std::string> *dumpFuncSet, bool emitStructureType,
-                               bool binaryform)
-{
-    DEBUG_ASSERT(!(emitStructureType && binaryform), "Cannot emit type info in .bpl");
-    std::string fileStem;
-    std::string::size_type lastDot = fileName.find_last_of('.');
-    if (lastDot == std::string::npos) {
-        fileStem = fileName.append(phaseName);
-    } else {
-        fileStem = fileName.substr(0, lastDot).append(phaseName);
-    }
-    std::string outfileName;
-    outfileName = fileStem + suffix;
-    if (!binaryform) {
-        std::ofstream mplFile;
-        mplFile.open(outfileName, std::ios::trunc);
-        std::streambuf *backup = LogInfo::MapleLogger().rdbuf();
-        LogInfo::MapleLogger().rdbuf(mplFile.rdbuf());  // change LogInfo::MapleLogger()'s buffer to that of file
-        Dump(emitStructureType, dumpFuncSet);
-        LogInfo::MapleLogger().rdbuf(backup);  // restore LogInfo::MapleLogger()'s buffer
-        mplFile.close();
-    } else {
-        BinaryMplt binaryMplt(*this);
-        binaryMplt.GetBinExport().not2mplt = true;
-        binaryMplt.Export(outfileName);
-    }
-    std::ofstream mplFile;
-    mplFile.open(outfileName, std::ios::trunc);
-    std::streambuf *backup = LogInfo::MapleLogger().rdbuf();
-    LogInfo::MapleLogger().rdbuf(mplFile.rdbuf());  // change cout's buffer to that of file
-    Dump(emitStructureType);
-    if (withDbgInfo) {
-        dbgInfo->Dump(0);
-    }
-    LogInfo::MapleLogger().rdbuf(backup);  // restore cout's buffer
-    mplFile.close();
 }
 
 uint32 MIRModule::GetFileinfo(GStrIdx strIdx) const

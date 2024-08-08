@@ -20,7 +20,6 @@
 #include <functional>
 #include <mutex>
 #include <shared_mutex>
-#include "thread_env.h"
 #include "mempool.h"
 #include "mempool_allocator.h"
 #include "types_def.h"
@@ -631,14 +630,6 @@ public:
 
     U GetStrIdxFromName(const T &str) const
     {
-        if (ThreadEnv::IsMeParallel()) {
-            std::shared_lock<std::shared_timed_mutex> lock(mtx);
-            auto it = stringTableMap.find(&str);
-            if (it == stringTableMap.end()) {
-                return U(0);
-            }
-            return it->second;
-        }
         auto it = stringTableMap.find(&str);
         if (it == stringTableMap.end()) {
             return U(0);
@@ -650,14 +641,6 @@ public:
     {
         U strIdx = GetStrIdxFromName(str);
         if (strIdx == 0u) {
-            if (ThreadEnv::IsMeParallel()) {
-                std::unique_lock<std::shared_timed_mutex> lock(mtx);
-                strIdx.reset(stringTable.size());
-                T *newStr = new T(str);
-                stringTable.push_back(newStr);
-                stringTableMap[newStr] = strIdx;
-                return strIdx;
-            }
             strIdx.reset(stringTable.size());
             T *newStr = new T(str);
             stringTable.push_back(newStr);
@@ -668,20 +651,11 @@ public:
 
     size_t StringTableSize() const
     {
-        if (ThreadEnv::IsMeParallel()) {
-            std::shared_lock<std::shared_timed_mutex> lock(mtx);
-            return stringTable.size();
-        }
         return stringTable.size();
     }
 
     const T &GetStringFromStrIdx(U strIdx) const
     {
-        if (ThreadEnv::IsMeParallel()) {
-            std::shared_lock<std::shared_timed_mutex> lock(mtx);
-            DEBUG_ASSERT(strIdx < stringTable.size(), "array index out of range");
-            return *stringTable[strIdx];
-        }
         DEBUG_ASSERT(strIdx < stringTable.size(), "array index out of range");
         return *stringTable[strIdx];
     }

@@ -24,11 +24,8 @@ class X64CGPeepHole : public CGPeepHole {
 public:
     /* normal constructor */
     X64CGPeepHole(CGFunc &f, MemPool *memPool) : CGPeepHole(f, memPool) {};
-    /* constructor for ssa */
-    X64CGPeepHole(CGFunc &f, MemPool *memPool, CGSSAInfo *cgssaInfo) : CGPeepHole(f, memPool, cgssaInfo) {};
     ~X64CGPeepHole() = default;
     void Run() override;
-    bool DoSSAOptimize(BB &bb, Insn &insn) override;
     void DoNormalOptimize(BB &bb, Insn &insn) override;
 };
 

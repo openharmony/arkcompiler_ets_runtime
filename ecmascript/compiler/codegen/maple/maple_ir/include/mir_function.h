@@ -21,11 +21,9 @@
 #include "mir_symbol.h"
 #include "mir_preg.h"
 #include "intrinsics.h"
-#include "file_layout.h"
 #include "mir_nodes.h"
 #include "mir_type.h"
 #include "mir_scope.h"
-#include "profile.h"
 #include "func_desc.h"
 
 #define DEBUGME true
@@ -43,6 +41,20 @@ enum FuncAttrProp : uint32_t {
     kUseEffect = 0x40,
     kDefEffect = 0x80
 };
+
+// file-layout is shared between maple compiler and runtime, thus not in namespace maplert
+enum LayoutType : uint8_t {
+    kLayoutBootHot,
+    kLayoutBothHot,
+    kLayoutRunHot,
+    kLayoutStartupOnly,
+    kLayoutUsedOnce,
+    kLayoutExecuted,  // method excuted in some condition
+    kLayoutUnused,
+    kLayoutTypeCount
+};
+// this used for c string layout
+static constexpr uint8_t kCStringShift = 1;
 
 // describe a formal definition in a function declaration
 class FormalDef {
@@ -1426,50 +1438,6 @@ public:
         funcDesc = value;
     }
 
-    void SetProfCtrTbl(MIRSymbol *pct)
-    {
-        CHECK_FATAL(Options::profileGen, "This is only for profileGen");
-        profCtrTbl = pct;
-    }
-
-    MIRSymbol *GetProfCtrTbl()
-    {
-        return profCtrTbl;
-    }
-
-    void SetNumCtrs(uint32 num)
-    {
-        CHECK_FATAL(Options::profileGen, "This is only for profileGen");
-        nCtrs = num;
-    }
-
-    uint32 GetNumCtrs() const
-    {
-        return nCtrs;
-    }
-
-    void SetFileLineNoChksum(uint64 chksum)
-    {
-        CHECK_FATAL(Options::profileGen, "This is only for profileGen");
-        fileLinenoChksum = chksum;
-    }
-
-    uint64 GetFileLineNoChksum() const
-    {
-        return fileLinenoChksum;
-    }
-
-    void SetCFGChksum(uint64 chksum)
-    {
-        CHECK_FATAL(Options::profileGen, "This is only for profileGen");
-        cfgChksum = chksum;
-    }
-
-    uint64 GetCFGChksum() const
-    {
-        return cfgChksum;
-    }
-
     void InitFuncDescToBest()
     {
         funcDesc.InitToBest();
@@ -1478,20 +1446,6 @@ public:
     const FuncDesc &GetFuncDesc() const
     {
         return funcDesc;
-    }
-
-    void AddProfileDesc(uint64 hash, uint32 start, uint32 end)
-    {
-        profileDesc = module->GetMemPool()->New<IRProfileDesc>(hash, start, end);
-    }
-
-    const IRProfileDesc *GetProfInf()
-    {
-        if (profileDesc == nullptr) {
-            // return profileDesc with default value
-            profileDesc = module->GetMemPool()->New<IRProfileDesc>();
-        }
-        return profileDesc;
     }
 
     bool IsVisited() const
@@ -1640,7 +1594,6 @@ private:
     // to hold unmangled class and function names
     MeFunction *meFunc = nullptr;
     EAConnectionGraph *eacg = nullptr;
-    IRProfileDesc *profileDesc = nullptr;
     GStrIdx baseClassStrIdx {0};  // the string table index of base class name
     GStrIdx baseFuncStrIdx {0};   // the string table index of base function name
     // the string table index of base function name mangled with type info
@@ -1654,10 +1607,6 @@ private:
     PointerAttr returnKind = PointerAttr::kPointerUndeiced;
     MapleMap<MIRSymbol *, PointerAttr> paramNonullTypeMap {module->GetMPAllocator().Adapter()};
     FuncDesc funcDesc {};
-    MIRSymbol *profCtrTbl = nullptr;
-    uint32 nCtrs = 0;  // number of counters
-    uint64 fileLinenoChksum = 0;
-    uint64 cfgChksum = 0;
     GcovFuncInfo *funcProfData = nullptr;
     MemReferenceTable *memReferenceTable = nullptr;
     void DumpFlavorLoweredThanMmpl() const;

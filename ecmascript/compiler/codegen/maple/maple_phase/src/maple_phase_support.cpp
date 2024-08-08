@@ -21,8 +21,6 @@ void PhaseTimeHandler::RunBeforePhase(const MaplePhaseInfo &pi)
 {
     (void)pi;
     if (isMultithread) {
-        static std::mutex mtx;
-        ParallelGuard guard(mtx, true);
         std::thread::id tid = std::this_thread::get_id();
         if (!multiTimers.count(tid)) {
             multiTimers.emplace(std::make_pair(tid, allocator.New<MPLTimer>()));
@@ -35,8 +33,6 @@ void PhaseTimeHandler::RunBeforePhase(const MaplePhaseInfo &pi)
 
 void PhaseTimeHandler::RunAfterPhase(const MaplePhaseInfo &pi)
 {
-    static std::mutex mtx;
-    ParallelGuard guard(mtx, true);
     long usedTime = 0;
     if (isMultithread) {
         std::thread::id tid = std::this_thread::get_id();

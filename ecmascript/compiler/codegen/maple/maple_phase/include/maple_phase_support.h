@@ -16,13 +16,13 @@
 #ifndef MAPLE_PHASE_INCLUDE_MAPLE_PHASE_SUPPORT_H
 #define MAPLE_PHASE_INCLUDE_MAPLE_PHASE_SUPPORT_H
 #include <map>
+#include <thread>
 #include <string>
 #include <iostream>
 #include "mempool.h"
 #include "maple_string.h"
 #include "mpl_timer.h"
 #include "mempool_allocator.h"
-#include "option.h"
 
 namespace maple {
 using MaplePhaseID = const void *;
@@ -108,7 +108,7 @@ private:
 
 class PhaseTimeHandler {
 public:
-    PhaseTimeHandler(MemPool &memPool, uint32 threadNum = 1)
+    PhaseTimeHandler(MemPool &memPool, uint32_t threadNum = 1)
         : allocator(&memPool),
           phaseTimeRecord(allocator.Adapter()),
           originOrder(allocator.Adapter()),

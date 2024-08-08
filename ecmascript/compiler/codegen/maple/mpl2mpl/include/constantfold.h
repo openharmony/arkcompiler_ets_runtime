@@ -23,9 +23,9 @@
 namespace maple {
 class ConstantFold : public FuncOptimizeImpl {
 public:
-    ConstantFold(MIRModule &mod, KlassHierarchy *kh, bool trace) : FuncOptimizeImpl(mod, kh, trace), mirModule(&mod) {}
+    ConstantFold(MIRModule &mod, bool trace) : FuncOptimizeImpl(mod, trace), mirModule(&mod) {}
 
-    explicit ConstantFold(MIRModule &mod) : FuncOptimizeImpl(mod, nullptr, false), mirModule(&mod) {}
+    explicit ConstantFold(MIRModule &mod) : FuncOptimizeImpl(mod, false), mirModule(&mod) {}
 
     // Fold an expression.
     // It returns a new expression if there was something to fold, or

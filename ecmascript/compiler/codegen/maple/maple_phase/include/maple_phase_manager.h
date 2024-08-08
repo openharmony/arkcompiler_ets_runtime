@@ -17,7 +17,6 @@
 #define MAPLE_PHASE_INCLUDE_MAPLE_PHASE_MANAGER_H
 #include "maple_phase.h"
 #include "me_option.h"
-#include "call_graph.h"
 
 namespace maple {
 class MaplePhase;

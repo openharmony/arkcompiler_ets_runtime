@@ -2404,10 +2404,6 @@ StmtNode *ConstantFold::SimplifyIassign(IassignNode *node)
 StmtNode *ConstantFold::SimplifyCondGoto(CondGotoNode *node)
 {
     CHECK_NULL_FATAL(node);
-    // optimize condgoto need to update frequency, skip here
-    if (Options::profileUse && mirModule->CurFunction()->GetFuncProfData()) {
-        return node;
-    }
     BaseNode *returnValue = nullptr;
     returnValue = Fold(node->Opnd(0));
     returnValue = (returnValue == nullptr) ? node : returnValue;
@@ -2428,9 +2424,6 @@ StmtNode *ConstantFold::SimplifyCondGoto(CondGotoNode *node)
             uint32 freq = static_cast<uint32>(mirModule->CurFunction()->GetFreqFromLastStmt(node->GetStmtID()));
             GotoNode *gotoNode = mirModule->CurFuncCodeMemPool()->New<GotoNode>(OP_goto);
             gotoNode->SetOffset(node->GetOffset());
-            if (Options::profileUse && mirModule->CurFunction()->GetFuncProfData()) {
-                gotoNode->SetStmtID(node->GetStmtID());  // reuse condnode stmtid
-            }
             mirModule->CurFunction()->SetLastFreqMap(gotoNode->GetStmtID(), freq);
             return gotoNode;
         } else {

@@ -20,87 +20,15 @@
 #if TARGAARCH64
 #include "aarch64_peep.h"
 #endif
-#if TARGRISCV64
-#include "riscv64_peep.h"
-#endif
 #if defined TARGX86_64
 #include "x64_peep.h"
-#endif
-#if TARGARM32
-#include "arm32_peep.h"
 #endif
 
 namespace maplebe {
 #if TARGAARCH64
-bool CGPeepPattern::IsCCRegCrossVersion(Insn &startInsn, Insn &endInsn, const RegOperand &ccReg) const
-{
-    if (startInsn.GetBB() != endInsn.GetBB()) {
-        return true;
-    }
-    CHECK_FATAL(ssaInfo != nullptr, "must have ssaInfo");
-    CHECK_FATAL(ccReg.IsSSAForm(), "cc reg must be ssa form");
-    for (auto *curInsn = startInsn.GetNext(); curInsn != nullptr && curInsn != &endInsn; curInsn = curInsn->GetNext()) {
-        if (!curInsn->IsMachineInstruction()) {
-            continue;
-        }
-        if (curInsn->IsCall()) {
-            return true;
-        }
-        uint32 opndNum = curInsn->GetOperandSize();
-        for (uint32 i = 0; i < opndNum; ++i) {
-            Operand &opnd = curInsn->GetOperand(i);
-            if (!opnd.IsRegister()) {
-                continue;
-            }
-            auto &regOpnd = static_cast<RegOperand &>(opnd);
-            if (!curInsn->IsRegDefined(regOpnd.GetRegisterNumber())) {
-                continue;
-            }
-            if (static_cast<RegOperand &>(opnd).IsOfCC()) {
-                VRegVersion *ccVersion = ssaInfo->FindSSAVersion(ccReg.GetRegisterNumber());
-                VRegVersion *curCCVersion = ssaInfo->FindSSAVersion(regOpnd.GetRegisterNumber());
-                CHECK_FATAL(ccVersion != nullptr && curCCVersion != nullptr,
-                            "RegVersion must not be null based on ssa");
-                CHECK_FATAL(!ccVersion->IsDeleted() && !curCCVersion->IsDeleted(), "deleted version");
-                if (ccVersion->GetVersionIdx() != curCCVersion->GetVersionIdx()) {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
-}
-
 int64 CGPeepPattern::GetLogValueAtBase2(int64 val) const
 {
     return (__builtin_popcountll(static_cast<uint64>(val)) == 1) ? (__builtin_ffsll(val) - 1) : -1;
-}
-
-InsnSet CGPeepPattern::GetAllUseInsn(const RegOperand &defReg) const
-{
-    InsnSet allUseInsn;
-    if ((ssaInfo != nullptr) && defReg.IsSSAForm()) {
-        VRegVersion *defVersion = ssaInfo->FindSSAVersion(defReg.GetRegisterNumber());
-        CHECK_FATAL(defVersion != nullptr, "useVRegVersion must not be null based on ssa");
-        for (auto insnInfo : defVersion->GetAllUseInsns()) {
-            Insn *secondInsn = insnInfo.second->GetInsn();
-            allUseInsn.emplace(secondInsn);
-        }
-    }
-    return allUseInsn;
-}
-
-Insn *CGPeepPattern::GetDefInsn(const RegOperand &useReg)
-{
-    if (!useReg.IsSSAForm()) {
-        return nullptr;
-    }
-    regno_t useRegNO = useReg.GetRegisterNumber();
-    VRegVersion *useVersion = ssaInfo->FindSSAVersion(useRegNO);
-    DEBUG_ASSERT(useVersion != nullptr, "useVRegVersion must not be null based on ssa");
-    CHECK_FATAL(!useVersion->IsDeleted(), "deleted version");
-    DUInsnInfo *defInfo = useVersion->GetDefInsnInfo();
-    return defInfo == nullptr ? nullptr : defInfo->GetInsn();
 }
 
 void CGPeepPattern::DumpAfterPattern(std::vector<Insn *> &prevInsns, const Insn *replacedInsn, const Insn *newInsn)
@@ -116,10 +44,6 @@ void CGPeepPattern::DumpAfterPattern(std::vector<Insn *> &prevInsns, const Insn 
             if (prevInsn != nullptr) {
                 LogInfo::MapleLogger() << "[primal form] ";
                 prevInsn->Dump();
-                if (ssaInfo != nullptr) {
-                    LogInfo::MapleLogger() << "[ssa form] ";
-                    ssaInfo->DumpInsnInSSAForm(*prevInsn);
-                }
             }
         }
         LogInfo::MapleLogger() << "}\n";
@@ -128,19 +52,11 @@ void CGPeepPattern::DumpAfterPattern(std::vector<Insn *> &prevInsns, const Insn 
         LogInfo::MapleLogger() << "======= OldInsn :\n";
         LogInfo::MapleLogger() << "[primal form] ";
         replacedInsn->Dump();
-        if (ssaInfo != nullptr) {
-            LogInfo::MapleLogger() << "[ssa form] ";
-            ssaInfo->DumpInsnInSSAForm(*replacedInsn);
-        }
     }
     if (newInsn != nullptr) {
         LogInfo::MapleLogger() << "======= NewInsn :\n";
         LogInfo::MapleLogger() << "[primal form] ";
         newInsn->Dump();
-        if (ssaInfo != nullptr) {
-            LogInfo::MapleLogger() << "[ssa form] ";
-            ssaInfo->DumpInsnInSSAForm(*newInsn);
-        }
     }
 }
 
@@ -628,9 +544,6 @@ void PeepHoleOptimizer::Peephole0()
 #if TARGAARCH64 || TARGRISCV64
     peepOptimizer.Run<AArch64PeepHole0>();
 #endif
-#if TARGARM32
-    peepOptimizer.Run<Arm32PeepHole0>();
-#endif
 }
 
 void PeepHoleOptimizer::PeepholeOpt()
@@ -639,9 +552,6 @@ void PeepHoleOptimizer::PeepholeOpt()
     PeepOptimizer peepOptimizer(*cgFunc, memPool.get());
 #if TARGAARCH64 || TARGRISCV64
     peepOptimizer.Run<AArch64PeepHole>();
-#endif
-#if TARGARM32
-    peepOptimizer.Run<Arm32PeepHole>();
 #endif
 }
 
@@ -652,9 +562,6 @@ void PeepHoleOptimizer::PrePeepholeOpt()
 #if TARGAARCH64 || TARGRISCV64
     peepOptimizer.Run<AArch64PrePeepHole>();
 #endif
-#if TARGARM32
-    peepOptimizer.Run<Arm32PrePeepHole>();
-#endif
 }
 
 void PeepHoleOptimizer::PrePeepholeOpt1()
@@ -664,29 +571,7 @@ void PeepHoleOptimizer::PrePeepholeOpt1()
 #if TARGAARCH64 || TARGRISCV64
     peepOptimizer.Run<AArch64PrePeepHole1>();
 #endif
-#if TARGARM32
-    peepOptimizer.Run<Arm32PrePeepHole1>();
-#endif
 }
-
-/* === SSA form === */
-bool CgPeepHole::PhaseRun(maplebe::CGFunc &f)
-{
-    CGSSAInfo *cgssaInfo = GET_ANALYSIS(CgSSAConstruct, f);
-    CHECK_FATAL((cgssaInfo != nullptr), "Get ssaInfo failed!");
-    MemPool *mp = GetPhaseMemPool();
-    auto *cgpeep = mp->New<AArch64CGPeepHole>(f, mp, cgssaInfo);
-    CHECK_FATAL((cgpeep != nullptr), "Creat AArch64CGPeepHole failed!");
-    cgpeep->Run();
-    return false;
-}
-
-void CgPeepHole::GetAnalysisDependence(AnalysisDep &aDep) const
-{
-    aDep.AddRequired<CgSSAConstruct>();
-    aDep.AddPreserved<CgSSAConstruct>();
-}
-MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPeepHole, cgpeephole)
 #endif
 /* === Physical Pre Form === */
 bool CgPrePeepHole::PhaseRun(maplebe::CGFunc &f)
@@ -732,15 +617,6 @@ MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPrePeepHole1, prepeephole1)
 
 bool CgPeepHole0::PhaseRun(maplebe::CGFunc &f)
 {
-    ReachingDefinition *reachingDef = nullptr;
-    if (Globals::GetInstance()->GetOptimLevel() >= CGOptions::kLevel2) {
-        reachingDef = GET_ANALYSIS(CgReachingDefinition, f);
-        if (reachingDef == nullptr || !f.GetRDStatus()) {
-            GetAnalysisInfoHook()->ForceEraseAnalysisPhase(f.GetUniqueID(), &CgReachingDefinition::id);
-            return false;
-        }
-    }
-
     auto *peep = GetPhaseMemPool()->New<PeepHoleOptimizer>(&f);
     CHECK_FATAL(peep != nullptr, "PeepHoleOptimizer instance create failure");
     peep->Peephole0();

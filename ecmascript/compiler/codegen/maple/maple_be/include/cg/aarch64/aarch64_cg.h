@@ -18,21 +18,11 @@
 
 #include "cg.h"
 #include "aarch64_cgfunc.h"
-#include "aarch64_ssa.h"
-#include "aarch64_phi_elimination.h"
-#include "aarch64_prop.h"
-#include "aarch64_dce.h"
 #include "aarch64_live.h"
-#include "aarch64_reaching.h"
 #include "aarch64_args.h"
-#include "aarch64_alignment.h"
-#include "aarch64_validbit_opt.h"
-#include "aarch64_reg_coalesce.h"
 #include "aarch64_cfgo.h"
 #include "aarch64_peep.h"
 #include "aarch64_proepilog.h"
-
-#include "aarch64_local_schedule.h"
 
 namespace maplebe {
 constexpr int64 kShortBRDistance = (8 * 1024);
@@ -90,10 +80,6 @@ public:
     {
         return mp.New<AArch64LiveAnalysis>(f, mp);
     }
-    ReachingDefinition *CreateReachingDefinition(MemPool &mp, CGFunc &f) const override
-    {
-        return mp.New<AArch64ReachingDefinition>(f, mp);
-    }
     GenProEpilog *CreateGenProEpilog(CGFunc &f, MemPool &mp, MemPool *tempMemPool = nullptr) const override
     {
         return mp.New<AArch64GenProEpilog>(f, *tempMemPool);
@@ -105,39 +91,6 @@ public:
     MoveRegArgs *CreateMoveRegArgs(MemPool &mp, CGFunc &f) const override
     {
         return mp.New<AArch64MoveRegArgs>(f);
-    }
-    AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const override
-    {
-        return mp.New<AArch64AlignAnalysis>(f, mp, loop);
-    }
-    CGSSAInfo *CreateCGSSAInfo(MemPool &mp, CGFunc &f, DomAnalysis &da, MemPool &tmp) const override
-    {
-        return mp.New<AArch64CGSSAInfo>(f, da, mp, tmp);
-    }
-    LiveIntervalAnalysis *CreateLLAnalysis(MemPool &mp, CGFunc &f) const override
-    {
-        return mp.New<AArch64LiveIntervalAnalysis>(f, mp);
-    };
-    PhiEliminate *CreatePhiElimintor(MemPool &mp, CGFunc &f, CGSSAInfo &ssaInfo) const override
-    {
-        return mp.New<AArch64PhiEliminate>(f, ssaInfo, mp);
-    }
-    CGProp *CreateCGProp(MemPool &mp, CGFunc &f, CGSSAInfo &ssaInfo, LiveIntervalAnalysis &ll) const override
-    {
-        return mp.New<AArch64Prop>(mp, f, ssaInfo, ll);
-    }
-    CGDce *CreateCGDce(MemPool &mp, CGFunc &f, CGSSAInfo &ssaInfo) const override
-    {
-        return mp.New<AArch64Dce>(mp, f, ssaInfo);
-    }
-    ValidBitOpt *CreateValidBitOpt(MemPool &mp, CGFunc &f, CGSSAInfo &ssaInfo) const override
-    {
-        return mp.New<AArch64ValidBitOpt>(f, ssaInfo);
-    }
-    LocalSchedule *CreateLocalSchedule(MemPool &mp, CGFunc &f, ControlDepAnalysis &cda,
-                                       DataDepAnalysis &dda) const override
-    {
-        return mp.New<AArch64LocalSchedule>(mp, f, cda, dda);
     }
     CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const override
     {

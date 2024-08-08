@@ -1804,48 +1804,6 @@ void CGFunc::RemoveUnreachableBB()
     }
 }
 
-Insn &CGFunc::BuildLocInsn(int64 fileNum, int64 lineNum, int64 columnNum)
-{
-    Operand *o0 = CreateDbgImmOperand(fileNum);
-    Operand *o1 = CreateDbgImmOperand(lineNum);
-    Operand *o2 = CreateDbgImmOperand(columnNum);
-    Insn &loc =
-        GetInsnBuilder()->BuildDbgInsn(mpldbg::OP_DBG_loc).AddOpndChain(*o0).AddOpndChain(*o1).AddOpndChain(*o2);
-    return loc;
-}
-
-void CGFunc::GenerateLoc(StmtNode *stmt, unsigned &lastSrcLoc, unsigned &lastMplLoc)
-{
-    /* insert Insn for .loc before cg for the stmt */
-    if (cg->GetCGOptions().WithLoc() && stmt->op != OP_label && stmt->op != OP_comment) {
-        /* if original src file location info is availiable for this stmt,
-         * use it and skip mpl file location info for this stmt
-         */
-        bool hasLoc = false;
-        unsigned newSrcLoc = cg->GetCGOptions().WithSrc() ? stmt->GetSrcPos().LineNum() : 0;
-        if (newSrcLoc != 0 && newSrcLoc != lastSrcLoc) {
-            /* .loc for original src file */
-            unsigned fileid = stmt->GetSrcPos().FileNum();
-            Operand *o0 = CreateDbgImmOperand(fileid);
-            Operand *o1 = CreateDbgImmOperand(newSrcLoc);
-            Insn &loc = GetInsnBuilder()->BuildDbgInsn(mpldbg::OP_DBG_loc).AddOpndChain(*o0).AddOpndChain(*o1);
-            curBB->AppendInsn(loc);
-            lastSrcLoc = newSrcLoc;
-            hasLoc = true;
-        }
-        /* .loc for mpl file, skip if already has .loc from src for this stmt */
-        unsigned newMplLoc = cg->GetCGOptions().WithMpl() ? stmt->GetSrcPos().MplLineNum() : 0;
-        if (newMplLoc != 0 && newMplLoc != lastMplLoc && !hasLoc) {
-            unsigned fileid = 1;
-            Operand *o0 = CreateDbgImmOperand(fileid);
-            Operand *o1 = CreateDbgImmOperand(newMplLoc);
-            Insn &loc = GetInsnBuilder()->BuildDbgInsn(mpldbg::OP_DBG_loc).AddOpndChain(*o0).AddOpndChain(*o1);
-            curBB->AppendInsn(loc);
-            lastMplLoc = newMplLoc;
-        }
-    }
-}
-
 int32 CGFunc::GetFreqFromStmt(uint32 stmtId)
 {
     int32 freq = GetFunction().GetFreqFromLastStmt(stmtId);
@@ -1988,12 +1946,8 @@ void CGFunc::GenerateInstruction()
 
     /* First Pass: Creates the doubly-linked list of BBs (next,prev) */
     volReleaseInsn = nullptr;
-    unsigned lastSrcLoc = 0;
-    unsigned lastMplLoc = 0;
     std::set<uint32> bbFreqSet;
     for (StmtNode *stmt = secondStmt; stmt != nullptr; stmt = stmt->GetNext()) {
-        /* insert Insn for .loc before cg for the stmt */
-        GenerateLoc(stmt, lastSrcLoc, lastMplLoc);
         BB *tmpBB = curBB;
         isVolLoad = false;
         if (CheckSkipMembarOp(*stmt)) {
@@ -2041,9 +1995,6 @@ void CGFunc::GenerateInstruction()
                 volReleaseInsn = nullptr;
                 isVolStore = false;
             }
-        }
-        if (curBB != tmpBB) {
-            lastSrcLoc = 0;
         }
         GetInsnBuilder()->ClearDebugComment();
     }

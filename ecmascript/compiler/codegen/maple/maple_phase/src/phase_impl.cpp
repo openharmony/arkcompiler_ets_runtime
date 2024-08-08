@@ -16,11 +16,12 @@
 #include "phase_impl.h"
 #include <cstdlib>
 #include "mpl_timer.h"
+#include "option.h"
 
 namespace maple {
 // ========== FuncOptimizeImpl ==========
-FuncOptimizeImpl::FuncOptimizeImpl(MIRModule &mod, KlassHierarchy *kh, bool currTrace)
-    : klassHierarchy(kh), trace(currTrace), module(&mod)
+FuncOptimizeImpl::FuncOptimizeImpl(MIRModule &mod, bool currTrace)
+    : trace(currTrace), module(&mod)
 {
     builder = new (std::nothrow) MIRBuilderExt(module);
     CHECK_FATAL(builder != nullptr, "New fail in FuncOptimizeImpl ctor!");
@@ -32,7 +33,6 @@ FuncOptimizeImpl::~FuncOptimizeImpl()
         delete builder;
         builder = nullptr;
     }
-    klassHierarchy = nullptr;
     currFunc = nullptr;
     module = nullptr;
 }

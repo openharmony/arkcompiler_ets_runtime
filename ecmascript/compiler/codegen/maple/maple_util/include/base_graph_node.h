@@ -18,6 +18,14 @@
 #include "mempool_allocator.h"
 namespace maple {
 
+template <typename T>
+struct Comparator {
+    bool operator()(const T *lhs, const T *rhs) const
+    {
+        return lhs->GetID() < rhs->GetID();
+    }
+};
+
 class BaseGraphNode {
 public:
     virtual void GetOutNodes(std::vector<BaseGraphNode *> &outNodes) = 0;

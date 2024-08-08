@@ -51,9 +51,6 @@ public:
 
     // return LiteCG& enables chaining of config functions.
     LiteCG &SetOutputType(OutputType config);
-    LiteCG &SetTargetType(TargetType config);
-    LiteCG &SetDebugType(DebugType config);
-    LiteCG &SetVerbose(InfoType config);
     LiteCG &SetupLiteCGEmitMemoryManager(void *codeSpace,
                                          maplebe::MemoryManagerAllocateDataSectionCallback dataSectionAllocator,
                                          maplebe::MemoryManagerSaveFunc2AddressInfoCallback funcAddrSaver,

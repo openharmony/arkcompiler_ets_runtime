@@ -20,7 +20,7 @@ namespace maple {
 class MaplePhase;
 class AnalysisInfoHook;
 class MIRModule;
-enum MaplePhaseKind : uint8 { kModulePM, kModulePhase, kFunctionPM, kFunctionPhase, kSccPhasePM, kSccPhase };
+enum MaplePhaseKind : uint8_t { kModulePM, kModulePhase, kFunctionPM, kFunctionPhase, kSccPhasePM, kSccPhase };
 
 class MaplePhase {
 public:

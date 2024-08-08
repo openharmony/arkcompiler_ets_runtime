@@ -15,10 +15,8 @@
 
 #include "mir_symbol.h"
 #include "mir_function.h"
-#include "class_init.h"
 #include "reflection_analysis.h"
 #include "printing.h"
-#include "literalstrname.h"
 #include "string_utils.h"
 
 namespace maple {

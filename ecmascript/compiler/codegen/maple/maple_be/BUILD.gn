@@ -36,7 +36,6 @@ if (enable_jit_code_sign) {
 
 deps_libcg = [
   ":libmplbe",
-  ":libmplad",
   "${MAPLEALL_ROOT}/mempool:libmempool",
   "${MAPLEALL_ROOT}/maple_phase:libmplphase",
   "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
@@ -79,8 +78,6 @@ if (TARGET == "ark") {
   deps_libcg += [ ":libcgark" ]
 }
 
-src_libmplad = [ "src/ad/mad.cpp" ]
-
 src_libcglowerer = [
   "src/be/bbt.cpp",
   "src/be/trycatchblockslower.cpp",
@@ -100,51 +97,28 @@ src_libcgaarch64 = [
   "src/cg/aarch64/mpl_atomic.cpp",
   "src/cg/aarch64/aarch64_cfi_generator.cpp",
   "src/cg/aarch64/aarch64_cgfunc.cpp",
-  "src/cg/aarch64/aarch64_dependence.cpp",
-  "src/cg/aarch64/aarch64_data_dep_base.cpp",
-  "src/cg/aarch64/aarch64_ebo.cpp",
   "src/cg/aarch64/aarch64_emitter.cpp",
   "src/cg/aarch64/aarch64_obj_emitter.cpp",
   "src/cg/aarch64/aarch64_fixshortbranch.cpp",
-  "src/cg/aarch64/aarch64_global.cpp",
   "src/cg/aarch64/aarch64_proepilog.cpp",
   "src/cg/aarch64/aarch64_operand.cpp",
-  "src/cg/aarch64/aarch64_color_ra.cpp",
   "src/cg/aarch64/aarch64_reg_info.cpp",
-  "src/cg/aarch64/aarch64_ssa.cpp",
-  "src/cg/aarch64/aarch64_prop.cpp",
-  "src/cg/aarch64/aarch64_dce.cpp",
-  "src/cg/aarch64/aarch64_phi_elimination.cpp",
-  "src/cg/aarch64/aarch64_reg_coalesce.cpp",
-  "src/cg/aarch64/aarch64_ico.cpp",
   "src/cg/aarch64/aarch64_insn.cpp",
   "src/cg/aarch64/aarch64_isa.cpp",
   "src/cg/aarch64/aarch64_memlayout.cpp",
   "src/cg/aarch64/aarch64_args.cpp",
   "src/cg/aarch64/aarch64_live.cpp",
-  "src/cg/aarch64/aarch64_yieldpoint.cpp",
   "src/cg/aarch64/aarch64_offset_adjust.cpp",
   "src/cg/aarch64/aarch64_optimize_common.cpp",
   "src/cg/aarch64/aarch64_peep.cpp",
-  "src/cg/aarch64/aarch64_reaching.cpp",
-  "src/cg/aarch64/aarch64_schedule.cpp",
-  "src/cg/aarch64/aarch64_strldr.cpp",
-  "src/cg/aarch64/aarch64_ra_opt.cpp",
-  "src/cg/aarch64/aarch64_alignment.cpp",
-  "src/cg/aarch64/aarch64_regsaves.cpp",
   "src/cg/aarch64/aarch64_utils.cpp",
   "src/cg/aarch64/aarch64_cg.cpp",
-  "src/cg/aarch64/aarch64_validbit_opt.cpp",
   "src/cg/aarch64/aarch64_cfgo.cpp",
   "src/cg/aarch64/aarch64_imm_valid.cpp",
-  "src/cg/aarch64/aarch64_local_schedule.cpp",
 ]
 
 src_libcgx86phases = [
   "src/cg/peep.cpp",
-  "src/cg/alignment.cpp",
-  "src/cg/reaching.cpp",
-  "src/cg/local_opt.cpp",
   "src/cg/cfgo.cpp",
   "src/cg/cg_dominance.cpp",
   "src/cg/cg_stackmap_computation.cpp",
@@ -165,8 +139,6 @@ src_libcgx8664 = [
   "src/cg/x86_64/x64_proepilog.cpp",
   "src/cg/x86_64/x64_args.cpp",
   "src/cg/x86_64/x64_peep.cpp",
-  "src/cg/x86_64/x64_reaching.cpp",
-  "src/cg/x86_64/x64_local_opt.cpp",
   "src/cg/x86_64/x64_cfgo.cpp",
   "src/cg/x86_64/x64_isa.cpp",
   "src/cg/x86_64/x64_optimize_common.cpp",
@@ -211,37 +183,8 @@ src_libcgark = [ "src/cg/ark/foo.cpp" ]
 src_libcgphases = [
   "src/cg/cfi_generator.cpp",
   "src/cg/cfgo.cpp",
-  "src/cg/local_opt.cpp",
-  "src/cg/ebo.cpp",
-  "src/cg/ra_opt.cpp",
-  "src/cg/cg_ssa.cpp",
-  "src/cg/cg_prop.cpp",
-  "src/cg/cg_dce.cpp",
-  "src/cg/cg_phi_elimination.cpp",
-  "src/cg/reg_coalesce.cpp",
-  "src/cg/global.cpp",
-  "src/cg/ico.cpp",
   "src/cg/peep.cpp",
-  "src/cg/pressure.cpp",
-  "src/cg/reaching.cpp",
-  "src/cg/schedule.cpp",
-  "src/cg/strldr.cpp",
   "src/cg/cg_dominance.cpp",
-  "src/cg/cg_pre.cpp",
-  "src/cg/cg_occur.cpp",
-  "src/cg/cg_ssu_pre.cpp",
-  "src/cg/cg_ssa_pre.cpp",
-  "src/cg/regsaves.cpp",
-  "src/cg/cg_critical_edge.cpp",
-  "src/cg/alignment.cpp",
-  "src/cg/cg_validbit_opt.cpp",
-  "src/cg/cg_stackmap_computation.cpp",
-  "src/cg/control_dep_analysis.cpp",
-  "src/cg/data_dep_base.cpp",
-  "src/cg/data_dep_analysis.cpp",
-  "src/cg/base_schedule.cpp",
-  "src/cg/list_scheduler.cpp",
-  "src/cg/local_schedule.cpp",
 ]
 
 src_libcg = [
@@ -254,7 +197,6 @@ src_libcg = [
   "src/cg/cg_cfg.cpp",
   "src/cg/cg_option.cpp",
   "src/cg/cg_options.cpp",
-  "src/cg/dbg.cpp",
   "src/cg/optimize_common.cpp",
   "src/cg/eh_func.cpp",
   "src/cg/emit.cpp",
@@ -265,11 +207,9 @@ src_libcg = [
   "src/cg/isel.cpp",
   "src/cg/standardize.cpp",
   "src/cg/memlayout.cpp",
-  "src/cg/yieldpoint.cpp",
   "src/cg/label_creation.cpp",
   "src/cg/offset_adjust.cpp",
   "src/cg/reg_alloc.cpp",
-  "src/cg/reg_alloc_basic.cpp",
   "src/cg/reg_alloc_lsra.cpp",
   "src/cg/proepilog.cpp",
   "src/cg/cg.cpp",
@@ -281,17 +221,6 @@ src_libcg = [
   "src/cg/target_registry.cpp",
   "src/cg/target_select.cpp",
 ]
-
-ohos_static_library("libmplad") {
-  stack_protector_ret = false
-  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
-  sources = src_libmplad
-  include_dirs = include_directories
-  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
-  external_deps = [ "bounds_checking_function:libsec_static" ]
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
-}
 
 ohos_source_set("libcglowerer") {
   stack_protector_ret = false

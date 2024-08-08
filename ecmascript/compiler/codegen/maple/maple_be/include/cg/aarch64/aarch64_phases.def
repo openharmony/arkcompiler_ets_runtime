@@ -19,18 +19,6 @@
  ADDTARGETPHASE("handlefunction", true);
  ADDTARGETPHASE("moveargs", true);
  ADDTARGETPHASE("stackmapcomputation", false);
- if (GetMIRModule()->GetFlavor() != MIRFlavor::kFlavorLmbc) {
-   /* SSA PHASES */
-   ADDTARGETPHASE("cgssaconstruct", CGOptions::DoCGSSA());
-   ADDTARGETPHASE("cgcopyprop", CGOptions::DoCGSSA());
-   ADDTARGETPHASE("cgpeephole", CGOptions::DoCGSSA());
-   ADDTARGETPHASE("cgvalidbitopt", CGOptions::DoCGSSA());
-   ADDTARGETPHASE("cgtargetprop", CGOptions::DoCGSSA());
-   ADDTARGETPHASE("cgdeadcodeelimination", CGOptions::DoCGSSA());
-   ADDTARGETPHASE("cgsplitcriticaledge", CGOptions::DoCGSSA());
-   ADDTARGETPHASE("cgphielimination", CGOptions::DoCGSSA());
-   ADDTARGETPHASE("cgregcoalesce", CGOptions::DoCGSSA() || CGOptions::DoCGRegCoalecse());
- }
  /* Normal OPT PHASES */
  ADDTARGETPHASE("cgprepeephole", CGOptions::DoPrePeephole());
  ADDTARGETPHASE("ebo", CGOptions::DoEBO());
@@ -39,12 +27,6 @@
  ADDTARGETPHASE("ico", CGOptions::DoICO())
  ADDTARGETPHASE("cfgo", !GetMIRModule()->IsCModule() && CGOptions::DoCFGO());
 
- if (GetMIRModule()->GetFlavor() != MIRFlavor::kFlavorLmbc) {
-   ADDTARGETPHASE("storeloadopt", CGOptions::DoStoreLoadOpt() && !CGOptions::DoCGSSA());
-   ADDTARGETPHASE("globalopt", CGOptions::DoGlobalOpt());
- }
- ADDTARGETPHASE("clearrdinfo", (CGOptions::DoStoreLoadOpt()) || CGOptions::DoGlobalOpt());
-
  ADDTARGETPHASE("prepeephole1", CGOptions::DoPrePeephole());
  ADDTARGETPHASE("ebo1", CGOptions::DoEBO());
  ADDTARGETPHASE("prescheduling", CGOptions::DoPreSchedule());
@@ -52,10 +34,6 @@
  ADDTARGETPHASE("cgsplitcriticaledge", GetMIRModule()->IsCModule());
  ADDTARGETPHASE("regalloc", true);
  ADDTARGETPHASE("regsaves", GetMIRModule()->IsCModule() && CGOptions::DoRegSavesOpt());
- if (GetMIRModule()->GetFlavor() != MIRFlavor::kFlavorLmbc) {
-   ADDTARGETPHASE("storeloadopt", GetMIRModule()->IsCModule() && CGOptions::DoStoreLoadOpt());
-   ADDTARGETPHASE("globalopt", CGOptions::DoCGSSA());
- }
  ADDTARGETPHASE("clearrdinfo", GetMIRModule()->IsCModule() && (CGOptions::DoStoreLoadOpt() || CGOptions::DoGlobalOpt()));
  ADDTARGETPHASE("generateproepilog", true);
  ADDTARGETPHASE("framefinalize", true);
@@ -69,7 +47,6 @@
  ADDTARGETPHASE("gencfi", !GetMIRModule()->IsCModule() || GetMIRModule()->IsWithDbgInfo());
  ADDTARGETPHASE("yieldpoint", false);
  ADDTARGETPHASE("localschedule", CGOptions::DoLocalSchedule());
- ADDTARGETPHASE("alignanalysis", GetMIRModule()->IsCModule() && CGOptions::DoAlignAnalysis());
  ADDTARGETPHASE("fixshortbranch", true);
  ADDTARGETPHASE("cgirverify", CGOptions::DoCGIRVerify());
  ADDTARGETPHASE("cgemit", true);

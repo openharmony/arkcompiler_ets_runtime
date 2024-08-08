@@ -53,8 +53,6 @@ Insn *X64InsnVisitor::CloneInsn(Insn &originalInsn)
         }
     } else if (originalInsn.IsCfiInsn()) {
         return memPool->Clone<cfi::CfiInsn>(*static_cast<cfi::CfiInsn *>(&originalInsn));
-    } else if (originalInsn.IsDbgInsn()) {
-        return memPool->Clone<mpldbg::DbgInsn>(*static_cast<mpldbg::DbgInsn *>(&originalInsn));
     }
     if (originalInsn.IsComment()) {
         return memPool->Clone<Insn>(originalInsn);

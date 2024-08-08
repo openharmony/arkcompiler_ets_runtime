@@ -268,9 +268,6 @@ public:
 
     bool IsHeapPointerType(Type *mirType) const;
 
-    // (multi-dim) array of fixed size array
-    ArrayType *CreateArrayType(Type *elemType, std::vector<uint32_t> &dimSize);
-
     /* using StructTypeBuilder interface for StructType creation
          auto structType = CreateStructType("mystruct")
                              .Field("field1", i32Type)
@@ -278,9 +275,6 @@ public:
                              .Done();
      */
     Type *GetStructType(const String &name);  // query for existing struct type
-
-    // usage of this function has precondition, should be documented
-    FieldOffset GetFieldOffset(StructType *structType, FieldId fieldId);
 
     // for function pointer
     Type *CreateFuncType(std::vector<Type *> params, Type *retType, bool isVarg);
@@ -320,17 +314,8 @@ public:
 
     void RenameFormal2Preg(Function &func);
 
-    MIRPreg *LiteCGGetPreg(Function &func, int32_t pRegNo);
     Expr LiteCGGetPregFP(Function &func);
     Expr LiteCGGetPregSP();
-
-    // var creation
-    // refine the interface for attributes here. and also storage-class?
-    // initialized to zero if defined here, by default not exported
-    Var &CreateGlobalVar(Type *type, const String &name, GlobalVarAttr attr = VAR_internal);
-    // initialized to const, by default not exported
-    Var &CreateGlobalVar(Type *type, const String &name, Const &init, GlobalVarAttr attr = VAR_internal);
-    Var *GetGlobalVar(const String &name);
 
     Var &CreateLocalVar(Type *type, const String &name);
     Var *GetLocalVar(const String &name);
@@ -341,9 +326,7 @@ public:
     Expr GenExprFromVar(Var &var);
 
     Const &CreateIntConst(Type *type, int64_t val);
-    Const &CreateFloatConst(float val);
     Const &CreateDoubleConst(double val);
-    Const &CreateStrConst(const String &constStr);
     Const *GetConstFromExpr(const Expr &expr);
 
     // In MIR, the const for struct & array are the same. But we separate it here.
@@ -373,7 +356,6 @@ public:
     BB &CreateBB(bool needLabel = true);
     void AppendStmt(BB &bb, Stmt &stmt);              // append stmt to the back of BB
     void AppendStmtBeforeBranch(BB &bb, Stmt &stmt);  // append stmt after the first non-jump stmt in back of BB
-    bool IsEmptyBB(BB &bb);
     void AppendBB(BB &bb);    // append BB to the back of current function;
     void AppendToLast(BB &bb);
     BB &GetLastPosBB();
@@ -401,7 +383,6 @@ public:
          BB_ifTrue: {...}
          BB_end: {...}
      */
-    Stmt &CondGoto(Var &cond, BB &target, bool inverseCond = false);
     Stmt &CondGoto(Expr cond, BB &target, bool inverseCond = false);
 
     /* using SwitchBuilder interface for switch statement creation
@@ -412,8 +393,6 @@ public:
      */
 
     // when result is nullptr, don't need the result (or no result)
-    Stmt &Call(Function &func, Args &args, Var *result = nullptr);
-
     Stmt &Call(Function &func, Args &args, PregIdx pregIdx);
 
     Stmt &ICall(Expr funcAddr, Args &args, Var *result = nullptr);
@@ -444,7 +423,6 @@ public:
     PregIdx CreatePreg(Type *mtype);
     Stmt &Regassign(Expr src, PregIdx reg);
     Expr Regread(PregIdx pregIdx);
-    Expr Addrof(Var &var);           // do we need other forms?
     Expr ConstVal(Const &constVal);  // a const operand
 
     Expr Lnot(Type *type, Expr src);
@@ -458,7 +436,6 @@ public:
     Expr Mul(Type *type, Expr src1, Expr src2);
     Expr UDiv(Type *type, Expr src1, Expr src2);  // unsigned
     Expr SDiv(Type *type, Expr src1, Expr src2);  // signed
-    Expr URem(Type *type, Expr src1, Expr src2);  // unsigned
     Expr SRem(Type *type, Expr src1, Expr src2);  // signed
     Expr Shl(Type *type, Expr src1, Expr src2);
     Expr LShr(Type *type, Expr src1, Expr src2);
@@ -469,18 +446,6 @@ public:
     Expr Max(Type *type, Expr src1, Expr src2);
     Expr Min(Type *type, Expr src1, Expr src2);
 
-    Expr ICmpEQ(Type *type, Expr src1, Expr src2);
-    Expr ICmpNE(Type *type, Expr src1, Expr src2);
-    // unsigned compare
-    Expr ICmpULT(Type *type, Expr src1, Expr src2);
-    Expr ICmpULE(Type *type, Expr src1, Expr src2);
-    Expr ICmpUGT(Type *type, Expr src1, Expr src2);
-    Expr ICmpUGE(Type *type, Expr src1, Expr src2);
-    // signed compare
-    Expr ICmpSLT(Type *type, Expr src1, Expr src2);
-    Expr ICmpSLE(Type *type, Expr src1, Expr src2);
-    Expr ICmpSGT(Type *type, Expr src1, Expr src2);
-    Expr ICmpSGE(Type *type, Expr src1, Expr src2);
     Expr ICmp(Type *type, Expr src1, Expr src2, IntCmpCondition cond);
     Expr FCmp(Type *type, Expr src1, Expr src2, FloatCmpCondition cond);
 
@@ -493,8 +458,6 @@ public:
     Expr Cvt(Type *fromType, Type *toType, Expr opnd);
     Expr Floor(Type *fromType, Type *toType, Expr opnd);
     Expr Ceil(Type *fromType, Type *toType, Expr opnd);
-
-    Expr Select(Type *type, Expr cond, Expr ifTrue, Expr ifFalse);
 
     void SetFuncFrameResverdSlot(int slot);
     void SetFuncFramePointer(const String &val);

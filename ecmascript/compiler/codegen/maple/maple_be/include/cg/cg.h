@@ -31,30 +31,19 @@
 #include "mad.h"
 #include "target_machine.h"
 #include "proepilog.h"
-
+#include "mir_builder.h"
 namespace maplebe {
 #define ADDTARGETPHASE(PhaseName, condition)  \
     if (!CGOptions::IsSkipPhase(PhaseName)) { \
         pm->AddPhase(PhaseName, condition);   \
     }
 /* subtarget opt phase -- cyclic Dependency, use Forward declaring */
-class CGSSAInfo;
-class PhiEliminate;
 class DomAnalysis;
-class CGProp;
-class CGDce;
-class AlignAnalysis;
 class MoveRegArgs;
 class MPISel;
 class Standardize;
-class LiveIntervalAnalysis;
-class ValidBitOpt;
 class CG;
-class LocalOpt;
 class CFGOptimizer;
-class LocalSchedule;
-class ControlDepAnalysis;
-class DataDepAnalysis;
 class CGPeepHole;
 class GenProEpilog;
 class LoopAnalysis;
@@ -84,26 +73,6 @@ public:
         return beCommon;
     }
 
-    void SetMAD(MAD &m)
-    {
-        mad = &m;
-    }
-
-    MAD *GetMAD()
-    {
-        return mad;
-    }
-
-    void ClearMAD()
-    {
-        mad = nullptr;
-    }
-
-    const MAD *GetMAD() const
-    {
-        return mad;
-    }
-
     void SetOptimLevel(int32 opLevel)
     {
         optimLevel = opLevel;
@@ -119,7 +88,6 @@ public:
 
 private:
     BECommon *beCommon = nullptr;
-    MAD *mad = nullptr;
     int32 optimLevel = 0;
     CG *cg = nullptr;
     Globals() = default;
@@ -409,12 +377,12 @@ public:
     {
         this->targetMachine = &targetMachine;
     }
-	
+
     TargetMachine *GetTargetMachine() const
     {
         return targetMachine;
     }
-	
+
     void IncreaseLabelOrderCnt()
     {
         labelOrderCnt++;
@@ -475,17 +443,9 @@ public:
     {
         return nullptr;
     };
-    virtual ReachingDefinition *CreateReachingDefinition(MemPool &mp, CGFunc &f) const
-    {
-        return nullptr;
-    };
     virtual GenProEpilog *CreateGenProEpilog(CGFunc &func, MemPool &mp, MemPool *tempMemPool = nullptr) const = 0;
     virtual CGPeepHole *CreateCGPeepHole(MemPool &mp, CGFunc &f) const = 0;
     virtual MoveRegArgs *CreateMoveRegArgs(MemPool &mp, CGFunc &f) const
-    {
-        return nullptr;
-    };
-    virtual AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const
     {
         return nullptr;
     };
@@ -497,41 +457,6 @@ public:
     {
         return nullptr;
     }
-    virtual ValidBitOpt *CreateValidBitOpt(MemPool &mp, CGFunc &f, CGSSAInfo &ssaInfo) const
-    {
-        return nullptr;
-    }
-
-    /* Init SubTarget optimization */
-    virtual CGSSAInfo *CreateCGSSAInfo(MemPool &mp, CGFunc &f, DomAnalysis &da, MemPool &tmp) const
-    {
-        return nullptr;
-    };
-    virtual LiveIntervalAnalysis *CreateLLAnalysis(MemPool &mp, CGFunc &f) const
-    {
-        return nullptr;
-    };
-    virtual PhiEliminate *CreatePhiElimintor(MemPool &mp, CGFunc &f, CGSSAInfo &ssaInfo) const
-    {
-        return nullptr;
-    };
-    virtual CGProp *CreateCGProp(MemPool &mp, CGFunc &f, CGSSAInfo &ssaInfo, LiveIntervalAnalysis &ll) const
-    {
-        return nullptr;
-    };
-    virtual CGDce *CreateCGDce(MemPool &mp, CGFunc &f, CGSSAInfo &ssaInfo) const
-    {
-        return nullptr;
-    };
-    virtual LocalSchedule *CreateLocalSchedule(MemPool &mp, CGFunc &f, ControlDepAnalysis &cda,
-                                               DataDepAnalysis &dda) const
-    {
-        return nullptr;
-    }
-    virtual LocalOpt *CreateLocalOpt(MemPool &mp, CGFunc &f, ReachingDefinition &) const
-    {
-        return nullptr;
-    };
     virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const
     {
         return nullptr;

@@ -20,7 +20,6 @@
 #include "mir_builder.h"
 #include "becommon.h"
 #include "label_creation.h"
-#include "alignment.h"
 #include "operand.h"
 
 namespace maplebe {

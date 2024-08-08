@@ -25,12 +25,8 @@ enum ReturnType : uint8 { kResUseFirst, kResDefFirst, kResNotFind };
 class PeepOptimizeManager {
 public:
     /* normal constructor */
-    PeepOptimizeManager(CGFunc &f, BB &bb, Insn &insn) : cgFunc(&f), currBB(&bb), currInsn(&insn), ssaInfo(nullptr) {}
-    /* constructor for ssa */
-    PeepOptimizeManager(CGFunc &f, BB &bb, Insn &insn, CGSSAInfo &info)
-        : cgFunc(&f), currBB(&bb), currInsn(&insn), ssaInfo(&info)
-    {
-    }
+    PeepOptimizeManager(CGFunc &f, BB &bb, Insn &insn) : cgFunc(&f), currBB(&bb), currInsn(&insn) {}
+
     ~PeepOptimizeManager() = default;
     template <typename OptimizePattern>
     void Optimize(bool patternEnable = false)
@@ -38,7 +34,7 @@ public:
         if (!patternEnable) {
             return;
         }
-        OptimizePattern optPattern(*cgFunc, *currBB, *currInsn, *ssaInfo);
+        OptimizePattern optPattern(*cgFunc, *currBB, *currInsn);
         optPattern.Run(*currBB, *currInsn);
         optSuccess = optPattern.GetPatternRes() || optSuccess;
         if (optSuccess && optPattern.GetCurrInsn() != nullptr) {
@@ -71,7 +67,6 @@ private:
     CGFunc *cgFunc;
     BB *currBB;
     Insn *currInsn;
-    CGSSAInfo *ssaInfo;
     /*
      * The flag indicates whether the optimization pattern is successful,
      * this prevents the next optimization pattern that processs the same mop from failing to get the validInsn,
@@ -85,24 +80,15 @@ private:
 class CGPeepHole {
 public:
     /* normal constructor */
-    CGPeepHole(CGFunc &f, MemPool *memPool) : cgFunc(&f), peepMemPool(memPool), ssaInfo(nullptr) {}
-    /* constructor for ssa */
-    CGPeepHole(CGFunc &f, MemPool *memPool, CGSSAInfo *cgssaInfo) : cgFunc(&f), peepMemPool(memPool), ssaInfo(cgssaInfo)
-    {
-    }
-    virtual ~CGPeepHole()
-    {
-        ssaInfo = nullptr;
-    }
+    CGPeepHole(CGFunc &f, MemPool *memPool) : cgFunc(&f), peepMemPool(memPool) {}
+    virtual ~CGPeepHole() { }
 
     virtual void Run() = 0;
-    virtual bool DoSSAOptimize(BB &bb, Insn &insn) = 0;
     virtual void DoNormalOptimize(BB &bb, Insn &insn) = 0;
 
 protected:
     CGFunc *cgFunc;
     MemPool *peepMemPool;
-    CGSSAInfo *ssaInfo;
     PeepOptimizeManager *manager = nullptr;
 };
 
@@ -127,12 +113,7 @@ protected:
 class CGPeepPattern {
 public:
     /* normal constructor */
-    CGPeepPattern(CGFunc &f, BB &bb, Insn &insn) : cgFunc(&f), currBB(&bb), currInsn(&insn), ssaInfo(nullptr) {}
-    /* constructor for ssa */
-    CGPeepPattern(CGFunc &f, BB &bb, Insn &insn, CGSSAInfo &info)
-        : cgFunc(&f), currBB(&bb), currInsn(&insn), ssaInfo(&info)
-    {
-    }
+    CGPeepPattern(CGFunc &f, BB &bb, Insn &insn) : cgFunc(&f), currBB(&bb), currInsn(&insn) {}
     virtual ~CGPeepPattern() = default;
 
     std::string PhaseName() const
@@ -141,12 +122,8 @@ public:
     }
 
     virtual std::string GetPatternName() = 0;
-    Insn *GetDefInsn(const RegOperand &useReg);
     void DumpAfterPattern(std::vector<Insn *> &prevInsns, const Insn *replacedInsn, const Insn *newInsn);
-    InsnSet GetAllUseInsn(const RegOperand &defReg) const;
     int64 GetLogValueAtBase2(int64 val) const;
-    /* The CC reg is unique and cannot cross-version props. */
-    bool IsCCRegCrossVersion(Insn &startInsn, Insn &endInsn, const RegOperand &ccReg) const;
     /* optimization support function */
     bool IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &insn);
     bool FindRegLiveOut(const RegOperand &regOpnd, const BB &bb);
@@ -172,7 +149,6 @@ protected:
     CGFunc *cgFunc;
     BB *currBB;
     Insn *currInsn;
-    CGSSAInfo *ssaInfo;
     // !!! If the pattern is optimized, set the $optSuccess to true and check before the subsequent patterns
     // of the same mop, otherwise, the subsequent patterns of the same mop will get the old wrong instruction.
     bool optSuccess = false;
@@ -228,7 +204,6 @@ private:
     MemPool *peepOptMemPool;
 };
 
-MAPLE_FUNC_PHASE_DECLARE(CgPeepHole, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgPrePeepHole, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgPostPeepHole, maplebe::CGFunc)

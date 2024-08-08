@@ -198,7 +198,6 @@ private:
                            int32_t index, size_t curDepth, size_t shift, GateRef gate);
     void SaveDeoptVregInfoWithI64(std::unordered_map<int, maple::litecg::LiteCGValue> &deoptBundleInfo,
                                   maple::litecg::BB &bb, int32_t index, size_t curDepth, size_t shift, GateRef gate);
-    maple::litecg::Type *GetMachineRepType(MachineRep rep) const;
 
     maple::litecg::ConvAttr ConvertCallAttr(const CallSignature::CallConv callConv);
     void CollectExraCallSiteInfo(std::unordered_map<int, maple::litecg::LiteCGValue> &deoptBundleInfo,

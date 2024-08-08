@@ -16,7 +16,6 @@
 #include "litecg.h"
 #include "mir_builder.h"
 #include "cg_option.h"
-#include "mad.h"
 #include "cg.h"
 #include "maple_phase_support.h"
 #include "maple_phase.h"
@@ -58,25 +57,6 @@ LiteCG::LiteCG(Module &mirModule, const std::vector<std::string> &litecgOptions)
     module.SetOutputFileName(moduleName + ".s");
 }
 
-LiteCG &LiteCG::SetTargetType(TargetType config)
-{
-    // update target support
-    // cgOptions->SetTarget(X86_64)
-    return *this;
-}
-
-LiteCG &LiteCG::SetDebugType(DebugType config)
-{
-    // fix the exposed debug options
-    // cgOptions->SetDebug(?)
-    return *this;
-}
-
-LiteCG &LiteCG::SetVerbose(InfoType config)
-{
-    cgOptions->SetQuiet((config == kQuiet) ? true : false);
-    return *this;
-}
 
 void LiteCG::DumpIRToFile(const std::string &fileName)
 {
@@ -114,12 +94,6 @@ void LiteCG::DoCG(bool isJit)
 
     Globals::GetInstance()->SetOptimLevel(cgOptions->GetOptimizeLevel());
 
-    MAD *mad;
-    if (cgOptions->DoLocalSchedule()) {
-        mad = new MAD();
-        Globals::GetInstance()->SetMAD(*mad);
-    }
-
     // not sure how to do this.
     auto cgPhaseManager = std::make_unique<ThreadLocalMemPool>(memPoolCtrler, "cg function phasemanager");
     const MaplePhaseInfo *cgPMInfo = MaplePhaseRegister::GetMaplePhaseRegister()->GetPhaseByID(&CgFuncPM::id);
@@ -139,12 +113,6 @@ void LiteCG::DoCG(bool isJit)
         timer.Stop();
         LogInfo::MapleLogger() << "Mplcg consumed " << timer.ElapsedMilliseconds() << "ms" << '\n';
     }
-
-    if (cgOptions->DoLocalSchedule()) {
-        Globals::GetInstance()->ClearMAD();
-        delete mad;
-    }
-
     cgOptions->SetUseJitCodeSign(false);
 }
 

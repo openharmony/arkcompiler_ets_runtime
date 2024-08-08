@@ -23,9 +23,9 @@
 #include <map>
 #include <string>
 #include <mutex>
+#include <memory>
 #include "mir_config.h"
 #include "mpl_logging.h"
-#include "thread_env.h"
 
 namespace maple {
 #define BITS_ALIGN(size) (((size) + 7) & (0xFFFFFFF8))
@@ -106,7 +106,7 @@ public:
     void DeleteMemPool(MemPool *memPool) const;
     bool HaveRace() const
     {
-        return ThreadEnv::IsMeParallel() && (this == &maple::memPoolCtrler);
+        return (this == &maple::memPoolCtrler);
     }
 
     MemBlock *AllocMemBlock(const MemPool &pool, size_t size);
@@ -233,17 +233,12 @@ public:
     virtual ~ThreadShareMemPool() = default;
     void *Malloc(size_t size) override
     {
-        ParallelGuard guard(poolMutex, ctrler.HaveRace());
         return MemPool::Malloc(size);
     }
     void ReleaseContainingMem() override
     {
-        ParallelGuard guard(poolMutex, ctrler.HaveRace());
         MemPool::ReleaseContainingMem();
     }
-
-private:
-    std::mutex poolMutex;  // this mutex is used to protect memPools
 };
 
 class LocalMapleAllocator;

@@ -343,17 +343,11 @@ void FPConstTable::PostInit()
 
 MIRIntConst *IntConstTable::GetOrCreateIntConst(const IntVal &val, MIRType &type)
 {
-    if (ThreadEnv::IsMeParallel()) {
-        return DoGetOrCreateIntConstTreadSafe(val.GetExtValue(), type);
-    }
     return DoGetOrCreateIntConst(val.GetExtValue(), type);
 }
 
 MIRIntConst *IntConstTable::GetOrCreateIntConst(uint64 val, MIRType &type)
 {
-    if (ThreadEnv::IsMeParallel()) {
-        return DoGetOrCreateIntConstTreadSafe(val, type);
-    }
     return DoGetOrCreateIntConst(val, type);
 }
 
@@ -399,9 +393,6 @@ MIRFloatConst *FPConstTable::GetOrCreateFloatConst(float floatVal)
     if (floatVal == 0.0 && std::signbit(floatVal)) {
         return minusZeroFloatConst;
     }
-    if (ThreadEnv::IsMeParallel()) {
-        return DoGetOrCreateFloatConstThreadSafe(floatVal);
-    }
     return DoGetOrCreateFloatConst(floatVal);
 }
 
@@ -443,9 +434,6 @@ MIRDoubleConst *FPConstTable::GetOrCreateDoubleConst(double doubleVal)
     }
     if (doubleVal == 0.0 && std::signbit(doubleVal)) {
         return minusZeroDoubleConst;
-    }
-    if (ThreadEnv::IsMeParallel()) {
-        return DoGetOrCreateDoubleConstThreadSafe(doubleVal);
     }
     return DoGetOrCreateDoubleConst(doubleVal);
 }

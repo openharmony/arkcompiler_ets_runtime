@@ -15,7 +15,6 @@
 
 #include "mir_lower.h"
 #include "constantfold.h"
-#include "ext_constantfold.h"
 #include "me_option.h"
 
 #define DO_LT_0_CHECK 1
@@ -688,12 +687,6 @@ void MIRLower::LowerCandCior(BlockNode &block)
 
 void MIRLower::LowerFunc(MIRFunction &func)
 {
-    if (GetOptLevel() > 0) {
-        ExtConstantFold ecf(func.GetModule());
-        (void)ecf.ExtSimplify(func.GetBody());
-        ;
-    }
-
     mirModule.SetCurFunction(&func);
     if (IsLowerExpandArray()) {
         ExpandArrayMrt(func);

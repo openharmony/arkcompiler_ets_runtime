@@ -176,13 +176,6 @@ bool LMIRBuilder::IsHeapPointerType(Type *mirType) const
     return mirType->GetPrimType() == PTY_ref;
 }
 
-ArrayType *LMIRBuilder::CreateArrayType(Type *elemType, std::vector<uint32_t> &dimSize)
-{
-    auto type = GlobalTables::GetTypeTable().GetOrCreateArrayType(*elemType, dimSize.size(),
-        reinterpret_cast<uint64*>(dimSize.data()));
-    return static_cast<ArrayType *>(type);
-}
-
 Type *LMIRBuilder::CreateStructTypeInternal(const String &name,
                                             std::vector<std::pair<std::string_view, Type *>> &fields_)
 {
@@ -213,13 +206,6 @@ StructConst &LMIRBuilder::CreateStructConstInternal(StructType *type)
 ArrayConst &LMIRBuilder::CreateArrayConstInternal(ArrayType *type)
 {
     return *module.GetMemPool()->New<ArrayConst>(module, *type);
-}
-
-FieldOffset LMIRBuilder::GetFieldOffset(StructType *structType, FieldId fieldId)
-{
-    // we should avoid access CG internals here
-    // return Globals::GetInstance()->GetBECommon()->GetFieldOffset(*structType, fieldId);
-    return std::pair<int32_t, int32_t>(0, 0);
 }
 
 Type *LMIRBuilder::CreateFuncType(std::vector<Type *> params_, Type *retType, bool isVarg)
@@ -347,11 +333,6 @@ void LMIRBuilder::ClearCurrentDebugComment()
     mirBuilder.ClearCurrentDebugComment();
 }
 
-MIRPreg *LMIRBuilder::LiteCGGetPreg(Function &func, int32_t pRegNo)
-{
-    return func.GetPregItem(pRegNo);
-}
-
 Expr LMIRBuilder::LiteCGGetPregFP(Function &func)
 {
     return Regread(kSregFp);
@@ -360,31 +341,6 @@ Expr LMIRBuilder::LiteCGGetPregFP(Function &func)
 Expr LMIRBuilder::LiteCGGetPregSP()
 {
     return Regread(kSregSp);
-}
-
-// not sure it's FUNCATTR_local or FUNCATTR_static
-static const AttrKind VarAttrMapTable[] = {
-    // VAR_external, VAR_weak, VAR_internal, VAR_global, VAR_readonly
-    ATTR_extern, ATTR_weak, ATTR_local, ATTR_extern, ATTR_readonly};
-
-Var &LMIRBuilder::CreateGlobalVar(Type *type, const String &name, GlobalVarAttr attr)
-{
-    Var *var = mirBuilder.GetOrCreateSymbol(type->GetTypeIndex(), name, kStVar, kScGlobal, nullptr, kScopeGlobal,
-                                            false);  // sameType?
-    var->SetAttr(VarAttrMapTable[attr]);
-    return *var;
-}
-
-Var &LMIRBuilder::CreateGlobalVar(Type *type, const String &name, Const &init, GlobalVarAttr attr)
-{
-    Var &var = CreateGlobalVar(type, name, attr);
-    var.SetKonst(&init);
-    return var;
-}
-
-Var *LMIRBuilder::GetGlobalVar(const String &name)
-{
-    return mirBuilder.GetGlobalDecl(name);
 }
 
 Var &LMIRBuilder::CreateLocalVar(Type *type, const String &name)
@@ -438,20 +394,9 @@ Const &LMIRBuilder::CreateIntConst(Type *type, int64_t val)
     return *GlobalTables::GetIntConstTable().GetOrCreateIntConst(val, *type);
 }
 
-Const &LMIRBuilder::CreateFloatConst(float val)
-{
-    return *GlobalTables::GetFpConstTable().GetOrCreateFloatConst(val);
-}
-
 Const &LMIRBuilder::CreateDoubleConst(double val)
 {
     return *GlobalTables::GetFpConstTable().GetOrCreateDoubleConst(val);
-}
-
-Const &LMIRBuilder::CreateStrConst(const String &constStr)
-{
-    // fix the type for string const
-    return *module.GetMemPool()->New<MIRStrConst>(constStr, *strType);
 }
 
 Const *LMIRBuilder::GetConstFromExpr(const Expr &expr)
@@ -501,11 +446,6 @@ void LMIRBuilder::AppendStmtBeforeBranch(BB &bb, Stmt &stmt)
     CHECK_FATAL(inserted, "PreBB must have a non jump stmt to insert PhiVarAssagin Stmt.");
 }
 
-bool LMIRBuilder::IsEmptyBB(BB &bb)
-{
-    return bb.IsEmpty() || (bb.GetFirst() == bb.GetLast() && bb.GetFirst()->GetOpCode() == OP_label);
-}
-
 void LMIRBuilder::SetStmtCallConv(Stmt &stmt, ConvAttr convAttr)
 {
     stmt.SetAttr(StmtConvAttrMapTable[convAttr]);
@@ -549,12 +489,6 @@ Stmt &LMIRBuilder::Goto(BB &dest)
     return *mirBuilder.CreateStmtGoto(OP_goto, GetBBLabelIdx(dest));
 }
 
-Stmt &LMIRBuilder::CondGoto(Var &cond, BB &target, bool inverseCond)
-{
-    auto opcode = inverseCond ? OP_brtrue : OP_brfalse;
-    return *mirBuilder.CreateStmtCondGoto(Dread(cond).GetNode(), opcode, GetBBLabelIdx(target));
-}
-
 Stmt &LMIRBuilder::CondGoto(Expr cond, BB &target, bool inverseCond)
 {
     auto opcode = inverseCond ? OP_brtrue : OP_brfalse;
@@ -570,20 +504,6 @@ Stmt &LMIRBuilder::CreateSwitchInternal(Type *type, Expr cond, BB &defaultBB,
         switchTable.push_back({caseBranch.first, GetBBLabelIdx(*caseBranch.second)});
     }
     return *mirBuilder.CreateStmtSwitch(cond.GetNode(), GetBBLabelIdx(defaultBB), switchTable);
-}
-
-Stmt &LMIRBuilder::Call(Function &func, Args &args_, Var *result)
-{
-    MapleVector<BaseNode *> args(mirBuilder.GetCurrentFuncCodeMpAllocator()->Adapter());
-    for (const auto &arg : args_) {
-        args.emplace_back(arg.GetNode());
-    }
-
-    if (result == nullptr) {
-        return *mirBuilder.CreateStmtCall(func.GetPuidx(), args);
-    } else {
-        return *mirBuilder.CreateStmtCallAssigned(func.GetPuidx(), args, result);
-    }
 }
 
 Stmt &LMIRBuilder::Call(Function &func, Args &args_, PregIdx pregIdx)
@@ -713,11 +633,6 @@ Expr LMIRBuilder::Regread(PregIdx pregIdx)
     return Expr(mirBuilder.CreateExprRegread(preg->GetPrimType(), pregIdx), type);
 }
 
-Expr LMIRBuilder::Addrof(Var &var)
-{
-    return Expr(mirBuilder.CreateAddrof(var), var.GetType());
-}
-
 Expr LMIRBuilder::ConstVal(Const &constVal)
 {
     return Expr(mirBuilder.CreateConstval(&constVal), &constVal.GetType());
@@ -774,11 +689,6 @@ Expr LMIRBuilder::SDiv(Type *type, Expr src1, Expr src2)
     return CreateBinOpInternal(mirBuilder, OP_div, type, src1, src2);
 }
 
-Expr LMIRBuilder::URem(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_rem, type, src1, src2);
-}
-
 Expr LMIRBuilder::SRem(Type *type, Expr src1, Expr src2)
 {
     return CreateBinOpInternal(mirBuilder, OP_rem, type, src1, src2);
@@ -812,56 +722,6 @@ Expr LMIRBuilder::Or(Type *type, Expr src1, Expr src2)
 Expr LMIRBuilder::Xor(Type *type, Expr src1, Expr src2)
 {
     return CreateBinOpInternal(mirBuilder, OP_bxor, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpEQ(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_eq, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpNE(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_ne, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpULT(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_lt, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpULE(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_le, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpUGT(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_gt, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpUGE(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_ge, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpSLT(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_lt, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpSLE(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_le, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpSGT(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_gt, type, src1, src2);
-}
-
-Expr LMIRBuilder::ICmpSGE(Type *type, Expr src1, Expr src2)
-{
-    return CreateBinOpInternal(mirBuilder, OP_ge, type, src1, src2);
 }
 
 Expr LMIRBuilder::Min(Type *type, Expr src1, Expr src2)
@@ -971,12 +831,6 @@ Expr LMIRBuilder::FCmp(Type *type, Expr src1, Expr src2, FloatCmpCondition cond)
             break;
     }
     return CreateExprCompare(mirBuilder, opCode, type, src1, src2);
-}
-
-Expr LMIRBuilder::Select(Type *type, Expr cond, Expr ifTrue, Expr ifFalse)
-{
-    return Expr(mirBuilder.CreateExprTernary(OP_select, *type, cond.GetNode(), ifTrue.GetNode(), ifFalse.GetNode()),
-                type);
 }
 
 Expr LMIRBuilder::Trunc(Type *fromType, Type *toType, Expr opnd)

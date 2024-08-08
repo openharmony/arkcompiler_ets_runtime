@@ -28,7 +28,6 @@
 #include "mpl_atomic.h"
 #include "metadata_layout.h"
 #include "emit.h"
-#include "simplify.h"
 #include <algorithm>
 
 namespace maplebe {
@@ -8815,10 +8814,6 @@ void AArch64CGFunc::SelectLibCallNArg(const std::string &funcName, std::vector<O
                                       std::vector<PrimType> pt, PrimType retPrimType, bool is2ndRet)
 {
     std::string newName = funcName;
-    // Check whether we have a maple version of libcall and we want to use it instead.
-    if (!CGOptions::IsDuplicateAsmFileEmpty() && asmMap.find(funcName) != asmMap.end()) {
-        newName = asmMap.at(funcName);
-    }
     MIRSymbol *st = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
     st->SetNameStrIdx(newName);
     st->SetStorageClass(kScExtern);
@@ -9403,47 +9398,6 @@ bool AArch64CGFunc::IsDuplicateAsmList(const MIRSymbol &sym) const
 
 void AArch64CGFunc::SelectMPLProfCounterInc(const IntrinsiccallNode &intrnNode)
 {
-    if (Options::profileGen) {
-        DEBUG_ASSERT(intrnNode.NumOpnds() == 1, "must be 1 operand");
-        BaseNode *arg1 = intrnNode.Opnd(0);
-        DEBUG_ASSERT(arg1 != nullptr, "nullptr check");
-        regno_t vRegNO1 = NewVReg(GetRegTyFromPrimTy(PTY_a64), GetPrimTypeSize(PTY_a64));
-        RegOperand &vReg1 = CreateVirtualRegisterOperand(vRegNO1);
-        vReg1.SetRegNotBBLocal();
-        static const MIRSymbol *bbProfileTab = nullptr;
-
-        // Ref: MeProfGen::InstrumentFunc on ctrTbl namiLogicalShiftLeftOperandng
-        std::string ctrTblName = namemangler::kprefixProfCtrTbl + GetMirModule().GetFileName() + "_" + GetName();
-        std::replace(ctrTblName.begin(), ctrTblName.end(), '.', '_');
-        std::replace(ctrTblName.begin(), ctrTblName.end(), '-', '_');
-        std::replace(ctrTblName.begin(), ctrTblName.end(), '/', '_');
-
-        if (!bbProfileTab || bbProfileTab->GetName() != ctrTblName) {
-            bbProfileTab = GetMirModule().GetMIRBuilder()->GetGlobalDecl(ctrTblName);
-            CHECK_FATAL(bbProfileTab != nullptr, "expect counter table");
-        }
-
-        ConstvalNode *constvalNode = static_cast<ConstvalNode *>(arg1);
-        MIRConst *mirConst = constvalNode->GetConstVal();
-        DEBUG_ASSERT(mirConst != nullptr, "nullptr check");
-        CHECK_FATAL(mirConst->GetKind() == kConstInt, "expect MIRIntConst type");
-        MIRIntConst *mirIntConst = safe_cast<MIRIntConst>(mirConst);
-        int64 offset = static_cast<int64>(GetPrimTypeSize(PTY_u64)) * mirIntConst->GetExtValue();
-
-        if (!CGOptions::IsQuiet()) {
-            maple::LogInfo::MapleLogger(kLlInfo) << "At counter table offset: " << offset << std::endl;
-        }
-        MemOperand *memOpnd = &GetOrCreateMemOpnd(*bbProfileTab, offset, k64BitSize);
-        if (IsImmediateOffsetOutOfRange(*memOpnd, k64BitSize)) {
-            memOpnd = &SplitOffsetWithAddInstruction(*memOpnd, k64BitSize);
-        }
-        Operand *reg = &SelectCopy(*memOpnd, PTY_u64, PTY_u64);
-        ImmOperand &one = CreateImmOperand(1, k64BitSize, false);
-        SelectAdd(*reg, *reg, one, PTY_u64);
-        SelectCopy(*memOpnd, PTY_u64, *reg, PTY_u64);
-        return;
-    }
-
     DEBUG_ASSERT(intrnNode.NumOpnds() == 1, "must be 1 operand");
     BaseNode *arg1 = intrnNode.Opnd(0);
     DEBUG_ASSERT(arg1 != nullptr, "nullptr check");

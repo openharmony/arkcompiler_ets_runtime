@@ -17,6 +17,8 @@
 #include "mir_function.h"
 #include "global_tables.h"
 #include "printing.h"
+#include <iomanip>
+
 #if MIR_FEATURE_FULL
 
 namespace maple {

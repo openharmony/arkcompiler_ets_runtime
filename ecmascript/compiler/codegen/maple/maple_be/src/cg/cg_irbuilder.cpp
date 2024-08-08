@@ -17,7 +17,6 @@
 #include "isa.h"
 #include "cg.h"
 #include "cfi.h"
-#include "dbg.h"
 
 namespace maplebe {
 Insn &InsnBuilder::BuildInsn(MOperator opCode, const InsnDesc &idesc)
@@ -71,12 +70,6 @@ Insn &InsnBuilder::BuildInsn(MOperator opCode, std::vector<Operand *> &opnds)
 Insn &InsnBuilder::BuildCfiInsn(MOperator opCode)
 {
     auto *nI = mp->New<cfi::CfiInsn>(*mp, opCode);
-    IncreaseInsnNum();
-    return *nI;
-}
-Insn &InsnBuilder::BuildDbgInsn(MOperator opCode)
-{
-    auto *nI = mp->New<mpldbg::DbgInsn>(*mp, opCode);
     IncreaseInsnNum();
     return *nI;
 }

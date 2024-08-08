@@ -76,8 +76,6 @@ Insn *AArch64InsnVisitor::CloneInsn(Insn &originalInsn)
         return originalInsn.CloneTree(*allocator);
     } else if (originalInsn.IsCfiInsn()) {
         return static_cast<cfi::CfiInsn &>(originalInsn).CloneTree(*allocator);
-    } else if (originalInsn.IsDbgInsn()) {
-        return static_cast<mpldbg::DbgInsn &>(originalInsn).CloneTree(*allocator);
     }
     CHECK_FATAL(false, "Cannot clone");
     return nullptr;

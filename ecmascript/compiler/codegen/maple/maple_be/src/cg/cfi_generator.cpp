@@ -92,26 +92,10 @@ void GenCfi::GenerateRegisterStateDirective(BB &bb)
     }
 }
 
-void GenCfi::InsertFirstLocation(BB &bb)
-{
-    MIRSymbol *fSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(cgFunc.GetFunction().GetStIdx().Idx());
-
-    if (fSym == nullptr || !cg.GetCGOptions().WithLoc() || !cg.GetMIRModule()->IsCModule() ||
-        (fSym->GetSrcPosition().FileNum() == 0)) {
-        return;
-    }
-
-    uint32 fileNum = fSym->GetSrcPosition().FileNum();
-    uint32 lineNum = fSym->GetSrcPosition().LineNum();
-    uint32 columnNum = fSym->GetSrcPosition().Column();
-    (void)(bb.InsertInsnBefore(*bb.GetFirstInsn(), cgFunc.BuildLocInsn(fileNum, lineNum, columnNum)));
-}
-
 void GenCfi::Run()
 {
     auto *startBB = cgFunc.GetFirstBB();
     GenerateStartDirective(*startBB);
-    InsertFirstLocation(*startBB);
 
     if (cgFunc.GetHasProEpilogue()) {
         FOR_ALL_BB(bb, &cgFunc)

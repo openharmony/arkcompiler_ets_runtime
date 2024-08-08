@@ -43,7 +43,6 @@ public:
     Insn &BuildInsn(MOperator opCode, std::vector<Operand *> &opnds);
 
     Insn &BuildCfiInsn(MOperator opCode);
-    Insn &BuildDbgInsn(MOperator opCode);
     VectorInsn &BuildVectorInsn(MOperator opCode, const InsnDesc &idesc);
 
     uint32 GetCreatedInsnNum() const

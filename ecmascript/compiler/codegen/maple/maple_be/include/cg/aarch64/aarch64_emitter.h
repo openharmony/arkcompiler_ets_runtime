@@ -48,7 +48,6 @@ private:
 
     /* cfi & dbg need target info ? */
     void EmitAArch64CfiInsn(Emitter &emitter, const Insn &insn) const;
-    void EmitAArch64DbgInsn(Emitter &emitter, const Insn &insn) const;
 
     void EmitAArch64Insn(Emitter &emitter, Insn &insn) const;
     void EmitAdrpLdr(Emitter &emitter, const Insn &insn) const;

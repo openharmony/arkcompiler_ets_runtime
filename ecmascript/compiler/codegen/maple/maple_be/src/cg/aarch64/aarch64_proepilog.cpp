@@ -818,32 +818,6 @@ void AArch64GenProEpilog::GenerateProlog(BB &bb)
     aarchCGFunc.GetDummyBB()->ClearInsns();
     cgFunc.SetCurBB(*aarchCGFunc.GetDummyBB());
 
-    // insert .loc for function
-    if (currCG->GetCGOptions().WithLoc() && (!currCG->GetMIRModule()->IsCModule())) {
-        MIRFunction *func = &cgFunc.GetFunction();
-        MIRSymbol *fSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
-        if (currCG->GetCGOptions().WithSrc()) {
-            uint32 tempmaxsize = static_cast<uint32>(currCG->GetMIRModule()->GetSrcFileInfo().size());
-            CHECK_FATAL(tempmaxsize >= 1, "value overflow");
-            uint32 endfilenum = currCG->GetMIRModule()->GetSrcFileInfo()[tempmaxsize - 1].second;
-            if (fSym->GetSrcPosition().FileNum() != 0 && fSym->GetSrcPosition().FileNum() <= endfilenum) {
-                int64_t lineNum = fSym->GetSrcPosition().LineNum();
-                if (lineNum == 0) {
-                    if (cgFunc.GetFunction().GetAttr(FUNCATTR_native)) {
-                        lineNum = 0xffffe;
-                    } else {
-                        lineNum = 0xffffd;
-                    }
-                }
-                Insn &loc =
-                    cgFunc.BuildLocInsn(fSym->GetSrcPosition().FileNum(), lineNum, fSym->GetSrcPosition().Column());
-                cgFunc.GetCurBB()->AppendInsn(loc);
-            }
-        } else {
-            cgFunc.GetCurBB()->AppendInsn(cgFunc.BuildLocInsn(1, fSym->GetSrcPosition().MplLineNum(), 0));
-        }
-    }
-
     const MapleVector<AArch64reg> &regsToSave = (aarchCGFunc.GetProEpilogSavedRegs().empty())
                                                     ? aarchCGFunc.GetCalleeSavedRegs()
                                                     : aarchCGFunc.GetProEpilogSavedRegs();
@@ -905,13 +879,6 @@ void AArch64GenProEpilog::GenerateRet(BB &bb)
     auto *lastInsn = bb.GetLastMachineInsn();
     if (lastInsn != nullptr && (lastInsn->IsTailCall() || lastInsn->IsBranch())) {
         return;
-    }
-    /* Insert the loc insn before ret insn
-       so that the breakpoint can break at the end of the block's reverse parenthesis line. */
-    SrcPosition pos = cgFunc.GetFunction().GetScope()->GetRangeHigh();
-    if (cgFunc.GetCG()->GetCGOptions().WithDwarf() && cgFunc.GetWithSrc() && cgFunc.GetMirModule().IsCModule() &&
-        pos.FileNum() != 0) {
-        bb.AppendInsn(cgFunc.BuildLocInsn(pos.FileNum(), pos.LineNum(), pos.Column()));
     }
     bb.AppendInsn(cgFunc.GetInsnBuilder()->BuildInsn<AArch64CG>(MOP_xret));
 }

@@ -73,7 +73,6 @@ private:
     /* Tool functions */
     void DumpFuncCGIR(const CGFunc &f, const std::string &phaseName) const;
     /* For Emit */
-    void InitProfile(MIRModule &m) const;
     void EmitGlobalInfo(MIRModule &m) const;
     void EmitDuplicatedAsmFunc(MIRModule &m) const;
     void EmitDebugInfo(const MIRModule &m) const;

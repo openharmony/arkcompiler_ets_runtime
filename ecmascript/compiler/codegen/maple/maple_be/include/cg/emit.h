@@ -31,10 +31,8 @@
 #include "mir_module.h"
 #include "mir_const.h"
 #include "mempool_allocator.h"
-#include "muid_replacement.h"
 #include "namemangler.h"
 #include "debug_info.h"
-#include "alignment.h"
 
 namespace maple {
 const char *GetDwTagName(unsigned n);
@@ -212,6 +210,7 @@ public:
     void EmitLiterals(std::vector<std::pair<MIRSymbol *, bool>> &literals,
                       const std::map<GStrIdx, MIRType *> &strIdx2Type);
     void EmitFuncLayoutInfo(const MIRSymbol &layout);
+    std::string GetLayoutTypeString(uint32_t type);
     void EmitGlobalVars(std::vector<std::pair<MIRSymbol *, bool>> &globalVars);
     void EmitGlobalVar(const MIRSymbol &globalVar);
     void EmitStaticFields(const std::vector<MIRSymbol *> &fields);

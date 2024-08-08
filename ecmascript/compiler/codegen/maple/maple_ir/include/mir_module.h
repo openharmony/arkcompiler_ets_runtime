@@ -20,8 +20,6 @@
 #include "intrinsics.h"
 #include "opcodes.h"
 #include "mpl_logging.h"
-#include "muid.h"
-#include "profile.h"
 #include "namemangler.h"
 #include "gcov_profile.h"
 #include "string_utils.h"
@@ -32,7 +30,6 @@
 #include <thread>
 #include <mutex>
 #include <map>
-#include "thread_env.h"
 #include "mempool.h"
 #include "mempool_allocator.h"
 #include "maple_string.h"
@@ -139,7 +136,6 @@ class MIRFloatConst;      // circular dependency exists, no other choice
 class MIRDoubleConst;     // circular dependency exists, no other choice
 class MIRBuilder;         // circular dependency exists, no other choice
 class DebugInfo;          // circular dependency exists, no other choice
-class BinaryMplt;         // circular dependency exists, no other choice
 class EAConnectionGraph;  // circular dependency exists, no other choice
 using MIRInfoPair = std::pair<GStrIdx, uint32>;
 using MIRInfoVector = MapleVector<MIRInfoPair>;
@@ -263,12 +259,6 @@ public:
 
     void SetCurFunction(MIRFunction *f)
     {
-        if (ThreadEnv::IsMeParallel()) {
-            std::lock_guard<std::mutex> guard(curFunctionMutex);
-            auto tid = std::this_thread::get_id();
-            curFunctionMap[tid] = f;
-            return;  // DO NOT delete the return statement
-        }
         curFunction = f;
     }
 
@@ -287,11 +277,6 @@ public:
         return symbolDefOrder;
     }
 
-    Profile &GetProfile()
-    {
-        return profile;
-    }
-
     GcovProfileData *GetGcovProfile()
     {
         return gcovProfile;
@@ -308,15 +293,6 @@ public:
 
     MIRFunction *CurFunction() const
     {
-        if (ThreadEnv::IsMeParallel()) {
-            std::lock_guard<std::mutex> guard(curFunctionMutex);
-            auto tid = std::this_thread::get_id();
-            auto pair = curFunctionMap.find(tid);
-            if (pair != curFunctionMap.end()) {
-                return pair->second;
-            }
-            CHECK_FATAL(false, "NYI");
-        }
         return curFunction;
     }
 
@@ -339,7 +315,6 @@ public:
     void DumpDefType();
     const std::string &GetFileNameFromFileNum(uint32 fileNum) const;
 
-    void DumpToHeaderFile(bool binaryMplt, const std::string &outputName = "");
     void DumpToCxxHeaderFile(std::set<std::string> &leafClasses, const std::string &pathToOutf) const;
     void DumpClassToFile(const std::string &path) const;
     void DumpFunctionList(const std::unordered_set<std::string> *dumpFuncSet) const;
@@ -362,9 +337,6 @@ public:
 
     MIRFunction *FindEntryFunction();
     uint32 GetFileinfo(GStrIdx strIdx) const;
-    void OutputAsciiMpl(const char *phaseName, const char *suffix,
-                        const std::unordered_set<std::string> *dumpFuncSet = nullptr, bool emitStructureType = true,
-                        bool binaryform = false);
     void OutputFunctionListAsciiMpl(const std::string &phaseName);
     const std::string &GetFileName() const
     {
@@ -557,15 +529,6 @@ public:
     void SetWithProfileInfo(bool withProfInfo)
     {
         withProfileInfo = withProfInfo;
-    }
-
-    BinaryMplt *GetBinMplt()
-    {
-        return binMplt;
-    }
-    void SetBinMplt(BinaryMplt *binaryMplt)
-    {
-        binMplt = binaryMplt;
     }
 
     bool IsInIPA() const
@@ -880,7 +843,6 @@ private:
     MapleSet<TyIdx> externStructTypeSet;
     MapleSet<StIdx> symbolSet;
     MapleVector<StIdx> symbolDefOrder;
-    Profile profile;
     GcovProfileData *gcovProfile;
     bool someSymbolNeedForwDecl = false;  // some symbols' addressses used in initialization
 
@@ -895,9 +857,6 @@ private:
 
     DebugInfo *dbgInfo = nullptr;
     bool withDbgInfo = false;
-
-    // for cg in mplt
-    BinaryMplt *binMplt = nullptr;
     bool inIPA = false;
     bool withMe = true;
     MIRInfoVector fileInfo;              // store info provided under fileInfo keyword
