@@ -478,9 +478,8 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
         desc->instructionsAddr = 0;
         if (size <= MAX_REGULAR_HEAP_OBJECT_SIZE) {
             // for non huge code cache obj, allocate fort space before allocating the code object
-            uintptr_t mem = machineCodeSpace_->JitFortAllocate(desc->instructionsSize);
+            uintptr_t mem = machineCodeSpace_->JitFortAllocate(desc);
             if (mem == ToUintPtr(nullptr)) {
-                SetMachineCodeOutOfMemoryError(GetJSThread(), size, "Heap::JitFortAllocate");
                 return nullptr;
             }
             desc->instructionsAddr = mem;
@@ -635,7 +634,10 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
     // machinecode space is not sweeped in young GC
     if (ecmaVm_->GetJSOptions().GetEnableJitFort()) {
         if (machineCodeSpace_->sweepState_ != SweepState::NO_SWEEP) {
-            machineCodeSpace_->UpdateFortSpace();
+            if (machineCodeSpace_->GetJitFort() &&
+                machineCodeSpace_->GetJitFort()->IsMachineCodeGC()) {
+                machineCodeSpace_->UpdateFortSpace();
+            }
         }
     }
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {

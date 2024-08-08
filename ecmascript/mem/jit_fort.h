@@ -20,6 +20,7 @@
 
 #include "ecmascript/mem/mem_common.h"
 #include "ecmascript/mem/region.h"
+#include "ecmascript/mem/machine_code.h"
 
 namespace panda::ecmascript {
 
@@ -37,7 +38,7 @@ public:
 
     void InitRegions();
     bool AddRegion();
-    uintptr_t Allocate(size_t size);
+    uintptr_t Allocate(MachineCodeDesc *desc);
 
     inline JitFortRegion *GetRegionList()
     {
@@ -56,17 +57,18 @@ public:
 
     inline bool  IsMachineCodeGC()
     {
-        return isMachineCodeGC_;
+        return isMachineCodeGC_.load(std::memory_order_acquire);
     }
 
     inline void SetMachineCodeGC(bool flag)
     {
         LOG_JIT(DEBUG) << "SetMachineCodeGC " << flag;
-        isMachineCodeGC_ = flag;
+        isMachineCodeGC_.store(flag, std::memory_order_release);
     }
 
     bool InRange(uintptr_t address) const;
-    void RecordLiveJitCode(uintptr_t addr, size_t size);
+    MemDesc *RecordLiveJitCode(uintptr_t addr, size_t size, bool installed = true);
+    MemDesc *RecordLiveJitCodeNoLock(uintptr_t addr, size_t size, bool installed = false);
     void CollectFreeRanges(JitFortRegion  *region);
     void SortLiveMemDescList();
     void UpdateFreeSpace();
@@ -98,8 +100,7 @@ private:
     bool freeListUpdated_ {false};  // use atomic if not mutext protected
     Mutex mutex_;
     Mutex liveJitCodeBlksLock_;
-    bool isMachineCodeGC_ {false};
-
+    std::atomic<bool> isMachineCodeGC_ {false};
     friend class HugeMachineCodeSpace;
 };
 

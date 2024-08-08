@@ -22,6 +22,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/method.h"
+#include "ecmascript/mem/jit_fort_memdesc.h"
 
 #include "libpandabase/macros.h"
 
@@ -51,6 +52,13 @@ struct MachineCodeDesc {
     size_t instructionsSize {0};
     bool isHugeObj {false};
     uintptr_t hugeObjRegion {0};
+
+    size_t codeSizeAlign {0};
+    size_t rodataSizeBeforeTextAlign {0};
+    size_t rodataSizeAfterTextAlign {0};
+    size_t funcEntryDesSizeAlign {0};
+    size_t stackMapSizeAlign {0};
+    MemDesc *memDesc {nullptr};
 };
 
 class MachineCode;
@@ -196,8 +204,7 @@ public:
     }
 
     bool SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
-    bool SetText(const MachineCodeDesc &desc,
-        size_t rodataSizeBeforeTextAlign, size_t codeSizeAlign, size_t rodataSizeAfterTextAlign);
+    bool SetText(const MachineCodeDesc &desc);
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
 
     template <VisitType visitType>
