@@ -21,6 +21,7 @@
 namespace panda::ecmascript {
 void Space::AddRegion(Region *region)
 {
+    ASSERT(region != nullptr);
     LOG_ECMA_MEM(DEBUG) << "Add region:" << region << " to " << ToSpaceTypeName(spaceType_);
     regionList_.AddNode(region);
     IncreaseCommitted(region->GetCapacity());
