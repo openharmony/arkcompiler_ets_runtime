@@ -11,6 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+bbb
+ccc
 full name :  Tywin
 Lion
 full name :  Tyrion
@@ -18,4 +20,5 @@ undefined
 {}
 TypeError
 dynamicImport Json
-
+dynamic import aaa.js 1st time
+dynamic import aaa.js 2nd time
