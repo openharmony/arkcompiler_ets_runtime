@@ -124,6 +124,7 @@ public:
         LogInfo::MapleLogger() << "LambdaOcc at bb" << cgbb->GetId() << " classId" << classId << " Lambda[";
         for (size_t i = 0; i < lambdaRes.size(); i++) {
             lambdaRes[i]->Dump();
+            DEBUG_ASSERT(lambdaRes.size() >= 1, "lambdaRes.size() -1 should be uint");
             if (i != lambdaRes.size() - 1) {
                 LogInfo::MapleLogger() << ", ";
             }

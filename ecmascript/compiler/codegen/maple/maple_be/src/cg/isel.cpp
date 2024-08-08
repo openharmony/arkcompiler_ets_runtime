@@ -721,6 +721,7 @@ std::pair<FieldID, MIRType *> MPISel::GetFieldIdAndMirTypeFromMirNode(const Base
         MIRType *iassignMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iassign.GetTyIdx());
         MIRPtrType *pointerType = nullptr;
         if (iassignMirType->GetPrimType() == PTY_agg) {
+            CHECK_NULL_FATAL(cgFunc->GetMirModule().CurFunction());
             MIRSymbol *addrSym = cgFunc->GetMirModule().CurFunction()->GetLocalOrGlobalSymbol(addrofNode.GetStIdx());
             MIRType *addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrSym->GetTyIdx());
             addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrMirType->GetTypeIndex());

@@ -45,6 +45,7 @@ uint32 X64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int32 &
             DEBUG_ASSERT(opndOpcode == OP_dread || opndOpcode == OP_iread, "opndOpcode should be OP_dread or OP_iread");
             if (opndOpcode == OP_dread) {
                 DreadNode *dread = static_cast<DreadNode *>(opnd);
+                CHECK_NULL_FATAL(be.GetMIRModule().CurFunction());
                 MIRSymbol *sym = be.GetMIRModule().CurFunction()->GetLocalOrGlobalSymbol(dread->GetStIdx());
                 ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->GetTyIdx());
                 if (dread->GetFieldID() != 0) {

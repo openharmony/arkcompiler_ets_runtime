@@ -367,6 +367,7 @@ void MIRPragma::Dump(int indent) const
         gStrIdx = e->GetNameStrIdx();
         LogInfo::MapleLogger() << "@" << GlobalTables::GetStrTable().GetStringFromStrIdx(gStrIdx) << " ";
         e->Dump(indent);
+        DEBUG_ASSERT(elementVec.size() > 0, "must not be zero");
         if (j != elementVec.size() - 1) {
             LogInfo::MapleLogger() << ",";
         }

@@ -320,6 +320,7 @@ void GraphColorRegAllocator::InitFreeRegPool()
             }
             ++intNum;
         } else {
+            DEBUG_ASSERT(regNO >= V0, "regNO - V0 is unsigned");
             if (AArch64Abi::IsCalleeSavedReg(static_cast<AArch64reg>(regNO))) {
                 (void)fpCalleeRegSet.insert(regNO - V0);
             } else {
@@ -622,6 +623,7 @@ void GraphColorRegAllocator::SetupLiveRangeByOp(Operand &op, Insn &insn, bool is
         }
         RegOperand &opnd0 = static_cast<RegOperand &>(insn.GetOperand(0));
         if (opnd0.GetRegisterNumber() < kAllRegNum) {
+            DEBUG_ASSERT(opnd0.GetRegisterNumber() >= R0, "opnd0.GetRegisterNumber() - R0 should be unsigned");
             lr->InsertElemToPrefs(opnd0.GetRegisterNumber() - R0);
         }
     }
@@ -967,6 +969,7 @@ void GraphColorRegAllocator::CheckInterference(LiveRange &lr1, LiveRange &lr2) c
     }
 
     for (uint32 i = 0; i < bbBuckets; ++i) {
+        DEBUG_ASSERT(bitArr[i] >= 0, "bitArr[i] must not be garbage or undefined");
         uint64 val = bitArr[i];
         if (val == 0) {
             continue;

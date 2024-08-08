@@ -144,6 +144,7 @@ void CGPre::CreateSortedOccs()
                     break;
                 }
                 case kOccExit: {
+                    DEBUG_ASSERT(exitOccIt != exitOccs.end(), "must be valid iterator");
                     ++exitOccIt;
                     if (exitOccIt != exitOccs.end()) {
                         nextExitOcc = *exitOccIt;
@@ -153,6 +154,7 @@ void CGPre::CreateSortedOccs()
                     break;
                 }
                 case kOccPhiocc: {
+                    DEBUG_ASSERT(phiIt != phiOccs.end(), "must be valid iterator");
                     ++phiIt;
                     if (phiIt != phiOccs.end()) {
                         nextPhiOcc = *phiIt;

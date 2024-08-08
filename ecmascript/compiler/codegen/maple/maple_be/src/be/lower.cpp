@@ -79,6 +79,7 @@ MIRSymbol *CGLowerer::CreateNewRetVar(const MIRType &ty, const std::string &pref
     const uint32 bufSize = 257;
     char buf[bufSize] = {'\0'};
     MIRFunction *func = GetCurrentFunc();
+    DEBUG_ASSERT(func != nullptr, "func should not be nullptr");
     MIRSymbol *var = func->GetSymTab()->CreateSymbol(kScopeLocal);
     int eNum = sprintf_s(buf, bufSize - 1, "%s%" PRId64, prefix.c_str(), ++seed);
     if (eNum == -1) {
@@ -258,6 +259,7 @@ bool CGLowerer::IsComplexSelect(const TernaryNode &tNode) const
 int32 CGLowerer::FindTheCurrentStmtFreq(const StmtNode *stmt) const
 {
     while (stmt != nullptr) {
+        DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "CurFunction should not be nullptr");
         int32 freq = mirModule.CurFunction()->GetFreqFromLastStmt(stmt->GetStmtID());
         if (freq != -1) {
             return freq;
@@ -285,6 +287,7 @@ BaseNode *CGLowerer::LowerComplexSelect(const TernaryNode &tNode, BaseNode &pare
     if (tNode.GetPrimType() == PTY_agg) {
         if (tNode.Opnd(1)->op == OP_dread) {
             DreadNode *trueNode = static_cast<DreadNode *>(tNode.Opnd(1));
+            DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
             resultTy = mirModule.CurFunction()->GetLocalOrGlobalSymbol(trueNode->GetStIdx())->GetType();
         } else if (tNode.Opnd(1)->op == OP_iread) {
             IreadNode *trueNode = static_cast<IreadNode *>(tNode.Opnd(1));
@@ -306,6 +309,7 @@ BaseNode *CGLowerer::LowerComplexSelect(const TernaryNode &tNode, BaseNode &pare
 
     CondGotoNode *brTargetStmt = mirModule.CurFuncCodeMemPool()->New<CondGotoNode>(OP_brfalse);
     brTargetStmt->SetOpnd(tNode.Opnd(0), 0);
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
     LabelIdx targetIdx = mirModule.CurFunction()->GetLabelTab()->CreateLabel();
     mirModule.CurFunction()->GetLabelTab()->AddToStringLabelMap(targetIdx);
     brTargetStmt->SetOffset(targetIdx);
@@ -315,6 +319,7 @@ BaseNode *CGLowerer::LowerComplexSelect(const TernaryNode &tNode, BaseNode &pare
         currentStmtFreq = FindTheCurrentStmtFreq(static_cast<StmtNode *>(&parent));
     }
     currentStmtFreq = currentStmtFreq == -1 ? 0 : currentStmtFreq;
+    DEBUG_ASSERT(func != nullptr, "func should not be nullptr");
     func->SetLastFreqMap(brTargetStmt->GetStmtID(), static_cast<uint32>(currentStmtFreq));
     blkNode.InsertAfter(blkNode.GetLast(), brTargetStmt);
     union {
@@ -339,7 +344,7 @@ BaseNode *CGLowerer::LowerComplexSelect(const TernaryNode &tNode, BaseNode &pare
         func->SetFirstFreqMap(regassignTrue->GetStmtID(), fallthruStmtFreq);
         blkNode.InsertAfter(blkNode.GetLast(), regassignTrue);
     }
-
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "CurFunction should not be nullptr");
     GotoNode *gotoStmt = mirModule.CurFuncCodeMemPool()->New<GotoNode>(OP_goto);
     LabelIdx EndIdx = mirModule.CurFunction()->GetLabelTab()->CreateLabel();
     mirModule.CurFunction()->GetLabelTab()->AddToStringLabelMap(EndIdx);
@@ -645,6 +650,7 @@ BaseNode *CGLowerer::ReadBitField(const std::pair<int32, int32> &byteBitOffsets,
 
 BaseNode *CGLowerer::LowerDreadBitfield(DreadNode &dread)
 {
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "CurFunction should not be nullptr");
     auto *symbol = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dread.GetStIdx());
     auto *structTy = static_cast<MIRStructType *>(symbol->GetType());
     auto fTyIdx = structTy->GetFieldTyIdx(dread.GetFieldID());
@@ -750,6 +756,7 @@ BlockNode *CGLowerer::LowerReturn(NaryStmtNode &retNode)
 StmtNode *CGLowerer::LowerDassignBitfield(DassignNode &dassign, BlockNode &newBlk)
 {
     dassign.SetRHS(LowerExpr(dassign, *dassign.GetRHS(), newBlk));
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "CurFunction should not be nullptr");
     MIRSymbol *symbol = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dassign.GetStIdx());
     MIRStructType *structTy = static_cast<MIRStructType *>(symbol->GetType());
     CHECK_FATAL(structTy != nullptr, "LowerDassignBitfield: non-zero fieldID for non-structure");
@@ -836,6 +843,7 @@ void CGLowerer::LowerAsmStmt(AsmNode *asmNode, BlockNode *newBlk)
         BaseNode *readOpnd = nullptr;
         PrimType type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdxUsed)->GetPrimType();
         if ((type != PTY_agg) && CGOptions::GetInstance().GetOptimizeLevel() >= CGOptions::kLevel2) {
+            DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
             PregIdx pregIdx = mirModule.CurFunction()->GetPregTab()->CreatePreg(type);
             assignNode = mirBuilder->CreateStmtRegassign(type, pregIdx, opnd);
             readOpnd = mirBuilder->CreateExprRegread(type, pregIdx);
@@ -867,6 +875,7 @@ DassignNode *CGLowerer::SaveReturnValueInLocal(StIdx stIdx, uint16 fieldID)
     if (stIdx.IsGlobal()) {
         var = GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
     } else {
+        DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
         var = GetCurrentFunc()->GetSymbolTabItem(stIdx.Idx());
     }
     CHECK_FATAL(var != nullptr, "var should not be nullptr");
@@ -915,6 +924,7 @@ void CGLowerer::LowerCallStmt(StmtNode &stmt, StmtNode *&nextStmt, BlockNode &ne
         newStmt = LowerIntrinsiccall(intrnNode, newBlk);
     } else {
         /* We note the function has a user-defined (i.e., not an intrinsic) call. */
+        DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
         GetCurrentFunc()->SetHasCall();
         newStmt = &stmt;
     }
@@ -1034,6 +1044,7 @@ BlockNode *CGLowerer::GenBlockNode(StmtNode &newCall, const CallReturnVector &p2
             if (stIdx.IsGlobal()) {
                 sym = GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
             } else {
+                DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
                 sym = GetCurrentFunc()->GetSymbolTabItem(stIdx.Idx());
             }
             bool sizeIs0 = false;
@@ -1055,6 +1066,7 @@ BlockNode *CGLowerer::GenBlockNode(StmtNode &newCall, const CallReturnVector &p2
                     CHECK_FATAL(newCall.GetNext() == dStmt, "make sure newCall's next equal dStmt");
                 } else {
                     PregIdx pregIdx = static_cast<PregIdx>(regFieldPair.GetPregIdx());
+                    DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
                     MIRPreg *mirPreg = GetCurrentFunc()->GetPregTab()->PregFromPregIdx(pregIdx);
                     bool is64x1vec = beCommon.CallIsOfAttr(FUNCATTR_oneelem_simd, &newCall);
                     PrimType pType = is64x1vec ? PTY_f64 : mirPreg->GetPrimType();
@@ -1145,6 +1157,7 @@ BlockNode *CGLowerer::LowerIntrinsiccallAassignedToAssignStmt(IntrinsiccallNode 
     auto &opndVector = intrinsicCall.GetNopnd();
     auto returnPair = intrinsicCall.GetReturnVec().begin();
     auto regFieldPair = returnPair->second;
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "CurFunction should not be nullptr");
     if (regFieldPair.IsReg()) {
         auto regIdx = regFieldPair.GetPregIdx();
         auto primType = mirModule.CurFunction()->GetPregItem(static_cast<PregIdx>(regIdx))->GetPrimType();
@@ -1285,6 +1298,7 @@ bool CGLowerer::LowerStructReturn(BlockNode &newBlk, StmtNode &stmt, bool &lvar)
     if (retPair.second.IsReg()) {
         return false;
     }
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "CurFunction should not be nullptr");
     MIRSymbol *retSym = mirModule.CurFunction()->GetLocalOrGlobalSymbol(retPair.first);
     if (retSym->GetType()->GetPrimType() != PTY_agg) {
         return false;
@@ -1358,6 +1372,7 @@ void CGLowerer::LowerStructReturnInGpRegs(BlockNode &newBlk, const StmtNode &stm
     // save retval0, retval1
     PregIdx pIdx1R = 0;
     PregIdx pIdx2R = 0;
+    DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
     auto genRetvalSave = [this, &newBlk](PregIdx &pIdx, SpecialReg sreg) {
         auto *regreadNode = mirBuilder->CreateExprRegread(PTY_u64, -sreg);
         pIdx = GetCurrentFunc()->GetPregTab()->CreatePreg(PTY_u64);
@@ -1428,6 +1443,7 @@ void CGLowerer::LowerStructReturnInFpRegs(BlockNode &newBlk, const StmtNode &stm
     // save retvals
     static constexpr std::array sregs = {kSregRetval0, kSregRetval1, kSregRetval2, kSregRetval3};
     std::vector<PregIdx> pIdxs(sregs.size(), 0);
+    DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
     for (uint32 i = 0; i < elemNum; ++i) {
         auto *regreadNode = mirBuilder->CreateExprRegread(primType, -sregs[i]);
         pIdxs[i] = GetCurrentFunc()->GetPregTab()->CreatePreg(primType);
@@ -1472,6 +1488,7 @@ void CGLowerer::LowerSwitchOpnd(StmtNode &stmt, BlockNode &newBlk)
     BaseNode *opnd = LowerExpr(stmt, *stmt.Opnd(0), newBlk);
     if (CGOptions::GetInstance().GetOptimizeLevel() >= CGOptions::kLevel2 && opnd->GetOpCode() != OP_regread) {
         PrimType ptyp = stmt.Opnd(0)->GetPrimType();
+        DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
         PregIdx pIdx = GetCurrentFunc()->GetPregTab()->CreatePreg(ptyp);
         RegassignNode *regAss = mirBuilder->CreateStmtRegassign(ptyp, pIdx, opnd);
         newBlk.AddStatement(regAss);
@@ -1616,6 +1633,7 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
                 break;
             case OP_return: {
 #if TARGARM32 || TARGAARCH64 || TARGRISCV64 || TARGX86_64
+                DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
                 if (GetCurrentFunc()->IsFirstArgReturn() && stmt->NumOpnds() > 0) {
                     newBlk->AppendStatementsFromBlock(
                         *LowerReturnStructUsingFakeParm(static_cast<NaryStmtNode &>(*stmt)));
@@ -1728,6 +1746,7 @@ MIRType *CGLowerer::GetArrayNodeType(BaseNode &baseNode)
 {
     MIRType *baseType = nullptr;
     auto curFunc = mirModule.CurFunction();
+    DEBUG_ASSERT(curFunc != nullptr, "curFunc should not be nullptr");
     if (baseNode.GetOpCode() == OP_regread) {
         RegreadNode *rrNode = static_cast<RegreadNode *>(&baseNode);
         MIRPreg *pReg = curFunc->GetPregTab()->PregFromPregIdx(rrNode->GetRegIdx());
@@ -1773,6 +1792,7 @@ void CGLowerer::SplitCallArg(CallNode &callNode, BaseNode *newOpnd, size_t i, Bl
             newBlk.AddStatement(dassignNode);
             callNode.SetOpnd(mirBuilder->CreateExprDread(*type, 0, *ret), i);
         } else {
+            DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
             PregIdx pregIdx = mirModule.CurFunction()->GetPregTab()->CreatePreg(newOpnd->GetPrimType());
             RegassignNode *temp = mirBuilder->CreateStmtRegassign(newOpnd->GetPrimType(), pregIdx, newOpnd);
             newBlk.AddStatement(temp);
@@ -1876,7 +1896,8 @@ StmtNode *CGLowerer::LowerCall(CallNode &callNode, StmtNode *&nextStmt, BlockNod
     if ((retType->GetKind() != kTypeStruct) && (retType->GetKind() != kTypeUnion)) {
         return &callNode;
     }
-
+    
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
     MIRSymbol *dsgnSt = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dassignNode->GetStIdx());
     CHECK_FATAL(dsgnSt->GetType()->IsStructType(), "expects a struct type");
     MIRStructType *structTy = static_cast<MIRStructType *>(dsgnSt->GetType());
@@ -2340,6 +2361,7 @@ void CGLowerer::ProcessArrayExpr(BaseNode &expr, BlockNode &blkNode)
         CHECK_FATAL(arrayNode.GetNopndSize() == kOperandNumBinary, "unexpected nOpnd size");
         BaseNode *opnd0 = arrayNode.GetNopndAt(0);
         if (opnd0->GetOpCode() == OP_iread) {
+            DEBUG_ASSERT(curFunc != nullptr, "curFunc should not be nullptr");
             PregIdx pregIdx = curFunc->GetPregTab()->CreatePreg(opnd0->GetPrimType());
             RegassignNode *temp = mirBuilder->CreateStmtRegassign(opnd0->GetPrimType(), pregIdx, opnd0);
             blkNode.InsertAfter(blkNode.GetLast(), temp);
@@ -2461,6 +2483,7 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
             return LowerIntrinsicop(parent, static_cast<IntrinsicopNode &>(expr), blkNode);
 
         case OP_alloca: {
+            DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nulllptr");
             GetCurrentFunc()->SetVlaOrAlloca(true);
             return &expr;
         }
@@ -2651,6 +2674,7 @@ StmtNode *CGLowerer::LowerIntrinsicopDassign(const DassignNode &dsNode, Intrinsi
         CHECK_FATAL(addrNode != nullptr, "addrNode should not be nullptr");
         nOpnds[i] = addrNode;
     }
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
     MIRSymbol *dst = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dsNode.GetStIdx());
     MIRType *ty = dst->GetType();
     MIRType *fnType = beCommon.BeGetOrCreateFunctionType(ty->GetTypeIndex(), fnTyVec, fnTaVec);
@@ -2735,6 +2759,7 @@ BaseNode *CGLowerer::GetBaseNodeFromCurFunc(MIRFunction &curFunc, bool isFromJar
          * pass caller functions's classinfo directly
          */
         std::string callerName = CLASSINFO_PREFIX_STR;
+        DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "CurFunction should not be nullptr");
         callerName += mirModule.CurFunction()->GetBaseClassName();
         GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(callerName);
         MIRSymbol *callerClassInfoSym = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(strIdx);
@@ -2859,11 +2884,12 @@ StmtNode *CGLowerer::LowerIntrinsicMplClearStack(const IntrinsiccallNode &intrin
 
     BaseNode *length = intrincall.Opnd(1);
     PrimType pType = PTY_i64;
+    DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nullptr");
     PregIdx pIdx = GetCurrentFunc()->GetPregTab()->CreatePreg(pType);
     newStmt = mirBuilder->CreateStmtRegassign(pType, pIdx, mirBuilder->CreateIntConst(1, pType));
     newBlk.AddStatement(newStmt);
     MIRFunction *func = GetCurrentFunc();
-
+    DEBUG_ASSERT(func != nullptr, "func should not be nullptr");
     const std::string &name = func->GetName() + std::string("_Lalloca_");
     LabelIdx label1 = GetCurrentFunc()->GetOrCreateLableIdxFromName(name + std::to_string(labelIdx++));
     LabelIdx label2 = GetCurrentFunc()->GetOrCreateLableIdxFromName(name + std::to_string(labelIdx++));
@@ -2998,6 +3024,7 @@ StmtNode *CGLowerer::LowerIntrinsicMplCleanupLocalRefVarsSkip(IntrinsiccallNode 
     CHECK_FATAL(skipExpr != nullptr, "should be dread");
     CHECK_FATAL(skipExpr->GetOpCode() == OP_dread, "should be dread");
     DreadNode *refNode = static_cast<DreadNode *>(skipExpr);
+    DEBUG_ASSERT(mirFunc != nullptr, "mirFunc should not nullptr");
     MIRSymbol *skipSym = mirFunc->GetLocalOrGlobalSymbol(refNode->GetStIdx());
     if (skipSym->GetAttr(ATTR_localrefvar)) {
         mirFunc->InsertMIRSymbol(skipSym);

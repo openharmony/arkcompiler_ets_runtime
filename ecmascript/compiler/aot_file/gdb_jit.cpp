@@ -265,6 +265,7 @@ void ConstructSymTab(Elf64_Sym *newSymtab, const StubAnInfo &info)
     bcSym->st_other = newSymtab[1].st_other;
     bcSym->st_shndx = TEXT_HDR_IDX;
     bcSym->st_value = info.bcStubBegin - info.textHdr->sh_offset;
+    ASSERT(info.bcStubEnd >= info.bcStubBegin);
     bcSym->st_size = info.bcStubEnd - info.bcStubBegin;
 }
 
@@ -381,6 +382,7 @@ bool CreateDebuggerElf(uintptr_t fileAddr, void **result, uint64_t *elfSize)
         }
     };
     writeU64(addrOff, info.bcStubBegin + fileAddr);
+    ASSERT(info.bcStubEnd >= info.bcStubBegin);
     writeU64(lenOff, info.bcStubEnd - info.bcStubBegin);
 
     uint32_t totalSize = sizeof(Elf64_Ehdr) + sizeof(Elf64_Phdr) + sizeof(SHSTR) + info.strtabHdr->sh_size;

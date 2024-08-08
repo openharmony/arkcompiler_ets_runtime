@@ -109,6 +109,7 @@ void A64OpndEmitVisitor::Visit(maplebe::ImmOperand *v)
     (void)res.erase(dot, 1);
     std::string integer(res, 0, 1);
     std::string fraction(res, 1);
+    DEBUG_ASSERT(fraction.size() >= 1, "fraction must not be empty");
     while (fraction.size() != 1 && fraction[fraction.size() - 1] == '0') {
         fraction.pop_back();
     }
@@ -208,6 +209,7 @@ void A64OpndEmitVisitor::Visit(maplebe::MemOperand *v)
         if (opndProp->IsMemLow12()) {
             (void)emitter.Emit("#:lo12:");
         }
+        CHECK_NULL_FATAL(emitter.GetCG()->GetMIRModule()->CurFunction());
         PUIdx pIdx = emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
         (void)emitter.Emit(v->GetSymbol()->GetName() + std::to_string(pIdx));
     } else if (addressMode == MemOperand::kAddrModeLo12Li) {
@@ -224,6 +226,7 @@ void A64OpndEmitVisitor::Visit(maplebe::MemOperand *v)
             (void)emitter.Emit(asmSection);
         } else {
             if (v->GetSymbol()->GetStorageClass() == kScPstatic && v->GetSymbol()->IsLocal()) {
+                CHECK_NULL_FATAL(emitter.GetCG()->GetMIRModule()->CurFunction());
                 PUIdx pIdx = emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
                 (void)emitter.Emit(a64v->GetSymbolName() + std::to_string(pIdx));
             } else {
@@ -330,6 +333,7 @@ void A64OpndEmitVisitor::Visit(StImmOperand *v)
         (void)emitter.Emit(asmSection);
     } else {
         if (symbol->GetStorageClass() == kScPstatic && symbol->GetSKind() != kStConst && symbol->IsLocal()) {
+            CHECK_NULL_FATAL(emitter.GetCG()->GetMIRModule()->CurFunction());
             (void)emitter.Emit(symbol->GetName() +
                                std::to_string(emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx()));
         } else {
@@ -380,6 +384,7 @@ void A64OpndEmitVisitor::Visit(OfstOperand *v)
     if (CGOptions::IsPIC() && symbol->NeedPIC()) {
         (void)emitter.Emit("#:got_lo12:" + symbol->GetName());
     } else if (symbol->GetStorageClass() == kScPstatic && symbol->GetSKind() != kStConst && symbol->IsLocal()) {
+        CHECK_NULL_FATAL(emitter.GetCG()->GetMIRModule()->CurFunction());
         (void)emitter.Emit(symbol->GetName() +
                            std::to_string(emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx()));
     } else {
@@ -491,6 +496,7 @@ void A64OpndDumpVisitor::Visit(MemOperand *a64v)
             OfstOperand *offOpnd = a64v->GetOffsetImmediate();
             LogInfo::MapleLogger() << "#:lo12:";
             if (a64v->GetSymbol()->GetStorageClass() == kScPstatic && a64v->GetSymbol()->IsLocal()) {
+                CHECK_NULL_FATAL(CG::GetCurCGFunc()->GetMirModule().CurFunction());
                 PUIdx pIdx = CG::GetCurCGFunc()->GetMirModule().CurFunction()->GetPuidx();
                 LogInfo::MapleLogger() << a64v->GetSymbolName() << std::to_string(pIdx);
             } else {
@@ -614,6 +620,7 @@ void A64OpndEmitVisitor::Visit(const MIRSymbol &symbol, int64 offset)
         (void)emitter.Emit(asmSection);
     } else {
         if (symbol.GetStorageClass() == kScPstatic && symbol.GetSKind() != kStConst) {
+            CHECK_NULL_FATAL(emitter.GetCG()->GetMIRModule()->CurFunction());
             (void)emitter.Emit(symbol.GetName() +
                                std::to_string(emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx()));
         } else {

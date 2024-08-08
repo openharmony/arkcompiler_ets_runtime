@@ -570,6 +570,7 @@ std::pair<int32, int32> BECommon::GetFieldOffset(MIRStructType &structType, Fiel
                  * boundary where the container is the same size as the underlying type of the bit field.
                  */
                 CHECK_FATAL(allocedSizeInBits <= UINT64_MAX - fieldSize, "must not be zero");
+                DEBUG_ASSERT(allocedSizeInBits + fieldSize >= 1, "allocedSizeInBits + fieldSize - 1u must be unsigned");
                 if ((!structType.GetTypeAttrs().IsPacked() &&
                      ((allocedSizeInBits / fieldSizeBits) != ((allocedSizeInBits + fieldSize - 1u) / fieldSizeBits))) ||
                     fieldSize == 0) {
@@ -720,6 +721,7 @@ BaseNode *BECommon::GetAddressOfNode(const BaseNode &node)
         case OP_dread: {
             const DreadNode &dNode = static_cast<const DreadNode &>(node);
             const StIdx &index = dNode.GetStIdx();
+            DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
             return mirModule.GetMIRBuilder()->CreateAddrof(*mirModule.CurFunction()->GetLocalOrGlobalSymbol(index));
         }
         case OP_iread: {

@@ -103,6 +103,7 @@ void CFIOpndEmitVisitor::Visit(StrOperand *v)
 void CFIOpndEmitVisitor::Visit(LabelOperand *v)
 {
     if (emitter.GetCG()->GetMIRModule()->IsCModule()) {
+        CHECK_NULL_FATAL(emitter.GetCG()->GetMIRModule()->CurFunction());
         PUIdx pIdx = emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
         char *idx = strdup(std::to_string(pIdx).c_str());
         CHECK_FATAL(idx != nullptr, "strdup failed");

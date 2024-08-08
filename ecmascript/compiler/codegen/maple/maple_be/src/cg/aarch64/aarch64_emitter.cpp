@@ -37,6 +37,7 @@ void AArch64AsmEmitter::EmitFastLSDA(FuncEmitInfo &funcEmitInfo)
     AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
     CG *currCG = cgFunc.GetCG();
 
+    CHECK_NULL_FATAL(currCG->GetMIRModule()->CurFunction());
     PUIdx pIdx = currCG->GetMIRModule()->CurFunction()->GetPuidx();
     char *idx = strdup(std::to_string(pIdx).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");
@@ -71,6 +72,7 @@ void AArch64AsmEmitter::EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std:
         label.SetLabelOrder(currCG->GetLabelOrderCnt());
         currCG->IncreaseLabelOrderCnt();
     }
+    CHECK_NULL_FATAL(currCG->GetMIRModule()->CurFunction());
     PUIdx pIdx = currCG->GetMIRModule()->CurFunction()->GetPuidx();
     char *puIdx = strdup(std::to_string(pIdx).c_str());
     CHECK_FATAL(puIdx != nullptr, "strdup failed");
@@ -327,13 +329,14 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
             (void)emitter->Emit("\t.align 3\n");
             (void)emitter->Emit(st->GetName() + ":\n");
             MIRAggConst *arrayConst = safe_cast<MIRAggConst>(st->GetKonst());
-            CHECK_FATAL(arrayConst != nullptr, "null ptr check");
+            CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
             PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
             char *idx = strdup(std::to_string(pIdx).c_str());
-            CHECK_FATAL(idx != nullptr, "strdup failed");
+            CHECK_FATAL(arrayConst != nullptr, "null ptr check");
             for (size_t i = 0; i < arrayConst->GetConstVec().size(); i++) {
                 MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
                 CHECK_FATAL(lblConst != nullptr, "null ptr check");
+                CHECK_FATAL(idx != nullptr, "strdup failed");
                 (void)emitter->Emit("\t.quad\t.L.").Emit(idx).Emit("__").Emit(lblConst->GetValue());
                 (void)emitter->Emit(" - " + st->GetName() + "\n");
             }
@@ -800,6 +803,7 @@ void AArch64AsmEmitter::EmitAdrpLabel(Emitter &emitter, const Insn &insn) const
     opnd0->Accept(visitor);
     (void)emitter.Emit(", ");
     char *idx;
+    CHECK_NULL_FATAL(Globals::GetInstance()->GetBECommon()->GetMIRModule().CurFunction());
     idx =
         strdup(std::to_string(Globals::GetInstance()->GetBECommon()->GetMIRModule().CurFunction()->GetPuidx()).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");

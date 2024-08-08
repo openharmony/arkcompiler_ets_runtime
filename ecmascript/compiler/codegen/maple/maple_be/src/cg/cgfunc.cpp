@@ -714,6 +714,7 @@ Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
         }
         case INTRN_MPL_READ_ARRAYCLASS_CACHE_ENTRY: {
             auto addrOfNode = static_cast<AddrofNode *>(intrinsicopNode.Opnd(0));
+            CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
             MIRSymbol *st = cgFunc.GetMirModule().CurFunction()->GetLocalOrGlobalSymbol(addrOfNode->GetStIdx());
             auto constNode = static_cast<ConstvalNode *>(intrinsicopNode.Opnd(1));
             CHECK_FATAL(constNode != nullptr, "null ptr check");
@@ -1891,6 +1892,7 @@ void CGFunc::CreateLmbcFormalParamInfo()
                 tyIdx = lmbcFunc.GetFormalDefVec()[idx].formalTyIdx;
                 type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
             } else {
+                CHECK_NULL_FATAL(GetBecommon().GetMIRModule().CurFunction());
                 FormalDef vec =
                     const_cast<MIRFunction *>(GetBecommon().GetMIRModule().CurFunction())->GetFormalDefAt(idx);
                 tyIdx = vec.formalTyIdx;
@@ -2073,6 +2075,7 @@ MIRSymbol *CGFunc::GetRetRefSymbol(BaseNode &expr)
         return nullptr;
     }
     auto &retExpr = static_cast<AddrofNode &>(expr);
+    CHECK_NULL_FATAL(mirModule.CurFunction());
     MIRSymbol *symbol = mirModule.CurFunction()->GetLocalOrGlobalSymbol(retExpr.GetStIdx());
     DEBUG_ASSERT(symbol != nullptr, "get symbol in mirmodule failed");
     if (symbol->IsRefType()) {
@@ -2192,6 +2195,7 @@ bool CGFunc::MemBarOpt(const StmtNode &membar)
         } else if (stmt->GetOpCode() == OP_call) {
             auto *callNode = static_cast<CallNode *>(stmt);
             MIRFunction *fn = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode->GetPUIdx());
+            CHECK_NULL_FATAL(GetMirModule().CurFunction());
             MIRSymbol *fsym = GetMirModule().CurFunction()->GetLocalOrGlobalSymbol(fn->GetStIdx(), false);
             DEBUG_ASSERT(fsym != nullptr, "null ptr check");
             if (fsym->GetName() == "MCC_WriteRefFieldNoDec") {

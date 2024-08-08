@@ -512,6 +512,7 @@ uint32 AArch64ObjEmitter::GetOpndMachineValue(const Operand &opnd) const
             if (regOpnd.GetRegisterNumber() == RSP) {
                 return regNO - R0 - 1;
             }
+            DEBUG_ASSERT(regNO >= R0, "value overflow");
             return regNO - R0;
         }
         return regNO - V0;
@@ -1696,11 +1697,13 @@ uint32 AArch64ObjEmitter::EncodeLogicaImm(uint64 imm, uint32 size) const
     uint32 immr = 0;
     uint32 oneNum = bitValue.count();
     if (bitValue.test(0)) { /* for 1+0+1+ pattern */
+        DEBUG_ASSERT(oneNum >= trailCount, "value overflow");
         immr = oneNum - trailCount;
     } else { /* for 0+1+0+ pattern */
         immr = elementSize - trailCount;
     }
     CHECK_FATAL(elementSize >= 1, "value overflow");
+    DEBUG_ASSERT(oneNum >= 1, "value overflow");
     uint32 imms = ~(elementSize - 1) << 1;
     imms |= oneNum - 1u;
     uint32 n = (elementSize == k64BitSize) ? 1 : 0;
