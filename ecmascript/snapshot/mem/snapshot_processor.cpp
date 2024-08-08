@@ -1349,11 +1349,15 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         if (index == 1) {
             str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(constantStringClass.GetTaggedObject()));
             std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->FindMergedJSPandaFile();
-            auto constantStr = ConstantString::Cast(str);
-            uint32_t id = constantStr->GetEntityIdU32();
-            auto stringData = jsPandaFile->GetStringData(EntityId(id)).data;
-            constantStr->SetConstantData(const_cast<uint8_t *>(stringData));
-            constantStr->SetRelocatedData(thread, JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
+            if (jsPandaFile != nullptr) {
+                auto constantStr = ConstantString::Cast(str);
+                uint32_t id = constantStr->GetEntityIdU32();
+                auto stringData = jsPandaFile->GetStringData(EntityId(id)).data;
+                constantStr->SetConstantData(const_cast<uint8_t *>(stringData));
+                constantStr->SetRelocatedData(thread, JSTaggedValue::Undefined(), BarrierMode::SKIP_BARRIER);
+            } else {
+                LOG_ECMA_MEM(FATAL) << "find JSPandaFile is nullptr";
+            }
         } else {
             ASSERT(index == 0);
             str->SetClassWithoutBarrier(reinterpret_cast<JSHClass *>(lineStringClass.GetTaggedObject()));
