@@ -3671,7 +3671,6 @@ void SlowPathLowering::LowerNotifyConcurrentResult(GateRef gate)
 
 void SlowPathLowering::LowerDefineFieldByName(GateRef gate)
 {
-    const int id = RTSTUB_ID(DefineField);
     // 4: number of value inputs + acc
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
@@ -3683,33 +3682,34 @@ void SlowPathLowering::LowerDefineFieldByName(GateRef gate)
                                                       stringId, ConstPoolType::STRING);
     GateRef value = acc_.GetValueIn(gate, 3);  // acc
 
-    GateRef newGate = LowerCallRuntime(gate, id, {obj, propKey, value});  // note that HClass may change
+    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::DefineField,
+        {glue_, obj, propKey, value});
     ReplaceHirWithValue(gate, newGate);
 }
 
 void SlowPathLowering::LowerDefineFieldByValue(GateRef gate)
 {
-    const int id = RTSTUB_ID(DefineField);
     // 3: number of value inputs + acc
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef obj = acc_.GetValueIn(gate, 1);
     GateRef propKey = acc_.GetValueIn(gate, 0);
     GateRef value = acc_.GetValueIn(gate, 2);  // acc
 
-    GateRef newGate = LowerCallRuntime(gate, id, {obj, propKey, value});  // note that HClass may change
+    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::DefineField,
+        {glue_, obj, propKey, value});
     ReplaceHirWithValue(gate, newGate);
 }
 
 void SlowPathLowering::LowerDefineFieldByIndex(GateRef gate)
 {
-    const int id = RTSTUB_ID(DefineField);
     // 3: number of value inputs + acc
     ASSERT(acc_.GetNumValueIn(gate) == 3);
     GateRef obj = acc_.GetValueIn(gate, 1);
     GateRef propKey = builder_.ToTaggedInt(acc_.GetValueIn(gate, 0));
     GateRef value = acc_.GetValueIn(gate, 2);  // acc
 
-    GateRef newGate = LowerCallRuntime(gate, id, {obj, propKey, value});  // note that HClass may change
+    GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::DefineField,
+        {glue_, obj, propKey, value});
     ReplaceHirWithValue(gate, newGate);
 }
 
