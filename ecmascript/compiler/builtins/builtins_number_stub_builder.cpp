@@ -458,7 +458,10 @@ GateRef BuiltinsNumberStubBuilder::NumberToString(GateRef number, GateRef radix)
                     }
                     Bind(&loopEnd1);
                     dstTmp = PtrSub(*dstTmp, IntPtr(sizeof(uint8_t)));
-                    LoopEnd(&loopHead1, env, glue_);
+                    // Work with low level buffers, we can't call GC. Loop is simple, no more 32 iteration.
+                    // Ability using GC at the end of loop require add additional calculate pointer to data of string
+                    // on each iteration.
+                    LoopEnd(&loopHead1);
                     Bind(&loopExit1);
                     {
                         Label strInsertSign(env);
