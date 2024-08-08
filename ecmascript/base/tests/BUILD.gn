@@ -50,6 +50,7 @@ host_unittest_action("Base_002_Test") {
 
   sources = [
     # test file
+    "ason_test.cpp",
     "file_path_helper_test.cpp",
     "gc_ring_buffer_test.cpp",
     "json_parser_test.cpp",
