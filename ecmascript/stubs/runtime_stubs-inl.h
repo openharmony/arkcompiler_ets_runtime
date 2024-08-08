@@ -1160,8 +1160,8 @@ JSTaggedValue RuntimeStubs::RuntimeSetClassConstructorLength(JSThread *thread, J
 JSTaggedValue RuntimeStubs::RuntimeNotifyInlineCache(JSThread *thread, const JSHandle<JSFunction> &function,
                                                      uint32_t icSlotSize)
 {
-    // max ic slot index is 0xffff, so the size of ic slot should be less and equal than 0x10000
-    ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + 1);
+    // max ic slot index is 0xffff, the size of ic slot could extend more
+    ASSERT(icSlotSize <= ProfileTypeInfo::MAX_SLOT_INDEX + MethodLiteral::EXTEND_SLOT_SIZE);
     if (icSlotSize == 0) {
         return JSTaggedValue::Undefined();
     }
