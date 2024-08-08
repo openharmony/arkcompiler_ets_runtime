@@ -181,12 +181,12 @@ public:
         if (length <= 0 || offset < 0) {
             return -1;
         }
-        if ((offset + length) > bufferCapacity_) {
+        if ((static_cast<size_t>(offset) + length) > bufferCapacity_) {
             if (!AllocateBuffer(length)) {
                 return -1;
             }
         }
-        if (memcpy_s(buffer_ + offset, bufferCapacity_ - offset, data, length) != EOK) {
+        if (memcpy_s(buffer_ + offset, bufferCapacity_ - static_cast<size_t>(offset), data, length) != EOK) {
             LOG_FULL(ERROR) << "Failed to memcpy_s Data";
             return -1;
         }
