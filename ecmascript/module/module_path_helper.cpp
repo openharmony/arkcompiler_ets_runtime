@@ -252,9 +252,10 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
     size_t pathPos = oldEntryPoint.find(PathHelper::SLASH_TAG, pos + 1);
     LOG_ECMA(DEBUG) << "TransformToNormalizedOhmUrl inputFileName: " << inputFileName << " oldEntryPoint: " <<
         oldEntryPoint;
-    if (pos == CString::npos && pathPos == CString::npos) {
-        LOG_FULL(ERROR) << "TransformToNormalizedOhmUrl Invalid Ohmurl, please check.";
-        return oldEntryPoint;
+    if (pos == CString::npos || pathPos == CString::npos) {
+        CString errorMsg = "TransformToNormalizedOhmUrl Invalid Ohmurl: " + oldEntryPoint + ", please check.";
+        THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(vm->GetJSThread(), ErrorType::SYNTAX_ERROR, errorMsg.c_str(),
+            oldEntryPoint);
     }
     CString path = oldEntryPoint.substr(pathPos);
     CString moduleName = oldEntryPoint.substr(pos + 1, pathPos - pos - 1);

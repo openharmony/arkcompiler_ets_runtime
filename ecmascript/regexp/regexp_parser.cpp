@@ -202,6 +202,7 @@ void RegExpParser::ParseDisjunction(bool isBackward)
                     buffer_.PutU8(ptr, RegExpOpCode::OP_SPARSE);
                     buffer_.PutU16(ptr + 1, cnt);
                     ptr += SPARSE_HEAD_OFFSET;
+                    ASSERT(chars.size() > 0);
                     for (int32_t i = static_cast<int32_t>(chars.size() - 1); i >= 0; i--) {
                         buffer_.PutU16(ptr, chars[i]);
                         // 2: cnt = count of splits + 1, for invert index should be extra - 1, so -1-1=-2
