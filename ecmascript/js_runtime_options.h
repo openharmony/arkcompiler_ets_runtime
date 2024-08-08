@@ -206,6 +206,7 @@ enum CommandValues {
     OPTION_COMPILER_PGO_FORCE_DUMP,
     OPTION_COMPILER_ENABLE_CONCURRENT,
     OPTION_OPEN_ARK_TOOLS,
+    OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
 
@@ -1134,6 +1135,16 @@ public:
         enableArrayBoundsCheckElimination_ = value;
     }
 
+    bool IsEnableFrameStateElimination() const
+    {
+        return enableFrameStateElimination_;
+    }
+
+    void SetEnableFrameStateElimination(bool value)
+    {
+        enableFrameStateElimination_ = value;
+    }
+
     bool IsEnableTypeLowering() const
     {
         return enableTypeLowering_;
@@ -1982,6 +1993,7 @@ private:
     std::string entryPoint_ {"_GLOBAL::func_main_0"};
     bool mergeAbc_ {false};
     bool enableArrayBoundsCheckElimination_ {false};
+    bool enableFrameStateElimination_ {true};
     bool enableTypeLowering_ {true};
     bool enableEarlyElimination_ {true};
     bool enableLaterElimination_ {true};

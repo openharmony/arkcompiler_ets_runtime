@@ -1258,6 +1258,12 @@ template("host_aot_js_test_action") {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
     }
 
+    if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+        invoker.is_enable_opt_array_bounds_check_elimination) {
+      _aot_compile_options_ +=
+          " --compiler-opt-array-bounds-check-elimination=true"
+    }
+
     if (defined(invoker.is_enable_inline_trace) &&
         invoker.is_enable_inline_trace) {
       _aot_compile_options_ += " --compiler-trace-inline=true"
@@ -1525,6 +1531,12 @@ template("host_aot_js_test_action") {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
       }
 
+      if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+          invoker.is_enable_opt_array_bounds_check_elimination) {
+        _aot_compile_options_ +=
+            " --compiler-opt-array-bounds-check-elimination=true"
+      }
+
       if (defined(invoker.is_enable_inline_trace) &&
           invoker.is_enable_inline_trace) {
         _aot_compile_options_ += " --compiler-trace-inline=true"
@@ -1773,6 +1785,12 @@ template("host_aot_js_test_action") {
       if (defined(invoker.is_enable_opt_loop_peeling) &&
           invoker.is_enable_opt_loop_peeling) {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+      }
+
+      if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+          invoker.is_enable_opt_array_bounds_check_elimination) {
+        _aot_compile_options_ +=
+            " --compiler-opt-array-bounds-check-elimination=true"
       }
 
       if (defined(invoker.is_enable_inline_trace) &&
@@ -2122,6 +2140,12 @@ template("host_aot_js_assert_test_action") {
     if (defined(invoker.is_enable_opt_loop_peeling) &&
         invoker.is_enable_opt_loop_peeling) {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+    }
+
+    if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+        invoker.is_enable_opt_array_bounds_check_elimination) {
+      _aot_compile_options_ +=
+          " --compiler-opt-array-bounds-check-elimination=true"
     }
 
     if (defined(invoker.is_enable_inline_trace) &&
@@ -2542,6 +2566,12 @@ template("host_aot_test_action") {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
     }
 
+    if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+        invoker.is_enable_opt_array_bounds_check_elimination) {
+      _aot_compile_options_ +=
+          " --compiler-opt-array-bounds-check-elimination=true"
+    }
+
     if (defined(invoker.is_enable_inline_trace) &&
         invoker.is_enable_inline_trace) {
       _aot_compile_options_ += " --compiler-trace-inline=true"
@@ -2617,6 +2647,12 @@ template("host_aot_test_action") {
     if (defined(invoker.is_enable_opt_loop_peeling) &&
         invoker.is_enable_opt_loop_peeling) {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+    }
+
+    if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+        invoker.is_enable_opt_array_bounds_check_elimination) {
+      _aot_compile_options_ +=
+          " --compiler-opt-array-bounds-check-elimination=true"
     }
 
     if (defined(invoker.is_enable_inline_trace) &&
@@ -2946,6 +2982,12 @@ template("host_aot_test_action") {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
       }
 
+      if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+          invoker.is_enable_opt_array_bounds_check_elimination) {
+        _aot_compile_options_ +=
+            " --compiler-opt-array-bounds-check-elimination=true"
+      }
+
       if (defined(invoker.is_enable_inline_trace) &&
           invoker.is_enable_inline_trace) {
         _aot_compile_options_ += " --compiler-trace-inline=true"
@@ -3025,6 +3067,12 @@ template("host_aot_test_action") {
       if (defined(invoker.is_enable_opt_loop_peeling) &&
           invoker.is_enable_opt_loop_peeling) {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+      }
+
+      if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+          invoker.is_enable_opt_array_bounds_check_elimination) {
+        _aot_compile_options_ +=
+            " --compiler-opt-array-bounds-check-elimination=true"
       }
 
       if (defined(invoker.is_enable_inline_trace) &&
@@ -3344,6 +3392,12 @@ template("host_aot_test_action") {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
       }
 
+      if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+          invoker.is_enable_opt_array_bounds_check_elimination) {
+        _aot_compile_options_ +=
+            " --compiler-opt-array-bounds-check-elimination=true"
+      }
+
       if (defined(invoker.is_enable_inline_trace) &&
           invoker.is_enable_inline_trace) {
         _aot_compile_options_ += " --compiler-trace-inline=true"
@@ -3424,6 +3478,12 @@ template("host_aot_test_action") {
       if (defined(invoker.is_enable_opt_loop_peeling) &&
           invoker.is_enable_opt_loop_peeling) {
         _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+      }
+
+      if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+          invoker.is_enable_opt_array_bounds_check_elimination) {
+        _aot_compile_options_ +=
+            " --compiler-opt-array-bounds-check-elimination=true"
       }
 
       if (defined(invoker.is_enable_inline_trace) &&
@@ -3848,6 +3908,12 @@ template("host_aot_assert_test_action") {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
     }
 
+    if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+        invoker.is_enable_opt_array_bounds_check_elimination) {
+      _aot_compile_options_ +=
+          " --compiler-opt-array-bounds-check-elimination=true"
+    }
+
     if (defined(invoker.is_enable_inline_trace) &&
         invoker.is_enable_inline_trace) {
       _aot_compile_options_ += " --compiler-trace-inline=true"
@@ -3930,6 +3996,12 @@ template("host_aot_assert_test_action") {
     if (defined(invoker.is_enable_opt_loop_peeling) &&
         invoker.is_enable_opt_loop_peeling) {
       _aot_compile_options_ += " --compiler-opt-loop-peeling=true"
+    }
+
+    if (defined(invoker.is_enable_opt_array_bounds_check_elimination) &&
+        invoker.is_enable_opt_array_bounds_check_elimination) {
+      _aot_compile_options_ +=
+          " --compiler-opt-array-bounds-check-elimination=true"
     }
 
     if (defined(invoker.is_enable_inline_trace) &&
