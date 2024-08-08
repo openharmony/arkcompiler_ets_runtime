@@ -486,7 +486,7 @@ public:
 
     void UpdateLayout();
 
-    void ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
+    bool ParseFromBinary(void *buffer, PGOProfilerHeader *const header);
     void ProcessToBinary(const SaveTask *task, std::fstream &fileStream, PGOProfilerHeader *const header);
 
     bool ParseFromText(std::ifstream &stream);

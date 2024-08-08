@@ -200,7 +200,7 @@ public:
 
     ProfileType() = default;
     explicit ProfileType(uint64_t rawType) : type_(rawType) {};
-    ProfileType(PGOContext &context, ProfileTypeRef typeRef);
+    ProfileType(PGOContext &context, ProfileTypeRef typeRef, bool *isValid = nullptr);
     ProfileType(ApEntityId abcId, uint32_t type, Kind kind = Kind::ClassId, bool root = false,
                 bool everOutOfBounds = false)
     {
