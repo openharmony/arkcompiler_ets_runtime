@@ -249,7 +249,7 @@ private:
         std::pair<std::string_view, bool>("byteOffset", true),
         std::pair<std::string_view, bool>("length", true),
         std::pair<std::string_view, bool>("[Symbol.iterator]", false),
-        std::pair<std::string_view, bool>("[Symbol.toStringTag]", false),
+        std::pair<std::string_view, bool>("[Symbol.toStringTag]", true),
     };
 
     static constexpr std::array TYPED_ARRAY_FUNCTION_PROPERTIES = {
