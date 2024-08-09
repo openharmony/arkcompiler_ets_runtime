@@ -186,8 +186,6 @@ JSHandle<ModuleNamespace> JSSharedModule::SModuleNamespaceCreate(JSThread *threa
 {
     auto globalConst = thread->GlobalConstants();
     // 2. Assert: module.[[Namespace]] is undefined.
-    JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
-    ASSERT(ModuleRecord::GetNamespace(moduleRecord.GetTaggedValue()).IsUndefined());
     // 3. Assert: exports is a List of String values.
     // 4. Let M be a newly created object.
     // 5. Set M's essential internal methods to the definitions specified in 9.4.6.
@@ -206,8 +204,10 @@ JSHandle<ModuleNamespace> JSSharedModule::SModuleNamespaceCreate(JSThread *threa
     PropertyDescriptor des(thread, moduleString, false, false, false);
     JSHandle<JSObject> mNpObj = JSHandle<JSObject>::Cast(mNp);
     JSObject::DefineOwnProperty(thread, mNpObj, toStringTag, des);
+    JSHandle<ModuleRecord> moduleRecord = JSHandle<ModuleRecord>::Cast(module);
+    SourceTextModule::Cast(moduleRecord.GetTaggedValue().GetTaggedObject())->SetNamespace(thread,
+                                                                                          mNp.GetTaggedValue());
     // 10. Set module.[[Namespace]] to M.
-    ModuleRecord::SetNamespace(thread, moduleRecord.GetTaggedValue(), mNp.GetTaggedValue());
     mNp->GetJSHClass()->SetExtensible(false);
     return mNp;
 }

@@ -60,6 +60,13 @@ import('./1.json').then(m => {
     print(m.default.name);
 }).then().catch();
 
+import('@native:system.app').then(m => {
+    print("native module");
+}).then().catch();
+
+import('@native:system.app').then(m => {
+    print("native module");
+}).then().catch();
 // Dynamic Loading Reload Test
 import('./aaa.js').then(m => {
     print("dynamic import aaa.js 1st time");

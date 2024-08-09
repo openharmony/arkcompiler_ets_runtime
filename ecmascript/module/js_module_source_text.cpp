@@ -643,8 +643,9 @@ int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<
 {
     // 1. If module is not a Source Text Module Record, then
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
+        STACK_LIMIT_CHECK(thread, SourceTextModule::UNDEFINED_INDEX);
+        SourceTextModule::Instantiate(thread, JSHandle<JSTaggedValue>::Cast(moduleRecord));
         //  a. Perform ? module.Instantiate().
-        ModuleRecord::Instantiate(thread, JSHandle<JSTaggedValue>::Cast(moduleRecord));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
         //  b. Return index.
         return index;
@@ -1012,9 +1013,9 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
 {
     STACK_LIMIT_CHECK(thread, index);
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
-        JSTaggedValue promise = ModuleRecord::Evaluate(thread, JSHandle<JSTaggedValue>::Cast(moduleRecord));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, index);
-        PromiseState state = JSPromise::Cast(promise.GetTaggedObject())->GetPromiseState();
+        JSTaggedValue promise = SourceTextModule::Evaluate(thread, JSHandle<SourceTextModule>::Cast(moduleRecord));
+        PromiseState state = JSPromise::Cast(moduleRecord.GetTaggedValue().GetTaggedObject())->GetPromiseState();
         ASSERT(state != PromiseState::PENDING);
         if (state == PromiseState::REJECTED) {
             ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -1025,7 +1026,6 @@ int SourceTextModule::InnerModuleEvaluationUnsafe(JSThread *thread, const JSHand
         }
         return index;
     }
-
     JSHandle<SourceTextModule> module = JSHandle<SourceTextModule>::Cast(moduleRecord);
     ModuleStatus status = module->GetStatus();
     if (status == ModuleStatus::EVALUATING_ASYNC || status == ModuleStatus::EVALUATED) {

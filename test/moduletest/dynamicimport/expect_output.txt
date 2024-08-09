@@ -20,5 +20,7 @@ undefined
 {}
 TypeError
 dynamicImport Json
+native module
+native module
 dynamic import aaa.js 1st time
 dynamic import aaa.js 2nd time
