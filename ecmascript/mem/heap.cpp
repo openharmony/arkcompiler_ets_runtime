@@ -109,7 +109,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
 {
     ASSERT(!dThread_->IsRunning());
     SuspendAllScope scope(thread);
-    SharedGCScope();  // SharedGCScope should be after SuspendAllScope.
+    SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
     if (UNLIKELY(ShouldVerifyHeap())) {
@@ -366,7 +366,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
     {
         ThreadManagedScope runningScope(dThread_);
         SuspendAllScope scope(dThread_);
-        SharedGCScope();  // SharedGCScope should be after SuspendAllScope.
+        SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
         gcType_ = gcType;
         GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
         if (UNLIKELY(ShouldVerifyHeap())) {
