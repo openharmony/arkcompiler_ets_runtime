@@ -318,6 +318,7 @@ group("ark_aot_ts_test") {
     "proxy_fast_call",
     "shared_module",
     "func_profile_type_info",
+    "sendable",
   ]
 
   if (!is_debug) {
