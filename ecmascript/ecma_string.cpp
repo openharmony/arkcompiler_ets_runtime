@@ -22,6 +22,18 @@
 
 namespace panda::ecmascript {
 
+constexpr size_t LOW_3BITS = 0x7;
+constexpr size_t LOW_4BITS = 0xF;
+constexpr size_t LOW_5BITS = 0x1F;
+constexpr size_t LOW_6BITS = 0x3F;
+constexpr size_t L_SURROGATE_START = 0xDC00;
+constexpr size_t H_SURROGATE_START = 0xD800;
+constexpr size_t SURROGATE_RAIR_START = 0x10000;
+constexpr size_t OFFSET_18POS = 18;
+constexpr size_t OFFSET_12POS = 12;
+constexpr size_t OFFSET_10POS = 10;
+constexpr size_t OFFSET_6POS = 6;
+
 EcmaString *EcmaString::Concat(const EcmaVM *vm,
     const JSHandle<EcmaString> &left, const JSHandle<EcmaString> &right, MemSpaceType type)
 {
@@ -834,31 +846,66 @@ uint32_t EcmaString::ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t le
 }
 
 /* static */
-bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len, const uint16_t *utf16Data,
-                                   uint32_t utf16Len)
+bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len,
+                                   const uint16_t *utf16Data, uint32_t utf16Len)
 {
-    size_t utf8Pos = 0;
-    size_t utf16Pos = 0;
-    while (utf8Pos < utf8Len) {
-        auto [pair, nbytes] = utf::ConvertMUtf8ToUtf16Pair(utf8Data, utf8Len - utf8Pos);
-        auto [pHigh, pLow] = utf::SplitUtf16Pair(pair);
-        utf8Data += nbytes;
-        utf8Pos += nbytes;
-        if (pHigh != 0) {
-            ASSERT(utf16Len > 0);
-            if (utf16Pos >= utf16Len - 1 || *utf16Data != pHigh) {
-                return false;
+    const uint8_t *utf8End = utf8Data + utf8Len;
+    const uint16_t *utf16End = utf16Data + utf16Len;
+    while (utf8Data < utf8End && utf16Data < utf16End) {
+        uint8_t src = *utf8Data;
+        switch (src & 0xF0) {
+            case 0xF0: {
+                const uint8_t c2 = *(++utf8Data);
+                const uint8_t c3 = *(++utf8Data);
+                const uint8_t c4 = *(++utf8Data);
+                uint32_t codePoint = ((src & LOW_3BITS) << OFFSET_18POS) | ((c2 & LOW_6BITS) << OFFSET_12POS) |
+                                     ((c3 & LOW_6BITS) << OFFSET_6POS) | (c4 & LOW_6BITS);
+                if (codePoint >= SURROGATE_RAIR_START) {
+                    if (utf16Data >= utf16End - 1) {
+                        return false;
+                    }
+                    codePoint -= SURROGATE_RAIR_START;
+                    if (*utf16Data++ != static_cast<uint16_t>((codePoint >> OFFSET_10POS) | H_SURROGATE_START) ||
+                        *utf16Data++ != static_cast<uint16_t>((codePoint & 0x3FF) | L_SURROGATE_START)) {
+                            return false;
+                    }
+                } else {
+                    if (*utf16Data++ != static_cast<uint16_t>(codePoint)) {
+                        return false;
+                    }
+                }
+                utf8Data++;
+                break;
             }
-            ++utf16Pos;
-            ++utf16Data;
+            case 0xE0: {
+                const uint8_t c2 = *(++utf8Data);
+                const uint8_t c3 = *(++utf8Data);
+                if (*utf16Data++ != static_cast<uint16_t>(((src & LOW_4BITS) << OFFSET_12POS) |
+                    ((c2 & LOW_6BITS) << OFFSET_6POS) | (c3 & LOW_6BITS))) {
+                    return false;
+                }
+                utf8Data++;
+                break;
+            }
+            case 0xD0:
+            case 0xC0: {
+                const uint8_t c2 = *(++utf8Data);
+                if (*utf16Data++ != static_cast<uint16_t>(((src & LOW_5BITS) << OFFSET_6POS) | (c2 & LOW_6BITS))) {
+                    return false;
+                }
+                utf8Data++;
+                break;
+            }
+            default:
+                do {
+                    if (*utf16Data++ != static_cast<uint16_t>(*utf8Data++)) {
+                        return false;
+                    }
+                } while (utf8Data < utf8End && utf16Data < utf16End && *utf8Data < 0x80);
+                break;
         }
-        if (utf16Pos >= utf16Len || *utf16Data != pLow) {
-            return false;
-        }
-        ++utf16Pos;
-        ++utf16Data;
     }
-    return true;
+    return utf8Data == utf8End && utf16Data == utf16End;
 }
 
 bool EcmaString::ToElementIndex(uint32_t *index)

@@ -23,6 +23,24 @@
 #include "ecmascript/common.h"
 
 namespace panda::ecmascript::base::utf_helper {
+
+static constexpr size_t CONST_2 = 2;
+static constexpr size_t CONST_3 = 3;
+static constexpr size_t CONST_4 = 4;
+static constexpr size_t MASK1 = 0x80;
+static constexpr size_t MASK2 = 0x20;
+static constexpr size_t MASK3 = 0x10;
+static constexpr size_t LOW_3BITS = 0x7;
+static constexpr size_t LOW_4BITS = 0xF;
+static constexpr size_t LOW_5BITS = 0x1F;
+static constexpr size_t LOW_6BITS = 0x3F;
+static constexpr size_t L_SURROGATE_START = 0xDC00;
+static constexpr size_t H_SURROGATE_START = 0xD800;
+static constexpr size_t SURROGATE_RAIR_START = 0x10000;
+static constexpr size_t OFFSET_18POS = 18;
+static constexpr size_t OFFSET_12POS = 12;
+static constexpr size_t OFFSET_10POS = 10;
+static constexpr size_t OFFSET_6POS = 6;
 static constexpr uint16_t DECODE_LEAD_LOW = 0xD800;
 static constexpr uint16_t DECODE_LEAD_HIGH = 0xDBFF;
 static constexpr uint16_t DECODE_TRAIL_LOW = 0xDC00;

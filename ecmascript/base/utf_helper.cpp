@@ -24,6 +24,7 @@ static constexpr int32_t U16_SURROGATE_OFFSET = (0xd800 << 10UL) + 0xdc00 - 0x10
     ((static_cast<int32_t>(lead) << 10UL) + static_cast<int32_t>(trail) - U16_SURROGATE_OFFSET)
 
 namespace panda::ecmascript::base::utf_helper {
+
 uint32_t UTF16Decode(uint16_t lead, uint16_t trail)
 {
     ASSERT((lead >= DECODE_LEAD_LOW && lead <= DECODE_LEAD_HIGH) &&
@@ -346,13 +347,118 @@ std::pair<uint32_t, size_t> ConvertUtf8ToUtf16Pair(const uint8_t *data, bool com
 
 size_t Utf8ToUtf16Size(const uint8_t *utf8, size_t utf8Len)
 {
-    return utf::MUtf8ToUtf16Size(utf8, utf8Len);
+    size_t in_pos = 0;
+    size_t res = 0;
+    while (in_pos < utf8Len) {
+        uint8_t src = utf8[in_pos];
+        switch (src & 0xF0) {
+            case 0xF0: {
+                const uint8_t c2 = utf8[++in_pos];
+                const uint8_t c3 = utf8[++in_pos];
+                const uint8_t c4 = utf8[++in_pos];
+                uint32_t codePoint = ((src & LOW_3BITS) << OFFSET_18POS) | ((c2 & LOW_6BITS) << OFFSET_12POS) |
+                    ((c3 & LOW_6BITS) << OFFSET_6POS) | (c4 & LOW_6BITS);
+                if (codePoint >= SURROGATE_RAIR_START) {
+                    res += CONST_2;
+                } else {
+                    res++;
+                }
+                in_pos++;
+                break;
+            }
+            case 0xE0: {
+                in_pos += CONST_3;
+                res++;
+                break;
+            }
+            case 0xD0:
+            case 0xC0: {
+                in_pos += CONST_2;
+                res++;
+                break;
+            }
+            default:
+                do {
+                    in_pos++;
+                    res++;
+                } while (in_pos < utf8Len && utf8[in_pos] < 0x80);
+                break;
+        }
+    }
+    return res;
+}
+
+size_t ConvertUtf8ToUtf16Int(const uint8_t data, size_t max_bytes)
+{
+    if ((data & MASK1) == 0 || max_bytes < CONST_4) {
+        return 1;
+    }
+    if ((data & MASK2) == 0) {
+        return CONST_2;
+    }
+    if ((data & MASK3) == 0) {
+        return CONST_3;
+    }
+    return CONST_4;
 }
 
 size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_t utf8Len, size_t utf16Len,
                                 size_t start)
 {
-    return utf::ConvertRegionMUtf8ToUtf16(utf8In, utf16Out, utf8Len, utf16Len, start);
+    size_t in_pos = 0;
+    size_t out_pos = 0;
+
+    while (in_pos < utf8Len && start > 0) {
+        auto nbytes = ConvertUtf8ToUtf16Int(utf8In[in_pos], utf8Len - in_pos);
+        in_pos += nbytes;
+        start -= nbytes;
+    }
+
+    while (in_pos < utf8Len && out_pos < utf16Len) {
+        uint8_t src = utf8In[in_pos];
+        switch (src & 0xF0) {
+            case 0xF0: {
+                const uint8_t c2 = utf8In[++in_pos];
+                const uint8_t c3 = utf8In[++in_pos];
+                const uint8_t c4 = utf8In[++in_pos];
+                uint32_t codePoint = ((src & LOW_3BITS) << OFFSET_18POS) | ((c2 & LOW_6BITS) << OFFSET_12POS) |
+                    ((c3 & LOW_6BITS) << OFFSET_6POS) | (c4 & LOW_6BITS);
+                if (codePoint >= SURROGATE_RAIR_START) {
+                    if (out_pos >= utf16Len - 1) {
+                        return out_pos - 1;
+                    }
+                    codePoint -= SURROGATE_RAIR_START;
+                    utf16Out[out_pos++] = static_cast<uint16_t>((codePoint >> OFFSET_10POS) | H_SURROGATE_START);
+                    utf16Out[out_pos++] = static_cast<uint16_t>((codePoint & 0x3FF) | L_SURROGATE_START);
+                } else {
+                    utf16Out[out_pos++] = static_cast<uint16_t>(codePoint);
+                }
+                in_pos++;
+                break;
+            }
+            case 0xE0: {
+                const uint8_t c2 = utf8In[++in_pos];
+                const uint8_t c3 = utf8In[++in_pos];
+                utf16Out[out_pos++] = static_cast<uint16_t>(((src & LOW_4BITS) << OFFSET_12POS) |
+                    ((c2 & LOW_6BITS) << OFFSET_6POS) | (c3 & LOW_6BITS));
+                in_pos++;
+                break;
+            }
+            case 0xD0:
+            case 0xC0: {
+                const uint8_t c2 = utf8In[++in_pos];
+                utf16Out[out_pos++] = static_cast<uint16_t>(((src & LOW_5BITS) << OFFSET_6POS) | (c2 & LOW_6BITS));
+                in_pos++;
+                break;
+            }
+            default:
+                do {
+                    utf16Out[out_pos++] = static_cast<uint16_t>(utf8In[in_pos++]);
+                } while (in_pos < utf8Len && out_pos < utf16Len && utf8In[in_pos] < 0x80);
+                break;
+        }
+    }
+    return out_pos;
 }
 
 size_t ConvertRegionUtf16ToLatin1(const uint16_t *utf16In, uint8_t *latin1Out, size_t utf16Len, size_t latin1Len)
