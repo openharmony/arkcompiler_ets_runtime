@@ -582,7 +582,7 @@ void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
     DEFVALUE(result, (&builder_), VariableType::FLOAT64(), nanValue);
 
     const double doubleOne = 1.0;
-    GateRef baseIsOne = builder_.DoubleEqual(base, builder_.Double(doubleOne));
+    GateRef baseIsOne = builder_.DoubleEqual(builder_.FAbs(base), builder_.Double(doubleOne));
     // Base is 1.0, exponent is inf => NaN
     // Exponent is not finit, if is NaN or is Inf
     GateRef tempIsNan = builder_.BoolAnd(baseIsOne, builder_.DoubleIsINF(exp));
