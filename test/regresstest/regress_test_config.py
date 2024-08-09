@@ -41,6 +41,7 @@ class RegressTestConfig:
     FORCE_GC_FILE_LIST = os.path.join(REGRESS_BASE_TEST_DIR, "regress_skip_force_gc.json")
     UNCAUGHT_ERROR_FILE_LIST = os.path.join(REGRESS_BASE_TEST_DIR, "regress_throw_uncaught_error.json")
     DEFAULT_LOG_FORMAT = '%(asctime)s - %(levelname)s - %(message)s'
-    ICU_PATH = f"{CODE_ROOT}/third_party/icu/ohos_icu4j/data"
+    ICU_PATH_DATA = f"{CODE_ROOT}/third_party/icu/ohos_icu4j/data"
+    ICU_PATH = f"{CODE_ROOT}/third_party/icu/"
     LLVM_DIR = f"{CODE_ROOT}/prebuilts/clang/ohos/linux-x86_64/llvm/lib/"
-    DEFAULT_LIBS_DIR = f"{ICU_PATH}:{LLVM_DIR}"
+    DEFAULT_LIBS_DIR = f"{ICU_PATH}:{ICU_PATH_DATA}:{LLVM_DIR}"
