@@ -1123,7 +1123,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
 {
     JSHandle<Method> method(thread, func->GetMethod());
     JSMutableHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
-    if (!func->GetModule().IsUndefined()) {
+    if (func->IsSharedFunction() && !func->GetModule().IsUndefined()) {
         sendableEnv.Update(SourceTextModule::Cast(func->GetModule())->GetSendableEnv());
     }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
