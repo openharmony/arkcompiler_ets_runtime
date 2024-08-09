@@ -345,9 +345,8 @@ JSTaggedValue BuiltinsFunction::FunctionPrototypeToString(EcmaRuntimeCallInfo *a
     if (thisValue->IsJSObject() && thisValue->IsCallable()) {
         JSHandle<Method> method;
         if (thisValue->IsBoundFunction()) {
-            JSHandle<JSBoundFunction> func = JSHandle<JSBoundFunction>::Cast(thisValue);
-            JSHandle<JSTaggedValue> methodHandle(thread, func->GetMethod());
-            method = JSHandle<Method>::Cast(methodHandle);
+            std::string str = "function () { [native code] }";
+            return GetTaggedString(thread, str.c_str());
         } else {
             JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(thisValue);
             JSHandle<JSTaggedValue> methodHandle(thread, func->GetMethod());

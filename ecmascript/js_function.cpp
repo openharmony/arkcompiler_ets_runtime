@@ -315,8 +315,8 @@ JSTaggedValue JSFunction::LengthGetter(JSThread *thread, const JSHandle<JSObject
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (targetLength->IsNumber()) {
                 lengthValue =
-                    std::max(0u, static_cast<uint32_t>(JSTaggedValue::ToNumber(thread, targetLength).GetNumber()) -
-                             argsLength);
+                    std::max(0.0, JSTaggedValue::ToNumber(thread, targetLength).GetNumber() -
+                             static_cast<double>(argsLength));
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
         }

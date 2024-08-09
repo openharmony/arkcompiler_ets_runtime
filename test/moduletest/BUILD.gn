@@ -133,6 +133,7 @@ group("ark_js_moduletest") {
     "rangeerror",
     "regexpcallthrow",
     "regexpflagd",
+    "regressfunction",
     "regexpmaxindex",
     "regress",
     "regressmathmaxmin",

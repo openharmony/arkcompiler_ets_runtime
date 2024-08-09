@@ -484,6 +484,9 @@ void ObjectOperator::GlobalLookupProperty()
 void ObjectOperator::LookupProperty()
 {
     while (true) {
+        if (holder_->IsJSProxy()) {
+            return;
+        }
         UpdateIsTSHClass();
         LookupPropertyInHolder();
         if (IsFound()) {
@@ -497,10 +500,6 @@ void ObjectOperator::LookupProperty()
         }
 
         holder_.Update(proto);
-        if (holder_->IsJSProxy()) {
-            return;
-        }
-
         SetIsOnPrototype(true);
     }
 }
