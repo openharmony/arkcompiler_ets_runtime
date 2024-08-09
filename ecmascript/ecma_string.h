@@ -34,6 +34,9 @@
 #include "unicode/locid.h"
 
 namespace panda {
+namespace test {
+    class EcmaStringEqualsTest;
+}
 namespace ecmascript {
 template<typename T>
 class JSHandle;
@@ -105,6 +108,7 @@ private:
     friend class SlicedString;
     friend class FlatStringInfo;
     friend class NameDictionary;
+    friend class panda::test::EcmaStringEqualsTest;
 
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
