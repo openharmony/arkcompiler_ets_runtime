@@ -22,7 +22,7 @@
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
-void SharedGCMarkerBase::MarkRoots(uint32_t threadId, SharedMarkType markType)
+void SharedGCMarkerBase::MarkRoots(uint32_t threadId, SharedMarkType markType, VMRootVisitType type)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkRoots");
     MarkSerializeRoots(threadId);
@@ -38,14 +38,14 @@ void SharedGCMarkerBase::MarkRoots(uint32_t threadId, SharedMarkType markType)
     runtime->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
-        MarkLocalVMRoots(threadId, vm);
+        MarkLocalVMRoots(threadId, vm, type);
         if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
             CollectLocalVMRSet(vm);
         }
     });
 }
 
-void SharedGCMarkerBase::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm)
+void SharedGCMarkerBase::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, VMRootVisitType type)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarkerBase::MarkLocalVMRoots");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
@@ -59,7 +59,7 @@ void SharedGCMarkerBase::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm)
         },
         [this](Root type, ObjectSlot base, ObjectSlot derived, uintptr_t baseOldObject) {
             this->HandleLocalDerivedRoots(type, base, derived, baseOldObject);
-        }, VMRootVisitType::MARK);
+        }, type);
     heap->ProcessSharedGCMarkingLocalBuffer();
 }
 

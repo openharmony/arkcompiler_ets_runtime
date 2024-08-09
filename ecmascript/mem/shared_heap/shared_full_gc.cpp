@@ -74,7 +74,7 @@ void SharedFullGC::Mark()
     TRACE_GC(GCStats::Scope::ScopeId::Mark, sHeap_->GetEcmaGCStats());
     SharedGCMovableMarker *marker = sHeap_->GetSharedGCMovableMarker();
 
-    marker->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::NOT_CONCURRENT_MARK);
+    marker->MarkRoots(DAEMON_THREAD_INDEX, SharedMarkType::NOT_CONCURRENT_MARK, VMRootVisitType::UPDATE_ROOT);
     marker->DoMark<SharedMarkType::NOT_CONCURRENT_MARK>(DAEMON_THREAD_INDEX);
     marker->MergeBackAndResetRSetWorkListHandler();
     sHeap_->WaitRunningTaskFinished();

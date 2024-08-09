@@ -40,8 +40,8 @@ public:
     virtual ~SharedGCMarkerBase() = default;
 
     void ResetWorkManager(SharedGCWorkManager *workManager);
-    void MarkRoots(uint32_t threadId, SharedMarkType markType);
-    void MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm);
+    void MarkRoots(uint32_t threadId, SharedMarkType markType, VMRootVisitType type = VMRootVisitType::MARK);
+    void MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, VMRootVisitType type = VMRootVisitType::MARK);
     void CollectLocalVMRSet(EcmaVM *localVm);
     void MarkStringCache(uint32_t threadId);
     void MarkSerializeRoots(uint32_t threadId);
