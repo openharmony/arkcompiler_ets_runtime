@@ -18,6 +18,7 @@
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_iterator.h"
+#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/builtins/builtins_async_generator.h"
 #include "ecmascript/builtins/builtins_shared_map.h"
@@ -174,6 +175,38 @@ HWTEST_F_L0(BuiltinsSharedMapTest, SetAndHas)
     }
 }
 
+HWTEST_F_L0(BuiltinsSharedMapTest, SetAndGet)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSSharedMap> map(thread, CreateSBuiltinsMap(thread));
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(map.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = BuiltinsSharedMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsJSSharedMap());
+        JSHandle<JSSharedMap> jsSMap(thread, JSSharedMap::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData())));
+        EXPECT_EQ(JSSharedMap::GetSize(thread, jsSMap), i + 1);
+    }
+
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 6);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(map.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = BuiltinsSharedMap::Get(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_EQ(result, JSTaggedValue(i));
+    }
+}
+
 HWTEST_F_L0(BuiltinsSharedMapTest, ForEach)
 {
     // generate a map has 5 entries{key1:0,key2:1,key3:2,key4:3,key5:4}
@@ -257,4 +290,81 @@ HWTEST_F_L0(BuiltinsSharedMapTest, DeleteAndRemove)
     EXPECT_EQ(result6.GetRawData(), JSTaggedValue::VALUE_UNDEFINED);
     EXPECT_EQ(JSSharedMap::GetSize(thread, map), 0);
 }
+HWTEST_F_L0(BuiltinsSharedMapTest, Species)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> map(thread, CreateSBuiltinsMap(thread));
+
+    // test species
+    JSHandle<JSTaggedValue> speciesSymbol = env->GetSpeciesSymbol();
+    EXPECT_TRUE(!speciesSymbol.GetTaggedValue().IsUndefined());
+
+    JSHandle<JSFunction> newTarget(env->GetSBuiltininMapFunction());
+
+    JSTaggedValue value =
+        JSObject::GetProperty(thread, JSHandle<JSTaggedValue>(newTarget), speciesSymbol).GetValue().GetTaggedValue();
+    JSHandle<JSTaggedValue> valueHandle(thread, value);
+    EXPECT_EQ(value, newTarget.GetTaggedValue());
+
+    JSHandle<JSFunction> constructor = JSHandle<JSFunction>::Cast(JSTaggedValue::ToObject(thread, valueHandle));
+    EXPECT_EQ(JSTaggedValue::GetPrototype(thread, map), constructor->GetFunctionPrototype());
+
+    JSHandle<JSTaggedValue> key1(factory->NewFromASCII("set"));
+    JSTaggedValue value1 = JSObject::GetProperty(thread, map, key1).GetValue().GetTaggedValue();
+    EXPECT_FALSE(value1.IsUndefined());
+
+    JSHandle<JSTaggedValue> key2(factory->NewFromASCII("has"));
+    JSTaggedValue value2 = JSObject::GetProperty(thread, map, key1).GetValue().GetTaggedValue();
+    EXPECT_FALSE(value2.IsUndefined());
+
+    JSHandle<JSTaggedValue> key3(factory->NewFromASCII("clear"));
+    JSTaggedValue value3 = JSObject::GetProperty(thread, map, key1).GetValue().GetTaggedValue();
+    EXPECT_FALSE(value3.IsUndefined());
+
+    JSHandle<JSTaggedValue> key4(factory->NewFromASCII("size"));
+    JSTaggedValue value4 = JSObject::GetProperty(thread, map, key1).GetValue().GetTaggedValue();
+    EXPECT_FALSE(value4.IsUndefined());
+
+    JSHandle<JSTaggedValue> key5(factory->NewFromASCII("delete"));
+    JSTaggedValue value5 = JSObject::GetProperty(thread, map, key1).GetValue().GetTaggedValue();
+    EXPECT_FALSE(value5.IsUndefined());
+
+    JSHandle<JSTaggedValue> key6(factory->NewFromASCII("forEach"));
+    JSTaggedValue value6 = JSObject::GetProperty(thread, map, key1).GetValue().GetTaggedValue();
+    EXPECT_FALSE(value6.IsUndefined());
+
+    JSHandle<JSTaggedValue> key7(factory->NewFromASCII("get"));
+    JSTaggedValue value7 = JSObject::GetProperty(thread, map, key1).GetValue().GetTaggedValue();
+    EXPECT_FALSE(value7.IsUndefined());
+}
+
+HWTEST_F_L0(BuiltinsSharedMapTest, GetIterator)
+{
+    JSHandle<JSTaggedValue> map(thread, CreateSBuiltinsMap(thread));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(map.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    // test Values()
+    JSTaggedValue result = BuiltinsSharedMap::Values(ecmaRuntimeCallInfo);
+    JSHandle<JSSharedMapIterator> iter(thread, result);
+    EXPECT_TRUE(result.IsJSSharedMapIterator());
+    EXPECT_EQ(IterationKind::VALUE, iter->GetIterationKind());
+
+    // test Keys()
+    JSTaggedValue result1 = BuiltinsSharedMap::Keys(ecmaRuntimeCallInfo);
+    JSHandle<JSSharedMapIterator> iter1(thread, result1);
+    EXPECT_TRUE(result1.IsJSSharedMapIterator());
+    EXPECT_EQ(IterationKind::KEY, iter1->GetIterationKind());
+
+    // test entries()
+    JSTaggedValue result2 = BuiltinsSharedMap::Entries(ecmaRuntimeCallInfo);
+    JSHandle<JSSharedMapIterator> iter2(thread, result2);
+    EXPECT_TRUE(result2.IsJSSharedMapIterator());
+    EXPECT_EQ(IterationKind::KEY_AND_VALUE, iter2->GetIterationKind());
+    TestHelper::TearDownFrame(thread, prev);
+}
+
 }
