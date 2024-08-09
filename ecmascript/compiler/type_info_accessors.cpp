@@ -705,6 +705,9 @@ bool StorePrivatePropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAc
 
     JSHClass *receiverType = parent_.jitTypes_[0].GetReceiverHclass();
     JSHClass *holderType = parent_.jitTypes_[0].GetHolderHclass();
+    if (receiverType->IsJsPrimitiveRef() || holderType->IsJsPrimitiveRef()) {
+        return false;
+    }
 
     if (receiverType == holderType) {
         ObjectAccessInfo receiverInfo;
@@ -802,6 +805,10 @@ bool LoadPrivatePropertyTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAcc
 
     JSHClass *receiver = parent_.jitTypes_[0].GetReceiverHclass();
     JSHClass *holder = parent_.jitTypes_[0].GetHolderHclass();
+    // case: r.toFixed() => HeapObjectCheck Deopt
+    if (receiver->IsJsPrimitiveRef() || holder->IsJsPrimitiveRef()) {
+        return false;
+    }
 
     if (receiver == holder) {
         ObjectAccessInfo receiverInfo;
@@ -901,6 +908,10 @@ bool LoadObjByNameTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInf
     for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
         JSHClass *receiver = parent_.jitTypes_[i].GetReceiverHclass();
         JSHClass *holder = parent_.jitTypes_[i].GetHolderHclass();
+        // case: r.toFixed() => HeapObjectCheck Deopt
+        if (receiver->IsJsPrimitiveRef() || holder->IsJsPrimitiveRef()) {
+            return false;
+        }
         if (receiver == holder) {
             ObjectAccessInfo info;
             if (!parent_.GeneratePlrInJIT(receiver, info, key)) {
@@ -1039,6 +1050,9 @@ bool StoreObjByNameTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessIn
     for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
         JSHClass* receiverType = parent_.jitTypes_[i].GetReceiverHclass();
         JSHClass* holderType = parent_.jitTypes_[i].GetHolderHclass();
+        if (receiverType->IsJsPrimitiveRef() || holderType->IsJsPrimitiveRef()) {
+            return false;
+        }
         JSHClass* newHolderType = parent_.jitTypes_[i].GetHolderTraHclass();
 
         if (receiverType != newHolderType) {
@@ -1174,6 +1188,9 @@ bool InstanceOfTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
     JSTaggedValue key = parent_.GetKeyTaggedValue();
     for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
         JSHClass *receiver = parent_.jitTypes_[i].GetReceiverHclass();
+        if (receiver->IsJsPrimitiveRef()) {
+            return false;
+        }
         ObjectAccessInfo targetInfo;
         // If @@hasInstance is found on prototype Chain of ctor -> slowpath
         // Future work: pgo support Symbol && Dump Object.defineProperty && FunctionPrototypeHclass

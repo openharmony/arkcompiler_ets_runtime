@@ -917,10 +917,6 @@ bool JITProfiler::AddObjectInfo(ApEntityId abcId, int32_t bcOffset,
                                 JSHClass *receiver, JSHClass *hold, JSHClass *holdTra, uint32_t accessorMethodId)
 {
     PGOSampleType accessor = PGOSampleType::CreateProfileType(abcId, accessorMethodId, ProfileType::Kind::MethodId);
-    // case: r.toFixed() => HeapObjectCheck Deopt
-    if (receiver->IsJsPrimitiveRef() || hold->IsJsPrimitiveRef()) {
-        return false;
-    }
     // case: obj = Object.create(null) => LowerProtoChangeMarkerCheck Crash
     if (receiver->GetPrototype().IsNull()) {
         return false;
