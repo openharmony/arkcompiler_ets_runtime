@@ -132,7 +132,8 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
         Bind(&initialize);
         Label afterInitialize(env);
         InitializeWithSpeicalValue(&afterInitialize,
-            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_));
+            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
+            MemoryAttribute::NoBarrier());
         Bind(&afterInitialize);
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
@@ -173,7 +174,8 @@ void NewObjectStubBuilder::NewSObject(Variable *result, Label *exit, GateRef hcl
         Bind(&initialize);
         Label afterInitialize(env);
         InitializeWithSpeicalValue(&afterInitialize,
-            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_));
+            result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
+            MemoryAttribute::NoBarrier());
         Bind(&afterInitialize);
         auto emptyArray = GetGlobalConstantValue(
             VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
@@ -266,7 +268,8 @@ void NewObjectStubBuilder::NewJSObject(Variable *result, Label *exit, GateRef hc
     DEFVARIABLE(initValue, VariableType::JS_ANY(), Undefined());
     Label afterInitialize(env);
     InitializeWithSpeicalValue(&afterInitialize,
-        result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_));
+        result->ReadVariable(), *initValue, Int32(JSObject::SIZE), ChangeIntPtrToInt32(size_),
+        MemoryAttribute::NoBarrier());
     Bind(&afterInitialize);
     auto emptyArray = GetGlobalConstantValue(
         VariableType::JS_POINTER(), glue_, ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
@@ -985,11 +988,11 @@ void NewObjectStubBuilder::InitializeSFunction(GateRef glue, GateRef func, GateR
             auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                        ConstantIndex::FUNCTION_NAME_ACCESSOR);
             SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
-                                    VariableType::JS_ANY());
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
             funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                   ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
             SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
-                                    VariableType::JS_ANY());
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
             Jump(&exit);
         }
     } else {
@@ -1005,12 +1008,12 @@ void NewObjectStubBuilder::InitializeSFunction(GateRef glue, GateRef func, GateR
             auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                        ConstantIndex::FUNCTION_NAME_ACCESSOR);
             SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
-                                    VariableType::JS_ANY());
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
             funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                   ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
             SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
                                     Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
-                                    VariableType::JS_ANY());
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
             Jump(&exit);
         }
     }
@@ -1050,15 +1053,17 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
                 getKind == FunctionKind::ASYNC_GENERATOR_FUNCTION) {
                 SetPropertyInlinedProps(glue, func, hclass, funcprotoAccessor,
                                         Int32(JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX),
-                                        VariableType::JS_ANY());
+                                        VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
                 auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                            ConstantIndex::FUNCTION_NAME_ACCESSOR);
                 SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
-                                        Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), VariableType::JS_ANY());
+                                        Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                                        MemoryAttribute::NoBarrier());
                 funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                       ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
                 SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
-                                        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY());
+                                        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                                        MemoryAttribute::NoBarrier());
                 if (getKind != FunctionKind::BASE_CONSTRUCTOR) {
                     thisObj = CallRuntime(glue, RTSTUB_ID(InitializeGeneratorFunction), {kind});
                     SetProtoOrHClassToFunction(glue, func, *thisObj);
@@ -1071,11 +1076,11 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
             auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                        ConstantIndex::FUNCTION_NAME_ACCESSOR);
             SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
-                                    VariableType::JS_ANY());
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
             funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                   ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
             SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
-                                    VariableType::JS_ANY());
+                                    VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
             Jump(&exit);
         }
     } else {
@@ -1096,15 +1101,17 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
             {
                 SetPropertyInlinedProps(glue, func, hclass, funcprotoAccessor,
                                         Int32(JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX),
-                                        VariableType::JS_ANY());
+                                        VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
                 auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                            ConstantIndex::FUNCTION_NAME_ACCESSOR);
                 SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
-                                        Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), VariableType::JS_ANY());
+                                        Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                                        MemoryAttribute::NoBarrier());
                 funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                       ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
                 SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
-                                        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY());
+                                        Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                                        MemoryAttribute::NoBarrier());
                 BRANCH(IsGeneratorKind(kind), &isGenerator, &exit);
                 Bind(&isGenerator);
                 {
@@ -1131,12 +1138,12 @@ void NewObjectStubBuilder::InitializeJSFunction(GateRef glue, GateRef func, Gate
                 auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                            ConstantIndex::FUNCTION_NAME_ACCESSOR);
                 SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
-                                        VariableType::JS_ANY());
+                                        VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
                 funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                       ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
                 SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
                                         Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX),
-                                        VariableType::JS_ANY());
+                                        VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
                 Jump(&exit);
             }
         }
@@ -1164,11 +1171,13 @@ GateRef NewObjectStubBuilder::NewJSBoundFunction(GateRef glue, GateRef target, G
     GateRef nameAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                   ConstantIndex::FUNCTION_NAME_ACCESSOR);
     SetPropertyInlinedProps(glue, *result, hclass, nameAccessor,
-                            Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX));
+                            Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                            MemoryAttribute::NoBarrier());
     GateRef lengthAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                     ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
     SetPropertyInlinedProps(glue, *result, hclass, lengthAccessor,
-                            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
+                            Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_ANY(),
+                            MemoryAttribute::NoBarrier());
     SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_TARGET_OFFSET, target);
     SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_THIS_OFFSET, boundThis);
     SetJSObjectTaggedField(glue, *result, JSBoundFunction::BOUND_ARGUMENTS_OFFSET, args);
@@ -1354,7 +1363,7 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
     Bind(&initializeArray);
     Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), IntPtr(0), hclass);
     InitializeWithSpeicalValue(&afterInitialize, result->ReadVariable(), Undefined(), Int32(JSArray::SIZE),
-                               TruncInt64ToInt32(size_));
+                               TruncInt64ToInt32(size_), MemoryAttribute::NoBarrier());
     Bind(&afterInitialize);
     GateRef hashOffset = IntPtr(ECMAObject::HASH_OFFSET);
     Store(VariableType::INT64(), glue_, result->ReadVariable(), hashOffset, Int64(JSTaggedValue(0).GetRawData()));
@@ -1381,7 +1390,7 @@ void NewObjectStubBuilder::NewJSArrayLiteral(Variable *result, Label *exit, Regi
 
     auto accessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
     SetPropertyInlinedProps(glue_, result->ReadVariable(), hclass, accessor,
-        Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_POINTER());
+        Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX), VariableType::JS_POINTER(), MemoryAttribute::NoBarrier());
     Jump(exit);
 }
 
