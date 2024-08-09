@@ -36,6 +36,7 @@ struct DumpSnapShotOption {
     bool isSimplify = false; // whether trim heapdump snapshot.
     bool isSync = true; // OOM and Ide dump need sync dump.
     bool isBeforeFill = true; // whether do fillmap on main thread.
+    bool isDumpOOM = false; // whether dump oom heapdump.
 };
 
 class HeapProfilerInterface {
