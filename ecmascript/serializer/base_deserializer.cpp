@@ -48,11 +48,15 @@ BaseDeserializer::BaseDeserializer(JSThread *thread, SerializeData *data, void *
     sheap_ = SharedHeap::GetInstance();
     uint32_t index = data_->GetDataIndex();
     if (index != 0) {
-        valueVector_ = Runtime::GetInstance()->GetSerializeRootMapValue(thread_, index);
-        if (valueVector_ == nullptr) {
+        std::pair<JSTaggedType *, size_t> dataVectorPair = Runtime::GetInstance()->GetSerializeRootMapValue(thread_,
+            index);
+        if (dataVectorPair.first == nullptr) {
             LOG_ECMA(FATAL) << "Unknown serializer root index: " << index;
             UNREACHABLE();
         }
+        // ValueVector is the pointer to the data from serialize vector and must be const.
+        valueVector_ = dataVectorPair.first;
+        vectorSize_ = dataVectorPair.second;
     }
 }
 
@@ -360,12 +364,11 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
                 LOG_ECMA(FATAL) << "Deserializer valueVector is nullptr.";
                 UNREACHABLE();
             }
-            size_t vectorSize = valueVector_->size();
-            if (index >= vectorSize) {
-                LOG_ECMA(FATAL) << "Shared object index invalid, index: " << index << " vectorSize: " << vectorSize;
+            if (UNLIKELY(index >= vectorSize_)) {
+                LOG_ECMA(FATAL) << "Shared object index invalid, index: " << index << " vectorSize: " << vectorSize_;
                 UNREACHABLE();
             }
-            JSTaggedType value = (*valueVector_)[index];
+            JSTaggedType value = valueVector_[index];
             objectVector_.push_back(value);
             bool isErrorMsg = GetAndResetIsErrorMsg();
             if (isErrorMsg) {

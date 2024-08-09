@@ -222,7 +222,8 @@ private:
     uintptr_t machineCodeSpaceBeginAddr_ {0};
     uintptr_t sOldSpaceBeginAddr_ {0};
     uintptr_t sNonMovableSpaceBeginAddr_ {0};
-    std::vector<JSTaggedType> *valueVector_ {nullptr};
+    JSTaggedType const *valueVector_ {nullptr};
+    size_t vectorSize_ {0};
     CVector<JSTaggedType> objectVector_;
     CVector<Region *> regionVector_;
     size_t oldRegionIndex_ {0};
