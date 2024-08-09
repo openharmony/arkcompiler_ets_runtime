@@ -453,15 +453,6 @@ void CgFuncPM::CreateCGAndBeCommon(MIRModule &m, const Target *t)
     CHECK_FATAL(targetMachine, "you may not register targetMachine");
     cg->SetTargetMachine(*targetMachine);
 
-    /*
-     * Must be done before creating any BECommon instances.
-     *
-     * BECommon, when constructed, will calculate the type, size and align of all types.  As a side effect, it will also
-     * lower ptr and ref types into a64. That will drop the information of what a ptr or ref points to.
-     *
-     * All metadata generation passes which depend on the pointed-to type must be done here.
-     */
-    cg->GenPrimordialObjectList(m.GetBaseName());
     /* We initialize a couple of BECommon's tables using the size information of GlobalTables.type_table_.
      * So, BECommon must be allocated after all the parsing is done and user-defined types are all acounted.
      */
@@ -469,13 +460,6 @@ void CgFuncPM::CreateCGAndBeCommon(MIRModule &m, const Target *t)
     Globals::GetInstance()->SetBECommon(*beCommon);
     Globals::GetInstance()->SetTarget(*cg);
 
-    /* If a metadata generation pass depends on object layout it must be done after creating BECommon. */
-    cg->GenExtraTypeMetadata(cgOptions->GetClassListFile(), m.GetBaseName());
-
-    if (cg->NeedInsertInstrumentationFunction()) {
-        CHECK_FATAL(cgOptions->IsInsertCall(), "handling of --insert-call is not correct");
-        cg->SetInstrumentationFunction(cgOptions->GetInstrumentationFunction());
-    }
     if (!m.IsCModule() && Triple::GetTriple().IsAarch64BeOrLe()) {
         CGOptions::EnableFramePointer();
     }
@@ -487,12 +471,7 @@ void CgFuncPM::PrepareLower(MIRModule &m)
     mirLower->Init();
     cgLower =
         GetManagerMemPool()->New<CGLowerer>(m, *beCommon, cg->GenerateExceptionHandlingCode(), cg->GenerateVerboseCG());
-    cgLower->RegisterBuiltIns();
-    cgLower->RegisterExternalLibraryFunctions();
     cgLower->SetCheckLoadStore(CGOptions::IsCheckArrayStore());
-    if (cg->IsStackProtectorStrong() || cg->IsStackProtectorAll() || m.HasPartO2List()) {
-        cg->AddStackGuardvar();
-    }
 }
 
 void CgFuncPM::DoFuncCGLower(const MIRModule &m, MIRFunction &mirFunc)

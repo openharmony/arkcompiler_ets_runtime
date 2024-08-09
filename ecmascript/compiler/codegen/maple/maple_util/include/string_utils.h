@@ -62,14 +62,36 @@ public:
         }
     }
 
-    static void Split(const std::string &src, std::unordered_set<std::string> &container, char delim);
-    static void Split(const std::string &src, std::queue<std::string> &container, char delim);
+    static void Split(const std::string &src, std::unordered_set<std::string> &container, char delim)
+    {
+        if (Trim(src).empty()) {
+            return;
+        }
+        std::stringstream strStream(src + delim);
+        std::string item;
+        while (std::getline(strStream, item, delim)) {
+            container.insert(item);
+        }
+    }
 
-    static std::string Trim(const std::string &s);
-    static std::string Replace(const std::string &src, const std::string &target, const std::string &replacement);
-    static std::string Append(const std::string &src, const std::string &target, const std::string &spliter);
-    static std::string GetStrAfterLast(const std::string &src, const std::string &target, bool isReturnEmpty = false);
-    static std::string GetStrBeforeLast(const std::string &src, const std::string &target, bool isReturnEmpty = false);
+    static void Split(const std::string &src, std::queue<std::string> &container, char delim)
+    {
+        if (Trim(src).empty()) {
+            return;
+        }
+        std::stringstream strStream(src + delim);
+        std::string item;
+        while (std::getline(strStream, item, delim)) {
+            container.push(item);
+        }
+    }
+
+    static std::string Trim(const std::string &s)
+    {
+        // remove space
+        return std::regex_replace(s, std::regex("\\s+"), "");
+    }
+
     static bool HasCommandInjectionChar(const std::string &s)
     {
         return std::regex_search(s, kCommandInjectionRegex);

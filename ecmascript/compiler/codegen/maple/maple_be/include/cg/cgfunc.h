@@ -18,7 +18,6 @@
 
 #include "becommon.h"
 #include "operand.h"
-#include "eh_func.h"
 #include "memlayout.h"
 #include "reg_info.h"
 #include "cgbb.h"
@@ -217,28 +216,22 @@ public:
         return opndBuilder;
     }
 
-    EHFunc *BuildEHFunc();
     virtual void GenSaveMethodInfoCode(BB &bb) = 0;
     virtual void GenerateCleanupCode(BB &bb) = 0;
     virtual bool NeedCleanup() = 0;
     virtual void GenerateCleanupCodeForExtEpilog(BB &bb) = 0;
 
-    void CreateLmbcFormalParamInfo();
     virtual uint32 FloatParamRegRequired(MIRStructType *structType, uint32 &fpSize) = 0;
     virtual void AssignLmbcFormalParams() = 0;
     LmbcFormalParamInfo *GetLmbcFormalParamInfo(uint32 offset);
     virtual void LmbcGenSaveSpForAlloca() = 0;
     void RemoveUnreachableBB();
-    int32 GetFreqFromStmt(uint32 stmtId);
     void GenerateInstruction();
-    bool MemBarOpt(const StmtNode &membar);
-    void UpdateCallBBFrequency();
     void HandleFunction();
     void ProcessExitBBVec();
     void AddCommonExitBB();
     virtual void MergeReturn() = 0;
     void TraverseAndClearCatchMark(BB &bb);
-    void MarkCatchBBs();
     uint32 GetMaxRegNum() const
     {
         return vReg.GetMaxRegCount();
@@ -262,7 +255,6 @@ public:
     Operand *HandleExpr(const BaseNode &parent, BaseNode &expr);
     /* handle rc reset */
     virtual void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) = 0;
-    virtual void HandleRetCleanup(NaryStmtNode &retNode) = 0;
     /* select stmt */
     virtual void SelectDassign(DassignNode &stmt, Operand &opnd0) = 0;
     virtual void SelectDassignoff(DassignoffNode &stmt, Operand &opnd0) = 0;
@@ -279,7 +271,6 @@ public:
     virtual void SelectAggIassign(IassignNode &stmt, Operand &lhsAddrOpnd) = 0;
     virtual void SelectReturnSendOfStructInRegs(BaseNode *x) = 0;
     virtual void SelectReturn(Operand *opnd) = 0;
-    virtual void SelectIgoto(Operand *opnd0) = 0;
     virtual void SelectCondGoto(CondGotoNode &stmt, Operand &opnd0, Operand &opnd1) = 0;
     virtual void SelectCondSpecialCase1(CondGotoNode &stmt, BaseNode &opnd0) = 0;
     virtual void SelectCondSpecialCase2(const CondGotoNode &stmt, BaseNode &opnd0) = 0;
@@ -320,7 +311,6 @@ public:
     virtual Operand *SelectIread(const BaseNode &parent, IreadNode &expr, int extraOffset = 0,
                                  PrimType finalBitFieldDestType = kPtyInvalid) = 0;
     virtual Operand *SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff) = 0;
-    virtual Operand *SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff) = 0;
     virtual Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) = 0;
     virtual Operand *SelectFloatConst(MIRFloatConst &floatConst, const BaseNode &parent) = 0;
     virtual Operand *SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent) = 0;
@@ -332,7 +322,6 @@ public:
     virtual Operand *SelectMadd(BinaryNode &node, Operand &opndM0, Operand &opndM1, Operand &opnd1,
                                 const BaseNode &parent) = 0;
     virtual Operand *SelectRor(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) = 0;
-    virtual Operand &SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &parent) = 0;
     virtual Operand *SelectShift(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) = 0;
     virtual void SelectMpy(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType) = 0;
     virtual Operand *SelectMpy(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) = 0;
@@ -364,7 +353,6 @@ public:
     virtual Operand *SelectRegularBitFieldLoad(ExtractbitsNode &node, const BaseNode &parent) = 0;
     virtual Operand *SelectLnot(UnaryNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual Operand *SelectNeg(UnaryNode &node, Operand &opnd0, const BaseNode &parent) = 0;
-    virtual Operand *SelectRecip(UnaryNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual Operand *SelectSqrt(UnaryNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual Operand *SelectCeil(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual Operand *SelectFloor(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent) = 0;
@@ -651,8 +639,6 @@ public:
         return GetOrCreateVirtualRegisterOperand(vregNum).GetSize() / kBitsPerByte;
     }
 
-    MIRSymbol *GetRetRefSymbol(BaseNode &expr);
-
     void VerifyAllInsn();
 
     void GenerateCfiPrologEpilog();
@@ -707,15 +693,11 @@ public:
         return maxParamStackSize;
     }
 
-    virtual void ProcessLazyBinding() = 0;
-
     /* Debugging support */
     void SetDebugInfo(DebugInfo *dbgInfo)
     {
         debugInfo = dbgInfo;
     }
-
-    void AddDIESymbolLocation(const MIRSymbol *sym, SymbolAlloc *loc, bool isParam);
 
     virtual void DBGFixCallFrameLocationOffsets() {};
 
@@ -765,21 +747,6 @@ public:
     const MIRFunction &GetFunction() const
     {
         return func;
-    }
-
-    EHFunc *GetEHFunc()
-    {
-        return ehFunc;
-    }
-
-    const EHFunc *GetEHFunc() const
-    {
-        return ehFunc;
-    }
-
-    void SetEHFunc(EHFunc &ehFunction)
-    {
-        ehFunc = &ehFunction;
     }
 
     uint32 GetLabelIdx() const
@@ -1118,62 +1085,12 @@ public:
     void AddEmitSt(uint32 id, MIRSymbol &symbol)
     {
         CHECK_FATAL(symbol.GetKonst()->GetKind() == kConstAggConst, "not a kConstAggConst");
-        MIRAggConst *arrayConst = safe_cast<MIRAggConst>(symbol.GetKonst());
-        for (size_t i = 0; i < arrayConst->GetConstVec().size(); ++i) {
-            CHECK_FATAL(arrayConst->GetConstVecItem(i)->GetKind() == kConstLblConst, "not a kConstLblConst");
-            MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
-            ++switchLabelCnt[lblConst->GetValue()];
-        }
         emitStVec[id] = &symbol;
-    }
-
-    void UpdateEmitSt(BB &bb, LabelIdx oldLabelIdx, LabelIdx newLabelIdx)
-    {
-        MIRSymbol *st = GetEmitSt(bb.GetId());
-        MIRAggConst *arrayConst = safe_cast<MIRAggConst>(st->GetKonst());
-        MIRType *etype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_a64));
-        MIRConst *mirConst = GetMemoryPool()->New<MIRLblConst>(newLabelIdx, GetFunction().GetPuidx(), *etype);
-        for (size_t i = 0; i < arrayConst->GetConstVec().size(); ++i) {
-            CHECK_FATAL(arrayConst->GetConstVecItem(i)->GetKind() == kConstLblConst, "not a kConstLblConst");
-            MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
-            if (oldLabelIdx == lblConst->GetValue()) {
-                arrayConst->SetConstVecItem(i, *mirConst);
-                ++switchLabelCnt[newLabelIdx];
-
-                CHECK_FATAL(switchLabelCnt[oldLabelIdx] > 0, "error labelIdx");
-                --switchLabelCnt[oldLabelIdx];
-                if (switchLabelCnt[oldLabelIdx] == 0) {
-                    switchLabelCnt.erase(oldLabelIdx);
-                }
-            }
-        }
     }
 
     void DeleteEmitSt(uint32 id)
     {
-        MIRSymbol &symbol = *emitStVec[id];
-        CHECK_FATAL(symbol.GetKonst()->GetKind() == kConstAggConst, "not a kConstAggConst");
-        MIRAggConst *arrayConst = safe_cast<MIRAggConst>(symbol.GetKonst());
-        for (size_t i = 0; i < arrayConst->GetConstVec().size(); ++i) {
-            CHECK_FATAL(arrayConst->GetConstVecItem(i)->GetKind() == kConstLblConst, "not a kConstLblConst");
-            MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
-
-            LabelIdx labelIdx = lblConst->GetValue();
-            CHECK_FATAL(switchLabelCnt[labelIdx] > 0, "error labelIdx");
-            --switchLabelCnt[labelIdx];
-            if (switchLabelCnt[labelIdx] == 0) {
-                switchLabelCnt.erase(labelIdx);
-            }
-        }
         (void)emitStVec.erase(id);
-    }
-
-    bool InSwitchTable(LabelIdx label) const
-    {
-        if (switchLabelCnt.empty()) {
-            return false;
-        }
-        return (switchLabelCnt.find(label) != switchLabelCnt.end());
     }
 
     LabelIdx GetLocalSymLabelIndex(const MIRSymbol &symbol) const
@@ -1406,11 +1323,6 @@ public:
         isVolStore = val;
     }
 
-    void SetVolReleaseInsn(Insn *insn)
-    {
-        volReleaseInsn = insn;
-    }
-
     bool IsAfterRegAlloc() const
     {
         return isAfterRegAlloc;
@@ -1491,8 +1403,6 @@ public:
     {
         return seenFP;
     }
-
-    void UpdateAllRegisterVregMapping(MapleMap<regno_t, PregIdx> &newMap);
 
     void RegisterVregMapping(regno_t vRegNum, PregIdx pidx)
     {
@@ -1762,9 +1672,7 @@ private:
     CGFunc &operator=(const CGFunc &cgFunc);
     CGFunc(const CGFunc &);
     StmtNode *HandleFirstStmt();
-    bool CheckSkipMembarOp(const StmtNode &stmt);
     MIRFunction &func;
-    EHFunc *ehFunc = nullptr;
 
     InsnBuilder *insnBuilder = nullptr;
     OperandBuilder *opndBuilder = nullptr;
@@ -1783,7 +1691,6 @@ private:
     BB *curBB = nullptr;
     BB *dummyBB;                    /* use this bb for add some instructions to bb that is no curBB. */
     BB *commonExitBB = nullptr;     /* this post-dominate all BBs */
-    Insn *volReleaseInsn = nullptr; /* use to record the release insn for volatile strore */
     MapleVector<BB *> exitBBVec;
     MapleVector<BB *> noReturnCallBBVec;
     MapleSet<regno_t> extendSet; /* use to mark regs which spilled 32 bits but loaded 64 bits. */
@@ -1794,7 +1701,6 @@ private:
     RegisterInfo *targetRegInfo = nullptr;
     MapleAllocator *funcScopeAllocator;
     MapleMap<uint32, MIRSymbol *> emitStVec; /* symbol that needs to be emit as a local symbol. i.e, switch table */
-    MapleUnorderedMap<LabelIdx, int32> switchLabelCnt; /* label in switch table */
     std::map<const MIRSymbol *, LabelIdx> funcLocalSym2Label;
     CallConvKind callingConventionKind;
 #if TARGARM32
@@ -1828,8 +1734,6 @@ private:
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgLayoutFrame, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgHandleFunction, maplebe::CGFunc)
-MAPLE_FUNC_PHASE_DECLARE_END
-MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgFixCFLocOsft, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgVerify, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END

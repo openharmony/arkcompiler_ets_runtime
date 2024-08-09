@@ -60,18 +60,14 @@ public:
         void *paramException;
     };
 
-    explicit PhaseDriver(const std::string &phaseName);
+    explicit PhaseDriver(const std::string &phaseName)
+        : MplScheduler(phaseName), module(nullptr), phaseImpl(nullptr), phaseName(phaseName) {}
     virtual ~PhaseDriver() = default;
 
-    virtual void RunAll(MIRModule *module, int thread, bool bSeq = false);
-    virtual void RunSerial();
-    virtual void RunParallel(int thread, bool bSeq = false);
     virtual PhaseDriverImpl *NewPhase() = 0;
     virtual void RegisterTasks() = 0;
 
 protected:
-    virtual void CallbackThreadMainStart();
-    virtual void CallbackThreadMainEnd();
     virtual MplTaskParam *CallbackGetTaskRunParam() const
     {
         return phaseImplLocal;

@@ -150,15 +150,6 @@ void Emitter::EmitStmtLabel(LabelIdx labIdx)
     outStream << ":\n";
 }
 
-void Emitter::EmitLabelPair(const LabelPair &pairLabel)
-{
-    DEBUG_ASSERT(pairLabel.GetEndOffset() || pairLabel.GetStartOffset(), "NYI");
-    EmitLabelRef(pairLabel.GetEndOffset()->GetLabelIdx());
-    outStream << " - ";
-    EmitLabelRef(pairLabel.GetStartOffset()->GetLabelIdx());
-    outStream << "\n";
-}
-
 void Emitter::EmitLabelForFunc(const MIRFunction *func, LabelIdx labIdx)
 {
     char *idx = strdup(std::to_string(func->GetPuidx()).c_str());

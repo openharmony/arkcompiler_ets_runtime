@@ -16,9 +16,6 @@ import("//arkcompiler/ets_runtime/js_runtime_config.gni")
 src_libmplutil = [
   "src/mpl_logging.cpp",
   "src/namemangler.cpp",
-  "src/mpl_scheduler.cpp",
-  "src/mpl_timer.cpp",
-  "src/string_utils.cpp",
   "src/mpl_int_val.cpp",
 ]
 

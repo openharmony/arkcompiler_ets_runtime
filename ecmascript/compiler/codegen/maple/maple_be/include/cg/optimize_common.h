@@ -48,17 +48,6 @@ public:
         keepPosition = flag;
     }
 
-    bool IsLabelInLSDAOrSwitchTable(LabelIdx label) const
-    {
-#ifndef ONLY_C
-        EHFunc *ehFunc = cgFunc->GetEHFunc();
-        return (ehFunc != nullptr && cgFunc->GetTheCFG()->InLSDA(label, ehFunc)) ||
-               cgFunc->GetTheCFG()->InSwitchTable(label, *cgFunc);
-#else
-        return CGCFG::InSwitchTable(label, *cgFunc);
-#endif
-    }
-
     bool Search2Op(bool noOptimize);
     virtual void InitPattern() {}
     virtual bool Optimize(BB &curBB) = 0;

@@ -196,7 +196,6 @@ public:
           mirModule(&mod),
           cgOption(cgOptions)
     {
-        DefineDebugTraceFunctions();
         isLmbc = (mirModule->GetFlavor() == MIRFlavor::kFlavorLmbc);
     }
 
@@ -204,10 +203,6 @@ public:
 
     /* enroll all code generator phases for target machine */
     virtual void EnrollTargetPhases(MaplePhaseManager *pm) const = 0;
-
-    void GenExtraTypeMetadata(const std::string &classListFileName, const std::string &outputBaseName);
-    void GenPrimordialObjectList(const std::string &outputBaseName);
-    const std::string ExtractFuncName(const std::string &str);
 
     virtual Insn &BuildPhiInsn(RegOperand &defOpnd, Operand &listParam) = 0;
     virtual PhiOperand &CreatePhiOperand(MemPool &mp, MapleAllocator &mAllocator) = 0;
@@ -278,17 +273,6 @@ public:
         return cgOption.IsStackProtectorAll();
     }
 
-    bool NeedInsertInstrumentationFunction() const
-    {
-        return cgOption.NeedInsertInstrumentationFunction();
-    }
-
-    void SetInstrumentationFunction(const std::string &name);
-    const MIRSymbol *GetInstrumentationFunction() const
-    {
-        return instrumentationFunction;
-    }
-
     bool InstrumentWithDebugTraceCall() const
     {
         return cgOption.InstrumentWithDebugTraceCall();
@@ -329,8 +313,6 @@ public:
         return cgOption.DoConstFold();
     }
 
-    void AddStackGuardvar();
-    void DefineDebugTraceFunctions();
     MIRModule *GetMIRModule()
     {
         return mirModule;
@@ -462,9 +444,6 @@ public:
         return nullptr;
     }
 
-    /* Object map generation helper */
-    std::vector<int64> GetReferenceOffsets64(const BECommon &beCommon, MIRStructType &structType);
-
     void SetGP(MIRSymbol *sym)
     {
         fileGP = sym;
@@ -528,7 +507,6 @@ private:
     LabelIDOrder labelOrderCnt = 0;
     static CGFunc *currentCGFunction; /* current cg function being compiled */
     CGOptions cgOption;
-    MIRSymbol *instrumentationFunction = nullptr;
     MIRSymbol *dbgTraceEnter = nullptr;
     MIRSymbol *dbgTraceExit = nullptr;
     MIRSymbol *dbgFuncProfile = nullptr;

@@ -181,23 +181,13 @@ static constexpr const char kClassNamePrefixStr[] = "L";
 static constexpr const char kClassMethodSplitterStr[] = "_3B";
 static constexpr const char kFuncGetCurrentCl[] = "MCC_GetCurrentClassLoader";
 
-std::string EncodeName(const std::string &name);
 std::string DecodeName(const std::string &name);
 void DecodeMapleNameToJDescriptor(const std::string &nameIn, std::string &nameOut);
 
 __attribute__((visibility("default"))) unsigned UTF16ToUTF8(std::string &str, const std::u16string &str16,
                                                             unsigned short num = 0, bool isBigEndian = false);
-__attribute__((visibility("default"))) unsigned UTF8ToUTF16(std::u16string &str16, const std::string &str,
-                                                            unsigned short num = 0, bool isBigEndian = false);
-void GetUnsignedLeb128Encode(std::vector<uint8_t> &dest, uint32_t value);
-uint32_t GetUnsignedLeb128Decode(const uint8_t **data);
-uint64_t GetUleb128Encode(uint64_t val);
-uint64_t GetSleb128Encode(int64_t val);
-uint64_t GetUleb128Decode(uint64_t val);
-int64_t GetSleb128Decode(uint64_t val);
 size_t GetUleb128Size(uint64_t val);
 size_t GetSleb128Size(int32_t val);
-bool NeedConvertUTF16(const std::string &str8);
 }  // namespace namemangler
 
 #endif

@@ -59,10 +59,6 @@ void X64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
 {
     CHECK_FATAL(false, "NIY");
 }
-void X64CGFunc::HandleRetCleanup(NaryStmtNode &retNode)
-{
-    CHECK_FATAL(false, "NIY");
-}
 void X64CGFunc::SelectDassign(DassignNode &stmt, Operand &opnd0)
 {
     CHECK_FATAL(false, "NIY");
@@ -120,10 +116,6 @@ void X64CGFunc::SelectReturnSendOfStructInRegs(BaseNode *x)
     CHECK_FATAL(false, "NIY");
 }
 void X64CGFunc::SelectReturn(Operand *opnd)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectIgoto(Operand *opnd0)
 {
     CHECK_FATAL(false, "NIY");
 }
@@ -301,11 +293,6 @@ Operand *X64CGFunc::SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadof
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
 Operand *X64CGFunc::SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent)
 {
     CHECK_FATAL(false, "NIY");
@@ -354,12 +341,6 @@ Operand *X64CGFunc::SelectRor(BinaryNode &node, Operand &opnd0, Operand &opnd1, 
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
-}
-Operand &X64CGFunc::SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    Operand *a;
-    return *a;
 }
 Operand *X64CGFunc::SelectShift(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
 {
@@ -489,11 +470,6 @@ Operand *X64CGFunc::SelectLnot(UnaryNode &node, Operand &opnd0, const BaseNode &
     return nullptr;
 }
 Operand *X64CGFunc::SelectNeg(UnaryNode &node, Operand &opnd0, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectRecip(UnaryNode &node, Operand &opnd0, const BaseNode &parent)
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
@@ -845,10 +821,6 @@ Operand *X64CGFunc::SelectIntrinsicOpWithNParams(IntrinsicopNode &intrinopNode, 
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
-}
-void X64CGFunc::ProcessLazyBinding()
-{
-    CHECK_FATAL(false, "NIY");
 }
 void X64CGFunc::DBGFixCallFrameLocationOffsets()
 {

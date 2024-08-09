@@ -127,7 +127,6 @@ public:
     void GenSaveMethodInfoCode(BB &bb) override;
     void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) override;
     bool GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool forEA = false);
-    void HandleRetCleanup(NaryStmtNode &retNode) override;
     void MergeReturn() override;
     RegOperand *ExtractMemBaseAddr(const MemOperand &memOpnd);
     void SelectDassign(DassignNode &stmt, Operand &opnd0) override;
@@ -155,7 +154,6 @@ public:
     void SelectAggIassign(IassignNode &stmt, Operand &lhsAddrOpnd) override;
     void SelectReturnSendOfStructInRegs(BaseNode *x) override;
     void SelectReturn(Operand *opnd0) override;
-    void SelectIgoto(Operand *opnd0) override;
     bool DoCallerEnsureValidParm(RegOperand &destOpnd, RegOperand &srcOpnd, PrimType formalPType);
     void SelectParmListSmallStruct(const MIRType &mirType, const CCLocInfo &ploc, Operand &addr, ListOperand &srcOpnds,
                                    bool isSpecialArg, std::vector<RegMapForPhyRegCpy> &regMapForTmpBB);
@@ -211,7 +209,6 @@ public:
     Operand *SelectIread(const BaseNode &parent, IreadNode &expr, int extraOffset = 0,
                          PrimType finalBitFieldDestType = kPtyInvalid) override;
     Operand *SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff) override;
-    Operand *SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff) override;
     Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) override;
     Operand *SelectIntConst(const MIRIntConst &intConst);
     Operand *HandleFmovImm(PrimType stype, int64 val, MIRConst &mirConst, const BaseNode &parent);
@@ -222,7 +219,6 @@ public:
 
     void SelectAdd(Operand &resOpnd, Operand &o0, Operand &o1, PrimType primType) override;
     Operand *SelectAdd(BinaryNode &node, Operand &o0, Operand &o1, const BaseNode &parent) override;
-    Operand &SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &parent) override;
     void SelectMadd(Operand &resOpnd, Operand &oM0, Operand &oM1, Operand &o1, PrimType primeType) override;
     Operand *SelectMadd(BinaryNode &node, Operand &oM0, Operand &oM1, Operand &o1, const BaseNode &parent) override;
     Operand *SelectRor(BinaryNode &node, Operand &o0, Operand &o1, const BaseNode &parent) override;
@@ -279,7 +275,6 @@ public:
     Operand *SelectNeg(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
     void SelectNeg(Operand &dest, Operand &opnd0, PrimType primType);
     void SelectMvn(Operand &dest, Operand &opnd0, PrimType primType);
-    Operand *SelectRecip(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectSqrt(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectCeil(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectFloor(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent) override;
@@ -1036,7 +1031,6 @@ private:
     RegOperand *SelectStoreExcl(PrimType valPty, MemOperand &loc, RegOperand &newVal, bool release);
 
     MemOperand *GetPseudoRegisterSpillMemoryOperand(PregIdx i) override;
-    void ProcessLazyBinding() override;
     bool CanLazyBinding(const Insn &insn) const;
     void ConvertAdrpl12LdrToLdr();
     void ConvertAdrpLdrToIntrisic();

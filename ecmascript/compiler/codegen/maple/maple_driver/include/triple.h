@@ -52,10 +52,6 @@ public:
         return (GetArch() == ArchType::aarch64_be) || (GetArch() == ArchType::aarch64);
     }
 
-    std::string Str() const;
-    std::string GetArchName() const;
-    std::string GetEnvironmentName() const;
-
     static Triple &GetTriple()
     {
         static Triple triple;
@@ -64,7 +60,6 @@ public:
     Triple(const Triple &) = delete;
     Triple &operator=(const Triple &) = delete;
 
-    void Init(const std::string &target);
     void Init(bool isAArch64);
 
 private:
@@ -73,11 +68,7 @@ private:
     EnvironmentType environment;
 
     Triple() : arch(UnknownArch), environment(UnknownEnvironment) {}
-
-    Triple::ArchType ParseArch(std::string_view archStr);
-    Triple::EnvironmentType ParseEnvironment(std::string_view environmentType);
 };
-
 }  // namespace maple
 
 #endif /* MAPLE_TRIPLE_H */

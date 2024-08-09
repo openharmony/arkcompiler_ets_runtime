@@ -35,47 +35,6 @@ inline uint32 GetPointerBitSize()
     return GetPointerSize() * kBitsPerByte;
 }
 
-class JClassFieldInfo {
-public:
-    /* constructors */
-    JClassFieldInfo() : isRef(false), isUnowned(false), isWeak(false), offset(0) {}
-
-    JClassFieldInfo(bool isRef, bool isUnowned, bool isWeak, uint32 offset)
-        : isRef(isRef), isUnowned(isUnowned), isWeak(isWeak), offset(offset)
-    {
-    }
-
-    ~JClassFieldInfo() = default;
-
-    bool IsRef() const
-    {
-        return isRef;
-    }
-
-    bool IsUnowned() const
-    {
-        return isUnowned;
-    }
-
-    bool IsWeak() const
-    {
-        return isWeak;
-    }
-
-    uint32 GetOffset() const
-    {
-        return offset;
-    }
-
-private:
-    bool isRef;     /* used to generate object-map */
-    bool isUnowned; /* used to mark unowned fields for RC */
-    bool isWeak;    /* used to mark weak fields for RC */
-    uint32 offset;
-};
-
-using JClassLayout = MapleVector<JClassFieldInfo>;
-
 class BECommon {
 public:
     explicit BECommon(MIRModule &mod);
@@ -84,32 +43,11 @@ public:
 
     void ComputeTypeSizesAligns(MIRType &type, uint8 align = 0);
 
-    void GenFieldOffsetMap(const std::string &className);
-
-    void GenFieldOffsetMap(MIRClassType &classType, FILE &outFile);
-
-    void GenObjSize(const MIRClassType &classType, FILE &outFile);
-
     std::pair<int32, int32> GetFieldOffset(MIRStructType &structType, FieldID fieldID);
-
-    FieldInfo GetJClassFieldOffset(MIRStructType &classType, FieldID fieldID) const;
 
     bool IsRefField(MIRStructType &structType, FieldID fieldID) const;
 
-    /* some class may has incomplete type definition. provide an interface to check them. */
-    bool HasJClassLayout(MIRClassType &klass) const
-    {
-        return (jClassLayoutTable.find(&klass) != jClassLayoutTable.end());
-    }
-
-    const JClassLayout &GetJClassLayout(MIRClassType &klass) const
-    {
-        return *(jClassLayoutTable.at(&klass));
-    }
-
     void AddNewTypeAfterBecommon(uint32 oldTypeTableSize, uint32 newTypeTableSize);
-
-    void AddElementToJClassLayout(MIRClassType &klass, JClassFieldInfo info);
 
     bool HasFuncReturnType(MIRFunction &func) const
     {
@@ -129,8 +67,6 @@ public:
                                        const std::vector<TypeAttrs> &vecAt);
 
     BaseNode *GetAddressOfNode(const BaseNode &node);
-
-    bool CallIsOfAttr(FuncAttrKind attr, const StmtNode *narynode) const;
 
     PrimType GetAddressPrimType() const
     {
@@ -247,9 +183,6 @@ private:
     bool TyIsInSizeAlignTable(const MIRType &) const;
     void AddAndComputeSizeAlign(MIRType &);
     void ComputeStructTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx);
-    void ComputeClassTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx, uint8 align = 0);
-    void ComputeArrayTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx);
-    void ComputeFArrayOrJArrayTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx);
 
     MIRModule &mirModule;
     MapleVector<uint64> typeSizeTable;      /* index is TyIdx */
@@ -261,10 +194,6 @@ private:
      * traversal for locating the field for a given fieldID
      */
     MapleVector<FieldID> structFieldCountTable;
-    /*
-     * a lookup table for class layout. the vector is indexed by field-id
-     */
-    MapleUnorderedMap<MIRClassType *, JClassLayout *> jClassLayoutTable;
     MapleUnorderedMap<MIRFunction *, TyIdx> funcReturnType;
 }; /* class BECommon */
 } /* namespace maplebe */

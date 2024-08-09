@@ -83,12 +83,20 @@ public:
 
 class MplScheduler {
 public:
-    explicit MplScheduler(const std::string &name);
+    explicit MplScheduler(const std::string &name)
+        : schedulerName(name),
+          taskIdForAdd(0),
+          taskIdToRun(0),
+          taskIdExpected(0),
+          numberTasks(0),
+          numberTasksFinish(0),
+          isSchedulerSeq(false),
+          dumpTime(false),
+          statusFinish(kThreadRun)
+{
+}
     virtual ~MplScheduler() = default;
 
-    void Init();
-    virtual void AddTask(MplTask &task);
-    virtual int RunTask(uint32 threadsNum, bool seq = false);
     virtual MplSchedulerParam *EncodeThreadMainEnvironment(uint32)
     {
         return nullptr;
@@ -113,8 +121,6 @@ public:
         pthread_mutex_unlock(&mutexGlobal);
     }
 
-    void Reset();
-
 protected:
     std::string schedulerName;
     std::vector<MplTask *> tbTasks;
@@ -135,16 +141,8 @@ protected:
     enum ThreadStatus { kThreadStop, kThreadRun, kThreadPause };
 
     ThreadStatus statusFinish;
-    virtual int FinishTask(const MplTask &task);
-    virtual MplTask *GetTaskToRun();
-    virtual size_t GetTaskIdsFinishSize();
-    virtual MplTask *GetTaskFinishFirst();
-    virtual void RemoveTaskFinish(uint32 id);
-    virtual void TaskIdFinish(uint32 id);
-    void ThreadMain(uint32 threadID, MplSchedulerParam *env);
     void ThreadFinishNoSequence(MplSchedulerParam *env);
     void ThreadFinishSequence(MplSchedulerParam *env);
-    void ThreadFinish(MplSchedulerParam *env);
     // Callback Function
     virtual void CallbackThreadMainStart() {}
 

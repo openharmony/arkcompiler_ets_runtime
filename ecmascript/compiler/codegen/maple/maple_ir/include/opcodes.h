@@ -33,15 +33,6 @@ enum Opcode : uint8 {
     case OP_callassertnonnull:   \
     case OP_returnassertnonnull:
 
-#define CASE_OP_ASSERT_BOUNDARY \
-    case OP_assertge:           \
-    case OP_assertlt:           \
-    case OP_calcassertge:       \
-    case OP_calcassertlt:       \
-    case OP_callassertle:       \
-    case OP_returnassertle:     \
-    case OP_assignassertle:
-
 inline constexpr bool IsDAssign(Opcode code)
 {
     return (code == OP_dassign || code == OP_maydassign);
@@ -135,7 +126,6 @@ constexpr bool IsStmtMustRequire(Opcode opcode)
         case OP_membarstoreload:
         case OP_membarstorestore:
             CASE_OP_ASSERT_NONNULL
-            CASE_OP_ASSERT_BOUNDARY
         case OP_free:
         case OP_incref:
         case OP_decref:
@@ -214,7 +204,6 @@ constexpr bool IsSupportedOpForCopyInPhasesLoopUnrollAndVRP(Opcode op)
         case OP_maydassign:
         case OP_iassign:
             CASE_OP_ASSERT_NONNULL
-            CASE_OP_ASSERT_BOUNDARY
         case OP_membaracquire:
         case OP_call:
         case OP_callassigned:

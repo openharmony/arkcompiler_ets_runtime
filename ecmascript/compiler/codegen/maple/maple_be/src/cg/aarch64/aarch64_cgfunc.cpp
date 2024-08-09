@@ -1376,18 +1376,6 @@ void AArch64CGFunc::SelectAsm(AsmNode &node)
                 }
                 break;
             }
-            case OP_ireadfpoff: {
-                auto *ireadfpoff = static_cast<IreadFPoffNode *>(node.Opnd(i));
-                Operand *inOpnd = SelectIreadfpoff(node, *ireadfpoff);
-                listInputOpnd->PushOpnd(static_cast<RegOperand &>(*inOpnd));
-                PrimType pType = ireadfpoff->GetPrimType();
-                listInRegPrefix->stringList.push_back(static_cast<StringOperand *>(
-                    &CreateStringOperand(GetRegPrefixFromPrimType(pType, inOpnd->GetSize(), str))));
-                if (isOutputTempNode) {
-                    rPlusOpnd.emplace_back(std::make_pair(inOpnd, pType));
-                }
-                break;
-            }
             case OP_iread: {
                 auto *iread = static_cast<IreadNode *>(node.Opnd(i));
                 Operand *inOpnd = SelectIread(node, *iread);
@@ -2729,7 +2717,7 @@ Operand *AArch64CGFunc::SelectIreadoff(const BaseNode &parent, IreadoffNode &ire
         GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mop, *result, memOpnd));
         auto &regAssignNode = static_cast<const RegassignNode &>(parent);
         PregIdx pIdx = regAssignNode.GetRegIdx();
-        CHECK_FATAL(IsSpecialPseudoRegister(pIdx), "SelectIreadfpoff of agg");
+        CHECK_FATAL(IsSpecialPseudoRegister(pIdx), "SelectIreadoff of agg");
         (void)LmbcSmallAggForRet(parent, addrOpnd, offset, true);
         // result not used
     } else {
@@ -2782,48 +2770,6 @@ RegOperand *AArch64CGFunc::LmbcStructReturnLoad(int32 offset)
         Insn &pseudo = GetInsnBuilder()->BuildInsn(MOP_pseudo_ret_int, *r1);
         GetCurBB()->AppendInsn(pseudo);
         result = GenLmbcParamLoad(offset, k8ByteSize, kRegTyInt, PTY_i64);
-    }
-    return result;
-}
-
-Operand *AArch64CGFunc::SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff)
-{
-    uint32 offset = static_cast<uint32>(ireadoff.GetOffset());
-    PrimType primType = ireadoff.GetPrimType();
-    uint32 bytelen = GetPrimTypeSize(primType);
-    uint32 bitlen = bytelen * kBitsPerByte;
-    RegType regty = GetRegTyFromPrimTy(primType);
-    RegOperand *result = nullptr;
-    if (offset >= 0) {
-        LmbcFormalParamInfo *info = GetLmbcFormalParamInfo(static_cast<uint32>(offset));
-        if (info->GetPrimType() == PTY_agg) {
-            if (info->IsOnStack()) {
-                result = GenLmbcParamLoad(info->GetOnStackOffset(), GetPrimTypeSize(PTY_a64), kRegTyInt, PTY_a64);
-                regno_t baseRegno = result->GetRegisterNumber();
-                result = GenLmbcParamLoad(offset - static_cast<int32>(info->GetOffset()), bytelen, regty, primType,
-                                          (AArch64reg)baseRegno);
-            } else if (primType == PTY_agg) {
-                CHECK_FATAL(parent.GetOpCode() == OP_regassign, "SelectIreadfpoff of agg");
-                result = LmbcStructReturnLoad(offset);
-            } else {
-                result = GenLmbcParamLoad(offset, bytelen, regty, primType);
-            }
-        } else {
-            CHECK_FATAL(primType == info->GetPrimType(), "Incorrect primtype");
-            CHECK_FATAL(offset == info->GetOffset(), "Incorrect offset");
-            if (info->GetRegNO() == 0 || !info->HasRegassign()) {
-                result = GenLmbcParamLoad(offset, bytelen, regty, primType);
-            } else {
-                result = &GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg>(info->GetRegNO()), bitlen, regty);
-            }
-        }
-    } else {
-        if (primType == PTY_agg) {
-            CHECK_FATAL(parent.GetOpCode() == OP_regassign, "SelectIreadfpoff of agg");
-            result = LmbcStructReturnLoad(offset);
-        } else {
-            result = GenLmbcParamLoad(offset, bytelen, regty, primType);
-        }
     }
     return result;
 }
@@ -3248,18 +3194,6 @@ bool AArch64CGFunc::GenerateCompareWithZeroInstruction(Opcode jmpOp, Opcode cmpO
     return finish;
 }
 
-void AArch64CGFunc::SelectIgoto(Operand *opnd0)
-{
-    Operand *srcOpnd = opnd0;
-    if (opnd0->GetKind() == Operand::kOpdMem) {
-        Operand *dst = &CreateVirtualRegisterOperand(NewVReg(kRegTyInt, k8ByteSize));
-        GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(MOP_xldr, *dst, *opnd0));
-        srcOpnd = dst;
-    }
-    GetCurBB()->SetKind(BB::kBBIgoto);
-    GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(MOP_xbr, *srcOpnd));
-}
-
 void AArch64CGFunc::SelectCondGoto(LabelOperand &targetOpnd, Opcode jmpOp, Opcode cmpOp, Operand &origOpnd0,
                                    Operand &origOpnd1, PrimType primType, bool signedCond)
 {
@@ -3597,38 +3531,6 @@ void AArch64CGFunc::SelectMadd(Operand &resOpnd, Operand &opndM0, Operand &opndM
     DEBUG_ASSERT(IsPrimitiveInteger(primType), "NYI MAdd");
     MOperator mOp = is64Bits ? MOP_xmaddrrrr : MOP_wmaddrrrr;
     GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, resOpnd, opndM0, opndM1, opnd1));
-}
-
-Operand &AArch64CGFunc::SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &parent)
-{
-    BaseNode *opnd0 = node.Opnd(0);
-    BaseNode *opnd1 = node.Opnd(1);
-    DEBUG_ASSERT(opnd1->GetOpCode() == OP_constval, "Internal error, opnd1->op should be OP_constval.");
-
-    switch (opnd0->op) {
-        case OP_regread: {
-            RegreadNode *regreadNode = static_cast<RegreadNode *>(opnd0);
-            return *SelectRegread(*regreadNode);
-        }
-        case OP_addrof: {
-            AddrofNode *addrofNode = static_cast<AddrofNode *>(opnd0);
-            CHECK_NULL_FATAL(mirModule.CurFunction());
-            MIRSymbol &symbol = *mirModule.CurFunction()->GetLocalOrGlobalSymbol(addrofNode->GetStIdx());
-            DEBUG_ASSERT(addrofNode->GetFieldID() == 0, "For debug SelectCGArrayElemAdd.");
-
-            Operand &result = GetOrCreateResOperand(parent, PTY_a64);
-
-            /* OP_constval */
-            ConstvalNode *constvalNode = static_cast<ConstvalNode *>(opnd1);
-            MIRConst *mirConst = constvalNode->GetConstVal();
-            MIRIntConst *mirIntConst = static_cast<MIRIntConst *>(mirConst);
-            SelectAddrof(result, CreateStImmOperand(symbol, mirIntConst->GetExtValue(), 0));
-
-            return result;
-        }
-        default:
-            CHECK_FATAL(0, "Internal error, cannot handle opnd0.");
-    }
 }
 
 void AArch64CGFunc::SelectSub(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType)
@@ -4989,33 +4891,6 @@ void AArch64CGFunc::SelectMvn(Operand &dest, Operand &src, PrimType primType)
     DEBUG_ASSERT(!IsPrimitiveFloat(primType), "Instruction 'mvn' do not have float version.");
     mOp = is64Bits ? MOP_xnotrr : MOP_wnotrr;
     GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mOp, dest, opnd0));
-}
-
-Operand *AArch64CGFunc::SelectRecip(UnaryNode &node, Operand &src, const BaseNode &parent)
-{
-    /*
-     * fconsts s15, #112
-     * fdivs s0, s15, s0
-     */
-    PrimType dtype = node.GetPrimType();
-    if (!IsPrimitiveFloat(dtype)) {
-        DEBUG_ASSERT(false, "should be float type");
-        return nullptr;
-    }
-    Operand &opnd0 = LoadIntoRegister(src, dtype);
-    RegOperand &resOpnd = GetOrCreateResOperand(parent, dtype);
-    Operand *one = nullptr;
-    if (GetPrimTypeBitSize(dtype) == k64BitSize) {
-        MIRDoubleConst *c = memPool->New<MIRDoubleConst>(1.0, *GlobalTables::GetTypeTable().GetTypeTable().at(PTY_f64));
-        one = SelectDoubleConst(*c, node);
-    } else if (GetPrimTypeBitSize(dtype) == k32BitSize) {
-        MIRFloatConst *c = memPool->New<MIRFloatConst>(1.0f, *GlobalTables::GetTypeTable().GetTypeTable().at(PTY_f32));
-        one = SelectFloatConst(*c, node);
-    } else {
-        CHECK_FATAL(false, "we don't support half-precision fp operations yet");
-    }
-    SelectDiv(resOpnd, *one, opnd0, dtype);
-    return &resOpnd;
 }
 
 Operand *AArch64CGFunc::SelectSqrt(UnaryNode &node, Operand &src, const BaseNode &parent)
@@ -6611,57 +6486,6 @@ void AArch64CGFunc::MergeReturn()
 
     GetExitBBsVec().clear();
     GetExitBBsVec().emplace_back(retBB);
-}
-
-void AArch64CGFunc::HandleRetCleanup(NaryStmtNode &retNode)
-{
-    if (!GetCG()->GenLocalRC()) {
-        /* handle local rc is disabled. */
-        return;
-    }
-
-    constexpr uint8 opSize = 11;
-    Opcode ops[opSize] = {OP_label, OP_goto,      OP_brfalse, OP_brtrue, OP_return, OP_call,
-                          OP_icall, OP_rangegoto, OP_catch,   OP_try,    OP_endtry};
-    std::set<Opcode> branchOp(ops, ops + opSize);
-
-    /* get cleanup intrinsic */
-    bool found = false;
-    StmtNode *cleanupNode = retNode.GetPrev();
-    cleanEANode = nullptr;
-    while (cleanupNode != nullptr) {
-        if (branchOp.find(cleanupNode->GetOpCode()) != branchOp.end()) {
-            if (cleanupNode->GetOpCode() == OP_call) {
-                CallNode *callNode = static_cast<CallNode *>(cleanupNode);
-                MIRFunction *fn = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode->GetPUIdx());
-                MIRSymbol *fsym = GetFunction().GetLocalOrGlobalSymbol(fn->GetStIdx(), false);
-                if ((fsym->GetName() == "MCC_DecRef_NaiveRCFast") || (fsym->GetName() == "MCC_IncRef_NaiveRCFast") ||
-                    (fsym->GetName() == "MCC_IncDecRef_NaiveRCFast") || (fsym->GetName() == "MCC_LoadRefStatic") ||
-                    (fsym->GetName() == "MCC_LoadRefField") || (fsym->GetName() == "MCC_LoadReferentField") ||
-                    (fsym->GetName() == "MCC_LoadRefField_NaiveRCFast") ||
-                    (fsym->GetName() == "MCC_LoadVolatileField") ||
-                    (fsym->GetName() == "MCC_LoadVolatileStaticField") || (fsym->GetName() == "MCC_LoadWeakField") ||
-                    (fsym->GetName() == "MCC_CheckObjMem")) {
-                    cleanupNode = cleanupNode->GetPrev();
-                    continue;
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
-        }
-
-        cleanupNode = cleanupNode->GetPrev();
-    }
-
-    if (!found) {
-        MIRSymbol *retRef = nullptr;
-        if (retNode.NumOpnds() != 0) {
-            retRef = GetRetRefSymbol(*static_cast<NaryStmtNode &>(retNode).Opnd(0));
-        }
-        HandleRCCall(false, retRef);
-    }
 }
 
 bool AArch64CGFunc::GenRetCleanup(const IntrinsiccallNode *cleanupNode, bool forEA)
@@ -9297,12 +9121,6 @@ void AArch64CGFunc::ConvertAdrpLdrToIntrisic()
     }
 }
 
-void AArch64CGFunc::ProcessLazyBinding()
-{
-    ConvertAdrpl12LdrToLdr();
-    ConvertAdrpLdrToIntrisic();
-}
-
 /*
  * Generate global long call
  *  adrp  VRx, symbol
@@ -9736,134 +9554,10 @@ void AArch64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
         std::string comment = GetIntrinsicName(intrinsic);
         GetCurBB()->AppendInsn(CreateCommentInsn(comment));
     }
-
-    /*
-     * At this moment, we eagerly evaluates all argument expressions.  In theory,
-     * there could be intrinsics that extract meta-information of variables, such as
-     * their locations, rather than computing their values.  Applications
-     * include building stack maps that help runtime libraries to find the values
-     * of local variables (See @stackmap in LLVM), in which case knowing their
-     * locations will suffice.
-     */
-    if (intrinsic == INTRN_MPL_PROF_COUNTER_INC) { /* special case */
-        SelectMPLProfCounterInc(intrinsiccallNode);
-        return;
-    }
-    // js
     if (intrinsic == INTRN_ADD_WITH_OVERFLOW || intrinsic == INTRN_SUB_WITH_OVERFLOW ||
         intrinsic == INTRN_MUL_WITH_OVERFLOW) {
         SelectOverFlowCall(intrinsiccallNode);
         return;
-    }
-    switch (intrinsic) {
-        case INTRN_C_va_start:
-            SelectCVaStart(intrinsiccallNode);
-            return;
-        case INTRN_C___sync_lock_release_1:
-            SelectCSyncLockRelease(intrinsiccallNode, PTY_u8);
-            return;
-        case INTRN_C___sync_lock_release_2:
-            SelectCSyncLockRelease(intrinsiccallNode, PTY_u16);
-            return;
-        case INTRN_C___sync_lock_release_4:
-            SelectCSyncLockRelease(intrinsiccallNode, PTY_u32);
-            return;
-        case INTRN_C___sync_lock_release_8:
-            SelectCSyncLockRelease(intrinsiccallNode, PTY_u64);
-            return;
-        case INTRN_C___atomic_store_n:
-            SelectCAtomicStoreN(intrinsiccallNode);
-            return;
-        case INTRN_vector_zip_v8u8:
-        case INTRN_vector_zip_v8i8:
-        case INTRN_vector_zip_v4u16:
-        case INTRN_vector_zip_v4i16:
-        case INTRN_vector_zip_v2u32:
-        case INTRN_vector_zip_v2i32:
-            SelectVectorZip(intrinsiccallNode.Opnd(0)->GetPrimType(),
-                            HandleExpr(intrinsiccallNode, *intrinsiccallNode.Opnd(0)),
-                            HandleExpr(intrinsiccallNode, *intrinsiccallNode.Opnd(1)));
-            return;
-        case INTRN_C_stack_save:
-            return;
-        case INTRN_C_stack_restore:
-            return;
-        case INTRN_C___builtin_division_exception:
-            SelectCDIVException();
-            return;
-        default:
-            break;
-    }
-    std::vector<Operand *> operands; /* Temporary.  Deallocated on return. */
-    ListOperand *srcOpnds = CreateListOpnd(*GetFuncScopeAllocator());
-    for (size_t i = 0; i < intrinsiccallNode.NumOpnds(); i++) {
-        BaseNode *argExpr = intrinsiccallNode.Opnd(i);
-        Operand *opnd = HandleExpr(intrinsiccallNode, *argExpr);
-        operands.emplace_back(opnd);
-        if (!opnd->IsRegister()) {
-            opnd = &LoadIntoRegister(*opnd, argExpr->GetPrimType());
-        }
-        RegOperand *expRegOpnd = static_cast<RegOperand *>(opnd);
-        srcOpnds->PushOpnd(*expRegOpnd);
-    }
-    CallReturnVector *retVals = &intrinsiccallNode.GetReturnVec();
-
-    switch (intrinsic) {
-        case INTRN_MPL_ATOMIC_EXCHANGE_PTR: {
-            BB *origFtBB = GetCurBB()->GetNext();
-            Operand *loc = operands[kInsnFirstOpnd];
-            Operand *newVal = operands[kInsnSecondOpnd];
-            Operand *memOrd = operands[kInsnThirdOpnd];
-
-            MemOrd ord = OperandToMemOrd(*memOrd);
-            bool isAcquire = MemOrdIsAcquire(ord);
-            bool isRelease = MemOrdIsRelease(ord);
-
-            const PrimType kValPrimType = PTY_a64;
-
-            RegOperand &locReg = LoadIntoRegister(*loc, PTY_a64);
-            /* Because there is no live analysis when -O1 */
-            if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) {
-                locReg.SetRegNotBBLocal();
-            }
-            MemOperand &locMem = GetOrCreateMemOpnd(MemOperand::kAddrModeBOi, k64BitSize, &locReg, nullptr,
-                                                    &GetOrCreateOfstOpnd(0, k32BitSize), nullptr);
-            RegOperand &newValReg = LoadIntoRegister(*newVal, PTY_a64);
-            if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) {
-                newValReg.SetRegNotBBLocal();
-            }
-            GetCurBB()->SetKind(BB::kBBFallthru);
-
-            LabelIdx retryLabIdx = CreateLabeledBB(intrinsiccallNode);
-
-            RegOperand *oldVal = SelectLoadExcl(kValPrimType, locMem, isAcquire);
-            if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) {
-                oldVal->SetRegNotBBLocal();
-            }
-            RegOperand *succ = SelectStoreExcl(kValPrimType, locMem, newValReg, isRelease);
-            if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) {
-                succ->SetRegNotBBLocal();
-            }
-
-            GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(MOP_wcbnz, *succ, GetOrCreateLabelOperand(retryLabIdx)));
-            GetCurBB()->SetKind(BB::kBBIntrinsic);
-            GetCurBB()->SetNext(origFtBB);
-
-            SaveReturnValueInLocal(*retVals, 0, kValPrimType, *oldVal, intrinsiccallNode);
-            break;
-        }
-        case INTRN_C___atomic_exchange_n: {
-            Operand *oldVal = SelectCAtomicExchangeN(intrinsiccallNode);
-            auto primType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(intrinsiccallNode.GetTyIdx())->GetPrimType();
-            uint32 regSize = GetPrimTypeBitSize(primType);
-            SelectCopy(GetOrCreatePhysicalRegisterOperand(R0, regSize, kRegTyInt), primType, *oldVal, primType);
-            break;
-        }
-        default: {
-            CHECK_FATAL(false, "Intrinsic %d: %s not implemented by the AArch64 CG.", intrinsic,
-                        GetIntrinsicName(intrinsic));
-            break;
-        }
     }
 }
 

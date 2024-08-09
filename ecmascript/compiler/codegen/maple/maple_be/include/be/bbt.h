@@ -138,7 +138,6 @@ public:
 
 #if DEBUG
     void Dump(const MIRModule &mod) const;
-    static void ValidateStmtList(StmtNode *head, StmtNode *detached = nullptr);
 #endif
 private:
     MapleAllocator alloc;

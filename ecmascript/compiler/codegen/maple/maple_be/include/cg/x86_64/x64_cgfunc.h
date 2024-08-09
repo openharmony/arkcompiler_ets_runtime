@@ -48,7 +48,6 @@ public:
     void LmbcGenSaveSpForAlloca() override;
     void MergeReturn() override;
     void HandleRCCall(bool begin, const MIRSymbol *retRef = nullptr) override;
-    void HandleRetCleanup(NaryStmtNode &retNode) override;
     void SelectDassign(DassignNode &stmt, Operand &opnd0) override;
     void SelectDassignoff(DassignoffNode &stmt, Operand &opnd0) override;
     void SelectRegassign(RegassignNode &stmt, Operand &opnd0) override;
@@ -64,7 +63,6 @@ public:
     void SelectAggIassign(IassignNode &stmt, Operand &lhsAddrOpnd) override;
     void SelectReturnSendOfStructInRegs(BaseNode *x) override;
     void SelectReturn(Operand *opnd) override;
-    void SelectIgoto(Operand *opnd0) override;
     void SelectCondGoto(CondGotoNode &stmt, Operand &opnd0, Operand &opnd1) override;
     void SelectCondSpecialCase1(CondGotoNode &stmt, BaseNode &opnd0) override;
     void SelectCondSpecialCase2(const CondGotoNode &stmt, BaseNode &opnd0) override;
@@ -101,7 +99,6 @@ public:
     Operand *SelectIread(const BaseNode &parent, IreadNode &expr, int extraOffset = 0,
                          PrimType finalBitFieldDestType = kPtyInvalid) override;
     Operand *SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff) override;
-    Operand *SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode &ireadoff) override;
     Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) override;
     Operand *SelectFloatConst(MIRFloatConst &floatConst, const BaseNode &parent) override;
     Operand *SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent) override;
@@ -113,7 +110,6 @@ public:
     Operand *SelectMadd(BinaryNode &node, Operand &opndM0, Operand &opndM1, Operand &opnd1,
                         const BaseNode &parent) override;
     Operand *SelectRor(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
-    Operand &SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &parent) override;
     Operand *SelectShift(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
     void SelectMpy(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType) override;
     Operand *SelectMpy(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
@@ -143,7 +139,6 @@ public:
     Operand *SelectRegularBitFieldLoad(ExtractbitsNode &node, const BaseNode &parent) override;
     Operand *SelectLnot(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectNeg(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
-    Operand *SelectRecip(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectSqrt(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectCeil(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectFloor(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent) override;
@@ -222,7 +217,6 @@ public:
     RegOperand *SelectVectorWiden(PrimType rType, Operand *o1, PrimType otyp, bool isLow) override;
     Operand *SelectIntrinsicOpWithNParams(IntrinsicopNode &intrinopNode, PrimType retType,
                                           const std::string &name) override;
-    void ProcessLazyBinding() override;
     void DBGFixCallFrameLocationOffsets() override;
     MemOperand *GetPseudoRegisterSpillMemoryOperand(PregIdx idx) override;
 

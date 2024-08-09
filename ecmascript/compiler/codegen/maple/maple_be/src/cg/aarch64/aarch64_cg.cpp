@@ -93,95 +93,6 @@ bool AArch64CG::IsExclusiveFunc(MIRFunction &mirFunc)
     }
     return false;
 }
-namespace wordsMap {
-/*
- * Generate object maps.
- *
- * 1. each class record its GCTIB in method meta (not read only meta)
- * 2. GCTIB include: header protoType; n bitmap word; bitmap word
- * 3. each reference word(4 or 8 bytes) is represented by 2 bits
- *    00: not ref
- *    01: normal ref
- *    10: weak ref
- *    11: unowned ref
- *
- * For example, if a scalar object has five ptr fields at offsets 24, 40(weak),
- * 64(unowned), the generated code will be like:
- *
- * MCC_GCTIB__xxx:
- * .long 0x40      // object has child reference
- * .long 1         // one word in the bitmap
- * .quad 0b110000100001000000
- * ...
- */
-const uint32 kRefWordsPerMapWord = 32; /* contains bitmap for 32 ref words in 64 bits */
-const uint32 kLogRefWordsPerMapWord = 5;
-#ifdef USE_32BIT_REF
-const uint32 kReferenceWordSize = 4;
-const uint32 kLog2ReferenceWordSize = 2;
-#else
-const uint32 kReferenceWordSize = 8;
-const uint32 kLog2ReferenceWordSize = 3;
-#endif
-const uint32 kInMapWordOffsetMask = ((kReferenceWordSize * kRefWordsPerMapWord) - 1);
-const uint32 kInMapWordIndexShift = (kLog2ReferenceWordSize - 1);
-const uint32 kMapWordIndexShift = (kLog2ReferenceWordSize + kLogRefWordsPerMapWord);
-
-const uint64 kRefBits = 1;
-const uint64 kWeakRefBits = 2;
-const uint64 kUnownedRefBits = 3;
-
-/*
- * Give a structrue type, calculate its bitmap_vector
- */
-static void GetGCTIBBitMapWords(const BECommon &beCommon, MIRStructType &stType, std::vector<uint64> &bitmapWords)
-{
-    bitmapWords.clear();
-    if (stType.GetKind() == kTypeClass) {
-        uint64 curBitmap = 0;
-        uint32 curBitmapIndex = 0;
-        uint32 prevOffset = 0;
-        for (const auto &fieldInfo : beCommon.GetJClassLayout(static_cast<MIRClassType &>(stType))) {
-            if (fieldInfo.IsRef()) {
-                uint32 curOffset = fieldInfo.GetOffset();
-                /* skip meta field */
-                if (curOffset == 0) {
-                    continue;
-                }
-                CHECK_FATAL((curOffset > prevOffset) || (prevOffset == 0), "not ascending offset");
-                uint32 wordIndex = curOffset >> kMapWordIndexShift;
-                if (wordIndex > curBitmapIndex) {
-                    bitmapWords.emplace_back(curBitmap);
-                    for (uint32 i = curBitmapIndex + 1; i < wordIndex; i++) {
-                        bitmapWords.emplace_back(0);
-                    }
-                    curBitmap = 0;
-                    curBitmapIndex = wordIndex;
-                }
-                uint32 bitOffset = (curOffset & kInMapWordOffsetMask) >> kInMapWordIndexShift;
-                if (CGOptions::IsGCOnly()) {
-                    /* ignore unowned/weak when GCONLY is enabled. */
-                    curBitmap |= (kRefBits << bitOffset);
-                } else if (fieldInfo.IsUnowned()) {
-                    curBitmap |= (kUnownedRefBits << bitOffset);
-                } else if (fieldInfo.IsWeak()) {
-                    curBitmap |= (kWeakRefBits << bitOffset);
-                } else {
-                    /* ref */
-                    curBitmap |= (kRefBits << bitOffset);
-                }
-                prevOffset = curOffset;
-            }
-        }
-        if (curBitmap != 0) {
-            bitmapWords.emplace_back(curBitmap);
-        }
-    } else if (stType.GetKind() != kTypeInterface) {
-        /* interface doesn't have reference fields */
-        CHECK_FATAL(false, "GetGCTIBBitMapWords unexpected type");
-    }
-}
-}  // namespace wordsMap
 
 bool AArch64CG::IsTargetInsn(MOperator mOp) const
 {
@@ -354,12 +265,6 @@ void AArch64CG::GenerateObjectMaps(BECommon &beCommon)
         if (!CGOptions::IsQuiet()) {
             LogInfo::MapleLogger() << "  name: " << name << "\n";
         }
-
-        std::vector<uint64> bitmapWords;
-        wordsMap::GetGCTIBBitMapWords(beCommon, *strTy, bitmapWords);
-        /* fill specific header according to the size of bitmapWords */
-        uint32 rcHeader = (!bitmapWords.empty()) ? 0x40 : 0;
-        FindOrCreateRepresentiveSym(bitmapWords, rcHeader, name);
     }
 }
 

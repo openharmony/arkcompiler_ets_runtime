@@ -306,11 +306,6 @@ public:
         return (options & kWithAsm) != 0;
     }
 
-    bool NeedInsertInstrumentationFunction() const
-    {
-        return (options & kGenInsertCall) != 0;
-    }
-
     bool InstrumentWithDebugTraceCall() const
     {
         return (options & kAddDebugTrace) != 0;
@@ -431,16 +426,6 @@ public:
     void ClearOption(OptionFlag opFlag)
     {
         options &= ~opFlag;
-    }
-
-    const std::string &GetInstrumentationFunction() const
-    {
-        return instrumentationFunction;
-    }
-
-    void SetInstrumentationFunction(const std::string &function)
-    {
-        instrumentationFunction = function;
     }
 
     const std::string &GetClassListFile() const
@@ -1638,7 +1623,6 @@ private:
 
     GenerateFlag generateFlag = 0;
     OptionFlag options = kUndefined;
-    std::string instrumentationFunction;
 
     std::string classListFile;
     std::string ehExclusiveFile;

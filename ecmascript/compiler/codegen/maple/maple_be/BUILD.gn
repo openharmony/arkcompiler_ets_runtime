@@ -17,7 +17,6 @@ include_directories = [
   "${MAPLEALL_ROOT}/maple_be/include/cg",
   "${MAPLEALL_ROOT}/maple_be/include/litecg",
   "${MAPLEALL_ROOT}/maple_be/include/ad",
-  "${MAPLEALL_ROOT}/maple_pgo/include",
   "${MAPLEALL_ROOT}/maple_be/include/ad/target",
   "${MAPLEALL_ROOT}/maple_be/include/be",
   "${MAPLEALL_ROOT}/maple_driver/include",
@@ -42,7 +41,6 @@ deps_libcg = [
   "${MAPLEALL_ROOT}/maple_ir:libmplir",
   "${MAPLEALL_ROOT}/maple_util:libmplutil",
   "${MAPLEALL_ROOT}/maple_me:libmplme",
-  "${MAPLEALL_ROOT}/maple_pgo:libmplpgo",
 ]
 
 deps_libmplbe = [ ":libcglowerer" ]
@@ -80,14 +78,12 @@ if (TARGET == "ark") {
 
 src_libcglowerer = [
   "src/be/bbt.cpp",
-  "src/be/trycatchblockslower.cpp",
   "src/be/lower.cpp",
 ]
 
 src_libmplbe = [
   "src/be/becommon.cpp",
   "src/be/switch_lowerer.cpp",
-  "src/be/rt.cpp",
 ]
 
 src_libcgaarch64 = [
@@ -198,7 +194,6 @@ src_libcg = [
   "src/cg/cg_option.cpp",
   "src/cg/cg_options.cpp",
   "src/cg/optimize_common.cpp",
-  "src/cg/eh_func.cpp",
   "src/cg/emit.cpp",
   "src/cg/obj_emit.cpp",
   "src/cg/ifile.cpp",

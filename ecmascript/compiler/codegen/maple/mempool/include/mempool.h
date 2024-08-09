@@ -104,10 +104,6 @@ public:
 
     MemPool *NewMemPool(const std::string &, bool isLocalPool);
     void DeleteMemPool(MemPool *memPool) const;
-    bool HaveRace() const
-    {
-        return (this == &maple::memPoolCtrler);
-    }
 
     MemBlock *AllocMemBlock(const MemPool &pool, size_t size);
     MemBlock *AllocFixMemBlock(const MemPool &pool);

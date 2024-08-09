@@ -15,10 +15,8 @@
 
  ADDTARGETPHASE("layoutstackframe", true);
  ADDTARGETPHASE("createstartendlabel", true);
- ADDTARGETPHASE("buildehfunc", GetMIRModule()->GetSrcLang() != kSrcLangC && false);
  ADDTARGETPHASE("instructionselector", true);
  ADDTARGETPHASE("moveargs", true);
- ADDTARGETPHASE("stackmapcomputation", false);
  ADDTARGETPHASE("cfgo", false);
  ADDTARGETPHASE("localcopyprop", false);
  ADDTARGETPHASE("regalloc", true);

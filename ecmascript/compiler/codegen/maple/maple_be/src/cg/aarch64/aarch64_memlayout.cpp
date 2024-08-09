@@ -297,10 +297,6 @@ void AArch64MemLayout::LayoutFormalParams()
                 SetSymAllocInfo(stIndex, *symLoc1);
             }
         }
-        if (cgFunc->GetCG()->GetCGOptions().WithDwarf() && cgFunc->GetWithSrc() &&
-            (symLoc->GetMemSegment() != nullptr)) {
-            cgFunc->AddDIESymbolLocation(sym, symLoc, true);
-        }
     }
 }
 
@@ -430,9 +426,6 @@ void AArch64MemLayout::LayoutLocalVariables(std::vector<MIRSymbol *> &tempVar, s
             segLocals.SetSize(segLocals.GetSize() +
                               static_cast<uint32>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->GetSize()));
         }
-        if (cgFunc->GetCG()->GetCGOptions().WithDwarf() && cgFunc->GetWithSrc()) {
-            cgFunc->AddDIESymbolLocation(sym, symLoc, false);
-        }
     }
     // when O2 && !ilp32 && C module -> enable code layout
     if (!CGOptions::DoOptimizedFrameLayout() || CGOptions::IsArm64ilp32() ||
@@ -441,11 +434,7 @@ void AArch64MemLayout::LayoutLocalVariables(std::vector<MIRSymbol *> &tempVar, s
     }
     for (auto lSymIt : localSyms) {
         MIRSymbol *lSym = lSymIt;
-        uint32 stIndex = lSym->GetStIndex();
         LayoutLocalsInSize(*lSym);
-        if (cgFunc->GetCG()->GetCGOptions().WithDwarf()) {
-            cgFunc->AddDIESymbolLocation(lSym, GetSymAllocInfo(stIndex), false);
-        }
     }
 }
 

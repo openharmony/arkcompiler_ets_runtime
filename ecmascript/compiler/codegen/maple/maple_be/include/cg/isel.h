@@ -60,7 +60,6 @@ public:
     Operand *SelectDepositBits(const DepositbitsNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
     virtual Operand *SelectAbs(UnaryNode &node, Operand &opnd0);
     Operand *SelectAlloca(UnaryNode &node, Operand &opnd0);
-    Operand *SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &parent);
     ImmOperand *SelectIntConst(const MIRIntConst &intConst, PrimType primType);
     void SelectCallCommon(StmtNode &stmt, const MPISel &iSel);
     void SelectAdd(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
@@ -76,7 +75,6 @@ public:
     virtual void SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize) = 0;
     virtual void SelectGoto(GotoNode &stmt) = 0;
     virtual void SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOpnd) = 0;
-    virtual void SelectIgoto(Operand &opnd0) = 0;
     virtual void SelectCall(CallNode &callNode) = 0;
     virtual void SelectIcall(IcallNode &icallNode) = 0;
     virtual void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) = 0;

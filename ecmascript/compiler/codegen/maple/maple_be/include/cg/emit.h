@@ -23,7 +23,6 @@
 #include <array>
 #include <sstream>
 #include "isa.h"
-#include "lsda.h"
 #include "asm_info.h"
 #include "cg.h"
 
@@ -277,7 +276,6 @@ public:
 
     void EmitLabelRef(LabelIdx labIdx);
     void EmitStmtLabel(LabelIdx labIdx);
-    void EmitLabelPair(const LabelPair &pairLabel);
     void EmitLabelForFunc(const MIRFunction *func, LabelIdx labIdx);
 
     /* Emit signed/unsigned integer literals in decimal or hexadecimal */

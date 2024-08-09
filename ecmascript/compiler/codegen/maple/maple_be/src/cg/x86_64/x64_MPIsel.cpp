@@ -699,16 +699,6 @@ void X64MPIsel::SelectGoto(GotoNode &stmt)
     return;
 }
 
-void X64MPIsel::SelectIgoto(Operand &opnd0)
-{
-    CHECK_FATAL(opnd0.IsRegister(), "only register implemented!");
-    MOperator mOp = x64::MOP_jmpq_r;
-    Insn &jmpInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
-    jmpInsn.AddOpndChain(opnd0);
-    cgFunc->GetCurBB()->AppendInsn(jmpInsn);
-    return;
-}
-
 /* This function is to generate an inline function to generate the va_list data structure */
 /* type $__va_list <struct {
      @__stack <* void> align(8),

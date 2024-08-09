@@ -41,8 +41,6 @@ public:
         dump = dumpFunc;
     }
 
-    virtual void CreateLocalBuilder(pthread_mutex_t &mtx);
-    virtual void ProcessFunc(MIRFunction *func);
     virtual void Finish() {}
 
 protected:
@@ -59,10 +57,6 @@ protected:
         currBlock = &block;
     }
 
-    virtual void ProcessBlock(StmtNode &stmt);
-    // Each phase needs to implement its own ProcessStmt
-    virtual void ProcessStmt(StmtNode &) {}
-
     MIRFunction *currFunc = nullptr;
     BlockNode *currBlock = nullptr;
     MIRBuilderExt *builder = nullptr;
@@ -75,37 +69,12 @@ private:
 
 class FuncOptimizeIterator : public MplScheduler {
 public:
-    class Task : public MplTask {
-    public:
-        explicit Task(MIRFunction &func) : function(&func) {}
-
-        ~Task() = default;
-
-    protected:
-        int RunImpl(MplTaskParam *param) override
-        {
-            auto &impl = static_cast<FuncOptimizeImpl &>(utils::ToRef(param));
-            impl.ProcessFunc(function);
-            return 0;
-        }
-
-        int FinishImpl(MplTaskParam *) override
-        {
-            return 0;
-        }
-
-    private:
-        MIRFunction *function;
-    };
-
     FuncOptimizeIterator(const std::string &phaseName, std::unique_ptr<FuncOptimizeImpl> phaseImpl);
     virtual ~FuncOptimizeIterator();
     virtual void Run(uint32 threadNum = 1, bool isSeq = false);
 
 protected:
     thread_local static FuncOptimizeImpl *phaseImplLocal;
-    void RunSerial();
-    void RunParallel(uint32 threadNum, bool isSeq = false);
     virtual MplTaskParam *CallbackGetTaskRunParam() const
     {
         return phaseImplLocal;
@@ -114,12 +83,6 @@ protected:
     virtual MplTaskParam *CallbackGetTaskFinishParam() const
     {
         return phaseImplLocal;
-    }
-
-    virtual void CallbackThreadMainStart()
-    {
-        phaseImplLocal = phaseImpl->Clone();
-        utils::ToRef(phaseImplLocal).CreateLocalBuilder(mutexGlobal);
     }
 
     virtual void CallbackThreadMainEnd()

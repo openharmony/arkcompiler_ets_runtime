@@ -15,7 +15,6 @@
 
 #ifndef MAPLEBE_INCLUDE_CG_CG_CFG_H
 #define MAPLEBE_INCLUDE_CG_CG_CFG_H
-#include "eh_func.h"
 #include "cgbb.h"
 
 namespace maplebe {
@@ -53,16 +52,9 @@ public:
      * The jump target of bb is modified to newTarget's jump target.
      */
     virtual void ModifyJumpTarget(BB &newTarget, BB &bb) = 0;
-    /* Check if it requires to add extra gotos when relocate bb */
-    virtual Insn *CloneInsn(Insn &originalInsn) = 0;
-    /* Create a new virtual register operand which has the same type and size as the given one. */
-    virtual RegOperand *CreateVregFromReg(const RegOperand &reg) = 0;
     virtual LabelIdx GetJumpLabel(const Insn &insn) const = 0;
     virtual bool IsCompareInsn(const Insn &insn) const = 0;
-    virtual bool IsCompareAndBranchInsn(const Insn &insn) const = 0;
     virtual bool IsTestAndSetCCInsn(const Insn &insn) const = 0;
-    virtual bool IsTestAndBranchInsn(const Insn &insn) const = 0;
-    virtual bool IsAddOrSubInsn(const Insn &insn) const = 0;
     virtual bool IsSimpleJumpInsn(const Insn &insn) const = 0;
 
     virtual void ReTargetSuccBB(BB &bb, LabelIdx newTarget) const = 0;
@@ -84,7 +76,6 @@ public:
 
     void BuildCFG();
     void CheckCFG();
-    void CheckCFGFreq();
 
     void InitInsnVisitor(CGFunc &func) const;
     InsnVisitor *GetInsnModifier() const
@@ -115,29 +106,14 @@ public:
      */
     void UpdateCommonExitBBInfo();
 
-    /* Loop up if the given label is in the exception tables in LSDA */
-    static bool InLSDA(LabelIdx label, const EHFunc *ehFunc);
-    static bool InSwitchTable(LabelIdx label, const CGFunc &func);
-
-    RegOperand *CreateVregFromReg(const RegOperand &pReg) const;
-    Insn *CloneInsn(Insn &originalInsn) const;
     static BB *GetTargetSuc(BB &curBB, bool branchOnly = false, bool isGotoIf = false);
-    bool IsCompareAndBranchInsn(const Insn &insn) const;
-    bool IsTestAndBranchInsn(const Insn &insn) const;
-    bool IsAddOrSubInsn(const Insn &insn) const;
 
-    Insn *FindLastCondBrInsn(BB &bb) const;
     static void FindAndMarkUnreachable(CGFunc &func);
     void FlushUnReachableStatusAndRemoveRelations(BB &bb, const CGFunc &func) const;
-    void MarkLabelTakenBB() const;
     void UnreachCodeAnalysis() const;
     void FindWillExitBBs(BB *bb, std::set<BB *, BBIdCmp> *visitedBBs);
     void WontExitAnalysis();
     BB *FindLastRetBB();
-
-    void UpdatePredsSuccsAfterSplit(BB &pred, BB &succ, BB &newBB) const;
-    void BreakCriticalEdge(BB &pred, BB &succ) const;
-    /* cgcfgvisitor */
 private:
     CGFunc *cgFunc = nullptr;
     static InsnVisitor *insnVisitor;
