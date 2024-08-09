@@ -159,7 +159,7 @@
 namespace panda::ecmascript::builtins {
 class BuiltinsArkTools : public base::BuiltinsBase {
 public:
-    // Make sure the enable-ark-tools has been opened before use it
+    // Make sure the enable-ark-tools and open-ark-tools has been opened before use it
     // Use through ArkTools.print(msg, [obj1, obj2, ... objn]) in js
     static JSTaggedValue ObjectDump(EcmaRuntimeCallInfo *info);
 
