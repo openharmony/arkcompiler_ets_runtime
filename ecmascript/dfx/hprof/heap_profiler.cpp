@@ -271,6 +271,9 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             });
             FillIdMap();
         }
+        if (dumpOption.isDumpOOM) {
+            return DoDump(stream, progress, dumpOption);
+        }
         // fork
         if ((pid = ForkBySyscall()) < 0) {
             LOG_ECMA(ERROR) << "DumpHeapSnapshot fork failed!";
