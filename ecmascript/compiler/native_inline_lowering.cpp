@@ -592,9 +592,13 @@ void NativeInlineLowering::TryInlineNumberIsInteger(GateRef gate, size_t argc, b
     }
     CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
+    auto id = BuiltinsStubCSigns::ID::NumberIsInteger;
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
-                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsInteger)));
+                                 builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
     }
     GateRef ret = builder_.NumberIsInteger(tacc.GetArg0());
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
@@ -668,9 +672,13 @@ void NativeInlineLowering::TryInlineNumberIsSafeInteger(GateRef gate, size_t arg
     }
     CallThis1TypeInfoAccessor tacc(compilationEnv_, circuit_, gate);
     Environment env(gate, circuit_, &builder_);
+    auto id = BuiltinsStubCSigns::ID::NumberIsSafeInteger;
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(),
-                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::NumberIsSafeInteger)));
+                                 builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
     }
     GateRef ret = builder_.NumberIsSafeInteger(tacc.GetArg0());
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);

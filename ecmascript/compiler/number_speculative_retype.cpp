@@ -1695,9 +1695,9 @@ GateRef NumberSpeculativeRetype::VisitNumberIsInteger(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     ASSERT(acc_.GetNumValueIn(gate) == 1);
     GateRef input = acc_.GetValueIn(gate, 0);
-    auto type = GetNumberInputTypeInfo(input);
-    if (type == TypeInfo::INT32) {
-        GateRef result = builder_.True();
+    auto type = GetNumberInputTypeInfo<false>(input);
+    if (type == TypeInfo::INT32 || type == TypeInfo::INT1) {
+        GateRef result = type == TypeInfo::INT32 ? builder_.True() : builder_.False();
         ResizeAndSetTypeInfo(result, TypeInfo::INT1);
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
         return Circuit::NullGate();
@@ -1883,11 +1883,13 @@ GateRef NumberSpeculativeRetype::VisitBigIntAsIntN(GateRef gate)
     return Circuit::NullGate();
 }
 
+template<bool BOOL_AS_INT>
 TypeInfo NumberSpeculativeRetype::GetNumberInputTypeInfo(GateRef gate, bool skipTagged)
 {
     TypeInfo typeInfo = GetOutputTypeInfo(gate);
     switch (typeInfo) {
         case TypeInfo::INT1:
+            return BOOL_AS_INT ? TypeInfo::INT32 : TypeInfo::INT1;
         case TypeInfo::INT32:
         case TypeInfo::HOLE_INT:
             return TypeInfo::INT32;
@@ -1897,8 +1899,11 @@ TypeInfo NumberSpeculativeRetype::GetNumberInputTypeInfo(GateRef gate, bool skip
                 return TypeInfo::FLOAT64;
             }
             GateType gateType = acc_.GetGateType(gate);
-            if (gateType.IsIntType() || gateType.IsBooleanType()) {
+            if (gateType.IsIntType()) {
                 return TypeInfo::INT32;
+            }
+            if (gateType.IsBooleanType()) {
+                return BOOL_AS_INT ? TypeInfo::INT32 : TypeInfo::INT1;
             }
             return TypeInfo::FLOAT64;
         }

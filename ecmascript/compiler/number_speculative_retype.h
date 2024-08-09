@@ -142,6 +142,7 @@ private:
     void ConvertForShiftAndLogicalOperator(GateRef gate, GateType leftType, GateType rightType);
     void ConvertForDoubleOperator(GateRef gate, GateType leftType, GateType rightType);
 
+    template<bool BOOL_AS_INT = true>
     TypeInfo GetNumberInputTypeInfo(GateRef gate, bool skipTagged = false);
     void SetNewInputForMathImul(GateRef gate, int idx, Label *exit);
     double GetDoubleValueFromConst(GateRef gate);

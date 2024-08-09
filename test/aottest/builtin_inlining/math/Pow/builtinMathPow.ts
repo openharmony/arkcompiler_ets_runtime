@@ -122,6 +122,22 @@ len = Math.pow(0.2, -Infinity);
 print(len); //: Infinity
 
 //aot: [trace] aot inline builtin: Math.pow, caller function name:func_main_0@builtinMathPow
+len = Math.pow(1, Infinity);
+print(len); //: NaN
+
+//aot: [trace] aot inline builtin: Math.pow, caller function name:func_main_0@builtinMathPow
+len = Math.pow(-1, Infinity);
+print(len); //: NaN
+
+//aot: [trace] aot inline builtin: Math.pow, caller function name:func_main_0@builtinMathPow
+len = Math.pow(1, -Infinity);
+print(len); //: NaN
+
+//aot: [trace] aot inline builtin: Math.pow, caller function name:func_main_0@builtinMathPow
+len = Math.pow(-1, -Infinity);
+print(len); //: NaN
+
+//aot: [trace] aot inline builtin: Math.pow, caller function name:func_main_0@builtinMathPow
 //aot: [trace] Check Type: NotNumber1
 len = Math.pow(2, "three");
 print(len); //: NaN

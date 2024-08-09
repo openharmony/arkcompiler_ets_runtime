@@ -316,6 +316,7 @@ group("ark_aot_ts_test") {
     "sendablefunc",
     "sendablecontext",
     "createarraywithbuffer2",
+    "builtins_number",
     "builtins_number2",
     "builtins_parseint",
     "constructor",
