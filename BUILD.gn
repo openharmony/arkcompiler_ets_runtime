@@ -843,6 +843,8 @@ ecma_source = [
   "ecmascript/mem/linear_space.cpp",
   "ecmascript/mem/machine_code.cpp",
   "ecmascript/mem/mem_controller.cpp",
+  "ecmascript/mem/shared_mem_contraller.cpp",
+  "ecmascript/mem/mem_controller_utils.cpp",
   "ecmascript/mem/mem_map_allocator.cpp",
   "ecmascript/mem/native_area_allocator.cpp",
   "ecmascript/mem/parallel_evacuator.cpp",

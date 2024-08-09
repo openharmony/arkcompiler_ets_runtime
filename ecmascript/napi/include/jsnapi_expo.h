@@ -1534,6 +1534,8 @@ public:
     static void NotifyNativeReturn(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyLoadModule(const EcmaVM *vm);
     static void NotifyUIIdle(const EcmaVM *vm, int idleTime);
+    static void NotifyLooperIdle(const EcmaVM *vm, int idleTime);
+    static bool IsJSMainThreadOfEcmaVM(const EcmaVM *vm);
     static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,

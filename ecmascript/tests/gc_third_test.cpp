@@ -265,10 +265,10 @@ HWTEST_F_L0(GCTest, IdleGCTriggerTest)
         [[maybe_unused]] JSHandle<TaggedArray> sArray = factory->NewSOldSpaceTaggedArray(1024,
                     JSTaggedValue::Hole());
         if (i%340 == 0) {
-            heap->CheckAndTriggerGCForIdle(0);
+            heap->CheckAndTriggerGCForIdle(150, CheckIdleGCType::LOOPER);
         }
     }
-    heap->CheckAndTriggerGCForIdle(0);
+    heap->CheckAndTriggerGCForIdle(350, CheckIdleGCType::LOOPER);
     int afterLocalGCCount = heap->GetEcmaGCStats()->GetGCCount();
     int afterSharedGCCount = sHeap->GetEcmaGCStats()->GetGCCount();
     EXPECT_TRUE(afterLocalGCCount - baseLocalGCCount < 10);

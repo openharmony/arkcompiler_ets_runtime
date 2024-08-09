@@ -30,11 +30,6 @@ constexpr static int MILLISECONDS_PER_SECOND = 1000;
 
 using BytesAndDuration = std::pair<uint64_t, double>;
 
-inline BytesAndDuration MakeBytesAndDuration(uint64_t bytes, double duration)
-{
-    return std::make_pair(bytes, duration);
-}
-
 class MemController {
 public:
     explicit MemController(Heap* heap);
@@ -57,6 +52,12 @@ public:
 
     void StartCalculationBeforeGC();
     void StopCalculationAfterGC(TriggerGCType gcType);
+
+    void RecordAllocationForIdle();
+    void UpdateObjectUsageRateAfterGC();
+    double GetIdleNewSpaceAllocationThroughputPerMS() const;
+    double GetIdleOldSpaceAllocationThroughputPerMS() const;
+    bool CheckLowAllocationUsageState() const;
 
     void RecordAfterConcurrentMark(MarkType markType, const ConcurrentMarker *marker);
 
@@ -172,6 +173,16 @@ public:
         recordedSurvivalRates_.Reset();
     }
 
+    double GetLastGCOldSpaceObjectUsageRate() const
+    {
+        return lastGCOldSpaceObjectUsageRate_;
+    }
+
+    double GetLastGCObjectUsageRate() const
+    {
+        return lastGCObjectUsageRate_;
+    }
+
 private:
     static constexpr int LENGTH = 10;
     // Decayed weight for predicting survival rate.
@@ -200,6 +211,15 @@ private:
     size_t nonMovableSpaceAllocSizeSinceGC_ {0};
     size_t codeSpaceAllocSizeSinceGC_ {0};
     size_t hugeObjectAllocSizeSinceGC_{0};
+
+    // Records data at idle time points.
+    double allocTimeMsIdle_ {0.0};
+    double lastGCObjectUsageRate_ {1.0f};
+    double lastGCOldSpaceObjectUsageRate_ {1.0f};
+    size_t newSpaceRecordLastTimeSizeIdle_ {0};
+    size_t oldSpaceRecordLastTimeSizeIdle_ {0};
+    base::GCRingBuffer<BytesAndDuration, LENGTH> recordedIdleNewSpaceAllocations_;
+    base::GCRingBuffer<BytesAndDuration, LENGTH> recordedIdleOldSpaceAllocations_;
 
     int startCounter_ {0};
     double markCompactSpeedCache_ {0.0};

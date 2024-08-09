@@ -88,6 +88,19 @@ static constexpr size_t MAX_REGEXP_CACHE_SIZE = 8_KB;
 // idle gc
 static constexpr size_t IDLE_GC_YOUNG_SPACE = 3_MB;
 
+static constexpr double LOW_ALLOCATION_RATE_PER_MS = 1024.0f * 1024 / 10000;
+static constexpr bool ENABLE_POST_IDLE_TASK = false;
+static constexpr uint32_t EVENTHANDLER_POST_IDLE_TASK_DELAY_TIMES_MS = 500;
+static constexpr double OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC = 0.6f;
+static constexpr double OBJECT_USAGE_RATE_OF_FULLGC = 0.5f;
+static constexpr double IDLE_SPACE_SIZE_LIMIT_RATE = 0.8;
+static constexpr int MIN_CHECK_IDLE_FULL_GC_INTERVAL = 1000; // ms
+static constexpr int MIN_TRIGGER_IDLE_FULL_GC_INTERVAL = 50; // second
+static constexpr double IDLE_SPACE_SIZE_MIN_INC_RATIO = 1.1f;
+static constexpr size_t IDLE_SPACE_SIZE_MIN_INC_STEP = 5_MB;
+static constexpr int IDLE_MIN_SLEEP_TIME_FOR_OLD_GC = 50; // ms
+static constexpr int IDLE_MIN_SLEEP_TIME_FOR_FULL_GC = 200; // ms
+
 using TaggedType = uint64_t;
 static constexpr uint32_t TAGGED_TYPE_SIZE = sizeof(TaggedType);
 static constexpr uint32_t TAGGED_TYPE_SIZE_LOG = base::MathHelper::GetIntLog2(TAGGED_TYPE_SIZE);

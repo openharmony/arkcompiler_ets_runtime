@@ -112,6 +112,58 @@ void MemController::StartCalculationBeforeGC()
     oldSpaceAllocSizeSinceGC_ += hugeObjectAllocSizeSinceGC;
     nonMovableSpaceAllocSizeSinceGC_ += nonMovableSpaceAllocSize;
     codeSpaceAllocSizeSinceGC_ += codeSpaceAllocSize;
+
+    if (heap_->GetEcmaGCStats()->GetGCReason() != GCReason::IDLE) {
+        recordedIdleNewSpaceAllocations_.Push(MakeBytesAndDuration(
+            heap_->GetNewSpace()->GetHeapObjectSize() - newSpaceRecordLastTimeSizeIdle_,
+            currentTimeInMs - allocTimeMsIdle_));
+        recordedIdleOldSpaceAllocations_.Push(MakeBytesAndDuration(
+            heap_->GetOldSpace()->GetHeapObjectSize() - oldSpaceRecordLastTimeSizeIdle_,
+            currentTimeInMs - allocTimeMsIdle_));
+    }
+}
+
+void MemController::RecordAllocationForIdle()
+{
+    double currentTimeInMs = GetSystemTimeInMs();
+    size_t currentNewSpaceObjectSize = heap_->GetNewSpace()->GetHeapObjectSize();
+    size_t currentOldSpaceObjectSize = heap_->GetOldSpace()->GetHeapObjectSize();
+    double duration = currentTimeInMs - allocTimeMsIdle_;
+    allocTimeMsIdle_ = currentTimeInMs;
+    if (currentNewSpaceObjectSize < newSpaceRecordLastTimeSizeIdle_ ||
+        currentOldSpaceObjectSize < oldSpaceRecordLastTimeSizeIdle_) {
+        newSpaceRecordLastTimeSizeIdle_ = currentNewSpaceObjectSize;
+        oldSpaceRecordLastTimeSizeIdle_ = currentOldSpaceObjectSize;
+        return;
+    }
+
+    size_t newSpaceAllocSizeSinceIdle = currentNewSpaceObjectSize - newSpaceRecordLastTimeSizeIdle_;
+    newSpaceRecordLastTimeSizeIdle_ = currentNewSpaceObjectSize;
+    size_t oldSpaceAllocSizeSinceIdle = currentOldSpaceObjectSize - oldSpaceRecordLastTimeSizeIdle_;
+    oldSpaceRecordLastTimeSizeIdle_ = currentOldSpaceObjectSize;
+    recordedIdleNewSpaceAllocations_.Push(MakeBytesAndDuration(newSpaceAllocSizeSinceIdle, duration));
+    recordedIdleOldSpaceAllocations_.Push(MakeBytesAndDuration(oldSpaceAllocSizeSinceIdle, duration));
+}
+
+bool MemController::CheckLowAllocationUsageState() const
+{
+    LOG_GC(DEBUG) << "local CheckLowAllocationUsageState NewSpaceAllocBytesPerMS:" <<
+        GetIdleNewSpaceAllocationThroughputPerMS() << ",OldSpaceAllocBytesPerMS:" <<
+        GetIdleOldSpaceAllocationThroughputPerMS();
+    return GetIdleNewSpaceAllocationThroughputPerMS() < LOW_ALLOCATION_RATE_PER_MS &&
+                GetIdleOldSpaceAllocationThroughputPerMS() < LOW_ALLOCATION_RATE_PER_MS;
+}
+
+void MemController::UpdateObjectUsageRateAfterGC()
+{
+    lastGCObjectUsageRate_ = static_cast<double>(heap_->GetHeapObjectSize()) /
+        static_cast<double>(heap_->GetCommittedSize());
+
+    lastGCOldSpaceObjectUsageRate_ = static_cast<double>(heap_->GetOldSpace()->GetHeapObjectSize()) /
+        static_cast<double>(heap_->GetOldSpace()->GetCommittedSize());
+
+    LOG_GC(DEBUG) << "UpdateObjectUsageRateAfterGC Shared lastGCObjectUsageRate:" << lastGCObjectUsageRate_
+                << ",lastGCOldSpaceObjectUsageRate:" << lastGCOldSpaceObjectUsageRate_;
 }
 
 void MemController::StopCalculationAfterGC(TriggerGCType gcType)
@@ -159,6 +211,12 @@ void MemController::StopCalculationAfterGC(TriggerGCType gcType)
         }
         default:
             break;
+    }
+
+    if (heap_->GetEcmaGCStats()->GetGCReason() != GCReason::IDLE) {
+        newSpaceRecordLastTimeSizeIdle_ = heap_->GetNewSpace()->GetHeapObjectSize();
+        oldSpaceRecordLastTimeSizeIdle_ = heap_->GetOldSpace()->GetHeapObjectSize();
+        allocTimeMsIdle_ = gcEndTime_;
     }
 }
 
@@ -253,4 +311,15 @@ double MemController::GetFullSpaceConcurrentMarkSpeedPerMS() const
 {
     return CalculateAverageSpeed(recordedConcurrentMarks_);
 }
+
+double MemController::GetIdleNewSpaceAllocationThroughputPerMS() const
+{
+    return CalculateAverageSpeed(recordedIdleNewSpaceAllocations_);
+}
+
+double MemController::GetIdleOldSpaceAllocationThroughputPerMS() const
+{
+    return CalculateAverageSpeed(recordedIdleOldSpaceAllocations_);
+}
+
 }  // namespace panda::ecmascript
