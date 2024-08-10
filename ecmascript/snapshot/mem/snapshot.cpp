@@ -189,6 +189,12 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
         UNREACHABLE();
     }
 
+    std::ifstream file(realPath);
+    if (!file.good()) {
+        return false;
+    }
+    file.close();
+
     SnapshotProcessor processor(vm_);
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
