@@ -160,7 +160,10 @@ void EcmaVM::PreFork()
     heap_->GetReadOnlySpace()->SetReadOnly();
     heap_->DisableParallelGC();
     SetPostForked(false);
-    SharedHeap::GetInstance()->DisableParallelGC(thread_);
+
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CompactHeapBeforeFork(thread_);
+    sHeap->DisableParallelGC(thread_);
 }
 
 void EcmaVM::PostFork()

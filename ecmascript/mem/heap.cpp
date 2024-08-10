@@ -215,6 +215,7 @@ void SharedHeap::Initialize(NativeAreaAllocator *nativeAreaAllocator, HeapRegion
     sReadOnlySpace_ = new SharedReadOnlySpace(this, readOnlySpaceCapacity, readOnlySpaceCapacity);
     sHugeObjectSpace_ = new SharedHugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     sharedMemController_ = new SharedMemController(this);
+    sAppSpawnSpace_ = new SharedAppSpawnSpace(this, oldSpaceCapacity);
     growingFactor_ = config_.GetSharedHeapLimitGrowingFactor();
     growingStep_ = config_.GetSharedHeapLimitGrowingStep();
     incNativeSizeTriggerSharedCM_= config_.GetIncNativeSizeTriggerSharedCM();
@@ -254,6 +255,11 @@ void SharedHeap::Destroy()
         sReadOnlySpace_->Destroy();
         delete sReadOnlySpace_;
         sReadOnlySpace_ = nullptr;
+    }
+    if (sAppSpawnSpace_ != nullptr) {
+        sAppSpawnSpace_->Reset();
+        delete sAppSpawnSpace_;
+        sAppSpawnSpace_ = nullptr;
     }
     if (sharedGC_ != nullptr) {
         delete sharedGC_;
@@ -586,6 +592,10 @@ size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
         VerifyObjectVisitor verifier(this, &failCount, verifyKind);
         sHugeObjectSpace_->IterateOverObjects(verifier);
     }
+    {
+        VerifyObjectVisitor verifier(this, &failCount, verifyKind);
+        sAppSpawnSpace_->IterateOverMarkedObjects(verifier);
+    }
     return failCount;
 }
 
@@ -604,6 +614,50 @@ bool SharedHeap::NeedStopCollection()
         return true;
     }
     return false;
+}
+
+void SharedHeap::CompactHeapBeforeFork(JSThread *thread)
+{
+    ThreadManagedScope managedScope(thread);
+    WaitGCFinished(thread);
+    sharedFullGC_->SetForAppSpawn(true);
+    CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    sharedFullGC_->SetForAppSpawn(false);
+}
+
+void SharedHeap::MoveOldSpaceToAppspawn()
+{
+    auto committedSize = sOldSpace_->GetCommittedSize();
+    sAppSpawnSpace_->SetInitialCapacity(committedSize);
+    sAppSpawnSpace_->SetMaximumCapacity(committedSize);
+    sOldSpace_->SetInitialCapacity(sOldSpace_->GetInitialCapacity() - committedSize);
+    sOldSpace_->SetMaximumCapacity(sOldSpace_->GetMaximumCapacity() - committedSize);
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+    sAppSpawnSpace_->SwapAllocationCounter(sOldSpace_);
+#endif
+    auto threadId = Runtime::GetInstance()->GetMainThread()->GetThreadId();
+    sOldSpace_->EnumerateRegions([&](Region *region) {
+        region->SetRegionSpaceFlag(RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE);
+        PageTag(region, region->GetCapacity(), PageTagType::HEAP, region->GetSpaceTypeName(), threadId);
+        sAppSpawnSpace_->AddRegion(region);
+        sAppSpawnSpace_->IncreaseLiveObjectSize(region->AliveObject());
+    });
+    sOldSpace_->GetRegionList().Clear();
+    sOldSpace_->Reset();
+}
+
+void SharedHeap::ReclaimForAppSpawn()
+{
+    sSweeper_->WaitAllTaskFinished();
+    sHugeObjectSpace_->ReclaimHugeRegion();
+    sCompressSpace_->Reset();
+    MoveOldSpaceToAppspawn();
+    auto cb = [] (Region *region) {
+        region->ClearMarkGCBitset();
+        region->ResetAliveObject();
+    };
+    sNonMovableSpace_->EnumerateRegions(cb);
+    sHugeObjectSpace_->EnumerateRegions(cb);
 }
 
 void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[maybe_unused]]JSThread *thread)

@@ -388,6 +388,21 @@ void SharedSparseSpace::CheckAndTriggerLocalFullMark(JSThread *thread)
     }
 }
 
+SharedAppSpawnSpace::SharedAppSpawnSpace(SharedHeap *heap, size_t initialCapacity)
+    : SharedSparseSpace(heap, MemSpaceType::SHARED_APPSPAWN_SPACE, initialCapacity, initialCapacity)
+{
+}
+
+void SharedAppSpawnSpace::IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const
+{
+    EnumerateRegions([&](Region *current) {
+        current->IterateAllMarkedBits([&](void *mem) {
+            ASSERT(current->InRange(ToUintPtr(mem)));
+            visitor(reinterpret_cast<TaggedObject *>(mem));
+        });
+    });
+}
+
 SharedNonMovableSpace::SharedNonMovableSpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity)
     : SharedSparseSpace(heap, MemSpaceType::SHARED_NON_MOVABLE, initialCapacity, maximumCapacity)
 {
@@ -463,7 +478,9 @@ uintptr_t SharedLocalSpace::Allocate(size_t size, bool isExpand)
             object = allocator_->Allocate(size);
         }
     }
-    // Alive size not increase here, use shared marker to increase size.
+    if (object != 0) {
+        Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);
+    }
     return object;
 }
 

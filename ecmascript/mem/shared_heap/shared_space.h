@@ -136,6 +136,16 @@ private:
     size_t triggerLocalFullMarkLimit_ {0};
 };
 
+class SharedAppSpawnSpace : public SharedSparseSpace {
+public:
+    SharedAppSpawnSpace(SharedHeap *heap, size_t initialCapacity);
+    ~SharedAppSpawnSpace() override = default;
+    NO_COPY_SEMANTIC(SharedAppSpawnSpace);
+    NO_MOVE_SEMANTIC(SharedAppSpawnSpace);
+
+    void IterateOverMarkedObjects(const std::function<void(TaggedObject *object)> &visitor) const;
+};
+
 class SharedNonMovableSpace : public SharedSparseSpace {
 public:
     SharedNonMovableSpace(SharedHeap *heap, size_t initialCapacity, size_t maximumCapacity);

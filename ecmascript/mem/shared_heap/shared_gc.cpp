@@ -70,6 +70,9 @@ void SharedGC::Initialize()
     TRACE_GC(GCStats::Scope::ScopeId::Initialize, sHeap_->GetEcmaGCStats());
     if (!markingInProgress_) {
         sHeap_->Prepare(true);
+        sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
+            current->ClearMarkGCBitset();
+        });
         sHeap_->EnumerateOldSpaceRegions([](Region *current) {
             ASSERT(current->InSharedSweepableSpace());
             current->ResetAliveObject();

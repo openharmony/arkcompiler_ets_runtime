@@ -589,6 +589,11 @@ public:
         return sReadOnlySpace_;
     }
 
+    SharedAppSpawnSpace *GetAppSpawnSpace() const
+    {
+        return sAppSpawnSpace_;
+    }
+
     void SetForceGC(bool forceGC)
     {
         LockHolder lock(smartGCStats_.sensitiveStatusMutex_);
@@ -712,6 +717,8 @@ public:
     void Prepare(bool inTriggerGCThread);
     void Reclaim(TriggerGCType gcType);
     void PostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase);
+    void CompactHeapBeforeFork(JSThread *thread);
+    void ReclaimForAppSpawn();
 
     SharedGCWorkManager *GetWorkManager() const
     {
@@ -786,6 +793,8 @@ public:
 private:
     void ProcessAllGCListeners();
     inline void CollectGarbageFinish(bool inDaemon);
+    
+    void MoveOldSpaceToAppspawn();
 
     void ReclaimRegions(TriggerGCType type);
 
@@ -831,6 +840,7 @@ private:
     SharedNonMovableSpace *sNonMovableSpace_ {nullptr};
     SharedReadOnlySpace *sReadOnlySpace_ {nullptr};
     SharedHugeObjectSpace *sHugeObjectSpace_ {nullptr};
+    SharedAppSpawnSpace *sAppSpawnSpace_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
     SharedConcurrentMarker *sConcurrentMarker_ {nullptr};
     SharedConcurrentSweeper *sSweeper_ {nullptr};

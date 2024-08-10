@@ -218,6 +218,33 @@ HWTEST_F_L0(GCTest, SharedFullGC)
     EXPECT_EQ(oldSizebase, oldSizeAfter);
 }
 
+HWTEST_F_L0(GCTest, SharedFullGCInAppspawn)
+{
+    constexpr size_t ALLOCATE_COUNT = 10;
+    constexpr size_t ALLOCATE_SIZE = 512;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CompactHeapBeforeFork(thread);
+    EXPECT_TRUE(sHeap->GetOldSpace()->GetHeapObjectSize() == 0);
+    auto oldSizebase = sHeap->GetOldSpace()->GetHeapObjectSize();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < ALLOCATE_COUNT; i++) {
+            factory->NewSOldSpaceTaggedArray(ALLOCATE_SIZE, JSTaggedValue::Undefined());
+        }
+    }
+    size_t oldSizeBefore = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizebase);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    sHeap->GetAppSpawnSpace()->IterateOverMarkedObjects([](TaggedObject *object) {
+        Region *objectRegion = Region::ObjectAddressToRange(object);
+        EXPECT_TRUE(objectRegion->InSharedAppSpawnSpace());
+    });
+    auto oldSizeAfter = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizeAfter);
+    EXPECT_EQ(oldSizebase, oldSizeAfter);
+}
+
 HWTEST_F_L0(GCTest, SharedGCSuspendAll)
 {
     EXPECT_TRUE(thread->IsInRunningState());

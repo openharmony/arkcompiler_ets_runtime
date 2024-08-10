@@ -33,6 +33,10 @@ public:
 
     void RunPhases() override;
     void ResetWorkManager(SharedGCWorkManager *workManager);
+    void SetForAppSpawn(bool flag)
+    {
+        isAppspawn_ = flag;
+    }
 protected:
     void Initialize() override;
     void Mark() override;
@@ -45,6 +49,7 @@ private:
 
     SharedHeap *sHeap_  {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
+    bool isAppspawn_ {false};
 };
 }  // namespace panda::ecmascript
 

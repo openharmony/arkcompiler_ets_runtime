@@ -60,7 +60,9 @@ void SharedFullGC::Initialize()
         // Concurrent shared mark should always trigger shared gc without moving.
         sHeap_->GetConcurrentMarker()->Reset(true);
     }
-
+    sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
+        current->ClearMarkGCBitset();
+    });
     sHeap_->EnumerateOldSpaceRegions([](Region *current) {
         ASSERT(current->InSharedSweepableSpace());
         current->ResetAliveObject();
@@ -124,7 +126,12 @@ void SharedFullGC::Finish()
     TRACE_GC(GCStats::Scope::ScopeId::Finish, sHeap_->GetEcmaGCStats());
     sHeap_->SwapOldSpace();
     sWorkManager_->Finish();
-    sHeap_->Reclaim(TriggerGCType::SHARED_FULL_GC);
+    if (!isAppspawn_) {
+        sHeap_->Reclaim(TriggerGCType::SHARED_FULL_GC);
+    } else {
+        sHeap_->ReclaimForAppSpawn();
+    }
+    
     sHeap_->GetSweeper()->TryFillSweptRegion();
 }
 

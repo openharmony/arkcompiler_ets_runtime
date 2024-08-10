@@ -39,6 +39,7 @@ SerializedObjectSpace BaseSerializer::GetSerializedObjectSpace(TaggedObject *obj
             return SerializedObjectSpace::MACHINE_CODE_SPACE;
         case RegionSpaceFlag::IN_HUGE_OBJECT_SPACE:
             return SerializedObjectSpace::HUGE_SPACE;
+        case RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE:
         case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
             return SerializedObjectSpace::SHARED_OLD_SPACE;
         case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
