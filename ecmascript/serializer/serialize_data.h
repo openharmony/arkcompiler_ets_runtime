@@ -176,22 +176,22 @@ public:
         return RawDataEmit(data, length, bufferSize_);
     }
 
-    ssize_t RawDataEmit(const void *data, size_t length, ssize_t offset)
+    ssize_t RawDataEmit(const void *data, size_t length, size_t offset)
     {
-        if (length <= 0 || offset < 0) {
+        if (length <= 0) {
             return -1;
         }
-        if ((static_cast<size_t>(offset) + length) > bufferCapacity_) {
+        if ((offset + length) > bufferCapacity_) {
             if (!AllocateBuffer(length)) {
                 return -1;
             }
         }
-        if (memcpy_s(buffer_ + offset, bufferCapacity_ - static_cast<size_t>(offset), data, length) != EOK) {
+        if (memcpy_s(buffer_ + offset, bufferCapacity_ - offset, data, length) != EOK) {
             LOG_FULL(ERROR) << "Failed to memcpy_s Data";
             return -1;
         }
         ssize_t res = offset;
-        if (bufferSize_ == static_cast<size_t>(offset)) {
+        if (bufferSize_ == offset) {
             bufferSize_ += length;
         }
         return res;
@@ -207,7 +207,7 @@ public:
         return RawDataEmit(reinterpret_cast<uint8_t *>(&c), U64_SIZE);
     }
 
-    ssize_t EmitU64(uint64_t c, ssize_t offset)
+    ssize_t EmitU64(uint64_t c, size_t offset)
     {
         return RawDataEmit(reinterpret_cast<uint8_t *>(&c), U64_SIZE, offset);
     }
