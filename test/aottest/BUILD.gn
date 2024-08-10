@@ -300,6 +300,7 @@ group("ark_aot_ts_test") {
     "typedarraymap",
     "typeof",
     "unaryop_special_value",
+    "useless_gate_elimination",
     "xor",
     "sharedcheck",
     "sharedarray",

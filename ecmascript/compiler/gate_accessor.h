@@ -616,6 +616,7 @@ public:
     bool IsCreateArray(GateRef gate) const;
     void SetStoreNoBarrier(GateRef gate, bool isNoBarrier);
     bool IsNoBarrier(GateRef gate) const;
+    void GetIns(GateRef gate, std::vector<GateRef>& ins) const;
 
     TypedBinOp GetRevCompareOpForTypedBinOp(TypedBinOp op);
     TypedBinOp GetSwapCompareOpForTypedBinOp(TypedBinOp op);
@@ -677,8 +678,6 @@ private:
         auto endIndex = circuit_->LoadGatePtrConst(gate)->GetNumIns();
         return InsIterator(circuit_, &reinterpret_cast<In *>(circuit_->LoadGatePtr(gate) + 1)[endIndex]);
     }
-
-    void GetIns(GateRef gate, std::vector<GateRef>& ins) const;
 
     void GetOuts(GateRef gate, std::vector<GateRef>& outs) const;
 
