@@ -85,7 +85,7 @@ public:
         return breakpoint.str();
     }
 
-    const Global<FunctionRef> &GetConditionFunction()
+    Global<FunctionRef> GetConditionFunction() const
     {
         return condFuncRef_;
     }
@@ -196,6 +196,7 @@ public:
     std::vector<bool> SetBreakpointUsingList(std::vector<JSPtLocation> &list);
     bool RemoveUrlNotMatchedBreakpoint(const JSPtLocation &location);
     bool RemoveAllBreakpointsByUrl(const std::string &url, bool skipGlobal);
+    void RemoveGlobalFuncRef(const JSBreakpoint &breakpoint);
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
     std::optional<JSBreakpoint> FindSmartBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;
