@@ -83,6 +83,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         map.set("test proxy stack pop:" + i, popProxy.pop() == i);
     }
 
+    try {
+        let myStack = new Stack();
+        myStack.push(1);
+        myStack[2147483648];
+    } catch(err) {
+        let overFlowTest = (err == "BusinessError: The type of \"index\" must be small integer.");
+        map.set("test Stack[i] overFlowTest:", overFlowTest);
+    }
+
     let flag = undefined;
 
     function elements(value, key, map) {

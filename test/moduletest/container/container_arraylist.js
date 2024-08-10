@@ -234,6 +234,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     testlist.add(7);
     testlist.add(9);
     map.set("test arraylist JSAPIArrayList::GetProperty:", testlist[Math.floor(1)] === 9);
+
+    try {
+        let myArrayList = new arrayList();
+        myArrayList.add(1);
+        myArrayList[2147483648];
+    } catch(err) {
+        let overFlowTest = (err == "BusinessError: The type of \"index\" must be small integer.");
+        map.set("test ArrayList[i] overFlowTest:", overFlowTest);
+    }
     
     let flag = undefined;
     function elements(value, key, map) {
@@ -264,6 +273,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     if (keyName != "0123456789") {
         print("ArrayList for in fail")
     }
+
+    // Math.foor as index input should not have exception.
+    let myAl = new arrayList();
+    myAl.add(1);
+    myAl.add(2);
+    myAl.add(3);
+    myAl.insert(30, Math.floor(1.3));
+    myAl.removeByIndex(Math.floor(1.3));
+
     if (!flag) {
         print("Test ArrayList success!!!");
     } else {

@@ -70,6 +70,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test queue popFirst:",  proxy.getFirst() === 0)
     map.set("test queue pop:",  proxy.pop() === 0)
 
+    try {
+        let myQueue = new Queue();
+        myQueue.add(1);
+        myQueue[2147483648];
+    } catch(err) {
+        let overFlowTest = (err == "BusinessError: The type of \"index\" must be small integer.");
+        map.set("test Queue[i] overFlowTest:", overFlowTest);
+    }
+
     let flag = undefined;
     function elements(value, key, map) {
         if (!value) {

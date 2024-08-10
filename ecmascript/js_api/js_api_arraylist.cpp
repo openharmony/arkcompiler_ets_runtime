@@ -454,7 +454,19 @@ OperationResult JSAPIArrayList::GetProperty(JSThread *thread, const JSHandle<JSA
                                             const JSHandle<JSTaggedValue> &key)
 {
     int length = obj->GetLength().GetInt();
-    int index = static_cast<int>(key->GetNumber());
+    JSHandle<JSTaggedValue> indexKey = key;
+    if (indexKey->IsDouble()) {
+        /* 将Math.floor(1)等形式的double变量处理为Int，而大于INT32_MAX的整数仍然是double形式 */
+        indexKey = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(indexKey->GetDouble()));
+    }
+    if (!indexKey->IsInt()) {
+        CString errorMsg = "The type of \"index\" must be small integer.";
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                         OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+    }
+
+    int index = indexKey->GetInt();
     if (index < 0 || index >= length) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
