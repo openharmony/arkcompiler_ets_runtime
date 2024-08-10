@@ -696,6 +696,10 @@ JSHandle<ConstantPool> EcmaContext::FindOrCreateConstPool(const JSPandaFile *jsP
         newSConstpool = AddOrUpdateConstpool(jsPandaFile, newSConstpool, index);
         SetUnsharedConstpool(newSConstpool, newConstpool.GetTaggedValue());
         return newSConstpool;
+    } else if (jsPandaFile->IsLoadedAOT()) {
+        // For aot, after getting the cached shared constpool,
+        // worker thread need to create and bind the correspoding unshared constpool.
+        FindOrCreateUnsharedConstpool(constpool);
     }
     return JSHandle<ConstantPool>(thread_, constpool);
 }
