@@ -753,6 +753,26 @@ function forOf() {
     }
 }
 
+function sharedArrayConstructorTest(){
+    let from_arr  = [1,2,3];
+    let s_arr = new SendableArray<number>(...from_arr); // output [1,2,3]
+    print(("SendableArray ...from_arr: " + s_arr));
+    let s_arr1 = new SendableArray<number>(0, ...from_arr); // output [1,2,3]
+    print(("SendableArray ...from_arr1: " + s_arr1));
+    try {
+        print("Create from SendableArray with non-sendable array error: " + new SendableArray(from_arr));
+    } catch (err) {
+        print("Create from SendableArray with non-sendable array error failed. err: " + err + ", code: " + err.code);
+    }
+}
+
+function fromArrayConstructorTest(): void {
+    print("Start Test fromArrayConstructorTest")
+    const array1 = new SendableArray<string>('a', 'b', 'c');
+    const iterator = array1.values();
+    print(SendableArray.from<string>(iterator));
+}
+
 at()
 
 entries()
@@ -823,3 +843,5 @@ derivedMap()
 derivedFill()
 readOutOfRange()
 forOf();
+sharedArrayConstructorTest()
+fromArrayConstructorTest()

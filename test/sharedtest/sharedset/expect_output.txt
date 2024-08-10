@@ -104,4 +104,10 @@ add extension(.): TypeError: Cannot add property in prevent extensions
 add extension([]): TypeError: Cannot add property in prevent extensions
 SubSubSendableSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 SubSubSendableSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+=== An iterable object to convert to an ArkTS Set  begin===
+set key[forEach]: 0
+set key[forEach]: 1
+set key[forEach]: 2
+set key[forEach]: 3
+set key[forEach]: 4
 ===Class inheritance test end ===
