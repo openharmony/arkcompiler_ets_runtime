@@ -45,6 +45,8 @@ public:
 
     virtual uint32_t GetTotalThreadNum() const = 0;
 
+    virtual bool IsInThreadPool() const = 0;
+
 private:
     virtual uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const = 0;
 };
@@ -89,8 +91,9 @@ public:
         runner_->SetQosPriority(mode);
     }
 
-    bool IsInThreadPool(std::thread::id id) const
+    bool IsInThreadPool() const override
     {
+        std::thread::id id = std::this_thread::get_id();
         return runner_->IsInThreadPool(id);
     }
 
@@ -119,10 +122,10 @@ public:
     NO_COPY_SEMANTIC(GCWorkerPool);
     NO_MOVE_SEMANTIC(GCWorkerPool);
 
-    bool IsDaemonThreadOrInThreadPool(std::thread::id id) const
+    bool IsDaemonThreadOrInThreadPool() const
     {
         DaemonThread *dThread = DaemonThread::GetInstance();
-        return IsInThreadPool(id) || (dThread != nullptr
+        return IsInThreadPool() || (dThread != nullptr
             && dThread->GetThreadId() == JSThread::GetCurrentThreadId());
     }
 };
@@ -152,12 +155,18 @@ public:
 
     void TerminateTask(int32_t id, TaskType type = TaskType::ALL) override;
 
+    bool IsInThreadPool() const override;
+
 private:
     uint32_t TheMostSuitableThreadNum(uint32_t threadNum) const override;
 
-    Mutex mutex_;
+    void SubmitNonCancellableTask(std::unique_ptr<Task> task, const ffrt::task_attr &taskAttr);
+    void SubmitCancellableTask(std::unique_ptr<Task> task, const ffrt::task_attr &taskAttr);
+
+    mutable Mutex mutex_;
     std::unordered_map<std::shared_ptr<Task>, ffrt::task_handle> cancellableTasks_ {};
     std::atomic<uint32_t> totalThreadNum_ {0};
+    std::unordered_multiset<uint32_t> ffrtTaskIds_ {};
 };
 #endif
 }  // namespace panda::ecmascript

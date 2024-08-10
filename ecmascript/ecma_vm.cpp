@@ -447,12 +447,13 @@ JSHandle<GlobalEnv> EcmaVM::GetGlobalEnv() const
 
 void EcmaVM::CheckThread() const
 {
-    // Exclude GC thread
     if (thread_ == nullptr) {
         LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
         UNREACHABLE();
     }
-    if (!GCWorkerPool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool(std::this_thread::get_id()) &&
+    // Exclude the threads in GCWorkerPool and Taskpool
+    if (!(GCWorkerPool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool() ||
+        Taskpool::GetCurrentTaskpool()->IsInThreadPool()) &&
         thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()
