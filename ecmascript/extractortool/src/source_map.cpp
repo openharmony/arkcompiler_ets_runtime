@@ -72,7 +72,7 @@ bool SourceMap::ReadSourceMapData(const std::string& hapPath, std::string& conte
 }
 #endif
 
-uint32_t Base64CharToInt(char charCode)
+uint32_t SourceMap::Base64CharToInt(char charCode)
 {
     if ('A' <= charCode && charCode <= 'Z') {
         // 0 - 25: ABCDEFGHIJKLMNOPQRSTUVWXYZ
