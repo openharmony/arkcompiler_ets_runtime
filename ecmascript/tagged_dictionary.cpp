@@ -446,7 +446,7 @@ JSHandle<PointerToIndexDictionary> PointerToIndexDictionary::PutIfAbsent(
     JSHandle<PointerToIndexDictionary> newDictionary = HashTableT::GrowHashTable(thread, dictionary);
 
     // Compute the key object
-    int32_t hash = PointerToIndexDictionary::Hash(key.GetTaggedValue());
+    uint32_t hash = static_cast<uint32_t>(PointerToIndexDictionary::Hash(key.GetTaggedValue()));
     entry = newDictionary->FindInsertIndex(hash);
     newDictionary->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue());
     newDictionary->IncreaseEntries(thread);
