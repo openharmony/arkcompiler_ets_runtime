@@ -499,9 +499,17 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
     obj->SetNativeFlag(flag);
 
     if (callBack != nullptr) {
+        sHeap_->IncNativeSizeAfterGC(nativeBindingsize);
         vm_->PushToSharedNativePointerList(static_cast<JSNativePointer *>(header));
         // In some cases, the size of JS/TS object is too small and the native binding size is too large.
         // Check and try trigger concurrent mark here.
+        size_t nativeSizeAfterGC = sHeap_->GetNativeSizeAfterGC();
+        if (nativeSizeAfterGC > sHeap_->GetNativeSizeTriggerSharedGC()) {
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread_);
+        } else if (sHeap_->CheckCanTriggerConcurrentMarking(thread_) &&
+            nativeSizeAfterGC > sHeap_->GetNativeSizeTriggerSharedCM()) {
+            sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread_);
+        }
     }
     return obj;
 }
