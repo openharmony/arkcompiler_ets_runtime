@@ -5965,7 +5965,7 @@ Local<WeakSetRef> WeakSetRef::New(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(thread);
     ObjectFactory *factory = vm->GetJSThread()->GetEcmaVM()->GetFactory();
     JSHandle<GlobalEnv> env = vm->GetJSThread()->GetEcmaVM()->GetGlobalEnv();
-    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsWeakSetFunction();
     JSHandle<JSWeakSet> weakSet =
         JSHandle<JSWeakSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
     JSHandle<LinkedHashSet> hashWeakSet = LinkedHashSet::Create(vm->GetJSThread());

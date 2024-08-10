@@ -4455,6 +4455,32 @@ HWTEST_F_L0(JSNApiSplTest, WeakSetRef_GetValue)
     TEST_TIME(WeakSetRef::GetValue);
 }
 
+HWTEST_F_L0(JSNApiSplTest, IsWeakSetRef_True)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> weakSet = WeakSetRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_TRUE(weakSet->IsWeakSet(vm_));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsWeakSet);
+}
+
+HWTEST_F_L0(JSNApiSplTest, IsWeakSetRef_False)
+{
+    LocalScope scope(vm_);
+    CalculateForTime();
+    Local<JSValueRef> object = ObjectRef::New(vm_);
+    gettimeofday(&g_beginTime, nullptr);
+    for (int i = 0; i < NUM_COUNT; i++) {
+        ASSERT_FALSE(object->IsWeakSet(vm_));
+    }
+    gettimeofday(&g_endTime, nullptr);
+    TEST_TIME(JSValueRef::IsWeakSet);
+}
+
 HWTEST_F_L0(JSNApiSplTest, MapIteratorRef_GetIndex)
 {
     LocalScope scope(vm_);
