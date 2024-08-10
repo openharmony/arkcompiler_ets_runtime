@@ -215,3 +215,8 @@ Start Test array for of
 3
 5
 7
+SendableArray ...from_arr: 1,2,3
+SendableArray ...from_arr1: 0,1,2,3
+Create from SendableArray with non-sendable array error failed. err: BusinessError: Parameter error.Only accept sendable value., code: 401
+Start Test fromArrayConstructorTest
+a,b,c

@@ -332,4 +332,19 @@ try {
 } catch (e) {
   print('SubSubSendableMap Delete Scenario[forEach]: ' + e + ', errCode: ' + e.code);
 }
+
+print("=== An iterable object to convert to an ArkTS Map begin===")
+sharedMap.clear();
+FillMap(sharedMap);
+print("map size is " + sharedMap.size);
+try {
+  const iterator = sharedMap.entries();
+  let sharedMap1: SendableMap = new SendableMap(iterator);
+  sharedMap1.forEach((value: string, key: number, map: SendableMap) => {
+    print("map key[forEach]:" + "key:" + key + ", value:" + value);
+  });
+} catch (e) {
+  print("SendableMapConstructor Scenario[next()]: " + e);
+}
+
 print("===Class inheritance test end ===");

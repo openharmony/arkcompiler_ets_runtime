@@ -528,6 +528,7 @@ host_unittest_action("BuiltinsNatural_005_Test") {
     # test file
     "builtins_set_test.cpp",
     "builtins_shared_map_test.cpp",
+    "builtins_shared_set_test.cpp",
     "builtins_shared_typedarray_test.cpp",
     "builtins_sharedarraybuffer_test.cpp",
     "builtins_string_iterator_test.cpp",
