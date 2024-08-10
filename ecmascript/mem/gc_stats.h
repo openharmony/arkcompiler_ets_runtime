@@ -36,6 +36,7 @@ enum class GCType : int {
     PARTIAL_OLD_GC,
     COMPRESS_GC,
     SHARED_GC,
+    SHARED_FULL_GC,
     OTHER,
     START,
 };
@@ -121,6 +122,8 @@ public:
                 return "CompressGC";
             case GCType::SHARED_GC:
                 return "SharedGC";
+            case GCType::SHARED_FULL_GC:
+                return "SharedCompressGC";
             default:
                 return "UnknownType";
         }

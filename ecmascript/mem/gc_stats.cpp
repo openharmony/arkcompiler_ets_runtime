@@ -671,6 +671,8 @@ GCType GCStats::GetGCType(TriggerGCType gcType)
             return GCType::COMPRESS_GC;
         case TriggerGCType::SHARED_GC:
             return GCType::SHARED_GC;
+        case TriggerGCType::SHARED_FULL_GC:
+            return GCType::SHARED_FULL_GC;
         default:
             return GCType::OTHER;
     }
