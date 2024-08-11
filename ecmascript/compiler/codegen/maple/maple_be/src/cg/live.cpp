@@ -162,72 +162,8 @@ void LiveAnalysis::AnalysisLive()
 {
     InitAndGetDefUse();
     BuildInOutforFunc();
-    InsertInOutOfCleanupBB();
     if (!cgFunc->IsStackMapComputed()) {
         GenerateStackMapLiveIn();
-    }
-}
-
-void LiveAnalysis::DealWithInOutOfCleanupBB()
-{
-    const BB *cleanupBB = cgFunc->GetCleanupBB();
-    if (cleanupBB == nullptr) {
-        return;
-    }
-    for (size_t i = 0; i != cleanupBB->GetLiveIn()->Size(); ++i) {
-        if (!cleanupBB->GetLiveIn()->TestBit(i)) {
-            continue;
-        }
-        if (CleanupBBIgnoreReg(regno_t(i))) {
-            continue;
-        }
-        /*
-         * a param vreg may used in cleanup bb. So this param vreg will live on the whole function
-         * since everywhere in function body may occur exceptions.
-         */
-        FOR_ALL_BB(bb, cgFunc)
-        {
-            if (bb->IsCleanup()) {
-                continue;
-            }
-            /* If bb is not a cleanup bb, then insert reg to both livein and liveout. */
-            if ((bb != cgFunc->GetFirstBB()) && !bb->GetDef()->TestBit(i)) {
-                bb->SetLiveInBit(i);
-            }
-            bb->SetLiveOutBit(i);
-        }
-    }
-}
-
-void LiveAnalysis::InsertInOutOfCleanupBB()
-{
-    LocalMapleAllocator allocator(cgFunc->GetStackMemPool());
-    const BB *cleanupBB = cgFunc->GetCleanupBB();
-    if (cleanupBB == nullptr) {
-        return;
-    }
-    if (cleanupBB->GetLiveIn() == nullptr || cleanupBB->GetLiveIn()->NoneBit()) {
-        return;
-    }
-    SparseDataInfo &cleanupBBLi = cleanupBB->GetLiveIn()->Clone(allocator);
-    /* registers need to be ignored: (reg < 8) || (29 <= reg && reg <= 32) */
-    for (uint32 i = 1; i < 8; ++i) {  // reset 8 reg for R0-R7
-        cleanupBBLi.ResetBit(i);
-    }
-    for (uint32 j = 29; j <= 32; ++j) {  // registers 29 ~ 32 need to be ignored
-        cleanupBBLi.ResetBit(j);
-    }
-
-    FOR_ALL_BB(bb, cgFunc)
-    {
-        if (bb->IsCleanup()) {
-            continue;
-        }
-        if (bb != cgFunc->GetFirstBB()) {
-            cleanupBBLi.Difference(*bb->GetDef());
-            bb->LiveInOrBits(cleanupBBLi);
-        }
-        bb->LiveOutOrBits(cleanupBBLi);
     }
 }
 
@@ -459,8 +395,7 @@ void LiveAnalysis::InitBB(BB &bb)
     bb.SetInsertUse(false);
     bb.ClearLiveInRegNO();
     bb.ClearLiveOutRegNO();
-    const uint32 maxRegCount =
-        cgFunc->GetSSAvRegCount() > cgFunc->GetMaxVReg() ? cgFunc->GetSSAvRegCount() : cgFunc->GetMaxVReg();
+    const uint32 maxRegCount = cgFunc->GetMaxVReg();
     bb.SetLiveIn(*NewLiveIn(maxRegCount));
     bb.SetLiveOut(*NewLiveOut(maxRegCount));
     bb.SetDef(*NewDef(maxRegCount));

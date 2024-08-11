@@ -29,38 +29,9 @@ using namespace maple;
 namespace maplebe {
 using namespace maple;
 
-/* the fast_exception_handling lsda */
-void AArch64AsmEmitter::EmitFastLSDA(FuncEmitInfo &funcEmitInfo)
-{
-    CGFunc &cgFunc = funcEmitInfo.GetCGFunc();
-    AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
-    CG *currCG = cgFunc.GetCG();
-
-    CHECK_NULL_FATAL(currCG->GetMIRModule()->CurFunction());
-    PUIdx pIdx = currCG->GetMIRModule()->CurFunction()->GetPuidx();
-    char *idx = strdup(std::to_string(pIdx).c_str());
-    CHECK_FATAL(idx != nullptr, "strdup failed");
-    /*
-     * .word 0xFFFFFFFF
-     * .word .Label.LTest_3B_7C_3Cinit_3E_7C_28_29V3-func_start_label
-     */
-    currCG->template Emit<CG::EmitterType::AsmEmitter>([&cgFunc, &aarchCGFunc, idx](Emitter* emitter) {
-        (void)emitter->Emit("\t.word 0xFFFFFFFF\n");
-        (void)emitter->Emit("\t.word .L.").Emit(idx).Emit("__");
-        if (aarchCGFunc.NeedCleanup()) {
-            emitter->Emit(cgFunc.GetCleanupLabel()->GetLabelIdx());
-        } else {
-            DEBUG_ASSERT(!cgFunc.GetExitBBsVec().empty(), "exitbbsvec is empty in AArch64AsmEmitter::EmitFastLSDA");
-            emitter->Emit(cgFunc.GetExitBB(0)->GetLabIdx());
-        }
-        emitter->Emit("-.L.").Emit(idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
-    });
-    free(idx);
-    idx = nullptr;
-}
-
 void AArch64AsmEmitter::EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std::string &name, LabelIdx labIdx)
 {
+#ifdef ARK_LITECG_DEBUG
     (void)name;
     CGFunc &cgFunc = funcEmitInfo.GetCGFunc();
     AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
@@ -96,10 +67,12 @@ void AArch64AsmEmitter::EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std:
     });
     free(puIdx);
     puIdx = nullptr;
+#endif
 }
 
 void AArch64AsmEmitter::RecordRegInfo(FuncEmitInfo &funcEmitInfo) const
 {
+#ifdef ARK_LITECG_DEBUG
     if (!CGOptions::DoIPARA()) {
         return;
     }
@@ -184,10 +157,12 @@ void AArch64AsmEmitter::RecordRegInfo(FuncEmitInfo &funcEmitInfo) const
     }
 #endif
     mirFunc.CopyReferedRegs(referedRegs);
+#endif
 }
 
 void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
 {
+#ifdef ARK_LITECG_DEBUG
     CGFunc &cgFunc = funcEmitInfo.GetCGFunc();
     AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
     CG *currCG = cgFunc.GetCG();
@@ -211,8 +186,6 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
         if (cgFunc.GetFunction().GetAttr(FUNCATTR_section)) {
             const std::string &sectionName = cgFunc.GetFunction().GetAttrs().GetPrefixSectionName();
             (void)emitter->Emit("\t.section  " + sectionName).Emit(",\"ax\",@progbits\n");
-        } else if (CGOptions::IsFunctionSections()) {
-            (void)emitter->Emit("\t.section  .text.").Emit(cgFunc.GetName()).Emit(",\"ax\",@progbits\n");
         } else if (cgFunc.GetFunction().GetAttr(FUNCATTR_constructor_priority)) {
             (void)emitter->Emit("\t.section\t.text.startup").Emit(",\"ax\",@progbits\n");
         } else {
@@ -303,10 +276,6 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
                 }
             }
         }
-        if (CGOptions::IsMapleLinker()) {
-            /* Emit a label for calculating method size */
-            (void)emitter->Emit(".Label.end." + funcStName + ":\n");
-        }
         (void)emitter->Emit("\t.size\t" + funcStName + ", .-").Emit(funcStName + "\n");
 
         auto constructorAttr = funcSt->GetFunction()->GetAttrs().GetConstructorPriority();
@@ -349,10 +318,12 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
             (void)emitter->Emit("\t.quad ").Emit(static_cast<int64>(mpPair.second)).Emit("\n");
         }
     });
+#endif
 }
 
 void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     MOperator mOp = insn.GetMachineOpcode();
     emitter.SetCurrentMOP(mOp);
     const InsnDesc *md = insn.GetDesc();
@@ -439,14 +410,6 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
         }
         default:
             break;
-    }
-
-    if (CGOptions::IsNativeOpt() && mOp == MOP_xbl) {
-        auto *nameOpnd = static_cast<FuncNameOperand *>(&insn.GetOperand(kInsnFirstOpnd));
-        if (nameOpnd->GetName() == "MCC_CheckThrowPendingException") {
-            EmitCheckThrowPendingException(emitter, insn);
-            return;
-        }
     }
 
     std::string format(md->format);
@@ -543,8 +506,10 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
     }
 
     (void)emitter.Emit("\n");
+#endif
 }
 
+#ifdef ARK_LITECG_DEBUG
 static void AsmStringOutputRegNum(bool isInt, uint32 regno, uint32 intBase, uint32 fpBase, std::string &strToEmit)
 {
     regno_t newRegno;
@@ -561,9 +526,11 @@ static void AsmStringOutputRegNum(bool isInt, uint32 regno, uint32 intBase, uint
     }
     strToEmit += newRegno + '0';
 }
+#endif
 
 void AArch64AsmEmitter::EmitInlineAsm(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     (void)emitter.Emit("\t//Inline asm begin\n\t");
     auto &list1 = static_cast<ListOperand &>(insn.GetOperand(kAsmOutputListOpnd));
     std::vector<RegOperand *> outOpnds;
@@ -670,10 +637,12 @@ void AArch64AsmEmitter::EmitInlineAsm(Emitter &emitter, const Insn &insn) const
     }
     (void)emitter.Emit(stringToEmit);
     (void)emitter.Emit("\n\t//Inline asm end\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitClinitTail(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /*
      * ldr x17, [xs, #112]
      * ldr wzr, [x17]
@@ -695,10 +664,12 @@ void AArch64AsmEmitter::EmitClinitTail(Emitter &emitter, const Insn &insn) const
 
     /* emit "ldr  xzr, [x17]" */
     (void)emitter.Emit("\t").Emit("ldr\txzr, [x17]\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitLazyLoad(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /*
      * ldr wd, [xs]  # xd and xs should be differenct register
      * ldr wd, [xd]
@@ -729,10 +700,12 @@ void AArch64AsmEmitter::EmitLazyLoad(Emitter &emitter, const Insn &insn) const
     (void)emitter.Emit(", [");
     opnd1->Accept(visitor1);
     (void)emitter.Emit("]\t// lazy load.\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitCounter(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /*
      * adrp    x1, __profile_bb_table$$GetBoolean_bytecode+4
      * ldr     w17, [x1, #:lo12:__profile_bb_table$$GetBoolean_bytecode+4]
@@ -747,11 +720,6 @@ void AArch64AsmEmitter::EmitCounter(Emitter &emitter, const Insn &insn) const
     A64OpndEmitVisitor visitor(emitter, prop0);
     StImmOperand *stImmOpnd = static_cast<StImmOperand *>(opnd1);
     CHECK_FATAL(stImmOpnd != nullptr, "stImmOpnd is null in AArch64Emitter::EmitCounter");
-    /* emit nop for breakpoint */
-    if (GetCG()->GetCGOptions().WithDwarf()) {
-        (void)emitter.Emit("\t").Emit("nop").Emit("\n");
-    }
-
     /* emit adrp */
     (void)emitter.Emit("\t").Emit("adrp").Emit("\t");
     opnd0->Accept(visitor);
@@ -780,10 +748,12 @@ void AArch64AsmEmitter::EmitCounter(Emitter &emitter, const Insn &insn) const
     (void)emitter.Emit("+").Emit(stImmOpnd->GetOffset());
     (void)emitter.Emit("]");
     (void)emitter.Emit("\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitAdrpLabel(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /* adrp    xd, label
      * add     xd, xd, #lo12:label
      */
@@ -816,10 +786,12 @@ void AArch64AsmEmitter::EmitAdrpLabel(Emitter &emitter, const Insn &insn) const
     (void)emitter.Emit("\n");
     free(idx);
     idx = nullptr;
+#endif
 }
 
 void AArch64AsmEmitter::EmitAdrpLdr(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     const InsnDesc *md = &AArch64CG::kMd[MOP_adrp_ldr];
     Operand *opnd0 = &insn.GetOperand(kInsnFirstOpnd);
     Operand *opnd1 = &insn.GetOperand(kInsnSecondOpnd);
@@ -827,10 +799,6 @@ void AArch64AsmEmitter::EmitAdrpLdr(Emitter &emitter, const Insn &insn) const
     A64OpndEmitVisitor visitor(emitter, prop0);
     auto *stImmOpnd = static_cast<StImmOperand *>(opnd1);
     CHECK_FATAL(stImmOpnd != nullptr, "stImmOpnd is null in AArch64Emitter::EmitAdrpLdr");
-    /* emit nop for breakpoint */
-    if (GetCG()->GetCGOptions().WithDwarf()) {
-        (void)emitter.Emit("\t").Emit("nop").Emit("\n");
-    }
 
     (void)emitter.Emit("\t").Emit("adrp").Emit("\t");
     opnd0->Accept(visitor);
@@ -855,10 +823,12 @@ void AArch64AsmEmitter::EmitAdrpLdr(Emitter &emitter, const Insn &insn) const
         (void)emitter.Emit("+").Emit(stImmOpnd->GetOffset());
     }
     (void)emitter.Emit("]\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitLazyLoadStatic(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /* adrp xd, :got:__staticDecoupleValueOffset$$xxx+offset
      * ldr wd, [xd, #:got_lo12:__staticDecoupleValueOffset$$xxx+offset]
      * ldr wzr, [xd]
@@ -907,10 +877,12 @@ void AArch64AsmEmitter::EmitLazyLoadStatic(Emitter &emitter, const Insn &insn) c
     (void)emitter.Emit("\t").Emit("ldr\twzr, [");
     opnd0->Accept(visitor);
     (void)emitter.Emit("]\t// lazy load static.\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitArrayClassCacheLoad(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /* adrp xd, :got:__arrayClassCacheTable$$xxx+offset
      * ldr wd, [xd, #:got_lo12:__arrayClassCacheTable$$xxx+offset]
      * ldr wzr, [xd]
@@ -959,6 +931,7 @@ void AArch64AsmEmitter::EmitArrayClassCacheLoad(Emitter &emitter, const Insn &in
     (void)emitter.Emit("\t").Emit("ldr\twzr, [");
     opnd0->Accept(visitor);
     (void)emitter.Emit("]\t// check resolve array class.\n");
+#endif
 }
 
 /*
@@ -972,6 +945,7 @@ void AArch64AsmEmitter::EmitArrayClassCacheLoad(Emitter &emitter, const Insn &in
  */
 void AArch64AsmEmitter::EmitGetAndAddInt(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     DEBUG_ASSERT(insn.GetOperandSize() > kInsnEighthOpnd, "ensure the oprands number");
     (void)emitter.Emit("\t//\tstart of Unsafe.getAndAddInt.\n");
     Operand *tempOpnd0 = &insn.GetOperand(kInsnSecondOpnd);
@@ -1027,6 +1001,7 @@ void AArch64AsmEmitter::EmitGetAndAddInt(Emitter &emitter, const Insn &insn) con
     labelOpnd->Accept(visitor);
     (void)emitter.Emit("\n");
     (void)emitter.Emit("\t//\tend of Unsafe.getAndAddInt.\n");
+#endif
 }
 
 /*
@@ -1039,6 +1014,7 @@ void AArch64AsmEmitter::EmitGetAndAddInt(Emitter &emitter, const Insn &insn) con
  */
 void AArch64AsmEmitter::EmitGetAndSetInt(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /* MOP_get_and_setI and MOP_get_and_setL have 7 operands */
     DEBUG_ASSERT(insn.GetOperandSize() > kInsnSeventhOpnd, "ensure the operands number");
     Operand *tempOpnd0 = &insn.GetOperand(kInsnSecondOpnd);
@@ -1080,6 +1056,7 @@ void AArch64AsmEmitter::EmitGetAndSetInt(Emitter &emitter, const Insn &insn) con
     (void)emitter.Emit(", ");
     labelOpnd->Accept(visitor);
     (void)emitter.Emit("\n");
+#endif
 }
 
 /*
@@ -1132,6 +1109,7 @@ void AArch64AsmEmitter::EmitGetAndSetInt(Emitter &emitter, const Insn &insn) con
  */
 void AArch64AsmEmitter::EmitStringIndexOf(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /* MOP_string_indexof has 18 operands */
     DEBUG_ASSERT(insn.GetOperandSize() == 18, "ensure the operands number");
     Operand *patternLengthOpnd = &insn.GetOperand(kInsnFifthOpnd);
@@ -1390,6 +1368,7 @@ void AArch64AsmEmitter::EmitStringIndexOf(Emitter &emitter, const Insn &insn) co
     /* .Label.ret: */
     labelRet->Accept(visitor);
     (void)emitter.Emit(":\n");
+#endif
 }
 
 /*
@@ -1406,6 +1385,7 @@ void AArch64AsmEmitter::EmitStringIndexOf(Emitter &emitter, const Insn &insn) co
  */
 void AArch64AsmEmitter::EmitCompareAndSwapInt(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /* MOP_compare_and_swapI and MOP_compare_and_swapL have 8 operands */
     DEBUG_ASSERT(insn.GetOperandSize() > kInsnEighthOpnd, "ensure the operands number");
     const MOperator mOp = insn.GetMachineOpcode();
@@ -1473,10 +1453,12 @@ void AArch64AsmEmitter::EmitCompareAndSwapInt(Emitter &emitter, const Insn &insn
     (void)emitter.Emit("\tcset\t");
     retVal->Accept(visitor);
     (void)emitter.Emit(", EQ\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitCTlsDescRel(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     const InsnDesc *md = &AArch64CG::kMd[MOP_tls_desc_rel];
     Operand *result = &insn.GetOperand(kInsnFirstOpnd);
     Operand *src = &insn.GetOperand(kInsnSecondOpnd);
@@ -1494,10 +1476,12 @@ void AArch64AsmEmitter::EmitCTlsDescRel(Emitter &emitter, const Insn &insn) cons
     (void)emitter.Emit(", ");
     result->Accept(resultVisitor);
     (void)emitter.Emit(", #:tprel_lo12_nc:").Emit(stImmOpnd->GetName()).Emit("\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitCTlsDescCall(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     const InsnDesc *md = &AArch64CG::kMd[MOP_tls_desc_call];
     Operand *func = &insn.GetOperand(kInsnFirstOpnd);
     Operand *symbol = &insn.GetOperand(kInsnThirdOpnd);
@@ -1519,10 +1503,12 @@ void AArch64AsmEmitter::EmitCTlsDescCall(Emitter &emitter, const Insn &insn) con
     (void)emitter.Emit("\t").Emit("blr").Emit("\t");
     func->Accept(funcVisitor);
     (void)emitter.Emit("\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitSyncLockTestSet(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     const InsnDesc *md = &AArch64CG::kMd[insn.GetMachineOpcode()];
     auto *result = &insn.GetOperand(kInsnFirstOpnd);
     auto *temp = &insn.GetOperand(kInsnSecondOpnd);
@@ -1559,10 +1545,12 @@ void AArch64AsmEmitter::EmitSyncLockTestSet(Emitter &emitter, const Insn &insn) 
     (void)emitter.Emit("\n");
     /* dmb ish */
     (void)emitter.Emit("\t").Emit("dmb").Emit("\t").Emit("ish").Emit("\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitCheckThrowPendingException(Emitter &emitter, Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /*
      * mrs x16, TPIDR_EL0
      * ldr x16, [x16, #64]
@@ -1583,10 +1571,12 @@ void AArch64AsmEmitter::EmitCheckThrowPendingException(Emitter &emitter, Insn &i
     (void)emitter.Emit("\n");
     (void)emitter.Emit(".lnoeh.").Emit(maplebe::CG::GetCurCGFunc()->GetName()).Emit(":");
     (void)emitter.Emit("\n");
+#endif
 }
 
 void AArch64AsmEmitter::EmitLazyBindingRoutine(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     /* ldr xzr, [xs] */
     const InsnDesc *md = &AArch64CG::kMd[MOP_adrp_ldr];
 
@@ -1603,10 +1593,12 @@ void AArch64AsmEmitter::EmitLazyBindingRoutine(Emitter &emitter, const Insn &ins
     opnd0->Accept(visitor);
     (void)emitter.Emit("]");
     (void)emitter.Emit("\t// Lazy binding\n");
+#endif
 }
 
 void AArch64AsmEmitter::PrepareVectorOperand(RegOperand *regOpnd, uint32 &compositeOpnds, Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     VectorRegSpec *vecSpec = static_cast<VectorInsn &>(insn).GetAndRemoveRegSpecFromList();
     compositeOpnds = vecSpec->compositeOpnds ? vecSpec->compositeOpnds : compositeOpnds;
     regOpnd->SetVecLanePosition(vecSpec->vecLane);
@@ -1635,8 +1627,9 @@ void AArch64AsmEmitter::PrepareVectorOperand(RegOperand *regOpnd, uint32 &compos
             break;
         }
     }
+#endif
 }
-
+#ifdef ARK_LITECG_DEBUG
 struct CfiDescr {
     const std::string name;
     uint32 opndCount;
@@ -1652,9 +1645,11 @@ static CfiDescr cfiDescrTable[cfi::kOpCfiLast + 1] = {
 #undef CFI_DEFINE
 #undef ARM_DIRECTIVES_DEFINE
     {".cfi_undef", 0, {Operand::kOpdUndef, Operand::kOpdUndef, Operand::kOpdUndef}}};
+#endif
 
 void AArch64AsmEmitter::EmitAArch64CfiInsn(Emitter &emitter, const Insn &insn) const
 {
+#ifdef ARK_LITECG_DEBUG
     MOperator mOp = insn.GetMachineOpcode();
     CfiDescr &cfiDescr = cfiDescrTable[mOp];
     (void)emitter.Emit("\t").Emit(cfiDescr.name);
@@ -1668,10 +1663,12 @@ void AArch64AsmEmitter::EmitAArch64CfiInsn(Emitter &emitter, const Insn &insn) c
         }
     }
     (void)emitter.Emit("\n");
+#endif
 }
 
 bool AArch64AsmEmitter::CheckInsnRefField(const Insn &insn, size_t opndIndex) const
 {
+#ifdef ARK_LITECG_DEBUG
     if (insn.IsAccessRefField() && insn.AccessMem()) {
         Operand &opnd0 = insn.GetOperand(opndIndex);
         if (opnd0.IsRegister()) {
@@ -1679,6 +1676,7 @@ bool AArch64AsmEmitter::CheckInsnRefField(const Insn &insn, size_t opndIndex) co
             return true;
         }
     }
+#endif
     return false;
 }
 } /* namespace maplebe */

@@ -78,7 +78,6 @@ public:
     }
 
     ~MIRPragmaElement() = default;
-    void Dump(int indent) const;
     void SubElemVecPushBack(MIRPragmaElement *elem)
     {
         subElemVec.push_back(elem);
@@ -195,13 +194,11 @@ private:
 
 class MIRPragma {
 public:
-    explicit MIRPragma(MIRModule &m) : MIRPragma(m, m.GetPragmaMPAllocator()) {}
+    explicit MIRPragma(MIRModule &m) : MIRPragma(m.GetPragmaMPAllocator()) {}
 
-    MIRPragma(MIRModule &m, MapleAllocator &elemAllocator) : mod(&m), elementVec(elemAllocator.Adapter()) {}
+    MIRPragma(MapleAllocator &elemAllocator) : elementVec(elemAllocator.Adapter()) {}
 
     ~MIRPragma() = default;
-    MIRPragmaElement *GetPragmaElemFromSignature(const std::string &signature);
-    void Dump(int indent) const;
     void PushElementVector(MIRPragmaElement *elem)
     {
         elementVec.push_back(elem);
@@ -288,7 +285,6 @@ public:
     }
 
 private:
-    MIRModule *mod;
     PragmaKind pragmaKind = kPragmaUnknown;
     uint8 visibility = 0;
     GStrIdx strIdx {0};

@@ -1280,6 +1280,7 @@ size_t DBGDieAttr::SizeOf(DBGDieAttr *attr)
             switch (ptr->GetOp()) {
                 case DW_OP_call_frame_cfa:
                     return k2BitSize;  // size 1 byte + DW_OP_call_frame_cfa 1 byte
+#ifdef ARK_LITECG_DEBUG
                 case DW_OP_fbreg: {
                     // DW_OP_fbreg 1 byte
                     size_t size = 1 + namemangler::GetSleb128Size(ptr->GetFboffset());
@@ -1288,6 +1289,7 @@ size_t DBGDieAttr::SizeOf(DBGDieAttr *attr)
                 case DW_OP_addr: {
                     return namemangler::GetUleb128Size(k9BitSize) + k9BitSize;
                 }
+#endif
                 default:
                     return k4BitSize;
             }
@@ -1321,8 +1323,10 @@ void DebugInfo::ComputeSizeAndOffset(DBGDie *die, uint32 &cuOffset)
     uint32 cuOffsetOrg = cuOffset;
     die->SetOffset(cuOffset);
 
+#ifdef ARK_LITECG_DEBUG
     // Add the byte size of the abbreviation code
     cuOffset += static_cast<uint32>(namemangler::GetUleb128Size(uint64_t(die->GetAbbrevId())));
+#endif
 
     // Add the byte size of all the DIE attributes.
     for (const auto &attr : die->GetAttrVec()) {

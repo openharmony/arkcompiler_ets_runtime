@@ -235,6 +235,7 @@ public:
     RetCode Parse(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg) override
     {
         RetCode err = RetCode::noError;
+#ifdef ARK_LITECG_DEBUG
         auto &key = args[argsIndex];
         if constexpr (digitalCheck<T>) {
             err = ParseDigit(argsIndex, args, keyArg);
@@ -251,6 +252,7 @@ public:
             isEnabledByUser = true;
             rawKey = key;
         }
+#endif
         return err;
     }
 

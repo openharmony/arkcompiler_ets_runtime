@@ -30,6 +30,7 @@ namespace namemangler {
 
 using StringMap = std::map<const std::string, const std::string>;
 
+#ifdef ARK_LITECG_DEBUG
 static inline bool UpdatePrimType(bool primType, int splitNo, uint32_t ch)
 {
     if (ch == 'L') {
@@ -258,4 +259,5 @@ size_t GetSleb128Size(int32_t v)
     }
     return size;
 }
+#endif
 }  // namespace namemangler

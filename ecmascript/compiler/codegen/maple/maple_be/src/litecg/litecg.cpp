@@ -57,11 +57,12 @@ LiteCG::LiteCG(Module &mirModule, const std::vector<std::string> &litecgOptions)
     module.SetOutputFileName(moduleName + ".s");
 }
 
-
+#ifdef ARK_LITECG_DEBUG
 void LiteCG::DumpIRToFile(const std::string &fileName)
 {
     module.DumpToFile(fileName);
 }
+#endif
 
 void LiteCG::DumpCGIR()
 {
@@ -98,13 +99,13 @@ void LiteCG::DoCG(bool isJit)
     auto cgPhaseManager = std::make_unique<ThreadLocalMemPool>(memPoolCtrler, "cg function phasemanager");
     const MaplePhaseInfo *cgPMInfo = MaplePhaseRegister::GetMaplePhaseRegister()->GetPhaseByID(&CgFuncPM::id);
     auto *cgfuncPhaseManager = static_cast<CgFuncPM *>(cgPMInfo->GetConstructor()(cgPhaseManager.get()));
-    cgfuncPhaseManager->SetQuiet(CGOptions::IsQuiet());
 
     if (timePhases) {
         cgfuncPhaseManager->InitTimeHandler();
     }
 
     /* It is a specifc work around  (need refactor) */
+    cgfuncPhaseManager->SetQuiet(true);
     cgfuncPhaseManager->SetCGOptions(cgOptions);
     (void)cgfuncPhaseManager->PhaseRun(module);
 

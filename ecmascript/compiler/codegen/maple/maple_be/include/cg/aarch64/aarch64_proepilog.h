@@ -48,8 +48,6 @@ public:
         aarchCGFunc.SetStoreFP(storeFP);
     }
     ~AArch64GenProEpilog() override = default;
-
-    bool NeedProEpilog() override;
     static MemOperand *SplitStpLdpOffsetForCalleeSavedWithAddInstruction(CGFunc &cgFunc, const MemOperand &mo,
                                                                          uint32 bitLen,
                                                                          AArch64reg baseRegNum = AArch64reg::kRinvalid);
@@ -60,28 +58,17 @@ public:
     void Run() override;
 
 private:
-    AArch64reg GetStackGuardRegister(const BB &bb) const;
-    std::pair<AArch64reg, AArch64reg> GetStackGuardCheckRegister(const BB &bb) const;
-    MemOperand *GetDownStack();
-    RegOperand &GenStackGuard(AArch64reg regNO);
-    void AddStackGuard(BB &bb);
-    void GenStackGuardCheckInsn(BB &bb);
-    BB &GetOrGenStackGuardCheckFailBB(BB &bb);
     void AppendInstructionAllocateCallFrame(AArch64reg reg0, AArch64reg reg1, RegType rty);
     void AppendInstructionAllocateCallFrameDebug(AArch64reg reg0, AArch64reg reg1, RegType rty);
     void GeneratePushRegs();
     void GeneratePushUnnamedVarargRegs();
-    void AppendInstructionStackCheck(AArch64reg reg, RegType rty, int32 offset);
     void GenerateProlog(BB &bb);
 
     void GenerateRet(BB &bb);
-    bool TestPredsOfRetBB(const BB &exitBB);
     void AppendInstructionDeallocateCallFrame(AArch64reg reg0, AArch64reg reg1, RegType rty);
     void AppendInstructionDeallocateCallFrameDebug(AArch64reg reg0, AArch64reg reg1, RegType rty);
     void GeneratePopRegs();
-    void AppendJump(const MIRSymbol &funcSymbol);
     void GenerateEpilog(BB &bb);
-    void GenerateEpilogForCleanup(BB &bb);
     void AppendBBtoEpilog(BB &epilogBB, BB &newBB);
     Insn &CreateAndAppendInstructionForAllocateCallFrame(int64 fpToSpDistance, AArch64reg reg0, AArch64reg reg1,
                                                          RegType rty);

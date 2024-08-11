@@ -93,6 +93,7 @@ bool MIRScope::AddScope(MIRScope *scope)
     return true;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRScope::Dump(int32 indent) const
 {
     int32 ind = static_cast<int32>(level != 0);
@@ -133,4 +134,5 @@ void MIRScope::Dump() const
 {
     Dump(0);
 }
+#endif
 }  // namespace maple

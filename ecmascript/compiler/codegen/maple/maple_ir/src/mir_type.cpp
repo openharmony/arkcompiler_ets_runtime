@@ -666,6 +666,7 @@ std::string MIRType::GetCompactMplTypeName() const
     return "";
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRType::Dump(int indent, bool dontUseName) const
 {
     LogInfo::MapleLogger() << GetPrimTypeName(primType);
@@ -732,6 +733,7 @@ void MIRType::DumpAsCxx(int indent) const
             DEBUG_ASSERT(false, "not yet implemented");
     }
 }
+#endif
 
 bool MIRType::IsOfSameType(MIRType &type)
 {
@@ -760,6 +762,7 @@ bool MIRType::IsOfSameType(MIRType &type)
     }
 }
 
+#ifdef ARK_LITECG_DEBUG
 inline void DumpTypeName(GStrIdx strIdx, bool isLocal)
 {
     LogInfo::MapleLogger() << ((isLocal) ? "%" : "$") << GlobalTables::GetStrTable().GetStringFromStrIdx(strIdx);
@@ -802,6 +805,7 @@ void MIRFuncType::Dump(int indent, bool dontUseName) const
     retAttrs.DumpAttributes();
     LogInfo::MapleLogger() << ">";
 }
+#endif
 
 static constexpr uint64 RoundUpConst(uint64 offset, uint32 align)
 {
@@ -860,6 +864,7 @@ uint32 MIRArrayType::GetAlign() const
     return std::max(GetElemType()->GetAlign(), typeAttrs.GetAlign());
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRArrayType::Dump(int indent, bool dontUseName) const
 {
     if (!dontUseName && CheckAndDumpTypeName(nameStrIdx, nameIsLocal)) {
@@ -874,6 +879,7 @@ void MIRArrayType::Dump(int indent, bool dontUseName) const
     GetTypeAttrs().DumpAttributes();
     LogInfo::MapleLogger() << ">";
 }
+#endif
 
 std::string MIRArrayType::GetCompactMplTypeName() const
 {
@@ -884,6 +890,7 @@ std::string MIRArrayType::GetCompactMplTypeName() const
     return ss.str();
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRFarrayType::Dump(int indent, bool dontUseName) const
 {
     if (!dontUseName && CheckAndDumpTypeName(nameStrIdx, nameIsLocal)) {
@@ -893,6 +900,7 @@ void MIRFarrayType::Dump(int indent, bool dontUseName) const
     GlobalTables::GetTypeTable().GetTypeFromTyIdx(elemTyIdx)->Dump(indent + 1);
     LogInfo::MapleLogger() << ">";
 }
+#endif
 
 std::string MIRFarrayType::GetCompactMplTypeName() const
 {
@@ -969,6 +977,7 @@ bool MIRPtrType::PointsToConstString() const
     return false;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRPtrType::Dump(int indent, bool dontUseName) const
 {
     if (!dontUseName && CheckAndDumpTypeName(nameStrIdx, nameIsLocal)) {
@@ -989,6 +998,7 @@ void MIRBitFieldType::Dump(int indent, bool dontUseName) const
 {
     LogInfo::MapleLogger() << ":" << static_cast<int>(fieldSize) << " " << GetPrimTypeName(primType);
 }
+#endif
 
 size_t MIRClassType::GetSize() const
 {
@@ -1042,6 +1052,7 @@ FieldID MIRClassType::GetLastFieldID() const
     return fieldID;
 }
 
+#ifdef ARK_LITECG_DEBUG
 static void DumpClassOrInterfaceInfo(const MIRStructType &type, int indent)
 {
     const std::vector<MIRInfoPair> &info = type.GetInfo();
@@ -1062,6 +1073,7 @@ static void DumpClassOrInterfaceInfo(const MIRStructType &type, int indent)
         }
     }
 }
+#endif
 
 static uint32 GetInfoFromStrIdx(const std::vector<MIRInfoPair> &info, const GStrIdx &strIdx)
 {
@@ -1108,34 +1120,7 @@ size_t MIRInterfaceType::GetSize() const
     return size;
 }
 
-static void DumpStaticValue(const MIREncodedArray &staticValue, int indent)
-{
-    if (staticValue.empty()) {
-        return;
-    }
-    LogInfo::MapleLogger() << '\n';
-    PrintIndentation(indent);
-    LogInfo::MapleLogger() << "@staticvalue";
-    constexpr uint32 typeLen = 5;
-    constexpr uint32 typeMask = 0x1f;
-    for (const auto &value : staticValue) {
-        LogInfo::MapleLogger() << " [";
-        uint8 valueArg = static_cast<uint32>(value.encodedValue[0]) >> typeLen;
-        uint8 valueType = static_cast<uint32>(value.encodedValue[0]) & typeMask;
-        // kValueNull kValueBoolean
-        constexpr uint32 simpleOffset = 1;
-        constexpr uint32 aggOffSet = 2;
-        valueArg = (valueType == kValueNull || valueType == kValueBoolean) ? simpleOffset : valueArg + aggOffSet;
-        for (uint32 k = 0; k < valueArg; ++k) {
-            LogInfo::MapleLogger() << static_cast<uint32>(value.encodedValue[k]);
-            if (k != static_cast<uint32>(valueArg - 1)) {
-                LogInfo::MapleLogger() << " ";
-            }
-        }
-        LogInfo::MapleLogger() << "]";
-    }
-}
-
+#ifdef ARK_LITECG_DEBUG
 static void DumpFields(FieldVector fields, int indent, bool otherFields = false)
 {
     size_t size = fields.size();
@@ -1285,6 +1270,7 @@ static void DumpInterfaces(std::vector<TyIdx> interfaces, int indent)
         }
     }
 }
+#endif
 
 size_t MIRStructType::GetSize() const
 {
@@ -1441,6 +1427,7 @@ uint32 MIRStructType::GetUnadjustedAlign() const
     return maxAlign;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRStructType::DumpFieldsAndMethods(int indent, bool hasMethod) const
 {
     DumpFields(fields, indent);
@@ -1474,6 +1461,7 @@ void MIRStructType::Dump(int indent, bool dontUseName) const
     DumpFieldsAndMethods(indent, !methods.empty());
     LogInfo::MapleLogger() << "}>";
 }
+#endif
 
 uint32 MIRClassType::GetInfo(GStrIdx strIdx) const
 {
@@ -1512,30 +1500,7 @@ bool MIRClassType::IsInner() const
     return name.find("_24") != std::string::npos;
 }
 
-static void DumpInfoPragmaStaticValue(const std::vector<MIRInfoPair> &info, const std::vector<MIRPragma *> &pragmaVec,
-                                      const MIREncodedArray &staticValue, int indent, bool hasFieldMethodOrInterface)
-{
-    bool hasPragma = pragmaVec.size();
-    bool hasStaticValue = staticValue.size();
-    if (!info.empty() && (hasPragma || hasStaticValue || hasFieldMethodOrInterface)) {
-        LogInfo::MapleLogger() << ",";
-    }
-    size_t size = pragmaVec.size();
-    for (size_t i = 0; i < size; ++i) {
-        pragmaVec[i]->Dump(indent);
-        if (i != size - 1) {
-            LogInfo::MapleLogger() << ",";
-        }
-    }
-    if (hasPragma && (hasStaticValue || hasFieldMethodOrInterface)) {
-        LogInfo::MapleLogger() << ",";
-    }
-    DumpStaticValue(staticValue, indent);
-    if (hasStaticValue && hasFieldMethodOrInterface) {
-        LogInfo::MapleLogger() << ",";
-    }
-}
-
+#ifdef ARK_LITECG_DEBUG
 void MIRClassType::Dump(int indent, bool dontUseName) const
 {
     if (!dontUseName && CheckAndDumpTypeName(nameStrIdx, nameIsLocal)) {
@@ -1548,10 +1513,6 @@ void MIRClassType::Dump(int indent, bool dontUseName) const
     }
     LogInfo::MapleLogger() << "{";
     DumpClassOrInterfaceInfo(*this, indent);
-    bool hasFieldMethodOrInterface = !(fields.empty() && parentFields.empty() && staticFields.empty() &&
-                                       methods.empty() && interfacesImplemented.empty());
-    DumpInfoPragmaStaticValue(info, pragmaVec, staticValue, indent, hasFieldMethodOrInterface);
-
     bool hasMethod = !methods.empty();
     bool hasImplementedInterface = !interfacesImplemented.empty();
     DumpFieldsAndMethods(indent, hasMethod || hasImplementedInterface);
@@ -1582,8 +1543,6 @@ void MIRInterfaceType::Dump(int indent, bool dontUseName) const
     }
     LogInfo::MapleLogger() << " {";
     DumpClassOrInterfaceInfo(*this, indent);
-    bool hasFieldOrMethod = !(fields.empty() && staticFields.empty() && parentFields.empty() && methods.empty());
-    DumpInfoPragmaStaticValue(info, pragmaVec, staticValue, indent, hasFieldOrMethod);
     DumpFieldsAndMethods(indent, !methods.empty());
     LogInfo::MapleLogger() << "}>";
 }
@@ -1625,6 +1584,7 @@ void MIRGenericInstantType::Dump(int indent, bool dontUseName) const
     MIRInstantVectorType::Dump(indent, dontUseName);
     LogInfo::MapleLogger() << ">";
 }
+#endif
 
 bool MIRType::EqualTo(const MIRType &mirType) const
 {

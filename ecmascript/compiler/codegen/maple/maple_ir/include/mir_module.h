@@ -308,17 +308,21 @@ public:
         functionList.push_back(pf);
     }
 
+#ifdef ARK_LITECG_DEBUG
     void DumpGlobals(bool emitStructureType = true) const;
     void Dump(bool emitStructureType = true, const std::unordered_set<std::string> *dumpFuncSet = nullptr) const;
     void DumpToFile(const std::string &fileNameStr, bool emitStructureType = true) const;
     void DumpInlineCandidateToFile(const std::string &fileNameStr);
     void DumpDefType();
+#endif
     const std::string &GetFileNameFromFileNum(uint32 fileNum) const;
-
+#ifdef ARK_LITECG_DEBUG
     void DumpToCxxHeaderFile(std::set<std::string> &leafClasses, const std::string &pathToOutf) const;
     void DumpClassToFile(const std::string &path) const;
     void DumpFunctionList(const std::unordered_set<std::string> *dumpFuncSet) const;
     void DumpGlobalArraySymbol() const;
+#endif
+
     void Emit(const std::string &outFileName) const;
     uint32 GetAndIncFloatNum()
     {
@@ -828,7 +832,9 @@ public:
     bool HasNotWarned(uint32 postion, uint32 stmtOriginalID);
 
 private:
+#ifdef ARK_LITECG_DEBUG
     void DumpTypeTreeToCxxHeaderFile(MIRType &ty, std::unordered_set<MIRType *> &dumpedClasses) const;
+#endif
 
     MemPool *memPool;
     MemPool *pragmaMemPool;

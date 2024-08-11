@@ -32,6 +32,7 @@ using namespace maplecl;
 /* Anonymous namespace to restrict visibility of utility functions */
 namespace {
 
+#ifdef ARK_LITECG_DEBUG
 bool IsPrefixDetected(std::string_view opt)
 {
     if (opt.substr(0, 2) == "--") { // whether opt start with 2 char "--"
@@ -81,7 +82,7 @@ std::pair<RetCode, size_t> ExtractValue(size_t argsIndex, const std::deque<std::
         return {RetCode::noError, 1};
     }
 }
-
+#endif
 } /* Anonymous namespace  */
 
 /* ################################################################
@@ -91,12 +92,14 @@ std::pair<RetCode, size_t> ExtractValue(size_t argsIndex, const std::deque<std::
 template <>
 RetCode Option<bool>::ParseBool(size_t &argsIndex, const std::deque<std::string_view> &args)
 {
+#ifdef ARK_LITECG_DEBUG
     /* DisabledName should set it to false, like --fno-omit-framepointer vs --fomit-framepointer */
     auto disabledNames = GetDisabledName();
     auto it = std::find(disabledNames.begin(), disabledNames.end(), args[argsIndex]);
     SetValue(it == disabledNames.end());
 
     ++argsIndex;
+#endif
     return RetCode::noError;
 }
 
@@ -104,6 +107,7 @@ RetCode Option<bool>::ParseBool(size_t &argsIndex, const std::deque<std::string_
 template <>
 RetCode Option<std::string>::ParseString(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg)
 {
+#ifdef ARK_LITECG_DEBUG
     RetCode err = RetCode::noError;
     size_t indexIncCnt = 0;
     std::tie(err, indexIncCnt) = ExtractValue(argsIndex, args, *this, keyArg);
@@ -142,6 +146,7 @@ RetCode Option<std::string>::ParseString(size_t &argsIndex, const std::deque<std
     }
 
     argsIndex += 1 + indexIncCnt;  // 1 for key, indexIncCnt for Key Value from ExtractValue
+#endif
     return RetCode::noError;
 }
 
@@ -149,6 +154,7 @@ RetCode Option<std::string>::ParseString(size_t &argsIndex, const std::deque<std
 template <typename T>
 RetCode Option<T>::ParseDigit(size_t &argsIndex, const std::deque<std::string_view> &args, KeyArg &keyArg)
 {
+#ifdef ARK_LITECG_DEBUG
     static_assert(digitalCheck<T>, "Expected (u)intXX types");
 
     RetCode err = RetCode::noError;
@@ -238,6 +244,7 @@ RetCode Option<T>::ParseDigit(size_t &argsIndex, const std::deque<std::string_vi
     }
 
     argsIndex += 1 + indexIncCnt;  // 1 for key, indexIncCnt for Key Value from ExtractValue
+#endif
     return RetCode::noError;
 }
 

@@ -44,11 +44,12 @@ public:
     explicit MIRConst(MIRType &type, MIRConstKind constKind = kConstInvalid) : type(&type), kind(constKind) {}
 
     virtual ~MIRConst() = default;
-
+#ifdef ARK_LITECG_DEBUG
     virtual void Dump(const MIRSymbolTable *localSymTab = nullptr) const
     {
         (void)localSymTab;
     }
+#endif
 
     uint32 GetFieldId() const
     {
@@ -137,9 +138,9 @@ public:
     {
         value.TruncInPlace(width);
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
-
+#endif
     bool IsNegative() const
     {
         return value.IsSigned() && value.GetSignBit();
@@ -238,9 +239,9 @@ public:
     {
         return offset;
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
-
+#endif
     bool operator==(const MIRConst &rhs) const override;
 
     MIRAddrofConst *Clone(MemPool &memPool) const override
@@ -264,9 +265,9 @@ public:
     {
         return puIdx;
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
-
+#endif
     bool operator==(const MIRConst &rhs) const override;
 
     MIRAddroffuncConst *Clone(MemPool &memPool) const override
@@ -283,8 +284,9 @@ public:
     MIRLblConst(LabelIdx val, PUIdx pidx, MIRType &type) : MIRConst(type, kConstLblConst), value(val), puIdx(pidx) {}
 
     ~MIRLblConst() = default;
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
+#endif
     bool operator==(const MIRConst &rhs) const override;
 
     MIRLblConst *Clone(MemPool &memPool) const override
@@ -314,8 +316,9 @@ public:
     MIRStrConst(const std::string &str, MIRType &type);
 
     ~MIRStrConst() = default;
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
+#endif
     bool operator==(const MIRConst &rhs) const override;
 
     MIRStrConst *Clone(MemPool &memPool) const override
@@ -349,8 +352,9 @@ public:
     {
         return kPrimType;
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
+#endif
     bool operator==(const MIRConst &rhs) const override;
 
     MIRStr16Const *Clone(MemPool &memPool) const override
@@ -402,8 +406,9 @@ public:
     {
         return GetFloatValue();
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
+#endif
     bool IsZero() const override
     {
         return fabs(value.floatValue) <= 1e-6;
@@ -483,8 +488,9 @@ public:
     {
         return kPrimType;
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
+#endif
     bool IsZero() const override
     {
         return fabs(value.dValue) <= 1e-15;
@@ -570,8 +576,9 @@ public:
         auto *res = memPool.New<MIRFloat128Const>(*this);
         return res;
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
+#endif
 
 private:
     static const PrimType kPrimType = PTY_f128;
@@ -657,8 +664,9 @@ public:
     {
         AddItem(elem, 0);
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(const MIRSymbolTable *localSymTab) const override;
+#endif
     bool operator==(const MIRConst &rhs) const override;
 
     MIRAggConst *Clone(MemPool &memPool) const override

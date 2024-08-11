@@ -46,9 +46,6 @@ public:
 
     void LocateRetVal(const MIRType &retType, CCLocInfo &ploc) override;
 
-    /* for lmbc */
-    uint32 FloatParamRegRequired(const MIRStructType &structType, uint32 &fpSize);
-
     void SetupSecondRetReg(const MIRType &retTy2, CCLocInfo &pLoc) const override;
 
     void SetupToReturnThroughMemory(CCLocInfo &pLoc) const

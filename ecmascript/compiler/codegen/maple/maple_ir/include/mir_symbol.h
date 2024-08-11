@@ -493,8 +493,10 @@ public:
     bool IsGctibSym() const;
     bool IsPrimordialObject() const;
     bool IgnoreRC() const;
+#ifdef ARK_LITECG_DEBUG
     void Dump(bool isLocal, int32 indent, bool suppressInit = false, const MIRSymbolTable *localsymtab = nullptr) const;
     void DumpAsLiteralVar() const;
+#endif
     bool operator==(const MIRSymbol &msym) const
     {
         return nameStrIdx == msym.nameStrIdx;
@@ -704,7 +706,9 @@ public:
         return GetSymbolFromStIdx(GetStIdxFromStrIdx(idx).Idx(), checkFirst);
     }
 
+#ifdef ARK_LITECG_DEBUG
     void Dump(bool isLocal, int32 indent = 0, bool printDeleted = false, MIRFlavor flavor = kFlavorUnknown) const;
+#endif
 
     size_t GetSymbolTableSize() const
     {

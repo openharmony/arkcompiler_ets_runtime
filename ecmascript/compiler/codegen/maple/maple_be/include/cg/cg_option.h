@@ -51,16 +51,10 @@ public:
         kUndefined = 0ULL,
         kDoCg = 1ULL << 0,
         kDoLinearScanRegAlloc = 1ULL << 1,
-        kDoColorRegAlloc = 1ULL << 2,
-        kConstFold = 1ULL << 3,
-        kGenPic = 1ULL << 4,
-        kGenPie = 1ULL << 5,
         kVerboseAsm = 1ULL << 6,
         kGenInsertCall = 1ULL << 7,
-        kAddDebugTrace = 1ULL << 8,
         kGenYieldPoint = 1ULL << 9,
         kGenLocalRc = 1ULL << 10,
-        kProEpilogueOpt = 1ULL << 11,
         kVerboseCG = 1ULL << 12,
         kDebugFriendly = 1ULL << 20,
         kWithLoc = 1ULL << 21,
@@ -68,12 +62,6 @@ public:
         kWithMpl = 1ULL << 23,
         kWithSrc = 1ULL << 24,
         kWithAsm = 1ULL << 25,
-        kWithProfileCode = 1ULL << 30,
-        kUseStackProtectorStrong = 1ULL << 31,
-        kUseStackProtectorAll = 1ULL << 32,
-        kSoeCheckInsert = 1ULL << 33,
-        kAddFuncProfile = 1ULL << 34,
-        kPatchLongBranch = 1ULL << 35,
         kTailCallOpt = 1ULL << 36,
         /* undocumented */
         kDumpCFG = 1ULL << 61,
@@ -84,8 +72,6 @@ public:
     using OptionFlag = uint64;
 
     enum GenerateEnum : uint64 {
-        kCMacroDef = 1ULL << 0,
-        kGctib = 1ULL << 1,
         kGrootList = 1ULL << 2,
         kPrimorList = 1ULL << 3,
     };
@@ -98,9 +84,6 @@ public:
         kLevel1 = 2,
         kLevel2 = 3,
     };
-
-    enum ABIType : uint8 { kABIHard, kABISoft, kABISoftFP };
-
     struct EmitMemoryManager {
         void *codeSpace;
         MemoryManagerAllocateDataSectionCallback allocateDataSection;
@@ -125,7 +108,7 @@ public:
      */
     static const OptionFlag kDefaultOptions = OptionFlag(
 #if TARGAARCH64 || TARGARM32 || TARGRISCV64
-        kDoCg | kGenPie | kDoColorRegAlloc
+        kDoCg
 #else
         kDoCg
 #endif
@@ -145,7 +128,6 @@ public:
     static CGOptions &GetInstance();
     virtual ~CGOptions() = default;
     bool SolveOptions(bool isDebug);
-    void DecideMplcgRealLevel(bool isDebug);
     std::ostream& GetLogStream() const;
     void DumpOptions();
     std::vector<std::string> &GetSequence()
@@ -192,16 +174,6 @@ public:
     void EnableO2();
     void EnableLiteCG();
 
-    bool GenDef() const
-    {
-        return generateFlag & kCMacroDef;
-    }
-
-    bool GenGctib() const
-    {
-        return generateFlag & kGctib;
-    }
-
     bool GenGrootList() const
     {
         return generateFlag & kGrootList;
@@ -222,11 +194,6 @@ public:
         return (generateFlag & kGenLocalRc) && !gcOnly;
     }
 
-    bool DoConstFold() const
-    {
-        return options & kConstFold;
-    }
-
     bool DoEmitCode() const
     {
         return (options & kDoCg) != 0;
@@ -240,15 +207,6 @@ public:
     bool DoLinearScanRegisterAllocation() const
     {
         return (options & kDoLinearScanRegAlloc) != 0;
-    }
-    bool DoColoringBasedRegisterAllocation() const
-    {
-        return (options & kDoColorRegAlloc) != 0;
-    }
-
-    bool GeneratePositionIndependentExecutable() const
-    {
-        return (options & kGenPie) != 0;
     }
 
     bool GenerateVerboseAsm() const
@@ -266,29 +224,9 @@ public:
         return true;
     }
 
-    bool DoPrologueEpilogue() const
-    {
-        return (options & kProEpilogueOpt) != 0;
-    }
-
-    bool IsStackProtectorStrong() const
-    {
-        return (options & kUseStackProtectorStrong) != 0;
-    }
-
-    bool IsStackProtectorAll() const
-    {
-        return (options & kUseStackProtectorAll) != 0;
-    }
-
     bool WithLoc() const
     {
         return (options & kWithLoc) != 0;
-    }
-
-    bool WithDwarf() const
-    {
-        return (options & kWithDwarf) != 0;
     }
 
     bool WithSrc() const
@@ -306,29 +244,9 @@ public:
         return (options & kWithAsm) != 0;
     }
 
-    bool InstrumentWithDebugTraceCall() const
-    {
-        return (options & kAddDebugTrace) != 0;
-    }
-
-    bool InstrumentWithProfile() const
-    {
-        return (options & kAddFuncProfile) != 0;
-    }
-
-    bool DoPatchLongBranch() const
-    {
-        return (options & kPatchLongBranch) != 0;
-    }
-
     bool DoTailCall() const
     {
         return (options & kTailCallOpt) != 0;
-    }
-
-    bool DoCheckSOE() const
-    {
-        return (options & kSoeCheckInsert) != 0;
     }
 
     bool SuppressFileInfo() const
@@ -371,16 +289,6 @@ public:
     void SetAsmEmitterEnable(bool flag)
     {
         asmEmitterEnable = flag;
-    }
-
-    bool IsInsertCall() const
-    {
-        return insertCall;
-    }
-
-    void SetInsertCall(bool insertFlag)
-    {
-        insertCall = insertFlag;
     }
 
     bool IsGenerateObjectMap() const
@@ -428,34 +336,9 @@ public:
         options &= ~opFlag;
     }
 
-    const std::string &GetClassListFile() const
-    {
-        return classListFile;
-    }
-
-    void SetClassListFile(const std::string &classList)
-    {
-        classListFile = classList;
-    }
-
     void SetEHExclusiveFile(const std::string &ehExclusive)
     {
         ehExclusiveFile = ehExclusive;
-    }
-
-    void SetCyclePatternFile(const std::string &cyclePattern)
-    {
-        cyclePatternFile = cyclePattern;
-    }
-
-    static bool IsQuiet()
-    {
-        return quiet;
-    }
-
-    static void SetQuiet(bool flag)
-    {
-        quiet = flag;
     }
 
     static std::unordered_set<std::string> &GetDumpPhases()
@@ -599,28 +482,9 @@ public:
         return false;
     }
 
-    static void SetDuplicateAsmFile(const std::string &fileName)
-    {
-        duplicateAsmFile = fileName;
-    }
-
     static bool UseRange()
     {
         return range.enable;
-    }
-    static const std::string &GetFastFuncsAsmFile()
-    {
-        return fastFuncsAsmFile;
-    }
-
-    static bool IsFastFuncsAsmFileEmpty()
-    {
-        return fastFuncsAsmFile.empty();
-    }
-
-    static void SetFastFuncsAsmFile(const std::string &fileName)
-    {
-        fastFuncsAsmFile = fileName;
     }
 
     static Range &GetRange()
@@ -678,53 +542,9 @@ public:
         overlapNum = num;
     }
 
-    static uint8 GetRematLevel()
-    {
-        return rematLevel;
-    }
-
     static bool OptimizeForSize()
     {
         return optForSize;
-    }
-
-    static void SetRematLevel(uint8 level)
-    {
-        rematLevel = level;
-    }
-
-    static uint8 GetFastAllocMode()
-    {
-        return fastAllocMode;
-    }
-
-    static void SetFastAllocMode(uint8 mode)
-    {
-        fastAllocMode = mode;
-    }
-
-    static void EnableBarriersForVolatile()
-    {
-        useBarriersForVolatile = true;
-    }
-
-    static void DisableBarriersForVolatile()
-    {
-        useBarriersForVolatile = false;
-    }
-
-    static bool UseBarriersForVolatile()
-    {
-        return useBarriersForVolatile;
-    }
-    static void EnableFastAlloc()
-    {
-        fastAlloc = true;
-    }
-
-    static bool IsFastAlloc()
-    {
-        return fastAlloc;
     }
 
     static bool IsEnableTimePhases()
@@ -757,19 +577,9 @@ public:
         return inRange;
     }
 
-    static void EnableEBO()
-    {
-        doEBO = true;
-    }
-
     static void DisableEBO()
     {
         doEBO = false;
-    }
-
-    static bool DoEBO()
-    {
-        return doEBO;
     }
 
     static void DisableCGSSA()
@@ -847,21 +657,6 @@ public:
         return doCFGO;
     }
 
-    static void EnableRegSavesOpt()
-    {
-        doRegSavesOpt = true;
-    }
-
-    static void DisableRegSavesOpt()
-    {
-        doRegSavesOpt = false;
-    }
-
-    static bool DoRegSavesOpt()
-    {
-        return doRegSavesOpt;
-    }
-
     static void SetUseJitCodeSign(bool isJitCodeSign)
     {
         useJitCodeSign = isJitCodeSign;
@@ -872,123 +667,9 @@ public:
         return useJitCodeSign;
     }
 
-    static void EnableSsaPreSave()
-    {
-        useSsaPreSave = true;
-    }
-
-    static void DisableSsaPreSave()
-    {
-        useSsaPreSave = false;
-    }
-
-    static bool UseSsaPreSave()
-    {
-        return useSsaPreSave;
-    }
-    static void EnableSsuPreRestore()
-    {
-        useSsuPreRestore = true;
-    }
-
-    static void DisableSsuPreRestore()
-    {
-        useSsuPreRestore = false;
-    }
-
-    static bool UseSsuPreRestore()
-    {
-        return useSsuPreRestore;
-    }
-
-    static void EnableICO()
-    {
-        doICO = true;
-    }
-
     static void DisableICO()
     {
         doICO = false;
-    }
-
-    static bool DoICO()
-    {
-        return doICO;
-    }
-
-    static void EnableStoreLoadOpt()
-    {
-        doStoreLoadOpt = true;
-    }
-
-    static void DisableStoreLoadOpt()
-    {
-        doStoreLoadOpt = false;
-    }
-
-    static bool DoStoreLoadOpt()
-    {
-        return doStoreLoadOpt;
-    }
-
-    static void EnableGlobalOpt()
-    {
-        doGlobalOpt = true;
-    }
-
-    static void DisableGlobalOpt()
-    {
-        doGlobalOpt = false;
-    }
-
-    static void EnableHotColdSplit()
-    {
-        enableHotColdSplit = true;
-    }
-
-    static void DisableHotColdSplit()
-    {
-        enableHotColdSplit = false;
-    }
-
-    static bool DoEnableHotColdSplit()
-    {
-        return enableHotColdSplit;
-    }
-
-    static bool DoGlobalOpt()
-    {
-        return doGlobalOpt;
-    }
-
-    static void EnableAlignAnalysis()
-    {
-        doAlignAnalysis = true;
-    }
-
-    static void DisableAlignAnalysis()
-    {
-        doAlignAnalysis = false;
-    }
-
-    static bool DoAlignAnalysis()
-    {
-        return doAlignAnalysis;
-    }
-
-    static void EnableCondBrAlign()
-    {
-        doCondBrAlign = true;
-    }
-
-    static void DisableCondBrAlign()
-    {
-        doCondBrAlign = false;
-    }
-
-    static bool DoCondBrAlign()
-    {
-        return doCondBrAlign;
     }
 
     static void EnableBigEndianInCG()
@@ -1031,74 +712,9 @@ public:
         return targetArch == "aarch64";
     };
 
-    static void EnableVregRename()
-    {
-        doVregRename = true;
-    }
-
-    static void DisableVregRename()
-    {
-        doVregRename = false;
-    }
-
-    static bool DoVregRename()
-    {
-        return doVregRename;
-    }
-
-    static void EnableMultiPassColorRA()
-    {
-        doMultiPassColorRA = true;
-    }
-
-    static void DisableMultiPassColorRA()
-    {
-        doMultiPassColorRA = false;
-    }
-
-    static bool DoMultiPassColorRA()
-    {
-        return doMultiPassColorRA;
-    }
-
-    static void EnablePreLSRAOpt()
-    {
-        doPreLSRAOpt = true;
-    }
-
-    static void DisablePreLSRAOpt()
-    {
-        doPreLSRAOpt = false;
-    }
-
-    static bool DoPreLSRAOpt()
-    {
-        return doPreLSRAOpt;
-    }
-
-    static void EnablePrePeephole()
-    {
-        doPrePeephole = true;
-    }
-
-    static void DisablePrePeephole()
-    {
-        doPrePeephole = false;
-    }
-
     static bool DoPrePeephole()
     {
         return doPrePeephole;
-    }
-
-    static void EnablePeephole()
-    {
-        doPeephole = true;
-    }
-
-    static void DisablePeephole()
-    {
-        doPeephole = false;
     }
 
     static bool DoPeephole()
@@ -1106,117 +722,14 @@ public:
         return doPeephole;
     }
 
-    static void EnableRetMerge()
-    {
-        doRetMerge = true;
-    }
-
-    static void DisableRetMerge()
-    {
-        doRetMerge = false;
-    }
-
-    static bool DoRetMerge()
-    {
-        return doRetMerge;
-    }
-
-    static void EnablePreSchedule()
-    {
-        doPreSchedule = true;
-    }
-
-    static void DisablePreSchedule()
-    {
-        doPreSchedule = false;
-    }
-
     static bool DoPreSchedule()
     {
         return doPreSchedule;
     }
 
-    static void EnableSchedule()
-    {
-        doSchedule = true;
-    }
-
     static void DisableSchedule()
     {
         doSchedule = false;
-    }
-
-    static bool DoSchedule()
-    {
-        return doSchedule;
-    }
-    static void EnableWriteRefFieldOpt()
-    {
-        doWriteRefFieldOpt = true;
-    }
-
-    static void DisableWriteRefFieldOpt()
-    {
-        doWriteRefFieldOpt = false;
-    }
-    static bool DoWriteRefFieldOpt()
-    {
-        return doWriteRefFieldOpt;
-    }
-
-    static void EnableDumpOptimizeCommonLog()
-    {
-        dumpOptimizeCommonLog = true;
-    }
-
-    static void DisableDumpOptimizeCommonLog()
-    {
-        dumpOptimizeCommonLog = false;
-    }
-
-    static bool IsDumpOptimizeCommonLog()
-    {
-        return dumpOptimizeCommonLog;
-    }
-
-    static void EnableCheckArrayStore()
-    {
-        checkArrayStore = true;
-    }
-
-    static void DisableCheckArrayStore()
-    {
-        checkArrayStore = false;
-    }
-
-    static bool IsCheckArrayStore()
-    {
-        return checkArrayStore;
-    }
-
-    static void EnableExclusiveEH()
-    {
-        exclusiveEH = true;
-    }
-
-    static bool IsExclusiveEH()
-    {
-        return exclusiveEH;
-    }
-
-    static void EnablePIC()
-    {
-        doPIC = true;
-    }
-
-    static void DisablePIC()
-    {
-        doPIC = false;
-    }
-
-    static bool IsPIC()
-    {
-        return doPIC;
     }
 
     static void EnableNoDupBB()
@@ -1249,43 +762,9 @@ public:
         return noCalleeCFI;
     }
 
-    static void EnableEmitCyclePattern()
-    {
-        emitCyclePattern = true;
-    }
-
     static bool IsInsertYieldPoint()
     {
         return insertYieldPoint;
-    }
-
-    static void EnableMapleLinker()
-    {
-        mapleLinker = true;
-    }
-
-    static void DisableMapleLinker()
-    {
-        mapleLinker = false;
-    }
-
-    static bool IsMapleLinker()
-    {
-        return mapleLinker;
-    }
-    static void EnableReplaceASM()
-    {
-        replaceASM = true;
-    }
-
-    static void DisableReplaceASM()
-    {
-        replaceASM = false;
-    }
-
-    static bool IsReplaceASM()
-    {
-        return replaceASM;
     }
 
     static void EnableGeneralRegOnly()
@@ -1303,21 +782,6 @@ public:
         return generalRegOnly;
     }
 
-    static void EnablePrintFunction()
-    {
-        printFunction = true;
-    }
-
-    static void DisablePrintFunction()
-    {
-        printFunction = false;
-    }
-
-    static bool IsPrintFunction()
-    {
-        return printFunction;
-    }
-
     static std::string &GetGlobalVarProFile()
     {
         return globalVarProfile;
@@ -1331,21 +795,6 @@ public:
     static bool IsEmitBlockMarker()
     {
         return emitBlockMarker;
-    }
-
-    static void EnableNativeOpt()
-    {
-        nativeOpt = true;
-    }
-
-    static void DisableNativeOpt()
-    {
-        nativeOpt = false;
-    }
-
-    static bool IsNativeOpt()
-    {
-        return nativeOpt;
     }
 
     static void EnableLazyBinding()
@@ -1376,99 +825,6 @@ public:
     static bool IsHotFix()
     {
         return hotFix;
-    }
-
-    static void EnableDebugSched()
-    {
-        debugSched = true;
-    }
-
-    static void DisableDebugSched()
-    {
-        debugSched = false;
-    }
-
-    static bool IsDebugSched()
-    {
-        return debugSched;
-    }
-
-    static void EnableDruteForceSched()
-    {
-        bruteForceSched = true;
-    }
-
-    static void DisableDruteForceSched()
-    {
-        bruteForceSched = false;
-    }
-
-    static bool IsDruteForceSched()
-    {
-        return bruteForceSched;
-    }
-
-    static void EnableSimulateSched()
-    {
-        simulateSched = true;
-    }
-
-    static void DisableSimulateSched()
-    {
-        simulateSched = false;
-    }
-
-    static bool IsSimulateSched()
-    {
-        return simulateSched;
-    }
-
-    static void SetABIType(const std::string &type)
-    {
-        if (type == "hard") {
-            abiType = kABIHard;
-        } else if (type == "soft") {
-            CHECK_FATAL(false, "float-abi=soft is not supported Currently.");
-        } else if (type == "softfp") {
-            abiType = kABISoftFP;
-        } else {
-            CHECK_FATAL(false, "unexpected abi-type, only hard, soft and softfp are supported");
-        }
-    }
-
-    static ABIType GetABIType()
-    {
-        return abiType;
-    }
-
-    static void EnableLongCalls()
-    {
-        genLongCalls = true;
-    }
-
-    static void DisableLongCalls()
-    {
-        genLongCalls = false;
-    }
-
-    static bool IsLongCalls()
-    {
-        return genLongCalls;
-    }
-
-    static void EnableFunctionSections()
-    {
-        functionSections = true;
-    }
-
-    static void DisableFunctionSections()
-    {
-        functionSections = false;
-    }
-
-    static bool IsFunctionSections()
-    {
-        return functionSections;
     }
 
     static void EnableFramePointer()
@@ -1511,76 +867,6 @@ public:
         options = flag;
     }
 
-    static void EnableFastMath()
-    {
-        fastMath = true;
-    }
-
-    static void DisableFastMath()
-    {
-        fastMath = false;
-    }
-
-    static bool IsFastMath()
-    {
-        return fastMath;
-    }
-
-    static void EnableCommon()
-    {
-        noCommon = false;
-    }
-
-    static void DisableCommon()
-    {
-        noCommon = true;
-    }
-
-    static bool IsNoCommon()
-    {
-        return noCommon;
-    }
-
-    static void SetAlignMinBBSize(uint32 minBBSize)
-    {
-        alignMinBBSize = minBBSize;
-    }
-
-    static uint32 GetAlignMinBBSize()
-    {
-        return alignMinBBSize;
-    }
-
-    static void SetAlignMaxBBSize(uint32 maxBBSize)
-    {
-        alignMaxBBSize = maxBBSize;
-    }
-
-    static uint32 GetAlignMaxBBSize()
-    {
-        return alignMaxBBSize;
-    }
-
-    static void SetLoopAlignPow(uint32 loopPow)
-    {
-        loopAlignPow = loopPow;
-    }
-
-    static uint32 GetLoopAlignPow()
-    {
-        return loopAlignPow;
-    }
-
-    static void SetJumpAlignPow(uint32 jumpPow)
-    {
-        jumpAlignPow = jumpPow;
-    }
-
-    static uint32 GetJumpAlignPow()
-    {
-        return jumpAlignPow;
-    }
-
     static void SetFuncAlignPow(uint32 funcPow)
     {
         funcAlignPow = funcPow;
@@ -1589,16 +875,6 @@ public:
     static uint32 GetFuncAlignPow()
     {
         return funcAlignPow;
-    }
-
-    static void EnableOptimizedFrameLayout()
-    {
-        doOptimizedFrameLayout = true;
-    }
-
-    static void DisableOptimizedFrameLayout()
-    {
-        doOptimizedFrameLayout = false;
     }
 
     static bool DoOptimizedFrameLayout()
@@ -1614,7 +890,6 @@ private:
     std::vector<std::string> phaseSequence;
     EmitMemoryManager emitMemoryManager;
 
-    bool insertCall = false;
     bool runCGFlag = true;
     bool asmEmitterEnable = false;
     bool generateObjectMap = true;
@@ -1624,13 +899,10 @@ private:
     GenerateFlag generateFlag = 0;
     OptionFlag options = kUndefined;
 
-    std::string classListFile;
     std::string ehExclusiveFile;
-    std::string cyclePatternFile;
     /* we don't do exception handling in this list */
     std::vector<std::string> ehExclusiveFunctionName;
 
-    static bool quiet;
     static std::string targetArch;
     static std::unordered_set<std::string> dumpPhases;
     static std::unordered_set<std::string> skipPhases;
@@ -1641,7 +913,6 @@ private:
     static std::string duplicateAsmFile;
     static bool optForSize;
     static bool enableHotColdSplit;
-    static bool useBarriersForVolatile;
     static bool timePhases;
     static bool cgBigEndian;
     static bool doEBO;
@@ -1653,72 +924,40 @@ private:
     static bool doICO;
     static bool doStoreLoadOpt;
     static bool doGlobalOpt;
-    static bool doVregRename;
-    static bool doMultiPassColorRA;
     static bool doPrePeephole;
     static bool doPeephole;
-    static bool doRetMerge;
     static bool doSchedule;
-    static bool doAlignAnalysis;
-    static bool doCondBrAlign;
     static bool doWriteRefFieldOpt;
     static bool doRegSavesOpt;
     static bool useSsaPreSave;
     static bool useSsuPreRestore;
-    static bool dumpOptimizeCommonLog;
     static bool checkArrayStore;
-    static bool exclusiveEH;
-    static bool doPIC;
     static bool noDupBB;
     static bool noCalleeCFI;
-    static bool emitCyclePattern;
     static bool insertYieldPoint;
-    static bool mapleLinker;
-    static bool printFunction;
     static std::string globalVarProfile;
     static bool nativeOpt;
     static bool lazyBinding;
     static bool arm64ilp32;
     static bool hotFix;
     static bool useJitCodeSign;
-    /* if true dump scheduling information */
-    static bool debugSched;
-    /* if true do BruteForceSchedule */
-    static bool bruteForceSched;
-    /* if true do SimulateSched */
-    static bool simulateSched;
-    static ABIType abiType;
-    /* if true generate adrp/ldr/blr */
-    static bool genLongCalls;
-    static bool functionSections;
     static bool useFramePointer;
     static bool gcOnly;
     static bool doPreSchedule;
     static bool emitBlockMarker;
     static Range range;
     static bool inRange;
-    static bool doPatchLongBranch;
     static std::string profileData;
     static std::string profileFuncData;
     static std::string profileClassData;
-    static std::string fastFuncsAsmFile;
     static Range spillRanges;
     static uint64 lsraBBOptSize;
     static uint64 lsraInsnOptSize;
     static uint64 overlapNum;
-    static uint8 rematLevel;
-    static uint8 fastAllocMode;
-    static bool fastAlloc;
     static bool doPreLSRAOpt;
-    static bool replaceASM;
     static bool generalRegOnly;
     static std::string literalProfile;
-    static bool fastMath;
     static bool noCommon;
-    static uint32 alignMinBBSize;
-    static uint32 alignMaxBBSize;
-    static uint32 loopAlignPow;
-    static uint32 jumpAlignPow;
     static uint32 funcAlignPow;
     static bool doOptimizedFrameLayout;
     static bool doCgirVerify;

@@ -95,9 +95,6 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int
                         ty = static_cast<MIRClassType *>(ty)->GetFieldType(iread->GetFieldID());
                     }
                 }
-            } else if ((opndOpcode == OP_ireadfpoff || opndOpcode == OP_ireadoff || opndOpcode == OP_dreadoff) &&
-                       opnd->GetPrimType() == PTY_agg) {
-                ty = static_cast<AArch64CGFunc *>(cgFunc)->GetLmbcStructArgType(stmt, i);
             }
             if (ty == nullptr) { /* type mismatch */
                 continue;
@@ -481,10 +478,6 @@ void AArch64MemLayout::LayoutReturnRef(std::vector<MIRSymbol *> &returnDelays, i
     maxParmStackSize = static_cast<int32>(segArgsToStkPass.GetSize());
     if (Globals::GetInstance()->GetOptimLevel() == CGOptions::kLevel0) {
         AssignSpillLocationsToPseudoRegisters();
-    } else {
-        AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
-        /* 8-VirtualRegNode occupy byte number */
-        aarchCGFunc->SetCatchRegno(cgFunc->NewVReg(kRegTyInt, 8));
     }
     segRefLocals.SetSize(static_cast<uint32>(RoundUp(segRefLocals.GetSize(), GetPointerSize())));
     if (CGOptions::IsArm64ilp32()) {
@@ -583,9 +576,6 @@ uint64 AArch64MemLayout::GetSizeOfColdToStk() const
     if (GetSizeOfVRSaveArea() > 0) {
         total += RoundUp(GetSizeOfVRSaveArea(), kAarch64StackPtrAlignment);
     }
-    if (cgFunc->GetCG()->IsStackProtectorStrong() || cgFunc->GetCG()->IsStackProtectorAll()) {
-        total += static_cast<uint32>(kAarch64StackPtrAlignment);
-    }
     return total;
 }
 
@@ -647,9 +637,6 @@ uint64 AArch64MemLayout::StackFrameSize() const
 uint32 AArch64MemLayout::RealStackFrameSize() const
 {
     auto size = StackFrameSize();
-    if (cgFunc->GetCG()->IsStackProtectorStrong() || cgFunc->GetCG()->IsStackProtectorAll()) {
-        size += static_cast<uint32>(kAarch64StackPtrAlignment);
-    }
     return static_cast<uint32>(size);
 }
 
@@ -700,10 +687,6 @@ int32 AArch64MemLayout::GetCalleeSaveBaseLoc() const
         offset = static_cast<uint32>(offset - saveareasize);
     }
     offset -= static_cast<uint32>(RoundUp(GetSizeOfSegCold(), k16BitSize));
-
-    if (cgFunc->GetCG()->IsStackProtectorStrong() || cgFunc->GetCG()->IsStackProtectorAll()) {
-        offset -= static_cast<uint32>(kAarch64StackPtrAlignment);
-    }
     return static_cast<int32>(offset);
 }
 } /* namespace maplebe */

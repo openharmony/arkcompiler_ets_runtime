@@ -60,14 +60,6 @@ if (TARGET == "aarch64" || TARGET == "x86_64") {
   ]
 }
 
-if (TARGET == "riscv64") {
-  include_directories += [
-    "${MAPLEALL_ROOT}/maple_be/include/cg/riscv64",
-    "${MAPLEALL_ROOT}/maple_be/include/be/riscv64",
-  ]
-  deps_libcg += [ ":libcgriscv64" ]
-}
-
 if (TARGET == "ark") {
   include_directories += [
     "${MAPLEALL_ROOT}/maple_be/include/cg/ark",
@@ -90,7 +82,6 @@ src_libcgaarch64 = [
   "src/cg/aarch64/aarch64_targetinfo.cpp",
   "src/cg/aarch64/aarch64_abi.cpp",
   "src/cg/aarch64/aarch64_call_conv.cpp",
-  "src/cg/aarch64/mpl_atomic.cpp",
   "src/cg/aarch64/aarch64_cfi_generator.cpp",
   "src/cg/aarch64/aarch64_cgfunc.cpp",
   "src/cg/aarch64/aarch64_emitter.cpp",
@@ -140,38 +131,6 @@ src_libcgx8664 = [
   "src/cg/x86_64/x64_optimize_common.cpp",
   "src/cg/x86_64/elf_assembler.cpp",
   "src/cg/x86_64/asm_assembler.cpp",
-]
-
-src_libcgriscv64 = [
-  "src/cg/riscv64/mpl_atomic.cpp",
-  "src/cg/riscv64/riscv64_abi.cpp",
-  "src/cg/riscv64/riscv64_args.cpp",
-  "src/cg/riscv64/riscv64_cg.cpp",
-  "src/cg/riscv64/riscv64_cgfunc.cpp",
-  "src/cg/riscv64/riscv64_color_ra.cpp",
-  "src/cg/riscv64/riscv64_dependence.cpp",
-  "src/cg/riscv64/riscv64_ebo.cpp",
-  "src/cg/riscv64/riscv64_emitter.cpp",
-  "src/cg/riscv64/riscv64_fixshortbranch.cpp",
-  "src/cg/riscv64/riscv64_global.cpp",
-  "src/cg/riscv64/riscv64_ico.cpp",
-  "src/cg/riscv64/riscv64_immediate.cpp",
-  "src/cg/riscv64/riscv64_insn.cpp",
-  "src/cg/riscv64/riscv64_isa.cpp",
-  "src/cg/riscv64/riscv64_live.cpp",
-  "src/cg/riscv64/riscv64_lsra.cpp",
-  "src/cg/riscv64/riscv64_memlayout.cpp",
-  "src/cg/riscv64/riscv64_offset_adjust.cpp",
-  "src/cg/riscv64/riscv64_operand.cpp",
-  "src/cg/riscv64/riscv64_optimize_common.cpp",
-  "src/cg/riscv64/riscv64_peep.cpp",
-  "src/cg/riscv64/riscv64_proepilog.cpp",
-  "src/cg/riscv64/riscv64_reaching.cpp",
-  "src/cg/riscv64/riscv64_reg_alloc.cpp",
-  "src/cg/riscv64/riscv64_schedule.cpp",
-  "src/cg/riscv64/riscv64_strldr.cpp",
-  "src/cg/riscv64/riscv64_yieldpoint.cpp",
-  "src/cg/riscv64/riscv64_ra_opt.cpp",
 ]
 
 src_libcgark = [ "src/cg/ark/foo.cpp" ]
@@ -253,6 +212,9 @@ ohos_source_set("libcgaarch64") {
       defines += [ "JIT_FORT_DISABLE" ]
     }
   }
+  if (enable_litecg_emit) {
+    defines += [ "ARK_LITECG_DEBUG" ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -263,6 +225,9 @@ ohos_source_set("libcgx8664") {
   sources = src_libcgx8664
   include_dirs = include_directories
   external_deps = [ "bounds_checking_function:libsec_static" ]
+  if (enable_litecg_emit) {
+    defines = [ "ARK_LITECG_DEBUG" ]
+  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -271,16 +236,6 @@ ohos_source_set("libcgx86phases") {
   stack_protector_ret = false
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgx86phases
-  include_dirs = include_directories
-  external_deps = [ "bounds_checking_function:libsec_static" ]
-  part_name = "ets_runtime"
-  subsystem_name = "arkcompiler"
-}
-
-ohos_source_set("libcgriscv64") {
-  stack_protector_ret = false
-  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
-  sources = src_libcgriscv64
   include_dirs = include_directories
   external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
@@ -315,6 +270,9 @@ ohos_static_library("libcg") {
   deps = deps_libcg
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   defines = []
+  if (enable_litecg_emit) {
+    defines += [ "ARK_LITECG_DEBUG" ]
+  }
   external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"

@@ -26,7 +26,6 @@ public:
     AArch64AsmEmitter(CG &cg, const std::string &asmFileName) : AsmEmitter(cg, asmFileName) {}
     ~AArch64AsmEmitter() = default;
 
-    void EmitFastLSDA(FuncEmitInfo &funcEmitInfo) override;
     void EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std::string &name, LabelIdx labIdx) override;
     void RecordRegInfo(FuncEmitInfo &funcEmitInfo) const;
     void Run(FuncEmitInfo &funcEmitInfo) override;
@@ -44,7 +43,9 @@ public:
     }
 
 private:
+#ifdef ARK_LITECG_DEBUG
     const MapleString *currDebugComment { nullptr };
+#endif
 
     /* cfi & dbg need target info ? */
     void EmitAArch64CfiInsn(Emitter &emitter, const Insn &insn) const;

@@ -545,6 +545,7 @@ bool GSymbolTable::RemoveFromStringSymbolMap(const MIRSymbol &st)
     return false;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void GSymbolTable::Dump(bool isLocal, int32 indent) const
 {
     for (size_t i = 1; i < symbolTable.size(); ++i) {
@@ -554,6 +555,7 @@ void GSymbolTable::Dump(bool isLocal, int32 indent) const
         }
     }
 }
+#endif
 
 GlobalTables GlobalTables::globalTables;
 GlobalTables &GlobalTables::GetGlobalTables()

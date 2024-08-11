@@ -71,7 +71,6 @@ public:
     void EmitDIAttrValue(DBGDie &die, DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di);
     void EmitDIDebugAbbrevSection(maplebe::DebugInfo &mirdi);
     void EmitDIDebugStrSection();
-    void EmitDebugInfo(maplebe::CG &cg);
 
 private:
     assembler::Assembler &assmbler;

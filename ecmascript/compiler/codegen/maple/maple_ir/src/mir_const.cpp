@@ -22,10 +22,12 @@
 #if MIR_FEATURE_FULL
 
 namespace maple {
+#ifdef ARK_LITECG_DEBUG
 void MIRIntConst::Dump(const MIRSymbolTable *) const
 {
     LogInfo::MapleLogger() << value;
 }
+#endif
 
 bool MIRIntConst::operator==(const MIRConst &rhs) const
 {
@@ -57,6 +59,7 @@ uint8 MIRIntConst::GetActualBitWidth() const
     return width;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRAddrofConst::Dump(const MIRSymbolTable *localSymTab) const
 {
     LogInfo::MapleLogger() << "addrof " << GetPrimTypeName(PTY_ptr);
@@ -73,6 +76,7 @@ void MIRAddrofConst::Dump(const MIRSymbolTable *localSymTab) const
         LogInfo::MapleLogger() << " (" << offset << ")";
     }
 }
+#endif
 
 bool MIRAddrofConst::operator==(const MIRConst &rhs) const
 {
@@ -89,6 +93,7 @@ bool MIRAddrofConst::operator==(const MIRConst &rhs) const
     return (stIdx == rhsA.stIdx) && (fldID == rhsA.fldID);
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRAddroffuncConst::Dump(const MIRSymbolTable *) const
 {
     LogInfo::MapleLogger() << "addroffunc " << GetPrimTypeName(PTY_ptr);
@@ -98,6 +103,7 @@ void MIRAddroffuncConst::Dump(const MIRSymbolTable *) const
     LogInfo::MapleLogger() << " &"
                            << GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx())->GetName();
 }
+#endif
 
 bool MIRAddroffuncConst::operator==(const MIRConst &rhs) const
 {
@@ -111,12 +117,14 @@ bool MIRAddroffuncConst::operator==(const MIRConst &rhs) const
     return (&GetType() == &rhs.GetType()) && (puIdx == rhsAf.puIdx);
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRLblConst::Dump(const MIRSymbolTable *) const
 {
     LogInfo::MapleLogger() << "addroflabel " << GetPrimTypeName(PTY_ptr);
     MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
     LogInfo::MapleLogger() << " @" << func->GetLabelName(value);
 }
+#endif
 
 bool MIRLblConst::operator==(const MIRConst &rhs) const
 {
@@ -209,6 +217,7 @@ bool MIRAggConst::operator==(const MIRConst &rhs) const
     return true;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRFloatConst::Dump(const MIRSymbolTable *) const
 {
     LogInfo::MapleLogger() << std::setprecision(std::numeric_limits<float>::max_digits10) << value.floatValue << "f";
@@ -244,18 +253,21 @@ void MIRAggConst::Dump(const MIRSymbolTable *localSymTab) const
     }
     LogInfo::MapleLogger() << "]";
 }
+#endif
 
 MIRStrConst::MIRStrConst(const std::string &str, MIRType &type)
     : MIRConst(type, kConstStrConst), value(GlobalTables::GetUStrTable().GetOrCreateStrIdxFromName(str))
 {
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRStrConst::Dump(const MIRSymbolTable *) const
 {
     LogInfo::MapleLogger() << "conststr " << GetPrimTypeName(GetType().GetPrimType());
     const std::string &dumpStr = GlobalTables::GetUStrTable().GetStringFromStrIdx(value);
     PrintString(dumpStr);
 }
+#endif
 
 bool MIRStrConst::operator==(const MIRConst &rhs) const
 {
@@ -274,6 +286,7 @@ MIRStr16Const::MIRStr16Const(const std::u16string &str, MIRType &type)
 {
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRStr16Const::Dump(const MIRSymbolTable *) const
 {
     LogInfo::MapleLogger() << "conststr16 " << GetPrimTypeName(GetType().GetPrimType());
@@ -283,6 +296,7 @@ void MIRStr16Const::Dump(const MIRSymbolTable *) const
     (void)namemangler::UTF16ToUTF8(str, str16);
     PrintString(str);
 }
+#endif
 
 bool MIRStr16Const::operator==(const MIRConst &rhs) const
 {

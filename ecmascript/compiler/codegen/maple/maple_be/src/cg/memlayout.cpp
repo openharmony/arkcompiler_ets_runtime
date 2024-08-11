@@ -82,9 +82,6 @@ uint32 MemLayout::FindLargestActualArea(int32 &aggCopySize)
 
 bool CgLayoutFrame::PhaseRun(maplebe::CGFunc &f)
 {
-    if (CGOptions::IsPrintFunction()) {
-        LogInfo::MapleLogger() << f.GetName() << "\n";
-    }
     f.LayoutStackFrame();
     return false;
 }

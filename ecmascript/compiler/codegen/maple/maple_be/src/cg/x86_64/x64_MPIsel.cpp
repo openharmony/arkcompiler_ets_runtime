@@ -1094,34 +1094,6 @@ void X64MPIsel::SelectCondGoto(CondGotoNode &stmt, BaseNode &condNode, Operand &
     cgFunc->GetCurBB()->AppendInsn(jmpInsn);
 }
 
-Operand *X64MPIsel::SelectStrLiteral(ConststrNode &constStr)
-{
-    std::string labelStr;
-    labelStr.append(".LUstr_");
-    labelStr.append(std::to_string(constStr.GetStrIdx()));
-    MIRSymbol *labelSym =
-        GlobalTables::GetGsymTable().GetSymbolFromStrIdx(GlobalTables::GetStrTable().GetStrIdxFromName(labelStr));
-    MIRType *etype = GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)PTY_a64);
-    auto *c = cgFunc->GetMemoryPool()->New<MIRStrConst>(constStr.GetStrIdx(), *etype);
-    if (labelSym == nullptr) {
-        labelSym = cgFunc->GetMirModule().GetMIRBuilder()->CreateGlobalDecl(labelStr, c->GetType());
-        labelSym->SetStorageClass(kScFstatic);
-        labelSym->SetSKind(kStConst);
-        /* c may be local, we need a global node here */
-        labelSym->SetKonst(cgFunc->NewMirConst(*c));
-    }
-    if (c->GetPrimType() == PTY_ptr) {
-        ImmOperand &stOpnd = cgFunc->GetOpndBuilder()->CreateImm(*labelSym, 0, 0);
-        RegOperand &addrOpnd = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, cgFunc->GetRegTyFromPrimTy(PTY_a64));
-        Insn &addrOfInsn = (cgFunc->GetInsnBuilder()->BuildInsn(x64::MOP_movabs_i_r, X64CG::kMd[x64::MOP_movabs_i_r]));
-        addrOfInsn.AddOpndChain(stOpnd).AddOpndChain(addrOpnd);
-        cgFunc->GetCurBB()->AppendInsn(addrOfInsn);
-        return &addrOpnd;
-    }
-    CHECK_FATAL(false, "Unsupported const string type");
-    return nullptr;
-}
-
 Operand &X64MPIsel::GetTargetRetOperand(PrimType primType, int32 sReg)
 {
     uint32 bitSize = GetPrimTypeBitSize(primType);
@@ -1626,10 +1598,5 @@ Operand *X64MPIsel::SelectSqrt(UnaryNode &node, Operand &src, const BaseNode &pa
     (void)insn.AddOpndChain(regOpnd0).AddOpndChain(retReg);
     cgFunc->GetCurBB()->AppendInsn(insn);
     return &retReg;
-}
-void X64MPIsel::SelectAsm(AsmNode &node)
-{
-    cgFunc->SetHasAsm();
-    CHECK_FATAL(false, "NIY");
 }
 }  // namespace maplebe

@@ -77,7 +77,6 @@ public:
     }
 
     void HandleTextSectionGlobalFixup() override;
-    void HandleTextSectionFixup();
     void AppendTextSectionData() override;
     void AppendGlobalLabel() override;
     void AppendSymsToSymTabSec() override;
@@ -155,7 +154,6 @@ private:
     uint32 EncodeLogicaImm(uint64 imm, uint32 size) const;
     void HandleCallFixup(ObjFuncEmitInfo &objFuncEmitInfo, const Fixup &fixup);
     void HandleAdrFixup(ObjFuncEmitInfo &objFuncEmitInfo, const Fixup &fixup);
-    void HandleLSDAFixup(ObjFuncEmitInfo &objFuncEmitInfo, const Fixup &fixup);
 
     /* emit intrinsic insn */
     void EmitMCCStackMapCall(const Insn &insn, std::vector<uint32> &label2Offset, ObjFuncEmitInfo &objFuncEmitInfo);

@@ -39,8 +39,6 @@ public:
     bool GenerateLiveOut(BB &bb) const;
     bool GenerateLiveIn(BB &bb);
     void BuildInOutforFunc();
-    void DealWithInOutOfCleanupBB();
-    void InsertInOutOfCleanupBB();
     void ResetLiveSet();
     void ClearInOutDataInfo();
     void GetBBDefUse(BB &bb) const;

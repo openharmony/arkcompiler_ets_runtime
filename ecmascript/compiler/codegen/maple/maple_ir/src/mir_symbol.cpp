@@ -344,6 +344,7 @@ bool MIRSymbol::IgnoreRC() const
     return strIdx == reflectClassNameIdx;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRSymbol::Dump(bool isLocal, int32 indent, bool suppressInit, const MIRSymbolTable *localsymtab) const
 {
     if (sKind == kStVar || sKind == kStFunc) {
@@ -430,6 +431,7 @@ void MIRSymbolTable::Dump(bool isLocal, int32 indent, bool printDeleted, MIRFlav
         symbol->Dump(isLocal, indent, false /* suppressinit */, this);
     }
 }
+#endif
 
 LabelIdx MIRLabelTable::CreateLabelWithPrefix(char c)
 {

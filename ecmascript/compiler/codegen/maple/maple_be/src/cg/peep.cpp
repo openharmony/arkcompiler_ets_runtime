@@ -554,35 +554,7 @@ void PeepHoleOptimizer::PeepholeOpt()
     peepOptimizer.Run<AArch64PeepHole>();
 #endif
 }
-
-void PeepHoleOptimizer::PrePeepholeOpt()
-{
-    auto memPool = std::make_unique<ThreadLocalMemPool>(memPoolCtrler, "peepholeOptObj");
-    PeepOptimizer peepOptimizer(*cgFunc, memPool.get());
-#if TARGAARCH64 || TARGRISCV64
-    peepOptimizer.Run<AArch64PrePeepHole>();
 #endif
-}
-
-void PeepHoleOptimizer::PrePeepholeOpt1()
-{
-    auto memPool = std::make_unique<ThreadLocalMemPool>(memPoolCtrler, "peepholeOptObj");
-    PeepOptimizer peepOptimizer(*cgFunc, memPool.get());
-#if TARGAARCH64 || TARGRISCV64
-    peepOptimizer.Run<AArch64PrePeepHole1>();
-#endif
-}
-#endif
-/* === Physical Pre Form === */
-bool CgPrePeepHole::PhaseRun(maplebe::CGFunc &f)
-{
-    MemPool *mp = GetPhaseMemPool();
-    CGPeepHole *cgpeep = f.GetCG()->CreateCGPeepHole(*mp, f);
-    CHECK_FATAL(cgpeep != nullptr, "PeepHoleOptimizer instance create failure");
-    cgpeep->Run();
-    return false;
-}
-MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPrePeepHole, cgprepeephole)
 
 /* === Physical Post Form === */
 bool CgPostPeepHole::PhaseRun(maplebe::CGFunc &f)
@@ -596,25 +568,6 @@ bool CgPostPeepHole::PhaseRun(maplebe::CGFunc &f)
 MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPostPeepHole, cgpostpeephole)
 
 #if TARGAARCH64
-bool CgPrePeepHole0::PhaseRun(maplebe::CGFunc &f)
-{
-    auto *peep = GetPhaseMemPool()->New<PeepHoleOptimizer>(&f);
-    CHECK_FATAL(peep != nullptr, "PeepHoleOptimizer instance create failure");
-    peep->PrePeepholeOpt();
-    return false;
-}
-MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPrePeepHole0, prepeephole)
-
-bool CgPrePeepHole1::PhaseRun(maplebe::CGFunc &f)
-{
-    auto *peep = GetPhaseMemPool()->New<PeepHoleOptimizer>(&f);
-    CHECK_FATAL(peep != nullptr, "PeepHoleOptimizer instance create failure");
-    peep->PrePeepholeOpt1();
-    return false;
-}
-
-MAPLE_TRANSFORM_PHASE_REGISTER_CANSKIP(CgPrePeepHole1, prepeephole1)
-
 bool CgPeepHole0::PhaseRun(maplebe::CGFunc &f)
 {
     auto *peep = GetPhaseMemPool()->New<PeepHoleOptimizer>(&f);

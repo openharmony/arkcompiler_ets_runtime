@@ -88,9 +88,10 @@ public:
 
     void IncLevel();
     bool AddScope(MIRScope *scope);
+#ifdef ARK_LITECG_DEBUG
     void Dump(int32 indent) const;
     void Dump() const;
-
+#endif
 private:
     MIRModule *module;
     unsigned level = 0;

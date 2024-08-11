@@ -180,9 +180,6 @@ void AArch64CG::EmitGCTIBLabel(GCTIBKey *key, const std::string &gcTIBName,
 
         /* Emit each bitmap word */
         for (const auto &bitmapWord : bitmapWords) {
-            if (!CGOptions::IsQuiet()) {
-                LogInfo::MapleLogger() << "  bitmap_word: 0x" << bitmapWord << " " << PRIx64 << "\n";
-            }
             emitter->Emit("\t.quad "); /* AArch64-specific. Generate a 64-bit value. */
             emitter->EmitHexUnsigned(bitmapWord);
             emitter->Emit("\n");
@@ -239,14 +236,7 @@ std::string AArch64CG::FindGCTIBPatternName(const std::string &name) const
 
 void AArch64CG::GenerateObjectMaps(BECommon &beCommon)
 {
-    if (!CGOptions::IsQuiet()) {
-        LogInfo::MapleLogger() << "DEBUG: Generating object maps...\n";
-    }
-
     for (auto &tyId : GetMIRModule()->GetClassList()) {
-        if (!CGOptions::IsQuiet()) {
-            LogInfo::MapleLogger() << "Class tyIdx: " << tyId << "\n";
-        }
         TyIdx tyIdx(tyId);
         MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
         DEBUG_ASSERT(ty != nullptr, "ty nullptr check");
@@ -255,15 +245,6 @@ void AArch64CG::GenerateObjectMaps(BECommon &beCommon)
         MIRStructType *strTy = static_cast<MIRStructType *>(ty);
         if (!strTy->IsLocal()) {
             continue;
-        }
-
-        GStrIdx nameIdx = ty->GetNameStrIdx();
-
-        const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(nameIdx);
-
-        /* Emit for a class */
-        if (!CGOptions::IsQuiet()) {
-            LogInfo::MapleLogger() << "  name: " << name << "\n";
         }
     }
 }

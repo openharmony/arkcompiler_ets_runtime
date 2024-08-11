@@ -251,7 +251,9 @@ public:
     LMIRBuilder(Module &module);
     ~LMIRBuilder() = default;
 
+#ifdef ARK_LITECG_DEBUG
     void DumpIRToFile(const std::string fileName);
+#endif
 
     LiteCGTypeKind LiteCGGetTypeKind(Type *type) const;
     void SetCallStmtDeoptBundleInfo(Stmt &icallNode, const std::unordered_map<int, LiteCGValue> &deoptBundleInfo);

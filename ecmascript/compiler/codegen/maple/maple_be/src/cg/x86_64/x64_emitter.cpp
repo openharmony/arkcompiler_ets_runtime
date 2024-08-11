@@ -21,6 +21,7 @@
 namespace {
 using namespace maple;
 
+#ifdef ARK_LITECG_DEBUG
 DBGDieAttr *LFindAttribute(MapleVector<DBGDieAttr *> &vec, DwAt key)
 {
     for (DBGDieAttr *at : vec) {
@@ -88,6 +89,7 @@ const std::string GetDwOpName(unsigned n)
             return nullptr;
     }
 }
+#endif
 }  // namespace
 
 using namespace std;
@@ -1623,13 +1625,14 @@ uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, bool belongsToDataS
 
 uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFieldCounts, bool belongsToDataSec)
 {
+    uint64 valueSize = 0;
+#ifdef ARK_LITECG_DEBUG
     StructEmitInfo *sEmitInfo = cg.GetMIRModule()->GetMemPool()->New<StructEmitInfo>();
     CHECK_NULL_FATAL(sEmitInfo);
     MIRType &mirType = mirConst.GetType();
     MIRAggConst &structCt = static_cast<MIRAggConst &>(mirConst);
     MIRStructType &structType = static_cast<MIRStructType &>(mirType);
     uint8 structPack = static_cast<uint8>(structType.GetTypeAttrs().GetPack());
-    uint64 valueSize = 0;
     MIRTypeKind structKind = structType.GetKind();
     /* all elements of struct. */
     uint8 num = structKind == kTypeUnion ? 1 : static_cast<uint8>(structType.GetFieldsSize());
@@ -1708,15 +1711,17 @@ uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFi
     if (opSize != 0) {
         assmbler.EmitNull(opSize);
     }
+#endif
     return valueSize;
 }
 
 uint64 X64Emitter::EmitVector(MIRConst &mirConst, bool belongsToDataSec)
 {
+    uint64 valueSize = 0;
+#ifdef ARK_LITECG_DEBUG
     MIRType &mirType = mirConst.GetType();
     MIRAggConst &vecCt = static_cast<MIRAggConst &>(mirConst);
     size_t uNum = vecCt.GetConstVec().size();
-    uint64 valueSize = 0;
     for (size_t i = 0; i < uNum; ++i) {
         MIRConst *elemConst = vecCt.GetConstVecItem(i);
         if (IsPrimitiveScalar(elemConst->GetType().GetPrimType())) {
@@ -1734,11 +1739,14 @@ uint64 X64Emitter::EmitVector(MIRConst &mirConst, bool belongsToDataSec)
             valueSize += elemSize;
         }
     }
+#endif
     return valueSize;
 }
 
 uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
 {
+    uint64 valueSize = 0;
+#ifdef ARK_LITECG_DEBUG
     MIRType &mirType = mirConst.GetType();
     MIRAggConst &arrayCt = static_cast<MIRAggConst &>(mirConst);
     MIRArrayType &arrayType = static_cast<MIRArrayType &>(mirType);
@@ -1746,7 +1754,6 @@ uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
     uint32 dim = arrayType.GetSizeArrayItem(0);
     TyIdx elmTyIdx = arrayType.GetElemTyIdx();
     MIRType *subTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(elmTyIdx);
-    uint64 valueSize = 0;
     if (uNum == 0 && dim) {
         while (subTy->GetKind() == kTypeArray) {
             MIRArrayType *aSubTy = static_cast<MIRArrayType *>(subTy);
@@ -1800,11 +1807,13 @@ uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
             assmbler.EmitNull(sizeInByte);
         }
     }
+#endif
     return valueSize;
 }
 
 void X64Emitter::EmitAddrofElement(MIRConst &mirConst, bool belongsToDataSec)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRAddrofConst &symAddr = static_cast<MIRAddrofConst &>(mirConst);
     StIdx stIdx = symAddr.GetSymbolIndex();
     CHECK_NULL_FATAL(CG::GetCurCGFunc()->GetMirModule().CurFunction());
@@ -1830,12 +1839,14 @@ void X64Emitter::EmitAddrofElement(MIRConst &mirConst, bool belongsToDataSec)
     }
     assmbler.StoreNameIntoSymMap(symIdx, addrName);
     assmbler.EmitAddrValue(symIdx, symAddrOfs, structFieldOfs, belongsToDataSec);
+#endif
 }
 
 uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, bool isIndirect)
 {
     MIRType &elmType = mirConst.GetType();
     uint64 elemSize = elmType.GetSize();
+#ifdef ARK_LITECG_DEBUG
     MIRConstKind kind = mirConst.GetKind();
     switch (kind) {
         case kConstAddrof:
@@ -1892,12 +1903,14 @@ uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, 
             FATAL(kLncFatal, "EmitSingleElement: unsupport variable kind");
             break;
     }
+#endif
     return elemSize;
 }
 
 void X64Emitter::EmitBitField(StructEmitInfo &structEmitInfo, MIRConst &mirConst, const MIRType *nextType,
                               uint64 fieldOffset, bool belongsToDataSec)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRType &mirType = mirConst.GetType();
     if (fieldOffset > structEmitInfo.GetNextFieldOffset()) {
         uint16 curFieldOffset = structEmitInfo.GetNextFieldOffset() - structEmitInfo.GetCombineBitFieldWidth();
@@ -1935,10 +1948,12 @@ void X64Emitter::EmitBitField(StructEmitInfo &structEmitInfo, MIRConst &mirConst
         /* emit structEmitInfo->combineBitFieldValue */
         EmitCombineBfldValue(structEmitInfo);
     }
+#endif
 }
 
 void X64Emitter::EmitCombineBfldValue(StructEmitInfo &structEmitInfo, bool belongsToDataSec)
 {
+#ifdef ARK_LITECG_DEBUG
     uint8 charBitWidth = GetPrimTypeSize(PTY_i8) * k8Bits;
     const uint64 kGetLow8Bits = 0x00000000000000ffUL;
     auto emitBfldValue = [&structEmitInfo, charBitWidth, belongsToDataSec, this](bool flag) {
@@ -1981,6 +1996,7 @@ void X64Emitter::EmitCombineBfldValue(StructEmitInfo &structEmitInfo, bool belon
     structEmitInfo.SetTotalSize(structEmitInfo.GetNextFieldOffset() / charBitWidth);
     structEmitInfo.SetCombineBitFieldValue(0);
     structEmitInfo.SetCombineBitFieldWidth(0);
+#endif
 }
 
 void X64Emitter::EmitLocalVariable(CGFunc &cgFunc)
@@ -2055,15 +2071,18 @@ void X64Emitter::EmitLocalVariable(CGFunc &cgFunc)
 
 void X64Emitter::EmitStringPointers()
 {
+#ifdef ARK_LITECG_DEBUG
     for (uint32 strIdx : stringPtr) {
         string ustr = GlobalTables::GetUStrTable().GetStringFromStrIdx(strIdx);
         int64 strSymIdx = CalculateStrLabelSymIdx(GlobalTables::GetGsymTable().GetSymbolTableSize(), strIdx);
         assmbler.EmitDirectString(ustr, true, strSymIdx);
     }
+#endif
 }
 
 void X64Emitter::EmitGlobalVariable(CG &cg)
 {
+#ifdef ARK_LITECG_DEBUG
     uint64 size = GlobalTables::GetGsymTable().GetSymbolTableSize();
     for (uint64 i = 0; i < size; ++i) {
         MIRSymbol *mirSymbol = GlobalTables::GetGsymTable().GetSymbolFromStidx(i);
@@ -2095,8 +2114,6 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
             SectionKind secKind;
             if (mirSymbol->IsThreadLocal()) {
                 secKind = kSTbss;
-            } else if (maplebe::CGOptions::IsNoCommon()) {
-                secKind = kSBss;
             } else {
                 secKind = kSComm;
                 alignInByte = GetSymbolAlign(*mirSymbol, true);
@@ -2163,6 +2180,7 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
         }
     } /* end proccess all mirSymbols. */
     EmitStringPointers();
+#endif
 }
 
 void X64Emitter::Run(CGFunc &cgFunc)
@@ -2208,6 +2226,7 @@ void X64Emitter::Run(CGFunc &cgFunc)
 
 void X64Emitter::EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di)
 {
+#ifdef ARK_LITECG_DEBUG
     MapleVector<DBGDieAttr *> attrvec = die.GetAttrVec();
     if (attrName == static_cast<uint32>(DW_AT_low_pc) && tagName == static_cast<uint32>(DW_TAG_compile_unit)) {
         assmbler.EmitDwFormAddr(true);
@@ -2254,10 +2273,12 @@ void X64Emitter::EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt 
     if (attrName != static_cast<uint32>(DW_AT_high_pc) && attrName != static_cast<uint32>(DW_AT_low_pc)) {
         assmbler.EmitDwFormAddr();
     }
+#endif
 }
 
 void X64Emitter::EmitDwFormRef4(DBGDie &die, const DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di)
 {
+#ifdef ARK_LITECG_DEBUG
     if (attrName == static_cast<uint32>(DW_AT_type)) {
         DBGDie *die0 = di.GetDie(static_cast<uint32>(attr.GetU()));
         if (die0->GetOffset()) {
@@ -2284,11 +2305,13 @@ void X64Emitter::EmitDwFormRef4(DBGDie &die, const DBGDieAttr &attr, DwAt attrNa
     } else {
         assmbler.EmitDwFormRef4(attr.GetU(), false, true);
     }
+#endif
 }
 
 void X64Emitter::EmitDwFormData8(const DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di,
                                  MapleVector<DBGDieAttr *> &attrvec)
 {
+#ifdef ARK_LITECG_DEBUG
     if (attrName == static_cast<uint32>(DW_AT_high_pc)) {
         if (tagName == static_cast<uint32>(DW_TAG_compile_unit)) {
             assmbler.EmitDwFormData8();
@@ -2336,10 +2359,12 @@ void X64Emitter::EmitDwFormData8(const DBGDieAttr &attr, DwAt attrName, DwTag ta
     } else {
         assmbler.EmitDwFormData(attr.GetI(), k8Bytes);
     }
+#endif
 }
 
 void X64Emitter::EmitDIAttrValue(DBGDie &die, DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di)
 {
+#ifdef ARK_LITECG_DEBUG
     MapleVector<DBGDieAttr *> &attrvec = die.GetAttrVec();
     switch (attr.GetDwForm()) {
         case DW_FORM_string:
@@ -2409,10 +2434,12 @@ void X64Emitter::EmitDIAttrValue(DBGDie &die, DBGDieAttr &attr, DwAt attrName, D
             LogInfo::MapleLogger() << "unhandled : " << maple::GetDwFormName(attr.GetDwForm()) << std::endl;
             DEBUG_ASSERT(0, "NYI");
     }
+#endif
 }
 
 void X64Emitter::EmitDIDebugInfoSection(DebugInfo &mirdi)
 {
+#ifdef ARK_LITECG_DEBUG
     assmbler.EmitDIDebugInfoSectionHeader(mirdi.GetDebugInfoLength());
     /*
      * 7.5.1.2 type unit header
@@ -2452,11 +2479,13 @@ void X64Emitter::EmitDIDebugInfoSection(DebugInfo &mirdi)
 
         UpdateAttrAndEmit(sfile, mirdi, *diae, *die, spath);
     });
+#endif
 }
 
 void X64Emitter::UpdateAttrAndEmit(const string &sfile, DebugInfo &mirdi, DBGAbbrevEntry &diae, DBGDie &die,
                                    const string &spath)
 {
+#ifdef ARK_LITECG_DEBUG
     X64Emitter *emitter = this;
     MapleVector<uint32> &apl = diae.GetAttrPairs(); /* attribute pair list */
     bool verbose = emitter->GetCG()->GenerateVerboseAsm();
@@ -2493,10 +2522,12 @@ void X64Emitter::UpdateAttrAndEmit(const string &sfile, DebugInfo &mirdi, DBGAbb
         }
         emitter->GetAssembler().EmitLine();
     }
+#endif
 }
 
 void X64Emitter::EmitDIDebugAbbrevSection(DebugInfo &mirdi)
 {
+#ifdef ARK_LITECG_DEBUG
     assmbler.EmitDIDebugAbbrevSectionHeader();
 
     /* construct a list of DI abbrev entries
@@ -2526,10 +2557,12 @@ void X64Emitter::EmitDIDebugAbbrevSection(DebugInfo &mirdi)
         assmbler.EmitDIDebugSectionEnd(kSDebugAbbrev);
     }
     assmbler.EmitDIDebugSectionEnd(kSDebugAbbrev);
+#endif
 }
 
 void X64Emitter::EmitDIDebugStrSection()
 {
+#ifdef ARK_LITECG_DEBUG
     std::vector<std::string> debugStrs;
     std::vector<uint32> strps;
     for (auto it : GetCG()->GetMIRModule()->GetDbgInfo()->GetStrps()) {
@@ -2539,21 +2572,6 @@ void X64Emitter::EmitDIDebugStrSection()
     }
     assmbler.EmitDIDebugStrSection(strps, debugStrs, GlobalTables::GetGsymTable().GetSymbolTableSize(),
                                    GlobalTables::GetStrTable().StringTableSize());
+#endif
 }
-
-void X64Emitter::EmitDebugInfo(CG &cg)
-{
-    if (!cg.GetCGOptions().WithDwarf()) {
-        return;
-    }
-    SetupDBGInfo(cg.GetMIRModule()->GetDbgInfo());
-    assmbler.EmitDIHeaderFileInfo();
-    EmitDIDebugInfoSection(*(cg.GetMIRModule()->GetDbgInfo()));
-    EmitDIDebugAbbrevSection(*(cg.GetMIRModule()->GetDbgInfo()));
-    assmbler.EmitDIDebugARangesSection();
-    assmbler.EmitDIDebugRangesSection();
-    assmbler.EmitDIDebugLineSection();
-    EmitDIDebugStrSection();
-}
-
 } /* namespace maplebe */

@@ -58,8 +58,9 @@ public:
                                          maplebe::MemoryManagerSaveFunc2CalleeOffsetInfoCallback funcCallOffsetSaver,
                                          maplebe::MemoryManagerSavePC2DeoptInfoCallback pc2DeoptInfoSaver,
                                          maplebe::MemoryManagerSavePC2CallSiteInfoCallback pc2CallSiteInfoSaver);
-
+#ifdef ARK_LITECG_DEBUG
     void DumpIRToFile(const std::string &fileName);
+#endif
     void DumpCGIR();
     void DoCG(bool isJit = false);
 

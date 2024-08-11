@@ -33,6 +33,7 @@ CommandLine &CommandLine::GetCommandLine()
     return cl;
 }
 
+#ifdef ARK_LITECG_DEBUG
 OptionInterface *CommandLine::CheckJoinedOption(KeyArg &keyArg, OptionCategory &optCategory)
 {
     auto &str = keyArg.rawArg;
@@ -127,6 +128,7 @@ RetCode CommandLine::ParseSimpleOption(size_t &argsIndex, const std::deque<std::
         return ParseJoinedOption(argsIndex, args, keyArg, optCategory);
     }
 }
+#endif
 
 RetCode CommandLine::HandleInputArgs(const std::deque<std::string_view> &args, OptionCategory &optCategory)
 {
@@ -136,14 +138,16 @@ RetCode CommandLine::HandleInputArgs(const std::deque<std::string_view> &args, O
      * We should clear old badCLArgs results. */
     badCLArgs.clear();
 
+#ifdef ARK_LITECG_DEBUG
     bool wasError = false;
+#endif
     for (size_t argsIndex = 0; argsIndex < args.size();) {
         auto &arg = args[argsIndex];
         if (arg == "") {
             ++argsIndex;
             continue;
         }
-
+#ifdef ARK_LITECG_DEBUG
         KeyArg keyArg(arg);
 
         auto pos = arg.find('=');
@@ -170,11 +174,14 @@ RetCode CommandLine::HandleInputArgs(const std::deque<std::string_view> &args, O
 
         ++argsIndex;
         continue;
+#endif
     }
 
+#ifdef ARK_LITECG_DEBUG
     if (wasError == true) {
         return RetCode::parsingErr;
     }
+#endif
 
     return err;
 }

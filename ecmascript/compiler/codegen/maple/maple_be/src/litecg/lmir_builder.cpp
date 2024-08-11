@@ -80,10 +80,12 @@ LMIRBuilder::LMIRBuilder(Module &module_) : mirBuilder(*module_.GetMIRBuilder())
     i64RefRefType = CreateRefType(i64RefType);
 }
 
+#ifdef ARK_LITECG_DEBUG
 void LMIRBuilder::DumpIRToFile(const std::string fileName)
 {
     module.DumpToFile(fileName);
 }
+#endif
 
 LiteCGTypeKind LMIRBuilder::LiteCGGetTypeKind(Type *type) const
 {
