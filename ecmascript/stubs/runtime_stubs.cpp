@@ -3905,8 +3905,9 @@ DEF_RUNTIME_STUBS(AOTEnableProtoChangeMarker)
 {
     RUNTIME_STUBS_HEADER(AOTEnableProtoChangeMarker);
     JSHandle<JSFunction> result(GetHArg<JSTaggedValue>(argv, argc, 0)); // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> ihc = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the third parameter
-    DefineFuncTryUseAOTHClass(thread, result, ihc);
+    JSHandle<JSTaggedValue> ihc = GetHArg<JSTaggedValue>(argv, argc, 1); // 1: means the first parameter
+    JSHandle<AOTLiteralInfo> aotLiteralInfo(GetHArg<JSTaggedValue>(argv, argc, 2)); // 2: means the second parameter
+    DefineFuncTryUseAOTHClass(thread, result, ihc, aotLiteralInfo);
     return JSTaggedValue::Hole().GetRawData();
 }
 

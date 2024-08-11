@@ -73,6 +73,7 @@ ArkTools.printTypedOpProfiler("MONO_STORE_PROPERTY");
 ArkTools.clearTypedOpProfiler();
 print(ArkTools.isAOTDeoptimized(Test2));
 
+//make sure ihc in one thread can only be used once
 function Test3() {
   for(let i = 0; i<2; ++i) {
     function A() {
