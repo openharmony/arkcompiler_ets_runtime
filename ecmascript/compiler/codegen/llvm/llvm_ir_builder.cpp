@@ -86,6 +86,10 @@ LLVMIRBuilder::LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, 
                                            funcName.c_str(), funcName.size(), dFile, funcOffset,
                                            funcTyMD, true, true, 0, LLVMDIFlags::LLVMDIFlagZero, false);
     LLVMSetSubprogram(function_, dFuncMD_);
+    std::string triple = LLVMGetTarget(module->GetModule());
+    ASSERT(GlobalTargetBuilders().count(triple) && "unsupported target");
+    targetBuilder_ = GlobalTargetBuilders()[triple]();
+    ASMBarrierCall_ = targetBuilder_->GetASMBarrierCall(module);
 }
 
 LLVMMetadataRef LLVMIRBuilder::GetFunctionTypeMD(LLVMMetadataRef dFile)
@@ -103,6 +107,7 @@ LLVMIRBuilder::~LLVMIRBuilder()
         LLVMDisposeBuilder(builder_);
         builder_ = nullptr;
     }
+    delete targetBuilder_;
 }
 
 void LLVMIRBuilder::SetFunctionCallConv()
@@ -154,6 +159,7 @@ void LLVMIRBuilder::InitializeHandlers()
         {OpCode::LOOP_BEGIN, &LLVMIRBuilder::HandleGoto},
         {OpCode::LOOP_BACK, &LLVMIRBuilder::HandleGoto},
         {OpCode::VALUE_SELECTOR, &LLVMIRBuilder::HandlePhi},
+        {OpCode::ASM_CALL_BARRIER, &LLVMIRBuilder::HandleCall},
         {OpCode::RUNTIME_CALL, &LLVMIRBuilder::HandleRuntimeCall},
         {OpCode::RUNTIME_CALL_WITH_ARGV, &LLVMIRBuilder::HandleRuntimeCallWithArgv},
         {OpCode::NOGC_RUNTIME_CALL, &LLVMIRBuilder::HandleCall},
@@ -563,7 +569,7 @@ void LLVMIRBuilder::HandleCall(GateRef gate)
     if (callOp == OpCode::CALL || callOp == OpCode::NOGC_RUNTIME_CALL ||
         callOp == OpCode::BUILTINS_CALL || callOp == OpCode::BUILTINS_CALL_WITH_ARGV ||
         callOp == OpCode::CALL_OPTIMIZED || callOp == OpCode::FAST_CALL_OPTIMIZED ||
-        callOp == OpCode::BASELINE_CALL) {
+        callOp == OpCode::BASELINE_CALL || callOp == OpCode::ASM_CALL_BARRIER) {
         VisitCall(gate, ins, callOp);
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
@@ -994,6 +1000,13 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
         rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
         callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
         kind = GetCallExceptionKind(index, op);
+    } else if (op == OpCode::ASM_CALL_BARRIER) {
+        const size_t index = acc_.GetConstantValue(inList[targetIndex]);
+        calleeDescriptor = RuntimeStubCSigns::Get(index);
+        rtoffset = GetRTStubOffset(glue, index);
+        rtbaseoffset = LLVMBuildAdd(builder_, glue, rtoffset, "");
+        callee = GetFunction(glue, calleeDescriptor, rtbaseoffset);
+        isNoGC = true;
     } else {
         ASSERT(op == OpCode::BUILTINS_CALL || op == OpCode::BUILTINS_CALL_WITH_ARGV);
         LLVMValueRef opcodeOffset = GetLValue(inList.at(targetIndex));
@@ -1049,18 +1062,24 @@ void LLVMIRBuilder::VisitCall(GateRef gate, const std::vector<GateRef> &inList, 
     }
 
     LLVMValueRef call = nullptr;
-    LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, calleeDescriptor);
-    callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
-    if (kind == CallExceptionKind::HAS_PC_OFFSET) {
-        std::vector<LLVMValueRef> values;
-        CollectExraCallSiteInfo(values, pcOffset, frameArgs);
-        call = LLVMBuildCall3(builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt,
-                              "", values.data(), values.size());
+    if (op == OpCode::ASM_CALL_BARRIER) {
+        callee = LLVMBuildPointerCast(builder_, callee, llvmModule_->GetRawPtrT(), "");
+        params.insert(params.begin(), callee);
+        call = LLVMBuildCall(builder_, ASMBarrierCall_, params.data(), params.size(), "");
     } else {
-        call = LLVMBuildCall2(builder_, funcType, callee, params.data(), actualNumArgs - firstArg + extraParameterCnt,
-                              "");
+        LLVMTypeRef funcType = llvmModule_->GenerateFuncType(params, calleeDescriptor);
+        callee = LLVMBuildPointerCast(builder_, callee, LLVMPointerType(funcType, 0), "");
+        if (kind == CallExceptionKind::HAS_PC_OFFSET) {
+            std::vector<LLVMValueRef> values;
+            CollectExraCallSiteInfo(values, pcOffset, frameArgs);
+            call = LLVMBuildCall3(builder_, funcType, callee, params.data(), actualNumArgs - firstArg +
+                extraParameterCnt, "", values.data(), values.size());
+        } else {
+            call = LLVMBuildCall2(builder_, funcType, callee, params.data(), actualNumArgs - firstArg +
+                extraParameterCnt, "");
+        }
+        SetCallConvAttr(calleeDescriptor, call);
     }
-    SetCallConvAttr(calleeDescriptor, call);
     if (isNoGC) {
         SetGCLeafFunction(call);
     }

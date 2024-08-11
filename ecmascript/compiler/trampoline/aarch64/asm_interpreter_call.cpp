@@ -1107,6 +1107,233 @@ void AsmInterpreterCall::CallReturnWithArgv(ExtendedAssembler *assembler)
     }
 }
 
+// preserve all the general registers, except x15 and callee saved registers/
+// and call x15
+void AsmInterpreterCall::PreserveMostCall(ExtendedAssembler* assembler)
+{
+    // * layout as the following:
+    //               +--------------------------+ ---------
+    //               |       . . . . .          |         ^
+    // callerSP ---> |--------------------------|         |
+    //               |       returnAddr         |         |
+    //               |--------------------------|   OptimizedFrame
+    //               |       callsiteFp         |         |
+    //       fp ---> |--------------------------|         |
+    //               |     OPTIMIZED_FRAME      |         v
+    //               +--------------------------+ ---------
+    //               |           x0             |
+    //               +--------------------------+
+    //               |           x1             |
+    //               +--------------------------+
+    //               |           r2             |
+    //               +--------------------------+
+    //               |           x3             |
+    //               +--------------------------+
+    //               |           x4             |
+    //               +--------------------------+
+    //               |           x5             |
+    //               +--------------------------+
+    //               |           x6             |
+    //               +--------------------------+
+    //               |           x7             |
+    //               +--------------------------+
+    //               |           x8             |
+    //               +--------------------------+
+    //               |           x9             |
+    //               +--------------------------+
+    //               |           x10            |
+    //               +--------------------------+
+    //               |           x11            |
+    //               +--------------------------+
+    //               |           x12            |
+    //               +--------------------------+
+    //               |           x13            |
+    //               +--------------------------+
+    //               |           x14            |
+    //               +--------------------------+
+    //               |           x16            |
+    //               +--------------------------+
+    //               |           x17            |
+    //               +--------------------------+
+    //               |           x18            |
+    //               +--------------------------+
+    //               |         align            |
+    // calleeSP ---> +--------------------------+
+    {
+        // prologue to save fp, frametype, and update fp.
+        __ Stp(X29, X30, MemoryOperand(SP, -DOUBLE_SLOT_SIZE, PREINDEX));
+        // Zero register means OPTIMIZED_FRAME
+        __ Stp(X0, Zero, MemoryOperand(SP, -DOUBLE_SLOT_SIZE, PREINDEX));
+        __ Add(FP, SP, Immediate(DOUBLE_SLOT_SIZE));
+    }
+    int32_t PreserveRegPairIndex = 9;
+    // x0~x14,x16,x17,x18 should be preserved,
+    // other general registers are callee saved register, callee will save them.
+    __ Sub(SP, SP, Immediate(DOUBLE_SLOT_SIZE * PreserveRegPairIndex));
+    __ Stp(X1, X2, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(X3, X4, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(X5, X6, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(X7, X8, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(X9, X10, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(X11, X12, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(X13, X14, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Stp(X16, X17, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (--PreserveRegPairIndex)));
+    __ Str(X18, MemoryOperand(SP, FRAME_SLOT_SIZE));
+    __ Blr(X15);
+    __ Ldr(X18, MemoryOperand(SP, FRAME_SLOT_SIZE));
+    __ Ldp(X16, X17, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(X13, X14, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(X11, X12, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(X9, X10, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(X7, X8, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(X5, X6, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(X3, X4, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldp(X1, X2, MemoryOperand(SP, DOUBLE_SLOT_SIZE * (PreserveRegPairIndex++)));
+    __ Ldr(X0, MemoryOperand(SP, DOUBLE_SLOT_SIZE * PreserveRegPairIndex));
+    {
+        // epilogue to restore sp, fp, lr.
+        // Skip x0 slot and frametype slot
+        __ Add(SP, SP, Immediate(DOUBLE_SLOT_SIZE * PreserveRegPairIndex +
+            FRAME_SLOT_SIZE + FRAME_SLOT_SIZE));
+        __ Ldp(X29, X30, MemoryOperand(SP, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
+        __ Ret();
+    }
+}
+
+// ASMFastWriteBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value)
+// c calling convention, but preserve all general registers except %x15
+// %x0 - glue
+// %x1 - obj
+// %x2 - offset
+// %x3 - value
+void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
+{
+    // valid region flag are as follows, assume it will be ALWAYS VALID.
+    // Judge the region of value with:
+    //                          "young"            "sweepable share"  "readonly share"
+    // region flag:         0x08, 0x09, [0x0A, 0x11], [0x12, 0x15],     0x16
+    // value is share:                                [0x12,            0x16] =>  valueMaybeSweepableShare
+    // readonly share:                                                  0x16  =>  return
+    // sweepable share:                               [0x12, 0x15]            =>  needCallShare
+    // value is not share:  0x08, 0x09, [0x0A, 0x11],                         =>  valueNotShare
+    // value is young :           0x09                                        =>  needCallNotShare
+    // value is not young : 0x08,       [0x0A, 0x11],                         =>  checkMark
+    ASSERT(GENERAL_YOUNG_BEGIN <= IN_YOUNG_SPACE && IN_YOUNG_SPACE < SHARED_SPACE_BEGIN &&
+        SHARED_SPACE_BEGIN <= SHARED_SWEEPABLE_SPACE_BEGIN && SHARED_SWEEPABLE_SPACE_END < IN_SHARED_READ_ONLY_SPACE &&
+        IN_SHARED_READ_ONLY_SPACE == HEAP_SPACE_END);
+    __ BindAssemblerStub(RTSTUB_ID(ASMFastWriteBarrier));
+    Label needCall;
+    Label checkMark;
+    Label needCallNotShare;
+    Label needCallShare;
+    Label valueNotShare;
+    Label valueMaybeSweepableShare;
+    {
+        // int8_t *valueRegion = value & (~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK))
+        // int8_t valueFlag = *valueRegion
+        // if (valueFlag >= SHARED_SWEEPABLE_SPACE_BEGIN){
+        //    goto valueMaybeSweepableShare
+        // }
+
+        __ And(X15, X3, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), RegXSize));
+        // X15 is the region address of value.
+        __ Ldrb(Register(X15, W), MemoryOperand(X15, 0));
+        // X15 is the flag load from region of value.
+        __ Cmp(Register(X15, W), Immediate(SHARED_SWEEPABLE_SPACE_BEGIN));
+        __ B(GE, &valueMaybeSweepableShare);
+        // if value may be SweepableShare, goto valueMaybeSweepableShare
+    }
+    __ Bind(&valueNotShare);
+    {
+        // valueNotShare:
+        // if (valueFlag != IN_YOUNG_SPACE){
+        //      goto checkMark
+        // }
+        // int8_t *objRegion = obj & (~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK))
+        // int8_t objFlag = *objRegion
+        // if (objFlag != IN_YOUNG_SPACE){
+        //    goto needCallNotShare
+        // }
+
+        __ Cmp(Register(X15, W), Immediate(RegionSpaceFlag::IN_YOUNG_SPACE));
+        __ B(NE, &checkMark);
+        // if value is not in young, goto checkMark
+
+        __ And(X15, X1, LogicalImmediate::Create(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), RegXSize));
+        // X15 is the region address of obj.
+        __ Ldrb(Register(X15, W), MemoryOperand(X15, 0));
+        // X15 is the flag load from region of obj.
+        __ Cmp(Register(X15, W), Immediate(RegionSpaceFlag::IN_YOUNG_SPACE));
+        __ B(NE, &needCallNotShare);
+        // if obj is not in young, goto needCallNotShare
+    }
+
+    __ Bind(&checkMark);
+    {
+        // checkMark:
+        // int8_t GCStateBitField = *(glue+GCStateBitFieldOffset)
+        // if (GCStateBitField & JSThread::CONCURRENT_MARKING_BITFIELD_MASK != 0) {
+        //    goto needCallNotShare
+        // }
+        // return
+
+        __ Mov(X15, JSThread::GlueData::GetGCStateBitFieldOffset(false));
+        __ Ldrb(Register(X15, W), MemoryOperand(X0, Register(X15), UXTX));
+        __ Tst(Register(X15, W), LogicalImmediate::Create(JSThread::CONCURRENT_MARKING_BITFIELD_MASK, RegWSize));
+        __ B(NE, &needCallNotShare);
+        // if GCState is not READY_TO_MARK, go to needCallNotShare.
+        __ Ret();
+    }
+
+    __ Bind(&valueMaybeSweepableShare);
+    {
+        // valueMaybeSweepableShare:
+        // if (valueFlag != IN_SHARED_READ_ONLY_SPACE){
+        //    goto needCallShare
+        // }
+        // return
+        __ Cmp(Register(X15, W), Immediate(RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE));
+        __ B(NE, &needCallShare);
+        __ Ret();
+    }
+
+    __ Bind(&needCallShare);
+    {
+        int32_t SValueBarrierOffset = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
+            kungfu::CommonStubCSigns::SetSValueWithBarrier * FRAME_SLOT_SIZE;
+        __ Mov(X15, SValueBarrierOffset);
+        __ B(&needCall);
+    }
+    __ Bind(&needCallNotShare);
+    {
+        int32_t NonSValueBarrier = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
+            kungfu::CommonStubCSigns::SetNonSValueWithBarrier * FRAME_SLOT_SIZE;
+        __ Mov(X15, NonSValueBarrier);
+    }
+    __ Bind(&needCall);
+    {
+        __ Ldr(X15, MemoryOperand(X0, Register(X15), UXTX));
+        PreserveMostCall(assembler);
+    }
+}
+
+// ASMWriteBarrierWithEden(GateRef glue, GateRef obj, GateRef offset, GateRef value)
+// c calling convention, but preserve all general registers except %x15
+// %x0 - glue
+// %x1 - obj
+// %x2 - offset
+// %x3 - value
+void AsmInterpreterCall::ASMWriteBarrierWithEden(ExtendedAssembler* assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(ASMWriteBarrierWithEden));
+    // Just for compitability, not a fast implement, should be refactored when enable EdenBarrier.
+    int32_t EdenBarrierOffset = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
+    kungfu::CommonStubCSigns::SetValueWithEdenBarrier * FRAME_SLOT_SIZE;
+    __ Mov(X15, EdenBarrierOffset);
+    __ Ldr(X15, MemoryOperand(X0, Register(X15), UXTX));
+    PreserveMostCall(assembler);
+}
+
 // Generate code for generator re-entering asm interpreter
 // c++ calling convention
 // Input: %X0 - glue

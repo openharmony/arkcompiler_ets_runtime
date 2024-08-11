@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/compiler/post_schedule.h"
+
+#include <ecmascript/stubs/runtime_stubs.h>
+
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/js_thread.h"
 
@@ -396,25 +399,33 @@ MemoryAttribute::Barrier PostSchedule::GetWriteBarrierKind(GateRef gate)
     return mAttr.GetBarrier();
 }
 
-int PostSchedule::SelectBarrier(MemoryAttribute::ShareFlag share, std::string_view &comment)
+int PostSchedule::SelectBarrier(MemoryAttribute::ShareFlag share, const CallSignature*& cs, std::string_view& comment)
 {
     int index = 0;
     switch (share) {
         case MemoryAttribute::UNKNOWN:
-            index = CommonStubCSigns::SetValueWithBarrier;
-            comment = "store barrier\0";
+            if (fastBarrier_) {
+                index = RuntimeStubCSigns::ID_ASMFastWriteBarrier;
+                cs = RuntimeStubCSigns::Get(index);
+                comment = "asm store barrier\0";
+            } else {
+                index = CommonStubCSigns::SetValueWithBarrier;
+                cs = CommonStubCSigns::Get(index);
+                comment = "store barrier\0";
+            }
             break;
         case MemoryAttribute::SHARED:
             index = CommonStubCSigns::SetSValueWithBarrier;
+            cs = CommonStubCSigns::Get(index);
             comment = "store share barrier\0";
             break;
         case MemoryAttribute::NON_SHARE:
             index = CommonStubCSigns::SetNonSValueWithBarrier;
+            cs = CommonStubCSigns::Get(index);
             comment = "store not share barrier\0";
             break;
         default:
             UNREACHABLE();
-            return -1;
     }
     return index;
 }
@@ -457,9 +468,10 @@ void PostSchedule::LoweringStoreWithBarrierAndPrepareScheduleGate(GateRef gate, 
     GateRef store = builder_.GetDepend();
     MemoryAttribute::ShareFlag share = GetShareKind(gate);
     std::string_view comment;
-    int index = SelectBarrier(share, comment);
-    const CallSignature *cs = CommonStubCSigns::Get(index);
-    ASSERT(cs->IsCommonStub());
+    int index;
+    const CallSignature* cs = nullptr;
+    index = SelectBarrier(share, cs, comment);
+    ASSERT(cs && (cs->IsCommonStub() || cs->IsASMCallBarrierStub()) && "Invalid call signature for barrier");
     GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
     GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
     GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
@@ -520,9 +532,10 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
     {
         MemoryAttribute::ShareFlag share = GetShareKind(gate);
         std::string_view comment;
-        int index = SelectBarrier(share, comment);
-        const CallSignature *cs = CommonStubCSigns::Get(index);
-        ASSERT(cs->IsCommonStub());
+        int index;
+        const CallSignature* cs = nullptr;
+        index = SelectBarrier(share, cs, comment);
+        ASSERT(cs && (cs->IsCommonStub() || cs->IsASMCallBarrierStub()) && "Invalid call signature for barrier");
         GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
         GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
         GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());

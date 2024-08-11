@@ -798,6 +798,18 @@ DEF_CALL_SIGNATURE(SetSValueWithBarrier)
     SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(SetSValueWithBarrier);
 }
 
+DEF_CALL_SIGNATURE(ASMFastWriteBarrier)
+{
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(ASMFastWriteBarrier);
+    callSign->SetTargetKind(CallSignature::TargetKind::ASM_CALL_BARRIER_STUB);
+}
+
+DEF_CALL_SIGNATURE(ASMWriteBarrierWithEden)
+{
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(ASMWriteBarrierWithEden);
+    callSign->SetTargetKind(CallSignature::TargetKind::ASM_CALL_BARRIER_STUB);
+}
+
 #undef SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON
 
 DEF_CALL_SIGNATURE(NewThisObjectChecked)

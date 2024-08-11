@@ -40,7 +40,8 @@ namespace panda::ecmascript::kungfu {
     V(ArrayConstructor, ARRAY_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)                    \
     V(ObjectConstructor, OBJECT_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)                  \
     V(BooleanConstructor, BOOLEAN_CONSTRUCTOR, GateFlags::NONE_FLAG, 1, 1, value)                \
-    V(BaselineCall, BASELINE_CALL, GateFlags::NONE_FLAG, 0, 1, value)
+    V(BaselineCall, BASELINE_CALL, GateFlags::NONE_FLAG, 0, 1, value)                            \
+    V(ASMCallBarrier, ASM_CALL_BARRIER, GateFlags::NONE_FLAG, 0, 1, value)
 
 #define HCR_GATE_META_DATA_LIST_WITH_PC_OFFSET(V)                              \
     V(Construct, CONSTRUCT, GateFlags::HAS_FRAME_STATE, 1, 1, value)           \

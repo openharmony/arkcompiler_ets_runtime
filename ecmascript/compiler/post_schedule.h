@@ -26,8 +26,9 @@ class PostSchedule {
 public:
     using ControlFlowGraph = std::vector<std::vector<GateRef>>;
 
-    PostSchedule(Circuit *circuit, bool enableLog, const std::string &name, Chunk *chunk)
-        : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit), builder_(circuit), acc_(circuit)
+    PostSchedule(Circuit *circuit, bool enableLog, const std::string &name, Chunk *chunk, bool fastBarrier = false)
+        : enableLog_(enableLog), methodName_(name), chunk_(chunk), circuit_(circuit), builder_(circuit), acc_(circuit),
+          fastBarrier_(fastBarrier)
     {
     }
 
@@ -80,7 +81,7 @@ private:
                         std::vector<GateRef> &endBBGates);
     MemoryAttribute::ShareFlag GetShareKind(panda::ecmascript::kungfu::GateRef gate);
 
-    int SelectBarrier(MemoryAttribute::ShareFlag share, std::string_view &comment);
+    int SelectBarrier(MemoryAttribute::ShareFlag share, const CallSignature*& cs, std::string_view& comment);
 
     void PrintGraph(const char* title, ControlFlowGraph &cfg);
 
@@ -90,6 +91,7 @@ private:
     Circuit* circuit_ {nullptr};
     CircuitBuilder builder_;
     GateAccessor acc_;
+    bool fastBarrier_ {false};
 };
 };  // namespace panda::ecmascript::kungfu
 

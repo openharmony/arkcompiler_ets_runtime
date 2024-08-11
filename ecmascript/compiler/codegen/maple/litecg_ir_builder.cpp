@@ -854,7 +854,8 @@ void LiteCGIRBuilder::InitializeHandlers()
                           OpCode::LOOP_EXIT,
                           OpCode::START_ALLOCATE,
                           OpCode::FINISH_ALLOCATE,
-                          OpCode::FRAME_VALUES};
+                          OpCode::FRAME_VALUES,
+                          OpCode::ASM_CALL_BARRIER};
 }
 
 void LiteCGIRBuilder::HandleReturnVoid([[maybe_unused]] GateRef gate)

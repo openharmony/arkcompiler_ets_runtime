@@ -51,6 +51,7 @@ enum class CallExceptionKind : bool {
     V(Call, (GateRef gate, const std::vector<GateRef> &inList, OpCode op))                \
     V(RuntimeCall, (GateRef gate, const std::vector<GateRef> &inList))                    \
     V(RuntimeCallWithArgv, (GateRef gate, const std::vector<GateRef> &inList))            \
+    V(ASMCallBarrier, (GateRef gate, const std::vector<GateRef> &inList))                 \
     V(NoGcRuntimeCall, (GateRef gate, const std::vector<GateRef> &inList))                \
     V(BytecodeCall, (GateRef gate, const std::vector<GateRef> &inList))                   \
     V(Alloca, (GateRef gate))                                                             \
