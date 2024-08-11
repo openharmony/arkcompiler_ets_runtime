@@ -84,6 +84,7 @@ private:
     MappingInfo Find(int32_t row, int32_t col, const SourceMapData& targetMap);
     void GetPosInfo(const std::string& temp, int32_t start, std::string& line, std::string& column);
     bool GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap);
+    uint32_t Base64CharToInt(char charCode);
 #if defined(PANDA_TARGET_OHOS)
     bool ReadSourceMapData(const std::string& hapPath, std::string& content);
 #endif
