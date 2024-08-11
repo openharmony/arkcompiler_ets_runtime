@@ -86,6 +86,10 @@ void BytecodeCircuitBuilder::CollectRegionInfo(uint32_t bcIndex)
         }
         auto nextIndex = bcIndex + 1; // 1: next pc
         auto targetIndex = FindBcIndexByPc(pc + offset);
+        auto it = candidateEmptyCatch_.find(targetIndex);
+        if (it != candidateEmptyCatch_.end()) {
+            it->second = true;
+        }
         // condition branch current basic block end
         if (info.IsCondJump()) {
             regionsInfo_.InsertSplit(nextIndex);
@@ -133,6 +137,7 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(ExceptionInfo &byteCodeExc
             auto pcOffset = catchBlock.GetHandlerPc();
             auto catchBlockPc = const_cast<uint8_t *>(method_->GetBytecodeArray() + pcOffset);
             auto catchBlockBcIndex = FindBcIndexByPc(catchBlockPc);
+            candidateEmptyCatch_.insert(std::pair<uint32_t, bool>(catchBlockBcIndex, false));
             regionsInfo_.InsertHead(catchBlockBcIndex);
             // try block associate catch block
             byteCodeException.back().catches.emplace_back(catchBlockPc);
@@ -212,6 +217,19 @@ void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException
         PrintGraph(std::string("Update CFG [" + methodName_ + "]").c_str());
     }
     BuildCircuit();
+}
+
+void BytecodeCircuitBuilder::UpdateEmptyCatchBB()
+{
+    for (size_t i = 0; i < graph_.size(); i++) {
+        auto &bb = RegionAt(i);
+        auto it = candidateEmptyCatch_.find(bb.start);
+        if (it != candidateEmptyCatch_.end()) {
+            if (it->second) {
+                bb.IsEmptyCatchBB = true;
+            }
+        }
+    }
 }
 
 void BytecodeCircuitBuilder::BuildCatchBlocks(const ExceptionInfo &byteCodeException)
@@ -344,7 +362,7 @@ void BytecodeCircuitBuilder::RemoveUnreachableRegion()
     ChunkVector<BytecodeRegion*> pendingList(circuit_->chunk());
     for (size_t i = 1; i < graph_.size(); i++) { // 1: skip entry bb
         auto &bb = RegionAt(i);
-        if (bb.numOfStatePreds == 0) {
+        if (bb.numOfStatePreds == 0 && !IsEmptyCatchBB(bb)) {
             pendingList.emplace_back(&bb);
         }
     }
@@ -380,6 +398,7 @@ void BytecodeCircuitBuilder::UpdateCFG()
             catchBlock->trys.emplace_back(&bb);
         }
     }
+    UpdateEmptyCatchBB();
 }
 
 // build circuit
@@ -704,7 +723,12 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
         byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
         jsGatesToByteCode_[gate] = iterator.Index();
     } else {
-        ASSERT(bb.succs.size() == 1);
+        if (bb.succs.size() == 0 && !bb.catches.empty()) {
+            auto catchBB = bb.catches[0];
+            catchBB->mergeState.emplace_back(state);
+            catchBB->mergeDepend.emplace_back(depend);
+            return;
+        }
         auto &bbNext = bb.succs.at(0);
         frameStateBuilder_.MergeIntoSuccessor(bb, *bbNext);
         bbNext->expandedPreds.push_back({bb.id, iterator.Index(), false});
@@ -780,6 +804,57 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb)
     }
 }
 
+void BytecodeCircuitBuilder::RemoveDuplicateGatesInMerge(GateRef state, std::vector<GateRef> &stateList,
+                                                         std::vector<GateRef> &dependList)
+{
+    ASSERT(gateAcc_.GetOpCode(state) == OpCode::MERGE);
+    for (size_t i = 0; i < gateAcc_.GetNumIns(state); i++) {
+        for (size_t j = 0; j < stateList.size(); j++) {
+            if (gateAcc_.GetIn(state, i) == stateList[j]) {
+                stateList.erase(std::remove(stateList.begin(), stateList.end(), stateList[j]), stateList.end());
+                dependList.erase(std::remove(dependList.begin(), dependList.end(), dependList[j]), dependList.end());
+            }
+        }
+    }
+}
+
+void BytecodeCircuitBuilder::RemoveDuplicateGates(GateRef state, std::vector<GateRef> &stateList,
+                                                  std::vector<GateRef> &dependList, GateRef getException)
+{
+    if (gateAcc_.GetOpCode(state) == OpCode::MERGE) {
+        RemoveDuplicateGatesInMerge(state, stateList, dependList);
+    }
+    if (std::find(stateList.begin(), stateList.end(), state) == stateList.end()) {
+        stateList.emplace_back(state);
+        dependList.emplace_back(getException);
+    }
+}
+
+void BytecodeCircuitBuilder::HandleEmptyCatchBB(BytecodeRegion &bb, GateRef state, GateRef getException)
+{
+    std::vector<GateRef> stateList;
+    std::vector<GateRef> dependList;
+    for (uint32_t i = 0; i < bb.mergeState.size(); i++) {
+        if (std::find(stateList.begin(), stateList.end(), bb.mergeState.at(i)) == stateList.end()) {
+            stateList.emplace_back(bb.mergeState.at(i));
+            dependList.emplace_back(bb.mergeDepend.at(i));
+        }
+    }
+    if (!stateList.empty()) {
+        if (gateAcc_.GetOpCode(state) == OpCode::LOOP_BEGIN) {
+            frameStateBuilder_.UpdateStateDepend(state, getException);
+        } else {
+            RemoveDuplicateGates(state, stateList, dependList, getException);
+            GateRef merge = circuit_->NewGate(circuit_->Merge(stateList.size()), stateList);
+            dependList.insert(dependList.begin(), merge);
+            GateRef dependSelector = circuit_->NewGate(circuit_->DependSelector(stateList.size()), dependList);
+            frameStateBuilder_.UpdateStateDepend(merge, dependSelector);
+        }
+    } else {
+        frameStateBuilder_.UpdateStateDepend(state, getException);
+    }
+}
+
 void BytecodeCircuitBuilder::BuildSubCircuit()
 {
     auto &entryBlock = RegionAt(0);
@@ -806,8 +881,12 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
             GateRef depend = frameStateBuilder_.GetCurrentDepend();
             auto getException = circuit_->NewGate(circuit_->GetException(),
                 MachineType::I64, {state, depend}, GateType::AnyType());
+            if (IsEmptyCatchBB(bb)) {
+                HandleEmptyCatchBB(bb, state, getException);
+            } else {
+                frameStateBuilder_.UpdateStateDepend(state, getException);
+            }
             frameStateBuilder_.UpdateAccumulator(getException);
-            frameStateBuilder_.UpdateStateDepend(state, getException);
         }
         EnumerateBlock(bb, [this, &bb]
             (const BytecodeInfo &bytecodeInfo) -> bool {

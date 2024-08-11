@@ -79,6 +79,7 @@ public:
     void ReplaceGate(GateRef gate, GateRef replacement) override;
     void ReplaceGate(GateRef gate, StateDepend stateDepend, GateRef replacement) override;
     void PrintLog(const std::string& phaseName);
+    void VistDependSelectorForLoop(GateRef gate);
 
 protected:
     
