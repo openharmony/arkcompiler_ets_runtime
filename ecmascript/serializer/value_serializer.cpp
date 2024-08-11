@@ -97,11 +97,6 @@ bool ValueSerializer::CheckObjectCanSerialize(TaggedObject *object, bool &findSh
     return false;
 }
 
-void ValueSerializer::InitTransferSet(CUnorderedSet<uintptr_t> transferDataSet)
-{
-    transferDataSet_ = std::move(transferDataSet);
-}
-
 bool ValueSerializer::WriteValue(JSThread *thread,
                                  const JSHandle<JSTaggedValue> &value,
                                  const JSHandle<JSTaggedValue> &transfer,

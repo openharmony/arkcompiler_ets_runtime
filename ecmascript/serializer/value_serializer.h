@@ -45,7 +45,6 @@ private:
     void SerializeJSSharedArrayBufferPrologue(TaggedObject *object);
     void SerializeJSSendableArrayBufferPrologue(TaggedObject *object);
     void SerializeJSRegExpPrologue(JSRegExp *jsRegExp);
-    void InitTransferSet(CUnorderedSet<uintptr_t> transferDataSet);
     bool PrepareTransfer(JSThread *thread, const JSHandle<JSTaggedValue> &transfer);
     bool PrepareClone(JSThread *thread, const JSHandle<JSTaggedValue> &cloneList);
     bool CheckObjectCanSerialize(TaggedObject *object, bool &findSharedObject);
