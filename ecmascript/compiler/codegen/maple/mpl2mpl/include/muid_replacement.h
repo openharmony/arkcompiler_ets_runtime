@@ -16,7 +16,6 @@
 #ifndef MPL2MPL_INCLUDE_MUID_REPLACEMENT_H
 #define MPL2MPL_INCLUDE_MUID_REPLACEMENT_H
 #include "phase_impl.h"
-#include "muid.h"
 #include "version.h"
 #include "maple_phase_manager.h"
 

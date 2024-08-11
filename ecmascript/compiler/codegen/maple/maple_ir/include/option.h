@@ -28,9 +28,6 @@ class Options {
 public:
     static Options &GetInstance();
 
-    bool ParseOptions(int argc, char **argv, std::string &fileName) const;
-
-    bool SolveOptions(bool isDebug) const;
     ~Options() = default;
 
     void DumpOptions() const;
@@ -170,7 +167,6 @@ public:
     static bool genLMBC;
 
 private:
-    void DecideMpl2MplRealLevel() const;
     std::vector<std::string> phaseSeq;
 };
 }  // namespace maple

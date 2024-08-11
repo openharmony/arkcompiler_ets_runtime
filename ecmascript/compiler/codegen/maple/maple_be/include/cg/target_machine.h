@@ -15,8 +15,6 @@
 #ifndef MAPLEBE_INCLUDE_TARGET_MACHINE_H
 #define MAPLEBE_INCLUDE_TARGET_MACHINE_H
 #include "types_def.h"
-#include "cg.h"
-#include "target_registry.h"
 
 namespace maplebe {
 using namespace maple;

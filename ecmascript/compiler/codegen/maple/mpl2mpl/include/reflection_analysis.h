@@ -15,7 +15,6 @@
 
 #ifndef MPL2MPL_INCLUDE_REFLECTION_ANALYSIS_H
 #define MPL2MPL_INCLUDE_REFLECTION_ANALYSIS_H
-#include "class_hierarchy_phase.h"
 
 namespace maple {
 // maple field index definition

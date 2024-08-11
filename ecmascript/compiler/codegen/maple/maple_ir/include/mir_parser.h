@@ -21,6 +21,7 @@
 #include "mir_preg.h"
 #include "mir_scope.h"
 #include "parser_opt.h"
+#include "mir_builder.h"
 
 namespace maple {
 using BaseNodePtr = BaseNode *;

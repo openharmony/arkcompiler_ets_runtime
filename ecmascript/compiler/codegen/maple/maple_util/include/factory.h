@@ -19,7 +19,6 @@
 #include <memory>
 #include <functional>
 #include <mutex>
-#include "thread_env.h"
 
 namespace maple {
 template <typename TKey, typename TObject, typename... TArgs>
@@ -87,8 +86,6 @@ public:
 
     void Register(const key_type &key, creator_type func)
     {
-        static std::mutex mtx;
-        ParallelGuard guard(mtx, ThreadEnv::IsMeParallel());
         if (creator.find(key) == creator.end()) {
             creator[key] = func;
         }
@@ -96,8 +93,6 @@ public:
 
     creator_type Create(const key_type &key) const
     {
-        static std::mutex mtx;
-        ParallelGuard guard(mtx, ThreadEnv::IsMeParallel());
         auto it = creator.find(key);
         return it == creator.end() ? nullptr : it->second;
     }

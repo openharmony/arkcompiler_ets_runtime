@@ -25,17 +25,7 @@ include_directories = [
   "${MAPLEALL_ROOT}/mempool/include",
 ]
 
-src_libmpl2mpl = [
-  "src/class_init.cpp",
-  "src/simplify.cpp",
-  "src/class_hierarchy.cpp",
-  "src/class_hierarchy_phase.cpp",
-  "src/constantfold.cpp",
-  "src/ext_constantfold.cpp",
-  "src/module_phase_manager.cpp",
-  "src/clone.cpp",
-  "src/call_graph.cpp",
-]
+src_libmpl2mpl = [ "src/constantfold.cpp" ]
 
 ohos_static_library("libmpl2mpl") {
   stack_protector_ret = false

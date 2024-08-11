@@ -16,10 +16,8 @@
 #include "maple_phase_manager.h"
 #include "cgfunc.h"
 #include "mpl_timer.h"
-#include "me_function.h"
 
 namespace maple {
-using meFuncOptTy = MapleFunctionPhase<MeFunction>;
 using cgFuncOptTy = MapleFunctionPhase<maplebe::CGFunc>;
 MemPool *AnalysisDataManager::ApplyMemPoolForAnalysisPhase(uint32 phaseKey, const MaplePhaseInfo &pi)
 {
@@ -332,17 +330,9 @@ bool MaplePhaseManager::RunAnalysisPhase(const MaplePhaseInfo &phaseInfo, Analys
 template bool MaplePhaseManager::RunTransformPhase<MapleModulePhase, MIRModule>(const MaplePhaseInfo &phaseInfo,
                                                                                 AnalysisDataManager &adm,
                                                                                 MIRModule &irUnit, int lev);
-template bool MaplePhaseManager::RunTransformPhase<MapleSccPhase<SCCNode<CGNode>>, SCCNode<CGNode>>(
-    const MaplePhaseInfo &phaseInfo, AnalysisDataManager &adm, SCCNode<CGNode> &irUnit, int lev);
 template bool MaplePhaseManager::RunAnalysisPhase<MapleModulePhase, MIRModule>(const MaplePhaseInfo &phaseInfo,
                                                                                AnalysisDataManager &adm,
                                                                                MIRModule &irUnit, int lev);
-template bool MaplePhaseManager::RunTransformPhase<meFuncOptTy, MeFunction>(const MaplePhaseInfo &phaseInfo,
-                                                                            AnalysisDataManager &adm,
-                                                                            MeFunction &irUnit, int lev);
-template bool MaplePhaseManager::RunAnalysisPhase<meFuncOptTy, MeFunction>(const MaplePhaseInfo &phaseInfo,
-                                                                           AnalysisDataManager &adm, MeFunction &irUnit,
-                                                                           int lev);
 template bool MaplePhaseManager::RunTransformPhase<cgFuncOptTy, maplebe::CGFunc>(const MaplePhaseInfo &phaseInfo,
                                                                                  AnalysisDataManager &adm,
                                                                                  maplebe::CGFunc &irUnit, int lev);

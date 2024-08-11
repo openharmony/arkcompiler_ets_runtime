@@ -17,11 +17,8 @@
 #include "emit.h"
 
 namespace cfi {
-using maplebe::CG;
-using maplebe::Emitter;
 using maplebe::MOperator;
 using maplebe::Operand;
-using maplebe::OpndDesc;
 
 struct CfiDescr {
     const std::string name;

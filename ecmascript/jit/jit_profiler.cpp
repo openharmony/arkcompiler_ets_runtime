@@ -18,7 +18,6 @@
 #include <cstdint>
 #include <memory>
 
-#include "ecmascript/compiler/codegen/maple/maple_util/include/profile_type.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/elements.h"
@@ -974,7 +973,7 @@ bool JITProfiler::AddBuiltinsInfoByNameInInstance(ApEntityId abcId, int32_t bcOf
         AddBuiltinsGlobalInfo(abcId, bcOffset, entry->second);
         return true;
     }
- 
+
     auto builtinsId = ToBuiltinsTypeId(type);
     if (!builtinsId.has_value()) {
         return false;

@@ -17,7 +17,6 @@
 #define MAPLEBE_INCLUDE_CG_X64_X64_ISA_H
 
 #include "operand.h"
-#include "mad.h"
 #include "isa.h"
 
 namespace maplebe {

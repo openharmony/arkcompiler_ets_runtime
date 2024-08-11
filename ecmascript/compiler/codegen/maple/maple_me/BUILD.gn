@@ -29,15 +29,7 @@ include_directories = [
   "${MAPLEALL_ROOT}/maple_be/include/ad/target",
 ]
 
-src_libmplme = [
-  "src/meexpr_use_info.cpp",
-  "src/me_cfg.cpp",
-  "src/me_function.cpp",
-  "src/me_option.cpp",
-  "src/me_ssa_update.cpp",
-  "src/cast_opt.cpp",
-  "src/me_safety_warning.cpp",
-]
+src_libmplme = [ "src/me_option.cpp" ]
 
 ohos_static_library("libmplme") {
   stack_protector_ret = false

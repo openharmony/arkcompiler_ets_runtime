@@ -18,6 +18,25 @@
 #include "aarch64_cg.h"
 
 namespace maplebe {
+
+static MOperator GetReversalMOP(MOperator arithMop)
+{
+    switch (arithMop) {
+        case MOP_waddrri12:
+            return MOP_wsubrri12;
+        case MOP_xaddrri12:
+            return MOP_xsubrri12;
+        case MOP_xsubrri12:
+            return MOP_xaddrri12;
+        case MOP_wsubrri12:
+            return MOP_waddrri12;
+        default:
+            CHECK_FATAL(false, "NYI");
+            break;
+    }
+    return MOP_undef;
+}
+
 void AArch64FPLROffsetAdjustment::Run()
 {
     AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
@@ -149,7 +168,7 @@ void AArch64FPLROffsetAdjustment::AdjustmentOffsetForImmOpnd(Insn &insn, uint32 
             if (immOpnd.GetValue() < 0) {
                 immOpnd.Negate();
             }
-            insn.SetMOP(AArch64CG::kMd[A64ConstProp::GetReversalMOP(insn.GetMachineOpcode())]);
+            insn.SetMOP(AArch64CG::kMd[GetReversalMOP(insn.GetMachineOpcode())]);
         } else {
             immOpnd.Add(ofst);
         }
@@ -208,7 +227,7 @@ void AArch64FPLROffsetAdjustment::AdjustmentStackPointer(Insn &insn) const
                 if (newAddImmOpnd->GetValue() < 0) {
                     newAddImmOpnd->Negate();
                 }
-                insn.SetMOP(AArch64CG::kMd[A64ConstProp::GetReversalMOP(insn.GetMachineOpcode())]);
+                insn.SetMOP(AArch64CG::kMd[GetReversalMOP(insn.GetMachineOpcode())]);
                 insn.SetOperand(kInsnThirdOpnd, *newAddImmOpnd);
                 break;
             }

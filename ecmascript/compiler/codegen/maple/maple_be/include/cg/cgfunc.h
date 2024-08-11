@@ -24,8 +24,6 @@
 #include "cgbb.h"
 #include "call_conv.h"
 #include "cfi.h"
-#include "dbg.h"
-#include "reaching.h"
 #include "cg_cfg.h"
 #include "cg_irbuilder.h"
 #include "call_conv.h"
@@ -210,11 +208,6 @@ public:
         hasAlloca = val;
     }
 
-    void SetRD(ReachingDefinition *paramRd)
-    {
-        reachingDef = paramRd;
-    }
-
     InsnBuilder *GetInsnBuilder()
     {
         return insnBuilder;
@@ -222,16 +215,6 @@ public:
     OperandBuilder *GetOpndBuilder()
     {
         return opndBuilder;
-    }
-
-    bool GetRDStatus() const
-    {
-        return (reachingDef != nullptr);
-    }
-
-    ReachingDefinition *GetRD()
-    {
-        return reachingDef;
     }
 
     EHFunc *BuildEHFunc();
@@ -246,8 +229,6 @@ public:
     LmbcFormalParamInfo *GetLmbcFormalParamInfo(uint32 offset);
     virtual void LmbcGenSaveSpForAlloca() = 0;
     void RemoveUnreachableBB();
-    Insn &BuildLocInsn(int64 fileNum, int64 lineNum, int64 columnNum);
-    void GenerateLoc(StmtNode *stmt, unsigned &lastSrcLoc, unsigned &lastMplLoc);
     int32 GetFreqFromStmt(uint32 stmtId);
     void GenerateInstruction();
     bool MemBarOpt(const StmtNode &membar);
@@ -691,11 +672,6 @@ public:
     virtual LabelIdx GetLabelInInsn(Insn &insn)
     {
         return 0;
-    }
-
-    Operand *CreateDbgImmOperand(int64 val) const
-    {
-        return memPool->New<mpldbg::ImmOperand>(val);
     }
 
     uint32 NumBBs() const
@@ -1663,7 +1639,6 @@ protected:
     MapleVector<DBGExprLoc *> dbgParamCallFrameLocations;
     MapleVector<DBGExprLoc *> dbgLocalCallFrameLocations;
     RegOperand *aggParamReg = nullptr;
-    ReachingDefinition *reachingDef = nullptr;
 
     int32 dbgCallFrameOffset = 0;
     CG *cg;

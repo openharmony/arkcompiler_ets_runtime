@@ -17,12 +17,6 @@
 #if TARGAARCH64
 #include "aarch64_insn.h"
 #endif
-#if defined(TARGRISCV64) && TARGRISCV64
-#include "riscv64_insn.h"
-#endif
-#if TARGARM32
-#include "arm32_insn.h"
-#endif
 #include "cg_option.h"
 #include "mpl_logging.h"
 #if TARGX86_64

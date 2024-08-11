@@ -15,7 +15,6 @@
 
 #ifndef MAPLE_PHASE_INCLUDE_PHASE_IMPL_H
 #define MAPLE_PHASE_INCLUDE_PHASE_IMPL_H
-#include "class_hierarchy_phase.h"
 #include "mir_builder.h"
 #include "mpl_scheduler.h"
 #include "utils.h"
@@ -23,7 +22,7 @@
 namespace maple {
 class FuncOptimizeImpl : public MplTaskParam {
 public:
-    FuncOptimizeImpl(MIRModule &mod, KlassHierarchy *kh = nullptr, bool trace = false);
+    FuncOptimizeImpl(MIRModule &mod, bool trace = false);
     virtual ~FuncOptimizeImpl();
     // Each phase needs to implement its own Clone
     virtual FuncOptimizeImpl *Clone() = 0;
@@ -64,7 +63,6 @@ protected:
     // Each phase needs to implement its own ProcessStmt
     virtual void ProcessStmt(StmtNode &) {}
 
-    KlassHierarchy *klassHierarchy = nullptr;
     MIRFunction *currFunc = nullptr;
     BlockNode *currBlock = nullptr;
     MIRBuilderExt *builder = nullptr;
@@ -135,23 +133,5 @@ private:
     std::unique_ptr<FuncOptimizeImpl> phaseImpl;
     std::vector<std::unique_ptr<MplTask>> tasksUniquePtr;
 };
-
-#define OPT_TEMPLATE(OPT_NAME)                                                                         \
-    auto *kh = static_cast<KlassHierarchy *>(mrm->GetAnalysisResult(MoPhase_CHA, mod));                \
-    ASSERT_NOT_NULL(kh);                                                                               \
-    std::unique_ptr<FuncOptimizeImpl> funcOptImpl = std::make_unique<OPT_NAME>(*mod, kh, TRACE_PHASE); \
-    ASSERT_NOT_NULL(funcOptImpl);                                                                      \
-    FuncOptimizeIterator opt(PhaseName(), std::move(funcOptImpl));                                     \
-    opt.Init();                                                                                        \
-    opt.Run();
-
-#define OPT_TEMPLATE_NEWPM(OPT_NAME, PHASEKEY)                                                              \
-    auto *kh = GET_ANALYSIS(M2MKlassHierarchy, PHASEKEY);                                                   \
-    ASSERT_NOT_NULL((kh));                                                                                  \
-    std::unique_ptr<FuncOptimizeImpl> funcOptImpl = std::make_unique<OPT_NAME>(m, (kh), TRACE_MAPLE_PHASE); \
-    ASSERT_NOT_NULL(funcOptImpl);                                                                           \
-    FuncOptimizeIterator opt(PhaseName(), std::move(funcOptImpl));                                          \
-    opt.Init();                                                                                             \
-    opt.Run();
 }  // namespace maple
 #endif  // MAPLE_PHASE_INCLUDE_PHASE_IMPL_H

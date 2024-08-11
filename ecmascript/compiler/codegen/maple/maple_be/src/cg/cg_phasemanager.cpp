@@ -21,8 +21,6 @@
 #include "label_creation.h"
 #include "isel.h"
 #include "offset_adjust.h"
-#include "alignment.h"
-#include "yieldpoint.h"
 #include "emit.h"
 #include "reg_alloc.h"
 #if TARGAARCH64
@@ -97,7 +95,6 @@ void CgFuncPM::GenerateOutPutFile(MIRModule &m)
     } else {
         CHECK_FATAL(false, "unsupportted target!");
     }
-    InitProfile(m);
 }
 
 bool CgFuncPM::FuncLevelRun(CGFunc &cgFunc, AnalysisDataManager &serialADM)
@@ -420,18 +417,6 @@ void CgFuncPM::EmitGlobalInfo(MIRModule &m) const
     });
 }
 
-void CgFuncPM::InitProfile(MIRModule &m) const
-{
-    if (!CGOptions::IsProfileDataEmpty()) {
-        uint32 dexNameIdx = m.GetFileinfo(GlobalTables::GetStrTable().GetOrCreateStrIdxFromName("INFO_filename"));
-        const std::string &dexName = GlobalTables::GetStrTable().GetStringFromStrIdx(GStrIdx(dexNameIdx));
-        bool deCompressSucc = m.GetProfile().DeCompress(CGOptions::GetProfileData(), dexName);
-        if (!deCompressSucc) {
-            LogInfo::MapleLogger() << "WARN: DeCompress() " << CGOptions::GetProfileData() << "failed in mplcg()\n";
-        }
-    }
-}
-
 void CgFuncPM::CreateCGAndBeCommon(MIRModule &m, const Target *t)
 {
     DEBUG_ASSERT(cgOptions != nullptr, "New cg phase manager running FAILED  :: cgOptions unset");
@@ -594,8 +579,6 @@ MAPLE_TRANSFORM_PHASE_REGISTER(CgCreateLabel, createstartendlabel)
 MAPLE_TRANSFORM_PHASE_REGISTER(InstructionSelector, instructionselector)
 MAPLE_TRANSFORM_PHASE_REGISTER(CgMoveRegArgs, moveargs)
 MAPLE_TRANSFORM_PHASE_REGISTER(CgRegAlloc, regalloc)
-MAPLE_TRANSFORM_PHASE_REGISTER(CgAlignAnalysis, alignanalysis)
 MAPLE_TRANSFORM_PHASE_REGISTER(CgFrameFinalize, framefinalize)
-MAPLE_TRANSFORM_PHASE_REGISTER(CgYieldPointInsertion, yieldpoint)
 MAPLE_TRANSFORM_PHASE_REGISTER(CgGenProEpiLog, generateproepilog)
 } /* namespace maplebe */

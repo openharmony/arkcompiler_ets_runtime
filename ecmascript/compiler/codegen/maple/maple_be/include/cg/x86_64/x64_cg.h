@@ -20,11 +20,9 @@
 #include "cg.h"
 #include "x64_isa.h"
 #include "x64_live.h"
-#include "x64_reaching.h"
 #include "x64_MPISel.h"
 #include "x64_standardize.h"
 #include "x64_args.h"
-#include "x64_local_opt.h"
 #include "x64_cfgo.h"
 #include "x64_peep.h"
 #include "x64_proepilog.h"
@@ -43,15 +41,9 @@ public:
     static const InsnDesc kMd[x64::kMopLast];
     void EnrollTargetPhases(MaplePhaseManager *pm) const override;
     /* Init SubTarget phase */
-    /* AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f) const override;*/
-
     LiveAnalysis *CreateLiveAnalysis(MemPool &mp, CGFunc &f) const override
     {
         return mp.New<X64LiveAnalysis>(f, mp);
-    }
-    ReachingDefinition *CreateReachingDefinition(MemPool &mp, CGFunc &f) const override
-    {
-        return mp.New<X64ReachingDefinition>(f, mp);
     }
     CGPeepHole *CreateCGPeepHole(MemPool &mp, CGFunc &f) const override
     {
@@ -60,10 +52,6 @@ public:
     virtual GenProEpilog *CreateGenProEpilog(CGFunc &f, MemPool &mp, MemPool *tempMemPool = nullptr) const override
     {
         return mp.New<X64GenProEpilog>(f);
-    }
-    LocalOpt *CreateLocalOpt(MemPool &mp, CGFunc &f, ReachingDefinition &rd) const override
-    {
-        return mp.New<X64LocalOpt>(mp, f, rd);
     }
     MoveRegArgs *CreateMoveRegArgs(MemPool &mp, CGFunc &f) const override
     {
@@ -98,7 +86,7 @@ public:
 
     /* NOTE: Consider making be_common a field of CG. */
     void GenerateObjectMaps(BECommon &beCommon) override;
-	
+
     void DoNothing()
     {
         (void)ehExclusiveNameVec;

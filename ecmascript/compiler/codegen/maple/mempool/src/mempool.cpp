@@ -19,7 +19,6 @@
 #include <cstring>
 #include <iostream>
 #include <mutex>
-#include "thread_env.h"
 #include "securec.h"
 #include "mpl_logging.h"
 
@@ -47,7 +46,6 @@ void MemPoolCtrler::FreeMemBlocks(const MemPool &pool, MemBlock *fixedMemHead, M
         delete cur;
     }
 
-    ParallelGuard guard(ctrlerMutex, HaveRace());
     if (fixedTail != nullptr) {
         fixedTail->nextMemBlock = fixedFreeMemBlocks;
         DEBUG_ASSERT(fixedTail->nextMemBlock != fixedTail, "error");
@@ -89,8 +87,6 @@ void MemPoolCtrler::DeleteMemPool(MemPool *memPool) const
 
 void MemPoolCtrler::FreeMem()
 {
-    ParallelGuard guard(ctrlerMutex, HaveRace());
-
     while (fixedFreeMemBlocks != nullptr) {
         MemBlock *arena = fixedFreeMemBlocks;
         fixedFreeMemBlocks = fixedFreeMemBlocks->nextMemBlock;
@@ -112,7 +108,6 @@ MemBlock *MemPoolCtrler::AllocFixMemBlock(const MemPool &pool)
     (void)(pool);
     MemBlock *ret = nullptr;
 
-    ParallelGuard guard(ctrlerMutex, HaveRace());
     if (fixedFreeMemBlocks != nullptr) {
         ret = fixedFreeMemBlocks;
         fixedFreeMemBlocks = fixedFreeMemBlocks->nextMemBlock;

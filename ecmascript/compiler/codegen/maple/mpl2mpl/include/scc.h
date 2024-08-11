@@ -19,9 +19,6 @@
 namespace maple {
 class BaseGraphNode;
 
-template <typename T>
-struct Comparator;
-
 constexpr uint32 kShiftSccUniqueIDNum = 16;
 
 // Note that T is the type of the graph node.

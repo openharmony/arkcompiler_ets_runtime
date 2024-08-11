@@ -17,6 +17,8 @@
 #include "mir_module.h"
 #include "types_def.h"
 
+#include <iomanip>
+
 namespace maple {
 const std::string kBlankString = "                                                                                ";
 constexpr int kIndentunit = 2;  // number of blank chars of each indentation

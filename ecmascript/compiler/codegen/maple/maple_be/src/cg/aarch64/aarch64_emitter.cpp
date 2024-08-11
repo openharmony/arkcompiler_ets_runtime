@@ -19,7 +19,6 @@
 #include "aarch64_cg.h"
 #include "metadata_layout.h"
 #include "cfi.h"
-#include "dbg.h"
 #include "aarch64_obj_emitter.h"
 #include "operand.h"
 
@@ -299,8 +298,6 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
                 }
                 if (insn->IsCfiInsn()) {
                     EmitAArch64CfiInsn(*emitter, *insn);
-                } else if (insn->IsDbgInsn()) {
-                    EmitAArch64DbgInsn(*emitter, *insn);
                 } else {
                     EmitAArch64Insn(*emitter, *insn);
                 }
@@ -1669,33 +1666,6 @@ void AArch64AsmEmitter::EmitAArch64CfiInsn(Emitter &emitter, const Insn &insn) c
         if (i < (cfiDescr.opndCount - 1)) {
             (void)emitter.Emit(",");
         }
-    }
-    (void)emitter.Emit("\n");
-}
-
-struct DbgDescr {
-    const std::string name;
-    uint32 opndCount;
-    /* create 3 OperandType array to store dbg instruction's operand type */
-    std::array<Operand::OperandType, 3> opndTypes;
-};
-
-static DbgDescr dbgDescrTable[mpldbg::kOpDbgLast + 1] = {
-#define DBG_DEFINE(k, sub, n, o0, o1, o2) {#k, n, {Operand::kOpd##o0, Operand::kOpd##o1, Operand::kOpd##o2}},
-#include "dbg.def"
-#undef DBG_DEFINE
-    {"undef", 0, {Operand::kOpdUndef, Operand::kOpdUndef, Operand::kOpdUndef}}};
-
-void AArch64AsmEmitter::EmitAArch64DbgInsn(Emitter &emitter, const Insn &insn) const
-{
-    MOperator mOp = insn.GetMachineOpcode();
-    DbgDescr &dbgDescr = dbgDescrTable[mOp];
-    (void)emitter.Emit("\t.").Emit(dbgDescr.name);
-    for (uint32 i = 0; i < dbgDescr.opndCount; ++i) {
-        (void)emitter.Emit(" ");
-        Operand &curOperand = insn.GetOperand(i);
-        mpldbg::DBGOpndEmitVisitor dbgOpndEmitVisitor(emitter);
-        curOperand.Accept(dbgOpndEmitVisitor);
     }
     (void)emitter.Emit("\n");
 }

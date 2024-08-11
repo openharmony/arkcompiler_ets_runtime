@@ -27,6 +27,9 @@ constexpr int kScopeGlobal = 1;  // the scope level for global variables
 namespace maple {
 enum MIRSymKind { kStInvalid, kStVar, kStFunc, kStConst, kStPreg };
 
+const std::string kConstString = "_C_STR_";
+const std::string kConstStringPtr = "_PTR_C_STR_";
+
 enum MIRStorageClass : uint8 {
     kScInvalid,
     kScAuto,

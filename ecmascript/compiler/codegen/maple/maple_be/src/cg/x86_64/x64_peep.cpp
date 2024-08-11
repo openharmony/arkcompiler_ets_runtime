@@ -28,17 +28,9 @@ void X64CGPeepHole::Run()
             if (!insn->IsMachineInstruction()) {
                 continue;
             }
-            if (ssaInfo == nullptr) {
-                DoNormalOptimize(*bb, *insn);
-            }
+            DoNormalOptimize(*bb, *insn);
         }
     }
-}
-
-bool X64CGPeepHole::DoSSAOptimize(BB &bb, Insn &insn)
-{
-    CHECK_FATAL(false, "x64 does not support ssa optimize");
-    return false;
 }
 
 bool X64RemoveMovingtoSameRegPattern::CheckCondition(Insn &insn)

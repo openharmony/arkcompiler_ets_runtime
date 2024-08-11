@@ -28,9 +28,6 @@
 #include "rt.h"
 #include "securec.h"
 #include "string_utils.h"
-#include "cast_opt.h"
-#include "simplify.h"
-#include "me_safety_warning.h"
 
 namespace maplebe {
 
@@ -938,15 +935,6 @@ void CGLowerer::LowerCallStmt(StmtNode &stmt, StmtNode *&nextStmt, BlockNode &ne
     }
     newStmt->SetSrcPos(stmt.GetSrcPos());
     newBlk.AddStatement(newStmt);
-    if (CGOptions::GetInstance().GetOptimizeLevel() >= CGOptions::kLevel2 && stmt.GetOpCode() == OP_intrinsiccall) {
-        /* Try to expand memset and memcpy call lowered from intrinsiccall */
-        /* Skip expansion if call returns a value that is used later. */
-        BlockNode *blkLowered = isIntrinAssign ? nullptr : LowerMemop(*newStmt);
-        if (blkLowered != nullptr) {
-            newBlk.RemoveStmt(newStmt);
-            newBlk.AppendStatementsFromBlock(*blkLowered);
-        }
-    }
 }
 
 StmtNode *CGLowerer::GenCallNode(const StmtNode &stmt, PUIdx &funcCalled, CallNode &origCall)
@@ -1115,40 +1103,6 @@ BlockNode *CGLowerer::GenBlockNode(StmtNode &newCall, const CallReturnVector &p2
     return blk;
 }
 
-// try to expand memset and memcpy
-BlockNode *CGLowerer::LowerMemop(StmtNode &stmt)
-{
-    auto memOpKind = SimplifyMemOp::ComputeMemOpKind(stmt);
-    if (memOpKind == MEM_OP_unknown) {
-        return nullptr;
-    }
-    auto *prev = stmt.GetPrev();
-    auto *next = stmt.GetNext();
-    auto *blk = mirModule.CurFuncCodeMemPool()->New<BlockNode>();
-    blk->AddStatement(&stmt);
-    uint32 oldTypeTableSize = GlobalTables::GetTypeTable().GetTypeTableSize();
-    bool success = simplifyMemOp.AutoSimplify(stmt, *blk, true);
-    uint32 newTypeTableSize = GlobalTables::GetTypeTable().GetTypeTableSize();
-    if (newTypeTableSize != oldTypeTableSize) {
-        beCommon.AddNewTypeAfterBecommon(oldTypeTableSize, newTypeTableSize);
-    }
-    stmt.SetPrev(prev);
-    stmt.SetNext(next);  // recover callStmt's position
-    if (!success) {
-        return nullptr;
-    }
-    // lower new generated stmts
-    auto *currStmt = blk->GetFirst();
-    while (currStmt != nullptr) {
-        auto *nextStmt = currStmt->GetNext();
-        for (uint32 i = 0; i < currStmt->NumOpnds(); ++i) {
-            currStmt->SetOpnd(LowerExpr(*currStmt, *currStmt->Opnd(i), *blk), i);
-        }
-        currStmt = nextStmt;
-    }
-    return blk;
-}
-
 BlockNode *CGLowerer::LowerIntrinsiccallAassignedToAssignStmt(IntrinsiccallNode &intrinsicCall)
 {
     auto *builder = mirModule.GetMIRBuilder();
@@ -1186,12 +1140,6 @@ BlockNode *CGLowerer::LowerCallAssignedStmt(StmtNode &stmt, bool uselvar)
         case OP_virtualcallassigned:
         case OP_superclasscallassigned:
         case OP_interfacecallassigned: {
-            if (CGOptions::GetInstance().GetOptimizeLevel() >= CGOptions::kLevel2) {
-                BlockNode *blkLowered = LowerMemop(stmt);
-                if (blkLowered != nullptr) {
-                    return blkLowered;
-                }
-            }
             auto &origCall = static_cast<CallNode &>(stmt);
             newCall = GenCallNode(stmt, funcCalled, origCall);
             p2nRets = &origCall.GetReturnVec();
@@ -1704,42 +1652,6 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
         newBlk->AddStatement(node);
     }
     return newBlk;
-}
-
-void CGLowerer::SimplifyBlock(BlockNode &block) const
-{
-    if (block.GetFirst() == nullptr) {
-        return;
-    }
-    StmtNode *nextStmt = block.GetFirst();
-    do {
-        StmtNode *stmt = nextStmt;
-        nextStmt = stmt->GetNext();
-        Opcode op = stmt->GetOpCode();
-        switch (op) {
-            case OP_call: {
-                auto *callStmt = static_cast<CallNode *>(stmt);
-                if (CGOptions::IsDuplicateAsmFileEmpty()) {
-                    break;
-                }
-                auto *oldFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callStmt->GetPUIdx());
-                if (asmMap.find(oldFunc->GetName()) == asmMap.end()) {
-                    break;
-                }
-                auto *newFunc = theMIRModule->GetMIRBuilder()->GetOrCreateFunction(asmMap.at(oldFunc->GetName()),
-                                                                                   callStmt->GetTyIdx());
-                MIRSymbol *funcSym = newFunc->GetFuncSymbol();
-                funcSym->SetStorageClass(kScExtern);
-                funcSym->SetAppearsInCode(true);
-                callStmt->SetPUIdx(newFunc->GetPuidx());
-                break;
-            }
-            default: {
-                break;
-            }
-        }
-    } while (nextStmt != nullptr);
-    return;
 }
 
 MIRType *CGLowerer::GetArrayNodeType(BaseNode &baseNode)
@@ -3412,9 +3324,6 @@ void CGLowerer::LowerFunc(MIRFunction &func)
     }
 
     uint32 oldTypeTableSize = GlobalTables::GetTypeTable().GetTypeTableSize();
-    // We do the simplify work here because now all the intrinsic calls and potential expansion work of memcpy or other
-    // functions are handled well. So we can concentrate to do the replacement work.
-    SimplifyBlock(*newBody);
     uint32 newTypeTableSize = GlobalTables::GetTypeTable().GetTypeTableSize();
     if (newTypeTableSize != oldTypeTableSize) {
         beCommon.AddNewTypeAfterBecommon(oldTypeTableSize, newTypeTableSize);

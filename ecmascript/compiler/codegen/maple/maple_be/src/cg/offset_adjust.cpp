@@ -16,11 +16,6 @@
 #include "offset_adjust.h"
 #if TARGAARCH64
 #include "aarch64_offset_adjust.h"
-#elif TARGRISCV64
-#include "riscv64_offset_adjust.h"
-#endif
-#if TARGARM32
-#include "arm32_offset_adjust.h"
 #endif
 
 #include "cgfunc.h"
@@ -29,14 +24,11 @@ namespace maplebe {
 using namespace maple;
 bool CgFrameFinalize::PhaseRun(maplebe::CGFunc &f)
 {
+#if TARGAARCH64
     FrameFinalize *offsetAdjustment = nullptr;
-#if TARGAARCH64 || TARGRISCV64
     offsetAdjustment = GetPhaseAllocator()->New<AArch64FPLROffsetAdjustment>(f);
-#endif
-#if TARGARM32
-    offsetAdjustment = GetPhaseAllocator()->New<Arm32FPLROffsetAdjustment>(f);
-#endif
     offsetAdjustment->Run();
+#endif
     return false;
 }
 

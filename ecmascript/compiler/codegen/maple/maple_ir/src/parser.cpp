@@ -23,9 +23,7 @@
 #include "namemangler.h"
 #include "opcode_info.h"
 #include "mir_pragma.h"
-#include "bin_mplt.h"
 #include "option.h"
-#include "clone.h"
 #include "string_utils.h"
 #include "debug_info.h"
 
