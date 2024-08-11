@@ -949,34 +949,6 @@ JSTaggedValue BuiltinsSharedArray::ForEach(EcmaRuntimeCallInfo *argv)
     return JSTaggedValue::Undefined();
 }
 
-JSTaggedValue BuiltinsSharedArray::IndexOfStable(
-    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
-{
-    int64_t length = JSHandle<JSSharedArray>::Cast(thisHandle)->GetArrayLength();
-    if (length == 0) {
-        return JSTaggedValue(-1);
-    }
-    int64_t fromIndex = 0;
-    uint32_t argc = argv->GetArgsNumber();
-    // 2: [target, fromIndex]. Note that fromIndex is missing in most usage cases.
-    if (UNLIKELY(argc >= 2)) {
-        JSHandle<JSTaggedValue> fromIndexHandle = argv->GetCallArg(1);
-        fromIndex = ArrayHelper::GetStartIndex(thread, fromIndexHandle, length);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        // Slow path when fromIndex is obtained from an ECMAObject
-        // due to potential side effects in its 'toString' and 'valueOf' methods which modify the array object.
-        if (UNLIKELY(fromIndexHandle->IsECMAObject())) {
-            return IndexOfSlowPath(argv, thread, thisHandle, length, fromIndex);
-        }
-    }
-    if (fromIndex >= length) {
-        return JSTaggedValue(-1);
-    }
-    JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
-    return JSStableArray::IndexOf(
-        thread, thisHandle, target, static_cast<uint32_t>(fromIndex), static_cast<uint32_t>(length));
-}
-
 JSTaggedValue BuiltinsSharedArray::IndexOfSlowPath(
     EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
 {
@@ -1036,9 +1008,11 @@ JSTaggedValue BuiltinsSharedArray::IndexOf(EcmaRuntimeCallInfo *argv)
     }
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
     JSTaggedValue opResult;
     if (thisHandle->IsStableJSArray(thread)) {
-        opResult = IndexOfStable(argv, thread, thisHandle);
+        auto error = ContainerError::BindError(thread, "The indexOf method not support stable array.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     } else {
         opResult = IndexOfSlowPath(argv, thread, thisHandle);
     }
@@ -1078,77 +1052,6 @@ JSTaggedValue BuiltinsSharedArray::Keys(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     auto opResult = BuiltinsArray::Keys(argv);
     return opResult;
-}
-
-JSTaggedValue BuiltinsSharedArray::LastIndexOfStable(
-    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
-{
-    int64_t length = JSHandle<JSSharedArray>::Cast(thisHandle)->GetArrayLength();
-    if (length == 0) {
-        return JSTaggedValue(-1);
-    }
-    int64_t fromIndex = length - 1;
-    uint32_t argc = argv->GetArgsNumber();
-    // 2: [target, fromIndex]. Note that fromIndex is missing in most usage cases.
-    if (UNLIKELY(argc >= 2)) {
-        JSHandle<JSTaggedValue> fromIndexHandle = argv->GetCallArg(1);
-        fromIndex = ArrayHelper::GetLastStartIndex(thread, fromIndexHandle, length);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        // Slow path when fromIndex is obtained from an ECMAObject
-        // due to potential side effects in its 'toString' and 'valueOf' methods which modify the array object.
-        if (UNLIKELY(fromIndexHandle->IsECMAObject())) {
-            return LastIndexOfSlowPath(argv, thread, thisHandle, fromIndex);
-        }
-    }
-    if (fromIndex < 0) {
-        return JSTaggedValue(-1);
-    }
-    JSHandle<JSTaggedValue> target = GetCallArg(argv, 0);
-    return JSStableArray::LastIndexOf(
-        thread, thisHandle, target, static_cast<uint32_t>(fromIndex), static_cast<uint32_t>(length));
-}
-
-JSTaggedValue BuiltinsSharedArray::LastIndexOfSlowPath(
-    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle)
-{
-    // 1. Let O be ToObject(this value).
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    // 2. ReturnIfAbrupt(O).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-    // 3. Let len be ToLength(Get(O, "length")).
-    int64_t length = ArrayHelper::GetLength(thread, thisObjVal);
-    // 4. ReturnIfAbrupt(len).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    // 5. If len is 0, return −1.
-    if (length == 0) {
-        return JSTaggedValue(-1);
-    }
-    // 6. If argument fromIndex was passed let n be ToInteger(fromIndex); else let n be 0.
-    int64_t fromIndex = ArrayHelper::GetLastStartIndexFromArgs(thread, argv, 1, length);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    return LastIndexOfSlowPath(argv, thread, thisObjVal, fromIndex);
-}
-
-JSTaggedValue BuiltinsSharedArray::LastIndexOfSlowPath(
-    EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex)
-{
-    if (fromIndex < 0) {
-        return JSTaggedValue(-1);
-    }
-    JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
-    JSHandle<JSTaggedValue> target = base::BuiltinsBase::GetCallArg(argv, 0);
-    // 11. Repeat, while k < len
-    for (int64_t curIndex = fromIndex; curIndex >= 0; --curIndex) {
-        keyHandle.Update(JSTaggedValue(curIndex));
-        bool found = ArrayHelper::ElementIsStrictEqualTo(thread, thisObjVal, keyHandle, target);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        if (UNLIKELY(found)) {
-            return JSTaggedValue(curIndex);
-        }
-    }
-    // 12. Return -1.
-    return JSTaggedValue(-1);
 }
 
 // 22.1.3.15 Array.prototype.map ( callbackfn [ , thisArg ] )
@@ -2423,36 +2326,4 @@ JSTaggedValue BuiltinsSharedArray::ExtendTo(EcmaRuntimeCallInfo *argv)
     return JSTaggedValue::Undefined();
 }
 
-JSTaggedValue BuiltinsSharedArray::ToStringImpl(EcmaRuntimeCallInfo *argv, JSThread *thread,
-    const JSHandle<JSTaggedValue> &thisHandle)
-{
-    auto ecmaVm = thread->GetEcmaVM();
-    // 1. Let array be ToObject(this value).
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
-
-    // 2. Let func be Get(array, "join").
-    JSHandle<JSTaggedValue> joinKey = thread->GlobalConstants()->GetHandledJoinString();
-    JSHandle<JSTaggedValue> callbackFnHandle = JSTaggedValue::GetProperty(thread, thisObjVal, joinKey).GetValue();
-
-    // 3. ReturnIfAbrupt(func).
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-
-    // 4. If IsCallable(func) is false, let func be the intrinsic function %ObjProto_toString% (19.1.3.6).
-    if (!callbackFnHandle->IsCallable()) {
-        JSHandle<GlobalEnv> env = ecmaVm->GetGlobalEnv();
-        JSHandle<JSTaggedValue> objectPrototype = env->GetObjectFunctionPrototype();
-        JSHandle<JSTaggedValue> toStringKey = thread->GlobalConstants()->GetHandledToStringString();
-        callbackFnHandle = JSTaggedValue::GetProperty(thread, objectPrototype, toStringKey).GetValue();
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    }
-    const uint32_t argsLength = argv->GetArgsNumber();
-    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
-    EcmaRuntimeCallInfo *info =
-        EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisObjVal, undefined, argsLength);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    info->SetCallArg(argsLength, 0, argv, 0);
-    auto opResult = JSFunction::Call(info);
-    return opResult;
-}
 }  // namespace panda::ecmascript::builtins
