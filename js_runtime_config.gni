@@ -42,6 +42,7 @@ declare_args() {
   # If true app_aot_jit_enable_list will be placed in /etc/ark
   # Default false.
   ets_runtime_feature_enable_list = false
+  enable_gc_dfx_options = false
 }
 
 if (target_cpu == "arm64") {
@@ -281,6 +282,11 @@ template("libark_jsruntime_common_set") {
       deps += [ "$ark_third_party_root/zlib:libz" ]
     } else {
       external_deps += [ "zlib:shared_libz" ]
+    }
+
+    # gc dfx options
+    if (enable_gc_dfx_options) {
+      defines += [ "ECMASCRIPT_ENABLE_GC_DFX_OPTIONS" ]
     }
 
     part_name = "ets_runtime"

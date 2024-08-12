@@ -518,7 +518,7 @@ config("ark_jsruntime_common_config") {
     }
   }
 
-  if (enable_leak_check || is_asan) {
+  if (enable_leak_check || enable_gc_dfx_options || is_asan) {
     defines += [ "ECMASCRIPT_ENABLE_HANDLE_LEAK_CHECK" ]
   }
 
@@ -533,7 +533,7 @@ config("ark_jsruntime_common_config") {
 
   # is_asan: skynet config; run_with_asan: est_runtime enable asan config
   if (is_asan) {
-    defines += [ "ECMASCRIPT_ENABLE_DFX_CONFIG" ]
+    defines += [ "ECMASCRIPT_ENABLE_ASAN_DFX_CONFIG" ]
   }
 
   code_encrypto_enable = true

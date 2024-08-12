@@ -53,13 +53,12 @@ namespace panda::ecmascript {
 #endif
 /*
  * 1. close ic
- * 2. close parallel gc
- * 3. enable gc logs
- * 4. enable handle-scope zap, zap reclaimed regions
- * 5. switch gc mode to full gc
- * 6. enable Cast() check
- * 7. enable verify heap
- * 9. enable Proactively interrogating and collecting information in the call stack
+ * 2. enable handle-scope zap, zap reclaimed regions
+ * 3. switch gc mode to full gc
+ * 4. enable Cast() check
+ * 5. enable new handle check
+ * 6. enable barrier check
+ * 7. enable special value check in jsnapi
  */
 #if ECMASCRIPT_ENABLE_DEBUG_MODE
     #define ECMASCRIPT_ENABLE_IC 0
@@ -67,25 +66,30 @@ namespace panda::ecmascript {
     #define ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC 1
     #define ECMASCRIPT_ENABLE_CAST_CHECK 1
     #define ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK 1
-    #define ECMASCRIPT_ENABLE_HEAP_VERIFY 1                 // use jsoption instead
     #define ECMASCRIPT_ENABLE_BARRIER_CHECK 1
     #define ECMASCRIPT_ENABLE_NAPI_SPECIAL_CHECK 1
-#elif defined(ECMASCRIPT_ENABLE_DFX_CONFIG)
+#elif defined(ECMASCRIPT_ENABLE_ASAN_DFX_CONFIG)
     #define ECMASCRIPT_ENABLE_IC 1
     #define ECMASCRIPT_ENABLE_ZAP_MEM 0
     #define ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC 0
     #define ECMASCRIPT_ENABLE_CAST_CHECK 0
     #define ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK 0
-    #define ECMASCRIPT_ENABLE_HEAP_VERIFY 1                 // use jsoption instead
     #define ECMASCRIPT_ENABLE_BARRIER_CHECK 0
     #define ECMASCRIPT_ENABLE_NAPI_SPECIAL_CHECK 1
+#elif defined(ECMASCRIPT_ENABLE_GC_DFX_OPTIONS)
+    #define ECMASCRIPT_ENABLE_IC 1
+    #define ECMASCRIPT_ENABLE_ZAP_MEM 1
+    #define ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC 1
+    #define ECMASCRIPT_ENABLE_CAST_CHECK 1
+    #define ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK 1
+    #define ECMASCRIPT_ENABLE_BARRIER_CHECK 1
+    #define ECMASCRIPT_ENABLE_NAPI_SPECIAL_CHECK 0
 #else
     #define ECMASCRIPT_ENABLE_IC 1
     #define ECMASCRIPT_ENABLE_ZAP_MEM 0
     #define ECMASCRIPT_SWITCH_GC_MODE_TO_FULL_GC 0
     #define ECMASCRIPT_ENABLE_CAST_CHECK 0
     #define ECMASCRIPT_ENABLE_NEW_HANDLE_CHECK 0
-    #define ECMASCRIPT_ENABLE_HEAP_VERIFY 0                 // use jsoption instead
     #define ECMASCRIPT_ENABLE_BARRIER_CHECK 0
     #define ECMASCRIPT_ENABLE_NAPI_SPECIAL_CHECK 0
 #endif

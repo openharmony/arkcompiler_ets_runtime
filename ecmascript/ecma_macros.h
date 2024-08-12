@@ -599,7 +599,7 @@
             }                                                                                   \
             return static_cast<CAST_TYPE *>(value.GetTaggedObject());                           \
         }
-# else
+#else
     #define CAST_CHECK(CAST_TYPE, CHECK_METHOD)                                                   \
         static inline CAST_TYPE *Cast(TaggedObject *object)                                       \
         {                                                                                         \
@@ -616,17 +616,17 @@
             ASSERT(value.CHECK_METHOD());                                                         \
             return static_cast<CAST_TYPE *>(value.GetTaggedObject());                             \
         }
-
-    #define CAST_NO_CHECK(CAST_TYPE)                                                              \
-        static inline CAST_TYPE *Cast(TaggedObject *object)                                       \
-        {                                                                                         \
-            return static_cast<CAST_TYPE *>(object);                                              \
-        }                                                                                         \
-        static const inline CAST_TYPE *ConstCast(const TaggedObject *object)                      \
-        {                                                                                         \
-            return static_cast<const CAST_TYPE *>(object);                                        \
-        }
 #endif
+
+#define CAST_NO_CHECK(CAST_TYPE)                                                              \
+    static inline CAST_TYPE *Cast(TaggedObject *object)                                       \
+    {                                                                                         \
+        return static_cast<CAST_TYPE *>(object);                                              \
+    }                                                                                         \
+    static const inline CAST_TYPE *ConstCast(const TaggedObject *object)                      \
+    {                                                                                         \
+        return static_cast<const CAST_TYPE *>(object);                                        \
+    }
 
 #define CHECK_OBJECT_SIZE(size)                                                        \
     if ((size) == 0) {                                                                 \
