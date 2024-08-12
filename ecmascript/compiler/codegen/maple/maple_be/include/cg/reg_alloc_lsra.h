@@ -710,7 +710,9 @@ public:
           fpCalleeRegSet(alloc.Adapter()),
           fpParamRegSet(alloc.Adapter()),
           fpSpillRegSet(alloc.Adapter()),
+          loopBBRegSet(alloc.Adapter()),
           bfs(bbSort),
+          regUsedInBB(alloc.Adapter()),
           liQue(alloc.Adapter()),
           splitPosMap(alloc.Adapter()),
           splitInsnMap(alloc.Adapter()),
@@ -824,14 +826,14 @@ private:
     MapleSet<uint32> fpCalleeRegSet;   /*       callee       */
     MapleSet<uint32> fpParamRegSet;    /*       parameter    */
     MapleVector<uint32> fpSpillRegSet; /* float regs put aside for spills */
-    std::unordered_set<uint32> loopBBRegSet;
+    MapleUnorderedSet<uint32> loopBBRegSet;
     Bfs *bfs = nullptr;
     uint32 fpCallerMask = 0;       /* bit mask for all possible caller fp */
     uint32 fpCalleeMask = 0;       /*                           callee    */
     uint32 fpParamMask = 0;        /*      (physical-register)  parameter */
     uint64 blockForbiddenMask = 0; /* bit mask for forbidden physical reg */
     uint32 debugSpillCnt = 0;
-    std::vector<uint64> regUsedInBB;
+    MapleVector<uint64> regUsedInBB;
     uint32 maxInsnNum = 0;
     regno_t minVregNum = 0xFFFFFFFF;
     regno_t maxVregNum = 0;

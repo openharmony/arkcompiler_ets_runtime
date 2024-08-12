@@ -100,15 +100,15 @@ struct CodeInfo {
 
     void SaveFunc2CalleeOffsetInfo(std::string funcName, kungfu::CalleeRegAndOffsetVec calleeRegInfo);
 
-    void SavePC2DeoptInfo(uint64_t pc, std::vector<uint64_t> pc2DeoptInfo);
+    void SavePC2DeoptInfo(uint64_t pc, std::vector<uint8_t> pc2DeoptInfo);
 
-    void SavePC2CallSiteInfo(uint64_t pc, std::vector<uint64_t> callSiteInfo);
+    void SavePC2CallSiteInfo(uint64_t pc, std::vector<uint8_t> callSiteInfo);
 
     const std::map<std::string, FuncInfo> &GetFuncInfos() const;
 
-    const std::map<uint64_t, std::vector<uint64_t>> &GetPC2DeoptInfo() const;
+    const std::map<uint64_t, std::vector<uint8_t>> &GetPC2DeoptInfo() const;
 
-    const std::unordered_map<uint64_t, std::vector<uint64_t>> &GetPC2CallsiteInfo() const;
+    const std::unordered_map<uint64_t, std::vector<uint8_t>> &GetPC2CallsiteInfo() const;
 
     void Reset();
 
@@ -133,8 +133,8 @@ private:
     std::array<sectionInfo, static_cast<int>(ElfSecName::SIZE)> secInfos_;
     std::vector<std::pair<uint8_t *, uintptr_t>> codeInfo_ {}; // info for disasssembler, planed to be deprecated
     std::map<std::string, FuncInfo> func2FuncInfo;
-    std::map<uint64_t, std::vector<uint64_t>> pc2DeoptInfo;
-    std::unordered_map<uint64_t, std::vector<uint64_t>> pc2CallsiteInfo;
+    std::map<uint64_t, std::vector<uint8_t>> pc2DeoptInfo;
+    std::unordered_map<uint64_t, std::vector<uint8_t>> pc2CallsiteInfo;
     bool alreadyPageAlign_ {false};
     CodeSpaceOnDemand &codeSpaceOnDemand_;
 };

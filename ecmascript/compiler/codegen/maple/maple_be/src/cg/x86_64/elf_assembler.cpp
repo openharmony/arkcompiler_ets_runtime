@@ -2334,8 +2334,8 @@ void ElfAssembler::Sqrtsd_r(Reg srcReg, Reg destReg)
 /* end of X64 instructions */
 
 /* process stackmap */
-void ElfAssembler::RecordStackmap(const std::vector<uint64> &referenceMap,
-                                  const std::vector<uint64> &deoptVreg2LocationInfo)
+void ElfAssembler::RecordStackmap(const std::vector<uint8> &referenceMap,
+                                  const std::vector<uint8> &deoptVreg2LocationInfo)
 {
     const auto &emitMemoryManager = maplebe::CGOptions::GetInstance().GetEmitMemoryManager();
     if (emitMemoryManager.codeSpace == nullptr) {
