@@ -156,6 +156,14 @@ if (globalThis["ArkPrivate"] != undefined) {
             print("LightWeightSet forEach throw error fail");
         }
     }
+
+    // Math.floor be index input should not throw exception.
+    let myLs = new fastset();
+    myLs.add("a");
+    myLs.add("b");
+    myLs.getValueAt(Math.floor(1.5));
+    myLs.removeAt(Math.floor(1.5));
+
     if (!flag) {
         print("Test LightWeightSet success!!!");
     } else {

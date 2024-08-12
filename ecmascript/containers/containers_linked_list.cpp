@@ -176,16 +176,16 @@ JSTaggedValue ContainersLinkedList::Insert(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 1);
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
 
-    if (!index->IsInteger()) {
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
+    if (!index->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
-    if (index->IsDouble()) {
-        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSTaggedValue result =
@@ -276,16 +276,16 @@ JSTaggedValue ContainersLinkedList::Get(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
-    if (!index->IsInteger()) {
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
+    if (!index->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
-    if (index->IsDouble()) {
-        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
     }
     return jsAPILinkedList->Get(index->GetInt());
 }
@@ -349,16 +349,16 @@ JSTaggedValue ContainersLinkedList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
-    if (!index->IsInteger()) {
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
+    if (!index->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
-    if (index->IsDouble()) {
-        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
     }
     JSHandle<JSAPILinkedList> jsAPILinkedList = JSHandle<JSAPILinkedList>::Cast(self);
     JSTaggedValue nodeData =
@@ -497,11 +497,14 @@ JSTaggedValue ContainersLinkedList::Set(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> element = GetCallArg(argv, 1);
-    if (!index->IsInteger()) {
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
+    if (!index->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }

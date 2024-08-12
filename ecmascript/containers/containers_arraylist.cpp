@@ -92,10 +92,15 @@ JSTaggedValue ContainersArrayList::Insert(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 1);
-    if (!index->IsInteger()) {
+    if (index->IsDouble()) {
+        /* 将Math.floor(1)等形式的double变量处理为Int，而大于INT32_MAX的整数仍然是double形式 */
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
+    if (!index->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg = "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+        CString errorMsg =
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -366,11 +371,14 @@ JSTaggedValue ContainersArrayList::RemoveByIndex(EcmaRuntimeCallInfo *argv)
     }
 
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-    if (!value->IsInteger()) {
+    if (value->IsDouble()) {
+        value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(value->GetDouble()));
+    }
+    if (!value->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }

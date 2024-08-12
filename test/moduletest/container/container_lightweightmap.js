@@ -128,6 +128,16 @@ if (globalThis["ArkPrivate"] != undefined) {
             print("LightWeightMap forEach throw error fail");
         }
     }
+
+    // Math.floor as index input should not throw exception.
+    let myLm = new fastmap();
+    myLm.set("a", "aa");
+    myLm.set("b", "bb");
+    myLm.getKeyAt(Math.floor(1.5));
+    myLm.getValueAt(Math.floor(1.5));
+    myLm.setValueAt(Math.floor(1.5), "cc");
+    myLm.removeAt(Math.floor(1.5));
+
     if (!flag) {
         print("Test LightWeightMap success!!!");
     } else {

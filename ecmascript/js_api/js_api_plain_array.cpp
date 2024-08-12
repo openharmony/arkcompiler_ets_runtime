@@ -226,7 +226,20 @@ OperationResult JSAPIPlainArray::GetProperty(JSThread *thread, const JSHandle<JS
                                                                         JSTaggedValue::Exception(),
                                                                         PropertyMetaData(false)));
     }
-    int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
+    JSHandle<JSTaggedValue> indexKey = key;
+    if (indexKey->IsDouble()) {
+        /* 将Math.floor(1)等形式的double变量处理为Int，而大于INT32_MAX的整数仍然是double形式 */
+        indexKey = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(indexKey->GetDouble()));
+    }
+    if (!indexKey->IsInt()) {
+        CString errorMsg = "The type of \"index\" must be small integer.";
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                         OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+    }
+
+    int keyVal = indexKey->GetInt();
+    int32_t index = obj->BinarySearch(keyArray, 0, size, keyVal);
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         std::ostringstream oss;
         ASSERT(size > 0);

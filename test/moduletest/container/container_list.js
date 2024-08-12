@@ -426,6 +426,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         map.set("test GetSubList exception when arraylist is empty:", res)
     }
 
+    try {
+        let myList = new List();
+        myList.add(1);
+        myList[2147483648];
+    } catch(err) {
+        let overFlowTest = (err == "BusinessError: The type of \"index\" must be small integer.");
+        map.set("test List[i] overFlowTest:", overFlowTest);
+    }
+
     flag = undefined;
     function elementsList(valueList, keyList, map) {
         if (!valueList) {
@@ -463,6 +472,16 @@ if (globalThis["ArkPrivate"] != undefined) {
     for (let i = 1; i <= 3; ++i) {
         mList.add(i);
     }
+
+    // Math.floor as the index input should not throw exception.
+    let myList1 = new List();
+    myList1.add(1);
+    myList1.add(2);
+    myList1.add(3);
+    myList1.insert(999, Math.floor(1.5));
+    myList1.get(Math.floor(1.5));
+    myList1.set(Math.floor(1.5), 888);
+    myList1.removeByIndex(Math.floor(1.5));
 
     if (mList.getLast() != 3 ||
         ("convertToArray= " + mList.convertToArray()) != "convertToArray= 1,2,3") {
