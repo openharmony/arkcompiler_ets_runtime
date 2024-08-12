@@ -1744,10 +1744,10 @@ bool Heap::CheckAndTriggerGCForIdle(int idleTime, CheckIdleGCType idleType)
     if (needCheckOldGC && ShouldCheckIdleOldGC() && ReachIdleOldGCThresholds() && !NeedStopCollection()) {
         double memUsageOfLastOldGC = memController_->GetLastGCOldSpaceObjectUsageRate();
         LOG_GC(INFO) << "Triggered once local OldGC on idleTime and memUsageOfLastOldGC:" << memUsageOfLastOldGC;
-        if (memUsageOfLastOldGC < OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC) {
-            CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
-        } else {
+        if (idleType != CheckIdleGCType::VSYNC && memUsageOfLastOldGC < OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC) {
             CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+        } else {
+            CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
         }
         return true;
     }
@@ -1755,10 +1755,10 @@ bool Heap::CheckAndTriggerGCForIdle(int idleTime, CheckIdleGCType idleType)
         !NeedStopCollection()) {
         double memUsageOfLastOldGC = sHeap_->GetSharedMemController()->GetLastGCOldSpaceObjectUsageRate();
         LOG_GC(INFO) << "Triggered once local SharedGC on idleTime and memUsageOfLastOldGC:" << memUsageOfLastOldGC;
-        if (memUsageOfLastOldGC < OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC) {
-            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::IDLE>(thread_);
-        } else {
+        if (idleType != CheckIdleGCType::VSYNC && memUsageOfLastOldGC < OBJECT_USAGE_RATE_OF_OLDGC_TO_FULLGC) {
             sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread_);
+        } else {
+            sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::IDLE>(thread_);
         }
         return true;
     }
