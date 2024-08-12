@@ -274,6 +274,9 @@ public:
     void Clear()
     {
         // PGOMethodInfo release by chunk
+        for (auto &entry:methodTypeInfos_) {
+            entry.second->Clear();
+        }
         methodInfos_.clear();
         methodTypeInfos_.clear();
     }
