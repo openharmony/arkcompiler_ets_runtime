@@ -126,13 +126,13 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         for (auto &entry : detachCallbackInfo_) {
             auto info = entry.second;
             DetachFunc detachNative = reinterpret_cast<DetachFunc>(info->detachFunc);
-            if (detachNative == nullptr || !(entry.first >= 0)) {
+            if (detachNative == nullptr || entry.first < 0) {
                 LOG_ECMA(ERROR) << "ValueSerialize: SerializeNativeBindingObject detachNative == nullptr";
                 notSupport_ = true;
                 break;
             }
             void *buffer = detachNative(info->env, info->nativeValue, info->hint, info->detachData);
-            data_->EmitU64(reinterpret_cast<uint64_t>(buffer), entry.first);
+            data_->EmitU64(reinterpret_cast<uint64_t>(buffer), static_cast<size_t>(entry.first));
         }
     }
     if (notSupport_) {
