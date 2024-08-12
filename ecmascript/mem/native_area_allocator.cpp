@@ -116,7 +116,8 @@ void NativeAreaAllocator::FreeBuffer(void *mem)
     if (mem == nullptr) {
         return;
     }
-    DecreaseNativeMemoryUsage(MallocUsableSize(mem));
+    size_t size = MallocUsableSize(mem);
+    DecreaseNativeMemoryUsage(size);
 
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     if (memset_s(mem, size, INVALID_VALUE, size) != EOK) {
