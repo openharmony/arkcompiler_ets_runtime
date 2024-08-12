@@ -32,11 +32,10 @@ using namespace OHOS::Security::CodeSign;
 static bool SetPageProtect(uint8_t *textStart, size_t dataSize)
 {
     if (!Jit::GetInstance()->IsEnableJitFort()) {
-        size_t pageSize = 4096;
-        uintptr_t startPage = reinterpret_cast<uintptr_t>(textStart) & ~(pageSize - 1);
-        uintptr_t endPage = (reinterpret_cast<uintptr_t>(textStart) + dataSize) & ~(pageSize - 1);
-        size_t protSize = (endPage == startPage) ? ((dataSize + pageSize - 1U) & (~(pageSize - 1))) :
-            (pageSize + ((dataSize + pageSize - 1U) & (~(pageSize - 1))));
+        constexpr size_t pageSize = 4096;
+        uintptr_t startPage = AlignDown(reinterpret_cast<uintptr_t>(textStart), pageSize);
+        uintptr_t endPage = AlignUp(reinterpret_cast<uintptr_t>(textStart) + dataSize, pageSize);
+        size_t protSize = endPage - startPage;
         return PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE);
     }
     return true;
@@ -54,7 +53,8 @@ bool MachineCode::SetText(const MachineCodeDesc &desc)
         }
         pText += desc.rodataSizeBeforeTextAlign;
     }
-    if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort()) {
+    if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort() ||
+        !desc.isAsyncCompileMode) {
 #ifdef CODE_SIGN_ENABLE
         if ((uintptr_t)desc.codeSigner == 0) {
             if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {

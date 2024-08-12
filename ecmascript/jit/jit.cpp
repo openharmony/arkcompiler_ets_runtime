@@ -397,7 +397,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     if (vm->GetJSOptions().IsEnableJitFastCompile()) {
         maxSize = 15; // 15 is method codesize threshold during fast compiling
     }
-    if (codeSize > maxSize) {
+    if (codeSize > maxSize && !(vm->GetJSOptions().IsEnableForceJitCompileMain() && mode == SYNC)) {
         if (tier == CompilerTier::BASELINE) {
             LOG_BASELINEJIT(DEBUG) << "skip jit task, as too large:" << methodInfo;
         } else {
