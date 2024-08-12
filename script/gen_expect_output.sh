@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -e
 MODE=$1
-if [ $# -ne 3 ] || ([ $MODE != "pgo" ] && [ $MODE != "aot" ]); then
+if [ $# -ne 3 ] || ([ "$MODE" != "pgo" ] && [ "$MODE" != "aot" ]); then
     echo "Usage: $0 [pgo|aot] <inputs.ts> <expect_output.txt>"
     exit 1
 fi
@@ -22,5 +23,5 @@ INPUT=$2
 OUTPUT=$3
 
 # copy license from this file
-tail -n +2 $0 | head -n 13  > $OUTPUT
-grep -Po "//($MODE)?: \K.*$" $INPUT >> $OUTPUT
+tail -n +2 $0 | head -n 13  > "$OUTPUT"
+grep -Po "//($MODE)?: \K.*$" "$INPUT" >> "$OUTPUT"
