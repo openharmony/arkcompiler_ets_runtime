@@ -93,15 +93,16 @@ public:
         return stringTable_.get();
     }
 
-    inline std::vector<JSTaggedType> *GetSerializeRootMapValue([[maybe_unused]] JSThread *thread, uint32_t dataIndex)
+    inline std::pair<JSTaggedType *, size_t> GetSerializeRootMapValue([[maybe_unused]] JSThread *thread,
+        uint32_t dataIndex)
     {
         ASSERT(thread->IsInManagedState());
         LockHolder lock(serializeLock_);
         auto iter = serializeRootMap_.find(dataIndex);
         if (iter == serializeRootMap_.end()) {
-            return nullptr;
+            return std::make_pair(nullptr, 0);
         }
-        return &iter->second;
+        return std::make_pair(iter->second.data(), iter->second.size());
     }
 
     uint32_t PushSerializationRoot([[maybe_unused]] JSThread *thread, std::vector<JSTaggedType> &rootSet)

@@ -115,6 +115,12 @@ bool ValueSerializer::WriteValue(JSThread *thread,
         return false;
     }
     SerializeJSTaggedValue(value.GetTaggedValue());
+    // ThreadNativeScope may trigger moving gc, so PushSerializationRoot must do before native state.
+    // Push share root object to runtime map
+    uint32_t index = data_->GetDataIndex();
+    if (!sharedObjects_.empty()) {
+        index = Runtime::GetInstance()->PushSerializationRoot(thread_, sharedObjects_);
+    }
     {
         ThreadNativeScope nativeScope(thread);
         for (auto &entry : detachCallbackInfo_) {
@@ -123,7 +129,7 @@ bool ValueSerializer::WriteValue(JSThread *thread,
             if (detachNative == nullptr || !(entry.first >= 0)) {
                 LOG_ECMA(ERROR) << "ValueSerialize: SerializeNativeBindingObject detachNative == nullptr";
                 notSupport_ = true;
-                return false;
+                break;
             }
             void *buffer = detachNative(info->env, info->nativeValue, info->hint, info->detachData);
             data_->EmitU64(reinterpret_cast<uint64_t>(buffer), entry.first);
@@ -132,11 +138,13 @@ bool ValueSerializer::WriteValue(JSThread *thread,
     if (notSupport_) {
         LOG_ECMA(ERROR) << "ValueSerialize: serialize data is incomplete";
         data_->SetIncompleteData(true);
+        if (!sharedObjects_.empty()) {
+            // If notSupport, serializeRoot should be removed.
+            Runtime::GetInstance()->RemoveSerializationRoot(thread_, index);
+        }
         return false;
     }
-    // Push share root object to runtime map
     if (!sharedObjects_.empty()) {
-        uint32_t index = Runtime::GetInstance()->PushSerializationRoot(thread_, sharedObjects_);
         data_->SetDataIndex(index);
     }
     size_t maxSerializerSize = vm_->GetEcmaParamConfiguration().GetMaxJSSerializerSize();

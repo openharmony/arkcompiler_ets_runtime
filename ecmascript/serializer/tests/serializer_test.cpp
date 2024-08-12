@@ -1480,7 +1480,7 @@ HWTEST_F_L0(JSSerializerTest, SerializeNativeBindingObject3)
     std::unique_ptr<SerializeData> data = serializer->Release();
     BaseDeserializer deserializer(thread, data.release());
     JSHandle<JSTaggedValue> res = deserializer.ReadValue();
-    EXPECT_FALSE(res.IsEmpty());
+    EXPECT_TRUE(res.IsEmpty());
     delete serializer;
 }
 
