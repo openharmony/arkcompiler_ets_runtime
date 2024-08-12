@@ -871,7 +871,6 @@ ecma_source = [
   "ecmascript/module/js_module_manager.cpp",
   "ecmascript/module/js_dynamic_import.cpp",
   "ecmascript/module/js_module_namespace.cpp",
-  "ecmascript/module/js_module_record.cpp",
   "ecmascript/module/js_module_source_text.cpp",
   "ecmascript/module/js_module_deregister.cpp",
   "ecmascript/module/js_shared_module.cpp",

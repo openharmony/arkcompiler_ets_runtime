@@ -23,14 +23,6 @@ namespace panda::ecmascript {
 class ModuleRecord : public Record {
 public:
     CAST_CHECK(ModuleRecord, IsModuleRecord);
-
-    // 15.2.1.16.4 Instantiate()
-    static int Instantiate(JSThread *thread, const JSHandle<JSTaggedValue> &module);
-    // 15.2.1.16.5 Evaluate()
-    static JSTaggedValue Evaluate(JSThread *thread, const JSHandle<JSTaggedValue> &module);
-
-    static JSTaggedValue GetNamespace(JSTaggedValue module);
-    static void SetNamespace(JSThread *thread, JSTaggedValue module, JSTaggedValue value);
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MODULE_JS_MODULE_RECORD_H
