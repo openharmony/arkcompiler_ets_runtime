@@ -9930,6 +9930,70 @@ GateRef StubBuilder::ShortcutBoolOr(const std::function<GateRef()>& first, const
     return ret;
 }
 
+GateRef StubBuilder::DefineFunc(GateRef glue, GateRef constpool, GateRef index, FunctionKind targetKind)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    Label exit(env);
+    DEFVARIABLE(ihc, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(val, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    val = GetValueFromTaggedArray(constpool, index);
+
+    Label isHeapObject(env);
+    Label afterAOTLiteral(env);
+    BRANCH(TaggedIsHeapObject(*val), &isHeapObject, &afterAOTLiteral);
+    {
+        Bind(&isHeapObject);
+        Label isAOTLiteral(env);
+        BRANCH(IsAOTLiteralInfo(*val), &isAOTLiteral, &afterAOTLiteral);
+        {
+            Bind(&isAOTLiteral);
+            // Avoiding shareobj references to unshareobj.
+            GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
+            GateId unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env->Is32Bit());
+            GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
+            GateRef unshareCp = GetUnsharedConstpool(unshareCpAddr, unshareIdx);
+            val = GetValueFromTaggedArray(unshareCp, index);
+            ihc = GetIhcFromAOTLiteralInfo(*val);
+            Jump(&afterAOTLiteral);
+        }
+    }
+    Bind(&afterAOTLiteral);
+    GateRef method = GetMethodFromConstPool(glue, constpool, index);
+    Label isSendableFunc(env);
+    Label isNotSendableFunc(env);
+    Label afterDealWithCompiledStatus(env);
+    BRANCH(IsSendableFunction(method), &isSendableFunc, &isNotSendableFunc);
+    Bind(&isSendableFunc);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        result = newBuilder.NewJSSendableFunction(glue, method, targetKind);
+        Jump(&afterDealWithCompiledStatus);
+    }
+    Bind(&isNotSendableFunc);
+    {
+        NewObjectStubBuilder newBuilder(this);
+        result = newBuilder.NewJSFunction(glue, method, targetKind);
+        Jump(&afterDealWithCompiledStatus);
+    }
+    Bind(&afterDealWithCompiledStatus);
+
+    Label ihcNotUndefined(env);
+    BRANCH(TaggedIsUndefined(*ihc), &exit, &ihcNotUndefined);
+    Bind(&ihcNotUndefined);
+    {
+        CallRuntime(glue, RTSTUB_ID(AOTEnableProtoChangeMarker), { *result, *ihc});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 void StubBuilder::SetCompiledCodeFlagToFunctionFromMethod(GateRef glue, GateRef function, GateRef method)
 {
     // set compiled code & fast call flag

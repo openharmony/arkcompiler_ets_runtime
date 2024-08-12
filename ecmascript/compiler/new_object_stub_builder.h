@@ -56,6 +56,15 @@ public:
     void NewSObject(Variable *result, Label *exit, GateRef hclass);
     GateRef NewJSObject(GateRef glue, GateRef hclass);
     GateRef NewSObject(GateRef glue, GateRef hclass);
+    GateRef NewJSFunctionByHClass(GateRef glue, GateRef method, GateRef hclass,
+                                  FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
+    GateRef NewSFunctionByHClass(GateRef glue, GateRef method, GateRef hclass,
+                                 FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
+    GateRef CloneJSFunction(GateRef glue, GateRef value);
+    GateRef CloneProperties(GateRef glue, GateRef currentEnv, GateRef elements, GateRef obj);
+    GateRef NewAccessorData(GateRef glue);
+    GateRef CloneObjectLiteral(GateRef glue, GateRef literal, GateRef currentEnv);
+    GateRef CreateObjectHavingMethod(GateRef glue, GateRef literal, GateRef currentEnv);
     GateRef NewJSProxy(GateRef glue, GateRef target, GateRef handler);
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
@@ -66,16 +75,14 @@ public:
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);
     GateRef LoadSHClassFromMethod(GateRef glue, GateRef method);
-    GateRef NewJSFunction(GateRef glue, GateRef constpool, GateRef index,
+    GateRef NewJSFunction(GateRef glue, GateRef method,
                           FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
+    GateRef NewJSSendableFunction(GateRef glue, GateRef method,
+                                  FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     void NewJSFunction(GateRef glue, GateRef jsFunc, GateRef index, GateRef length, GateRef lexEnv,
                        Variable *result, Label *success, Label *failed, GateRef slotId,
                        FunctionKind targetKind = FunctionKind::LAST_FUNCTION_KIND);
     void SetProfileTypeInfoCellToFunction(GateRef jsFunc, GateRef definedFunc, GateRef slotId);
-    void InitializeJSFunction(GateRef glue, GateRef func, GateRef kind,
-                              FunctionKind getKind = FunctionKind::LAST_FUNCTION_KIND);
-    void InitializeSFunction(GateRef glue, GateRef func, GateRef kind,
-                              FunctionKind getKind = FunctionKind::LAST_FUNCTION_KIND);
     GateRef NewJSBoundFunction(GateRef glue, GateRef target, GateRef boundThis, GateRef args);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
