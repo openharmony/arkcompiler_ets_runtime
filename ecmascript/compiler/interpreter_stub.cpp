@@ -3301,12 +3301,12 @@ DECLARE_ASM_HANDLER(HandleTonumericImm8)
                 BRANCH(TaggedIsInt(value), &valueIsInt, &valueIsDouble);
                 Bind(&valueIsInt);
                 {
-                    callback.ProfileOpType(Int32(PGOSampleType::IntType()));
+                    callback.ProfileOpType(TaggedInt(PGOSampleType::IntType()));
                     Jump(&profilerEnd);
                 }
                 Bind(&valueIsDouble);
                 {
-                    callback.ProfileOpType(Int32(PGOSampleType::DoubleType()));
+                    callback.ProfileOpType(TaggedInt(PGOSampleType::DoubleType()));
                     Jump(&profilerEnd);
                 }
             }
