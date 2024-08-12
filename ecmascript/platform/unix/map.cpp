@@ -29,7 +29,8 @@ MemMap PageMap(size_t size, int prot, size_t alignment, void *addr, int flags)
     ASSERT(size == AlignUp(size, PageSize()));
     ASSERT(alignment == AlignUp(alignment, PageSize()));
     size_t allocSize = size + alignment;
-    void *result = mmap(addr, allocSize, prot, MAP_PRIVATE | MAP_ANONYMOUS | flags, -1, 0);
+    int newFlags = static_cast<int>(MAP_PRIVATE | MAP_ANONYMOUS | static_cast<unsigned int>(flags));
+    void *result = mmap(addr, allocSize, prot, newFlags, -1, 0);
     if (reinterpret_cast<intptr_t>(result) == -1) {
         LOG_ECMA(FATAL) << "mmap failed with error code:" << strerror(errno);
     }

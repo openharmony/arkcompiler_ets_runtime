@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MEM_ALLOCATOR_INL_H
 
 #include <cstdlib>
+#include <type_traits>
 
 #include "ecmascript/free_object.h"
 #include "ecmascript/mem/allocator.h"
@@ -123,6 +124,9 @@ uintptr_t FreeListAllocator<T>::Allocate(T *object, size_t size)
     uintptr_t end = object->GetEnd();
     uintptr_t remainSize = end - begin - size;
     ASSERT(remainSize >= 0);
+    if constexpr (std::is_same<T, MemDesc>::value) {
+        memDescPool_->ReturnDescToPool(object);
+    }
     // Keep a longest freeObject between bump-pointer and free object that just allocated
     allocationSizeAccumulator_ += size;
     if (remainSize <= bpAllocator_.Available()) {
@@ -148,6 +152,9 @@ void FreeListAllocator<T>::FreeBumpPoint()
 template <typename T>
 void FreeListAllocator<T>::FillBumpPointer()
 {
+    if constexpr (std::is_same<T, MemDesc>::value) {
+        return;
+    }
     size_t size = bpAllocator_.Available();
     if (size != 0) {
         FreeObject::FillFreeObject(heap_, bpAllocator_.GetTop(), size);
@@ -173,7 +180,10 @@ void FreeListAllocator<T>::Free(uintptr_t begin, size_t size, bool isAdd)
     ASSERT(heap_ != nullptr);
     ASSERT(size >= 0);
     if (size != 0) {
-        T::FillFreeObject(heap_, begin, size);
+        if constexpr (!std::is_same<T, MemDesc>::value) {
+            T::FillFreeObject(heap_, begin, size);
+        }
+
         ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(begin), size);
         freeList_->Free(begin, size, isAdd);
 #ifdef ARK_ASAN_ON
@@ -181,8 +191,6 @@ void FreeListAllocator<T>::Free(uintptr_t begin, size_t size, bool isAdd)
 #endif
     }
 }
-template <>
-void FreeListAllocator<MemDesc>::Free(uintptr_t begin, size_t size, bool isAdd);
 
 template <typename T>
 uintptr_t FreeListAllocator<T>::LookupSuitableFreeObject(size_t size)
