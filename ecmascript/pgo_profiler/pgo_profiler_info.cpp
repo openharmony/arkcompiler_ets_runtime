@@ -725,7 +725,7 @@ void PGORecordDetailInfos::Merge(const PGORecordDetailInfos &recordInfos)
     }
 }
 
-void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *const header)
+bool PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *const header)
 {
     header_ = header;
     // ProfileTypePool must be parsed at first
@@ -744,7 +744,12 @@ void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         ProfileType recordType;
         if (header->SupportProfileTypeWithAbcId()) {
             auto recordTypeRef = ProfileTypeRef(base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId)));
-            recordType = ProfileType(*this, recordTypeRef);
+            bool isValid = true;
+            recordType = ProfileType(*this, recordTypeRef, &isValid);
+            if (!isValid) {
+                LOG_ECMA(ERROR) << "ParseFromBinary failed, current addr: " << addr << std::endl;
+                return false;
+            }
             recordId = recordType.GetId();
         } else if (header->SupportRecordPool()) {
             recordId = base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId));
@@ -762,11 +767,12 @@ void PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
 
     info = header->GetLayoutDescSection();
     if (info == nullptr) {
-        return;
+        return false;
     }
     if (header->SupportTrackField()) {
         ParseFromBinaryForLayout(&addr);
     }
+    return true;
 }
 
 bool PGORecordDetailInfos::ParseFromBinaryForLayout(void **buffer)

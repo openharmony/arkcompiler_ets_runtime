@@ -97,7 +97,9 @@ bool PGOProfilerDecoder::LoadFull(const std::shared_ptr<PGOAbcFilePool> &externa
     }
 
     LoadAbcIdPool(externalAbcFilePool, *recordDetailInfos_, addr);
-    recordDetailInfos_->ParseFromBinary(addr, header_);
+    if (!recordDetailInfos_->ParseFromBinary(addr, header_)) {
+        return false;
+    }
     recordDetailInfos_->ResetAbcIdRemap();
     isLoaded_ = true;
     return true;
