@@ -1624,6 +1624,8 @@ public:
     // Napi helper function
     static bool KeyIsNumber(const char* utf8);
     static int GetStartRealTime(const EcmaVM *vm);
+    static void NotifyTaskBegin(const EcmaVM *vm);
+    static void NotifyTaskFinished(const EcmaVM *vm);
 private:
     static int vmCount_;
     static bool initialize_;

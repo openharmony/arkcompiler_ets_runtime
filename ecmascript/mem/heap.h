@@ -823,6 +823,14 @@ class Heap : public BaseHeap {
 public:
     explicit Heap(EcmaVM *ecmaVm);
     virtual ~Heap() = default;
+    // recordObjectSize_ & recordNativeSize_:
+    // Record memory before taskpool start, used to determine trigger GC or not after task finish.
+    double recordObjectSize_ {0};
+    size_t recordNativeSize_ {0};
+    static constexpr double TRIGGER_OLDGC_OBJECT_LIMIT_RATE = 1.1;
+    static constexpr size_t TRIGGER_OLDGC_OBJECT_SIZE_LIMIT = 20_MB;
+    static constexpr double TRIGGER_OLDGC_NATIVE_LIMIT_RATE = 1.1;
+    static constexpr size_t TRIGGER_OLDGC_NATIVE_SIZE_LIMIT = 20_MB;
     NO_COPY_SEMANTIC(Heap);
     NO_MOVE_SEMANTIC(Heap);
     void Initialize();
@@ -1004,6 +1012,26 @@ public:
         return memController_;
     }
 
+    inline void RecordOrResetObjectSize(size_t objectSize)
+    {
+        recordObjectSize_ = objectSize;
+    }
+
+    inline size_t GetRecordObjectSize() const
+    {
+        return recordObjectSize_;
+    }
+
+    inline void RecordOrResetNativeSize(double nativeSize)
+    {
+        recordNativeSize_ = nativeSize;
+    }
+
+    inline double GetRecordNativeSize() const
+    {
+        return recordNativeSize_;
+    }
+
     /*
      * For object allocations.
      */
@@ -1133,6 +1161,8 @@ public:
     inline size_t GetCommittedSize() const override;
 
     inline size_t GetHeapObjectSize() const override;
+
+    inline void NotifyRecordMemorySize();
 
     inline size_t GetRegionCount() const override;
 
@@ -1369,6 +1399,8 @@ public:
     void TryTriggerFullMarkBySharedSize(size_t size);
 
     bool TryTriggerFullMarkBySharedLimit();
+
+    void CheckAndTriggerTaskFinishedGC();
 
     bool IsMarking() const override;
 

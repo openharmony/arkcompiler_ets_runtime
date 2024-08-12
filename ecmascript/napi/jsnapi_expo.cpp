@@ -5216,6 +5216,16 @@ int JSNApi::GetStartRealTime(const EcmaVM *vm)
     return vm->GetProcessStartRealtime();
 }
 
+void JSNApi::NotifyTaskBegin(const EcmaVM *vm)
+{
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->NotifyRecordMemorySize();
+}
+
+void JSNApi::NotifyTaskFinished(const EcmaVM *vm)
+{
+    const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerTaskFinishedGC();
+}
+
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
 {
     if (localAddress == 0) {

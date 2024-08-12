@@ -2086,6 +2086,25 @@ bool Heap::TryTriggerFullMarkBySharedLimit()
     return keepFullMarkRequest;
 }
 
+void Heap::CheckAndTriggerTaskFinishedGC()
+{
+    double objectSizeOfTaskBegin = GetRecordObjectSize();
+    double nativeSizeOfTaskBegin = static_cast<double>(GetRecordNativeSize());
+    double objectSizeOfTaskFinished = GetHeapObjectSize();
+    double nativeSizeOfTaskFinished = GetNativeBindingSize();
+    bool objectSizeFlag = objectSizeOfTaskFinished - objectSizeOfTaskBegin > TRIGGER_OLDGC_OBJECT_SIZE_LIMIT
+        || (objectSizeOfTaskBegin != 0
+            && objectSizeOfTaskFinished/objectSizeOfTaskBegin > TRIGGER_OLDGC_OBJECT_LIMIT_RATE);
+    bool nativeSizeFlag = nativeSizeOfTaskFinished - nativeSizeOfTaskBegin > TRIGGER_OLDGC_OBJECT_SIZE_LIMIT
+        || (nativeSizeOfTaskBegin != 0
+            && nativeSizeOfTaskFinished/nativeSizeOfTaskBegin > TRIGGER_OLDGC_NATIVE_LIMIT_RATE);
+    if (objectSizeFlag || nativeSizeFlag) {
+        panda::JSNApi::TriggerGC(GetEcmaVM(), panda::JSNApi::TRIGGER_GC_TYPE::OLD_GC);
+        RecordOrResetObjectSize(0);
+        RecordOrResetNativeSize(0.0);
+    }
+}
+
 bool Heap::IsMarking() const
 {
     return thread_->IsMarking();
