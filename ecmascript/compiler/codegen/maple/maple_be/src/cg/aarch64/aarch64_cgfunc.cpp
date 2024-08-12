@@ -4467,6 +4467,7 @@ void AArch64CGFunc::SelectParmListNotC(StmtNode &naryNode, ListOperand &srcOpnds
     for (uint32 pnum = 0; i < naryNode.NumOpnds(); ++i, ++pnum) {
         MIRType *ty = nullptr;
         BaseNode *argExpr = naryNode.Opnd(i);
+        DEBUG_ASSERT(argExpr != nullptr, "argExpr should not be nullptr");
         PrimType primType = argExpr->GetPrimType();
         DEBUG_ASSERT(primType != PTY_void, "primType should not be void");
         /* use alloca  */
@@ -5761,6 +5762,7 @@ void AArch64CGFunc::SaveReturnValueInLocal(CallReturnVector &retVals, size_t ind
     /* for O0 ,corss-BB var is not support, do extra store/load but why new BB */
     if (GetCG()->GetOptimizeLevel() == CGOptions::kLevel0) {
         MIRSymbol *symbol = GetFunction().GetLocalOrGlobalSymbol(pair.first);
+        DEBUG_ASSERT(symbol != nullptr, "symbol should not be nullptr");
         MIRType *sPty = symbol->GetType();
         PrimType ty = symbol->GetType()->GetPrimType();
         if (sPty->GetKind() == kTypeStruct || sPty->GetKind() == kTypeUnion) {

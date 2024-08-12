@@ -261,6 +261,7 @@ void CgFuncPM::SweepUnusedStaticSymbol(MIRModule &m)
     auto &symbolSet = m.GetSymbolSet();
     for (auto sit = symbolSet.begin(); sit != symbolSet.end(); ++sit) {
         MIRSymbol *s = GlobalTables::GetGsymTable().GetSymbolFromStidx(sit->Idx(), true);
+        DEBUG_ASSERT(s != nullptr, "s should not be nullptr");
         if (s->IsConst()) {
             MIRConst *mirConst = s->GetKonst();
             CollectStaticSymbolInVar(mirConst);
@@ -330,6 +331,7 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
             }
             /* create CGFunc */
             MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(mirFunc->GetStIdx().Idx());
+            CHECK_NULL_FATAL(funcSt);
             auto funcMp = std::make_unique<ThreadLocalMemPool>(memPoolCtrler, funcSt->GetName());
             auto stackMp = std::make_unique<StackMemPool>(funcMp->GetCtrler(), "");
             MapleAllocator funcScopeAllocator(funcMp.get());

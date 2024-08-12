@@ -184,6 +184,7 @@ std::tuple<Operand *, size_t, MIRType *> X64MPIsel::GetMemOpndInfoFromAggregateN
     if (argExpr.GetOpCode() == OP_dread) {
         AddrofNode &dread = static_cast<AddrofNode &>(argExpr);
         MIRSymbol *symbol = cgFunc->GetFunction().GetLocalOrGlobalSymbol(dread.GetStIdx());
+        CHECK_NULL_FATAL(symbol);
         symMemOpnd = &GetOrCreateMemOpndFromSymbol(*symbol, dread.GetFieldID());
     } else if (argExpr.GetOpCode() == OP_iread) {
         IreadNode &iread = static_cast<IreadNode &>(argExpr);
@@ -440,6 +441,7 @@ void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Opera
 
     /* only support no return function */
     MIRType *mirRetType = GlobalTables::GetTypeTable().GetTypeTable().at(static_cast<size_t>(retPrimType));
+    CHECK_NULL_FATAL(mirRetType);
     st->SetTyIdx(
         cgFunc->GetBecommon().BeGetOrCreateFunctionType(mirRetType->GetTypeIndex(), vec, vecAt)->GetTypeIndex());
 
@@ -940,6 +942,7 @@ Operand *X64MPIsel::SelectAddrof(AddrofNode &expr, const BaseNode &parent)
     PrimType ptype = expr.GetPrimType();
     RegOperand &resReg =
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(ptype), cgFunc->GetRegTyFromPrimTy(ptype));
+    CHECK_NULL_FATAL(symbol);
     MemOperand &memOperand = GetOrCreateMemOpndFromSymbol(*symbol, expr.GetFieldID());
     uint32 pSize = GetPrimTypeSize(ptype);
     MOperator mOp;
@@ -964,6 +967,7 @@ Operand *X64MPIsel::SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &paren
     CHECK_FATAL(primType != PTY_begin, "prim-type of Func Addr must be either a32 or a64!");
     MIRFunction *mirFunction = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(expr.GetPUIdx());
     MIRSymbol *symbol = mirFunction->GetFuncSymbol();
+    CHECK_NULL_FATAL(symbol);
     MIRStorageClass storageClass = symbol->GetStorageClass();
     RegOperand &resReg =
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));

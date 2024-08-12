@@ -332,6 +332,7 @@ static Operand *HandleMpy(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 
 static Operand *HandleTrunc(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "null ptr check");
     return iSel.SelectCvt(parent, static_cast<TypeCvtNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
@@ -416,6 +417,7 @@ static Operand *HandleMax(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 }
 static Operand *HandleRetype(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr.Opnd(0) should not be nullptr");
     return iSel.SelectRetype(static_cast<TypeCvtNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
@@ -434,6 +436,7 @@ static Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, MPISel &i
 
 static Operand *HandleSqrt(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr.Opnd(0) should not be nullptr");
     return iSel.SelectSqrt(static_cast<UnaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
@@ -658,6 +661,7 @@ void MPISel::SelectDassignoff(DassignoffNode &stmt, Operand &opnd0)
     MIRSymbol *symbol = cgFunc->GetFunction().GetLocalOrGlobalSymbol(stmt.stIdx);
     PrimType primType = stmt.GetPrimType();
     uint32 bitSize = GetPrimTypeBitSize(primType);
+    DEBUG_ASSERT(symbol != nullptr, "symbol should not be nullptr");
     MemOperand &memOpnd = GetOrCreateMemOpndFromSymbol(*symbol, bitSize, stmt.offset);
 
     SelectCopy(memOpnd, opnd0, primType);

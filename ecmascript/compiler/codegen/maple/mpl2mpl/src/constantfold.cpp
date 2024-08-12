@@ -583,7 +583,9 @@ bool ConstantFold::FullyEqual(T leftValue, T rightValue) const
 template<typename T>
 int64 ConstantFold::ComparisonResult(Opcode op, T *leftConst, T *rightConst) const
 {
+    DEBUG_ASSERT(leftConst != nullptr, "leftConst should not be nullptr");
     typename T::value_type leftValue = leftConst->GetValue();
+    DEBUG_ASSERT(rightConst != nullptr, "rightConst should not be nullptr");
     typename T::value_type rightValue = rightConst->GetValue();
     int64 result = 0;
     switch (op) {
@@ -1473,6 +1475,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldExtractbits(Extrac
     }
     // check for consecutive and redundant extraction of same bits
     BaseNode *opnd = result->Opnd(0);
+    DEBUG_ASSERT(opnd != nullptr, "opnd shoule not be null");
     Opcode opndOp = opnd->GetOpCode();
     if (opndOp == OP_extractbits || opndOp == OP_sext || opndOp == OP_zext) {
         uint8 opndOffset = static_cast<ExtractbitsNode*>(opnd)->GetBitsOffset();

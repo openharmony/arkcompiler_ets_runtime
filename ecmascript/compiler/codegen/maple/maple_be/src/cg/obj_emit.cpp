@@ -335,7 +335,7 @@ void ObjEmitter::EmitStr16Const(ObjFuncEmitInfo &objFuncEmitInfo, const MIRSymbo
 void ObjEmitter::EmitStrConst(ObjFuncEmitInfo &objFuncEmitInfo, const MIRSymbol &strSymbol)
 {
     MIRStrConst *mirStrConst = safe_cast<MIRStrConst>(strSymbol.GetKonst());
-
+    DEBUG_ASSERT(mirStrConst != nullptr, "null ptr check");
     auto str = GlobalTables::GetUStrTable().GetStringFromStrIdx(mirStrConst->GetValue());
     size_t size = str.length();
     /* 1 is tail 0 of the str string */

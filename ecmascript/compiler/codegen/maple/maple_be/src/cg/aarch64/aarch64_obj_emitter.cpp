@@ -1162,7 +1162,7 @@ uint32 AArch64ObjEmitter::GenLoadStoreRegInsn(const Insn &insn, ObjFuncEmitInfo 
             binInsn = AArch64CG::kMd[MOP_xldr].GetMopEncode();
         } else if (mOp == MOP_sstr) {
             binInsn = AArch64CG::kMd[MOP_wstr].GetMopEncode();
-        } else if (mOp == MOP_sstr) {
+        } else if (mOp == MOP_dstr) {
             binInsn = AArch64CG::kMd[MOP_xstr].GetMopEncode();
         }
     }
