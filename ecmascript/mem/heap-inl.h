@@ -695,6 +695,16 @@ size_t Heap::GetHeapObjectSize() const
     return result;
 }
 
+void Heap::NotifyRecordMemorySize()
+{
+    if (GetRecordObjectSize() == 0) {
+        RecordOrResetObjectSize(GetHeapObjectSize());
+    }
+    if (fabs(GetRecordNativeSize() - 0.0) < 1e-6) {
+        RecordOrResetNativeSize(GetNativeBindingSize());
+    }
+}
+
 size_t Heap::GetRegionCount() const
 {
     size_t result = edenSpace_->GetRegionCount() +
