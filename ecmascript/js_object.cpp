@@ -1728,7 +1728,7 @@ bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &ob
         return !result.IsException();
     }
     PropertyDescriptor desc(thread, value, true, true, true);
-    return JSTaggedValue::DefineOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), key, desc);
+    return JSTaggedValue::DefineOwnProperty(thread, JSHandle<JSTaggedValue>::Cast(obj), key, desc, sCheckMode);
 }
 
 bool JSObject::CreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,

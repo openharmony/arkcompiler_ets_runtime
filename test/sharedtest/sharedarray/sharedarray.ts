@@ -753,6 +753,44 @@ function forOf() {
     }
 }
 
+function RangeTest() {
+    let array = new SendableArray<string>('ARK');
+    try {
+      Object.defineProperty(array, '0', {writable: true, configurable: true, enumerable: true, value: "321"});
+      print('defineProperty to array success');
+    } catch (err) {
+      print('defineProperty to array failed. err: ' + err);
+    }
+
+    try {
+      Object.defineProperty(array, '1200', {writable: true, configurable: true, enumerable: true, value: "321"});
+      print('defineProperty to array success');
+    } catch (err) {
+      print('defineProperty to array failed. err: ' + err);
+    }
+
+    try {
+      Object.defineProperty(array, 0, {writable: true, configurable: true, enumerable: true, value: "321"});
+      print('defineProperty to array success');
+    } catch (err) {
+      print('defineProperty to array failed. err: ' + err);
+    }
+
+    try {
+      Object.defineProperty(array, 1200, {writable: true, configurable: true, enumerable: true, value: "321"});
+      print('defineProperty to array success');
+    } catch (err) {
+      print('defineProperty to array failed. err: ' + err);
+    }
+
+    try {
+        Object.defineProperty(array, 2871622679, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print('defineProperty to array success');
+      } catch (err) {
+        print('defineProperty to array failed. err: ' + err);
+      }
+}
+
 at()
 
 entries()
@@ -823,3 +861,4 @@ derivedMap()
 derivedFill()
 readOutOfRange()
 forOf();
+RangeTest()

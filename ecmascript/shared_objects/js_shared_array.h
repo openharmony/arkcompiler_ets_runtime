@@ -39,9 +39,9 @@ public:
                                             JSTaggedNumber length);
     static bool ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc);
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, const JSHandle<JSTaggedValue> &key,
-                                  const PropertyDescriptor &desc);
+                                  const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, uint32_t index,
-                                  const PropertyDescriptor &desc);
+                                  const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key);
     static JSHandle<JSSharedArray> CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements);
@@ -64,6 +64,35 @@ public:
             return hint > 0 ? hint : 0;
         }
         return 0;
+    }
+
+    inline bool IsKeyInRange(uint32_t index)
+    {
+        return index < GetArrayLength();
+    }
+
+    inline bool IsKeyInRange(const JSHandle<JSTaggedValue> &key)
+    {
+        uint32_t keyValue = 0;
+        if (key->IsInt()) {
+            keyValue = static_cast<uint32_t>(key->GetInt());
+        }
+
+        if (key->IsString()) {
+            JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &keyValue);
+        }
+
+        if (key->IsDouble()) {
+            double number = key->GetDouble();
+            if (number >= 0 && number < JSObject::MAX_ELEMENT_INDEX) {
+                auto integer = static_cast<uint32_t>(number);
+                if (integer == number) {
+                    keyValue = static_cast<uint32_t>(number);
+                }
+            }
+        }
+
+        return IsKeyInRange(keyValue);
     }
 
     static constexpr size_t LENGTH_OFFSET = JSObject::SIZE;
