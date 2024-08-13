@@ -80,8 +80,7 @@ public:
     {
         JSHandle<JSTaggedValue> info(thread->GetEcmaVM()->GetFactory()->NewExtraProfileTypeInfo());
         JSHandle<ExtraProfileTypeInfo> infoHandle(info);
-        receiverHClassHandle->CreateWeakRef();
-        infoHandle->SetReceiver(thread, receiverHClassHandle.GetTaggedValue());
+        infoHandle->SetReceiver(thread, receiverHClassHandle.GetTaggedValue().CreateAndGetWeakRef());
         infoHandle->SetHolder(thread, holderHClassHandle.GetTaggedValue());
         JSHandle<NumberDictionary> dict = NumberDictionary::PutIfAbsent(thread,
                                                                         dictJShandle,
