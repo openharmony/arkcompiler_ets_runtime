@@ -493,10 +493,11 @@ ohos_executable("ark_stub_compiler") {
   ]
 
   deps = [
-    ":libark_jsoptimizer_set",
+    ":libark_jsoptimizer_set_with_maple",
     ":libark_mock_stub_set",
     "$js_root:libark_js_intl_set",
     "$js_root:libark_jsruntime_set",
+    "${MAPLEALL_ROOT}/maple_be:libcg",
   ]
   external_deps = [ "zlib:libz" ]
   if (!is_arkui_x) {
