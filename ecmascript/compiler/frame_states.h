@@ -229,6 +229,11 @@ private:
         GateRef stateMerge, GateRef currentValue, GateRef nextValue, size_t index);
     void NewMerge(const BytecodeRegion &bbNext);
     void MergeStateDepend(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
+    void RecordEmptyCatchBBMergeInfo(BytecodeRegion *bbNext, GateRef entryState, GateRef entryDepend);
+    void HandleEmptyCatchBBMergedGate(const BytecodeRegion &bbNext, FrameContext *mergedContext,
+                                  GateRef entryState, size_t index);
+    void HandleEmptyCatchBBLoop(const BytecodeRegion &bbNext, size_t index, GateRef mergeState, GateRef mergeDepend);
+    void HandleEmptyCatchBBLoopValue(const BytecodeRegion &bb, GateRef stateMerge, GateRef nextValue, size_t index);
     void CopyLiveoutValues(const BytecodeRegion &bbNext, FrameContext* dest, FrameContext* src);
     void SaveCurrentContext(const BytecodeRegion &bb);
 
