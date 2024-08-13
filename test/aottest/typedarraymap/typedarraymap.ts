@@ -16,10 +16,13 @@
 class C extends Float64Array {
 }
 
-const v1 = new C(3, 255);
-
-function foo(a, b, c, d) {
-    print("hello");
+function foo() {
+    const v1 = new C(3, 255);
+    function bar(a, b, c, d) {
+        print("hello");
+    }
+    v1.map(bar);
 }
 
-v1.map(foo);
+foo()
+print(ArkTools.isAOTCompiled(foo))  // pgo:false, aot:true
