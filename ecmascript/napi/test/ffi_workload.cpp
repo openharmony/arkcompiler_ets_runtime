@@ -6170,19 +6170,6 @@ HWTEST_F_L0(JSNApiSplTest, CreateEcmaVM)
     TEST_TIME(JSValueRef::CreateEcmaVM);
 }
 
-HWTEST_F_L0(JSNApiSplTest, PostFork)
-{
-    LocalScope scope(vm_);
-    CalculateForTime();
-    RuntimeOption option;
-    gettimeofday(&g_beginTime, nullptr);
-    for (int i = 0; i < NUM_COUNT; i++) {
-        JSNApi::PostFork(vm_, option);
-    }
-    gettimeofday(&g_endTime, nullptr);
-    TEST_TIME(JSValueRef::PostFork);
-}
-
 HWTEST_F_L0(JSNApiSplTest, AddWorker)
 {
     LocalScope scope(vm_);
