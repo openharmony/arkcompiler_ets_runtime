@@ -189,6 +189,10 @@ bool Snapshot::Deserialize(SnapshotType type, const CString &snapshotFile, bool 
         UNREACHABLE();
     }
 
+    if (!FileExist(realPath.c_str())) {
+        return false;
+    }
+
     SnapshotProcessor processor(vm_);
     if (isBuiltins) {
         processor.SetBuiltinsDeserializeStart();
