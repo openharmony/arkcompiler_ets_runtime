@@ -335,7 +335,7 @@ struct Reference;
                                                                                                                        \
         PROFILE_TYPE_INFO_CELL_FIRST = PROFILE_TYPE_INFO_CELL_0,  /* //////////////////////////////////////-PADDING */ \
         PROFILE_TYPE_INFO_CELL_LAST = PROFILE_TYPE_INFO_CELL_N    /* //////////////////////////////////////-PADDING */
-        
+
 enum class JSType : uint8_t {
     JSTYPE_DECL,
 };

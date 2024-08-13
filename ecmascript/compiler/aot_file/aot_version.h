@@ -25,9 +25,9 @@ public:
     // Release Version           Snapshot Version
     //     3.2                      0.0.0.x
     //     4.0                      4.0.0.x
-    static constexpr base::FileHeaderBase::VersionType AN_VERSION = {4, 0, 0, 8};
+    static constexpr base::FileHeaderBase::VersionType AN_VERSION = {4, 0, 0, 9};
     static constexpr bool AN_STRICT_MATCH = true;
-    static constexpr base::FileHeaderBase::VersionType AI_VERSION = {4, 0, 0, 5};
+    static constexpr base::FileHeaderBase::VersionType AI_VERSION = {4, 0, 0, 6};
     static constexpr bool AI_STRICT_MATCH = true;
     constexpr static const int VERSION_MULTIPLE_SIZE = 2;
     static PUBLIC_API std::string GetAOTVersion()
