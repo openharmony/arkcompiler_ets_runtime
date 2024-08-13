@@ -15,11 +15,6 @@
 
 #include "ecmascript/element_accessor.h"
 
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tagged_array-inl.h"
 

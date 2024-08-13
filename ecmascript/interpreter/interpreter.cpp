@@ -15,8 +15,6 @@
 
 #include "ecmascript/interpreter/interpreter-inl.h"
 
-#include "ecmascript/frames.h"
-#include "ecmascript/interpreter/frame_handler.h"
 namespace panda::ecmascript {
 // make EcmaRuntimeCallInfo in stack pointer as fallows:
 //   +----------------------+   —

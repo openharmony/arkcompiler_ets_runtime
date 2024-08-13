@@ -15,12 +15,6 @@
 
 #include "ecmascript/compiler/pgo_type/pgo_type_parser.h"
 
-#include "ecmascript/compiler/pgo_type/pgo_hclass_generator.h"
-#include "ecmascript/compiler/pgo_type/pgo_type_location.h"
-#include "ecmascript/compiler/pgo_type/pgo_type_recorder.h"
-#include "ecmascript/elements.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-
 namespace panda::ecmascript::kungfu {
 using ProtoTransType = PGOTypeManager::ProtoTransType;
 void BaseParser::Parse(const BytecodeInfoCollector &collector, const PGOTypeRecorder &typeRecorder,

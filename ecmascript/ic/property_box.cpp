@@ -15,8 +15,6 @@
 
 #include "ecmascript/ic/property_box.h"
 
-#include "ecmascript/js_tagged_value-inl.h"
-
 namespace panda::ecmascript {
 void PropertyBox::Clear(const JSThread *thread)
 {

@@ -15,7 +15,6 @@
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/base/json_parser.h"
-#include "ecmascript/base/json_helper.h"
 #include "ecmascript/linked_hash_table.h"
 
 namespace panda::ecmascript::base {

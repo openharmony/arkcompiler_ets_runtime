@@ -16,7 +16,6 @@
 #include "ecmascript/weak_vector.h"
 
 #include "ecmascript/object_factory.h"
-#include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
 JSHandle<WeakVector> WeakVector::Create(const JSThread *thread, uint32_t capacity, MemSpaceType type)

@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/aot_file/module_section_des.h"
-#include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/platform/file.h"
 #include <iomanip>
 
 namespace panda::ecmascript {

@@ -13,13 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/layout_info-inl.h"
-
-#include "ecmascript/ecma_string.h"
-#include "ecmascript/filter_helper.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_symbol.h"
-#include "ecmascript/mem/assert_scope.h"
 #include "pgo_profiler/pgo_profiler_layout.h"
 
 namespace panda::ecmascript {

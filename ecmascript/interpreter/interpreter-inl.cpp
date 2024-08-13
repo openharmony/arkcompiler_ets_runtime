@@ -13,19 +13,9 @@
  * limitations under the License.
  */
 
-#include "ecmascript/debugger/js_debugger_manager.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/ecma_string.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/ic/ic_runtime_stub-inl.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
-#include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
-#include "ecmascript/jspandafile/literal_data_extractor.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/js_generator_object.h"
 #include "ecmascript/js_tagged_value.h"

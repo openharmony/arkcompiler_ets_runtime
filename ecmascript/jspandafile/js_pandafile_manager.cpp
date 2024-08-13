@@ -16,17 +16,10 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/js_file_path.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_message_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "file.h"
-#include "jsnapi.h"
 
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;

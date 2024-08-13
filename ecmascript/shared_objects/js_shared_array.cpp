@@ -15,21 +15,8 @@
 
 #include "ecmascript/shared_objects/js_shared_array.h"
 
-#include "ecmascript/base/array_helper.h"
-#include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/element_accessor.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/mem/space.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
-#include "ecmascript/shared_objects/concurrent_api_scope.h"
 
 namespace panda::ecmascript {
 using base::ArrayHelper;

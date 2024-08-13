@@ -15,24 +15,9 @@
 
 #include "ecmascript/jspandafile/panda_file_translator.h"
 
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/bytecodes.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/jspandafile/class_info_extractor.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/literal_data_extractor.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/patch/quick_fix_helper.h"
-#include "ecmascript/tagged_array.h"
-
-#include "libpandafile/class_data_accessor-inl.h"
-#include "libpandabase/utils/utf.h"
 
 namespace panda::ecmascript {
 using EcmaOpcode = kungfu::EcmaOpcode;

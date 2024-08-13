@@ -14,19 +14,9 @@
  */
 #include "ecmascript/module/js_module_deregister.h"
 
-#include "ecmascript/base/path_helper.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/require/js_cjs_module.h"
-#include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
 using PathHelper = base::PathHelper;

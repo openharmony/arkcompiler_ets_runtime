@@ -15,8 +15,6 @@
 
 #include "ecmascript/daemon/daemon_task-inl.h"
 #include "ecmascript/daemon/daemon_thread.h"
-#include "ecmascript/mem/heap.h"
-#include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/runtime.h"
 
 #ifdef ENABLE_QOS

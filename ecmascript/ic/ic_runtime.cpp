@@ -15,24 +15,11 @@
 
 #include "ecmascript/ic/ic_runtime.h"
 
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_dictionary-inl.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_proxy.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_typed_array.h"
-#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
-#include "ecmascript/tagged_dictionary.h"
-#include "ecmascript/message_string.h"
 
 namespace panda::ecmascript {
 #define TRACE_IC 0  // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)

@@ -19,7 +19,6 @@
 #include <sstream>
 #include "constants.h"
 #include "file_path_utils.h"
-#include "securec.h"
 #include "ecmascript/platform/file.h"
 
 namespace panda {

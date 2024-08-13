@@ -16,11 +16,8 @@
 #include "ecmascript/containers/containers_plainarray.h"
 
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_api/js_api_plain_array.h"
 #include "ecmascript/js_iterator.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersPlainArray::PlainArrayConstructor(EcmaRuntimeCallInfo *argv)

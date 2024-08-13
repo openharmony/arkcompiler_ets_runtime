@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/aot_file/elf_checker.h"
-#include "ecmascript/platform/file.h"
 #include <fstream>
 #include <type_traits>
 

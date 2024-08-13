@@ -14,17 +14,9 @@
  */
 
 #include "ecmascript/jspandafile/accessor/module_data_accessor.h"
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_json.h"
-#include "ecmascript/ecma_string.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
-
-#include "libpandafile/literal_data_accessor-inl.h"
 
 namespace panda::ecmascript {
 using StringData = panda_file::StringData;

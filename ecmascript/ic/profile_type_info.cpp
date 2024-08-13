@@ -15,10 +15,6 @@
 
 #include "ecmascript/ic/profile_type_info.h"
 
-#include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/tagged_array-inl.h"
-
 namespace panda::ecmascript {
 void ProfileTypeAccessor::AddElementHandler(JSHandle<JSTaggedValue> hclass, JSHandle<JSTaggedValue> handler) const
 {

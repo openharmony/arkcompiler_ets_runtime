@@ -15,12 +15,7 @@
 
 #include "ecmascript/require/js_require_manager.h"
 
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/ecma_string.h"
-
 namespace panda::ecmascript {
 void RequireManager::InitializeCommonJS(JSThread *thread, CJSInfo cjsInfo)
 {

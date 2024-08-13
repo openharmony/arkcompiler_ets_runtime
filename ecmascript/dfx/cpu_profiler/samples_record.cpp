@@ -20,11 +20,7 @@
 #include <unistd.h>
 
 #include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
-#include "ecmascript/dfx/cpu_profiler/sampling_processor.h"
 #include "ecmascript/dfx/tracing/tracing.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/method.h"
 
 namespace panda::ecmascript {
 SamplesRecord::SamplesRecord()

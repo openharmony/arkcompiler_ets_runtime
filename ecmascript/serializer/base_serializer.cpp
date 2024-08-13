@@ -13,12 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_hclass.h"
 #include "ecmascript/serializer/base_serializer-inl.h"
-
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/mem/mem.h"
-#include "ecmascript/mem/region.h"
 
 namespace panda::ecmascript {
 

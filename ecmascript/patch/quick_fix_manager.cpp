@@ -18,11 +18,6 @@
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/mem/barriers-inl.h"
-#include "ecmascript/mem/c_string.h"
-#include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/module/js_shared_module.h"
-#include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {

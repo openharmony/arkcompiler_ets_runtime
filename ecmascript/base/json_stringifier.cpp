@@ -15,23 +15,9 @@
 
 #include "ecmascript/base/json_stringifier.h"
 
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/base/json_helper.h"
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/builtins/builtins_errors.h"
-#include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::base {

@@ -14,13 +14,6 @@
  */
 
 #include "ecmascript/compiler/pgo_type/pgo_hclass_generator.h"
-#include "ecmascript/ecma_handle_scope.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
-#include "ecmascript/property_attributes.h"
-#include "ecmascript/ts_types/global_type_info.h"
 
 namespace panda::ecmascript::kungfu {
 bool PGOHClassGenerator::FindHClassLayoutDesc(PGOSampleType type) const

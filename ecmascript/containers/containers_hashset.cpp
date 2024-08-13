@@ -16,14 +16,10 @@
 #include "containers_hashset.h"
 
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_hashset.h"
 #include "ecmascript/js_api/js_api_hashset_iterator.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/tagged_hash_array.h"
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersHashSet::HashSetConstructor(EcmaRuntimeCallInfo *argv)

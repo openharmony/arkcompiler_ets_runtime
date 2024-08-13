@@ -15,8 +15,6 @@
 
 #include "ecmascript/jspandafile/debug_info_extractor.h"
 
-#include "ecmascript/jspandafile/js_pandafile.h"
-
 #include "libpandafile/debug_data_accessor-inl.h"
 #include "libpandafile/line_number_program.h"
 

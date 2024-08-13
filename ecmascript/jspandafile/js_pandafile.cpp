@@ -15,9 +15,7 @@
 
 #include "ecmascript/jspandafile/js_pandafile.h"
 
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "libpandafile/class_data_accessor-inl.h"
 
 namespace panda::ecmascript {
 namespace {

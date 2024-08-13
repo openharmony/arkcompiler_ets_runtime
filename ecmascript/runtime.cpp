@@ -17,20 +17,9 @@
 #include <memory>
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
-#include "ecmascript/daemon/daemon_thread.h"
-#include "ecmascript/ecma_string_table.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/mem_map_allocator.h"
-#include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/napi/include/jsnapi_expo.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "libpandafile/index_accessor.h"
-
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
 

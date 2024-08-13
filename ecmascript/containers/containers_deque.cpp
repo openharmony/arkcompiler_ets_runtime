@@ -15,18 +15,10 @@
 
 #include "ecmascript/containers/containers_deque.h"
 
-#include "ecmascript/base/array_helper.h"
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/base/typed_array_helper.h"
-#include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_deque.h"
-#include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersDeque::DequeConstructor(EcmaRuntimeCallInfo *argv)

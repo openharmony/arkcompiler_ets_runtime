@@ -15,17 +15,10 @@
 
 #include "ecmascript/require/js_cjs_module.h"
 
-#include "ecmascript/base/path_helper.h"
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/interpreter/slow_runtime_stub.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/require/js_cjs_module_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 
 namespace panda::ecmascript {

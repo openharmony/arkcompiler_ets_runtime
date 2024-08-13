@@ -15,8 +15,6 @@
 
 #include "ecmascript/platform/map.h"
 
-#include "ecmascript/log_wrapper.h"
-
 namespace panda::ecmascript {
 const CString GetPageTagString(PageTagType type, const std::string &spaceName, const uint32_t threadId)
 {

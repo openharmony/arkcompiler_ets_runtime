@@ -15,8 +15,6 @@
 
 #include "ecmascript/taskpool/runner.h"
 
-#include "ecmascript/platform/mutex.h"
-#include "libpandabase/os/thread.h"
 #ifdef ENABLE_QOS
 #include "qos.h"
 #endif

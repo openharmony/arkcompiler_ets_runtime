@@ -17,24 +17,8 @@
 
 #include <functional>
 
-#include "ecmascript/dfx/hprof/heap_root_visitor.h"
 #include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/global_dictionary.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/ic/property_box.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_symbol.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/mem/assert_scope.h"
-#include "ecmascript/property_attributes.h"
-#include "ecmascript/tagged_array.h"
-#include "ecmascript/tagged_dictionary.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 
 namespace panda::ecmascript {
 CString *HeapSnapshot::GetString(const CString &as)

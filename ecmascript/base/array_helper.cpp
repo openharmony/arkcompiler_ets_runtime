@@ -15,19 +15,9 @@
 
 #include "ecmascript/base/array_helper.h"
 
-#include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/base/sort_helper.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_fast_operator-inl.h"
-#include "ecmascript/shared_objects/js_shared_array.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::base {
 int64_t ArrayHelper::GetStartIndex(JSThread *thread, const JSHandle<JSTaggedValue> &startIndexHandle,

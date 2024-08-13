@@ -13,25 +13,11 @@
  * limitations under the License.
  */
 
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/object_factory.h"
-
-#include "ecmascript/accessor_data.h"
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/global_env_constants-inl.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/module/js_shared_module.h"
-#include "ecmascript/sendable_env.h"
 
 // class Object;
 namespace panda::ecmascript {

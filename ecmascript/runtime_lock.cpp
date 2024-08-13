@@ -15,8 +15,6 @@
 
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/mem/heap-inl.h"
 
 namespace panda::ecmascript {
 RuntimeLockHolder::RuntimeLockHolder(JSThread *thread, Mutex &mtx)

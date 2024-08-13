@@ -16,13 +16,7 @@
 
 #include "ecmascript/interpreter/frame_handler.h"
 
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/mem/heap.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript {
 FrameHandler::FrameHandler(const JSThread *thread)
