@@ -51,8 +51,10 @@ enum RegionSpaceFlag {
     IN_HUGE_MACHINE_CODE_SPACE = 0x11,
     IN_SHARED_NON_MOVABLE = 0x12,
     IN_SHARED_OLD_SPACE = 0x13,
-    IN_SHARED_HUGE_OBJECT_SPACE = 0x14,
-    IN_SHARED_READ_ONLY_SPACE = 0x15,
+    IN_SHARED_APPSPAWN_SPACE = 0X14,
+    IN_SHARED_HUGE_OBJECT_SPACE = 0x15,
+    IN_SHARED_READ_ONLY_SPACE = 0x16,
+
     VALID_SPACE_MASK = 0xFF,
 
     GENERAL_YOUNG_BEGIN = IN_EDEN_SPACE,
@@ -135,6 +137,8 @@ static inline std::string ToSpaceTypeName(uint8_t space)
             return "shared read only space";
         case RegionSpaceFlag::IN_SHARED_HUGE_OBJECT_SPACE:
             return "shared huge object space";
+        case RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE:
+            return "shared appspawn space";
         default:
             return "invalid space";
     }
@@ -355,6 +359,10 @@ public:
 
     uint8_t GetRegionSpaceFlag();
 
+    void SetRegionSpaceFlag(RegionSpaceFlag flag)
+    {
+        packedData_.flags_.spaceFlag_ = flag;
+    }
     bool InEdenSpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_EDEN_SPACE;
@@ -436,6 +444,11 @@ public:
     bool InSharedReadOnlySpace() const
     {
         return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE;
+    }
+
+    bool InSharedAppSpawnSpace() const
+    {
+        return packedData_.flags_.spaceFlag_ == RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE;
     }
 
     bool InAppSpawnSpace() const

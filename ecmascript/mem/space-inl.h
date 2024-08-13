@@ -100,6 +100,9 @@ RegionSpaceFlag Space::GetRegionFlag() const
         case MemSpaceType::APPSPAWN_SPACE:
             flags = RegionSpaceFlag::IN_APPSPAWN_SPACE;
             break;
+        case MemSpaceType::SHARED_APPSPAWN_SPACE:
+            flags = RegionSpaceFlag::IN_SHARED_APPSPAWN_SPACE;
+            break;
         case MemSpaceType::SHARED_NON_MOVABLE:
             flags = RegionSpaceFlag::IN_SHARED_NON_MOVABLE;
             break;

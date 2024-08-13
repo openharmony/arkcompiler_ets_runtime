@@ -79,6 +79,7 @@ void SharedHeap::EnumerateOldSpaceRegions(const Callback &cb) const
     sOldSpace_->EnumerateRegions(cb);
     sNonMovableSpace_->EnumerateRegions(cb);
     sHugeObjectSpace_->EnumerateRegions(cb);
+    sAppSpawnSpace_->EnumerateRegions(cb);
 }
 
 template<class Callback>
@@ -95,6 +96,7 @@ void SharedHeap::IterateOverObjects(const Callback &cb) const
     sOldSpace_->IterateOverObjects(cb);
     sNonMovableSpace_->IterateOverObjects(cb);
     sHugeObjectSpace_->IterateOverObjects(cb);
+    sAppSpawnSpace_->IterateOverMarkedObjects(cb);
 }
 
 template<class Callback>

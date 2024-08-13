@@ -127,6 +127,9 @@ void SharedConcurrentMarker::InitializeMarking()
     dThread_->SetSharedMarkStatus(SharedMarkStatus::CONCURRENT_MARKING_OR_FINISHED);
 
     sHeapObjectSize_ = sHeap_->GetHeapObjectSize();
+    sHeap_->GetAppSpawnSpace()->EnumerateRegions([](Region *current) {
+        current->ClearMarkGCBitset();
+    });
     sHeap_->EnumerateOldSpaceRegions([](Region *current) {
         ASSERT(current->InSharedSweepableSpace());
         current->ResetAliveObject();

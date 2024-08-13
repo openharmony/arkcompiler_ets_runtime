@@ -46,6 +46,7 @@ enum MemSpaceType {
     SHARED_HUGE_OBJECT_SPACE,
     SHARED_LOCAL_SPACE,
     SHARED_COMPRESS_SPACE,
+    SHARED_APPSPAWN_SPACE,
     SPACE_TYPE_LAST,  // Count of different types
 
     SHARED_BEGIN = SHARED_OLD_SPACE,
@@ -111,6 +112,8 @@ static inline std::string ToSpaceTypeName(MemSpaceType type)
             return "compress space";
         case SHARED_LOCAL_SPACE:
             return "shared local space";
+        case SHARED_APPSPAWN_SPACE:
+            return "shared appspawn space";
         default:
             return "unknown space";
     }

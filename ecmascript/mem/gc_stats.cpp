@@ -755,7 +755,11 @@ void SharedGCStats::PrintGCMemoryStatistic()
                  << "SharedHugeObjectSpace  used:"
                  << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetHugeObjectSpace()->GetHeapObjectSize())) << "KB"
                  << "     committed:"
-                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetHugeObjectSpace()->GetCommittedSize())) << "KB\n";
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetHugeObjectSpace()->GetCommittedSize())) << "KB\n"
+                 << "SharedAppSpawnSpace    used:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetAppSpawnSpace()->GetHeapObjectSize())) << "KB"
+                 << "     committed:"
+                 << STATS_DATA_FORMAT(sizeToKB(sHeap_->GetAppSpawnSpace()->GetCommittedSize())) << "KB";
 
     LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Anno memory usage size:")
                  << STATS_DATA_FORMAT(sizeToMB(heapRegionAllocator->GetAnnoMemoryUsage())) << "MB\n"

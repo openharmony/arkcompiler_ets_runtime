@@ -46,6 +46,7 @@ enum TriggerGCType {
     APPSPAWN_FULL_GC,
     SHARED_GC,
     SHARED_FULL_GC,
+    APPSPAWN_SHARED_FULL_GC,
     GC_TYPE_LAST
 };
 
