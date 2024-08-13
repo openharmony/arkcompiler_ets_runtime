@@ -9949,25 +9949,29 @@ GateRef StubBuilder::DefineFunc(GateRef glue, GateRef constpool, GateRef index, 
     DEFVARIABLE(val, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
-    val = GetValueFromTaggedArray(constpool, index);
-
     Label isHeapObject(env);
     Label afterAOTLiteral(env);
-    BRANCH(TaggedIsHeapObject(*val), &isHeapObject, &afterAOTLiteral);
+    Label tryGetAOTIhc(env);
+    //AOT ihc infos always in unshareConstpool
+    //If is runing on AOT,unshareConstpool is definitely not a hole
+    //So wo can skip if unshareConstpool is hole
+    GateRef unsharedConstpool = GetUnsharedConstpoolFromGlue(glue, constpool);
+    BRANCH(TaggedIsHole(unsharedConstpool), &afterAOTLiteral, &tryGetAOTIhc);
+    Bind(&tryGetAOTIhc);
     {
-        Bind(&isHeapObject);
-        Label isAOTLiteral(env);
-        BRANCH(IsAOTLiteralInfo(*val), &isAOTLiteral, &afterAOTLiteral);
+        val = GetValueFromTaggedArray(unsharedConstpool, index);
+        BRANCH(TaggedIsHeapObject(*val), &isHeapObject, &afterAOTLiteral);
         {
-            Bind(&isAOTLiteral);
-            // Avoiding shareobj references to unshareobj.
-            GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
-            GateId unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env->Is32Bit());
-            GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
-            GateRef unshareCp = GetUnsharedConstpool(unshareCpAddr, unshareIdx);
-            val = GetValueFromTaggedArray(unshareCp, index);
-            ihc = GetIhcFromAOTLiteralInfo(*val);
-            Jump(&afterAOTLiteral);
+            Bind(&isHeapObject);
+            Label isAOTLiteral(env);
+            BRANCH(IsAOTLiteralInfo(*val), &isAOTLiteral, &afterAOTLiteral);
+            {
+                Bind(&isAOTLiteral);
+                {
+                    ihc = GetIhcFromAOTLiteralInfo(*val);
+                    Jump(&afterAOTLiteral);
+                }
+            }
         }
     }
     Bind(&afterAOTLiteral);
@@ -9994,7 +9998,7 @@ GateRef StubBuilder::DefineFunc(GateRef glue, GateRef constpool, GateRef index, 
     BRANCH(TaggedIsUndefined(*ihc), &exit, &ihcNotUndefined);
     Bind(&ihcNotUndefined);
     {
-        CallRuntime(glue, RTSTUB_ID(AOTEnableProtoChangeMarker), { *result, *ihc});
+        CallRuntime(glue, RTSTUB_ID(AOTEnableProtoChangeMarker), {*result, *ihc, *val});
         Jump(&exit);
     }
     Bind(&exit);

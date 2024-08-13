@@ -34,7 +34,7 @@ class ObjectFactory;
 class JSBoundFunction;
 class JSProxy;
 class JSTypedArray;
-
+class AOTLiteralInfo;
 class GeneratorContext;
 struct EcmaRuntimeCallInfo;
 
@@ -397,8 +397,10 @@ private:
                                                   uint16_t methodId, const JSHandle<JSTaggedValue> &module,
                                                   uint16_t length, const JSHandle<JSTaggedValue> &envHandle,
                                                   const JSHandle<JSTaggedValue> &homeObject);
-    static inline void DefineFuncTryUseAOTHClass(JSThread *thread, const JSHandle<JSFunction> &func,
-                                                 const JSHandle<JSTaggedValue> &ihc);
+    static inline void DefineFuncTryUseAOTHClass(JSThread* thread,
+                                                 const JSHandle<JSFunction>& func,
+                                                 const JSHandle<JSTaggedValue>& ihc,
+                                                 const JSHandle<AOTLiteralInfo>& aotLiteralInfo);
     static inline JSTaggedValue RuntimeCreateRegExpWithLiteral(JSThread *thread, const JSHandle<JSTaggedValue> &pattern,
                                                                uint8_t flags);
     static inline JSTaggedValue RuntimeThrowIfSuperNotCorrectCall(JSThread *thread, uint16_t index,
