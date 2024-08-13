@@ -317,6 +317,11 @@ public:
         return moduleLogger_;
     }
 
+    void SetModuleLogger(ModuleLogger *moduleLogger)
+    {
+        moduleLogger_ = moduleLogger;
+    }
+
     void SetDefaultLocale(const std::string& locale)
     {
         defaultLocale_ = locale;
