@@ -775,7 +775,7 @@ void EcmaVM::ClearBufferData()
     deregisterModuleList_.clear();
 }
 
-void EcmaVM::CollectGarbage(TriggerGCType gcType, GCReason reason) const
+void EcmaVM::CollectGarbage(TriggerGCType gcType, panda::ecmascript::GCReason reason) const
 {
     heap_->CollectGarbage(gcType, reason);
 }

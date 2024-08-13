@@ -4291,18 +4291,23 @@ void JSNApi::RegisterUncatchableErrorHandler(EcmaVM *ecmaVm, const UncatchableEr
 
 void JSNApi::TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType)
 {
+    TriggerGC(vm, ecmascript::GCReason::EXTERNAL_TRIGGER, gcType);
+}
+
+void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC_TYPE gcType)
+{
     CROSS_THREAD_CHECK(vm);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     if (thread != nullptr && vm->IsInitialized()) {
         switch (gcType) {
             case TRIGGER_GC_TYPE::SEMI_GC:
-                vm->CollectGarbage(vm->GetHeap()->SelectGCType(), ecmascript::GCReason::EXTERNAL_TRIGGER);
+                vm->CollectGarbage(vm->GetHeap()->SelectGCType(), reason);
                 break;
             case TRIGGER_GC_TYPE::OLD_GC:
-                vm->CollectGarbage(ecmascript::TriggerGCType::OLD_GC, ecmascript::GCReason::EXTERNAL_TRIGGER);
+                vm->CollectGarbage(ecmascript::TriggerGCType::OLD_GC, reason);
                 break;
             case TRIGGER_GC_TYPE::FULL_GC:
-                vm->CollectGarbage(ecmascript::TriggerGCType::FULL_GC, ecmascript::GCReason::EXTERNAL_TRIGGER);
+                vm->CollectGarbage(ecmascript::TriggerGCType::FULL_GC, reason);
                 break;
             default:
                 break;
