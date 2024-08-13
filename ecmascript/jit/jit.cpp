@@ -52,10 +52,11 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
         options.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());
         options.SetEnableAPPJIT(true);
         // for app threshold
-        uint32_t defaultSize = 150;
+        uint32_t defaultSize = 3000;
         uint32_t threshold = ohos::JitTools::GetJitHotnessThreshold(defaultSize);
         options.SetJitHotnessThreshold(threshold);
         bundleName_ = bundleName;
+        isEnableAppPGO_ = pgo::PGOProfilerManager::GetInstance()->IsEnable();
 
         SetEnableOrDisable(options, isEnableFastJit, isEnableBaselineJit);
         if (fastJitEnable_ || baselineJitEnable_) {
@@ -69,8 +70,9 @@ void Jit::SwitchProfileStubs(EcmaVM *vm)
     JSThread *thread = vm->GetAssociatedJSThread();
     JSRuntimeOptions &options = vm->GetJSOptions();
     std::shared_ptr<PGOProfiler> pgoProfiler = vm->GetPGOProfiler();
-    if (!options.IsEnableJITPGO() || pgoProfiler == nullptr) {
+    if (!options.IsEnableJITPGO() || pgoProfiler == nullptr || (isApp_ && !isEnableAppPGO_)) {
         thread->SwitchJitProfileStubs(false);
+        options.SetEnableJITPGO(false);
     } else {
         // if not enable aot pgo
         if (!pgo::PGOProfilerManager::GetInstance()->IsEnable()) {
