@@ -28,3 +28,12 @@ export class Test {
 }
 
 export let module = 0;
+
+let moduleName = 'default';
+try {
+  moduleName = __getCurrentModuleName__();
+} catch (error) {
+  moduleName = 'error';
+}
+
+export {moduleName};
