@@ -117,6 +117,16 @@ EcmaVM *EcmaVM::Create(const JSRuntimeOptions &options)
     auto heapType = options.IsWorker() ? EcmaParamConfiguration::HeapType::WORKER_HEAP :
         EcmaParamConfiguration::HeapType::DEFAULT_HEAP;
     size_t heapSize = options.GetHeapSize();
+#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+    switch (heapType) {
+        case EcmaParamConfiguration::HeapType::WORKER_HEAP:
+            heapSize = OHOS::system::GetUintParameter<size_t>("persist.ark.heap.workersize", 0) * 1_MB;
+            break;
+        default:
+            heapSize = OHOS::system::GetUintParameter<size_t>("persist.ark.heap.defaultsize", 0) * 1_MB;
+            break;
+    }
+#endif
     auto config = EcmaParamConfiguration(heapType,
                                          MemMapAllocator::GetInstance()->GetCapacity(),
                                          heapSize);
