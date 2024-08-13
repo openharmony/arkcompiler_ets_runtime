@@ -41,16 +41,27 @@ public:
     {
         switch (heapType) {
             case HeapType::WORKER_HEAP:
-                maxHeapSize_ = DEFAULT_WORKER_HEAP_SIZE;
+                if (heapSize > LOW_MEMORY && heapSize < DEFAULT_WORKER_HEAP_SIZE) {
+                    maxHeapSize_ = heapSize;
+                } else {
+                    maxHeapSize_ = DEFAULT_WORKER_HEAP_SIZE;
+                }
                 break;
             case HeapType::SHARED_HEAP:
-                maxHeapSize_ = DEFAULT_SHARED_HEAP_SIZE;
+                 if (heapSize > LOW_MEMORY && heapSize < DEFAULT_SHARED_HEAP_SIZE) {
+                    maxHeapSize_ = heapSize;
+                } else {
+                    maxHeapSize_ = DEFAULT_SHARED_HEAP_SIZE;
+                };
                 break;
             default:
                 if (poolSize >= DEFAULT_HEAP_SIZE) {
                     maxHeapSize_ = DEFAULT_HEAP_SIZE;
                 } else {
                     maxHeapSize_ = poolSize; // pool is too small, no memory left for worker
+                }
+                if (heapSize > LOW_MEMORY && heapSize < DEFAULT_HEAP_SIZE) {
+                    maxHeapSize_ = heapSize;
                 }
                 if (heapSize >= DEFAULT_HEAP_SIZE && heapSize <= MAX_HEAP_SIZE) {
                     maxHeapSize_ = heapSize;
