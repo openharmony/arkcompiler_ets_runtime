@@ -27,9 +27,7 @@
 #include "cg_irbuilder.h"
 #include "call_conv.h"
 /* MapleIR headers. */
-#include "mir_parser.h"
 #include "mir_function.h"
-#include "debug_info.h"
 
 /* Maple MP header */
 #include "mempool_allocator.h"
@@ -216,8 +214,6 @@ public:
         return opndBuilder;
     }
 
-    virtual void GenSaveMethodInfoCode(BB &bb) = 0;
-
     void RemoveUnreachableBB();
     void GenerateInstruction();
     void HandleFunction();
@@ -263,7 +259,6 @@ public:
     /* select expr */
     virtual Operand *SelectDread(const BaseNode &parent, AddrofNode &expr) = 0;
     virtual RegOperand *SelectRegread(RegreadNode &expr) = 0;
-    virtual Operand *SelectAddrof(AddrofNode &expr, const BaseNode &parent, bool isAddrofoff) = 0;
     virtual Operand *SelectIread(const BaseNode &parent, IreadNode &expr, int extraOffset = 0,
                                  PrimType finalBitFieldDestType = kPtyInvalid) = 0;
     virtual Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) = 0;
@@ -302,9 +297,8 @@ public:
     virtual Operand *SelectRetype(TypeCvtNode &node, Operand &opnd0) = 0;
     virtual Operand *SelectCvt(const BaseNode &parent, TypeCvtNode &node, Operand &opnd0) = 0;
     virtual Operand *SelectTrunc(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent) = 0;
-    virtual Operand *SelectSelect(TernaryNode &node, Operand &cond, Operand &opnd0, Operand &opnd1,
-                                  const BaseNode &parent, bool hasCompare = false) = 0;
     virtual RegOperand &SelectCopy(Operand &src, PrimType srcType, PrimType dstType) = 0;
+    virtual void SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &opnd0) = 0;
 
     virtual Operand &GetOrCreateRflag() = 0;
     virtual const Operand *GetRflag() const = 0;
@@ -797,12 +791,40 @@ public:
     void AddEmitSt(uint32 id, MIRSymbol &symbol)
     {
         CHECK_FATAL(symbol.GetKonst()->GetKind() == kConstAggConst, "not a kConstAggConst");
+        MIRAggConst *arrayConst = safe_cast<MIRAggConst>(symbol.GetKonst());
+        for (size_t i = 0; i < arrayConst->GetConstVec().size(); ++i) {
+            CHECK_FATAL(arrayConst->GetConstVecItem(i)->GetKind() == kConstLblConst, "not a kConstLblConst");
+            MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
+            ++switchLabelCnt[lblConst->GetValue()];
+        }
         emitStVec[id] = &symbol;
     }
 
     void DeleteEmitSt(uint32 id)
     {
+        MIRSymbol &symbol = *emitStVec[id];
+        CHECK_FATAL(symbol.GetKonst()->GetKind() == kConstAggConst, "not a kConstAggConst");
+        MIRAggConst *arrayConst = safe_cast<MIRAggConst>(symbol.GetKonst());
+        for (size_t i = 0; i < arrayConst->GetConstVec().size(); ++i) {
+            CHECK_FATAL(arrayConst->GetConstVecItem(i)->GetKind() == kConstLblConst, "not a kConstLblConst");
+            MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
+
+            LabelIdx labelIdx = lblConst->GetValue();
+            CHECK_FATAL(switchLabelCnt[labelIdx] > 0, "error labelIdx");
+            --switchLabelCnt[labelIdx];
+            if (switchLabelCnt[labelIdx] == 0) {
+                switchLabelCnt.erase(labelIdx);
+            }
+        }
         (void)emitStVec.erase(id);
+    }
+
+    bool InSwitchTable(LabelIdx label) const
+    {
+        if (switchLabelCnt.empty()) {
+            return false;
+        }
+        return (switchLabelCnt.find(label) != switchLabelCnt.end());
     }
 
     LabelIdx GetLocalSymLabelIndex(const MIRSymbol &symbol) const
@@ -1242,6 +1264,7 @@ private:
     RegisterInfo *targetRegInfo = nullptr;
     MapleAllocator *funcScopeAllocator;
     MapleMap<uint32, MIRSymbol *> emitStVec; /* symbol that needs to be emit as a local symbol. i.e, switch table */
+    MapleUnorderedMap<LabelIdx, int32> switchLabelCnt; /* label in switch table */
     std::map<const MIRSymbol *, LabelIdx> funcLocalSym2Label;
     CallConvKind callingConventionKind;
     CGCFG *theCFG = nullptr;

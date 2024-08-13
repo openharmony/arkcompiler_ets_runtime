@@ -59,7 +59,6 @@ public:
     ~AArch64CGFunc() override = default;
 
     MOperator PickMovBetweenRegs(PrimType destType, PrimType srcType) const;
-    MOperator PickMovInsn(const RegOperand &lhs, const RegOperand &rhs) const;
 
     regno_t NewVRflag() override
     {
@@ -88,19 +87,13 @@ public:
         PrimType srcType;
     };
 
-    void GenSaveMethodInfoCode(BB &bb) override;
     void MergeReturn() override;
-    RegOperand *ExtractMemBaseAddr(const MemOperand &memOpnd);
     void SelectDassign(DassignNode &stmt, Operand &opnd0) override;
     void SelectRegassign(RegassignNode &stmt, Operand &opnd0) override;
     MemOperand *GenFormalMemOpndWithSymbol(const MIRSymbol &sym, int64 offset);
-    MemOperand *SelectRhsMemOpnd(BaseNode &rhsStmt, bool &isRefField);
-    MemOperand *SelectRhsMemOpnd(BaseNode &rhsStmt);
     void SelectIassign(IassignNode &stmt) override;
     void SelectReturn(Operand *opnd0) override;
     bool DoCallerEnsureValidParm(RegOperand &destOpnd, RegOperand &srcOpnd, PrimType formalPType);
-    void SelectParmListSmallStruct(const MIRType &mirType, const CCLocInfo &ploc, Operand &addr, ListOperand &srcOpnds,
-                                   bool isSpecialArg, std::vector<RegMapForPhyRegCpy> &regMapForTmpBB);
     void SelectParmListPassByStack(const MIRType &mirType, Operand &opnd, uint32 memOffset, bool preCopyed,
                                    std::vector<Insn *> &insnForStackArgs);
     void SelectCondGoto(CondGotoNode &stmt, Operand &opnd0, Operand &opnd1) override;
@@ -117,10 +110,6 @@ public:
 
     Operand *SelectDread(const BaseNode &parent, AddrofNode &expr) override;
     RegOperand *SelectRegread(RegreadNode &expr) override;
-
-    void SelectAddrof(Operand &result, StImmOperand &stImm, FieldID field = 0);
-    void SelectAddrof(Operand &result, MemOperand &memOpnd, FieldID field = 0);
-    Operand *SelectAddrof(AddrofNode &expr, const BaseNode &parent, bool isAddrofoff = false) override;
 
     Operand *SelectIread(const BaseNode &parent, IreadNode &expr, int extraOffset = 0,
                          PrimType finalBitFieldDestType = kPtyInvalid) override;
@@ -185,12 +174,9 @@ public:
     Operand *SelectRetype(TypeCvtNode &node, Operand &opnd0) override;
     Operand *SelectCvt(const BaseNode &parent, TypeCvtNode &node, Operand &opnd0) override;
     Operand *SelectTrunc(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent) override;
-    Operand *SelectSelect(TernaryNode &node, Operand &opnd0, Operand &opnd1, Operand &opnd2, const BaseNode &parent,
-                          bool hasCompare = false) override;
-    void SelectSelect(Operand &resOpnd, Operand &condOpnd, Operand &trueOpnd, Operand &falseOpnd, PrimType dtype,
-                      PrimType ctype, bool hasCompare = false, ConditionCode cc = CC_NE);
     void SelectAArch64Select(Operand &dest, Operand &opnd0, Operand &opnd1, CondOperand &cond, bool isIntType,
                              uint32 is64bits);
+    void SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &opnd0) override;
     RegOperand &SelectCopy(Operand &src, PrimType stype, PrimType dtype) override;
     void SelectCopy(Operand &dest, PrimType dtype, Operand &src, PrimType stype, BaseNode *baseNode = nullptr);
     void SelectCopyImm(Operand &dest, PrimType dType, ImmOperand &src, PrimType sType);
@@ -206,7 +192,6 @@ public:
     RegOperand &GetOrCreateSpecialRegisterOperand(PregIdx sregIdx, PrimType primType);
     void FreeSpillRegMem(regno_t vrNum);
     RegOperand &GetOrCreatePhysicalRegisterOperand(AArch64reg regNO, uint32 size, RegType type, uint32 flag = 0);
-    RegOperand &GetOrCreatePhysicalRegisterOperand(std::string &asmAttr);
     RegOperand *CreateVirtualRegisterOperand(regno_t vRegNO, uint32 size, RegType kind, uint32 flg = 0) const;
     RegOperand &CreateVirtualRegisterOperand(regno_t vregNO) override;
     RegOperand &GetOrCreateVirtualRegisterOperand(regno_t vregNO) override;
@@ -316,8 +301,6 @@ public:
     {
         return *memPool->New<ExtendShiftOperand>(op, amount, bitLen);
     }
-
-    void SplitMovImmOpndInstruction(int64 immVal, RegOperand &destReg, Insn *curInsn = nullptr);
 
     Operand &GetOrCreateFuncNameOpnd(const MIRSymbol &symbol) const;
     RegOperand *GetBaseReg(const SymbolAlloc &symAlloc) override;
@@ -432,8 +415,6 @@ public:
         }
     }
 
-    AArch64reg GetReturnRegisterNumber();
-
     MOperator PickStInsn(uint32 bitSize, PrimType primType) const;
     MOperator PickLdInsn(uint32 bitSize, PrimType primType) const;
     MOperator PickExtInsn(PrimType dtype, PrimType stype) const;
@@ -441,15 +422,12 @@ public:
     bool CheckIfSplitOffsetWithAdd(const MemOperand &memOpnd, uint32 bitLen) const;
     RegOperand *GetBaseRegForSplit(uint32 baseRegNum);
 
-    MemOperand &ConstraintOffsetToSafeRegion(uint32 bitLen, const MemOperand &memOpnd, const MIRSymbol *symbol);
     MemOperand &SplitOffsetWithAddInstruction(const MemOperand &memOpnd, uint32 bitLen,
                                               uint32 baseRegNum = AArch64reg::kRinvalid, bool isDest = false,
                                               Insn *insn = nullptr, bool forPair = false);
     ImmOperand &SplitAndGetRemained(const MemOperand &memOpnd, uint32 bitLen, RegOperand *resOpnd, int64 ofstVal,
                                     bool isDest = false, Insn *insn = nullptr, bool forPair = false);
     MemOperand &CreateReplacementMemOperand(uint32 bitLen, RegOperand &baseReg, int64 offset);
-
-    bool HasStackLoadStore();
 
     MemOperand &LoadStructCopyBase(const MIRSymbol &symbol, int64 offset, int datasize);
 
@@ -625,17 +603,10 @@ private:
     };
 
     std::pair<MIRFunction *, MIRFuncType *> GetCalleeFunction(StmtNode &naryNode) const;
-    void SelectInsnMemCopy(const MemOperand &destOpnd, const MemOperand &srcOpnd, uint32 size, bool isRefField = false,
-                           BaseNode *destNode = nullptr, BaseNode *srcNode = nullptr);
-    void SelectMemCopy(const MemOperand &destOpnd, const MemOperand &srcOpnd, uint32 size, bool isRefField = false,
-                       BaseNode *destNode = nullptr, BaseNode *srcNode = nullptr);
     bool SelectParmListPreprocess(StmtNode &naryNode, size_t start, std::vector<ParamDesc> &argsDesc,
                                   const MIRFunction *callee = nullptr);
     void SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, bool isCallNative = false);
     void SelectParmListNotC(StmtNode &naryNode, ListOperand &srcOpnds);
-    Operand *SelectClearStackCallParam(const AddrofNode &expr, int64 &offsetValue);
-    void SelectClearStackCallParmList(const StmtNode &naryNode, ListOperand &srcOpnds,
-                                      std::vector<int64> &stackPostion);
     void SelectRem(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType, bool isSigned, bool is64Bits);
     void SelectCvtInt2Int(const BaseNode *parent, Operand *&resOpnd, Operand *opnd0, PrimType fromType,
                           PrimType toType);
@@ -661,23 +632,15 @@ private:
     /* Helper functions for translating complex Maple IR instructions/inrinsics */
     void SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPType, Operand &opnd0);
     LabelIdx CreateLabeledBB(StmtNode &stmt);
-    void SaveReturnValueInLocal(CallReturnVector &retVals, size_t index, PrimType primType, Operand &value,
-                                StmtNode &parentStmt);
-
-    MOperator PickLoadStoreExclInsn(uint32 byteP2Size, bool store, bool acqRel) const;
 
     MemOperand *GetPseudoRegisterSpillMemoryOperand(PregIdx i) override;
 
     bool IsStoreMop(MOperator mOp) const;
     bool IsImmediateValueInRange(MOperator mOp, int64 immVal, bool is64Bits, bool isIntactIndexed, bool isPostIndexed,
                                  bool isPreIndexed) const;
-    Insn &GenerateGlobalLongCallAfterInsn(const MIRSymbol &func, ListOperand &srcOpnds);
-    Insn &GenerateLocalLongCallAfterInsn(const MIRSymbol &func, ListOperand &srcOpnds);
-    bool IsDuplicateAsmList(const MIRSymbol &sym) const;
 
     MemOperand *CheckAndCreateExtendMemOpnd(PrimType ptype, const BaseNode &addrExpr, int64 offset);
     MemOperand &CreateNonExtendMemOpnd(PrimType ptype, const BaseNode &parent, BaseNode &addrExpr, int64 offset);
-    std::string GenerateMemOpndVerbose(const Operand &src) const;
     void SelectParmListWrapper(StmtNode &naryNode, ListOperand &srcOpnds, bool isCallNative);
 };
 } /* namespace maplebe */

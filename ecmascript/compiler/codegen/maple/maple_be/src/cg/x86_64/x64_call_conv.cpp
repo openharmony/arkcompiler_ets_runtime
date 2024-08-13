@@ -21,31 +21,6 @@ namespace maplebe {
 using namespace maple;
 using namespace x64;
 
-int32 CCallConventionInfo::ClassifyAggregate(MIRType &mirType, uint64 sizeOfTy,
-                                             std::vector<ArgumentClass> &classes) const
-{
-    /*
-     * 1. If the size of an object is larger than four eightbytes, or it contains unaligned
-     * fields, it has class MEMORY;
-     * 2. for the processors that do not support the __m256 type, if the size of an object
-     * is larger than two eightbytes and the first eightbyte is not SSE or any other eightbyte
-     * is not SSEUP, it still has class MEMORY.
-     * This in turn ensures that for rocessors that do support the __m256 type, if the size of
-     * an object is four eightbytes and the first eightbyte is SSE and all other eightbytes are
-     * SSEUP, it can be passed in a register.
-     *(Currently, assume that m256 is not supported)
-     */
-    if (sizeOfTy > k2EightBytesSize) {
-        classes.push_back(kMemoryClass);
-    } else if (sizeOfTy > k1EightBytesSize) {
-        classes.push_back(kIntegerClass);
-        classes.push_back(kIntegerClass);
-    } else {
-        classes.push_back(kIntegerClass);
-    }
-    return static_cast<int32>(sizeOfTy);
-}
-
 int32 CCallConventionInfo::Classification(const BECommon &be, MIRType &mirType,
                                           std::vector<ArgumentClass> &classes) const
 {
@@ -70,36 +45,10 @@ int32 CCallConventionInfo::Classification(const BECommon &be, MIRType &mirType,
         case PTY_i64:
             classes.push_back(kIntegerClass);
             return k8ByteSize;
-        /*
-         * Arguments of type __int128 offer the same operations as INTEGERs,
-         * yet they do not fit into one general purpose register but require
-         * two registers.
-         */
-        case PTY_i128:
-        case PTY_u128:
-            classes.push_back(kIntegerClass);
-            classes.push_back(kIntegerClass);
-            return k16ByteSize;
         case PTY_f32:
         case PTY_f64:
             classes.push_back(kFloatClass);
             return k8ByteSize;
-        case PTY_agg: {
-            /*
-             * The size of each argument gets rounded up to eightbytes,
-             * Therefore the stack will always be eightbyte aligned.
-             */
-            uint64 sizeOfTy = RoundUp(be.GetTypeSize(mirType.GetTypeIndex()), k8ByteSize);
-            if (sizeOfTy == 0) {
-                return 0;
-            }
-            /* If the size of an object is larger than four eightbytes, it has class MEMORY */
-            if ((sizeOfTy > k4EightBytesSize)) {
-                classes.push_back(kMemoryClass);
-                return static_cast<int32>(sizeOfTy);
-            }
-            return ClassifyAggregate(mirType, sizeOfTy, classes);
-        }
         default:
             CHECK_FATAL(false, "NYI");
     }
@@ -191,20 +140,13 @@ int32 X64CallConvImpl::LocateNextParm(MIRType &mirType, CCLocInfo &pLoc, bool is
     pLoc.memSize = alignedTySize;
     ++paramNum;
     if (classes[0] == kIntegerClass) {
-        if ((alignedTySize == k4ByteSize) || (alignedTySize == k8ByteSize)) {
-            pLoc.reg0 = AllocateGPParmRegister();
-            DEBUG_ASSERT(nextGeneralParmRegNO <= GetCallConvInfo().GetIntParamRegsNum(), "RegNo should be pramRegNO");
-        } else if (alignedTySize == k16ByteSize) {
-            AllocateTwoGPParmRegisters(pLoc);
-            DEBUG_ASSERT(nextGeneralParmRegNO <= GetCallConvInfo().GetIntParamRegsNum(), "RegNo should be pramRegNO");
-        }
+        CHECK_FATAL((alignedTySize == k4ByteSize) || (alignedTySize == k8ByteSize), "NIY");
+        pLoc.reg0 = AllocateGPParmRegister();
+        DEBUG_ASSERT(nextGeneralParmRegNO <= GetCallConvInfo().GetIntParamRegsNum(), "RegNo should be pramRegNO");
     } else if (classes[0] == kFloatClass) {
-        if (alignedTySize == k8ByteSize) {
-            pLoc.reg0 = AllocateSIMDFPRegister();
-            DEBUG_ASSERT(nextGeneralParmRegNO <= kNumFloatParmRegs, "RegNo should be pramRegNO");
-        } else {
-            CHECK_FATAL(false, "niy");
-        }
+        CHECK_FATAL(alignedTySize == k8ByteSize, "NIY");
+        pLoc.reg0 = AllocateSIMDFPRegister();
+        DEBUG_ASSERT(nextGeneralParmRegNO <= kNumFloatParmRegs, "RegNo should be pramRegNO");
     }
     if (pLoc.reg0 == kRinvalid || classes[0] == kMemoryClass) {
         /* being passed in memory */
@@ -224,54 +166,22 @@ int32 X64CallConvImpl::LocateRetVal(MIRType &retType, CCLocInfo &pLoc)
     if (classes[0] == kIntegerClass) {
         /* If the class is INTEGER, the next available register of the sequence %rax, */
         /* %rdx is used. */
-        CHECK_FATAL(alignedTySize <= k16ByteSize, "LocateRetVal: illegal number of regs");
-        if ((alignedTySize == k4ByteSize) || (alignedTySize == k8ByteSize)) {
-            pLoc.regCount = kOneRegister;
-            pLoc.reg0 = AllocateGPReturnRegister();
-            DEBUG_ASSERT(nextGeneralReturnRegNO <= GetCallConvInfo().GetIntReturnRegsNum(),
-                         "RegNo should be pramRegNO");
-        } else if (alignedTySize == k16ByteSize) {
-            pLoc.regCount = kTwoRegister;
-            AllocateTwoGPReturnRegisters(pLoc);
-            DEBUG_ASSERT(nextGeneralReturnRegNO <= GetCallConvInfo().GetIntReturnRegsNum(),
-                         "RegNo should be pramRegNO");
-        }
-        if (nextGeneralReturnRegNO == kOneRegister) {
-            pLoc.primTypeOfReg0 = retType.GetPrimType() == PTY_agg ? PTY_u64 : retType.GetPrimType();
-        } else if (nextGeneralReturnRegNO == kTwoRegister) {
-            pLoc.primTypeOfReg0 = retType.GetPrimType() == PTY_agg ? PTY_u64 : retType.GetPrimType();
-            pLoc.primTypeOfReg1 = retType.GetPrimType() == PTY_agg ? PTY_u64 : retType.GetPrimType();
-        }
+        CHECK_FATAL((alignedTySize == k4ByteSize) || (alignedTySize == k8ByteSize),
+                    "LocateRetVal: illegal number of regs");
+        pLoc.regCount = kOneRegister;
+        pLoc.reg0 = AllocateGPReturnRegister();
+        DEBUG_ASSERT(nextGeneralReturnRegNO <= GetCallConvInfo().GetIntReturnRegsNum(), "RegNo should be pramRegNO");
+        CHECK_FATAL(nextGeneralReturnRegNO == kOneRegister, "RegNo should be pramRegNO");
+        pLoc.primTypeOfReg0 = retType.GetPrimType() == PTY_agg ? PTY_u64 : retType.GetPrimType();
         return 0;
     } else if (classes[0] == kFloatClass) {
         /* If the class is SSE, the next available vector register of the sequence %xmm0, */
         /* %xmm1 is used. */
-        CHECK_FATAL(alignedTySize <= k16ByteSize, "LocateRetVal: illegal number of regs");
-        if (alignedTySize == k8ByteSize) {
-            pLoc.regCount = 1;
-            pLoc.reg0 = AllocateSIMDFPReturnRegister();
-            DEBUG_ASSERT(nextFloatRetRegNO <= kNumFloatReturnRegs, "RegNo should be pramRegNO");
-        } else if (alignedTySize == k16ByteSize) {
-            CHECK_FATAL(false, "niy");
-        }
-        if (nextFloatRetRegNO == kOneRegister) {
-            pLoc.primTypeOfReg0 = retType.GetPrimType() == PTY_agg ? PTY_f64 : retType.GetPrimType();
-        } else if (nextFloatRetRegNO == kTwoRegister) {
-            CHECK_FATAL(false, "niy");
-        }
-        return 0;
-    }
-    if (pLoc.reg0 == kRinvalid || classes[0] == kMemoryClass) {
-        /*
-         * the caller provides space for the return value and passes
-         * the address of this storage in %rdi as if it were the first
-         * argument to the function. In effect, this address becomes a
-         * “hidden” first argument.
-         * On return %rax will contain the address that has been passed
-         * in by the caller in %rdi.
-         * Currently, this scenario is not fully supported.
-         */
-        pLoc.reg0 = AllocateGPReturnRegister();
+        CHECK_FATAL(alignedTySize == k8ByteSize, "LocateRetVal: illegal number of regs");
+        pLoc.regCount = 1;
+        pLoc.reg0 = AllocateSIMDFPReturnRegister();
+        CHECK_FATAL(nextFloatRetRegNO == kOneRegister, "RegNo should be pramRegNO");
+        pLoc.primTypeOfReg0 = retType.GetPrimType() == PTY_agg ? PTY_f64 : retType.GetPrimType();
         return 0;
     }
     CHECK_FATAL(false, "NYI");

@@ -59,19 +59,6 @@ public:
     void EmitStringPointers();
     void Run(maplebe::CGFunc &cgFunc);
 
-    /* Dwarf debug info */
-    void EmitDIHeaderFileInfo();
-    void UpdateAttrAndEmit(const std::string &sfile, DebugInfo &mirdi, DBGAbbrevEntry &diae, DBGDie &die,
-                           const std::string &spath);
-    void EmitDIDebugInfoSection(maplebe::DebugInfo &mirdi);
-    void EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di);
-    void EmitDwFormRef4(DBGDie &die, const DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di);
-    void EmitDwFormData8(const DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di,
-                         MapleVector<DBGDieAttr *> &attrvec);
-    void EmitDIAttrValue(DBGDie &die, DBGDieAttr &attr, DwAt attrName, DwTag tagName, DebugInfo &di);
-    void EmitDIDebugAbbrevSection(maplebe::DebugInfo &mirdi);
-    void EmitDIDebugStrSection();
-
 private:
     assembler::Assembler &assmbler;
     std::vector<uint32> stringPtr;

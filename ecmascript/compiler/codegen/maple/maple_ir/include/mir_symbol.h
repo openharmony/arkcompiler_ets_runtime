@@ -438,11 +438,6 @@ public:
         value.mirFunc = func;
     }
 
-    bool IsEhIndex() const
-    {
-        return GetName() == "__eh_index__";
-    }
-
     bool HasAddrOfValues() const;
     bool IsLiteral() const;
     bool IsLiteralPtr() const;

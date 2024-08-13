@@ -278,8 +278,6 @@ public:
         return;
     };
 
-    virtual void SetupSecondRetReg(const MIRType &retTy2, CCLocInfo &pLoc) const = 0;
-
     virtual void Init() = 0;
 
     static CallConvKind GetCallConvKind(MIRFunction &mirFunction)
@@ -301,8 +299,6 @@ public:
             return kCCall;
         } else if (node.GetAttr(STMTATTR_webkitjscall)) {
             return kWebKitJS;
-        } else if (node.GetAttr(STMTATTR_ghcall)) {
-            return kGHC;
         } else {
             return kCCall;
         }

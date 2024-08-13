@@ -14,6 +14,7 @@
  */
 
 #include "optimize_common.h"
+#include <fstream>
 #include "cgbb.h"
 #include "cg.h"
 #include "cg_option.h"

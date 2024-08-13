@@ -23,7 +23,6 @@
 #include "intrinsics.h"
 #include "mir_nodes.h"
 #include "mir_type.h"
-#include "mir_scope.h"
 #include "func_desc.h"
 
 #define DEBUGME true
@@ -80,10 +79,7 @@ class EAConnectionGraph;  // circular dependency exists, no other choice
 class MemReferenceTable;
 class MIRFunction {
 public:
-    MIRFunction(MIRModule *mod, StIdx idx) : module(mod), symbolTableIdx(idx)
-    {
-        scope = module->GetMemPool()->New<MIRScope>(mod);
-    }
+    MIRFunction(MIRModule *mod, StIdx idx) : module(mod), symbolTableIdx(idx) {}
 
     ~MIRFunction() = default;
 
@@ -92,7 +88,6 @@ public:
     void DumpUpFormal(int32 indent) const;
     void DumpFrame(int32 indent) const;
     void DumpFuncBody(int32 indent);
-    void DumpScope();
 #endif
 
     const MIRSymbol *GetFuncSymbol() const;
@@ -870,31 +865,6 @@ public:
         infoIsString.push_back(isString);
     }
 
-    MIRScope *GetScope()
-    {
-        return scope;
-    }
-
-    bool NeedEmitAliasInfo() const
-    {
-        return scope->NeedEmitAliasInfo();
-    }
-
-    MapleMap<GStrIdx, MIRAliasVars> &GetAliasVarMap()
-    {
-        return scope->GetAliasVarMap();
-    }
-
-    void SetAliasVarMap(GStrIdx idx, const MIRAliasVars &vars)
-    {
-        scope->SetAliasVarMap(idx, vars);
-    }
-
-    void AddAliasVarMap(GStrIdx idx, const MIRAliasVars &vars)
-    {
-        scope->AddAliasVarMap(idx, vars);
-    }
-
     bool HasVlaOrAlloca() const
     {
         return hasVlaOrAlloca;
@@ -1545,7 +1515,6 @@ private:
     uint32 fileIndex = 0;  // this function belongs to which file, used by VM for plugin manager
     MIRInfoVector info {module->GetMPAllocator().Adapter()};
     MapleVector<bool> infoIsString {module->GetMPAllocator().Adapter()};  // tells if an entry has string value
-    MIRScope *scope = nullptr;
     MapleMap<uint32, uint32> *freqFirstMap = nullptr;  // save bb frequency in its first_stmt, key is stmtId
     MapleMap<uint32, uint32> *freqLastMap = nullptr;   // save bb frequency in its last_stmt, key is stmtId
     MapleSet<uint32> referedPregs {module->GetMPAllocator().Adapter()};

@@ -733,9 +733,6 @@ void RegreadNode::Dump(int32) const
         case -kSregFp:
             LogInfo::MapleLogger() << "FP";
             break;
-        case -kSregGp:
-            LogInfo::MapleLogger() << "GP";
-            break;
         default:
             int32 retValIdx = (-regIdx) - kSregRetval0;
             LogInfo::MapleLogger() << "retval" << retValIdx;
@@ -861,9 +858,6 @@ void RegassignNode::Dump(int32 indent) const
                 break;
             case -kSregFp:
                 LogInfo::MapleLogger() << "FP";
-                break;
-            case -kSregGp:
-                LogInfo::MapleLogger() << "GP";
                 break;
             case -kSregRetval0:
                 LogInfo::MapleLogger() << "retval0";
@@ -1449,9 +1443,6 @@ void BlockNode::Dump(int32 indent, const MIRSymbolTable *theSymTab, MIRPregTable
             }
         }
         LogInfo::MapleLogger() << '\n';
-        if (theMIRModule->CurFunction()->NeedEmitAliasInfo()) {
-            theMIRModule->CurFunction()->DumpScope();
-        }
     }
     srcPosition.DumpLoc(lastPrintedLineNum, lastPrintedColumnNum);
     for (auto &stmt : GetStmtNodes()) {

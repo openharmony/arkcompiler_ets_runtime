@@ -114,8 +114,6 @@ const std::vector<X64reg> floatParmRegs = {
     X64reg::V0, X64reg::V1, X64reg::V2, X64reg::V3, X64reg::V4, X64reg::V5, X64reg::V6, X64reg::V7};
 const std::vector<X64reg> floatReturnRegs = {
     X64reg::V0, X64reg::V1 };
-
-int32 ClassifyAggregate(MIRType &mirType, uint64 sizeOfTy, std::vector<ArgumentClass> &classes) const;
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_END
 
 CALL_CONVENTION_INFO_SUBCLASS_DECLARE_BEGIN(GHCCallConventionInfo)
@@ -174,8 +172,6 @@ public:
             return kCCall;
         } else if (node.GetAttr(STMTATTR_webkitjscall)) {
             return kWebKitJS;
-        } else if (node.GetAttr(STMTATTR_ghcall)) {
-            return kGHC;
         } else {
             return kCCall;
         }
@@ -194,17 +190,6 @@ private:
     {
         const std::vector<X64reg> &intParamRegs = GetCallConvInfo().GetIntParamRegs();
         return (nextGeneralParmRegNO < intParamRegs.size()) ? intParamRegs[nextGeneralParmRegNO++] : X64reg::kRinvalid;
-    }
-
-    void AllocateTwoGPParmRegisters(CCLocInfo &pLoc)
-    {
-        const std::vector<X64reg> &intParamRegs = GetCallConvInfo().GetIntParamRegs();
-        if ((nextGeneralParmRegNO + 1) < intParamRegs.size()) {
-            pLoc.reg0 = intParamRegs[nextGeneralParmRegNO++];
-            pLoc.reg1 = intParamRegs[nextGeneralParmRegNO++];
-        } else {
-            pLoc.reg0 = X64reg::kRinvalid;
-        }
     }
 
     X64reg AllocateSIMDFPRegister()

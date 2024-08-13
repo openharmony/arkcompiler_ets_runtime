@@ -106,6 +106,8 @@ public:
      */
     void UpdateCommonExitBBInfo();
 
+    static bool InSwitchTable(LabelIdx label, const CGFunc &func);
+
     static BB *GetTargetSuc(BB &curBB, bool branchOnly = false, bool isGotoIf = false);
 
     static void FindAndMarkUnreachable(CGFunc &func);

@@ -75,6 +75,18 @@ void CGCFG::BuildCFG()
                 gotoBB->PushBackPreds(*curBB);
                 break;
             }
+            case BB::kBBRangeGoto: {
+                std::set<BB *, BBIdCmp> bbs;
+                for (auto labelIdx : curBB->GetRangeGotoLabelVec()) {
+                    BB *gotoBB = cgFunc->GetBBFromLab2BBMap(labelIdx);
+                    bbs.insert(gotoBB);
+                }
+                for (auto gotoBB : bbs) {
+                    curBB->PushBackSuccs(*gotoBB);
+                    gotoBB->PushBackPreds(*curBB);
+                }
+                break;
+            }
             case BB::kBBFallthru: {
                 BB *fallthruBB = curBB->GetNext();
                 if (fallthruBB != nullptr) {
@@ -235,6 +247,10 @@ void CGCFG::MergeBB(BB &merger, BB &mergee, CGFunc &func)
         }
         func.PushBackNoReturnCallBBsVec(merger);
     }
+    if (mergee.GetKind() == BB::kBBRangeGoto) {
+        func.AddEmitSt(merger.GetId(), *func.GetEmitSt(mergee.GetId()));
+        func.DeleteEmitSt(mergee.GetId());
+    }
 }
 
 void CGCFG::MergeBB(BB &merger, BB &mergee)
@@ -281,7 +297,8 @@ void CGCFG::FindAndMarkUnreachable(CGFunc &func)
     BB *bb = firstBB;
     /* set all bb's unreacable to true */
     while (bb != nullptr) {
-        if (bb == func.GetFirstBB() || bb == func.GetLastBB()) {
+        /* Check if bb is the first or the last BB of the function */
+        if (InSwitchTable(bb->GetLabIdx(), func) || bb == func.GetFirstBB() || bb == func.GetLastBB()) {
             toBeAnalyzedBBs.push(bb);
         } else if (bb->IsLabelTaken() == false) {
             bb->SetUnreachable(true);
@@ -325,7 +342,7 @@ void CGCFG::FlushUnReachableStatusAndRemoveRelations(BB &bb, const CGFunc &func)
     /* Check if bb is the first or the last BB of the function */
     bool isFirstBBInfunc = (&bb == func.GetFirstBB());
     bool isLastBBInfunc = (&bb == func.GetLastBB());
-    if (isFirstBBInfunc || isLastBBInfunc) {
+    if (InSwitchTable(bb.GetLabIdx(), func) || isFirstBBInfunc || isLastBBInfunc) {
         return;
     }
     std::stack<BB *> toBeAnalyzedBBs;
@@ -340,7 +357,8 @@ void CGCFG::FlushUnReachableStatusAndRemoveRelations(BB &bb, const CGFunc &func)
         isFirstBBInfunc = (it == func.GetFirstBB());
         isLastBBInfunc = (it == func.GetLastBB());
         bool needFlush = !isFirstBBInfunc && !isLastBBInfunc && it->GetPreds().empty() &&
-                         !cgFunc->IsExitBB(*it) && (it->IsLabelTaken() == false);
+                         !InSwitchTable(it->GetLabIdx(), *cgFunc) && !cgFunc->IsExitBB(*it) &&
+                         (it->IsLabelTaken() == false);
         if (!needFlush) {
             continue;
         }
@@ -476,6 +494,14 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
     return nullptr;
 }
 
+bool CGCFG::InSwitchTable(LabelIdx label, const CGFunc &func)
+{
+    if (label == 0) {
+        return false;
+    }
+    return func.InSwitchTable(label);
+}
+
 /*
  * analyse the CFG to find the BBs that are not reachable from function entries
  * and delete them
@@ -491,7 +517,8 @@ void CGCFG::UnreachCodeAnalysis() const
     /* set all bb's unreacable to true */
     while (bb != nullptr) {
         /* Check if bb is the firstBB/cleanupBB/returnBB/lastBB of the function */
-        if (bb == cgFunc->GetFirstBB() || bb == cgFunc->GetLastBB() || bb->GetKind() == BB::kBBReturn) {
+        if (InSwitchTable(bb->GetLabIdx(), *cgFunc) || bb == cgFunc->GetFirstBB() ||
+            bb == cgFunc->GetLastBB() || bb->GetKind() == BB::kBBReturn) {
             toBeAnalyzedBBs.push_front(bb);
         } else {
             (void)unreachBBs.insert(bb);

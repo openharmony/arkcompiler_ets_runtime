@@ -166,7 +166,7 @@ static void HandleIassign(StmtNode &stmt, MPISel &iSel)
     if (rhs->GetPrimType() != PTY_agg) {
         iSel.SelectIassign(iassignNode, *opndAddr, *opndRhs);
     } else {
-        iSel.SelectAggIassign(iassignNode, *opndAddr, *opndRhs);
+        CHECK_FATAL(false, "NIY");
     }
 }
 
@@ -211,7 +211,18 @@ static void HandleIntrinCall(StmtNode &stmt, MPISel &iSel)
     iSel.SelectIntrinsicCall(call);
 }
 
-static void HandleReturn(StmtNode &stmt, MPISel &iSel)
+static void HandleRangeGoto(StmtNode &stmt, MPISel &iSel)
+{
+    CGFunc *cgFunc = iSel.GetCurFunc();
+    auto &rangeGotoNode = static_cast<RangeGotoNode &>(stmt);
+    DEBUG_ASSERT(rangeGotoNode.GetOpCode() == OP_rangegoto, "expect rangegoto");
+    BaseNode *srcNode = rangeGotoNode.Opnd(0);
+    Operand *srcOpnd = iSel.HandleExpr(rangeGotoNode, *srcNode);
+    cgFunc->SetCurBBKind(BB::kBBRangeGoto);
+    iSel.SelectRangeGoto(rangeGotoNode, *srcOpnd);
+}
+
+void HandleReturn(StmtNode &stmt, MPISel &iSel)
 {
     CGFunc *cgFunc = iSel.GetCurFunc();
     auto &retNode = static_cast<NaryStmtNode &>(stmt);
@@ -459,6 +470,7 @@ static void InitHandleStmtFactory()
     RegisterFactoryFunction<HandleStmtFactory>(OP_goto, HandleGoto);
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccall, HandleIntrinCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallassigned, HandleIntrinCall);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_rangegoto, HandleRangeGoto);
     RegisterFactoryFunction<HandleStmtFactory>(OP_brfalse, HandleCondbr);
     RegisterFactoryFunction<HandleStmtFactory>(OP_brtrue, HandleCondbr);
 }
@@ -642,8 +654,7 @@ void MPISel::SelectDassign(const DassignNode &stmt, Operand &opndRhs)
     PrimType rhsType = stmt.GetRHS()->GetPrimType();
     /* Generate Insn */
     if (rhsType == PTY_agg) {
-        /* Agg Type */
-        SelectAggDassign(symbolInfo, symbolMem, opndRhs);
+        CHECK_FATAL(false, "NIY");
         return;
     }
     PrimType memType = symbolInfo.primType;
@@ -656,17 +667,6 @@ void MPISel::SelectDassign(const DassignNode &stmt, Operand &opndRhs)
     }
 
     return;
-}
-
-void MPISel::SelectDassignoff(DassignoffNode &stmt, Operand &opnd0)
-{
-    MIRSymbol *symbol = cgFunc->GetFunction().GetLocalOrGlobalSymbol(stmt.stIdx);
-    PrimType primType = stmt.GetPrimType();
-    uint32 bitSize = GetPrimTypeBitSize(primType);
-    DEBUG_ASSERT(symbol != nullptr, "symbol should not be nullptr");
-    MemOperand &memOpnd = GetOrCreateMemOpndFromSymbol(*symbol, bitSize, stmt.offset);
-
-    SelectCopy(memOpnd, opnd0, primType);
 }
 
 void MPISel::SelectIassign(const IassignNode &stmt, Operand &opndAddr, Operand &opndRhs)
@@ -685,23 +685,6 @@ void MPISel::SelectIassign(const IassignNode &stmt, Operand &opndAddr, Operand &
     PrimType rhsType = stmt.GetRHS()->GetPrimType();
     /* mov %R##, (%Rxx) */
     SelectCopy(lhsMemOpnd, opndRhs, memType, rhsType);
-}
-
-void MPISel::SelectIassignoff(const IassignoffNode &stmt)
-{
-    Operand *addr = HandleExpr(stmt, *stmt.Opnd(0));
-    DEBUG_ASSERT(addr != nullptr, "null ptr check");
-    Operand *rhs = HandleExpr(stmt, *stmt.Opnd(1));
-    DEBUG_ASSERT(rhs != nullptr, "null ptr check");
-
-    int32 offset = stmt.GetOffset();
-    PrimType primType = stmt.GetPrimType();
-    uint32 bitSize = GetPrimTypeBitSize(primType);
-    RegOperand &addrReg = SelectCopy2Reg(*addr, PTY_a64);
-    RegOperand &rhsReg = SelectCopy2Reg(*rhs, primType);
-
-    MemOperand &memOpnd = cgFunc->GetOpndBuilder()->CreateMem(addrReg, offset, bitSize);
-    SelectCopy(memOpnd, rhsReg, primType);
 }
 
 ImmOperand *MPISel::SelectIntConst(const MIRIntConst &intConst, PrimType primType)
@@ -1193,58 +1176,6 @@ Operand *MPISel::SelectIread(const BaseNode &parent, const IreadNode &expr, int 
     return &result;
 }
 
-static inline uint64 CreateDepositBitsImm1(uint32 primBitSize, uint8 bitOffset, uint8 bitSize)
-{
-    /* $imm1 = 1(primBitSize - bitSize - bitOffset)0(bitSize)1(bitOffset) */
-    uint64 val = UINT64_MAX;  // 0xFFFFFFFFFFFFFFFF
-    if (bitSize + bitOffset >= primBitSize) {
-        val = 0;
-    } else {
-        val <<= (bitSize + bitOffset);
-    }
-    val |= (static_cast<uint64>(1) << bitOffset) - 1;
-    return val;
-}
-
-Operand *MPISel::SelectDepositBits(const DepositbitsNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
-{
-    uint8 bitOffset = node.GetBitsOffset();
-    uint8 bitSize = node.GetBitsSize();
-    PrimType primType = node.GetPrimType();
-    uint32 primBitSize = GetPrimTypeBitSize(primType);
-    DEBUG_ASSERT((primBitSize == k64BitSize) || (bitOffset < k32BitSize), "wrong bitSize");
-    DEBUG_ASSERT(bitSize < k64BitSize, "wrong bitSize");
-
-    RegOperand &resOpnd = cgFunc->GetOpndBuilder()->CreateVReg(primBitSize, cgFunc->GetRegTyFromPrimTy(primType));
-    /*
-     * resOpnd = (opnd0 and $imm1) or ((opnd1 << bitOffset) and (~$imm1));
-     * $imm1 = 1(primBitSize - bitSize - bitOffset)0(bitSize)1(bitOffset)
-     */
-    uint64 imm1Val = CreateDepositBitsImm1(primBitSize, bitOffset, bitSize);
-    ImmOperand &imm1Opnd = cgFunc->GetOpndBuilder()->CreateImm(primBitSize, static_cast<int64>(imm1Val));
-    /* and */
-    SelectBand(resOpnd, opnd0, imm1Opnd, primType);
-    if (opnd1.IsIntImmediate()) {
-        /* opnd1 is immediate, imm2 = (opnd1.val << bitOffset) & (~$imm1) */
-        int64 imm2Val = (static_cast<ImmOperand &>(opnd1).GetValue() << bitOffset) & (~imm1Val);
-        ImmOperand &imm2Opnd = cgFunc->GetOpndBuilder()->CreateImm(primBitSize, imm2Val);
-        /* or */
-        SelectBior(resOpnd, resOpnd, imm2Opnd, primType);
-    } else {
-        RegOperand &tmpOpnd = cgFunc->GetOpndBuilder()->CreateVReg(primBitSize, cgFunc->GetRegTyFromPrimTy(primType));
-        SelectCopy(tmpOpnd, opnd1, primType, node.Opnd(1)->GetPrimType());
-        /* shift -- (opnd1 << bitOffset) */
-        ImmOperand &countOpnd = cgFunc->GetOpndBuilder()->CreateImm(primBitSize, bitOffset);
-        SelectShift(tmpOpnd, tmpOpnd, countOpnd, OP_shl, primType, primType);
-        /* and (~$imm1) */
-        ImmOperand &nonImm1Opnd = cgFunc->GetOpndBuilder()->CreateImm(primBitSize, (~imm1Val));
-        SelectBand(tmpOpnd, tmpOpnd, nonImm1Opnd, primType);
-        /* or */
-        SelectBior(resOpnd, resOpnd, tmpOpnd, primType);
-    }
-    return &resOpnd;
-}
-
 Operand *MPISel::SelectAbs(UnaryNode &node, Operand &opnd0)
 {
     PrimType primType = node.GetPrimType();
@@ -1288,38 +1219,6 @@ Operand *MPISel::SelectAbs(UnaryNode &node, Operand &opnd0)
         SelectSub(resOpnd, tmpOpnd, regOpndy, primType);
         return &resOpnd;
     }
-}
-
-Operand *MPISel::SelectAlloca(UnaryNode &node, Operand &opnd0)
-{
-    DEBUG_ASSERT(node.GetPrimType() == PTY_a64, "wrong type");
-    PrimType srcType = node.Opnd(0)->GetPrimType();
-    RegOperand &sizeOpnd =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(PTY_u64), cgFunc->GetRegTyFromPrimTy(PTY_u64));
-    SelectCopy(sizeOpnd, opnd0, PTY_u64, srcType);
-
-    /* stack byte alignment */
-    uint32 stackPtrAlignment = cgFunc->GetMemlayout()->GetStackPtrAlignment();
-    RegOperand &aliOp =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(PTY_u64), cgFunc->GetRegTyFromPrimTy(PTY_u64));
-    CHECK_FATAL(stackPtrAlignment > 0, "must not be zero");
-    SelectAdd(aliOp, sizeOpnd, cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, stackPtrAlignment - 1), PTY_u64);
-    ImmOperand &shiftOpnd = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, __builtin_ctz(stackPtrAlignment));
-    SelectShift(aliOp, aliOp, shiftOpnd, OP_lshr, PTY_u64, PTY_u64);
-    SelectShift(aliOp, aliOp, shiftOpnd, OP_shl, PTY_u64, PTY_u64);
-
-    RegOperand &spOpnd = GetTargetStackPointer(PTY_u64);
-    SelectSub(spOpnd, spOpnd, aliOp, PTY_u64);
-
-    RegOperand &resOpnd =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(PTY_u64), cgFunc->GetRegTyFromPrimTy(PTY_u64));
-    uint32 argsToStkpassSize = cgFunc->GetMemlayout()->SizeOfArgsToStackPass();
-    if (argsToStkpassSize > 0) {
-        SelectAdd(resOpnd, spOpnd, cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, argsToStkpassSize), PTY_u64);
-    } else {
-        SelectCopy(resOpnd, spOpnd, PTY_u64);
-    }
-    return &resOpnd;
 }
 
 StmtNode *MPISel::HandleFuncEntry()

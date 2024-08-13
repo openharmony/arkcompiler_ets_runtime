@@ -46,8 +46,6 @@ public:
 
     void LocateRetVal(const MIRType &retType, CCLocInfo &ploc) override;
 
-    void SetupSecondRetReg(const MIRType &retTy2, CCLocInfo &pLoc) const override;
-
     void SetupToReturnThroughMemory(CCLocInfo &pLoc) const
     {
         pLoc.regCount = 1;
@@ -81,8 +79,6 @@ private:
         return (nextFloatRegNO < AArch64Abi::kNumFloatParmRegs) ? AArch64Abi::floatParmRegs[nextFloatRegNO++]
                                                                 : kRinvalid;
     }
-
-    uint64 AllocateRegisterForAgg(const MIRType &mirType, CCLocInfo &pLoc, uint64 size, uint64 &align);
 };
 
 class AArch64WebKitJSCC : public CCImpl {
@@ -99,9 +95,6 @@ public:
 
     /*  return value related  */
     void InitReturnInfo(MIRType &retTy, CCLocInfo &pLoc);
-
-    // invalid interface
-    void SetupSecondRetReg(const MIRType &retTy2, CCLocInfo &pLoc) const override;
 
     void Init() override
     {
@@ -150,76 +143,6 @@ private:
                    : kRinvalid;
     }
 };
-
-class GHCCC : public CCImpl {
-public:
-    explicit GHCCC(BECommon &be) : CCImpl(), beCommon(be) {}
-
-    ~GHCCC() = default;
-
-    /* Return size of aggregate structure copy on stack. */
-    uint64 LocateNextParm(const MIRType &mirType, CCLocInfo &pLoc, bool isFirst = false,
-                          MIRFuncType *func = nullptr) override;
-
-    void LocateRetVal(const MIRType &retType, CCLocInfo &ploc) override;
-
-    /*  return value related  */
-    void InitReturnInfo(MIRType &retTy, CCLocInfo &pLoc);
-
-    // invalid interface
-    void SetupSecondRetReg(const MIRType &retTy2, CCLocInfo &pLoc) const override;
-
-    void Init() override
-    {
-        nextGeneralRegNO = 0;
-        nextFloatRegNOF32 = 0;
-        nextFloatRegNOF64 = 0;
-        nextFloatRegNOF128 = 0;
-        nextStackArgAdress = 0;
-    }
-
-private:
-    BECommon &beCommon;
-    int32 nextGeneralRegNO = 0; /* number of integer parameters processed so far */
-    uint32 nextFloatRegNOF32 = 0;
-    uint32 nextFloatRegNOF64 = 0;
-    uint32 nextFloatRegNOF128 = 0;
-    static constexpr int32 kNumIntParmRegs = 8;
-    static constexpr int32 kNumFloatParmRegsF32 = 4;
-    static constexpr int32 kNumFloatParmRegsF64 = 4;
-    static constexpr int32 kNumFloatParmRegsF128 = 2;
-    static constexpr AArch64reg intParmRegs[kNumIntParmRegs] = {R19, R20, R21, R22, R23, R24, R25, R26};
-    static constexpr AArch64reg floatParmRegsF32[kNumFloatParmRegsF32] = {V8, V9, V10, V11};
-    static constexpr AArch64reg floatParmRegsF64[kNumFloatParmRegsF64] = {V12, V13, V14, V15};
-    static constexpr AArch64reg floatParmRegsF128[kNumFloatParmRegsF128] = {V4, V5};
-
-    int32 ClassificationArg(const BECommon &be, const MIRType &mirType, std::vector<ArgumentClass> &classes) const;
-
-    AArch64reg AllocateGPParmRegister()
-    {
-        DEBUG_ASSERT(nextGeneralRegNO >= 0, "nextGeneralRegNO can not be neg");
-        return (nextGeneralRegNO < GHCCC::kNumIntParmRegs) ? GHCCC::intParmRegs[nextGeneralRegNO++] : kRinvalid;
-    }
-
-    AArch64reg AllocateSIMDFPParmRegisterF32()
-    {
-        return (nextFloatRegNOF32 < GHCCC::kNumFloatParmRegsF32) ? GHCCC::floatParmRegsF32[nextFloatRegNOF32++]
-                                                                 : kRinvalid;
-    }
-
-    AArch64reg AllocateSIMDFPParmRegisterF64()
-    {
-        return (nextFloatRegNOF64 < GHCCC::kNumFloatParmRegsF64) ? GHCCC::floatParmRegsF64[nextFloatRegNOF64++]
-                                                                 : kRinvalid;
-    }
-
-    AArch64reg AllocateSIMDFPParmRegisterF128()
-    {
-        return (nextFloatRegNOF128 < GHCCC::kNumFloatParmRegsF128) ? GHCCC::floatParmRegsF128[nextFloatRegNOF128++]
-                                                                   : kRinvalid;
-    }
-};
-
 } /* namespace maplebe */
 
 #endif /* MAPLEBE_INCLUDE_CG_AARCH64_AARCH64_CALL_CONV_H */

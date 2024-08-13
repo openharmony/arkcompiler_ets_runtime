@@ -738,16 +738,6 @@ public:
         eaSummary[funcNameIdx] = eaCg;
     }
 
-    DebugInfo *GetDbgInfo() const
-    {
-        return dbgInfo;
-    }
-
-    void SetWithDbgInfo(bool v)
-    {
-        withDbgInfo = v;
-    }
-
     bool IsWithDbgInfo() const
     {
         return withDbgInfo;
@@ -861,7 +851,6 @@ private:
     TyIdx throwableTyIdx {0};
     bool withProfileInfo = false;
 
-    DebugInfo *dbgInfo = nullptr;
     bool withDbgInfo = false;
     bool inIPA = false;
     bool withMe = true;

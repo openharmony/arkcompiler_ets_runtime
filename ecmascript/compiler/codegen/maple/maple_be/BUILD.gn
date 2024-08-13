@@ -121,7 +121,6 @@ src_libcgx8664 = [
   "src/cg/x86_64/x64_abi.cpp",
   "src/cg/x86_64/x64_call_conv.cpp",
   "src/cg/x86_64/x64_standardize.cpp",
-  "src/cg/x86_64/x64_live.cpp",
   "src/cg/x86_64/x64_reg_info.cpp",
   "src/cg/x86_64/x64_proepilog.cpp",
   "src/cg/x86_64/x64_args.cpp",

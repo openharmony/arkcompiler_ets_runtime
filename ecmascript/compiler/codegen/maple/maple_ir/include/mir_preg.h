@@ -28,12 +28,11 @@ extern void PrintIndentation(int32 indent);
 enum SpecialReg : signed int {
     kSregSp = 1,
     kSregFp = 2,
-    kSregGp = 3,
-    kSregRetval0 = 6,
-    kSregRetval1 = 7,
-    kSregRetval2 = 8,
-    kSregRetval3 = 9,
-    kSregLast = 10,
+    kSregRetval0 = 3,
+    kSregRetval1 = 4,
+    kSregRetval2 = 5,
+    kSregRetval3 = 6,
+    kSregLast = 7,
 };
 #if MIR_FEATURE_FULL
 class MIRPreg {
@@ -125,7 +124,6 @@ public:
         specPregTable[0].SetPregNo(0);
         specPregTable[kSregSp].SetPregNo(-kSregSp);
         specPregTable[kSregFp].SetPregNo(-kSregFp);
-        specPregTable[kSregGp].SetPregNo(-kSregGp);
         specPregTable[kSregRetval0].SetPregNo(-kSregRetval0);
         specPregTable[kSregRetval1].SetPregNo(-kSregRetval1);
         for (uint32 i = 0; i < kSregLast; ++i) {

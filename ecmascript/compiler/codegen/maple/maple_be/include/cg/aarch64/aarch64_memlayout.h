@@ -206,8 +206,6 @@ public:
     uint64 GetSizeOfColdToStk() const;
     bool IsSegMentVaried(const MemSegment *seg) const;
     int32 GetRefLocBaseLoc() const;
-    int32 GetGRSaveAreaBaseLoc() const;
-    int32 GetVRSaveAreaBaseLoc() const;
     int32 GetCalleeSaveBaseLoc() const override;
 
 private:

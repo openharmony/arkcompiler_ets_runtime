@@ -36,7 +36,7 @@ LiteCG::LiteCG(Module &mirModule, const std::vector<std::string> &litecgOptions)
     cgOptions = &CGOptions::GetInstance();
     if (!litecgOptions.empty()) {
         maplecl::CommandLine::GetCommandLine().Parse(litecgOptions, cgCategory);
-        cgOptions->SolveOptions(false);
+        cgOptions->SolveOptions();
     }
     cgOptions->EnableLiteCG();
     cgOptions->SetOption(CGOptions::kDoCg);

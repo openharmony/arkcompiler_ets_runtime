@@ -86,6 +86,7 @@ public:
         kBBGoto,     /* unconditional branch */
         kBBReturn,
         kBBNoReturn,
+        kBBRangeGoto,
         kBBLast
     };
 

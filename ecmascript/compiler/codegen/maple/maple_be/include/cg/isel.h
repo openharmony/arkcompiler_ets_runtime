@@ -45,9 +45,7 @@ public:
     Operand *HandleExpr(const BaseNode &parent, BaseNode &expr);
 
     void SelectDassign(const DassignNode &stmt, Operand &opndRhs);
-    void SelectDassignoff(DassignoffNode &stmt, Operand &opnd0);
     void SelectIassign(const IassignNode &stmt, Operand &opndAddr, Operand &opndRhs);
-    void SelectIassignoff(const IassignoffNode &stmt);
     RegOperand *SelectRegread(RegreadNode &expr);
     void SelectRegassign(RegassignNode &stmt, Operand &opnd0);
     Operand *SelectDread(const BaseNode &parent, const AddrofNode &expr);
@@ -57,9 +55,7 @@ public:
     Operand *SelectNeg(const UnaryNode &node, Operand &opnd0, const BaseNode &parent);
     Operand *SelectCvt(const BaseNode &parent, const TypeCvtNode &node, Operand &opnd0);
     Operand *SelectExtractbits(const BaseNode &parent, const ExtractbitsNode &node, Operand &opnd0);
-    Operand *SelectDepositBits(const DepositbitsNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
     virtual Operand *SelectAbs(UnaryNode &node, Operand &opnd0);
-    Operand *SelectAlloca(UnaryNode &node, Operand &opnd0);
     ImmOperand *SelectIntConst(const MIRIntConst &intConst, PrimType primType);
     void SelectCallCommon(StmtNode &stmt, const MPISel &iSel);
     void SelectAdd(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
@@ -70,19 +66,12 @@ public:
     void SelectBand(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
     virtual void SelectReturn(NaryStmtNode &retNode, Operand &opnd) = 0;
     virtual void SelectReturn() = 0;
-    virtual void SelectIntAggCopyReturn(MemOperand &symbolMem, uint64 aggSize) = 0;
-    virtual void SelectAggIassign(IassignNode &stmt, Operand &AddrOpnd, Operand &opndRhs) = 0;
-    virtual void SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize) = 0;
     virtual void SelectGoto(GotoNode &stmt) = 0;
     virtual void SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOpnd) = 0;
     virtual void SelectCall(CallNode &callNode) = 0;
     virtual void SelectIcall(IcallNode &icallNode) = 0;
     virtual void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) = 0;
-    virtual Operand *SelectBswap(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual Operand *SelectFloatingConst(MIRConst &floatingConst, PrimType primType) const = 0;
-    virtual Operand *SelectAddrof(AddrofNode &expr, const BaseNode &parent) = 0;
-    virtual Operand *SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &parent) = 0;
-    virtual Operand *SelectAddrofLabel(AddroflabelNode &expr, const BaseNode &parent) = 0;
     virtual Operand &ProcessReturnReg(PrimType primType, int32 sReg) = 0;
     virtual void SelectCondGoto(CondGotoNode &stmt, BaseNode &condNode, Operand &opnd0) = 0;
     Operand *SelectBior(const BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
@@ -96,8 +85,6 @@ public:
                                   const BaseNode &parent) = 0;
     virtual Operand *SelectCclz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual Operand *SelectCctz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
-    virtual Operand *SelectCexp(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
-    virtual void SelectAggDassign(MirTypeInfo &lhsInfo, MemOperand &symbolMem, Operand &opndRhs) = 0;
     Operand *SelectBnot(const UnaryNode &node, Operand &opnd0, const BaseNode &parent);
     virtual Operand *SelectLnot(const UnaryNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     Operand *SelectMin(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
@@ -153,7 +140,6 @@ private:
     StmtNode *HandleFuncEntry();
     void HandleFuncExit();
     void SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPType, Operand &opndRhs);
-    void SelectDassignStruct(MIRSymbol &symbol, MemOperand &symbolMem, Operand &opndRhs);
     virtual MemOperand &GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, FieldID fieldId = 0) const = 0;
     virtual MemOperand &GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, uint32 opndSize, int64 offset) const = 0;
     virtual Operand &GetTargetRetOperand(PrimType primType, int32 sReg) = 0;
