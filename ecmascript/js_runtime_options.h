@@ -200,6 +200,7 @@ enum CommandValues {
     OPTION_ENABLE_AOT_CRASH_ESCAPE,
     OPTION_COMPILER_ENABLE_JIT_FAST_COMPILE,
     OPTION_COMPILER_BASELINE_PGO,
+    OPTION_SPLIT_TWO,
     OPTION_ASYNC_LOAD_ABC,
     OPTION_ASYNC_LOAD_ABC_TEST,
     OPTION_PGO_TRACE,
@@ -208,6 +209,7 @@ enum CommandValues {
     OPTION_OPEN_ARK_TOOLS,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
+static_assert(OPTION_SPLIT_TWO == 128); // add new option at the bottom, DO NOT modify this value
 
 class PUBLIC_API JSRuntimeOptions {
 public:
@@ -1911,8 +1913,10 @@ private:
     {
         if (option < OPTION_SPLIT_ONE) {
             wasSetPartOne_ |= (1ULL << static_cast<uint64_t>(option));
-        } else {
+        } else if (option < OPTION_SPLIT_TWO) {
             wasSetPartTwo_ |= (1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_ONE));
+        } else {
+            wasSetPartThree_ |= (1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_TWO));
         }
     }
 
@@ -1920,9 +1924,10 @@ private:
     {
         if (option < OPTION_SPLIT_ONE) {
             return ((1ULL << static_cast<uint64_t>(option)) & wasSetPartOne_) != 0;
+        } else if (option < OPTION_SPLIT_TWO) {
+            return ((1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_ONE)) & wasSetPartTwo_) != 0;
         }
-
-        return ((1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_ONE)) & wasSetPartTwo_) != 0;
+        return ((1ULL << static_cast<uint64_t>(option - OPTION_SPLIT_TWO)) & wasSetPartThree_) != 0;
     }
 
     bool ParseBoolParam(bool* argBool);
@@ -2007,6 +2012,7 @@ private:
     uint32_t compilerModuleMethods_ {100};
     uint64_t wasSetPartOne_ {0};
     uint64_t wasSetPartTwo_ {0};
+    uint64_t wasSetPartThree_ {0};
     bool enableContext_ {false};
     bool enablePrintExecuteTime_ {false};
     bool enablePGOProfiler_ {false};
