@@ -574,6 +574,7 @@ BlockNode *CGLowerer::LowerIntrinsiccallAassignedToAssignStmt(IntrinsiccallNode 
     } else {
         auto fieldID = regFieldPair.GetFieldID();
         auto stIdx = returnPair->first;
+        DEBUG_ASSERT(mirModule.CurFunction()->GetLocalOrGlobalSymbol(stIdx) != nullptr, "nullptr check");
         auto *type = mirModule.CurFunction()->GetLocalOrGlobalSymbol(stIdx)->GetType();
         auto intrinsicOp = builder->CreateExprIntrinsicop(intrinsicID, OP_intrinsicop, *type, opndVector);
         auto dAssign = builder->CreateStmtDassign(stIdx, fieldID, intrinsicOp);

@@ -480,6 +480,7 @@ BlockNode *MIRLower::LowerDoloopStmt(DoloopNode &doloop)
         blk->AddStatement(endRegassign);
     } else {
         const MIRSymbol *doVarSym = mirModule.CurFunction()->GetLocalOrGlobalSymbol(doloop.GetDoVarStIdx());
+        DEBUG_ASSERT(doVarSym != nullptr, "nullptr check");
         PrimType doVarPType = doVarSym->GetType()->GetPrimType();
         auto *readDovar =
             mirModule.CurFuncCodeMemPool()->New<DreadNode>(OP_dread, doVarPType, doloop.GetDoVarStIdx(), 0);
@@ -643,7 +644,8 @@ void MIRLower::LowerCandCior(BlockNode &block)
     do {
         StmtNode *stmt = nextStmt;
         nextStmt = stmt->GetNext();
-        if (stmt->IsCondBr() && (stmt->Opnd(0)->GetOpCode() == OP_cand || stmt->Opnd(0)->GetOpCode() == OP_cior)) {
+        if (stmt->IsCondBr() && (stmt->Opnd(0) != nullptr &&
+           (stmt->Opnd(0)->GetOpCode() == OP_cand || stmt->Opnd(0)->GetOpCode() == OP_cior))) {
             CondGotoNode *condGoto = static_cast<CondGotoNode *>(stmt);
             BinaryNode *cond = static_cast<BinaryNode *>(condGoto->Opnd(0));
             if ((stmt->GetOpCode() == OP_brfalse && cond->GetOpCode() == OP_cand) ||

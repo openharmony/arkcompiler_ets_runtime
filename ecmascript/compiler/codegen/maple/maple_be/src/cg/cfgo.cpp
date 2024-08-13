@@ -582,6 +582,7 @@ bool CgCfgo::PhaseRun(maplebe::CGFunc &f)
     auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
     CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f, *loopInfo);
     if (f.IsAfterRegAlloc()) {
+        DEBUG_ASSERT(cfgOptimizer != nullptr, "nullptr check");
         cfgOptimizer->SetPhase(kCfgoPostRegAlloc);
     }
     const std::string &funcClass = f.GetFunction().GetBaseClassName();
