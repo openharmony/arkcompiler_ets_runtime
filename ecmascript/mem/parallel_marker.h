@@ -140,10 +140,10 @@ protected:
 
     inline uintptr_t AllocateDstSpace(uint32_t threadId, size_t size, bool &shouldPromote);
     inline void UpdateForwardAddressIfSuccess(uint32_t threadId, TaggedObject *object, JSHClass *klass,
-                                              uintptr_t toAddress, size_t size, const MarkWord &markWord,
-                                              ObjectSlot slot, bool isPromoted = false);
+                                              uintptr_t toAddress, size_t size, ObjectSlot slot,
+                                              bool isPromoted = false);
     inline bool UpdateForwardAddressIfFailed(TaggedObject *object, uintptr_t toAddress, size_t size, ObjectSlot slot);
-
+    inline void RawCopyObject(uintptr_t fromAddress, uintptr_t toAddress, size_t size, const MarkWord &markWord);
     inline void UpdateLocalToShareRSet(TaggedObject *object, JSHClass *cls);
 
     inline void SetLocalToShareRSet(ObjectSlot slot, Region *region);

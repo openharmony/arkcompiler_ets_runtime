@@ -127,8 +127,8 @@ protected:
     inline uintptr_t AllocateForwardAddress(uint32_t threadId, size_t size);
     inline void EvacuateObject(uint32_t threadId, TaggedObject *object, const MarkWord &markWord, ObjectSlot slot);
     inline uintptr_t AllocateDstSpace(uint32_t threadId, size_t size);
-    inline void UpdateForwardAddressIfSuccess(uint32_t threadId, TaggedObject *object, JSHClass *klass,
-                                              uintptr_t toAddress, size_t size, const MarkWord &markWord,
+    inline void RawCopyObject(uintptr_t fromAddress, uintptr_t toAddress, size_t size, const MarkWord &markWord);
+    inline void UpdateForwardAddressIfSuccess(uint32_t threadId, JSHClass *klass, uintptr_t toAddress, size_t size,
                                               ObjectSlot slot);
     inline void UpdateForwardAddressIfFailed(TaggedObject *object, uintptr_t toAddress, size_t size, ObjectSlot slot);
 
