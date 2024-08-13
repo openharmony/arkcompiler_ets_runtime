@@ -220,3 +220,7 @@ SendableArray ...from_arr1: 0,1,2,3
 Create from SendableArray with non-sendable array error failed. err: BusinessError: Parameter error.Only accept sendable value., code: 401
 Start Test fromArrayConstructorTest
 a,b,c
+defineProperty to array success
+defineProperty to array failed. err: BusinessError: Key out of length.
+defineProperty to array success
+defineProperty to array failed. err: BusinessError: Key out of length.
