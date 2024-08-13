@@ -466,6 +466,8 @@ class ObjectFactory;
     V(IntegerString,                  INTEGER_STRING_INDEX,                  "integer")                     \
     V(NanString,                      NAN_STRING_INDEX,                      "nan")                         \
     V(InfinityString,                 INFINITY_STRING_INDEX,                 "infinity")                    \
+    V(InfinityCapitalString,          INFINITY_CAP_STRING_INDEX,             "Infinity")                    \
+    V(MinusInfinityCapitalString,     MINUS_INFINITY_CAP_STRING_INDEX,       "-Infinity")                   \
     V(FractionString,                 FRACTION_STRING_INDEX,                 "fraction")                    \
     V(DecimalString,                  DECIMAL_STRING_INDEX,                  "decimal")                     \
     V(GroupString,                    GROUP_STRING_INDEX,                    "group")                       \
