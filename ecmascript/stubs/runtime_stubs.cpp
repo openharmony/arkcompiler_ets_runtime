@@ -1903,11 +1903,27 @@ DEF_RUNTIME_STUBS(LdLocalModuleVarByIndex)
     return RuntimeLdLocalModuleVar(thread, index.GetInt()).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(LdLocalModuleVarByIndexWithModule)
+{
+    RUNTIME_STUBS_HEADER(LdLocalModuleVarByIndexWithModule);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeLdLocalModuleVarWithModule(thread, index.GetInt(), module).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(LdExternalModuleVarByIndex)
 {
     RUNTIME_STUBS_HEADER(LdExternalModuleVarByIndex);
     JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeLdExternalModuleVar(thread, index.GetInt()).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(LdExternalModuleVarByIndexWithModule)
+{
+    RUNTIME_STUBS_HEADER(LdExternalModuleVarByIndexWithModule);
+    JSTaggedValue index = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> module = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    return RuntimeLdExternalModuleVarWithModule(thread, index.GetInt(), module).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(LdSendableExternalModuleVarByIndex)

@@ -421,6 +421,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef IsJSGlobalObject(GateRef obj);
     GateRef IsNativeModuleFailureInfo(GateRef obj);
     GateRef IsModuleNamespace(GateRef obj);
+    GateRef IsSourceTextModule(GateRef obj);
     GateRef ObjIsSpecialContainer(GateRef obj);
     GateRef IsJSPrimitiveRef(GateRef obj);
     GateRef IsJSFunctionBase(GateRef obj);
@@ -763,6 +764,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
     GateRef GetSendableEnvFromModule(GateRef module);
+    GateRef IsSendableFunctionModule(GateRef module);
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
                                  MemoryAttribute mAttr = MemoryAttribute::Default());
@@ -983,7 +985,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
                          GateRef hir = Circuit::NullGate());
     void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
                                              GateRef profileTypeInfo, GateRef slotId);
-
+    GateRef Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module);
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode Op>

@@ -3959,8 +3959,9 @@ DECLARE_ASM_HANDLER(HandleLdlocalmodulevarImm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst8_0(pc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { Int8ToTaggedInt(index) });
-    varAcc = moduleRef;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    varAcc = Loadlocalmodulevar(glue, index, module);
     DISPATCH_WITH_ACC(LDLOCALMODULEVAR_IMM8);
 }
 
@@ -3969,8 +3970,9 @@ DECLARE_ASM_HANDLER(HandleWideLdlocalmodulevarPrefImm16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst16_1(pc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndex), { Int16ToTaggedInt(index) });
-    varAcc = moduleRef;
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    varAcc = Loadlocalmodulevar(glue, index, module);
     DISPATCH_WITH_ACC(WIDE_LDLOCALMODULEVAR_PREF_IMM16);
 }
 
@@ -3979,7 +3981,10 @@ DECLARE_ASM_HANDLER(HandleLdexternalmodulevarImm8)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst8_0(pc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { Int8ToTaggedInt(index) });
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
+                                    {Int8ToTaggedInt(index), module});
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(LDEXTERNALMODULEVAR_IMM8);
 }
@@ -3989,7 +3994,10 @@ DECLARE_ASM_HANDLER(HandleWideLdexternalmodulevarPrefImm16)
     DEFVARIABLE(varAcc, VariableType::JS_ANY(), acc);
 
     GateRef index = ReadInst16_1(pc);
-    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndex), { Int16ToTaggedInt(index) });
+    GateRef currentFunc = GetFunctionFromFrame(GetFrame(sp));
+    GateRef module = GetModuleFromFunction(currentFunc);
+    GateRef moduleRef = CallRuntime(glue, RTSTUB_ID(LdExternalModuleVarByIndexWithModule),
+                                    {Int16ToTaggedInt(index), module});
     varAcc = moduleRef;
     DISPATCH_WITH_ACC(WIDE_LDEXTERNALMODULEVAR_PREF_IMM16);
 }

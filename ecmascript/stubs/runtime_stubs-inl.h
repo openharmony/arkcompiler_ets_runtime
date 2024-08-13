@@ -1372,6 +1372,18 @@ JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t in
     return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(index);
 }
 
+inline JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVarWithModule(JSThread* thread, int32_t index,
+    JSHandle<JSTaggedValue> moduleHdl)
+{
+    JSTaggedValue module = moduleHdl.GetTaggedValue();
+    ModuleManager* mmgr = thread->GetCurrentEcmaContext()->GetModuleManager();
+    if (SourceTextModule::IsSendableFunctionModule(module)) {
+        const CString recordNameStr = SourceTextModule::GetModuleName(module);
+        module = mmgr->HostGetImportedModule(recordNameStr).GetTaggedValue();
+    }
+    return SourceTextModule::Cast(module)->GetModuleValue(thread, index, false);
+}
+
 JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
 {
     return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueInner(index, jsFunc);
@@ -1380,6 +1392,19 @@ JSTaggedValue RuntimeStubs::RuntimeLdLocalModuleVar(JSThread *thread, int32_t in
 JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVar(JSThread *thread, int32_t index)
 {
     return thread->GetCurrentEcmaContext()->GetModuleManager()->GetModuleValueOutter(index);
+}
+
+inline JSTaggedValue RuntimeStubs::RuntimeLdExternalModuleVarWithModule(JSThread* thread, int32_t index,
+    JSHandle<JSTaggedValue> moduleHdl)
+{
+    JSTaggedValue module = moduleHdl.GetTaggedValue();
+    ModuleManager* mmgr = thread->GetCurrentEcmaContext()->GetModuleManager();
+    if (SourceTextModule::IsSendableFunctionModule(module)) {
+        const CString recordNameStr = SourceTextModule::GetModuleName(module);
+        module = mmgr->HostGetImportedModule(recordNameStr).GetTaggedValue();
+        moduleHdl = JSHandle<JSTaggedValue>(thread, module);
+    }
+    return mmgr->GetModuleValueOutter(index, moduleHdl);
 }
 
 JSTaggedValue RuntimeStubs::RuntimeLdSendableExternalModuleVar(JSThread *thread, int32_t index, JSTaggedValue jsFunc)
