@@ -47,6 +47,8 @@ public:
     static bool IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key);
     // ecma6 7.3 Operations on Objects
     static JSHandle<JSArray> CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements);
+    static JSHandle<JSArray> CreateArrayFromList(JSThread *thread, const JSHandle<JSTaggedValue> &newtarget,
+                                                 const JSHandle<TaggedArray> &elements);
     // use first inlined property slot for array length
     inline uint32_t GetArrayLength() const
     {

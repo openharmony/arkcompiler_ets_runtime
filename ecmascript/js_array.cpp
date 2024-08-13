@@ -430,6 +430,29 @@ JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<
     return arr;
 }
 
+// used for array contructor with (...items)
+JSHandle<JSArray> JSArray::CreateArrayFromList(JSThread *thread, const JSHandle<JSTaggedValue> &newtarget,
+                                               const JSHandle<TaggedArray> &elements)
+{
+    // Assert: elements is a List whose elements are all ECMAScript language values.
+    uint32_t length = elements->GetLength();
+
+    // create arr object
+    auto env = thread->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> arrayFunc(env->GetArrayFunction());
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(arrayFunc, newtarget);
+    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
+    obj->GetJSHClass()->SetExtensible(true);
+
+    // set elements with initItems
+    JSHandle<JSArray> arr(obj);
+    arr->SetArrayLength(thread, length);
+    obj->SetElements(thread, elements);
+
+    return arr;
+}
+
 JSHandle<JSTaggedValue> JSArray::FastGetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                                         uint32_t index)
 {
