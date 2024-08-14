@@ -277,11 +277,12 @@
     {                                                                                             \
         ASSERT(argv);                                                                             \
         JSThread *thread = argv->GetThread();                                                     \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                     \
         JSHandle<JSTaggedValue> msg = GetThis(argv);                                              \
         if (!msg->IsDate()) {                                                                     \
             THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception()); \
         }                                                                                         \
-        JSHandle<JSDate> jsDate(thread, JSDate::Cast(msg->GetTaggedObject()));                    \
+        JSHandle<JSDate> jsDate(msg);                                                             \
         JSTaggedValue result = jsDate->SetDateValue(argv, code, isLocal);                         \
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);                                            \
         jsDate->SetTimeValue(thread, result);                                                     \
@@ -294,6 +295,7 @@
     {                                                                                             \
         ASSERT(argv);                                                                             \
         JSThread *thread = argv->GetThread();                                                     \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                     \
         JSHandle<JSTaggedValue> msg = GetThis(argv);                                              \
         if (!msg->IsDate()) {                                                                     \
             THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception()); \
@@ -310,6 +312,7 @@
     {                                                                                                              \
         ASSERT(argv);                                                                                              \
         JSThread *thread = argv->GetThread();                                                                      \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                                      \
         JSHandle<JSTaggedValue> msg = GetThis(argv);                                                               \
         if (!msg->IsDate()) {                                                                                      \
             THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());                  \
@@ -326,11 +329,12 @@
     {                                                                                             \
         ASSERT(argv);                                                                             \
         JSThread *thread = argv->GetThread();                                                     \
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);                                     \
         JSHandle<JSTaggedValue> msg = GetThis(argv);                                              \
         if (!msg->IsDate()) {                                                                     \
             THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception()); \
         }                                                                                         \
-        JSHandle<JSDate> jsDate(thread, JSDate::Cast(msg->GetTaggedObject()));                    \
+        JSHandle<JSDate> jsDate(msg);                                                             \
         double result = jsDate->GetDateValue(jsDate->GetTimeValue().GetDouble(), code, isLocal);  \
         return GetTaggedDouble(result);                                                           \
     }
