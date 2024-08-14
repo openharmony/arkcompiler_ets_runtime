@@ -31,7 +31,6 @@
 #pragma clang diagnostic ignored "-Wshadow"
 #pragma clang diagnostic ignored "-Wunused-parameter"
 #endif
-#include "fp_unwinder.h"
 #if defined(__clang__)
 #pragma clang diagnostic pop
 #endif

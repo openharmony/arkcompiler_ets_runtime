@@ -16,16 +16,6 @@
 #include <sys/time.h>
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/interpreter/frame_handler.h"
-#include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/ohos/aot_runtime_info.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"

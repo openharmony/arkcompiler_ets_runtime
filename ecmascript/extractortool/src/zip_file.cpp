@@ -16,12 +16,8 @@
 #include "zip_file.h"
 
 #include <ostream>
-
-#include "file_mapper.h"
-#include "file_path_utils.h"
 #include "securec.h"
 #include "zip_file_reader.h"
-#include "zlib.h"
 
 namespace panda {
 namespace ecmascript {

@@ -15,11 +15,8 @@
 
 #include "ecmascript/shared_objects/js_shared_map_iterator.h"
 
-#include "ecmascript/builtins/builtins_errors.h"
-#include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_map.h"
 

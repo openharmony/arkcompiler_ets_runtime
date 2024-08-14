@@ -16,14 +16,9 @@
 
 #include <cmath>
 
-#include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
-#include "ecmascript/frames.h"
-#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 
 namespace panda::ecmascript {

@@ -15,13 +15,8 @@
 
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
-#include "ecmascript/object_factory.h"
-#include "index_accessor.h"
-
 namespace panda::ecmascript::kungfu {
 void PGOTypeManager::Iterate(const RootVisitor &v)
 {

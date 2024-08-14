@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/dfx/tracing/tracing.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 
 namespace panda::ecmascript {

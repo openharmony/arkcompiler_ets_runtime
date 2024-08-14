@@ -15,9 +15,6 @@
 
 #include "ecmascript/compiler/aot_file/elf_builder.h"
 
-#include "ecmascript/ecma_macros.h"
-#include "securec.h"
-
 namespace panda::ecmascript {
 void ElfBuilder::AddShStrTabSection()
 {

@@ -15,8 +15,6 @@
 #include <map>
 
 #include "ecmascript/stackmap/ark_stackmap_builder.h"
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/compiler/assembler/assembler.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
 #include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"

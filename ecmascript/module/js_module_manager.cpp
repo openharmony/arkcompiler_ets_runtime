@@ -14,27 +14,16 @@
  */
 #include "ecmascript/module/js_module_manager.h"
 
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/interpreter/frame_handler.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/js_module_deregister.h"
-#include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_data_extractor.h"
-#include "ecmascript/module/module_logger.h"
 #include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/require/js_cjs_module.h"
-#include "ecmascript/tagged_dictionary.h"
 #ifdef PANDA_TARGET_WINDOWS
 #include <algorithm>
 #endif

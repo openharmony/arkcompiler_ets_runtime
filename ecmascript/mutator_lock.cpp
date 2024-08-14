@@ -13,10 +13,8 @@
  * limitations under the License.
  */
  
-#include "ecmascript/platform/mutex.h"
 #include "ecmascript/mutator_lock.h"
 #include "ecmascript/js_thread.h"
-#include "js_thread.h"
 
 namespace panda::ecmascript {
 #ifndef NDEBUG

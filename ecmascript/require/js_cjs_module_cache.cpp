@@ -15,10 +15,6 @@
 
 #include "ecmascript/require/js_cjs_module_cache.h"
 
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/tagged_hash_table.h"
-
 namespace panda::ecmascript {
 JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsentAndReset(const JSThread *thread,
                                                              const JSHandle<CjsModuleCache> &dictionary,

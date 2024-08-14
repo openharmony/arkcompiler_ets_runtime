@@ -16,38 +16,12 @@
 
 #include <utility>
 
-#include "ecmascript/base/config.h"
-#include "ecmascript/base/file_header.h"
-#include "ecmascript/common.h"
-#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
-#include "ecmascript/compiler/aot_file/elf_builder.h"
-#include "ecmascript/compiler/aot_file/elf_reader.h"
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
-#include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
-#include "ecmascript/compiler/bc_call_signature.h"
-#include "ecmascript/compiler/call_signature.h"
-#include "ecmascript/compiler/common_stub_csigns.h"
-#include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/deoptimizer/deoptimizer.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_file_path.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_runtime_options.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/jspandafile/constpool_value.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/log.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/region.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/napi/include/jsnapi_expo.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/ohos/ohos_preload_app_info.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_parser.h"
-#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
 namespace panda::ecmascript {
 using CommonStubCSigns = kungfu::CommonStubCSigns;

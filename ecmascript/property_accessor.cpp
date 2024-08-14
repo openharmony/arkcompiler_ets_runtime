@@ -16,8 +16,6 @@
 #include "ecmascript/property_accessor.h"
 
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 PropertyAccessor::PropertyAccessor(JSThread *thread, JSHandle<JSTaggedValue> object)

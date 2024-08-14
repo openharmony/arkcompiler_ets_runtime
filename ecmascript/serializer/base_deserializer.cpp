@@ -15,20 +15,12 @@
 
 #include "ecmascript/serializer/base_deserializer.h"
 
-#include "ecmascript/ecma_string_table.h"
-#include "ecmascript/ecma_vm.h"
+
 #include "ecmascript/free_object.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_regexp.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/mem/mem.h"
-#include "ecmascript/mem/sparse_space.h"
-#include "ecmascript/platform/mutex.h"
-#include "ecmascript/runtime.h"
-#include "ecmascript/runtime_lock.h"
-#include "ecmascript/shared_mm/shared_mm.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {

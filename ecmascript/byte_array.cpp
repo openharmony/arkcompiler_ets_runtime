@@ -16,7 +16,6 @@
 #include "ecmascript/byte_array.h"
 
 #include "ecmascript/builtins/builtins_arraybuffer.h"
-#include "ecmascript/mem/tagged_object-inl.h"
 
 namespace panda::ecmascript {
 void ByteArray::Set(JSThread* thread, uint32_t idx, DataViewType type, JSTaggedType val, uint32_t offset)

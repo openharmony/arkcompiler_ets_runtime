@@ -16,12 +16,8 @@
 
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
-#include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/module/js_shared_module.h"
-#include "ecmascript/module/module_logger.h"
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 JSTaggedValue ModuleManagerHelper::GetModuleValue(JSThread *thread, JSHandle<SourceTextModule> module, int index)

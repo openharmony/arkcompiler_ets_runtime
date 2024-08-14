@@ -16,8 +16,6 @@
 #include "ecmascript/ic/invoke_cache.h"
 #include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/tagged_array-inl.h"
 
 
 namespace panda::ecmascript {

@@ -20,7 +20,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "ecmascript/platform/directory.h"
 #include "ecmascript/platform/file.h"
 
 #include "os/filesystem.h"

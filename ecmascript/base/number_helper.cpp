@@ -23,15 +23,11 @@
 #include <sstream>
 #include <sys/time.h>
 
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/dtoa_helper.h"
 #include "ecmascript/base/string_helper.h"
 #include "ecmascript/builtins/builtins_number.h"
-#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::base {
 using NumberToStringResultCache = builtins::NumberToStringResultCache;

@@ -19,8 +19,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/mem.h"
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {

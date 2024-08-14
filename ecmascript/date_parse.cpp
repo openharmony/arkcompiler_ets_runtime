@@ -15,8 +15,6 @@
 
 #include "ecmascript/date_parse.h"
 
-#include "ecmascript/platform/time.h"
-
 namespace panda::ecmascript {
 bool DateParse::ParseDateString(const char *str, int length, int *time)
 {

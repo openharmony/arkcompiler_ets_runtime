@@ -20,12 +20,8 @@
 #include <climits>
 #include <fstream>
 
-#include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/frames.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/taskpool/taskpool.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "c/executor_task.h"

@@ -15,8 +15,6 @@
 
 #include "ecmascript/platform/mutex.h"
 
-#include "ecmascript/log_wrapper.h"
-
 #include <cstring>
 #include <ctime>
 

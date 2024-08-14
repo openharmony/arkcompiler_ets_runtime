@@ -15,14 +15,6 @@
 
 #include "ecmascript/regexp/regexp_executor.h"
 
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/dyn_chunk.h"
-#include "ecmascript/regexp/regexp_opcode.h"
-#include "securec.h"
-
 namespace panda::ecmascript {
 using RegExpState = RegExpExecutor::RegExpState;
 using RegExpGlobalResult = builtins::RegExpGlobalResult;

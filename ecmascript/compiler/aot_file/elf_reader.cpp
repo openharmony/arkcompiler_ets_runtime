@@ -15,10 +15,6 @@
 
 #include "ecmascript/compiler/aot_file/elf_reader.h"
 
-#include "ecmascript/base/file_header.h"
-#include "ecmascript/ecma_macros.h"
-#include "securec.h"
-
 namespace panda::ecmascript {
 bool ElfReader::VerifyELFHeader(uint32_t version, bool strictMatch)
 {

@@ -15,8 +15,6 @@
 
 #include "ecmascript/dfx/hprof/heap_root_visitor.h"
 
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {

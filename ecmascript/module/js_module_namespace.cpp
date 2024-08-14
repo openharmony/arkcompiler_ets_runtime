@@ -16,15 +16,10 @@
 #include "ecmascript/module/js_module_namespace.h"
 
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/module/module_manager_helper.h"
 #include "ecmascript/module/js_module_deregister.h"
-#include "ecmascript/module/js_module_record.h"
-#include "ecmascript/module/js_module_source_text.h"
 #include "ecmascript/module/js_shared_module_manager.h"
-#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {

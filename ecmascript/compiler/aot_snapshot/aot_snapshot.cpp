@@ -15,13 +15,8 @@
 
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot.h"
 
-#include "ecmascript/common.h"
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript::kungfu {
 void AOTSnapshot::InitSnapshot(uint32_t compileFilesCount)

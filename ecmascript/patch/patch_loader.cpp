@@ -14,16 +14,7 @@
  */
 #include "ecmascript/patch/patch_loader.h"
 
-#include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/compiler/bc_call_signature.h"
-#include "ecmascript/global_handle_collection.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/literal_data_extractor.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/mem/c_string.h"
-#include "ecmascript/module/js_shared_module.h"
-#include "ecmascript/napi/include/jsnapi.h"
 
 namespace panda::ecmascript {
 PatchErrorCode PatchLoader::LoadPatchInternal(JSThread *thread, const JSPandaFile *baseFile,

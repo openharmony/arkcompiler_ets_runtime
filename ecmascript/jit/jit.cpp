@@ -15,15 +15,8 @@
 
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jit/jit_task.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/platform/mutex.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
-#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/ohos/jit_tools.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript {
 void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
