@@ -733,7 +733,7 @@ JSTaggedValue BuiltinsGlobal::LoadNativeModule(EcmaRuntimeCallInfo *msg)
     auto [moduleName, fileName] = vm->GetCurrentModuleInfo(false);
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     CString requestPath = ModulePathHelper::Utf8ConvertToString(input.GetTaggedValue());
-    CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleName.c_str());
+    CString abcFilePath = fileName.c_str();
     if (moduleName.size() != 0) {
         curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath);
         if (curJsPandaFile == nullptr) {
