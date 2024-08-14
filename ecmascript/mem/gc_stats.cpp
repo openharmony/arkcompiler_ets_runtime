@@ -218,8 +218,6 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Mark]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("MarkRoots:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::MarkRoots]) << "ms\n"
-                         << STATS_DESCRIPTION_FORMAT("ProcessMarkStack:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessMarkStack]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("Sweep:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("Finish:")
@@ -240,8 +238,6 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ConcurrentMark]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("WaitConcurrentMarkFinish:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::WaitConcurrentMarkFinished]) << "ms\n"
-                         << STATS_DESCRIPTION_FORMAT("ProcessMarkStack:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessMarkStack]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("ReMark:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ReMark]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("ProcessSharedGCRSetWorkList:")
@@ -280,8 +276,6 @@ void GCStats::PrintGCDurationStatistic()
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Mark]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("MarkRoots:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::MarkRoots]) << "ms\n"
-                         << STATS_DESCRIPTION_FORMAT("ProcessMarkStack:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::ProcessMarkStack]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("Sweep:")
                          << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
                          << STATS_DESCRIPTION_FORMAT("Finish:")

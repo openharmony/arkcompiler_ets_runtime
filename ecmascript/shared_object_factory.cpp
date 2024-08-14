@@ -49,7 +49,7 @@ void ObjectFactory::NewSObjectHook() const
     if (count++ % frequency == 0) {
         if (count % (CONCURRENT_MARK_FREQUENCY_FACTOR * frequency) == 0) {
             sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
-        } else {
+        } else if (sHeap_->CheckCanTriggerConcurrentMarking(thread_)) {
             sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread_);
         }
         if (!ecmascript::AnFileDataManager::GetInstance()->IsEnable()) {
