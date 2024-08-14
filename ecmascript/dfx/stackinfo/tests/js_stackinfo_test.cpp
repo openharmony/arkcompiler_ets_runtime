@@ -15,6 +15,10 @@
 
 #include <cstdio>
 
+#include "assembler/assembly-emitter.h"
+#include "assembler/assembly-parser.h"
+#include "libpandafile/class_data_accessor-inl.h"
+#include "libziparchive/zip_archive.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/tests/test_helper.h"
 
@@ -49,129 +53,353 @@ public:
     JSThread *thread {nullptr};
 };
 
-HWTEST_F_L0(JsStackInfoTest, FrameCheckTest)
+uintptr_t ToUintPtr(FrameType frame)
 {
-    uintptr_t frame[22];
-    frame[0] = reinterpret_cast<uintptr_t>(FrameType::OPTIMIZED_FRAME);
-    frame[1] = reinterpret_cast<uintptr_t>(FrameType::OPTIMIZED_ENTRY_FRAME);
-    frame[2] = reinterpret_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
-    frame[3] = reinterpret_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME);
-    frame[4] = reinterpret_cast<uintptr_t>(FrameType::ASM_BRIDGE_FRAME);
-    frame[5] = reinterpret_cast<uintptr_t>(FrameType::LEAVE_FRAME);
-    frame[6] = reinterpret_cast<uintptr_t>(FrameType::LEAVE_FRAME_WITH_ARGV);
-    frame[7] = reinterpret_cast<uintptr_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME);
-    frame[8] = reinterpret_cast<uintptr_t>(FrameType::INTERPRETER_FRAME);
-    frame[9] = reinterpret_cast<uintptr_t>(FrameType::ASM_INTERPRETER_FRAME);
-    frame[10] = reinterpret_cast<uintptr_t>(FrameType::INTERPRETER_CONSTRUCTOR_FRAME);
-    frame[11] = reinterpret_cast<uintptr_t>(FrameType::BUILTIN_FRAME);
-    frame[12] = reinterpret_cast<uintptr_t>(FrameType::BUILTIN_FRAME_WITH_ARGV);
-    frame[13] = reinterpret_cast<uintptr_t>(FrameType::BUILTIN_ENTRY_FRAME);
-    frame[14] = reinterpret_cast<uintptr_t>(FrameType::INTERPRETER_BUILTIN_FRAME);
-    frame[15] = reinterpret_cast<uintptr_t>(FrameType::INTERPRETER_FAST_NEW_FRAME);
-    frame[16] = reinterpret_cast<uintptr_t>(FrameType::INTERPRETER_ENTRY_FRAME);
-    frame[17] = reinterpret_cast<uintptr_t>(FrameType::ASM_INTERPRETER_ENTRY_FRAME);
-    frame[18] = reinterpret_cast<uintptr_t>(FrameType::ASM_INTERPRETER_BRIDGE_FRAME);
-    frame[19] = reinterpret_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME);
-    frame[20] = reinterpret_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME);
-    frame[21] = reinterpret_cast<uintptr_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME);
+    return static_cast<uintptr_t>(frame);
+}
 
-    for (int i = 0; i < 22; i++) {
-        bool ret1 = ArkFrameCheck(frame[i]);
-        if (i == 1 || i == 17) {
-            EXPECT_TRUE(ret1 == true);
+/**
+ * @tc.name: ArkFrameCheck
+ * @tc.desc: Check whether the result returned through "ArkFrameCheck" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestArkFrameCheck)
+{
+    for (uintptr_t i = 0; i < 25; i++) {
+        bool ret = ArkFrameCheck(i);
+        if (i == ToUintPtr(FrameType::OPTIMIZED_ENTRY_FRAME) ||
+            i == ToUintPtr(FrameType::ASM_INTERPRETER_ENTRY_FRAME)) {
+            EXPECT_TRUE(ret == true);
         } else {
-            EXPECT_TRUE(ret1 == false);
-        }
-        bool ret2 = IsFunctionFrame(frame[i]);
-        if (i == 2 || i == 3 || i == 8 || i == 9 || i == 10 || i == 15) {
-            EXPECT_TRUE(ret2 == true);
-        } else {
-            EXPECT_TRUE(ret2 == false);
+            EXPECT_TRUE(ret == false);
         }
     }
 }
 
-HWTEST_F_L0(JsStackInfoTest, TranslateByteCodePc)
+/**
+ * @tc.name: IsJsFunctionFrame
+ * @tc.desc: Check whether the result returned through "IsJsFunctionFrame" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestIsJsFunctionFrame)
 {
-    std::vector<MethodInfo> vec = {
+    for (uintptr_t i = 0; i < 25; i++) {
+        bool ret = IsJsFunctionFrame(i);
+        if (i == ToUintPtr(FrameType::ASM_INTERPRETER_FRAME) ||
+            i == ToUintPtr(FrameType::INTERPRETER_CONSTRUCTOR_FRAME) ||
+            i == ToUintPtr(FrameType::INTERPRETER_FRAME) ||
+            i == ToUintPtr(FrameType::INTERPRETER_FAST_NEW_FRAME)) {
+            EXPECT_TRUE(ret == true);
+        } else {
+            EXPECT_TRUE(ret == false);
+        }
+    }
+}
+
+/**
+ * @tc.name: IsFastJitFunctionFrame
+ * @tc.desc: Check whether the result returned through "IsFastJitFunctionFrame" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestIsFastJitFunctionFrame)
+{
+    for (uintptr_t i = 0; i < 25; i++) {
+        bool ret = IsFastJitFunctionFrame(i);
+        if (i == ToUintPtr(FrameType::FASTJIT_FUNCTION_FRAME) ||
+            i == ToUintPtr(FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME)) {
+            EXPECT_TRUE(ret == true);
+        } else {
+            EXPECT_TRUE(ret == false);
+        }
+    }
+}
+
+/**
+ * @tc.name: IsNativeFunctionFrame
+ * @tc.desc: Check whether the result returned through "IsNativeFunctionFrame" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestIsNativeFunctionFrame)
+{
+    for (uintptr_t i = 0; i < 25; i++) {
+        bool ret = IsNativeFunctionFrame(i);
+        if (i == ToUintPtr(FrameType::OPTIMIZED_FRAME) ||
+            i == ToUintPtr(FrameType::BASELINE_BUILTIN_FRAME) ||
+            i == ToUintPtr(FrameType::ASM_BRIDGE_FRAME) ||
+            i == ToUintPtr(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME) ||
+            i == ToUintPtr(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME) ||
+            i == ToUintPtr(FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME) ||
+            i == ToUintPtr(FrameType::OPTIMIZED_JS_FUNCTION_FRAME) ||
+            i == ToUintPtr(FrameType::LEAVE_FRAME) ||
+            i == ToUintPtr(FrameType::LEAVE_FRAME_WITH_ARGV) ||
+            i == ToUintPtr(FrameType::BUILTIN_CALL_LEAVE_FRAME) ||
+            i == ToUintPtr(FrameType::BUILTIN_FRAME) ||
+            i == ToUintPtr(FrameType::BUILTIN_ENTRY_FRAME) ||
+            i == ToUintPtr(FrameType::BUILTIN_FRAME_WITH_ARGV) ||
+            i == ToUintPtr(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME) ||
+            i == ToUintPtr(FrameType::ASM_INTERPRETER_BRIDGE_FRAME)) {
+            EXPECT_TRUE(ret == true);
+        } else {
+            EXPECT_TRUE(ret == false);
+        }
+    }
+}
+
+/**
+ * @tc.name: IsAotFunctionFrame
+ * @tc.desc: Check whether the result returned through "IsAotFunctionFrame" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestIsAotFunctionFrame)
+{
+    for (uintptr_t i = 0; i < 25; i++) {
+        bool ret = IsAotFunctionFrame(i);
+        if (i == ToUintPtr(FrameType::OPTIMIZED_JS_FUNCTION_FRAME) ||
+            i == ToUintPtr(FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME)) {
+            EXPECT_TRUE(ret == true);
+        } else {
+            EXPECT_TRUE(ret == false);
+        }
+    }
+}
+
+/**
+ * @tc.name: ReadMethodInfo
+ * @tc.desc: Check whether the result returned through "ReadMethodInfo" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestReadMethodInfo)
+{
+    const char *filename = "__JSPandaFileManagerTest1.pa";
+    const char *data = R"(
+        .function void foo() {
+            return
+        }
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(data);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename));
+    EXPECT_TRUE(jsPandaFile != nullptr);
+    CVector<MethodInfo> result;
+    const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    Span<const uint32_t> classIndexes = jsPandaFile->GetClasses();
+    for (const uint32_t index : classIndexes) {
+        panda_file::File::EntityId classId(index);
+        if (jsPandaFile->IsExternal(classId)) {
+            continue;
+        }
+        panda_file::ClassDataAccessor cda(*pf, classId);
+        cda.EnumerateMethods([&result, jsPandaFile](panda_file::MethodDataAccessor &mda) {
+            auto info = JSStackTrace::ReadMethodInfo(mda);
+            if (!info) {
+                return;
+            }
+            result.push_back(info.value());
+        });
+    }
+    EXPECT_TRUE(result.size() > 0);
+}
+
+/**
+ * @tc.name: ReadAllMethodInfos
+ * @tc.desc: Check whether the result returned through "ReadAllMethodInfos" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestReadAllMethodInfos)
+{
+    const char *filename = "__JsStackInfoTest.pa";
+    const char *data = R"(
+        .function void foo() {
+            return
+        }
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(data);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    auto pf = std::make_shared<JSPandaFile>(file.release(), CString(filename));
+    EXPECT_TRUE(pf != nullptr);
+    auto methods = JSStackTrace::ReadAllMethodInfos(pf);
+    EXPECT_TRUE(methods.size() > 0);
+    pf = nullptr;
+    methods = JSStackTrace::ReadAllMethodInfos(pf);
+    EXPECT_TRUE(methods.size() == 0);
+}
+
+/**
+ * @tc.name: TranslateByteCodePc
+ * @tc.desc: Check whether the result returned through "TranslateByteCodePc" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestTranslateByteCodePc)
+{
+    CVector<MethodInfo> vec = {
         {0, 0, 24},
         {1, 24, 30},
         {2, 54, 56},
-        {3, 120, 60}
+        {3, 110, 60}
     };
     uintptr_t realPc = 115;
 
-    auto ret = TranslateByteCodePc(realPc, vec);
+    auto ret = JSStackTrace::TranslateByteCodePc(realPc, vec);
     EXPECT_TRUE(ret != std::nullopt);
 
     vec.clear();
-    ret = TranslateByteCodePc(realPc, vec);
+    ret = JSStackTrace::TranslateByteCodePc(realPc, vec);
     EXPECT_TRUE(ret == std::nullopt);
 
     vec.push_back({2, 54, 56});
-    ret = TranslateByteCodePc(realPc, vec);
-    EXPECT_TRUE(ret != std::nullopt);
+    ret = JSStackTrace::TranslateByteCodePc(realPc, vec);
+    EXPECT_TRUE(ret == std::nullopt);
 }
 
-HWTEST_F_L0(JsStackInfoTest, GetArkNativeFrameInfo)
+/**
+ * @tc.name: ParseJsFrameInfo
+ * @tc.desc: Check whether the result returned through "ParseJsFrameInfo" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestParseJsFrameInfo)
 {
-    if (sizeof(uintptr_t) == sizeof(uint32_t)) {  // 32 bit
-        // The frame structure is different between 32 bit and 64 bit.
-        // Skip 32 bit because there is no ArkJS Heap.
-        return;
-    }
-
-    uintptr_t pc = 0;
-    uintptr_t fp = 0;
-    uintptr_t sp = 0;
-    size_t size = 22;
-    JsFrame jsFrame[22];
-    bool ret = GetArkNativeFrameInfo(getpid(), &pc, &fp, &sp, &jsFrame, &size);
-    EXPECT_FALSE(ret);
-    EXPECT_TRUE(size == 22);
-
-    pc = 1234;
-    fp = 62480;
-    sp = 62496;
-    bool ret = GetArkNativeFrameInfo(getpid(), &pc, &fp, &sp, &jsFrame, &size);
-    EXPECT_FALSE(ret);
-    EXPECT_TRUE(size == 22);
-
-    JSTaggedType frame1[3];  // 3: size of ASM_INTERPRETER_ENTRY_FRAME
-    frame1[0] = pc;  // 0: pc
-    frame1[1] = 62480;  // 1: base.prev
-    frame1[2] = static_cast<JSTaggedType>(FrameType::ASM_INTERPRETER_ENTRY_FRAME);  // 2: base.type
-    uintptr_t fp_frame1 = reinterpret_cast<uintptr_t>(&frame3[3]);  // 3: bottom of frame
-
-    JSTaggedType frame2[9];  // 9: size of AsmInterpretedFrame
-    frame2[0] = JSTaggedValue::Hole().GetRawData();  // 0: function
-    frame2[1] = JSTaggedValue::Hole().GetRawData();  // 1: thisObj
-    frame2[2] = JSTaggedValue::Hole().GetRawData();  // 2: acc
-    frame2[3] = JSTaggedValue::Hole().GetRawData();  // 3: env
-    frame2[4] = static_cast<JSTaggedType>(0);  // 4: callSize
-    frame2[5] = static_cast<JSTaggedType>(0);  // 5: fp
-    frame2[6] = reinterpret_cast<JSTaggedType>(&bytecode[2]);  // 6: pc
-    frame2[7] = fp_frame1;  // 7: base.prev
-    frame2[8] = static_cast<JSTaggedType>(FrameType::ASM_INTERPRETER_FRAME);  // 8: base.type
-    uintptr_t fp_frame2 = reinterpret_cast<uintptr_t>(&frame[9]);  // 9: bottom of frame
-
-    JSTaggedType frame3[6];  // 6: size of BUILTIN_FRAME
-    frame3[0] = JSTaggedValue::Hole().GetRawData();  // 0: stackArgs
-    frame3[1] = JSTaggedValue::Hole().GetRawData();  // 1:numArgs
-    frame3[2] = JSTaggedValue::Hole().GetRawData();  // 2: thread
-    frame3[3] = JSTaggedValue::Hole().GetRawData();  // 3: returnAddr
-    frame3[4] = fp_frame2;  // 4: prevFp
-    frame3[5] = static_cast<JSTaggedType>(FrameType::BUILTIN_FRAME);  // 5: type
-    uintptr_t fp_frame3 = reinterpret_cast<uintptr_t>(&frame1[6]);  // 6: bottom of frame
-    fp = fp_frame3;
-    bool ret = GetArkNativeFrameInfo(getpid(), &pc, &fp, &sp, &jsFrame, &size);
-    EXPECT_TRUE(ret);
-    EXPECT_TRUE(sp = &fp_frame1);
-    EXPECT_TRUE(pc = 1234);
-    EXPECT_TRUE(fp = 62480);
+    const char *filename = "__JsStackInfoTest.pa";
+    const char *data = R"(
+        .function void foo() {
+            return
+        }
+    )";
+    pandasm::Parser parser;
+    auto res = parser.Parse(data);
+    auto file = pandasm::AsmEmitter::Emit(res.Value());
+    auto jsPandaFile = std::make_shared<JSPandaFile>(file.release(), CString(filename));
+    EXPECT_TRUE(jsPandaFile != nullptr);
+    auto debugExtractor = std::make_unique<DebugInfoExtractor>(jsPandaFile.get());
+    auto methods = JSStackTrace::ReadAllMethodInfos(jsPandaFile);
+    uintptr_t offset = 0;
+    JsFunction jsFunction;
+    ParseJsFrameInfo(jsPandaFile.get(), debugExtractor.get(), EntityId(methods[0].methodId), offset, jsFunction);
+    EXPECT_TRUE(std::string(jsFunction.functionName) == "foo");
 }
 
-HWTEST_F_L0(JsStackInfoTest, BuildJsStackInfo)
+/**
+ * @tc.name: ArkParseJsFrameInfo
+ * @tc.desc: Check whether the result returned through "ArkCreateJSSymbolExtractor" function is within expectations;
+ *           Check whether the result returned through "ArkParseJsFrameInfo" function is within expectations;
+ *           Check whether the result returned through "ArkDestoryJSSymbolExtractor" function is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestArkParseJsFrameInfo)
+{
+    const char *filename1 = "__JsStackInfoTest1.pa";
+    const char *filename2 = "__JsStackInfoTest2.pa";
+    const char *pfdata1 = R"(
+        .function void foo() {
+            return
+        }
+    )";
+    const char *pfdata2 = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    pandasm::Parser parser1;
+    pandasm::Parser parser2;
+    auto res1 = parser1.Parse(pfdata1);
+    auto res2 = parser2.Parse(pfdata2);
+    auto file1 = pandasm::AsmEmitter::Emit(res1.Value());
+    auto file2 = pandasm::AsmEmitter::Emit(res2.Value());
+    auto jsPandaFile1 = std::make_shared<JSPandaFile>(file1.release(), CString(filename1));
+    auto jsPandaFile2 = std::make_shared<JSPandaFile>(file2.release(), CString(filename2));
+    EXPECT_TRUE(jsPandaFile1 != nullptr);
+    EXPECT_TRUE(jsPandaFile2 != nullptr);
+    auto debugExtractor1 = std::make_unique<DebugInfoExtractor>(jsPandaFile1.get());
+    auto debugExtractor2 = std::make_unique<DebugInfoExtractor>(jsPandaFile2.get());
+    auto methods1 = JSStackTrace::ReadAllMethodInfos(jsPandaFile1);
+    auto methods2 = JSStackTrace::ReadAllMethodInfos(jsPandaFile2);
+
+    uintptr_t byteCodePc1 = methods1[0].codeBegin;
+    uintptr_t byteCodePc2 = methods2[0].codeBegin;
+    uintptr_t methodId1 = methods1[0].methodId;
+    uintptr_t methodId2 = methods2[0].methodId;
+    uintptr_t mapBase1 = reinterpret_cast<uintptr_t>(jsPandaFile1->GetHeader());
+    uintptr_t mapBase2 = reinterpret_cast<uintptr_t>(jsPandaFile2->GetHeader());
+    uintptr_t loadOffset1 = 0;
+    uintptr_t loadOffset2 = 0;
+    const uint8_t* data1 = jsPandaFile1->GetPandaFile()->GetBase();
+    const uint8_t* data2 = jsPandaFile2->GetPandaFile()->GetBase();
+    uint64_t dataSize1 = jsPandaFile1->GetFileSize();
+    uint64_t dataSize2 = jsPandaFile2->GetFileSize();
+    uintptr_t extractorptr1 = 0;
+    uintptr_t extractorptr2 = 0;
+    JsFunction jsFunction1;
+    JsFunction jsFunction2;
+
+    auto ret = ark_create_js_symbol_extractor(&extractorptr1);
+    EXPECT_TRUE(ret == 1);
+    EXPECT_TRUE(extractorptr1 != 0);
+    ret = ark_create_js_symbol_extractor(&extractorptr2);
+    EXPECT_TRUE(ret == 1);
+    EXPECT_TRUE(extractorptr2 != 0);
+
+    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+        reinterpret_cast<uint8_t *>(const_cast<char*>(pfdata1)),
+        strlen(pfdata1) + 1, extractorptr1, &jsFunction1);
+    EXPECT_TRUE(ret == -1);
+
+    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+        const_cast<uint8_t*>(data1), dataSize1, extractorptr1, &jsFunction1);
+    EXPECT_TRUE(ret == 1);
+    EXPECT_TRUE(std::string(jsFunction1.functionName) == "foo");
+
+    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+        const_cast<uint8_t*>(data1), dataSize1 + 1, 0, &jsFunction1);
+    EXPECT_TRUE(ret == -1);
+
+    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+        nullptr, 0, extractorptr1, &jsFunction1);
+    EXPECT_TRUE(ret == -1);
+
+    ret = ark_parse_js_frame_info(byteCodePc1, methodId1, mapBase1, loadOffset1,
+        const_cast<uint8_t*>(data2), dataSize2, extractorptr2, &jsFunction1);
+    EXPECT_TRUE(ret == -1);
+
+    ret = ark_parse_js_frame_info(byteCodePc2, methodId1, mapBase1, loadOffset1,
+        const_cast<uint8_t*>(data2), dataSize2, extractorptr2, &jsFunction1);
+    EXPECT_TRUE(ret == -1);
+
+    ret = ark_parse_js_frame_info(byteCodePc2, methodId2, mapBase1, loadOffset1,
+        const_cast<uint8_t*>(data2), dataSize2, extractorptr2, &jsFunction1);
+    EXPECT_TRUE(ret == -1);
+
+    ret = ark_parse_js_frame_info(byteCodePc2, methodId2, mapBase2, loadOffset2,
+        const_cast<uint8_t*>(data2), dataSize2, extractorptr2, &jsFunction2);
+    EXPECT_TRUE(ret == 1);
+    EXPECT_TRUE(std::string(jsFunction2.functionName) == "func_main_0");
+
+    ret = ark_destory_js_symbol_extractor(extractorptr1);
+    EXPECT_TRUE(ret == 1);
+
+    ret = ark_destory_js_symbol_extractor(extractorptr2);
+    EXPECT_TRUE(ret == 1);
+}
+
+/**
+ * @tc.name: BuildJsStackInfo
+ * @tc.desc: Check whether the result returned through "BuildJsStackInfo" function is within expectations;
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo)
 {
     auto jsFrame = JsStackInfo::BuildJsStackInfo(thread);
     EXPECT_TRUE(jsFrame.empty());
