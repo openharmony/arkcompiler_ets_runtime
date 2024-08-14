@@ -1268,6 +1268,7 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                 } else {
                     return false;
                 }
+                break;
             default:
                 LOG_ECMA(ERROR) << "Invalid option\n";
                 return false;
