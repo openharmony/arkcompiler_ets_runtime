@@ -24,6 +24,9 @@ using namespace panda::ecmascript::base;
 namespace panda::test {
 class AsonParserTest : public BaseTestWithScope<false> {
 public:
+    using BigIntMode = base::JsonHelper::BigIntMode;
+    using ParseOptions =  base::JsonHelper::ParseOptions;
+    using ParseReturnType = base::JsonHelper::ParseReturnType;
     using TransformType = base::JsonHelper::TransformType;
 
     bool CheckSendableConstraint(JSTaggedValue value) const
@@ -267,4 +270,166 @@ HWTEST_F_L0(AsonParserTest, Parser_013)
     result = Internalize::InternalizeJsonProperty(thread, root, rootName, undefined, TransformType::SENDABLE);
     ASSERT_TRUE(!result->IsUndefined());
 }
+
+HWTEST_F_L0(AsonParserTest, Parser_014)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    Utf8JsonParser parser(thread, TransformType::SENDABLE);
+    // JSON Unexpected
+    JSHandle<JSTaggedValue> handleMsg1(factory->NewFromASCII("tr"));
+    JSHandle<EcmaString> handleStr1(JSTaggedValue::ToString(thread, handleMsg1));
+    JSHandle<JSTaggedValue> result1 = parser.Parse(handleStr1);
+    EXPECT_EQ(result1.GetTaggedValue(), JSTaggedValue::Exception());
+    // JSON Unexpected
+    JSHandle<JSTaggedValue> handleMsg2(factory->NewFromASCII("fa"));
+    JSHandle<EcmaString> handleStr2(JSTaggedValue::ToString(thread, handleMsg2));
+    JSHandle<JSTaggedValue> result2 = parser.Parse(handleStr2);
+    EXPECT_EQ(result2.GetTaggedValue(), JSTaggedValue::Exception());
+    // JSON Unexpected
+    JSHandle<JSTaggedValue> handleMsg3(factory->NewFromASCII("falss"));
+    JSHandle<EcmaString> handleStr3(JSTaggedValue::ToString(thread, handleMsg3));
+    JSHandle<JSTaggedValue> result3 = parser.Parse(handleStr3);
+    EXPECT_EQ(result3.GetTaggedValue(), JSTaggedValue::Exception());
+}
+
+HWTEST_F_L0(AsonParserTest, Parser_015)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    Utf8JsonParser parser(thread, TransformType::SENDABLE);
+    // JSON Unexpected
+    JSHandle<JSTaggedValue> handleMsg1(factory->NewFromASCII(R"([1, 2, 3})"));
+    JSHandle<EcmaString> handleStr1(JSTaggedValue::ToString(thread, handleMsg1));
+    JSHandle<JSTaggedValue> result1 = parser.Parse(handleStr1);
+    EXPECT_EQ(result1.GetTaggedValue(), JSTaggedValue::Exception());
+    // JSON Unexpected
+    JSHandle<JSTaggedValue> handleMsg2(factory->NewFromASCII(R"({"innerEntry""entry"})"));
+    JSHandle<EcmaString> handleStr2(JSTaggedValue::ToString(thread, handleMsg2));
+    JSHandle<JSTaggedValue> result2 = parser.Parse(handleStr2);
+    EXPECT_EQ(result2.GetTaggedValue(), JSTaggedValue::Exception());
+    // JSON Unexpected
+    JSHandle<JSTaggedValue> handleMsg3(factory->NewFromASCII("1s2"));
+    JSHandle<EcmaString> handleStr3(JSTaggedValue::ToString(thread, handleMsg3));
+    JSHandle<JSTaggedValue> result3 = parser.Parse(handleStr3);
+    EXPECT_EQ(result3.GetTaggedValue(), JSTaggedValue::Exception());
+    // JSON Unexpected
+    JSHandle<JSTaggedValue> handleMsg4(factory->NewFromASCII("122-"));
+    JSHandle<EcmaString> handleStr4(JSTaggedValue::ToString(thread, handleMsg4));
+    JSHandle<JSTaggedValue> result4 = parser.Parse(handleStr4);
+    EXPECT_EQ(result4.GetTaggedValue(), JSTaggedValue::Exception());
+    // JSON Unexpected
+    JSHandle<JSTaggedValue> handleMsg5(factory->NewFromASCII("122+"));
+    JSHandle<EcmaString> handleStr5(JSTaggedValue::ToString(thread, handleMsg5));
+    JSHandle<JSTaggedValue> result5 = parser.Parse(handleStr5);
+    EXPECT_EQ(result5.GetTaggedValue(), JSTaggedValue::Exception());
+}
+
+HWTEST_F_L0(AsonParserTest, Parser_016)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ParseOptions options1;
+    Utf8JsonParser parser1(thread, TransformType::SENDABLE, options1);
+
+    JSHandle<JSTaggedValue> handleMsg1(
+        factory->NewFromASCII(R"({"small":1234})"));
+    JSHandle<EcmaString> handleStr1(JSTaggedValue::ToString(thread, handleMsg1));
+    JSHandle<JSTaggedValue> result1 = parser1.Parse(handleStr1);
+    EXPECT_NE(result1.GetTaggedValue(), JSTaggedValue::Exception());
+
+    ParseOptions options2;
+    options2.bigIntMode = BigIntMode::PARSE_AS_BIGINT;
+    Utf8JsonParser parser2(thread, TransformType::SENDABLE, options2);
+    JSHandle<JSTaggedValue> handleMsg2(factory->NewFromASCII(R"({"big":1122334455667788999})"));
+    JSHandle<EcmaString> handleStr2(JSTaggedValue::ToString(thread, handleMsg2));
+    JSHandle<JSTaggedValue> result2 = parser2.Parse(handleStr2);
+    EXPECT_NE(result2.GetTaggedValue(), JSTaggedValue::Exception());
+
+    ParseOptions options3;
+    options3.bigIntMode = BigIntMode::ALWAYS_PARSE_AS_BIGINT;
+    Utf8JsonParser parser3(thread, TransformType::SENDABLE, options3);
+    JSHandle<JSTaggedValue> handleMsg3(factory->NewFromASCII(R"({"large":1122334455667788999})"));
+    JSHandle<EcmaString> handleStr3(JSTaggedValue::ToString(thread, handleMsg3));
+    JSHandle<JSTaggedValue> result3 = parser3.Parse(handleStr3);
+    EXPECT_NE(result3.GetTaggedValue(), JSTaggedValue::Exception());
+}
+
+HWTEST_F_L0(AsonParserTest, Parser_017)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ParseOptions options;
+    options.returnType = ParseReturnType::MAP;
+    Utf8JsonParser parser(thread, TransformType::SENDABLE, options);
+   
+    JSHandle<JSTaggedValue> handleMsg1(factory->NewFromASCII(R"({})"));
+    JSHandle<EcmaString> handleStr1(JSTaggedValue::ToString(thread, handleMsg1));
+    JSHandle<JSTaggedValue> result1 = parser.Parse(handleStr1);
+    EXPECT_NE(result1.GetTaggedValue(), JSTaggedValue::Exception());
+  
+    JSHandle<JSTaggedValue> handleMsg2(factory->NewFromASCII(R"({"innerEntry""entry"})"));
+    JSHandle<EcmaString> handleStr2(JSTaggedValue::ToString(thread, handleMsg2));
+    JSHandle<JSTaggedValue> result2 = parser.Parse(handleStr2);
+    EXPECT_EQ(result2.GetTaggedValue(), JSTaggedValue::Exception());
+    
+    JSHandle<JSTaggedValue> handleMsg3(factory->NewFromASCII(R"({"innerEntry"})"));
+    JSHandle<EcmaString> handleStr3(JSTaggedValue::ToString(thread, handleMsg3));
+    JSHandle<JSTaggedValue> result3 = parser.Parse(handleStr3);
+    EXPECT_EQ(result3.GetTaggedValue(), JSTaggedValue::Exception());
+  
+    JSHandle<JSTaggedValue> handleMsg4(factory->NewFromASCII(R"({)"));
+    JSHandle<EcmaString> handleStr4(JSTaggedValue::ToString(thread, handleMsg4));
+    JSHandle<JSTaggedValue> result4 = parser.Parse(handleStr4);
+    EXPECT_EQ(result4.GetTaggedValue(), JSTaggedValue::Exception());
+}
+
+HWTEST_F_L0(AsonParserTest, Parser_018)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ParseOptions options;
+    options.returnType = ParseReturnType::MAP;
+    Utf8JsonParser parser(thread, TransformType::NORMAL, options);
+   
+    JSHandle<JSTaggedValue> handleMsg1(factory->NewFromASCII(R"({})"));
+    JSHandle<EcmaString> handleStr1(JSTaggedValue::ToString(thread, handleMsg1));
+    JSHandle<JSTaggedValue> result1 = parser.Parse(handleStr1);
+    EXPECT_NE(result1.GetTaggedValue(), JSTaggedValue::Exception());
+
+    JSHandle<JSTaggedValue> handleMsg2(
+        factory->NewFromASCII(R"({"innerEntry": {"array": [1, 2, 3]}, "x": 1, "str": "outerStr"})"));
+    JSHandle<EcmaString> handleStr2(JSTaggedValue::ToString(thread, handleMsg2));
+    JSHandle<JSTaggedValue> result2 = parser.Parse(handleStr2);
+    EXPECT_NE(result2.GetTaggedValue(), JSTaggedValue::Exception());
+}
+
+HWTEST_F_L0(AsonParserTest, Parser_019)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ParseOptions options;
+    options.bigIntMode = BigIntMode::PARSE_AS_BIGINT;
+    Utf8JsonParser parser(thread, TransformType::NORMAL, options);
+   
+    JSHandle<JSTaggedValue> handleMsg1(factory->NewFromASCII(R"({"shortExp":1.79e+308})"));
+    JSHandle<EcmaString> handleStr1(JSTaggedValue::ToString(thread, handleMsg1));
+    JSHandle<JSTaggedValue> result1 = parser.Parse(handleStr1);
+    EXPECT_NE(result1.GetTaggedValue(), JSTaggedValue::Exception());
+
+    JSHandle<JSTaggedValue> handleMsg2(
+        factory->NewFromASCII(R"({"longExp":1.7976931348623157e+308})"));
+    JSHandle<EcmaString> handleStr2(JSTaggedValue::ToString(thread, handleMsg2));
+    JSHandle<JSTaggedValue> result2 = parser.Parse(handleStr2);
+    EXPECT_NE(result2.GetTaggedValue(), JSTaggedValue::Exception());
+}
+
+HWTEST_F_L0(AsonParserTest, Parser_020)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    ParseOptions options;
+    options.returnType = ParseReturnType::MAP;
+    Utf8JsonParser parser(thread, TransformType::SENDABLE, options);
+   
+    JSHandle<JSTaggedValue> handleMsg(
+        factory->NewFromASCII(R"({"innerEntry": {"array": [1, 2, 3]}, "x": 1, "str": "outerStr"})"));
+    JSHandle<EcmaString> handleStr(JSTaggedValue::ToString(thread, handleMsg));
+    JSHandle<JSTaggedValue> result = parser.Parse(handleStr);
+    EXPECT_NE(result.GetTaggedValue(), JSTaggedValue::Exception());
+}
+
 } // namespace panda::test
