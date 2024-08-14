@@ -333,8 +333,9 @@ HWTEST_F_L0(TemplateMapTest, FindInsertIndex)
 
     for (int i = 0; i < numElements; i++) {
         JSHandle<JSTaggedValue> tempMapKey(JSArray::ArrayCreate(thread, JSTaggedNumber(i)));
+        uint32_t hashValue = static_cast<uint32_t>(TemplateMap::Hash(tempMapKey.GetTaggedValue()));
         EXPECT_EQ(JSTaggedValue::Undefined(), templateMap->GetKey(
-            templateMap->FindInsertIndex(TemplateMap::Hash(tempMapKey.GetTaggedValue()))));
+            templateMap->FindInsertIndex(hashValue)));
     }
 }
 }  // namespace panda::test

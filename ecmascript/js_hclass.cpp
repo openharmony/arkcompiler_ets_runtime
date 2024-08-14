@@ -44,7 +44,7 @@ JSHandle<TransitionsDictionary> TransitionsDictionary::PutIfAbsent(const JSThrea
                                                                    const JSHandle<JSTaggedValue> &value,
                                                                    const JSHandle<JSTaggedValue> &metaData)
 {
-    int hash = TransitionsDictionary::Hash(key.GetTaggedValue(), metaData.GetTaggedValue());
+    uint32_t hash = static_cast<uint32_t>(TransitionsDictionary::Hash(key.GetTaggedValue(), metaData.GetTaggedValue()));
 
     /* no need to add key if exist */
     int entry = dictionary->FindEntry(key.GetTaggedValue(), metaData.GetTaggedValue());
@@ -117,7 +117,7 @@ void TransitionsDictionary::Rehash(const JSThread *thread, TransitionsDictionary
         JSTaggedValue k = this->GetKey(i);
         JSTaggedValue v = this->GetValue(i);
         if (IsKey(k) && TransitionsDictionary::CheckWeakExist(v)) {
-            int hash = TransitionsDictionary::Hash(k, this->GetAttributes(i));
+            uint32_t hash = static_cast<uint32_t>(TransitionsDictionary::Hash(k, this->GetAttributes(i)));
             int insertionIndex = GetEntryIndex(newTable->FindInsertIndex(hash));
             JSTaggedValue tv = Get(fromIndex);
             newTable->Set(thread, insertionIndex, tv);

@@ -79,6 +79,7 @@ bool Method::IsDeoptimized() const
 uint32_t Method::FindCatchBlock(uint32_t pc) const
 {
     ASSERT(!IsNativeWithCallField());
+    ASSERT(GetJSPandaFile() != nullptr);
     auto *pandaFile = GetJSPandaFile()->GetPandaFile();
     ASSERT(pandaFile != nullptr);
     panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());
@@ -99,6 +100,7 @@ uint32_t Method::FindCatchBlock(uint32_t pc) const
 
 bool Method::HasCatchBlock() const
 {
+    ASSERT(GetJSPandaFile() != nullptr);
     auto *pandaFile = GetJSPandaFile()->GetPandaFile();
     ASSERT(pandaFile != nullptr);
     panda_file::MethodDataAccessor mda(*pandaFile, GetMethodId());

@@ -119,7 +119,7 @@ public:
         }
 
         // Make sure the key object has an identity hash code.
-        int32_t hash = static_cast<int32_t>(Derived::Hash(key.GetTaggedValue()));
+        uint32_t hash = static_cast<uint32_t>(Derived::Hash(key.GetTaggedValue()));
         JSHandle<Derived> newTable = GrowHashTable(thread, table);
         newTable->AddElement(thread, newTable->FindInsertIndex(hash), key, value);
         return newTable;
@@ -274,7 +274,7 @@ public:
         return -1;
     }
 
-    inline int FindInsertIndex(int hash)
+    inline int FindInsertIndex(uint32_t hash)
     {
         int size = Size();
         int count = 1;
@@ -318,7 +318,7 @@ public:
             if (!IsKey(k)) {
                 continue;
             }
-            int32_t hash = static_cast<int32_t>(Derived::Hash(k));
+            uint32_t hash = static_cast<uint32_t>(Derived::Hash(k));
             int insertionIndex = Derived::GetKeyIndex(newTable->FindInsertIndex(hash));
             JSTaggedValue tv = Get(fromIndex);
             newTable->Set(thread, insertionIndex, tv);
@@ -438,7 +438,7 @@ public:
         JSHandle<Derived> newTable = HashTableT::GrowHashTable(thread, table);
 
         // Compute the key object.
-        int32_t hash = static_cast<int32_t>(Derived::Hash(key.GetTaggedValue()));
+        uint32_t hash = static_cast<uint32_t>(Derived::Hash(key.GetTaggedValue()));
         entry = newTable->FindInsertIndex(hash);
         newTable->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);
 
@@ -466,7 +466,7 @@ public:
         JSHandle<Derived> newTable = HashTableT::GrowHashTable(thread, table);
 
         // Compute the key object.
-        int hash = Derived::Hash(key.GetTaggedValue());
+        uint32_t hash = static_cast<uint32_t>(Derived::Hash(key.GetTaggedValue()));
         entry = newTable->FindInsertIndex(hash);
         newTable->SetEntry(thread, entry, key.GetTaggedValue(), value.GetTaggedValue(), attr);
 
