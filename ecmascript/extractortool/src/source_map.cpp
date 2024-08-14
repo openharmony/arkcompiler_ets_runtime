@@ -356,18 +356,17 @@ bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int
     }
     auto iter = mappings_.find(url);
     if (iter != mappings_.end()) {
-        std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
         std::string mappings = mappings_[url];
         if (mappings.size() < FLAG_MAPPINGS_LEN + 1) {
             LOG_ECMA(ERROR) << "Translate failed, url: " << url << ", mappings: " << mappings;
             return false;
         }
-        ExtractSourceMapData(mappings.substr(FLAG_MAPPINGS_LEN, mappings.size() - FLAG_MAPPINGS_LEN - 1),
-                             modularMap);
+        std::shared_ptr<SourceMapData> modularMap = std::make_shared<SourceMapData>();
         if (modularMap == nullptr) {
-            LOG_ECMA(ERROR) << "Extract mappings failed, url: " << url << ", mappings: " << mappings;
+            LOG_ECMA(ERROR) << "New SourceMapData failed";
             return false;
         }
+        ExtractSourceMapData(mappings.substr(FLAG_MAPPINGS_LEN, mappings.size() - FLAG_MAPPINGS_LEN - 1), modularMap);
         sourceMaps_.emplace(url, modularMap);
         url = tmp;
         return GetLineAndColumnNumbers(line, column, *(modularMap));
