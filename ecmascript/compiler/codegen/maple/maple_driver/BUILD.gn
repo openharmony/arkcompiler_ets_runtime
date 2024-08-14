@@ -31,7 +31,6 @@ ohos_static_library("libmaple_driver") {
 ohos_static_library("libdriver_option") {
   stack_protector_ret = false
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
-  sources = [ "src/driver_options.cpp" ]
 
   include_dirs = [
     "${MAPLEALL_ROOT}/maple_driver/include",

@@ -185,9 +185,36 @@ public:
         return IntVal(value * val.value, width, sign);
     }
 
-    IntVal operator/(const IntVal &divisor) const;
+    IntVal operator/(const IntVal &divisor) const
+    {
+        DEBUG_ASSERT(width == divisor.width && sign == divisor.sign, "bit-width and sign must be the same");
+        DEBUG_ASSERT(divisor.value != 0, "division by zero");
+        DEBUG_ASSERT(!sign || (!IsMinValue() || !divisor.AreAllBitsOne()), "minValue / -1 leads to overflow");
 
-    IntVal operator%(const IntVal &divisor) const;
+        bool isNeg = sign && GetSignBit();
+        bool isDivisorNeg = divisor.sign && divisor.GetSignBit();
+
+        uint64 dividendVal = isNeg ? (-*this).value : value;
+        uint64 divisorVal = isDivisorNeg ? (-divisor).value : divisor.value;
+
+        return isNeg != isDivisorNeg ? -IntVal(dividendVal / divisorVal, width, sign)
+                                     : IntVal(dividendVal / divisorVal, width, sign);
+    }
+
+    IntVal operator%(const IntVal &divisor) const
+    {
+        DEBUG_ASSERT(width == divisor.width && sign == divisor.sign, "bit-width and sign must be the same");
+        DEBUG_ASSERT(divisor.value != 0, "division by zero");
+        DEBUG_ASSERT(!sign || (!IsMinValue() || !divisor.AreAllBitsOne()), "minValue % -1 leads to overflow");
+
+        bool isNeg = sign && GetSignBit();
+        bool isDivisorNeg = divisor.sign && divisor.GetSignBit();
+
+        uint64 dividendVal = isNeg ? (-*this).value : value;
+        uint64 divisorVal = isDivisorNeg ? (-divisor).value : divisor.value;
+
+        return isNeg ? -IntVal(dividendVal % divisorVal, width, sign) : IntVal(dividendVal % divisorVal, width, sign);
+    }
 
     IntVal operator&(const IntVal &val) const
     {

@@ -15,38 +15,23 @@
 
  ADDTARGETPHASE("layoutstackframe", true);
  ADDTARGETPHASE("createstartendlabel", true);
- ADDTARGETPHASE("buildehfunc", true);
  ADDTARGETPHASE("handlefunction", true);
  ADDTARGETPHASE("moveargs", true);
- ADDTARGETPHASE("stackmapcomputation", false);
  /* Normal OPT PHASES */
  ADDTARGETPHASE("cgprepeephole", CGOptions::DoPrePeephole());
- ADDTARGETPHASE("ebo", CGOptions::DoEBO());
  ADDTARGETPHASE("prepeephole", CGOptions::DoPrePeephole())
  ADDTARGETPHASE("precfgo", false);
- ADDTARGETPHASE("ico", CGOptions::DoICO())
  ADDTARGETPHASE("cfgo", !GetMIRModule()->IsCModule() && CGOptions::DoCFGO());
 
- ADDTARGETPHASE("prepeephole1", CGOptions::DoPrePeephole());
- ADDTARGETPHASE("ebo1", CGOptions::DoEBO());
- ADDTARGETPHASE("prescheduling", CGOptions::DoPreSchedule());
- ADDTARGETPHASE("raopt", CGOptions::DoPreLSRAOpt());
- ADDTARGETPHASE("cgsplitcriticaledge", GetMIRModule()->IsCModule());
  ADDTARGETPHASE("regalloc", true);
- ADDTARGETPHASE("regsaves", GetMIRModule()->IsCModule() && CGOptions::DoRegSavesOpt());
- ADDTARGETPHASE("clearrdinfo", GetMIRModule()->IsCModule() && (CGOptions::DoStoreLoadOpt() || CGOptions::DoGlobalOpt()));
  ADDTARGETPHASE("generateproepilog", true);
  ADDTARGETPHASE("framefinalize", true);
- ADDTARGETPHASE("dbgfixcallframeoffsets", true);
  ADDTARGETPHASE("cfgo", GetMIRModule()->IsCModule() && CGOptions::DoCFGO());
  ADDTARGETPHASE("peephole0", CGOptions::DoPeephole())
- ADDTARGETPHASE("postebo", CGOptions::DoEBO());
  ADDTARGETPHASE("postcfgo", false);
  ADDTARGETPHASE("cgpostpeephole", CGOptions::DoPeephole())
  ADDTARGETPHASE("peephole", CGOptions::DoPeephole())
  ADDTARGETPHASE("gencfi", !GetMIRModule()->IsCModule() || GetMIRModule()->IsWithDbgInfo());
- ADDTARGETPHASE("yieldpoint", false);
- ADDTARGETPHASE("localschedule", CGOptions::DoLocalSchedule());
  ADDTARGETPHASE("fixshortbranch", true);
  ADDTARGETPHASE("cgirverify", CGOptions::DoCGIRVerify());
  ADDTARGETPHASE("cgemit", true);

@@ -134,8 +134,6 @@ class LogInfo {
 public:
     LogInfo() : outStream(stdout), outMode(kLmComplex) {}
     LogInfo(const LogInfo &p) = delete;
-    static std::ostream &Info();
-    static std::ostream &Err();
     LogInfo &operator=(const LogInfo &p) = delete;
 
     ~LogInfo()
@@ -144,7 +142,6 @@ public:
     }
 
     static std::ostream &MapleLogger(LogLevel level = kLlLog);
-    static std::ios::fmtflags Flags();
     void EmitLogForUser(enum LogNumberCode num, enum LogLevel ll, const char *fmt, ...) const;
     void EmitLogForUser(enum LogNumberCode num, enum LogLevel ll, const std::string &message) const;
     void EmitErrorMessage(const std::string &cond, const std::string &file, unsigned int line, const char *fmt,
@@ -159,8 +156,6 @@ private:
     {
         outMode = lm;
     }
-    void EmitLogForDevelop(enum LogTags tag, enum LogLevel ll, const std::string &file, const std::string &func,
-                           int line, const char *fmt, ...);
     FILE *outStream;
     LogMode outMode;
 };

@@ -17,6 +17,7 @@
 #include "cl_parser.h"
 #include <algorithm>
 #include <iterator>
+#include "mpl_logging.h"
 
 using namespace maplecl;
 
@@ -28,11 +29,8 @@ void OptionInterface::FinalizeInitialization(const std::vector<std::string> &opt
 
     std::copy(optnames.begin(), optnames.end(), std::back_inserter(names));
 
-    if (optionCategories.empty()) {
-        cl.Register(optnames, *this, cl.defaultCategory);
-    } else {
-        for (auto &cat : optionCategories) {
-            cl.Register(optnames, *this, cat.get());
-        }
+    DEBUG_ASSERT(!optionCategories.empty(), "there are cg options that's cgCategory is null");
+    for (auto &cat : optionCategories) {
+        cl.Register(optnames, *this, cat.get());
     }
 }

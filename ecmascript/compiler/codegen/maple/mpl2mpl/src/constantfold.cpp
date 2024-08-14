@@ -29,9 +29,6 @@
 namespace maple {
 
 namespace {
-
-constexpr uint64 kJsTypeNumber = 4;
-constexpr uint64 kJsTypeNumberInHigh32Bit = kJsTypeNumber << 32;  // set high 32 bit as JSTYPE_NUMBER
 constexpr uint32 kByteSizeOfBit64 = 8;                            // byte number for 64 bit
 constexpr uint32 kBitSizePerByte = 8;
 constexpr maple::int32 kMaxOffset = INT_MAX - 8;
@@ -176,62 +173,29 @@ StmtNode *ConstantFold::Simplify(StmtNode *node)
     CHECK_NULL_FATAL(node);
     switch (node->GetOpCode()) {
         case OP_dassign:
-        case OP_maydassign:
             return SimplifyDassign(static_cast<DassignNode*>(node));
         case OP_iassign:
             return SimplifyIassign(static_cast<IassignNode*>(node));
         case OP_block:
             return SimplifyBlock(static_cast<BlockNode*>(node));
-        case OP_if:
-            return SimplifyIf(static_cast<IfStmtNode*>(node));
         case OP_dowhile:
         case OP_while:
             return SimplifyWhile(static_cast<WhileStmtNode*>(node));
         case OP_switch:
             return SimplifySwitch(static_cast<SwitchNode*>(node));
         case OP_eval:
-        case OP_throw:
-        case OP_free:
-        case OP_decref:
-        case OP_incref:
-        case OP_decrefreset:
         case OP_regassign:
-            CASE_OP_ASSERT_NONNULL
-        case OP_igoto:
             return SimplifyUnary(static_cast<UnaryStmtNode*>(node));
         case OP_brfalse:
         case OP_brtrue:
             return SimplifyCondGoto(static_cast<CondGotoNode*>(node));
         case OP_return:
-        case OP_syncenter:
-        case OP_syncexit:
         case OP_call:
-        case OP_virtualcall:
-        case OP_superclasscall:
-        case OP_interfacecall:
-        case OP_customcall:
-        case OP_polymorphiccall:
         case OP_intrinsiccall:
-        case OP_xintrinsiccall:
         case OP_intrinsiccallwithtype:
         case OP_callassigned:
-        case OP_virtualcallassigned:
-        case OP_superclasscallassigned:
-        case OP_interfacecallassigned:
-        case OP_customcallassigned:
-        case OP_polymorphiccallassigned:
         case OP_intrinsiccallassigned:
         case OP_intrinsiccallwithtypeassigned:
-        case OP_xintrinsiccallassigned:
-        case OP_callinstant:
-        case OP_callinstantassigned:
-        case OP_virtualcallinstant:
-        case OP_virtualcallinstantassigned:
-        case OP_superclasscallinstant:
-        case OP_superclasscallinstantassigned:
-        case OP_interfacecallinstant:
-        case OP_interfacecallinstantassigned:
-            CASE_OP_ASSERT_BOUNDARY
             return SimplifyNary(static_cast<NaryStmtNode*>(node));
         case OP_icall:
         case OP_icallassigned:
@@ -252,8 +216,6 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::DispatchFold(BaseNode 
         return {node, std::nullopt};
     }
     switch (node->GetOpCode()) {
-        case OP_sizeoftype:
-            return FoldSizeoftype(static_cast<SizeoftypeNode*>(node));
         case OP_abs:
         case OP_bnot:
         case OP_lnot:
@@ -302,15 +264,10 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::DispatchFold(BaseNode 
             return FoldCompare(static_cast<CompareNode*>(node));
         case OP_depositbits:
             return FoldDepositbits(static_cast<DepositbitsNode*>(node));
-        case OP_select:
-            return FoldTernary(static_cast<TernaryNode*>(node));
         case OP_array:
             return FoldArray(static_cast<ArrayNode*>(node));
         case OP_retype:
             return FoldRetype(static_cast<RetypeNode*>(node));
-        case OP_gcmallocjarray:
-        case OP_gcpermallocjarray:
-            return FoldGcmallocjarray(static_cast<JarrayMallocNode*>(node));
         default:
             return FoldBase(static_cast<BaseNode*>(node));
     }
@@ -408,13 +365,8 @@ MIRIntConst *ConstantFold::FoldIntConstComparisonMIRConst(Opcode opcode, PrimTyp
     // determine the type
     MIRType &type = *GlobalTables::GetTypeTable().GetPrimType(resultType);
     // form the constant
-    MIRIntConst *constValue = nullptr;
-    if (type.GetPrimType() == PTY_dyni32) {
-        constValue = GlobalTables::GetIntConstTable().GetOrCreateIntConst(0, type);
-        constValue->SetValue(static_cast<int64>(kJsTypeNumberInHigh32Bit | result));
-    } else {
-        constValue = GlobalTables::GetIntConstTable().GetOrCreateIntConst(result, type);
-    }
+    DEBUG_ASSERT(type.GetPrimType() != PTY_dyni32, "unsupported type");
+    MIRIntConst *constValue = GlobalTables::GetIntConstTable().GetOrCreateIntConst(result, type);
     return constValue;
 }
 
@@ -515,14 +467,9 @@ MIRConst *ConstantFold::FoldIntConstBinaryMIRConst(Opcode opcode, PrimType resul
     // determine the type
     MIRType &type = *GlobalTables::GetTypeTable().GetPrimType(resultType);
     // form the constant
-    MIRIntConst *constValue = nullptr;
-    if (type.GetPrimType() == PTY_dyni32) {
-        constValue = GlobalTables::GetIntConstTable().GetOrCreateIntConst(0, type);
-        constValue->SetValue(static_cast<int64>(kJsTypeNumberInHigh32Bit | static_cast<uint64>(result.GetExtValue())));
-    } else {
-        constValue =
-            GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(result.GetExtValue()), type);
-    }
+    DEBUG_ASSERT(type.GetPrimType() != PTY_dyni32, "unsupported type");
+    MIRIntConst *constValue =
+        GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(result.GetExtValue()), type);
     return constValue;
 }
 
@@ -880,14 +827,9 @@ MIRIntConst *ConstantFold::FoldIntConstUnaryMIRConst(Opcode opcode, PrimType res
     // determine the type
     MIRType &type = *GlobalTables::GetTypeTable().GetPrimType(resultType);
     // form the constant
-    MIRIntConst *constValue = nullptr;
-    if (type.GetPrimType() == PTY_dyni32) {
-        constValue = GlobalTables::GetIntConstTable().GetOrCreateIntConst(0, type);
-        constValue->SetValue(static_cast<int64>(kJsTypeNumberInHigh32Bit | static_cast<uint64>(result.GetExtValue())));
-    } else {
-        constValue =
-            GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(result.GetExtValue()), type);
-    }
+    DEBUG_ASSERT(type.GetPrimType() != PTY_dyni32, "unsupported type");
+    MIRIntConst *constValue =
+        GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(result.GetExtValue()), type);
     return constValue;
 }
 
@@ -959,22 +901,6 @@ ConstvalNode *ConstantFold::FoldConstUnary(Opcode opcode, PrimType resultType, C
     return returnValue;
 }
 
-std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldSizeoftype(SizeoftypeNode *node) const
-{
-    CHECK_NULL_FATAL(node);
-    BaseNode *result = node;
-    MIRType *argType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(node->GetTyIdx());
-    if (argType->GetKind() == kTypeScalar) {
-        MIRType &resultType = *GlobalTables::GetTypeTable().GetPrimType(node->GetPrimType());
-        uint32 size = GetPrimTypeSize(argType->GetPrimType());
-        ConstvalNode *constValueNode = mirModule->CurFuncCodeMemPool()->New<ConstvalNode>();
-        constValueNode->SetPrimType(node->GetPrimType());
-        constValueNode->SetConstVal(GlobalTables::GetIntConstTable().GetOrCreateIntConst(size, resultType));
-        result = constValueNode;
-    }
-    return std::make_pair(result, std::nullopt);
-}
-
 std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldRetype(RetypeNode *node)
 {
     CHECK_NULL_FATAL(node);
@@ -983,20 +909,6 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldRetype(RetypeNode 
     if (node->Opnd(0) != p.first) {
         RetypeNode *newRetNode = node->CloneTree(mirModule->GetCurFuncCodeMPAllocator());
         CHECK_FATAL(newRetNode != nullptr, "newRetNode is null in ConstantFold::FoldRetype");
-        newRetNode->SetOpnd(PairToExpr(node->Opnd(0)->GetPrimType(), p), 0);
-        result = newRetNode;
-    }
-    return std::make_pair(result, std::nullopt);
-}
-
-std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldGcmallocjarray(JarrayMallocNode *node)
-{
-    CHECK_NULL_FATAL(node);
-    BaseNode *result = node;
-    std::pair<BaseNode*, std::optional<IntVal>> p = DispatchFold(node->Opnd(0));
-    if (node->Opnd(0) != p.first) {
-        JarrayMallocNode *newRetNode = node->CloneTree(mirModule->GetCurFuncCodeMPAllocator());
-        CHECK_FATAL(newRetNode != nullptr, "newRetNode is null in ConstantFold::FoldGcmallocjarray");
         newRetNode->SetOpnd(PairToExpr(node->Opnd(0)->GetPrimType(), p), 0);
         result = newRetNode;
     }
@@ -1441,46 +1353,6 @@ ssize_t GetIntPrimTypeMin(PrimType ptyp)
         default:
             CHECK_FATAL(false, "NYI");
     }
-}
-
-// return a primtype to represent value range of expr
-PrimType GetExprValueRangePtyp(BaseNode *expr)
-{
-    PrimType ptyp = expr->GetPrimType();
-    Opcode op = expr->GetOpCode();
-    if (expr->IsLeaf()) {
-        return ptyp;
-    }
-    if (kOpcodeInfo.IsTypeCvt(op)) {
-        auto *node = static_cast<TypeCvtNode *>(expr);
-        if (GetPrimTypeSize(node->FromType()) < GetPrimTypeSize(node->GetPrimType())) {
-            return GetExprValueRangePtyp(expr->Opnd(0));
-        }
-        return ptyp;
-    }
-    if (op == OP_sext || op == OP_zext || op == OP_extractbits) {
-        auto *node = static_cast<ExtractbitsNode *>(expr);
-        uint8 size = node->GetBitsSize();
-        return GetNearestSizePtyp(size, expr->GetPrimType());
-    }
-    // find max size primtype of opnds.
-    size_t maxTypeSize = 1;
-    size_t ptypSize = GetPrimTypeSize(ptyp);
-    for (size_t i = 0; i < expr->GetNumOpnds(); ++i) {
-        PrimType opndPtyp = GetExprValueRangePtyp(expr->Opnd(i));
-        size_t opndSize = GetPrimTypeSize(opndPtyp);
-        if (ptypSize <= opndSize) {
-            return ptyp;
-        }
-        if (maxTypeSize < opndSize) {
-            maxTypeSize = opndSize;
-            constexpr size_t intMaxSize = 8;
-            if (maxTypeSize == intMaxSize) {
-                break;
-            }
-        }
-    }
-    return GetNearestSizePtyp(static_cast<uint8>(maxTypeSize), ptyp);
 }
 
 static bool IsCvtEliminatable(PrimType fromPtyp, PrimType destPtyp, Opcode op, Opcode opndOp)
@@ -2202,99 +2074,6 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldArray(ArrayNode *n
     return std::make_pair(result, std::nullopt);
 }
 
-std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldTernary(TernaryNode *node)
-{
-    CHECK_NULL_FATAL(node);
-    constexpr size_t kFirst = 0;
-    constexpr size_t kSecond = 1;
-    constexpr size_t kThird = 2;
-    BaseNode *result = node;
-    std::vector<PrimType> primTypes;
-    std::vector<std::pair<BaseNode*, std::optional<IntVal>>> p;
-    for (size_t i = 0; i < node->NumOpnds(); i++) {
-        BaseNode *tempNopnd = node->Opnd(i);
-        CHECK_NULL_FATAL(tempNopnd);
-        primTypes.push_back(tempNopnd->GetPrimType());
-        p.push_back(DispatchFold(tempNopnd));
-    }
-    if (node->GetOpCode() == OP_select) {
-        ConstvalNode *const0 = safe_cast<ConstvalNode>(p[kFirst].first);
-        if (const0 != nullptr) {
-            MIRIntConst *intConst0 = safe_cast<MIRIntConst>(const0->GetConstVal());
-            ASSERT_NOT_NULL(intConst0);
-            // Selecting the first value if not 0, selecting the second value otherwise.
-            if (!intConst0->IsZero()) {
-                result = PairToExpr(primTypes[kSecond], p[kSecond]);
-            } else {
-                result = PairToExpr(primTypes[kThird], p[kThird]);
-            }
-        } else {
-            ConstvalNode *const1 = safe_cast<ConstvalNode>(p[kSecond].first);
-            ConstvalNode *const2 = safe_cast<ConstvalNode>(p[kThird].first);
-            if (const1 != nullptr && const2 != nullptr) {
-                MIRIntConst *intConst1 = safe_cast<MIRIntConst>(const1->GetConstVal());
-                MIRIntConst *intConst2 = safe_cast<MIRIntConst>(const2->GetConstVal());
-                double dconst1 = 0.0;
-                double dconst2 = 0.0;
-                // for fpconst
-                if (intConst1 == nullptr || intConst2 == nullptr) {
-                    PrimType ptyp = const1->GetPrimType();
-                    if (ptyp == PTY_f64) {
-                        MIRDoubleConst *dConst1 = safe_cast<MIRDoubleConst>(const1->GetConstVal());
-                        dconst1 = dConst1->GetValue();
-                        MIRDoubleConst *dConst2 = safe_cast<MIRDoubleConst>(const2->GetConstVal());
-                        dconst2 = dConst2->GetValue();
-                    } else if (ptyp == PTY_f32) {
-                        MIRFloatConst *fConst1 = safe_cast<MIRFloatConst>(const1->GetConstVal());
-                        dconst1 = static_cast<double>(fConst1->GetFloatValue());
-                        MIRFloatConst *fConst2 = safe_cast<MIRFloatConst>(const2->GetConstVal());
-                        dconst2 = static_cast<double>(fConst2->GetFloatValue());
-                    }
-                } else {
-                    dconst1 = static_cast<double>(intConst1->GetExtValue());
-                    dconst2 = static_cast<double>(intConst2->GetExtValue());
-                }
-                PrimType foldedPrimType = primTypes[kSecond];
-                if (!IsPrimitiveInteger(foldedPrimType)) {
-                    foldedPrimType = primTypes[kThird];
-                }
-                if (dconst1 == 1.0 && dconst2 == 0.0 && GetPrimTypeActualBitSize(primTypes[0]) == 1) {
-                    if (IsPrimitiveInteger(foldedPrimType)) {
-                        result = PairToExpr(foldedPrimType, p[0]);
-                    } else {
-                        result = PairToExpr(primTypes[0], p[0]);
-                        result = mirModule->CurFuncCodeMemPool()->New<TypeCvtNode>(OP_cvt, foldedPrimType, primTypes[0],
-                                                                                   result);
-                    }
-                    return std::make_pair(result, std::nullopt);
-                }
-                if (dconst1 == 0.0 && dconst2 == 1.0 && GetPrimTypeActualBitSize(primTypes[0]) == 1) {
-                    BaseNode *lnot = mirModule->CurFuncCodeMemPool()->New<CompareNode>(
-                        OP_eq, primTypes[0], primTypes[0], PairToExpr(primTypes[0], p[0]),
-                        mirModule->GetMIRBuilder()->CreateIntConst(0, primTypes[0]));
-                    std::pair<BaseNode*, std::optional<IntVal>> pairTemp = DispatchFold(lnot);
-                    if (IsPrimitiveInteger(foldedPrimType)) {
-                        result = PairToExpr(foldedPrimType, pairTemp);
-                    } else {
-                        result = PairToExpr(primTypes[0], pairTemp);
-                        result = mirModule->CurFuncCodeMemPool()->New<TypeCvtNode>(OP_cvt, foldedPrimType, primTypes[0],
-                                                                                   result);
-                    }
-                    return std::make_pair(result, std::nullopt);
-                }
-            }
-        }
-    }
-    BaseNode *e0 = PairToExpr(primTypes[kFirst], p[kFirst]);
-    BaseNode *e1 = PairToExpr(primTypes[kSecond], p[kSecond]);
-    BaseNode *e2 = PairToExpr(primTypes[kThird], p[kThird]);  // count up to 3 for ternary node
-    if (e0 != node->Opnd(kFirst) || e1 != node->Opnd(kSecond) || e2 != node->Opnd(kThird)) {
-        result = mirModule->CurFuncCodeMemPool()->New<TernaryNode>(Opcode(node->GetOpCode()),
-                                                                   PrimType(node->GetPrimType()), e0, e1, e2);
-    }
-    return std::make_pair(result, std::nullopt);
-}
-
 StmtNode *ConstantFold::SimplifyDassign(DassignNode *node)
 {
     CHECK_NULL_FATAL(node);
@@ -2579,23 +2358,6 @@ StmtNode *ConstantFold::SimplifyAsm(AsmNode *node)
     return node;
 }
 
-StmtNode *ConstantFold::SimplifyIf(IfStmtNode *node)
-{
-    CHECK_NULL_FATAL(node);
-    BaseNode *returnValue = nullptr;
-    (void)Simplify(node->GetThenPart());
-    if (node->GetElsePart()) {
-        (void)Simplify(node->GetElsePart());
-    }
-    returnValue = Fold(node->Opnd());
-    if (returnValue != nullptr) {
-        node->SetOpnd(returnValue, 0);
-        // do not delete c/c++ dead if-body here
-        return node;
-    }
-    return node;
-}
-
 StmtNode *ConstantFold::SimplifyWhile(WhileStmtNode *node)
 {
     CHECK_NULL_FATAL(node);
@@ -2638,39 +2400,7 @@ StmtNode *ConstantFold::SimplifyIcall(IcallNode *node)
             node->SetNOpndAt(i, returnValue);
         }
     }
-    // icall node transform to call node
-    CHECK_FATAL(!node->GetNopnd().empty(), "container check");
-    switch (node->GetNopndAt(0)->GetOpCode()) {
-        case OP_addroffunc: {
-            AddroffuncNode *addrofNode = static_cast<AddroffuncNode*>(node->GetNopndAt(0));
-            CallNode *callNode = mirModule->CurFuncCodeMemPool()->New<CallNode>(
-                *mirModule,
-                (node->GetOpCode() == OP_icall || node->GetOpCode() == OP_icallproto) ? OP_call : OP_callassigned);
-            if (node->GetOpCode() == OP_icallassigned || node->GetOpCode() == OP_icallprotoassigned) {
-                callNode->SetReturnVec(node->GetReturnVec());
-            }
-            callNode->SetPUIdx(addrofNode->GetPUIdx());
-            for (size_t i = 1; i < node->GetNopndSize(); i++) {
-                callNode->GetNopnd().push_back(node->GetNopndAt(i));
-            }
-            callNode->SetNumOpnds(callNode->GetNopndSize());
-            // reuse stmtID to skip update stmtFreqs when profileUse is on
-            callNode->SetStmtID(node->GetStmtID());
-            return callNode;
-        }
-        default:
-            break;
-    }
     return node;
-}
-
-void ConstantFold::ProcessFunc(MIRFunction *func)
-{
-    if (func->IsEmpty()) {
-        return;
-    }
-    mirModule->SetCurFunction(func);
-    (void)Simplify(func->GetBody());
 }
 
 }  // namespace maple

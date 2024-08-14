@@ -96,12 +96,6 @@ public:
     CommandLine(const CommandLine &) = delete;
     CommandLine &operator=(const CommandLine &) = delete;
 
-    RetCode Parse(int argc, char **argv, OptionCategory &optCategory);
-    RetCode Parse(int argc, char **argv)
-    {
-        return Parse(argc, argv, defaultCategory);
-    }
-
     RetCode Parse(std::vector<std::string> argvs, OptionCategory &optCategory);
     RetCode Parse(std::vector<std::string> argvs)
     {
@@ -109,24 +103,6 @@ public:
     }
     RetCode HandleInputArgs(const std::deque<std::string_view> &args, OptionCategory &optCategory);
     void Register(const std::vector<std::string> &optNames, OptionInterface &opt, OptionCategory &optCategory);
-
-    void Clear(OptionCategory &optCategory);
-    void Clear()
-    {
-        return Clear(defaultCategory);
-    }
-
-    void BashCompletionPrinter(const OptionCategory &optCategory) const;
-    void BashCompletionPrinter() const
-    {
-        return BashCompletionPrinter(defaultCategory);
-    }
-
-    void HelpPrinter(const OptionCategory &optCategory) const;
-    void HelpPrinter() const
-    {
-        return HelpPrinter(defaultCategory);
-    }
 
     std::vector<std::pair<std::string, RetCode>> badCLArgs;
     OptionCategory defaultCategory;

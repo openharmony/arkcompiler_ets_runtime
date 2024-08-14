@@ -32,71 +32,11 @@ BECommon::BECommon(MIRModule &mod)
       typeHasFlexibleArray(GlobalTables::GetTypeTable().GetTypeTable().size(), 0, mirModule.GetMPAllocator().Adapter()),
       structFieldCountTable(GlobalTables::GetTypeTable().GetTypeTable().size(), 0,
                             mirModule.GetMPAllocator().Adapter()),
-      jClassLayoutTable(mirModule.GetMPAllocator().Adapter()),
       funcReturnType(mirModule.GetMPAllocator().Adapter())
 {
     for (uint32 i = 1; i < GlobalTables::GetTypeTable().GetTypeTable().size(); ++i) {
         MIRType *ty = GlobalTables::GetTypeTable().GetTypeTable()[i];
         ComputeTypeSizesAligns(*ty);
-    }
-}
-
-/*
- * try to find an available padding slot, and allocate the given field in it.
- * return the offset of the allocated memory. 0 if not available
- * Note: this will update lists in paddingSlots
- * Note: padding slots is a list of un-occupied (small size) slots
- *       available to allocate new fields. so far, just for 1, 2, 4 bytes
- *       types (map to array index 0, 1, 2)
- */
-static uint32 TryAllocInPaddingSlots(std::list<uint32> paddingSlots[], uint32 fieldSize, uint32 fieldAlign,
-                                     size_t paddingSlotsLength)
-{
-    CHECK_FATAL(paddingSlotsLength > 0, "expect paddingSlotsLength > 0");
-    if (fieldSize > 4) {  // padding slots are just for size 1/2/4 bytes
-        return 0;
-    }
-
-    uint32 fieldOffset = 0;
-    /* here is a greedy search */
-    for (size_t freeSlot = static_cast<size_t>(fieldSize >> 1); freeSlot < paddingSlotsLength; ++freeSlot) {
-        if (!paddingSlots[freeSlot].empty()) {
-            uint32 paddingOffset = paddingSlots[freeSlot].front();
-            if (IsAlignedTo(paddingOffset, fieldAlign)) {
-                /* reuse one padding slot */
-                paddingSlots[freeSlot].pop_front();
-                fieldOffset = paddingOffset;
-                /* check whether there're still space left in this slot */
-                uint32 leftSize = (1u << freeSlot) - fieldSize;
-                if (leftSize != 0) {
-                    uint32 leftOffset = paddingOffset + fieldSize;
-                    if (leftSize & 0x1) { /* check whether the last bit is 1 */
-                        paddingSlots[0].push_front(leftOffset);
-                        leftOffset += 1;
-                    }
-                    if (leftSize & 0x2) { /* check whether the penultimate bit is 1 */
-                        paddingSlots[1].push_front(leftOffset);
-                    }
-                }
-                break;
-            }
-        }
-    }
-    return fieldOffset;
-}
-
-static void AddPaddingSlot(std::list<uint32> paddingSlots[], uint32 offset, uint32 size, size_t paddingSlotsLength)
-{
-    CHECK_FATAL(paddingSlotsLength > 0, "expect paddingSlotsLength > 0");
-    /*
-     * decompose the padding into 1/2/4 bytes slots.
-     * to satisfy alignment constraints.
-     */
-    for (size_t i = 0; i < paddingSlotsLength; ++i) {
-        if (size & (1u << i)) {
-            paddingSlots[i].push_front(offset);
-            offset += (1u << i);
-        }
     }
 }
 
@@ -203,146 +143,6 @@ void BECommon::ComputeStructTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx)
     SetTypeSize(tyIdx, RoundUp(allocedSize, GetTypeAlign(tyIdx.GetIdx())));
 }
 
-void BECommon::ComputeClassTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx, uint8 align)
-{
-    uint64 allocedSize = 0;
-    const FieldVector &fields = static_cast<MIRStructType &>(ty).GetFields();
-
-    auto &classType = static_cast<MIRClassType &>(ty);
-    TyIdx prntTyIdx = classType.GetParentTyIdx();
-    /* process parent class */
-    if (prntTyIdx != 0u) {
-        MIRClassType *parentType =
-            static_cast<MIRClassType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(prntTyIdx));
-        uint32 prntSize = GetTypeSize(prntTyIdx);
-        if (prntSize == 0) {
-            ComputeTypeSizesAligns(*parentType);
-            prntSize = GetTypeSize(prntTyIdx);
-        }
-        uint8 prntAlign = GetTypeAlign(prntTyIdx);
-        AppendStructFieldCount(tyIdx, GetStructFieldCount(prntTyIdx) + 1);
-        /* pad alloced_size according to the field alignment */
-        allocedSize = RoundUp(allocedSize, prntAlign);
-
-        JClassLayout *layout = mirModule.GetMemPool()->New<JClassLayout>(mirModule.GetMPAllocator().Adapter());
-        /* add parent's record to the front */
-        layout->emplace_back(JClassFieldInfo(false, false, false, allocedSize));
-        /* copy parent's layout plan into my plan */
-        if (HasJClassLayout(*parentType)) { /* parent may have incomplete type definition. */
-            const JClassLayout &parentLayout = GetJClassLayout(*parentType);
-            layout->insert(layout->end(), parentLayout.begin(), parentLayout.end());
-            allocedSize += prntSize;
-            SetTypeAlign(tyIdx, std::max(GetTypeAlign(tyIdx), prntAlign));
-        } else {
-            LogInfo::MapleLogger() << "Warning:try to layout class with incomplete type:" << parentType->GetName()
-                                   << "\n";
-        }
-        jClassLayoutTable[&classType] = layout;
-    } else {
-        /* This is the root class, say, The Object */
-        jClassLayoutTable[&classType] = mirModule.GetMemPool()->New<JClassLayout>(mirModule.GetMPAllocator().Adapter());
-    }
-
-    /*
-     * a list of un-occupied (small size) slots available for insertion
-     * so far, just for 1, 2, 4 bytes types (map to array index 0, 1, 2)
-     */
-    std::list<uint32> paddingSlots[3];  // padding slots are just 3 types for size 1/2/4 bytes
-    /* process fields */
-    AppendStructFieldCount(tyIdx, fields.size());
-    if (fields.size() == 0 && mirModule.IsCModule()) {
-        SetTypeAlign(tyIdx.GetIdx(), 1);
-        SetTypeSize(tyIdx.GetIdx(), 1);
-        return;
-    }
-    for (uint32 j = 0; j < fields.size(); ++j) {
-        TyIdx fieldTyIdx = fields[j].second.first;
-        MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldTyIdx);
-        FieldAttrs fieldAttr = fields[j].second.second;
-        uint32 fieldSize = GetTypeSize(fieldTyIdx);
-        if (fieldSize == 0) {
-            ComputeTypeSizesAligns(*fieldType);
-            fieldSize = GetTypeSize(fieldTyIdx);
-        }
-        uint8 fieldAlign = GetTypeAlign(fieldTyIdx);
-
-        if ((fieldType->GetKind() == kTypePointer) && (fieldType->GetPrimType() == PTY_a64)) {
-            /* handle class reference field */
-            fieldSize = static_cast<uint32>(RTSupport::GetRTSupportInstance().GetFieldSize());
-            fieldAlign = RTSupport::GetRTSupportInstance().GetFieldAlign();
-        }
-
-        /* try to alloc the field in one of previously created padding slots */
-        uint32 currentFieldOffset =
-            TryAllocInPaddingSlots(paddingSlots, fieldSize, fieldAlign, sizeof(paddingSlots) / sizeof(paddingSlots[0]));
-        /* cannot reuse one padding slot. layout to current end */
-        if (currentFieldOffset == 0) {
-            /* pad alloced_size according to the field alignment */
-            currentFieldOffset = RoundUp(allocedSize, fieldAlign);
-            if (currentFieldOffset != allocedSize) {
-                /* rounded up, create one padding-slot */
-                uint32 paddingSize = currentFieldOffset - allocedSize;
-                AddPaddingSlot(paddingSlots, allocedSize, paddingSize, sizeof(paddingSlots) / sizeof(paddingSlots[0]));
-                allocedSize = currentFieldOffset;
-            }
-            /* need new memory for this field */
-            allocedSize += fieldSize;
-        }
-        AddElementToJClassLayout(classType, JClassFieldInfo(fieldType->GetKind() == kTypePointer,
-                                                            fieldAttr.GetAttr(FLDATTR_rcunowned),
-                                                            fieldAttr.GetAttr(FLDATTR_rcweak), currentFieldOffset));
-        SetTypeAlign(tyIdx, std::max(GetTypeAlign(tyIdx), fieldAlign));
-    }
-    SetTypeSize(tyIdx, RoundUp(allocedSize, align));
-}
-
-void BECommon::ComputeArrayTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx)
-{
-    MIRArrayType &arrayType = static_cast<MIRArrayType &>(ty);
-    MIRType *elemType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(arrayType.GetElemTyIdx());
-    uint32 elemSize = GetTypeSize(elemType->GetTypeIndex());
-    if (elemSize == 0) {
-        ComputeTypeSizesAligns(*elemType);
-        elemSize = GetTypeSize(elemType->GetTypeIndex());
-    }
-    if (!mirModule.IsCModule()) {
-        CHECK_FATAL(elemSize != 0, "elemSize should not equal 0");
-        CHECK_FATAL(elemType->GetTypeIndex() != 0u, "elemType's idx should not equal 0");
-    }
-    uint32 arrayAlign = arrayType.GetTypeAttrs().GetAlign();
-    elemSize = std::max(elemSize, static_cast<uint32>(GetTypeAlign(elemType->GetTypeIndex())));
-    elemSize = std::max(elemSize, arrayAlign);
-    /* compute total number of elements from the multipel dimensions */
-    uint64 numElems = 1;
-    for (int d = 0; d < arrayType.GetDim(); ++d) {
-        numElems *= arrayType.GetSizeArrayItem(d);
-    }
-    auto typeSize = elemSize * numElems;
-    SetTypeSize(tyIdx, typeSize);
-    if (typeSize == 0) {
-        SetTypeAlign(tyIdx, static_cast<uint8>(arrayAlign));
-    } else {
-        auto maxAlign = std::max(static_cast<uint32>(GetTypeAlign(elemType->GetTypeIndex())), arrayAlign);
-        SetTypeAlign(tyIdx, static_cast<uint8>(maxAlign));
-    }
-}
-
-void BECommon::ComputeFArrayOrJArrayTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx)
-{
-    MIRFarrayType &arrayType = static_cast<MIRFarrayType &>(ty);
-    MIRType *elemType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(arrayType.GetElemTyIdx());
-    uint32 elemSize = GetTypeSize(elemType->GetTypeIndex());
-    if (elemSize == 0) {
-        ComputeTypeSizesAligns(*elemType);
-        elemSize = GetTypeSize(elemType->GetTypeIndex());
-    }
-    CHECK_FATAL(elemSize != 0, "elemSize should not equal 0");
-    CHECK_FATAL(GetTypeAlign(elemType->GetTypeIndex()) != 0u, "GetTypeAlign return 0 is not expected");
-    elemSize = std::max(elemSize, static_cast<uint32>(GetTypeAlign(elemType->GetTypeIndex())));
-    SetTypeSize(tyIdx, 0);
-    SetTypeAlign(tyIdx, GetTypeAlign(elemType->GetTypeIndex()));
-}
-
 void BECommon::ComputeTypeSizesAligns(MIRType &ty, uint8 align)
 {
     TyIdx tyIdx = ty.GetTypeIndex();
@@ -362,28 +162,17 @@ void BECommon::ComputeTypeSizesAligns(MIRType &ty, uint8 align)
             SetTypeSize(tyIdx, GetPrimTypeSize(ty.GetPrimType()));
             SetTypeAlign(tyIdx, GetTypeSize(tyIdx));
             break;
-        case kTypeArray: {
-            ComputeArrayTypeSizesAligns(ty, tyIdx);
-            break;
-        }
-        case kTypeFArray:
-        case kTypeJArray: {
-            ComputeFArrayOrJArrayTypeSizesAligns(ty, tyIdx);
-            break;
-        }
         case kTypeUnion:
         case kTypeStruct: {
             ComputeStructTypeSizesAligns(ty, tyIdx);
             break;
         }
-        case kTypeInterface: { /* interface shouldn't have instance fields */
-            SetTypeAlign(tyIdx, 0);
-            SetTypeSize(tyIdx, 0);
-            SetStructFieldCount(tyIdx, 0);
-            break;
-        }
+        case kTypeArray:
+        case kTypeFArray:
+        case kTypeJArray:
+        case kTypeInterface:
         case kTypeClass: { /* cannot have union or bitfields */
-            ComputeClassTypeSizesAligns(ty, tyIdx, align);
+            CHECK_FATAL(false, "unsupported type");
             break;
         }
         case kTypeByName:
@@ -398,125 +187,7 @@ void BECommon::ComputeTypeSizesAligns(MIRType &ty, uint8 align)
 
 bool BECommon::IsRefField(MIRStructType &structType, FieldID fieldID) const
 {
-    if (structType.GetKind() == kTypeClass) {
-        CHECK_FATAL(HasJClassLayout(static_cast<MIRClassType &>(structType)),
-                    "Cannot found jclass layout information");
-        const JClassLayout &layout = GetJClassLayout(static_cast<MIRClassType &>(structType));
-        if (layout.empty()) {
-            ERR(kLncErr, "layout is null in BECommon::IsRefField");
-            return false;
-        }
-        return layout[fieldID - 1].IsRef();
-    }
     return false;
-}
-
-void BECommon::GenFieldOffsetMap(const std::string &className)
-{
-    MIRType *type = GlobalTables::GetTypeTable().GetOrCreateClassType(className, mirModule);
-    CHECK_FATAL(type != nullptr, "unknown class, type should not be nullptr");
-    MIRClassType *classType = static_cast<MIRClassType *>(type);
-    for (FieldID i = 1; i <= GetStructFieldCount(classType->GetTypeIndex()); ++i) {
-        FieldID fieldID = i;
-        FieldPair fp = classType->TraverseToFieldRef(fieldID);
-        GStrIdx strIdx = fp.first;
-        if (strIdx == 0u) {
-            continue;
-        }
-
-        const std::string &fieldName = GlobalTables::GetStrTable().GetStringFromStrIdx(strIdx);
-
-        TyIdx fieldTyIdx = fp.second.first;
-        uint64 fieldSize = GetTypeSize(fieldTyIdx);
-        MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldTyIdx);
-
-        if ((fieldType->GetKind() == kTypePointer) && (fieldType->GetPrimType() == PTY_a64)) {
-            /* handle class reference field */
-            fieldSize = RTSupport::GetRTSupportInstance().GetFieldSize();
-        }
-
-        std::pair<int32, int32> p = GetFieldOffset(*classType, i);
-        CHECK_FATAL(p.second == 0, "expect p.second equals 0");
-        LogInfo::MapleLogger() << "CLASS_FIELD_OFFSET_MAP(" << className.c_str() << "," << fieldName.c_str() << ","
-                               << p.first << "," << fieldSize << ")\n";
-    }
-}
-
-void BECommon::GenFieldOffsetMap(MIRClassType &classType, FILE &outFile)
-{
-    const std::string &className = classType.GetName();
-
-    /*
-     * We only enumerate fields defined in the current class.  There are cases
-     * where a parent classes may define private fields that have the same name as
-     * a field in the current class.This table is generated for the convenience of
-     * C programmers.  If the C programmer wants to access parent class fields,
-     * the programmer should access them as `Parent.field`.
-     */
-    FieldID myEnd = structFieldCountTable.at(classType.GetTypeIndex());
-    FieldID myBegin = (myEnd - static_cast<FieldID>(classType.GetFieldsSize())) + 1;
-
-    for (FieldID i = myBegin; i <= myEnd; ++i) {
-        FieldID fieldID = i;
-        FieldPair fp = classType.TraverseToFieldRef(fieldID);
-        GStrIdx strIdx = fp.first;
-        if (strIdx == 0u) {
-            continue;
-        }
-        FieldAttrs attrs = fp.second.second;
-        if (attrs.GetAttr(FLDATTR_static)) {
-            continue;
-        }
-
-        const std::string &fieldName = GlobalTables::GetStrTable().GetStringFromStrIdx(strIdx);
-
-        TyIdx fieldTyIdx = fp.second.first;
-        uint64 fieldSize = GetTypeSize(fieldTyIdx);
-        MIRType *fieldType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fieldTyIdx);
-
-        if ((fieldType->GetKind() == kTypePointer) && (fieldType->GetPrimType() == PTY_a64)) {
-            /* handle class reference field */
-            fieldSize = RTSupport::GetRTSupportInstance().GetFieldSize();
-            ;
-        }
-
-        std::pair<int32, int32> p = GetFieldOffset(classType, i);
-        CHECK_FATAL(p.second == 0, "expect p.second equals 0");
-        (void)fprintf(&outFile, "__MRT_CLASS_FIELD(%s, %s, %d, %lu)\n", className.c_str(), fieldName.c_str(), p.first,
-                      static_cast<unsigned long>(fieldSize));
-    }
-}
-
-void BECommon::GenObjSize(const MIRClassType &classType, FILE &outFile)
-{
-    const std::string &className = classType.GetName();
-    uint64_t objSize = GetTypeSize(classType.GetTypeIndex());
-    if (objSize == 0) {
-        return;
-    }
-
-    TyIdx parentTypeIdx = classType.GetParentTyIdx();
-    MIRType *parentType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(parentTypeIdx);
-    const char *parentName = nullptr;
-    if (parentType != nullptr) {
-        MIRClassType *parentClass = static_cast<MIRClassType *>(parentType);
-        parentName = parentClass->GetName().c_str();
-    } else {
-        parentName = "THIS_IS_ROOT";
-    }
-    fprintf(&outFile, "__MRT_CLASS(%s, %" PRIu64 ", %s)\n", className.c_str(), objSize, parentName);
-}
-
-FieldInfo BECommon::GetJClassFieldOffset(MIRStructType &classType, FieldID fieldID) const
-{
-    CHECK_FATAL(fieldID <= GetStructFieldCount(classType.GetTypeIndex()), "GetFieldOFfset: fieldID too large");
-    if (fieldID == 0) {
-        return {0, 0};
-    }
-    CHECK_FATAL(HasJClassLayout(static_cast<MIRClassType &>(classType)), "Cannot found jclass layout information");
-    const JClassLayout &layout = GetJClassLayout(static_cast<MIRClassType &>(classType));
-    CHECK_FATAL(static_cast<uint32>(fieldID) - 1 < layout.size(), "subscript out of range");
-    return {static_cast<uint32>(layout[static_cast<unsigned long>(fieldID) - 1].GetOffset()), 0};
 }
 
 /*
@@ -534,14 +205,7 @@ std::pair<int32, int32> BECommon::GetFieldOffset(MIRStructType &structType, Fiel
     if (fieldID == 0) {
         return std::pair<int32, int32>(0, 0);
     }
-
-    if (structType.GetKind() == kTypeClass) {
-        CHECK_FATAL(HasJClassLayout(static_cast<MIRClassType &>(structType)),
-                    "Cannot found jclass layout information");
-        const JClassLayout &layout = GetJClassLayout(static_cast<MIRClassType &>(structType));
-        CHECK_FATAL(static_cast<uint32>(fieldID) - 1 < layout.size(), "subscript out of range");
-        return std::pair<int32, int32>(static_cast<int32>(layout[fieldID - 1].GetOffset()), 0);
-    }
+    DEBUG_ASSERT(structType.GetKind() != kTypeClass, "unsupported kTypeClass type");
 
     /* process the struct fields */
     FieldVector fields = structType.GetFields();
@@ -669,12 +333,6 @@ void BECommon::AddAndComputeSizeAlign(MIRType &ty)
     ComputeTypeSizesAligns(ty);
 }
 
-void BECommon::AddElementToJClassLayout(MIRClassType &klass, JClassFieldInfo info)
-{
-    JClassLayout &layout = *(jClassLayoutTable.at(&klass));
-    layout.emplace_back(info);
-}
-
 void BECommon::AddElementToFuncReturnType(MIRFunction &func, const TyIdx tyIdx)
 {
     funcReturnType[&func] = tyIdx;
@@ -743,85 +401,5 @@ BaseNode *BECommon::GetAddressOfNode(const BaseNode &node)
         default:
             return nullptr;
     }
-}
-
-bool BECommon::CallIsOfAttr(FuncAttrKind attr, const StmtNode *narynode) const
-{
-    (void)attr;
-    (void)narynode;
-    return false;
-
-    /* For now, all 64x1_t types object are not propagated to become pregs by mplme, so the following
-       is not needed for now. We need to revisit this later when types are enhanced with attributes */
-#if TO_BE_RESURRECTED
-    bool attrFunc = false;
-    if (narynode->GetOpCode() == OP_call) {
-        CallNode *callNode = static_cast<CallNode *>(narynode);
-        MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode->GetPUIdx());
-        attrFunc = (mirModule.GetSrcLang() == kSrcLangC && func->GetAttr(attr)) ? true : false;
-    } else if (narynode->GetOpCode() == OP_icall) {
-        IcallNode *icallNode = static_cast<IcallNode *>(narynode);
-        BaseNode *fNode = icallNode->Opnd(0);
-        MIRFuncType *fType = nullptr;
-        MIRPtrType *pType = nullptr;
-        if (fNode->GetOpCode() == OP_dread) {
-            DreadNode *dNode = static_cast<DreadNode *>(fNode);
-            MIRSymbol *symbol = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dNode->GetStIdx());
-            pType = static_cast<MIRPtrType *>(symbol->GetType());
-            MIRType *ty = pType;
-            if (dNode->GetFieldID() != 0) {
-                DEBUG_ASSERT(ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeClass, "");
-                FieldPair thepair;
-                if (ty->GetKind() == kTypeStruct) {
-                    thepair = static_cast<MIRStructType *>(ty)->TraverseToField(dNode->GetFieldID());
-                } else {
-                    thepair = static_cast<MIRClassType *>(ty)->TraverseToField(dNode->GetFieldID());
-                }
-                pType = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first));
-            }
-            fType = static_cast<MIRFuncType *>(pType->GetPointedType());
-        } else if (fNode->GetOpCode() == OP_iread) {
-            IreadNode *iNode = static_cast<IreadNode *>(fNode);
-            MIRPtrType *pointerty =
-                static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(iNode->GetTyIdx()));
-            MIRType *pointedType = pointerty->GetPointedType();
-            if (iNode->GetFieldID() != 0) {
-                pointedType = static_cast<MIRStructType *>(pointedType)->GetFieldType(iNode->GetFieldID());
-            }
-            if (pointedType->GetKind() == kTypeFunction) {
-                fType = static_cast<MIRFuncType *>(pointedType);
-            } else if (pointedType->GetKind() == kTypePointer) {
-                return false; /* assert? */
-            }
-        } else if (fNode->GetOpCode() == OP_select) {
-            TernaryNode *sNode = static_cast<TernaryNode *>(fNode);
-            BaseNode *expr = sNode->Opnd(1);
-            // both function ptrs under select should have the same signature, chk op1 only
-            AddroffuncNode *afNode = static_cast<AddroffuncNode *>(expr);
-            MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(afNode->GetPUIdx());
-            attrFunc = mirModule.GetSrcLang() == kSrcLangC && func->GetAttr(attr);
-        } else if (fNode->GetOpCode() == OP_regread) {
-            RegreadNode *rNode = static_cast<RegreadNode *>(fNode);
-            PregIdx pregidx = rNode->GetRegIdx();
-            MIRPreg *preg = mirModule.CurFunction()->GetPregTab()->PregFromPregIdx(pregidx);
-            MIRType *type = preg->GetMIRType();
-            if (type == nullptr) {
-                return false;
-            }
-            MIRPtrType *pType = static_cast<MIRPtrType *>(type);
-            type = pType->GetPointedType();
-            if (type == nullptr) {
-                return false;
-            }
-        } else if (fNode->GetOpCode() == OP_retype) {
-            RetypeNode *rNode = static_cast<RetypeNode *>(fNode);
-            pType = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(rNode->GetTyIdx()));
-            fType = static_cast<MIRFuncType *>(pType->GetPointedType());
-        } else {
-            return false; /* assert? */
-        }
-    }
-    return attrFunc;
-#endif
 }
 } /* namespace maplebe */

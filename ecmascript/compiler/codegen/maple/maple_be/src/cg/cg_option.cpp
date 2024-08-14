@@ -193,10 +193,6 @@ bool CGOptions::SolveOptions(bool isDebug)
         SetQuiet(true);
     }
 
-    if (opts::verbose.IsEnabledByUser()) {
-        SetQuiet(false);
-    }
-
     if (opts::cg::pie.IsEnabledByUser()) {
         opts::cg::pie ? SetOption(CGOptions::kGenPie) : ClearOption(CGOptions::kGenPie);
     }
@@ -255,12 +251,6 @@ bool CGOptions::SolveOptions(bool isDebug)
 
     if (opts::cg::duplicateAsmList2.IsEnabledByUser()) {
         SetFastFuncsAsmFile(opts::cg::duplicateAsmList2);
-    }
-
-    if (opts::cg::insertCall.IsEnabledByUser()) {
-        SetOption(kGenInsertCall);
-        SetInstrumentationFunction(opts::cg::insertCall);
-        SetInsertCall(true);
     }
 
     if (opts::cg::stackProtectorStrong.IsEnabledByUser()) {
@@ -805,7 +795,7 @@ void CGOptions::EnableLiteCG()
     doAlignAnalysis = false;
     doCondBrAlign = false;
     supportFuncSymbol = true;
-    
+
     ClearOption(kUseStackProtectorStrong);
     ClearOption(kUseStackProtectorAll);
     ClearOption(kConstFold);

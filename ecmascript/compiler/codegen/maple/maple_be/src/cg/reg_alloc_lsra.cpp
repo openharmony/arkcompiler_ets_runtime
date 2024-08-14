@@ -791,9 +791,6 @@ void LSRALinearScanRegAllocator::ComputeLiveOut(BB &bb, uint32 insnNum)
         if (li != nullptr && !bb.IsEmpty()) {
             li->SetLastUse(bb.GetLastInsn()->GetId());
             UpdateLiveIntervalState(bb, *li);
-            if (bb.GetKind() == BB::kBBRangeGoto) {
-                li->SetSplitForbid(true);
-            }
 
             // update live interval range
             if (li->GetRanges().empty()) {

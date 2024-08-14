@@ -20,8 +20,7 @@ namespace maplebe {
 constexpr uint32 kCondBrNum = 2;
 constexpr uint32 kSwitchCaseNum = 5;
 
-const std::string BB::bbNames[BB::kBBLast] = {"BB_ft",  "BB_if",        "BB_goto",      "BB_igoto",
-                                              "BB_ret", "BB_intrinsic", "BB_rangegoto", "BB_throw"};
+const std::string BB::bbNames[BB::kBBLast] = {"BB_ft", "BB_if", "BB_goto", "BB_ret", "BB_noret"};
 
 Insn *BB::InsertInsnBefore(Insn &existing, Insn &newInsn)
 {
@@ -95,25 +94,6 @@ void BB::RemoveInsn(Insn &insn)
     }
     if (nextInsn != nullptr) {
         nextInsn->SetPrev(prevInsn);
-    }
-}
-
-void BB::RemoveInsnPair(Insn &insn, const Insn &nextInsn)
-{
-    DEBUG_ASSERT(insn.GetNext() == &nextInsn, "next_insn is supposed to follow insn");
-    DEBUG_ASSERT(nextInsn.GetPrev() == &insn, "next_insn is supposed to follow insn");
-    if ((firstInsn == &insn) && (lastInsn == &nextInsn)) {
-        firstInsn = lastInsn = nullptr;
-    } else if (firstInsn == &insn) {
-        firstInsn = nextInsn.GetNext();
-    } else if (lastInsn == &nextInsn) {
-        lastInsn = insn.GetPrev();
-    }
-    if (insn.GetPrev() != nullptr) {
-        insn.GetPrev()->SetNext(nextInsn.GetNext());
-    }
-    if (nextInsn.GetNext() != nullptr) {
-        nextInsn.GetNext()->SetPrev(insn.GetPrev());
     }
 }
 
@@ -295,7 +275,7 @@ bool BB::HasCriticalEdge()
         return false;
     }
     for (BB *pred : preds) {
-        if (pred->GetKind() == BB::kBBGoto || pred->GetKind() == BB::kBBIgoto) {
+        if (pred->GetKind() == BB::kBBGoto) {
             continue;
         }
         if (pred->GetSuccs().size() > 1) {

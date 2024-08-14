@@ -135,10 +135,6 @@ public:
     }
     void DumpPhaseTime();
 
-    /* threadMP is given by thread local mempool */
-    AnalysisDataManager *ApplyAnalysisDataManager(const std::thread::id threadID, MemPool &threadMP);
-    AnalysisDataManager *GetAnalysisDataManager(const std::thread::id threadID, MemPool &threadMP);
-
     /* mempool */
     std::unique_ptr<ThreadLocalMemPool> AllocateMemPoolInPhaseManager(const std::string &mempoolName);
     bool UseGlobalMpCtrler() const

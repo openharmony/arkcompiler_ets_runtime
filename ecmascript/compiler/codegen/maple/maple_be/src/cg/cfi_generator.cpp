@@ -70,10 +70,6 @@ void GenCfi::GenerateEndDirective(BB &bb)
 
 void GenCfi::GenerateRegisterStateDirective(BB &bb)
 {
-    if (cg.GetMIRModule()->IsCModule()) {
-        return;
-    }
-
     if (&bb == cgFunc.GetLastBB() || bb.GetNext() == nullptr) {
         return;
     }

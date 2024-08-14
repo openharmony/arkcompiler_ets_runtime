@@ -20,15 +20,11 @@ namespace maplebe {
 void AArch64CFGOptimizer::InitOptimizePatterns()
 {
     diffPassPatterns.emplace_back(memPool->New<ChainingPattern>(*cgFunc));
-    if (cgFunc->GetMirModule().IsCModule()) {
-        diffPassPatterns.emplace_back(memPool->New<SequentialJumpPattern>(*cgFunc));
-    }
     auto *brOpt = memPool->New<AArch64FlipBRPattern>(*cgFunc, loopInfo);
     if (GetPhase() == kCfgoPostRegAlloc) {
         brOpt->SetPhase(kCfgoPostRegAlloc);
     }
     diffPassPatterns.emplace_back(brOpt);
-    diffPassPatterns.emplace_back(memPool->New<DuplicateBBPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<UnreachBBPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<EmptyBBPattern>(*cgFunc));
 }
@@ -39,16 +35,6 @@ uint32 AArch64FlipBRPattern::GetJumpTargetIdx(const Insn &insn)
 }
 
 MOperator AArch64FlipBRPattern::FlipConditionOp(MOperator flippedOp)
-{
-    return AArch64isa::FlipConditionOp(flippedOp);
-}
-
-uint32 AArch64CrossJumpBBPattern::GetJumpTargetIdx(const Insn &insn) const
-{
-    return AArch64isa::GetJumpTargetIdx(insn);
-}
-
-MOperator AArch64CrossJumpBBPattern::FlipConditionOp(MOperator flippedOp) const
 {
     return AArch64isa::FlipConditionOp(flippedOp);
 }

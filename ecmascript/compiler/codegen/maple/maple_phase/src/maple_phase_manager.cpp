@@ -229,28 +229,6 @@ AnalysisDep *MaplePhaseManager::FindAnalysisDep(const MaplePhase *phase)
     return anDependence;
 }
 
-AnalysisDataManager *MaplePhaseManager::ApplyAnalysisDataManager(const std::thread::id threadID, MemPool &threadMP)
-{
-    auto *adm = threadMP.New<AnalysisDataManager>(threadMP);
-#ifdef DEBUG
-    auto result = analysisDataManagers.emplace(std::pair<std::thread::id, AnalysisDataManager *>(threadID, adm));
-#else
-    (void)analysisDataManagers.emplace(std::pair<std::thread::id, AnalysisDataManager *>(threadID, adm));
-#endif
-    DEBUG_ASSERT(adm != nullptr && result.second, "apply AnalysisDataManager failed");
-    return adm;
-}
-
-AnalysisDataManager *MaplePhaseManager::GetAnalysisDataManager(const std::thread::id threadID, MemPool &threadMP)
-{
-    auto admIt = analysisDataManagers.find(threadID);
-    if (admIt != analysisDataManagers.end()) {
-        return admIt->second;
-    } else {
-        return ApplyAnalysisDataManager(threadID, threadMP);
-    }
-}
-
 std::unique_ptr<ThreadLocalMemPool> MaplePhaseManager::AllocateMemPoolInPhaseManager(const std::string &mempoolName)
 {
     if (!UseGlobalMpCtrler()) {

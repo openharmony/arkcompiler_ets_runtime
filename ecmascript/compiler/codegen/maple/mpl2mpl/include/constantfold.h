@@ -44,7 +44,6 @@ public:
         return new ConstantFold(*this);
     }
 
-    void ProcessFunc(MIRFunction *func) override;
     ~ConstantFold() override
     {
         mirModule = nullptr;
@@ -72,7 +71,6 @@ private:
     StmtNode *SimplifyIassign(IassignNode *node);
     StmtNode *SimplifyNary(NaryStmtNode *node);
     StmtNode *SimplifyIcall(IcallNode *node);
-    StmtNode *SimplifyIf(IfStmtNode *node);
     StmtNode *SimplifySwitch(SwitchNode *node);
     StmtNode *SimplifyUnary(UnaryStmtNode *node);
     StmtNode *SimplifyAsm(AsmNode *node);
@@ -85,11 +83,8 @@ private:
     std::pair<BaseNode*, std::optional<IntVal>> FoldExtractbits(ExtractbitsNode *node);
     ConstvalNode *FoldSignExtend(Opcode opcode, PrimType resultType, uint8 size, const ConstvalNode &cst) const;
     std::pair<BaseNode*, std::optional<IntVal>> FoldIread(IreadNode *node);
-    std::pair<BaseNode*, std::optional<IntVal>> FoldSizeoftype(SizeoftypeNode *node) const;
     std::pair<BaseNode*, std::optional<IntVal>> FoldRetype(RetypeNode *node);
-    std::pair<BaseNode*, std::optional<IntVal>> FoldGcmallocjarray(JarrayMallocNode *node);
     std::pair<BaseNode*, std::optional<IntVal>> FoldUnary(UnaryNode *node);
-    std::pair<BaseNode*, std::optional<IntVal>> FoldTernary(TernaryNode *node);
     std::pair<BaseNode*, std::optional<IntVal>> FoldTypeCvt(TypeCvtNode *node);
     ConstvalNode *FoldCeil(const ConstvalNode &cst, PrimType fromType, PrimType toType) const;
     ConstvalNode *FoldFloor(const ConstvalNode &cst, PrimType fromType, PrimType toType) const;

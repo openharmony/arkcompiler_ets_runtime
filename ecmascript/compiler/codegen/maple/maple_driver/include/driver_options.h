@@ -34,15 +34,4 @@ static maplecl::OptionCategory &ldCategory = maplecl::CommandLine::GetCommandLin
 static maplecl::OptionCategory &jbc2mplCategory = maplecl::CommandLine::GetCommandLine().jbc2mplCategory;
 static maplecl::OptionCategory &ipaCategory = maplecl::CommandLine::GetCommandLine().ipaCategory;
 
-namespace opts {
-
-/* ##################### BOOL Options ############################################################### */
-
-extern maplecl::Option<bool> verbose;
-extern maplecl::Option<bool> genLMBC;
-extern maplecl::Option<bool> profileGen;
-extern maplecl::Option<bool> profileUse;
-
-}  // namespace opts
-
 #endif /* MAPLE_DRIVER_INCLUDE_DRIVER_OPTIONS_H */

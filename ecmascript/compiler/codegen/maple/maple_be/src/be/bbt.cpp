@@ -44,36 +44,5 @@ void BBT::Dump(const MIRModule &mod) const
         LogInfo::MapleLogger() << "<<Empty>>" << '\n';
     }
 }
-
-void BBT::ValidateStmtList(StmtNode *head, StmtNode *detached)
-{
-    static int nStmts = 0;
-    int n = 0;
-    int m = 0;
-    if (head == nullptr && detached == nullptr) {
-        nStmts = 0;
-        return;
-    }
-    for (StmtNode *s = head; s != nullptr; s = s->GetNext()) {
-        if (s->GetNext() != nullptr) {
-            CHECK_FATAL(s->GetNext()->GetPrev() == s, "make sure the prev node of s' next is s");
-        }
-        if (s->GetPrev() != nullptr) {
-            CHECK_FATAL(s->GetPrev()->GetNext() == s, "make sure the next node of s' prev is s");
-        }
-        ++n;
-    }
-    for (StmtNode *s = detached; s != nullptr; s = s->GetNext()) {
-        if (s->GetNext() != nullptr) {
-            CHECK_FATAL(s->GetNext()->GetPrev() == s, "make sure the prev node of s' next is s");
-        }
-        if (s->GetPrev() != nullptr) {
-            CHECK_FATAL(s->GetPrev()->GetNext() == s, "make sure the next node of s' prev is s");
-        }
-        ++m;
-    }
-    CHECK_FATAL(nStmts <= n + m, "make sure nStmts <= n + m");
-    nStmts = n + m;
-}
 #endif
 } /* namespace maplebe */

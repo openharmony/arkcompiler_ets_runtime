@@ -37,12 +37,6 @@ const MaplePhaseInfo *MaplePhaseRegister::GetPhaseByID(MaplePhaseID id)
     }
 }
 
-void MaplePhase::Dump() const
-{
-    LogInfo::MapleLogger() << "this is Phase : " << PhaseName() << " Kind : " << phaseKind << " ID : " << phaseID
-                           << "\n";
-}
-
 MemPool *MaplePhase::ApplyTempMemPool()
 {
     MemPool *res = memPoolCtrler.NewMemPool("temp Mempool", true);

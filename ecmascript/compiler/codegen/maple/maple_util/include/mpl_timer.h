@@ -25,13 +25,33 @@
 namespace maple {
     class MPLTimer {
     public:
-        MPLTimer();
-        ~MPLTimer();
-        void Start();
-        void Stop();
-        long Elapsed() const;
-        long ElapsedMilliseconds() const;
-        long ElapsedMicroseconds() const;
+        MPLTimer() = default;
+        ~MPLTimer()= default;
+
+        void Start()
+        {
+            startTime = std::chrono::system_clock::now();
+        }
+
+        void Stop()
+        {
+            endTime = std::chrono::system_clock::now();
+        }
+
+        long Elapsed() const
+        {
+            return std::chrono::duration_cast<std::chrono::seconds>(endTime - startTime).count();
+        }
+
+        long ElapsedMilliseconds() const
+        {
+            return std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
+        }
+
+        long ElapsedMicroseconds() const
+        {
+            return std::chrono::duration_cast<std::chrono::microseconds>(endTime - startTime).count();
+        }
 
     private:
         std::chrono::system_clock::time_point startTime;

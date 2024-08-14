@@ -179,32 +179,8 @@ RetCode CommandLine::HandleInputArgs(const std::deque<std::string_view> &args, O
     return err;
 }
 
-RetCode CommandLine::Parse(int argc, char **argv, OptionCategory &optCategory)
-{
-    if (argc > 0) {
-        --argc;
-        ++argv;  // skip program name argv[0] if present
-    }
-
-    if (argc == 0 || *argv == nullptr) {
-        return RetCode::noError;
-    }
-
-    std::deque<std::string_view> args;
-    while (argc != 0 && *argv != nullptr) {
-        args.emplace_back(*argv);
-        ++argv;
-        --argc;
-    }
-
-    return HandleInputArgs(args, optCategory);
-}
-
 RetCode CommandLine::Parse(std::vector<std::string> argvs, OptionCategory &optCategory)
 {
-    if (argvs.size() == 0) {
-        return RetCode::noError;
-    }
     std::deque<std::string_view> args;
     for (size_t i = 0; i < argvs.size(); i++) {
         args.emplace_back(argvs[i]);
@@ -238,27 +214,4 @@ void CommandLine::Register(const std::vector<std::string> &optNames, OptionInter
 
     optCategory.registredOptions.push_back(&opt);
     opt.optCategories.push_back(&optCategory);
-}
-
-void CommandLine::Clear(OptionCategory &optCategory)
-{
-    for (auto &opt : optCategory.registredOptions) {
-        opt->Clear();
-    }
-}
-
-void CommandLine::BashCompletionPrinter(const OptionCategory &optCategory) const
-{
-    for (auto &opt : optCategory.options) {
-        maple::LogInfo::MapleLogger() << opt.first << '\n';
-    }
-}
-
-void CommandLine::HelpPrinter(const OptionCategory &optCategory) const
-{
-    for (auto &opt : optCategory.registredOptions) {
-        if (opt->IsVisibleOption()) {
-            maple::LogInfo::MapleLogger() << opt->GetDescription() << '\n';
-        }
-    }
 }

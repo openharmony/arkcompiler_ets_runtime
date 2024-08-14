@@ -84,12 +84,8 @@ public:
         kBBFallthru, /* default */
         kBBIf,       /* conditional branch */
         kBBGoto,     /* unconditional branch */
-        kBBIgoto,
         kBBReturn,
         kBBNoReturn,
-        kBBIntrinsic, /* BB created by inlining intrinsics; shares a lot with BB_if */
-        kBBRangeGoto,
-        kBBThrow,
         kBBLast
     };
 
@@ -209,8 +205,6 @@ public:
     void ReplaceInsn(Insn &insn, Insn &newInsn);
 
     void RemoveInsn(Insn &insn);
-
-    void RemoveInsnPair(Insn &insn, const Insn &nextInsn);
 
     void RemoveInsnSequence(Insn &insn, const Insn &nextInsn);
 
@@ -963,16 +957,6 @@ public:
         return false;
     }
 
-    bool IsAdrpLabel() const
-    {
-        return isAdrpLabel;
-    }
-
-    void SetIsAdrpLabel()
-    {
-        isAdrpLabel = true;
-    }
-
     SCCNode<BB> *GetSCCNode()
     {
         return sccNode;
@@ -1069,8 +1053,6 @@ private:
 
     CDGNode *cdgNode = nullptr;
     SCCNode<BB> *sccNode = nullptr;
-
-    bool isAdrpLabel = false;  // Indicate whether the address of this BB is referenced by adrp_label insn
 };                             /* class BB */
 
 struct BBIdCmp {

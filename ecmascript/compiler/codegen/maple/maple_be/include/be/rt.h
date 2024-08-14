@@ -69,8 +69,6 @@ protected:
 
 private:
     RTSupport() {}
-    static const std::string kObjectMapSectionName;
-    static const std::string kGctibLabelArrayOfObject;
 };
 } /* namespace maplebe */
 

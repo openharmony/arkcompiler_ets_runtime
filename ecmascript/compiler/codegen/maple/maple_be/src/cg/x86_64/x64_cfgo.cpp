@@ -20,9 +20,7 @@ namespace maplebe {
 /* Initialize cfg optimization patterns */
 void X64CFGOptimizer::InitOptimizePatterns()
 {
-    // The SequentialJumpPattern is not supported until the interface is optimized.
     diffPassPatterns.emplace_back(memPool->New<X64FlipBRPattern>(*cgFunc, loopInfo));
-    diffPassPatterns.emplace_back(memPool->New<DuplicateBBPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<UnreachBBPattern>(*cgFunc));
     diffPassPatterns.emplace_back(memPool->New<EmptyBBPattern>(*cgFunc));
 }

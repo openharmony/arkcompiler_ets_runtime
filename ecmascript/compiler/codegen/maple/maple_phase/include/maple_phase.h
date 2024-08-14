@@ -34,7 +34,11 @@ public:
             analysisInfo = nullptr;
         }
     };
-    void Dump() const;
+    void Dump() const
+    {
+        LogInfo::MapleLogger() << "this is Phase : " << PhaseName() << " Kind : " << phaseKind << " ID : " << phaseID
+                               << "\n";
+    }
     MaplePhaseID GetPhaseID() const
     {
         return phaseID;

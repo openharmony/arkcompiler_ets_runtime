@@ -41,7 +41,6 @@ public:
     void SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize) override;
     void SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOpnd) override;
     void SelectCondGoto(CondGotoNode &stmt, BaseNode &condNode, Operand &opnd0) override;
-    void SelectIgoto(Operand &opnd0) override;
     Operand *SelectDiv(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
     Operand *SelectRem(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
     Operand *SelectMpy(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
