@@ -848,7 +848,7 @@ std::pair<bool, JSTaggedNumber> NumberHelper::FastStringToNumber(const uint8_t *
             }
             num = -num;
         } else {
-            if (num != 0 || (num == 0 && (end - start == 1))) {
+            if ((num != 0) || (end - start == 1)) {
                 strAccessor.TryToSetIntegerHash(num);
             }
         }

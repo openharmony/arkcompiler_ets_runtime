@@ -629,6 +629,7 @@ CString ModulePathHelper::ParseThirdPartyPackage(const JSPandaFile *jsPandaFile,
  */
 void ModulePathHelper::ResolveCurrentPath(CString &dirPath, CString &fileName, const JSPandaFile *jsPandaFile)
 {
+    ASSERT(jsPandaFile != nullptr);
     fileName = jsPandaFile->GetJSPandaFileDesc();
     dirPath = PathHelper::ResolveDirPath(fileName);
 }
