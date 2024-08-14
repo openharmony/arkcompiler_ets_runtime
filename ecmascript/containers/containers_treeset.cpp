@@ -220,14 +220,6 @@ JSTaggedValue ContainersTreeSet::GetLowerValue(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    if (!key->IsString() && !key->IsNumber()) {
-        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg =
-            "The type of \"key\" must be not null. Received value is: " + ConvertToString(*result);
-        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
     JSHandle<TaggedTreeSet> tset(thread, set->GetTreeSet());
     return TaggedTreeSet::GetLowerKey(thread, tset, key);
 }
@@ -251,14 +243,6 @@ JSTaggedValue ContainersTreeSet::GetHigherValue(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSAPITreeSet> set = JSHandle<JSAPITreeSet>::Cast(self);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    if (!key->IsString() && !key->IsNumber()) {
-        JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, key.GetTaggedValue());
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-        CString errorMsg =
-            "The type of \"key\" must be not null. Received value is: " + ConvertToString(*result);
-        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
-    }
     JSHandle<TaggedTreeSet> tset(thread, set->GetTreeSet());
     return TaggedTreeSet::GetHigherKey(thread, tset, key);
 }
