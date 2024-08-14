@@ -35,6 +35,10 @@
 #include "ecmascript/platform/map.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 
+#if defined(CROSS_PLATFORM) && defined(ANDROID_PLATFORM)
+#include "ecmascript/ecma_context.h"
+#endif
+
 namespace panda::ecmascript {
 class JSpandafile;
 class JSThread;
