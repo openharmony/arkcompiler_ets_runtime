@@ -1211,13 +1211,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashMap(JSThread *thread)
     // @@ToStringTag
     SetStringTagSymbol(thread, env, hashMapFuncPrototype, "HashMap");
     // %HashMapPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
-    JSHandle<JSTaggedValue> entries(factory->NewFromASCII("entries"));
-    JSHandle<JSTaggedValue> entriesFunc =
-        JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(hashMapFuncPrototype), entries);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    PropertyDescriptor descriptor(thread, entriesFunc, false, false, false);
-    JSObject::DefineOwnProperty(thread, hashMapFuncPrototype, iteratorSymbol, descriptor);
+    SetFunctionAtSymbol(thread, env, hashMapFuncPrototype, env->GetIteratorSymbol(), "[Symbol.iterator]",
+                        ContainersHashMap::GetIteratorObj, FuncLength::ONE);
 
     JSHandle<JSTaggedValue> lengthGetter =
         CreateGetter(thread, ContainersHashMap::GetLength, "length", FuncLength::ZERO);
@@ -1279,13 +1274,8 @@ JSHandle<JSTaggedValue> ContainersPrivate::InitializeHashSet(JSThread *thread)
     // @@ToStringTag
     SetStringTagSymbol(thread, env, hashSetFuncPrototype, "HashSet");
     // %HashSetPrototype% [ @@iterator ]
-    JSHandle<JSTaggedValue> iteratorSymbol = env->GetIteratorSymbol();
-    JSHandle<JSTaggedValue> values(thread, globalConst->GetValuesString());
-    JSHandle<JSTaggedValue> valuesFunc =
-        JSObject::GetMethod(thread, JSHandle<JSTaggedValue>::Cast(hashSetFuncPrototype), values);
-    RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
-    PropertyDescriptor descriptor(thread, valuesFunc, false, false, false);
-    JSObject::DefineOwnProperty(thread, hashSetFuncPrototype, iteratorSymbol, descriptor);
+    SetFunctionAtSymbol(thread, env, hashSetFuncPrototype, env->GetIteratorSymbol(), "[Symbol.iterator]",
+                        ContainersHashSet::GetIteratorObj, FuncLength::ONE);
 
     JSHandle<JSTaggedValue> lengthGetter =
         CreateGetter(thread, ContainersHashSet::GetLength, "length", FuncLength::ZERO);

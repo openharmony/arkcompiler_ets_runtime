@@ -559,7 +559,11 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> fromIndex = GetCallArg(argv, 0);
 
-    if (!fromIndex->IsInteger()) {
+    if (fromIndex->IsDouble()) {
+        fromIndex = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(fromIndex->GetDouble()));
+    }
+
+    if (!fromIndex->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, fromIndex.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
@@ -570,7 +574,12 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
 
     JSHandle<JSTaggedValue> toIndex = GetCallArg(argv, 1);
 
-    if (!toIndex->IsInteger()) {
+    // for case like Math.foor(1.3), it gives double 1.0;
+    if (toIndex->IsDouble()) {
+        toIndex = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(toIndex->GetDouble()));
+    }
+
+    if (!toIndex->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, toIndex.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
@@ -579,13 +588,6 @@ JSTaggedValue ContainersList::GetSubList(EcmaRuntimeCallInfo *argv)
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
 
-    if (fromIndex->IsDouble()) {
-        fromIndex = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(fromIndex->GetDouble()));
-    }
-
-    if (toIndex->IsDouble()) {
-        toIndex = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(toIndex->GetDouble()));
-    }
     JSHandle<JSAPIList> jsAPIList = JSHandle<JSAPIList>::Cast(self);
     JSTaggedValue newList = JSAPIList::GetSubList(thread, jsAPIList, fromIndex->GetInt(), toIndex->GetInt());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
@@ -604,7 +606,7 @@ JSTaggedValue ContainersList::Length(EcmaRuntimeCallInfo *argv)
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
-                                                                "The length method cannot be bound");
+                                                                "The getLength method cannot be bound");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }

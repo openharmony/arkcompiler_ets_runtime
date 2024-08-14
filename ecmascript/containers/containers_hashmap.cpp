@@ -91,6 +91,27 @@ JSTaggedValue ContainersHashMap::Values(EcmaRuntimeCallInfo *argv)
     return iter.GetTaggedValue();
 }
 
+JSTaggedValue ContainersHashMap::GetIteratorObj(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv != nullptr);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, HashMap, GetIteratorObj);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> self = GetThis(argv);
+    if (!self->IsJSAPIHashMap()) {
+        if (self->IsJSProxy() && JSHandle<JSProxy>::Cast(self)->GetTarget().IsJSAPIHashMap()) {
+            self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
+        } else {
+            JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
+                                                                "The Symbol.iterator method cannot be bound");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        }
+    }
+    JSHandle<JSTaggedValue> iter =
+        JSAPIHashMapIterator::CreateHashMapIterator(thread, self, IterationKind::KEY_AND_VALUE);
+    return iter.GetTaggedValue();
+}
+
 JSTaggedValue ContainersHashMap::Entries(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv != nullptr);

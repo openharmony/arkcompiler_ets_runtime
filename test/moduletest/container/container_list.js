@@ -410,19 +410,19 @@ if (globalThis["ArkPrivate"] != undefined) {
     try {
         empty_l.set(0, 1);
     } catch(err) {
-        res = (err =="BusinessError: Container is empty")
+        res = (err == "BusinessError: Container is empty")
         map.set("test Set exception when arraylist is empty:", res)
     }
     try {
         empty_l.removeByIndex(0);
     } catch(err) {
-        res = (err =="BusinessError: Container is empty")
+        res = (err == "BusinessError: Container is empty")
         map.set("test removeByIndex exception when arraylist is empty:", res)
     }
     try {
         empty_l.getSubList(0, 1);
     } catch(err) {
-        res = (err =="BusinessError: Container is empty")
+        res = (err == "BusinessError: Container is empty")
         map.set("test GetSubList exception when arraylist is empty:", res)
     }
 
@@ -433,6 +433,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     } catch(err) {
         let overFlowTest = (err == "BusinessError: The type of \"index\" must be small integer.");
         map.set("test List[i] overFlowTest:", overFlowTest);
+    }
+
+    try {
+        let myList = new List();
+        myList.add(1);
+        myList.getSubList(2147483648, 2147483649);
+    } catch(err) {
+        res = (err.name == "BusinessError")
+        map.set("test GetSubList exception when fromIndex is over int32Max:", res)
     }
 
     flag = undefined;

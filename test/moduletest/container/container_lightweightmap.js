@@ -43,7 +43,8 @@ if (globalThis["ArkPrivate"] != undefined) {
     // test getIndexOfKey and getIndexOfValue: true
     res.set("test getIndexOfKey and getIndexOfValue:", proxy.getIndexOfKey("a") === 0 && proxy.getIndexOfValue("bb") === 1);
     // test getKeyAt: true
-    res.set("test getKeyAt:", proxy.getKeyAt(1) == "b");
+    res.set("test getKeyAt-1:", proxy.getKeyAt(1) == "b");
+    res.set("test getKeyAt-2:", proxy.getKeyAt(Math.floor(1.3)) == "b");
     testCommon(proxy, res);
 
     // test forEach:
@@ -68,17 +69,21 @@ if (globalThis["ArkPrivate"] != undefined) {
     // test remove: true
     res.set("test remove:", dProxy.remove("a") == "aa" && dProxy.length == 4);
     // test removeAt: true
-    res.set("test removeAt:", dProxy.removeAt(dProxy.getIndexOfKey("b")) && dProxy.length == 3);
+    res.set("test removeAt-1:", dProxy.removeAt(dProxy.getIndexOfKey("b")) && dProxy.length == 3);
     // test setValueAt: true
-    res.set("test setValueAt:", dProxy.setValueAt(dProxy.getIndexOfKey("d"), "ee"));
+    res.set("test setValueAt-1:", dProxy.setValueAt(dProxy.getIndexOfKey("d"), "ee"));
     // test getValueAt: true
     res.set("test getValueAt:", dProxy.getValueAt(dProxy.getIndexOfKey("d")) === "ee");
     res.set("test getValueAt:", dProxy.getValueAt(Math.floor(0)) === "cc");
     res.set("test getValueAt:", dProxy.getValueAt(Math.floor(1)) === "ee");
+    res.set("test setValueAt-2:", dProxy.setValueAt(Math.floor(1.3), "ff"));
+    res.set("test getValueAt-2:", dProxy.getValueAt(Math.floor(1.3)) === "ff");
     // test toString: true
-    res.set("test toString:", dProxy.toString() === "c:cc,d:ee,e:ee");
+    res.set("test toString:", dProxy.toString() === "c:cc,d:ff,e:ee");
+    res.set("test removeAt-2:", dProxy.removeAt(Math.floor(1.3)) && dProxy.length == 2);
     // test increaseCapacityTo: true
     dProxy.increaseCapacityTo(20)
+    dProxy.increaseCapacityTo(Math.floor(1.3));
     res.set("test increaseCapacityTo:", true);
     // test clear: 0
     let ret = dProxy.clear();
