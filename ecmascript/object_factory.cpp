@@ -1962,6 +1962,7 @@ void ObjectFactory::InitializeMethod(const MethodLiteral *methodLiteral, JSHandl
     }
     method->SetCodeEntryOrLiteral(reinterpret_cast<uintptr_t>(methodLiteral));
     method->SetConstantPool(thread_, JSTaggedValue::Undefined());
+    method->SetFpDelta(0);
 }
 
 JSHandle<Method> ObjectFactory::NewMethod(const MethodLiteral *methodLiteral, MemSpaceType spaceType)

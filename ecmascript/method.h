@@ -285,6 +285,16 @@ public:
         return DeoptTypeBits::Update(extraLiteralInfo, type);
     }
 
+    uint64_t SetFpDelta(uint64_t extraLitearalInfo, int32_t delta)
+    {
+        return FpDeltaBits::Update(extraLitearalInfo, delta);
+    }
+
+    int32_t GetFpDelta(uint64_t extraLiteralInfo) const
+    {
+        return static_cast<int32_t>(FpDeltaBits::Decode(extraLiteralInfo));
+    }
+
     void SetDeoptType(kungfu::DeoptType type)
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
@@ -368,6 +378,19 @@ public:
         return GetDeoptThreshold(extraLiteralInfo);
     }
 
+    void SetFpDelta(int32_t delta)
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        uint64_t newValue = SetFpDelta(extraLiteralInfo, delta);
+        SetExtraLiteralInfo(newValue);
+    }
+
+    int32_t GetFpDelta() const
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        return GetFpDelta(extraLiteralInfo);
+    }
+
     const void* GetNativePointer() const
     {
         return GetNativePointerOrBytecodeArray();
@@ -432,6 +455,7 @@ public:
     static constexpr size_t FUNCTION_KIND_NUM_BITS = 4;
     static constexpr size_t DEOPT_THRESHOLD_BITS = 8;
     static constexpr size_t DEOPTTYPE_NUM_BITS = 8;
+    static constexpr size_t FP_DELTA_BITS = 32;
     using BuiltinIdBits = BitField<uint8_t, 0, BUILTINID_NUM_BITS>; // offset 0-7
     using FunctionKindBits = BuiltinIdBits::NextField<FunctionKind, FUNCTION_KIND_NUM_BITS>; // offset 8-11
     using DeoptCountBits = FunctionKindBits::NextField<uint8_t, DEOPT_THRESHOLD_BITS>; // offset 12-19
@@ -439,6 +463,7 @@ public:
     using IsCallNapiBit = DeoptTypeBits::NextFlag; // offset 28
     using IsJitCompiledCodeBit = IsCallNapiBit::NextFlag; // offset 29
     using IsSharedBit = IsJitCompiledCodeBit::NextFlag; // offset 30
+    using FpDeltaBits = IsSharedBit::NextField<int32_t, FP_DELTA_BITS>; // offset 31-62
 
     static constexpr size_t CONSTANT_POOL_OFFSET = TaggedObjectSize();
     ACCESSORS(ConstantPool, CONSTANT_POOL_OFFSET, CALL_FIELD_OFFSET)

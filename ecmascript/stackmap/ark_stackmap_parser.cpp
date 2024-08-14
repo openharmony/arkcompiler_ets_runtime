@@ -123,19 +123,30 @@ void ArkStackMapParser::GetMethodOffsetInfo(uintptr_t callSiteAddr,
     }
 }
 
-uintptr_t ArkStackMapParser::GetStackSlotAddress(const LLVMStackMapType::DwarfRegAndOffsetType info,
-                                                 uintptr_t callSiteSp,
-                                                 uintptr_t callsiteFp) const
+// this function will increase the value of 'offset'
+uintptr_t ArkStackMapParser::GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_t callSiteSp, uintptr_t callsiteFp,
+                                                 uint32_t &offset) const
 {
+    LLVMStackMapType::DwarfRegType regType;
+    LLVMStackMapType::OffsetType offsetType;
+    LLVMStackMapType::SLeb128Type regOffset;
+    size_t regOffsetSize;
+    [[maybe_unused]] bool isFull;
     uintptr_t address = 0;
-    if (info.first == GCStackMapRegisters::SP) {
-        address = callSiteSp + info.second;
-    } else if (info.first == GCStackMapRegisters::FP) {
-        address = callsiteFp + info.second;
+
+    std::tie(regOffset, regOffsetSize, isFull) =
+        panda::leb128::DecodeSigned<LLVMStackMapType::SLeb128Type>(stackmapAddr + offset);
+    LLVMStackMapType::DecodeRegAndOffset(regOffset, regType, offsetType);
+    if (regType == GCStackMapRegisters::SP) {
+        address = callSiteSp + offsetType;
+    } else if (regType == GCStackMapRegisters::FP) {
+        address = callsiteFp + offsetType;
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
+    offset += regOffsetSize;
+
     return address;
 }
 
@@ -149,7 +160,6 @@ bool ArkStackMapParser::IteratorStackMap(const RootVisitor& visitor,
     ArkStackMapHeader *head = reinterpret_cast<ArkStackMapHeader *>(stackmapAddr);
     ASSERT(head != nullptr);
     uint32_t callsiteNum = head->callsiteNum;
-    ArkStackMap arkStackMap;
     // BuiltinsStub current only sample stub, don't have stackmap&deopt.
     if (callsiteNum == 0) {
         return false;
@@ -161,18 +171,18 @@ bool ArkStackMapParser::IteratorStackMap(const RootVisitor& visitor,
         return false;
     }
     CallsiteHeader *found = callsiteHead + mid;
-    ParseArkStackMap(*found, stackmapAddr, arkStackMap);
-    if (arkStackMap.size() == 0) {
+
+    uint32_t offset = found->stackmapOffsetInSMSec;
+    uint16_t stackmapNum = found->stackmapNum;
+    ASSERT(stackmapNum % GC_ENTRY_SIZE == 0);
+    if (stackmapNum == 0) {
         return false;
     }
     ASSERT(callsiteFp != callSiteSp);
     std::map<uintptr_t, uintptr_t> baseSet;
-    ASSERT(arkStackMap.size() % GC_ENTRY_SIZE == 0);
-    for (size_t i = 0; i < arkStackMap.size(); i += GC_ENTRY_SIZE) { // GC_ENTRY_SIZE=<base, derive>
-        const LLVMStackMapType::DwarfRegAndOffsetType baseInfo = arkStackMap.at(i);
-        const LLVMStackMapType::DwarfRegAndOffsetType derivedInfo = arkStackMap.at(i + 1);
-        uintptr_t base = GetStackSlotAddress(baseInfo, callSiteSp, callsiteFp);
-        uintptr_t derived = GetStackSlotAddress(derivedInfo, callSiteSp, callsiteFp);
+    for (size_t i = 0; i < stackmapNum; i += GC_ENTRY_SIZE) { // GC_ENTRY_SIZE=<base, derive>
+        uintptr_t base = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset);
+        uintptr_t derived = GetStackSlotAddress(stackmapAddr, callSiteSp, callsiteFp, offset);
         if (*reinterpret_cast<uintptr_t *>(base) == 0) {
             base = derived;
         }

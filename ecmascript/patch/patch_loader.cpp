@@ -251,6 +251,7 @@ void PatchLoader::ReplaceMethod(JSThread *thread,
     destMethod->SetNativePointerOrBytecodeArray(const_cast<void *>(srcMethodLiteral->GetNativePointer()));
     destMethod->SetConstantPool(thread, srcConstpool);
     destMethod->SetAotCodeBit(false);
+    destMethod->SetFpDelta(0);
 }
 
 // Iterator heap to update module in JSFunction.

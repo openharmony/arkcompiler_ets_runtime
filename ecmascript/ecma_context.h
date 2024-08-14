@@ -608,7 +608,8 @@ public:
         return isAotEntry_;
     }
 
-    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr,
+                                                                                        bool isDeopt) const;
 
     void AddSustainingJSHandle(SustainingJSHandle*);
     void RemoveSustainingJSHandle(SustainingJSHandle*);

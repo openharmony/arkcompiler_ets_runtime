@@ -160,7 +160,7 @@ public:
 #endif
     void LoadStubFile(const std::string& fileName);
     static bool LoadAnFile(const std::string& fileName);
-    static AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr);
+    static AOTFileInfo::CallSiteInfo CalCallSiteInfo(uintptr_t retAddr, bool isDeopt);
     static bool TryReadLock();
     static bool InsideStub(uintptr_t pc);
     static bool InsideAOT(uintptr_t pc);

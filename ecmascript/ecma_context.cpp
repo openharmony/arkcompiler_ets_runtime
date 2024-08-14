@@ -1210,10 +1210,10 @@ void EcmaContext::JoinStackPop(JSHandle<JSTaggedValue> receiver)
 }
 
 std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> EcmaContext::CalCallSiteInfo(
-    uintptr_t retAddr) const
+    uintptr_t retAddr, bool isDeopt) const
 {
     auto loader = aotFileManager_;
-    return loader->CalCallSiteInfo(retAddr);
+    return loader->CalCallSiteInfo(retAddr, isDeopt);
 }
 
 void EcmaContext::AddSustainingJSHandle(SustainingJSHandle *sustainingHandle)
