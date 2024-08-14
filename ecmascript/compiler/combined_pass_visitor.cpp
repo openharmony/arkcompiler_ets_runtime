@@ -99,6 +99,16 @@ void CombinedPassVisitor::ReplaceGate(GateRef gate, StateDepend stateDepend, Gat
     }
 }
 
+void CombinedPassVisitor::VistDependSelectorForLoop(GateRef gate)
+{
+    auto use = acc_.Uses(gate);
+    for (auto useIt = use.begin(); useIt != use.end(); useIt++) {
+        if (acc_.GetOpCode(*useIt) == OpCode::DEPEND_SELECTOR) {
+            PushChangedGate(*useIt);
+        }
+    }
+}
+
 void CombinedPassVisitor::VisitGraph()
 {
     for (auto pass : passList_) {
@@ -117,6 +127,8 @@ void CombinedPassVisitor::VisitGraph()
     for (auto gate : gateList) {
         if (acc_.GetOpCode(gate) == OpCode::LOOP_BEGIN) {
             PushChangedGate(gate);
+            // For empty loop and no RETURN opcode
+            VistDependSelectorForLoop(gate);
         }
     }
 
