@@ -56,7 +56,6 @@
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/ohos/ohos_params.h"
-
 #if !WIN_OR_MAC_OR_IOS_PLATFORM
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
