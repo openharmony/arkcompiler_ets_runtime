@@ -310,7 +310,6 @@ GateRef EscapeAnalysis::VisitCreateObjectWithBuffer(GateRef gate, GateInfo* info
             SetEscaped(value);
             SetEscaped(gate);
         }
-        info->SetFieldValue(vObj->GetField(acc_.GetConstantValue(offset)), value);
     }
     info->SetVirtualObject(vObj);
     return replaceGate_;
