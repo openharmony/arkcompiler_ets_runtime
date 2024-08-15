@@ -165,9 +165,11 @@ struct BytecodeRegion {
     ChunkVector<std::tuple<size_t, size_t, bool>> expandedPreds;
     GateRef dependCache {Circuit::NullGate()};
     BytecodeIterator bytecodeIterator_ {};
-
+    ChunkVector<GateRef> mergeState; // For empty catch BB
+    ChunkVector<GateRef> mergeDepend; // For empty catch BB
+    bool IsEmptyCatchBB {false}; // For empty catch BB
     BytecodeRegion(Chunk* chunk) : preds(chunk), succs(chunk),
-        trys(chunk), catches(chunk), expandedPreds(chunk)
+        trys(chunk), catches(chunk), expandedPreds(chunk), mergeState(chunk), mergeDepend(chunk)
     {
     }
 
@@ -598,6 +600,7 @@ private:
     void HandleOsrLoopBody(BytecodeRegion &osrLoopBodyBB);
     void BuildOsrCircuit();
 
+    void UpdateEmptyCatchBB();
     void UpdateCFG();
     void CollectTryPredsInfo();
     void ClearUnreachableRegion(ChunkVector<BytecodeRegion*>& pendingList);
@@ -611,9 +614,19 @@ private:
     void BuildRegionInfo();
     void BuildFrameArgs();
     void RemoveIfInRpoList(BytecodeRegion *bb);
+    void RemoveDuplicateGates(GateRef state, std::vector<GateRef> &stateList, std::vector<GateRef> &dependList,
+                              GateRef getException);
+    void RemoveDuplicateGatesInMerge(GateRef state, std::vector<GateRef> &stateList, std::vector<GateRef> &dependList);
+    void HandleEmptyCatchBB(BytecodeRegion &bb, GateRef state, GateRef getException);
+
     BytecodeRegion &RegionAt(size_t i)
     {
         return *graph_[i];
+    }
+
+    bool IsEmptyCatchBB(BytecodeRegion &bb)
+    {
+        return bb.IsEmptyCatchBB;
     }
 
     Circuit *circuit_;
@@ -644,6 +657,7 @@ private:
     bool isInline_ {false};
     uint32_t methodId_ {0};
     std::set<const BytecodeRegion *> catchBBOfOSRLoop_{};
+    std::map<uint32_t, bool> candidateEmptyCatch_ {};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H
