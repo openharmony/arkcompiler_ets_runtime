@@ -158,7 +158,8 @@ Region *HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, 
 
     // Enabe JitFort rights control
     [[maybe_unused]] void *addr = PageMapExecFortSpace((void *)desc->instructionsAddr, allocSize - mutableSize,
-        PageProtectProt(reinterpret_cast<Heap *>(heap_)->GetEcmaVM()->GetJSOptions().GetDisableCodeSign()));
+        PageProtectProt(reinterpret_cast<Heap *>(heap_)->GetEcmaVM()->GetJSOptions().GetDisableCodeSign() ||
+            !JitFort::IsResourceAvailable()));
 
     ASSERT(addr == (void *)desc->instructionsAddr);
     return region;

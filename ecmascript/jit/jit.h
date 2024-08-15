@@ -239,8 +239,8 @@ private:
 
     std::unordered_map<uint32_t, ThreadTaskInfo> threadTaskInfo_;
     RecursiveMutex threadTaskInfoLock_;
-    bool isEnableJitFort_ { false };
-    bool isDisableCodeSign_ { false };
+    bool isEnableJitFort_ { true };
+    bool isDisableCodeSign_ { true };
     bool isEnableAsyncCopyToFort_ { true };
 
     Mutex setEnableLock_;
