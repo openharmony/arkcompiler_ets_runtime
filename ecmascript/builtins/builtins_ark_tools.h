@@ -58,6 +58,7 @@
     V("startRuntimeStat",               StartRuntimeStat,               0, INVALID)       \
     V("stopRuntimeStat",                StopRuntimeStat,                0, INVALID)
 
+// List of mock ArkTools extension builtins
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
     V("prepareFunctionForOptimization",            PrepareFunctionForOptimization,            1, INVALID)     \
     V("optimizeFunctionOnNextCall",                OptimizeFunctionOnNextCall,                1, INVALID)     \
@@ -79,6 +80,8 @@
     V("hasObjectElements",                         HasObjectElements,                         1, INVALID)     \
     V("arrayBufferDetach",                         ArrayBufferDetach,                         1, INVALID)     \
     V("haveSameMap",                               HaveSameMap,                               2, INVALID)     \
+    V("isSameHeapObject",                          IsSameHeapObject,                          2, INVALID)     \
+    V("isSmi",                                     IsSmi,                                     1, INVALID)     \
     V("createPrivateSymbol",                       CreatePrivateSymbol,                       1, INVALID)     \
     V("isArray",                                   IsArray,                                   1, INVALID)     \
     V("createDataProperty",                        CreateDataProperty,                        3, INVALID)     \
@@ -284,6 +287,10 @@ public:
     static JSTaggedValue ArrayBufferDetach(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue HaveSameMap(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsSameHeapObject(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue IsSmi(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue CreatePrivateSymbol(EcmaRuntimeCallInfo *info);
 

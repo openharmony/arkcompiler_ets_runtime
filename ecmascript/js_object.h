@@ -42,6 +42,10 @@ class GlobalEnv;
 class TaggedQueue;
 class NumberDictionary;
 
+namespace builtins {
+    class BuiltinsArkTools;
+}
+
 using EnumCacheKind = EnumCache::EnumCacheKind;
 using SCheckMode = JSShared::SCheckMode;
 
@@ -773,6 +777,7 @@ private:
     friend class ICRuntimeStub;
     friend class RuntimeStubs;
     friend class JSSharedArray;
+    friend class builtins::BuiltinsArkTools;
 
     static bool HasMutantTaggedArrayElements(const JSHandle<JSObject> &obj);
     PropertyBox* GetGlobalPropertyBox(JSTaggedValue key);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -12,21 +12,54 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-const user = {value:undefined, done:true};
 
-// Array iterator.
-const arrayResult = (new Array())[Symbol.iterator]().next();
-print(ArkTools.haveSameMap(user, arrayResult));
+function addprop(o, p) {
+    o[p] = 0;
+    return o;
+}
 
-// Map iterator.
-const mapResult = (new Map())[Symbol.iterator]().next();
-print(ArkTools.haveSameMap(user, mapResult));
+function propdict(o, sz) {
+    for (let i = 0; i < sz; ++i) {
+        addprop(o, "prop" + i)
+    }
+    return o
+}
 
-// Set iterator.
-const setResult = (new Set())[Symbol.iterator]().next();
-print(ArkTools.haveSameMap(user, setResult));
+function warmup(fn, num) {
+    for (let i = 0; i < num; ++i) {
+        print(fn.name + " warmup: " + i);
+        fn();
+    }
+}
 
-// Generator.
-function* generator() {}
-const generatorResult = generator().next();
-print(ArkTools.haveSameMap(user, setResult));
+warmup((function testICTransition() {
+    let x = {};
+    x.a = 0;
+    let y = {};
+    print(!ArkTools.haveSameMap(x, y));
+    y.a = 0;
+    print(ArkTools.haveSameMap(x, y));
+}), 3);
+
+warmup((function testObjLiterals() {
+    print(!ArkTools.haveSameMap({ a: 0, b: 0 }, { b: 0, a: 0 }))
+    print(ArkTools.haveSameMap({ a: 0, b: 0 }, { a: 0, b: 0 }))
+}), 0); // NOTE: broken with force-gc
+
+warmup((function testICByValueTransition() {
+    let x = addprop({}, "a");
+    let y = {}
+    print(!ArkTools.haveSameMap(x, y))
+    y.a = 0
+    print(ArkTools.haveSameMap(x, y))
+}), 3);
+
+warmup((function testDictTransition() {
+    const dictSzHeuristic = 1024;
+    print(ArkTools.haveSameMap(
+        propdict({}, dictSzHeuristic / 2),
+        propdict({}, dictSzHeuristic / 2)));
+    print(!ArkTools.haveSameMap(
+        propdict({}, dictSzHeuristic * 2),
+        propdict({}, dictSzHeuristic * 2)));
+}), 0); // NOTE: broken with force-gc

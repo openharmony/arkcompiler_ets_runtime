@@ -599,9 +599,9 @@ void JSHClass::OptimizeAsFastProperties(const JSThread *thread, const JSHandle<J
     JSHandle<JSHClass> newJsHClass = Clone(thread, jshclass, isDictionary);
 
     // 2. If it is dictionary, migrate should change layout. otherwise, copy the hclass only.
-    JSHandle<NameDictionary> properties(thread, obj->GetProperties());
-    int numberOfProperties = properties->EntriesCount();
     if (isDictionary) {
+        JSHandle<NameDictionary> properties(thread, obj->GetProperties());
+        int numberOfProperties = properties->EntriesCount();
         ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
         JSHandle<LayoutInfo> layoutInfoHandle = factory->CreateLayoutInfo(numberOfProperties);
         int numberOfInlinedProps = static_cast<int>(newJsHClass->GetInlinedProperties());
