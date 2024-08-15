@@ -340,7 +340,8 @@ bool JSSharedArray::PropertyKeyToArrayIndex(JSThread *thread, const JSHandle<JST
 
 // 9.4.2.1 [[DefineOwnProperty]] ( P, Desc)
 bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array,
-                                      const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc)
+                                      const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
+                                      SCheckMode sCheckMode)
 {
     if (!desc.GetValue()->IsSharedType() || (desc.HasGetter() && !desc.GetGetter()->IsSharedType()) ||
         (desc.HasSetter() && !desc.GetSetter()->IsSharedType())) {
@@ -348,6 +349,13 @@ bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject>
                                                                "Parameter error. Only accept sendable value.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
+
+    if (sCheckMode == SCheckMode::CHECK && !(JSSharedArray::Cast(*array)->IsKeyInRange(key))) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
+                                                               "Key out of length.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+    }
+
     // 1. Assert: IsPropertyKey(P) is true.
     ASSERT_PRINT(JSTaggedValue::IsPropertyKey(key), "Key is not a property key!");
     // 2. If P is "length", then
@@ -355,6 +363,7 @@ bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject>
         // a. Return ArraySetLength(A, Desc).
         return ArraySetLength(thread, array, desc);
     }
+
     // 3. Else if P is an array index, then
     // already do in step 4.
     // 4. Return OrdinaryDefineOwnProperty(A, P, Desc).
@@ -370,8 +379,14 @@ bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject>
 }
 
 bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, uint32_t index,
-                                      const PropertyDescriptor &desc)
+                                      const PropertyDescriptor &desc, SCheckMode sCheckMode)
 {
+    if (sCheckMode == SCheckMode::CHECK && !(JSSharedArray::Cast(*array)->IsKeyInRange(index))) {
+        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
+                                                               "Key out of length.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+    }
+
     return JSObject::OrdinaryDefineOwnProperty(thread, array, index, desc);
 }
 
