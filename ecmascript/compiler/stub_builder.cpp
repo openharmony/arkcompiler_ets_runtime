@@ -2790,6 +2790,7 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
     Label handlerInfoNotField(env);
     Label isShared(env);
     Label notShared(env);
+    Label matchType(env);
     Label prepareIntHandlerLoop(env);
     Label handlerIsTransitionHandler(env);
     Label handlerNotTransitionHandler(env);
@@ -2832,8 +2833,12 @@ GateRef StubBuilder::StoreICWithHandler(GateRef glue, GateRef receiver, GateRef 
                 BRANCH(IsStoreShared(handlerInfo), &isShared, &notShared);
                 Bind(&isShared);
                 {
-                    GateRef field = GetFieldTypeFromHandler(handlerInfo);
-                    MatchFieldType(&result, glue, field, value, &prepareIntHandlerLoop, &exit);
+                    BRANCH(HandlerBaseIsAccessor(handlerInfo), &prepareIntHandlerLoop, &matchType);
+                    Bind(&matchType);
+                    {
+                        GateRef field = GetFieldTypeFromHandler(handlerInfo);
+                        MatchFieldType(&result, glue, field, value, &prepareIntHandlerLoop, &exit);
+                    }
                     Bind(&prepareIntHandlerLoop);
                     {
                         handler = IntToTaggedPtr(ClearSharedStoreKind(handlerInfo));
