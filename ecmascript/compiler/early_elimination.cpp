@@ -98,7 +98,9 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
         case OpCode::IS_CALLABLE_CHECK:
             return TryEliminateGate(gate);
         case OpCode::STATE_SPLIT:
-            return TryEliminateFrameState(gate);
+            if (enableFrameStateElimination_) {
+                return TryEliminateFrameState(gate);
+            }
         case OpCode::DEPEND_SELECTOR:
             return TryEliminateDependSelector(gate);
         default:

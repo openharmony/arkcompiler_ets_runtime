@@ -147,6 +147,7 @@ group("ark_aot_ts_test") {
     "framestatesalloc",
     "framestatesasync",
     "framestatesphi",
+    "framestates_elimination",
     "generatormerge",
     "generatorcontinuefinally",
     "getiterator",
