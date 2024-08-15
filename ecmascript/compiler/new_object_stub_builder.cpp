@@ -2216,10 +2216,16 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
         BRANCH(Int32LessThanOrEqual(newByteLength, Int32(RangeInfo::TYPED_ARRAY_ONHEAP_MAX)), &next, &slowPath);
         Bind(&next);
         {
+            Label sameObjectSize(env);
             Label newByteArrayExit(env);
+            GateRef onHeapHClass = GetOnHeapHClassFromType(glue, srcType);
+            GateRef originalHClassObjectSize = GetObjectSizeFromHClass(hclass);
+            GateRef onHeapHClassObjectSize = GetObjectSizeFromHClass(onHeapHClass);
+            BRANCH(Equal(originalHClassObjectSize, onHeapHClassObjectSize), &sameObjectSize, &slowPath);
+            Bind(&sameObjectSize);
             NewByteArray(&buffer, &newByteArrayExit, elementSize, length);
             Bind(&newByteArrayExit);
-            StoreHClass(glue, obj, GetOnHeapHClassFromType(glue, srcType));
+            StoreHClass(glue, obj, onHeapHClass);
             Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET), *buffer);
             Store(VariableType::JS_POINTER(), glue, obj, IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET), ctorName);
             Store(VariableType::INT32(), glue, obj, IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET), newByteLength);

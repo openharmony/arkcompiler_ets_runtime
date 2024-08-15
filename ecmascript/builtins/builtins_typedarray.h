@@ -104,7 +104,7 @@
     /* %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */          \
     V("lastIndexOf",    LastIndexOf,    1, TypedArrayLastIndexOf)                       \
     /* %TypedArray%.prototype.map ( callbackfn [ , thisArg ] ) */                       \
-    V("map",            Map,            1, INVALID)                                     \
+    V("map",            Map,            1, TypedArrayMap)                               \
     /* %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] ) */               \
     V("reduce",         Reduce,         1, TypedArrayReduce)                            \
     /* %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] ) */          \
