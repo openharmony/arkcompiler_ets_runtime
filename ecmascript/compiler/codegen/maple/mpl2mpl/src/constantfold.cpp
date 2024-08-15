@@ -1502,6 +1502,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldIread(IreadNode *n
 
     AddrofNode *addrofNode = static_cast<AddrofNode*>(e);
     MIRSymbol *msy = mirModule->CurFunction()->GetLocalOrGlobalSymbol(addrofNode->GetStIdx());
+    DEBUG_ASSERT(msy != nullptr, "nullptr check");
     TyIdx typeId = msy->GetTyIdx();
     CHECK_FATAL(!GlobalTables::GetTypeTable().GetTypeTable().empty(), "container check");
     MIRType *msyType = GlobalTables::GetTypeTable().GetTypeTable()[typeId];

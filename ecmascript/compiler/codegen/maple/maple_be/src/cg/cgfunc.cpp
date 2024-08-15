@@ -119,6 +119,7 @@ static Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, CGFunc &c
     } else {
         CHECK_FATAL(mirConst->GetKind() == kConstDoubleConst, "NYI");
         auto *mirDoubleConst = safe_cast<MIRDoubleConst>(mirConst);
+        DEBUG_ASSERT(mirDoubleConst != nullptr, "nullptr check");
         return cgFunc.SelectDoubleConst(*mirDoubleConst, parent);
     }
     return nullptr;
@@ -212,6 +213,7 @@ static Operand *HandleExtractBits(const BaseNode &parent, BaseNode &expr, CGFunc
 
 static Operand *HandleLnot(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "nullptr check");
     return cgFunc.SelectLnot(static_cast<UnaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
@@ -246,6 +248,7 @@ static Operand *HandleFloor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFu
 static Operand *HandleRetype(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     (void)parent;
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "nullptr check");
     return cgFunc.SelectRetype(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)));
 }
 
