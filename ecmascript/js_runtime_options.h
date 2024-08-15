@@ -56,7 +56,8 @@ enum ArkProperties {
     // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
     DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
     ENABLE_ESM_TRACE = 1 << 24,
-    ENABLE_MODULE_LOG = 1 << 25
+    ENABLE_MODULE_LOG = 1 << 25,
+    ENABLE_SERIALIZATION_TIMEOUT_CHECK = 1 << 26
 };
 
 // asm interpreter control parsed option
@@ -599,6 +600,11 @@ public:
     bool EnableModuleLog() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_MODULE_LOG) != 0;
+    }
+
+    bool EnableSerializationTimeoutCheck() const
+    {
+        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_SERIALIZATION_TIMEOUT_CHECK) != 0;
     }
 
     bool WasSetMaxNonmovableSpaceCapacity() const
