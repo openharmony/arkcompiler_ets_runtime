@@ -654,19 +654,19 @@ public:
         return result;
     }
 
-    void ResetNativeSizeAfterGC()
+    void ResetNativeSizeAfterLastGC()
     {
-        nativeSizeAfterGC_ = 0;
+        nativeSizeAfterLastGC_.store(0, std::memory_order_relaxed);
     }
 
-    void IncNativeSizeAfterGC(size_t size)
+    void IncNativeSizeAfterLastGC(size_t size)
     {
-        nativeSizeAfterGC_ += size;
+        nativeSizeAfterLastGC_.fetch_add(size, std::memory_order_relaxed);
     }
 
-    size_t GetNativeSizeAfterGC() const
+    size_t GetNativeSizeAfterLastGC() const
     {
-        return nativeSizeAfterGC_;
+        return nativeSizeAfterLastGC_.load(std::memory_order_relaxed);
     }
 
     size_t GetNativeSizeTriggerSharedGC() const
@@ -853,7 +853,7 @@ private:
     size_t growingStep_ {0};
     size_t incNativeSizeTriggerSharedCM_ {0};
     size_t incNativeSizeTriggerSharedGC_ {0};
-    std::atomic<size_t> nativeSizeAfterGC_ {0};
+    std::atomic<size_t> nativeSizeAfterLastGC_ {0};
 };
 
 class Heap : public BaseHeap {
@@ -1420,6 +1420,25 @@ public:
         return GetNativeBindingSize() + nativeAreaAllocator_->GetNativeMemoryUsage();
     }
 
+    void ResetNativeSizeAfterLastGC()
+    {
+        nativeSizeAfterLastGC_ = 0;
+        nativeBindingSizeAfterLastGC_= nativeBindingSize_;
+    }
+
+    void IncNativeSizeAfterLastGC(size_t size)
+    {
+        nativeSizeAfterLastGC_ += size;
+    }
+
+    bool GlobalNativeSizeLargerToTriggerGC() const
+    {
+        auto incNativeBindingSizeAfterLastGC = nativeBindingSize_ > nativeBindingSizeAfterLastGC_ ?
+            nativeBindingSize_ - nativeBindingSizeAfterLastGC_ : 0;
+        return GetGlobalNativeSize() > nativeSizeTriggerGCThreshold_ &&
+            nativeSizeAfterLastGC_ + incNativeBindingSizeAfterLastGC > incNativeSizeTriggerGC_;
+    }
+
     bool GlobalNativeSizeLargerThanLimit() const
     {
         return GetGlobalNativeSize() >= globalSpaceNativeLimit_;
@@ -1431,7 +1450,7 @@ public:
             IDLE_SPACE_SIZE_LIMIT_RATE);
     }
 
-    void TryTriggerFullMarkByNativeSize();
+    void TryTriggerFullMarkOrGCByNativeSize();
 
     void TryTriggerFullMarkBySharedSize(size_t size);
 
@@ -1680,7 +1699,10 @@ private:
     size_t semiSpaceCopiedSize_ {0};
     size_t nativeBindingSize_{0};
     size_t globalSpaceNativeLimit_ {0};
-    size_t incNativeSizeTriggerLocalGC_ {0};
+    size_t nativeSizeTriggerGCThreshold_ {0};
+    size_t incNativeSizeTriggerGC_ {0};
+    size_t nativeSizeAfterLastGC_ {0};
+    size_t nativeBindingSizeAfterLastGC_ {0};
     size_t newAllocatedSharedObjectSize_ {0};
     // Record heap object size before enter sensitive status
     size_t recordObjSizeBeforeSensitive_ {0};

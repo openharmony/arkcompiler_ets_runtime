@@ -221,6 +221,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
     if (!data.IsUndefined()) {
         auto *pointer = JSNativePointer::Cast(data.GetTaggedObject());
         auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(size);
+        heap_->IncNativeSizeAfterLastGC(size);
         if (memset_s(newData, length, 0, length) != EOK) {
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
@@ -232,6 +233,7 @@ void ObjectFactory::NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, i
     }
 
     auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(size);
+    heap_->IncNativeSizeAfterLastGC(size);
     if (memset_s(newData, length, 0, length) != EOK) {
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
@@ -346,6 +348,7 @@ JSHandle<JSArrayBuffer> ObjectFactory::NewJSArrayBuffer(int32_t length)
     arrayBuffer->SetArrayBufferByteLength(length);
     if (length > 0) {
         auto newData = vm_->GetNativeAreaAllocator()->AllocateBuffer(length);
+        heap_->IncNativeSizeAfterLastGC(length);
         if (memset_s(newData, length, 0, length) != EOK) {
             LOG_FULL(FATAL) << "memset_s failed";
             UNREACHABLE();
@@ -436,6 +439,7 @@ void ObjectFactory::NewJSRegExpByteCodeData(const JSHandle<JSRegExp> &regexp, vo
     }
 
     auto newBuffer = vm_->GetNativeAreaAllocator()->AllocateBuffer(size);
+    heap_->IncNativeSizeAfterLastGC(size);
     if (memcpy_s(newBuffer, size, buffer, size) != EOK) {
         LOG_FULL(FATAL) << "memcpy_s failed";
         UNREACHABLE();

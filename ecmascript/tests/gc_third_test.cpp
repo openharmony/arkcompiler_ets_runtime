@@ -306,4 +306,16 @@ HWTEST_F_L0(GCTest, AdjustCapacity)
     EXPECT_TRUE(space->AdjustCapacity(size, thread));
 #endif
 }
+
+HWTEST_F_L0(GCTest, NativeMemAllocInSensitive)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    heap->NotifyHighSensitive(true);
+    for (size_t i = 0; i < 20; i++) {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        factory->NewJSArrayBuffer(300 * 1024 * 1024); // 300MB
+    }
+    EXPECT_TRUE(heap->GetGlobalNativeSize() < 1 * 1024 * 1024* 1024); // 1GB
+}
 } // namespace panda::test

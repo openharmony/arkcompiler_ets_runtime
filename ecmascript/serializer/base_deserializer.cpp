@@ -321,6 +321,7 @@ size_t BaseDeserializer::ReadSingleEncodeData(uint8_t encodeFlag, uintptr_t objA
             size_t bufferLength = data_->ReadUint32(position_);
             auto nativeAreaAllocator = thread_->GetEcmaVM()->GetNativeAreaAllocator();
             bufferPointer_ = nativeAreaAllocator->AllocateBuffer(bufferLength);
+            heap_->IncNativeSizeAfterLastGC(bufferLength);
             data_->ReadRawData(ToUintPtr(bufferPointer_), bufferLength, position_);
             heap_->IncreaseNativeBindingSize(bufferLength);
             handledFieldSize = 0;

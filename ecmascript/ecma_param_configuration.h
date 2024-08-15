@@ -86,8 +86,8 @@ public:
             sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
             sharedHeapLimitGrowingStep_ = 20_MB;
             incObjSizeThresholdInSensitive_ = 40_MB;
-            incNativeSizeTriggerSharedCM_ = 256_MB;
-            incNativeSizeTriggerGC_ = 768_MB;
+            stepNativeSizeInc_ = 256_MB;
+            maxNativeSizeInc_ = 768_MB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 8_MB;
@@ -109,8 +109,8 @@ public:
             sharedHeapLimitGrowingFactor_ = 2; // 2: growing factor
             sharedHeapLimitGrowingStep_ = 40_MB;
             incObjSizeThresholdInSensitive_ = 40_MB;
-            incNativeSizeTriggerSharedCM_ = 256_MB;
-            incNativeSizeTriggerGC_ = 768_MB;
+            stepNativeSizeInc_ = 256_MB;
+            maxNativeSizeInc_ = 768_MB;
         }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
             maxSemiSpaceSize_ = 16_MB;
@@ -132,8 +132,8 @@ public:
             sharedHeapLimitGrowingFactor_ = 4; // 4: growing factor
             sharedHeapLimitGrowingStep_ = 80_MB;
             incObjSizeThresholdInSensitive_ = 80_MB;
-            incNativeSizeTriggerSharedCM_ = 300_MB;
-            incNativeSizeTriggerGC_ = 1_GB;
+            stepNativeSizeInc_ = 300_MB;
+            maxNativeSizeInc_ = 1_GB;
         }
     }
 
@@ -232,14 +232,14 @@ public:
         return incObjSizeThresholdInSensitive_;
     }
 
-    size_t GetIncNativeSizeTriggerSharedCM() const
+    size_t GetStepNativeSizeInc() const
     {
-        return incNativeSizeTriggerSharedCM_;
+        return stepNativeSizeInc_;
     }
 
-    size_t GetIncNativeSizeTriggerGC() const
+    size_t GetMaxNativeSizeInc() const
     {
-        return incNativeSizeTriggerGC_;
+        return maxNativeSizeInc_;
     }
 
     uint32_t GetMaxStackSize() const
@@ -294,8 +294,8 @@ private:
     size_t sharedHeapLimitGrowingFactor_ {0};
     size_t sharedHeapLimitGrowingStep_ {0};
     size_t incObjSizeThresholdInSensitive_ {0};
-    size_t incNativeSizeTriggerSharedCM_ {0};
-    size_t incNativeSizeTriggerGC_ {0};
+    size_t stepNativeSizeInc_ {0};
+    size_t maxNativeSizeInc_ {0};
     size_t maxJSSerializerSize_ {0};
     uint32_t maxStackSize_ {0};
 };
