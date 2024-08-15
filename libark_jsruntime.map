@@ -126,6 +126,7 @@
       panda::ecmascript::AOTFileVersion::GetAOTVersion*;
       panda::ecmascript::AOTFileVersion::CheckAOTVersion*;
       panda::ecmascript::Barriers::Update*;
+      panda::ecmascript::BaseHeap::IsAlive*;
       panda::ecmascript::BigInt::SameValue*;
       panda::ecmascript::BigInt::DoubleToBigInt*;
       panda::ecmascript::BigInt::Int32ToBigInt*;
