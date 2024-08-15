@@ -178,9 +178,13 @@ uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread, vo
     if (allocType == AllocateEventType::NORMAL) {
         thread->CheckSafepointIfSuspended();
     }
-    Region *region = reinterpret_cast<Heap *>(heap_)->GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort() ?
-        reinterpret_cast<Region *>(reinterpret_cast<MachineCodeDesc *>(pDesc)->hugeObjRegion) :
-        AllocateFort(objectSize, thread, pDesc);
+    Region *region;
+    if (reinterpret_cast<Heap *>(heap_)->GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort() &&
+        reinterpret_cast<MachineCodeDesc *>(pDesc)->isAsyncCompileMode) {
+        region = reinterpret_cast<Region *>(reinterpret_cast<MachineCodeDesc *>(pDesc)->hugeObjRegion);
+    } else {
+        region = AllocateFort(objectSize, thread, pDesc);
+    }
     AddRegion(region);
     // It need to mark unpoison when huge object being allocated.
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);

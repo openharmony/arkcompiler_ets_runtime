@@ -59,6 +59,7 @@ struct MachineCodeDesc {
     size_t funcEntryDesSizeAlign {0};
     size_t stackMapSizeAlign {0};
     MemDesc *memDesc {nullptr};
+    bool isAsyncCompileMode {false};
 };
 
 class MachineCode;

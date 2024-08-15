@@ -168,7 +168,7 @@ static size_t ComputePayLoadSize(MachineCodeDesc &codeDesc)
             size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
                 static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
             codeDesc.instructionsSize = codeDesc.codeSizeAlign;
-            LOG_JIT(INFO) << "InstallCode:: MachineCode Object size to allocate: "
+            LOG_JIT(DEBUG) << "InstallCode:: MachineCode Object size to allocate: "
                 << allocSize << " (instruction size): " << codeDesc.codeSizeAlign;
             if (allocSize > MAX_REGULAR_HEAP_OBJECT_SIZE) {
                 return payLoadSize;
@@ -190,7 +190,7 @@ static size_t ComputePayLoadSize(MachineCodeDesc &codeDesc)
         size_t payLoadSize = codeDesc.funcEntryDesSizeAlign + instructionsSize + codeDesc.stackMapSizeAlign;
         size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
             static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-        LOG_JIT(INFO) << "InstallCode:: MachineCode Object size to allocate: "
+        LOG_JIT(DEBUG) << "InstallCode:: MachineCode Object size to allocate: "
             << allocSize << " (instruction size): " << instructionsSize;
 
         codeDesc.instructionsSize = instructionsSize;
@@ -262,12 +262,13 @@ void JitTask::InstallCode()
 
     size_t size = ComputePayLoadSize(codeDesc_);
 
+    codeDesc_.isAsyncCompileMode = IsAsyncTask();
     JSHandle<MachineCode> machineCodeObj;
     if (Jit::GetInstance()->IsEnableJitFort()) {
         // skip install if JitFort out of memory
         TaggedObject *machineCode = hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_);
         if (machineCode == nullptr) {
-            LOG_JIT(INFO) << "InstallCode skipped. NewMachineCode NULL for size " << size;
+            LOG_JIT(DEBUG) << "InstallCode skipped. NewMachineCode NULL for size " << size;
             if (hostThread_->HasPendingException()) {
                 hostThread_->SetMachineCodeLowMemory(true);
                 hostThread_->ClearException();
