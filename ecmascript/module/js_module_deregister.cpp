@@ -33,7 +33,7 @@ using PathHelper = base::PathHelper;
 
 void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointer, void *hint)
 {
-    if (pointer == nullptr) {
+    if (pointer == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Lacking deregister module's name.";
         return;
     }
@@ -190,7 +190,7 @@ void ModuleDeregister::DecreaseRegisterCounts(JSThread *thread, JSHandle<SourceT
         return;
     }
     uint16_t num = module->GetRegisterCounts();
-    if (num == 0) {
+    if (num == 0) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "moduleNameSpace can not be uninstalled";
     }
 

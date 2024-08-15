@@ -161,7 +161,7 @@ void ModulePathHelper::ParseAbcPathAndOhmUrl(EcmaVM *vm, const CString &inputFil
     if (pos != CString::npos) {
         // inputFileName: /data/storage/el1/bundle/moduleName@namespace/ets/xxx/xxx.abc
         pos = inputFileName.find(PathHelper::SLASH_TAG, BUNDLE_INSTALL_PATH_LEN);
-        if (pos == CString::npos) {
+        if (pos == CString::npos) { // LCOV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "Invalid Ohm url, please check.";
         }
         CString moduleName = inputFileName.substr(BUNDLE_INSTALL_PATH_LEN, pos - BUNDLE_INSTALL_PATH_LEN);
@@ -336,7 +336,7 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
     if (jsPandaFile->IsRecordWithBundleName()) {
         CVector<CString> vec;
         StringHelper::SplitString(moduleRequestName, vec, 0, SEGMENTS_LIMIT_TWO);
-        if (vec.size() < SEGMENTS_LIMIT_TWO) {
+        if (vec.size() < SEGMENTS_LIMIT_TWO) { // LCOV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName << ", abc path: " <<
                 baseFileName << ", current file name: " << recordName;
         }
@@ -357,7 +357,7 @@ CString ModulePathHelper::ParsePrefixBundle(JSThread *thread, const JSPandaFile 
 #else
         CVector<CString> currentVec;
         StringHelper::SplitString(moduleRequestName, currentVec, 0, SEGMENTS_LIMIT_TWO);
-        if (currentVec.size() < SEGMENTS_LIMIT_TWO) {
+        if (currentVec.size() < SEGMENTS_LIMIT_TWO) { // LCOV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << " Exceptional module path : " << moduleRequestName << ", abc path: " <<
                 baseFileName << ", current file name: " << recordName;
         }
@@ -748,7 +748,7 @@ CString ModulePathHelper::GetModuleNameWithBaseFile(const CString &baseFileName)
     if (pos != CString::npos) {
         // baseFileName: /data/storage/el1/bundle/moduleName/ets/xxx/xxx.abc
         pos = baseFileName.find(PathHelper::SLASH_TAG, BUNDLE_INSTALL_PATH_LEN);
-        if (pos == CString::npos) {
+        if (pos == CString::npos) { // LCOV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "Invalid Ohm url, please check.";
         }
         moduleName = baseFileName.substr(BUNDLE_INSTALL_PATH_LEN, pos - BUNDLE_INSTALL_PATH_LEN);
