@@ -397,7 +397,7 @@ void ModuleNamespace::SetModuleDeregisterProcession(JSThread *thread, const JSHa
     CString moduleStr = SourceTextModule::GetModuleName(module.GetTaggedValue());
     int srcLength = strlen(moduleStr.c_str()) + 1;
     auto moduleNameData = thread->GetEcmaVM()->GetNativeAreaAllocator()->AllocateBuffer(srcLength);
-    if (memcpy_s(moduleNameData, srcLength, moduleStr.c_str(), srcLength) != EOK) {
+    if (memcpy_s(moduleNameData, srcLength, moduleStr.c_str(), srcLength) != EOK) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Failed to copy module name's data.";
         UNREACHABLE();
     }
