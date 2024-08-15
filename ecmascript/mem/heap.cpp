@@ -70,7 +70,7 @@
 #endif
 
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
-#include "parameter.h"
+#include "parameters.h"
 #include "hisysevent.h"
 static constexpr uint32_t DEC_TO_INT = 100;
 static size_t g_threshold = OHOS::system::GetUintParameter<size_t>("persist.dfx.leak.threshold", 85);
