@@ -4707,6 +4707,20 @@ bool JSNApi::IsMixedDebugEnabled([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
+bool JSNApi::IsDebugModeEnabled([[maybe_unused]] const EcmaVM *vm)
+{
+#if defined(ECMASCRIPT_SUPPORT_DEBUGGER)
+    CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    if (vm != nullptr && vm->GetJsDebuggerManager() != nullptr) {
+        return vm->GetJsDebuggerManager()->IsDebugMode();
+    }
+    return false;
+#else
+    LOG_ECMA(ERROR) << "Not support arkcompiler debugger";
+    return false;
+#endif
+}
+
 void JSNApi::NotifyNativeCalling([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] const void *nativeAddress)
 {
 #if defined(ECMASCRIPT_SUPPORT_DEBUGGER)

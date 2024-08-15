@@ -1533,6 +1533,7 @@ public:
         int tid, EcmaVM *vm, const DebugOption &option, const DebuggerPostTask &debuggerPostTask, bool debugApp);
     static bool StopDebugger(EcmaVM *vm);
     static bool IsMixedDebugEnabled(const EcmaVM *vm);
+    static bool IsDebugModeEnabled(const EcmaVM *vm);
     static void NotifyNativeCalling(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyNativeReturn(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyLoadModule(const EcmaVM *vm);
