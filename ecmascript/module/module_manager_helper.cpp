@@ -104,7 +104,8 @@ JSHandle<SourceTextModule> ModuleManagerHelper::GetResolvedRecordIndexBindingMod
     if (!moduleManager->IsEvaluatedModule(recordNameStr)) {
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = ModulePathHelper::Utf8ConvertToString((binding->GetAbcFileName()));
-        if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordNameStr, fileName, isMergedAbc)) {
+        if (!JSPandaFileExecutor::LazyExecuteModule(thread,
+            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
     }
@@ -132,7 +133,8 @@ JSHandle<SourceTextModule> ModuleManagerHelper::GetResolvedRecordBindingModule(J
     if (!moduleManager->IsEvaluatedModule(recordNameStr)) {
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = module->GetEcmaModuleFilenameString();
-        if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordNameStr, fileName, isMergedAbc)) {
+        if (!JSPandaFileExecutor::LazyExecuteModule(thread,
+            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
     }
@@ -159,7 +161,8 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(JSThread *
     } else {
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = ModulePathHelper::Utf8ConvertToString(binding->GetAbcFileName());
-        if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordNameStr, fileName, isMergedAbc)) {
+        if (!JSPandaFileExecutor::LazyExecuteModule(thread,
+            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
         resolvedModule = moduleManager->HostGetImportedModule(recordNameStr);
@@ -186,7 +189,8 @@ JSTaggedValue ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(
     } else {
         auto isMergedAbc = !module->GetEcmaModuleRecordNameString().empty();
         CString fileName = module->GetEcmaModuleFilenameString();
-        if (!JSPandaFileExecutor::LazyExecuteModule(thread, recordNameStr, fileName, isMergedAbc)) {
+        if (!JSPandaFileExecutor::LazyExecuteModule(thread,
+            recordNameStr, fileName, isMergedAbc)) { // LCOV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << "LazyExecuteModule failed";
         }
         resolvedModule = moduleManager->HostGetImportedModule(recordNameStr);

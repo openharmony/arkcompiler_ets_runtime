@@ -101,7 +101,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     CString recordName = module->GetEcmaModuleRecordNameString();
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordName);
-    if (jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " <<  baseFilename;
     }
 
@@ -346,7 +346,7 @@ void SourceTextModule::MakeAppArgs(const EcmaVM *vm, std::vector<Local<JSValueRe
         return MakeNormalizedAppArgs(vm, arguments, soPath, moduleName);
     }
     size_t pos = soPath.find_last_of(PathHelper::SLASH_TAG);
-    if (pos == CString::npos) {
+    if (pos == CString::npos) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Invalid native module " << soPath;
         UNREACHABLE();
     }
@@ -1316,7 +1316,7 @@ Expected<JSTaggedValue, bool> SourceTextModule::ModuleExecution(JSThread *thread
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr, entryPoint);
     }
 
-    if (jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " <<  moduleFilenameStr;
     }
     return JSPandaFileExecutor::Execute(thread, jsPandaFile.get(), entryPoint, executeFromJob);
@@ -1851,7 +1851,7 @@ void SourceTextModule::ExecuteAsyncModule(JSThread *thread, const JSHandle<Sourc
             JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFilenameStr, entryPoint);
     }
 
-    if (jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFilenameStr;
     }
     Expected<JSTaggedValue, bool> result =
@@ -2237,7 +2237,7 @@ std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModule
 
     if (outFilename != baseFilename) { // managing scenarios across hap/hsp
         jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordName);
-        if (jsPandaFile == nullptr) {
+        if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "load pandafile failed, file name is " << baseFilename;
         }
     }

@@ -56,7 +56,7 @@ JSHandle<JSTaggedValue> ModuleManager::GenerateSendableFuncModule(const JSHandle
 JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index)
 {
     JSTaggedValue currentModule = GetCurrentModule();
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueInner currentModule failed";
     }
     return SourceTextModule::Cast(currentModule.GetTaggedObject())->GetModuleValue(vm_->GetJSThread(), index, false);
@@ -65,7 +65,7 @@ JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index)
 JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index, JSTaggedValue jsFunc)
 {
     JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueInner currentModule failed";
     }
     return SourceTextModule::Cast(currentModule.GetTaggedObject())->GetModuleValue(vm_->GetJSThread(), index, false);
@@ -73,7 +73,7 @@ JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index, JSTaggedValue js
 
 JSTaggedValue ModuleManager::GetModuleValueInner(int32_t index, JSHandle<JSTaggedValue> currentModule)
 {
-    if (currentModule->IsUndefined()) {
+    if (currentModule->IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueInner currentModule failed";
     }
     return SourceTextModule::Cast(currentModule->GetTaggedObject())->GetModuleValue(vm_->GetJSThread(), index, false);
@@ -99,7 +99,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutter(int32_t index, JSHandle<JSTagg
 JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule)
 {
     JSThread *thread = vm_->GetJSThread();
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
         UNREACHABLE();
     }
@@ -166,7 +166,7 @@ JSTaggedValue ModuleManager::GetLazyModuleValueOutter(int32_t index, JSTaggedVal
 JSTaggedValue ModuleManager::GetLazyModuleValueOutterInternal(int32_t index, JSTaggedValue currentModule)
 {
     JSThread *thread = vm_->GetJSThread();
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetLazyModuleValueOutter currentModule failed";
         UNREACHABLE();
     }
@@ -247,7 +247,7 @@ void ModuleManager::StoreModuleValue(int32_t index, JSTaggedValue value, JSTagge
 void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                              int32_t index, JSTaggedValue value)
 {
-    if (currentModule.GetTaggedValue().IsUndefined()) {
+    if (currentModule.GetTaggedValue().IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "StoreModuleValue currentModule failed";
         UNREACHABLE();
     }
@@ -259,7 +259,7 @@ void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &current
 JSTaggedValue ModuleManager::GetModuleValueInner(JSTaggedValue key)
 {
     JSTaggedValue currentModule = GetCurrentModule();
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueInner currentModule failed";
         UNREACHABLE();
     }
@@ -269,7 +269,7 @@ JSTaggedValue ModuleManager::GetModuleValueInner(JSTaggedValue key)
 JSTaggedValue ModuleManager::GetModuleValueInner(JSTaggedValue key, JSTaggedValue jsFunc)
 {
     JSTaggedValue currentModule = JSFunction::Cast(jsFunc.GetTaggedObject())->GetModule();
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueInner currentModule failed";
         UNREACHABLE();
     }
@@ -291,7 +291,7 @@ JSTaggedValue ModuleManager::GetModuleValueOutter(JSTaggedValue key, JSTaggedVal
 JSTaggedValue ModuleManager::GetModuleValueOutterInternal(JSTaggedValue key, JSTaggedValue currentModule)
 {
     JSThread *thread = vm_->GetJSThread();
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
         UNREACHABLE();
     }
@@ -334,7 +334,7 @@ void ModuleManager::StoreModuleValue(JSTaggedValue key, JSTaggedValue value, JST
 void ModuleManager::StoreModuleValueInternal(JSHandle<SourceTextModule> &currentModule,
                                              JSTaggedValue key, JSTaggedValue value)
 {
-    if (currentModule.GetTaggedValue().IsUndefined()) {
+    if (currentModule.GetTaggedValue().IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "StoreModuleValue currentModule failed";
         UNREACHABLE();
     }
@@ -356,7 +356,7 @@ JSHandle<SourceTextModule> ModuleManager::GetImportedModule(const CString &refer
 JSHandle<SourceTextModule> ModuleManager::HostGetImportedModule(const CString &referencing)
 {
     auto entry = resolvedModules_.find(referencing);
-    if (entry == resolvedModules_.end()) {
+    if (entry == resolvedModules_.end()) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Can not get module: " << referencing;
     }
     return JSHandle<SourceTextModule>(vm_->GetJSThread(), entry->second);
@@ -430,7 +430,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMergeForHotR
     JSThread *thread = vm_->GetJSThread();
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
-    if (jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
     }
     JSHandle<JSTaggedValue> moduleRecord = ResolveModuleWithMerge(thread,
@@ -446,7 +446,7 @@ JSHandle<JSTaggedValue> ModuleManager::CommonResolveImportedModuleWithMerge(cons
     JSThread *thread = vm_->GetJSThread();
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, recordName, false);
-    if (jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
     }
     JSHandle<JSTaggedValue> moduleRecord = ResolveModuleWithMerge(thread,
@@ -475,7 +475,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const CString &
 
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, moduleFileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
-    if (jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << moduleFileName;
     }
 
@@ -496,7 +496,7 @@ JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const void *buf
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, filename,
                                                            JSPandaFile::ENTRY_MAIN_FUNCTION, buffer, size);
-    if (jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << filename;
     }
 
@@ -589,7 +589,7 @@ JSTaggedValue ModuleManager::GetModuleNamespace(int32_t index, JSTaggedValue cur
 
 JSTaggedValue ModuleManager::GetModuleNamespaceInternal(int32_t index, JSTaggedValue currentModule)
 {
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleNamespace currentModule failed";
         UNREACHABLE();
     }
@@ -644,7 +644,7 @@ JSTaggedValue ModuleManager::GetModuleNamespace(JSTaggedValue localName, JSTagge
 
 JSTaggedValue ModuleManager::GetModuleNamespaceInternal(JSTaggedValue localName, JSTaggedValue currentModule)
 {
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleNamespace currentModule failed";
         UNREACHABLE();
     }
@@ -723,7 +723,7 @@ int ModuleManager::GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> e
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModule(const JSPandaFile *jsPandaFile,
                                                                  const CString &filename)
 {
-    if (jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << filename;
     }
     JSThread *thread = vm_->GetJSThread();
@@ -868,7 +868,7 @@ JSHandle<JSTaggedValue> ModuleManager::TryGetImportedModule(const CString& refer
 void ModuleManager::RemoveModuleFromCache(const CString& recordName)
 {
     auto entry = resolvedModules_.find(recordName);
-    if (entry == resolvedModules_.end()) {
+    if (entry == resolvedModules_.end()) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Can not get module: " << recordName <<
             ", when try to remove the module";
     }
@@ -883,7 +883,7 @@ void ModuleManager::RemoveModuleFromCache(const CString& recordName)
 void ModuleManager::RemoveModuleNameFromList(const CString& recordName)
 {
     auto entry = resolvedModules_.find(recordName);
-    if (entry == resolvedModules_.end()) {
+    if (entry == resolvedModules_.end()) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Can not get module: " << recordName <<
             ", when try to remove the module";
     }

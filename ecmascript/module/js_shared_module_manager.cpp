@@ -49,7 +49,7 @@ JSTaggedValue SharedModuleManager::GetSendableModuleValue(JSThread *thread, int3
 JSTaggedValue SharedModuleManager::GetSendableModuleValueImpl(
     JSThread *thread, int32_t index, JSTaggedValue currentModule) const
 {
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
         UNREACHABLE();
     }
@@ -83,7 +83,7 @@ JSTaggedValue SharedModuleManager::GetLazySendableModuleValue(JSThread *thread, 
 JSTaggedValue SharedModuleManager::GetLazySendableModuleValueImpl(
     JSThread *thread, int32_t index, JSTaggedValue currentModule) const
 {
-    if (currentModule.IsUndefined()) {
+    if (currentModule.IsUndefined()) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "GetModuleValueOutter currentModule failed";
         UNREACHABLE();
     }
@@ -115,7 +115,7 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModule(JSThread *thr
 {
     std::shared_ptr<JSPandaFile> jsPandaFile =
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
-    if (jsPandaFile == nullptr) {
+    if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileName;
     }
     JSRecordInfo *recordInfo = nullptr;
@@ -265,7 +265,7 @@ StateVisit &SharedModuleManager::findModuleMutexWithLock(JSThread *thread, const
     RuntimeLockHolder locker(thread, mutex_);
     CString moduleName = SourceTextModule::GetModuleName(module.GetTaggedValue());
     auto it = sharedModuleMutex_.find(moduleName);
-    if (it == sharedModuleMutex_.end()) {
+    if (it == sharedModuleMutex_.end()) { // LCOV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << " Get shared module mutex failed";
     }
     return it->second;
