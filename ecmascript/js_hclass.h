@@ -756,7 +756,7 @@ public:
 
     inline bool HasOrdinaryGet() const
     {
-        return (IsSpecialContainer() || IsModuleNamespace() || IsJSBigInt64Array() || IsJSBigUint64Array());
+        return (IsSpecialContainer() || IsModuleNamespace() || IsBigInt64Array());
     }
 
     inline bool IsJSTypedArray() const
@@ -877,6 +877,13 @@ public:
     inline bool IsJSSharedBigUint64Array() const
     {
         return GetObjectType() == JSType::JS_SHARED_BIGUINT64_ARRAY;
+    }
+
+    inline bool IsBigInt64Array() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::JS_SHARED_BIGUINT64_ARRAY || jsType == JSType::JS_SHARED_BIGINT64_ARRAY ||
+               jsType == JSType::JS_BIGUINT64_ARRAY || jsType == JSType::JS_BIGINT64_ARRAY;
     }
 
     inline bool IsJsGlobalEnv() const

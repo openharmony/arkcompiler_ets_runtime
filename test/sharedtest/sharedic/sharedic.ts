@@ -78,4 +78,10 @@ let sobj = new SClass();
 for (let i = 0; i < 200; i++) {
 }
 sobj.__proto__; // not SetProtoCell
+{
+  let arr = new SendableBigUint64Array(5);
+  arr[0]=1n;
+  print(arr[0]);
+}
+
 print("shared ic over");
