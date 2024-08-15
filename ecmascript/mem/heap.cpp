@@ -2160,7 +2160,8 @@ void Heap::CheckAndTriggerTaskFinishedGC()
         || (nativeSizeOfTaskBegin != 0
             && nativeSizeOfTaskFinished/nativeSizeOfTaskBegin > TRIGGER_OLDGC_NATIVE_LIMIT_RATE);
     if (objectSizeFlag || nativeSizeFlag) {
-        panda::JSNApi::TriggerGC(GetEcmaVM(), panda::JSNApi::TRIGGER_GC_TYPE::OLD_GC);
+        panda::JSNApi::TriggerGC(GetEcmaVM(), panda::ecmascript::GCReason::TRIGGER_BY_TASKPOOL,
+            panda::JSNApi::TRIGGER_GC_TYPE::OLD_GC);
         RecordOrResetObjectSize(0);
         RecordOrResetNativeSize(0.0);
     }

@@ -29,6 +29,7 @@
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/config.h"
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/common_enum.h"
 
 #ifndef NDEBUG
 #include "libpandabase/utils/debug.h"
@@ -1504,6 +1505,8 @@ public:
     // Memory
     // fixme: Rename SEMI_GC to YOUNG_GC
     static void TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
+    static void TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason,
+        TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
     // Exception
     static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
     static void PrintExceptionInfo(const EcmaVM *vm);

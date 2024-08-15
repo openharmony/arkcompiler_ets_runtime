@@ -19,50 +19,9 @@
 #include <limits>
 
 #include "libpandabase/macros.h"
-
+#include "ecmascript/common_enum.h"
 namespace panda {
 namespace ecmascript {
-enum BarrierMode { SKIP_BARRIER, WRITE_BARRIER, READ_BARRIER };
-
-enum CheckIdleGCType {
-    VSYNC,
-    LOOPER
-};
-
-/*
- * TriggerGCType is categorized according to the scope the GC expects to cover.
- * Different GC algorithms may be applied to different GC types.
- * For example, SemiSpace GC for young generation GC, Mark-Sweep-Compact for full GC, etc.
- */
-enum TriggerGCType {
-    EDEN_GC,
-    // GC is expected to cover young space only;
-    YOUNG_GC,
-    // GC is expected to cover young space and necessary old spaces;
-    OLD_GC,
-    // GC is expected to cover all valid heap spaces;
-    FULL_GC,
-    // GC is expected to compress objects into appspawn space;
-    APPSPAWN_FULL_GC,
-    SHARED_GC,
-    SHARED_FULL_GC,
-    APPSPAWN_SHARED_FULL_GC,
-    GC_TYPE_LAST
-};
-
-enum class GCReason : uint8_t {
-    ALLOCATION_LIMIT,
-    ALLOCATION_FAILED,
-    IDLE,
-    SWITCH_BACKGROUND,
-    EXTERNAL_TRIGGER,
-    WORKER_DESTRUCTION,
-    OTHER,
-};
-
-enum class RequestAotMode : uint8_t {
-    RE_COMPILE_ON_IDLE = 0
-};
 
 #define SCOPE_LIST(V)                    \
     V(TotalGC)                           \

@@ -78,6 +78,14 @@ const char *GCStats::GCReasonToString()
             return "Externally triggered";
         case GCReason::WORKER_DESTRUCTION:
             return "Worker Destruction";
+        case GCReason::TRIGGER_BY_JS:
+            return "Trigger by JS";
+        case GCReason::TRIGGER_BY_ARKUI:
+            return "Trigger by ArkUI";
+        case GCReason::TRIGGER_BY_ABILITY:
+            return "Trigger by AbilityRuntime";
+        case GCReason::TRIGGER_BY_MEM_TOOLS:
+            return "Trigger by Mem tools";
         default:
             return "Other";
     }
