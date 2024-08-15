@@ -173,8 +173,8 @@ private:
     public:
         IndexCheckInfo(Chunk* chunk): list_(chunk) {}
         GateLists list_;
-        int min_;
-        int max_;
+        int min_ {0};
+        int max_ {0};
     };
     typedef ChunkVector<IndexCheckInfo*> IndexCheckInfoList;
     IndexCheckInfoList indexCheckInfo_;
