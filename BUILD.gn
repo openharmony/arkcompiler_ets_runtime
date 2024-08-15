@@ -1237,10 +1237,18 @@ ohos_source_set("libark_jsruntime_static") {
     }
   }
 
-  deps = [
-    ":libark_js_intl_arm_set",
-    ":libark_jsruntime_arm_set",
-  ]
+  if (is_ohos && is_standard_system) {
+    deps = [
+      ":libark_js_intl_arm_set",
+      ":libark_jsruntime_arm_set",
+    ]
+  } else {
+    # in this case libark_jsruntime_arm_set and libark_jsruntime_set are identical
+    deps = [
+      ":libark_js_intl_set",
+      ":libark_jsruntime_set",
+    ]
+  }
   external_deps = []
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
