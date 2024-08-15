@@ -58,6 +58,8 @@ def parse_args():
     parser.add_argument('--report', default=False, nargs='?', type=str_to_bool,
                         help='Support daily care performance results and script '
                              'preliminary analysis of performance data.')
+    parser.add_argument('--run-interpreter', default=False, nargs='?', type=str_to_bool,
+                    help='Run the interpreter if set to true')
     parser.add_argument('--tools-type', default='dev', nargs='?', help='tools type')
     parser.add_argument('--boundary-value', default=-10, nargs='?',
                         help='inferior boundary value')
