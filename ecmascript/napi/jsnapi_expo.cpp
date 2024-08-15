@@ -5178,6 +5178,16 @@ void JSNApi::NotifyTaskFinished(const EcmaVM *vm)
     const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerTaskFinishedGC();
 }
 
+bool JSNApi::IsMultiThreadCheckEnabled(const EcmaVM *vm)
+{
+    return vm->GetThreadCheckStatus();
+}
+
+uint32_t JSNApi::GetCurrentThreadId()
+{
+    return JSThread::GetCurrentThreadId();
+}
+
 uintptr_t JSNApi::SetWeak(const EcmaVM *vm, uintptr_t localAddress)
 {
     if (localAddress == 0) {

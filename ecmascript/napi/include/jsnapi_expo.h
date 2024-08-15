@@ -1630,6 +1630,8 @@ public:
     static int GetStartRealTime(const EcmaVM *vm);
     static void NotifyTaskBegin(const EcmaVM *vm);
     static void NotifyTaskFinished(const EcmaVM *vm);
+    static bool IsMultiThreadCheckEnabled(const EcmaVM *vm);
+    static uint32_t GetCurrentThreadId();
 private:
     static int vmCount_;
     static bool initialize_;
