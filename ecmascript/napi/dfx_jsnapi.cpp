@@ -177,7 +177,7 @@ void DFXJSNApi::DumpHeapSnapshotWithVm([[maybe_unused]] const EcmaVM *vm,
 
     uint32_t curTid = vm->GetTid();
     int ret = 0;
-    if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
+    if (tid == 0 || tid == curTid) {
         ret = uv_queue_work(loop, work, [](uv_work_t *) {}, [](uv_work_t *work, int32_t) {
             struct DumpForSnapShotStruct *dump = static_cast<struct DumpForSnapShotStruct *>(work->data);
             DFXJSNApi::GetHeapPrepare(dump->vm);
@@ -218,14 +218,14 @@ void DFXJSNApi::TriggerGC([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] ui
     // triggerGC host vm
     uint32_t curTid = vm->GetTid();
     LOG_ECMA(INFO) << "TriggerGC tid " << tid << " curTid " << curTid;
-    if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
+    if (tid == 0 || tid == curTid) {
         TriggerGCWithVm(vm);
     }
     // triggerGC worker vm
     const_cast<EcmaVM *>(vm)->EnumerateWorkerVm([&](const EcmaVM *workerVm) -> void {
         curTid = workerVm->GetTid();
         LOG_ECMA(INFO) << "TriggerGC tid " << tid << " curTid " << curTid;
-        if ((tid == 0) || ((tid != 0) && (tid == curTid))) {
+        if (tid == 0 || tid == curTid) {
             TriggerGCWithVm(workerVm);
             return;
         }

@@ -89,6 +89,7 @@ void EntryIdMap::UpdateEntryIdMap(HeapSnapshot *snapshot)
 {
     if (snapshot == nullptr) {
         LOG_ECMA(FATAL) << "EntryIdMap::UpdateEntryIdMap:snapshot is nullptr";
+        UNREACHABLE();
     }
     auto nodes = snapshot->GetNodes();
     CUnorderedMap<JSTaggedType, NodeId> newIdMap;
