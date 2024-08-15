@@ -164,6 +164,7 @@ public:
         if (GetIsEncryptedBundle() > 0) {
             DecryptRemoveKey(fd);
         }
+        close(fd);
 #endif
         return true;
     }

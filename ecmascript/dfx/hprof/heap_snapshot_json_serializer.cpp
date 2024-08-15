@@ -267,6 +267,7 @@ void HeapSnapshotJSONSerializer::SerializeStringTable(HeapSnapshot *snapshot, St
 
 void HeapSnapshotJSONSerializer::SerializeString(CString *str, StreamWriter *writer)
 {
+    ASSERT(str != nullptr);
     const char *s = str->c_str();
     while (*s != '\0') {
         if (*s == '\"' || *s == '\\') {
