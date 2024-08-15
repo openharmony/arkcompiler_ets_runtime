@@ -47,29 +47,15 @@ std::string CGOptions::duplicateAsmFile = "";
 std::string CGOptions::duplicateAsmFile = "maple/mrt/codetricks/arch/arm64/duplicateFunc.s";
 #endif
 Range CGOptions::range = Range();
-std::string CGOptions::fastFuncsAsmFile = "";
 Range CGOptions::spillRanges = Range();
-uint8 CGOptions::fastAllocMode = 0; /* 0: fast, 1: spill all */
-bool CGOptions::fastAlloc = false;
 uint64 CGOptions::lsraBBOptSize = 150000;
 uint64 CGOptions::lsraInsnOptSize = 200000;
 uint64 CGOptions::overlapNum = 28;
-uint8 CGOptions::rematLevel = 2;
 bool CGOptions::optForSize = false;
 bool CGOptions::enableHotColdSplit = false;
-uint32 CGOptions::alignMinBBSize = 16;
-uint32 CGOptions::alignMaxBBSize = 96;
-uint32 CGOptions::loopAlignPow = 4;
-uint32 CGOptions::jumpAlignPow = 5;
 uint32 CGOptions::funcAlignPow = 5;
 bool CGOptions::doOptimizedFrameLayout = true;
 bool CGOptions::supportFuncSymbol = false;
-#if TARGAARCH64 || TARGRISCV64
-bool CGOptions::useBarriersForVolatile = false;
-#else
-bool CGOptions::useBarriersForVolatile = true;
-#endif
-bool CGOptions::exclusiveEH = false;
 bool CGOptions::doEBO = false;
 bool CGOptions::doCGSSA = false;
 bool CGOptions::doLocalSchedule = false;
@@ -79,35 +65,17 @@ bool CGOptions::doCFGO = false;
 bool CGOptions::doICO = false;
 bool CGOptions::doStoreLoadOpt = false;
 bool CGOptions::doGlobalOpt = false;
-bool CGOptions::doVregRename = false;
-bool CGOptions::doMultiPassColorRA = true;
 bool CGOptions::doPrePeephole = false;
 bool CGOptions::doPeephole = false;
-bool CGOptions::doRetMerge = false;
 bool CGOptions::doSchedule = false;
 bool CGOptions::doWriteRefFieldOpt = false;
-bool CGOptions::dumpOptimizeCommonLog = false;
-bool CGOptions::checkArrayStore = false;
-bool CGOptions::doPIC = false;
 bool CGOptions::noDupBB = false;
 bool CGOptions::noCalleeCFI = true;
-bool CGOptions::emitCyclePattern = false;
 bool CGOptions::insertYieldPoint = false;
-bool CGOptions::mapleLinker = false;
-bool CGOptions::printFunction = false;
-bool CGOptions::nativeOpt = false;
 bool CGOptions::lazyBinding = false;
 bool CGOptions::hotFix = false;
-bool CGOptions::debugSched = false;
-bool CGOptions::bruteForceSched = false;
-bool CGOptions::simulateSched = false;
-CGOptions::ABIType CGOptions::abiType = kABIHard;
-bool CGOptions::genLongCalls = false;
-bool CGOptions::functionSections = false;
 bool CGOptions::useFramePointer = false;
 bool CGOptions::gcOnly = false;
-bool CGOptions::quiet = true;
-bool CGOptions::doPatchLongBranch = false;
 bool CGOptions::doPreSchedule = false;
 bool CGOptions::emitBlockMarker = true;
 bool CGOptions::inRange = false;
@@ -115,14 +83,9 @@ bool CGOptions::doPreLSRAOpt = false;
 bool CGOptions::doRegSavesOpt = false;
 bool CGOptions::useSsaPreSave = false;
 bool CGOptions::useSsuPreRestore = false;
-bool CGOptions::replaceASM = false;
 bool CGOptions::generalRegOnly = false;
-bool CGOptions::fastMath = false;
-bool CGOptions::doAlignAnalysis = false;
-bool CGOptions::doCondBrAlign = false;
 bool CGOptions::cgBigEndian = false;
 bool CGOptions::arm64ilp32 = false;
-bool CGOptions::noCommon = false;
 bool CGOptions::doCgirVerify = false;
 bool CGOptions::useJitCodeSign = false;
 
@@ -137,44 +100,9 @@ std::ostream& CGOptions::GetLogStream() const
     return LogInfo::MapleLogger();
 }
 
-void CGOptions::DecideMplcgRealLevel(bool isDebug)
-{
-    if (opts::cg::o0) {
-        if (isDebug) {
-            LogInfo::MapleLogger() << "Real Mplcg level: O0\n";
-        }
-        EnableO0();
-    }
-
-    if (opts::cg::o1) {
-        if (isDebug) {
-            LogInfo::MapleLogger() << "Real Mplcg level: O1\n";
-        }
-        EnableO1();
-    }
-
-    if (opts::cg::o2 || opts::cg::os) {
-        if (opts::cg::os) {
-            optForSize = true;
-        }
-        if (isDebug) {
-            std::string oLog = (opts::cg::os == true) ? "Os" : "O2";
-            LogInfo::MapleLogger() << "Real Mplcg level: " << oLog << "\n";
-        }
-        EnableO2();
-    }
-    if (opts::cg::olitecg) {
-        if (isDebug) {
-            LogInfo::MapleLogger() << "Real Mplcg level: LiteCG\n";
-        }
-        EnableLiteCG();
-    }
-}
 
 bool CGOptions::SolveOptions(bool isDebug)
 {
-    DecideMplcgRealLevel(isDebug);
-
     for (const auto &opt : cgCategory.GetEnabledOptions()) {
         std::string printOpt;
         if (isDebug) {
@@ -189,24 +117,6 @@ bool CGOptions::SolveOptions(bool isDebug)
         opts::cg::supportFuncSymbol ? EnableSupportFuncSymbol() : DisableSupportFuncSymbol();
     }
 
-    if (opts::cg::quiet.IsEnabledByUser()) {
-        SetQuiet(true);
-    }
-
-    if (opts::cg::pie.IsEnabledByUser()) {
-        opts::cg::pie ? SetOption(CGOptions::kGenPie) : ClearOption(CGOptions::kGenPie);
-    }
-
-    if (opts::cg::fpic.IsEnabledByUser()) {
-        if (opts::cg::fpic) {
-            EnablePIC();
-            SetOption(CGOptions::kGenPic);
-        } else {
-            DisablePIC();
-            ClearOption(CGOptions::kGenPic);
-        }
-    }
-
     if (opts::cg::verboseAsm.IsEnabledByUser()) {
         opts::cg::verboseAsm ? SetOption(CGOptions::kVerboseAsm) : ClearOption(CGOptions::kVerboseAsm);
         SetAsmEmitterEnable(true);
@@ -214,19 +124,6 @@ bool CGOptions::SolveOptions(bool isDebug)
 
     if (opts::cg::verboseCg.IsEnabledByUser()) {
         opts::cg::verboseCg ? SetOption(CGOptions::kVerboseCG) : ClearOption(CGOptions::kVerboseCG);
-    }
-
-    if (opts::cg::maplelinker.IsEnabledByUser()) {
-        opts::cg::maplelinker ? EnableMapleLinker() : DisableMapleLinker();
-    }
-
-    if (opts::cg::fastAlloc.IsEnabledByUser()) {
-        EnableFastAlloc();
-        SetFastAllocMode(opts::cg::fastAlloc);
-    }
-
-    if (opts::cg::useBarriersForVolatile.IsEnabledByUser()) {
-        opts::cg::useBarriersForVolatile ? EnableBarriersForVolatile() : DisableBarriersForVolatile();
     }
 
     if (opts::cg::spillRange.IsEnabledByUser()) {
@@ -243,22 +140,6 @@ bool CGOptions::SolveOptions(bool isDebug)
 
     if (opts::cg::dumpFunc.IsEnabledByUser()) {
         SetDumpFunc(opts::cg::dumpFunc);
-    }
-
-    if (opts::cg::duplicateAsmList.IsEnabledByUser()) {
-        SetDuplicateAsmFile(opts::cg::duplicateAsmList);
-    }
-
-    if (opts::cg::duplicateAsmList2.IsEnabledByUser()) {
-        SetFastFuncsAsmFile(opts::cg::duplicateAsmList2);
-    }
-
-    if (opts::cg::stackProtectorStrong.IsEnabledByUser()) {
-        SetOption(kUseStackProtectorStrong);
-    }
-
-    if (opts::cg::stackProtectorAll.IsEnabledByUser()) {
-        SetOption(kUseStackProtectorAll);
     }
 
     if (opts::cg::debug.IsEnabledByUser()) {
@@ -297,59 +178,16 @@ bool CGOptions::SolveOptions(bool isDebug)
         SetOption(kWithAsm);
     }
 
-    if (opts::cg::profile.IsEnabledByUser()) {
-        SetOption(kWithProfileCode);
-        SetParserOption(kWithProfileInfo);
-    }
-
     if (opts::cg::withRaLinearScan.IsEnabledByUser()) {
         SetOption(kDoLinearScanRegAlloc);
-        ClearOption(kDoColorRegAlloc);
-    }
-
-    if (opts::cg::withRaGraphColor.IsEnabledByUser()) {
-        SetOption(kDoColorRegAlloc);
-        ClearOption(kDoLinearScanRegAlloc);
-    }
-
-    if (opts::cg::printFunc.IsEnabledByUser()) {
-        opts::cg::printFunc ? EnablePrintFunction() : DisablePrintFunction();
-    }
-
-    if (opts::cg::addDebugTrace.IsEnabledByUser()) {
-        SetOption(kAddDebugTrace);
-    }
-
-    if (opts::cg::addFuncProfile.IsEnabledByUser()) {
-        SetOption(kAddFuncProfile);
     }
 
     if (opts::cg::suppressFileinfo.IsEnabledByUser()) {
         SetOption(kSuppressFileInfo);
     }
 
-    if (opts::cg::patchLongBranch.IsEnabledByUser()) {
-        SetOption(kPatchLongBranch);
-    }
-
-    if (opts::cg::constFold.IsEnabledByUser()) {
-        opts::cg::constFold ? SetOption(kConstFold) : ClearOption(kConstFold);
-    }
-
     if (opts::cg::dumpCfg.IsEnabledByUser()) {
         SetOption(kDumpCFG);
-    }
-
-    if (opts::cg::classListFile.IsEnabledByUser()) {
-        SetClassListFile(opts::cg::classListFile);
-    }
-
-    if (opts::cg::genCMacroDef.IsEnabledByUser()) {
-        SetOrClear(GetGenerateFlags(), CGOptions::kCMacroDef, opts::cg::genCMacroDef);
-    }
-
-    if (opts::cg::genGctibFile.IsEnabledByUser()) {
-        SetOrClear(GetGenerateFlags(), CGOptions::kGctib, opts::cg::genGctibFile);
     }
 
     if (opts::cg::yieldpoint.IsEnabledByUser()) {
@@ -360,18 +198,6 @@ bool CGOptions::SolveOptions(bool isDebug)
         SetOrClear(GetGenerateFlags(), CGOptions::kGenLocalRc, opts::cg::localRc);
     }
 
-    if (opts::cg::ehExclusiveList.IsEnabledByUser()) {
-        SetEHExclusiveFile(opts::cg::ehExclusiveList);
-        EnableExclusiveEH();
-        ParseExclusiveFunc(opts::cg::ehExclusiveList);
-    }
-
-    if (opts::cg::cyclePatternList.IsEnabledByUser()) {
-        SetCyclePatternFile(opts::cg::cyclePatternList);
-        EnableEmitCyclePattern();
-        ParseCyclePattern(opts::cg::cyclePatternList);
-    }
-
     if (opts::cg::cg.IsEnabledByUser()) {
         SetRunCGFlag(opts::cg::cg);
         opts::cg::cg ? SetOption(CGOptions::kDoCg) : ClearOption(CGOptions::kDoCg);
@@ -379,10 +205,6 @@ bool CGOptions::SolveOptions(bool isDebug)
 
     if (opts::cg::objmap.IsEnabledByUser()) {
         SetGenerateObjectMap(opts::cg::objmap);
-    }
-
-    if (opts::cg::replaceAsm.IsEnabledByUser()) {
-        opts::cg::replaceAsm ? EnableReplaceASM() : DisableReplaceASM();
     }
 
     if (opts::cg::generalRegOnly.IsEnabledByUser()) {
@@ -397,83 +219,6 @@ bool CGOptions::SolveOptions(bool isDebug)
         opts::cg::hotFix ? EnableHotFix() : DisableHotFix();
     }
 
-    if (opts::cg::soeCheck.IsEnabledByUser()) {
-        SetOption(CGOptions::kSoeCheckInsert);
-    }
-
-    if (opts::cg::checkArraystore.IsEnabledByUser()) {
-        opts::cg::checkArraystore ? EnableCheckArrayStore() : DisableCheckArrayStore();
-    }
-
-    if (opts::cg::ebo.IsEnabledByUser()) {
-        opts::cg::ebo ? EnableEBO() : DisableEBO();
-    }
-
-    if (opts::cg::cfgo.IsEnabledByUser()) {
-        opts::cg::cfgo ? EnableCFGO() : DisableCFGO();
-    }
-
-    if (opts::cg::ico.IsEnabledByUser()) {
-        opts::cg::ico ? EnableICO() : DisableICO();
-    }
-
-    if (opts::cg::storeloadopt.IsEnabledByUser()) {
-        opts::cg::storeloadopt ? EnableStoreLoadOpt() : DisableStoreLoadOpt();
-    }
-
-    if (opts::cg::globalopt.IsEnabledByUser()) {
-        opts::cg::globalopt ? EnableGlobalOpt() : DisableGlobalOpt();
-    }
-
-    if (opts::cg::hotcoldsplit.IsEnabledByUser()) {
-        opts::cg::hotcoldsplit ? EnableHotColdSplit() : DisableHotColdSplit();
-    }
-
-    if (opts::cg::prelsra.IsEnabledByUser()) {
-        opts::cg::prelsra ? EnablePreLSRAOpt() : DisablePreLSRAOpt();
-    }
-
-    if (opts::cg::prepeep.IsEnabledByUser()) {
-        opts::cg::prepeep ? EnablePrePeephole() : DisablePrePeephole();
-    }
-
-    if (opts::cg::peep.IsEnabledByUser()) {
-        opts::cg::peep ? EnablePeephole() : DisablePeephole();
-    }
-
-    if (opts::cg::retMerge.IsEnabledByUser()) {
-        opts::cg::retMerge ? EnableRetMerge() : DisableRetMerge();
-    }
-
-    if (opts::cg::preschedule.IsEnabledByUser()) {
-        opts::cg::preschedule ? EnablePreSchedule() : DisablePreSchedule();
-    }
-
-    if (opts::cg::schedule.IsEnabledByUser()) {
-        opts::cg::schedule ? EnableSchedule() : DisableSchedule();
-    }
-
-    if (opts::cg::vregRename.IsEnabledByUser()) {
-        opts::cg::vregRename ? EnableVregRename() : DisableVregRename();
-    }
-
-    if (opts::cg::fullcolor.IsEnabledByUser()) {
-        opts::cg::fullcolor ? EnableMultiPassColorRA() : DisableMultiPassColorRA();
-    }
-
-    if (opts::cg::writefieldopt.IsEnabledByUser()) {
-        opts::cg::writefieldopt ? EnableWriteRefFieldOpt() : DisableWriteRefFieldOpt();
-    }
-
-    if (opts::cg::dumpOlog.IsEnabledByUser()) {
-        opts::cg::dumpOlog ? EnableDumpOptimizeCommonLog() : DisableDumpOptimizeCommonLog();
-    }
-
-    if (opts::cg::nativeopt.IsEnabledByUser()) {
-        // Disabling Looks strage: should be checked by author of the code
-        DisableNativeOpt();
-    }
-
     if (opts::cg::dupBb.IsEnabledByUser()) {
         opts::cg::dupBb ? DisableNoDupBB() : EnableNoDupBB();
     }
@@ -482,24 +227,8 @@ bool CGOptions::SolveOptions(bool isDebug)
         opts::cg::calleeCfi ? DisableNoCalleeCFI() : EnableNoCalleeCFI();
     }
 
-    if (opts::cg::proepilogue.IsEnabledByUser()) {
-        opts::cg::proepilogue ? SetOption(CGOptions::kProEpilogueOpt) : ClearOption(CGOptions::kProEpilogueOpt);
-    }
-
     if (opts::cg::tailcall.IsEnabledByUser()) {
         opts::cg::tailcall ? SetOption(CGOptions::kTailCallOpt) : ClearOption(CGOptions::kTailCallOpt);
-    }
-
-    if (opts::cg::calleeregsPlacement.IsEnabledByUser()) {
-        opts::cg::calleeregsPlacement ? EnableRegSavesOpt() : DisableRegSavesOpt();
-    }
-
-    if (opts::cg::ssapreSave.IsEnabledByUser()) {
-        opts::cg::ssapreSave ? EnableSsaPreSave() : DisableSsaPreSave();
-    }
-
-    if (opts::cg::ssupreRestore.IsEnabledByUser()) {
-        opts::cg::ssupreRestore ? EnableSsuPreRestore() : DisableSsuPreRestore();
     }
 
     if (opts::cg::lsraBb.IsEnabledByUser()) {
@@ -512,10 +241,6 @@ bool CGOptions::SolveOptions(bool isDebug)
 
     if (opts::cg::lsraOverlap.IsEnabledByUser()) {
         SetOverlapNum(opts::cg::lsraOverlap);
-    }
-
-    if (opts::cg::remat.IsEnabledByUser()) {
-        SetRematLevel(opts::cg::remat);
     }
 
     if (opts::cg::dumpPhases.IsEnabledByUser()) {
@@ -538,44 +263,8 @@ bool CGOptions::SolveOptions(bool isDebug)
         SetSkipAfter(opts::cg::skipAfter);
     }
 
-    if (opts::cg::debugSchedule.IsEnabledByUser()) {
-        opts::cg::debugSchedule ? EnableDebugSched() : DisableDebugSched();
-    }
-
-    if (opts::cg::bruteforceSchedule.IsEnabledByUser()) {
-        opts::cg::bruteforceSchedule ? EnableDruteForceSched() : DisableDruteForceSched();
-    }
-
-    if (opts::cg::simulateSchedule.IsEnabledByUser()) {
-        opts::cg::simulateSchedule ? EnableSimulateSched() : DisableSimulateSched();
-    }
-
-    if (opts::cg::floatAbi.IsEnabledByUser()) {
-        SetABIType(opts::cg::floatAbi);
-    }
-
-    if (opts::cg::longCalls.IsEnabledByUser()) {
-        opts::cg::longCalls ? EnableLongCalls() : DisableLongCalls();
-    }
-
-    if (opts::cg::functionSections.IsEnabledByUser()) {
-        opts::cg::functionSections ? EnableFunctionSections() : DisableFunctionSections();
-    }
-
     if (opts::cg::omitFramePointer.IsEnabledByUser()) {
         opts::cg::omitFramePointer ? DisableFramePointer() : EnableFramePointer();
-    }
-
-    if (opts::cg::fastMath.IsEnabledByUser()) {
-        opts::cg::fastMath ? EnableFastMath() : DisableFastMath();
-    }
-
-    if (opts::cg::alignAnalysis.IsEnabledByUser()) {
-        opts::cg::alignAnalysis ? EnableAlignAnalysis() : DisableAlignAnalysis();
-    }
-
-    if (opts::cg::condbrAlign.IsEnabledByUser()) {
-        opts::cg::condbrAlign ? EnableCondBrAlign() : DisableCondBrAlign();
     }
 
     /* big endian can be set with several options: --target, -Be.
@@ -587,48 +276,14 @@ bool CGOptions::SolveOptions(bool isDebug)
         opts::cg::cgSsa ? EnableCGSSA() : DisableCGSSA();
     }
 
-    if (opts::cg::common.IsEnabledByUser()) {
-        opts::cg::common ? EnableCommon() : DisableCommon();
-    }
-
-    if (opts::cg::alignMinBbSize.IsEnabledByUser()) {
-        SetAlignMinBBSize(opts::cg::alignMinBbSize);
-    }
-
-    if (opts::cg::alignMaxBbSize.IsEnabledByUser()) {
-        SetAlignMaxBBSize(opts::cg::alignMaxBbSize);
-    }
-
-    if (opts::cg::loopAlignPow.IsEnabledByUser()) {
-        SetLoopAlignPow(opts::cg::loopAlignPow);
-    }
-
-    if (opts::cg::jumpAlignPow.IsEnabledByUser()) {
-        SetJumpAlignPow(opts::cg::jumpAlignPow);
-    }
-
     if (opts::cg::funcAlignPow.IsEnabledByUser()) {
         SetFuncAlignPow(opts::cg::funcAlignPow);
-    }
-
-    if (opts::cg::optimizedFrameLayout.IsEnabledByUser()) {
-        opts::cg::optimizedFrameLayout ? EnableOptimizedFrameLayout() : DisableOptimizedFrameLayout();
     }
 
     /* override some options when loc, dwarf is generated */
     if (WithLoc()) {
         DisableSchedule();
         SetOption(kWithSrc);
-    }
-    if (WithDwarf()) {
-        DisableEBO();
-        DisableCFGO();
-        DisableICO();
-        DisableSchedule();
-        SetOption(kDebugFriendly);
-        SetOption(kWithSrc);
-        SetOption(kWithLoc);
-        ClearOption(kSuppressFileInfo);
     }
 
     return true;
@@ -710,19 +365,7 @@ void CGOptions::EnableO0()
     useSsaPreSave = false;
     useSsuPreRestore = false;
     doWriteRefFieldOpt = false;
-    doAlignAnalysis = false;
-    doCondBrAlign = false;
 
-    if (maple::Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) {
-        ClearOption(kUseStackProtectorStrong);
-        ClearOption(kUseStackProtectorAll);
-    } else {
-        SetOption(kUseStackProtectorStrong);
-        SetOption(kUseStackProtectorAll);
-    }
-
-    ClearOption(kConstFold);
-    ClearOption(kProEpilogueOpt);
     ClearOption(kTailCallOpt);
 }
 
@@ -730,11 +373,7 @@ void CGOptions::EnableO1()
 {
     optimizeLevel = kLevel1;
     doPreLSRAOpt = true;
-    SetOption(kConstFold);
-    SetOption(kProEpilogueOpt);
     SetOption(kTailCallOpt);
-    ClearOption(kUseStackProtectorStrong);
-    ClearOption(kUseStackProtectorAll);
 }
 
 void CGOptions::EnableO2()
@@ -751,15 +390,9 @@ void CGOptions::EnableO2()
     doGlobalOpt = true;
     doPreSchedule = true;
     doSchedule = true;
-    doAlignAnalysis = true;
-    doCondBrAlign = true;
-    SetOption(kConstFold);
-    ClearOption(kUseStackProtectorStrong);
-    ClearOption(kUseStackProtectorAll);
 #if TARGARM32
     doPreLSRAOpt = false;
     doWriteRefFieldOpt = false;
-    ClearOption(kProEpilogueOpt);
     ClearOption(kTailCallOpt);
 #else
     doPreLSRAOpt = true;
@@ -767,7 +400,6 @@ void CGOptions::EnableO2()
     useSsaPreSave = false;
     useSsuPreRestore = true;
     doWriteRefFieldOpt = true;
-    SetOption(kProEpilogueOpt);
     SetOption(kTailCallOpt);
 #endif
 }
@@ -792,16 +424,9 @@ void CGOptions::EnableLiteCG()
     useSsaPreSave = false;
     useSsuPreRestore = false;
     doWriteRefFieldOpt = false;
-    doAlignAnalysis = false;
-    doCondBrAlign = false;
     supportFuncSymbol = true;
 
-    ClearOption(kUseStackProtectorStrong);
-    ClearOption(kUseStackProtectorAll);
-    ClearOption(kConstFold);
-    ClearOption(kProEpilogueOpt);
     ClearOption(kTailCallOpt);
-    ClearOption(kDoColorRegAlloc);
     SetOption(kDoLinearScanRegAlloc);
 }
 

@@ -19,6 +19,7 @@ namespace maple {
 
 std::ostream &operator<<(std::ostream &os, const IntVal &value)
 {
+#ifdef ARK_LITECG_DEBUG
     int64 val = value.GetExtValue();
     constexpr int64 valThreshold = 1024;
 
@@ -27,7 +28,7 @@ std::ostream &operator<<(std::ostream &os, const IntVal &value)
     } else {
         os << std::hex << "0x" << val << std::dec;
     }
-
+#endif
     return os;
 }
 

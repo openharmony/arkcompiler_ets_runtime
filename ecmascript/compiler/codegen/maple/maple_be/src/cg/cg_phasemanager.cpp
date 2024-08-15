@@ -51,6 +51,7 @@ namespace maplebe {
 
 namespace {
 
+#ifdef ARK_LITECG_DEBUG
 void DumpMIRFunc(MIRFunction &func, const char *msg, bool printAlways = false, const char *extraMsg = nullptr)
 {
     bool dumpAll = (CGOptions::GetDumpPhases().find("*") != CGOptions::GetDumpPhases().end());
@@ -65,6 +66,7 @@ void DumpMIRFunc(MIRFunction &func, const char *msg, bool printAlways = false, c
         }
     }
 }
+#endif
 
 } /* anonymous namespace */
 
@@ -79,17 +81,11 @@ void CgFuncPM::GenerateOutPutFile(MIRModule &m)
             if (!codegen->GetCGOptions().SuppressFileInfo()) {
                 objAssm.InitialFileInfo(m.GetInputFileName());
             }
-            if (codegen->GetCGOptions().WithDwarf()) {
-                objAssm.EmitDIHeader();
-            }
         });
     } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
         cg->template Emit<CG::EmitterType::AsmEmitter>([codegen, &m](Emitter *emitter) {
             if (!codegen->GetCGOptions().SuppressFileInfo()) {
                 emitter->EmitFileInfo(m.GetInputFileName());
-            }
-            if (codegen->GetCGOptions().WithDwarf()) {
-                emitter->EmitDIHeader();
             }
         });
     } else {
@@ -103,10 +99,6 @@ bool CgFuncPM::FuncLevelRun(CGFunc &cgFunc, AnalysisDataManager &serialADM)
     for (size_t i = 0; i < phasesSequence.size(); ++i) {
         SolveSkipFrom(CGOptions::GetSkipFromPhase(), i);
         const MaplePhaseInfo *curPhase = MaplePhaseRegister::GetMaplePhaseRegister()->GetPhaseByID(phasesSequence[i]);
-        if (!IsQuiet()) {
-            LogInfo::MapleLogger() << "---Run MplCG " << (curPhase->IsAnalysis() ? "analysis" : "transform")
-                                   << " Phase [ " << curPhase->PhaseName() << " ]---\n";
-        }
         if (curPhase->IsAnalysis()) {
             changed |= RunAnalysisPhase<MapleFunctionPhase<CGFunc>, CGFunc>(*curPhase, serialADM, cgFunc);
         } else {
@@ -124,20 +116,13 @@ void CgFuncPM::PostOutPut(MIRModule &m)
         cg->Emit([this](Emitter * emitter) {
             X64Emitter *x64Emitter = static_cast<X64Emitter *>(emitter);
             assembler::Assembler &assm = x64Emitter->GetAssembler();
-            if (cgOptions->WithDwarf()) {
-                assm.EmitDIFooter();
-            }
             x64Emitter->EmitGlobalVariable(*cg);
-            x64Emitter->EmitDebugInfo(*cg);
             assm.FinalizeFileInfo();
             assm.CloseOutput();
         });
     } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
         cg->template Emit<CG::EmitterType::AsmEmitter>([this, &m](Emitter* emitter) {
             emitter->EmitHugeSoRoutines(true);
-            if (cgOptions->WithDwarf()) {
-                emitter->EmitDIFooter();
-            }
             /* Emit global info */
             EmitGlobalInfo(m);
         });
@@ -306,10 +291,6 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
     // get target based on option
     CreateCGAndBeCommon(m, TheTarget);
     bool changed = false;
-    /* reserve static symbol for debugging */
-    if (!cgOptions->WithDwarf()) {
-        SweepUnusedStaticSymbol(m);
-    }
     if (cgOptions->IsRunCG()) {
         GenerateOutPutFile(m);
 
@@ -341,17 +322,8 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
                 cg->UpdateCGOptions(*cgOptions);
                 Globals::GetInstance()->SetOptimLevel(cgOptions->GetOptimizeLevel());
             }
-            if (!IsQuiet()) {
-                LogInfo::MapleLogger() << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>> Optimizing Function  < " << mirFunc->GetName()
-                                       << " id=" << mirFunc->GetPuidxOrigin() << " >---\n";
-            }
             /* LowerIR. */
             m.SetCurFunction(mirFunc);
-            if (cg->DoConstFold()) {
-                DumpMIRFunc(*mirFunc, "************* before ConstantFold **************");
-                ConstantFold cf(m);
-                (void)cf.Simplify(mirFunc->GetBody());
-            }
 
             if (m.GetFlavor() != MIRFlavor::kFlavorLmbc) {
                 DoFuncCGLower(m, *mirFunc);
@@ -367,9 +339,6 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
             CHECK_FATAL(cgFunc != nullptr, "Create CG Function failed in cg_phase_manager");
             CG::SetCurCGFunc(*cgFunc);
 
-            if (cgOptions->WithDwarf()) {
-                cgFunc->SetDebugInfo(m.GetDbgInfo());
-            }
             /* Run the cg optimizations phases. */
             if (CGOptions::UseRange() && rangeNum >= CGOptions::GetRangeBegin() &&
                 rangeNum <= CGOptions::GetRangeEnd()) {
@@ -410,9 +379,8 @@ void CgFuncPM::EmitGlobalInfo(MIRModule &m) const
     if (cgOptions->IsGenerateObjectMap()) {
         cg->GenerateObjectMaps(*beCommon);
     }
-    cg->template Emit<CG::EmitterType::AsmEmitter>([this, &m](Emitter* emitter) {
+    cg->template Emit<CG::EmitterType::AsmEmitter>([](Emitter* emitter) {
         emitter->EmitGlobalVariable();
-        EmitDebugInfo(m);
         emitter->CloseOutput();
     });
 }
@@ -471,7 +439,7 @@ void CgFuncPM::PrepareLower(MIRModule &m)
     mirLower->Init();
     cgLower =
         GetManagerMemPool()->New<CGLowerer>(m, *beCommon, cg->GenerateExceptionHandlingCode(), cg->GenerateVerboseCG());
-    cgLower->SetCheckLoadStore(CGOptions::IsCheckArrayStore());
+    cgLower->SetCheckLoadStore(false);
 }
 
 void CgFuncPM::DoFuncCGLower(const MIRModule &m, MIRFunction &mirFunc)
@@ -479,18 +447,23 @@ void CgFuncPM::DoFuncCGLower(const MIRModule &m, MIRFunction &mirFunc)
     if (m.GetFlavor() <= kFeProduced) {
         mirLower->SetLowerCG();
         mirLower->SetMirFunc(&mirFunc);
-
+#ifdef ARK_LITECG_DEBUG
         DumpMIRFunc(mirFunc, "************* before MIRLowerer **************");
+#endif
         mirLower->LowerFunc(mirFunc);
     }
 
-    bool isNotQuiet = !CGOptions::IsQuiet();
+#ifdef ARK_LITECG_DEBUG
+    bool isNotQuiet = false;
     DumpMIRFunc(mirFunc, "************* before CGLowerer **************", isNotQuiet);
+#endif
 
     cgLower->LowerFunc(mirFunc);
 
+#ifdef ARK_LITECG_DEBUG
     DumpMIRFunc(mirFunc, "************* after  CGLowerer **************", isNotQuiet,
                 "************* end    CGLowerer **************");
+#endif
 }
 
 void CgFuncPM::EmitDuplicatedAsmFunc(MIRModule &m) const
@@ -528,23 +501,6 @@ void CgFuncPM::EmitDuplicatedAsmFunc(MIRModule &m) const
         });
     }
     duplicateAsmFileFD.close();
-}
-
-void CgFuncPM::EmitDebugInfo(const MIRModule &m) const
-{
-    if (!cgOptions->WithDwarf()) {
-        return;
-    }
-    cg->Emit([&m](Emitter* emitter) {
-        emitter->SetupDBGInfo(m.GetDbgInfo());
-        emitter->EmitDIHeaderFileInfo();
-        emitter->EmitDIDebugInfoSection(m.GetDbgInfo());
-        emitter->EmitDIDebugAbbrevSection(m.GetDbgInfo());
-        emitter->EmitDIDebugARangesSection();
-        emitter->EmitDIDebugRangesSection();
-        emitter->EmitDIDebugLineSection();
-        emitter->EmitDIDebugStrSection();
-    });
 }
 
 bool CgFuncPM::IsFramework([[maybe_unused]] MIRModule &m) const

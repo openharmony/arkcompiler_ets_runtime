@@ -1208,16 +1208,6 @@ public:
         return symbol;
     }
 
-    void SetMemoryOrdering(uint32 memOrder)
-    {
-        memoryOrder |= memOrder;
-    }
-
-    bool HasMemoryOrdering(uint32 memOrder) const
-    {
-        return (memoryOrder & memOrder) != 0;
-    }
-
     void SetAccessSize(uint8 size)
     {
         accessSize = size;

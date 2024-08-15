@@ -88,18 +88,15 @@ public:
     Operand *SelectBior(const BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
     Operand *SelectBxor(const BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent);
     Operand *SelectIread(const BaseNode &parent, const IreadNode &expr, int extraOffset = 0);
-    Operand *SelectIreadoff(const BaseNode &parent, const IreadoffNode &ireadoff);
     virtual Operand *SelectMpy(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) = 0;
     virtual Operand *SelectDiv(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) = 0;
     virtual Operand *SelectRem(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) = 0;
     virtual Operand *SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) = 0;
     virtual Operand *SelectSelect(TernaryNode &expr, Operand &cond, Operand &trueOpnd, Operand &falseOpnd,
                                   const BaseNode &parent) = 0;
-    virtual Operand *SelectStrLiteral(ConststrNode &constStr) = 0;
     virtual Operand *SelectCclz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual Operand *SelectCctz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
     virtual Operand *SelectCexp(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) = 0;
-    virtual void SelectAsm(AsmNode &node) = 0;
     virtual void SelectAggDassign(MirTypeInfo &lhsInfo, MemOperand &symbolMem, Operand &opndRhs) = 0;
     Operand *SelectBnot(const UnaryNode &node, Operand &opnd0, const BaseNode &parent);
     virtual Operand *SelectLnot(const UnaryNode &node, Operand &opnd0, const BaseNode &parent) = 0;

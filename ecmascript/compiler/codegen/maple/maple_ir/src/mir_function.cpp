@@ -327,6 +327,7 @@ void FuncAttrs::DumpAttributes() const
     }
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRFunction::DumpFlavorLoweredThanMmpl() const
 {
     LogInfo::MapleLogger() << " (";
@@ -564,6 +565,7 @@ void MIRFunction::DumpFuncBody(int32 indent)
     }
     LogInfo::MapleLogger() << '\n';
 }
+#endif
 
 bool MIRFunction::IsEmpty() const
 {

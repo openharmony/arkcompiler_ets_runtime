@@ -884,7 +884,9 @@ public:
     MIRSymbol *CreateSymbol(uint8 scopeID);
     bool AddToStringSymbolMap(const MIRSymbol &st);
     bool RemoveFromStringSymbolMap(const MIRSymbol &st);
+#ifdef ARK_LITECG_DEBUG
     void Dump(bool isLocal, int32 indent = 0) const;
+#endif
 
 private:
     MIRModule *module = nullptr;

@@ -17,6 +17,7 @@
 
 #include "cgfunc.h"
 namespace maple {
+#ifdef ARK_LITECG_DEBUG
 void PhaseTimeHandler::RunBeforePhase(const MaplePhaseInfo &pi)
 {
     (void)pi;
@@ -83,6 +84,7 @@ void PhaseTimeHandler::DumpPhasesTime()
     LogInfo::MapleLogger() << "================================================\n\n";
     LogInfo::MapleLogger().unsetf(std::ios::fixed);
 }
+#endif
 
 const MapleVector<MaplePhaseID> &AnalysisDep::GetRequiredPhase() const
 {

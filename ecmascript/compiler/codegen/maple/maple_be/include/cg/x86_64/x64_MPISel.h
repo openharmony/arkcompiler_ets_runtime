@@ -48,7 +48,6 @@ public:
     Operand *SelectLnot(const UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectSelect(TernaryNode &expr, Operand &cond, Operand &trueOpnd, Operand &falseOpnd,
                           const BaseNode &parent) override;
-    Operand *SelectStrLiteral(ConststrNode &constStr) override;
     void SelectIntAggCopyReturn(MemOperand &symbolMem, uint64 aggSize) override;
     /* Create the operand interface directly */
     MemOperand &CreateMemOpndOrNull(PrimType ptype, const BaseNode &parent, BaseNode &addrExpr, int64 offset = 0);
@@ -56,7 +55,6 @@ public:
     Operand *SelectCclz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectCctz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectCexp(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) override;
-    void SelectAsm(AsmNode &node) override;
     Operand *SelectSqrt(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
 
 private:

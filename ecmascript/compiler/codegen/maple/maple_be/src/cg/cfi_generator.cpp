@@ -49,7 +49,6 @@ Insn *GenCfi::InsertCFIDefCfaOffset(BB &bb, Insn &insn, int32 &cfiOffset)
                         ->BuildCfiInsn(cfi::OP_CFI_def_cfa_offset)
                         .AddOpndChain(cgFunc.CreateCfiImmOperand(cfiOffset, k64BitSize));
     (void)bb.InsertInsnAfter(insn, cfiInsn);
-    cgFunc.SetDbgCallFrameOffset(cfiOffset);
     return &cfiInsn;
 }
 

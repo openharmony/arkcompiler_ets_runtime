@@ -181,6 +181,7 @@ static constexpr const char kClassNamePrefixStr[] = "L";
 static constexpr const char kClassMethodSplitterStr[] = "_3B";
 static constexpr const char kFuncGetCurrentCl[] = "MCC_GetCurrentClassLoader";
 
+#ifdef ARK_LITECG_DEBUG
 std::string DecodeName(const std::string &name);
 void DecodeMapleNameToJDescriptor(const std::string &nameIn, std::string &nameOut);
 
@@ -188,6 +189,7 @@ __attribute__((visibility("default"))) unsigned UTF16ToUTF8(std::string &str, co
                                                             unsigned short num = 0, bool isBigEndian = false);
 size_t GetUleb128Size(uint64_t val);
 size_t GetSleb128Size(int32_t val);
+#endif
 }  // namespace namemangler
 
 #endif

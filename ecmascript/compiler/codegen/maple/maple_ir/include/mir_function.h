@@ -87,11 +87,14 @@ public:
 
     ~MIRFunction() = default;
 
+#ifdef ARK_LITECG_DEBUG
     void Dump(bool withoutBody = false);
     void DumpUpFormal(int32 indent) const;
     void DumpFrame(int32 indent) const;
     void DumpFuncBody(int32 indent);
     void DumpScope();
+#endif
+
     const MIRSymbol *GetFuncSymbol() const;
     MIRSymbol *GetFuncSymbol();
 
@@ -1609,7 +1612,9 @@ private:
     FuncDesc funcDesc {};
     GcovFuncInfo *funcProfData = nullptr;
     MemReferenceTable *memReferenceTable = nullptr;
+#ifdef ARK_LITECG_DEBUG
     void DumpFlavorLoweredThanMmpl() const;
+#endif
     MIRFuncType *ReconstructFormals(const std::vector<MIRSymbol *> &symbols, bool clearOldArgs);
     MapleList<MapleString> debugComments {module->GetMPAllocator().Adapter()};
 };

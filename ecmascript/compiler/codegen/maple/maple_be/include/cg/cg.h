@@ -210,11 +210,6 @@ public:
     virtual CGFunc *CreateCGFunc(MIRModule &mod, MIRFunction &, BECommon &, MemPool &, StackMemPool &, MapleAllocator &,
                                  uint32) = 0;
 
-    bool IsExclusiveEH() const
-    {
-        return CGOptions::IsExclusiveEH();
-    }
-
     virtual bool IsExclusiveFunc(MIRFunction &mirFunc) = 0;
 
     /* NOTE: Consider making be_common a field of CG. */
@@ -233,19 +228,9 @@ public:
         return cgOption.GenerateVerboseCG();
     }
 
-    bool DoPrologueEpilogue() const
-    {
-        return cgOption.DoPrologueEpilogue();
-    }
-
     bool DoTailCall() const
     {
         return cgOption.DoTailCall();
-    }
-
-    bool DoCheckSOE() const
-    {
-        return cgOption.DoCheckSOE();
     }
 
     bool GenerateDebugFriendlyCode() const
@@ -263,36 +248,6 @@ public:
         return true;
     }
 
-    bool IsStackProtectorStrong() const
-    {
-        return cgOption.IsStackProtectorStrong();
-    }
-
-    bool IsStackProtectorAll() const
-    {
-        return cgOption.IsStackProtectorAll();
-    }
-
-    bool InstrumentWithDebugTraceCall() const
-    {
-        return cgOption.InstrumentWithDebugTraceCall();
-    }
-
-    bool InstrumentWithProfile() const
-    {
-        return cgOption.InstrumentWithProfile();
-    }
-
-    bool DoPatchLongBranch() const
-    {
-        return cgOption.DoPatchLongBranch();
-    }
-
-    uint8 GetRematLevel() const
-    {
-        return CGOptions::GetRematLevel();
-    }
-
     bool GenYieldPoint() const
     {
         return cgOption.GenYieldPoint();
@@ -306,11 +261,6 @@ public:
     bool GenerateExceptionHandlingCode() const
     {
         return cgOption.GenerateExceptionHandlingCode();
-    }
-
-    bool DoConstFold() const
-    {
-        return cgOption.DoConstFold();
     }
 
     MIRModule *GetMIRModule()

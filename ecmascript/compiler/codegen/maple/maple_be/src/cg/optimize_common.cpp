@@ -57,15 +57,6 @@ void Optimizer::Run(const std::string &funcName, bool checkOnly)
     // it needs to be handled separately.
     cgFunc->GetTheCFG()->UpdateCommonExitBBInfo();
 
-    if (CGOptions::IsDumpOptimizeCommonLog()) {
-        constexpr int arrSize = 80;
-        char post[arrSize];
-        errno_t cpyRet = strcpy_s(post, arrSize, "post-");
-        CHECK_FATAL(cpyRet == EOK, "call strcpy_s failed");
-        errno_t catRes = strcat_s(post, arrSize, name);
-        CHECK_FATAL(catRes == EOK, "call strcat_s failed ");
-        OptimizeLogger::GetLogger().Print(funcName);
-    }
     OptimizeLogger::GetLogger().ClearLocal();
 }
 

@@ -34,6 +34,7 @@ using namespace namemangler;
 
 namespace {
 using namespace maple;
+#ifdef ARK_LITECG_DEBUG
 constexpr uint32 kSizeOfHugesoRoutine = 3;
 constexpr uint32 kFromDefIndexMask32Mod = 0x40000000;
 
@@ -127,6 +128,7 @@ static void LUpdateAttrValue(DBGDieAttr *attr, int64_t newval)
 {
     attr->SetI(int32_t(newval));
 }
+#endif
 }  // namespace
 
 namespace maplebe {
@@ -135,6 +137,7 @@ using namespace cfi;
 
 void Emitter::EmitLabelRef(LabelIdx labIdx)
 {
+#ifdef ARK_LITECG_DEBUG
     CHECK_NULL_FATAL(GetCG()->GetMIRModule()->CurFunction());
     PUIdx pIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
     char *idx = strdup(std::to_string(pIdx).c_str());
@@ -142,25 +145,31 @@ void Emitter::EmitLabelRef(LabelIdx labIdx)
     outStream << ".L." << idx << "__" << labIdx;
     free(idx);
     idx = nullptr;
+#endif
 }
 
 void Emitter::EmitStmtLabel(LabelIdx labIdx)
 {
+#ifdef ARK_LITECG_DEBUG
     EmitLabelRef(labIdx);
     outStream << ":\n";
+#endif
 }
 
 void Emitter::EmitLabelForFunc(const MIRFunction *func, LabelIdx labIdx)
 {
+#ifdef ARK_LITECG_DEBUG
     char *idx = strdup(std::to_string(func->GetPuidx()).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");
     outStream << ".L." << idx << "__" << labIdx;
     free(idx);
     idx = nullptr;
+#endif
 }
 
 AsmLabel Emitter::GetTypeAsmInfoName(PrimType primType) const
 {
+#ifdef ARK_LITECG_DEBUG
     uint32 size = GetPrimTypeSize(primType);
     /* case x : x occupies bytes of pty */
     switch (size) {
@@ -180,11 +189,13 @@ AsmLabel Emitter::GetTypeAsmInfoName(PrimType primType) const
             DEBUG_ASSERT(false, "NYI");
             break;
     }
+#endif
     return kAsmLong;
 }
 
 void Emitter::EmitFileInfo(const std::string &fileName)
 {
+#ifdef ARK_LITECG_DEBUG
 #if defined(_WIN32) || defined(DARWIN) || defined(__APPLE__)
     char *curDirName = getcwd(nullptr, 0);
 #else
@@ -271,9 +282,7 @@ void Emitter::EmitFileInfo(const std::string &fileName)
     Emit("\t.eabi_attribute Tag_ABI_PCS_RW_data, 1\n");
     Emit("\t.eabi_attribute Tag_ABI_PCS_RO_data, 1\n");
     Emit("\t.eabi_attribute Tag_ABI_PCS_GOT_use, 2\n");
-    if (CGOptions::GetABIType() == CGOptions::kABIHard) {
-        Emit("\t.eabi_attribute Tag_ABI_VFP_args, 1\n");
-    }
+    Emit("\t.eabi_attribute Tag_ABI_VFP_args, 1\n");
     Emit("\t.eabi_attribute Tag_ABI_FP_denormal, 1\n");
     Emit("\t.eabi_attribute Tag_ABI_FP_exceptions, 1\n");
     Emit("\t.eabi_attribute Tag_ABI_FP_number_model, 3\n");
@@ -284,10 +293,12 @@ void Emitter::EmitFileInfo(const std::string &fileName)
     Emit("\t.eabi_attribute Tag_CPU_unaligned_access, 1\n");
     Emit("\t.eabi_attribute Tag_ABI_PCS_wchar_t, 4\n");
 #endif /* TARGARM32 */
+#endif
 }
 
 void Emitter::EmitInlineAsmSection()
 {
+#ifdef ARK_LITECG_DEBUG
     MapleVector<MapleString> &asmSections = cg->GetMIRModule()->GetAsmDecls();
     if (!asmSections.empty()) {
         Emit("#APP\n");
@@ -298,9 +309,11 @@ void Emitter::EmitInlineAsmSection()
         }
         Emit("#NO_APP\n");
     }
+#endif
 }
 void Emitter::EmitAsmLabel(AsmLabel label)
 {
+#ifdef ARK_LITECG_DEBUG
     switch (label) {
         case kAsmData: {
             (void)Emit(asmInfo->GetData());
@@ -343,10 +356,12 @@ void Emitter::EmitAsmLabel(AsmLabel label)
             DEBUG_ASSERT(false, "should not run here");
             return;
     }
+#endif
 }
 
 void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRType *mirType = mirSymbol.GetType();
     std::string symName;
     if (mirSymbol.GetStorageClass() == kScPstatic && mirSymbol.IsLocal()) {
@@ -508,17 +523,21 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
             DEBUG_ASSERT(false, "should not run here");
             return;
     }
+#endif
 }
 
 void Emitter::EmitNullConstant(uint64 size)
 {
+#ifdef ARK_LITECG_DEBUG
     EmitAsmLabel(kAsmZero);
     Emit(std::to_string(size));
     Emit("\n");
+#endif
 }
 
 void Emitter::EmitCombineBfldValue(StructEmitInfo &structEmitInfo)
 {
+#ifdef ARK_LITECG_DEBUG
     uint8 charBitWidth = GetPrimTypeSize(PTY_i8) * kBitsPerByte;
     auto emitBfldValue = [&structEmitInfo, charBitWidth, this](bool flag) {
         while (structEmitInfo.GetCombineBitFieldWidth() > charBitWidth) {
@@ -564,11 +583,13 @@ void Emitter::EmitCombineBfldValue(StructEmitInfo &structEmitInfo)
     structEmitInfo.SetTotalSize(structEmitInfo.GetNextFieldOffset() / charBitWidth);
     structEmitInfo.SetCombineBitFieldValue(0);
     structEmitInfo.SetCombineBitFieldWidth(0);
+#endif
 }
 
 void Emitter::EmitBitFieldConstant(StructEmitInfo &structEmitInfo, MIRConst &mirConst, const MIRType *nextType,
                                    uint64 fieldOffset)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRType &mirType = mirConst.GetType();
     if (fieldOffset > structEmitInfo.GetNextFieldOffset()) {
         uint16 curFieldOffset = structEmitInfo.GetNextFieldOffset() - structEmitInfo.GetCombineBitFieldWidth();
@@ -605,10 +626,12 @@ void Emitter::EmitBitFieldConstant(StructEmitInfo &structEmitInfo, MIRConst &mir
         /* emit structEmitInfo->combineBitFieldValue */
         EmitCombineBfldValue(structEmitInfo);
     }
+#endif
 }
 
 void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
 {
+#ifdef ARK_LITECG_DEBUG
     CGFunc &cgFunc = funcEmitInfo.GetCGFunc();
     MIRFunction *func = &cgFunc.GetFunction();
 
@@ -673,10 +696,12 @@ void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
             }
         }
     }
+#endif
 }
 
 void Emitter::EmitStr(const std::string &mplStr, bool emitAscii, bool emitNewline)
 {
+#ifdef ARK_LITECG_DEBUG
     const char *str = mplStr.c_str();
     size_t len = mplStr.size();
 
@@ -736,10 +761,12 @@ void Emitter::EmitStr(const std::string &mplStr, bool emitAscii, bool emitNewlin
     if (emitNewline) {
         Emit("\n");
     }
+#endif
 }
 
 void Emitter::EmitStrConstant(const MIRStrConst &mirStrConst, bool isIndirect)
 {
+#ifdef ARK_LITECG_DEBUG
     if (isIndirect) {
         uint32 strId = mirStrConst.GetValue().GetIdx();
 
@@ -761,10 +788,12 @@ void Emitter::EmitStrConstant(const MIRStrConst &mirStrConst, bool isIndirect)
         arraySize += static_cast<uint32>(len) + 1;
     }
     EmitStr(ustr, false, false);
+#endif
 }
 
 void Emitter::EmitStr16Constant(const MIRStr16Const &mirStr16Const)
 {
+#ifdef ARK_LITECG_DEBUG
     Emit("\t.byte ");
     /* note: for now, u16string is emitted 2 bytes without any \u indication */
     const std::u16string &str16 = GlobalTables::GetU16StrTable().GetStringFromStrIdx(mirStr16Const.GetValue());
@@ -791,10 +820,12 @@ void Emitter::EmitStr16Constant(const MIRStr16Const &mirStr16Const)
     if ((str16.length() & 0x1) == 1) {
         Emit(",0,0");
     }
+#endif
 }
 
 void Emitter::EmitScalarConstant(MIRConst &mirConst, bool newLine, bool flag32, bool isIndirect)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRType &mirType = mirConst.GetType();
     AsmLabel asmName = GetTypeAsmInfoName(mirType.GetPrimType());
     switch (mirConst.GetKind()) {
@@ -910,10 +941,12 @@ void Emitter::EmitScalarConstant(MIRConst &mirConst, bool newLine, bool flag32, 
     if (newLine) {
         Emit("\n");
     }
+#endif
 }
 
 void Emitter::EmitAddrofFuncConst(const MIRSymbol &mirSymbol, MIRConst &elemConst, size_t idx)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRAddroffuncConst &funcAddr = static_cast<MIRAddroffuncConst &>(elemConst);
     const std::string stName = mirSymbol.GetName();
     MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(funcAddr.GetValue());
@@ -1041,15 +1074,13 @@ void Emitter::EmitAddrofFuncConst(const MIRSymbol &mirSymbol, MIRConst &elemCons
         Emit(" - .\n");
         return;
     }
-    if (cg->GetCGOptions().GeneratePositionIndependentExecutable()) {
-        Emit(" - ");
-        Emit(stName);
-    }
     Emit("\n");
+#endif
 }
 
 void Emitter::EmitAddrofSymbolConst(const MIRSymbol &mirSymbol, MIRConst &elemConst, size_t idx)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRAddrofConst &symAddr = static_cast<MIRAddrofConst &>(elemConst);
     const std::string stName = mirSymbol.GetName();
 
@@ -1309,16 +1340,14 @@ void Emitter::EmitAddrofSymbolConst(const MIRSymbol &mirSymbol, MIRConst &elemCo
         }
     }
 
-    if (cg->GetCGOptions().GeneratePositionIndependentExecutable()) {
-        Emit(" - ");
-        Emit(stName);
-    }
     Emit("\n");
+#endif
 }
 
 MIRAddroffuncConst *Emitter::GetAddroffuncConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst)
 {
     MIRAddroffuncConst *innerFuncAddr = nullptr;
+#ifdef ARK_LITECG_DEBUG
     size_t addrIndex = mirSymbol.IsReflectionMethodsInfo() ? static_cast<size_t>(MethodProperty::kPaddrData)
                                                            : static_cast<size_t>(MethodInfoCompact::kPaddrData);
     MIRConst *pAddrConst = aggConst.GetConstVecItem(addrIndex);
@@ -1352,12 +1381,14 @@ MIRAddroffuncConst *Emitter::GetAddroffuncConst(const MIRSymbol &mirSymbol, MIRA
     } else if (pAddrConst->GetKind() == kConstAddrofFunc) {
         innerFuncAddr = safe_cast<MIRAddroffuncConst>(pAddrConst);
     }
+#endif
     return innerFuncAddr;
 }
 
 int64 Emitter::GetFieldOffsetValue(const std::string &className, const MIRIntConst &intConst,
                                    const std::map<GStrIdx, MIRType *> &strIdx2Type)
 {
+#ifdef ARK_LITECG_DEBUG
     uint64 idx = static_cast<uint64>(intConst.GetExtValue());
     bool isDefTabIndex = idx & 0x1;
     int64 fieldIdx = idx >> 1;
@@ -1378,10 +1409,14 @@ int64 Emitter::GetFieldOffsetValue(const std::string &className, const MIRIntCon
         int64 fieldOffset = fieldOffsetPair.first * static_cast<int64>(charBitWidth) + fieldOffsetPair.second;
         return fieldOffset;
     }
+#else
+    return 0;
+#endif
 }
 
 void Emitter::InitRangeIdx2PerfixStr()
 {
+#ifdef ARK_LITECG_DEBUG
     rangeIdx2PrefixStr[RangeIdx::kVtabAndItab] = kMuidVtabAndItabPrefixStr;
     rangeIdx2PrefixStr[RangeIdx::kItabConflict] = kMuidItabConflictPrefixStr;
     rangeIdx2PrefixStr[RangeIdx::kVtabOffset] = kMuidVtabOffsetPrefixStr;
@@ -1400,11 +1435,13 @@ void Emitter::InitRangeIdx2PerfixStr()
     rangeIdx2PrefixStr[RangeIdx::kLinkerSoHash] = kLinkerHashSoStr;
     rangeIdx2PrefixStr[RangeIdx::kArrayClassCache] = kArrayClassCacheTable;
     rangeIdx2PrefixStr[RangeIdx::kArrayClassCacheName] = kArrayClassCacheNameTable;
+#endif
 }
 
 void Emitter::EmitIntConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst, uint32 itabConflictIndex,
                            const std::map<GStrIdx, MIRType *> &strIdx2Type, size_t idx)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRConst *elemConst = aggConst.GetConstVecItem(idx);
     const std::string stName = mirSymbol.GetName();
 
@@ -1686,11 +1723,13 @@ void Emitter::EmitIntConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst, ui
 #endif /* USE_32BIT_REF */
         Emit("\n");
     }
+#endif
 }
 
 void Emitter::EmitConstantTable(const MIRSymbol &mirSymbol, MIRConst &mirConst,
                                 const std::map<GStrIdx, MIRType *> &strIdx2Type)
 {
+#ifdef ARK_LITECG_DEBUG
     const std::string stName = mirSymbol.GetName();
     MIRAggConst &aggConst = static_cast<MIRAggConst &>(mirConst);
     uint32 itabConflictIndex = 0;
@@ -1729,10 +1768,12 @@ void Emitter::EmitConstantTable(const MIRSymbol &mirSymbol, MIRConst &mirConst,
             }
         }
     }
+#endif
 }
 
 void Emitter::EmitArrayConstant(MIRConst &mirConst)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRType &mirType = mirConst.GetType();
     MIRAggConst &arrayCt = static_cast<MIRAggConst &>(mirConst);
     MIRArrayType &arrayType = static_cast<MIRArrayType &>(mirType);
@@ -1797,10 +1838,12 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
             Emit("\t.zero\t").Emit(static_cast<int64>(size)).Emit("\n");
         }
     }
+#endif
 }
 
 void Emitter::EmitVectorConstant(MIRConst &mirConst)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRType &mirType = mirConst.GetType();
     MIRAggConst &vecCt = static_cast<MIRAggConst &>(mirConst);
     size_t uNum = vecCt.GetConstVec().size();
@@ -1820,16 +1863,20 @@ void Emitter::EmitVectorConstant(MIRConst &mirConst)
             EmitScalarConstant(zConst, true, false, false);
         }
     }
+#endif
 }
 
 void Emitter::EmitStructConstant(MIRConst &mirConst)
 {
+#ifdef ARK_LITECG_DEBUG
     uint32_t subStructFieldCounts = 0;
     EmitStructConstant(mirConst, subStructFieldCounts);
+#endif
 }
 
 void Emitter::EmitStructConstant(MIRConst &mirConst, uint32 &subStructFieldCounts)
 {
+#ifdef ARK_LITECG_DEBUG
     StructEmitInfo *sEmitInfo = cg->GetMIRModule()->GetMemPool()->New<StructEmitInfo>();
     CHECK_FATAL(sEmitInfo != nullptr, "create a new struct emit info failed in Emitter::EmitStructConstant");
     MIRType &mirType = mirConst.GetType();
@@ -1936,12 +1983,14 @@ void Emitter::EmitStructConstant(MIRConst &mirConst, uint32 &subStructFieldCount
     if (opSize != 0) {
         EmitNullConstant(opSize);
     }
+#endif
 }
 
 /* BlockMarker is for Debugging/Profiling */
 void Emitter::EmitBlockMarker(const std::string &markerName, const std::string &sectionName, bool withAddr,
                               const std::string &addrName)
 {
+#ifdef ARK_LITECG_DEBUG
     /*
      * .type $marker_name$, %object
      * .global $marker_name$
@@ -1986,10 +2035,12 @@ void Emitter::EmitBlockMarker(const std::string &markerName, const std::string &
     }
     Emit(asmInfo->GetSize());
     Emit(markerName + ", 8\n");
+#endif
 }
 
 void Emitter::EmitLiteral(const MIRSymbol &literal, const std::map<GStrIdx, MIRType *> &strIdx2Type)
 {
+#ifdef ARK_LITECG_DEBUG
     /*
      * .type _C_STR_xxxx, %object
      * .local _C_STR_xxxx
@@ -2017,10 +2068,12 @@ void Emitter::EmitLiteral(const MIRSymbol &literal, const std::map<GStrIdx, MIRT
         EmitArrayConstant(*mirConst);
     }
     EmitAsmLabel(literal, kAsmSize);
+#endif
 }
 
 std::string Emitter::GetLayoutTypeString(uint32_t type)
 {
+#ifdef ARK_LITECG_DEBUG
     switch (type) {
         case kLayoutBootHot:
             return "BootHot";
@@ -2040,10 +2093,14 @@ std::string Emitter::GetLayoutTypeString(uint32_t type)
             std::cerr << "no such type" << std::endl;
             return "";
     }
+#else
+    return "";
+#endif
 }
 
 void Emitter::EmitFuncLayoutInfo(const MIRSymbol &layout)
 {
+#ifdef ARK_LITECG_DEBUG
     /*
      * .type $marker_name$, %object
      * .global $marker_name$
@@ -2089,10 +2146,12 @@ void Emitter::EmitFuncLayoutInfo(const MIRSymbol &layout)
         Emit(asmInfo->GetSize());
         Emit(markerName + ", 8\n");
     }
+#endif
 }
 
 void Emitter::EmitStaticFields(const std::vector<MIRSymbol *> &fields)
 {
+#ifdef ARK_LITECG_DEBUG
     for (auto *itSymbol : fields) {
         EmitAsmLabel(*itSymbol, kAsmType);
         /* literal should always be fstatic and readonly? */
@@ -2104,11 +2163,13 @@ void Emitter::EmitStaticFields(const std::vector<MIRSymbol *> &fields)
         MIRConst *mirConst = itSymbol->GetKonst();
         EmitArrayConstant(*mirConst);
     }
+#endif
 }
 
 void Emitter::EmitLiterals(std::vector<std::pair<MIRSymbol *, bool>> &literals,
                            const std::map<GStrIdx, MIRType *> &strIdx2Type)
 {
+#ifdef ARK_LITECG_DEBUG
     /* emit hot literal start symbol */
     EmitBlockMarker("__MBlock_literal_hot_begin", "", false);
     /* emit hot literal end symbol */
@@ -2125,6 +2186,7 @@ void Emitter::EmitLiterals(std::vector<std::pair<MIRSymbol *, bool>> &literals,
     }
     /* emit cold literal end symbol */
     EmitBlockMarker("__MBlock_literal_cold_end", "", false);
+#endif
 }
 
 void Emitter::GetHotAndColdMetaSymbolInfo(const std::vector<MIRSymbol *> &mirSymbolVec,
@@ -2132,6 +2194,7 @@ void Emitter::GetHotAndColdMetaSymbolInfo(const std::vector<MIRSymbol *> &mirSym
                                           std::vector<MIRSymbol *> &coldFieldInfoSymbolVec,
                                           const std::string &prefixStr, bool forceCold)
 {
+#ifdef ARK_LITECG_DEBUG
     bool isHot = false;
     for (auto mirSymbol : mirSymbolVec) {
         CHECK_FATAL(prefixStr.length() < mirSymbol->GetName().length(), "string length check");
@@ -2144,6 +2207,7 @@ void Emitter::GetHotAndColdMetaSymbolInfo(const std::vector<MIRSymbol *> &mirSym
             coldFieldInfoSymbolVec.emplace_back(mirSymbol);
         }
     }
+#endif
 }
 
 void Emitter::EmitMetaDataSymbolWithMarkFlag(const std::vector<MIRSymbol *> &mirSymbolVec,
@@ -2151,6 +2215,7 @@ void Emitter::EmitMetaDataSymbolWithMarkFlag(const std::vector<MIRSymbol *> &mir
                                              const std::string &prefixStr, const std::string &sectionName,
                                              bool isHotFlag)
 {
+#ifdef ARK_LITECG_DEBUG
     if (cg->GetMIRModule()->IsCModule()) {
         return;
     }
@@ -2171,10 +2236,12 @@ void Emitter::EmitMetaDataSymbolWithMarkFlag(const std::vector<MIRSymbol *> &mir
         }
     }
     EmitBlockMarker((markString + hotOrCold + "_end"), sectionName, false);
+#endif
 }
 
 void Emitter::MarkVtabOrItabEndFlag(const std::vector<MIRSymbol *> &mirSymbolVec)
 {
+#ifdef ARK_LITECG_DEBUG
     for (auto mirSymbol : mirSymbolVec) {
         auto *aggConst = safe_cast<MIRAggConst>(mirSymbol->GetKonst());
         if ((aggConst == nullptr) || (aggConst->GetConstVec().empty())) {
@@ -2206,10 +2273,12 @@ void Emitter::MarkVtabOrItabEndFlag(const std::vector<MIRSymbol *> &mirSymbolVec
             aggConst->SetItem(static_cast<uint32>(size) - 1, tabConst, aggConst->GetFieldIdItem(size - 1));
         }
     }
+#endif
 }
 
 void Emitter::EmitStringPointers()
 {
+#ifdef ARK_LITECG_DEBUG
     if (CGOptions::OptimizeForSize()) {
         (void)Emit(asmInfo->GetSection()).Emit(".rodata,\"aMS\",@progbits,1").Emit("\n");
         if (GetCG()->GetTargetMachine()->isX8664()) {
@@ -2260,10 +2329,12 @@ void Emitter::EmitStringPointers()
         std::string mplstr(str);
         EmitStr(mplstr, false, true);
     }
+#endif
 }
 
 void Emitter::EmitLocalVariable(const CGFunc &cgFunc)
 {
+#ifdef ARK_LITECG_DEBUG
     /* function local pstatic initialization */
     if (cg->GetMIRModule()->IsCModule()) {
         CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
@@ -2335,10 +2406,12 @@ void Emitter::EmitLocalVariable(const CGFunc &cgFunc)
             }
         }
     }
+#endif
 }
 
 void Emitter::EmitGlobalVar(const MIRSymbol &globalVar)
 {
+#ifdef ARK_LITECG_DEBUG
     EmitAsmLabel(globalVar, kAsmType);
     if (globalVar.sectionAttr != UStrIdx(0)) { /* check section info if it is from inline asm */
         Emit("\t.section\t");
@@ -2348,10 +2421,12 @@ void Emitter::EmitGlobalVar(const MIRSymbol &globalVar)
         EmitAsmLabel(globalVar, kAsmLocal);
     }
     EmitAsmLabel(globalVar, kAsmComm);
+#endif
 }
 
 void Emitter::EmitGlobalVars(std::vector<std::pair<MIRSymbol *, bool>> &globalVars)
 {
+#ifdef ARK_LITECG_DEBUG
     if (GetCG()->IsLmbc() && GetCG()->GetGP() != nullptr) {
         (void)Emit(asmInfo->GetLocal()).Emit("\t").Emit(GetCG()->GetGP()->GetName()).Emit("\n");
         (void)Emit(asmInfo->GetComm()).Emit("\t").Emit(GetCG()->GetGP()->GetName());
@@ -2412,10 +2487,12 @@ void Emitter::EmitGlobalVars(std::vector<std::pair<MIRSymbol *, bool>> &globalVa
         std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeSize(mirType->GetTypeIndex())) + "+" +
         endSym->GetName();
     EmitBlockMarker("__MBlock_globalVars_cold_end", "", true, kStaticVarEndAdd);
+#endif
 }
 
 void Emitter::EmitUninitializedSymbolsWithPrefixSection(const MIRSymbol &symbol, const std::string &sectionName)
 {
+#ifdef ARK_LITECG_DEBUG
     EmitAsmLabel(symbol, kAsmType);
     Emit(asmInfo->GetSection());
     auto sectionConstrains = symbol.IsThreadLocal() ? ",\"awT\"," : ",\"aw\",";
@@ -2435,10 +2512,12 @@ void Emitter::EmitUninitializedSymbolsWithPrefixSection(const MIRSymbol &symbol,
     EmitAsmLabel(symbol, kAsmSyname);
     EmitAsmLabel(symbol, kAsmZero);
     EmitAsmLabel(symbol, kAsmSize);
+#endif
 }
 
 void Emitter::EmitGlobalVariable()
 {
+#ifdef ARK_LITECG_DEBUG
     std::vector<MIRSymbol *> typeStVec;
     std::vector<MIRSymbol *> typeNameStVec;
     std::map<GStrIdx, MIRType *> strIdx2Type;
@@ -2620,8 +2699,7 @@ void Emitter::EmitGlobalVariable()
             } else if (mirSymbol->IsThreadLocal()) {
                 EmitUninitializedSymbolsWithPrefixSection(*mirSymbol, ".tbss");
                 continue;
-            } else if (CGOptions::IsNoCommon() ||
-                       (!CGOptions::IsNoCommon() && mirSymbol->GetAttr(ATTR_static_init_zero))) {
+            } else if (mirSymbol->GetAttr(ATTR_static_init_zero)) {
                 EmitUninitializedSymbolsWithPrefixSection(*mirSymbol, ".bss");
                 continue;
             }
@@ -2929,18 +3007,22 @@ void Emitter::EmitGlobalVariable()
         EmitDWRef("__mpl_personality_v0");
     }
 #endif
+#endif
 }
 void Emitter::EmitAddressString(const std::string &address)
 {
+#ifdef ARK_LITECG_DEBUG
 #if TARGAARCH64 || TARGRISCV64 || TARGX86_64
     EmitAsmLabel(kAsmQuad);
     Emit(address);
 #else
     Emit("\t.word\t" + address);
 #endif
+#endif
 }
 void Emitter::EmitGlobalRootList(const MIRSymbol &mirSymbol)
 {
+#ifdef ARK_LITECG_DEBUG
     Emit("\t.section .maple.gcrootsmap").Emit(",\"aw\",%progbits\n");
     std::vector<std::string> nameVec;
     std::string name = mirSymbol.GetName();
@@ -2989,11 +3071,13 @@ void Emitter::EmitGlobalRootList(const MIRSymbol &mirSymbol)
         }
         gcrootsFlag = false;
     }
+#endif
 }
 
 void Emitter::EmitMuidTable(const std::vector<MIRSymbol *> &vec, const std::map<GStrIdx, MIRType *> &strIdx2Type,
                             const std::string &sectionName)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRSymbol *st = nullptr;
     if (!vec.empty()) {
         st = vec[0];
@@ -3042,11 +3126,13 @@ void Emitter::EmitMuidTable(const std::vector<MIRSymbol *> &vec, const std::map<
         EmitAsmLabel(*st1, kAsmSize);
     }
     Emit(sectionName + "_end:\n");
+#endif
 }
 
 void Emitter::EmitClassInfoSequential(const MIRSymbol &mirSymbol, const std::map<GStrIdx, MIRType *> &strIdx2Type,
                                       const std::string &sectionName)
 {
+#ifdef ARK_LITECG_DEBUG
     EmitAsmLabel(mirSymbol, kAsmType);
     if (!sectionName.empty()) {
         Emit("\t.section ." + sectionName);
@@ -3066,10 +3152,12 @@ void Emitter::EmitClassInfoSequential(const MIRSymbol &mirSymbol, const std::map
     CHECK_FATAL(mirConst != nullptr, "mirConst should not be nullptr in EmitClassInfoSequential");
     EmitConstantTable(mirSymbol, *mirConst, strIdx2Type);
     EmitAsmLabel(mirSymbol, kAsmSize);
+#endif
 }
 
 void Emitter::EmitMethodDeclaringClass(const MIRSymbol &mirSymbol, const std::string &sectionName)
 {
+#ifdef ARK_LITECG_DEBUG
     std::string symName = mirSymbol.GetName();
     std::string emitSyName = symName + "_DeclaringClass";
     std::string declaringClassName = symName.substr(strlen(kFieldsInfoCompactPrefixStr) + 1);
@@ -3088,11 +3176,13 @@ void Emitter::EmitMethodDeclaringClass(const MIRSymbol &mirSymbol, const std::st
     Emit(CLASSINFO_PREFIX_STR + declaringClassName + " - .\n");
     Emit(asmInfo->GetSize());
     Emit(emitSyName + ", 4\n");
+#endif
 }
 
 void Emitter::EmitMethodFieldSequential(const MIRSymbol &mirSymbol, const std::map<GStrIdx, MIRType *> &strIdx2Type,
                                         const std::string &sectionName)
 {
+#ifdef ARK_LITECG_DEBUG
     std::string symName = mirSymbol.GetName();
     if (symName.find(kMethodsInfoCompactPrefixStr) != std::string::npos) {
         EmitMethodDeclaringClass(mirSymbol, sectionName);
@@ -3113,10 +3203,12 @@ void Emitter::EmitMethodFieldSequential(const MIRSymbol &mirSymbol, const std::m
     std::string symbolName = mirSymbol.GetName();
     Emit("\t.size\t" + symbolName + ", .-");
     Emit(symbolName + "\n");
+#endif
 }
 
 void Emitter::EmitDWRef(const std::string &name)
 {
+#ifdef ARK_LITECG_DEBUG
     /*
      *   .hidden DW.ref._ZTI3xxx
      *   .weak DW.ref._ZTI3xxx
@@ -3145,27 +3237,34 @@ void Emitter::EmitDWRef(const std::string &name)
     } else {
         Emit("\t.word " + name + "\n");
     }
+#endif
 }
 
 void Emitter::EmitDecSigned(int64 num)
 {
+#ifdef ARK_LITECG_DEBUG
     std::ios::fmtflags flag(outStream.flags());
     outStream << std::dec << num;
     outStream.flags(flag);
+#endif
 }
 
 void Emitter::EmitDecUnsigned(uint64 num)
 {
+#ifdef ARK_LITECG_DEBUG
     std::ios::fmtflags flag(outStream.flags());
     outStream << std::dec << num;
     outStream.flags(flag);
+#endif
 }
 
 void Emitter::EmitHexUnsigned(uint64 num)
 {
+#ifdef ARK_LITECG_DEBUG
     std::ios::fmtflags flag(outStream.flags());
     outStream << "0x" << std::hex << num;
     outStream.flags(flag);
+#endif
 }
 
 #ifndef TARGX86_64
@@ -3175,41 +3274,52 @@ void Emitter::EmitHexUnsigned(uint64 num)
 
 void Emitter::EmitDIHeader()
 {
+#ifdef ARK_LITECG_DEBUG
     if (cg->GetMIRModule()->GetSrcLang() == kSrcLangC) {
         (void)Emit("\t.section ." + std::string("c_text") + ",\"ax\"\n");
     }
     Emit(".L" XSTR(TEXT_BEGIN) ":\n");
+#endif
 }
 
 void Emitter::EmitDIFooter()
 {
+#ifdef ARK_LITECG_DEBUG
     if (cg->GetMIRModule()->GetSrcLang() == kSrcLangC) {
         (void)Emit("\t.section ." + std::string("c_text") + ",\"ax\"\n");
     }
     Emit(".L" XSTR(TEXT_END) ":\n");
+#endif
 }
 
 void Emitter::EmitDIHeaderFileInfo()
 {
+#ifdef ARK_LITECG_DEBUG
     Emit("// dummy header file 1\n");
     Emit("// dummy header file 2\n");
     Emit("// dummy header file 3\n");
+#endif
 }
 
 void Emitter::AddLabelDieToLabelIdxMapping(DBGDie *lblDie, LabelIdx lblIdx)
 {
+#ifdef ARK_LITECG_DEBUG
     InsertLabdie2labidxTable(lblDie, lblIdx);
+#endif
 }
 
+#ifdef ARK_LITECG_DEBUG
 LabelIdx Emitter::GetLabelIdxForLabelDie(DBGDie *lblDie)
 {
     auto it = labdie2labidxTable.find(lblDie);
     CHECK_FATAL(it != labdie2labidxTable.end(), "");
     return it->second;
 }
+#endif
 
 void Emitter::ApplyInPrefixOrder(DBGDie *die, const std::function<void(DBGDie *)> &func)
 {
+#ifdef ARK_LITECG_DEBUG
     func(die);
     DEBUG_ASSERT(die, "");
     if (die->GetSubDieVec().size() > 0) {
@@ -3219,10 +3329,12 @@ void Emitter::ApplyInPrefixOrder(DBGDie *die, const std::function<void(DBGDie *)
         /* mark the end of the sibling list */
         func(nullptr);
     }
+#endif
 }
 
 void Emitter::EmitDIFormSpecification(unsigned int dwform)
 {
+#ifdef ARK_LITECG_DEBUG
     switch (dwform) {
         case DW_FORM_string:
             Emit(".string  ");
@@ -3257,10 +3369,12 @@ void Emitter::EmitDIFormSpecification(unsigned int dwform)
             LogInfo::MapleLogger() << "unhandled : " << maple::GetDwFormName(dwform) << std::endl;
             DEBUG_ASSERT(0, "NYI");
     }
+#endif
 }
 
 void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTag tagName, DebugInfo *di)
 {
+#ifdef ARK_LITECG_DEBUG
     MapleVector<DBGDieAttr *> &attrvec = die->GetAttrVec();
     switch (attr->GetDwForm()) {
         case DW_FORM_string: {
@@ -3457,10 +3571,12 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTa
             LogInfo::MapleLogger() << "unhandled : " << maple::GetDwFormName(attr->GetDwForm()) << std::endl;
             DEBUG_ASSERT(0, "NYI");
     }
+#endif
 }
 
 void Emitter::EmitDIDebugInfoSection(DebugInfo *mirdi)
 {
+#ifdef ARK_LITECG_DEBUG
     /* From DWARF Standard Specification V4. 7.5.1
        collect section size */
     Emit("\t.section\t.debug_info,\"\",@progbits\n");
@@ -3571,10 +3687,12 @@ void Emitter::EmitDIDebugInfoSection(DebugInfo *mirdi)
             emitter->Emit("\n");
         }
     });
+#endif
 }
 
 void Emitter::EmitDIDebugAbbrevSection(DebugInfo *mirdi)
 {
+#ifdef ARK_LITECG_DEBUG
     Emit("\t.section\t.debug_abbrev,\"\",@progbits\n");
     Emit(".L" XSTR(DEBUG_ABBREV_0) ":\n");
 
@@ -3642,26 +3760,34 @@ void Emitter::EmitDIDebugAbbrevSection(DebugInfo *mirdi)
         Emit("\t.byte    0x0\n");
     }
     Emit("\t.byte    0x0\n");
+#endif
 }
 
 void Emitter::EmitDIDebugARangesSection()
 {
+#ifdef ARK_LITECG_DEBUG
     Emit("\t.section\t.debug_aranges,\"\",@progbits\n");
+#endif
 }
 
 void Emitter::EmitDIDebugRangesSection()
 {
+#ifdef ARK_LITECG_DEBUG
     Emit("\t.section\t.debug_ranges,\"\",@progbits\n");
+#endif
 }
 
 void Emitter::EmitDIDebugLineSection()
 {
+#ifdef ARK_LITECG_DEBUG
     Emit("\t.section\t.debug_line,\"\",@progbits\n");
     Emit(".L" XSTR(DEBUG_LINE_0) ":\n");
+#endif
 }
 
 void Emitter::EmitDIDebugStrSection()
 {
+#ifdef ARK_LITECG_DEBUG
     Emit("\t.section\t.debug_str,\"MS\",@progbits,1\n");
     for (auto it : GetCG()->GetMIRModule()->GetDbgInfo()->GetStrps()) {
         Emit(".L" XSTR(DEBUG_STR_LABEL));
@@ -3670,10 +3796,12 @@ void Emitter::EmitDIDebugStrSection()
         const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(it);
         Emit("\t.string \"").Emit(name).Emit("\"\n");
     }
+#endif
 }
 
 void Emitter::FillInClassByteSize(DBGDie *die, DBGDieAttr *byteSizeAttr)
 {
+#ifdef ARK_LITECG_DEBUG
     DEBUG_ASSERT(byteSizeAttr->GetDwForm() == DW_FORM_data1 || byteSizeAttr->GetDwForm() == DW_FORM_data2 ||
                      byteSizeAttr->GetDwForm() == DW_FORM_data4 || byteSizeAttr->GetDwForm() == DW_FORM_data8,
                  "Unknown FORM value for DW_AT_byte_size");
@@ -3688,10 +3816,12 @@ void Emitter::FillInClassByteSize(DBGDie *die, DBGDieAttr *byteSizeAttr)
         int64_t byteSize = static_cast<int64_t>(Globals::GetInstance()->GetBECommon()->GetTypeSize(tyIdx.GetIdx()));
         LUpdateAttrValue(byteSizeAttr, byteSize);
     }
+#endif
 }
 
 void Emitter::SetupDBGInfo(DebugInfo *mirdi)
 {
+#ifdef ARK_LITECG_DEBUG
     Emitter *emitter = this;
     MapleVector<DBGAbbrevEntry *> &abbrevVec = mirdi->GetAbbrevVec();
     ApplyInPrefixOrder(mirdi->GetCompUnit(), [&abbrevVec, &emitter](DBGDie *die) {
@@ -3763,10 +3893,12 @@ void Emitter::SetupDBGInfo(DebugInfo *mirdi)
 
     /* compute DIE sizes and offsets */
     mirdi->ComputeSizeAndOffsets();
+#endif
 }
 
 void Emitter::EmitAliasAndRef(const MIRSymbol &sym)
 {
+#ifdef ARK_LITECG_DEBUG
     MIRFunction *mFunc = sym.GetFunction();
     if (mFunc == nullptr || !mFunc->GetAttr(FUNCATTR_alias)) {
         return;
@@ -3777,10 +3909,12 @@ void Emitter::EmitAliasAndRef(const MIRSymbol &sym)
     auto &aliasPrefix = mFunc->GetAttr(FUNCATTR_weakref) ? asmInfo->GetWeakref() : asmInfo->GetSet();
     Emit(aliasPrefix);
     Emit(sym.GetName()).Emit(",").Emit(mFunc->GetAttrs().GetAliasFuncName()).Emit("\n");
+#endif
 }
 
 void Emitter::EmitHugeSoRoutines(bool lastRoutine)
 {
+#ifdef ARK_LITECG_DEBUG
     if (!lastRoutine &&
         (soInsnCount < (static_cast<uint64>(hugeSoSeqence) * static_cast<uint64>(kHugeSoInsnCountThreshold)))) {
         return;
@@ -3801,16 +3935,21 @@ void Emitter::EmitHugeSoRoutines(bool lastRoutine)
     }
     hugeSoTargets.clear();
     ++hugeSoSeqence;
+#endif
 }
 
 void ImmOperand::Dump() const
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "imm:" << value;
+#endif
 }
 
 void LabelOperand::Dump() const
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "label:" << labelIndex;
+#endif
 }
 
 /* new phase manager */

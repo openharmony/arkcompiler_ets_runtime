@@ -82,12 +82,7 @@ void AArch64MoveRegArgs::MoveRegisterArgs() const
         }
     }
 
-    if (cgFunc->GetCG()->IsLmbc() && (cgFunc->GetSpSaveReg() != 0)) {
-        /* lmbc uses vreg act as SP when alloca is present due to usage of FP for - offset */
-        aarFunc->GetFirstBB()->InsertAtEnd(*aarFunc->GetDummyBB());
-    } else {
-        aarFunc->GetFirstBB()->InsertAtBeginning(*aarFunc->GetDummyBB());
-    }
+    aarFunc->GetFirstBB()->InsertAtBeginning(*aarFunc->GetDummyBB());
 }
 
 void AArch64MoveRegArgs::MoveLocalRefVarToRefLocals(MIRSymbol &mirSym) const
@@ -237,11 +232,6 @@ void AArch64MoveRegArgs::MoveVRegisterArgs()
         }
     }
 
-    if (cgFunc->GetCG()->IsLmbc() && (cgFunc->GetSpSaveReg() != 0)) {
-        /* lmbc uses vreg act as SP when alloca is present due to usage of FP for - offset */
-        aarFunc->GetFirstBB()->InsertAtEnd(*aarFunc->GetDummyBB());
-    } else {
-        aarFunc->GetFirstBB()->InsertAtBeginning(*aarFunc->GetDummyBB());
-    }
+    aarFunc->GetFirstBB()->InsertAtBeginning(*aarFunc->GetDummyBB());
 }
 } /* namespace maplebe */

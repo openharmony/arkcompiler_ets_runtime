@@ -105,10 +105,12 @@ void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastComp
         options.push_back("-verbose");
     }
     maple::litecg::LiteCG liteCG(*lmirModule.GetModule(), options);
+#ifdef ARK_LITECG_DEBUG
     if (log.OutputLLIR()) {
         std::string irFileName = lmirModule.GetModule()->GetFileName() + ".mpl";
         liteCG.DumpIRToFile(irFileName);
     }
+#endif
     liteCG.SetupLiteCGEmitMemoryManager(&codeInfo_, isJit ? AllocateCodeSectionOnDemand : AllocateCodeSection,
                                         SaveFunc2Addr, SaveFunc2FPtoPrevSPDelta, SaveFunc2CalleeOffsetInfo,
                                         SavePC2DeoptInfo, SavePC2CallSiteInfo);

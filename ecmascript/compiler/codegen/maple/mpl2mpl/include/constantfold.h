@@ -32,13 +32,6 @@ public:
     // nullptr otherwise.
     BaseNode *Fold(BaseNode *node);
 
-    // Simplify a statement
-    // It returns the original statement or the changed statement if a
-    // simplification happened. If the statement can be deleted after a
-    // simplification, it returns nullptr.
-    StmtNode *Simplify(StmtNode *node);
-    StmtNode *SimplifyIassignWithAddrofBaseNode(IassignNode &node, const AddrofNode &base) const;
-
     FuncOptimizeImpl *Clone() override
     {
         return new ConstantFold(*this);
@@ -62,19 +55,6 @@ public:
     static bool IntegerOpIsOverflow(Opcode op, PrimType primType, int64 cstA, int64 cstB);
     static MIRIntConst *FoldIntConstUnaryMIRConst(Opcode opcode, PrimType resultType, const MIRIntConst *constNode);
 private:
-    StmtNode *SimplifyBinary(BinaryStmtNode *node);
-    StmtNode *SimplifyBlock(BlockNode *node);
-    StmtNode *SimplifyCondGoto(CondGotoNode *node);
-    StmtNode *SimplifyCondGotoSelect(CondGotoNode *node) const;
-    StmtNode *SimplifyDassign(DassignNode *node);
-    StmtNode *SimplifyIassignWithIaddrofBaseNode(IassignNode &node, const IaddrofNode &base);
-    StmtNode *SimplifyIassign(IassignNode *node);
-    StmtNode *SimplifyNary(NaryStmtNode *node);
-    StmtNode *SimplifyIcall(IcallNode *node);
-    StmtNode *SimplifySwitch(SwitchNode *node);
-    StmtNode *SimplifyUnary(UnaryStmtNode *node);
-    StmtNode *SimplifyAsm(AsmNode *node);
-    StmtNode *SimplifyWhile(WhileStmtNode *node);
     std::pair<BaseNode*, std::optional<IntVal>> FoldArray(ArrayNode *node);
     std::pair<BaseNode*, std::optional<IntVal>> FoldBase(BaseNode *node) const;
     std::pair<BaseNode*, std::optional<IntVal>> FoldBinary(BinaryNode *node);

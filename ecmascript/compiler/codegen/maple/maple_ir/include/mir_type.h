@@ -905,9 +905,10 @@ public:
     MIRType(MIRTypeKind kind, PrimType pType, GStrIdx strIdx) : typeKind(kind), primType(pType), nameStrIdx(strIdx) {}
 
     virtual ~MIRType() = default;
-
+#ifdef ARK_LITECG_DEBUG
     virtual void Dump(int indent, bool dontUseName = false) const;
     virtual void DumpAsCxx(int indent) const;
+#endif
     virtual bool EqualTo(const MIRType &mirType) const;
     virtual bool IsStructType() const
     {
@@ -1158,8 +1159,9 @@ public:
     bool IsPointedTypeVolatile(int fieldID) const;
     bool IsUnsafeType() const override;
     bool IsVoidPointer() const override;
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
+#endif
     size_t GetSize() const override;
     uint32 GetAlign() const override;
     TyIdxFieldAttrPair GetPointedTyIdxFldAttrPairWithFieldID(FieldID fldId) const;
@@ -1277,9 +1279,9 @@ public:
     {
         return GetElemType()->HasTypeParam();
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName) const override;
-
+#endif
     size_t GetSize() const override;
     uint32 GetAlign() const override;
 
@@ -1352,8 +1354,9 @@ public:
     }
 
     bool EqualTo(const MIRType &type) const override;
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
-
+#endif
     size_t GetHashIndex() const override
     {
         constexpr uint8 idxShift = 5;
@@ -1705,10 +1708,10 @@ public:
         DEBUG_ASSERT(n < fieldInferredTyIdx.size(), "array index out of range");
         return fieldInferredTyIdx.at(n);
     }
-
+#ifdef ARK_LITECG_DEBUG
     void DumpFieldsAndMethods(int indent, bool hasMethod) const;
     void Dump(int indent, bool dontUseName = false) const override;
-
+#endif
     virtual void SetComplete()
     {
         typeKind = (typeKind == kTypeUnion) ? typeKind : kTypeStruct;
@@ -1765,16 +1768,6 @@ public:
         CHECK_FATAL(false, "can not use GetInfoIsStringElemt");
     }
 
-    virtual const std::vector<MIRPragma *> &GetPragmaVec() const
-    {
-        CHECK_FATAL(false, "can not use GetPragmaVec");
-    }
-
-    virtual std::vector<MIRPragma *> &GetPragmaVec()
-    {
-        CHECK_FATAL(false, "can not use GetPragmaVec");
-    }
-
     std::vector<GenericDeclare *> &GetGenericDeclare()
     {
         return genericDeclare;
@@ -1819,11 +1812,6 @@ public:
     virtual void PushbackMIRInfo(const MIRInfoPair &)
     {
         CHECK_FATAL(false, "can not use PushbackMIRInfo");
-    }
-
-    virtual void PushbackPragma(MIRPragma *)
-    {
-        CHECK_FATAL(false, "can not use PushbackPragma");
     }
 
     virtual void PushbackStaticValue(EncodedValue &)
@@ -2023,19 +2011,6 @@ public:
         return infoIsString.at(n);
     }
 
-    std::vector<MIRPragma *> &GetPragmaVec() override
-    {
-        return pragmaVec;
-    }
-    const std::vector<MIRPragma *> &GetPragmaVec() const override
-    {
-        return pragmaVec;
-    }
-    void PushbackPragma(MIRPragma *pragma) override
-    {
-        pragmaVec.push_back(pragma);
-    }
-
     const MIREncodedArray &GetStaticValue() const override
     {
         return staticValue;
@@ -2077,9 +2052,10 @@ public:
     {
         interfacesImplemented.push_back(idx);
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
     void DumpAsCxx(int indent) const override;
+#endif
     void SetComplete() override
     {
         typeKind = kTypeClass;
@@ -2116,7 +2092,6 @@ public:
         interfacesImplemented.clear();  // for the list of interfaces the class implements
         info.clear();
         infoIsString.clear();
-        pragmaVec.clear();
         staticValue.clear();
     }
 
@@ -2133,7 +2108,6 @@ private:
     std::vector<TyIdx> interfacesImplemented {};  // for the list of interfaces the class implements
     std::vector<MIRInfoPair> info {};
     std::vector<bool> infoIsString {};
-    std::vector<MIRPragma *> pragmaVec {};
     MIREncodedArray staticValue {};  // DELETE THIS
 };
 
@@ -2190,19 +2164,6 @@ public:
         return infoIsString.at(n);
     }
 
-    std::vector<MIRPragma *> &GetPragmaVec() override
-    {
-        return pragmaVec;
-    }
-    const std::vector<MIRPragma *> &GetPragmaVec() const override
-    {
-        return pragmaVec;
-    }
-    void PushbackPragma(MIRPragma *pragma) override
-    {
-        pragmaVec.push_back(pragma);
-    }
-
     const MIREncodedArray &GetStaticValue() const override
     {
         return staticValue;
@@ -2236,8 +2197,9 @@ public:
         DEBUG_ASSERT(i < parentsTyIdx.size(), "array index out of range");
         parentsTyIdx[i] = tyIdx;
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
+#endif
     bool HasVolatileField() const override;
     bool HasTypeParam() const override;
     FieldPair TraverseToFieldRef(FieldID &fieldID) const override;
@@ -2254,7 +2216,6 @@ public:
         parentsTyIdx.clear();
         info.clear();
         infoIsString.clear();
-        pragmaVec.clear();
         staticValue.clear();
     }
 
@@ -2281,7 +2242,6 @@ private:
     std::vector<TyIdx> parentsTyIdx {};  // multiple inheritence
     std::vector<MIRInfoPair> info {};
     std::vector<bool> infoIsString {};
-    std::vector<MIRPragma *> pragmaVec {};
     MIREncodedArray staticValue {};  // DELETE THIS
 };
 
@@ -2297,7 +2257,9 @@ public:
     }
 
     bool EqualTo(const MIRType &type) const override;
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
+#endif
     MIRType *CopyMIRTypeNode() const override
     {
         return new MIRBitFieldType(*this);
@@ -2352,8 +2314,9 @@ public:
     {
         return new MIRFuncType(*this);
     }
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
+#endif
     size_t GetSize() const override
     {
         return 0;
@@ -2495,8 +2458,9 @@ public:
     }
 
     bool EqualTo(const MIRType &type) const override;
-
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
+#endif
     size_t GetSize() const override
     {
         return 0;
@@ -2526,7 +2490,9 @@ public:
     }
 
     bool EqualTo(const MIRType &type) const override;
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
+#endif
     size_t GetSize() const override
     {
         return 0;
@@ -2562,7 +2528,9 @@ public:
     }
 
     bool EqualTo(const MIRType &type) const override;
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
+#endif
     size_t GetSize() const override
     {
         return 0;
@@ -2615,8 +2583,9 @@ public:
     }
 
     bool EqualTo(const MIRType &type) const override;
+#ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
-
+#endif
     size_t GetSize() const override
     {
         return 0;

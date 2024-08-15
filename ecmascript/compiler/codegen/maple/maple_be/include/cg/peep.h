@@ -163,8 +163,6 @@ public:
     ~PeepHoleOptimizer() = default;
     void Peephole0();
     void PeepholeOpt();
-    void PrePeepholeOpt();
-    void PrePeepholeOpt1();
 
 private:
     CGFunc *cgFunc;
@@ -204,13 +202,7 @@ private:
     MemPool *peepOptMemPool;
 };
 
-MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgPrePeepHole, maplebe::CGFunc)
-MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgPostPeepHole, maplebe::CGFunc)
-MAPLE_FUNC_PHASE_DECLARE_END
-MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgPrePeepHole0, maplebe::CGFunc)
-MAPLE_FUNC_PHASE_DECLARE_END
-MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgPrePeepHole1, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END
 MAPLE_FUNC_PHASE_DECLARE_BEGIN(CgPeepHole0, maplebe::CGFunc)
 MAPLE_FUNC_PHASE_DECLARE_END

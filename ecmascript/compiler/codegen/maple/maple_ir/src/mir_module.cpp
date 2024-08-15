@@ -116,6 +116,7 @@ void MIRModule::AddSymbol(const MIRSymbol *s)
     AddSymbol(s->GetStIdx());
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRModule::DumpGlobals(bool emitStructureType) const
 {
     if (flavor != kFlavorUnknown) {
@@ -463,6 +464,7 @@ void MIRModule::DumpInlineCandidateToFile(const std::string &fileNameStr)
     LogInfo::MapleLogger().rdbuf(backup);
     file.close();
 }
+#endif
 
 // This is not efficient. Only used in debug mode for now.
 const std::string &MIRModule::GetFileNameFromFileNum(uint32 fileNum) const
@@ -477,6 +479,7 @@ const std::string &MIRModule::GetFileNameFromFileNum(uint32 fileNum) const
     return GlobalTables::GetStrTable().GetStringFromStrIdx(nameIdx);
 }
 
+#ifdef ARK_LITECG_DEBUG
 void MIRModule::DumpTypeTreeToCxxHeaderFile(MIRType &ty, std::unordered_set<MIRType *> &dumpedClasses) const
 {
     if (dumpedClasses.find(&ty) != dumpedClasses.end()) {
@@ -586,6 +589,7 @@ void MIRModule::DumpClassToFile(const std::string &path) const
         ;
     }
 }
+#endif
 
 MIRFunction *MIRModule::FindEntryFunction()
 {

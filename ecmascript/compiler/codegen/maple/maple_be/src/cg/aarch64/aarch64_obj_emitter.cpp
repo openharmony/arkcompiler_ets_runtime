@@ -60,9 +60,8 @@ void AArch64ObjFuncEmitInfo::HandleLocalBranchFixup(const std::vector<uint32> &l
         uint32 defOffset = label2Offset[useLabelIndex];
 
         FixupKind fixupKind = fixup->GetFixupKind();
-        if (defOffset == 0xFFFFFFFFULL) {
-            CHECK_FATAL(static_cast<AArch64FixupKind>(fixupKind) == kAArch64LoadPCRelImm19, "fixup is not local");
-        }
+        CHECK_FATAL((defOffset != 0xFFFFFFFFULL || static_cast<AArch64FixupKind>(fixupKind) == kAArch64LoadPCRelImm19),
+                    "fixup is not local");
         if (static_cast<AArch64FixupKind>(fixupKind) == kAArch64CondBranchPCRelImm19 ||
             static_cast<AArch64FixupKind>(fixupKind) == kAArch64CompareBranchPCRelImm19) {
             uint32 pcRelImm = (defOffset - useOffset) >> k2BitSize;
@@ -112,10 +111,6 @@ void AArch64ObjEmitter::HandleTextSectionGlobalFixup()
             continue;
         }
         for (auto *fixup : content->GetGlobalFixups()) {
-            if (fixup->GetFixupKind() == kLSDAFixup) {
-                HandleLSDAFixup(*content, *fixup);
-                continue;
-            }
             switch (static_cast<AArch64FixupKind>(fixup->GetFixupKind())) {
                 case kAArch64CallPCRelImm26: {
                     HandleCallFixup(*content, *fixup);
@@ -123,66 +118,6 @@ void AArch64ObjEmitter::HandleTextSectionGlobalFixup()
                 }
                 case kAArch64PCRelAdrImm21: {
                     HandleAdrFixup(*content, *fixup);
-                    break;
-                }
-                default:
-                    DEBUG_ASSERT(false, "unsupported FixupKind");
-                    break;
-            }
-        }
-    }
-}
-
-void AArch64ObjEmitter::HandleTextSectionFixup()
-{
-    relaSection = memPool->New<RelaSection>(".rela.text", SHT_RELA, SHF_INFO_LINK, textSection->GetIndex(), k8ByteSize,
-                                            *symbolTabSection, *this, *memPool);
-    for (auto *content : contents) {
-        if (content == nullptr) {
-            continue;
-        }
-        for (auto *fixup : content->GetGlobalFixups()) {
-            switch (static_cast<AArch64FixupKind>(fixup->GetFixupKind())) {
-                case kAArch64CallPCRelImm26: {
-                    auto nameIndex = strTabSection->AddString(fixup->GetLabel());
-                    symbolTabSection->AppendSymbol({static_cast<Word>(nameIndex),
-                                                    static_cast<uint8>((STB_GLOBAL << kShiftFour) + (STT_NOTYPE & 0xf)),
-                                                    0, 0, 0, 0});
-                    symbolTabSection->AppendIdxInSymbols(0);  // 0: temporarily
-                    uint32 relOffset = fixup->GetRelOffset();
-                    uint32 offset = fixup->GetOffset();
-                    uint64 type = R_AARCH64_CALL26;
-                    relaSection->AppendRela(
-                        {offset, static_cast<Xword>((symbolTabSection->GetIdxInSymbols(0) << 32) + (type & 0xffffffff)),
-                         relOffset});
-                    break;
-                }
-                case kAArch64PCRelAdrpImm21: {
-                    uint32 relOffset = fixup->GetRelOffset();
-                    uint32 offset = fixup->GetOffset();
-                    uint64 type = R_AARCH64_ADR_PREL_PG_HI21;
-                    int64 rodataSecSymIdx = ~rodataSection->GetIndex() + 1;
-                    relaSection->AppendRela(
-                        {offset,
-                         static_cast<Xword>((symbolTabSection->GetIdxInSymbols(rodataSecSymIdx) << 32) +
-                                            (type & 0xffffffff)),
-                         relOffset});
-                    break;
-                }
-                case kAArch64PCRelAdrImm21: {
-                    break;
-                }
-                case kAArch64LdrPCRelLo12:
-                case kAArch64AddPCRelLo12: {
-                    int32 relOffset = static_cast<int32>(fixup->GetRelOffset());
-                    uint32 offset = fixup->GetOffset();
-                    uint64 type = R_AARCH64_ADD_ABS_LO12_NC;
-                    int64 rodataSecSymIdx = ~rodataSection->GetIndex() + 1;
-                    relaSection->AppendRela(
-                        {offset,
-                         static_cast<Xword>((symbolTabSection->GetIdxInSymbols(rodataSecSymIdx) << 32) +
-                                            (type & 0xffffffff)),
-                         relOffset});
                     break;
                 }
                 default:
@@ -221,13 +156,6 @@ void AArch64ObjEmitter::HandleAdrFixup(ObjFuncEmitInfo &funcEmitInfo, const Fixu
         uint32 newValue = objFuncEmitInfo.GetTextDataElem32(fixup.GetOffset()) | immLow | immHigh;
         objFuncEmitInfo.SwapTextData(&newValue, fixup.GetOffset(), sizeof(uint32));
     }
-}
-
-void AArch64ObjEmitter::HandleLSDAFixup(ObjFuncEmitInfo &funcEmitInfo, const Fixup &fixup)
-{
-    AArch64ObjFuncEmitInfo &objFuncEmitInfo = static_cast<AArch64ObjFuncEmitInfo &>(funcEmitInfo);
-    uint32 value = objFuncEmitInfo.GetExceptStartOffset() - objFuncEmitInfo.GetStartOffset();
-    objFuncEmitInfo.SwapTextData(&value, fixup.GetOffset(), sizeof(uint32));
 }
 
 void AArch64ObjEmitter::AppendTextSectionData()

@@ -34,12 +34,10 @@ void LabelCreation::CreateStartEndLabel() const
     /* create start label */
     LabelIdx startLblIdx = cgFunc->CreateLabel();
     LabelNode *startLabel = mirBuilder->CreateStmtLabel(startLblIdx);
-    cgFunc->SetStartLabel(*startLabel);
     cgFunc->GetFunction().GetBody()->InsertFirst(startLabel);
     /* creat return label */
     LabelIdx returnLblIdx = cgFunc->CreateLabel();
     LabelNode *returnLabel = mirBuilder->CreateStmtLabel(returnLblIdx);
-    cgFunc->SetReturnLabel(*returnLabel);
     cgFunc->GetFunction().GetBody()->InsertLast(returnLabel);
 
     /* create end label */
@@ -51,13 +49,6 @@ void LabelCreation::CreateStartEndLabel() const
 
     /* create function's low/high pc if dwarf enabled */
     MIRFunction *func = &cgFunc->GetFunction();
-    CG *cg = cgFunc->GetCG();
-    if (cg->GetCGOptions().WithDwarf() && cgFunc->GetWithSrc()) {
-        DebugInfo *di = cg->GetMIRModule()->GetDbgInfo();
-        DBGDie *fdie = di->GetFuncDie(*func);
-        fdie->SetAttr(DW_AT_low_pc, startLblIdx);
-        fdie->SetAttr(DW_AT_high_pc, endLblIdx);
-    }
     /* add start/end labels into the static map table in class cg */
     if (!CG::IsInFuncWrapLabels(func)) {
         CG::SetFuncWrapLabels(func, std::make_pair(startLblIdx, endLblIdx));

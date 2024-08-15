@@ -25,37 +25,7 @@ void X64CGFunc::GenSaveMethodInfoCode(BB &bb)
 {
     CHECK_FATAL(false, "NIY");
 }
-void X64CGFunc::GenerateCleanupCode(BB &bb)
-{
-    CHECK_FATAL(false, "NIY");
-}
-bool X64CGFunc::NeedCleanup()
-{
-    CHECK_FATAL(false, "NIY");
-    return false;
-}
-void X64CGFunc::GenerateCleanupCodeForExtEpilog(BB &bb)
-{
-    CHECK_FATAL(false, "NIY");
-}
-uint32 X64CGFunc::FloatParamRegRequired(MIRStructType *structType, uint32 &fpSize)
-{
-    CHECK_FATAL(false, "NIY");
-    return 0;
-}
-void X64CGFunc::AssignLmbcFormalParams()
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::LmbcGenSaveSpForAlloca()
-{
-    CHECK_FATAL(false, "NIY");
-}
 void X64CGFunc::MergeReturn()
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::HandleRCCall(bool begin, const MIRSymbol *retRef)
 {
     CHECK_FATAL(false, "NIY");
 }
@@ -63,55 +33,11 @@ void X64CGFunc::SelectDassign(DassignNode &stmt, Operand &opnd0)
 {
     CHECK_FATAL(false, "NIY");
 }
-void X64CGFunc::SelectDassignoff(DassignoffNode &stmt, Operand &opnd0)
-{
-    CHECK_FATAL(false, "NIY");
-}
 void X64CGFunc::SelectRegassign(RegassignNode &stmt, Operand &opnd0)
 {
     CHECK_FATAL(false, "NIY");
 }
-void X64CGFunc::SelectAbort()
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectAssertNull(UnaryStmtNode &stmt)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectAsm(AsmNode &node)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectAggDassign(DassignNode &stmt)
-{
-    CHECK_FATAL(false, "NIY");
-}
 void X64CGFunc::SelectIassign(IassignNode &stmt)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectIassignoff(IassignoffNode &stmt)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectIassignfpoff(IassignFPoffNode &stmt, Operand &opnd)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectIassignspoff(PrimType pTy, int32 offset, Operand &opnd)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectBlkassignoff(BlkassignoffNode &bNode, Operand *src)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectAggIassign(IassignNode &stmt, Operand &lhsAddrOpnd)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::SelectReturnSendOfStructInRegs(BaseNode *x)
 {
     CHECK_FATAL(false, "NIY");
 }
@@ -147,105 +73,12 @@ void X64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
 {
     CHECK_FATAL(false, "NIY");
 }
-Operand *X64CGFunc::SelectIntrinsicOpWithOneParam(IntrinsicopNode &intrinopNode, std::string name)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
 Operand *X64CGFunc::SelectCclz(IntrinsicopNode &intrinopNode)
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectCctz(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCpopcount(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCparity(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCclrsb(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCisaligned(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCalignup(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCaligndown(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCSyncBoolCmpSwap(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCSyncValCmpSwap(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCSyncLockTestSet(IntrinsicopNode &intrinopNode, PrimType pty)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectBswap(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCSyncFetch(IntrinsicopNode &intrinsicopNode, Opcode op, bool fetchBefore)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCSyncSynchronize(IntrinsicopNode &intrinsicopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCAtomicLoadN(IntrinsicopNode &intrinsicopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCAtomicExchangeN(const IntrinsiccallNode &intrinsicopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectCReturnAddress(IntrinsicopNode &intrinopNode)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-void X64CGFunc::SelectMembar(StmtNode &membar)
-{
-    CHECK_FATAL(false, "NIY");
-}
 void X64CGFunc::SelectComment(CommentNode &comment)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::HandleCatch()
 {
     CHECK_FATAL(false, "NIY");
 }
@@ -264,31 +97,8 @@ Operand *X64CGFunc::SelectAddrof(AddrofNode &expr, const BaseNode &parent, bool 
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectAddrofoff(AddrofoffNode &expr, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-
-Operand &X64CGFunc::SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    Operand *a;
-    return *a;
-}
-Operand &X64CGFunc::SelectAddrofLabel(AddroflabelNode &expr, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    Operand *a;
-    return *a;
-}
 Operand *X64CGFunc::SelectIread(const BaseNode &parent, IreadNode &expr, int extraOffset,
                                 PrimType finalBitFieldDestType)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectIreadoff(const BaseNode &parent, IreadoffNode &ireadoff)
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
@@ -308,36 +118,11 @@ Operand *X64CGFunc::SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNod
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectStrConst(MIRStrConst &strConst)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectStr16Const(MIRStr16Const &strConst)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
 void X64CGFunc::SelectAdd(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType)
 {
     CHECK_FATAL(false, "NIY");
 }
 Operand *X64CGFunc::SelectAdd(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-void X64CGFunc::SelectMadd(Operand &resOpnd, Operand &opndM0, Operand &opndM1, Operand &opnd1, PrimType primType)
-{
-    CHECK_FATAL(false, "NIY");
-}
-Operand *X64CGFunc::SelectMadd(BinaryNode &node, Operand &opndM0, Operand &opndM1, Operand &opnd1,
-                               const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectRor(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
@@ -387,16 +172,6 @@ Operand *X64CGFunc::SelectBand(BinaryNode &node, Operand &opnd0, Operand &opnd1,
 void X64CGFunc::SelectBand(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType)
 {
     CHECK_FATAL(false, "NIY");
-}
-Operand *X64CGFunc::SelectLand(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectLor(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent, bool parentIsBr)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
 }
 void X64CGFunc::SelectMin(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType)
 {
@@ -454,11 +229,6 @@ Operand *X64CGFunc::SelectExtractbits(ExtractbitsNode &node, Operand &opnd0, con
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectDepositBits(DepositbitsNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
 Operand *X64CGFunc::SelectRegularBitFieldLoad(ExtractbitsNode &node, const BaseNode &parent)
 {
     CHECK_FATAL(false, "NIY");
@@ -494,11 +264,6 @@ Operand *X64CGFunc::SelectRetype(TypeCvtNode &node, Operand &opnd0)
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectRound(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
 Operand *X64CGFunc::SelectCvt(const BaseNode &parent, TypeCvtNode &node, Operand &opnd0)
 {
     CHECK_FATAL(false, "NIY");
@@ -515,54 +280,11 @@ Operand *X64CGFunc::SelectSelect(TernaryNode &node, Operand &cond, Operand &opnd
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectMalloc(UnaryNode &call, Operand &opnd0)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
 RegOperand &X64CGFunc::SelectCopy(Operand &src, PrimType srcType, PrimType dstType)
 {
     CHECK_FATAL(false, "NIY");
     RegOperand *a;
     return *a;
-}
-Operand *X64CGFunc::SelectAlloca(UnaryNode &call, Operand &opnd0)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectGCMalloc(GCMallocNode &call)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectJarrayMalloc(JarrayMallocNode &call, Operand &opnd0)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-void X64CGFunc::SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &opnd0)
-{
-    CHECK_FATAL(false, "NIY");
-}
-Operand *X64CGFunc::SelectLazyLoad(Operand &opnd0, PrimType primType)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectLazyLoadStatic(MIRSymbol &st, int64 offset, PrimType primType)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectLoadArrayClassCache(MIRSymbol &st, int64 offset, PrimType primType)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-void X64CGFunc::GenerateYieldpoint(BB &bb)
-{
-    CHECK_FATAL(false, "NIY");
 }
 Operand &X64CGFunc::GetOrCreateRflag()
 {
@@ -571,11 +293,6 @@ Operand &X64CGFunc::GetOrCreateRflag()
     return *a;
 }
 const Operand *X64CGFunc::GetRflag() const
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-const Operand *X64CGFunc::GetFloatRflag() const
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
@@ -647,184 +364,6 @@ Operand &X64CGFunc::CreateImmOperand(PrimType primType, int64 val)
     CHECK_FATAL(false, "NIY");
     Operand *a;
     return *a;
-}
-void X64CGFunc::ReplaceOpndInInsn(RegOperand &regDest, RegOperand &regSrc, Insn &insn, regno_t regno)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::CleanupDeadMov(bool dump)
-{
-    CHECK_FATAL(false, "NIY");
-}
-void X64CGFunc::GetRealCallerSaveRegs(const Insn &insn, std::set<regno_t> &realCallerSave)
-{
-    CHECK_FATAL(false, "NIY");
-}
-bool X64CGFunc::IsFrameReg(const RegOperand &opnd) const
-{
-    CHECK_FATAL(false, "NIY");
-    return false;
-}
-RegOperand *X64CGFunc::SelectVectorAddLong(PrimType rTy, Operand *o1, Operand *o2, PrimType oty, bool isLow)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorAddWiden(Operand *o1, PrimType oty1, Operand *o2, PrimType oty2, bool isLow)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorAbs(PrimType rType, Operand *o1)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorBinOp(PrimType rType, Operand *o1, PrimType oTyp1, Operand *o2, PrimType oTyp2,
-                                         Opcode opc)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorBitwiseOp(PrimType rType, Operand *o1, PrimType oty1, Operand *o2, PrimType oty2,
-                                             Opcode opc)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorCompareZero(Operand *o1, PrimType oty1, Operand *o2, Opcode opc)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorCompare(Operand *o1, PrimType oty1, Operand *o2, PrimType oty2, Opcode opc)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorFromScalar(PrimType pType, Operand *opnd, PrimType sType)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorDup(PrimType rType, Operand *src, bool getLow)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorGetElement(PrimType rType, Operand *src, PrimType sType, int32 lane)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorAbsSubL(PrimType rType, Operand *o1, Operand *o2, PrimType oTy, bool isLow)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorMadd(Operand *o1, PrimType oTyp1, Operand *o2, PrimType oTyp2, Operand *o3,
-                                        PrimType oTyp3)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorMerge(PrimType rTyp, Operand *o1, Operand *o2, int32 iNum)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorMull(PrimType rType, Operand *o1, PrimType oTyp1, Operand *o2, PrimType oTyp2,
-                                        bool isLow)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorNarrow(PrimType rType, Operand *o1, PrimType otyp)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorNarrow2(PrimType rType, Operand *o1, PrimType oty1, Operand *o2, PrimType oty2)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorNeg(PrimType rType, Operand *o1)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorNot(PrimType rType, Operand *o1)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorPairwiseAdalp(Operand *src1, PrimType sty1, Operand *src2, PrimType sty2)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorPairwiseAdd(PrimType rType, Operand *src, PrimType sType)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorReverse(PrimType rtype, Operand *src, PrimType stype, uint32 size)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorSetElement(Operand *eOp, PrimType eTyp, Operand *vOpd, PrimType vTyp, int32 lane)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorShift(PrimType rType, Operand *o1, PrimType oty1, Operand *o2, PrimType oty2,
-                                         Opcode opc)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorShiftImm(PrimType rType, Operand *o1, Operand *imm, int32 sVal, Opcode opc)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorShiftRNarrow(PrimType rType, Operand *o1, PrimType oType, Operand *o2, bool isLow)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorSubWiden(PrimType resType, Operand *o1, PrimType otyp1, Operand *o2, PrimType otyp2,
-                                            bool isLow, bool isWide)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorSum(PrimType rtype, Operand *o1, PrimType oType)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorTableLookup(PrimType rType, Operand *o1, Operand *o2)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-RegOperand *X64CGFunc::SelectVectorWiden(PrimType rType, Operand *o1, PrimType otyp, bool isLow)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectIntrinsicOpWithNParams(IntrinsicopNode &intrinopNode, PrimType retType,
-                                                 const std::string &name)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-void X64CGFunc::DBGFixCallFrameLocationOffsets()
-{
-    CHECK_FATAL(false, "NIY");
 }
 MemOperand *X64CGFunc::GetPseudoRegisterSpillMemoryOperand(PregIdx idx)
 {

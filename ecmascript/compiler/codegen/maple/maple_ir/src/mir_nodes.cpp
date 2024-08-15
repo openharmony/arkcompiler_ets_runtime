@@ -327,6 +327,7 @@ BlockNode *BlockNode::CloneTreeWithFreqs(MapleAllocator &allocator, std::unorder
     return nnode;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void BaseNode::DumpBase(int32 indent) const
 {
     PrintIndentation(indent);
@@ -583,6 +584,7 @@ void NaryNode::Dump(int32 indent) const
     BaseNode::DumpBase(0);
     NaryOpnds::Dump(indent);
 }
+#endif
 
 const MIRType *ArrayNode::GetArrayType(const TypeTable &tt) const
 {
@@ -608,6 +610,7 @@ BaseNode *ArrayNode::GetDim(const MIRModule &mod, TypeTable &tt, int i)
     return const_cast<BaseNode *>(const_cast<const ArrayNode *>(this)->GetDim(mod, tt, i));
 }
 
+#ifdef ARK_LITECG_DEBUG
 void ArrayNode::Dump(int32 indent) const
 {
     PrintIndentation(0);
@@ -622,6 +625,7 @@ void ArrayNode::Dump(int32 indent) const
     GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->Dump(0);
     NaryOpnds::Dump(indent);
 }
+#endif
 
 bool ArrayNode::IsSameBase(ArrayNode *arry)
 {
@@ -637,6 +641,7 @@ bool ArrayNode::IsSameBase(ArrayNode *arry)
     return static_cast<AddrofNode *>(curBase)->GetStIdx() == static_cast<AddrofNode *>(otherBase)->GetStIdx();
 }
 
+#ifdef ARK_LITECG_DEBUG
 void IntrinsicopNode::Dump(int32 indent) const
 {
     LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
@@ -731,12 +736,6 @@ void RegreadNode::Dump(int32) const
         case -kSregGp:
             LogInfo::MapleLogger() << "GP";
             break;
-        case -kSregThrownval:
-            LogInfo::MapleLogger() << "thrownval";
-            break;
-        case -kSregMethodhdl:
-            LogInfo::MapleLogger() << "methodhdl";
-            break;
         default:
             int32 retValIdx = (-regIdx) - kSregRetval0;
             LogInfo::MapleLogger() << "retval" << retValIdx;
@@ -776,6 +775,7 @@ void StmtNode::Dump(int32 indent) const
     StmtNode::DumpBase(indent);
     LogInfo::MapleLogger() << '\n';
 }
+#endif
 
 // Get the next stmt skip the comment stmt.
 StmtNode *StmtNode::GetRealNext() const
@@ -812,6 +812,7 @@ void StmtNode::InsertBeforeThis(StmtNode &pos)
     pos.SetNext(this);
 }
 
+#ifdef ARK_LITECG_DEBUG
 void DassignNode::Dump(int32 indent) const
 {
     StmtNode::DumpBase(indent);
@@ -863,12 +864,6 @@ void RegassignNode::Dump(int32 indent) const
                 break;
             case -kSregGp:
                 LogInfo::MapleLogger() << "GP";
-                break;
-            case -kSregThrownval:
-                LogInfo::MapleLogger() << "thrownval";
-                break;
-            case -kSregMethodhdl:
-                LogInfo::MapleLogger() << "methodhdl";
                 break;
             case -kSregRetval0:
                 LogInfo::MapleLogger() << "retval0";
@@ -1246,6 +1241,7 @@ void DumpCallReturns(const MIRModule &mod, CallReturnVector nrets, int32 indent)
     PrintIndentation(indent + 1);
     LogInfo::MapleLogger() << "}\n";
 }
+#endif
 
 // iread expr has sideeffect, may cause derefference error
 bool HasIreadExpr(const BaseNode *expr)
@@ -1303,6 +1299,7 @@ const MIRSymbol *CallNode::GetCallReturnSymbol(const MIRModule &mod) const
     return nullptr;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void CallNode::Dump(int32 indent, bool newline) const
 {
     StmtNode::DumpBase(indent);
@@ -1322,6 +1319,7 @@ void CallNode::Dump(int32 indent, bool newline) const
         LogInfo::MapleLogger() << '\n';
     }
 }
+#endif
 
 MIRType *IcallNode::GetCallReturnType()
 {
@@ -1351,6 +1349,7 @@ const MIRSymbol *IcallNode::GetCallReturnSymbol(const MIRModule &mod) const
     return nullptr;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void IcallNode::Dump(int32 indent, bool newline) const
 {
     StmtNode::DumpBase(indent);
@@ -1367,6 +1366,7 @@ void IcallNode::Dump(int32 indent, bool newline) const
         LogInfo::MapleLogger() << '\n';
     }
 }
+#endif
 
 MIRType *IntrinsiccallNode::GetCallReturnType()
 {
@@ -1375,6 +1375,7 @@ MIRType *IntrinsiccallNode::GetCallReturnType()
     return intrinDesc->GetReturnType();
 }
 
+#ifdef ARK_LITECG_DEBUG
 void IntrinsiccallNode::Dump(int32 indent, bool newline) const
 {
     StmtNode::DumpBase(indent);
@@ -1475,6 +1476,7 @@ void CommentNode::Dump(int32 indent) const
     PrintIndentation(indent);
     LogInfo::MapleLogger() << "#" << comment << '\n';
 }
+#endif
 
 void EmitStr(const MapleString &mplStr)
 {
@@ -1553,6 +1555,7 @@ AsmNode *AsmNode::CloneTree(MapleAllocator &allocator) const
     return node;
 }
 
+#ifdef ARK_LITECG_DEBUG
 void AsmNode::DumpOutputs(int32 indent, std::string &uStr) const
 {
     PrintIndentation(indent + 1);
@@ -1666,6 +1669,7 @@ void AsmNode::Dump(int32 indent) const
     }
     LogInfo::MapleLogger() << " }\n";
 }
+#endif
 
 enum PTYGroup {
     kPTYGi32u32a32,

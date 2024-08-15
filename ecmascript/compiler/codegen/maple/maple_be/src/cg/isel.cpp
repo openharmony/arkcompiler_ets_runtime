@@ -137,7 +137,7 @@ static MOperator GetFastCvtMopI(uint32 fromSize, uint32 toSize, bool isSigned)
         return fastMapping_f_##TYPE[GetBitIndex(bitSize)];                                         \
     }
 
-void HandleDassign(StmtNode &stmt, MPISel &iSel)
+static void HandleDassign(StmtNode &stmt, MPISel &iSel)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_dassign, "expect dassign");
     auto &dassignNode = static_cast<DassignNode &>(stmt);
@@ -150,7 +150,7 @@ void HandleDassign(StmtNode &stmt, MPISel &iSel)
     iSel.SelectDassign(dassignNode, *opndRhs);
 }
 
-void HandleIassign(StmtNode &stmt, MPISel &iSel)
+static void HandleIassign(StmtNode &stmt, MPISel &iSel)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_iassign, "expect iassign");
     auto &iassignNode = static_cast<IassignNode &>(stmt);
@@ -170,7 +170,7 @@ void HandleIassign(StmtNode &stmt, MPISel &iSel)
     }
 }
 
-void HandleRegassign(StmtNode &stmt, MPISel &iSel)
+static void HandleRegassign(StmtNode &stmt, MPISel &iSel)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_regassign, "expect regAssign");
     auto &regAssignNode = static_cast<RegassignNode &>(stmt);
@@ -180,7 +180,7 @@ void HandleRegassign(StmtNode &stmt, MPISel &iSel)
     iSel.SelectRegassign(regAssignNode, *opnd0);
 }
 
-void HandleLabel(StmtNode &stmt, const MPISel &iSel)
+static void HandleLabel(StmtNode &stmt, const MPISel &iSel)
 {
     CGFunc *cgFunc = iSel.GetCurFunc();
     DEBUG_ASSERT(stmt.GetOpCode() == OP_label, "error");
@@ -191,10 +191,9 @@ void HandleLabel(StmtNode &stmt, const MPISel &iSel)
     cgFunc->SetCurBB(*newBB);
 }
 
-void HandleGoto(StmtNode &stmt, MPISel &iSel)
+static void HandleGoto(StmtNode &stmt, MPISel &iSel)
 {
     CGFunc *cgFunc = iSel.GetCurFunc();
-    cgFunc->UpdateFrequency(stmt);
     auto &gotoNode = static_cast<GotoNode &>(stmt);
     DEBUG_ASSERT(gotoNode.GetOpCode() == OP_goto, "expect goto");
     cgFunc->SetCurBBKind(BB::kBBGoto);
@@ -206,13 +205,13 @@ void HandleGoto(StmtNode &stmt, MPISel &iSel)
     }
 }
 
-void HandleIntrinCall(StmtNode &stmt, MPISel &iSel)
+static void HandleIntrinCall(StmtNode &stmt, MPISel &iSel)
 {
     auto &call = static_cast<IntrinsiccallNode &>(stmt);
     iSel.SelectIntrinsicCall(call);
 }
 
-void HandleReturn(StmtNode &stmt, MPISel &iSel)
+static void HandleReturn(StmtNode &stmt, MPISel &iSel)
 {
     CGFunc *cgFunc = iSel.GetCurFunc();
     auto &retNode = static_cast<NaryStmtNode &>(stmt);
@@ -227,12 +226,12 @@ void HandleReturn(StmtNode &stmt, MPISel &iSel)
     cgFunc->SetCurBB(*cgFunc->StartNewBB(retNode));
 }
 
-void HandleComment(StmtNode &stmt, MPISel &iSel)
+static void HandleComment(StmtNode &stmt, MPISel &iSel)
 {
     return;
 }
 
-void HandleIcall(StmtNode &stmt, MPISel &iSel)
+static void HandleIcall(StmtNode &stmt, MPISel &iSel)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_icall || stmt.GetOpCode() == OP_icallproto, "error");
     auto &iCallNode = static_cast<IcallNode &>(stmt);
@@ -240,7 +239,7 @@ void HandleIcall(StmtNode &stmt, MPISel &iSel)
     iSel.SelectCallCommon(stmt, iSel);
 }
 
-void HandleCall(StmtNode &stmt, MPISel &iSel)
+static void HandleCall(StmtNode &stmt, MPISel &iSel)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_call, "error");
     auto &callNode = static_cast<CallNode &>(stmt);
@@ -248,7 +247,7 @@ void HandleCall(StmtNode &stmt, MPISel &iSel)
     iSel.SelectCallCommon(stmt, iSel);
 }
 
-void HandleCondbr(StmtNode &stmt, MPISel &iSel)
+static void HandleCondbr(StmtNode &stmt, MPISel &iSel)
 {
     CGFunc *cgFunc = iSel.GetCurFunc();
     auto &condGotoNode = static_cast<CondGotoNode &>(stmt);
@@ -261,87 +260,82 @@ void HandleCondbr(StmtNode &stmt, MPISel &iSel)
     cgFunc->SetCurBB(*cgFunc->StartNewBB(condGotoNode));
 }
 
-Operand *HandleShift(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleShift(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectShift(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                             *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleCvt(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleCvt(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectCvt(parent, static_cast<TypeCvtNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
-Operand *HandleExtractBits(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleExtractBits(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectExtractbits(parent, static_cast<ExtractbitsNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
-Operand *HandleDread(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleDread(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     auto &dreadNode = static_cast<AddrofNode &>(expr);
     return iSel.SelectDread(parent, dreadNode);
 }
 
-Operand *HandleAdd(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleAdd(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectAdd(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                           *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleBior(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleBior(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectBior(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                            *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleBxor(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleBxor(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectBxor(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                            *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleSub(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleSub(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectSub(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                           *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleNeg(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
-{
-    return iSel.SelectNeg(static_cast<UnaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)), parent);
-}
-
-Operand *HandleDiv(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleDiv(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectDiv(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                           *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleRem(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleRem(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectRem(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                           *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleBand(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleBand(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectBand(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                            *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleMpy(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleMpy(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectMpy(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                           *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleTrunc(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleTrunc(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectCvt(parent, static_cast<TypeCvtNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
-Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     auto &constValNode = static_cast<ConstvalNode &>(expr);
     MIRConst *mirConst = constValNode.GetConstVal();
@@ -361,7 +355,7 @@ Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
     return nullptr;
 }
 
-Operand *HandleRegread(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleRegread(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     (void)parent;
     auto &regReadNode = static_cast<RegreadNode &>(expr);
@@ -372,29 +366,23 @@ Operand *HandleRegread(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
     return iSel.SelectRegread(regReadNode);
 }
 
-Operand *HandleIread(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleIread(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     auto &ireadNode = static_cast<IreadNode &>(expr);
     return iSel.SelectIread(parent, ireadNode);
 }
 
-Operand *HandleBnot(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleBnot(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectBnot(static_cast<UnaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
-Operand *HandleLnot(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleLnot(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectLnot(static_cast<UnaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
-Operand *HandleDepositBits(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
-{
-    return iSel.SelectDepositBits(static_cast<DepositbitsNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
-                                  *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
-}
-
-Operand *HandleCmp(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleCmp(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     // fix opnd type before select insn
     PrimType targetPtyp = parent.GetPrimType();
@@ -410,28 +398,28 @@ Operand *HandleCmp(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
                             *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleAbs(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleAbs(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectAbs(static_cast<UnaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
-Operand *HandleMin(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleMin(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectMin(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                           *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleMax(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleMax(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectMax(static_cast<BinaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)),
                           *iSel.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
-Operand *HandleRetype(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleRetype(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectRetype(static_cast<TypeCvtNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)));
 }
 
-Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     auto &intrinsicopNode = static_cast<IntrinsicopNode &>(expr);
     switch (intrinsicopNode.GetIntrinsic()) {
@@ -444,7 +432,7 @@ Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
     }
 }
 
-Operand *HandleSqrt(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
+static Operand *HandleSqrt(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 {
     return iSel.SelectSqrt(static_cast<UnaryNode &>(expr), *iSel.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
@@ -452,7 +440,7 @@ Operand *HandleSqrt(const BaseNode &parent, BaseNode &expr, MPISel &iSel)
 using HandleStmtFactory = FunctionFactory<Opcode, void, StmtNode &, MPISel &>;
 using HandleExprFactory = FunctionFactory<Opcode, maplebe::Operand *, const BaseNode &, BaseNode &, MPISel &>;
 namespace isel {
-void InitHandleStmtFactory()
+static void InitHandleStmtFactory()
 {
     RegisterFactoryFunction<HandleStmtFactory>(OP_label, HandleLabel);
     RegisterFactoryFunction<HandleStmtFactory>(OP_dassign, HandleDassign);
@@ -469,7 +457,7 @@ void InitHandleStmtFactory()
     RegisterFactoryFunction<HandleStmtFactory>(OP_brfalse, HandleCondbr);
     RegisterFactoryFunction<HandleStmtFactory>(OP_brtrue, HandleCondbr);
 }
-void InitHandleExprFactory()
+static void InitHandleExprFactory()
 {
     RegisterFactoryFunction<HandleExprFactory>(OP_dread, HandleDread);
     RegisterFactoryFunction<HandleExprFactory>(OP_add, HandleAdd);
@@ -1199,20 +1187,6 @@ Operand *MPISel::SelectIread(const BaseNode &parent, const IreadNode &expr, int 
     return &result;
 }
 
-Operand *MPISel::SelectIreadoff(const BaseNode &parent, const IreadoffNode &ireadoff)
-{
-    int32 offset = ireadoff.GetOffset();
-    PrimType primType = ireadoff.GetPrimType();
-    uint32 bitSize = GetPrimTypeBitSize(primType);
-
-    Operand *addrOpnd = HandleExpr(ireadoff, *ireadoff.Opnd(0));
-    RegOperand &addrOnReg = SelectCopy2Reg(*addrOpnd, PTY_a64);
-    MemOperand &memOpnd = cgFunc->GetOpndBuilder()->CreateMem(addrOnReg, offset, bitSize);
-    RegOperand &result = cgFunc->GetOpndBuilder()->CreateVReg(bitSize, cgFunc->GetRegTyFromPrimTy(primType));
-    SelectCopy(result, memOpnd, primType);
-    return &result;
-}
-
 static inline uint64 CreateDepositBitsImm1(uint32 primBitSize, uint8 bitOffset, uint8 bitSize)
 {
     /* $imm1 = 1(primBitSize - bitSize - bitOffset)0(bitSize)1(bitOffset) */
@@ -1537,7 +1511,6 @@ void MPISel::HandleFuncExit()
     cgFunc->SetLastBB(*cgFunc->GetCurBB());
     /* the last BB is return BB */
     cgFunc->GetLastBB()->SetKind(BB::kBBReturn);
-    cgFunc->SetCleanupBB(*cgFunc->GetCurBB()->GetPrev());
 }
 
 bool InstructionSelector::PhaseRun(maplebe::CGFunc &f)

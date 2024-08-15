@@ -20,18 +20,6 @@
 namespace maplebe {
 using namespace maple;
 
-/* external interface to look for pure float struct */
-uint32 AArch64CallConvImpl::FloatParamRegRequired(const MIRStructType &structType, uint32 &fpSize)
-{
-    PrimType baseType = PTY_begin;
-    size_t elemNum = 0;
-    if (!IsHomogeneousAggregates(structType, baseType, elemNum)) {
-        return 0;
-    }
-    fpSize = GetPrimTypeSize(baseType);
-    return static_cast<uint32>(elemNum);
-}
-
 static void AllocateHomogeneousAggregatesRegister(CCLocInfo &pLoc, std::vector<AArch64reg> &regList, uint32 maxRegNum,
                                                   PrimType baseType, uint32 allocNum, [[maybe_unused]] uint32 begin = 0)
 {

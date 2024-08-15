@@ -34,7 +34,6 @@ enum FixupKind : uint32 {
     kExceptFixup,
     kEhTypeDefFixup,
     kEhTypeUndefFixup,
-    kLSDAFixup,
     kFirstTargetFixupKind = 64, /* the kind in subclass start from 64 */
 };
 
@@ -420,7 +419,6 @@ public:
     void EmitInstructions(ObjFuncEmitInfo &objFuncEmitInfo, std::vector<uint32> &label2Offset);
     void EmitLocalFloatValue(ObjFuncEmitInfo &objFuncEmitInfo);
     void EmitFullLSDA(ObjFuncEmitInfo &objFuncEmitInfo, const std::vector<uint32> &label2Offset);
-    void EmitFastLSDA(ObjFuncEmitInfo &objFuncEmitInfo, const std::vector<uint32> &label2Offset);
     void EmitSwitchTable(ObjFuncEmitInfo &objFuncEmitInfo, const std::vector<uint32> &symbol2Offset);
     void WriteObjFile();
 

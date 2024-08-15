@@ -92,20 +92,20 @@ void MemRWNodeHelper::GetTrueMirInfo(const BECommon &beCommon)
     memSize = static_cast<uint32>(mirType->GetSize());
 }
 
-Operand *HandleDread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleDread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     auto &dreadNode = static_cast<AddrofNode &>(expr);
     return cgFunc.SelectDread(parent, dreadNode);
 }
 
-Operand *HandleRegread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleRegread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     (void)parent;
     auto &regReadNode = static_cast<RegreadNode &>(expr);
     return cgFunc.SelectRegread(regReadNode);
 }
 
-Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     auto &constValNode = static_cast<ConstvalNode &>(expr);
     MIRConst *mirConst = constValNode.GetConstVal();
@@ -124,78 +124,78 @@ Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
     return nullptr;
 }
 
-Operand *HandleAdd(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleAdd(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectAdd(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                             *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleShift(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleShift(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectShift(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                               *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleMpy(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleMpy(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectMpy(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                             *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleDiv(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleDiv(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectDiv(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                             *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleRem(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleRem(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectRem(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                             *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleIread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleIread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     auto &ireadNode = static_cast<IreadNode &>(expr);
     return cgFunc.SelectIread(parent, ireadNode);
 }
 
-Operand *HandleSub(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleSub(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectSub(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                             *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleBand(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleBand(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectBand(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                              *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleBior(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleBior(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectBior(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                              *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleBxor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleBxor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectBxor(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                              *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleAbs(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleAbs(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     (void)parent;
     return cgFunc.SelectAbs(static_cast<UnaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)));
 }
 
-Operand *HandleBnot(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleBnot(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectBnot(static_cast<UnaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
-Operand *HandleExtractBits(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleExtractBits(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     ExtractbitsNode &node = static_cast<ExtractbitsNode &>(expr);
     uint8 bitOffset = node.GetBitsOffset();
@@ -210,83 +210,56 @@ Operand *HandleExtractBits(const BaseNode &parent, BaseNode &expr, CGFunc &cgFun
                                     parent);
 }
 
-Operand *HandleDepositBits(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
-{
-    return cgFunc.SelectDepositBits(static_cast<DepositbitsNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
-                                    *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
-}
-
-Operand *HandleLnot(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleLnot(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectLnot(static_cast<UnaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
-Operand *HandleLand(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
-{
-    return cgFunc.SelectLand(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
-                             *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
-}
 
-Operand *HandleLor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
-{
-    if (parent.IsCondBr()) {
-        return cgFunc.SelectLor(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
-                                *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent, true);
-    } else {
-        return cgFunc.SelectLor(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
-                                *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
-    }
-}
-
-Operand *HandleMin(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleMin(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectMin(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                             *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleMax(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleMax(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectMax(static_cast<BinaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)),
                             *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleNeg(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
-{
-    return cgFunc.SelectNeg(static_cast<UnaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
-}
-
-Operand *HandleSqrt(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleSqrt(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectSqrt(static_cast<UnaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
-Operand *HandleCeil(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleCeil(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectCeil(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
-Operand *HandleFloor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleFloor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectFloor(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
-Operand *HandleRetype(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleRetype(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     (void)parent;
     return cgFunc.SelectRetype(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)));
 }
 
-Operand *HandleCvt(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleCvt(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectCvt(parent, static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)));
 }
 
-Operand *HandleTrunc(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleTrunc(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     return cgFunc.SelectTrunc(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 
-Operand *HandleCmp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleCmp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     // fix opnd type before select insn
     PrimType targetPtyp = parent.GetPrimType();
@@ -302,7 +275,7 @@ Operand *HandleCmp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
                               *cgFunc.HandleExpr(expr, *expr.Opnd(1)), parent);
 }
 
-Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
+static Operand *HandleIntrinOp(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     auto &intrinsicopNode = static_cast<IntrinsicopNode &>(expr);
     switch (intrinsicopNode.GetIntrinsic()) {
@@ -355,7 +328,7 @@ void InitHandleExprFactory()
     RegisterFactoryFunction<HandleExprFactory>(OP_intrinsicop, HandleIntrinOp);
 }
 
-void HandleLabel(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleLabel(StmtNode &stmt, CGFunc &cgFunc)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_label, "error");
     auto &label = static_cast<LabelNode &>(stmt);
@@ -368,9 +341,8 @@ void HandleLabel(StmtNode &stmt, CGFunc &cgFunc)
     cgFunc.SetCurBB(*newBB);
 }
 
-void HandleGoto(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleGoto(StmtNode &stmt, CGFunc &cgFunc)
 {
-    cgFunc.UpdateFrequency(stmt);
     auto &gotoNode = static_cast<GotoNode &>(stmt);
     cgFunc.SetCurBBKind(BB::kBBGoto);
     cgFunc.SelectGoto(gotoNode);
@@ -382,9 +354,8 @@ void HandleGoto(StmtNode &stmt, CGFunc &cgFunc)
     }
 }
 
-void HandleCondbr(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleCondbr(StmtNode &stmt, CGFunc &cgFunc)
 {
-    cgFunc.UpdateFrequency(stmt);
     auto &condGotoNode = static_cast<CondGotoNode &>(stmt);
     BaseNode *condNode = condGotoNode.Opnd(0);
     DEBUG_ASSERT(condNode != nullptr, "expect first operand of cond br");
@@ -468,9 +439,8 @@ void HandleCondbr(StmtNode &stmt, CGFunc &cgFunc)
     cgFunc.SetCurBB(*cgFunc.StartNewBB(condGotoNode));
 }
 
-void HandleReturn(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleReturn(StmtNode &stmt, CGFunc &cgFunc)
 {
-    cgFunc.UpdateFrequency(stmt);
     auto &retNode = static_cast<NaryStmtNode &>(stmt);
     DEBUG_ASSERT(retNode.NumOpnds() <= 1, "NYI return nodes number > 1");
     Operand *opnd = nullptr;
@@ -483,28 +453,26 @@ void HandleReturn(StmtNode &stmt, CGFunc &cgFunc)
     cgFunc.SetCurBB(*cgFunc.StartNewBB(retNode));
 }
 
-void HandleCall(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleCall(StmtNode &stmt, CGFunc &cgFunc)
 {
-    cgFunc.UpdateFrequency(stmt);
     auto &callNode = static_cast<CallNode &>(stmt);
     cgFunc.SelectCall(callNode);
 }
 
-void HandleICall(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleICall(StmtNode &stmt, CGFunc &cgFunc)
 {
-    cgFunc.UpdateFrequency(stmt);
     auto &icallNode = static_cast<IcallNode &>(stmt);
     cgFunc.GetCurBB()->SetHasCall();
     cgFunc.SelectIcall(icallNode);
 }
 
-void HandleIntrinsicCall(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleIntrinsicCall(StmtNode &stmt, CGFunc &cgFunc)
 {
     auto &call = static_cast<IntrinsiccallNode &>(stmt);
     cgFunc.SelectIntrinsicCall(call);
 }
 
-void HandleDassign(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleDassign(StmtNode &stmt, CGFunc &cgFunc)
 {
     auto &dassignNode = static_cast<DassignNode &>(stmt);
     DEBUG_ASSERT(dassignNode.GetOpCode() == OP_dassign, "expect dassign");
@@ -525,7 +493,7 @@ void HandleDassign(StmtNode &stmt, CGFunc &cgFunc)
     }
 }
 
-void HandleRegassign(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleRegassign(StmtNode &stmt, CGFunc &cgFunc)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_regassign, "expect regAssign");
     auto &regAssignNode = static_cast<RegassignNode &>(stmt);
@@ -542,7 +510,7 @@ void HandleRegassign(StmtNode &stmt, CGFunc &cgFunc)
     }
 }
 
-void HandleIassign(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleIassign(StmtNode &stmt, CGFunc &cgFunc)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_iassign, "expect stmt");
     auto &iassignNode = static_cast<IassignNode &>(stmt);
@@ -553,7 +521,7 @@ void HandleIassign(StmtNode &stmt, CGFunc &cgFunc)
     }
 }
 
-void HandleComment(StmtNode &stmt, CGFunc &cgFunc)
+static void HandleComment(StmtNode &stmt, CGFunc &cgFunc)
 {
     if (cgFunc.GetCG()->GenerateVerboseAsm() || cgFunc.GetCG()->GenerateVerboseCG()) {
         cgFunc.SelectComment(static_cast<CommentNode &>(stmt));
@@ -561,7 +529,7 @@ void HandleComment(StmtNode &stmt, CGFunc &cgFunc)
 }
 
 using HandleStmtFactory = FunctionFactory<Opcode, void, StmtNode &, CGFunc &>;
-void InitHandleStmtFactory()
+static void InitHandleStmtFactory()
 {
     RegisterFactoryFunction<HandleStmtFactory>(OP_label, HandleLabel);
     RegisterFactoryFunction<HandleStmtFactory>(OP_goto, HandleGoto);
@@ -594,8 +562,6 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
       vregsToPregsMap(std::less<regno_t>(), allocator.Adapter()),
       stackMapInsns(allocator.Adapter()),
       hasVLAOrAlloca(mirFunc.HasVlaOrAlloca()),
-      dbgParamCallFrameLocations(allocator.Adapter()),
-      dbgLocalCallFrameLocations(allocator.Adapter()),
       cg(&cg),
       mirModule(mod),
       memPool(&memPool),
@@ -608,7 +574,6 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
       beCommon(beCommon),
       funcScopeAllocator(&allocator),
       emitStVec(allocator.Adapter()),
-      lmbcParamVec(allocator.Adapter()),
       shortFuncName(mirFunc.GetName() + "." + std::to_string(funcId), &memPool)
 {
     mirModule.SetCurFunction(&func);
@@ -634,7 +599,6 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
         }
         new (&GetVirtualRegNodeFromPseudoRegIdx(i)) VirtualRegNode(GetRegTyFromPrimTy(primType), byteLen);
     }
-    firstCGGenLabelIdx = func.GetLabelTab()->GetLabelTableSize();
     lSymSize = 0;
     if (func.GetSymTab()) {
         lSymSize = func.GetSymTab()->GetSymbolTableSize();
@@ -701,11 +665,7 @@ void CGFunc::GenerateInstruction()
     BlockNode *block = func.GetBody();
     DEBUG_ASSERT(block != nullptr, "get func body block failed in CGFunc::GenerateInstruction");
     curBB->SetLastStmt(*block->GetLast());
-    curBB->SetFrequency(frequency);
     lastBB = curBB;
-    cleanupBB = lastBB->GetPrev();
-    /* All stmts are handled */
-    frequency = 0;
 }
 
 LabelIdx CGFunc::CreateLabel()
@@ -734,31 +694,13 @@ void CGFunc::GenerateCfiPrologEpilog()
     lastBB->AppendInsn(GetInsnBuilder()->BuildCfiInsn(cfi::OP_CFI_endproc));
 }
 
-void CGFunc::TraverseAndClearCatchMark(BB &bb)
-{
-    std::queue<BB *> allBBs;
-    allBBs.emplace(&bb);
-    while (!allBBs.empty()) {
-        BB *curBB = allBBs.front();
-        allBBs.pop();
-        /* has bb been visited */
-        if (curBB->GetInternalFlag3()) {
-            continue;
-        }
-        curBB->SetIsCatch(false);
-        curBB->SetInternalFlag3(1);
-        for (auto *succBB : curBB->GetSuccs()) {
-            allBBs.emplace(succBB);
-        }
-    }
-}
-
 void CGFunc::ProcessExitBBVec()
 {
     if (exitBBVec.empty()) {
-        LabelIdx newLabelIdx = CreateLabel();
-        BB *retBB = CreateNewBB(newLabelIdx, cleanupBB->IsUnreachable(), BB::kBBReturn, cleanupBB->GetFrequency());
-        cleanupBB->PrependBB(*retBB);
+        BB *retBB = CreateNewBB();
+        retBB->SetKind(BB::kBBReturn);
+        SetLab2BBMap(retBB->GetLabIdx(), *retBB);
+        GetLastBB()->PrependBB(*retBB);
         exitBBVec.emplace_back(retBB);
         return;
     }
@@ -805,15 +747,8 @@ void CGFunc::HandleFunction()
     /* select instruction */
     GenerateInstruction();
     /* merge multi return */
-    if (!func.GetModule()->IsCModule() || CGOptions::DoRetMerge() || CGOptions::OptimizeForSize()) {
-        MergeReturn();
-    }
+    MergeReturn();
     ProcessExitBBVec();
-    LmbcGenSaveSpForAlloca();
-
-    if (!func.GetModule()->IsCModule()) {
-        GenerateCleanupCode(*cleanupBB);
-    }
     GenSaveMethodInfoCode(*firstBB);
     /* build control flow graph */
     theCFG = memPool->New<CGCFG>(*this);
@@ -847,6 +782,7 @@ void CGFunc::DumpCFG() const
             }
             LogInfo::MapleLogger() << "]\n";
         }
+#ifdef ARK_LITECG_DEBUG
         const StmtNode *stmt = bb->GetFirstStmt();
         if (stmt != nullptr) {
             bool done = false;
@@ -859,6 +795,7 @@ void CGFunc::DumpCFG() const
         } else {
             LogInfo::MapleLogger() << "<empty BB>\n";
         }
+#endif
     }
 }
 

@@ -29,8 +29,6 @@ enum SpecialReg : signed int {
     kSregSp = 1,
     kSregFp = 2,
     kSregGp = 3,
-    kSregThrownval = 4,
-    kSregMethodhdl = 5,
     kSregRetval0 = 6,
     kSregRetval1 = 7,
     kSregRetval2 = 8,
@@ -128,8 +126,6 @@ public:
         specPregTable[kSregSp].SetPregNo(-kSregSp);
         specPregTable[kSregFp].SetPregNo(-kSregFp);
         specPregTable[kSregGp].SetPregNo(-kSregGp);
-        specPregTable[kSregThrownval].SetPregNo(-kSregThrownval);
-        specPregTable[kSregMethodhdl].SetPregNo(-kSregMethodhdl);
         specPregTable[kSregRetval0].SetPregNo(-kSregRetval0);
         specPregTable[kSregRetval1].SetPregNo(-kSregRetval1);
         for (uint32 i = 0; i < kSregLast; ++i) {
@@ -169,7 +165,7 @@ public:
         auto it = pregNoToPregIdxMap.find(pregNo);
         return (it == pregNoToPregIdxMap.end()) ? PregIdx(0) : it->second;
     }
-
+#ifdef ARK_LITECG_DEBUG
     void DumpPregsWithTypes(int32 indent)
     {
         MapleVector<MIRPreg *> &pregtable = pregTable;
@@ -187,7 +183,7 @@ public:
             LogInfo::MapleLogger() << "\n";
         }
     }
-
+#endif
     size_t Size() const
     {
         return pregTable.size();

@@ -22,6 +22,7 @@
 
 namespace maplebe {
 
+#ifdef ARK_LITECG_DEBUG
 void A64OpndEmitVisitor::EmitIntReg(const RegOperand &v, uint8 opndSz)
 {
     CHECK_FATAL(v.GetRegisterType() == kRegTyInt, "wrong Type");
@@ -309,7 +310,7 @@ void A64OpndEmitVisitor::Visit(StImmOperand *v)
     const MIRSymbol *symbol = v->GetSymbol();
     const bool isThreadLocal = symbol->IsThreadLocal();
     const bool isLiteralLow12 = opndProp->IsLiteralLow12();
-    const bool hasGotEntry = CGOptions::IsPIC() && symbol->NeedPIC();
+    const bool hasGotEntry = false;
     bool hasPrefix = false;
     if (isThreadLocal) {
         (void)emitter.Emit(":tlsdesc");
@@ -381,9 +382,7 @@ void A64OpndEmitVisitor::Visit(OfstOperand *v)
     }
     const MIRSymbol *symbol = v->GetSymbol();
     CHECK_NULL_FATAL(symbol);
-    if (CGOptions::IsPIC() && symbol->NeedPIC()) {
-        (void)emitter.Emit("#:got_lo12:" + symbol->GetName());
-    } else if (symbol->GetStorageClass() == kScPstatic && symbol->GetSKind() != kStConst && symbol->IsLocal()) {
+    if (symbol->GetStorageClass() == kScPstatic && symbol->GetSKind() != kStConst && symbol->IsLocal()) {
         CHECK_NULL_FATAL(emitter.GetCG()->GetMIRModule()->CurFunction());
         (void)emitter.Emit(symbol->GetName() +
                            std::to_string(emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx()));
@@ -423,9 +422,11 @@ void A64OpndEmitVisitor::EmitVectorOperand(const RegOperand &v)
         (void)emitter.Emit("." + width + "[" + std::to_string(lanePos) + "]");
     }
 }
+#endif
 
 void A64OpndDumpVisitor::Visit(RegOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     std::array<const std::string, kRegTyLast> prims = {"U", "R", "V", "C", "X", "Vra"};
     std::array<const std::string, kRegTyLast> classes = {"[U]", "[I]", "[F]", "[CC]", "[X87]", "[Vra]"};
     uint32 regType = v->GetRegisterType();
@@ -443,15 +444,19 @@ void A64OpndDumpVisitor::Visit(RegOperand *v)
         LogInfo::MapleLogger() << " Vb: [" << vb << "]";
     }
     LogInfo::MapleLogger() << " Sz: [" << v->GetSize() << "]";
+#endif
 }
 
 void A64OpndDumpVisitor::Visit(ImmOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "imm:" << v->GetValue();
+#endif
 }
 
 void A64OpndDumpVisitor::Visit(MemOperand *a64v)
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "Mem:";
     LogInfo::MapleLogger() << " size:" << a64v->GetSize() << " ";
     LogInfo::MapleLogger() << " isStack:" << a64v->IsStackMem() << "-" << a64v->IsStackArgMem() << " ";
@@ -509,28 +514,36 @@ void A64OpndDumpVisitor::Visit(MemOperand *a64v)
             DEBUG_ASSERT(false, "error memoperand dump");
             break;
     }
+#endif
 }
 
 void A64OpndDumpVisitor::Visit(CondOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "CC: " << CondOperand::ccStrs[v->GetCode()];
+#endif
 }
 void A64OpndDumpVisitor::Visit(StImmOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << v->GetName();
     LogInfo::MapleLogger() << "+offset:" << v->GetOffset();
+#endif
 }
 void A64OpndDumpVisitor::Visit(BitShiftOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     BitShiftOperand::ShiftOp shiftOp = v->GetShiftOp();
     uint32 shiftAmount = v->GetShiftAmount();
     LogInfo::MapleLogger() << ((shiftOp == BitShiftOperand::kLSL)
                                    ? "LSL: "
                                    : ((shiftOp == BitShiftOperand::kLSR) ? "LSR: " : "ASR: "));
     LogInfo::MapleLogger() << shiftAmount;
+#endif
 }
 void A64OpndDumpVisitor::Visit(ExtendShiftOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     auto dumpExtendShift = [v](const std::string &extendKind) -> void {
         LogInfo::MapleLogger() << extendKind;
         if (v->GetShiftAmount() != 0) {
@@ -566,37 +579,49 @@ void A64OpndDumpVisitor::Visit(ExtendShiftOperand *v)
             DEBUG_ASSERT(false, "should not be here");
             break;
     }
+#endif
 }
 void A64OpndDumpVisitor::Visit(LabelOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "label:" << v->GetLabelIndex();
+#endif
 }
 void A64OpndDumpVisitor::Visit(FuncNameOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "func :" << v->GetName();
+#endif
 }
 void A64OpndDumpVisitor::Visit(CommentOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << " #" << v->GetComment();
+#endif
 }
 void A64OpndDumpVisitor::Visit(PhiOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     auto &phiList = v->GetOperands();
     for (auto it = phiList.begin(); it != phiList.end();) {
         Visit(it->second);
         LogInfo::MapleLogger() << " fBB<" << it->first << ">";
         LogInfo::MapleLogger() << (++it == phiList.end() ? "" : " ,");
     }
+#endif
 }
 void A64OpndDumpVisitor::Visit(ListOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     auto &opndList = v->GetOperands();
     for (auto it = opndList.begin(); it != opndList.end();) {
         Visit(*it);
         LogInfo::MapleLogger() << (++it == opndList.end() ? "" : " ,");
     }
+#endif
 }
 
+#ifdef ARK_LITECG_DEBUG
 void A64OpndEmitVisitor::Visit(const MIRSymbol &symbol, int64 offset)
 {
     CHECK_FATAL(opndProp != nullptr, "opndProp is nullptr in  StImmOperand::Emit");
@@ -631,4 +656,5 @@ void A64OpndEmitVisitor::Visit(const MIRSymbol &symbol, int64 offset)
         (void)emitter.Emit("+" + std::to_string(offset));
     }
 }
+#endif
 } /* namespace maplebe */

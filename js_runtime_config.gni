@@ -34,6 +34,8 @@ declare_args() {
   enable_jit_code_sign = false
   disable_fort_switch = false
 
+  enable_litecg_emit = false
+
   is_qemu_runtime = false
 
   TARGET = "x86_64"

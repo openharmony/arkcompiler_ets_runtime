@@ -75,7 +75,6 @@ private:
     /* For Emit */
     void EmitGlobalInfo(MIRModule &m) const;
     void EmitDuplicatedAsmFunc(MIRModule &m) const;
-    void EmitDebugInfo(const MIRModule &m) const;
     bool IsFramework(MIRModule &m) const;
     void SweepUnusedStaticSymbol(MIRModule &m);
 

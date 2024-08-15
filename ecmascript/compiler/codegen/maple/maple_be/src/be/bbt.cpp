@@ -15,7 +15,7 @@
 
 #include "bbt.h"
 namespace maplebe {
-#if DEBUG
+#if DEBUG && defined(ARK_LITECG_DEBUG)
 void BBT::Dump(const MIRModule &mod) const
 {
     if (IsTry()) {

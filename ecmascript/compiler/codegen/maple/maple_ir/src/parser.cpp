@@ -32,12 +32,10 @@ using namespace maple;
 constexpr char kLexerStringSp[] = "SP";
 constexpr char kLexerStringFp[] = "FP";
 constexpr char kLexerStringGp[] = "GP";
-constexpr char kLexerStringThrownval[] = "thrownval";
 constexpr char kLexerStringRetval[] = "retval";
 const std::map<std::string, SpecialReg> pregMapIdx = {{kLexerStringSp, kSregSp},
                                                       {kLexerStringFp, kSregFp},
                                                       {kLexerStringGp, kSregGp},
-                                                      {kLexerStringThrownval, kSregThrownval},
                                                       {kLexerStringRetval, kSregRetval0}};
 
 const std::map<TokenKind, PragmaKind> tkPragmaKind = {{TK_class, kPragmaClass},

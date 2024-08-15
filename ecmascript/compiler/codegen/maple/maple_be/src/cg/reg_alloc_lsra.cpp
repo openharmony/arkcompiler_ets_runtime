@@ -2250,14 +2250,8 @@ void LSRALinearScanRegAllocator::CollectDeoptInfo()
 
 void LSRALinearScanRegAllocator::SetAllocMode()
 {
-    if (CGOptions::IsFastAlloc()) {
-        if (CGOptions::GetFastAllocMode() == 0) {
-            fastAlloc = true;
-        } else {
-            spillAll = true;
-        }
-        /* In-Range spill range can still be specified (only works with --dump-func=). */
-    } else if (cgFunc->NumBBs() > CGOptions::GetLSRABBOptSize()) {
+    /* In-Range spill range can still be specified (only works with --dump-func=). */
+    if (cgFunc->NumBBs() > CGOptions::GetLSRABBOptSize()) {
         /* instruction size is checked in ComputeLieveInterval() */
         fastAlloc = true;
     }

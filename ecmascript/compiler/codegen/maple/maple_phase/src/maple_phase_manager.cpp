@@ -59,9 +59,11 @@ void AnalysisDataManager::EraseAnalysisPhase(uint32 phaseKey, MaplePhaseID pid)
 // Erase all safely
 void AnalysisDataManager::EraseAllAnalysisPhase()
 {
+#ifdef ARK_LITECG_DEBUG
     for (auto it = availableAnalysisPhases.begin(); it != availableAnalysisPhases.end();) {
         EraseAnalysisPhase(it);
     }
+#endif
 }
 
 // Erase safely
@@ -139,6 +141,7 @@ bool AnalysisDataManager::IsAnalysisPhaseAvailable(uint32 phaseKey, MaplePhaseID
 
 void AnalysisDataManager::Dump()
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "availableAnalysisPhases: \n";
     for (auto &it : availableAnalysisPhases) {
         LogInfo::MapleLogger()
@@ -153,6 +156,7 @@ void AnalysisDataManager::Dump()
             << MaplePhaseRegister::GetMaplePhaseRegister()->GetPhaseByID(it.first.second)->PhaseName()
             << "> : " << it.second << "\n";
     }
+#endif
 }
 
 void MaplePhaseManager::AddPhase(const std::string &phaseName, bool condition)
@@ -175,9 +179,11 @@ void MaplePhaseManager::AddPhase(const std::string &phaseName, bool condition)
 
 void MaplePhaseManager::DumpPhaseTime()
 {
+#ifdef ARK_LITECG_DEBUG
     if (phaseTh != nullptr) {
         phaseTh->DumpPhasesTime();
     }
+#endif
 }
 
 void MaplePhaseManager::SolveSkipFrom(const std::string &phaseName, size_t &i)
@@ -267,9 +273,11 @@ bool MaplePhaseManager::RunTransformPhase(const MaplePhaseInfo &phaseInfo, Analy
     phase->SetAnalysisInfoHook(transformPhaseMempool->New<AnalysisInfoHook>(*(transformPhaseMempool.get()), adm, this));
     RunDependentPhase<phaseT, IRTemplate>(*phase, adm, irUnit, lev + 1);
     if (phaseTh != nullptr) {
+#ifdef ARK_LITECG_DEBUG
         phaseTh->RunBeforePhase(phaseInfo);
         result = phase->PhaseRun(irUnit);
         phaseTh->RunAfterPhase(phaseInfo);
+#endif
     } else {
         result = phase->PhaseRun(irUnit);
     }
@@ -293,9 +301,11 @@ bool MaplePhaseManager::RunAnalysisPhase(const MaplePhaseInfo &phaseInfo, Analys
     phase->SetAnalysisInfoHook(anasPhaseMempool->New<AnalysisInfoHook>(*anasPhaseMempool, adm, this));
     RunDependentPhase<phaseT, IRTemplate>(*phase, adm, irUnit, lev + 1);
     if (phaseTh != nullptr) {
+#ifdef ARK_LITECG_DEBUG
         phaseTh->RunBeforePhase(phaseInfo);
         result = phase->PhaseRun(irUnit);
         phaseTh->RunAfterPhase(phaseInfo);
+#endif
     } else {
         result = phase->PhaseRun(irUnit);
     }
