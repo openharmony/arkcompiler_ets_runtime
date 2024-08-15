@@ -230,7 +230,8 @@ ARK_INLINE JSTaggedValue ICRuntimeStub::StoreICWithHandler(JSThread *thread, JST
         bool isShared = HandlerBase::IsStoreShared(handlerInfo);
         if (isShared) {
             SharedFieldType fieldType { HandlerBase::GetFieldType(handlerInfo) };
-            if (!ClassHelper::MatchFieldType(fieldType, value)) {
+            bool hasAccessor = HandlerBase::IsAccessor(handlerInfo);
+            if (!hasAccessor && !ClassHelper::MatchFieldType(fieldType, value)) {
                 THROW_TYPE_ERROR_AND_RETURN((thread), GET_MESSAGE_STRING(SetTypeMismatchedSharedProperty),
                                             JSTaggedValue::Exception());
             }
