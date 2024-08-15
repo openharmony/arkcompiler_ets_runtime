@@ -169,7 +169,12 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
             hotnessThreshold_ = options.GetJitHotnessThreshold();
             initJitCompiler_(options);
             bool enableCodeSign = !ohos::JitTools::GetCodeSignDisable(options.GetDisableCodeSign());
-            JitTaskpool::GetCurrentTaskpool()->Initialize(enableCodeSign);
+            bool shouldCompileMain =
+                options.IsEnableForceJitCompileMain() || options.IsEnableForceBaselineCompileMain();
+            if (enableCodeSign && shouldCompileMain) {
+                JitFort::InitJitFortResource();
+            }
+            JitTaskpool::GetCurrentTaskpool()->Initialize(enableCodeSign && !shouldCompileMain);
         }
     }
 }

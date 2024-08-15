@@ -85,7 +85,7 @@ public:
     static bool GetCodeSignDisable(bool value)
     {
     #ifdef CODE_SIGN_ENABLE
-        return OHOS::system::GetBoolParameter("persist.ark.jit.codesign.disable", true);
+        return OHOS::system::GetBoolParameter("persist.ark.jit.codesign.disable", false);
     #endif
         return value;
     }
@@ -93,7 +93,7 @@ public:
     static bool GetEnableJitFort(bool value)
     {
     #ifdef GET_PARAMETER_FOR_JIT
-        return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitfort", false);
+        return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitfort", true);
     #endif
         return value;
     }

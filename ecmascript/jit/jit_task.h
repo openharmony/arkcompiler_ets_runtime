@@ -65,15 +65,15 @@ public:
         }
     }
 
-    void Initialize(bool enableCodeSign)
+    void Initialize(bool needInitJitFort)
     {
-        Taskpool::Initialize(0, [enableCodeSign](os::thread::native_handle_type thread) {
+        Taskpool::Initialize(0, [needInitJitFort](os::thread::native_handle_type thread) {
             os::thread::SetThreadName(thread, "OS_JIT_Thread");
             constexpr int32_t priorityVal = 5; // 5: The priority can be set within range [-20, 19]
             os::thread::SetPriority(os::thread::GetCurrentThreadId(), priorityVal);
             auto jitVm = JitVM::Create();
             JitTaskpool::GetCurrentTaskpool()->SetCompilerVm(jitVm);
-            if (enableCodeSign) {
+            if (needInitJitFort) {
                 JitFort::InitJitFortResource();
             }
         }, []([[maybe_unused]] os::thread::native_handle_type thread) {
