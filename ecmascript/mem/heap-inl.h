@@ -794,7 +794,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, hclass, size);
     }
-    TaggedObject *object =
+    TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
@@ -817,7 +817,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, size);
     }
-    TaggedObject *object =
+    TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
