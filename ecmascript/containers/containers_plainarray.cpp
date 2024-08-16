@@ -554,7 +554,7 @@ JSTaggedValue ContainersPlainArray::GetSize(EcmaRuntimeCallInfo *argv)
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
-                                                                "The getSize method cannot be bound");
+                                                                "The getLength method cannot be bound");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }

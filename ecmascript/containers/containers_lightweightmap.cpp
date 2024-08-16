@@ -63,7 +63,7 @@ JSTaggedValue ContainersLightWeightMap::Length(EcmaRuntimeCallInfo *argv)
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
-                                                                "The length method cannot be bound");
+                                                                "The getLength method cannot be bound");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
@@ -172,16 +172,21 @@ JSTaggedValue ContainersLightWeightMap::IncreaseCapacityTo(EcmaRuntimeCallInfo *
 
     JSHandle<JSTaggedValue> index(GetCallArg(argv, 0));
 
+    // for case like Math.foor(1.3), it gives double 1.0;
+    if (index->IsDouble()) {
+        index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
+    }
+
     if (!index->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, index);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"minimumCapacity\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"minimumCapacity\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
     JSAPILightWeightMap::IncreaseCapacityTo(thread, JSHandle<JSAPILightWeightMap>::Cast(self),
-                                            index.GetTaggedValue().GetInt());
+                                            index->GetInt());
 
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue::Undefined();
