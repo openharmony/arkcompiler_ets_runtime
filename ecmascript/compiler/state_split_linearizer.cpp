@@ -204,9 +204,6 @@ public:
                 ASSERT(replacement_.State() != Circuit::NullGate());
                 replacement_ = lowering.LowerConvert(replacement_, gate);
                 break;
-            case OpCode::LOAD_GETTER:
-            case OpCode::LOAD_SETTER:
-                return;
             default:
                 break;
         }
