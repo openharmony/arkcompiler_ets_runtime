@@ -170,6 +170,7 @@ private:
     void JSCallJSFunction(Label *exit, Label *noNeedCheckException = nullptr);
     void JSFastAotCall(Label *exit);
     void JSSlowAotCall(Label *exit);
+    GateRef CallConstructorBridge(const int idxForAot, const std::vector<GateRef> &argsForAot);
     void CallBridge(GateRef code, GateRef expectedNum, Label *exit);
     void JSCallAsmInterpreter(bool hasBaselineCode, Label *methodNotAot, Label *exit, Label *noNeedCheckException);
 

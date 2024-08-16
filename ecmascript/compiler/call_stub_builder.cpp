@@ -304,6 +304,27 @@ void CallStubBuilder::JSSlowAotCall(Label *exit)
     }
 }
 
+GateRef CallStubBuilder::CallConstructorBridge(const int idxForAot, const std::vector<GateRef> &argsForAot)
+{
+    GateRef ret;
+    switch (callArgs_.mode) {
+        case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
+        case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
+            ret = CallNGCRuntime(glue_, idxForAot, argsForAot);
+            ret = ConstructorCheck(glue_, func_, ret, callArgs_.callConstructorArgs.thisObj);
+            break;
+        case JSCallMode::SUPER_CALL_WITH_ARGV:
+        case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
+            ret = CallNGCRuntime(glue_, idxForAot, argsForAot, hir_);
+            ret = ConstructorCheck(glue_, func_, ret, callArgs_.superCallArgs.thisObj);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    return ret;
+}
+
 void CallStubBuilder::CallBridge(GateRef code, GateRef expectedNum, Label *exit)
 {
     int idxForAot = PrepareIdxForAot();
@@ -343,12 +364,9 @@ void CallStubBuilder::CallBridge(GateRef code, GateRef expectedNum, Label *exit)
             break;
         case JSCallMode::CALL_CONSTRUCTOR_WITH_ARGV:
         case JSCallMode::DEPRECATED_CALL_CONSTRUCTOR_WITH_ARGV:
-            ret = CallNGCRuntime(glue_, idxForAot, argsForAot);
-            ret = ConstructorCheck(glue_, func_, ret, callArgs_.callConstructorArgs.thisObj);
-            break;
         case JSCallMode::SUPER_CALL_WITH_ARGV:
         case JSCallMode::SUPER_CALL_SPREAD_WITH_ARGV:
-            ret = CallNGCRuntime(glue_, idxForAot, argsForAot, hir_);
+            ret = CallConstructorBridge(idxForAot, argsForAot);
             break;
         default:
             LOG_ECMA(FATAL) << "this branch is unreachable";

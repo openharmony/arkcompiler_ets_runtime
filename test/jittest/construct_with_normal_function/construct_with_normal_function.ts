@@ -31,3 +31,20 @@ for (let v25 = 0; v25 < 10; v25++) {
 }
 
 print("execute successful.");
+
+function Base() {
+    if (!new.target) { throw 'must be called with new'; }
+    this.c = 1;
+}
+
+function test() {
+    class Son extends Base {
+        #c = Int32Array;
+    }
+    new Son()
+}
+
+for (let i = 0; i < 4000; i++) {
+    test()
+}
+print("execute successful.")
