@@ -87,8 +87,12 @@ SharedHeap *SharedHeap::instance_ = nullptr;
 void SharedHeap::CreateNewInstance()
 {
     ASSERT(instance_ == nullptr);
+    size_t heapShared = 0;
+#if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
+    heapShared = OHOS::system::GetUintParameter<size_t>("persist.ark.heap.sharedsize", 0) * 1_MB;
+#endif
     EcmaParamConfiguration config(EcmaParamConfiguration::HeapType::SHARED_HEAP,
-        MemMapAllocator::GetInstance()->GetCapacity());
+        MemMapAllocator::GetInstance()->GetCapacity(), heapShared);
     instance_ = new SharedHeap(config);
 }
 
