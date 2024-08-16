@@ -163,9 +163,7 @@ bool JsonStringifier::CalculateNumberGap(JSTaggedValue gap)
     int num = static_cast<int>(numValue);
     if (num > 0) {
         int gapLength = std::min(num, GAP_MAX_LEN);
-        for (int i = 0; i < gapLength; i++) {
-            gap_ += " ";
-        }
+        gap_.append(gapLength, ' ');
         gap_.append("\0");
     }
     return true;
@@ -184,8 +182,7 @@ bool JsonStringifier::CalculateStringGap(const JSHandle<EcmaString> &primString)
                 gapLength = GAP_MAX_LEN;
             }
         }
-        CString str = gapString.substr(0, gapLength);
-        gap_ += str;
+        gap_.append(gapString.c_str(), gapLength);
         gap_.append("\0");
     }
     return true;
@@ -318,8 +315,7 @@ JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValu
                 auto string = JSHandle<EcmaString>(thread_,
                     EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle));
                 CString str = ConvertToString(*string, StringConvertedUsage::LOGICOPERATION);
-                str = JsonHelper::ValueToQuotedString(str);
-                result_ += str;
+                JsonHelper::AppendValueToQuotedString(str, result_);
                 return tagValue;
             }
             case JSType::JS_PRIMITIVE_REF: {
@@ -385,8 +381,7 @@ void JsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &key, boo
         str = ConvertToString(*JSTaggedValue::ToString(thread_, key), StringConvertedUsage::LOGICOPERATION);
     }
     result_ += stepBegin;
-    str = JsonHelper::ValueToQuotedString(str);
-    result_ += str;
+    JsonHelper::AppendValueToQuotedString(str, result_);
     result_ += ":";
     result_ += stepEnd;
 }
@@ -609,8 +604,7 @@ void JsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &primi
         auto priStr = JSTaggedValue::ToString(thread_, primitiveRef);
         RETURN_IF_ABRUPT_COMPLETION(thread_);
         CString str = ConvertToString(*priStr, StringConvertedUsage::LOGICOPERATION);
-        str = JsonHelper::ValueToQuotedString(str);
-        result_ += str;
+        JsonHelper::AppendValueToQuotedString(str, result_);
     } else if (primitive.IsNumber()) {
         auto priNum = JSTaggedValue::ToNumber(thread_, primitiveRef);
         RETURN_IF_ABRUPT_COMPLETION(thread_);

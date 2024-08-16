@@ -21,6 +21,10 @@
 #include "ecmascript/property_attributes.h"
 
 namespace panda::ecmascript::base {
+constexpr int HEX_DIGIT_MASK = 0xF;
+constexpr int HEX_SHIFT_THREE = 12;
+constexpr int HEX_SHIFT_TWO = 8;
+constexpr int HEX_SHIFT_ONE = 4;
 
 class JsonHelper {
 public:
@@ -58,9 +62,18 @@ public:
         return type == TransformType::SENDABLE || type == TransformType::BIGINT;
     }
 
-    static CString ValueToQuotedString(CString str);
+    static inline void AppendUnicodeEscape(int ch, CString& output)
+    {
+        static constexpr char HEX_DIGIT[] = "0123456789abcdef";
+        output += "\\u";
+        output += HEX_DIGIT[(ch >> HEX_SHIFT_THREE) & HEX_DIGIT_MASK];
+        output += HEX_DIGIT[(ch >> HEX_SHIFT_TWO) & HEX_DIGIT_MASK];
+        output += HEX_DIGIT[(ch >> HEX_SHIFT_ONE) & HEX_DIGIT_MASK];
+        output += HEX_DIGIT[ch & HEX_DIGIT_MASK];
+    }
 
-    static bool IsFastValueToQuotedString(const char *value);
+    static bool IsFastValueToQuotedString(const CString& str);
+    static void AppendValueToQuotedString(const CString& str, CString& output);
 
     static inline bool CompareKey(const std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> &a,
                                   const std::pair<JSHandle<JSTaggedValue>, PropertyAttributes> &b)
