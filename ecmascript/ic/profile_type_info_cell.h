@@ -21,7 +21,6 @@
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_dictionary.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/visitor.h"
@@ -34,8 +33,7 @@ public:
 
     static constexpr size_t VALUE_OFFSET = TaggedObjectSize();
     ACCESSORS(Value, VALUE_OFFSET, MACHINE_CODE_OFFSET);
-    ACCESSORS(MachineCode, MACHINE_CODE_OFFSET, EXTRA_INFO_MAP_OFFSET);
-    ACCESSORS(ExtraInfoMap, EXTRA_INFO_MAP_OFFSET, HANDLE_OFFSET);
+    ACCESSORS(MachineCode, MACHINE_CODE_OFFSET, HANDLE_OFFSET);
     ACCESSORS(Handle, HANDLE_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
 
@@ -61,34 +59,6 @@ public:
         }
     }
 
-    static JSHandle<NumberDictionary> CreateOrGetExtraInfoMap(const JSThread *thread,
-                                                              JSHandle<ProfileTypeInfoCell> profileTypeInfoCell)
-    {
-        if (profileTypeInfoCell->GetExtraInfoMap().IsUndefined()) {
-            JSHandle<NumberDictionary> dictJShandle = NumberDictionary::Create(thread);
-            profileTypeInfoCell->SetExtraInfoMap(thread, dictJShandle);
-            return dictJShandle;
-        }
-        JSHandle<NumberDictionary> dictJShandle(thread, profileTypeInfoCell->GetExtraInfoMap());
-        return dictJShandle;
-    }
-
-    static void UpdateExtraInfoMap(const JSThread *thread, JSHandle<NumberDictionary> dictJShandle,
-                            JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> receiverHClassHandle,
-                            JSHandle<JSTaggedValue> holderHClassHandle,
-                            JSHandle<ProfileTypeInfoCell> profileTypeInfoCell)
-    {
-        JSHandle<JSTaggedValue> info(thread->GetEcmaVM()->GetFactory()->NewExtraProfileTypeInfo());
-        JSHandle<ExtraProfileTypeInfo> infoHandle(info);
-        infoHandle->SetReceiver(thread, receiverHClassHandle.GetTaggedValue().CreateAndGetWeakRef());
-        infoHandle->SetHolder(thread, holderHClassHandle.GetTaggedValue());
-        JSHandle<NumberDictionary> dict = NumberDictionary::PutIfAbsent(thread,
-                                                                        dictJShandle,
-                                                                        key,
-                                                                        info,
-                                                                        PropertyAttributes::Default());
-        profileTypeInfoCell->SetExtraInfoMap(thread, dict);
-    }
     DECL_DUMP()
 };
 

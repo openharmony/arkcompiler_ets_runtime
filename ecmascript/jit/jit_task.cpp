@@ -103,7 +103,7 @@ void JitTask::InstallOsrCode(JSHandle<MachineCode> &codeObj)
     jsFunction_->SetIsCompiledFastCall(funcEntryDes->isFastCall_);
     JSHandle<ProfileTypeInfo> profileInfoHandle =
         JSHandle<ProfileTypeInfo>::Cast(JSHandle<JSTaggedValue>(hostThread_, profile));
-    uint32_t slotId = profileInfoHandle->GetIcSlotAndOsrLength() - 1; // 1 : get last slot
+    uint32_t slotId = profileInfoHandle->GetIcSlotToOsrLength() - 1; // 1 : get last slot
     auto profileData = profileInfoHandle->Get(slotId);
     auto factory = hostThread_->GetEcmaVM()->GetFactory();
     if (!profileData.IsTaggedArray()) {

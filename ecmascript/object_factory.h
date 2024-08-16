@@ -182,9 +182,6 @@ class VTable;
 namespace kungfu {
 class TSHClassGenerator;
 }  // namespace kungfu
-namespace pgo {
-class ExtraProfileTypeInfo;
-}
 
 enum class CompletionRecordType : uint8_t;
 enum class PrimitiveType : uint8_t;

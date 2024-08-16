@@ -2385,8 +2385,6 @@ GateRef NewObjectStubBuilder::NewProfileTypeInfoCell(GateRef glue, GateRef value
     Store(VariableType::JS_POINTER(), glue, *result, machineCodeOffset, Hole());
     GateRef handleOffset = IntPtr(ProfileTypeInfoCell::HANDLE_OFFSET);
     Store(VariableType::JS_POINTER(), glue, *result, handleOffset, Undefined());
-    GateRef extraInfoMapOffset = IntPtr(ProfileTypeInfoCell::EXTRA_INFO_MAP_OFFSET);
-    Store(VariableType::JS_POINTER(), glue, *result, extraInfoMapOffset, Undefined());
 
     auto ret = *result;
     env->SubCfgExit();

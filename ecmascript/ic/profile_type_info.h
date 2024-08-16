@@ -18,6 +18,7 @@
 
 #include "ecmascript/js_function.h"
 #include "ecmascript/tagged_array.h"
+#include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
 enum class ICKind : uint32_t {
@@ -119,7 +120,8 @@ public:
     static constexpr uint32_t MAX_SLOT_INDEX = 0xFFFF;
     static constexpr size_t BIT_FIELD_INDEX = 2;
     static constexpr size_t JIT_OSR_INDEX = 3;
-    static constexpr size_t RESERVED_LENGTH = JIT_OSR_INDEX;
+    static constexpr size_t EXTRA_MAP_INFO_INDEX = 4;
+    static constexpr size_t RESERVED_LENGTH = EXTRA_MAP_INFO_INDEX;
     static constexpr size_t INITIAL_PERIOD_INDEX = 0;
     static constexpr size_t PRE_DUMP_PERIOD_INDEX = 1;
     static constexpr size_t DUMP_PERIOD_INDEX = 2;
@@ -154,7 +156,7 @@ public:
         return GetLength() - RESERVED_LENGTH;
     }
 
-    inline uint32_t GetIcSlotAndOsrLength() const
+    inline uint32_t GetIcSlotToOsrLength() const
     {
         return GetLength() - BIT_FIELD_INDEX;
     }
@@ -200,9 +202,14 @@ public:
         SetLength(icSlotSize + RESERVED_LENGTH);
         SetExtraLength(extraLength);
         SetPrimitiveOfSlot(initValue, icSlotSize);
+        // the last-1 of the cache is used to save extra info map
+        Barriers::SetPrimitive<JSTaggedType>(
+            GetData(), GetIcSlotLength() * JSTaggedValue::TaggedTypeSize(),
+            JSTaggedValue::Undefined().GetRawData());
         // the last of the cache is used to save osr jit tagged array
         Barriers::SetPrimitive<JSTaggedType>(
-            GetData(), icSlotSize * JSTaggedValue::TaggedTypeSize(), JSTaggedValue::Undefined().GetRawData());
+            GetData(), (GetIcSlotLength() + 1) * JSTaggedValue::TaggedTypeSize(),
+            JSTaggedValue::Undefined().GetRawData());
         SetSpecialValue();
     }
 
@@ -224,6 +231,17 @@ public:
     bool IsProfileTypeInfoWithBigMethod() const
     {
         return GetPeriodIndex() == BIG_METHOD_PERIOD_INDEX;
+    }
+
+    JSTaggedValue GetExtraInfoMap() const
+    {
+        return JSTaggedValue(Barriers::GetValue<JSTaggedType>(GetData(), GetExtraInfoMapOffset()));
+    }
+
+    void SetExtraInfoMap(const JSThread *thread, JSHandle<NumberDictionary> extraInfoMap)
+    {
+        Barriers::SetObject<true>(thread, GetData(), GetExtraInfoMapOffset(),
+                                  extraInfoMap.GetTaggedValue().GetRawData());
     }
 
     uint16_t GetJitHotnessThreshold() const
@@ -308,7 +326,36 @@ public:
         TaggedArray::Set(thread, secondIdx, secondValue);
     }
 
-    DECL_VISIT_ARRAY(DATA_OFFSET, GetIcSlotAndOsrLength(), GetIcSlotAndOsrLength());
+    static JSHandle<NumberDictionary> CreateOrGetExtraInfoMap(const JSThread *thread,
+                                                              JSHandle<ProfileTypeInfo> profileTypeInfo)
+    {
+        if (profileTypeInfo->GetExtraInfoMap().IsUndefined()) {
+            JSHandle<NumberDictionary> dictJShandle = NumberDictionary::Create(thread);
+            profileTypeInfo->SetExtraInfoMap(thread, dictJShandle);
+            return dictJShandle;
+        }
+        JSHandle<NumberDictionary> dictJShandle(thread, profileTypeInfo->GetExtraInfoMap());
+        return dictJShandle;
+    }
+
+    static void UpdateExtraInfoMap(const JSThread *thread, JSHandle<NumberDictionary> dictJShandle,
+                            JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> receiverHClassHandle,
+                            JSHandle<JSTaggedValue> holderHClassHandle,
+                            JSHandle<ProfileTypeInfo> profileTypeInfo)
+    {
+        JSHandle<JSTaggedValue> info(thread->GetEcmaVM()->GetFactory()->NewExtraProfileTypeInfo());
+        JSHandle<ExtraProfileTypeInfo> infoHandle(info);
+        infoHandle->SetReceiver(thread, receiverHClassHandle.GetTaggedValue().CreateAndGetWeakRef());
+        infoHandle->SetHolder(thread, holderHClassHandle.GetTaggedValue());
+        JSHandle<NumberDictionary> dict = NumberDictionary::PutIfAbsent(thread,
+                                                                        dictJShandle,
+                                                                        key,
+                                                                        info,
+                                                                        PropertyAttributes::Default());
+        profileTypeInfo->SetExtraInfoMap(thread, dict);
+    }
+
+    DECL_VISIT_ARRAY(DATA_OFFSET, GetIcSlotToOsrLength(), GetIcSlotToOsrLength());
 
     DECL_DUMP()
 
@@ -326,6 +373,11 @@ private:
     inline size_t GetBitfieldOffset() const
     {
         return JSTaggedValue::TaggedTypeSize() * (GetLength() - BIT_FIELD_INDEX);
+    }
+
+    inline size_t GetExtraInfoMapOffset() const
+    {
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - EXTRA_MAP_INFO_INDEX);
     }
 
     // jit hotness(16bits) + count(16bits)

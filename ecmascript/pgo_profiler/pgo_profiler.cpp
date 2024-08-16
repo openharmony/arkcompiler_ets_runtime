@@ -226,12 +226,13 @@ void PGOProfiler::ProfileDefineGetterSetter(JSHClass* receiverHClass,
     JSHandle<ProfileTypeInfoCell> profileTypeInfoCell(profileTypeInfoValue);
 
     if (function->HasProfileTypeInfo(vm_->GetJSThread())) {
-        JSHandle<NumberDictionary> dictJShandle = ProfileTypeInfoCell::CreateOrGetExtraInfoMap(vm_->GetJSThread(),
-                                                                                               profileTypeInfoCell);
+        JSHandle<ProfileTypeInfo> profileTypeInfo(vm_->GetJSThread(), profileTypeInfoCell->GetValue());
+        JSHandle<NumberDictionary> dictJShandle = ProfileTypeInfo::CreateOrGetExtraInfoMap(vm_->GetJSThread(),
+                                                                                           profileTypeInfo);
         int entry = dictJShandle->FindEntry(key.GetTaggedValue());
         if (entry == -1) {
-            ProfileTypeInfoCell::UpdateExtraInfoMap(vm_->GetJSThread(), dictJShandle, key, receiverHClassHandle,
-                                                    holderHClassHandle, profileTypeInfoCell);
+            ProfileTypeInfo::UpdateExtraInfoMap(vm_->GetJSThread(), dictJShandle, key, receiverHClassHandle,
+                                                holderHClassHandle, profileTypeInfo);
             return;
         }
         ExtraProfileTypeInfo *mapInfoObj = ExtraProfileTypeInfo::Cast(dictJShandle->GetValue(entry).GetTaggedObject());
@@ -545,37 +546,39 @@ void PGOProfiler::UpdateExtraProfileTypeInfo(ApEntityId abcId,
         return;
     }
     ProfileTypeInfoCell *cell = ProfileTypeInfoCell::Cast(func->GetRawProfileTypeInfo());
-    if ((cell->GetExtraInfoMap()).IsHole() || (cell->GetExtraInfoMap()).IsUndefined()) {
+    ProfileTypeInfo *info = ProfileTypeInfo::Cast((cell->GetValue()).GetTaggedObject());
+    if ((info->GetExtraInfoMap()).IsHole() || (info->GetExtraInfoMap()).IsUndefined()) {
         return;
     }
-    NumberDictionary *dict = NumberDictionary::Cast(cell->GetExtraInfoMap().GetTaggedObject());
+    NumberDictionary *dict = NumberDictionary::Cast(info->GetExtraInfoMap().GetTaggedObject());
     int size = dict->Size();
     for (int hashIndex = 0; hashIndex < size; hashIndex++) {
         JSTaggedValue key(dict->GetKey(hashIndex));
         if (!key.IsUndefined() && !key.IsHole()) {
             JSTaggedValue val(dict->GetValue(hashIndex));
-            ExtraProfileTypeInfo *info = ExtraProfileTypeInfo::Cast(val.GetTaggedObject());
-            if (info->IsHole()) {
+            ExtraProfileTypeInfo *extraInfo = ExtraProfileTypeInfo::Cast(val.GetTaggedObject());
+            if (extraInfo->IsHole()) {
                 continue;
             }
             AddObjectInfo(abcId,
                           recordName,
                           methodId,
                           key.GetInt(),
-                          info->GetReceiverHClass(),
-                          info->GetReceiverHClass(),
-                          info->GetHolderHClass());
+                          extraInfo->GetReceiverHClass(),
+                          extraInfo->GetReceiverHClass(),
+                          extraInfo->GetHolderHClass());
         }
     }
 }
 
-bool PGOProfiler::HasValidProfileTypeInfo(JSFunction *func)
+bool PGOProfiler::HasValidExtraProfileTypeInfo(JSFunction *func)
 {
     if (!func->HasProfileTypeInfo(vm_->GetJSThread())) {
         return false;
     }
     ProfileTypeInfoCell *profileCell = ProfileTypeInfoCell::Cast(func->GetRawProfileTypeInfo());
-    JSTaggedValue map = profileCell->GetExtraInfoMap();
+    ProfileTypeInfo *profileInfo = ProfileTypeInfo::Cast((profileCell->GetValue()).GetTaggedObject());
+    JSTaggedValue map = profileInfo->GetExtraInfoMap();
     if (map.IsHole() || map.IsUndefined()) {
         return false;
     }
@@ -583,10 +586,10 @@ bool PGOProfiler::HasValidProfileTypeInfo(JSFunction *func)
     return numberDict->GetEntrySize() > 0;
 }
 
-void PGOProfiler::ProcessProfileTypeInfo(JSFunction *func, ApEntityId abcId, const CString &recordName,
-                                         JSTaggedValue methodValue, WorkNode *current)
+void PGOProfiler::ProcessExtraProfileTypeInfo(JSFunction *func, ApEntityId abcId, const CString &recordName,
+                                              JSTaggedValue methodValue, WorkNode *current)
 {
-    if (!HasValidProfileTypeInfo(func)) {
+    if (!HasValidExtraProfileTypeInfo(func)) {
         return;
     }
     Method* method = Method::Cast(methodValue.GetTaggedObject());
@@ -620,7 +623,7 @@ void PGOProfiler::HandlePGOPreDump()
         }
         auto abcId = GetMethodAbcId(func);
 
-        ProcessProfileTypeInfo(func, abcId, recordName, methodValue, current);
+        ProcessExtraProfileTypeInfo(func, abcId, recordName, methodValue, current);
         ProfileType recordType = GetRecordProfileType(abcId, recordName);
         recordInfos_->AddMethod(recordType, Method::Cast(methodValue), SampleMode::HOTNESS_MODE);
         ProfileBytecode(abcId, recordName, funcValue);
@@ -666,7 +669,7 @@ void PGOProfiler::HandlePGODumpByDumpThread(bool force)
         }
         auto abcId = GetMethodAbcId(func);
 
-        ProcessProfileTypeInfo(func, abcId, recordName, methodValue, current);
+        ProcessExtraProfileTypeInfo(func, abcId, recordName, methodValue, current);
 
         ProfileType recordType = GetRecordProfileType(abcId, recordName);
         if (recordInfos_->AddMethod(recordType, Method::Cast(methodValue), SampleMode::HOTNESS_MODE)) {

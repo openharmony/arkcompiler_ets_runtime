@@ -228,9 +228,9 @@ private:
     ProfileType GetProfileType(JSHClass *hclass, bool check = false);
 
     bool IsRecoredTransRootType(ProfileType type);
-    bool HasValidProfileTypeInfo(JSFunction *func);
+    bool HasValidExtraProfileTypeInfo(JSFunction *func);
     class WorkNode;
-    void ProcessProfileTypeInfo(JSFunction *func, ApEntityId abcId, const CString &recordName,
+    void ProcessExtraProfileTypeInfo(JSFunction *func, ApEntityId abcId, const CString &recordName,
                                 JSTaggedValue methodValue, WorkNode *current);
     void UpdateExtraProfileTypeInfo(ApEntityId abcId, const CString &recordName, EntityId methodId, WorkNode* current);
     WorkNode* PopFromProfileQueue();
