@@ -32,7 +32,7 @@ class RegressTestConfig:
     TEST_TOOL_FILE_JS_NAME = 'mjsunit.js'
     TEST_TOOL_FILE_NAME = 'mjsunit.abc'
     REGRESS_GIT_URL = "https://gitee.com/chenjx-huawei/ark-regress.git"
-    REGRESS_GIT_HASH = "5c3c866d46f3334c1f974f35be2ea078ca1b99d5"
+    REGRESS_GIT_HASH = "a95b316581115ca9b985783f66808696f4a8ea8d"
     PROJECT_BASE_OUT_DIR = os.path.join(PROJECT_ROOT, "out")
     REGRESS_BASE_TEST_DIR = os.path.join(PROJECT_ROOT, "test", "regresstest")
     REGRESS_TEST_CASE_DIR = os.path.join(REGRESS_BASE_TEST_DIR, REGRESS_GIT_REPO)
