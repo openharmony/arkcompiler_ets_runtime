@@ -10049,4 +10049,43 @@ void StubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef func
 
     env_->SubCfgExit();
 }
+
+GateRef StubBuilder::Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label notSendableFunctionModule(env);
+    Label sendableFunctionModule(env);
+    Label exit(env);
+    BRANCH_UNLIKELY(IsSendableFunctionModule(module), &sendableFunctionModule, &notSendableFunctionModule);
+    Bind(&sendableFunctionModule);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(LdLocalModuleVarByIndexWithModule),
+                             {Int8ToTaggedInt(index), module});
+        Jump(&exit);
+    }
+    Bind(&notSendableFunctionModule);
+    {
+        GateRef nameDictionaryOffset = IntPtr(SourceTextModule::NAME_DICTIONARY_OFFSET);
+        GateRef dictionary = Load(VariableType::JS_ANY(), module, nameDictionaryOffset);
+        Label dataIsNotUndefined(env);
+        BRANCH_UNLIKELY(TaggedIsUndefined(dictionary), &exit, &dataIsNotUndefined);
+        Bind(&dataIsNotUndefined);
+        {
+            GateRef dataOffset = Int32(TaggedArray::DATA_OFFSET);
+            GateRef indexOffset = Int32Mul(ZExtInt8ToInt32(index), Int32(JSTaggedValue::TaggedTypeSize()));
+            GateRef offset = Int32Add(indexOffset, dataOffset);
+            result = Load(VariableType::JS_ANY(), dictionary, offset);
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+
 }  // namespace panda::ecmascript::kungfu

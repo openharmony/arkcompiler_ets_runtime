@@ -288,9 +288,13 @@ private:
     static inline void RuntimeStModuleVar(JSThread *thread, JSTaggedValue key, JSTaggedValue value,
                                           JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdLocalModuleVar(JSThread *thread, int32_t index);
+    static inline JSTaggedValue RuntimeLdLocalModuleVarWithModule(JSThread *thread, int32_t index,
+        JSHandle<JSTaggedValue> moduleHdl);
     static inline JSTaggedValue RuntimeLdLocalModuleVar(JSThread *thread, int32_t index,
                                                         JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdExternalModuleVar(JSThread *thread, int32_t index);
+    static inline JSTaggedValue RuntimeLdExternalModuleVarWithModule(JSThread *thread, int32_t index,
+        JSHandle<JSTaggedValue> moduleHdl);
     static inline JSTaggedValue RuntimeLdSendableExternalModuleVar(JSThread *thread, int32_t index,
                                                                    JSTaggedValue jsFunc);
     static inline JSTaggedValue RuntimeLdExternalModuleVar(JSThread *thread, int32_t index,

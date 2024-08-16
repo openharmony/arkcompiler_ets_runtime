@@ -1324,6 +1324,17 @@ inline GateRef StubBuilder::IsExtensible(GateRef object)
     return res;
 }
 
+inline GateRef StubBuilder::IsSendableFunctionModule(GateRef module)
+{
+    ASM_ASSERT(GET_MESSAGE_STRING_ID(IsSendableFunctionModule), IsSourceTextModule(module));
+    GateRef bitfieldOffset = Int32(SourceTextModule::BIT_FIELD_OFFSET);
+    GateRef bitfield = Load(VariableType::INT32(), module, bitfieldOffset);
+    return Equal(Int32And(Int32LSR(bitfield,
+        Int32(SourceTextModule::SharedTypeBits::START_BIT)),
+        Int32((1LU << SourceTextModule::SharedTypeBits::SIZE) - 1)),
+        Int32(static_cast<int32_t>(SharedTypes::SENDABLE_FUNCTION_MODULE)));
+}
+
 inline GateRef StubBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 {
     ASM_ASSERT(GET_MESSAGE_STRING_ID(IsEcmaObject), TaggedIsHeapObject(obj));
@@ -1461,6 +1472,12 @@ inline GateRef StubBuilder::IsModuleNamespace(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_MODULE_NAMESPACE)));
+}
+
+inline GateRef StubBuilder::IsSourceTextModule(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::SOURCE_TEXT_MODULE_RECORD)));
 }
 
 inline GateRef StubBuilder::ObjIsSpecialContainer(GateRef obj)
