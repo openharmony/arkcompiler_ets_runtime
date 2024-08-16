@@ -167,7 +167,7 @@ bool QuickFixQueryFunc(
     }
 
     patchFileName = "__index.pa";
-    const char *data = R"(
+    const char data[] = R"(
         .function void foo() {}
     )";
 

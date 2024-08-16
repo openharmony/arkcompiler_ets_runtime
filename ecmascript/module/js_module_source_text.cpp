@@ -547,6 +547,7 @@ std::optional<std::set<uint32_t>> SourceTextModule::GetConcurrentRequestedModule
 {
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     const MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    ASSERT(methodLiteral != nullptr);
     return methodLiteral->GetConcurrentRequestedModules(jsPandaFile);
 }
 
@@ -2200,11 +2201,13 @@ std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModule
         JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
     ASSERT(!(jsPandaFile == nullptr));
     JSRecordInfo *recordInfo = nullptr;
-    jsPandaFile->CheckAndGetRecordInfo(fileName, &recordInfo);
+    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(fileName, &recordInfo);
+    ASSERT(hasRecord);
     if (jsPandaFile->IsSharedModule(recordInfo)) {
         return std::make_tuple(SourceTextModule::SHARED_MODULE_TAG,
             SharedModuleManager::GetInstance()->GetSModule(thread, fileName));
     }
+
     auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     return std::make_tuple(!SourceTextModule::SHARED_MODULE_TAG, moduleManager->HostGetImportedModule(fileName));
 }
@@ -2243,7 +2246,8 @@ std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModule
     }
 
     JSRecordInfo *recordInfo = nullptr;
-    jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
+    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
+    ASSERT(hasRecord);
     if (jsPandaFile->IsSharedModule(recordInfo)) {
         return std::make_tuple(SourceTextModule::SHARED_MODULE_TAG,
             SharedModuleManager::GetInstance()->GetSModule(thread, entryPoint));
