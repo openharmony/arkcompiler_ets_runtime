@@ -474,13 +474,12 @@ TaggedObject *Heap::AllocateMachineCodeObject(JSHClass *hclass, size_t size, Mac
 
     // Jit Fort enabled
     ASSERT(GetEcmaVM()->GetJSOptions().GetEnableJitFort());
-    if (!GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort()) {
+    if (!GetEcmaVM()->GetJSOptions().GetEnableAsyncCopyToFort() || !desc->isAsyncCompileMode) {
         desc->instructionsAddr = 0;
         if (size <= MAX_REGULAR_HEAP_OBJECT_SIZE) {
             // for non huge code cache obj, allocate fort space before allocating the code object
-            uintptr_t mem = machineCodeSpace_->JitFortAllocate(desc->instructionsSize);
+            uintptr_t mem = machineCodeSpace_->JitFortAllocate(desc);
             if (mem == ToUintPtr(nullptr)) {
-                SetMachineCodeOutOfMemoryError(GetJSThread(), size, "Heap::JitFortAllocate");
                 return nullptr;
             }
             desc->instructionsAddr = mem;
@@ -635,7 +634,10 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
     // machinecode space is not sweeped in young GC
     if (ecmaVm_->GetJSOptions().GetEnableJitFort()) {
         if (machineCodeSpace_->sweepState_ != SweepState::NO_SWEEP) {
-            machineCodeSpace_->UpdateFortSpace();
+            if (machineCodeSpace_->GetJitFort() &&
+                machineCodeSpace_->GetJitFort()->IsMachineCodeGC()) {
+                machineCodeSpace_->UpdateFortSpace();
+            }
         }
     }
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
@@ -770,7 +772,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHCl
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, hclass, size);
     }
-    TaggedObject *object =
+    TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));
@@ -793,7 +795,7 @@ TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, size_
     if (size > MAX_REGULAR_HEAP_OBJECT_SIZE) {
         return AllocateHugeObject(thread, size);
     }
-    TaggedObject *object =
+    TaggedObject *object = thread->IsJitThread() ? nullptr :
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->AllocateSharedNonMovableSpaceFromTlab(thread, size);
     if (object == nullptr) {
         object = reinterpret_cast<TaggedObject *>(sNonMovableSpace_->Allocate(thread, size));

@@ -641,9 +641,20 @@ inline void MachineCodeSpace::RecordLiveJitCode(MachineCode *obj)
     }
 }
 
+uintptr_t MachineCodeSpace::JitFortAllocate(MachineCodeDesc *desc)
+{
+    if (!jitFort_) {
+        jitFort_ = new JitFort();
+    }
+    localHeap_->GetSweeper()->EnsureTaskFinishedNoCheck(spaceType_);
+    while (jitFort_->IsMachineCodeGC()) {};
+    return jitFort_->Allocate(desc);
+}
+
 // Record info on JitFort mem allocated to live MachineCode objects
 void MachineCodeSpace::FreeRegion(Region *current, bool isMain)
 {
+    LockHolder holder(freeRegionMutex_);
     LOG_JIT(DEBUG) << "MachineCodeSpace FreeRegion: " << current << " isMain " << isMain;
     uintptr_t freeStart = current->GetBegin();
     current->IterateAllMarkedBits([this, &current, &freeStart, isMain](void *mem) {
@@ -731,6 +742,7 @@ size_t MachineCodeSpace::CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &mac
 uintptr_t MachineCodeSpace::GetMachineCodeObject(uintptr_t pc)
 {
     uintptr_t machineCode = 0;
+    LockHolder holder(freeRegionMutex_);
     allocator_->FillBumpPointer();
 
     EnumerateRegions([&](Region *region) {

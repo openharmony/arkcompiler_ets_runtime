@@ -140,50 +140,67 @@ void JitTask::InstallOsrCode(JSHandle<MachineCode> &codeObj)
     return;
 }
 
+static void ComputeAlignedSizes(MachineCodeDesc &desc)
+{
+    desc.funcEntryDesSizeAlign = AlignUp(desc.funcEntryDesSize, MachineCode::TEXT_ALIGN);
+    desc.stackMapSizeAlign = AlignUp(desc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
+    desc.rodataSizeBeforeTextAlign = AlignUp(desc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
+
+    if (desc.codeType == MachineCodeType::BASELINE_CODE) {
+        desc.codeSizeAlign = Jit::GetInstance()->IsEnableJitFort() ?
+            AlignUp(desc.codeSize, MachineCode::TEXT_ALIGN) :
+            AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
+        return;
+    }
+
+    // FastJit
+    if (Jit::GetInstance()->IsEnableJitFort()) {
+        // align for multiple instruction blocks installed in JitFort
+        if (desc.rodataSizeAfterText) {
+            desc.codeSizeAlign = AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
+            desc.rodataSizeAfterTextAlign = AlignUp(desc.rodataSizeAfterText, MachineCode::TEXT_ALIGN);
+        } else {
+            desc.codeSizeAlign = AlignUp(desc.codeSize, MachineCode::TEXT_ALIGN);
+        }
+    } else {
+        desc.codeSizeAlign = AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
+        desc.rodataSizeAfterTextAlign = AlignUp(desc.rodataSizeAfterText, MachineCode::DATA_ALIGN);
+    }
+}
+
 static size_t ComputePayLoadSize(MachineCodeDesc &codeDesc)
 {
+    ComputeAlignedSizes(codeDesc);
     if (codeDesc.codeType == MachineCodeType::BASELINE_CODE) {
         // only code section in BaselineCode
-        size_t stackMapSizeAlign = AlignUp(codeDesc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
         if (Jit::GetInstance()->IsEnableJitFort()) {
-            // ensure proper align because multiple instruction blocks can be installed in JitFort
-            size_t codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::TEXT_ALIGN);
-            size_t payLoadSize = stackMapSizeAlign + codeSizeAlign;
+            size_t payLoadSize = codeDesc.stackMapSizeAlign + codeDesc.codeSizeAlign;
             size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
                 static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-            codeDesc.instructionsSize = codeSizeAlign;
-            LOG_JIT(INFO) << "InstallCode:: MachineCode Object size to allocate: "
-                << allocSize << " (instruction size): " << codeSizeAlign;
+            codeDesc.instructionsSize = codeDesc.codeSizeAlign;
+            LOG_JIT(DEBUG) << "InstallCode:: MachineCode Object size to allocate: "
+                << allocSize << " (instruction size): " << codeDesc.codeSizeAlign;
             if (allocSize > MAX_REGULAR_HEAP_OBJECT_SIZE) {
                 return payLoadSize;
             } else {
                 // regular sized machine code object instructions are installed in separate jit fort space
-                return payLoadSize - codeSizeAlign;
+                return payLoadSize - codeDesc.codeSizeAlign;
             }
         } else {
-            size_t codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
-            return stackMapSizeAlign + codeSizeAlign;
+            return codeDesc.stackMapSizeAlign + codeDesc.codeSizeAlign;
         }
     }
 
     ASSERT(codeDesc.codeType == MachineCodeType::FAST_JIT_CODE);
-    size_t funcEntryDesSizeAlign = AlignUp(codeDesc.funcEntryDesSize, MachineCode::TEXT_ALIGN);
-    size_t rodataSizeBeforeTextAlign = AlignUp(codeDesc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
-    size_t codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::DATA_ALIGN);
-    size_t stackMapSizeAlign = AlignUp(codeDesc.stackMapOrOffsetTableSize, MachineCode::DATA_ALIGN);
     if (Jit::GetInstance()->IsEnableJitFort()) {
-        size_t rodataSizeAfterTextAlign = AlignUp(codeDesc.rodataSizeAfterText, MachineCode::TEXT_ALIGN);
-        if (!codeDesc.rodataSizeAfterText) {
-            // ensure proper align because multiple instruction blocks can be installed in JitFort
-            codeSizeAlign = AlignUp(codeDesc.codeSize, MachineCode::TEXT_ALIGN);
-        }
         // instructionsSize: size of JIT generated native instructions
         // payLoadSize: size of JIT generated output including native code
-        size_t instructionsSize = rodataSizeBeforeTextAlign + codeSizeAlign + rodataSizeAfterTextAlign;
-        size_t payLoadSize = funcEntryDesSizeAlign + instructionsSize + stackMapSizeAlign;
+        size_t instructionsSize =
+            codeDesc.rodataSizeBeforeTextAlign + codeDesc.codeSizeAlign + codeDesc.rodataSizeAfterTextAlign;
+        size_t payLoadSize = codeDesc.funcEntryDesSizeAlign + instructionsSize + codeDesc.stackMapSizeAlign;
         size_t allocSize = AlignUp(payLoadSize + MachineCode::SIZE,
             static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
-        LOG_JIT(INFO) << "InstallCode:: MachineCode Object size to allocate: "
+        LOG_JIT(DEBUG) << "InstallCode:: MachineCode Object size to allocate: "
             << allocSize << " (instruction size): " << instructionsSize;
 
         codeDesc.instructionsSize = instructionsSize;
@@ -206,9 +223,8 @@ static size_t ComputePayLoadSize(MachineCodeDesc &codeDesc)
             return payLoadSize - instructionsSize;
         }
     } else {
-        size_t rodataSizeAfterTextAlign = AlignUp(codeDesc.rodataSizeAfterText, MachineCode::DATA_ALIGN);
-        return funcEntryDesSizeAlign + rodataSizeBeforeTextAlign + codeSizeAlign +
-               rodataSizeAfterTextAlign + stackMapSizeAlign;
+        return codeDesc.funcEntryDesSizeAlign + codeDesc.rodataSizeBeforeTextAlign + codeDesc.codeSizeAlign +
+               codeDesc.rodataSizeAfterTextAlign + codeDesc.stackMapSizeAlign;
     }
 }
 
@@ -256,12 +272,13 @@ void JitTask::InstallCode()
 
     size_t size = ComputePayLoadSize(codeDesc_);
 
+    codeDesc_.isAsyncCompileMode = IsAsyncTask();
     JSHandle<MachineCode> machineCodeObj;
     if (Jit::GetInstance()->IsEnableJitFort()) {
         // skip install if JitFort out of memory
         TaggedObject *machineCode = hostThread_->GetEcmaVM()->GetFactory()->NewMachineCodeObject(size, codeDesc_);
         if (machineCode == nullptr) {
-            LOG_JIT(INFO) << "InstallCode skipped. NewMachineCode NULL for size " << size;
+            LOG_JIT(DEBUG) << "InstallCode skipped. NewMachineCode NULL for size " << size;
             if (hostThread_->HasPendingException()) {
                 hostThread_->SetMachineCodeLowMemory(true);
                 hostThread_->ClearException();
@@ -288,10 +305,21 @@ void JitTask::InstallCode()
 
     if (IsOsrTask()) {
         InstallOsrCode(machineCodeObj);
-        return;
+    } else {
+        InstallCodeByCompilerTier(machineCodeObj, methodHandle);
     }
 
-    InstallCodeByCompilerTier(machineCodeObj, methodHandle);
+    // sometimes get ILL_ILLOPC error if i-cache  not flushed for Jit code
+    uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
+    uintptr_t codeAddrEnd = codeAddr + machineCodeObj->GetInstructionsSize();
+    __builtin___clear_cache(reinterpret_cast<char *>(codeAddr), reinterpret_cast<char*>(codeAddrEnd));
+
+    if (Jit::GetInstance()->IsEnableJitFort()) {
+        if (codeDesc_.memDesc) {
+            ASSERT(codeDesc_.isHugeObj == false);
+            codeDesc_.memDesc->SetInstalled(true);
+        }
+    }
 }
 
 void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
@@ -382,12 +410,12 @@ bool JitTask::AsyncTask::CopyCodeToFort()
     MachineCodeDesc &desc = jitTask_->GetMachineCodeDesc();
     size_t codeSizeAlign = AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
     uint8_t *pText = reinterpret_cast<uint8_t*>(desc.instructionsAddr);
-#ifdef CODE_SIGN_ENABLE
     size_t rodataSizeBeforeTextAlign = AlignUp(desc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
     if (rodataSizeBeforeTextAlign != 0) {
         pText += rodataSizeBeforeTextAlign;
     }
 
+#ifdef CODE_SIGN_ENABLE
     if ((uintptr_t)desc.codeSigner == 0) {
         if (memcpy_s(pText, codeSizeAlign,
             reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
@@ -418,20 +446,12 @@ bool JitTask::AsyncTask::CopyCodeToFort()
 
 bool JitTask::AsyncTask::AllocFromFortAndCopy()
 {
-    if (!Jit::GetInstance()->IsEnableJitFort() ||
-        !Jit::GetInstance()->IsEnableAsyncCopyToFort()) {
-        return true;
-    }
-    if (!jitTask_->IsCompileSuccess()) {
-        return false;
-    }
-
     Jit::JitGCLockHolder lock(jitTask_->GetHostThread());
 
-    // allocate fort space
     MachineCodeDesc &desc = jitTask_->GetMachineCodeDesc();
     size_t size = ComputePayLoadSize(desc);
     const Heap *heap = jitTask_->GetHostThread()->GetEcmaVM()->GetHeap();
+
     if (desc.isHugeObj) {
         Region *region = heap->GetHugeMachineCodeSpace()->AllocateFort(
             size + MachineCode::SIZE, heap->GetJSThread(), &desc);
@@ -440,13 +460,14 @@ bool JitTask::AsyncTask::AllocFromFortAndCopy()
         }
         desc.hugeObjRegion = ToUintPtr(region);
     } else {
-        uintptr_t mem = heap->GetMachineCodeSpace()->JitFortAllocate(desc.instructionsSize);
+        uintptr_t mem = heap->GetMachineCodeSpace()->JitFortAllocate(&desc);
         if (mem == ToUintPtr(nullptr)) {
             LOG_JIT(DEBUG) << "JitTask: AsyncTask JitFort allocate returned null";
             return false;
         }
         desc.instructionsAddr = mem;
     }
+
     if (!CopyCodeToFort()) {
         return false;
     }
@@ -482,9 +503,15 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
         jitTask_->Optimize();
         jitTask_->Finalize();
 
+        // info main thread compile complete
+        if (!jitTask_->IsCompileSuccess()) {
+            return false;
+        }
+
         if (jitTask_->IsAsyncTask()) {
-            // info main thread compile complete
-            if (!AllocFromFortAndCopy()) {
+            if (Jit::GetInstance()->IsEnableJitFort() &&
+                Jit::GetInstance()->IsEnableAsyncCopyToFort() &&
+                AllocFromFortAndCopy() == false) {
                 return false;
             }
             jitTask_->jit_->RequestInstallCode(jitTask_);
