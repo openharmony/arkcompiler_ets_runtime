@@ -570,6 +570,7 @@ void InterpreterStubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, G
     Label profileTypeInfoNotUndefined(env);
     Label slotValueUpdate(env);
     Label slotValueNotUndefined(env);
+    Label slotValueNotHole(env);
     Label profileTypeInfoEnd(env);
     NewObjectStubBuilder newBuilder(this);
     BRANCH(TaggedIsUndefined(profileTypeInfo), &profileTypeInfoEnd, &profileTypeInfoNotUndefined);
@@ -587,8 +588,12 @@ void InterpreterStubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, G
             Jump(&profileTypeInfoEnd);
         }
         Bind(&slotValueNotUndefined);
-        UpdateProfileTypeInfoCellType(glue, slotValue);
-        SetRawProfileTypeInfoToFunction(glue, function, slotValue, MemoryAttribute::NeedNotShareBarrier());
+        BRANCH_UNLIKELY(TaggedIsHole(slotValue), &profileTypeInfoEnd, &slotValueNotHole);
+        Bind(&slotValueNotHole);
+        {
+            UpdateProfileTypeInfoCellType(glue, slotValue);
+            SetRawProfileTypeInfoToFunction(glue, function, slotValue, MemoryAttribute::NeedNotShareBarrier());
+        }
         Jump(&profileTypeInfoEnd);
     }
     Bind(&profileTypeInfoEnd);

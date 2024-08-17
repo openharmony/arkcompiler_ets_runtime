@@ -232,6 +232,7 @@ group("ark_js_assert_moduletest") {
   if (!is_debug) {
     release_test_assert_list = [
       "hugearray",
+      "hugeictest",
       "multiconstpoolarray",
     ]
 
@@ -429,6 +430,7 @@ group("ark_asm_assert_test") {
   if (!is_debug) {
     release_test_assert_list = [
       "hugearray",
+      "hugeictest",
       "multiconstpoolarray",
     ]
 
