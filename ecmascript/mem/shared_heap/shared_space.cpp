@@ -54,9 +54,8 @@ void SharedSparseSpace::ResetTopPointer(uintptr_t top)
 uintptr_t SharedSparseSpace::AllocateWithoutGC(JSThread *thread, size_t size)
 {
     uintptr_t object = TryAllocate(thread, size);
-    CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    CHECK_SOBJECT_NOT_NULL();
     object = AllocateWithExpand(thread, size);
-    CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     return object;
 }
 
@@ -77,18 +76,18 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
         localHeap->TryTriggerFullMarkBySharedSize(size);
     }
     uintptr_t object = TryAllocate(thread, size);
-    CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    CHECK_SOBJECT_NOT_NULL();
     if (sweepState_ == SweepState::SWEEPING) {
         object = AllocateAfterSweepingCompleted(thread, size);
-        CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+        CHECK_SOBJECT_NOT_NULL();
     }
     // Check whether it is necessary to trigger Shared GC before expanding to avoid OOM risk.
     if (allowGC && sHeap_->CheckAndTriggerSharedGC(thread)) {
         object = TryAllocate(thread, size);
-        CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+        CHECK_SOBJECT_NOT_NULL();
     }
     object = AllocateWithExpand(thread, size);
-    CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    CHECK_SOBJECT_NOT_NULL();
     if (allowGC) {
         sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_FAILED>(thread);
         object = Allocate(thread, size, false);
@@ -99,14 +98,13 @@ uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowG
 uintptr_t SharedSparseSpace::TryAllocateAndExpand(JSThread *thread, size_t size, bool expand)
 {
     uintptr_t object = TryAllocate(thread, size);
-    CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    CHECK_SOBJECT_NOT_NULL();
     if (sweepState_ == SweepState::SWEEPING) {
         object = AllocateAfterSweepingCompleted(thread, size);
-        CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+        CHECK_SOBJECT_NOT_NULL();
     }
     if (expand) {
         object = AllocateWithExpand(thread, size);
-        CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
     return object;
 }
@@ -120,10 +118,9 @@ uintptr_t SharedSparseSpace::AllocateNoGCAndExpand(JSThread *thread, size_t size
     }
 #endif
     uintptr_t object = TryAllocate(thread, size);
-    CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
+    CHECK_SOBJECT_NOT_NULL();
     if (sweepState_ == SweepState::SWEEPING) {
         object = AllocateAfterSweepingCompleted(thread, size);
-        CHECK_SOBJECT_AND_INC_OBJ_SIZE(size);
     }
     return object;
 }
@@ -131,7 +128,9 @@ uintptr_t SharedSparseSpace::AllocateNoGCAndExpand(JSThread *thread, size_t size
 uintptr_t SharedSparseSpace::TryAllocate([[maybe_unused]] JSThread *thread, size_t size)
 {
     LockHolder lock(allocateLock_);
-    return allocator_->Allocate(size);
+    uintptr_t object = allocator_->Allocate(size);
+    IncAllocSObjectSize(object, size);
+    return object;
 }
 
 uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
@@ -143,6 +142,7 @@ uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
     if (object == 0 && Expand(thread)) {
         object = allocator_->Allocate(size);
     }
+    IncAllocSObjectSize(object, size);
     return object;
 }
 
@@ -184,18 +184,24 @@ void SharedSparseSpace::MergeDeserializeAllocateRegions(const std::vector<Region
 uintptr_t SharedSparseSpace::AllocateAfterSweepingCompleted([[maybe_unused]] JSThread *thread, size_t size)
 {
     LockHolder lock(allocateLock_);
+    uintptr_t object = 0U;
     if (sweepState_ != SweepState::SWEEPING) {
-        return allocator_->Allocate(size);
+        object = allocator_->Allocate(size);
+        IncAllocSObjectSize(object, size);
+        return object;
     }
     if (TryFillSweptRegion()) {
-        auto object = allocator_->Allocate(size);
+        object = allocator_->Allocate(size);
+        IncAllocSObjectSize(object, size);
         if (object != 0) {
             return object;
         }
     }
     // Parallel sweep and fill
     sHeap_->GetSweeper()->EnsureTaskFinished(spaceType_);
-    return allocator_->Allocate(size);
+    object = allocator_->Allocate(size);
+    IncAllocSObjectSize(object, size);
+    return object;
 }
 
 void SharedSparseSpace::PrepareSweeping()
@@ -385,6 +391,19 @@ void SharedSparseSpace::CheckAndTriggerLocalFullMark(JSThread *thread)
 {
     if (liveObjectSize_ >= triggerLocalFullMarkLimit_) {
         sHeap_->TryTriggerLocalConcurrentMarking(thread);
+    }
+}
+
+void SharedSparseSpace::IncAllocSObjectSize(uintptr_t object, size_t size)
+{
+    if (object != 0) {
+        IncreaseLiveObjectSize(size);
+        if (sHeap_->IsReadyToConcurrentMark()) {
+            Region::ObjectAddressToRange(object)->IncreaseAliveObject(size);
+        }
+#ifdef ECMASCRIPT_SUPPORT_HEAPSAMPLING
+        InvokeAllocationInspector(object, size, size);
+#endif
     }
 }
 

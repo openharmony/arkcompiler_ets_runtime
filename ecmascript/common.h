@@ -31,7 +31,6 @@ namespace ecmascript {
     V(ReMark)                            \
     V(Mark)                              \
     V(MarkRoots)                         \
-    V(ProcessMarkStack)                  \
     V(ProcessSharedGCRSetWorkList)       \
     V(Sweep)                             \
     V(ClearNativeObject)                 \

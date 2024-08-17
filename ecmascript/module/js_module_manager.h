@@ -98,11 +98,11 @@ public:
 
     bool GetExecuteMode() const
     {
-        return isExecuteBuffer_;
+        return isExecuteBuffer_.load(std::memory_order_acquire);
     }
     void SetExecuteMode(bool mode)
     {
-        isExecuteBuffer_ = mode;
+        isExecuteBuffer_.store(mode, std::memory_order_release);
     }
 
     static CString PUBLIC_API GetRecordName(JSTaggedValue module);
@@ -176,7 +176,7 @@ private:
 
     EcmaVM *vm_ {nullptr};
     CUnorderedMap<CString, JSTaggedValue> resolvedModules_;
-    bool isExecuteBuffer_ {false};
+    std::atomic<bool> isExecuteBuffer_ {false};
     CVector<CString> InstantiatingSModuleList_;
 
     friend class EcmaVM;
