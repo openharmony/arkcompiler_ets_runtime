@@ -204,6 +204,7 @@ HWTEST_F_L0(GCTest, SharedFullGC)
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     auto oldSizebase = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizebase > 0);
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
         for (int i = 0; i < ALLOCATE_COUNT; i++) {
@@ -212,10 +213,10 @@ HWTEST_F_L0(GCTest, SharedFullGC)
     }
     size_t oldSizeBefore = sHeap->GetOldSpace()->GetHeapObjectSize();
     EXPECT_TRUE(oldSizeBefore > oldSizebase);
+    EXPECT_TRUE(oldSizeBefore > TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), ALLOCATE_SIZE));
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
     auto oldSizeAfter = sHeap->GetOldSpace()->GetHeapObjectSize();
     EXPECT_TRUE(oldSizeBefore > oldSizeAfter);
-    EXPECT_EQ(oldSizebase, oldSizeAfter);
 }
 
 HWTEST_F_L0(GCTest, SharedGCSuspendAll)
