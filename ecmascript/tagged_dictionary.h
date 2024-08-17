@@ -17,6 +17,7 @@
 #define ECMASCRIPT_TAGGED_DICTIONARY_H
 
 #include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_hash_table.h"
 
@@ -213,7 +214,7 @@ public:
                                                                    JSHandle<JSTaggedValue> baseIhc) const;
 
     bool TryInsertFakeParentItem(JSTaggedType child, JSTaggedType parent);
-    JSTaggedType GetFakeParent(JSTaggedType child) const;
+    JSTaggedType GetFakeParent(JSTaggedType child);
 
     JSTaggedValue GetProtoTransitionTable() const
     {
@@ -267,6 +268,7 @@ private:
     CUnorderedMap<JSTaggedType, JSTaggedType> fakeParentMap_ {};
     // reverse fakeParentMap_
     CUnorderedMap<JSTaggedType, JSTaggedType> fakeChildMap_ {};
+    Mutex fakeParentMutex_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_NEW_DICTIONARY_H
