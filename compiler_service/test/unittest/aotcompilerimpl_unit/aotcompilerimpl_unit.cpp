@@ -206,4 +206,22 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_008, TestSize.Level0)
     EXPECT_EQ(viewData2, 010101);
     EXPECT_STREQ(viewData3.c_str(), "010101");
 }
+
+/**
+ * @tc.name: AotCompilerImplTest_009
+ * @tc.desc: AotCompilerImpl::HandleThermalLevelChanged()
+ * @tc.type: Func
+ * @tc.require: IR/AR/SR
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_009, TestSize.Level0)
+{
+    AotCompilerImpl &aotImpl = AotCompilerImpl::GetInstance();
+    bool viewData1 = true;
+    int32_t viewData2 = 010101;
+    std::string viewData3 = "010101";
+    aotImpl.HandleThermalLevelChanged(1);
+    EXPECT_TRUE(viewData1);
+    EXPECT_EQ(viewData2, 010101);
+    EXPECT_STREQ(viewData3.c_str(), "010101");
+}
 } // namespace OHOS::ArkCompiler

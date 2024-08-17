@@ -76,6 +76,21 @@ void BindSmallCpuCore()
     }
 }
 
+void BindMidCpuCore()
+{
+    cpu_set_t cpuset;
+
+    CPU_ZERO(&cpuset);
+    CPU_SET(4, &cpuset); // 4: bind this process to cpu4
+    CPU_SET(5, &cpuset); // 5: bind this process to cpu5
+    CPU_SET(6, &cpuset); // 6: bind this process to cpu6
+    CPU_SET(7, &cpuset); // 7: bind this process to cpu7
+
+    if (sched_setaffinity(0, sizeof(cpuset), &cpuset) == -1) {
+        LOG_ECMA(ERROR) << "Set CPU affinity failed";
+    }
+}
+
 void *PageMapExecFortSpace(void *addr, size_t size, int prot)
 {
     void *res = mmap(addr, size, prot, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_EXECUTABLE, -1, 0);

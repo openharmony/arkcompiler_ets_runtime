@@ -22,6 +22,7 @@
 namespace OHOS::ArkCompiler {
 enum {
     ERR_OK = 0,
+    ERR_FAIL = -1,
     ERR_AOT_COMPILER_OFFSET = 10000,
     ERR_OK_NO_AOT_FILE = 10001,
     ERR_AOT_COMPILER_PARAM_FAILED = 10002,

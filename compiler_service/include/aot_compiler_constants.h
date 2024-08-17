@@ -61,6 +61,7 @@ std::unordered_set<std::string> AotArgsSet {
     "compiler-max-inline-bytecodes",
     "compiler-deopt-threshold",
     "compiler-device-state",
+    "compiler-thermal-level",
     "compiler-stress-deopt",
     "compiler-opt-code-profiler",
     "compiler-opt-bc-range",

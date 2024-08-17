@@ -85,6 +85,8 @@ int32_t AotCompilerImpl::PrepareArgs(const std::unordered_map<std::string, std::
     }
     hapArgs.argVector.clear();
     hapArgs.argVector.emplace_back(Cmds::ARK_AOT_COMPILER);
+    // service process add aot compile args here
+    AddExpandArgs(hapArgs.argVector);
     for (auto &argPair : argsMap) {
         if (AotArgsSet.find(argPair.first) != AotArgsSet.end()) {
             hapArgs.argVector.emplace_back(Symbols::PREFIX + argPair.first + Symbols::EQ + argPair.second);
@@ -141,6 +143,12 @@ void AotCompilerImpl::ExecuteInChildProcess(const std::vector<std::string> &aotV
     execv(argv[0], const_cast<char* const*>(argv.data()));
     LOG_SA(ERROR) << "execv failed : " << strerror(errno);
     exit(-1);
+}
+
+void AotCompilerImpl::AddExpandArgs(std::vector<std::string> &argVector)
+{
+    std::string thermalLevelArg = "--compiler-thermal-level=" + std::to_string(thermalLevel_);
+    argVector.emplace_back(thermalLevelArg);
 }
 
 int32_t AotCompilerImpl::PrintAOTCompilerResult(const int compilerStatus)
@@ -279,6 +287,15 @@ int32_t AotCompilerImpl::StopAotCompiler()
     LOG_SA(INFO) << "begin to kill child process : " << state_.childPid;
     auto result = kill(state_.childPid, SIGKILL);
     int32_t ret = ERR_OK;
+    if (access(hapArgs.fileName.c_str(), ERR_OK) != ERR_FAIL) {
+        auto delRes = std::remove(hapArgs.fileName.c_str());
+        if (delRes != ERR_OK) {
+            LOG_SA(INFO) << "delete invalid aot file failed: " << delRes;
+            ret = ERR_AOT_COMPILER_STOP_FAILED;
+        } else {
+            LOG_SA(INFO) << "delete invalid aot file success";
+        }
+    }
     if (result != 0) {
         LOG_SA(INFO) << "kill child process failed: " << result;
         ret = ERR_AOT_COMPILER_STOP_FAILED;
@@ -309,6 +326,18 @@ void AotCompilerImpl::HandleScreenOn()
         sleep(40);  // wait for 40 seconds
         AotCompilerImpl::GetInstance().AllowAotCompiler();
     }).detach();
+}
+
+void AotCompilerImpl::HandleThermalLevelChanged(const int32_t level)
+{
+    LOG_SA(INFO) << "AotCompilerImpl::HandleThermalLevelChanged";
+    thermalLevel_ = level;
+    // thermal level >= 2, stop aot compile
+    if (thermalLevel_ >= AOT_COMPILE_STOP_LEVEL) {
+        PauseAotCompiler();
+    } else {
+        AllowAotCompiler();
+    }
 }
 
 void AotCompilerImpl::PauseAotCompiler()

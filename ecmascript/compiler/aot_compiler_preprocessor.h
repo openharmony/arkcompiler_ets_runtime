@@ -65,6 +65,7 @@ struct CompilationOptions {
     size_t maxAotMethodSize_;
     size_t maxMethodsInModule_;
     uint32_t hotnessThreshold_;
+    int32_t deviceThermalLevel_ {0};
     std::string profilerIn_;
     std::string optBCRange_;
     bool needMerge_ {false};
@@ -112,7 +113,7 @@ public:
     bool HandlePandaFileNames(const int argc, const char **argv);
 
     void AOTInitialize();
-    
+
     void Process(CompilationOptions &cOptions);
 
     uint32_t GenerateAbcFileInfos();

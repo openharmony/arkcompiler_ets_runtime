@@ -29,6 +29,7 @@
         ],
         "deps": {
             "components": [
+              "ability_base",
               "faultloggerd",
               "init",
               "hitrace",
@@ -49,7 +50,6 @@
               "safwk",
               "samgr",
               "common_event_service",
-              "power_manager",
               "ffrt",
               "cJSON"
             ],

@@ -27,6 +27,7 @@ size_t PhysicalSize();
 int PrctlSetVMA(const void *p, const size_t size, const char *tag);
 long PtracePeektext(int pid, uintptr_t addr);
 PUBLIC_API void BindSmallCpuCore();
+PUBLIC_API void BindMidCpuCore();
 void PUBLIC_API *PageMapExecFortSpace(void *addr, size_t size, int prot);
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_OS_H
