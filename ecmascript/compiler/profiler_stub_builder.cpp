@@ -1002,7 +1002,7 @@ GateRef ProfilerStubBuilder::IsCompiledOrTryCompile(GateRef glue, GateRef func, 
     Bind(&equalJitCallThreshold);
     {
         DEFVARIABLE(invalidOsrOffset, VariableType::INT32(), Int32(MachineCode::INVALID_OSR_OFFSET));
-        CallRuntime(glue, RTSTUB_ID(JitCompile), { func, *invalidOsrOffset });
+        CallRuntime(glue, RTSTUB_ID(JitCompile), { func, IntToTaggedInt(*invalidOsrOffset) });
         GateRef newJitCallCnt = Int32Add(jitCallCnt, Int32(1));
         GateRef jitCallCntOffset = GetJitCallCntOffset(profileTypeInfo);
         Store(VariableType::INT8(), glue, profileTypeInfo, jitCallCntOffset, TruncInt32ToInt8(newJitCallCnt));
@@ -1077,7 +1077,7 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, OffsetInfo offsetInfo,
     Bind(&equalJitThreshold);
     {
         DEFVARIABLE(varOffset, VariableType::INT32(), Int32(MachineCode::INVALID_OSR_OFFSET));
-        CallRuntime(glue, RTSTUB_ID(JitCompile), { func, *varOffset });
+        CallRuntime(glue, RTSTUB_ID(JitCompile), { func, IntToTaggedInt(*varOffset) });
         Jump(&incJitHotnessCntAndExit);
     }
     Bind(&notEqualJitThreshold);
