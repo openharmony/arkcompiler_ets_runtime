@@ -588,6 +588,7 @@ ConstvalNode *MIRBuilder::CreateAddrofConst(BaseNode &node)
     // determine the type of 'node' and create a pointer type, accordingly
     auto &aNode = static_cast<AddrofNode &>(node);
     const MIRSymbol *var = currentFunctionInner->GetLocalOrGlobalSymbol(aNode.GetStIdx());
+    DEBUG_ASSERT(var != nullptr, "var should not be nullptr");
     TyIdx ptyIdx = var->GetTyIdx();
     MIRPtrType ptrType(ptyIdx);
     ptyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&ptrType);
@@ -602,6 +603,7 @@ ConstvalNode *MIRBuilder::CreateAddroffuncConst(const BaseNode &node)
 
     const auto &aNode = static_cast<const AddroffuncNode &>(node);
     MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(aNode.GetPUIdx());
+    CHECK_NULL_FATAL(f->GetFuncSymbol());
     TyIdx ptyIdx = f->GetFuncSymbol()->GetTyIdx();
     MIRPtrType ptrType(ptyIdx);
     ptyIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(&ptrType);

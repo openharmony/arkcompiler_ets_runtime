@@ -64,6 +64,7 @@ void MemRWNodeHelper::GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mi
         MIRPtrType *pointerType = nullptr;
         if (iassignMirType->GetPrimType() == PTY_agg) {
             auto *addrSym = mirFunc.GetLocalOrGlobalSymbol(addrofNode.GetStIdx());
+            DEBUG_ASSERT(addrSym != nullptr, "addrSym should not be nullptr");
             auto *addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrSym->GetTyIdx());
             addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrMirType->GetTypeIndex());
             DEBUG_ASSERT(addrMirType->GetKind() == kTypePointer, "non-pointer");
@@ -188,6 +189,7 @@ static Operand *HandleBxor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFun
 static Operand *HandleAbs(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     (void)parent;
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr.Opnd(0) should not be nullptr");
     return cgFunc.SelectAbs(static_cast<UnaryNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)));
 }
 
@@ -242,6 +244,7 @@ static Operand *HandleCeil(const BaseNode &parent, BaseNode &expr, CGFunc &cgFun
 
 static Operand *HandleFloor(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr.Opnd(0) should not be nullptr");
     return cgFunc.SelectFloor(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 

@@ -99,10 +99,12 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             LOG_COMPILER(INFO) << "\033[34m" << "aot method [" << fullName
                                << "] recordName [" << recordName << "] log:" << "\033[0m";
         }
+        Chunk chunk(compilationEnv_->GetNativeAreaAllocator());
         if (compilationEnv_->GetJSOptions().IsEnableJITPGO()) {
             jitProfiler_ = compilationEnv_->GetPGOProfiler()->GetJITProfile();
             static_cast<JitCompilationEnv*>(compilationEnv_)->SetProfileTypeInfo(profileTypeInfo);
             jitProfiler_->SetCompilationEnv(compilationEnv_);
+            jitProfiler_->InitChunk(&chunk);
             jitProfiler_->ProfileBytecode(compilationEnv_->GetJSThread(), profileTypeInfo, nullptr,
                                           methodLiteral->GetMethodId(), abcId, pcStart,
                                           methodLiteral->GetCodeSize(jsPandaFile, methodLiteral->GetMethodId()),

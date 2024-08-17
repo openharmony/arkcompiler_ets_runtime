@@ -1643,6 +1643,7 @@ uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFi
     for (uint32 i = 0; i < num; ++i) {
         MIRConst *elemConst =
             structKind == kTypeStruct ? structCt.GetAggConstElement(i + 1) : structCt.GetAggConstElement(fieldIdx);
+        DEBUG_ASSERT(elemConst != nullptr, "elemConst should not be nullptr");
         MIRType *elemType = structKind == kTypeUnion ? &(elemConst->GetType()) : structType.GetElemType(i);
         MIRType *nextElemType = i != static_cast<uint32>(num - 1) ? structType.GetElemType(i + 1) : nullptr;
         uint64 elemSize = GetSymbolSize(elemType->GetTypeIndex());
@@ -1821,6 +1822,7 @@ void X64Emitter::EmitAddrofElement(MIRConst &mirConst, bool belongsToDataSec)
         stIdx.IsGlobal()
             ? GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx())
             : CG::GetCurCGFunc()->GetMirModule().CurFunction()->GetSymTab()->GetSymbolFromStIdx(stIdx.Idx());
+    DEBUG_ASSERT(symAddrSym != nullptr, "symAddrSym should not be nullptr");
     string addrName = symAddrSym->GetName();
     if (!stIdx.IsGlobal() && symAddrSym->GetStorageClass() == kScPstatic) {
         uint32 funcUniqueId = CG::GetCurCGFunc()->GetUniqueID();
@@ -1856,7 +1858,7 @@ uint32 X64Emitter::EmitSingleElement(MIRConst &mirConst, bool belongsToDataSec, 
             MIRAddroffuncConst &funcAddr = static_cast<MIRAddroffuncConst &>(mirConst);
             MIRFunction *func = GlobalTables::GetFunctionTable().GetFuncTable().at(funcAddr.GetValue());
             MIRSymbol *symAddrSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
-
+            DEBUG_ASSERT(symAddrSym != nullptr, "symAddrSym should not be nullptr");
             uint32 symIdx = symAddrSym->GetNameStrIdx();
             ASSERT_NOT_NULL(symAddrSym);
             const string &name = symAddrSym->GetName();
@@ -2247,6 +2249,7 @@ void X64Emitter::EmitDwFormAddr(const DBGDie &die, const DBGDieAttr &attr, DwAt 
         MapleMap<MIRFunction *, std::pair<LabelIdx, LabelIdx>>::iterator it = CG::GetFuncWrapLabels().find(mfunc);
         if (it != CG::GetFuncWrapLabels().end()) {
             /* it is a <pair> */
+            DEBUG_ASSERT(mfunc != nullptr, "mfunc should not be nullptr");
             assmbler.EmitLabel(mfunc->GetPuidx(), (*it).second.first);
         } else {
             CHECK_NULL_FATAL(GetCG()->GetMIRModule()->CurFunction());
@@ -2335,6 +2338,7 @@ void X64Emitter::EmitDwFormData8(const DBGDieAttr &attr, DwAt attrName, DwTag ta
             uint32 startLabelIdx;
             if (it != CG::GetFuncWrapLabels().end()) {
                 /* end label */
+                DEBUG_ASSERT(mfunc != nullptr, "mfunc should not be nullptr");
                 endLabelFuncPuIdx = mfunc->GetPuidx();
                 endLabelIdx = (*it).second.second;
             } else {

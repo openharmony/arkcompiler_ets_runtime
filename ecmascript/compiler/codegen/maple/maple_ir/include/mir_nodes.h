@@ -1249,6 +1249,7 @@ public:
 
     MIRConst *GetConstVal()
     {
+        DEBUG_ASSERT(constVal != nullptr, "constVal shoule not be nullptr");
         return constVal;
     }
 
@@ -2961,6 +2962,7 @@ public:
     {
         auto *node = allocator.GetMemPool()->New<IfStmtNode>(*this);
         node->SetStmtID(stmtIDNext++);
+        CHECK_NULL_FATAL(Opnd());
         node->SetOpnd(Opnd()->CloneTree(allocator), 0);
         node->thenPart = thenPart->CloneTree(allocator);
         if (elsePart != nullptr) {

@@ -197,6 +197,7 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
         MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(cgFunc.GetFunction().GetStIdx().Idx());
         const std::string &funcName = std::string(cgFunc.GetShortFuncName().c_str());
 
+        CHECK_NULL_FATAL(funcSt);
         std::string funcStName = funcSt->GetName();
         if (funcSt->GetFunction()->GetAttr(FUNCATTR_weak)) {
             (void)emitter->Emit("\t.weak\t" + funcStName + "\n");

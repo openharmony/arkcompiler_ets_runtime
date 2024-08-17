@@ -674,6 +674,7 @@ const MIRType *MIRFunction::GetNodeType(const BaseNode &node) const
 {
     if (node.GetOpCode() == OP_dread) {
         const MIRSymbol *sym = GetLocalOrGlobalSymbol(static_cast<const DreadNode &>(node).GetStIdx());
+        CHECK_NULL_FATAL(sym);
         return GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->GetTyIdx());
     }
     if (node.GetOpCode() == OP_regread) {

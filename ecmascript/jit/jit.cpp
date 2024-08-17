@@ -387,7 +387,9 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     }
 
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
+    auto jSPandaFile = method->GetJSPandaFile();
+    ASSERT(jSPandaFile != nullptr);
+    CString fileDesc = jSPandaFile->GetJSPandaFileDesc();
     CString methodName = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
     uint32_t codeSize = method->GetCodeSize();
     CString methodInfo = methodName + ", bytecode size:" + ToCString(codeSize);

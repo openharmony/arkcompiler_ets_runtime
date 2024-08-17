@@ -23,6 +23,7 @@
 #include <string>
 #include <utility>
 #include <unordered_map>
+#include "mpl_logging.h"
 
 /*
   LMIR API exported.
@@ -416,6 +417,7 @@ public:
     Expr Dread(Var &var);  // do we need other forms?
     inline Expr Dread(Var *var)
     {  // shortcut for read from local-var
+        CHECK_NULL_FATAL(var);
         return Dread(*var);
     }
 

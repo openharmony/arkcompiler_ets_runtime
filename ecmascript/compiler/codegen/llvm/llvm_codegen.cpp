@@ -579,6 +579,7 @@ kungfu::CalleeRegAndOffsetVec LLVMAssembler::GetCalleeReg2Offset(LLVMValueRef fn
 {
     kungfu::CalleeRegAndOffsetVec info;
     llvm::Function* func = llvm::unwrap<llvm::Function>(fn);
+    ASSERT(func != nullptr);
 #if defined(PANDA_TARGET_MACOS)
     for (const auto &Attr : func->getAttributes().getFnAttributes()) {
 #else

@@ -269,7 +269,9 @@ Function &LMIRBuilder::CreateFunctionInternal(const String &name, Type *retType,
     for (auto param : params_) {
         params.push_back(param);
     }
-    auto &function = *mirBuilder.CreateFunction(name, *retType, params, isVargs, needBody);
+    auto func = mirBuilder.CreateFunction(name, *retType, params, isVargs, needBody);
+    DEBUG_ASSERT(func != nullptr, "CreateFunction should not be nullptr");
+    auto &function = *func;
     // check for attr
     function.SetAttr(FuncAttrMapTable[attr]);
     function.SetAttr(FuncConvAttrMapTable[convAttr]);
@@ -347,6 +349,7 @@ Expr LMIRBuilder::LiteCGGetPregSP()
 
 Var &LMIRBuilder::CreateLocalVar(Type *type, const String &name)
 {
+    DEBUG_ASSERT(type != nullptr, "type should not be null");
     return *mirBuilder.GetOrCreateLocalDecl(name, *type);
 }
 

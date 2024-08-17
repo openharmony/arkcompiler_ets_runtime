@@ -159,6 +159,7 @@ void Emitter::EmitStmtLabel(LabelIdx labIdx)
 void Emitter::EmitLabelForFunc(const MIRFunction *func, LabelIdx labIdx)
 {
 #ifdef ARK_LITECG_DEBUG
+    DEBUG_ASSERT(func != nullptr, "null ptr check");
     char *idx = strdup(std::to_string(func->GetPuidx()).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");
     outStream << ".L." << idx << "__" << labIdx;
@@ -678,6 +679,7 @@ void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
                 }
                 case PTY_f32: {
                     MIRFloatConst *floatConst = safe_cast<MIRFloatConst>(st->GetKonst());
+                    DEBUG_ASSERT(floatConst != nullptr, "floatConst should not be nullptr");
                     uint32 value = static_cast<uint32>(floatConst->GetIntValue());
                     emitter->Emit("\t.word").Emit(value).Emit("\n");
                     break;
@@ -1735,6 +1737,7 @@ void Emitter::EmitConstantTable(const MIRSymbol &mirSymbol, MIRConst &mirConst,
     uint32 itabConflictIndex = 0;
     for (size_t i = 0; i < aggConst.GetConstVec().size(); ++i) {
         MIRConst *elemConst = aggConst.GetConstVecItem(i);
+        DEBUG_ASSERT(elemConst != nullptr, "null ptr check");
         if (i == 0 && StringUtils::StartsWith(stName, ITAB_CONFLICT_PREFIX_STR)) {
 #ifdef USE_32BIT_REF
             itabConflictIndex = static_cast<uint64>((safe_cast<MIRIntConst>(elemConst))->GetValue()) & 0xffff;
@@ -1910,6 +1913,7 @@ void Emitter::EmitStructConstant(MIRConst &mirConst, uint32 &subStructFieldCount
         }
         MIRType *elemType = structType.GetElemType(i);
         if (structType.GetKind() == kTypeUnion) {
+            CHECK_NULL_FATAL(elemConst);
             elemType = &(elemConst->GetType());
         }
         MIRType *nextElemType = nullptr;

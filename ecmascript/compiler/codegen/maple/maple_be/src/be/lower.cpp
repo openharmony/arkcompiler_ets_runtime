@@ -140,6 +140,7 @@ BaseNode *CGLowerer::LowerDreadBitfield(DreadNode &dread)
 {
     DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "CurFunction should not be nullptr");
     auto *symbol = mirModule.CurFunction()->GetLocalOrGlobalSymbol(dread.GetStIdx());
+    DEBUG_ASSERT(symbol != nullptr, "symbol should not be nullptr");
     auto *structTy = static_cast<MIRStructType *>(symbol->GetType());
     auto fTyIdx = structTy->GetFieldTyIdx(dread.GetFieldID());
     auto *fType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx(fTyIdx));
@@ -415,9 +416,9 @@ StmtNode *CGLowerer::GenCallNode(const StmtNode &stmt, PUIdx &funcCalled, CallNo
     } else if (stmt.GetOpCode() == OP_interfacecallassigned) {
         newCall = mirModule.GetMIRBuilder()->CreateStmtInterfaceCall(origCall.GetPUIdx(), origCall.GetNopnd());
     }
+    CHECK_FATAL(newCall != nullptr, "nullptr is not expected");
     newCall->SetDeoptBundleInfo(origCall.GetDeoptBundleInfo());
     newCall->SetSrcPos(stmt.GetSrcPos());
-    CHECK_FATAL(newCall != nullptr, "nullptr is not expected");
     funcCalled = origCall.GetPUIdx();
     CHECK_FATAL((newCall->GetOpCode() == OP_call || newCall->GetOpCode() == OP_interfacecall),
                 "virtual call or super class call are not expected");
@@ -877,6 +878,7 @@ void CGLowerer::LowerStructReturnInFpRegs(BlockNode &newBlk, const StmtNode &stm
 void CGLowerer::LowerStmt(StmtNode &stmt, BlockNode &newBlk)
 {
     for (size_t i = 0; i < stmt.NumOpnds(); ++i) {
+        DEBUG_ASSERT(stmt.Opnd(i) != nullptr, "null ptr check");
         stmt.SetOpnd(LowerExpr(stmt, *stmt.Opnd(i), newBlk), i);
     }
 }

@@ -191,6 +191,7 @@ bool ChainingPattern::ClearCurBBAndResetTargetBB(BB &curBB, BB &sucBB)
         Insn *br = nullptr;
         for (br = newTarget->GetLastMachineInsn();
              newTarget->GetFirstInsn() != nullptr && br != newTarget->GetFirstInsn()->GetPrev(); br = br->GetPrev()) {
+            DEBUG_ASSERT(br != nullptr, "br should not be nullptr");
             if (br->IsUnCondBranch()) {
                 break;
             }

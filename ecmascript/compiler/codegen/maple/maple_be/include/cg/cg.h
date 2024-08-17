@@ -389,10 +389,7 @@ public:
     {
         return nullptr;
     }
-    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const
-    {
-        return nullptr;
-    }
+    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const = 0;
 
     void SetGP(MIRSymbol *sym)
     {

@@ -458,6 +458,7 @@ BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
                 (curBB.GetPrev()->GetKind() == BB::kBBGoto || curBB.GetPrev()->GetKind() == BB::kBBIf)) {
                 origLastInsn = curBB.GetPrev()->GetLastMachineInsn();
             }
+            ASSERT_NOT_NULL(origLastInsn);
             LabelIdx label = insnVisitor->GetJumpLabel(*origLastInsn);
             for (BB *bb : curBB.GetSuccs()) {
                 if (bb->GetLabIdx() == label) {

@@ -501,6 +501,7 @@ LLVMValueRef LLVMIRBuilder::ReadRegister(LLVMModuleRef &module, [[maybe_unused]]
 LLVMBasicBlockRef LLVMIRBuilder::EnsureLBB(BasicBlock *bb) const
 {
     BasicBlockImpl *impl = EnsureBBImpl(bb);
+    ASSERT(impl != nullptr);
     if (impl->lBB_) {
         return impl->lBB_;
     }

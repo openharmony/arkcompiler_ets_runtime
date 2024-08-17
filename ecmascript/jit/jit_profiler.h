@@ -74,6 +74,10 @@ public:
     {
         compilationEnv_ = env;
     }
+    void InitChunk(Chunk* chunk)
+    {
+        chunk_ = chunk;
+    }
 private:
     enum class BCType : uint8_t {
         STORE,
@@ -169,6 +173,7 @@ private:
     std::unordered_map<int32_t, const PGODefineOpType*> bcOffsetPGODefOpTypeMap_{};
     RecursiveMutex mutex_;
     CompilationEnv *compilationEnv_ {nullptr};
+    Chunk *chunk_ {nullptr};
 };
 
 }
