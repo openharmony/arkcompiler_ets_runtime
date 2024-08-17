@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/builtins/builtins_cjs_require.h"
+#if ECMASCRIPT_ENABLE_CAST_CHECK
+#include "ecmascript/js_tagged_value-inl.h"
+#endif
 
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsCjsRequire::CjsRequireConstructor(EcmaRuntimeCallInfo *argv)

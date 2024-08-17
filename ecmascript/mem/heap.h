@@ -212,7 +212,7 @@ public:
         return gcType_;
     }
 
-    bool IsAlive(TaggedObject *object) const;
+    bool PUBLIC_API IsAlive(TaggedObject *object) const;
 
     bool ContainObject(TaggedObject *object) const;
 
