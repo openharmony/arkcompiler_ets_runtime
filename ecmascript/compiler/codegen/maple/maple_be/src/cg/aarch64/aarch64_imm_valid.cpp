@@ -57,7 +57,7 @@ bool IsBitmaskImmediate(uint64 val, uint32 bitLen)
     uint64 tmpVal = val + (val & static_cast<uint64>(UINT64_MAX - val + 1));
 
     /* now check if tmp is a power of 2 or tmpVal==0. */
-    DEBUG_ASSERT(tmpVal >= 1, "tmpVal -1 should be unsigned");
+    DEBUG_ASSERT(tmpVal >= 0, "tmpVal -1 should be unsigned");
     tmpVal = tmpVal & (tmpVal - 1);
     if (tmpVal == 0) {
         if (!expectedOutcome) {
