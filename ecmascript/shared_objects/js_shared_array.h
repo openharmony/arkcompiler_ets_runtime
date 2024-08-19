@@ -82,6 +82,16 @@ public:
             JSTaggedValue::ToElementIndex(key.GetTaggedValue(), &keyValue);
         }
 
+        if (key->IsDouble()) {
+            double number = key->GetDouble();
+            if (number >= 0 && number < JSObject::MAX_ELEMENT_INDEX) {
+                auto integer = static_cast<uint32_t>(number);
+                if (integer == number) {
+                    keyValue = static_cast<uint32_t>(number);
+                }
+            }
+        }
+
         return IsKeyInRange(keyValue);
     }
 

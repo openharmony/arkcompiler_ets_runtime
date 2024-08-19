@@ -802,6 +802,13 @@ function RangeTest() {
     } catch (err) {
       print('defineProperty to array failed. err: ' + err);
     }
+
+    try {
+        Object.defineProperty(array, 2871622679, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print('defineProperty to array success');
+      } catch (err) {
+        print('defineProperty to array failed. err: ' + err);
+      }
 }
   
 
