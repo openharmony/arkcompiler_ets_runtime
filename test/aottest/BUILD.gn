@@ -218,6 +218,7 @@ group("ark_aot_ts_test") {
     "pgo_constant_value_deopt",
     "pgo_constructor_number",
     "pgo_elimination_loadconstoffset",
+    "pgo_fast_call_bridge",
     "pgo_fast_call_deopt_bridge",
     "pgo_forof_array",
     "pgo_forof_map",
