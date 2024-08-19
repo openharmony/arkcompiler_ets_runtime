@@ -4868,7 +4868,15 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm8Id16Imm8)
         Bind(&isSendableFunc);
         {
             GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
-            SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(module));
+            Label isSourceTextModule(env);
+            Label isNotSourceTextModule(env);
+            BRANCH(IsSourceTextModule(module), &isSourceTextModule, &isNotSourceTextModule);
+            Bind(&isSourceTextModule);
+            {
+                SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(module));
+                Jump(&isNotSourceTextModule);
+            }
+            Bind(&isNotSourceTextModule);
             SetModuleToFunction(glue, result, smodule, MemoryAttribute::DefaultWithShareBarrier());
             Jump(&afterSendableFunc);
         }
@@ -4913,7 +4921,15 @@ DECLARE_ASM_HANDLER(HandleDefinefuncImm16Id16Imm8)
         Bind(&isSendableFunc);
         {
             GateRef smodule = CallRuntime(glue, RTSTUB_ID(GetSharedModule), { module });
-            SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(module));
+            Label isSourceTextModule(env);
+            Label isNotSourceTextModule(env);
+            BRANCH(IsSourceTextModule(module), &isSourceTextModule, &isNotSourceTextModule);
+            Bind(&isSourceTextModule);
+            {
+                SetSendableEnvToModule(glue, smodule, GetSendableEnvFromModule(module));
+                Jump(&isNotSourceTextModule);
+            }
+            Bind(&isNotSourceTextModule);
             SetModuleToFunction(glue, result, smodule, MemoryAttribute::DefaultWithShareBarrier());
             Jump(&afterSendableFunc);
         }

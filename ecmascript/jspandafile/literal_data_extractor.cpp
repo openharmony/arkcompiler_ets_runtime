@@ -295,11 +295,14 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     bool canFastCall = false;
     JSHandle<Method> method =
         factory->NewSMethod(jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT, &canFastCall);
+    if (classKind == ClassKind::SENDABLE) {
+        method->SetIsSendable(true);
+    }
     JSHandle<JSHClass> functionClass;
     JSHandle<JSFunction> jsFunc = CreateJSFunctionInLiteral(vm, method, kind, classKind);
     JSHandle<JSTaggedValue> module = SharedModuleManager::GetInstance()->GenerateFuncModule(thread, jsPandaFile,
                                                                                             entryPoint, classKind);
-    if (module->GetTaggedObject()->GetClass()->IsSourceTextModule()) {
+    if (module->IsSourceTextModule()) {
         SourceTextModule::Cast(module->GetTaggedObject())->SetSendableEnv(thread, sendableEnv);
     }
 
