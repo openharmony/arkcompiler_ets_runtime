@@ -508,7 +508,7 @@ JSTaggedValue JSFunction::Invoke(EcmaRuntimeCallInfo *info, const JSHandle<JSTag
 }
 
 JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> mainFunc,
-    JSHandle<JSTaggedValue> &thisArg, std::string_view entryPoint, CJSInfo* cjsInfo)
+    JSHandle<JSTaggedValue> &thisArg, CJSInfo* cjsInfo)
 {
     ASSERT(thread->IsInManagedState());
     if (mainFunc->IsClassConstructor()) {
@@ -529,14 +529,12 @@ JSTaggedValue JSFunction::InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<J
     RuntimeStubs::StartCallTimer(thread->GetGlueAddr(), mainFunc.GetTaggedType(), true);
 #endif
     if (mainFunc->IsCompiledFastCall()) {
-        // do not modify this log to INFO, this will call many times
-        LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
+        // entry of aot
         args = JSFunction::GetArgsData(true, thisArg, mainFunc, cjsInfo);
         res = thread->GetEcmaVM()->FastCallAot(actualNumArgs, args.data(), prevFp);
     } else {
         args = JSFunction::GetArgsData(false, thisArg, mainFunc, cjsInfo);
-        // do not modify this log to INFO, this will call many times
-        LOG_ECMA(DEBUG) << "start to execute aot entry: " << entryPoint;
+        // entry of aot
         res = thread->GetCurrentEcmaContext()->ExecuteAot(actualNumArgs, args.data(), prevFp, false);
     }
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
