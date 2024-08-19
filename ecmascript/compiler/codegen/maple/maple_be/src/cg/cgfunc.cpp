@@ -121,7 +121,6 @@ Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
         return cgFunc.SelectFloatConst(*mirFloatConst, parent);
     } else if (mirConst->GetKind() == kConstDoubleConst) {
         auto *mirDoubleConst = safe_cast<MIRDoubleConst>(mirConst);
-        DEBUG_ASSERT(mirDoubleConst != nullptr, "nullptr check");
         return cgFunc.SelectDoubleConst(*mirDoubleConst, parent);
     } else {
         CHECK_FATAL(false, "NYI");
@@ -439,6 +438,7 @@ Operand *HandleRound(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 
 Operand *HandleTrunc(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr should not be nullptr");
     return cgFunc.SelectTrunc(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 

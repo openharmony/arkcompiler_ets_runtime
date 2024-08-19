@@ -771,6 +771,7 @@ void MPISel::SelectDassign(const DassignNode &stmt, Operand &opndRhs)
     MIRSymbol *symbol = cgFunc->GetFunction().GetLocalOrGlobalSymbol(stmt.GetStIdx());
     MirTypeInfo symbolInfo = GetMirTypeInfoFromMirNode(stmt);
     /* Get symbol location */
+    DEBUG_ASSERT(symbol != nullptr, "nullptr check");
     MemOperand &symbolMem = GetOrCreateMemOpndFromSymbol(*symbol, stmt.GetFieldID());
     /* rhs mirType info */
     PrimType rhsType = stmt.GetRHS()->GetPrimType();
@@ -1701,8 +1702,10 @@ void MPISel::HandleFuncExit()
 bool InstructionSelector::PhaseRun(maplebe::CGFunc &f)
 {
     MPISel *mpIS = f.GetCG()->CreateMPIsel(*GetPhaseMemPool(), *GetPhaseAllocator(), f);
+    DEBUG_ASSERT(mpIS != nullptr, "null ptr check");
     mpIS->doMPIS();
     Standardize *stdz = f.GetCG()->CreateStandardize(*GetPhaseMemPool(), f);
+    DEBUG_ASSERT(stdz != nullptr, "null ptr check");
     stdz->DoStandardize();
     return true;
 }

@@ -1460,6 +1460,7 @@ void BlockNode::Dump(int32 indent, const MIRSymbolTable *theSymTab, MIRPregTable
                 }
             }
             // print the locally declared variables
+            DEBUG_ASSERT(theSymTab != nullptr, "theSymTab should not be nullptr");
             theSymTab->Dump(true, indent + 1, false, flavor); /* first:isLocal, third:printDeleted */
             if (thePregTab != nullptr) {
                 thePregTab->DumpPregsWithTypes(indent + 1);

@@ -369,10 +369,6 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
             EmitInlineAsm(emitter, insn);
             return;
         }
-        case MOP_clinit_tail: {
-            EmitClinitTail(emitter, insn);
-            return;
-        }
         case MOP_lazy_ldr: {
             EmitLazyLoad(emitter, insn);
             return;
@@ -637,6 +633,8 @@ void AArch64AsmEmitter::EmitInlineAsm(Emitter &emitter, const Insn &insn) const
                         CHECK_FATAL(val < inOpnds.size(), "Inline asm : invalid register constraint number");
                         RegOperand *opnd = inOpnds[val];
                         regno = opnd->GetRegisterNumber();
+                        DEBUG_ASSERT(list7.stringList[val]->GetComment().c_str() != nullptr,
+                            "list7 GetComment.c_str should not be nullptr");
                         isAddr = IsMemAccess(list7.stringList[val]->GetComment().c_str()[0]);
                     }
                     c = asmStr[++i];
@@ -662,31 +660,6 @@ void AArch64AsmEmitter::EmitInlineAsm(Emitter &emitter, const Insn &insn) const
     }
     (void)emitter.Emit(stringToEmit);
     (void)emitter.Emit("\n\t//Inline asm end\n");
-}
-
-void AArch64AsmEmitter::EmitClinitTail(Emitter &emitter, const Insn &insn) const
-{
-    /*
-     * ldr x17, [xs, #112]
-     * ldr wzr, [x17]
-     */
-    const InsnDesc *md = &AArch64CG::kMd[MOP_clinit_tail];
-
-    Operand *opnd0 = &insn.GetOperand(kInsnFirstOpnd);
-
-    const OpndDesc *prop0 = md->opndMD[0];
-    A64OpndEmitVisitor visitor(emitter, prop0);
-
-    /* emit "ldr  x17,[xs,#112]" */
-    (void)emitter.Emit("\t").Emit("ldr").Emit("\tx17, [");
-    opnd0->Accept(visitor);
-    (void)emitter.Emit(", #");
-    (void)emitter.Emit(static_cast<uint32>(ClassMetadata::OffsetOfInitState()));
-    (void)emitter.Emit("]");
-    (void)emitter.Emit("\n");
-
-    /* emit "ldr  xzr, [x17]" */
-    (void)emitter.Emit("\t").Emit("ldr\txzr, [x17]\n");
 }
 
 void AArch64AsmEmitter::EmitLazyLoad(Emitter &emitter, const Insn &insn) const

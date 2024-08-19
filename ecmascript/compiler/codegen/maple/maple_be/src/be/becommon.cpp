@@ -722,6 +722,7 @@ BaseNode *BECommon::GetAddressOfNode(const BaseNode &node)
             const DreadNode &dNode = static_cast<const DreadNode &>(node);
             const StIdx &index = dNode.GetStIdx();
             DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
+            DEBUG_ASSERT(mirModule.CurFunction()->GetLocalOrGlobalSymbol(index) != nullptr, "nullptr check");
             return mirModule.GetMIRBuilder()->CreateAddrof(*mirModule.CurFunction()->GetLocalOrGlobalSymbol(index));
         }
         case OP_iread: {

@@ -603,6 +603,7 @@ BlockNode *MIRLower::LowerBlock(BlockNode &block)
 // to curstmt
 BaseNode *MIRLower::LowerEmbeddedCandCior(BaseNode *x, StmtNode *curstmt, BlockNode *blk)
 {
+    DEBUG_ASSERT(x != nullptr, "nullptr check");
     if (x->GetOpCode() == OP_cand || x->GetOpCode() == OP_cior) {
         MIRBuilder *builder = mirModule.GetMIRBuilder();
         BinaryNode *bnode = static_cast<BinaryNode *>(x);
@@ -857,6 +858,7 @@ BaseNode *MIRLower::LowerCArray(ArrayNode *array)
                 mulSize->SetPrimType(array->GetPrimType());
                 mpyNode->SetOpnd(mulSize, 1);
                 PrimType signedInt4AddressCompute = GetSignedPrimType(array->GetPrimType());
+                DEBUG_ASSERT(resNode != nullptr, "resNode should not be nullptr");
                 if (!IsPrimitiveInteger(resNode->GetPrimType())) {
                     resNode = mirModule.CurFuncCodeMemPool()->New<TypeCvtNode>(OP_cvt, signedInt4AddressCompute,
                                                                                resNode->GetPrimType(), resNode);
@@ -1022,6 +1024,7 @@ void MIRLower::ExpandArrayMrt(MIRFunction &func)
 
 MIRFuncType *MIRLower::FuncTypeFromFuncPtrExpr(BaseNode *x)
 {
+    DEBUG_ASSERT(x != nullptr, "nullptr check");
     MIRFuncType *res = nullptr;
     MIRFunction *func = mirModule.CurFunction();
     switch (x->GetOpCode()) {

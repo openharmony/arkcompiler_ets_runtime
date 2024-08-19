@@ -332,7 +332,9 @@ void Jit::DeleteJitCompile(void *compiler)
 void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
 {
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
-    CString fileDesc = method->GetJSPandaFile()->GetJSPandaFileDesc();
+    auto jSPandaFile = method->GetJSPandaFile();
+    ASSERT(jSPandaFile != nullptr);
+    CString fileDesc = jSPandaFile->GetJSPandaFileDesc();
     CString methodInfo = fileDesc + ":" + method->GetRecordNameStr() + "." + CString(method->GetMethodName());
     auto &profMap = JitWarmupProfiler::GetInstance()->profMap_;
     if (profMap.find(methodInfo) == profMap.end()) {

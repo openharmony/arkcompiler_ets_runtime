@@ -1751,6 +1751,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode 
     std::pair<BaseNode*, std::optional<IntVal>> rp = DispatchFold(node->Opnd(1));
     BaseNode *l = lp.first;
     BaseNode *r = rp.first;
+    ASSERT_NOT_NULL(r);
     ConstvalNode *lConst = safe_cast<ConstvalNode>(l);
     ConstvalNode *rConst = safe_cast<ConstvalNode>(r);
     bool isInt = IsPrimitiveInteger(primType);

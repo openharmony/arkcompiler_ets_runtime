@@ -246,6 +246,7 @@ Type *LMIRBuilder::LiteCGGetPointedType(Type *type)
 
 std::vector<Type *> LMIRBuilder::LiteCGGetFuncParamTypes(Type *type)
 {
+    DEBUG_ASSERT(static_cast<MIRFuncType *>(type) != nullptr, "nullptr check");
     std::vector<TyIdx> &paramTypeList = static_cast<MIRFuncType *>(type)->GetParamTypeList();
     std::vector<Type *> paramTypes;
     for (const auto paramType : paramTypeList) {
@@ -679,6 +680,7 @@ Expr LMIRBuilder::Iread(Type *type, Expr addr, Type *baseType, FieldId fieldId)
 
 PregIdx LMIRBuilder::CreatePreg(Type *mtype)
 {
+    DEBUG_ASSERT(mtype != nullptr, "type is null");
     if ((mtype->GetPrimType() != PTY_ptr) && (mtype->GetPrimType() != PTY_ref)) {
         // primitive type
         return GetCurFunction().GetPregTab()->CreatePreg(mtype->GetPrimType());
