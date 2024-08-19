@@ -518,26 +518,21 @@ PropertyLookupResult InlineTypeInfoAccessor::GetAccessorPlr() const
         return PropertyLookupResult();
     }
     auto pgoType = pgoTypes->GetObjectInfo(0);
-    ProfileTyper receiverType = std::make_pair(pgoType.GetReceiverRootType(), pgoType.GetReceiverType());
     ProfileTyper holderType = std::make_pair(pgoType.GetHoldRootType(), pgoType.GetHoldType());
 
     PGOTypeManager *ptManager = compilationEnv_->GetPTManager();
-    JSHClass *hclass = nullptr;
-    if (receiverType == holderType) {
-        int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(receiverType));
-        if (hclassIndex == -1) {
-            return PropertyLookupResult();
-        }
-        hclass = JSHClass::Cast(ptManager->QueryHClass(receiverType.first, receiverType.second).GetTaggedObject());
-    } else {
-        int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
-        if (hclassIndex == -1) {
-            return PropertyLookupResult();
-        }
-        hclass = JSHClass::Cast(ptManager->QueryHClass(holderType.first, holderType.second).GetTaggedObject());
+
+    int hclassIndex = static_cast<int>(ptManager->GetHClassIndexByProfileType(holderType));
+    if (hclassIndex == -1) {
+        return PropertyLookupResult();
+    }
+    JSTaggedValue hclass = ptManager->QueryHClass(holderType.first, holderType.second);
+    if (!hclass.IsJSHClass()) {
+        return PropertyLookupResult();
     }
 
-    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilationEnv_->GetJSThread(), hclass, prop);
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilationEnv_->GetJSThread(),
+        JSHClass::Cast(hclass.GetTaggedObject()), prop);
     return plr;
 }
 
@@ -599,8 +594,12 @@ bool ObjAccByNameTypeInfoAccessor::GeneratePlr(ProfileTyper type, ObjectAccessIn
     if (hclassIndex == -1) {
         return false;
     }
-    JSHClass *hclass = JSHClass::Cast(ptManager_->QueryHClass(type.first, type.second).GetTaggedObject());
-    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilationEnv_->GetJSThread(), hclass, key);
+    JSTaggedValue hclass = ptManager_->QueryHClass(type.first, type.second);
+    if (!hclass.IsJSHClass()) {
+        return false;
+    }
+    PropertyLookupResult plr = JSHClass::LookupPropertyInPGOHClass(compilationEnv_->GetJSThread(),
+        JSHClass::Cast(hclass.GetTaggedObject()), key);
     info.Set(hclassIndex, plr);
 
     if (mode_ == AccessMode::LOAD) {
@@ -1143,9 +1142,11 @@ bool InstanceOfTypeInfoAccessor::AotAccessorStrategy::ClassInstanceIsCallable(Pr
         return false;
     }
 
-    JSHClass *hclass = JSHClass::Cast(parent_.ptManager_->QueryHClass(type.first, type.second).GetTaggedObject());
-
-    return hclass->IsCallable();
+    JSTaggedValue hclass = parent_.ptManager_->QueryHClass(type.first, type.second);
+    if (!hclass.IsJSHClass()) {
+        return false;
+    }
+    return JSHClass::Cast(hclass.GetTaggedObject())->IsCallable();
 }
 
 bool InstanceOfTypeInfoAccessor::JitAccessorStrategy::ClassInstanceIsCallable(JSHClass *hclass) const
@@ -1387,11 +1388,14 @@ JSTaggedValue CreateObjWithBufferTypeInfoAccessor::AotAccessorStrategy::GetHClas
         }
         return JSTaggedValue::Undefined();
     }
-    JSHClass *newClass = JSHClass::Cast(parent_.ptManager_->QueryHClass(type.first, type.second).GetTaggedObject());
-    if (oldClass->GetInlinedProperties() != newClass->GetInlinedProperties()) {
+    JSTaggedValue newClass = parent_.ptManager_->QueryHClass(type.first, type.second);
+    if (!newClass.IsJSHClass()) {
         return JSTaggedValue::Undefined();
     }
-    return JSTaggedValue(newClass);
+    if (oldClass->GetInlinedProperties() != JSHClass::Cast(newClass.GetTaggedObject())->GetInlinedProperties()) {
+        return JSTaggedValue::Undefined();
+    }
+    return newClass;
 }
 
 JSTaggedValue CreateObjWithBufferTypeInfoAccessor::JitAccessorStrategy::GetHClass() const
