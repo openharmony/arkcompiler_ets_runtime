@@ -1278,7 +1278,7 @@ public:
         forceJitCompileMain_ = value;
     }
 
-    bool IsEnableForceJitCompileMain()
+    bool IsEnableForceJitCompileMain() const
     {
         return forceJitCompileMain_;
     }
@@ -1308,7 +1308,7 @@ public:
         forceBaselineCompileMain_ = value;
     }
 
-    bool IsEnableForceBaselineCompileMain()
+    bool IsEnableForceBaselineCompileMain() const
     {
         return forceBaselineCompileMain_;
     }
@@ -2100,7 +2100,7 @@ private:
     bool enableJitFastCompile_ {false};
     bool enableJitFrame_ {false};
     bool disableCodeSign_ {true};
-    bool enableJitFort_ {false};
+    bool enableJitFort_ {true};
     bool enableAsyncCopyToFort_ {true};
     bool enableBaselinePgo_ {false};
     bool asyncLoadAbc_ {true};

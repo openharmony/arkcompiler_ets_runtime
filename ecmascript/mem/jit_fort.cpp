@@ -18,7 +18,12 @@
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/jit/jit.h"
 #if defined(CODE_SIGN_ENABLE) && !defined(JIT_FORT_DISABLE)
+#include <sys/ioctl.h>
 #include <sys/prctl.h>
+
+#define XPM_JITFORT_ENABLE_OPCODE 3
+#define XPM_MAGIC 'x'
+#define XPM_SET_JITFORT_ENABLE _IOW(XPM_MAGIC, XPM_JITFORT_ENABLE_OPCODE, unsigned long)
 #endif
 
 namespace panda::ecmascript {
@@ -256,6 +261,20 @@ void JitFort::InitJitFortResource()
 {
 #if defined(CODE_SIGN_ENABLE) && !defined(JIT_FORT_DISABLE)
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::InitJitFortResource");
+    if (!Jit::GetInstance()->IsAppJit()) {
+        int fd = open("/dev/xpm", O_RDWR);
+        if (fd < 0) {
+            LOG_JIT(ERROR) << "Failed to init jitfort resource, open xpm failed: " << strerror(errno);
+            return;
+        }
+        int rc = ioctl(fd, XPM_SET_JITFORT_ENABLE, 0);
+        if (rc < 0) {
+            LOG_JIT(ERROR) << "Failed to init jitfort resource, enable xpm failed: " << strerror(errno);
+            close(fd);
+            return;
+        }
+        close(fd);
+    }
     constexpr int prSetJitFort = 0x6a6974;
     constexpr int jitFortInit = 5;
     int res = prctl(prSetJitFort, jitFortInit, 0);
