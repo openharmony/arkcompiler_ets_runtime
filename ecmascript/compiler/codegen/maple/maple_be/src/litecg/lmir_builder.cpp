@@ -611,6 +611,7 @@ Expr LMIRBuilder::Iread(Type *type, Expr addr, Type *baseType, FieldId fieldId)
 
 PregIdx LMIRBuilder::CreatePreg(Type *mtype)
 {
+    DEBUG_ASSERT(mtype != nullptr, "type is null");
     if ((mtype->GetPrimType() != PTY_ptr) && (mtype->GetPrimType() != PTY_ref)) {
         // primitive type
         return GetCurFunction().GetPregTab()->CreatePreg(mtype->GetPrimType());
