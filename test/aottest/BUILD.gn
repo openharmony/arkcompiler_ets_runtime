@@ -328,6 +328,7 @@ group("ark_aot_ts_test") {
     "shared_module",
     "func_profile_type_info",
     "sendable",
+    "webkit_call_convention",
   ]
 
   if (!is_debug) {

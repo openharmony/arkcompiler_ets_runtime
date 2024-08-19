@@ -132,6 +132,12 @@ int32 WebKitJSCallConventionInfo::Classification(const BECommon &be, MIRType &mi
         case PTY_i64:
             classes.push_back(kIntegerClass);
             return k8ByteSize;
+        case PTY_f32:
+            classes.push_back(kFloatClass);
+            return k4ByteSize;
+        case PTY_f64:
+            classes.push_back(kFloatClass);
+            return k8ByteSize;
         default:
             CHECK_FATAL(false, "NYI");
     }
