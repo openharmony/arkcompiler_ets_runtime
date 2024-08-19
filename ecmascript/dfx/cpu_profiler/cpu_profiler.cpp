@@ -22,6 +22,7 @@
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
+#include "ecmascript/platform/ffrt.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "c/executor_task.h"
@@ -375,7 +376,8 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
     JSThread *thread = nullptr;
     {
         LockHolder lock(synchronizationMutex_);
-        pthread_t tid = static_cast<pthread_t>(JSThread::GetCurrentThreadId());
+        // If no task running in this thread, we get the id of the last task that ran in this thread
+        pthread_t tid = static_cast<pthread_t>(GetThreadIdOrCachedTaskId());
         const EcmaVM *vm = profilerMap_[tid].vm_;
         if (vm == nullptr) {
             LOG_ECMA(ERROR) << "CpuProfiler GetStackSignalHandler vm is nullptr";
@@ -430,7 +432,6 @@ void CpuProfiler::GetStackSignalHandler(int signal, [[maybe_unused]] siginfo_t *
             LOG_ECMA(ERROR) << "sp > fp, stack frame exception";
             if (profiler->generator_->SemPost(0) != 0) {
                 LOG_ECMA(ERROR) << "sem_[0] post failed";
-                return;
             }
             return;
         }

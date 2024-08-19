@@ -50,17 +50,18 @@ void *SamplingProcessor::Run(void *arg)
             endTime = GetMicrosecondsTimeStamp();
         }
 #if defined(ENABLE_FFRT_INTERFACES)
-        // when the ffrt is disabled for js thread, including main thread and worker thread,
+        // When the ffrt is disabled for js thread, including main thread and worker thread,
         // then the taskHandle is a nullptr
         if (params.taskHandle_ != nullptr) {
-            // when there are no threads running in the ffrt task,
+            // When the ffrt task is not running on any threads (hang),
             // the tid returned by ffrt_task_get_tid will be zero
             pthread_t tid = ffrt_task_get_tid(params.taskHandle_);
-            if (tid != 0) {
+            if (tid != 0 && jsThreadId != tid) {
                 jsThreadId = tid;
-            } else {
-                uint64_t sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
-                generator->AddEmptyStackSample(sampleTimeStamp);
+            }
+            if (tid == 0) {
+                // The samplesQueue_ may not be empty due to the call of PostNapiFrame
+                SamplingProcessor::AddSample(generator);
                 generator->AddTraceEvent(false);
                 continue;
             }
@@ -78,20 +79,25 @@ void *SamplingProcessor::Run(void *arg)
             LOG_ECMA(ERROR) << "SamplingProcessor::Run, exceed MAX_NODE_COUNT";
             break;
         }
-        if (generator->samplesQueue_->IsEmpty()) {
-            uint64_t sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
-            generator->AddEmptyStackSample(sampleTimeStamp);
-        } else {
-            while (!generator->samplesQueue_->IsEmpty()) {
-                FrameStackAndInfo *frame = generator->samplesQueue_->PopFrame();
-                generator->AddSample(frame);
-            }
-        }
+        SamplingProcessor::AddSample(generator);
         generator->AddTraceEvent(false);
     }
     generator->SetThreadStopTime();
     generator->AddTraceEvent(true);
     return PostSemAndLogEnd(generator, samplingThreadId);
+}
+
+void SamplingProcessor::AddSample(SamplesRecord *generator)
+{
+    if (generator->samplesQueue_->IsEmpty()) {
+        uint64_t sampleTimeStamp = SamplingProcessor::GetMicrosecondsTimeStamp();
+        generator->AddEmptyStackSample(sampleTimeStamp);
+    } else {
+        while (!generator->samplesQueue_->IsEmpty()) {
+            FrameStackAndInfo *frame = generator->samplesQueue_->PopFrame();
+            generator->AddSample(frame);
+        }
+    }
 }
 
 void *SamplingProcessor::PostSemAndLogEnd(SamplesRecord *generator, pthread_t tid)
