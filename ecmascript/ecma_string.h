@@ -34,6 +34,9 @@
 #include "unicode/locid.h"
 
 namespace panda {
+namespace test {
+    class EcmaStringEqualsTest;
+}
 namespace ecmascript {
 template<typename T>
 class JSHandle;
@@ -105,6 +108,7 @@ private:
     friend class SlicedString;
     friend class FlatStringInfo;
     friend class NameDictionary;
+    friend class panda::test::EcmaStringEqualsTest;
 
     static constexpr int SMALL_STRING_SIZE = 128;
 

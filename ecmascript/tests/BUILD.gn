@@ -60,6 +60,7 @@ host_unittest_action("EcmaVm_002_Test") {
     # "ecma_string_test.cpp",
     "ecma_context_test.cpp",
     "ecma_string_accessor_test.cpp",
+    "ecma_string_equals_test.cpp",
   ]
 
   configs = [
