@@ -449,6 +449,10 @@ public:
         if (haveProfileType) {
             uint32_t methodId = profileType->GetProfileType().GetId();
             MethodLiteral *targetMethodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
+            if (UNLIKELY(targetMethodLiteral == nullptr)) {
+                return INVALID_LEN;
+            }
+
             return targetMethodLiteral->GetNumArgsWithCallField();
         }
         return INVALID_LEN;
