@@ -47,7 +47,6 @@ bool IsCallerSaveReg(AArch64reg reg);
 bool IsSpillReg(AArch64reg reg);
 bool IsExtraSpillReg(AArch64reg reg);
 bool IsSpillRegInRA(AArch64reg regNO, bool has3RegOpnd);
-PrimType IsVectorArrayType(MIRType *ty, uint32 &arraySize);
 } /* namespace AArch64Abi */
 
 } /* namespace maplebe */

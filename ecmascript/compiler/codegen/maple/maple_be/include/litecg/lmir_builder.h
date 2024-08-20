@@ -194,7 +194,6 @@ enum FloatCmpCondition {
 };
 
 enum LiteCGTypeKind {
-    kLiteCGTypeInvalid,
     kLiteCGTypeUnknown,
     kLiteCGTypeScalar,
     kLiteCGTypeBitField,
@@ -207,7 +206,6 @@ enum LiteCGTypeKind {
     kLiteCGTypeInterface,
     kLiteCGTypeStructIncomplete,
     kLiteCGTypeClassIncomplete,
-    kLiteCGTypeConstString,
     kLiteCGTypeInterfaceIncomplete,
     kLiteCGTypePointer,
     kLiteCGTypeFunction,

@@ -62,13 +62,11 @@ LMIRBuilder::LMIRBuilder(Module &module_) : mirBuilder(*module_.GetMIRBuilder())
     i16Type = GetPrimitiveType(PTY_i16);
     i32Type = GetPrimitiveType(PTY_i32);
     i64Type = GetPrimitiveType(PTY_i64);
-    i128Type = GetPrimitiveType(PTY_i128);
     u1Type = GetPrimitiveType(PTY_u1);
     u8Type = GetPrimitiveType(PTY_u8);
     u16Type = GetPrimitiveType(PTY_u16);
     u32Type = GetPrimitiveType(PTY_u32);
     u64Type = GetPrimitiveType(PTY_u64);
-    u128Type = GetPrimitiveType(PTY_u128);
     voidType = GetPrimitiveType(PTY_void);
     f32Type = GetPrimitiveType(PTY_f32);
     f64Type = GetPrimitiveType(PTY_f64);
@@ -90,10 +88,6 @@ void LMIRBuilder::DumpIRToFile(const std::string fileName)
 LiteCGTypeKind LMIRBuilder::LiteCGGetTypeKind(Type *type) const
 {
     switch (type->GetKind()) {
-        case MIRTypeKind::kTypeInvalid:
-            return kLiteCGTypeInvalid;
-        case MIRTypeKind::kTypeUnknown:
-            return kLiteCGTypeUnknown;
         case MIRTypeKind::kTypeScalar:
             return kLiteCGTypeScalar;
         case MIRTypeKind::kTypeBitField:
@@ -116,8 +110,6 @@ LiteCGTypeKind LMIRBuilder::LiteCGGetTypeKind(Type *type) const
             return kLiteCGTypeStructIncomplete;
         case MIRTypeKind::kTypeClassIncomplete:
             return kLiteCGTypeClassIncomplete;
-        case MIRTypeKind::kTypeConstString:
-            return kLiteCGTypeConstString;
         case MIRTypeKind::kTypeInterfaceIncomplete:
             return kLiteCGTypeInterfaceIncomplete;
         case MIRTypeKind::kTypePointer:

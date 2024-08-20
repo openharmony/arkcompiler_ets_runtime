@@ -447,20 +447,6 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
             break;
         }
         auto *opnd = &insn.GetOperand(static_cast<uint32>(seq[i]));
-        if (opnd && opnd->IsRegister()) {
-            auto *regOpnd = static_cast<RegOperand *>(opnd);
-            if ((md->opndMD[static_cast<uint32>(seq[i])])->IsVectorOperand()) {
-                regOpnd->SetVecLanePosition(-1);
-                regOpnd->SetVecLaneSize(0);
-                regOpnd->SetVecElementSize(0);
-                if (insn.IsVectorOp()) {
-                    PrepareVectorOperand(regOpnd, compositeOpnds, insn);
-                    if (compositeOpnds != 0) {
-                        (void)emitter.Emit("{");
-                    }
-                }
-            }
-        }
         A64OpndEmitVisitor visitor(emitter, md->opndMD[static_cast<uint32>(seq[i])]);
 
         insn.GetOperand(static_cast<uint32>(seq[i])).Accept(visitor);
@@ -1599,39 +1585,6 @@ void AArch64AsmEmitter::EmitLazyBindingRoutine(Emitter &emitter, const Insn &ins
 #endif
 }
 
-void AArch64AsmEmitter::PrepareVectorOperand(RegOperand *regOpnd, uint32 &compositeOpnds, Insn &insn) const
-{
-#ifdef ARK_LITECG_DEBUG
-    VectorRegSpec *vecSpec = static_cast<VectorInsn &>(insn).GetAndRemoveRegSpecFromList();
-    compositeOpnds = vecSpec->compositeOpnds ? vecSpec->compositeOpnds : compositeOpnds;
-    regOpnd->SetVecLanePosition(vecSpec->vecLane);
-    switch (insn.GetMachineOpcode()) {
-        case MOP_vanduuu:
-        case MOP_vxoruuu:
-        case MOP_voruuu:
-        case MOP_vnotuu:
-        case MOP_vextuuui: {
-            regOpnd->SetVecLaneSize(k8ByteSize);
-            regOpnd->SetVecElementSize(k8BitSize);
-            break;
-        }
-        case MOP_vandvvv:
-        case MOP_vxorvvv:
-        case MOP_vorvvv:
-        case MOP_vnotvv:
-        case MOP_vextvvvi: {
-            regOpnd->SetVecLaneSize(k16ByteSize);
-            regOpnd->SetVecElementSize(k8BitSize);
-            break;
-        }
-        default: {
-            regOpnd->SetVecLaneSize(vecSpec->vecLaneMax);
-            regOpnd->SetVecElementSize(vecSpec->vecElementSize);
-            break;
-        }
-    }
-#endif
-}
 #ifdef ARK_LITECG_DEBUG
 struct CfiDescr {
     const std::string name;

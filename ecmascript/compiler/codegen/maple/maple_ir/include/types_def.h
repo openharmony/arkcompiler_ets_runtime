@@ -80,11 +80,6 @@ public:
         return u.scopeIdx.scope;
     }
 
-    void SetScope(uint32 scpe)
-    {
-        u.scopeIdx.scope = static_cast<uint8>(scpe);
-    }
-
     uint32 FullIdx() const
     {
         return u.fullIdx;

@@ -1589,9 +1589,7 @@ uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFi
             EmitBitField(*sEmitInfo, *elemConst, nextElemType, fieldOffset);
         } else {
             if (elemConst != nullptr) {
-                if (IsPrimitiveVector(elemType->GetPrimType())) {
-                    valueSize += EmitVector(*elemConst);
-                } else if (IsPrimitiveScalar(elemType->GetPrimType())) {
+                if (IsPrimitiveScalar(elemType->GetPrimType())) {
                     valueSize += EmitSingleElement(*elemConst, belongsToDataSec, true);
                 } else if (elemKind == kTypeArray) {
                     if (elemType->GetSize() != 0) {
@@ -1644,34 +1642,6 @@ uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFi
     return valueSize;
 }
 
-uint64 X64Emitter::EmitVector(MIRConst &mirConst, bool belongsToDataSec)
-{
-    uint64 valueSize = 0;
-#ifdef ARK_LITECG_DEBUG
-    MIRType &mirType = mirConst.GetType();
-    MIRAggConst &vecCt = static_cast<MIRAggConst &>(mirConst);
-    size_t uNum = vecCt.GetConstVec().size();
-    for (size_t i = 0; i < uNum; ++i) {
-        MIRConst *elemConst = vecCt.GetConstVecItem(i);
-        if (IsPrimitiveScalar(elemConst->GetType().GetPrimType())) {
-            uint64 elemSize = EmitSingleElement(*elemConst, belongsToDataSec);
-            valueSize += elemSize;
-        } else {
-            DEBUG_ASSERT(false, "EmitVector: should not run here");
-        }
-    }
-    size_t lanes = GetVecLanes(mirType.GetPrimType());
-    if (lanes > uNum) {
-        MIRIntConst zConst(0, vecCt.GetConstVecItem(0)->GetType());
-        for (size_t i = uNum; i < lanes; i++) {
-            uint64 elemSize = EmitSingleElement(zConst, belongsToDataSec);
-            valueSize += elemSize;
-        }
-    }
-#endif
-    return valueSize;
-}
-
 uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
 {
     uint64 valueSize = 0;
@@ -1695,9 +1665,7 @@ uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
     }
     for (size_t i = 0; i < uNum; ++i) {
         MIRConst *elemConst = arrayCt.GetConstVecItem(i);
-        if (IsPrimitiveVector(subTy->GetPrimType())) {
-            valueSize += EmitVector(*elemConst, belongsToDataSec);
-        } else if (IsPrimitiveScalar(elemConst->GetType().GetPrimType())) {
+        if (IsPrimitiveScalar(elemConst->GetType().GetPrimType())) {
             if (cg.GetMIRModule()->IsCModule()) {
                 bool strLiteral = false;
                 if (arrayType.GetDim() == 1) {
@@ -1973,8 +1941,6 @@ void X64Emitter::EmitLocalVariable(CGFunc &cgFunc)
                     assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSALocal, secType);
                     if (kind == kTypeStruct || kind == kTypeUnion || kind == kTypeClass) {
                         valueSize = EmitStructure(*ct, *cgFunc.GetCG());
-                    } else if (IsPrimitiveVector(ty->GetPrimType())) {
-                        valueSize = EmitVector(*ct);
                     } else if (kind == kTypeArray) {
                         valueSize = EmitArray(*ct, *cgFunc.GetCG());
                     } else if (isFloatTy) {
@@ -2062,10 +2028,7 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
             } else {
                 assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, kSData);
             }
-            if (IsPrimitiveVector(mirType->GetPrimType())) {
-                ASSERT_NOT_NULL(mirConst);
-                valueSize = EmitVector(*mirConst);
-            } else if (IsPrimitiveScalar(mirType->GetPrimType())) {
+            if (IsPrimitiveScalar(mirType->GetPrimType())) {
                 valueSize = EmitSingleElement(*mirConst, true, cg.GetMIRModule()->IsCModule());
             } else if (kind == kTypeArray) {
                 CHECK_FATAL(!mirSymbol->HasAddrOfValues(), "EmitGlobalVariable: need EmitConstantTable");
@@ -2092,9 +2055,7 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
                     symAttr = kSAStatic;
                 }
                 assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, symAttr, kSRodata);
-                if (IsPrimitiveVector(mirType->GetPrimType())) {
-                    (void)EmitVector(*mirConst, false);
-                } else if (IsPrimitiveScalar(mirType->GetPrimType())) {
+                if (IsPrimitiveScalar(mirType->GetPrimType())) {
                     if (storageClass == kScPstatic) {
                         (void)EmitSingleElement(*mirConst, false, true);
                     } else {

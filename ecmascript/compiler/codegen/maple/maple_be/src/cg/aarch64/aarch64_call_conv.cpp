@@ -38,7 +38,7 @@ void AArch64CallConvImpl::LocateRetVal(const MIRType &retType, CCLocInfo &pLoc)
     }
 
     PrimType primType = retType.GetPrimType();
-    if (IsPrimitiveFloat(primType) || IsPrimitiveVector(primType)) {
+    if (IsPrimitiveFloat(primType)) {
         // float or vector, return in v0
         pLoc.reg0 = AArch64Abi::floatReturnRegs[0];
         pLoc.primTypeOfReg0 = primType;
@@ -134,7 +134,7 @@ uint64 AArch64CallConvImpl::LocateNextParm(const MIRType &mirType, CCLocInfo &pL
     pLoc.memSize = static_cast<int32>(typeSize);
 
     uint64 aggCopySize = 0;
-    if (IsPrimitiveFloat(mirType.GetPrimType()) || IsPrimitiveVector(mirType.GetPrimType())) {
+    if (IsPrimitiveFloat(mirType.GetPrimType())) {
         // float or vector, passed by float or SIMD register
         pLoc.reg0 = AllocateSIMDFPRegister();
         pLoc.primTypeOfReg0 = mirType.GetPrimType();

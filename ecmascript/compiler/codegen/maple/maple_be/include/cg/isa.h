@@ -55,7 +55,6 @@ enum MopProperty : maple::uint8 {
     kInsnIsUnCondBr,
     kInsnIsCondBr,
     kInsnHasLoop,
-    kInsnIsVectorOp,
     kInsnIsBinaryOp,
     kInsnIsPhi,
     kInsnIsUnaryOp,
@@ -90,7 +89,6 @@ using regno_t = uint32_t;
 #define ISUNCONDBRANCH (1ULL << kInsnIsUnCondBr)
 #define ISCONDBRANCH (1ULL << kInsnIsCondBr)
 #define HASLOOP (1ULL << kInsnHasLoop)
-#define ISVECTOR (1ULL << kInsnIsVectorOp)
 #define ISBASICOP (1ULL << kInsnIsBinaryOp)
 #define ISPHI (1ULL << kInsnIsPhi)
 #define ISUNARYOP (1ULL << kInsnIsUnaryOp)
@@ -350,11 +348,6 @@ struct InsnDesc {
     bool IsCondDef() const
     {
         return (properties & ISCONDDEF) != 0;
-    }
-
-    bool IsVectorOp() const
-    {
-        return (properties & ISVECTOR) != 0;
     }
 
     bool IsVolatile() const

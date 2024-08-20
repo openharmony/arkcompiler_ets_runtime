@@ -288,8 +288,6 @@ public:
 
     bool IsDMBInsn() const;
 
-    bool IsVectorOp() const;
-
     virtual Operand *GetCallTargetOperand() const;
 
     uint32 GetAtomicNum() const;
@@ -828,72 +826,6 @@ private:
     SparseDataInfo *stackMapDef = nullptr;
     SparseDataInfo *stackMapUse = nullptr;
     MapleSet<regno_t> stackMapLiveIn;
-};
-
-struct VectorRegSpec {
-    VectorRegSpec() : vecLane(-1), vecLaneMax(0), vecElementSize(0), compositeOpnds(0) {}
-
-    VectorRegSpec(PrimType type, int16 lane = -1, uint16 compositeOpnds = 0)
-        : vecLane(lane),
-          vecLaneMax(GetVecLanes(type)),
-          vecElementSize(GetVecEleSize(type)),
-          compositeOpnds(compositeOpnds)
-    {
-    }
-
-    VectorRegSpec(uint16 laneNum, uint16 eleSize, int16 lane = -1, uint16 compositeOpnds = 0)
-        : vecLane(lane), vecLaneMax(laneNum), vecElementSize(eleSize), compositeOpnds(compositeOpnds)
-    {
-    }
-
-    int16 vecLane;         /* -1 for whole reg, 0 to 15 to specify individual lane */
-    uint16 vecLaneMax;     /* Maximum number of lanes for this vregister */
-    uint16 vecElementSize; /* element size in each Lane */
-    uint16 compositeOpnds; /* Number of enclosed operands within this composite operand */
-};
-
-class VectorInsn : public Insn {
-public:
-    VectorInsn(MemPool &memPool, MOperator opc) : Insn(memPool, opc), regSpecList(localAlloc.Adapter())
-    {
-        regSpecList.clear();
-    }
-
-    ~VectorInsn() override = default;
-
-    void ClearRegSpecList()
-    {
-        regSpecList.clear();
-    }
-
-    VectorRegSpec *GetAndRemoveRegSpecFromList();
-
-    size_t GetNumOfRegSpec() const
-    {
-        if (IsVectorOp() && !regSpecList.empty()) {
-            return regSpecList.size();
-        }
-        return 0;
-    }
-
-    MapleVector<VectorRegSpec *> &GetRegSpecList()
-    {
-        return regSpecList;
-    }
-
-    void SetRegSpecList(const MapleVector<VectorRegSpec *> &vec)
-    {
-        regSpecList = vec;
-    }
-
-    VectorInsn &PushRegSpecEntry(VectorRegSpec *v)
-    {
-        regSpecList.emplace(regSpecList.begin(), v);
-        return *this;
-    }
-
-private:
-    MapleVector<VectorRegSpec *> regSpecList;
 };
 
 struct InsnIdCmp {

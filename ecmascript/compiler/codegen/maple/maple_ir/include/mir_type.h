@@ -37,7 +37,6 @@ using FieldVector = std::vector<FieldPair>;
 using MIRTypePtr = MIRType *;
 
 constexpr size_t kMaxArrayDim = 20;
-const std::string kJstrTypeName = "constStr";
 constexpr uint32 kInvalidFieldNum = UINT32_MAX;
 constexpr size_t kInvalidSize = static_cast<size_t>(UINT64_MAX);
 #if MIR_FEATURE_FULL
@@ -47,8 +46,6 @@ extern uint32 GetPrimTypeSize(PrimType primType);                    // answer i
 extern uint32 GetPrimTypeP2Size(PrimType primType);                  // answer in bytes in power-of-two.
 extern PrimType GetSignedPrimType(PrimType pty);                     // return signed version
 extern PrimType GetUnsignedPrimType(PrimType pty);                   // return unsigned version
-extern uint32 GetVecEleSize(PrimType primType);                      // element size of each lane in vector
-extern uint32 GetVecLanes(PrimType primType);                        // lane size if vector
 extern const char *GetPrimTypeName(PrimType primType);
 extern int64 MinValOfSignedInteger(PrimType primType);
 extern PrimType GetVecElemPrimType(PrimType primType);
@@ -99,9 +96,6 @@ inline uint32 GetPrimTypeActualBitSize(PrimType primType)
 #endif  // MIR_FEATURE_FULL
 // return the same type with size increased to register size
 PrimType GetRegPrimType(PrimType primType);
-PrimType GetDynType(PrimType primType);
-PrimType GetReg64PrimType(PrimType primType);
-PrimType GetNonDynType(PrimType primType);
 PrimType GetIntegerPrimTypeBySizeAndSign(size_t sizeBit, bool isSign);
 
 inline bool IsAddress(PrimitiveType primitiveType)
@@ -119,20 +113,10 @@ inline bool IsPossible32BitAddress(PrimType tp)
     return (tp == PTY_ptr || tp == PTY_ref || tp == PTY_u32 || tp == PTY_a32);
 }
 
-inline bool MustBeAddress(PrimType tp)
-{
-    return (tp == PTY_ptr || tp == PTY_ref || tp == PTY_a64 || tp == PTY_a32);
-}
-
-inline bool IsInt128Ty(PrimType type)
-{
-    return type == PTY_u128 || type == PTY_i128;
-}
 
 inline bool IsPrimitivePureScalar(PrimitiveType primitiveType)
 {
-    return primitiveType.IsInteger() && !primitiveType.IsAddress() && !primitiveType.IsDynamic() &&
-           !primitiveType.IsVector();
+    return primitiveType.IsInteger() && !primitiveType.IsAddress() && !primitiveType.IsDynamic();
 }
 
 inline bool IsPrimitiveUnsigned(PrimitiveType primitiveType)
@@ -152,7 +136,7 @@ inline bool IsSignedInteger(PrimitiveType primitiveType)
 
 inline bool IsPrimitiveInteger(PrimitiveType primitiveType)
 {
-    return primitiveType.IsInteger() && !primitiveType.IsDynamic() && !primitiveType.IsVector();
+    return primitiveType.IsInteger() && !primitiveType.IsDynamic();
 }
 
 inline bool IsPrimitiveDynType(PrimitiveType primitiveType)
@@ -165,14 +149,9 @@ inline bool IsPrimitiveDynInteger(PrimitiveType primitiveType)
     return primitiveType.IsDynamic() && primitiveType.IsInteger();
 }
 
-inline bool IsPrimitiveDynFloat(PrimitiveType primitiveType)
-{
-    return primitiveType.IsDynamic() && primitiveType.IsFloat();
-}
-
 inline bool IsPrimitiveFloat(PrimitiveType primitiveType)
 {
-    return primitiveType.IsFloat() && !primitiveType.IsDynamic() && !primitiveType.IsVector();
+    return primitiveType.IsFloat() && !primitiveType.IsDynamic();
 }
 
 inline bool IsPrimitiveScalar(PrimitiveType primitiveType)
@@ -181,34 +160,9 @@ inline bool IsPrimitiveScalar(PrimitiveType primitiveType)
            (primitiveType.IsDynamic() && !primitiveType.IsDynamicNone()) || primitiveType.IsSimple();
 }
 
-inline bool IsPrimitiveValid(PrimitiveType primitiveType)
-{
-    return IsPrimitiveScalar(primitiveType) && !primitiveType.IsDynamicAny();
-}
-
 inline bool IsPrimitivePoint(PrimitiveType primitiveType)
 {
     return primitiveType.IsPointer();
-}
-
-inline bool IsPrimitiveVector(PrimitiveType primitiveType)
-{
-    return primitiveType.IsVector();
-}
-
-inline bool IsPrimitiveVectorFloat(PrimitiveType primitiveType)
-{
-    return primitiveType.IsVector() && primitiveType.IsFloat();
-}
-
-inline bool IsPrimitiveVectorInteger(PrimitiveType primitiveType)
-{
-    return primitiveType.IsVector() && primitiveType.IsInteger();
-}
-
-inline bool IsPrimitiveUnSignedVector(const PrimitiveType &primitiveType)
-{
-    return IsPrimitiveUnsigned(primitiveType) && primitiveType.IsVector();
 }
 
 bool IsNoCvtNeeded(PrimType toType, PrimType fromType);
@@ -224,8 +178,6 @@ inline bool IsRefOrPtrAssign(PrimType toType, PrimType fromType)
 }
 
 enum MIRTypeKind : std::uint8_t {
-    kTypeInvalid,
-    kTypeUnknown,
     kTypeScalar,
     kTypeBitField,
     kTypeArray,
@@ -237,7 +189,6 @@ enum MIRTypeKind : std::uint8_t {
     kTypeInterface,
     kTypeStructIncomplete,
     kTypeClassIncomplete,
-    kTypeConstString,
     kTypeInterfaceIncomplete,
     kTypePointer,
     kTypeFunction,
@@ -327,11 +278,6 @@ public:
     TypeAttrs &operator=(const TypeAttrs &t) = default;
     ~TypeAttrs() = default;
 
-    void SetAlignValue(uint8 align)
-    {
-        attrAlign = align;
-    }
-
     uint8 GetAlignValue() const
     {
         return attrAlign;
@@ -340,11 +286,6 @@ public:
     void SetAttrFlag(uint64 flag)
     {
         attrFlag = flag;
-    }
-
-    void SetTypeAlignValue(uint8 align)
-    {
-        attrTypeAlign = align;
     }
 
     uint8 GetTypeAlignValue() const
@@ -481,11 +422,6 @@ public:
         return GetAttr(ATTR_typedef);
     }
 
-    void SetOriginType(MIRType *basicType)
-    {
-        originType = basicType;
-    }
-
     MIRType *GetOriginType() const
     {
         return originType;
@@ -514,11 +450,6 @@ public:
     FieldAttrs(const FieldAttrs &ta) = default;
     FieldAttrs &operator=(const FieldAttrs &p) = default;
     ~FieldAttrs() = default;
-
-    void SetAlignValue(uint8 align)
-    {
-        attrAlign = align;
-    }
 
     uint8 GetAlignValue() const
     {
@@ -2471,42 +2402,6 @@ public:
         constexpr uint8 idxShift = 2;
         return ((static_cast<size_t>(nameStrIdx) << idxShift) + nameIsLocal + (typeKind << kShiftNumOfTypeKind)) %
                kTypeHashLength;
-    }
-};
-
-class MIRTypeParam : public MIRType {
-    // use nameStrIdx to store the name
-public:
-    explicit MIRTypeParam(GStrIdx gStrIdx) : MIRType(kTypeParam, PTY_gen)
-    {
-        nameStrIdx = gStrIdx;
-    }
-
-    ~MIRTypeParam() override = default;
-
-    MIRType *CopyMIRTypeNode() const override
-    {
-        return new MIRTypeParam(*this);
-    }
-
-    bool EqualTo(const MIRType &type) const override;
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int indent, bool dontUseName = false) const override;
-#endif
-    size_t GetSize() const override
-    {
-        return 0;
-    }  // size unknown
-
-    bool HasTypeParam() const override
-    {
-        return true;
-    }
-
-    size_t GetHashIndex() const override
-    {
-        constexpr uint8 idxShift = 3;
-        return ((static_cast<size_t>(nameStrIdx) << idxShift) + (typeKind << kShiftNumOfTypeKind)) % kTypeHashLength;
     }
 };
 

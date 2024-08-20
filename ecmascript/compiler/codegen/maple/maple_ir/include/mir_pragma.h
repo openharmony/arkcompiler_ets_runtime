@@ -34,14 +34,10 @@ enum PragmaKind {
     kPragmaFunc,
     kPragmaField,
     kPragmaParam,
-    kPragmaPkg,
     kPragmaVar,
-    kPragmaGlbvar,
     kPragmaFuncExecptioni,
     kPragmaFuncVar
 };
-
-enum PragmaVisibility { kVisBuild, kVisRuntime, kVisSystem, kVisMaple };
 
 enum PragmaValueType {
     kValueByte = 0x00,          // (none; must be 0)  ubyte[1]
@@ -68,13 +64,13 @@ class MIRPragmaElement {
 public:
     explicit MIRPragmaElement(MIRModule &m) : MIRPragmaElement(m.GetPragmaMPAllocator())
     {
-        val.d = 0;
+        d = 0;
     }
 
     explicit MIRPragmaElement(MapleAllocator &subElemAllocator) : subElemVec(subElemAllocator.Adapter())
     {
         subElemVec.clear();
-        val.d = 0;
+        d = 0;
     }
 
     ~MIRPragmaElement() = default;
@@ -83,215 +79,9 @@ public:
         subElemVec.push_back(elem);
     }
 
-    const MapleVector<MIRPragmaElement *> &GetSubElemVec() const
-    {
-        return subElemVec;
-    }
-
-    const MIRPragmaElement *GetSubElement(uint64 i) const
-    {
-        return subElemVec[i];
-    }
-
-    MapleVector<MIRPragmaElement *> &GetSubElemVec()
-    {
-        return subElemVec;
-    }
-
-    const GStrIdx GetNameStrIdx() const
-    {
-        return nameStrIdx;
-    }
-
-    const GStrIdx GetTypeStrIdx() const
-    {
-        return typeStrIdx;
-    }
-
-    PragmaValueType GetType() const
-    {
-        return valueType;
-    }
-
-    int32 GetI32Val() const
-    {
-        return val.i;
-    }
-
-    int64 GetI64Val() const
-    {
-        return val.j;
-    }
-
-    uint64 GetU64Val() const
-    {
-        return val.u;
-    }
-
-    float GetFloatVal() const
-    {
-        return val.f;
-    }
-
-    double GetDoubleVal() const
-    {
-        return val.d;
-    }
-
-    void SetTypeStrIdx(GStrIdx strIdx)
-    {
-        typeStrIdx = strIdx;
-    }
-
-    void SetNameStrIdx(GStrIdx strIdx)
-    {
-        nameStrIdx = strIdx;
-    }
-
-    void SetType(PragmaValueType type)
-    {
-        valueType = type;
-    }
-
-    void SetI32Val(int32 newVal)
-    {
-        this->val.i = newVal;
-    }
-
-    void SetI64Val(int64 newVal)
-    {
-        this->val.j = newVal;
-    }
-
-    void SetU64Val(uint64 newVal)
-    {
-        this->val.u = newVal;
-    }
-
-    void SetFloatVal(float newVal)
-    {
-        this->val.f = newVal;
-    }
-
-    void SetDoubleVal(double newVal)
-    {
-        this->val.d = newVal;
-    }
-
 private:
-    GStrIdx nameStrIdx {0};
-    GStrIdx typeStrIdx {0};
-    PragmaValueType valueType = kValueNull;
-    union {
-        int32 i;
-        int64 j;
-        uint64 u;
-        float f;
-        double d;
-    } val;
+    double d;
     MapleVector<MIRPragmaElement *> subElemVec;
-};
-
-class MIRPragma {
-public:
-    explicit MIRPragma(MIRModule &m) : MIRPragma(m.GetPragmaMPAllocator()) {}
-
-    MIRPragma(MapleAllocator &elemAllocator) : elementVec(elemAllocator.Adapter()) {}
-
-    ~MIRPragma() = default;
-    void PushElementVector(MIRPragmaElement *elem)
-    {
-        elementVec.push_back(elem);
-    }
-
-    void ClearElementVector()
-    {
-        elementVec.clear();
-    }
-
-    PragmaKind GetKind() const
-    {
-        return pragmaKind;
-    }
-
-    uint8 GetVisibility() const
-    {
-        return visibility;
-    }
-
-    const GStrIdx GetStrIdx() const
-    {
-        return strIdx;
-    }
-
-    const TyIdx GetTyIdx() const
-    {
-        return tyIdx;
-    }
-
-    const TyIdx GetTyIdxEx() const
-    {
-        return tyIdxEx;
-    }
-
-    int32 GetParamNum() const
-    {
-        return paramNum;
-    }
-
-    const MapleVector<MIRPragmaElement *> &GetElementVector() const
-    {
-        return elementVec;
-    }
-
-    const MIRPragmaElement *GetNthElement(uint32 i) const
-    {
-        return elementVec[i];
-    }
-
-    void ElementVecPushBack(MIRPragmaElement *elem)
-    {
-        elementVec.push_back(elem);
-    }
-
-    void SetKind(PragmaKind kind)
-    {
-        pragmaKind = kind;
-    }
-
-    void SetVisibility(uint8 visValue)
-    {
-        visibility = visValue;
-    }
-
-    void SetStrIdx(GStrIdx idx)
-    {
-        strIdx = idx;
-    }
-
-    void SetTyIdx(TyIdx idx)
-    {
-        tyIdx = idx;
-    }
-
-    void SetTyIdxEx(TyIdx idx)
-    {
-        tyIdxEx = idx;
-    }
-
-    void SetParamNum(int32 num)
-    {
-        paramNum = num;
-    }
-
-private:
-    PragmaKind pragmaKind = kPragmaUnknown;
-    uint8 visibility = 0;
-    GStrIdx strIdx {0};
-    TyIdx tyIdx {0};
-    TyIdx tyIdxEx {0};
-    int32 paramNum = -1;  // paramNum th param in function, -1 not for param annotation
-    MapleVector<MIRPragmaElement *> elementVec;
 };
 }  // namespace maple
 #endif  // MAPLE_IR_INCLUDE_MIR_PRAGMA_H

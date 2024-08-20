@@ -116,62 +116,8 @@ MIRType *IntrinDesc::GetTypeFromArgTy(IntrinArgType argType) const
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f64));
         case kArgTyF128:
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f128));
-        case kArgTyC64:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_c64));
-        case kArgTyC128:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_c128));
         case kArgTyAgg:
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_agg));
-        case kArgTyV2I64:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v2i64));
-        case kArgTyV4I32:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v4i32));
-        case kArgTyV8I16:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v8i16));
-        case kArgTyV16I8:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v16i8));
-        case kArgTyV2U64:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v2u64));
-        case kArgTyV4U32:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v4u32));
-        case kArgTyV8U16:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v8u16));
-        case kArgTyV16U8:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v16u8));
-        case kArgTyV2F64:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v2f64));
-        case kArgTyV4F32:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v4f32));
-        case kArgTyV1I64:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_i64));
-        case kArgTyV2I32:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v2i32));
-        case kArgTyV4I16:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v4i16));
-        case kArgTyV8I8:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v8i8));
-        case kArgTyV1U64:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_u64));
-        case kArgTyV2U32:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v2u32));
-        case kArgTyV4U16:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v4u16));
-        case kArgTyV8U8:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v8u8));
-        case kArgTyV1F64:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f64));
-        case kArgTyV2F32:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_v2f32));
-#ifdef DYNAMICLANG
-        case kArgTySimplestr:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_simplestr));
-        case kArgTySimpleobj:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_simpleobj));
-        case kArgTyDynany:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_dynany));
-        case kArgTyDyni32:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_dyni32));
-#endif
         default:
             return nullptr;
     }

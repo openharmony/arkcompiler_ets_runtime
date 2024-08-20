@@ -1080,14 +1080,9 @@ Operand *MPISel::SelectNeg(const UnaryNode &node, Operand &opnd0, const BaseNode
     PrimType dtype = node.GetPrimType();
 
     RegOperand *resOpnd = nullptr;
-    if (!IsPrimitiveVector(dtype)) {
-        resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
-        RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
-        SelectNeg(*resOpnd, regOpnd0, dtype);
-    } else {
-        /* vector operand */
-        CHECK_FATAL(false, "NIY");
-    }
+    resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
+    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
+    SelectNeg(*resOpnd, regOpnd0, dtype);
     return resOpnd;
 }
 
@@ -1173,9 +1168,7 @@ Operand *MPISel::SelectIread(const BaseNode &parent, const IreadNode &expr, int 
 Operand *MPISel::SelectAbs(UnaryNode &node, Operand &opnd0)
 {
     PrimType primType = node.GetPrimType();
-    if (IsPrimitiveVector(primType)) {
-        CHECK_FATAL(false, "NIY");
-    } else if (IsPrimitiveFloat(primType)) {
+    if (IsPrimitiveFloat(primType)) {
         /*
          * fabs(x) = x AND 0x7fffffff ffffffff [set sign bit to 0]
          */
@@ -1323,14 +1316,9 @@ Operand *MPISel::SelectBnot(const UnaryNode &node, Operand &opnd0, const BaseNod
     PrimType dtype = node.GetPrimType();
 
     RegOperand *resOpnd = nullptr;
-    if (!IsPrimitiveVector(dtype)) {
-        resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
-        RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
-        SelectBnot(*resOpnd, regOpnd0, dtype);
-    } else {
-        /* vector operand */
-        CHECK_FATAL(false, "NIY");
-    }
+    resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
+    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
+    SelectBnot(*resOpnd, regOpnd0, dtype);
     return resOpnd;
 }
 
@@ -1377,9 +1365,6 @@ Operand *MPISel::SelectRetype(TypeCvtNode &node, Operand &opnd0)
     PrimType toType = node.GetPrimType();
     DEBUG_ASSERT(GetPrimTypeSize(fromType) == GetPrimTypeSize(toType), "retype bit widith doesn' match");
     if (IsPrimitivePoint(fromType) && IsPrimitivePoint(toType)) {
-        return &SelectCopy2Reg(opnd0, toType);
-    }
-    if (IsPrimitiveVector(fromType) || IsPrimitiveVector(toType)) {
         return &SelectCopy2Reg(opnd0, toType);
     }
     if (IsPrimitiveInteger(fromType) && IsPrimitiveInteger(toType)) {

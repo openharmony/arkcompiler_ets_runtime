@@ -151,15 +151,6 @@ void AArch64MoveRegArgs::MoveArgsToVReg(const CCLocInfo &ploc, MIRSymbol &mirSym
         aarFunc->GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg>(ploc.reg0), srcBitSize, regType);
     DEBUG_ASSERT(mirSym.GetStorageClass() == kScFormal, "should be args");
     MOperator mOp = aarFunc->PickMovBetweenRegs(sType, sType);
-    if (mOp == MOP_vmovvv || mOp == MOP_vmovuu) {
-        auto &vInsn = aarFunc->GetInsnBuilder()->BuildVectorInsn(mOp, AArch64CG::kMd[mOp]);
-        (void)vInsn.AddOpndChain(dstRegOpnd).AddOpndChain(srcRegOpnd);
-        auto *vecSpec1 = aarFunc->GetMemoryPool()->New<VectorRegSpec>(srcBitSize >> k3ByteSize, k8BitSize);
-        auto *vecSpec2 = aarFunc->GetMemoryPool()->New<VectorRegSpec>(srcBitSize >> k3ByteSize, k8BitSize);
-        (void)vInsn.PushRegSpecEntry(vecSpec1).PushRegSpecEntry(vecSpec2);
-        aarFunc->GetCurBB()->InsertInsnBegin(vInsn);
-        return;
-    }
     Insn &insn = CreateMoveArgsToVRegInsn(mOp, dstRegOpnd, srcRegOpnd, sType);
     if (aarFunc->GetCG()->GenerateVerboseCG()) {
         std::string str = "param: %%";

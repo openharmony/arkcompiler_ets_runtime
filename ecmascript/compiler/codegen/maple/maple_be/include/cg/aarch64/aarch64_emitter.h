@@ -69,7 +69,6 @@ private:
     void EmitCTlsDescCall(Emitter &emitter, const Insn &insn) const;
     void EmitSyncLockTestSet(Emitter &emitter, const Insn &insn) const;
 
-    void PrepareVectorOperand(RegOperand *regOpnd, uint32 &compositeOpnds, Insn &insn) const;
     bool CheckInsnRefField(const Insn &insn, size_t opndIndex) const;
 };
 } /* namespace maplebe */

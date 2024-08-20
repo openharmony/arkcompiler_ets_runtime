@@ -52,13 +52,9 @@ void A64OpndEmitVisitor::Visit(maplebe::RegOperand *v)
             DEBUG_ASSERT((opndSize == k8BitSize || opndSize == k16BitSize || opndSize == k32BitSize ||
                           opndSize == k64BitSize || opndSize == k128BitSize),
                          "illegal register size");
-            if (opndProp->IsVectorOperand() && v->GetVecLaneSize() != 0) {
-                EmitVectorOperand(*v);
-            } else {
-                /* FP reg cannot be reffield. 8~0, 16~1, 32~2, 64~3. 8 is 1000b, has 3 zero. */
-                uint32 regSet = static_cast<uint32>(__builtin_ctz(static_cast<uint32>(opndSize)) - 3);
-                (void)emitter.Emit(AArch64CG::intRegNames[regSet][regNO]);
-            }
+            /* FP reg cannot be reffield. 8~0, 16~1, 32~2, 64~3. 8 is 1000b, has 3 zero. */
+            uint32 regSet = static_cast<uint32>(__builtin_ctz(static_cast<uint32>(opndSize)) - 3);
+            (void)emitter.Emit(AArch64CG::intRegNames[regSet][regNO]);
             break;
         }
         default:
@@ -391,35 +387,6 @@ void A64OpndEmitVisitor::Visit(OfstOperand *v)
     }
     if (value != 0) {
         (void)emitter.Emit("+" + std::to_string(value));
-    }
-}
-
-void A64OpndEmitVisitor::EmitVectorOperand(const RegOperand &v)
-{
-    std::string width;
-    switch (v.GetVecElementSize()) {
-        case k8BitSize:
-            width = "b";
-            break;
-        case k16BitSize:
-            width = "h";
-            break;
-        case k32BitSize:
-            width = "s";
-            break;
-        case k64BitSize:
-            width = "d";
-            break;
-        default:
-            CHECK_FATAL(false, "unexpected value size for vector element");
-            break;
-    }
-    (void)emitter.Emit(AArch64CG::vectorRegNames[v.GetRegisterNumber()]);
-    int32 lanePos = v.GetVecLanePosition();
-    if (lanePos == -1) {
-        (void)emitter.Emit("." + std::to_string(v.GetVecLaneSize()) + width);
-    } else {
-        (void)emitter.Emit("." + width + "[" + std::to_string(lanePos) + "]");
     }
 }
 #endif

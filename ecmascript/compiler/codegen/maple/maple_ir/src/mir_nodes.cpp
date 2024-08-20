@@ -75,14 +75,7 @@ bool AddrofNode::CheckNode(const MIRModule &mod) const
     MIRType *ty = st->GetType();
     switch (ty->GetKind()) {
         case kTypeScalar: {
-#ifdef DYNAMICLANG
-            if (GetPrimType() == PTY_dynany) {
-                return true;
-            }
             return IsPrimitiveScalar(GetPrimType());
-#else
-            return IsPrimitiveScalar(GetPrimType());
-#endif
         }
         case kTypeArray: {
             return GetPrimType() == PTY_agg;
@@ -1399,23 +1392,8 @@ uint8 GetPTYGroup(PrimType primType)
         case PTY_ref:
         case PTY_ptr:
             return kPTYGPtrRef;
-        case PTY_dynany:
-        case PTY_dyni32:
-        case PTY_dynf64:
-        case PTY_dynstr:
-        case PTY_dynobj:
-        case PTY_dynundef:
-        case PTY_dynbool:
-        case PTY_dynf32:
-        case PTY_dynnone:
-        case PTY_dynnull:
-            return kPTYGDynall;
         case PTY_u1:
             return kPTYGu1;
-        case PTY_simpleobj:
-            return kPTYGSimpleObj;
-        case PTY_simplestr:
-            return kPTYGSimpleStr;
         default:
             return kPTYGOthers;
     }
@@ -1484,9 +1462,6 @@ bool IsSignedType(const BaseNode *opnd)
         case PTY_i64:
         case PTY_f32:
         case PTY_f64:
-        case PTY_dyni32:
-        case PTY_dynf32:
-        case PTY_dynf64:
             return true;
         default:
             break;

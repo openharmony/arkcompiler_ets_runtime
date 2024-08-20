@@ -320,7 +320,6 @@ MIRIntConst *ConstantFold::FoldIntConstComparisonMIRConst(Opcode opcode, PrimTyp
     // determine the type
     MIRType &type = *GlobalTables::GetTypeTable().GetPrimType(resultType);
     // form the constant
-    DEBUG_ASSERT(type.GetPrimType() != PTY_dyni32, "unsupported type");
     MIRIntConst *constValue = GlobalTables::GetIntConstTable().GetOrCreateIntConst(result, type);
     return constValue;
 }
@@ -420,7 +419,6 @@ MIRConst *ConstantFold::FoldIntConstBinaryMIRConst(Opcode opcode, PrimType resul
     // determine the type
     MIRType &type = *GlobalTables::GetTypeTable().GetPrimType(resultType);
     // form the constant
-    DEBUG_ASSERT(type.GetPrimType() != PTY_dyni32, "unsupported type");
     MIRIntConst *constValue =
         GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(result.GetExtValue()), type);
     return constValue;
@@ -779,7 +777,6 @@ MIRIntConst *ConstantFold::FoldIntConstUnaryMIRConst(Opcode opcode, PrimType res
     // determine the type
     MIRType &type = *GlobalTables::GetTypeTable().GetPrimType(resultType);
     // form the constant
-    DEBUG_ASSERT(type.GetPrimType() != PTY_dyni32, "unsupported type");
     MIRIntConst *constValue =
         GlobalTables::GetIntConstTable().GetOrCreateIntConst(static_cast<uint64>(result.GetExtValue()), type);
     return constValue;
@@ -1151,8 +1148,7 @@ ConstvalNode *ConstantFold::FoldTrunc(const ConstvalNode &cst, PrimType fromType
 
 MIRConst *ConstantFold::FoldTypeCvtMIRConst(const MIRConst &cst, PrimType fromType, PrimType toType) const
 {
-    if (IsPrimitiveDynType(fromType) || IsPrimitiveDynType(toType) ||
-        IsPrimitiveVector(fromType) || IsPrimitiveVector(toType)) {
+    if (IsPrimitiveDynType(fromType) || IsPrimitiveDynType(toType)) {
         // do not fold
         return nullptr;
     }
@@ -1253,7 +1249,7 @@ PrimType GetNearestSizePtyp(uint8 bitSize, PrimType ptyp)
         return isFloat ? PTY_f64 : (isSigned ? PTY_i64 : PTY_u64);
     }
     if (bitSize <= 128) { // 128 bit
-        return isFloat ? PTY_f128 : (isSigned ? PTY_i128 : PTY_u128);
+        return PTY_f128;
     }
     return ptyp;
 }

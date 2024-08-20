@@ -51,7 +51,6 @@ REGISTER_SAFE_CAST(MIRInterfaceType, from.GetKind() == kTypeInterface ||
 REGISTER_SAFE_CAST(MIRBitFieldType, from.GetKind() == kTypeBitField);
 REGISTER_SAFE_CAST(MIRFuncType, from.GetKind() == kTypeFunction);
 REGISTER_SAFE_CAST(MIRTypeByName, from.GetKind() == kTypeByName);
-REGISTER_SAFE_CAST(MIRTypeParam, from.GetKind() == kTypeParam);
 REGISTER_SAFE_CAST(MIRInstantVectorType, from.GetKind() == kTypeInstantVector);
 REGISTER_SAFE_CAST(MIRGenericInstantType, from.GetKind() == kTypeGenericInstant);
 #endif

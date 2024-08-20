@@ -74,14 +74,6 @@ Insn &InsnBuilder::BuildCfiInsn(MOperator opCode)
     return *nI;
 }
 
-VectorInsn &InsnBuilder::BuildVectorInsn(MOperator opCode, const InsnDesc &idesc)
-{
-    auto *newInsn = mp->New<VectorInsn>(*mp, opCode);
-    newInsn->SetInsnDescrption(idesc);
-    IncreaseInsnNum();
-    return *newInsn;
-}
-
 ImmOperand &OperandBuilder::CreateImm(uint32 size, int64 value, MemPool *mp)
 {
     return mp ? *mp->New<ImmOperand>(value, size, false) : *alloc.New<ImmOperand>(value, size, false);
