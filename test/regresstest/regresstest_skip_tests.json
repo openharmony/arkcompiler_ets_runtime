@@ -2,6 +2,7 @@
     {
         "reason": "Not support with",
         "files": [
+          "intl/regress-1074578.js",
           "mjsunit/regress-v8-13459.js",
           "mjsunit/compiler/regress-665680.js",
           "mjsunit/compiler/regress-669517.js",
@@ -441,7 +442,7 @@
             "mjsunit/regress/regress-1394663.js",
             "mjsunit/regress/regress-8510.js",
             "mjsunit/regress/regress-crbug-1302527-no-lazy-feedback.js",
-            "mjsunit/regress/regress-crbug-1308360.js", 
+            "mjsunit/regress/regress-crbug-1308360.js",
             "mjsunit/regress/regress-crbug-1309467.js",
             "mjsunit/regress/regress-crbug-1321899-1.js",
             "mjsunit/regress/regress-crbug-1321899-2.js",
@@ -1135,7 +1136,8 @@
           "mjsunit/regress/regress-no-dummy-use-for-arguments-object.js",
           "mjsunit/regress/regress-100702.js",
           "mjsunit/regress/regress-1209444.js",
-          "mjsunit/regress/regress-crbug-980422.js"
+          "mjsunit/regress/regress-crbug-980422.js",
+          "mjsunit/harmony/for-await-of.js"
         ]
     },
     {
@@ -1252,7 +1254,7 @@
         "reason": "isTurboFanned",
         "files": [
             "mjsunit/regress/regress-crbug-594183.js"
-          ]	 
+          ]
     },
     {
         "reason": "test case throw Error",
@@ -1260,7 +1262,7 @@
             "mjsunit/regress/regress-crbug-1020162.js",
             "mjsunit/regress/regress-crbug-1053364.js",
             "mjsunit/regress/regress-9383.js"
-          ]	 
+          ]
     },
     {
       "reason": "BuiltinsDateTimeFormat Error",
@@ -1277,7 +1279,7 @@
           "mjsunit/regress/regress-336820.js",
           "mjsunit/regress/regress-793588.js",
           "mjsunit/regress/regress-create-exception.js"
-        ]	 
+        ]
     },
     {
       "reason": "SimpleDateFormat Error",
@@ -1665,6 +1667,64 @@
       ]
     },
     {
+      "reason": "elements-kind failures",
+      "files": [
+        "mjsunit/ensure-growing-store-learns.js",
+        "mjsunit/unbox-double-arrays.js",
+        "mjsunit/regress/regress-95113.js",
+        "mjsunit/regress/regress-crbug-485548-1.js",
+        "mjsunit/regress/regress-crbug-485548-2.js",
+        "mjsunit/regress/regress-91013.js",
+        "mjsunit/regress/regress-crbug-122271.js"
+      ]
+    },
+    {
+      "reason": "sameMap failures",
+      "files": [
+        "mjsunit/clone-ic-attached.js",
+        "mjsunit/regress/regress-1143772.js",
+        "mjsunit/regress/regress-v8-9243.js",
+        "mjsunit/regress/regress-reflect-construct.js",
+        "mjsunit/regress/regress-refreeze-same-map.js"
+      ]
+    },
+    {
+      "reason": "Nonoptimal properties state",
+      "files": [
+        "mjsunit/fast-prototype.js",
+        "mjsunit/regress/regress-5902.js",
+        "mjsunit/regress/regress-crbug-605060.js"
+      ]
+    },
+    {
+      "reason": "Nonoptimal object space",
+      "files": [
+        "mjsunit/regress/regress-542823.js"
+      ]
+    },
+    {
+      "reason": "Unsupported builtins",
+      "files": [
+        "mjsunit/regress/regress-365172-2.js",
+        "mjsunit/regress/regress-map-invalidation-1.js",
+        "mjsunit/regress/regress-undefined-nan3.js",
+        "mjsunit/regress/regress-undefined-nan.js"
+      ]
+    },
+    {
+      "reason": "Unimplemented builtins",
+      "files": [
+        "mjsunit/harmony/async-from-sync-iterator.js",
+        "mjsunit/regress/regress-3641.js"
+      ]
+    },
+    {
+      "reason": "Bad expect test",
+      "files": [
+        "mjsunit/prototype-non-existing.js"
+      ]
+    },
+    {
       "reason": "Add remaining Intl test cases and temporarily skip execution failure cases(111)",
       "files": [
         "intl/localematcher/bestfit-supplemental-files.js",
@@ -1834,7 +1894,7 @@
         "mjsunit/string-slices-regexp.js",
         "mjsunit/whitespaces6.js",
         "mjsunit/regexp-loop-capture.js",
-        "mjsunit/array-feedback.js", 
+        "mjsunit/array-feedback.js",
         "mjsunit/async-stack-traces-realms.js",
         "mjsunit/field-representation-tracking.js",
         "mjsunit/stack-traces-custom-lazy.js",
@@ -3155,7 +3215,6 @@
         "mjsunit/regress/regress-475705.js",
         "mjsunit/regress/negative_lookup.js",
         "mjsunit/regress/regress-14433.js",
-        "mjsunit/regress/regress-crbug-1417495.js",
         "mjsunit/regress/regress-crbug-1504702-a.js",
         "mjsunit/regress/regress-187.js",
         "mjsunit/regress/regress-crbug-178790.js",
