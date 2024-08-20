@@ -449,6 +449,7 @@ void LSRALinearScanRegAllocator::InitFreeRegPool()
             }
         }
     }
+    DEBUG_ASSERT(intSpillRegSet.size() >= 2U, "too few spill regs");
 
     if (needDump) {
         PrintRegSet(intCallerRegSet, "ALLOCATABLE_INT_CALLER");
@@ -1399,10 +1400,10 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
     phyOpnd = regInfo->GetOrCreatePhyRegOperand(static_cast<regno_t>(rli->GetAssignedReg()), regSize, regType);
     std::string comment;
     bool isOutOfRange = false;
+    auto tmpReg = static_cast<regno_t>(intSpillRegSet[spillIdx] + firstIntReg);
     if (isDef) {
         Insn *nextInsn = insn.GetNext();
-        memOpnd = GetSpillMem(vRegNO, true, insn, static_cast<regno_t>(intSpillRegSet[spillIdx + 1] + firstIntReg),
-                              isOutOfRange, regSize);
+        memOpnd = GetSpillMem(vRegNO, true, insn, tmpReg, isOutOfRange, regSize);
         Insn *stInsn = regInfo->BuildStrInsn(regSize, spType, *phyOpnd, *memOpnd);
         comment = " SPILL for caller_save " + std::to_string(vRegNO);
         ++callerSaveSpillCount;
@@ -1419,8 +1420,7 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
             insn.GetBB()->InsertInsnAfter(insn, *stInsn);
         }
     } else {
-        memOpnd = GetSpillMem(vRegNO, false, insn, static_cast<regno_t>(intSpillRegSet[spillIdx] + firstIntReg),
-                              isOutOfRange, regSize);
+        memOpnd = GetSpillMem(vRegNO, false, insn, tmpReg, isOutOfRange, regSize);
         Insn *ldInsn = regInfo->BuildLdrInsn(regSize, spType, *phyOpnd, *memOpnd);
         comment = " RELOAD for caller_save " + std::to_string(vRegNO);
         ++callerSaveReloadCount;
@@ -1511,6 +1511,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
     } else {
         CHECK_FATAL(false, "SpillOperand: Should be int or float type");
     }
+    auto tmpReg = static_cast<regno_t>(intSpillRegSet[spillIdx] + firstIntReg);
 
     bool isOutOfRange = false;
     auto *phyOpnd = regInfo->GetOrCreatePhyRegOperand(static_cast<regno_t>(spReg), regSize, regType);
@@ -1529,8 +1530,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
 
         ++spillCount;
         Insn *nextInsn = insn.GetNext();
-        memOpnd = GetSpillMem(regNO, true, insn, static_cast<regno_t>(intSpillRegSet[spillIdx + 1] + firstIntReg),
-                              isOutOfRange, regSize);
+        memOpnd = GetSpillMem(regNO, true, insn, tmpReg, isOutOfRange, regSize);
         Insn *stInsn = regInfo->BuildStrInsn(regSize, spType, *phyOpnd, *memOpnd);
         if (li->GetLastUse() == insn.GetId()) {
             regInfo->FreeSpillRegMem(regNO);
@@ -1555,8 +1555,7 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
                                    << cgFunc->GetName() << "\n";
         }
         ++reloadCount;
-        memOpnd = GetSpillMem(regNO, false, insn, static_cast<regno_t>(intSpillRegSet[spillIdx] + firstIntReg),
-                              isOutOfRange, regSize);
+        memOpnd = GetSpillMem(regNO, false, insn, tmpReg, isOutOfRange, regSize);
         Insn *ldInsn = regInfo->BuildLdrInsn(regSize, spType, *phyOpnd, *memOpnd);
         if (li->GetLastUse() == insn.GetId()) {
             regInfo->FreeSpillRegMem(regNO);

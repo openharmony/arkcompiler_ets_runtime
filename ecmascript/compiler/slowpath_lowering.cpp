@@ -51,6 +51,7 @@ void SlowPathLowering::CallRuntimeLowering()
 
     for (const auto &gate : gateList) {
         auto op = acc_.GetOpCode(gate);
+        [[maybe_unused]] auto scopedGate = circuit_->VisitGateBegin(gate);
         switch (op) {
             case OpCode::JS_BYTECODE:
                 Lower(gate);
