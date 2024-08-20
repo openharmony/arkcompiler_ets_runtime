@@ -38,6 +38,7 @@ struct PUBLIC_API MethodLiteral : public base::AlignedStruct<sizeof(uint64_t),
 public:
     static constexpr uint8_t INVALID_IC_SLOT = 0xFFU;
     static constexpr uint16_t MAX_SLOT_SIZE = 0xFFFFU;
+    static constexpr size_t EXTEND_SLOT_SIZE = 2;
 
     PUBLIC_API explicit MethodLiteral(EntityId methodId);
     MethodLiteral() = delete;
@@ -241,7 +242,7 @@ public:
     uint32_t GetSlotSize() const
     {
         auto size = SlotSizeBits::Decode(literalInfo_);
-        return size == MAX_SLOT_SIZE ? MAX_SLOT_SIZE + 2 : size;  // 2: last maybe two slot
+        return size == MAX_SLOT_SIZE ? MAX_SLOT_SIZE + EXTEND_SLOT_SIZE : size;
     }
 
     uint8_t UpdateSlotSizeWith8Bit(uint16_t size)
@@ -339,9 +340,10 @@ public:
         return EntityId(MethodIdBits::Decode(literalInfo));
     }
 
-    static uint16_t GetSlotSize(uint64_t literalInfo)
+    static uint32_t GetSlotSize(uint64_t literalInfo)
     {
-        return SlotSizeBits::Decode(literalInfo);
+        auto size = SlotSizeBits::Decode(literalInfo);
+        return size == MAX_SLOT_SIZE ? MAX_SLOT_SIZE + EXTEND_SLOT_SIZE : size;
     }
 
     static const char PUBLIC_API *GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId,

@@ -1014,7 +1014,7 @@ void EcmaInterpreter::UpdateProfileTypeInfoCellToFunction(JSThread *thread, JSHa
                 thread->GetEcmaVM()->GetFactory()->NewProfileTypeInfoCell(handleUndefined);
             profileTypeArray->Set(thread, slotId, newProfileTypeInfoCell);
             function->SetRawProfileTypeInfo(thread, newProfileTypeInfoCell);
-        } else {
+        } else if (!slotValue.IsHole()) {
             ProfileTypeInfoCell::Cast(slotValue.GetTaggedObject())->UpdateProfileTypeInfoCellType(thread);
             function->SetRawProfileTypeInfo(thread, slotValue);
         }
