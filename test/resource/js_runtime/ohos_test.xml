@@ -742,6 +742,10 @@
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/call_test.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/class_test.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/merge_file_1.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/merge_file_2.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/merge_file_3.abc -> /data/test" src="out"/>
+            <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/builtins_test.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/op_type_test.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/array_test.abc -> /data/test" src="out"/>
             <option name="push" value="obj/arkcompiler/ets_runtime/ecmascript/pgo_profiler/tests/object_literal.abc -> /data/test" src="out"/>
