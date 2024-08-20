@@ -1052,9 +1052,7 @@ try {
 }
 
 var arr_fill1 = new Uint8ClampedArray([0, 0, 0]).fill(2.50000);
-arr_fill1.forEach((b)=> {
-    print(2 == b);
-})
+print(arr_fill1)
 
 function sum(a, b) { return a + b; }
 var arr_shadow_length = new Uint8Array([11, 22]);
