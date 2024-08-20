@@ -435,4 +435,26 @@ HWTEST_F_L0(TypedArrayHelperTest, SortCompare)
     result = TypedArrayHelper::SortCompare(thread, callbackfnHandle, buffer, pZero, eZero);
     EXPECT_EQ(result, 1);
 }
+
+HWTEST_F_L0(TypedArrayHelperTest, FastCreateTypedArray) {
+    uint8_t first = static_cast<uint8_t>(DataViewType::BIGINT64);
+    uint8_t last = static_cast<uint8_t>(DataViewType::UINT8_CLAMPED);
+    for (uint8_t type = first; type <= last; ++type) {
+        DataViewType arrayType = static_cast<DataViewType>(type);
+        JSHandle<JSTaggedValue> constructorName = TypedArrayHelper::GetConstructorNameFromType(thread, arrayType);
+        JSHandle<JSObject> arrayObj =
+            TypedArrayHelper::FastCreateTypedArray(thread, constructorName, 0, arrayType);
+        JSTypedArray *jsTypedArray = JSTypedArray::Cast(*arrayObj);
+        if (arrayType == DataViewType::BIGINT64 ||
+            arrayType == DataViewType::BIGUINT64) {
+            EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::BigInt);
+        } else {
+            EXPECT_EQ(jsTypedArray->GetContentType(), ContentType::Number);
+        }
+        EXPECT_EQ(jsTypedArray->GetTypedArrayName().GetRawData(), constructorName.GetTaggedValue().GetRawData());
+        EXPECT_EQ(jsTypedArray->GetByteLength(), 0U);
+        EXPECT_EQ(jsTypedArray->GetByteOffset(), 0U);
+        EXPECT_EQ(jsTypedArray->GetArrayLength(), 0U);
+    }
+}
 }  // namespace panda::test

@@ -133,6 +133,56 @@ JSTaggedValue TypedArrayHelper::SharedTypedArrayConstructor(EcmaRuntimeCallInfo 
     return TypedArrayHelper::CreateFromOrdinaryObject<TypedArrayKind::SHARED>(argv, obj, arrayType);
 }
 
+// Fastpath for create a typedarray. Do not need to create an EcmaRuntimeCallInfo.
+JSHandle<JSObject> TypedArrayHelper::FastCreateTypedArray(JSThread *thread,
+                                                          const JSHandle<JSTaggedValue> &constructorName,
+                                                          uint32_t length,
+                                                          const DataViewType arrayType)
+{
+    JSHandle<JSObject> exception(thread, JSTaggedValue::Exception());
+    if (length > JSTypedArray::MAX_TYPED_ARRAY_INDEX) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "array length must less than 2^32 - 1", exception);
+    }
+
+    // Create TypedArray
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSFunction> typedArrayFunc = TypedArrayHelper::GetConstructorFromType(thread, arrayType);
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(typedArrayFunc,
+        JSHandle<JSTaggedValue>::Cast(typedArrayFunc));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSHandle<JSObject>(thread, JSTaggedValue::Exception()));
+    JSTypedArray::Cast(*obj)->SetTypedArrayName(thread, constructorName);
+
+    // Create ArrayBuffer
+    uint32_t elementSize = TypedArrayHelper::GetSizeFromType(arrayType);
+    uint32_t arrayLength = static_cast<uint32_t>(length);
+    uint64_t byteLength = static_cast<uint64_t>(elementSize) * length;
+    JSHandle<JSTaggedValue> data;
+
+    JSHandle<JSTaggedValue> constructor = thread->GetEcmaVM()->GetGlobalEnv()->GetArrayBufferFunction();
+    data = JSHandle<JSTaggedValue>(thread,
+        BuiltinsArrayBuffer::AllocateArrayBuffer(thread, constructor, byteLength));
+    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, exception);
+
+    // Assign ArrayBuffer to TypedArray
+    JSTypedArray *jsTypedArray = JSTypedArray::Cast(*obj);
+    if (arrayType == DataViewType::BIGINT64 ||
+        arrayType == DataViewType::BIGUINT64) {
+        jsTypedArray->SetContentType(ContentType::BigInt);
+    } else {
+        jsTypedArray->SetContentType(ContentType::Number);
+    }
+    // Set O.[[ViewedArrayBuffer]] to data.
+    // Set O.[[ByteLength]] to byteLength.
+    // Set O.[[ByteOffset]] to 0.
+    // Set O.[[ArrayLength]] to length.
+    jsTypedArray->SetViewedArrayBufferOrByteArray(thread, data);
+    jsTypedArray->SetByteLength(byteLength);
+    jsTypedArray->SetByteOffset(0);
+    jsTypedArray->SetArrayLength(arrayLength);
+    // Return O.
+    return obj;
+}
+
 template<>
 JSHandle<JSObject> TypedArrayHelper::AllocateTypedArrayBuffer<TypedArrayKind::NON_SHARED>(
     JSThread *thread, const JSHandle<JSObject> &obj, uint64_t length, const DataViewType arrayType)
