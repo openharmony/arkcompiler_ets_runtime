@@ -90,7 +90,7 @@ public:
         return committedSize_ >= maximumCapacity_ + outOfMemoryOvershootSize_;
     }
 
-    void CheckAndTriggerLocalFullMark(JSThread *thread);
+    void CheckAndTriggerLocalFullMark();
 
     size_t GetTotalAllocatedSize() const;
 

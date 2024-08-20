@@ -137,7 +137,7 @@ uintptr_t SharedSparseSpace::AllocateWithExpand(JSThread *thread, size_t size)
 {
     LockHolder lock(allocateLock_);
     // In order to avoid expand twice by different threads, try allocate first.
-    CheckAndTriggerLocalFullMark(thread);
+    CheckAndTriggerLocalFullMark();
     auto object = allocator_->Allocate(size);
     if (object == 0 && Expand(thread)) {
         object = allocator_->Allocate(size);
@@ -387,10 +387,10 @@ void SharedSparseSpace::InvokeAllocationInspector(Address object, size_t size, s
     allocationCounter_.AdvanceAllocationInspector(alignedSize);
 }
 
-void SharedSparseSpace::CheckAndTriggerLocalFullMark(JSThread *thread)
+void SharedSparseSpace::CheckAndTriggerLocalFullMark()
 {
     if (liveObjectSize_ >= triggerLocalFullMarkLimit_) {
-        sHeap_->TryTriggerLocalConcurrentMarking(thread);
+        sHeap_->TryTriggerLocalConcurrentMarking();
     }
 }
 
@@ -643,7 +643,7 @@ void SharedHugeObjectSpace::InvokeAllocationInspector(Address object, size_t obj
 void SharedHugeObjectSpace::CheckAndTriggerLocalFullMark(JSThread *thread, size_t size)
 {
     if (committedSize_ >= triggerLocalFullMarkLimit_) {
-        reinterpret_cast<SharedHeap*>(heap_)->TryTriggerLocalConcurrentMarking(thread);
+        reinterpret_cast<SharedHeap*>(heap_)->TryTriggerLocalConcurrentMarking();
     } else {
         auto localHeap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
         if (!thread->IsJitThread()) {

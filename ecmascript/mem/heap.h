@@ -515,7 +515,7 @@ public:
 
     bool CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size);
 
-    void TryTriggerLocalConcurrentMarking(JSThread *currentThread);
+    void TryTriggerLocalConcurrentMarking();
 
     // Called when all vm is destroyed, and try to destroy daemon thread.
     void WaitAllTasksFinishedAfterAllJSThreadEliminated();

@@ -564,21 +564,19 @@ void SharedHeap::UpdateWorkManager(SharedGCWorkManager *sWorkManager)
     sharedFullGC_->ResetWorkManager(sWorkManager);
 }
 
-void SharedHeap::TryTriggerLocalConcurrentMarking(JSThread *thread)
+void SharedHeap::TryTriggerLocalConcurrentMarking()
 {
     if (localFullMarkTriggered_) {
         return;
     }
-    {
-        SuspendAllScope scope(thread);
-        if (!localFullMarkTriggered_) {
-            localFullMarkTriggered_ = true;
-            Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
-                ASSERT(!thread->IsInRunningState());
-                thread->SetFullMarkRequest();
-            });
-        }
+    if (reinterpret_cast<std::atomic<bool>*>(localFullMarkTriggered_)->exchange(true, std::memory_order_relaxed)
+            != false) {
+        return;
     }
+    ASSERT(localFullMarkTriggered_ == true);
+    Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
+        thread->SetFullMarkRequest();
+    });
 }
 
 size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
