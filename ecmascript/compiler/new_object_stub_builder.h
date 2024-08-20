@@ -69,8 +69,14 @@ public:
     GateRef NewJSArray(GateRef glue, GateRef hclass);
     GateRef NewTaggedArray(GateRef glue, GateRef len);
     GateRef NewMutantTaggedArray(GateRef glue, GateRef len);
-    GateRef CopyArray(GateRef glue, GateRef elements, GateRef oldLen, GateRef newLen);
-    GateRef ExtendArray(GateRef glue, GateRef elements, GateRef newLen);
+    GateRef CopyArray(GateRef glue, GateRef elements, GateRef oldLen, GateRef newLen,
+                      RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE);
+    GateRef ExtendArrayCheck(GateRef glue, GateRef elements, GateRef newLen,
+                        RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE);
+    void ExtendArray(Variable *result, GateRef glue, GateRef elements, GateRef newLen, Label *exit,
+                           RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE, bool isMutantArray = false);
+    void ExtendMutantArray(Variable *result, GateRef glue, GateRef elements, GateRef newLen, Label *exit,
+                           RegionSpaceFlag spaceType = RegionSpaceFlag::IN_YOUNG_SPACE);
     GateRef NewJSArrayWithSize(GateRef hclass, GateRef size);
     GateRef NewJSForinIterator(GateRef glue, GateRef receiver, GateRef keys, GateRef cachedHclass);
     GateRef LoadHClassFromMethod(GateRef glue, GateRef method);

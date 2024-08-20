@@ -115,6 +115,40 @@ DEF_RUNTIME_STUBS(FunctionDefineOwnProperty)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(HeapAlloc)
+{
+    RUNTIME_STUBS_HEADER(HeapAlloc);
+    JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto size = static_cast<size_t>(allocateSize.GetLargeUInt());
+    JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+    auto type = static_cast<RegionSpaceFlag>(GetArg(argv, argc, 2).GetInt());
+    MemSpaceType mtype;
+    switch (type) {
+        case RegionSpaceFlag::IN_YOUNG_SPACE:
+            mtype = MemSpaceType::SEMI_SPACE;
+            break;
+        case RegionSpaceFlag::IN_OLD_SPACE:
+            mtype = MemSpaceType::OLD_SPACE;
+            break;
+        case RegionSpaceFlag::IN_NON_MOVABLE_SPACE:
+            mtype = MemSpaceType::NON_MOVABLE;
+            break;
+        case RegionSpaceFlag::IN_SHARED_OLD_SPACE:
+            mtype = MemSpaceType::SHARED_OLD_SPACE;
+            break;
+        case RegionSpaceFlag::IN_SHARED_NON_MOVABLE:
+            mtype = MemSpaceType::SHARED_NON_MOVABLE;
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+    auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto result = factory->AllocObjectWithSpaceType(size, hclass, mtype);
+    return JSTaggedValue(result).GetRawData();
+}
+
 DEF_RUNTIME_STUBS(AllocateInYoung)
 {
     RUNTIME_STUBS_HEADER(AllocateInYoung);

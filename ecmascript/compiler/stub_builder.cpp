@@ -36,6 +36,7 @@
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/lexical_env.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/mem/remembered_set.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
@@ -3865,12 +3866,26 @@ GateRef StubBuilder::GrowElementsCapacity(GateRef glue, GateRef receiver, GateRe
 {
     auto env = GetEnvironment();
     Label subEntry(env);
+    Label isShared(env);
+    Label notShared(env);
+    Label storeElements(env);
     env->SubCfgEntry(&subEntry);
     DEFVARIABLE(newElements, VariableType::JS_ANY(), Hole());
     NewObjectStubBuilder newBuilder(this);
     GateRef newCapacity = ComputeElementCapacity(capacity);
     GateRef elements = GetElementsArray(receiver);
-    newElements = newBuilder.CopyArray(glue, elements, capacity, newCapacity);
+    Branch(IsJSShared(elements), &isShared, &notShared);
+    Bind(&isShared);
+    {
+        newElements = newBuilder.CopyArray(glue, elements, capacity, newCapacity, RegionSpaceFlag::IN_SHARED_OLD_SPACE);
+        Jump(&storeElements);
+    }
+    Bind(&notShared);
+    {
+        newElements = newBuilder.CopyArray(glue, elements, capacity, newCapacity, RegionSpaceFlag::IN_YOUNG_SPACE);
+        Jump(&storeElements);
+    }
+    Bind(&storeElements);
     SetElementsArray(VariableType::JS_POINTER(), glue, receiver, *newElements);
     auto ret = *newElements;
     env->SubCfgExit();
