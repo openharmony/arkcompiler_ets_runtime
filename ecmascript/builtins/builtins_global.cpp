@@ -981,14 +981,8 @@ JSTaggedValue BuiltinsGlobal::GetCurrentModuleName(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     std::pair<CString, CString> moduleInfo = EcmaInterpreter::GetCurrentEntryPoint(thread);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    EcmaVM *vm = thread->GetEcmaVM();
-    CString recordName = moduleInfo.first;
-    CString moduleName;
-    if (vm->IsNormalizedOhmUrlPack()) {
-        moduleName = ModulePathHelper::GetModuleNameWithNormalizedName(recordName);
-    } else {
-        moduleName = ModulePathHelper::GetModuleName(recordName);
-    }
+    CString fileName = moduleInfo.second;
+    CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(fileName);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<EcmaString> result = factory->NewFromUtf8(moduleName.c_str());
     return result.GetTaggedValue();

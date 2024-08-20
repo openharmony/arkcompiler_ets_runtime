@@ -1674,4 +1674,15 @@ HWTEST_F_L0(EcmaModuleTest, ToStringWithPrecision)
     EXPECT_EQ(res, "4.55");
 }
 
+HWTEST_F_L0(EcmaModuleTest, GetCurrentModuleName)
+{
+    ThreadNativeScope nativeScope(thread);
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    JSNApi::Execute(instance, baseFileName, "module_test_module_test_module");
+    Local<ObjectRef> res = JSNApi::GetExportObject(instance, "module_test_module_test_module", "moduleName");
+    JSHandle<JSTaggedValue> result = JSNApiHelper::ToJSHandle(res);
+    CString moduleName = ConvertToString(result.GetTaggedValue());
+    EXPECT_EQ(moduleName, "");
+}
 }  // namespace panda::test
