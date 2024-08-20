@@ -32,6 +32,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/taskpool/taskpool.h"
+#include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript::pgo {
 void PGOProfilerEncoder::Destroy()
@@ -69,6 +70,9 @@ bool PGOProfilerEncoder::ResetOutPath(const std::string &profileFileName)
     if (realOutPath_.compare(realOutPath_.length() - suffixLength, suffixLength, ApNameUtils::AP_SUFFIX)) {
         realOutPath_ += "/" + profileFileName;
     }
+
+    SetSecurityLabel(realOutPath_);
+
     LOG_ECMA(INFO) << "Save profiler to file:" << realOutPath_;
     return true;
 }
