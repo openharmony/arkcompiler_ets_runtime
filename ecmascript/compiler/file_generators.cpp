@@ -21,6 +21,7 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/code_sign.h"
 #include "ecmascript/platform/directory.h"
+#include "ecmascript/platform/os.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stackmap/ark_stackmap_builder.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
@@ -665,6 +666,7 @@ bool AOTFileGenerator::SaveAOTFile(const std::string &filename, const std::strin
         LOG_COMPILER(ERROR) << "Fail to set an file mode:" << filename;
         return false;
     }
+    SetSecurityLabel(filename);
     panda::ecmascript::CodeSignatureForAOTFile(filename, appSignature);
     return true;
 }
@@ -790,6 +792,7 @@ bool AOTFileGenerator::SaveSnapshotFile()
         LOG_COMPILER(ERROR) << "Fail to set ai file mode:" << aiPath;
         return false;
     }
+    SetSecurityLabel(aiPath.c_str());
     return true;
 }
 }  // namespace panda::ecmascript::kungfu

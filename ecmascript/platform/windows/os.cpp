@@ -63,4 +63,9 @@ void *PageMapExecFortSpace(void *addr, [[maybe_unused]] size_t size, [[maybe_unu
     // basically no op
     return addr;
 }
+
+void SetSecurityLabel([[maybe_unused]] const std::string& path)
+{
+    LOG_ECMA(INFO) << "Set Security Label in windows not support";
+}
 }  // namespace panda::ecmascript

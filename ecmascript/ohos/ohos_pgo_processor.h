@@ -19,6 +19,7 @@
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 #include "ecmascript/log_wrapper.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
+#include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript::kungfu {
 class OhosPgoProcessor {
@@ -50,6 +51,7 @@ public:
         ASSERT(mainPkgArgs != nullptr);
         // all ohos ap(s) merged into the merged ap file.
         cOptions.profilerIn_ = mainPkgArgs->GetMergedApPath();
+        SetSecurityLabel(cOptions.profilerIn_);
         ASSERT(!cOptions.profilerIn_.empty());
         return true;
     }
