@@ -414,7 +414,6 @@ ReturnType PeepPattern::IsOpndLiveinBB(const RegOperand &regOpnd, const BB &bb) 
             continue;
         }
         const InsnDesc *md = insn->GetDesc();
-        DEBUG_ASSERT(insn->GetOperandSize() > 0, "must not be zero");
         int32 lastOpndId = static_cast<int32>(insn->GetOperandSize() - 1);
         for (int32 i = lastOpndId; i >= 0; --i) {
             Operand &opnd = insn->GetOperand(static_cast<uint32>(i));
