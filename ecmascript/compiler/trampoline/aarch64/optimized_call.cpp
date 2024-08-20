@@ -96,12 +96,15 @@ void OptimizedCall::CallRuntime(ExtendedAssembler *assembler)
     __ Ret();
 }
 
-void OptimizedCall::IncreaseStackForArguments(ExtendedAssembler *assembler, Register argc, Register currentSp)
+void OptimizedCall::IncreaseStackForArguments(ExtendedAssembler *assembler, Register argc, Register currentSp,
+                                              int64_t numExtraArgs)
 {
     Register sp(SP);
     __ Mov(currentSp, sp);
-    // add extra aguments, numArgs
-    __ Add(argc, argc, Immediate(static_cast<int64_t>(CommonArgIdx::ACTUAL_ARGV)));
+    if (numExtraArgs > 0) {
+        // add extra aguments, numArgs
+        __ Add(argc, argc, Immediate(numExtraArgs));
+    }
     __ Sub(currentSp, currentSp, Operand(argc, UXTW, FRAME_SLOT_SIZE_LOG2));
     Label aligned;
     __ Tst(currentSp, LogicalImmediate::Create(0xf, RegXSize));  // 0xf: 0x1111
@@ -233,7 +236,7 @@ void OptimizedCall::OptimizedCallAndPushArgv(ExtendedAssembler *assembler)
     Register argC(X7);
     __ Cmp(expectedNumArgs, actualNumArgs);
     __ CMov(argC, expectedNumArgs, actualNumArgs, Condition::HI);
-    IncreaseStackForArguments(assembler, argC, currentSp);
+    IncreaseStackForArguments(assembler, argC, currentSp, static_cast<int64_t>(CommonArgIdx::ACTUAL_ARGV));
     {
         TempRegister1Scope scope1(assembler);
         TempRegister2Scope scope2(assembler);
@@ -936,7 +939,7 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     __ Ldr(boundLength, MemoryOperand(boundLength, TaggedArray::LENGTH_OFFSET));
     __ Add(realArgC, boundLength.W(), actualArgC.W());
     __ Mov(Register(X19), realArgC);
-    IncreaseStackForArguments(assembler, realArgC, fp);
+    IncreaseStackForArguments(assembler, realArgC, fp, static_cast<int64_t>(CommonArgIdx::ACTUAL_ARGV));
     __ Sub(actualArgC.W(), actualArgC.W(), Immediate(NUM_MANDATORY_JSFUNC_ARGS));
     __ Cmp(actualArgC.W(), Immediate(0));
     __ B(Condition::EQ, &copyBoundArgument);
@@ -1302,7 +1305,7 @@ void OptimizedCall::GenJSCallWithArgV(ExtendedAssembler *assembler, int id)
     Register argC(X7);
     __ Add(actualNumArgs, actualNumArgs, Immediate(NUM_MANDATORY_JSFUNC_ARGS));
     __ Mov(argC, actualNumArgs);
-    IncreaseStackForArguments(assembler, argC, currentSp);
+    IncreaseStackForArguments(assembler, argC, currentSp, static_cast<int64_t>(CommonArgIdx::ACTUAL_ARGV));
     {
         TempRegister1Scope scope1(assembler);
         TempRegister2Scope scope2(assembler);

@@ -124,7 +124,8 @@ private:
     static void PopJSFunctionEntryFrame(ExtendedAssembler *assembler, Register glue);
     static void PushOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler, Register callSiteSp);
     static void PopOptimizedUnfoldArgVFrame(ExtendedAssembler *assembler);
-    static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp);
+    static void IncreaseStackForArguments(ExtendedAssembler *assembler, Register argC, Register fp,
+                                          int64_t numExtraArgs = 0);
     static void PushOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PopOptimizedArgsConfigFrame(ExtendedAssembler *assembler);
     static void PushAsmBridgeFrame(ExtendedAssembler *assembler);
