@@ -1,0 +1,28 @@
+# Copyright (c) 2024 Huawei Device Co., Ltd.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+sendable inherit from sendable succeed.
+sendable inherit from non-sendable failed. err: TypeError: Class not derived from a sendable object, code: undefined
+sendable change proto failed. err: TypeError: Cannot set proto with sendable object, code: undefined
+non-sendable inherit from non-sendable succeed.
+non-sendable inherit from sendable failed. err: TypeError: The subclass of sendable class must be a sendable class, code: undefined
+sendable contain sendable succeed.
+sendable contain non-sendable failed. err: TypeError: Cannot set sendable property with mismatched type, code: undefined
+sendable contain static non-sendable failed. err: TypeError: Cannot set sendable property with mismatched type, code: undefined
+sendable contain undefined succeed.
+sendable contain lexenv succeed.
+sendable with concurrent decorator succeed.
+sendable add property failed. err: TypeError: Cannot add property in prevent extensions, code: undefined
+sendable change property failed. err: TypeError: Cannot set sendable property with mismatched type, code: undefined
+sendable delete property failed. err: TypeError: Cannot delete property, code: undefined
+sendable can not change attr. err: TypeError: shared obj does not support changing or deleting attributes
