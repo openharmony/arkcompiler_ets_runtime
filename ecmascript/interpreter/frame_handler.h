@@ -35,7 +35,6 @@ class FrameHandler {
 public:
     explicit FrameHandler(const JSThread *thread);
 
-    FrameHandler(const JSThread *thread, void *fp);
     ~FrameHandler() = default;
 
     DEFAULT_COPY_SEMANTIC(FrameHandler);
