@@ -43,6 +43,7 @@
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/ohos/aot_tools.h"
+#include "ecmascript/checkpoint/thread_state_transition.h"
 
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
@@ -895,8 +896,9 @@ void EcmaVM::TriggerConcurrentCallback(JSTaggedValue result, JSTaggedValue hint)
     void *taskInfo = reinterpret_cast<void*>(thread_->GetTaskInfo());
     // clear the taskInfo when return, which can prevent the callback to get it
     thread_->SetTaskInfo(reinterpret_cast<uintptr_t>(nullptr));
-    concurrentCallback_(JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result)), success,
-                        taskInfo, concurrentData_);
+    auto localResultRef = JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread_, result));
+    ThreadNativeScope nativeScope(thread_);
+    concurrentCallback_(localResultRef, success, taskInfo, concurrentData_);
 }
 
 void EcmaVM::DumpCallTimeInfo()
