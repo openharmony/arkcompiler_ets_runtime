@@ -193,6 +193,11 @@ JSThread::~JSThread()
     }
 }
 
+ThreadId JSThread::GetCurrentThreadId()
+{
+    return GetCurrentThreadOrTaskId();
+}
+
 void JSThread::SetException(JSTaggedValue exception)
 {
     glueData_.exception_ = exception;

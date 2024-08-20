@@ -21,6 +21,7 @@
 #include <string>
 #include <cstdint>
 
+#include "ecmascript/platform/ffrt.h"
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/daemon/daemon_task.h"
@@ -439,19 +440,7 @@ public:
 
     void PostFork();
 
-    static ThreadId GetCurrentThreadId()
-    {
-#if defined(ENABLE_FFRT_INTERFACES)
-        JSThread::ThreadId id = ffrt_this_task_get_id();
-        if (id != 0) {
-            return id;
-        } else {
-            return os::thread::GetCurrentThreadId();
-        }
-#else
-        return os::thread::GetCurrentThreadId();
-#endif
-    }
+    static ThreadId GetCurrentThreadId();
 
     void IterateWeakEcmaGlobalStorage(const WeakRootVisitor &visitor, GCKind gcKind = GCKind::LOCAL_GC);
 

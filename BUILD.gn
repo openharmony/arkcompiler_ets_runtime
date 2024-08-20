@@ -1010,6 +1010,7 @@ ecma_platform_source += [
   "ecmascript/platform/common/map.cpp",
   "ecmascript/platform/common/mutex.cpp",
   "ecmascript/platform/common/filesystem.cpp",
+  "ecmascript/platform/common/ffrt.cpp",
 ]
 
 config("include_llvm") {

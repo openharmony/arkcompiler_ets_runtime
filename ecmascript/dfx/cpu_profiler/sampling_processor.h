@@ -28,6 +28,7 @@ class JSThread;
 class EcmaVM;
 class SamplingProcessor {
 public:
+    static void AddSample(SamplesRecord *generator);
     static uint64_t GetMicrosecondsTimeStamp();
     static void *PostSemAndLogEnd(SamplesRecord *generator, pthread_t tid);
     virtual ~SamplingProcessor();
