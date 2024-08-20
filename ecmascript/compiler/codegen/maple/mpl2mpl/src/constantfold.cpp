@@ -179,12 +179,10 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::DispatchFold(BaseNode 
         case OP_bnot:
         case OP_lnot:
         case OP_neg:
-        case OP_recip:
         case OP_sqrt:
             return FoldUnary(static_cast<UnaryNode*>(node));
         case OP_ceil:
         case OP_floor:
-        case OP_round:
         case OP_trunc:
         case OP_cvt:
             return FoldTypeCvt(static_cast<TypeCvtNode*>(node));
@@ -203,8 +201,6 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::DispatchFold(BaseNode 
         case OP_cand:
         case OP_cior:
         case OP_div:
-        case OP_land:
-        case OP_lior:
         case OP_lshr:
         case OP_max:
         case OP_min:
@@ -404,13 +400,11 @@ MIRConst *ConstantFold::FoldIntConstBinaryMIRConst(Opcode opcode, PrimType resul
             result = intVal0.Xor(intVal1, resultType);
             break;
         }
-        case OP_cand:
-        case OP_land: {
+        case OP_cand: {
             result = IntVal(intVal0.GetExtValue() && intVal1.GetExtValue(), resultType);
             break;
         }
-        case OP_cior:
-        case OP_lior: {
+        case OP_cior: {
             result = IntVal(intVal0.GetExtValue() || intVal1.GetExtValue(), resultType);
             break;
         }
@@ -533,9 +527,7 @@ ConstvalNode *ConstantFold::FoldFPConstBinary(Opcode opcode, PrimType resultType
         case OP_bior:
         case OP_bxor:
         case OP_cand:
-        case OP_land:
         case OP_cior:
-        case OP_lior:
         case OP_depositbits: {
             DEBUG_ASSERT(false, "Unexpected opcode in FoldFPConstBinary");
             break;
@@ -776,7 +768,6 @@ MIRIntConst *ConstantFold::FoldIntConstUnaryMIRConst(Opcode opcode, PrimType res
         case OP_sext:         // handled in FoldExtractbits
         case OP_zext:         // handled in FoldExtractbits
         case OP_extractbits:  // handled in FoldExtractbits
-        case OP_recip:
         case OP_sqrt: {
             DEBUG_ASSERT(false, "Unexpected opcode in FoldIntConstUnaryMIRConst");
             break;
@@ -801,10 +792,6 @@ ConstvalNode *ConstantFold::FoldFPConstUnary(Opcode opcode, PrimType resultType,
     double constValue = 0;
     T *fpCst = static_cast<T*>(constNode->GetConstVal());
     switch (opcode) {
-        case OP_recip: {
-            constValue = typename T::value_type(1.0L / fpCst->GetValue());
-            break;
-        }
         case OP_neg: {
             constValue = typename T::value_type(-fpCst->GetValue());
             break;
@@ -1354,10 +1341,6 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldTypeCvt(TypeCvtNod
                 result = FoldFloor(*cst, fromPtyp, destPtyp);
                 break;
             }
-            case OP_round: {
-                result = FoldRound(*cst, fromPtyp, destPtyp);
-                break;
-            }
             case OP_trunc: {
                 result = FoldTrunc(*cst, fromPtyp, destPtyp);
                 break;
@@ -1630,7 +1613,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode 
             }
             result = NegateTree(r);
         } else if ((op == OP_mul || op == OP_div || op == OP_rem || op == OP_ashr || op == OP_lshr || op == OP_shl ||
-                    op == OP_band || op == OP_cand || op == OP_land) &&
+                    op == OP_band || op == OP_cand) &&
                     cst == 0) {
             // 0 * X -> 0
             // 0 / X -> 0
@@ -1654,7 +1637,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode 
                 rp.first = mirModule->CurFuncCodeMemPool()->New<TypeCvtNode>(OP_cvt, primType, PTY_i32, rp.first);
             }
             result = NewBinaryNode(node, OP_mul, primType, lConst, rp.first);
-        } else if (op == OP_lior || op == OP_cior) {
+        } else if (op == OP_cior) {
             if (cst != 0) {
                 // 5 || X -> 1
                 result = mirModule->GetMIRBuilder()->CreateIntConst(1, cstTyp);
@@ -1665,7 +1648,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode 
                     OP_ne, primType, r->GetPrimType(), r,
                     mirModule->GetMIRBuilder()->CreateIntConst(0, r->GetPrimType()));
             }
-        } else if ((op == OP_cand || op == OP_land) && cst != 0) {
+        } else if ((op == OP_cand) && cst != 0) {
             // 5 && X -> (X != 0)
             result = mirModule->CurFuncCodeMemPool()->New<CompareNode>(
                 OP_ne, primType, r->GetPrimType(), r, mirModule->GetMIRBuilder()->CreateIntConst(0, r->GetPrimType()));
@@ -1695,7 +1678,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode 
         } else if (op == OP_sub && (!cst.IsSigned() || !cst.IsMinValue())) {
             result = l;
             sum = lp.second - cst;
-        } else if ((op == OP_mul || op == OP_band || op == OP_cand || op == OP_land) && cst == 0) {
+        } else if ((op == OP_mul || op == OP_band || op == OP_cand) && cst == 0) {
             // X * 0 -> 0
             // X & 0 -> 0
             // X && 0 -> 0
@@ -1787,7 +1770,7 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode 
         } else if (op == OP_bior && cst == -1) {
             // X | (-1) -> -1
             result = mirModule->GetMIRBuilder()->CreateIntConst(-1ULL, cstTyp);
-        } else if ((op == OP_lior || op == OP_cior)) {
+        } else if (op == OP_cior) {
             if (cst == 0) {
                 // X || 0 -> X
                 sum = lp.second;

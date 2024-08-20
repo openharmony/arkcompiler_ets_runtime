@@ -769,7 +769,7 @@ Operand *X64MPIsel::SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd
         auto nodeOp = node.GetOpCode();
         Opcode parentOp = parent.GetOpCode();
         bool isFloat = IsPrimitiveFloat(primOpndType);
-        bool isJump = (parentOp == OP_brfalse || parentOp == OP_brtrue || parentOp == OP_select);
+        bool isJump = (parentOp == OP_brfalse || parentOp == OP_brtrue);
         // float eq
         if (isFloat && (nodeOp == maple::OP_eq) && (!isJump)) {
             SelectCmpFloatEq(*resOpnd, regOpnd0, regOpnd1, dtype, primOpndType);
@@ -845,31 +845,6 @@ void X64MPIsel::SelectCmpResult(RegOperand &resOpnd, Opcode opCode, PrimType pri
     cgFunc->GetCurBB()->AppendInsn(setInsn);
     /* cvt u8 -> primType */
     SelectIntCvt(resOpnd, tmpResOpnd, primType, PTY_u8);
-}
-
-Operand *X64MPIsel::SelectSelect(TernaryNode &expr, Operand &cond, Operand &trueOpnd, Operand &falseOpnd,
-                                 const BaseNode &parent)
-{
-    PrimType dtype = expr.GetPrimType();
-    RegOperand &resOpnd =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
-    RegOperand &trueRegOpnd = SelectCopy2Reg(trueOpnd, dtype, expr.Opnd(1)->GetPrimType());
-    RegOperand &falseRegOpnd = SelectCopy2Reg(falseOpnd, dtype, expr.Opnd(2)->GetPrimType());
-    Opcode cmpOpcode;
-    PrimType cmpPrimType;
-    if (kOpcodeInfo.IsCompare(expr.Opnd(0)->GetOpCode())) {
-        CompareNode *cmpNode = static_cast<CompareNode *>(expr.Opnd(0));
-        DEBUG_ASSERT(cmpNode != nullptr, "null ptr check");
-        cmpOpcode = cmpNode->GetOpCode();
-        cmpPrimType = cmpNode->GetOpndType();
-    } else {
-        cmpPrimType = expr.Opnd(0)->GetPrimType();
-        cmpOpcode = OP_ne;
-        ImmOperand &immOpnd = cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(cmpPrimType), 0);
-        SelectCmp(cond, immOpnd, cmpPrimType);
-    }
-    SelectSelect(resOpnd, trueRegOpnd, falseRegOpnd, dtype, cmpOpcode, cmpPrimType);
-    return &resOpnd;
 }
 
 void X64MPIsel::SelectSelect(Operand &resOpnd, Operand &trueOpnd, Operand &falseOpnd, PrimType primType,

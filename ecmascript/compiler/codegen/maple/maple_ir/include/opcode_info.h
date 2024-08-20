@@ -128,9 +128,7 @@ public:
     bool IsICall(Opcode o) const
     {
         DEBUG_ASSERT(o < OP_last, "invalid opcode");
-        return o == OP_icall || o == OP_icallassigned || o == OP_icallproto || o == OP_icallprotoassigned ||
-               o == OP_virtualicall || o == OP_virtualicallassigned || o == OP_interfaceicall ||
-               o == OP_interfaceicallassigned;
+        return o == OP_icall || o == OP_icallassigned || o == OP_icallproto || o == OP_icallprotoassigned;
     }
 
     bool NotPure(Opcode o) const
@@ -175,12 +173,6 @@ public:
         return table[o].flag & OPCODEASSERTNONNULL;
     }
 
-    bool IsCallAssertNonnull(Opcode o) const
-    {
-        DEBUG_ASSERT(o < OP_last, "invalid opcode");
-        return o == OP_callassertnonnull;
-    }
-
     bool IsAssertBoundary(Opcode o) const
     {
         DEBUG_ASSERT(o < OP_last, "invalid opcode");
@@ -197,24 +189,6 @@ public:
     {
         DEBUG_ASSERT(o < OP_last, "invalid opcode");
         return table[o].flag & OPCODEASSERTLOWERBOUNDARY;
-    }
-
-    bool IsCallAssertBoundary(Opcode o) const
-    {
-        DEBUG_ASSERT(o < OP_last, "invalid opcode");
-        return o == OP_callassertle;
-    }
-
-    bool IsAssertLeBoundary(Opcode o) const
-    {
-        DEBUG_ASSERT(o < OP_last, "invalid opcode");
-        return (o == OP_callassertle || o == OP_returnassertle || o == OP_assignassertle);
-    }
-
-    bool IsCalcAssertBoundary(Opcode o) const
-    {
-        DEBUG_ASSERT(o < OP_last, "invalid opcode");
-        return (o == OP_calcassertlt || o == OP_calcassertge);
     }
 
 private:

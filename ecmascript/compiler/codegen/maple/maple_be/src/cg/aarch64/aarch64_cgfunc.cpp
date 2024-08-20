@@ -1532,19 +1532,6 @@ void AArch64CGFunc::SelectCondGoto(CondGotoNode &stmt, Operand &opnd0, Operand &
     LabelOperand &targetOpnd = GetOrCreateLabelOperand(labelIdx);
     Opcode cmpOp;
 
-    if (opnd0.IsRegister() && (static_cast<RegOperand *>(&opnd0)->GetValidBitsNum() == 1) &&
-        (condNode->GetOpCode() == OP_lior)) {
-        ImmOperand &condBit = CreateImmOperand(0, k8BitSize, false);
-        if (stmt.GetOpCode() == OP_brtrue) {
-            GetCurBB()->AppendInsn(
-                GetInsnBuilder()->BuildInsn(MOP_wtbnz, static_cast<RegOperand &>(opnd0), condBit, targetOpnd));
-        } else {
-            GetCurBB()->AppendInsn(
-                GetInsnBuilder()->BuildInsn(MOP_wtbz, static_cast<RegOperand &>(opnd0), condBit, targetOpnd));
-        }
-        return;
-    }
-
     PrimType pType;
     if (kOpcodeInfo.IsCompare(condNode->GetOpCode())) {
         cmpOp = condNode->GetOpCode();
@@ -2179,7 +2166,7 @@ void AArch64CGFunc::SelectCmpOp(Operand &resOpnd, Operand &lhsOpnd, Operand &rhs
 
     // lt u8 i32 ( xxx, 0 ) => get sign bit
     if ((opcode == OP_lt) && opnd0.IsRegister() && opnd1->IsImmediate() &&
-        (static_cast<ImmOperand *>(opnd1)->GetValue() == 0) && parent.GetOpCode() != OP_select && !isFloat) {
+        (static_cast<ImmOperand *>(opnd1)->GetValue() == 0) && !isFloat) {
         bool is64Bits = (opnd0.GetSize() == k64BitSize);
         if (!unsignedIntegerComparison) {
             int32 bitLen = is64Bits ? kBitLenOfShift64Bits : kBitLenOfShift32Bits;

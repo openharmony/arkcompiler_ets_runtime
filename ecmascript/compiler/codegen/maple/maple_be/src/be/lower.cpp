@@ -413,8 +413,6 @@ StmtNode *CGLowerer::GenCallNode(const StmtNode &stmt, PUIdx &funcCalled, CallNo
         newCall = mirModule.GetMIRBuilder()->CreateStmtVirtualCall(origCall.GetPUIdx(), origCall.GetNopnd());
     } else if (stmt.GetOpCode() == OP_superclasscallassigned) {
         newCall = mirModule.GetMIRBuilder()->CreateStmtSuperclassCall(origCall.GetPUIdx(), origCall.GetNopnd());
-    } else if (stmt.GetOpCode() == OP_interfacecallassigned) {
-        newCall = mirModule.GetMIRBuilder()->CreateStmtInterfaceCall(origCall.GetPUIdx(), origCall.GetNopnd());
     }
     CHECK_FATAL(newCall != nullptr, "nullptr is not expected");
     newCall->SetDeoptBundleInfo(origCall.GetDeoptBundleInfo());
@@ -959,7 +957,6 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
             }
             case OP_virtualcallassigned:
             case OP_superclasscallassigned:
-            case OP_interfacecallassigned:
             case OP_intrinsiccallassigned:
             case OP_xintrinsiccallassigned:
             case OP_intrinsiccallwithtypeassigned:
@@ -998,10 +995,6 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
                 break;
             }
             case OP_comment:
-                newBlk->AddStatement(stmt);
-                break;
-            case OP_throw:
-                LowerStmt(*stmt, *newBlk);
                 newBlk->AddStatement(stmt);
                 break;
             case OP_asm: {
@@ -1297,8 +1290,7 @@ void CGLowerer::CleanupBranches(MIRFunction &func) const
             StmtNode *cmtE = nullptr;
             bool isCleanable = true;
             while ((next != nullptr) && (next->GetOpCode() != OP_label)) {
-                if ((next->GetOpCode() == OP_try) || (next->GetOpCode() == OP_endtry) ||
-                    (next->GetOpCode() == OP_catch)) {
+                if ((next->GetOpCode() == OP_endtry)) {
                     isCleanable = false;
                     break;
                 }
@@ -1464,18 +1456,6 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
         case OP_iaddrof:
             return LowerIaddrof(static_cast<IreadNode &>(expr));
 
-        case OP_sizeoftype: {
-            CHECK(static_cast<SizeoftypeNode &>(expr).GetTyIdx() < beCommon.GetSizeOfTypeSizeTable(),
-                  "index out of range in CGLowerer::LowerExpr");
-            int64 typeSize = static_cast<int64>(beCommon.GetTypeSize(static_cast<SizeoftypeNode &>(expr).GetTyIdx()));
-            return mirModule.GetMIRBuilder()->CreateIntConst(typeSize, PTY_u32);
-        }
-
-        case OP_alloca: {
-            DEBUG_ASSERT(GetCurrentFunc() != nullptr, "GetCurrentFunc should not be nulllptr");
-            GetCurrentFunc()->SetVlaOrAlloca(true);
-            return &expr;
-        }
         case OP_cvt:
         case OP_retype:
         case OP_zext:

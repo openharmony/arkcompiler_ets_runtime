@@ -291,14 +291,6 @@ BlockNode *BlockNode::CloneTreeWithFreqs(MapleAllocator &allocator, std::unorder
             newStmt = static_cast<StmtNode *>(
                 (static_cast<IfStmtNode *>(&stmt))
                     ->CloneTreeWithFreqs(allocator, toFreqs, fromFreqs, numer, denom, updateOp));
-        } else if (stmt.GetOpCode() == OP_while) {
-            newStmt = static_cast<StmtNode *>(
-                (static_cast<WhileStmtNode *>(&stmt))
-                    ->CloneTreeWithFreqs(allocator, toFreqs, fromFreqs, numer, denom, updateOp));
-        } else if (stmt.GetOpCode() == OP_doloop) {
-            newStmt = static_cast<StmtNode *>(
-                (static_cast<DoloopNode *>(&stmt))
-                    ->CloneTreeWithFreqs(allocator, toFreqs, fromFreqs, numer, denom, updateOp));
         } else {
             newStmt = static_cast<StmtNode *>(stmt.CloneTree(allocator));
             if (fromFreqs.count(stmt.GetStmtID()) > 0) {
@@ -332,30 +324,6 @@ void BaseNode::DumpBase(int32 indent) const
 {
     PrintIndentation(indent);
     LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
-}
-
-void CatchNode::Dump(int32 indent) const
-{
-    PrintIndentation(indent);
-    LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " {";
-    size_t size = exceptionTyIdxVec.size();
-    for (size_t i = 0; i < size; ++i) {
-        LogInfo::MapleLogger() << " ";
-        GlobalTables::GetTypeTable().GetTypeFromTyIdx(exceptionTyIdxVec[i])->Dump(indent + 1);
-    }
-    LogInfo::MapleLogger() << " }\n";
-}
-
-void CppCatchNode::Dump(int32 indent) const
-{
-    PrintIndentation(indent);
-    LogInfo::MapleLogger() << kOpcodeInfo.GetName(op);
-    if (exceptionTyIdx.GetIdx() != 0) {
-        LogInfo::MapleLogger() << " { ";
-        GlobalTables::GetTypeTable().GetTypeFromTyIdx(exceptionTyIdx)->Dump(indent + 1);
-        LogInfo::MapleLogger() << " }";
-    }
-    LogInfo::MapleLogger() << std::endl;
 }
 
 void UnaryNode::DumpOpnd(const MIRModule &, int32 indent) const
@@ -427,12 +395,6 @@ void IreadoffNode::Dump(int32 indent) const
     DumpOpnd(*theMIRModule, indent);
 }
 
-void IreadFPoffNode::Dump(int32) const
-{
-    LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
-    LogInfo::MapleLogger() << " " << offset;
-}
-
 void BinaryNode::Dump(int32 indent) const
 {
     BaseNode::DumpBase(0);
@@ -457,14 +419,6 @@ void BinaryOpnds::Dump(int32 indent) const
     LogInfo::MapleLogger() << ")";
 }
 
-void ResolveFuncNode::Dump(int32 indent) const
-{
-    BaseNode::DumpBase(0);
-    MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
-    LogInfo::MapleLogger() << " &" << func->GetName();
-    BinaryOpnds::Dump(indent);
-}
-
 void CompareNode::Dump(int32 indent) const
 {
     LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
@@ -487,30 +441,6 @@ void DepositbitsNode::Dump(int32 indent) const
         LogInfo::MapleLogger() << ",\n";
         PrintIndentation(indent + 1);
         GetBOpnd(1)->Dump(indent + 1);
-    }
-    LogInfo::MapleLogger() << ")";
-}
-
-void TernaryNode::Dump(int32 indent) const
-{
-    BaseNode::DumpBase(0);
-    LogInfo::MapleLogger() << " (";
-    if (topnd[kFirstOpnd]->IsLeaf() && topnd[kSecondOpnd]->IsLeaf() && topnd[kThirdOpnd]->IsLeaf()) {
-        topnd[kFirstOpnd]->Dump(0);
-        LogInfo::MapleLogger() << ", ";
-        topnd[kSecondOpnd]->Dump(0);
-        LogInfo::MapleLogger() << ", ";
-        topnd[kThirdOpnd]->Dump(0);
-    } else {
-        LogInfo::MapleLogger() << '\n';
-        PrintIndentation(indent + 1);
-        topnd[kFirstOpnd]->Dump(indent + 1);
-        LogInfo::MapleLogger() << ",\n";
-        PrintIndentation(indent + 1);
-        topnd[kSecondOpnd]->Dump(indent + 1);
-        LogInfo::MapleLogger() << ",\n";
-        PrintIndentation(indent + 1);
-        topnd[kThirdOpnd]->Dump(indent + 1);
     }
     LogInfo::MapleLogger() << ")";
 }
@@ -645,10 +575,6 @@ bool ArrayNode::IsSameBase(ArrayNode *arry)
 void IntrinsicopNode::Dump(int32 indent) const
 {
     LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
-    if (GetOpCode() == OP_intrinsicopwithtype) {
-        LogInfo::MapleLogger() << " ";
-        GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->Dump(indent + 1);
-    }
     LogInfo::MapleLogger() << " " << GetIntrinsicName(GetIntrinsic());
     NaryOpnds::Dump(indent);
 }
@@ -677,21 +603,6 @@ void Conststr16Node::Dump(int32) const
     std::string str;
     (void)namemangler::UTF16ToUTF8(str, kStr16);
     PrintString(str);
-}
-
-void SizeoftypeNode::Dump(int32) const
-{
-    BaseNode::DumpBase(0);
-    LogInfo::MapleLogger() << " ";
-    GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->Dump(0);
-}
-
-void FieldsDistNode::Dump(int32) const
-{
-    BaseNode::DumpBase(0);
-    LogInfo::MapleLogger() << " ";
-    GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->Dump(0);
-    LogInfo::MapleLogger() << " " << fieldID1 << " " << fieldID2;
 }
 
 void AddrofNode::Dump(int32) const
@@ -826,23 +737,6 @@ void DassignNode::Dump(int32 indent) const
     LogInfo::MapleLogger() << ")\n";
 }
 
-void DassignoffNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    LogInfo::MapleLogger() << " " << GetPrimTypeName(GetPrimType());
-    const MIRSymbol *st = theMIRModule->CurFunction()->GetLocalOrGlobalSymbol(stIdx);
-    DEBUG_ASSERT(st != nullptr, "null ptr check");
-    LogInfo::MapleLogger() << (st->IsLocal() ? " %" : " $");
-    LogInfo::MapleLogger() << st->GetName() << " " << offset;
-    LogInfo::MapleLogger() << " (";
-    if (GetRHS() != nullptr) {
-        GetRHS()->Dump(indent + 1);
-    } else {
-        LogInfo::MapleLogger() << "/*empty-rhs*/";
-    }
-    LogInfo::MapleLogger() << ")\n";
-}
-
 void RegassignNode::Dump(int32 indent) const
 {
     StmtNode::DumpBase(indent);
@@ -902,22 +796,6 @@ void IassignoffNode::Dump(int32 indent) const
     LogInfo::MapleLogger() << '\n';
 }
 
-void IassignFPoffNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    LogInfo::MapleLogger() << " " << GetPrimTypeName(GetPrimType()) << " " << offset;
-    DumpOpnd(*theMIRModule, indent);
-    LogInfo::MapleLogger() << '\n';
-}
-
-void BlkassignoffNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    LogInfo::MapleLogger() << " " << offset << " " << GetAlign() << " " << blockSize;
-    BinaryOpnds::Dump(indent);
-    LogInfo::MapleLogger() << '\n';
-}
-
 void GotoNode::Dump(int32 indent) const
 {
     StmtNode::DumpBase(indent);
@@ -927,34 +805,6 @@ void GotoNode::Dump(int32 indent) const
         LogInfo::MapleLogger() << " @" << theMIRModule->CurFunction()->GetLabelName(static_cast<LabelIdx>(offset))
                                << '\n';
     }
-}
-
-void JsTryNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    if (catchOffset == 0) {
-        LogInfo::MapleLogger() << " 0";
-    } else {
-        LogInfo::MapleLogger() << " @" << theMIRModule->CurFunction()->GetLabelName(static_cast<LabelIdx>(catchOffset));
-    }
-    if (finallyOffset == 0) {
-        LogInfo::MapleLogger() << " 0\n";
-    } else {
-        LogInfo::MapleLogger() << " @"
-                               << theMIRModule->CurFunction()->GetLabelName(static_cast<LabelIdx>(finallyOffset))
-                               << '\n';
-    }
-}
-
-void TryNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    LogInfo::MapleLogger() << " {";
-    for (size_t i = 0; i < offsets.size(); ++i) {
-        uint32 offset = offsets[i];
-        LogInfo::MapleLogger() << " @" << theMIRModule->CurFunction()->GetLabelName((LabelIdx)offset);
-    }
-    LogInfo::MapleLogger() << " }\n";
 }
 
 void CondGotoNode::Dump(int32 indent) const
@@ -1000,26 +850,6 @@ void RangeGotoNode::Dump(int32 indent) const
     LogInfo::MapleLogger() << " }\n";
 }
 
-void MultiwayNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    LogInfo::MapleLogger() << " (";
-    multiWayOpnd->Dump(indent);
-    if (defaultLabel == 0) {
-        LogInfo::MapleLogger() << ") 0 {";
-    } else {
-        LogInfo::MapleLogger() << ") @" << theMIRModule->CurFunction()->GetLabelName(defaultLabel) << " {";
-    }
-    for (auto it = multiWayTable.begin(); it != multiWayTable.end(); it++) {
-        LogInfo::MapleLogger() << '\n';
-        PrintIndentation(indent);
-        LogInfo::MapleLogger() << " (";
-        it->first->Dump(indent + 1);
-        LogInfo::MapleLogger() << "): goto @" << theMIRModule->CurFunction()->GetLabelName(it->second);
-    }
-    LogInfo::MapleLogger() << " }\n";
-}
-
 void UnaryStmtNode::DumpOpnd(const MIRModule &, int32 indent) const
 {
     DumpOpnd(indent);
@@ -1040,21 +870,6 @@ void UnaryStmtNode::Dump(int32 indent) const
     DumpOpnd(indent);
 }
 
-void GCMallocNode::Dump(int32) const
-{
-    BaseNode::DumpBase(0);
-    LogInfo::MapleLogger() << " ";
-    GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->Dump(0);
-}
-
-void JarrayMallocNode::Dump(int32 indent) const
-{
-    BaseNode::DumpBase(0);
-    LogInfo::MapleLogger() << " ";
-    GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->Dump(0, false);
-    DumpOpnd(*theMIRModule, indent);
-}
-
 void IfStmtNode::Dump(int32 indent) const
 {
     StmtNode::DumpBase(indent);
@@ -1073,70 +888,6 @@ void IfStmtNode::Dump(int32 indent) const
     }
 }
 
-void WhileStmtNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    if (GetOpCode() == OP_while) {
-        LogInfo::MapleLogger() << " (";
-        Opnd(0)->Dump(indent);
-        LogInfo::MapleLogger() << ")";
-        body->Dump(indent);
-    } else {  // OP_dowhile
-        LogInfo::MapleLogger() << " {\n";
-        for (auto &stmt : body->GetStmtNodes()) {
-            stmt.Dump(indent + 1);
-        }
-        PrintIndentation(indent);
-        LogInfo::MapleLogger() << "} (";
-        Opnd(0)->Dump(indent);
-        LogInfo::MapleLogger() << ")\n";
-    }
-}
-
-void DoloopNode::DumpDoVar(const MIRModule &mod) const
-{
-    DEBUG_ASSERT(mod.CurFunction() != nullptr, "mod.CurFunction() should not be nullptr");
-    if (isPreg) {
-        LogInfo::MapleLogger() << " %"
-                               << mod.CurFunction()->GetPregTab()->PregFromPregIdx(doVarStIdx.FullIdx())->GetPregNo()
-                               << " (\n";
-    } else {
-        const MIRSymbol *st = mod.CurFunction()->GetLocalOrGlobalSymbol(doVarStIdx);
-        CHECK_FATAL(st != nullptr, "null ptr");
-        LogInfo::MapleLogger() << " %" << st->GetName() << " (\n";
-    }
-}
-
-void DoloopNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    DumpDoVar(*theMIRModule);
-    PrintIndentation(indent + 1);
-    startExpr->Dump(indent + 1);
-    LogInfo::MapleLogger() << ",\n";
-    PrintIndentation(indent + 1);
-    condExpr->Dump(indent + 1);
-    LogInfo::MapleLogger() << ",\n";
-    PrintIndentation(indent + 1);
-    incrExpr->Dump(indent + 1);
-    LogInfo::MapleLogger() << ")";
-    doBody->Dump(indent + 1);
-}
-
-void ForeachelemNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
-    const MIRSymbol *st = theMIRModule->CurFunction()->GetLocalOrGlobalSymbol(elemStIdx);
-    DEBUG_ASSERT(st != nullptr, "null ptr check");
-    LogInfo::MapleLogger() << " %" << st->GetName();
-    st = theMIRModule->CurFunction()->GetLocalOrGlobalSymbol(arrayStIdx);
-    DEBUG_ASSERT(st != nullptr, "null ptr check");
-    LogInfo::MapleLogger() << (arrayStIdx.Islocal() ? " %" : " $");
-    LogInfo::MapleLogger() << st->GetName();
-    loopBody->Dump(indent + 1);
-}
-
 void BinaryStmtNode::Dump(int32 indent) const
 {
     StmtNode::DumpBase(indent);
@@ -1151,13 +902,6 @@ void NaryStmtNode::Dump(int32 indent) const
     LogInfo::MapleLogger() << '\n';
 }
 
-void CallAssertNonnullStmtNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    SafetyCallCheckStmtNode::Dump();
-    UnaryStmtNode::DumpOpnd(indent);
-}
-
 void AssertNonnullStmtNode::Dump(int32 indent) const
 {
     StmtNode::DumpBase(indent);
@@ -1165,22 +909,6 @@ void AssertNonnullStmtNode::Dump(int32 indent) const
         SafetyCheckStmtNode::Dump();
     }
     UnaryStmtNode::DumpOpnd(indent);
-}
-
-void AssertBoundaryStmtNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    SafetyCheckStmtNode::Dump();
-    NaryOpnds::Dump(indent);
-    LogInfo::MapleLogger() << '\n';
-}
-
-void CallAssertBoundaryStmtNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    SafetyCallCheckStmtNode::Dump();
-    NaryOpnds::Dump(indent);
-    LogInfo::MapleLogger() << '\n';
 }
 
 void DumpCallReturns(const MIRModule &mod, CallReturnVector nrets, int32 indent)
@@ -1383,24 +1111,6 @@ void IntrinsiccallNode::Dump(int32 indent, bool newline) const
     } else {
         LogInfo::MapleLogger() << " " << intrinsic;
     }
-    NaryOpnds::Dump(indent);
-    if (kOpcodeInfo.IsCallAssigned(GetOpCode())) {
-        DumpCallReturns(*theMIRModule, this->GetReturnVec(), indent);
-    } else if (newline) {
-        LogInfo::MapleLogger() << '\n';
-    }
-}
-
-void CallinstantNode::Dump(int32 indent, bool newline) const
-{
-    StmtNode::DumpBase(indent);
-    MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(GetPUIdx());
-    LogInfo::MapleLogger() << " &" << func->GetName();
-    MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(instVecTyIdx);
-    LogInfo::MapleLogger() << "<";
-    auto *instVecType = static_cast<MIRInstantVectorType *>(ty);
-    instVecType->Dump(indent);
-    LogInfo::MapleLogger() << ">";
     NaryOpnds::Dump(indent);
     if (kOpcodeInfo.IsCallAssigned(GetOpCode())) {
         DumpCallReturns(*theMIRModule, this->GetReturnVec(), indent);
@@ -1784,16 +1494,6 @@ bool IsSignedType(const BaseNode *opnd)
     return false;
 }
 
-std::string SafetyCallCheckStmtNode::GetFuncName() const
-{
-    return GlobalTables::GetStrTable().GetStringFromStrIdx(callFuncNameIdx);
-}
-
-std::string SafetyCallCheckStmtNode::GetStmtFuncName() const
-{
-    return GlobalTables::GetStrTable().GetStringFromStrIdx(stmtFuncNameIdx);
-}
-
 std::string SafetyCheckStmtNode::GetFuncName() const
 {
     return GlobalTables::GetStrTable().GetStringFromStrIdx(funcNameIdx);
@@ -1838,18 +1538,6 @@ bool IreadoffNode::IsSameContent(const BaseNode *node) const
     auto *ireadoffNode = dynamic_cast<const IreadoffNode *>(node);
     if ((this == ireadoffNode) || (ireadoffNode != nullptr && (GetOffset() == ireadoffNode->GetOffset()) &&
                                    UnaryNode::IsSameContent(ireadoffNode))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool IreadFPoffNode::IsSameContent(const BaseNode *node) const
-{
-    auto *ireadFPoffNode = dynamic_cast<const IreadFPoffNode *>(node);
-    if ((this == ireadFPoffNode) ||
-        (ireadFPoffNode != nullptr && (GetOpCode() == ireadFPoffNode->GetOpCode()) &&
-         (GetPrimType() == ireadFPoffNode->GetPrimType()) && (GetOffset() == ireadFPoffNode->GetOffset()))) {
         return true;
     } else {
         return false;

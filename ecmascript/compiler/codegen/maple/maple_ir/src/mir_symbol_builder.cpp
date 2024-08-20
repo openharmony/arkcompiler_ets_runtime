@@ -27,17 +27,6 @@ MIRSymbol *MIRSymbolBuilder::GetLocalDecl(const MIRSymbolTable &symbolTable, con
     return nullptr;
 }
 
-MIRSymbol *MIRSymbolBuilder::CreateLocalDecl(MIRSymbolTable &symbolTable, GStrIdx strIdx, const MIRType &type) const
-{
-    MIRSymbol *st = symbolTable.CreateSymbol(kScopeLocal);
-    st->SetNameStrIdx(strIdx);
-    st->SetTyIdx(type.GetTypeIndex());
-    (void)symbolTable.AddToStringSymbolMap(*st);
-    st->SetStorageClass(kScAuto);
-    st->SetSKind(kStVar);
-    return st;
-}
-
 MIRSymbol *MIRSymbolBuilder::GetGlobalDecl(GStrIdx strIdx) const
 {
     if (strIdx != 0u) {
