@@ -3177,7 +3177,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefineField(JSThread *thread, JSTaggedValue o
     JSHandle<JSTaggedValue> handleKey = JSTaggedValue::ToPropertyKey(thread, JSHandle<JSTaggedValue>(thread, propKey));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
-    JSObject::CreateDataPropertyOrThrow(thread, handleObj, handleKey, handleValue, SCheckMode::SKIP);
+    JSObject::CreateDataPropertyOrThrow(thread, handleObj, handleKey, handleValue, SCheckMode::CHECK);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
     return JSTaggedValue::Undefined();
