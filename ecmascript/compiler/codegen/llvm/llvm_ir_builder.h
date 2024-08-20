@@ -233,10 +233,11 @@ public:
     {
         return rawPtrT_;
     }
+
+    LLVMTypeRef ConvertLLVMTypeFromVariableType(VariableType type);
 private:
     LLVMValueRef AddAndGetFunc(const CallSignature *stubDescriptor);
     void InitialLLVMFuncTypeAndFuncByModuleCSigns();
-    LLVMTypeRef ConvertLLVMTypeFromVariableType(VariableType type);
     LLVMTypeRef NewLType(MachineType machineType, GateType gateType);
     // index:
     //     stub scenario - sequence of function adding to llvmModule
@@ -265,6 +266,12 @@ private:
 // runtime/common stub ID, opcodeOffset for bc stub
 using StubIdType = std::variant<RuntimeStubCSigns::ID, CommonStubCSigns::ID, LLVMValueRef>;
 
+class LLVMTargetBuilder {
+public:
+    virtual ~LLVMTargetBuilder() = default;
+    virtual LLVMValueRef GetASMBarrierCall(LLVMModule *llvmModule_) = 0;
+};
+
 class LLVMIRBuilder {
 public:
     LLVMIRBuilder(const std::vector<std::vector<GateRef>> *schedule, Circuit *circuit,
@@ -274,6 +281,10 @@ public:
     ~LLVMIRBuilder();
     void Build();
 
+    static void RegisterTargetBuilder(const std::string& triple, const std::function<LLVMTargetBuilder*()>& creator)
+    {
+        GlobalTargetBuilders().emplace(triple, creator);
+    };
 private:
     #define DECLAREVISITOPCODE(name, signature) void Visit##name signature;
         OPCODES(DECLAREVISITOPCODE)
@@ -443,6 +454,12 @@ private:
     {
         gate2LValue_[g] = lv;
     }
+    using TargetBuilderMap = std::unordered_map<std::string, std::function<LLVMTargetBuilder*()>>;
+    static TargetBuilderMap& GlobalTargetBuilders()
+    {
+        static TargetBuilderMap targetBuilderCreators;
+        return targetBuilderCreators;
+    }
 
     const CompilationConfig *compCfg_ {nullptr};
     const std::vector<std::vector<GateRef>> *scheduledGates_ {nullptr};
@@ -471,7 +488,8 @@ private:
     LLVMMetadataRef dFuncMD_ {nullptr};
     bool enableOptInlining_ {false};
     bool enableOptBranchProfiling_ {true};
-
+    LLVMValueRef ASMBarrierCall_ {nullptr};
+    LLVMTargetBuilder* targetBuilder_ {nullptr};
     static constexpr std::string_view COLD_ATTR = "cold";
 };
 }  // namespace panda::ecmascript::kungfu

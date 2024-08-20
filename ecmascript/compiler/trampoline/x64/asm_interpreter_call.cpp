@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#include <ecmascript/stubs/runtime_stubs.h>
+
 #include "ecmascript/compiler/trampoline/x64/common_call.h"
 
 #include "ecmascript/compiler/assembler/assembler.h"
@@ -1411,8 +1413,205 @@ void AsmInterpreterCall::ResumeRspAndRollback(ExtendedAssembler *assembler)
     __ Jmp(bcStubRegister);
 }
 
+// preserve all the general registers, except r11 and callee saved registers/
+// and call r11
+void AsmInterpreterCall::PreserveMostCall(ExtendedAssembler* assembler)
+{
+    // * layout as the following:
+    //               +--------------------------+ ---------
+    //               |       . . . . .          |         ^
+    // callerSP ---> |--------------------------|         |
+    //               |       returnAddr         |         |
+    //               |--------------------------|   OptimizedFrame
+    //               |       callsiteFp         |         |
+    //       fp ---> |--------------------------|         |
+    //               |     OPTIMIZED_FRAME      |         v
+    //               +--------------------------+ ---------
+    //               |           rdi            |
+    //               +--------------------------+
+    //               |           rsi            |
+    //               +--------------------------+
+    //               |           rdx            |
+    //               +--------------------------+
+    //               |           rcx            |
+    //               +--------------------------+
+    //               |           r8            |
+    //               +--------------------------+
+    //               |           r9             |
+    //               +--------------------------+
+    //               |           r10             |
+    //               +--------------------------+
+    //               |           rax            |
+    //               +--------------------------+
+    //               |          align           |
+    // calleeSP ---> +--------------------------+
+    {
+        // prologue to save rbp, frametype, and update rbp.
+        __ Pushq(rbp);
+        __ Pushq(static_cast<int64_t>(FrameType::OPTIMIZED_FRAME)); // set frame type
+        __ Leaq(Operand(rsp, FRAME_SLOT_SIZE), rbp); // skip frame type
+    }
+    int32_t PreserveRegisterIndex = 9;
+    // rdi,rsi,rdx,rcx,r8,r9,r10,rax should be preserved,
+    // other general registers are callee saved register, callee will save them.
+    __ Subq(PreserveRegisterIndex * FRAME_SLOT_SIZE, rsp);
+    __ Movq(rdi, Operand(rsp, FRAME_SLOT_SIZE * (--PreserveRegisterIndex)));
+    __ Movq(rsi, Operand(rsp, FRAME_SLOT_SIZE * (--PreserveRegisterIndex)));
+    __ Movq(rdx, Operand(rsp, FRAME_SLOT_SIZE * (--PreserveRegisterIndex)));
+    __ Movq(rcx, Operand(rsp, FRAME_SLOT_SIZE * (--PreserveRegisterIndex)));
+    __ Movq(r8, Operand(rsp, FRAME_SLOT_SIZE * (--PreserveRegisterIndex)));
+    __ Movq(r9, Operand(rsp, FRAME_SLOT_SIZE * (--PreserveRegisterIndex)));
+    __ Movq(r10, Operand(rsp, FRAME_SLOT_SIZE * (--PreserveRegisterIndex)));
+    __ Movq(rax, Operand(rsp, FRAME_SLOT_SIZE * (--PreserveRegisterIndex)));
+    __ Callq(r11);
+    __ Movq(Operand(rsp, FRAME_SLOT_SIZE * (PreserveRegisterIndex++)), rax);
+    __ Movq(Operand(rsp, FRAME_SLOT_SIZE * (PreserveRegisterIndex++)), r10);
+    __ Movq(Operand(rsp, FRAME_SLOT_SIZE * (PreserveRegisterIndex++)), r9);
+    __ Movq(Operand(rsp, FRAME_SLOT_SIZE * (PreserveRegisterIndex++)), r8);
+    __ Movq(Operand(rsp, FRAME_SLOT_SIZE * (PreserveRegisterIndex++)), rcx);
+    __ Movq(Operand(rsp, FRAME_SLOT_SIZE * (PreserveRegisterIndex++)), rdx);
+    __ Movq(Operand(rsp, FRAME_SLOT_SIZE * (PreserveRegisterIndex++)), rsi);
+    __ Movq(Operand(rsp, FRAME_SLOT_SIZE * (PreserveRegisterIndex++)), rdi);
+    {
+        // epilogue to restore rsp, rbp.
+        // need add the frametype slot
+        __ Addq(PreserveRegisterIndex * FRAME_SLOT_SIZE + FRAME_SLOT_SIZE, rsp);
+        __ Popq(rbp);
+        __ Ret();
+    }
+}
+
+// ASMFastWriteBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value)
+// c calling convention, but preserve all general registers except %r11
+// %rd1 - glue
+// %rsi - obj
+// %rdx - offset
+// %rcx - value
+void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
+{
+    // valid region flag are as follows, assume it will be ALWAYS VALID.
+    // Judge the region of value with:
+    //                          "young"            "sweepable share"  "readonly share"
+    // region flag:         0x08, 0x09, [0x0A, 0x11], [0x12, 0x14],     0x15
+    // value is share:                                [0x12,            0x15] =>  valueMaybeSweepableShare
+    // readonly share:                                                  0x15  =>  return
+    // sweepable share:                               [0x12, 0x14]            =>  needCallShare
+    // value is not share:  0x08, 0x09, [0x0A, 0x11],                         =>  valueNotShare
+    // value is young :           0x09                                        =>  needCallNotShare
+    // value is not young : 0x08,       [0x0A, 0x11],                         =>  checkMark
+    ASSERT(GENERAL_YOUNG_BEGIN <= IN_YOUNG_SPACE && IN_YOUNG_SPACE < SHARED_SPACE_BEGIN &&
+        SHARED_SPACE_BEGIN <= SHARED_SWEEPABLE_SPACE_BEGIN && SHARED_SWEEPABLE_SPACE_END < IN_SHARED_READ_ONLY_SPACE &&
+        IN_SHARED_READ_ONLY_SPACE == HEAP_SPACE_END);
+    __ BindAssemblerStub(RTSTUB_ID(ASMFastWriteBarrier));
+    Label needCall;
+    Label checkMark;
+    Label needCallNotShare;
+    Label needCallShare;
+    Label valueNotShare;
+    Label valueMaybeSweepableShare;
+    {
+        // int8_t *valueRegion = value & (~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK))
+        // int8_t valueFlag = *valueRegion
+        // if (valueFlag >= SHARED_SWEEPABLE_SPACE_BEGIN){
+        //    goto valueMaybeSweepableShare
+        // }
+
+        __ Movabs(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), r11); // r11 is the mask to get the region.
+        __ And(rcx, r11); // r11 is the region address of value.
+        __ Movzbl(Operand(r11, 0), r11); // r11 is the flag load from region of value.
+        __ Cmpl(Immediate(RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_BEGIN), r11);
+        __ Jae(&valueMaybeSweepableShare);
+        // if value may be SweepableShare, goto valueMaybeSweepableShare
+    }
+    __ Bind(&valueNotShare);
+    {
+        // valueNotShare:
+        // if (valueFlag != IN_YOUNG_SPACE){
+        //      goto checkMark
+        // }
+        // int8_t *objRegion = obj & (~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK))
+        // int8_t objFlag = *objRegion
+        // if (objFlag != IN_YOUNG_SPACE){
+        //    goto needCallNotShare
+        // }
+
+        __ Cmpl(Immediate(RegionSpaceFlag::IN_YOUNG_SPACE), r11);
+        __ Jne(&checkMark);
+        // if value is not in young, goto checkMark
+
+        __ Movabs(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), r11);
+        __ And(rsi, r11); // r11 is the region address of obj.
+        __ Movzbl(Operand(r11, 0), r11); // r11 is the flag load from region of obj.
+        __ Cmpl(Immediate(RegionSpaceFlag::IN_YOUNG_SPACE), r11);
+        __ Jne(&needCallNotShare);
+        // if obj is not in young, goto needCallNotShare
+    }
+
+    __ Bind(&checkMark);
+    {
+        // checkMark:
+        // int8_t GCStateBitField = *(glue+GCStateBitFieldOffset)
+        // if (GCStateBitField & JSThread::CONCURRENT_MARKING_BITFIELD_MASK != 0) {
+        //    goto needCallNotShare
+        // }
+        // return
+
+        __ Movl(Operand(rdi, JSThread::GlueData::GetGCStateBitFieldOffset(false)), r11);
+        __ Testb(Immediate(JSThread::CONCURRENT_MARKING_BITFIELD_MASK), r11);
+        __ Jne(&needCallNotShare);
+        // if GCState is not READY_TO_MARK, go to needCallNotShare.
+        __ Ret();
+    }
+
+    __ Bind(&valueMaybeSweepableShare);
+    {
+        // valueMaybeSweepableShare:
+        // if (valueFlag != IN_SHARED_READ_ONLY_SPACE){
+        //    goto needCallShare
+        // }
+        // return
+        __ Cmpl(Immediate(RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE), r11);
+        __ Jne(&needCallShare);
+        __ Ret();
+    }
+
+    __ Bind(&needCallShare);
+    {
+        int32_t SValueBarrierOffset = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
+            kungfu::CommonStubCSigns::SetSValueWithBarrier * FRAME_SLOT_SIZE;
+        __ Movq(Operand(rdi, SValueBarrierOffset), r11);
+        __ Jmp(&needCall);
+    }
+    __ Bind(&needCallNotShare);
+    {
+        int32_t NonSValueBarrier = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
+            kungfu::CommonStubCSigns::SetNonSValueWithBarrier * FRAME_SLOT_SIZE;
+        __ Movq(Operand(rdi, NonSValueBarrier), r11);
+    }
+    __ Bind(&needCall);
+    {
+        PreserveMostCall(assembler);
+    }
+}
+
+// ASMWriteBarrierWithEden(GateRef glue, GateRef obj, GateRef offset, GateRef value)
+// c calling convention, but preserve all general registers except %x15
+// %x0 - glue
+// %x1 - obj
+// %x2 - offset
+// %x3 - value
+void AsmInterpreterCall::ASMWriteBarrierWithEden(ExtendedAssembler* assembler)
+{
+    __ BindAssemblerStub(RTSTUB_ID(ASMWriteBarrierWithEden));
+    // Just for compitability, not a fast implement, should be refactored when enable EdenBarrier.
+    int32_t EdenBarrierOffset = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
+        kungfu::CommonStubCSigns::SetValueWithEdenBarrier * FRAME_SLOT_SIZE;
+    __ Movq(Operand(rdi, EdenBarrierOffset), r11);
+    PreserveMostCall(assembler);
+}
+
 void AsmInterpreterCall::PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc,
-    Register op1, Register op2, Label *stackOverflow)
+                                                            Register op1, Register op2, Label *stackOverflow)
 {
     ASSERT(stackOverflow != nullptr);
     StackOverflowCheck(assembler, glue, argc, op1, op2, stackOverflow);

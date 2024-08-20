@@ -213,6 +213,9 @@ public:
 
     static void CallReturnWithArgv([[maybe_unused]]ExtendedAssembler *assembler);
 
+    static void ASMFastWriteBarrier(ExtendedAssembler *assembler);
+
+    static void ASMWriteBarrierWithEden(ExtendedAssembler *assembler);
 private:
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
                              Label *stackOverflow, FrameTransitionType type);
@@ -264,6 +267,7 @@ private:
     static void CallNativeEntry(ExtendedAssembler *assembler);
 
     static void CallNativeWithArgv(ExtendedAssembler *assembler, bool callNew, bool hasNewTarget = false);
+    static void PreserveMostCall(ExtendedAssembler* assembler);
     friend class OptimizedCall;
     friend class BaselineCall;
 };

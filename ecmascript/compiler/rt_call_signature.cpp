@@ -32,7 +32,8 @@ void RuntimeStubCSigns::Initialize()
     assert(callSigns_[ID_##name].IsRuntimeNGCStub() ||               \
            callSigns_[ID_##name].IsRuntimeStub() ||                  \
            callSigns_[ID_##name].IsDeoptStub()   ||                  \
-           callSigns_[ID_##name].IsRuntimeVAStub());
+           callSigns_[ID_##name].IsRuntimeVAStub() ||                \
+           callSigns_[ID_##name].IsASMCallBarrierStub());
 
     RUNTIME_STUB_WITHOUT_GC_LIST(INIT_SIGNATURES)
     RUNTIME_ASM_STUB_LIST(INIT_SIGNATURES)

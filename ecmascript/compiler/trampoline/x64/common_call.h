@@ -183,6 +183,9 @@ public:
 
     static void ResumeRspAndRollback(ExtendedAssembler *assembler);
 
+    static void ASMFastWriteBarrier(ExtendedAssembler *assembler);
+
+    static void ASMWriteBarrierWithEden(ExtendedAssembler *assembler);
 private:
     static void PushFrameState(ExtendedAssembler *assembler, Register prevSpRegister, Register fpRegister,
         Register callTargetRegister, Register thisRegister, Register methodRegister, Register pcRegister,
@@ -216,6 +219,7 @@ private:
     static void JSCallCommonFastPath(ExtendedAssembler *assembler, JSCallMode mode, Label *stackOverflow);
     static void JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
         Label *fastPathEntry, Label *pushCallThis, Label *stackOverflow);
+    static void PreserveMostCall(ExtendedAssembler* assembler);
     friend class OptimizedCall;
     friend class BaselineCall;
 };

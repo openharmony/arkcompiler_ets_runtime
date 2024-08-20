@@ -55,7 +55,9 @@ namespace panda::ecmascript {
     V(CallGetter)                            \
     V(CallContainersArgs2)                   \
     V(CallContainersArgs3)                   \
-    V(CallReturnWithArgv)
+    V(CallReturnWithArgv)                    \
+    V(ASMFastWriteBarrier)                   \
+    V(ASMWriteBarrierWithEden)
 
 #define BASELINE_TRAMPOLINE_LIST(V)                   \
     V(CallArg0AndCheckToBaseline)                     \
