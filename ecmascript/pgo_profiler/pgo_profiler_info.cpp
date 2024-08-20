@@ -189,7 +189,7 @@ uint32_t PGOMethodInfo::CalcOpCodeChecksum(const uint8_t *byteCodeArray, uint32_
     return checksum;
 }
 
-bool PGOMethodInfoMap::AddMethod(NativeAreaAllocator *allocator, Method *jsMethod, SampleMode mode)
+bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode)
 {
     PGOMethodId methodId(jsMethod->GetMethodId());
     auto result = methodInfos_.find(methodId);
@@ -202,7 +202,7 @@ bool PGOMethodInfoMap::AddMethod(NativeAreaAllocator *allocator, Method *jsMetho
         CString methodName = jsMethod->GetMethodName();
         size_t strlen = methodName.size();
         size_t size = static_cast<size_t>(PGOMethodInfo::Size(strlen));
-        void *infoAddr = allocator->Allocate(size);
+        void *infoAddr = chunk->Allocate(size);
         auto info = new (infoAddr) PGOMethodInfo(methodId, 0, mode, methodName.c_str());
         info->IncreaseCount();
         methodInfos_.emplace(methodId, info);
@@ -601,7 +601,7 @@ bool PGORecordDetailInfos::AddMethod(ProfileType recordProfileType, Method *jsMe
     auto curMethodInfos = GetMethodInfoMap(recordProfileType);
     ASSERT(curMethodInfos != nullptr);
     ASSERT(jsMethod != nullptr);
-    return curMethodInfos->AddMethod(&nativeAreaAllocator_, jsMethod, mode);
+    return curMethodInfos->AddMethod(chunk_.get(), jsMethod, mode);
 }
 
 bool PGORecordDetailInfos::AddType(ProfileType recordProfileType, PGOMethodId methodId, int32_t offset,

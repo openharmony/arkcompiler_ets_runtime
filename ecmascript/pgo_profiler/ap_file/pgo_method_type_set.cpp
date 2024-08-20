@@ -114,6 +114,7 @@ bool PGOMethodTypeSet::ProcessToBinary(PGOContext &context, std::stringstream &s
                     auto protoChain = typeInfo.GetTypeRef().GetObjectInfo(i).GetProtoChain();
                     auto protoChainRef = PGOProtoChainRef::ConvertFrom(context, protoChain);
                     methodStream.write(reinterpret_cast<char *>(protoChainRef), protoChainRef->Size());
+                    PGOProtoChainRef::DeleteProtoChain(protoChainRef);
                 }
             }
             number++;
