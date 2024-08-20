@@ -206,7 +206,7 @@ ohos_source_set("libcgaarch64") {
   defines = []
   external_deps = [ "bounds_checking_function:libsec_static" ]
   if (enable_jit_code_sign) {
-    defines += [ "CODE_SIGN_ENABLE" ]
+    defines += [ "JIT_ENABLE_CODE_SIGN" ]
     external_deps += [ "code_signature:libjit_code_sign" ]
     if (disable_fort_switch) {
       defines += [ "JIT_FORT_DISABLE" ]

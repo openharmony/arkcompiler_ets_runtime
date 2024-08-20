@@ -19,13 +19,13 @@
 #include "emit.h"
 #include "ifile.h"
 #include "string_utils.h"
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"
 #include "jit_signcode.h"
 #endif
 
 namespace maplebe {
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
 using namespace OHOS::Security::CodeSign;
 using namespace panda::ecmascript::kungfu;
 #endif
@@ -196,9 +196,9 @@ public:
     void AppendLocalFixups(LocalFixup &fixup)
     {
         localFixups.push_back(&fixup);
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
         if (CGOptions::UseJitCodeSign()) {
-            WillFixUp(JitSignCode::GetInstance()->GetJPtr());
+            WillFixUp(JitSignCode::GetInstance()->GetCodeSigner());
         }
 #endif
     }
@@ -206,9 +206,9 @@ public:
     void AppendGlobalFixups(Fixup &fixup)
     {
         globalFixups.push_back(&fixup);
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
         if (CGOptions::UseJitCodeSign()) {
-            WillFixUp(JitSignCode::GetInstance()->GetJPtr());
+            WillFixUp(JitSignCode::GetInstance()->GetCodeSigner());
         }
 #endif
     }
@@ -261,12 +261,12 @@ public:
     {
         auto pdata = reinterpret_cast<const uint8 *>(data);  // data:0xa9be7c1d pdata:1d 7c be a9
         (void)textData.insert(textData.end(), pdata, pdata + byteSize);
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
         if (CGOptions::UseJitCodeSign()) {
             JitSignCode *singleton = JitSignCode::GetInstance();
-            RegisterTmpBuffer(singleton->GetJPtr(), textData.data());
-            AppendData(singleton->GetJPtr(), pdata, byteSize);
-            singleton->signTableSize += 1;
+            RegisterTmpBuffer(singleton->GetCodeSigner(), textData.data());
+            AppendData(singleton->GetCodeSigner(), pdata, byteSize);
+            singleton->signTableSize_ += 1;
         }
 #endif
     }
@@ -276,12 +276,12 @@ public:
         for (size_t i = 0; i < byteSize; i++) {
             textData.push_back(static_cast<uint8>(data >> (i << k8BitShift)));
         }
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
         if (CGOptions::UseJitCodeSign()) {
             JitSignCode *singleton = JitSignCode::GetInstance();
-            RegisterTmpBuffer(singleton->GetJPtr(), textData.data());
-            AppendData(singleton->GetJPtr(), &data, byteSize);
-            singleton->signTableSize += 1;
+            RegisterTmpBuffer(singleton->GetCodeSigner(), textData.data());
+            AppendData(singleton->GetCodeSigner(), &data, byteSize);
+            singleton->signTableSize_ += 1;
         }
 #endif
     }
@@ -306,11 +306,11 @@ public:
     {
         errno_t res = memcpy_s(textData.data() + index, byteSize, value, byteSize);
         CHECK_FATAL(res == EOK, "call memcpy_s failed");
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
         if (CGOptions::UseJitCodeSign()) {
             JitSignCode *singleton = JitSignCode::GetInstance();
-            RegisterTmpBuffer(singleton->GetJPtr(), textData.data());
-            res = PatchData(singleton->GetJPtr(), index, textData.data() + index, byteSize);
+            RegisterTmpBuffer(singleton->GetCodeSigner(), textData.data());
+            res = PatchData(singleton->GetCodeSigner(), index, textData.data() + index, byteSize);
         }
 #endif
     }
