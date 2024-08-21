@@ -83,7 +83,11 @@
     V("shrinkTo", ShrinkTo, 0, INVALID)                                          \
     V("extendTo", ExtendTo, 0, INVALID)                                          \
     /* SharedArray.prototype.splice ( start, deleteCount, ...items ) */          \
-    V("splice", Splice, 2, INVALID)
+    V("splice", Splice, 2, INVALID)                                              \
+    /* SharedArray.prototype.every ( callbackfn [ , thisArg ] ) */               \
+    V("every", Every, 1, INVALID)                                                \
+    /* SharedArray.prototype.some ( callbackfn [ , thisArg ] ) */                \
+    V("some", Some, 1, INVALID)
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.prototype.with ( index, value ) */                            \
     // V("with", With, 2, INVALID)                                                  \
@@ -93,16 +97,12 @@
     // V("reverse", Reverse, 0, INVALID)                                            \
     // /* SharedArray.prototype.copyWithin ( target, start [ , end ] ) */           \
     // V("copyWithin", CopyWithin, 2, INVALID)                                      \
-    // /* SharedArray.prototype.every ( callbackfn [ , thisArg ] ) */               \
-    // V("every", Every, 1, INVALID)                                                \
     // /* SharedArray.prototype.findLast ( predicate [ , thisArg ] ) */             \
     // V("findLast", FindLast, 1, INVALID)                                          \
     // /* SharedArray.prototype.findLastIndex ( predicate [ , thisArg ] ) */        \
     // V("findLastIndex", FindLastIndex, 1, INVALID)                                \
     // /* SharedArray.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */    \
     // V("lastIndexOf", LastIndexOf, 1, INVALID)                                    \
-    // /* SharedArray.prototype.some ( callbackfn [ , thisArg ] ) */                \
-    // V("some", Some, 1, INVALID)                                                  \
     // /* SharedArray.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */ \
     // V("toLocaleString", ToLocaleString, 0, INVALID)                              \
     // /* SharedArray.prototype.toReversed ( ) */                                   \
@@ -147,6 +147,8 @@ public:
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ShrinkTo(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ExtendTo(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Every(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue Some(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties
     static Span<const base::BuiltinFunctionEntry> GetSharedArrayFunctions()
@@ -223,6 +225,11 @@ private:
         BUILTIN_SHARED_ARRAY_FUNCTIONS(ARRAY_PROPERTIES_PAIR)
         std::pair<std::string_view, bool>("[Symbol.species]", true),
     };
+    static JSTaggedValue CheckElementForEvery(JSThread *thread,
+                                              JSHandle<JSTaggedValue> &thisObjVal,
+                                              JSHandle<JSTaggedValue> &callbackFnHandle,
+                                              JSHandle<JSTaggedValue> &thisArgHandle,
+                                              uint32_t &k);
 #undef ARRAY_PROPERTIES_PAIR
 };
 }  // namespace panda::ecmascript::builtins
