@@ -253,6 +253,13 @@ constructors.forEach(([constructor, arr]) => {
   print(typedArray.join(separator) == '*'); // detach array buffer
 });
 
+try {
+  let typedArray2 = new SendableInt8Array(65537);
+  typedArray2.join(typedArray2);
+} catch(e) {
+  print(e);
+}
+
 print("================Test Subarray================");
 [
   SendableFloat64Array,
