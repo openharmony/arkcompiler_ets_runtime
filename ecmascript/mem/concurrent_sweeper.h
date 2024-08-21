@@ -51,6 +51,7 @@ public:
     void EnsureAllTaskFinished();
     // Ensure task finish. It can be called through js thread
     void EnsureTaskFinished(MemSpaceType type);
+    void EnsureTaskFinishedNoCheck(MemSpaceType type);
 
     void TryFillSweptRegion();
     void ClearRSetInRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd);

@@ -277,6 +277,7 @@ public:
     uintptr_t Allocate(size_t size, bool allowGC = true);
     uintptr_t Allocate(size_t size, MachineCodeDesc *desc, bool allowGC = true);
     inline void RecordLiveJitCode(MachineCode *obj);
+    uintptr_t JitFortAllocate(MachineCodeDesc *desc);
 
     inline bool IsSweeping()
     {
@@ -303,15 +304,9 @@ public:
         }
     }
 
-    uintptr_t JitFortAllocate(size_t size)
-    {
-        if (!jitFort_) {
-            jitFort_ = new JitFort();
-        }
-        return jitFort_->Allocate(size);
-    }
 private:
     JitFort *jitFort_ {nullptr};
+    Mutex freeRegionMutex_;
     friend class Heap;
     friend class ConcurrentSweeper;
 };

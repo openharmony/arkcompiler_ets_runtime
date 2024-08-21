@@ -113,9 +113,20 @@ public:
         ASAN_UNPOISON_MEMORY_REGION(mem_, size_);
     }
 
+    inline void SetInstalled(bool installed)
+    {
+        installed_.store(installed, std::memory_order_release);
+    }
+
+    inline bool IsInstalled()
+    {
+        return installed_.load(std::memory_order_acquire);
+    }
+
 private:
     uintptr_t mem_ {0};
     size_t size_ {0};
+    std::atomic<bool> installed_ {false};
     MemDesc *next_ {MemDesc::Cast(INVALID_OBJPTR)};
 };
 

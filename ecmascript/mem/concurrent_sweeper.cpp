@@ -113,6 +113,11 @@ void ConcurrentSweeper::EnsureAllTaskFinished()
 void ConcurrentSweeper::EnsureTaskFinished(MemSpaceType type)
 {
     CHECK_JS_THREAD(heap_->GetEcmaVM());
+    EnsureTaskFinishedNoCheck(type);
+}
+
+void ConcurrentSweeper::EnsureTaskFinishedNoCheck(MemSpaceType type)
+{
     if (!isSweeping_) {
         return;
     }

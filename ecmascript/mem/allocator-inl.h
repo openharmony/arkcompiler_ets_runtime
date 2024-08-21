@@ -177,10 +177,10 @@ void FreeListAllocator<T>::ResetTopPointer(uintptr_t top)
 template <typename T>
 void FreeListAllocator<T>::Free(uintptr_t begin, size_t size, bool isAdd)
 {
-    ASSERT(heap_ != nullptr);
     ASSERT(size >= 0);
     if (size != 0) {
         if constexpr (!std::is_same<T, MemDesc>::value) {
+            ASSERT(heap_ != nullptr);
             T::FillFreeObject(heap_, begin, size);
         }
 
