@@ -1455,8 +1455,6 @@ public:
         RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_MarkingBarrier, markStub);
         auto setNotShareValueStub = GetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithEdenBarrier);
         SetFastStubEntry(kungfu::CommonStubCSigns::SetNonSValueWithBarrier, setNotShareValueStub);
-        auto asmCheckStub = GetRTInterface(kungfu::RuntimeStubCSigns::ID_ASMWriteBarrierWithEden);
-        RegisterRTInterface(kungfu::RuntimeStubCSigns::ID_ASMFastWriteBarrier, asmCheckStub);
     }
 
     

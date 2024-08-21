@@ -750,8 +750,7 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Scheduler::Run(data->GetCircuit(), data->GetCfg(), data->GetMethodName(), enableLog);
         Chunk chunk(data->GetNativeAreaAllocator());
-        // enable fast barrier for stub
-        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk, true).Run(data->GetCfg());
+        PostSchedule(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk).Run(data->GetCfg());
         return true;
     }
 };

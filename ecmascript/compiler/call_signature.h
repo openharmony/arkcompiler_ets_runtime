@@ -40,7 +40,6 @@ public:
         RUNTIME_STUB,
         RUNTIME_STUB_VARARGS,
         RUNTIME_STUB_NO_GC,
-        ASM_CALL_BARRIER_STUB,
         OPTIMIZED_STUB,
         OPTIMIZED_FAST_CALL_STUB,
         DEOPT_STUB,
@@ -69,7 +68,7 @@ public:
         NoAttr = 0,
         Dead
     };
-    static constexpr size_t TARGET_KIND_BIT_LENGTH = 5;
+    static constexpr size_t TARGET_KIND_BIT_LENGTH = 4;
     static constexpr size_t CALL_CONV_BIT_LENGTH = 2;
     using TargetKindBit = panda::BitField<TargetKind, 0, TARGET_KIND_BIT_LENGTH>;
     using CallConvBit = TargetKindBit::NextField<CallConv, CALL_CONV_BIT_LENGTH>;
@@ -147,11 +146,6 @@ public:
     bool IsRuntimeStub() const
     {
         return (GetTargetKind() == TargetKind::RUNTIME_STUB);
-    }
-
-    bool IsASMCallBarrierStub() const
-    {
-        return (GetTargetKind() == TargetKind::ASM_CALL_BARRIER_STUB);
     }
 
     bool IsRuntimeNGCStub() const
@@ -625,9 +619,7 @@ private:
     V(GetBaselineBuiltinFp)                          \
     V(StringIteratorNext)                            \
     V(Definefunc)                                    \
-    V(DefineField)                                   \
-    V(ASMFastWriteBarrier)                           \
-    V(ASMWriteBarrierWithEden)
+    V(DefineField)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \
