@@ -394,7 +394,12 @@ private:
 
     void SetSlotSize(uint32_t size)
     {
-        size = size > MAX_SLOT_SIZE ? MAX_SLOT_SIZE : size;
+        if (size > MAX_SLOT_SIZE) {
+            size = MAX_SLOT_SIZE;
+        } else if (size + EXTEND_SLOT_SIZE > INVALID_IC_SLOT && size <= INVALID_IC_SLOT) {
+            // for compatibility: ensure there's always 0xff slot in this situation
+            size = INVALID_IC_SLOT + 1;
+        }
         literalInfo_ = SlotSizeBits::Update(literalInfo_, size);
     }
 
