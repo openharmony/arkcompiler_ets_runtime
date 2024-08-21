@@ -234,9 +234,8 @@ void PGOProfiler::ProfileDefineGetterSetter(JSHClass* receiverHClass,
                                                     holderHClassHandle, profileTypeInfoCell);
             return;
         }
-        receiverHClassHandle->CreateWeakRef();
         ExtraProfileTypeInfo *mapInfoObj = ExtraProfileTypeInfo::Cast(dictJShandle->GetValue(entry).GetTaggedObject());
-        if (mapInfoObj->GetReceiver() == receiverHClassHandle.GetTaggedValue() &&
+        if (mapInfoObj->GetReceiver() == receiverHClassHandle.GetTaggedValue().CreateAndGetWeakRef() &&
             mapInfoObj->GetHolder() == holderHClassHandle.GetTaggedValue()) {
             return;
         }
