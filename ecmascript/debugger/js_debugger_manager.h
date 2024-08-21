@@ -205,6 +205,11 @@ public:
         return dropframeManager_.GetPromiseQueueSizeRecordOfTopFrame();
     }
 
+    bool CheckIsSendableMethod()
+    {
+        return dropframeManager_.CheckIsSendableMethod();
+    }
+
     void EnableObjectHashDisplay()
     {
         isObjHashDisplayEnabled_ = true;

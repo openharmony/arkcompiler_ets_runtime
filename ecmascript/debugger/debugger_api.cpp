@@ -1317,6 +1317,11 @@ bool DebuggerApi::CheckPromiseQueueSize(const EcmaVM *ecmaVm)
     return queueSizeEntry == queueSizeCurrent;
 }
 
+bool DebuggerApi::CheckIsSendableMethod(const EcmaVM *ecmaVm)
+{
+    auto *debuggerMgr = ecmaVm->GetJsDebuggerManager();
+    return debuggerMgr->CheckIsSendableMethod();
+}
 bool DebuggerApi::IsMainThread()
 {
     return JSThread::IsMainThread();

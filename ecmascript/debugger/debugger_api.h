@@ -198,6 +198,7 @@ public:
                                             Global<MapRef> internalObjects);
 
     static bool CheckPromiseQueueSize(const EcmaVM *ecmaVm);
+    static bool CheckIsSendableMethod(const EcmaVM *ecmaVm);
     static bool IsMainThread();
     static void DropLastFrame(const EcmaVM *ecmaVm);
 };
