@@ -43,8 +43,13 @@ public:
             paramTys.push_back(llvmModule->ConvertLLVMTypeFromVariableType(originParamType[i]));
         }
         LLVMTypeRef functype = LLVMFunctionType(llvmModule->GetVoidT(), paramTys.data(), paramTys.size(), false);
+#if defined(PANDA_TARGET_MACOS)
+        return LLVMGetInlineAsm(functype, asmCall.data(), asmCall.size(), constraints.data(),
+                                constraints.size(), true, true, LLVMInlineAsmDialectATT);
+#else
         return LLVMGetInlineAsm(functype, asmCall.data(), asmCall.size(), constraints.data(),
                                 constraints.size(), true, true, LLVMInlineAsmDialectATT, false);
+#endif
     }
 };
 
