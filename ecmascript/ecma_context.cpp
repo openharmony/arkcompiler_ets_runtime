@@ -273,7 +273,7 @@ JSTaggedValue EcmaContext::InvokeEcmaAotEntrypoint(JSHandle<JSFunction> mainFunc
                                                    CJSInfo* cjsInfo)
 {
     aotFileManager_->SetAOTMainFuncEntry(mainFunc, jsPandaFile, entryPoint);
-    return JSFunction::InvokeOptimizedEntrypoint(thread_, mainFunc, thisArg, entryPoint, cjsInfo);
+    return JSFunction::InvokeOptimizedEntrypoint(thread_, mainFunc, thisArg, cjsInfo);
 }
 
 JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
@@ -282,8 +282,7 @@ JSTaggedValue EcmaContext::ExecuteAot(size_t actualNumArgs, JSTaggedType *args,
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_JSFunctionEntry);
-    // do not modify this log to INFO, this will call many times
-    LOG_ECMA(DEBUG) << "start to execute aot entry: " << (void*)entry;
+    // entry of aot
     auto res = reinterpret_cast<JSFunctionEntryType>(entry)(thread_->GetGlueAddr(),
                                                             actualNumArgs,
                                                             args,
@@ -338,7 +337,7 @@ Expected<JSTaggedValue, bool> EcmaContext::CommonInvokeEcmaEntrypoint(const JSPa
         } else if (vm_->GetJSOptions().IsEnableForceJitCompileMain()) {
             Jit::Compile(vm_, func, CompilerTier::FAST);
             EcmaRuntimeStatScope runtimeStatScope(vm_);
-            result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, entryPoint, nullptr);
+            result = JSFunction::InvokeOptimizedEntrypoint(thread_, func, global, nullptr);
         } else if (vm_->GetJSOptions().IsEnableForceBaselineCompileMain()) {
             Jit::Compile(vm_, func, CompilerTier::BASELINE);
             EcmaRuntimeCallInfo *info =
