@@ -366,6 +366,19 @@ JSTaggedValue BuiltinsSharedArray::Create(EcmaRuntimeCallInfo *argv)
     return newArrayHandle.GetTaggedValue();
 }
 
+// Array.isArray ( arg )
+JSTaggedValue BuiltinsSharedArray::IsArray(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, SharedArray, IsArray);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    if (GetCallArg(argv, 0)->IsJSSharedArray()) {
+        return GetTaggedBoolean(true);
+    }
+    return GetTaggedBoolean(false);
+}
+
 // 22.1.2.5 get Array [ @@species ]
 JSTaggedValue BuiltinsSharedArray::Species(EcmaRuntimeCallInfo *argv)
 {
@@ -2440,6 +2453,72 @@ JSTaggedValue BuiltinsSharedArray::ExtendTo(EcmaRuntimeCallInfo *argv)
     JSSharedArray::LengthSetter(thread, thisObjHandle, key, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsSharedArray::LastIndexOfSlowPath(EcmaRuntimeCallInfo *argv, JSThread *thread,
+                                                       const JSHandle<JSTaggedValue> &thisHandle)
+{
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // 2. ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    // 3. Let len be ToLength(Get(O, "length")).
+    int64_t length = ArrayHelper::GetLength(thread, thisObjVal);
+    // 4. ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // 5. If len is 0, return −1.
+    if (length == 0) {
+        return JSTaggedValue(-1);
+    }
+    // 6. If argument fromIndex was passed let n be ToInteger(fromIndex); else let n be 0.
+    int64_t fromIndex = ArrayHelper::GetLastStartIndexFromArgs(thread, argv, 1, length);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return LastIndexOfSlowPath(argv, thread, thisObjVal, fromIndex);
+}
+
+JSTaggedValue BuiltinsSharedArray::LastIndexOfSlowPath(EcmaRuntimeCallInfo *argv, JSThread *thread,
+                                                       const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex)
+{
+    if (fromIndex < 0) {
+        return JSTaggedValue(-1);
+    }
+    JSMutableHandle<JSTaggedValue> keyHandle(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> target = base::BuiltinsBase::GetCallArg(argv, 0);
+    // 11. Repeat, while k < len
+    for (int64_t curIndex = fromIndex; curIndex >= 0; --curIndex) {
+        keyHandle.Update(JSTaggedValue(curIndex));
+        bool found = ArrayHelper::ElementIsStrictEqualTo(thread, thisObjVal, keyHandle, target);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (UNLIKELY(found)) {
+            return JSTaggedValue(curIndex);
+        }
+    }
+    // 12. Return -1.
+    return JSTaggedValue(-1);
+}
+
+// Array.prototype.lastIndexOf ( searchElement [ , fromIndex ] )
+JSTaggedValue BuiltinsSharedArray::LastIndexOf(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    JSThread *thread = argv->GetThread();
+    BUILTINS_API_TRACE(thread, SharedArray, LastIndexOf);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (UNLIKELY(!thisHandle->IsJSSharedArray())) {
+        auto error = ContainerError::BindError(thread, "The lastIndexOf method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, thisHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    if (thisHandle->IsStableJSArray(thread)) {
+        auto error = ContainerError::BindError(thread, "The lastIndexOf method not support stable array.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    return LastIndexOfSlowPath(argv, thread, thisHandle);
 }
 
 }  // namespace panda::ecmascript::builtins

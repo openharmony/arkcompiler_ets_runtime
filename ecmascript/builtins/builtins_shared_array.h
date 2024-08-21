@@ -25,10 +25,10 @@
 #define BUILTIN_SHARED_ARRAY_FUNCTIONS(V)                      \
     /* SharedArray.from ( items [ , mapfn [ , thisArg ] ] ) */ \
     V("from", From, 1, INVALID)                                \
-    V("create", Create, 2, INVALID)
+    V("create", Create, 2, INVALID)                            \
+    /* SendableArray.isArray ( arg ) */                        \
+    V("isArray", IsArray, 1, INVALID)                          \
     // fixme(hzzhouzebin) Support later.
-    // /* SharedArray.IsArray ( arg ) */                          \
-    // V("IsArray", IsArray, 1, INVALID)                          \
     // /* SharedArray.of ( ...items ) */                          \
     // V("of", Of, 0, INVALID)
 
@@ -87,7 +87,9 @@
     /* SharedArray.prototype.every ( callbackfn [ , thisArg ] ) */               \
     V("every", Every, 1, INVALID)                                                \
     /* SharedArray.prototype.some ( callbackfn [ , thisArg ] ) */                \
-    V("some", Some, 1, INVALID)
+    V("some", Some, 1, INVALID)                                                  \
+    /* SendableArray.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */  \
+    V("lastIndexOf", LastIndexOf, 1, INVALID)
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.prototype.with ( index, value ) */                            \
     // V("with", With, 2, INVALID)                                                  \
@@ -101,8 +103,6 @@
     // V("findLast", FindLast, 1, INVALID)                                          \
     // /* SharedArray.prototype.findLastIndex ( predicate [ , thisArg ] ) */        \
     // V("findLastIndex", FindLastIndex, 1, INVALID)                                \
-    // /* SharedArray.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */    \
-    // V("lastIndexOf", LastIndexOf, 1, INVALID)                                    \
     // /* SharedArray.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */ \
     // V("toLocaleString", ToLocaleString, 0, INVALID)                              \
     // /* SharedArray.prototype.toReversed ( ) */                                   \
@@ -118,6 +118,7 @@ public:
     static JSTaggedValue ArrayConstructor(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue From(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Create(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue IsArray(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Species(EcmaRuntimeCallInfo *argv);
 
     // prototype
@@ -149,6 +150,7 @@ public:
     static JSTaggedValue ExtendTo(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Every(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Some(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties
     static Span<const base::BuiltinFunctionEntry> GetSharedArrayFunctions()
@@ -207,6 +209,11 @@ private:
     static JSTaggedValue IndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
         int64_t length, int64_t fromIndex);
+
+    static JSTaggedValue LastIndexOfSlowPath(EcmaRuntimeCallInfo *argv, JSThread *thread,
+                                             const JSHandle<JSTaggedValue> &thisHandle);
+    static JSTaggedValue LastIndexOfSlowPath(EcmaRuntimeCallInfo *argv, JSThread *thread,
+                                             const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
 
 #define ARRAY_PROPERTIES_PAIR(name, func, length, id) \
     std::pair<std::string_view, bool>(name, false),
