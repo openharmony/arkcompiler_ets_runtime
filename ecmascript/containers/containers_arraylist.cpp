@@ -87,7 +87,8 @@ JSTaggedValue ContainersArrayList::Insert(EcmaRuntimeCallInfo *argv)
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
     JSHandle<JSTaggedValue> index = GetCallArg(argv, 1);
     if (index->IsDouble()) {
-        /* 将Math.floor(1)等形式的double变量处理为Int，而大于INT32_MAX的整数仍然是double形式 */
+        // Math.floor(1) will produce TaggedDouble, we need to cast into TaggedInt
+        // For integer which is greater than INT32_MAX, it will remain TaggedDouble
         index = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(index->GetDouble()));
     }
     if (!index->IsInt()) {

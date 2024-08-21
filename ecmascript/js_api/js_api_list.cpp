@@ -285,7 +285,8 @@ OperationResult JSAPIList::GetProperty(JSThread *thread, const JSHandle<JSAPILis
     int nodeLength = singleList->Length();
     JSHandle<JSTaggedValue> indexKey = key;
     if (indexKey->IsDouble()) {
-        /* 将Math.floor(1)等形式的double变量处理为Int，而大于INT32_MAX的整数仍然是double形式 */
+        /* Double variables like the form of Math.floor(1) are processed as TaggedInt,
+        while integers greater than INT32_MAX are still TaggedDouble */
         indexKey = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(indexKey->GetDouble()));
     }
     if (!indexKey->IsInt()) {
