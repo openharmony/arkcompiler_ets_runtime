@@ -88,6 +88,26 @@ HWTEST_F_L0(JsSendableArrayBufferTest, CopyDataPointBytesTest001)
 }
 
 /**
+ * @tc.name: CopyDataPointBytes
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsSendableArrayBufferTest, CopyDataPointBytesTest002)
+{
+    auto vm = thread->GetEcmaVM();
+
+    size_t length = 5;
+    uint8_t *fromData = static_cast<uint8_t *>(vm->GetNativeAreaAllocator()->AllocateBuffer(length));
+    uint8_t *toData = static_cast<uint8_t *>(vm->GetNativeAreaAllocator()->AllocateBuffer(length));
+
+    int32_t fromIndex = 0;
+    int32_t count = 0;
+    ASSERT_DEATH(JSSendableArrayBuffer::CopyDataPointBytes(fromData, toData, fromIndex, count), "memcpy_s failed");
+    vm->GetNativeAreaAllocator()->FreeBuffer(fromData);
+    vm->GetNativeAreaAllocator()->FreeBuffer(toData);
+}
+
+/**
  * @tc.name: Attach
  * @tc.type: FUNC
  * @tc.require:
@@ -171,6 +191,28 @@ HWTEST_F_L0(JsSendableArrayBufferTest, DetachTest002)
     EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 0U);
     EXPECT_EQ(arrBuf->GetArrayBufferData().GetRawData(), JSTaggedValue::Null().GetRawData());
     EXPECT_TRUE(arrBuf->IsDetach());
+}
+
+/**
+ * @tc.name: Detach
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsSendableArrayBufferTest, DetachTest003)
+{
+    auto vm = thread->GetEcmaVM();
+    auto factory = vm->GetFactory();
+
+    size_t length = 5;
+    const JSHandle<JSSendableArrayBuffer> arrBuf = factory->NewJSSendableArrayBuffer(5);
+    factory->NewJSSendableArrayBufferData(arrBuf, 5);
+    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData();
+    arrBuf->Attach(thread, length + 1, taggedValue);
+
+    arrBuf->Detach(thread);
+    EXPECT_EQ(arrBuf->GetArrayBufferByteLength(), 0U);
+
+    arrBuf->Detach(thread);
 }
 
 } // namespace panda::test
