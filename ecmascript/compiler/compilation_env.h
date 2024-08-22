@@ -81,7 +81,8 @@ public:
     virtual JSTaggedValue GetObjectLiteralFromCache(JSTaggedValue constpool, uint32_t index, CString entry) const = 0;
     virtual JSTaggedValue GetMethodFromCache(JSTaggedValue constpool, uint32_t index) const = 0;
     virtual panda_file::File::EntityId GetIdFromCache(JSTaggedValue constpool, uint32_t index) const = 0;
-    virtual JSTaggedValue GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const = 0;
+    virtual JSTaggedValue GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx,
+        bool allowAlloc = true) const = 0;
 
     // GlobalEnv
     virtual JSHandle<GlobalEnv> GetGlobalEnv() const = 0;

@@ -58,7 +58,8 @@ public:
     // GlobalConstants
     const GlobalEnvConstants *GlobalConstants() const override;
 
-    JSTaggedValue GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const override;
+    JSTaggedValue GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx,
+        bool allowAlloc = true) const override;
 
     JSThread *GetHostThread() const override
     {
