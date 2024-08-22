@@ -979,6 +979,34 @@ Expr LiteCGIRBuilder::CanonicalizeToPtr(Expr expr, LiteCGType *type)
     return expr;
 }
 
+void LiteCGIRBuilder::AddDerivedrefGate(GateRef gate, Expr result)
+{
+    auto e1 = acc_.GetIn(gate, 0);
+    derivedrefGate.insert(std::pair<GateRef, Expr>(gate, result));
+    bool shouldSkip = true;
+    std::vector<GateRef> outGates;
+    acc_.GetOuts(gate, outGates);
+    for (GateRef outGate : outGates) {
+        auto op = acc_.GetOpCode(outGate);
+        if (op != OpCode::LOAD && op != OpCode::STORE_WITHOUT_BARRIER) {
+            shouldSkip = false;
+            break;
+        }
+    }
+    if (!shouldSkip) {
+        SaveGate2Expr(gate, result);
+        ASSERT(!GetExprFromGate(e1).IsDread());
+        auto e1BaseIter = derivedGate2BaseGate_.find(e1);
+        derivedGate2BaseGate_[gate] = (e1BaseIter == derivedGate2BaseGate_.end() ? e1 : e1BaseIter->second);
+    }
+}
+
+Expr LiteCGIRBuilder::GetDerivedrefExpr(GateRef gate)
+{
+    auto derivedref = derivedrefGate.find(gate);
+    return (derivedref == derivedrefGate.end()) ? GetExprFromGate(gate) : derivedref->second;
+}
+
 void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
 {
     Expr e1Value = GetExprFromGate(e1);
@@ -1007,12 +1035,10 @@ void LiteCGIRBuilder::VisitAdd(GateRef gate, GateRef e1, GateRef e2)
                 (e2Type == lmirBuilder_->i64Type) ? e2Value : lmirBuilder_->Cvt(e2Type, lmirBuilder_->i64Type, e2Value);
             Expr tmp3 = lmirBuilder_->Add(lmirBuilder_->i64Type, tmp1, tmp2);
             result = lmirBuilder_->Cvt(lmirBuilder_->i64Type, returnType, tmp3);
-            SaveGate2Expr(gate, result);
-            // set the base reference of derived reference
             if (e1Type == lmirBuilder_->i64RefType) {
-                ASSERT(!e1Value.IsDread());
-                auto e1BaseIter = derivedGate2BaseGate_.find(e1);
-                derivedGate2BaseGate_[gate] = (e1BaseIter == derivedGate2BaseGate_.end() ? e1 : e1BaseIter->second);
+                AddDerivedrefGate(gate, result);
+            } else {
+                SaveGate2Expr(gate, result);
             }
             return;
         } else {
@@ -1036,7 +1062,7 @@ void LiteCGIRBuilder::HandleLoad(GateRef gate)
 
 void LiteCGIRBuilder::VisitLoad(GateRef gate, GateRef base)
 {
-    Expr baseAddr = GetExprFromGate(base);
+    Expr baseAddr = GetDerivedrefExpr(base);
 
     LiteCGType *returnType = ConvertLiteCGTypeFromGate(gate);
     LiteCGType *memType = (lmirBuilder_->IsHeapPointerType(returnType)) ? lmirBuilder_->CreateRefType(returnType)
@@ -2538,7 +2564,7 @@ void LiteCGIRBuilder::HandleStore(GateRef gate)
 
 void LiteCGIRBuilder::VisitStore(GateRef gate, GateRef base, GateRef value)
 {
-    Expr baseAddr = GetExprFromGate(base);
+    Expr baseAddr = GetDerivedrefExpr(base);
     Expr data = GetExprFromGate(value);
 
     LiteCGType *returnType = ConvertLiteCGTypeFromGate(value);
