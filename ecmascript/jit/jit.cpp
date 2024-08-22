@@ -462,7 +462,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 void Jit::RequestInstallCode(std::shared_ptr<JitTask> jitTask)
 {
     LockHolder holder(threadTaskInfoLock_);
-    ThreadTaskInfo &info = threadTaskInfo_[jitTask->GetTaskThreadId()];
+    ThreadTaskInfo &info = threadTaskInfo_[jitTask->GetHostThread()];
     if (info.skipInstallTask_) {
         return;
     }
@@ -512,10 +512,10 @@ bool Jit::CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
     return true;
 }
 
-void Jit::InstallTasks(uint32_t threadId)
+void Jit::InstallTasks(JSThread *jsThread)
 {
     LockHolder holder(threadTaskInfoLock_);
-    ThreadTaskInfo &info = threadTaskInfo_[threadId];
+    ThreadTaskInfo &info = threadTaskInfo_[jsThread];
     auto &taskQueue = info.installJitTasks_;
 
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("Jit::InstallTasks count:" + ToCString(taskQueue.size())));
@@ -573,7 +573,7 @@ void Jit::ClearTaskWithVm(EcmaVM *vm)
 
     {
         LockHolder holder(threadTaskInfoLock_);
-        ThreadTaskInfo &info = threadTaskInfo_[vm->GetJSThread()->GetThreadId()];
+        ThreadTaskInfo &info = threadTaskInfo_[vm->GetJSThread()];
         info.skipInstallTask_ = true;
         auto &taskQueue = info.installJitTasks_;
         taskQueue.clear();
@@ -587,14 +587,14 @@ void Jit::ClearTaskWithVm(EcmaVM *vm)
 void Jit::IncJitTaskCnt(JSThread *thread)
 {
     LockHolder holder(threadTaskInfoLock_);
-    ThreadTaskInfo &info = threadTaskInfo_[thread->GetThreadId()];
+    ThreadTaskInfo &info = threadTaskInfo_[thread];
     info.jitTaskCnt_.fetch_add(1);
 }
 
 void Jit::DecJitTaskCnt(JSThread *thread)
 {
     LockHolder holder(threadTaskInfoLock_);
-    ThreadTaskInfo &info = threadTaskInfo_[thread->GetThreadId()];
+    ThreadTaskInfo &info = threadTaskInfo_[thread];
     uint32_t old = info.jitTaskCnt_.fetch_sub(1);
     if (old == 1) {
         info.jitTaskCntCv_.Signal();

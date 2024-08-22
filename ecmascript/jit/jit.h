@@ -80,7 +80,7 @@ public:
     void DeleteJitCompile(void *compiler);
 
     void RequestInstallCode(std::shared_ptr<JitTask> jitTask);
-    void InstallTasks(uint32_t threadId);
+    void InstallTasks(JSThread *jsThread);
     void ClearTask(const std::function<bool(Task *task)> &checkClear);
     void ClearTask(EcmaContext *ecmaContext);
     void ClearTaskWithVm(EcmaVM *vm);
@@ -237,7 +237,7 @@ private:
     uint32_t hotnessThreshold_ { 0 };
     std::string bundleName_;
 
-    std::unordered_map<uint32_t, ThreadTaskInfo> threadTaskInfo_;
+    std::unordered_map<JSThread*, ThreadTaskInfo> threadTaskInfo_;
     RecursiveMutex threadTaskInfoLock_;
     bool isEnableJitFort_ { false };
     bool isDisableCodeSign_ { false };

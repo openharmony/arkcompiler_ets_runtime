@@ -105,7 +105,8 @@ panda_file::File::EntityId AOTCompilationEnv::GetIdFromCache(JSTaggedValue const
     return ConstantPool::GetIdFromCache(constpool, index);
 }
 
-JSTaggedValue AOTCompilationEnv::GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const
+JSTaggedValue AOTCompilationEnv::GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx,
+    [[maybe_unused]] bool allowAlloc) const
 {
     return ptManager_->GetStringFromConstantPool(methodOffset, cpIdx);
 }
