@@ -41,9 +41,8 @@ static bool SetPageProtect(uint8_t *textStart, size_t dataSize)
     return true;
 }
 
-int MachineCode::CopyToCache(const MachineCodeDesc &desc, uint8_t *pText, std::string str)
+ARK_INLINE static int MachineCodeCopyToCache(const MachineCodeDesc &desc, uint8_t *pText)
 {
-    std::string title = str;
 #ifdef JIT_ENABLE_CODE_SIGN
     if ((uintptr_t)desc.codeSigner == 0) {
         if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
@@ -89,7 +88,7 @@ bool MachineCode::SetText(const MachineCodeDesc &desc)
     }
     if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort() ||
         !desc.isAsyncCompileMode) {
-        if (CopyToCache(desc, pText, "FastJit") == false) {
+        if (MachineCodeCopyToCache(desc, pText) == false) {
             return false;
         }
     }
@@ -215,7 +214,7 @@ bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
 
     if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort() ||
         !desc.isAsyncCompileMode) {
-        if (CopyToCache(desc, pText, "Baseline") == false) {
+        if (MachineCodeCopyToCache(desc, pText) == false) {
             return false;
         }
     }

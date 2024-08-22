@@ -223,6 +223,7 @@
       panda::ecmascript::JITProfiler::ProfileBytecode*;
       panda::ecmascript::JitThread::GetHostThread*;
       panda::ecmascript::Jit::TimeScope::~TimeScope*;
+      panda::ecmascript::JitFort::IsResourceAvailable*;
       panda::ecmascript::Heap::AddGCListener*;
       panda::ecmascript::Heap::RemoveGCListener*;
       panda::ecmascript::JSTaggedValue::SetProperty*;
