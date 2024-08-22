@@ -13,32 +13,14 @@
  * limitations under the License.
  */
 
-function f(arg) {
-    let v = arg[0];
-    let c = v.charCodeAt(0);
-    return v.length > 0 ? c : ".";
-}
-
-let ss = "abcdefg"
-for (let i = 0; i < 20; i++) {
-    f(ss)
-}
-
-ArkTools.jitCompileAsync(f);
-print(ArkTools.waitJitCompileFinish(f))
-
-print(f(ss))
-
-function f2() {
-    let v1 = 0, v18 = 0, v28 = 1;
-    for (; v28--;) {
-        ({ "length": v18, ...v1 } = "123456789");
+class C3 {
+    static {
+        this.valueOf = 1.0;
     }
-    return [v18, v1];
+    static valueOf() { }
 }
 
-f2();
-ArkTools.jitCompileAsync(f2);
-print(ArkTools.waitJitCompileFinish(f2))
-
-print(f2())
+let v64 = "62340";
+for (let i67 = v65; --v65; (() => {
+    String.fromCharCode(i67, v65, i67++).normalize()
+})) { }

@@ -491,7 +491,7 @@ GateRef NumberSpeculativeRetype::VisitStringAdd(GateRef gate)
     return Circuit::NullGate();
 }
 
-TypeInfo NumberSpeculativeRetype::GetOuputForPhi(GateRef gate, bool ignoreConstant)
+TypeInfo NumberSpeculativeRetype::GetOutputForPhi(GateRef gate, bool ignoreConstant)
 {
     size_t valueNum = acc_.GetNumValueIn(gate);
     bool hasConstantInput = false;
@@ -515,8 +515,8 @@ TypeInfo NumberSpeculativeRetype::GetOuputForPhi(GateRef gate, bool ignoreConsta
         }
     }
 
-    if (hasConstantInput && ignoreConstant && tempType == TypeInfo::NONE) {
-        return GetOuputForPhi(gate, false);
+    if (hasConstantInput && ignoreConstant && (tempType == TypeInfo::NONE || tempType == TypeInfo::CHAR)) {
+        return GetOutputForPhi(gate, false);
     }
     return tempType;
 }
@@ -524,7 +524,7 @@ TypeInfo NumberSpeculativeRetype::GetOuputForPhi(GateRef gate, bool ignoreConsta
 GateRef NumberSpeculativeRetype::VisitPhi(GateRef gate)
 {
     if (IsRetype()) {
-        auto tempType = GetOuputForPhi(gate, true);
+        auto tempType = GetOutputForPhi(gate, true);
         TypeInfo typeInfo = GetOutputTypeInfo(gate);
         if (typeInfo != tempType) {
             SetOutputTypeInfo(gate, tempType);

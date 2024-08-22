@@ -1475,8 +1475,7 @@ bool TryLowerNewNumber(CircuitBuilder *builder, GateAccessor acc, GateRef gate)
     if ((acc.GetOpCode(loadBuiltin) == OpCode::LOAD_BUILTIN_OBJECT) &&
             (acc.GetIndex(loadBuiltin) == static_cast<size_t>(BuiltinType::BT_NUMBER))) {
         auto arg = builder->ToTaggedIntPtr(builder->Int32(0));
-        if (acc.GetNumValueIn(gate) != 1) {
-            ASSERT(acc.GetNumValueIn(gate) == 2U);
+        if (acc.GetNumValueIn(gate) > 1) {
             arg = acc.GetValueIn(gate, 1);
         }
 

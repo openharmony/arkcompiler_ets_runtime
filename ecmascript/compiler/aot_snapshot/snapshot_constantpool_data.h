@@ -83,6 +83,14 @@ protected:
                             JSHandle<JSTaggedValue> ihc, JSHandle<JSTaggedValue> chc);
     JSHandle<ConstantPool> GetUnsharedConstpool(const ItemData &data);
 
+    static bool CheckAOTPropertiesForRep(const JSHandle<TaggedArray> &properties, const JSHandle<JSHClass> &hclass);
+
+    static bool CheckAOTIhcPropertiesForRep(JSThread *thread, const JSHandle<JSTaggedValue> &ihc,
+                                            const JSHandle<ClassInfoExtractor> &extractor);
+
+    static bool CheckAOTChcPropertiesForRep(JSThread *thread, const JSHandle<JSTaggedValue> &chc,
+                                            const JSHandle<ClassInfoExtractor> &extractor);
+
     CUnorderedMap<ItemKey, ItemData> info_ {};
     EcmaVM *vm_ {nullptr};
     JSThread *thread_ {nullptr};
