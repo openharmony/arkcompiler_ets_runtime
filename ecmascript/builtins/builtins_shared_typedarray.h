@@ -33,18 +33,19 @@
 
 // All types of %TypedArray%.
 // V(Type, ctorName, TYPE, bytesPerElement) where JSType::JS_##TYPE is the type index.
-#define BUILTIN_SHARED_TYPED_ARRAY_TYPES(V)                                  \
-    V(Int8Array,         SharedInt8Array,         INT8_ARRAY,          1)    \
-    V(Uint8Array,        SharedUint8Array,        UINT8_ARRAY,         1)    \
-    V(Uint8ClampedArray, SharedUint8ClampedArray, UINT8_CLAMPED_ARRAY, 1)    \
-    V(Int16Array,        SharedInt16Array,        INT16_ARRAY,         2)    \
-    V(Uint16Array,       SharedUint16Array,       UINT16_ARRAY,        2)    \
-    V(Int32Array,        SharedInt32Array,        INT32_ARRAY,         4)    \
-    V(Uint32Array,       SharedUint32Array,       UINT32_ARRAY,        4)    \
-    V(Float32Array,      SharedFloat32Array,      FLOAT32_ARRAY,       4)    \
-    V(Float64Array,      SharedFloat64Array,      FLOAT64_ARRAY,       8)    \
-    V(BigInt64Array,     SharedBigInt64Array,     BIGINT64_ARRAY,      8)    \
-    V(BigUint64Array,    SharedBigUint64Array,    BIGUINT64_ARRAY,     8)
+// todo: remove shared* when refactor the following macro
+#define BUILTIN_SHARED_TYPED_ARRAY_TYPES(V)                                                          \
+    V(Int8Array,         SharedInt8Array,         INT8_ARRAY,          1, SendableInt8Array)         \
+    V(Uint8Array,        SharedUint8Array,        UINT8_ARRAY,         1, SendableUint8Array)        \
+    V(Uint8ClampedArray, SharedUint8ClampedArray, UINT8_CLAMPED_ARRAY, 1, SendableUint8ClampedArray) \
+    V(Int16Array,        SharedInt16Array,        INT16_ARRAY,         2, SendableInt16Array)        \
+    V(Uint16Array,       SharedUint16Array,       UINT16_ARRAY,        2, SendableUint16Array)       \
+    V(Int32Array,        SharedInt32Array,        INT32_ARRAY,         4, SendableInt32Array)        \
+    V(Uint32Array,       SharedUint32Array,       UINT32_ARRAY,        4, SendableUint32Array)       \
+    V(Float32Array,      SharedFloat32Array,      FLOAT32_ARRAY,       4, SendableFloat32Array)      \
+    V(Float64Array,      SharedFloat64Array,      FLOAT64_ARRAY,       8, SendableFloat64Array)      \
+    V(BigInt64Array,     SharedBigInt64Array,     BIGINT64_ARRAY,      8, SendableBigInt64Array)     \
+    V(BigUint64Array,    SharedBigUint64Array,    BIGUINT64_ARRAY,     8, SendableBigUint64Array)
 
 // List of functions in %TypedArray%, excluding the '@@' properties.
 // V(name, func, length, stubIndex)

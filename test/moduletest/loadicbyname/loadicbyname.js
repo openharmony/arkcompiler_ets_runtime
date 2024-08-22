@@ -96,7 +96,7 @@ for (let i = 0; i < 100; i++) {
 }
 print("load Number ic by name success1!")
 
-print("================Test proto SharedTypedArray IC================");
+print('================Test proto SendableTypedArray IC================');
 function testProtoIc(ctor) {
   for (let i = 0; i < 100; i++) { };
   let obj = new ctor(100);
@@ -117,19 +117,19 @@ function testProtoIc(ctor) {
 }
 
 [
-  SharedFloat64Array,
-  SharedFloat32Array,
-  SharedInt32Array,
-  SharedInt16Array,
-  SharedInt8Array,
-  SharedUint32Array,
-  SharedUint16Array,
-  SharedUint8Array,
-  SharedUint8ClampedArray
+  SendableFloat64Array,
+  SendableFloat32Array,
+  SendableInt32Array,
+  SendableInt16Array,
+  SendableInt8Array,
+  SendableUint32Array,
+  SendableUint16Array,
+  SendableUint8Array,
+  SendableUint8ClampedArray,
 ].forEach((ctor) => {
   testProtoIc(ctor);
-})
-print("================Test proto SharedTypedArray IC success!================");
+});
+print('================Test proto SendableTypedArray IC success!================');
 function f(){return 1};
 Object.defineProperty(this,"g",{
     get:f,

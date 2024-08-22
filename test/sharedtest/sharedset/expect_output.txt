@@ -90,18 +90,18 @@ true
 true
 true
 3
-SubSharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
-SubSharedSet key[for-of]: one
-SubSharedSet key[for-of]: two
-SubSharedSet key[for-of]: three
+SubSendableSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+SubSendableSet key[for-of]: one
+SubSendableSet key[for-of]: two
+SubSendableSet key[for-of]: three
 4
-SubSharedSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+SubSendableSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 true
 true
 true
 3
 add extension(.): TypeError: Cannot add property in prevent extensions
 add extension([]): TypeError: Cannot add property in prevent extensions
-SubSubSharedSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
-SubSubSharedSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+SubSubSendableSet add[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+SubSubSendableSet Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 ===Class inheritance test end ===

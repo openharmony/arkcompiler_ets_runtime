@@ -4014,17 +4014,17 @@ void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
 {
     auto globalObject = JSHandle<JSObject>::Cast(env->GetJSGlobalObject());
     {
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedMap"));
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SendableMap"));
         PropertyDescriptor desc(thread_, env->GetSBuiltininMapFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
     {
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedSet"));
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SendableSet"));
         PropertyDescriptor desc(thread_, env->GetSBuiltininSetFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
     {
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SharedArray"));
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly("SendableArray"));
         PropertyDescriptor desc(thread_, env->GetSharedArrayFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
@@ -4033,9 +4033,10 @@ void Builtins::RegisterSendableContainers(const JSHandle<GlobalEnv> &env) const
         PropertyDescriptor desc(thread_, env->GetSBuiltininArrayBufferFunction(), true, false, true);
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);
     }
-#define REGISTER_BUILTIN_SHARED_TYPED_ARRAY(Type, ctorName, TYPE, bytesPerElement)           \
+// todo: remove sendableName when refactor
+#define REGISTER_BUILTIN_SHARED_TYPED_ARRAY(Type, ctorName, TYPE, bytesPerElement, sendableName)           \
     {                                                                                        \
-        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(#ctorName));        \
+        JSHandle<JSTaggedValue> nameString(factory_->NewFromUtf8ReadOnly(#sendableName));    \
         PropertyDescriptor desc(thread_, env->Get##ctorName##Function(), true, false, true); \
         JSObject::DefineOwnProperty(thread_, globalObject, nameString, desc);                \
     }

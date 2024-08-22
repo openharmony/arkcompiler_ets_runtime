@@ -44,7 +44,7 @@ BusinessError: The ArkTS TypedArray's constructor cannot be directly invoked.
 0,11,22
 11,22,33
 0,11,22
-From an non-shared ArrayBuffer: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+From an non-sendable ArrayBuffer: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 0.1,0.1,0.1,0.1
 0,0,0
 RangeError: The byte length of Int16Array should be a multiple of 2
@@ -53,17 +53,17 @@ RangeError: The byte length of Float64Array should be a multiple of 8
 From an arrayLike: 4, array: [0,0,300,4000]
 From an iterable: 3, array: [1,2,3]
 ================Test At================
-SharedFloat64Array test success
-SharedFloat32Array test success
-SharedInt32Array test success
-SharedInt16Array test success
-SharedInt8Array test success
-SharedUint32Array test success
-SharedUint16Array test success
-SharedUint8Array test success
-SharedUint8ClampedArray test success
-SharedBigInt64Array test success
-SharedBigUint64Array test success
+SendableFloat64Array test success
+SendableFloat32Array test success
+SendableInt32Array test success
+SendableInt16Array test success
+SendableInt8Array test success
+SendableUint32Array test success
+SendableUint16Array test success
+SendableUint8Array test success
+SendableUint8ClampedArray test success
+SendableBigInt64Array test success
+SendableBigUint64Array test success
 42
 255
 ================Test Join================
@@ -495,24 +495,24 @@ array: [1,4,3,2,5], sorted: [1,2,3,4,5]
 length: 5, byteLength: 20
 BYTES_PER_ELEMENT: 4, 4
 ================Test IC================
-SharedFloat64Array test IC success
-SharedFloat32Array test IC success
-SharedInt32Array test IC success
-SharedInt16Array test IC success
-SharedInt8Array test IC success
-SharedUint32Array test IC success
-SharedUint16Array test IC success
-SharedUint8Array test IC success
-SharedUint8ClampedArray test IC success
+SendableFloat64Array test IC success
+SendableFloat32Array test IC success
+SendableInt32Array test IC success
+SendableInt16Array test IC success
+SendableInt8Array test IC success
+SendableUint32Array test IC success
+SendableUint16Array test IC success
+SendableUint8Array test IC success
+SendableUint8ClampedArray test IC success
 ================Test ArrayBuffer================
 SendableArrayBuffer length: 16
 SendableArrayBuffer sliced[0]: 42
 true
 true
 true
-SendableArrayBuffer SharedInt32Array isView: true
+SendableArrayBuffer SendableInt32Array isView: true
 SendableArrayBuffer Int8Array isView: false
 SubSendableArrayBuffer length: 20
 SubSendableArrayBuffer slicedSub[0]: 5
-SubSendableArrayBuffer SharedInt32Array isView: true
+SubSendableArrayBuffer SendableInt32Array isView: true
 SendableArrayBuffer Int8Array isView: false

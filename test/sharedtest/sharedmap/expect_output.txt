@@ -93,18 +93,18 @@ true
 1
 add extension(.): TypeError: Cannot add property in prevent extensions
 add extension([]): TypeError: Cannot add property in prevent extensions
-SubSharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+SubSendableMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 3
-SubSharedMap [key, value][for-of]: [1, one]
-SubSharedMap [key, value][for-of]: [2, two]
-SubSharedMap [key, value][for-of]: [3, three]
-SubSharedMap Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+SubSendableMap [key, value][for-of]: [1, one]
+SubSendableMap [key, value][for-of]: [2, two]
+SubSendableMap [key, value][for-of]: [3, three]
+SubSendableMap Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 true
 1
-SubSubSharedMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
+SubSubSendableMap set[unshared]: BusinessError: Parameter error. Only accept sendable value., errCode: 401
 3
-SubSubSharedMap [key, value][for-of]: [1, one]
-SubSubSharedMap [key, value][for-of]: [2, two]
-SubSubSharedMap [key, value][for-of]: [3, three]
-SubSubSharedMap Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+SubSubSendableMap [key, value][for-of]: [1, one]
+SubSubSendableMap [key, value][for-of]: [2, two]
+SubSubSendableMap [key, value][for-of]: [3, three]
+SubSubSendableMap Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
 ===Class inheritance test end ===

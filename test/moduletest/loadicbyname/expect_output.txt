@@ -15,17 +15,17 @@ primitiveic load success
 load ic by name test2 success!
 load Number ic by name success!
 load Number ic by name success1!
-================Test proto SharedTypedArray IC================
-SharedFloat64Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
-SharedFloat32Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
-SharedInt32Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
-SharedInt16Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
-SharedInt8Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
-SharedUint32Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
-SharedUint16Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
-SharedUint8Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
-SharedUint8ClampedArray set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
-================Test proto SharedTypedArray IC success!================
+================Test proto SendableTypedArray IC================
+SendableFloat64Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
+SendableFloat32Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
+SendableInt32Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
+SendableInt16Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
+SendableInt8Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
+SendableUint32Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
+SendableUint16Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
+SendableUint8Array set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
+SendableUint8ClampedArray set proto with sendable object failed. err: TypeError: Cannot set proto with sendable object
+================Test proto SendableTypedArray IC success!================
 1
 1
 load global ic with accessor success!
