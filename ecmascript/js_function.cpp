@@ -1103,7 +1103,10 @@ JSTaggedValue JSFunction::GetFunctionExtraInfo() const
         if (value.IsJSNativePointer()) {
             return value;
         }
-        LOG_ECMA(FATAL) << "this branch is unreachable";
+        JSType valueType = value.GetTaggedObject()->GetClass()->GetObjectType();
+        JSType thisType = this->GetClass()->GetObjectType();
+        LOG_ECMA(FATAL) << "this branch is unreachable, thisType is " << static_cast<uint8_t>(thisType)
+                        << ", value type is " << static_cast<uint8_t>(valueType);
         UNREACHABLE();
     }
     return JSTaggedValue::Undefined();
