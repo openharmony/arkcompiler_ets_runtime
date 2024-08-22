@@ -375,6 +375,11 @@ public:
         return Create(NOT_ATOMIC, NEED_BARRIER);
     }
 
+    static MemoryAttribute UnknownBarrier()
+    {
+        return Create(NOT_ATOMIC, UNKNOWN_BARRIER);
+    }
+
     static MemoryAttribute DefaultWithShareBarrier()
     {
         return Create(NOT_ATOMIC, UNKNOWN_BARRIER, SHARED);
