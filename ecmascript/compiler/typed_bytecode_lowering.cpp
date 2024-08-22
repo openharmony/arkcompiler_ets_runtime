@@ -2340,8 +2340,6 @@ void TypedBytecodeLowering::LowerCreateObjectWithBuffer(GateRef gate)
             }
             // CanOptimize.GetObject had convert value, just used directly
             inlinedProps.emplace_back(value.GetRawData());
-        } else if (compilationEnv_ != nullptr && compilationEnv_->IsJitCompiler() && value.IsString()) {
-            inlinedProps.emplace_back(value.GetRawData());
         } else {
             return;
         }
