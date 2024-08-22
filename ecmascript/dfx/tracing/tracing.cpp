@@ -155,7 +155,7 @@ void Tracing::TraceEventRecordCpuProfiler(struct ProfileInfo* profileInfo, int &
     event.SetId("0x1");
 
     struct TraceEventCpuProfileArg args;
-    if (profileInfo->nodeCount > nodePos) {
+    if (nodePos >= 0 && profileInfo->nodeCount > nodePos) {
         for (int i = nodePos; i < profileInfo->nodeCount; ++i) {
             args.nodes.emplace_back(profileInfo->nodes[i].id);
         }

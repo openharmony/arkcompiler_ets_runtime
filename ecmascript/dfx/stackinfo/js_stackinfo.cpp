@@ -1341,10 +1341,14 @@ std::string ArkGetFilePath(std::string &fileName)
         LOG_ECMA(ERROR) << "ArkGetFilePath can't find fisrt /: " << fileName;
         return "";
     }
+    if (lastSlash == 0) {
+        LOG_ECMA(ERROR) << "ArkGetFilePath can't find second /: " << fileName;
+        return "";
+    }
 
     auto secondLastSlash = fileName.rfind("/", lastSlash - 1);
     if (secondLastSlash == std::string::npos) {
-        LOG_ECMA(ERROR) << "ArkGetFilePath can't second fisrt /: " << fileName;
+        LOG_ECMA(ERROR) << "ArkGetFilePath can't find second /: " << fileName;
         return "";
     }
 
@@ -1374,7 +1378,7 @@ std::string ArkReadCStringFromAddr(int pid, uintptr_t descAddr)
         }
         size_t shiftAmount = 8;
         for (size_t i = 0; i < sizeof(long); i++) {
-            char bottomEightBits = desc;
+            char bottomEightBits = static_cast<char>(desc);
             desc = desc >> shiftAmount;
             if (!bottomEightBits) {
                 key = false;
@@ -1671,46 +1675,6 @@ bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] 
             extractor->GetData(), extractor->GetDataSize(), extractorptr, jsFunction);
 #endif
     return ret;
-}
-
-void CopyBytecodeInfoToBuffer(const char *prefix, uintptr_t fullBytecode, size_t &strIdx, char *outStr, size_t strLen)
-{
-    // note: big endian
-    ASSERT(strLen > 0);
-    for (size_t i = 0; prefix[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
-        outStr[strIdx++] = prefix[i];
-    }
-    size_t start = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleLdundefined));
-    size_t bytecode = fullBytecode & 0xff;  // 0xff: last byte
-    const char *bytecodeName = MessageString::GetMessageString(start + bytecode).c_str();
-    for (size_t i = 0; bytecodeName[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
-        outStr[strIdx++] = bytecodeName[i];
-    }
-    if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecated)) ||
-        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleWide)) ||
-        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrow)) ||
-        start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleCallRuntime))) {
-        size_t startSecond = start;
-        if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecated))) {
-            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleDeprecatedLdlexenvPrefNone));
-        } else if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleWide))) {
-            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(
-                HandleWideCreateobjectwithexcludedkeysPrefImm16V8V8));
-        } else if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrow))) {
-            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleThrowPrefNone));
-        } else if (start + bytecode == static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleCallRuntime))) {
-            startSecond = static_cast<size_t>(GET_MESSAGE_STRING_ID(HandleCallRuntimeNotifyConcurrentResultPrefNone));
-        }
-        size_t bytecodeSecond = (fullBytecode >> 8) & 0xff;  // 8, 0xff: second last byte
-        const char *bytecodeNameSecond = MessageString::GetMessageString(startSecond + bytecodeSecond).c_str();
-        if (strIdx < strLen - 1) {  // 1: last '\0'
-            outStr[strIdx++] = '/';
-        }
-        for (size_t i = 0; bytecodeNameSecond[i] != '\0' && strIdx < strLen - 1; i++) {  // 1: last '\0'
-            outStr[strIdx++] = bytecodeNameSecond[i];
-        }
-    }
-    outStr[strIdx] = '\0';
 }
 
 JSSymbolExtractor::~JSSymbolExtractor()

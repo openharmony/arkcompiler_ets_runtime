@@ -297,7 +297,8 @@ void ZipFile::GetAllFileList(const std::string &srcPath, std::vector<std::string
             break;
         }
         auto next = rootName.find_first_of(FILE_SEPARATOR_CHAR, cur);
-        auto nodeName = rootName.substr(cur, next - cur);
+        auto nodeName = (next == std::string::npos) ? rootName.substr(cur) :
+            rootName.substr(cur, next - cur);
         auto it = parent->children.find(nodeName);
         if (it == parent->children.end()) {
             return;
