@@ -216,37 +216,7 @@ void JSSharedArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &arra
     TaggedArray *element = TaggedArray::Cast(array->GetElements().GetTaggedObject());
 
     if (element->IsDictionaryMode()) {
-        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-        uint32_t numOfElements = array->GetNumberOfElements();
-        uint32_t newNumOfElements = newLen;
-        if (newLen < oldLen && numOfElements != 0U) {
-            JSHandle<NumberDictionary> dictHandle(thread, element);
-            JSHandle<TaggedArray> newArr =
-                factory->NewTaggedArray(numOfElements, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE);
-            GetAllElementKeys(thread, array, 0, newArr);
-            for (uint32_t i = numOfElements - 1; i >= newLen; i--) {
-                JSTaggedValue value = newArr->Get(i);
-                uint32_t output = 0;
-                JSTaggedValue::StringToElementIndex(value, &output);
-                JSTaggedValue key(static_cast<int>(output));
-                int entry = dictHandle->FindEntry(key);
-                auto attr = dictHandle->GetAttributes(entry).GetValue();
-                PropertyAttributes propAttr(attr);
-                if (propAttr.IsConfigurable()) {
-                    JSHandle<NumberDictionary> newDict = NumberDictionary::Remove(thread, dictHandle, entry);
-                    array->SetElements(thread, newDict);
-                    if (i == 0) {
-                        newNumOfElements = i;
-                        break;
-                    }
-                } else {
-                    newNumOfElements = i + 1;
-                    break;
-                }
-            }
-        }
-        JSSharedArray::Cast(*array)->SetArrayLength(thread, newNumOfElements);
-        return;
+        THROW_TYPE_ERROR(thread, "SendableArray don't support dictionary mode.");
     }
     uint32_t capacity = element->GetLength();
     if (newLen <= capacity) {
@@ -376,18 +346,6 @@ bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject>
         }
     }
     return success;
-}
-
-bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, uint32_t index,
-                                      const PropertyDescriptor &desc, SCheckMode sCheckMode)
-{
-    if (sCheckMode == SCheckMode::CHECK && !(JSSharedArray::Cast(*array)->IsKeyInRange(index))) {
-        auto error = containers::ContainerError::BusinessError(thread, containers::ErrorFlag::RANGE_ERROR,
-                                                               "Key out of length.");
-        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
-    }
-
-    return JSObject::OrdinaryDefineOwnProperty(thread, array, index, desc);
 }
 
 bool JSSharedArray::IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key)
@@ -550,76 +508,6 @@ JSTaggedValue JSSharedArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue
     return obj.GetTaggedValue();
 }
 
-void JSSharedArray::SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
-                                 const JSHandle<JSTaggedValue> &fn)
-{
-    ASSERT(fn->IsUndefined() || fn->IsCallable());
-
-    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
-    uint32_t len = elements->GetLength();
-    for (uint32_t i = 1; i < len; i++) {
-        uint32_t beginIndex = 0;
-        uint32_t endIndex = i;
-        presentValue.Update(elements->Get(i));
-        while (beginIndex < endIndex) {
-            uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
-            middleValue.Update(elements->Get(middleIndex));
-            double compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
-            RETURN_IF_ABRUPT_COMPLETION(thread);
-            if (compareResult > 0) {
-                endIndex = middleIndex;
-            } else {
-                beginIndex = middleIndex + 1;
-            }
-        }
-
-        if (endIndex >= 0 && endIndex < i) {
-            for (uint32_t j = i; j > endIndex; j--) {
-                previousValue.Update(elements->Get(j - 1));
-                elements->Set(thread, j, previousValue);
-            }
-            elements->Set(thread, endIndex, presentValue);
-        }
-    }
-}
-
-void JSSharedArray::SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
-                                         const JSHandle<JSTaggedValue> &fn)
-{
-    ASSERT(fn->IsUndefined() || fn->IsCallable());
-
-    JSMutableHandle<JSTaggedValue> presentValue(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> middleValue(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<JSTaggedValue> previousValue(thread, JSTaggedValue::Undefined());
-    uint32_t len = ElementAccessor::GetElementsLength(thisObjHandle);
-    for (uint32_t i = 1; i < len; i++) {
-        uint32_t beginIndex = 0;
-        uint32_t endIndex = i;
-        presentValue.Update(ElementAccessor::Get(thisObjHandle, i));
-        while (beginIndex < endIndex) {
-            uint32_t middleIndex = (beginIndex + endIndex) / 2; // 2 : half
-            middleValue.Update(ElementAccessor::Get(thisObjHandle, middleIndex));
-            int32_t compareResult = base::ArrayHelper::SortCompare(thread, fn, middleValue, presentValue);
-            RETURN_IF_ABRUPT_COMPLETION(thread);
-            if (compareResult > 0) {
-                endIndex = middleIndex;
-            } else {
-                beginIndex = middleIndex + 1;
-            }
-        }
-
-        if (endIndex >= 0 && endIndex < i) {
-            for (uint32_t j = i; j > endIndex; j--) {
-                previousValue.Update(ElementAccessor::Get(thisObjHandle, j - 1));
-                ElementAccessor::Set(thread, thisObjHandle, j, previousValue, false);
-            }
-            ElementAccessor::Set(thread, thisObjHandle, endIndex, presentValue, false);
-        }
-    }
-}
-
 bool JSSharedArray::IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                          const JSHandle<JSTaggedValue> &value)
 {
@@ -644,21 +532,6 @@ bool JSSharedArray::IncludeInSortedValue(JSThread *thread, const JSHandle<JSTagg
         }
     }
     return false;
-}
-
-JSHandle<TaggedArray> JSSharedArray::ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
-{
-    ASSERT(obj->IsJSArray());
-    JSHandle<JSSharedArray> arrayObj = JSHandle<JSSharedArray>::Cast(obj);
-    uint32_t length = arrayObj->GetArrayLength();
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> taggedArray =
-        factory->NewTaggedArray(length, JSTaggedValue::Hole(), MemSpaceType::SHARED_OLD_SPACE);
-    for (uint32_t idx = 0; idx < length; idx++) {
-        JSHandle<JSTaggedValue> vv = JSSharedArray::FastGetPropertyByValue(thread, obj, idx);
-        taggedArray->Set(thread, idx, vv);
-    }
-    return taggedArray;
 }
 
 void JSSharedArray::CheckAndCopyArray(const JSThread *thread, JSHandle<JSSharedArray> obj)
