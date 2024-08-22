@@ -365,15 +365,17 @@ inline bool JSObject::ShouldTransToDict(uint32_t capacity, uint32_t index)
     return false;
 }
 
-inline bool JSObject::ShouldTransToFastElements(JSHandle<NumberDictionary> dictionary,
+inline bool JSObject::ShouldTransToFastElements(JSThread *thread, TaggedArray *elements,
                                                 uint32_t capacity, uint32_t index)
 {
+    JSHandle<NumberDictionary> dictionary(thread, elements);
     if (index >= static_cast<uint32_t>(INT32_MAX)) {
         return false;
     }
     uint32_t dictionarySize = static_cast<uint32_t>(dictionary->GetLength());
     // Turn fast if only saves 50% space.
-    if (dictionarySize * SHOULD_TRANS_TO_FAST_ELEMENTS_FACTOR >= capacity) {
+    if (dictionarySize * SHOULD_TRANS_TO_FAST_ELEMENTS_FACTOR >= capacity ||
+        dictionary->NextEnumerationIndex(thread) > PropertyAttributes::DictionaryOrderField::MaxValue()) {
         return true;
     }
     return false;

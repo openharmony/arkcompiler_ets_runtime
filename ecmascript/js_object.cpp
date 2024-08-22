@@ -431,7 +431,7 @@ bool JSObject::AddElementInternal(JSThread *thread, const JSHandle<JSObject> &re
         uint32_t capacity = arr->GetArrayLength();
         TaggedArray *elements = TaggedArray::Cast(receiver->GetElements().GetTaggedObject());
         ASSERT(elements->IsDictionaryMode());
-        if (ShouldTransToFastElements(JSHandle<NumberDictionary>(thread, elements), capacity, index)) {
+        if (ShouldTransToFastElements(thread, elements, capacity, index)) {
             JSObject::TryOptimizeAsFastElements(thread, receiver);
         }
     }
