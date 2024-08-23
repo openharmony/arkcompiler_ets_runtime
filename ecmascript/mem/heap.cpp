@@ -456,14 +456,10 @@ void SharedHeap::Prepare(bool inTriggerGCThread)
 
 SharedHeap::SharedGCScope::SharedGCScope()
 {
-    bool enableJit = Jit::GetInstance()->IsEnableFastJit() || Jit::GetInstance()->IsEnableBaselineJit();
-    Runtime::GetInstance()->GCIterateThreadList([enableJit](JSThread *thread) {
+    Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
         std::shared_ptr<pgo::PGOProfiler> pgoProfiler =  thread->GetEcmaVM()->GetPGOProfiler();
         if (pgoProfiler != nullptr) {
             pgoProfiler->SuspendByGC();
-        }
-        if (enableJit) {
-            Jit::JitGCLockHolder::LockJit(thread);
         }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
         thread->SetGcState(true);
@@ -473,16 +469,12 @@ SharedHeap::SharedGCScope::SharedGCScope()
 
 SharedHeap::SharedGCScope::~SharedGCScope()
 {
-    bool enableJit = Jit::GetInstance()->IsEnableFastJit() || Jit::GetInstance()->IsEnableBaselineJit();
-    Runtime::GetInstance()->GCIterateThreadList([enableJit](JSThread *thread) {
+    Runtime::GetInstance()->GCIterateThreadList([](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->ProcessGCListeners();
         std::shared_ptr<pgo::PGOProfiler> pgoProfiler =  thread->GetEcmaVM()->GetPGOProfiler();
         if (pgoProfiler != nullptr) {
             pgoProfiler->ResumeByGC();
-        }
-        if (enableJit) {
-            Jit::JitGCLockHolder::UnlockJit(thread);
         }
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
         thread->SetGcState(false);
