@@ -758,7 +758,7 @@ bool JSValueRef::IsJSPrimitiveNumber(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
-    return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsNumber();
+    return IsJSPrimitiveRef(vm) ? JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsNumber() : false;
 }
 
 bool JSValueRef::IsJSPrimitiveInt(const EcmaVM *vm)
@@ -766,7 +766,7 @@ bool JSValueRef::IsJSPrimitiveInt(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
-    return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsInt();
+    return IsJSPrimitiveRef(vm) ? JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsInt() : false;
 }
 
 bool JSValueRef::IsJSPrimitiveBoolean(const EcmaVM *vm)
@@ -774,7 +774,7 @@ bool JSValueRef::IsJSPrimitiveBoolean(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
-    return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsBoolean();
+    return IsJSPrimitiveRef(vm) ? JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsBoolean() : false;
 }
 
 bool JSValueRef::IsJSPrimitiveString(const EcmaVM *vm)
@@ -782,7 +782,7 @@ bool JSValueRef::IsJSPrimitiveString(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
-    return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsString();
+    return IsJSPrimitiveRef(vm) ? JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsString() : false;
 }
 
 bool JSValueRef::IsJSPrimitiveSymbol(const EcmaVM *vm)
@@ -790,7 +790,7 @@ bool JSValueRef::IsJSPrimitiveSymbol(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(this);
     LOG_IF_SPECIAL(obj, FATAL);
-    return JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsSymbol();
+    return IsJSPrimitiveRef(vm) ? JSPrimitiveRef::Cast(obj->GetTaggedObject())->IsSymbol() : false;
 }
 
 bool JSValueRef::IsGeneratorObject(const EcmaVM *vm)
