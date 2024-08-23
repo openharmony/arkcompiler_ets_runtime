@@ -18,6 +18,55 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/runtime_lock.h"
 namespace panda::ecmascript {
+uint32_t EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor)
+{
+    StartSweepWeakRefTask();
+    uint32_t curSweepCount = sweepWeakRefCount_.load(std::memory_order_relaxed);
+    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SweepWeakRefTask>(this, visitor, curSweepCount));
+    return curSweepCount;
+}
+
+void EcmaStringTableCleaner::TakeOrWaitSweepWeakRefTask(const WeakRootVisitor &visitor, uint32_t curSweepCount)
+{
+    if (CheckAndSwitchRunningState(curSweepCount)) {
+        stringTable_->SweepWeakRef(visitor);
+        SwitchFinishState(curSweepCount);
+    } else {
+        WaitSweepWeakRefTask();
+    }
+}
+
+void EcmaStringTableCleaner::StartSweepWeakRefTask()
+{
+    // No need lock here, only the daemon thread will reset the state.
+    sweepWeakRefFinished_ = false;
+}
+
+void EcmaStringTableCleaner::WaitSweepWeakRefTask()
+{
+    LockHolder holder(sweepWeakRefMutex_);
+    while (!sweepWeakRefFinished_) {
+        sweepWeakRefCV_.Wait(&sweepWeakRefMutex_);
+    }
+}
+
+void EcmaStringTableCleaner::SignalSweepWeakRefTask()
+{
+    LockHolder holder(sweepWeakRefMutex_);
+    sweepWeakRefFinished_ = true;
+    sweepWeakRefCV_.SignalAll();
+}
+
+bool EcmaStringTableCleaner::SweepWeakRefTask::Run([[maybe_unused]] uint32_t threadIndex)
+{
+    if (cleaner_->CheckAndSwitchRunningState(curSweepCount_)) {
+        cleaner_->stringTable_->SweepWeakRef(visitor_);
+        cleaner_->SwitchFinishState(curSweepCount_);
+        cleaner_->SignalSweepWeakRefTask();
+    }
+    return true;
+}
+
 std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const JSHandle<EcmaString> &firstString,
                                                                          const JSHandle<EcmaString> &secondString) const
 {
@@ -403,7 +452,7 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const ui
     return str;
 }
 
-void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
+void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor)
 {
     // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
     for (auto it = table_.begin(); it != table_.end();) {

@@ -22,6 +22,7 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array.h"
+#include "ecmascript/taskpool/task.h"
 
 namespace panda::ecmascript {
 class EcmaString;
@@ -29,11 +30,71 @@ class EcmaVM;
 class JSPandaFile;
 class JSThread;
 
+class EcmaStringTable;
+
+class EcmaStringTableCleaner {
+public:
+    EcmaStringTableCleaner(EcmaStringTable* stringTable) : stringTable_(stringTable) {}
+    ~EcmaStringTableCleaner() { stringTable_ = nullptr; }
+
+    uint32_t PostSweepWeakRefTask(const WeakRootVisitor &visitor);
+    void TakeOrWaitSweepWeakRefTask(const WeakRootVisitor &visitor, uint32_t curSweepCount);
+
+private:
+    NO_COPY_SEMANTIC(EcmaStringTableCleaner);
+    NO_MOVE_SEMANTIC(EcmaStringTableCleaner);
+
+    void StartSweepWeakRefTask();
+    void WaitSweepWeakRefTask();
+    void SignalSweepWeakRefTask();
+
+    inline bool CheckAndSwitchRunningState(uint32_t curSweepCount)
+    {
+        uint32_t expected = curSweepCount;
+        // When the uint32_t overflows, it wraps around, which does not affect the correctness.
+        return sweepWeakRefCount_.compare_exchange_strong(expected, curSweepCount + 1U, // 1: Running state
+                                                          std::memory_order_relaxed, std::memory_order_relaxed);
+    }
+
+    inline void SwitchFinishState(uint32_t curSweepCount)
+    {
+        // When the uint32_t overflows, it wraps around, which does not affect the correctness.
+        sweepWeakRefCount_.store(curSweepCount + 2U, std::memory_order_relaxed); // 2: Finish state
+    }
+
+    class SweepWeakRefTask : public Task {
+    public:
+        SweepWeakRefTask(EcmaStringTableCleaner* cleaner, const WeakRootVisitor& visitor, uint32_t curSweepCount)
+            : Task(0), cleaner_(cleaner), visitor_(visitor), curSweepCount_(curSweepCount) {}
+        ~SweepWeakRefTask() = default;
+        
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(SweepWeakRefTask);
+        NO_MOVE_SEMANTIC(SweepWeakRefTask);
+
+    private:
+        EcmaStringTableCleaner* cleaner_;
+        const WeakRootVisitor& visitor_;
+        uint32_t curSweepCount_;
+    };
+
+    EcmaStringTable* stringTable_;
+    std::atomic<uint32_t> sweepWeakRefCount_ {0U};
+    Mutex sweepWeakRefMutex_;
+    bool sweepWeakRefFinished_;
+    ConditionVariable sweepWeakRefCV_;
+};
+
 class EcmaStringTable {
 public:
-    EcmaStringTable() = default;
+    EcmaStringTable() : cleaner_(new EcmaStringTableCleaner(this)) {}
     virtual ~EcmaStringTable()
     {
+        if (cleaner_ != nullptr) {
+            delete cleaner_;
+            cleaner_ = nullptr;
+        }
         table_.clear();
     }
 
@@ -62,9 +123,15 @@ public:
     void InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode);
     EcmaString *InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle);
 
-    void SweepWeakReference(const WeakRootVisitor &visitor);
+    void SweepWeakRef(const WeakRootVisitor &visitor);
+
     bool CheckStringTableValidity(JSThread *thread);
     void RelocateConstantData(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+
+    EcmaStringTableCleaner* GetCleaner()
+    {
+        return cleaner_;
+    }
 private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);
@@ -90,6 +157,9 @@ private:
 
     CUnorderedMultiMap<uint32_t, EcmaString *> table_;
     Mutex mutex_;
+
+    EcmaStringTableCleaner* cleaner_;
+
     friend class SnapshotProcessor;
     friend class BaseDeserializer;
 };
