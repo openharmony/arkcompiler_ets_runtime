@@ -1640,14 +1640,15 @@ GateRef CircuitBuilder::MonoStorePropertyLookUpProto(GateRef receiver, GateRef p
 }
 
 GateRef CircuitBuilder::MonoStoreProperty(GateRef receiver, GateRef plrGate, GateRef unsharedConstPool,
-                                          size_t hclassIndex, GateRef value, GateRef key)
+                                          size_t hclassIndex, GateRef value, GateRef keyIndex, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto ret = GetCircuit()->NewGate(circuit_->MonoStoreProperty(false), MachineType::I64,
-        { currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex), unsharedConstPool, value, key },
-        GateType::AnyType());
+                                     {currentControl, currentDepend, receiver, plrGate, Int32(hclassIndex),
+                                      unsharedConstPool, value, keyIndex, frameState},
+                                     GateType::AnyType());
     currentLabel->SetControl(ret);
     currentLabel->SetDepend(ret);
     return ret;

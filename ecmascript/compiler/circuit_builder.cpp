@@ -789,6 +789,18 @@ GateRef CircuitBuilder::CheckJSType(GateRef object, JSType jsType)
     return ret;
 }
 
+GateRef CircuitBuilder::GetObjectByIndexFromConstPool(GateRef glue, GateRef hirGate, GateRef frameState, GateRef index,
+                                                      ConstPoolType type)
+{
+    ArgumentAccessor argAcc(circuit_);
+    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
+    GateRef module = GetModuleFromFunction(jsFunc);
+    GateRef sharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
+    GateRef unsharedConstPool = unsharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
+    GateRef obj = GetObjectFromConstPool(glue, hirGate, sharedConstpool, unsharedConstPool, module, index, type);
+    return obj;
+}
+
 GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef sharedConstPool,
                                                GateRef unsharedConstPool, GateRef module, GateRef index,
                                                ConstPoolType type)

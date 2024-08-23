@@ -280,6 +280,8 @@ public:
     GateRef GetUnsharedConstpool(GateRef arrayAddr, GateRef index);
     GateRef GetCodeAddr(GateRef jsFunc);
     GateRef GetBaselineCodeAddr(GateRef baselineCode);
+    GateRef GetObjectByIndexFromConstPool(GateRef glue, GateRef hirGate, GateRef frameState, GateRef index,
+                                   ConstPoolType type);
     GateRef GetObjectFromConstPool(GateRef glue, GateRef hirGate, GateRef shardConstPool, GateRef unsharedConstPool,
                                    GateRef module, GateRef index, ConstPoolType type);
     GateRef GetFunctionLexicalEnv(GateRef function);
@@ -660,7 +662,7 @@ public:
     GateRef MonoStorePropertyLookUpProto(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
                                          GateRef value);
     GateRef MonoStoreProperty(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
-                              GateRef value, GateRef key);
+                              GateRef value, GateRef keyIndex, GateRef frameState);
     GateRef TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn);
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);

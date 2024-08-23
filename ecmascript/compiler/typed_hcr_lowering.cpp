@@ -3172,12 +3172,13 @@ void TypedHCRLowering::LowerMonoStorePropertyLookUpProto(GateRef gate, GateRef g
 void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
 {
     Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef propertyLookupResult = acc_.GetValueIn(gate, 1); // 1: propertyLookupResult
     GateRef hclassIndex = acc_.GetValueIn(gate, 2); // 2: hclassIndex
     GateRef unsharedConstPool = acc_.GetValueIn(gate, 3); // 3: constPool
     GateRef value = acc_.GetValueIn(gate, 4); // 4: value
-    GateRef key = acc_.GetValueIn(gate, 5); // 5: key
+    GateRef keyIndex = acc_.GetValueIn(gate, 5); // 5: keyIndex
     PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
     bool noBarrier = acc_.IsNoBarrier(gate);
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
@@ -3191,8 +3192,10 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
     builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
         BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
     builder_.Bind(&isProto);
+
+    GateRef propKey = builder_.GetObjectByIndexFromConstPool(glue, gate, frameState, keyIndex, ConstPoolType::STRING);
     builder_.CallRuntime(glue, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
-        { receiverHC, newHolderHC, key }, gate);
+        { receiverHC, newHolderHC, propKey }, gate);
     builder_.Jump(&notProto);
     builder_.Bind(&notProto);
     MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
@@ -3313,14 +3316,9 @@ void TypedHCRLowering::LowerTypedCreateObjWithBuffer(GateRef gate, GateRef glue)
     GateRef index = acc_.GetValueIn(gate, 1); // 1: index
     GateRef lexEnv = acc_.GetValueIn(gate, 3); // 3: lexenv
     size_t numValueIn = acc_.GetNumValueIn(gate);
-    ArgumentAccessor argAcc(circuit_);
     GateRef frameState = acc_.GetFrameState(gate);
-    GateRef jsFunc = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::FUNC);
-    GateRef module = builder_.GetModuleFromFunction(jsFunc);
-    GateRef sharedConstpool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::SHARED_CONST_POOL);
-    GateRef unsharedConstPool = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::UNSHARED_CONST_POOL);
-    GateRef oldObj = builder_.GetObjectFromConstPool(glue, gate, sharedConstpool, unsharedConstPool, module,
-        builder_.TruncInt64ToInt32(index), ConstPoolType::OBJECT_LITERAL);
+    GateRef oldObj = builder_.GetObjectByIndexFromConstPool(glue, gate, frameState, builder_.TruncInt64ToInt32(index),
+                                                            ConstPoolType::OBJECT_LITERAL);
     GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), oldObj, JSObject::HCLASS_OFFSET);
     GateRef emptyArray = builder_.GetGlobalConstantValue(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX);
     GateRef objectSize = builder_.GetObjectSizeFromHClass(hclass);
@@ -3547,4 +3545,5 @@ void TypedHCRLowering::LowerEcmaObjectCheck(GateRef gate)
     builder_.HeapObjectIsEcmaObjectCheck(value, frameState);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
+
 }  // namespace panda::ecmascript::kungfu
