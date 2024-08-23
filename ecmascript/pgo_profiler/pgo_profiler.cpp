@@ -557,7 +557,7 @@ void PGOProfiler::UpdateExtraProfileTypeInfo(ApEntityId abcId,
         if (!key.IsUndefined() && !key.IsHole()) {
             JSTaggedValue val(dict->GetValue(hashIndex));
             ExtraProfileTypeInfo *extraInfo = ExtraProfileTypeInfo::Cast(val.GetTaggedObject());
-            if (extraInfo->IsHole()) {
+            if (!extraInfo->IsValid()) {
                 continue;
             }
             AddObjectInfo(abcId,

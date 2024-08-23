@@ -231,6 +231,7 @@ group("ark_aot_ts_test") {
     "pgo_function_prototype",
     "pgo_gettersetter",
     "pgo_extrainfomap_expand",
+    "pgo_extrainfomap_gc",
     "pgo_inherited_function_operation",
     "pgo_ldobjbyvalue_array",
     "pgo_ldobjbyvalue_string",

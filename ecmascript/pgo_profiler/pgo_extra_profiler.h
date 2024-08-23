@@ -85,9 +85,9 @@ public:
         return GetReceiverObject() == other.GetReceiverObject() && GetHolderObject() == other.GetHolderObject();
     }
 
-    bool IsHole() const
+    bool IsValid() const
     {
-        return GetReceiverObject().IsHole();
+        return !GetReceiverObject().IsHole() && !GetReceiverObject().IsUndefined();
     }
 
     DECL_DUMP()
