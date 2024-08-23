@@ -103,7 +103,7 @@ void DtoaHelper::DigitGen(const DiyFp &W, const DiyFp &Mp, uint64_t delta, char 
     ASSERT(one.f > 0);
     uint64_t p2 = Mp.f & (one.f - 1);
     int kappa = CountDecimalDigit32(p1); // kappa in [0, 9]
-    *len = 0;
+    int localLen = 0;
     while (kappa > 0) {
         uint32_t d = 0;
         switch (kappa) {
@@ -145,14 +145,15 @@ void DtoaHelper::DigitGen(const DiyFp &W, const DiyFp &Mp, uint64_t delta, char 
                 break;
             default:;
         }
-        if (d || *len) {
-            buffer[(*len)++] = static_cast<char>('0' + static_cast<char>(d));
+        if (d || localLen) {
+            buffer[localLen++] = static_cast<char>('0' + static_cast<char>(d));
         }
         kappa--;
         uint64_t tmp = (static_cast<uint64_t>(p1) << -one.e) + p2;
         if (tmp <= delta) {
             *K += kappa;
-            GrisuRound(buffer, *len, delta, tmp, POW10[kappa] << -one.e, distance.f);
+            GrisuRound(buffer, localLen, delta, tmp, POW10[kappa] << -one.e, distance.f);
+            *len = localLen;
             return;
         }
     }
@@ -162,8 +163,8 @@ void DtoaHelper::DigitGen(const DiyFp &W, const DiyFp &Mp, uint64_t delta, char 
         p2 *= TEN;
         delta *= TEN;
         char d = static_cast<char>(p2 >> -one.e);
-        if (d || *len) {
-            buffer[(*len)++] = static_cast<char>('0' + d);
+        if (d || localLen) {
+            buffer[localLen++] = static_cast<char>('0' + d);
         }
         ASSERT(one.f > 0);
         p2 &= one.f - 1;
@@ -171,7 +172,10 @@ void DtoaHelper::DigitGen(const DiyFp &W, const DiyFp &Mp, uint64_t delta, char 
         if (p2 < delta) {
             *K += kappa;
             int index = -kappa;
-            GrisuRound(buffer, *len, delta, p2, one.f, distance.f * (index < kIndex ? POW10[index] : 0));
+            if (index < kIndex) {
+                GrisuRound(buffer, localLen, delta, p2, one.f, distance.f * POW10[index]);
+            }
+            *len = localLen;
             return;
         }
     }
