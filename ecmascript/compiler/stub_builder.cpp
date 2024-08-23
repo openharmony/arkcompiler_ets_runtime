@@ -571,7 +571,7 @@ GateRef StubBuilder::CreateDataProperty(GateRef glue, GateRef obj, GateRef propK
     Label hasPendingException(env);
 
     DEFVARIABLE(result, VariableType::BOOL(), True());
-    GateRef SCheckModelIsCHECK = BoolNot(IsJSShared(obj));
+    GateRef SCheckModelIsCHECK = Boolean(true);
     auto flag = DefinePropertyByValue(glue, obj, propKey, value, SCheckModelIsCHECK, ProfileOperation());
     BRANCH(HasPendingException(glue), &hasPendingException, &next);
     Bind(&hasPendingException);

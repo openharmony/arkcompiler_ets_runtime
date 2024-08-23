@@ -44,6 +44,24 @@ try {
 } catch (err) {
   print('sendable inherit from non-sendable failed. err: ' + err + ', code: ' + err.code);
 }
+try {
+  class A {
+    constructor() {
+      'use sendable';
+    }
+  }
+  class B extends A {
+    constructor() {
+      'use sendable';
+      super();
+    }
+  }
+  let b = new B();
+  b.__proto__ = new A();
+  print('sendable change proto succeed.');
+} catch (err) {
+  print('sendable change proto failed. err: ' + err + ', code: ' + err.code);
+}
 
 // 2. non-sendable can not inherit from sendable
 try {
@@ -112,6 +130,20 @@ try {
 } catch (err) {
   print('sendable contain non-sendable failed. err: ' + err + ', code: ' + err.code);
 }
+try {
+  class A {
+    constructor() {}
+  }
+  class B {
+    static a: A | null = new A();
+    constructor() {
+      'use sendable';
+    }
+  }
+  print('sendable contain static non-sendable succeed.');
+} catch (err) {
+  print('sendable contain static non-sendable failed. err: ' + err + ', code: ' + err.code);
+}
 
 // 5. template type of collections must be sendable
 
@@ -168,3 +200,44 @@ try {
 // 10. sendable can not be initial with object or array
 
 // 11. non-sendable can not be `as` sendable
+
+// 12. the rest
+try {
+  class A {
+    constructor() {
+      'use sendable';
+    }
+  }
+  let a = new A();
+  a.age = 0;
+  print('sendable add property succeed.');
+} catch (err) {
+  print('sendable add property failed. err: ' + err + ', code: ' + err.code);
+}
+try {
+  class A {
+    age: number;
+    constructor() {
+      'use sendable';
+    }
+  }
+  let a = new A();
+  a.age = '0';
+  print('sendable change property succeed.');
+} catch (err) {
+  print('sendable change property failed. err: ' + err + ', code: ' + err.code);
+}
+try {
+  class A {
+    age: number;
+    constructor() {
+      'use sendable';
+      this.age = 0;
+    }
+  }
+  let a = new A();
+  delete a.age;
+  print('sendable delete property succeed.');
+} catch (err) {
+  print('sendable delete property failed. err: ' + err + ', code: ' + err.code);
+}
