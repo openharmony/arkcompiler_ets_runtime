@@ -26,6 +26,7 @@ group("ark_jit_ts_test") {
     #"construct_with_normal_function",
     "addition_assignment",
     "catch_with_osr",
+    "jit_test_0001",
     "string_length",
     "ts_inline",
     "proxy_fast_call",
