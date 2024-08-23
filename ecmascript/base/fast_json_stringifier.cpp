@@ -126,8 +126,7 @@ JSTaggedValue FastJsonStringifier::SerializeJSONProperty(const JSHandle<JSTagged
                 auto string = JSHandle<EcmaString>(thread_,
                     EcmaStringAccessor::Flatten(thread_->GetEcmaVM(), strHandle));
                 CString str = ConvertToString(*string, StringConvertedUsage::LOGICOPERATION);
-                str = JsonHelper::ValueToQuotedString(str);
-                result_ += str;
+                JsonHelper::AppendValueToQuotedString(str, result_);
                 return tagValue;
             }
             case JSType::JS_PRIMITIVE_REF: {
@@ -173,8 +172,7 @@ CString FastJsonStringifier::SerializeObjectKey(const JSHandle<JSTaggedValue> &k
     } else {
         str = ConvertToString(*JSTaggedValue::ToString(thread_, key), StringConvertedUsage::LOGICOPERATION);
     }
-    str = JsonHelper::ValueToQuotedString(str);
-    result_ += str;
+    JsonHelper::AppendValueToQuotedString(str, result_);
     result_ += ":";
 
     return str;
@@ -383,8 +381,7 @@ void FastJsonStringifier::SerializePrimitiveRef(const JSHandle<JSTaggedValue> &p
         auto priStr = JSTaggedValue::ToString(thread_, primitiveRef);
         RETURN_IF_ABRUPT_COMPLETION(thread_);
         CString str = ConvertToString(*priStr, StringConvertedUsage::LOGICOPERATION);
-        str = JsonHelper::ValueToQuotedString(str);
-        result_ += str;
+        JsonHelper::AppendValueToQuotedString(str, result_);
     } else if (primitive.IsNumber()) {
         auto priNum = JSTaggedValue::ToNumber(thread_, primitiveRef);
         RETURN_IF_ABRUPT_COMPLETION(thread_);

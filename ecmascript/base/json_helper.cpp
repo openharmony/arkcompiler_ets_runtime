@@ -22,7 +22,6 @@
 
 namespace panda::ecmascript::base {
 constexpr unsigned char CODE_SPACE = 0x20;
-constexpr int FOUR_HEX = 4;
 constexpr char ZERO_FIRST = static_cast<char>(0xc0); // \u0000 => c0 80
 constexpr char ALONE_SURROGATE_3B_FIRST = static_cast<char>(0xed);
 constexpr char ALONE_SURROGATE_3B_SECOND_START = static_cast<char>(0xa0);
@@ -30,116 +29,91 @@ constexpr char ALONE_SURROGATE_3B_SECOND_END = static_cast<char>(0xbf);
 constexpr char ALONE_SURROGATE_3B_THIRD_START = static_cast<char>(0x80);
 constexpr char ALONE_SURROGATE_3B_THIRD_END = static_cast<char>(0xbf);
 
-bool JsonHelper::IsFastValueToQuotedString(const char *value)
+bool JsonHelper::IsFastValueToQuotedString(const CString& str)
 {
-    if (strpbrk(value, "\"\\\b\f\n\r\t") != nullptr) {
-        return false;
-    }
-    while (*value != '\0') {
-        if ((*value > 0 && *value < CODE_SPACE) || *value == ZERO_FIRST || *value == ALONE_SURROGATE_3B_FIRST) {
-            return false;
+    for (const auto ch : str) {
+        switch (ch) {
+            case '\"':
+            case '\\':
+            case '\b':
+            case '\f':
+            case '\n':
+            case '\r':
+            case '\t':
+            case ZERO_FIRST:
+            case ALONE_SURROGATE_3B_FIRST:
+                return false;
+            default:
+                if (ch > 0 && ch < CODE_SPACE) {
+                    return false;
+                }
+                break;
         }
-        value++;
     }
     return true;
 }
 
-CString JsonHelper::ValueToQuotedString(CString str)
+// String values are wrapped in QUOTATION MARK (") code units. The code units " and \ are escaped with \ prefixes.
+// Control characters code units are replaced with escape sequences \uHHHH, or with the shorter forms,
+// \b (BACKSPACE), \f (FORM FEED), \n (LINE FEED), \r (CARRIAGE RETURN), \t (CHARACTER TABULATION).
+void JsonHelper::AppendValueToQuotedString(const CString& str, CString& output)
 {
-    CString product;
-    const char *value = str.c_str();
-    // fast mode
-    bool isFast = IsFastValueToQuotedString(value);
+    output += "\"";
+    bool isFast = IsFastValueToQuotedString(str); // fast mode
     if (isFast) {
-        product += "\"";
-        product += str;
-        product += "\"";
-        return product;
+        output += str;
+        output += "\"";
+        return;
     }
-    // 1. Let product be code unit 0x0022 (QUOTATION MARK).
-    product += "\"";
-    // 2. For each code unit C in value
-    for (const char *c = value; *c != 0; ++c) {
-        switch (*c) {
-            /*
-             * a. If C is 0x0022 (QUOTATION MARK) or 0x005C (REVERSE SOLIDUS), then
-             * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-             * ii. Let product be the concatenation of product and C.
-             */
+    for (uint32_t i = 0; i < str.size(); ++i) {
+        auto ch = str[i];
+        switch (ch) {
             case '\"':
-                product += "\\\"";
+                output += "\\\"";
                 break;
             case '\\':
-                product += "\\\\";
+                output += "\\\\";
                 break;
-            /*
-             * b. Else if C is 0x0008 (BACKSPACE), 0x000C (FORM FEED), 0x000A (LINE FEED), 0x000D (CARRIAGE RETURN),
-             * or 0x000B (LINE TABULATION), then
-             * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-             * ii. Let abbrev be the String value corresponding to the value of C as follows:
-             * BACKSPACE "b"
-             * FORM FEED (FF) "f"
-             * LINE FEED (LF) "n"
-             * CARRIAGE RETURN (CR) "r"
-             * LINE TABULATION "t"
-             * iii. Let product be the concatenation of product and abbrev.
-             */
             case '\b':
-                product += "\\b";
+                output += "\\b";
                 break;
             case '\f':
-                product += "\\f";
+                output += "\\f";
                 break;
             case '\n':
-                product += "\\n";
+                output += "\\n";
                 break;
             case '\r':
-                product += "\\r";
+                output += "\\r";
                 break;
             case '\t':
-                product += "\\t";
+                output += "\\t";
                 break;
             case ZERO_FIRST:
-                product += "\\u0000";
-                ++c;
+                output += "\\u0000";
+                ++i;
                 break;
             case ALONE_SURROGATE_3B_FIRST:
-                if (*(c + 1) && *(c + 1) >= ALONE_SURROGATE_3B_SECOND_START &&
-                    *(c + 1) <= ALONE_SURROGATE_3B_SECOND_END &&
-                    *(c + 2) >= ALONE_SURROGATE_3B_THIRD_START && // 2 : The third character after c
-                    *(c + 2) <= ALONE_SURROGATE_3B_THIRD_END) {   // 2 : The third character after c
-                    auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar((uint8_t *)c, 3);
-                    std::ostringstream oss;
-                    oss << "\\u" << std::hex << std::setfill('0') << std::setw(FOUR_HEX) <<
-                        static_cast<int>(unicodeRes.first);
-                    product += oss.str();
-                    c += 2; // 2 : Skip 2 characters
+                if (i + 2 < str.size() && // 2: Check 2 more characters
+                    str[i + 1] >= ALONE_SURROGATE_3B_SECOND_START && // 1: The first character after ch
+                    str[i + 1] <= ALONE_SURROGATE_3B_SECOND_END && // 1: The first character after ch
+                    str[i + 2] >= ALONE_SURROGATE_3B_THIRD_START && // 2: The second character after ch
+                    str[i + 2] <= ALONE_SURROGATE_3B_THIRD_END) {   // 2: The second character after ch
+                    auto unicodeRes = utf_helper::ConvertUtf8ToUnicodeChar(
+                        reinterpret_cast<const uint8_t*>(str.c_str() + i), 3); // 3: Parse 3 characters
+                    AppendUnicodeEscape(static_cast<int>(unicodeRes.first), output);
+                    i += 2; // 2 : Skip 2 characters
                     break;
                 }
                 [[fallthrough]];
             default:
-                // c. Else if C has a code unit value less than 0x0020 (SPACE), then
-                if (*c > 0 && *c < CODE_SPACE) {
-                    /*
-                     * i. Let product be the concatenation of product and code unit 0x005C (REVERSE SOLIDUS).
-                     * ii. Let product be the concatenation of product and "u".
-                     * iii. Let hex be the string result of converting the numeric code unit value of C to a String of
-                     * four hexadecimal digits. Alphabetic hexadecimal digits are presented as lowercase Latin letters.
-                     * iv. Let product be the concatenation of product and hex.
-                     */
-                    std::ostringstream oss;
-                    oss << "\\u" << std::hex << std::setfill('0') << std::setw(FOUR_HEX) << static_cast<int>(*c);
-                    product += oss.str();
+                if (ch > 0 && ch < CODE_SPACE) {
+                    AppendUnicodeEscape(static_cast<int>(ch), output);
                 } else {
-                    // Else,
-                    // i. Let product be the concatenation of product and C.
-                    product += *c;
+                    output += ch;
                 }
         }
     }
-    // 3. Let product be the concatenation of product and code unit 0x0022 (QUOTATION MARK).
-    product += "\"";
-    // Return product.
-    return product;
+    output += "\"";
 }
 } // namespace panda::ecmascript::base

@@ -40,10 +40,6 @@ public:
                                       const JSHandle<JSTaggedValue> &gap);
 
 private:
-    CString ValueToQuotedString(CString str);
-
-    bool IsFastValueToQuotedString(const char *value);
-
     void AddDeduplicateProp(const JSHandle<JSTaggedValue> &property);
 
     JSTaggedValue SerializeJSONProperty(const JSHandle<JSTaggedValue> &value, const JSHandle<JSTaggedValue> &replacer);
