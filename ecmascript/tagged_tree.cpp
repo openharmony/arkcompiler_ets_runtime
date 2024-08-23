@@ -365,6 +365,7 @@ ComparisonResult TaggedTree<Derived>::EntryCompare(JSThread *thread, const JSHan
     EcmaRuntimeCallInfo *info =
         EcmaInterpreter::NewRuntimeCallInfo(thread, compareFn, thisArgHandle, undefined, argsLength);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);
+    ASSERT(info != nullptr);
     info->SetCallArg(valueX.GetTaggedValue(), valueY.GetTaggedValue());
     JSTaggedValue callResult = JSFunction::Call(info);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, ComparisonResult::UNDEFINED);

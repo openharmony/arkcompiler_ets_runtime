@@ -38,6 +38,7 @@ void FreeObjectSet<MemDesc>::Free(uintptr_t begin, size_t size)
         size <= memDescPool_->JitFortSize());
 
     auto freeObject = memDescPool_->GetDescFromPool();
+    ASSERT(freeObject != nullptr);
     freeObject->SetMem(begin);
     freeObject->SetSize(size);
     freeObject->SetNext(freeObject_);
