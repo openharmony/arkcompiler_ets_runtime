@@ -842,7 +842,7 @@ bool JSTypedArray::FastTypedArrayFill(JSThread *thread, const JSHandle<JSTaggedV
     DataViewType elementType = TypedArrayHelper::GetType(jsType);
     uint64_t byteBeginOffset = start * elementSize + offset;
     uint64_t byteEndOffset = std::min(end, arrLen) * elementSize + offset;
-    if (byteBeginOffset <= byteEndOffset) {
+    if (byteBeginOffset < byteEndOffset) {
         BuiltinsArrayBuffer::TryFastSetValueInBuffer(thread, buffer,
             byteBeginOffset, byteEndOffset, elementType, numValue.GetNumber(), true);
     }
