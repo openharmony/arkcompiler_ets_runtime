@@ -97,7 +97,7 @@ public:
                 return;
             }
         }
-        SetRuntimeInfo(realOutPath.c_str(), lines);
+        SetRuntimeInfo(realOutPath.c_str(), lines, MAX_LENGTH);
     }
 
     void BuildCrashRuntimeInfo(RuntimeInfoType type)
@@ -126,7 +126,7 @@ public:
         if (!GetCrashSandBoxRealPath(realOutPath, PATH_MAX) || IsCharEmpty(realOutPath)) {
             return;
         }
-        SetRuntimeInfo(realOutPath, lines);
+        SetRuntimeInfo(realOutPath, lines, MAX_LENGTH);
     }
 
     int GetCompileCountByType(RuntimeInfoType type, const std::string &pgoRealPath = "")
@@ -347,13 +347,13 @@ protected:
         GetRuntimeInfoByPath(lines, realOutPath.c_str(), soBuildId);
     }
 
-    void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE]) const
+    void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE], int length) const
     {
         int fd = open(realOutPath,  O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (fd == -1) {
             return;
         }
-        for (int i = 0; lines[i] != NULL && i < MAX_LENGTH; i++) {
+        for (int i = 0; i < length && lines[i] != NULL; i++) {
             if (lines[i][0] != '\0') {
                 write(fd, lines[i], strlen(lines[i]));
                 write(fd, "\n", 1);

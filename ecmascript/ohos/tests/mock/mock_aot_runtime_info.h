@@ -33,7 +33,7 @@ public:
 
     bool BuildRuntimeInfoPart(char *runtimeInfoPart, const char *soBuildId, const char *timestamp,
         ecmascript::ohos::RuntimeInfoType type) const;
-    void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE]) const;
+    void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE], int length) const;
 };
 };  // namespace panda::test
 #endif // MOCK_ECMASCRIPT_AOT_RUNTIME_INFO_H
