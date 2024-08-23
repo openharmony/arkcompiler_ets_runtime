@@ -148,13 +148,18 @@ public:
         MemMap fileMapMem = FileMapForAlignAddress(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ,
                                                    offset, offStart);
         offset = offset - offStart;
+        if (fileMapMem.GetOriginAddr() == nullptr) {
+            LOG_ECMA(ERROR) << "File mmap failed";
+            close(fd);
+            return false;
+        }
 #else
         MemMap fileMapMem = FileMap(realPath.c_str(), FILE_RDONLY, PAGE_PROT_READ);
-#endif
         if (fileMapMem.GetOriginAddr() == nullptr) {
             LOG_ECMA(ERROR) << "File mmap failed";
             return false;
         }
+#endif
         uint8_t *buffer = reinterpret_cast<uint8_t *>(fileMapMem.GetOriginAddr()) + offset;
         JSPandaFileManager *jsPandaFileManager = JSPandaFileManager::GetInstance();
         pf = jsPandaFileManager->OpenJSPandaFileFromBuffer(buffer, size, GetFullName().c_str());
