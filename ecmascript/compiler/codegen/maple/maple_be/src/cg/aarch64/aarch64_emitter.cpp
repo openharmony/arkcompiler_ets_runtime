@@ -641,33 +641,6 @@ void AArch64AsmEmitter::EmitInlineAsm(Emitter &emitter, const Insn &insn) const
 #endif
 }
 
-void AArch64AsmEmitter::EmitClinitTail(Emitter &emitter, const Insn &insn) const
-{
-#ifdef ARK_LITECG_DEBUG
-    /*
-     * ldr x17, [xs, #112]
-     * ldr wzr, [x17]
-     */
-    const InsnDesc *md = &AArch64CG::kMd[MOP_clinit_tail];
-
-    Operand *opnd0 = &insn.GetOperand(kInsnFirstOpnd);
-
-    const OpndDesc *prop0 = md->opndMD[0];
-    A64OpndEmitVisitor visitor(emitter, prop0);
-
-    /* emit "ldr  x17,[xs,#112]" */
-    (void)emitter.Emit("\t").Emit("ldr").Emit("\tx17, [");
-    opnd0->Accept(visitor);
-    (void)emitter.Emit(", #");
-    (void)emitter.Emit(static_cast<uint32>(ClassMetadata::OffsetOfInitState()));
-    (void)emitter.Emit("]");
-    (void)emitter.Emit("\n");
-
-    /* emit "ldr  xzr, [x17]" */
-    (void)emitter.Emit("\t").Emit("ldr\txzr, [x17]\n");
-#endif
-}
-
 void AArch64AsmEmitter::EmitLazyLoad(Emitter &emitter, const Insn &insn) const
 {
 #ifdef ARK_LITECG_DEBUG

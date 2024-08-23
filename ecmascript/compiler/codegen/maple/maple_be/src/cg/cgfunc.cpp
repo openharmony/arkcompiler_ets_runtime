@@ -120,7 +120,6 @@ static Operand *HandleConstVal(const BaseNode &parent, BaseNode &expr, CGFunc &c
     } else {
         CHECK_FATAL(mirConst->GetKind() == kConstDoubleConst, "NYI");
         auto *mirDoubleConst = safe_cast<MIRDoubleConst>(mirConst);
-        DEBUG_ASSERT(mirDoubleConst != nullptr, "nullptr check");
         return cgFunc.SelectDoubleConst(*mirDoubleConst, parent);
     }
     return nullptr;
@@ -262,6 +261,7 @@ static Operand *HandleCvt(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc
 
 static Operand *HandleTrunc(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
+    DEBUG_ASSERT(expr.Opnd(0) != nullptr, "expr should not be nullptr");
     return cgFunc.SelectTrunc(static_cast<TypeCvtNode &>(expr), *cgFunc.HandleExpr(expr, *expr.Opnd(0)), parent);
 }
 

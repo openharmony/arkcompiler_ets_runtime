@@ -658,6 +658,7 @@ void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
             emitter->Emit("\t.align 2 \n" + st->GetName() + ":\n");
             if (st->GetKonst()->GetKind() == kConstStr16Const) {
                 MIRStr16Const *str16Const = safe_cast<MIRStr16Const>(st->GetKonst());
+                DEBUG_ASSERT(str16Const != nullptr, "str16Const should not be nullptr");
                 emitter->EmitStr16Constant(*str16Const);
                 emitter->Emit("\n");
                 continue;
@@ -665,6 +666,7 @@ void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
 
             if (st->GetKonst()->GetKind() == kConstStrConst) {
                 MIRStrConst *strConst = safe_cast<MIRStrConst>(st->GetKonst());
+                DEBUG_ASSERT(strConst != nullptr, "strConst should not be nullptr");
                 emitter->EmitStrConstant(*strConst);
                 emitter->Emit("\n");
                 continue;
@@ -673,6 +675,7 @@ void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
             switch (st->GetKonst()->GetType().GetPrimType()) {
                 case PTY_u32: {
                     MIRIntConst *intConst = safe_cast<MIRIntConst>(st->GetKonst());
+                    DEBUG_ASSERT(intConst != nullptr, "intConst should not be nullptr");
                     uint32 value = static_cast<uint32>(intConst->GetValue().GetExtValue());
                     emitter->Emit("\t.long").Emit(value).Emit("\n");
                     break;
@@ -686,6 +689,7 @@ void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
                 }
                 case PTY_f64: {
                     MIRDoubleConst *doubleConst = safe_cast<MIRDoubleConst>(st->GetKonst());
+                    DEBUG_ASSERT(doubleConst != nullptr, "doubleConst should not be nullptr");
                     uint32 value = doubleConst->GetIntLow32();
                     emitter->Emit("\t.word").Emit(value).Emit("\n");
                     value = doubleConst->GetIntHigh32();
@@ -1356,10 +1360,13 @@ MIRAddroffuncConst *Emitter::GetAddroffuncConst(const MIRSymbol &mirSymbol, MIRA
     if (pAddrConst->GetKind() == kConstAddrof) {
         /* point addr data. */
         MIRAddrofConst *pAddr = safe_cast<MIRAddrofConst>(pAddrConst);
+        DEBUG_ASSERT(pAddr != nullptr, "null ptr check");
         MIRSymbol *symAddrSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(pAddr->GetSymbolIndex().Idx());
         DEBUG_ASSERT(symAddrSym != nullptr, "null ptr check");
         MIRAggConst *methodAddrAggConst = safe_cast<MIRAggConst>(symAddrSym->GetKonst());
+        DEBUG_ASSERT(methodAddrAggConst != nullptr, "null ptr check");
         MIRAggConst *addrAggConst = safe_cast<MIRAggConst>(methodAddrAggConst->GetConstVecItem(0));
+        DEBUG_ASSERT(addrAggConst != nullptr, "null ptr check");
         MIRConst *funcAddrConst = addrAggConst->GetConstVecItem(0);
         if (funcAddrConst->GetKind() == kConstAddrofFunc) {
             /* func sybmol. */
@@ -1373,8 +1380,10 @@ MIRAddroffuncConst *Emitter::GetAddroffuncConst(const MIRSymbol &mirSymbol, MIRA
             DEBUG_ASSERT(funDefTabSy != nullptr, "null ptr check");
             MIRAggConst &funDefTabAggConst = static_cast<MIRAggConst &>(*funDefTabSy->GetKonst());
             MIRIntConst *funcAddrIndexConst = safe_cast<MIRIntConst>(funcAddrConst);
+            DEBUG_ASSERT(funcAddrIndexConst != nullptr, "null ptr check");
             uint64 indexDefTab = static_cast<uint64>(funcAddrIndexConst->GetExtValue());
             MIRAggConst *defTabAggConst = safe_cast<MIRAggConst>(funDefTabAggConst.GetConstVecItem(indexDefTab));
+            DEBUG_ASSERT(defTabAggConst != nullptr, "null ptr check");
             MIRConst *funcConst = defTabAggConst->GetConstVecItem(0);
             if (funcConst->GetKind() == kConstAddrofFunc) {
                 innerFuncAddr = safe_cast<MIRAddroffuncConst>(funcConst);
@@ -1445,6 +1454,7 @@ void Emitter::EmitIntConst(const MIRSymbol &mirSymbol, MIRAggConst &aggConst, ui
 {
 #ifdef ARK_LITECG_DEBUG
     MIRConst *elemConst = aggConst.GetConstVecItem(idx);
+    DEBUG_ASSERT(elemConst != nullptr, "null ptr check");
     const std::string stName = mirSymbol.GetName();
 
     MIRIntConst *intConst = safe_cast<MIRIntConst>(elemConst);
