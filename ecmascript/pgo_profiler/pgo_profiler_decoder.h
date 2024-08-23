@@ -100,7 +100,7 @@ public:
     void GetTypeInfo(const JSPandaFile *jsPandaFile, const CString &recordName, const MethodLiteral *methodLiteral,
                      Callback callback) const
     {
-        if (!isLoaded_ || !isVerifySuccess_) {
+        if (!isLoaded_ || !isVerifySuccess_ || methodLiteral == nullptr) {
             return;
         }
         const auto *methodName = MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId());
@@ -205,6 +205,9 @@ public:
 
     bool IsCompatibleWithAOTFile()
     {
+        if (header_ == nullptr) {
+            return false;
+        }
         return header_->IsCompatibleWithAOTFile();
     }
 
