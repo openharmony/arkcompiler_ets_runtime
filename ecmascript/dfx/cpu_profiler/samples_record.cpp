@@ -98,7 +98,9 @@ void SamplesRecord::AddSample(FrameStackAndInfo *frame)
             previousId_ = methodNode.id = id;
             methodNode.codeEntry = GetMethodInfo(nodeKey.methodKey);
             profileInfo_->nodes[profileInfo_->nodeCount++] = methodNode;
-            profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
+            if (methodNode.parentId > 0 && methodNode.parentId <= profileInfo_->nodeCount) {
+                profileInfo_->nodes[methodNode.parentId - 1].children.push_back(id);
+            }
         } else {
             previousId_ = methodNode.id = result->second;
         }
