@@ -44,6 +44,8 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     void GenArrayConstructor(GateRef glue, GateRef nativeCode, GateRef func,
         GateRef newTarget, GateRef thisValue, GateRef numArgs);
+
+    void FastCreateArrayWithArgv(GateRef glue, Variable *res, GateRef argc, GateRef hclass, Label *exit);
     
     void ElementsKindHclassCompare(GateRef glue, GateRef arrayCls, Label *matchCls, Label *slowPath);
 

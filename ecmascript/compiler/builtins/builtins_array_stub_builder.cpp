@@ -4419,6 +4419,69 @@ void BuiltinsArrayStubBuilder::FindLast(GateRef glue, GateRef thisValue, GateRef
     }
 }
 
+void BuiltinsArrayStubBuilder::FastCreateArrayWithArgv(GateRef glue, Variable *res, GateRef argc,
+                                                       GateRef hclass, Label *exit)
+{
+    auto env = GetEnvironment();
+    NewObjectStubBuilder newBuilder(this);
+    newBuilder.SetParameters(glue, 0);
+
+    // create elements from argv
+    GateRef len = TruncInt64ToInt32(argc);
+    GateRef elements = newBuilder.NewTaggedArray(glue, len);
+
+    // set value
+    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+    DEFVARIABLE(value, VariableType::JS_ANY(), Undefined());
+#if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+    DEFVARIABLE(elementKind, VariableType::INT32(), Int32(static_cast<int32_t>(ElementsKind::GENERIC)));
+#else
+    DEFVARIABLE(elementKind, VariableType::INT32(), Int32(static_cast<int32_t>(ElementsKind::HOLE)));
+#endif
+    Label loopHead(env);
+    Label loopEnd(env);
+    Label setValue(env);
+    Label loopExit(env);
+    Jump(&loopHead);
+    LoopBegin(&loopHead);
+    {
+        BRANCH(Int64LessThan(*i, argc), &setValue, &loopExit);
+        Bind(&setValue);
+        Label isHole(env);
+        Label notHole(env);
+        value = GetArgFromArgv(*i);
+        elementKind = Int32Or(TaggedToElementKind(*value), *elementKind);
+        BRANCH(TaggedIsHole(*value), &isHole, &notHole);
+        Bind(&isHole);
+        value = TaggedUndefined();
+        Jump(&notHole);
+        Bind(&notHole);
+        SetValueToTaggedArray(VariableType::JS_ANY(), glue, elements, *i, *value);
+        i = Int64Add(*i, Int64(1));
+        Jump(&loopEnd);
+    }
+    Bind(&loopEnd);
+    LoopEnd(&loopHead);
+    Bind(&loopExit);
+
+    // create array object
+    GateRef arr = newBuilder.NewJSObject(glue, hclass);
+    res->WriteVariable(arr);
+    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, arr, lengthOffset, len);
+    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue, ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+    SetPropertyInlinedProps(glue, arr, hclass, accessor, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    SetExtensibleToBitfield(glue, arr, true);
+    SetElementsArray(VariableType::JS_POINTER(), glue, arr, elements);
+
+    // set elementkind if needed
+    Label enabledElementsKind(env);
+    BRANCH(IsEnableElementsKind(glue), &enabledElementsKind, exit);
+    Bind(&enabledElementsKind);
+    CallRuntime(glue, RTSTUB_ID(UpdateHClassForElementsKind), { arr, *elementKind });
+    Jump(exit);
+}
+
 void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeCode,
     GateRef func, GateRef newTarget, GateRef thisValue, GateRef numArgs)
 {
@@ -4459,7 +4522,8 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
             Bind(&hasArg);
             {
                 Label hasOneArg(env);
-                BRANCH(Int64Equal(numArgs, IntPtr(1)), &hasOneArg, &slowPath);
+                Label multiArg(env);
+                BRANCH(Int64Equal(numArgs, IntPtr(1)), &hasOneArg, &multiArg);
                 Bind(&hasOneArg);
                 {
                     Label argIsNumber(env);
@@ -4499,6 +4563,15 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                                 Jump(&arrayCreate);
                             }
                         }
+                    }
+                }
+                Bind(&multiArg);
+                {
+                    Label lengthValid(env);
+                    BRANCH(Int64LessThan(numArgs, IntPtr(JSObject::MAX_GAP)), &lengthValid, &slowPath);
+                    Bind(&lengthValid);
+                    {
+                        FastCreateArrayWithArgv(glue, &res, numArgs, intialHClass, &exit);
                     }
                 }
             }

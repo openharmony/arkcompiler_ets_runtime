@@ -90,6 +90,36 @@ JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)
         return newArrayHandle.GetTaggedValue();
     }
 
+    // not dictionary elements, fast create array from argv elements
+    if (argc < JSObject::MAX_GAP) {
+        // 6. Create array elements from 'argv'.
+#if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+        ElementsKind newKind = ElementsKind::GENERIC;
+#else
+        auto arrayFunc = thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction();
+        ElementsKind newKind = newTarget.GetTaggedValue() == arrayFunc.GetTaggedValue() ?
+            ElementsKind::HOLE : ElementsKind::NONE;
+#endif
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        auto elements = factory->NewTaggedArray(argc, JSTaggedValue::Undefined());
+        for (uint32_t k = 0; k < argc; k++) {
+            auto value = GetCallArg(argv, k);
+            newKind = Elements::ToElementsKind(value.GetTaggedValue(), newKind);
+            if (value->IsHole()) {
+                continue;
+            }
+            elements->Set(thread, k, value);
+        }
+        // 7. create array from elements
+        auto newArray = JSArray::CreateArrayFromList(thread, newTarget, elements);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (thread->GetEcmaVM()->IsEnableElementsKind()) {
+            JSHClass::TransitToElementsKind(thread, newArray, newKind);
+        }
+        // 8. Return array.
+        return newArray.GetTaggedValue();
+    }
+
     // 22.1.1.3 Array(...items )
     JSTaggedValue newArray = JSArray::ArrayCreate(thread, JSTaggedNumber(argc), newTarget).GetTaggedValue();
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
