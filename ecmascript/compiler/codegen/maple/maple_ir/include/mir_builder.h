@@ -304,6 +304,8 @@ public:
     IntrinsiccallNode *CreateStmtIntrinsicCallAssigned(MIRIntrinsicID idx, const MapleVector<BaseNode *> &arguments,
                                                        PregIdx retPregIdx);
     IntrinsiccallNode *CreateStmtIntrinsicCallAssigned(MIRIntrinsicID idx, const MapleVector<BaseNode *> &arguments,
+                                                       PregIdx retPregIdx1, PregIdx retPregIdx2);
+    IntrinsiccallNode *CreateStmtIntrinsicCallAssigned(MIRIntrinsicID idx, const MapleVector<BaseNode *> &arguments,
                                                        const MIRSymbol *ret, TyIdx tyIdx = TyIdx());
     IntrinsiccallNode *CreateStmtXintrinsicCallAssigned(MIRIntrinsicID idx, const MapleVector<BaseNode *> &args,
                                                         const MIRSymbol *ret);

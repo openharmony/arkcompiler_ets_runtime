@@ -1265,17 +1265,6 @@ void CGLowerer::LowerEntry(MIRFunction &func)
     }
 }
 
-void CGLowerer::LowerPseudoRegs(const MIRFunction &func) const
-{
-    for (uint32 i = 1; i < func.GetPregTab()->Size(); ++i) {
-        MIRPreg *ipr = func.GetPregTab()->PregFromPregIdx(i);
-        PrimType primType = ipr->GetPrimType();
-        if (primType == PTY_u1) {
-            ipr->SetPrimType(PTY_u32);
-        }
-    }
-}
-
 void CGLowerer::CleanupBranches(MIRFunction &func) const
 {
     BlockNode *block = func.GetBody();
@@ -1751,7 +1740,6 @@ void CGLowerer::LowerFunc(MIRFunction &func)
     labelIdx = 0;
     SetCurrentFunc(&func);
     LowerEntry(func);
-    LowerPseudoRegs(func);
     BlockNode *origBody = func.GetBody();
     CHECK_FATAL(origBody != nullptr, "origBody should not be nullptr");
 

@@ -937,22 +937,6 @@ void AArch64CGFunc::SelectIassign(IassignNode &stmt)
 Operand *AArch64CGFunc::SelectDread(const BaseNode &parent, DreadNode &expr)
 {
     MIRSymbol *symbol = GetFunction().GetLocalOrGlobalSymbol(expr.GetStIdx());
-    auto itr = stIdx2OverflowResult.find(expr.GetStIdx());
-    if (itr != stIdx2OverflowResult.end()) {
-        /* add_with_overflow / sub_with_overflow:
-         * reg1: param1
-         * reg2: param2
-         * adds/subs reg3, reg1, reg2
-         * cset reg4, vs
-         * result is saved in std::pair<RegOperand*, RegOperand*>(reg3, reg4)
-         */
-        if (expr.GetFieldID() == 1) {
-            return itr->second.first;
-        } else {
-            DEBUG_ASSERT(expr.GetFieldID() == 2, "only has 2 fileds for intrinsic overflow call result");
-            return itr->second.second;
-        }
-    }
 
     PrimType symType = symbol->GetType()->GetPrimType();
     uint32 offset = 0;
@@ -4771,8 +4755,12 @@ void AArch64CGFunc::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
                                          intrnNode.Opnd(0)->GetPrimType()); /* first argument of intrinsic */
     RegOperand &opnd1 = LoadIntoRegister(*HandleExpr(intrnNode, *intrnNode.Opnd(1)),
                                          intrnNode.Opnd(1)->GetPrimType()); /* first argument of intrinsic */
-    RegOperand &resReg = CreateRegisterOperandOfType(type);
-    RegOperand &resReg2 = CreateRegisterOperandOfType(PTY_u8);
+    auto *retVals = &intrnNode.GetReturnVec();
+    CHECK_FATAL(retVals->size() == k2ByteSize, "there must be two return values");
+    PregIdx pregIdx = (*retVals)[0].second.GetPregIdx();
+    PregIdx pregIdx2 = (*retVals)[1].second.GetPregIdx();
+    RegOperand &resReg = GetOrCreateVirtualRegisterOperand(GetVirtualRegNOFromPseudoRegIdx(pregIdx));
+    RegOperand &resReg2 = GetOrCreateVirtualRegisterOperand(GetVirtualRegNOFromPseudoRegIdx(pregIdx2));
     Operand &rflag = GetOrCreateRflag();
     // arith operation with set flag
     if (intrinsic == INTRN_ADD_WITH_OVERFLOW) {
@@ -4791,11 +4779,6 @@ void AArch64CGFunc::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
     } else {
         CHECK_FATAL(false, "niy");
     }
-    // store back
-    auto *retVals = &intrnNode.GetReturnVec();
-    auto &pair = retVals->at(0);
-    stIdx2OverflowResult[pair.first] = std::pair<RegOperand *, RegOperand *>(&resReg, &resReg2);
-    return;
 }
 
 void AArch64CGFunc::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)

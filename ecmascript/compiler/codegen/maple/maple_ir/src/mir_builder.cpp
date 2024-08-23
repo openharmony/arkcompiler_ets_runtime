@@ -1090,6 +1090,22 @@ IntrinsiccallNode *MIRBuilder::CreateStmtIntrinsicCallAssigned(MIRIntrinsicID id
 }
 
 IntrinsiccallNode *MIRBuilder::CreateStmtIntrinsicCallAssigned(MIRIntrinsicID idx, const MapleVector<BaseNode *> &args,
+                                                               PregIdx retPregIdx1, PregIdx retPregIdx2)
+{
+    auto *stmt =
+        NewNode<IntrinsiccallNode>(*GetCurrentFuncCodeMpAllocator(), OP_intrinsiccallassigned, idx);
+    DEBUG_ASSERT(stmt != nullptr, "stmt is null");
+    stmt->SetOpnds(args);
+    if (retPregIdx1 > 0) {
+        stmt->GetReturnVec().push_back(CallReturnPair(StIdx(), RegFieldPair(0, retPregIdx1)));
+    }
+    if (retPregIdx2 > 0) {
+        stmt->GetReturnVec().push_back(CallReturnPair(StIdx(), RegFieldPair(0, retPregIdx2)));
+    }
+    return stmt;
+}
+
+IntrinsiccallNode *MIRBuilder::CreateStmtIntrinsicCallAssigned(MIRIntrinsicID idx, const MapleVector<BaseNode *> &args,
                                                                const MIRSymbol *ret, TyIdx tyIdx)
 {
     auto *stmt = NewNode<IntrinsiccallNode>(
