@@ -1096,6 +1096,7 @@ StmtNode *CGLowerer::LowerCall(CallNode &callNode, StmtNode *&nextStmt, BlockNod
         if (needCheckStore) {
             MIRFunction *fn =
                 mirModule.GetMIRBuilder()->GetOrCreateFunction("MCC_Reflect_Check_Arraystore", TyIdx(PTY_void));
+            DEBUG_ASSERT(fn->GetFuncSymbol() != nullptr, "fn->GetFuncSymbol() should not be nullptr");
             fn->GetFuncSymbol()->SetAppearsInCode(true);
             beCommon.UpdateTypeTable(*fn->GetMIRFuncType());
             fn->AllocSymTab();
@@ -1549,6 +1550,7 @@ StmtNode *CGLowerer::LowerDassignToThreadLocal(StmtNode &stmt, const BlockNode &
         return result;
     }
     MIRSymbol *symbol = GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
+    DEBUG_ASSERT(symbol != nullptr, "symbol should not be nullptr");
     if (symbol->IsThreadLocal()) {
         //  iassign <* u32> 0 (regread u64 %addr, dread u32 $x)
         auto addr = ExtractSymbolAddress(stIdx);

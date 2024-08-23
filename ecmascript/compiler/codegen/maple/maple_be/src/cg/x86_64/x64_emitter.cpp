@@ -128,6 +128,7 @@ uint64 X64Emitter::GetSymbolSize(const TyIdx typeIndex)
 Reg X64Emitter::TransferReg(Operand *opnd) const
 {
     RegOperand *v = static_cast<RegOperand *>(opnd);
+    DEBUG_ASSERT(v != nullptr, "nullptr check");
     /* check whether this reg is still virtual */
     CHECK_FATAL(v->IsPhysicalRegister(), "register is still virtual or reg num is 0");
 
@@ -1537,6 +1538,7 @@ void X64Emitter::EmitInsn(Insn &insn, uint32 funcUniqueId)
 void X64Emitter::EmitFunctionHeader(CGFunc &cgFunc)
 {
     const MIRSymbol *funcSymbol = cgFunc.GetFunction().GetFuncSymbol();
+    DEBUG_ASSERT(funcSymbol != nullptr, "nullptr check");
     uint32 symIdx = funcSymbol->GetNameStrIdx().get();
     const string &symName = funcSymbol->GetName();
     assmbler.StoreNameIntoSymMap(symIdx, symName);
@@ -2135,6 +2137,7 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
                 assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, kSData);
             }
             if (IsPrimitiveVector(mirType->GetPrimType())) {
+                ASSERT_NOT_NULL(mirConst);
                 valueSize = EmitVector(*mirConst);
             } else if (IsPrimitiveScalar(mirType->GetPrimType())) {
                 valueSize = EmitSingleElement(*mirConst, true, cg.GetMIRModule()->IsCModule());

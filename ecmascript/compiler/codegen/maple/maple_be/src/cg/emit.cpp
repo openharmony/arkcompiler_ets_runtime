@@ -1091,6 +1091,7 @@ void Emitter::EmitAddrofSymbolConst(const MIRSymbol &mirSymbol, MIRConst &elemCo
     const std::string stName = mirSymbol.GetName();
 
     MIRSymbol *symAddrSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(symAddr.GetSymbolIndex().Idx());
+    DEBUG_ASSERT(symAddrSym != nullptr, "symAddrSym should not be nullptr");
     const std::string &symAddrName = symAddrSym->GetName();
 
     if (((idx == static_cast<uint32>(FieldProperty::kPOffset)) && mirSymbol.IsReflectionFieldsInfo()) ||

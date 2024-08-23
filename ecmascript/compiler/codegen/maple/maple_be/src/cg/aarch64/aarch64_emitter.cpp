@@ -613,6 +613,8 @@ void AArch64AsmEmitter::EmitInlineAsm(Emitter &emitter, const Insn &insn) const
                         CHECK_FATAL(val < inOpnds.size(), "Inline asm : invalid register constraint number");
                         RegOperand *opnd = inOpnds[val];
                         regno = opnd->GetRegisterNumber();
+                        DEBUG_ASSERT(list7.stringList[val]->GetComment().c_str() != nullptr,
+                            "list7 GetComment.c_str should not be nullptr");
                         isAddr = IsMemAccess(list7.stringList[val]->GetComment().c_str()[0]);
                     }
                     c = asmStr[++i];

@@ -421,6 +421,7 @@ void X64MPIsel::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
         CHECK_NULL_FATAL(cgFunc->GetBecommon().GetMIRModule().CurFunction());
         MIRSymbol *sym =
             cgFunc->GetBecommon().GetMIRModule().CurFunction()->GetSymTab()->GetSymbolFromStIdx(stIdx.Idx());
+        DEBUG_ASSERT(sym != nullptr, "nullptr check");
         MemOperand &memOperand = GetOrCreateMemOpndFromSymbol(*sym, 1);
         MemOperand &memOperand2 = GetOrCreateMemOpndFromSymbol(*sym, 2);
         SelectCopy(memOperand, resReg, type);

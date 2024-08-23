@@ -234,6 +234,7 @@ Type *LMIRBuilder::LiteCGGetPointedType(Type *type)
 
 std::vector<Type *> LMIRBuilder::LiteCGGetFuncParamTypes(Type *type)
 {
+    DEBUG_ASSERT(static_cast<MIRFuncType *>(type) != nullptr, "nullptr check");
     std::vector<TyIdx> &paramTypeList = static_cast<MIRFuncType *>(type)->GetParamTypeList();
     std::vector<Type *> paramTypes;
     for (const auto paramType : paramTypeList) {
