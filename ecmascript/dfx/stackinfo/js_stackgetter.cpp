@@ -58,6 +58,9 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
                                     bool isCpuProfiler)
 {
     auto method = it.CheckAndGetMethod();
+    if (method == nullptr) {
+        return false;
+    }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     codeEntry.methodKey = methodKey;
     if (method->IsNativeWithCallField()) {
