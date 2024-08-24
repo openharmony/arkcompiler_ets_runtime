@@ -55,6 +55,9 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
                                     bool isCpuProfiler)
 {
     auto method = it.CheckAndGetMethod();
+    if (method == nullptr) {
+        return false;
+    }
     codeEntry.methodKey = methodKey;
     if (method->IsNativeWithCallField()) {
         FrameIterator itNext(it.GetSp(), it.GetThread());
