@@ -360,6 +360,7 @@ void Circuit::DeleteGate(GateRef gate)
 void Circuit::DecreaseIn(GateRef gate, size_t idx)
 {
     auto numIns = LoadGatePtrConst(gate)->GetNumIns();
+    ASSERT(numIns > 0);
     for (size_t i = idx; i < numIns - 1; i++) {
         ModifyIn(gate, i, GetIn(gate, i + 1));
     }

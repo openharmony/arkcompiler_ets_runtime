@@ -89,6 +89,7 @@ void ValueNumbering::Grow()
     size_t const oldSize = entriesLength_;
     entriesLength_ *= 2; // 2 : entriesLength
     InitEntries(entriesLength_);
+    ASSERT(entriesLength_ > 0);
     size_t const mask = entriesLength_ - 1;
 
     for (size_t i = 0; i < oldSize; i++) {

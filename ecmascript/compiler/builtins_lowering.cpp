@@ -206,6 +206,7 @@ void BuiltinLowering::LowerTypedLocaleCompare(GateRef gate)
     GateRef thatObj = acc_.GetValueIn(gate, index++);
 
     static constexpr size_t NUM_OF_ARGS = 4;
+    ASSERT(acc_.GetNumValueIn(gate) > 0);
     size_t argsIn = acc_.GetNumValueIn(gate) - 1;
     GateRef result = Circuit::NullGate();
     if (argsIn == 2) { // 2: string.localeCompare(string)
