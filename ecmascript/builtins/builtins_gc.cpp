@@ -60,7 +60,7 @@ JSTaggedValue BuiltinsGc::RegisterNativeAllocation(EcmaRuntimeCallInfo *info)
         THROW_RANGE_ERROR_AND_RETURN(thread, "The value must be non negative", JSTaggedValue::Exception());
     }
     heap->IncreaseNativeBindingSize(size);
-    heap->TryTriggerFullMarkByNativeSize();
+    heap->TryTriggerFullMarkOrGCByNativeSize();
     if (heap->GetConcurrentMarker()->IsTriggeredConcurrentMark()) {
         heap->WaitConcurrentMarkingFinished();
         heap->GetConcurrentMarker()->HandleMarkingFinished();
