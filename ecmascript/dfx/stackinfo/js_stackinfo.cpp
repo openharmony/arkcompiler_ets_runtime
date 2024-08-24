@@ -251,7 +251,7 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
     if (JsStackInfo::loader == nullptr || JsStackInfo::options == nullptr) {
         return;
     }
-    if (!JsStackInfo::loader->IsEnableAOT() && !JsStackInfo::options->IsEnableJIT() &&
+    if (!JsStackInfo::loader->IsEnableAOT() && !thread->GetEcmaVM()->IsEnableFastJit() &&
         !JsStackInfo::options->IsEnablePGOProfiler()) {
         return;
     }

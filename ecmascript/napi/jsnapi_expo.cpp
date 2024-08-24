@@ -5070,7 +5070,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     Log::Initialize(runtimeOptions);
 
-    if (jsOption.GetEnableAOT() && option.GetAnDir().size()) {
+    if (jsOption.GetEnableAOT() && option.GetAnDir().size() && !ecmascript::AotCrashInfo::IsAotEscaped()) {
         ecmascript::AnFileDataManager::GetInstance()->SetDir(option.GetAnDir());
         ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
     }

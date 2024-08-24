@@ -110,10 +110,10 @@ void AotCrashInfo::SetOptionPGOProfiler(JSRuntimeOptions *options, const std::st
 #ifdef AOT_ESCAPE_ENABLE
     if (ohos::EnableAotJitListHelper::GetInstance()->IsEnableAot(bundleName)) {
         options->SetEnablePGOProfiler(true);
-    }
-    if (ohos::EnableAotJitListHelper::GetInstance()->IsAotCompileSuccessOnce() || IsAotEscaped()) {
-        options->SetEnablePGOProfiler(false);
-        LOG_ECMA(INFO) << "Aot has compile success once or escaped.";
+        if (ohos::EnableAotJitListHelper::GetInstance()->IsAotCompileSuccessOnce() || IsAotEscaped()) {
+            options->SetEnablePGOProfiler(false);
+            LOG_ECMA(INFO) << "Aot has compile success once or escaped.";
+        }
     }
 #endif
     (void)options;
