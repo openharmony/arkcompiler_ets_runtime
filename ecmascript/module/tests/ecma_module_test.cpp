@@ -1347,6 +1347,15 @@ HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl)
     EXPECT_EQ(res, "&entry/.test/ets/pages/Index&");
 }
 
+HWTEST_F_L0(EcmaModuleTest, TransformToNormalizedOhmUrl2)
+{
+    CString inputFileName = "/data/storage/el1/bundle/hsp/ets/modules.abc";
+    CString outBaseFileName = "/data/storage/el1/bundle/com.example.application/hsp/hsp/ets/modules.abc";
+    CString entryPoint = "com.example.myapplication/hsp/ets/pages/Index";
+    CString res = ModulePathHelper::TransformToNormalizedOhmUrl(instance, inputFileName, outBaseFileName, entryPoint);
+    EXPECT_EQ(res, "com.example.myapplication/hsp/ets/pages/Index");
+}
+
 HWTEST_F_L0(EcmaModuleTest, TranslateExpressionInputWithEts)
 {
     instance->SetBundleName("com.example.myapplication");
