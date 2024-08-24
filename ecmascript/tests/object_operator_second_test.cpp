@@ -43,8 +43,8 @@ static JSFunction *JSObjectTestCreate(JSThread *thread)
 }
 
 bool TestBoolSetter([[maybe_unused]] JSThread *thread,
-                    [[maybe_unused]] JSHandle<JSObject> &jsObject,
-                    [[maybe_unused]] JSHandle<JSTaggedValue> &value,
+                    [[maybe_unused]] const JSHandle<JSObject> &jsObject,
+                    [[maybe_unused]] const JSHandle<JSTaggedValue> &value,
                     [[maybe_unused]] bool success)
 {
     return true;
@@ -183,10 +183,9 @@ HWTEST_F_L0(ObjectOperatorTest, UpdateDateValue_001)
     auto *resultDict = NumberDictionary::Cast(handleObject->GetElements().GetTaggedObject());
     EXPECT_EQ(resultDict->GetValue(objectOperator1.GetIndex()).GetInt(), 5);
 
-    // objcet value is InternalAccessor
-    JSHandle<AccessorData> handleAccessorData = factory->NewAccessorData();
-    JSHandle<JSNativePointer> handleSetter = factory->NewJSNativePointer(reinterpret_cast<void *>(TestBoolSetter));
-    handleAccessorData->SetSetter(thread, handleSetter.GetTaggedValue());
+    // object value is InternalAccessor
+    JSHandle<AccessorData> handleAccessorData = factory->NewInternalAccessor(
+        reinterpret_cast<void*>(TestBoolSetter), nullptr);
     JSHandle<JSTaggedValue> handleValue2(handleAccessorData);
     ObjectOperator objectOperator2(thread, handleKey);
     objectOperator2.SetValue(handleAccessorData.GetTaggedValue());

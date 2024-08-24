@@ -26,11 +26,27 @@
 #include "ecmascript/record.h"
 
 namespace panda::ecmascript {
-class AccessorData final : public Record {
+class InternalAccessor final : public Record {
 public:
     using InternalGetFunc = JSTaggedValue (*)(JSThread *, const JSHandle<JSObject> &);
     using InternalSetFunc = bool (*)(JSThread *, const JSHandle<JSObject> &, const JSHandle<JSTaggedValue> &, bool);
 
+    CAST_CHECK(InternalAccessor, IsInternalAccessor);
+
+    inline bool HasSetter() const
+    {
+        return GetSetter() != nullptr;
+    }
+
+    static constexpr size_t GETTER_OFFSET = Record::SIZE;
+    ACCESSORS_FIXED_SIZE_FIELD(Getter, InternalGetFunc, JSTaggedType, GETTER_OFFSET, SETTER_OFFSET)
+    ACCESSORS_FIXED_SIZE_FIELD(Setter, InternalSetFunc, JSTaggedType, SETTER_OFFSET, SIZE)
+
+    DECL_VISIT_NATIVE_FIELD(GETTER_OFFSET, SIZE)
+};
+
+class AccessorData final : public Record {
+public:
     static AccessorData *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsAccessorData() || JSTaggedValue(object).IsInternalAccessor());
@@ -44,23 +60,23 @@ public:
 
     inline bool HasSetter() const
     {
-        return !GetSetter().IsUndefined();
+        auto setter = GetSetter();
+        // When the raw data is 0, means the InternalAccessor's setter is nullptr.
+        return !(setter.IsUndefined() || setter.GetRawData() == 0U);
     }
 
     JSTaggedValue CallInternalGet(JSThread *thread, const JSHandle<JSObject> &obj) const
     {
-        ASSERT(GetGetter().IsJSNativePointer());
-        JSNativePointer *getter = JSNativePointer::Cast(GetGetter().GetTaggedObject());
-        auto getFunc = reinterpret_cast<InternalGetFunc>(getter->GetExternalPointer());
+        ASSERT(IsInternal());
+        auto getFunc = InternalAccessor::ConstCast(this)->GetGetter();
         return getFunc(thread, obj);
     }
 
     bool CallInternalSet(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &value,
                          bool mayThrow = false) const
     {
-        ASSERT(GetSetter().IsJSNativePointer());
-        JSNativePointer *setter = JSNativePointer::Cast(GetSetter().GetTaggedObject());
-        auto setFunc = reinterpret_cast<InternalSetFunc>(setter->GetExternalPointer());
+        ASSERT(IsInternal());
+        auto setFunc = InternalAccessor::ConstCast(this)->GetSetter();
         return setFunc(thread, obj, value, mayThrow);
     }
 
@@ -71,6 +87,10 @@ public:
     DECL_DUMP()
     DECL_VISIT_OBJECT(GETTER_OFFSET, SIZE)
 };
+
+static_assert(AccessorData::SIZE == InternalAccessor::SIZE &&
+              AccessorData::GETTER_OFFSET == InternalAccessor::GETTER_OFFSET &&
+              AccessorData::SETTER_OFFSET == InternalAccessor::SETTER_OFFSET);
 
 enum class CompletionRecordType : uint8_t {
     NORMAL = 0U,

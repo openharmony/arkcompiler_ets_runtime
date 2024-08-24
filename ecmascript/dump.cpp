@@ -1603,8 +1603,8 @@ void AccessorData::Dump(std::ostream &os) const
 {
     auto *hclass = GetClass();
     if (hclass->GetObjectType() == JSType::INTERNAL_ACCESSOR) {
-        os << " - Getter: " << reinterpret_cast<void *>(GetGetter().GetTaggedObject()) << "\n";
-        os << " - Setter: " << reinterpret_cast<void *>(GetSetter().GetTaggedObject()) << "\n";
+        os << " - Getter: " << InternalAccessor::ConstCast(this)->GetGetter() << "\n";
+        os << " - Setter: " << InternalAccessor::ConstCast(this)->GetSetter() << "\n";
         return;
     }
 
@@ -5297,6 +5297,12 @@ void JSSymbol::DumpForSnapshot(std::vector<Reference> &vec) const
 
 void AccessorData::DumpForSnapshot(std::vector<Reference> &vec) const
 {
+    if (GetClass()->GetObjectType() == JSType::INTERNAL_ACCESSOR) {
+        vec.emplace_back(CString("getter"), JSTaggedValue(InternalAccessor::ConstCast(this)->GetGetter()));
+        vec.emplace_back(CString("setter"), JSTaggedValue(InternalAccessor::ConstCast(this)->GetSetter()));
+        return;
+    }
+
     vec.emplace_back(CString("getter"), GetGetter());
     vec.emplace_back(CString("setter"), GetSetter());
 }

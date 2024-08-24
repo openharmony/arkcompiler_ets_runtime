@@ -2393,20 +2393,11 @@ JSHandle<AccessorData> ObjectFactory::NewInternalAccessor(void *setter, void *ge
     NewObjectHook();
     TaggedObject *header = heap_->AllocateNonMovableOrHugeObject(
         JSHClass::Cast(thread_->GlobalConstants()->GetInternalAccessorClass().GetTaggedObject()));
-    JSHandle<AccessorData> obj(thread_, AccessorData::Cast(header));
-    obj->SetGetter(thread_, JSTaggedValue::Undefined());
-    obj->SetSetter(thread_, JSTaggedValue::Undefined());
-    if (setter != nullptr) {
-        JSHandle<JSNativePointer> setFunc = NewJSNativePointer(setter, nullptr, nullptr, true);
-        obj->SetSetter(thread_, setFunc.GetTaggedValue());
-    } else {
-        JSTaggedValue setFunc = JSTaggedValue::Undefined();
-        obj->SetSetter(thread_, setFunc);
-        ASSERT(!obj->HasSetter());
-    }
-    JSHandle<JSNativePointer> getFunc = NewJSNativePointer(getter, nullptr, nullptr, true);
-    obj->SetGetter(thread_, getFunc);
-    return obj;
+    JSHandle<InternalAccessor> obj(thread_, InternalAccessor::Cast(header));
+
+    obj->SetSetter(reinterpret_cast<InternalAccessor::InternalSetFunc>(setter));
+    obj->SetGetter(reinterpret_cast<InternalAccessor::InternalGetFunc>(getter));
+    return JSHandle<AccessorData>::Cast(obj);
 }
 
 JSHandle<PromiseCapability> ObjectFactory::NewPromiseCapability()
