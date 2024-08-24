@@ -254,6 +254,51 @@ HWTEST_F_L0(TaggedHashArrayTest, RemoveTreeNode)
 }
 
 /**
+ * @tc.name: RemoveRBTreeNode
+ * @tc.desc: Call "Create" function Create TaggedHashArray object and "SetVal" function to add a key value pair to
+ *           the taggedharray object,The value set is the RBTreeNode object,call "RemoveNode" function to delete a
+ *           node, check if it can be hole then return.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(TaggedHashArrayTest, RemoveRBTreeNode)
+{
+    int numOfElement = 50;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedHashArray> taggedHashArray(thread, TaggedHashArray::Create(thread, numOfElement));
+    for (int i = 0; i < numOfElement; i++) {
+        std::string myKey("mykey");
+        std::string myValue("myvalue");
+        JSHandle<JSTaggedValue> myKey1(factory->NewFromStdString(myKey + std::to_string(i)));
+        JSHandle<JSTaggedValue> myKey2(factory->NewFromStdString(myKey + std::to_string(i + 1)));
+        JSHandle<JSTaggedValue> myKey1Value(factory->NewFromStdString(myValue.append(std::to_string(i))));
+        HashCommon1(thread, taggedHashArray, myKey, myValue, static_cast<uint32_t>(numOfElement));
+        auto keyHash = TaggedNode::Hash(thread, myKey1.GetTaggedValue());
+        TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey2, myKey1Value);
+        // set key and value
+        uint32_t keyHashIndex = static_cast<uint32_t>(taggedHashArray->GetLength() - 1) & keyHash;
+        JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
+        EXPECT_EQ(hashTreeNode.GetTaggedValue().IsRBTreeNode(), true);
+    }
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 49);
+    for (int i = 0; i < 10; i++) {
+        std::string myKey("mykey");
+        std::string myValue("myvalue");
+        JSHandle<JSTaggedValue> myKey1(factory->NewFromStdString(myKey.append(std::to_string(dis(gen)))));
+        auto keyHash = TaggedNode::Hash(thread, myKey1.GetTaggedValue());
+        uint32_t keyHashIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
+        JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
+        EXPECT_EQ(taggedHashArray->GetLength(), numOfElement);
+        // test Remove()
+        taggedHashArray->RemoveNode(thread, keyHash, myKey1.GetTaggedValue());
+        EXPECT_EQ(taggedHashArray->GetLength(), numOfElement);
+    }
+}
+
+/**
  * @tc.name: ResetLinkNodeSize
  * @tc.desc: Call "Create" function Create TaggedHashArray object and "SetVal" function to add a key value pair to
  *           the taggedharray object,The value set is the LinkedNode object,call "RemoveNode" function to delete a
