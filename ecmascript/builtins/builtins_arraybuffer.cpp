@@ -846,12 +846,7 @@ void BuiltinsArrayBuffer::FastSetValueInBufferForUint8Clamped(uint8_t *byteBegin
     } else {
         val = val >= UINT8_MAX ? UINT8_MAX : val;
         constexpr double HALF = 0.5;
-        constexpr uint8_t INDEX_TWO = 2;
-        if (std::fmod(std::floor(val), INDEX_TWO) == 0) {
-            val = (val - std::floor(val)) <= HALF ? std::floor(val) : std::round(val);
-        } else {
-            val = val == HALF ? 0 : std::round(val);
-        }
+        val = val == HALF ? 0 : std::round(val);
         res = static_cast<uint64_t>(val);
     }
     FastSetTypeData(byteBeginOffset, byteEndOffset, res);

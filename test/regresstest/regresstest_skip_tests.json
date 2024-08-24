@@ -3039,6 +3039,7 @@
         "mjsunit/es6/spread-array-pristine-prototype.js",
         "mjsunit/es6/iteration-semantics.js",
         "mjsunit/es6/set-iterator-4.js",
+        "mjsunit/es6/typedarray-fill.js",
         "mjsunit/es6/super-ic-opt-no-turboprop.js",
         "mjsunit/es6/array-species-modified.js",
         "mjsunit/es6/promise-resolve-thenable-job.js",
