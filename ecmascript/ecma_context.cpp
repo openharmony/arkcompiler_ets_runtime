@@ -392,7 +392,7 @@ Expected<JSTaggedValue, bool> EcmaContext::InvokeEcmaEntrypoint(const JSPandaFil
     Expected<JSTaggedValue, bool> result = CommonInvokeEcmaEntrypoint(jsPandaFile, entryPoint, func, executeFromJob);
 
 #ifdef PANDA_TARGET_OHOS
-    if (thread_->HasPendingException() && !executeFromJob) {
+    if (thread_->HasPendingException()) {
         HandleUncaughtException();
     }
 #endif

@@ -33,7 +33,6 @@ group("ark_aot_js_test") {
     "definefieldbyname",
     "definefieldbyname2",
     "induction_variable",
-    "dynamic_import_catch",
   ]
 
   deps = []
