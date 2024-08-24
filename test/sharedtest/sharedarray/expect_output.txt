@@ -225,3 +225,9 @@ defineProperty to array failed. err: BusinessError: Key out of length.
 defineProperty to array success
 defineProperty to array failed. err: BusinessError: Key out of length.
 defineProperty to array failed. err: BusinessError: Key out of length.
+Start Test SomeTest
+true
+false
+Start Test EveryTest
+true
+false

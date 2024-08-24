@@ -511,6 +511,122 @@ JSTaggedValue BuiltinsSharedArray::Entries(EcmaRuntimeCallInfo *argv)
     JSHandle<JSSharedArrayIterator> iter(factory->NewJSSharedArrayIterator(self, IterationKind::KEY_AND_VALUE));
     return iter.GetTaggedValue();
 }
+JSTaggedValue BuiltinsSharedArray::CheckElementForEvery(JSThread *thread,
+                                                        JSHandle<JSTaggedValue> &thisObjVal,
+                                                        JSHandle<JSTaggedValue> &callbackFnHandle,
+                                                        JSHandle<JSTaggedValue> &thisArgHandle,
+                                                        uint32_t &k)
+{
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+    const uint32_t argsLength = 3; // 3: «kValue, k, O»
+    JSTaggedValue callResult = GetTaggedBoolean(true);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    // Let len be ToLength(Get(O, "length")).
+    uint64_t len = static_cast<uint64_t>(ArrayHelper::GetArrayLength(thread, thisObjVal));
+    // ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    while (k < len) {
+        bool exists = JSTaggedValue::HasProperty(thread, thisObjVal, k);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (exists) {
+            JSHandle<JSTaggedValue> kValue = JSSharedArray::FastGetPropertyByValue(thread, thisObjVal, k);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            key.Update(JSTaggedValue(k));
+            EcmaRuntimeCallInfo *info =
+                EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisObjVal.GetTaggedValue());
+            callResult = JSFunction::Call(info);
+            RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+            if (!callResult.ToBoolean()) {
+                return GetTaggedBoolean(false);
+            }
+        }
+        k++;
+        thread->CheckSafepointIfSuspended();
+    }
+    return GetTaggedBoolean(true);
+}
+
+// Array.prototype.every ( callbackfn [ , thisArg] )
+JSTaggedValue BuiltinsSharedArray::Every(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Every);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsJSSharedArray()) {
+        auto error = ContainerError::BindError(thread, "The every method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // 2. ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+
+    // 3. If IsCallable(callbackfn) is false, throw a TypeError exception.
+    JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
+    if (!callbackFnHandle->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
+    }
+
+    // 4. If thisArg was supplied, let T be thisArg; else let T be undefined.
+    JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
+
+    // 5. Let k be 0.
+    // 6. Repeat, while k < len
+    //   a. Let Pk be ToString(k).
+    //   b. Let kPresent be HasProperty(O, Pk).
+    //   c. ReturnIfAbrupt(kPresent).
+    //   d. If kPresent is true, then
+    //     i. Let kValue be Get(O, Pk).
+    //     ii. ReturnIfAbrupt(kValue).
+    //     iii. Let testResult be ToBoolean(Call(callbackfn, T, «kValue, k, O»)).
+    //     iv. ReturnIfAbrupt(testResult).
+    //     v. If testResult is false, return false.
+    //   e. Increase k by 1.
+    uint32_t k = 0;
+    JSTaggedValue callResult = GetTaggedBoolean(true);
+    if (thisObjVal->IsStableJSArray(thread)) {
+        callResult = JSStableArray::HandleEveryOfStable(thread, thisObjHandle, callbackFnHandle, thisArgHandle, k);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (!callResult.ToBoolean()) {
+            return GetTaggedBoolean(false);
+        }
+    }
+    return CheckElementForEvery(thread, thisObjVal, callbackFnHandle, thisArgHandle, k);
+}
+
+// Array.prototype.some ( callbackfn [ , thisArg ] )
+JSTaggedValue BuiltinsSharedArray::Some(EcmaRuntimeCallInfo *argv)
+{
+    ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), SharedArray, Some);
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    // 1. Let O be ToObject(this value).
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
+    if (!thisHandle->IsJSSharedArray()) {
+        auto error = ContainerError::BindError(thread, "The some method cannot be bound.");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
+    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
+    // 2. ReturnIfAbrupt(O).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+
+    // 3. Let len be ToLength(Get(O, "length")).
+    int64_t len = ArrayHelper::GetArrayLength(thread, thisObjVal);
+    // 4. ReturnIfAbrupt(len).
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    return TypedArrayHelper::someCommon(argv, thisObjVal, len);
+}
 
 // 22.1.3.6 Array.prototype.fill (value [ , start [ , end ] ] )
 JSTaggedValue BuiltinsSharedArray::Fill(EcmaRuntimeCallInfo *argv)

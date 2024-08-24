@@ -332,6 +332,8 @@ namespace panda::ecmascript {
     V(SharedArray, With)                      \
     V(SharedArray, ShrinkTo)                  \
     V(SharedArray, ExtendTo)                  \
+    V(SharedArray, Every)                     \
+    V(SharedArray, Some)                      \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
     V(ArrayBuffer, Species)                   \

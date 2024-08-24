@@ -810,7 +810,32 @@ function RangeTest() {
         print('defineProperty to array failed. err: ' + err);
       }
 }
-  
+
+function isEven(num) {
+    return num % 2 === 0;
+}
+
+function SomeTest(): void {
+    print("Start Test SomeTest")
+    const numbers = new SendableArray<number>(1, 2, 3, 4, 5);
+
+    const hasEvenNumber = numbers.some(isEven); // 1: Whether there are even numbers in the array
+    print(hasEvenNumber); // should be true
+
+    const hasNegativeNumber = numbers.some(num => num < 0); // 2:  Whether there are negative numbers in the array
+    print(hasNegativeNumber); // should be false
+}
+
+function EveryTest(): void {
+    print("Start Test EveryTest")
+    const numbers = new SendableArray<number>(1, 2, 3, 4, 5);
+
+    const allPositive = numbers.every((num) => num > 0); // Check that all elements in the array are greater than 0
+    print(allPositive); // should be true
+
+    const allEven = numbers.every((num) => num % 2 === 0); // Check if all the elements in the array are even
+    print(allEven); // should be false
+}
 
 at()
 
@@ -885,3 +910,6 @@ forOf();
 sharedArrayConstructorTest()
 fromArrayConstructorTest()
 RangeTest()
+
+SomeTest()
+EveryTest()
