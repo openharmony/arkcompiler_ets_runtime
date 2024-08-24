@@ -185,6 +185,10 @@ uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread, vo
     } else {
         region = AllocateFort(objectSize, thread, pDesc);
     }
+    if (UNLIKELY(region == nullptr)) {
+        LOG_GC(ERROR) << "HugeMachineCodeSpace::Allocate: region is nullptr";
+        return 0;
+    }
     AddRegion(region);
     // It need to mark unpoison when huge object being allocated.
     ASAN_UNPOISON_MEMORY_REGION(reinterpret_cast<void *>(region->GetBegin()), objectSize);
