@@ -1334,6 +1334,15 @@ public:
     Local<SendableMapIteratorRef> GetValues(const EcmaVM *vm);
 };
 
+class ECMA_PUBLIC_API SendableSetRef : public ObjectRef {
+public:
+    static Local<SendableSetRef> New(const EcmaVM *vm);
+    uint32_t GetSize(const EcmaVM *vm);
+    uint32_t GetTotalElements(const EcmaVM *vm);
+    Local<JSValueRef> GetValue(const EcmaVM *vm, int entry);
+    void Add(const EcmaVM *vm, Local<JSValueRef> value);
+};
+
 class ECMA_PUBLIC_API BufferRef : public ObjectRef {
 public:
     static Local<BufferRef> New(const EcmaVM *vm, int32_t length);

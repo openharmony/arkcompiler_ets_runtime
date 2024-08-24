@@ -510,4 +510,38 @@ HWTEST_F_L0(JSNApiTests, NewObjectWithProperties)
     EXPECT_TRUE(str->IsStrictEquals(vm_, value));
 }
 
+HWTEST_F_L0(JSNApiTests, SendableMapRef_GetSize_GetTotalElements_Get_GetKey_GetValue)
+{
+    LocalScope scope(vm_);
+    Local<SendableMapRef> map = SendableMapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    map->Set(vm_, key, value);
+    Local<JSValueRef> res = map->Get(vm_, key);
+    ASSERT_EQ(res->ToString(vm_)->ToString(vm_), value->ToString(vm_)->ToString(vm_));
+    int32_t num = map->GetSize(vm_);
+    int32_t num1 = map->GetTotalElements(vm_);
+    ASSERT_EQ(num, 1);
+    ASSERT_EQ(num1, 1);
+    Local<JSValueRef> res1 = map->GetKey(vm_, 0);
+    ASSERT_EQ(res1->ToString(vm_)->ToString(vm_), key->ToString(vm_)->ToString(vm_));
+    Local<JSValueRef> res2 = map->GetValue(vm_, 0);
+    ASSERT_EQ(res2->ToString(vm_)->ToString(vm_), value->ToString(vm_)->ToString(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, SendableSetRef_GetSize_GetTotalElements_GetValue)
+{
+    LocalScope scope(vm_);
+    Local<SendableSetRef> set = SendableSetRef::New(vm_);
+    EXPECT_TRUE(set->IsSharedSet(vm_));
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, "TestValue");
+    set->Add(vm_, value);
+    int32_t num = set->GetSize(vm_);
+    int32_t num1 = set->GetTotalElements(vm_);
+    ASSERT_EQ(num, 1);
+    ASSERT_EQ(num1, 1);
+    Local<JSValueRef> res = set->GetValue(vm_, 0);
+    ASSERT_EQ(res->ToString(vm_)->ToString(vm_), value->ToString(vm_)->ToString(vm_));
+}
+
 }  // namespace panda::test
