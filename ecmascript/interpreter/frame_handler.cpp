@@ -25,12 +25,6 @@ FrameHandler::FrameHandler(const JSThread *thread)
     AdvanceToJSFrame();
 }
 
-FrameHandler::FrameHandler(const JSThread *thread, void *fp)
-    : sp_(reinterpret_cast<JSTaggedType *>(fp)), thread_(thread)
-{
-    AdvanceToJSFrame();
-}
-
 ARK_INLINE void FrameHandler::AdvanceToJSFrame()
 {
     if (!thread_->IsAsmInterpreter()) {
