@@ -247,7 +247,16 @@ bool JSAPIPlainArray::SetProperty(JSThread *thread, const JSHandle<JSAPIPlainArr
 {
     TaggedArray *keyArray = TaggedArray::Cast(obj->GetKeys().GetTaggedObject());
     uint32_t size = obj->GetLength();
-    int32_t index = obj->BinarySearch(keyArray, 0, size, key.GetTaggedValue().GetInt());
+    JSHandle<JSTaggedValue> indexKey = key;
+    if (indexKey->IsDouble()) {
+        // Math.floor(1) will produce TaggedDouble, we need to cast into TaggedInt
+        // For integer which is greater than INT32_MAX, it will remain TaggedDouble
+        indexKey = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(indexKey->GetDouble()));
+    }
+    if (!indexKey->IsInt()) {
+        return false;
+    }
+    int32_t index = obj->BinarySearch(keyArray, 0, size, indexKey->GetInt());
     if (index < 0 || index >= static_cast<int32_t>(size)) {
         return false;
     }

@@ -227,6 +227,12 @@ HWTEST_F_L0(JSAPIStackTest, SetProperty)
 {
     JSHandle<JSAPIStack> toor(thread, CreateStack());
     uint32_t elementsNums = 8;
+    {
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(-1));
+        JSHandle<JSTaggedValue> value(thread, JSTaggedValue(-1));
+        EXPECT_EQ(JSTaggedValue::Undefined(), // when length = -1, return Undefine() instead of assert error
+            toor->Set(thread, key->GetInt(), value.GetTaggedValue()));
+    }
     for (uint32_t i = 0; i < elementsNums; i++) {
         JSHandle<JSTaggedValue> value(thread, JSTaggedValue(i));
         JSAPIStack::Push(thread, toor, value);
