@@ -361,6 +361,7 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBuffer(JSThread *thread, JSTagged
 JSTaggedValue BuiltinsArrayBuffer::GetValueFromBuffer(JSThread *thread, uint32_t byteIndex, uint8_t *block,
                                                       DataViewType type, bool littleEndian)
 {
+    ASSERT(block != nullptr);
     switch (type) {
         case DataViewType::UINT8:
         case DataViewType::UINT8_CLAMPED: {
@@ -515,6 +516,7 @@ T BuiltinsArrayBuffer::LittleEndianToBigEndian64Bit(T liValue)
 template<typename T, BuiltinsArrayBuffer::NumberSize size>
 JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForInteger(uint8_t *block, uint32_t byteIndex, bool littleEndian)
 {
+    ASSERT(block != nullptr);
     ASSERT_PRINT(std::is_integral_v<T>, "T must be integral");
     ASSERT_PRINT(sizeof(T) == size, "Invalid number size");
     ASSERT_PRINT(sizeof(T) >= sizeof(uint16_t), "T must have a size more than uint8");
@@ -539,6 +541,7 @@ JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForInteger(uint8_t *block, 
 template<typename T, typename UnionType, BuiltinsArrayBuffer::NumberSize size>
 JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForFloat(uint8_t *block, uint32_t byteIndex, bool littleEndian)
 {
+    ASSERT(block != nullptr);
     ASSERT_PRINT((std::is_same_v<T, float> || std::is_same_v<T, double>), "T must be correct type");
     ASSERT_PRINT(sizeof(T) == size, "Invalid number size");
 
@@ -582,6 +585,7 @@ template<typename T, BuiltinsArrayBuffer::NumberSize size>
 JSTaggedValue BuiltinsArrayBuffer::GetValueFromBufferForBigInt(JSThread *thread, uint8_t *block,
                                                                uint32_t byteIndex, bool littleEndian)
 {
+    ASSERT(block != nullptr);
     ASSERT_PRINT((std::is_same_v<T, uint64_t> || std::is_same_v<T, int64_t>), "T must be uint64_t/int64_t");
     auto pTmp = *reinterpret_cast<uint64_t *>(block + byteIndex);
     if (!littleEndian) {

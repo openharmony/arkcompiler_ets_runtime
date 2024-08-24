@@ -138,6 +138,9 @@ void ConstantPool::MergeObjectLiteralHClassCache(EcmaVM *vm, const JSHandle<JSTa
         return;
     }
     auto aotHCInfoArray = TaggedArray::Cast(aotHCInfo);
+    if (aotHCInfoArray->GetLength() <= 0) {
+        return;
+    }
     auto last = aotHCInfoArray->Get(aotHCInfoArray->GetLength() - 1);
     if (!last.IsTaggedArray()) {
         return;

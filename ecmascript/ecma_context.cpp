@@ -75,10 +75,6 @@ EcmaContext *EcmaContext::Create(JSThread *thread)
 {
     LOG_ECMA(INFO) << "EcmaContext::Create";
     auto context = new EcmaContext(thread);
-    if (UNLIKELY(context == nullptr)) {
-        LOG_ECMA(ERROR) << "Failed to create ecma context";
-        return nullptr;
-    }
     return context;
 }
 
@@ -1028,7 +1024,7 @@ size_t EcmaContext::IterateHandle(const RootRangeVisitor &rangeVisitor)
 uintptr_t *EcmaContext::ExpandHandleStorage()
 {
     uintptr_t *result = nullptr;
-    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size() - 1);
+    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size()) - 1;
     if (currentHandleStorageIndex_ == lastIndex) {
         auto n = new std::array<JSTaggedType, NODE_BLOCK_SIZE>();
         handleStorageNodes_.push_back(n);
@@ -1048,7 +1044,7 @@ uintptr_t *EcmaContext::ExpandHandleStorage()
 void EcmaContext::ShrinkHandleStorage(int prevIndex)
 {
     currentHandleStorageIndex_ = prevIndex;
-    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size() - 1);
+    int32_t lastIndex = static_cast<int32_t>(handleStorageNodes_.size()) - 1;
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     uintptr_t size = ToUintPtr(handleScopeStorageEnd_) - ToUintPtr(handleScopeStorageNext_);
     if (currentHandleStorageIndex_ != -1) {
@@ -1080,7 +1076,7 @@ void EcmaContext::ShrinkHandleStorage(int prevIndex)
 uintptr_t *EcmaContext::ExpandPrimitiveStorage()
 {
     uintptr_t *result = nullptr;
-    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size() - 1);
+    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size()) - 1;
     if (currentPrimitiveStorageIndex_ == lastIndex) {
         auto n = new std::array<JSTaggedType, NODE_BLOCK_SIZE>();
         primitiveStorageNodes_.push_back(n);
@@ -1100,7 +1096,7 @@ uintptr_t *EcmaContext::ExpandPrimitiveStorage()
 void EcmaContext::ShrinkPrimitiveStorage(int prevIndex)
 {
     currentPrimitiveStorageIndex_ = prevIndex;
-    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size() - 1);
+    int32_t lastIndex = static_cast<int32_t>(primitiveStorageNodes_.size()) - 1;
 #if ECMASCRIPT_ENABLE_ZAP_MEM
     uintptr_t size = ToUintPtr(primitiveScopeStorageEnd_) - ToUintPtr(primitiveScopeStorageNext_);
     if (currentPrimitiveStorageIndex_ != -1) {

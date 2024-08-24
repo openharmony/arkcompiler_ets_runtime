@@ -897,6 +897,7 @@ void BigInt::RightShift(JSHandle<BigInt> bigint, JSHandle<BigInt> x, uint32_t di
         }
     } else {
         uint32_t carry = x->GetDigit(digitMove) >> bitsMove;
+        ASSERT(size > digitMove);
         uint32_t last = size - digitMove - 1;
         for (uint32_t i = 0; i < last; i++) {
             uint32_t value = x->GetDigit(i + digitMove + 1);
@@ -1612,6 +1613,7 @@ JSTaggedNumber BigInt::BigIntToNumber(JSHandle<BigInt> bigint)
         return JSTaggedNumber(0);
     }
     uint32_t bigintLen = bigint->GetLength();
+    ASSERT(bigintLen > 0);
     uint32_t BigintHead = bigint->GetDigit(bigintLen - 1);
     uint32_t leadingZeros = base::CountLeadingZeros(BigintHead);
     int bigintBitLen = static_cast<int>(bigintLen * BigInt::DATEBITS - leadingZeros);
