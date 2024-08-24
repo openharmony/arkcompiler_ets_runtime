@@ -171,10 +171,9 @@ RetCode CommandLine::HandleInputArgs(const std::deque<std::string_view> &args, O
             }
             continue;
         }
-
+#endif
         ++argsIndex;
         continue;
-#endif
     }
 
 #ifdef ARK_LITECG_DEBUG

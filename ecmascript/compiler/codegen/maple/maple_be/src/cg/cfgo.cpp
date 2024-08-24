@@ -88,7 +88,8 @@ bool ChainingPattern::DoSameThing(const BB &bb1, const Insn &last1, const BB &bb
 bool ChainingPattern::MergeFallthuBB(BB &curBB)
 {
     BB *sucBB = curBB.GetNext();
-    if (sucBB == nullptr || !cgFunc->GetTheCFG()->CanMerge(curBB, *sucBB)) {
+    if (sucBB == nullptr || IsLabelInSwitchTable(sucBB->GetLabIdx()) ||
+        !cgFunc->GetTheCFG()->CanMerge(curBB, *sucBB)) {
         return false;
     }
     if (curBB.IsAtomicBuiltInBB() || sucBB->IsAtomicBuiltInBB()) {
@@ -266,7 +267,8 @@ bool ChainingPattern::Optimize(BB &curBB)
         if (sucBB == nullptr) {
             return false;
         }
-        if (sucBB->GetKind() == BB::kBBGoto && cgFunc->GetTheCFG()->CanMerge(curBB, *sucBB)) {
+        if (sucBB->GetKind() == BB::kBBGoto && !IsLabelInSwitchTable(sucBB->GetLabIdx()) &&
+            cgFunc->GetTheCFG()->CanMerge(curBB, *sucBB)) {
             // BB9(curBB)   BB1
             //  \           /
             //   BB5(sucBB, gotoBB)
@@ -278,14 +280,15 @@ bool ChainingPattern::Optimize(BB &curBB)
         } else if (sucBB != &curBB && curBB.GetNext() != sucBB && sucBB != cgFunc->GetLastBB() &&
                    !sucBB->IsPredecessor(*sucBB->GetPrev()) &&
                    !(sucBB->GetNext() != nullptr && sucBB->GetNext()->IsPredecessor(*sucBB)) &&
-                   curBB.GetNext() != nullptr) {
+                   !IsLabelInSwitchTable(sucBB->GetLabIdx()) && curBB.GetNext() != nullptr) {
             return MoveSuccBBAsCurBBNext(curBB, *sucBB);
         }
         /*
          * Last goto instruction can be removed, if:
          *  1. The goto target is physically the next one to current BB.
          */
-        else if (sucBB == curBB.GetNext() || NoInsnBetween(curBB, *sucBB)) {
+        else if (sucBB == curBB.GetNext() ||
+                 (NoInsnBetween(curBB, *sucBB) && !IsLabelInSwitchTable(curBB.GetNext()->GetLabIdx()))) {
             return RemoveGotoInsn(curBB, *sucBB);
         }
         /*
@@ -300,7 +303,7 @@ bool ChainingPattern::Optimize(BB &curBB)
          *   insn_x0        sucBB:
          * sucBB:
          */
-        else if (sucBB != curBB.GetNext() && !curBB.IsSoloGoto() &&
+        else if (sucBB != curBB.GetNext() && !curBB.IsSoloGoto() && !IsLabelInSwitchTable(curBB.GetLabIdx()) &&
                  sucBB->GetKind() == BB::kBBReturn && sucBB->GetPreds().size() > 1 && sucBB->GetPrev() != nullptr &&
                  sucBB->IsPredecessor(*sucBB->GetPrev()) &&
                  (sucBB->GetPrev()->GetKind() == BB::kBBFallthru || sucBB->GetPrev()->GetKind() == BB::kBBGoto)) {
@@ -368,7 +371,8 @@ bool FlipBRPattern::Optimize(BB &curBB)
             auto it = ftBB->GetSuccsBegin();
             BB *tgtBB = *it;
             if (ftBB->GetPreds().size() == 1 &&
-                (ftBB->IsSoloGoto() || cgFunc->GetTheCFG()->CanMerge(*ftBB, *tgtBB))) {
+                (ftBB->IsSoloGoto() ||
+                 (!IsLabelInSwitchTable(tgtBB->GetLabIdx()) && cgFunc->GetTheCFG()->CanMerge(*ftBB, *tgtBB)))) {
                 curBBBranchInsn->SetMOP(cgFunc->GetCG()->GetTargetMd(mOp));
                 ASSERT_NOT_NULL(brInsn);
                 Operand &brTarget = brInsn->GetOperand(GetJumpTargetIdx(*brInsn));
@@ -407,7 +411,7 @@ bool FlipBRPattern::Optimize(BB &curBB)
                 ftBB->SetFirstInsn(nullptr);
                 ftBB->SetLastInsn(nullptr);
                 ftBB->SetKind(BB::kBBFallthru);
-            } else if (!tgtBB->IsPredecessor(*tgtBB->GetPrev())) {
+            } else if (!IsLabelInSwitchTable(ftBB->GetLabIdx()) && !tgtBB->IsPredecessor(*tgtBB->GetPrev())) {
                 curBBBranchInsn->SetMOP(cgFunc->GetCG()->GetTargetMd(mOp));
                 LabelIdx tgtLabIdx = ftBB->GetLabIdx();
                 if (ftBB->GetLabIdx() == MIRLabelTable::GetDummyLabel()) {
@@ -483,7 +487,7 @@ bool EmptyBBPattern::Optimize(BB &curBB)
     }
     /* Empty bb and it's not a cleanupBB/returnBB/lastBB/catchBB. */
     if (curBB.GetPrev() == nullptr || curBB.IsCleanup() || &curBB == cgFunc->GetLastBB() ||
-        curBB.GetKind() == BB::kBBReturn) {
+        curBB.GetKind() == BB::kBBReturn || IsLabelInSwitchTable(curBB.GetLabIdx())) {
         return false;
     }
     if (curBB.GetFirstInsn() == nullptr && curBB.GetLastInsn() == nullptr) {

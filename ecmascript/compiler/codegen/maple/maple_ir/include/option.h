@@ -20,10 +20,19 @@
 
 #include "mempool.h"
 #include "mempool_allocator.h"
-#include "parser_opt.h"
 #include "types_def.h"
 
 namespace maple {
+// option bits passed into ParseMIR
+enum ParserOptions : uint8 {
+    kInvalidOption = 0x0,
+    kWithDbgInfo = 0x1,  // collect dbginfo
+    kKeepFirst = 0x2,    // ignore second type def, not emit error
+    kWithProfileInfo = 0x4,
+    kParseOptFunc = 0x08,        // parse optimized function mpl file
+    kParseInlineFuncBody = 0x10  // parse to-be-inlined function bodies
+};
+
 class Options {
 public:
     static Options &GetInstance();

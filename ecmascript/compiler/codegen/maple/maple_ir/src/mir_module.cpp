@@ -14,11 +14,11 @@
  */
 
 #include "mir_module.h"
+#include <fstream>
 #include "mir_const.h"
 #include "mir_preg.h"
 #include "mir_function.h"
 #include "mir_builder.h"
-#include "debug_info.h"
 #include "intrinsics.h"
 
 namespace maple {
@@ -54,7 +54,6 @@ MIRModule::MIRModule(const std::string &fn)
     GlobalTables::GetGsymTable().SetModule(this);
     typeNameTab = memPool->New<MIRTypeNameTable>(memPoolAllocator);
     mirBuilder = memPool->New<MIRBuilder>(this);
-    dbgInfo = memPool->New<DebugInfo>(this);
     IntrinDesc::InitMIRModule(this);
 }
 

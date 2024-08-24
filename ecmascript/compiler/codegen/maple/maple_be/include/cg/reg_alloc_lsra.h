@@ -22,26 +22,6 @@
 
 namespace maplebe {
 class LSRALinearScanRegAllocator : public RegAllocator {
-    enum RegInCatch : uint8 {
-        /*
-         * RA do not want to allocate certain registers if a live interval is
-         * only inside of catch blocks.
-         */
-        kRegCatchNotInit = 0, /* unitialized state */
-        kRegNOtInCatch = 1,   /* interval is part or all outside of catch */
-        kRegAllInCatch = 2,   /* inteval is completely inside catch */
-    };
-
-    enum RegInCleanup : uint8 {
-        /* Similar to reg_in_catch_t */
-        kRegCleanupNotInit = 0,       /* unitialized state */
-        kRegAllInFirstbb = 1,         /* interval is all in the first bb */
-        kRegAllOutCleanup = 2,        /* interval is all outside of cleanup, must in normal bb, may in first bb. */
-        kRegInCleanupAndFirstbb = 3,  /* inteval is in cleanup and first bb. */
-        kRegInCleanupAndNormalbb = 4, /* inteval is in cleanup and non-first bb. */
-        kRegAllInCleanup = 5          /* inteval is inside cleanup, except for bb 1 */
-    };
-
     class LinearRange {
     public:
         LinearRange() = default;
@@ -69,20 +49,9 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         {
             end = position;
         }
-
-        uint32 GetEhStart() const
-        {
-            return ehStart;
-        }
-
-        void SetEhStart(uint32 position)
-        {
-            ehStart = position;
-        }
     private:
         uint32 start = 0;
         uint32 end = 0;
-        uint32 ehStart = 0;
     };
 
     class LiveInterval {
@@ -99,36 +68,12 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         void AddRange(uint32 from, uint32 to);
         void AddUsePos(uint32 pos);
 
-        LiveInterval *SplitAt(uint32 pos);
-
-        LiveInterval *SplitBetween(const BB &startBB, const BB &endBB);
-
         void InitRangeFinder()
         {
             rangeFinder = ranges.begin();
         }
 
         MapleVector<LinearRange>::iterator FindPosRange(uint32 pos);
-
-        uint32 GetSplitPos() const
-        {
-            return splitSafePos;
-        }
-
-        void SetSplitPos(uint32 position)
-        {
-            splitSafePos = position;
-        }
-
-        const Insn *GetIsCall() const
-        {
-            return isCall;
-        }
-
-        void SetIsCall(Insn &newIsCall)
-        {
-            isCall = &newIsCall;
-        }
 
         uint32 GetPhysUse() const
         {
@@ -200,31 +145,6 @@ class LSRALinearScanRegAllocator : public RegAllocator {
             regType = newRegType;
         }
 
-        uint32 GetFirstAcrossedCall() const
-        {
-            return firstAcrossedCall;
-        }
-
-        void SetFirstAcrossedCall(uint32 newFirstAcrossedCall)
-        {
-            firstAcrossedCall = newFirstAcrossedCall;
-        }
-
-        bool IsEndByCall() const
-        {
-            return endByCall;
-        }
-
-        void SetEndByMov(bool isEndByMov)
-        {
-            endByMov = isEndByMov;
-        }
-
-        bool IsEndByMov() const
-        {
-            return endByMov;
-        }
-
         void SetPrefer(uint32 preg)
         {
             prefer = preg;
@@ -265,41 +185,6 @@ class LSRALinearScanRegAllocator : public RegAllocator {
             multiUseInBB = newMultiUseInBB;
         }
 
-        bool IsThrowVal() const
-        {
-            return isThrowVal;
-        }
-
-        bool IsCallerSpilled() const
-        {
-            return isCallerSpilled;
-        }
-
-        void SetIsCallerSpilled(bool newIsCallerSpilled)
-        {
-            isCallerSpilled = newIsCallerSpilled;
-        }
-
-        bool IsMustAllocate() const
-        {
-            return mustAllocate;
-        }
-
-        void SetMustAllocate(bool newMustAllocate)
-        {
-            mustAllocate = newMustAllocate;
-        }
-
-        bool IsSplitForbidden() const
-        {
-            return splitForbidden;
-        }
-
-        void SetSplitForbid(bool isForbidden)
-        {
-            splitForbidden = isForbidden;
-        }
-
         uint32 GetRefCount() const
         {
             return refCount;
@@ -318,25 +203,6 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         const MapleVector<uint32> &GetUsePositions() const
         {
             return usePositions;
-        }
-
-        LiveInterval *GetSplitNext()
-        {
-            return splitNext;
-        }
-
-        const LiveInterval *GetSplitNext() const
-        {
-            return splitNext;
-        }
-
-        const LiveInterval *GetSplitParent() const
-        {
-            return splitParent;
-        }
-        void SetSplitParent(LiveInterval &li)
-        {
-            splitParent = &li;
         }
 
         float GetPriority() const
@@ -362,138 +228,6 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         size_t GetRangesSize() const
         {
             return ranges.size();
-        }
-
-        const LiveInterval *GetLiParent() const
-        {
-            return liveParent;
-        }
-
-        void SetLiParent(LiveInterval *newLiParent)
-        {
-            liveParent = newLiParent;
-        }
-
-        void SetLiParentChild(LiveInterval *child) const
-        {
-            liveParent->SetLiChild(child);
-        }
-
-        const LiveInterval *GetLiChild() const
-        {
-            return liveChild;
-        }
-
-        void SetLiChild(LiveInterval *newLiChild)
-        {
-            liveChild = newLiChild;
-        }
-
-        uint32 GetResultCount() const
-        {
-            return resultCount;
-        }
-
-        void SetResultCount(uint32 newResultCount)
-        {
-            resultCount = newResultCount;
-        }
-
-        void SetInCatchState()
-        {
-            /*
-             * Once in REG_NOT_IN_CATCH, it is irreversible since once an interval
-             * is not in a catch, it is not completely in a catch.
-             */
-            if (inCatchState == kRegNOtInCatch) {
-                return;
-            }
-            inCatchState = kRegAllInCatch;
-        }
-
-        void SetNotInCatchState()
-        {
-            inCatchState = kRegNOtInCatch;
-        }
-
-        bool IsAllInCatch() const
-        {
-            return (inCatchState == kRegAllInCatch);
-        }
-
-        void SetInCleanupState()
-        {
-            switch (inCleanUpState) {
-                case kRegCleanupNotInit:
-                    inCleanUpState = kRegAllInCleanup;
-                    break;
-                case kRegAllInFirstbb:
-                    inCleanUpState = kRegInCleanupAndFirstbb;
-                    break;
-                case kRegAllOutCleanup:
-                    inCleanUpState = kRegInCleanupAndNormalbb;
-                    break;
-                case kRegInCleanupAndFirstbb:
-                    break;
-                case kRegInCleanupAndNormalbb:
-                    break;
-                case kRegAllInCleanup:
-                    break;
-                default:
-                    DEBUG_ASSERT(false, "CG Internal error.");
-                    break;
-            }
-        }
-
-        void SetNotInCleanupState(bool isFirstBB)
-        {
-            switch (inCleanUpState) {
-                case kRegCleanupNotInit: {
-                    if (isFirstBB) {
-                        inCleanUpState = kRegAllInFirstbb;
-                    } else {
-                        inCleanUpState = kRegAllOutCleanup;
-                    }
-                    break;
-                }
-                case kRegAllInFirstbb: {
-                    if (!isFirstBB) {
-                        inCleanUpState = kRegAllOutCleanup;
-                    }
-                    break;
-                }
-                case kRegAllOutCleanup:
-                    break;
-                case kRegInCleanupAndFirstbb: {
-                    if (!isFirstBB) {
-                        inCleanUpState = kRegInCleanupAndNormalbb;
-                    }
-                    break;
-                }
-                case kRegInCleanupAndNormalbb:
-                    break;
-                case kRegAllInCleanup: {
-                    if (isFirstBB) {
-                        inCleanUpState = kRegInCleanupAndFirstbb;
-                    } else {
-                        inCleanUpState = kRegInCleanupAndNormalbb;
-                    }
-                    break;
-                }
-                default:
-                    DEBUG_ASSERT(false, "CG Internal error.");
-                    break;
-            }
-        }
-
-        bool IsAllInCleanupOrFirstBB() const
-        {
-            return (inCleanUpState == kRegAllInCleanup) || (inCleanUpState == kRegInCleanupAndFirstbb);
-        }
-
-        bool IsAllOutCleanup() const
-        {
-            return (inCleanUpState == kRegAllInFirstbb) || (inCleanUpState == kRegAllOutCleanup);
         }
 
         uint32 GetSpillSize() const
@@ -538,10 +272,8 @@ class LSRALinearScanRegAllocator : public RegAllocator {
     private:
         MemPool *memPool;
         MapleAllocator alloc;
-        Insn *isCall = nullptr;
         uint32 firstDef = 0;
         uint32 lastUse = 0;
-        uint32 splitSafePos = 0; /* splitNext's start positon */
         uint32 physUse = 0;
         uint32 regNO = 0;
         /* physical register, using cg defined reg based on R0/V0. */
@@ -551,86 +283,16 @@ class LSRALinearScanRegAllocator : public RegAllocator {
         uint32 spillSize = 0;               /* use min(maxDefSize, maxUseSize) */
         uint32 maxDefSize = 0;
         uint32 maxUseSize = 0;
-        uint32 firstAcrossedCall = 0;
-        bool endByCall = false;
-        bool endByMov = false; /* do move coalesce */
         uint32 prefer = 0;     /* prefer register */
         bool useBeforeDef = false;
         bool shouldSave = false;
         bool multiUseInBB = false; /* vreg has more than 1 use in bb */
-        bool isThrowVal = false;
-        bool isCallerSpilled = false; /* only for R0(R1?) which are used for explicit incoming value of throwval; */
-        bool mustAllocate = false;    /* The register cannot be spilled (clinit pair) */
-        bool splitForbidden = false;  /* can not split if true */
         uint32 refCount = 0;
         float priority = 0.0;
         MapleVector<LinearRange> ranges;
         MapleVector<LinearRange>::iterator rangeFinder;
         MapleVector<uint32> usePositions;
-        LiveInterval *splitNext = nullptr;         /* next split part */
-        LiveInterval *splitParent = nullptr;       /* parent split part */
-        LiveInterval *liveParent = nullptr;        /* Current li is in aother li's hole. */
-        LiveInterval *liveChild = nullptr;         /* Another li is in current li's hole. */
-        uint32 resultCount = 0;                    /* number of times this vreg has been written */
-        uint8 inCatchState = kRegCatchNotInit;     /* part or all of live interval is outside of catch blocks */
-        uint8 inCleanUpState = kRegCleanupNotInit; /* part or all of live interval is outside of cleanup blocks */
         MapleUnorderedSet<uint32> noReloadPos;       /* Should save reg need reload at this positions */
-    };
-
-    /* used to resolve Phi and Split */
-    class MoveInfo {
-    public:
-        MoveInfo() = default;
-        MoveInfo(LiveInterval &fromLi, LiveInterval &toLi, BB &bb, bool isEnd)
-            : fromLi(&fromLi), toLi(&toLi), bb(&bb), isEnd(isEnd)
-        {
-        }
-        ~MoveInfo() = default;
-
-        void Init(LiveInterval &firstLi, LiveInterval &secondLi, BB &targetBB, bool endMove)
-        {
-            fromLi = &firstLi;
-            toLi = &secondLi;
-            bb = &targetBB;
-            isEnd = endMove;
-        }
-
-        const LiveInterval *GetFromLi() const
-        {
-            return fromLi;
-        }
-
-        const LiveInterval *GetToLi() const
-        {
-            return toLi;
-        }
-
-        BB *GetBB()
-        {
-            return bb;
-        }
-
-        const BB *GetBB() const
-        {
-            return bb;
-        }
-
-        bool IsEndMove() const
-        {
-            return isEnd;
-        }
-
-        void Dump() const
-        {
-            LogInfo::MapleLogger() << "from:R" << fromLi->GetRegNO() << " to:R" << toLi->GetRegNO() << " in "
-                                   << bb->GetId() << "\n";
-        }
-
-    private:
-        LiveInterval *fromLi = nullptr;
-        LiveInterval *toLi = nullptr;
-        BB *bb = nullptr;
-        bool isEnd = true;
     };
 
     struct ActiveCmp {
@@ -714,9 +376,6 @@ public:
           bfs(bbSort),
           regUsedInBB(alloc.Adapter()),
           liQue(alloc.Adapter()),
-          splitPosMap(alloc.Adapter()),
-          splitInsnMap(alloc.Adapter()),
-          moveInfoVec(alloc.Adapter()),
           derivedRef2Base(alloc.Adapter())
     {
         for (uint32 i = 0; i < regInfo->GetIntRegs().size(); ++i) {
@@ -731,22 +390,18 @@ public:
     ~LSRALinearScanRegAllocator() override = default;
 
     bool AllocateRegisters() override;
-    bool CheckForReg(Operand &opnd, const Insn &insn, const LiveInterval &li, regno_t regNO, bool isDef) const;
     void PrintRegSet(const MapleSet<uint32> &set, const std::string &str) const;
     void PrintLiveInterval(const LiveInterval &li, const std::string &str) const;
     void PrintLiveRanges(const LiveInterval &li) const;
     void PrintAllLiveRanges() const;
-    void PrintLiveRangesGraph() const;
     void SpillStackMapInfo();
     void PrintParamQueue(const std::string &str);
     void PrintCallQueue(const std::string &str) const;
     void PrintActiveList(const std::string &str, uint32 len = 0) const;
-    void PrintActiveListSimple() const;
     void PrintLiveIntervals() const;
     void DebugCheckActiveList() const;
     void InitFreeRegPool();
     void RecordPhysRegs(const RegOperand &regOpnd, uint32 insnNum, bool isDef);
-    void UpdateLiveIntervalState(const BB &bb, LiveInterval &li) const;
     void UpdateRegUsedInfo(LiveInterval &li, regno_t regNO);
     void SetupLiveInterval(Operand &opnd, Insn &insn, bool isDef, uint32 &nUses, uint32 regSize);
     void UpdateLiveIntervalByLiveIn(const BB &bb, uint32 insnNum);
@@ -790,7 +445,6 @@ public:
     void CollectStackMapInfo();
     void ComputeLiveIntervalForCall(Insn &insn);
 private:
-    uint32 FindAvailablePhyRegByFastAlloc(LiveInterval &li);
     bool NeedSaveAcrossCall(LiveInterval &li);
     uint32 FindAvailablePhyRegAcrossCall(LiveInterval &li, bool isIntReg);
     uint32 FindAvailablePhyReg(LiveInterval &li, bool isIntReg);
@@ -837,7 +491,6 @@ private:
     uint32 maxInsnNum = 0;
     regno_t minVregNum = 0xFFFFFFFF;
     regno_t maxVregNum = 0;
-    bool fastAlloc = false;
     bool spillAll = false;
     bool needExtraSpillReg = false;
     uint64 spillCount = 0;
@@ -845,9 +498,6 @@ private:
     uint64 callerSaveSpillCount = 0;
     uint64 callerSaveReloadCount = 0;
     MapleQueue<LiveInterval *> liQue;
-    MapleMultiMap<uint32, LiveInterval *> splitPosMap; /* LiveInterval split position */
-    MapleUnorderedMap<uint32, Insn *> splitInsnMap;    /* split insn */
-    MapleVector<MoveInfo> moveInfoVec;                 /* insertion of move(PHI&Split) is based on this */
     MapleUnorderedMap<regno_t, RegOperand*> derivedRef2Base;
 };
 } /* namespace maplebe */

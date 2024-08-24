@@ -83,8 +83,6 @@ public:
 
     virtual void GenerateReturnBBDefUse(BB &bb) const = 0;
     virtual void ProcessCallInsnParam(BB &bb, const Insn &insn) const = 0;
-    virtual bool CleanupBBIgnoreReg(regno_t reg) = 0;
-
 protected:
     int iteration = 0;
     CGFunc *cgFunc;

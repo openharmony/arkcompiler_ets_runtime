@@ -20,11 +20,11 @@
 namespace maplebe {
 namespace {
 constexpr uint32 kSpilled = 1;
-constexpr uint32 kMinLiveIntervalLength = 20;
-constexpr uint32 kPrintedActiveListLength = 10;
 /* Here, kLoopWeight is a fine-tuned empirical parameter */
 constexpr uint32 kLoopWeight = 4;
 }  // namespace
+#ifdef ARK_LITECG_DEBUG
+constexpr uint32 kPrintedActiveListLength = 10;
 
 /*
  * This LSRA implementation is an interpretation of the [Poletto97] paper.
@@ -46,28 +46,6 @@ void LSRALinearScanRegAllocator::PrintRegSet(const MapleSet<uint32> &set, const 
     LogInfo::MapleLogger() << "\n";
 }
 
-bool LSRALinearScanRegAllocator::CheckForReg(Operand &opnd, const Insn &insn, const LiveInterval &li, regno_t regNO,
-                                             bool isDef) const
-{
-    if (!opnd.IsRegister()) {
-        return false;
-    }
-    auto &regOpnd = static_cast<RegOperand &>(opnd);
-    if (regOpnd.GetRegisterType() == kRegTyCc || regOpnd.GetRegisterType() == kRegTyVary) {
-        return false;
-    }
-    if (regOpnd.GetRegisterNumber() == regNO) {
-        LogInfo::MapleLogger() << "set object circle at " << insn.GetId() << "," << li.GetRegNO()
-                               << " size 5 fillcolor rgb \"";
-        if (isDef) {
-            LogInfo::MapleLogger() << "black\"\n";
-        } else {
-            LogInfo::MapleLogger() << "orange\"\n";
-        }
-    }
-    return true;
-}
-
 void LSRALinearScanRegAllocator::PrintLiveRanges(const LiveInterval &li) const
 {
     if (li.GetAssignedReg() != 0) {
@@ -85,10 +63,6 @@ void LSRALinearScanRegAllocator::PrintLiveRanges(const LiveInterval &li) const
         LogInfo::MapleLogger() << "[" << range.GetStart() << ", " << range.GetEnd() << "]"
                                << " ";
     }
-    if (li.GetSplitNext() != nullptr) {
-        LogInfo::MapleLogger() << "### SPLIT ### ";
-        PrintLiveRanges(*li.GetSplitNext());
-    }
     LogInfo::MapleLogger() << "\n";
 }
 
@@ -100,126 +74,10 @@ void LSRALinearScanRegAllocator::PrintAllLiveRanges() const
             continue;
         }
         LogInfo::MapleLogger() << "vreg" << li->GetRegNO() << ": ";
-        if (li->GetSplitParent() != nullptr) {
-            PrintLiveRanges(*li->GetSplitParent());
-        } else {
-            PrintLiveRanges(*li);
-        }
+        PrintLiveRanges(*li);
     }
 }
-
-/*
- * This is a support routine to compute the overlapping live intervals in graph form.
- * The output file can be viewed by gnuplot.
- * Despite the function name of LiveRanges, it is using live intervals.
- */
-void LSRALinearScanRegAllocator::PrintLiveRangesGraph() const
-{
-    /* ================= Output to plot.pg =============== */
-    std::ofstream out("plot.pg");
-    CHECK_FATAL(out.is_open(), "Failed to open output file: plot.pg");
-    std::streambuf *coutBuf = LogInfo::MapleLogger().rdbuf(); /* old buf */
-    LogInfo::MapleLogger().rdbuf(out.rdbuf());                /* new buf */
-
-    LogInfo::MapleLogger() << "#!/usr/bin/gnuplot\n";
-    LogInfo::MapleLogger() << "#maxInsnNum " << maxInsnNum << "\n";
-    LogInfo::MapleLogger() << "#minVregNum " << minVregNum << "\n";
-    LogInfo::MapleLogger() << "#maxVregNum " << maxVregNum << "\n";
-    LogInfo::MapleLogger() << "reset\nset terminal png\n";
-    LogInfo::MapleLogger() << "set xrange [1:" << maxInsnNum << "]\n";
-    LogInfo::MapleLogger() << "set grid\nset style data linespoints\n";
-    LogInfo::MapleLogger() << "set datafile missing '0'\n";
-    std::vector<std::vector<uint32>> graph(maxVregNum, std::vector<uint32>(maxInsnNum, 0));
-
-    uint32 minY = 0xFFFFFFFF;
-    uint32 maxY = 0;
-    for (auto *li : liveIntervalsArray) {
-        if (li == nullptr || li->GetRegNO() == 0) {
-            continue;
-        }
-        uint32 regNO = li->GetRegNO();
-        if ((li->GetLastUse() - li->GetFirstDef()) < kMinLiveIntervalLength) {
-            continue;
-        }
-        if (regNO < minY) {
-            minY = regNO;
-        }
-        if (regNO > maxY) {
-            maxY = regNO;
-        }
-        uint32 n;
-        CHECK_FATAL(li->GetFirstDef() > 0, "must not be zero");
-        for (n = 0; n <= (li->GetFirstDef() - 1); ++n) {
-            graph[regNO - minVregNum][n] = 0;
-        }
-        if (li->GetLastUse() >= n) {
-            for (; n <= (li->GetLastUse() - 1); ++n) {
-                graph[regNO - minVregNum][n] = regNO;
-            }
-        }
-        for (; n < maxInsnNum; ++n) {
-            graph[regNO - minVregNum][n] = 0;
-        }
-
-        for (auto *bb : bfs->sortedBBs) {
-            FOR_BB_INSNS(insn, bb)
-            {
-                const InsnDesc *md = insn->GetDesc();
-                uint32 opndNum = insn->GetOperandSize();
-                for (uint32 iSecond = 0; iSecond < opndNum; ++iSecond) {
-                    Operand &opnd = insn->GetOperand(iSecond);
-                    const OpndDesc *regProp = md->GetOpndDes(iSecond);
-                    DEBUG_ASSERT(regProp != nullptr,
-                                 "pointer is null in LSRALinearScanRegAllocator::PrintLiveRangesGraph");
-                    bool isDef = regProp->IsRegDef();
-                    if (opnd.IsList()) {
-                        auto &listOpnd = static_cast<ListOperand &>(opnd);
-                        for (auto op : listOpnd.GetOperands()) {
-                            (void)CheckForReg(*op, *insn, *li, regNO, isDef);
-                        }
-                    } else if (opnd.IsMemoryAccessOperand()) {
-                        auto &memOpnd = static_cast<MemOperand &>(opnd);
-                        Operand *base = memOpnd.GetBaseRegister();
-                        Operand *offset = memOpnd.GetIndexRegister();
-                        if (base != nullptr && !CheckForReg(*base, *insn, *li, regNO, false)) {
-                            continue;
-                        }
-                        if (offset != nullptr && !CheckForReg(*offset, *insn, *li, regNO, false)) {
-                            continue;
-                        }
-                    } else {
-                        (void)CheckForReg(opnd, *insn, *li, regNO, isDef);
-                    }
-                }
-            }
-        }
-    }
-    LogInfo::MapleLogger() << "set yrange [" << (minY - 1) << ":" << (maxY + 1) << "]\n";
-
-    LogInfo::MapleLogger() << "plot \"plot.dat\" using 1:2 title \"R" << minVregNum << "\"";
-    for (uint32 i = 1; i < ((maxVregNum - minVregNum) + 1); ++i) {
-        LogInfo::MapleLogger() << ", \\\n\t\"\" using 1:" << (i + kDivide2) << " title \"R" << (minVregNum + i) << "\"";
-    }
-    LogInfo::MapleLogger() << ";\n";
-
-    /* ================= Output to plot.dat =============== */
-    std::ofstream out2("plot.dat");
-    CHECK_FATAL(out2.is_open(), "Failed to open output file: plot.dat");
-    LogInfo::MapleLogger().rdbuf(out2.rdbuf()); /* new buf */
-    LogInfo::MapleLogger() << "##reg";
-    for (uint32 i = minVregNum; i <= maxVregNum; ++i) {
-        LogInfo::MapleLogger() << " R" << i;
-    }
-    LogInfo::MapleLogger() << "\n";
-    for (uint32 n = 0; n < maxInsnNum; ++n) {
-        LogInfo::MapleLogger() << (n + 1);
-        for (uint32 i = minVregNum; i <= maxVregNum; ++i) {
-            LogInfo::MapleLogger() << " " << graph[i - minVregNum][n];
-        }
-        LogInfo::MapleLogger() << "\n";
-    }
-    LogInfo::MapleLogger().rdbuf(coutBuf);
-}
+#endif
 
 void LSRALinearScanRegAllocator::SpillStackMapInfo()
 {
@@ -236,9 +94,11 @@ void LSRALinearScanRegAllocator::SpillStackMapInfo()
             }
             auto *li = liveIntervalsArray[(static_cast<const RegOperand *>(opnd))->GetRegisterNumber()];
             if (li != nullptr) {
+                #ifdef ARK_LITECG_DEBUG
                 if (needDump) {
                     PrintLiveInterval(*li, "Spill Deopt:");
                 }
+                #endif
                 li->SetStackSlot(kSpilled);
                 li->SetShouldSave(false);
             }
@@ -256,32 +116,33 @@ void LSRALinearScanRegAllocator::SpillStackMapInfo()
             if (itr != derivedRef2Base.end()) {
                 auto baseRegNum = (itr->second)->GetRegisterNumber();
                 DEBUG_ASSERT(liveIntervalsArray[baseRegNum] != nullptr, "empty li");
+                #ifdef ARK_LITECG_DEBUG
                 if (needDump) {
                     PrintLiveInterval(*liveIntervalsArray[baseRegNum], "Spill StackMap derivedRef:");
                 }
+                #endif
                 liveIntervalsArray[baseRegNum]->SetStackSlot(kSpilled);
                 liveIntervalsArray[baseRegNum]->SetShouldSave(false);
             }
+            #ifdef ARK_LITECG_DEBUG
             if (needDump) {
                 PrintLiveInterval(*li, "Spill StackMap:");
             }
+            #endif
             li->SetStackSlot(kSpilled);
             li->SetShouldSave(false);
         }
     }
 }
 
+#ifdef ARK_LITECG_DEBUG
 void LSRALinearScanRegAllocator::PrintLiveInterval(const LiveInterval &li, const std::string &str) const
 {
     LogInfo::MapleLogger() << str << "\n";
-    if (li.GetIsCall() != nullptr) {
-        LogInfo::MapleLogger() << " firstDef " << li.GetFirstDef();
-        LogInfo::MapleLogger() << " isCall";
-    } else if (li.GetPhysUse() > 0) {
+    if (li.GetPhysUse() > 0) {
         LogInfo::MapleLogger() << "\tregNO " << li.GetRegNO();
         LogInfo::MapleLogger() << " firstDef " << li.GetFirstDef();
         LogInfo::MapleLogger() << " physUse " << li.GetPhysUse();
-        LogInfo::MapleLogger() << " endByCall " << li.IsEndByCall();
     } else {
         LogInfo::MapleLogger() << "\tregNO " << li.GetRegNO();
         LogInfo::MapleLogger() << " firstDef " << li.GetFirstDef();
@@ -336,21 +197,6 @@ void LSRALinearScanRegAllocator::PrintActiveList(const std::string &str, uint32 
     }
 }
 
-void LSRALinearScanRegAllocator::PrintActiveListSimple() const
-{
-    for (const auto *li : active) {
-        uint32 assignedReg = li->GetAssignedReg();
-        LogInfo::MapleLogger() << li->GetRegNO() << "(" << assignedReg << ", ";
-        if (li->GetPhysUse() > 0) {
-            LogInfo::MapleLogger() << "p) ";
-        } else {
-            LogInfo::MapleLogger() << li->GetFirstAcrossedCall();
-        }
-        LogInfo::MapleLogger() << "<" << li->GetFirstDef() << "," << li->GetLastUse() << ">) ";
-    }
-    LogInfo::MapleLogger() << "\n";
-}
-
 void LSRALinearScanRegAllocator::PrintLiveIntervals() const
 {
     /* vreg LogInfo */
@@ -401,6 +247,7 @@ void LSRALinearScanRegAllocator::DebugCheckActiveList() const
         }
     }
 }
+#endif
 
 /*
  * Prepare the free physical register pool for allocation.
@@ -451,6 +298,7 @@ void LSRALinearScanRegAllocator::InitFreeRegPool()
     }
     DEBUG_ASSERT(intSpillRegSet.size() >= 2U, "too few spill regs");
 
+#ifdef ARK_LITECG_DEBUG
     if (needDump) {
         PrintRegSet(intCallerRegSet, "ALLOCATABLE_INT_CALLER");
         PrintRegSet(intCalleeRegSet, "ALLOCATABLE_INT_CALLEE");
@@ -477,6 +325,7 @@ void LSRALinearScanRegAllocator::InitFreeRegPool()
         LogInfo::MapleLogger() << "FP_PARAM_FP_MASK " << fpParamMask << "\n";
         LogInfo::MapleLogger() << std::dec;
     }
+#endif
 }
 
 void LSRALinearScanRegAllocator::RecordPhysRegs(const RegOperand &regOpnd, uint32 insnNum, bool isDef)
@@ -516,21 +365,6 @@ void LSRALinearScanRegAllocator::RecordPhysRegs(const RegOperand &regOpnd, uint3
             LiveInterval *li = fpParamQueue[regInfo->GetFpParamRegIdx(regNO)].back();
             li->SetPhysUse(insnNum);
         }
-    }
-}
-
-void LSRALinearScanRegAllocator::UpdateLiveIntervalState(const BB &bb, LiveInterval &li) const
-{
-    if (bb.IsCatch()) {
-        li.SetInCatchState();
-    } else {
-        li.SetNotInCatchState();
-    }
-
-    if (bb.GetInternalFlag1() != 0) {
-        li.SetInCleanupState();
-    } else {
-        li.SetNotInCleanupState(bb.GetId() == 1);
     }
 }
 
@@ -592,11 +426,6 @@ void LSRALinearScanRegAllocator::SetupLiveInterval(Operand &opnd, Insn &insn, bo
                 li->SetLastUse(insnNum + 1);
             }
         }
-        /*
-         * try-catch related
-         *   Not set when extending live interval with bb's livein in ComputeLiveInterval.
-         */
-        li->SetResultCount(li->GetResultCount() + 1);
         // add range
         li->AddRange(insn.GetId(), insn.GetId());
     } else {
@@ -618,7 +447,6 @@ void LSRALinearScanRegAllocator::SetupLiveInterval(Operand &opnd, Insn &insn, bo
             li->GetRanges().back().SetEnd(insn.GetId());
         }
     }
-    UpdateLiveIntervalState(*curBB, *li);
     if (isDef) {
         li->SetMaxDefSize(std::max(regSize, li->GetMaxDefSize()));
     } else {
@@ -729,7 +557,6 @@ void LSRALinearScanRegAllocator::UpdateLiveIntervalByLiveIn(const BB &bb, uint32
             LogInfo::MapleLogger() << "WARNING: " << regNO << " use before def in bb " << bb.GetId() << " : "
                                    << cgFunc->GetName() << "\n";
         }
-        UpdateLiveIntervalState(bb, *li);
     }
 }
 
@@ -754,7 +581,6 @@ void LSRALinearScanRegAllocator::UpdateParamLiveIntervalByLiveIn(const BB &bb, u
             li->SetRegType(kRegTyFloat);
             fpParamQueue[regInfo->GetFpParamRegIdx(regNO)].push_back(li);
         }
-        UpdateLiveIntervalState(bb, *li);
     }
 }
 
@@ -763,6 +589,7 @@ void LSRALinearScanRegAllocator::ComputeLiveIn(BB &bb, uint32 insnNum)
     if (bb.IsEmpty() && bb.GetId() != 1) {
         return;
     }
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "bb(" << bb.GetId() << ")LIVEOUT:";
         for (const auto &liveOutRegNO : bb.GetLiveOutRegNO()) {
@@ -775,6 +602,7 @@ void LSRALinearScanRegAllocator::ComputeLiveIn(BB &bb, uint32 insnNum)
         }
         LogInfo::MapleLogger() << ".\n";
     }
+    #endif
 
     UpdateLiveIntervalByLiveIn(bb, insnNum);
 
@@ -791,7 +619,6 @@ void LSRALinearScanRegAllocator::ComputeLiveOut(BB &bb, uint32 insnNum)
         LiveInterval *li = liveIntervalsArray[regNO];
         if (li != nullptr && !bb.IsEmpty()) {
             li->SetLastUse(bb.GetLastInsn()->GetId());
-            UpdateLiveIntervalState(bb, *li);
 
             // update live interval range
             if (li->GetRanges().empty()) {
@@ -1022,7 +849,7 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
         if (li == nullptr || li->GetRegNO() == 0) {
             continue;
         }
-        if (li->GetIsCall() != nullptr || (li->GetPhysUse() > 0)) {
+        if (li->GetPhysUse() > 0) {
             continue;
         }
         if (li->GetLastUse() > li->GetFirstDef()) {
@@ -1038,10 +865,11 @@ void LSRALinearScanRegAllocator::ComputeLiveInterval()
     for (const auto *lp : loopInfo.GetLoops()) {
         ComputeLoopLiveIntervalPriority(*lp);
     }
-
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         PrintLiveIntervals();
     }
+    #endif
 }
 
 /* Calculate the weight of a live interval for pre-spill and flexible spill */
@@ -1089,20 +917,24 @@ void LSRALinearScanRegAllocator::LiveIntervalAnalysis()
 
             /* 2 get interfere info, and analysis */
             uint32 interNum = active.size();
+            #ifdef ARK_LITECG_DEBUG
             if (needDump) {
                 LogInfo::MapleLogger() << "In insn " << insn->GetId() << ", " << interNum
                                        << " overlap live intervals.\n";
                 LogInfo::MapleLogger() << "\n";
             }
+            #endif
 
             /* 2.2 interfere with each other, analysis which to spill */
             while (interNum > CGOptions::GetOverlapNum()) {
                 LiveInterval *lowestLi = nullptr;
                 FindLowestPrioInActive(lowestLi);
                 if (lowestLi != nullptr) {
+                    #ifdef ARK_LITECG_DEBUG
                     if (needDump) {
                         PrintLiveInterval(*lowestLi, "Pre spilled: ");
                     }
+                    #endif
                     lowestLi->SetStackSlot(kSpilled);
                     lowestLi->SetShouldSave(false);
                     active.erase(itFinded);
@@ -1126,9 +958,11 @@ void LSRALinearScanRegAllocator::UpdateCallQueueAtRetirement(uint32 insnID)
      * then it is possible to retire this live interval and
      * reclaim the physical register associated with it.
      */
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "RetireActiveByInsn instr_num " << insnID << "\n";
     }
+    #endif
     /* Retire invalidated call from call queue */
     while (!callQueue.empty() && callQueue.front() <= insnID) {
         callQueue.pop_front();
@@ -1140,7 +974,7 @@ void LSRALinearScanRegAllocator::UpdateActiveAllocateInfo(const LiveInterval &li
 {
     uint32 start = li.GetFirstDef();
     uint32 end = li.GetLastUse();
-    if (li.GetSplitParent() != nullptr || li.IsUseBeforeDef()) {
+    if (li.IsUseBeforeDef()) {
         --start;
     }
     for (auto *activeLi : active) {
@@ -1148,18 +982,7 @@ void LSRALinearScanRegAllocator::UpdateActiveAllocateInfo(const LiveInterval &li
         uint32 rangeStartPos;
         auto posRange = activeLi->FindPosRange(start);
         if (posRange == activeLi->GetRanges().end()) {
-            /* handle splited li */
-            uint32 splitSafePos = activeLi->GetSplitPos();
-            if (splitSafePos == li.GetFirstDef() && (li.GetSplitParent() != nullptr || li.IsUseBeforeDef())) {
-                rangeStartPos = 0;
-            } else if (splitSafePos > li.GetFirstDef()) {
-                DEBUG_ASSERT(splitSafePos > 0, "must not be zero");
-                rangeStartPos = splitSafePos - 1;
-            } else {
-                rangeStartPos = UINT32_MAX;
-            }
-        } else if (posRange->GetEhStart() != 0 && posRange->GetEhStart() < posRange->GetStart()) {
-            rangeStartPos = posRange->GetEhStart();
+            rangeStartPos = UINT32_MAX;
         } else {
             rangeStartPos = posRange->GetStart();
         }
@@ -1187,9 +1010,6 @@ void LSRALinearScanRegAllocator::UpdateParamAllocateInfo(const LiveInterval &li)
     uint32 end = li.GetLastUse();
     for (uint32 i = 0; i < paramNum; ++i) {
         while (!paramQueue[i].empty() && paramQueue[i].front()->GetPhysUse() <= start) {
-            if (paramQueue[i].front()->GetPhysUse() == start && li.GetSplitParent() != nullptr) {
-                break;
-            }
             paramQueue[i].pop_front();
         }
         if (paramQueue[i].empty()) {
@@ -1221,30 +1041,18 @@ void LSRALinearScanRegAllocator::RetireActive(LiveInterval &li, uint32 insnID)
             ++it;
             continue;
         }
-        if (activeLi->GetLastUse() == insnID) {
-            if (li.GetSplitParent() != nullptr || activeLi->GetSplitNext() != nullptr) {
-                ++it;
-                continue;
-            }
-            if (activeLi->IsEndByMov() && activeLi->GetRegType() == li.GetRegType()) {
-                li.SetPrefer(activeLi->GetAssignedReg());
-            }
-        }
-        /* reserve split li in active */
-        if (activeLi->GetSplitPos() >= insnID) {
-            ++it;
-            continue;
-        }
         /*
          * live interval ended for this reg in active
          * release physical reg assigned to free reg pool
          */
+        #ifdef ARK_LITECG_DEBUG
         if (needDump) {
             LogInfo::MapleLogger() << "Removing "
                                    << "(" << activeLi->GetAssignedReg() << ")"
                                    << "from regmask\n";
             PrintLiveInterval(*activeLi, "\tRemoving virt_reg li\n");
         }
+        #endif
         it = active.erase(it);
     }
 }
@@ -1277,27 +1085,6 @@ uint32 LSRALinearScanRegAllocator::GetRegFromMask(uint32 mask, regno_t offset, c
     return bestReg;
 }
 
-uint32 LSRALinearScanRegAllocator::FindAvailablePhyRegByFastAlloc(LiveInterval &li)
-{
-    uint32 regNO = 0;
-    if (li.GetRegType() == kRegTyInt) {
-        regNO = GetRegFromMask(intCalleeMask, firstIntReg, li);
-        li.SetShouldSave(false);
-        if (regNO == 0 || freeUntilPos[regNO] < li.GetLastUse()) {
-            regNO = GetRegFromMask(intCallerMask, firstIntReg, li);
-            li.SetShouldSave(true);
-        }
-    } else if (li.GetRegType() == kRegTyFloat) {
-        regNO = GetRegFromMask(fpCalleeMask, firstFpReg, li);
-        li.SetShouldSave(false);
-        if (regNO == 0 || freeUntilPos[regNO] < li.GetLastUse()) {
-            regNO = GetRegFromMask(fpCallerMask, firstFpReg, li);
-            li.SetShouldSave(true);
-        }
-    }
-    return regNO;
-}
-
 /* Determine if live interval crosses the call */
 bool LSRALinearScanRegAllocator::NeedSaveAcrossCall(LiveInterval &li)
 {
@@ -1311,12 +1098,7 @@ bool LSRALinearScanRegAllocator::NeedSaveAcrossCall(LiveInterval &li)
         }
         /* Need to spill/fill around this call */
         for (auto range : li.GetRanges()) {
-            uint32 start;
-            if (range.GetEhStart() != 0 && range.GetEhStart() < range.GetStart()) {
-                start = range.GetEhStart();
-            } else {
-                start = range.GetStart();
-            }
+            uint32 start = range.GetStart();
             if (callInsnID >= start && callInsnID < range.GetEnd()) {
                 saveAcrossCall = true;
                 break;
@@ -1326,6 +1108,7 @@ bool LSRALinearScanRegAllocator::NeedSaveAcrossCall(LiveInterval &li)
             break;
         }
     }
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         if (saveAcrossCall) {
             LogInfo::MapleLogger() << "\t\tlive interval crosses a call\n";
@@ -1333,15 +1116,13 @@ bool LSRALinearScanRegAllocator::NeedSaveAcrossCall(LiveInterval &li)
             LogInfo::MapleLogger() << "\t\tlive interval does not cross a call\n";
         }
     }
+    #endif
     return saveAcrossCall;
 }
 
 /* Return a phys register number for the live interval. */
 uint32 LSRALinearScanRegAllocator::FindAvailablePhyReg(LiveInterval &li)
 {
-    if (fastAlloc) {
-        return FindAvailablePhyRegByFastAlloc(li);
-    }
     uint32 regNO = 0;
     if (li.GetRegType() == kRegTyInt) {
         regNO = FindAvailablePhyReg(li, true);
@@ -1364,10 +1145,12 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
     auto regType = rli->GetRegType();
 
     if (!isDef && rli->IsNoNeedReloadPosition(insn.GetId())) {
+        #ifdef ARK_LITECG_DEBUG
         if (needDump) {
             LogInfo::MapleLogger() << "InsertCallerSave R" << rli->GetRegNO() << " assigned " << rli->GetAssignedReg()
                                    << " skipping\n";
         }
+        #endif
         return;
     }
 
@@ -1384,15 +1167,11 @@ void LSRALinearScanRegAllocator::InsertCallerSave(Insn &insn, Operand &opnd, boo
         spType = (regSize <= k32BitSize) ? PTY_f32 : PTY_f64;
     }
 
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "InsertCallerSave R" << vRegNO << (isDef ? " def" : " use") << "\n";
     }
-
-    if (!isDef && !rli->IsCallerSpilled()) {
-        LogInfo::MapleLogger() << "WARNING: " << vRegNO << " caller restore without spill in bb "
-                               << insn.GetBB()->GetId() << " : " << cgFunc->GetName() << "\n";
-    }
-    rli->SetIsCallerSpilled(true);
+    #endif
 
     MemOperand *memOpnd = nullptr;
     RegOperand *phyOpnd = nullptr;
@@ -1488,9 +1267,11 @@ void LSRALinearScanRegAllocator::SpillOperand(Insn &insn, Operand &opnd, bool is
      */
     auto &regOpnd = static_cast<RegOperand &>(opnd);
     uint32 regNO = regOpnd.GetRegisterNumber();
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "SpillOperand " << regNO << "\n";
     }
+    #endif
 
     regno_t spReg;
     PrimType spType;
@@ -1587,7 +1368,7 @@ void LSRALinearScanRegAllocator::FindLowestPrioInActive(LiveInterval *&targetLi,
         LiveInterval *li = static_cast<LiveInterval *>(*it);
         regno_t regNO = li->GetAssignedReg();
         /* 1. Basic Constraints */
-        if (li->GetPriority() >= lowestPrio || li->GetRegType() != regType || li->GetLiParent() || li->GetLiChild()) {
+        if (li->GetPriority() >= lowestPrio || li->GetRegType() != regType) {
             continue;
         }
         /* 2. If li is pre-assigned to Physical register primitively, ignore it. */
@@ -1616,12 +1397,12 @@ void LSRALinearScanRegAllocator::FindLowestPrioInActive(LiveInterval *&targetLi,
 /* Set a vreg in live interval as being marked for spill. */
 void LSRALinearScanRegAllocator::SetLiSpill(LiveInterval &li)
 {
-    uint32 regNO = li.GetRegNO();
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
-        LogInfo::MapleLogger() << "SetLiSpill " << regNO;
-        LogInfo::MapleLogger() << "(" << li.GetFirstAcrossedCall();
-        LogInfo::MapleLogger() << ", refCount " << li.GetRefCount() << ")\n";
+        LogInfo::MapleLogger() << "SetLiSpill " << li.GetRegNO();
+        LogInfo::MapleLogger() << "(refCount " << li.GetRefCount() << ")\n";
     }
+    #endif
     li.SetStackSlot(kSpilled);
     li.SetShouldSave(false);
 }
@@ -1633,31 +1414,29 @@ uint32 LSRALinearScanRegAllocator::HandleSpillForLi(LiveInterval &li)
     LiveInterval *spillLi = nullptr;
     FindLowestPrioInActive(spillLi, &li, regType);
 
-    /*
-     * compare spill_li with current li
-     * spill_li is null and li->SetStackSlot(Spilled) when the li is spilled due to LiveIntervalAnalysis
-     */
-    if (!li.IsMustAllocate()) {
-        if (spillLi == nullptr || li.GetStackSlot() == kSpilled || li.GetRefCount() <= spillLi->GetRefCount() ||
-            freeUntilPos[spillLi->GetAssignedReg()] < li.GetLastUse()) {
-            /* spill current li */
-            if (needDump) {
-                LogInfo::MapleLogger() << "Flexible Spill: still spill " << li.GetRegNO() << ".\n";
-            }
-            SetLiSpill(li);
-            return 0;
+    if (spillLi == nullptr || li.GetStackSlot() == kSpilled || li.GetRefCount() <= spillLi->GetRefCount() ||
+        freeUntilPos[spillLi->GetAssignedReg()] < li.GetLastUse()) {
+        /* spill current li */
+        #ifdef ARK_LITECG_DEBUG
+        if (needDump) {
+            LogInfo::MapleLogger() << "Flexible Spill: still spill " << li.GetRegNO() << ".\n";
         }
+        #endif
+        SetLiSpill(li);
+        return 0;
     }
     DEBUG_ASSERT(spillLi != nullptr, "spillLi is null in LSRALinearScanRegAllocator::HandleSpillForLi");
 
     uint32 newRegNO = spillLi->GetAssignedReg();
     DEBUG_ASSERT(freeUntilPos[newRegNO] >= li.GetLastUse(), "phyReg has small free range.");
 
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "Flexible Spill: " << spillLi->GetRegNO() << " instead of " << li.GetRegNO() << ".\n";
         PrintLiveInterval(*spillLi, "TO spill: ");
         PrintLiveInterval(li, "Instead of: ");
     }
+    #endif
 
     li.SetAssignedReg(newRegNO);
     if (!regInfo->IsCalleeSavedReg(newRegNO) && NeedSaveAcrossCall(li)) {
@@ -1729,28 +1508,31 @@ uint32 LSRALinearScanRegAllocator::FindAvailablePhyReg(LiveInterval &li, bool is
 /* Shell function to find a physical register for an operand. */
 uint32 LSRALinearScanRegAllocator::AssignPhysRegs(LiveInterval &li)
 {
-    if (spillAll && !li.IsMustAllocate()) {
+    if (spillAll) {
         return 0;
     }
 
     /* pre spilled: */
-    if (li.GetStackSlot() != 0xFFFFFFFF && !li.IsMustAllocate()) {
+    if (li.GetStackSlot() != 0xFFFFFFFF) {
         return 0;
     }
-
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         uint32 activeSz = active.size();
         LogInfo::MapleLogger() << "\tAssignPhysRegs-active_sz " << activeSz << "\n";
     }
+    #endif
 
     uint32 regNO = FindAvailablePhyReg(li);
     if (regNO != 0) {
         li.SetAssignedReg(regNO);
         if (regInfo->IsCalleeSavedReg(regNO)) {
+            #ifdef ARK_LITECG_DEBUG
             if (needDump) {
                 LogInfo::MapleLogger() << "\tCallee-save register for save/restore in prologue/epilogue: " << regNO
                                        << "\n";
             }
+            #endif
             cgFunc->AddtoCalleeSaved(regNO);
         }
     }
@@ -2123,9 +1905,11 @@ void LSRALinearScanRegAllocator::CollectReferenceMap()
 {
     RA_TIMER_REGISTER(lsra, "LSRA CollectReferenceMap");
     const auto &referenceMapInsns = cgFunc->GetStackMapInsns();
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "===========reference map stack info================\n";
     }
+    #endif
 
     for (auto *insn : referenceMapInsns) {
         for (auto regNO : insn->GetStackMapLiveIn()) {
@@ -2145,11 +1929,13 @@ void LSRALinearScanRegAllocator::CollectReferenceMap()
                     MemOperand *baseRegMemOpnd = cgFunc->GetOrCreatSpillMem(baseRegNum, k64BitSize);
                     int64 baseRefMemoffset = baseRegMemOpnd->GetOffsetImmediate()->GetOffsetValue();
                     insn->GetStackMap()->GetReferenceMap().ReocordStackRoots(baseRefMemoffset);
+                    #ifdef ARK_LITECG_DEBUG
                     if (needDump) {
                         LogInfo::MapleLogger() << "--------insn id: " << insn->GetId()
                                                << " base regNO: " << baseRegNum << " offset: "
                                                << baseRefMemoffset << std::endl;
                     }
+                    #endif
                 }
                 MemOperand *memOperand = cgFunc->GetOrCreatSpillMem(regNO, k64BitSize);
                 int64 offset = memOperand->GetOffsetImmediate()->GetOffsetValue();
@@ -2157,10 +1943,12 @@ void LSRALinearScanRegAllocator::CollectReferenceMap()
                 if (itr == derivedRef2Base.end()) {
                     insn->GetStackMap()->GetReferenceMap().ReocordStackRoots(offset);
                 }
+                #ifdef ARK_LITECG_DEBUG
                 if (needDump) {
                     LogInfo::MapleLogger() << "--------insn id: " << insn->GetId() << " regNO: " << regNO
                                            << " offset: " << offset << std::endl;
                 }
+                #endif
             } else {
                 // li->GetAssignedReg - R0/RAX?
                 CHECK_FATAL(false, "not support currently");
@@ -2169,6 +1957,7 @@ void LSRALinearScanRegAllocator::CollectReferenceMap()
         }
     }
 
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "===========reference map stack info end================\n";
     }
@@ -2180,6 +1969,7 @@ void LSRALinearScanRegAllocator::CollectReferenceMap()
             insn->GetStackMap()->GetReferenceMap().Dump();
         }
     }
+    #endif
 }
 
 void LSRALinearScanRegAllocator::SolveRegOpndDeoptInfo(const RegOperand &regOpnd, DeoptInfo &deoptInfo,
@@ -2237,6 +2027,7 @@ void LSRALinearScanRegAllocator::CollectDeoptInfo()
             DEBUG_ASSERT(false, "can't reach here!");
         }
     }
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "===========deopt info================\n";
         for (auto *insn : referenceMapInsns) {
@@ -2245,33 +2036,29 @@ void LSRALinearScanRegAllocator::CollectDeoptInfo()
             insn->GetStackMap()->GetDeoptInfo().Dump();
         }
     }
+    #endif
 }
 
 void LSRALinearScanRegAllocator::SetAllocMode()
 {
-    /* In-Range spill range can still be specified (only works with --dump-func=). */
-    if (cgFunc->NumBBs() > CGOptions::GetLSRABBOptSize()) {
-        /* instruction size is checked in ComputeLieveInterval() */
-        fastAlloc = true;
-    }
-
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
-        if (fastAlloc) {
-            LogInfo::MapleLogger() << "fastAlloc mode on\n";
-        }
         if (spillAll) {
             LogInfo::MapleLogger() << "spillAll mode on\n";
         }
     }
+    #endif
 }
 
 void LSRALinearScanRegAllocator::LinearScanRegAllocator()
 {
     RA_TIMER_REGISTER(lsra, "LSRA LinearScanRegAllocator");
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         PrintParamQueue("Initial param queue");
         PrintCallQueue("Initial call queue");
     }
+    #endif
     freeUntilPos.resize(regInfo->GetAllRegNum(), UINT32_MAX);
     MapleVector<uint32> initialPosVec(freeUntilPos);
     uint32 curInsnID = 0;
@@ -2284,10 +2071,12 @@ void LSRALinearScanRegAllocator::LinearScanRegAllocator()
             li->AddRange(li->GetFirstDef(), li->GetLastUse());
         }
         li->InitRangeFinder();
+        #ifdef ARK_LITECG_DEBUG
         if (needDump) {
             LogInfo::MapleLogger() << "======Alloc R" << li->GetRegNO() << "======"
                                    << "\n";
         }
+        #endif
         blockForbiddenMask = 0;
         freeUntilPos = initialPosVec;
         DEBUG_ASSERT(li->GetFirstDef() >= curInsnID, "wrong li order");
@@ -2296,6 +2085,7 @@ void LSRALinearScanRegAllocator::LinearScanRegAllocator()
         UpdateCallQueueAtRetirement(curInsnID);
         UpdateActiveAllocateInfo(*li);
         UpdateParamAllocateInfo(*li);
+        #ifdef ARK_LITECG_DEBUG
         if (needDump) {
             DebugCheckActiveList();
             LogInfo::MapleLogger() << "freeUntilPos:";
@@ -2304,6 +2094,7 @@ void LSRALinearScanRegAllocator::LinearScanRegAllocator()
             }
             LogInfo::MapleLogger() << "\n";
         }
+        #endif
         AssignPhysRegsForLi(*li);
     }
 }
@@ -2321,12 +2112,14 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
     liveIntervalsArray.resize(cgFunc->GetMaxVReg());
     regInfo->Fini();
     SetAllocMode();
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         const MIRModule &mirModule = cgFunc->GetMirModule();
         DotGenerator::GenerateDot("RA", *cgFunc, mirModule);
         DotGenerator::GenerateDot("RAe", *cgFunc, mirModule);
         LogInfo::MapleLogger() << "Entering LinearScanRegAllocator: " << cgFunc->GetName() << "\n";
     }
+    #endif
 
     if (!cgFunc->IsStackMapComputed()) {
         SetStackMapDerivedInfo();
@@ -2338,10 +2131,6 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
         SpillStackMapInfo();
     }
 
-    if (needDump) {
-        PrintLiveRangesGraph();
-    }
-
     bool enableDoLSRAPreSpill = true;
     if (enableDoLSRAPreSpill) {
         LiveIntervalAnalysis();
@@ -2351,9 +2140,11 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
 
     LinearScanRegAllocator();
 
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         PrintAllLiveRanges();
     }
+    #endif
 
     FinalizeRegisters();
 
@@ -2361,6 +2152,7 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
         CollectStackMapInfo();
     }
 
+    #ifdef ARK_LITECG_DEBUG
     if (needDump) {
         LogInfo::MapleLogger() << "Total " << spillCount << " spillCount in " << cgFunc->GetName() << " \n";
         LogInfo::MapleLogger() << "Total " << reloadCount << " reloadCount\n";
@@ -2375,6 +2167,7 @@ bool LSRALinearScanRegAllocator::AllocateRegisters()
         LogInfo::MapleLogger() << "insn Num Befor RA:" << maxInsnNum << ", insert " << insertInsn << " insns: "
                                << ", insertInsn/insnNumBeforRA: " << rate << "\n";
     }
+    #endif
 
     bfs = nullptr; /* bfs is not utilized outside the function. */
 

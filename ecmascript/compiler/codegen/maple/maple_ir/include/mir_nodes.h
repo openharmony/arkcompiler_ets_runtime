@@ -3585,8 +3585,6 @@ public:
             LogInfo::MapleLogger() << " ccall";
         } else if (GetAttr(STMTATTR_webkitjscall)) {
             LogInfo::MapleLogger() << " webkitjscc";
-        } else if (GetAttr(STMTATTR_ghcall)) {
-            LogInfo::MapleLogger() << " ghccc";
         } else {
             // default is ccall
             LogInfo::MapleLogger() << " ccall";

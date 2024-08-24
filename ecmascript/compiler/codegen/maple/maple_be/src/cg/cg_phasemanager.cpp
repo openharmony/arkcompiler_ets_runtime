@@ -314,9 +314,13 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
             }
             if (userDefinedOptLevel == CGOptions::kLevel2 && m.HasPartO2List()) {
                 if (m.IsInPartO2List(mirFunc->GetNameStrIdx())) {
+#ifdef ARK_LITECG_DEBUG
                     cgOptions->EnableO2();
+#endif
                 } else {
+#ifdef ARK_LITECG_DEBUG
                     cgOptions->EnableO0();
+#endif
                 }
                 ClearAllPhases();
                 cg->EnrollTargetPhases(this);
@@ -419,9 +423,11 @@ void CgFuncPM::CreateCGAndBeCommon(MIRModule &m, const Target *t)
         CHECK_FATAL(asmEmitter, "you may not register emitter");
         cg->SetAsmEmitter(*asmEmitter);
     }
+#ifdef ARK_LITECG_DEBUG
     TargetMachine *targetMachine = t->createTargetMachine();
     CHECK_FATAL(targetMachine, "you may not register targetMachine");
     cg->SetTargetMachine(*targetMachine);
+#endif
 
     /* We initialize a couple of BECommon's tables using the size information of GlobalTables.type_table_.
      * So, BECommon must be allocated after all the parsing is done and user-defined types are all acounted.

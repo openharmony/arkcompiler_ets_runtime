@@ -21,19 +21,25 @@
 
 namespace maple {
 const std::string kBlankString = "                                                                                ";
+
+#ifdef ARK_LITECG_DEBUG
 constexpr int kIndentunit = 2;  // number of blank chars of each indentation
+#endif
 
 void PrintIndentation(int32 indent)
 {
+#ifdef ARK_LITECG_DEBUG
     int64 indentAmount = static_cast<int64>(indent) * kIndentunit;
     do {
         LogInfo::MapleLogger() << kBlankString.substr(0, indentAmount);
         indentAmount -= static_cast<int64>(kBlankString.length());
     } while (indentAmount > 0);
+#endif
 }
 
 void PrintString(const std::string &str)
 {
+#ifdef ARK_LITECG_DEBUG
     size_t i = 0;
     LogInfo::MapleLogger() << " \"";
     while (i < str.length()) {
@@ -59,5 +65,6 @@ void PrintString(const std::string &str)
         }
     }
     LogInfo::MapleLogger() << "\"";
+#endif
 }
 }  // namespace maple

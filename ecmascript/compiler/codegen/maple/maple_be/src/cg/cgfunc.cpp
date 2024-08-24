@@ -17,13 +17,13 @@
 #if DEBUG
 #include <iomanip>
 #endif
+#include <fstream>
 #include "cg.h"
 #include "insn.h"
 #include "loop.h"
 #include "mir_builder.h"
 #include "factory.h"
 #include "cfgo.h"
-#include "debug_info.h"
 #include "optimize_common.h"
 
 namespace maplebe {
@@ -527,7 +527,15 @@ static void HandleIassign(StmtNode &stmt, CGFunc &cgFunc)
     }
 }
 
-static void HandleComment(StmtNode &stmt, CGFunc &cgFunc)
+void HandleRangeGoto(StmtNode &stmt, CGFunc &cgFunc)
+{
+    auto &rangeGotoNode = static_cast<RangeGotoNode &>(stmt);
+    cgFunc.SetCurBBKind(BB::kBBRangeGoto);
+    cgFunc.SelectRangeGoto(rangeGotoNode, *cgFunc.HandleExpr(rangeGotoNode, *rangeGotoNode.Opnd(0)));
+    cgFunc.SetCurBB(*cgFunc.StartNewBB(rangeGotoNode));
+}
+
+void HandleComment(StmtNode &stmt, CGFunc &cgFunc)
 {
     if (cgFunc.GetCG()->GenerateVerboseAsm() || cgFunc.GetCG()->GenerateVerboseCG()) {
         cgFunc.SelectComment(static_cast<CommentNode &>(stmt));
@@ -552,6 +560,7 @@ static void InitHandleStmtFactory()
     RegisterFactoryFunction<HandleStmtFactory>(OP_dassign, HandleDassign);
     RegisterFactoryFunction<HandleStmtFactory>(OP_regassign, HandleRegassign);
     RegisterFactoryFunction<HandleStmtFactory>(OP_iassign, HandleIassign);
+    RegisterFactoryFunction<HandleStmtFactory>(OP_rangegoto, HandleRangeGoto);
     RegisterFactoryFunction<HandleStmtFactory>(OP_comment, HandleComment);
 }
 
@@ -580,6 +589,7 @@ CGFunc::CGFunc(MIRModule &mod, CG &cg, MIRFunction &mirFunc, BECommon &beCommon,
       beCommon(beCommon),
       funcScopeAllocator(&allocator),
       emitStVec(allocator.Adapter()),
+      switchLabelCnt(allocator.Adapter()),
       shortFuncName(mirFunc.GetName() + "." + std::to_string(funcId), &memPool)
 {
     mirModule.SetCurFunction(&func);
@@ -755,7 +765,6 @@ void CGFunc::HandleFunction()
     /* merge multi return */
     MergeReturn();
     ProcessExitBBVec();
-    GenSaveMethodInfoCode(*firstBB);
     /* build control flow graph */
     theCFG = memPool->New<CGCFG>(*this);
     theCFG->BuildCFG();

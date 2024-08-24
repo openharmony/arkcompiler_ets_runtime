@@ -20,7 +20,7 @@ namespace maplebe {
 constexpr uint32 kCondBrNum = 2;
 constexpr uint32 kSwitchCaseNum = 5;
 
-const std::string BB::bbNames[BB::kBBLast] = {"BB_ft", "BB_if", "BB_goto", "BB_ret", "BB_noret"};
+const std::string BB::bbNames[BB::kBBLast] = {"BB_ft", "BB_if", "BB_goto", "BB_ret", "BB_noret", "BB_rangegoto"};
 
 Insn *BB::InsertInsnBefore(Insn &existing, Insn &newInsn)
 {

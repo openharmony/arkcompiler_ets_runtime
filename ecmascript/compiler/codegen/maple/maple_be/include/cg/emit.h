@@ -31,7 +31,6 @@
 #include "mir_const.h"
 #include "mempool_allocator.h"
 #include "namemangler.h"
-#include "debug_info.h"
 
 namespace maple {
 const char *GetDwTagName(unsigned n);
@@ -167,7 +166,6 @@ public:
 
         rangeIdx2PrefixStr.clear();
         hugeSoTargets.clear();
-        labdie2labidxTable.clear();
         fileMap.clear();
     }
 
@@ -283,28 +281,6 @@ public:
     void EmitDecUnsigned(uint64 num);
     void EmitHexUnsigned(uint64 num);
 
-    /* Dwarf debug info */
-    void FillInClassByteSize(DBGDie *die, DBGDieAttr *byteSizeAttr);
-    void SetupDBGInfo(DebugInfo *mirdi);
-    void ApplyInPrefixOrder(DBGDie *die, const std::function<void(DBGDie *)> &func);
-    void AddLabelDieToLabelIdxMapping(DBGDie *lblDie, LabelIdx lblIdx);
-    LabelIdx GetLabelIdxForLabelDie(DBGDie *lblDie);
-    void EmitDIHeader();
-    void EmitDIFooter();
-    void EmitDIHeaderFileInfo();
-    void EmitDIDebugInfoSection(DebugInfo *mirdi);
-    void EmitDIDebugAbbrevSection(DebugInfo *mirdi);
-    void EmitDIDebugARangesSection();
-    void EmitDIDebugRangesSection();
-    void EmitDIDebugLineSection();
-    void EmitDIDebugStrSection();
-    void EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTag tagName, DebugInfo *di);
-    void EmitDIFormSpecification(unsigned int dwform);
-    void EmitDIFormSpecification(const DBGDieAttr *attr)
-    {
-        EmitDIFormSpecification(attr->GetDwForm());
-    }
-
 #if 1 /* REQUIRE TO SEPERATE TARGAARCH64 TARGARM32 */
       /* Following code is under TARGAARCH64 condition */
     void EmitHugeSoRoutines(bool lastRoutine = false);
@@ -351,23 +327,13 @@ public:
     }
 #endif
 
-    void InsertLabdie2labidxTable(DBGDie *lbldie, LabelIdx lab)
-    {
-        if (labdie2labidxTable.find(lbldie) == labdie2labidxTable.end()) {
-            labdie2labidxTable[lbldie] = lab;
-        }
-    }
-
 protected:
     Emitter(CG &cg, const std::string &fileName)
         : cg(&cg),
           rangeIdx2PrefixStr(cg.GetMIRModule()->GetMPAllocator().Adapter()),
-          arraySize(0),
-          isFlexibleArray(false),
           stringPtr(cg.GetMIRModule()->GetMPAllocator().Adapter()),
           localStrPtr(cg.GetMIRModule()->GetMPAllocator().Adapter()),
           hugeSoTargets(cg.GetMIRModule()->GetMPAllocator().Adapter()),
-          labdie2labidxTable(std::less<DBGDie *>(), cg.GetMIRModule()->GetMPAllocator().Adapter()),
           fileMap(std::less<uint32_t>(), cg.GetMIRModule()->GetMPAllocator().Adapter())
     {
         MIRModule &mirModule = *cg.GetMIRModule();
@@ -393,8 +359,6 @@ private:
     MOperator currentMop = UINT_MAX;
     MapleUnorderedMap<int, std::string> rangeIdx2PrefixStr;
     const AsmInfo *asmInfo;
-    uint32 arraySize;
-    bool isFlexibleArray;
     MapleSet<UStrIdx> stringPtr;
     MapleVector<UStrIdx> localStrPtr;
 #if 1 /* REQUIRE TO SEPERATE TARGAARCH64 TARGARM32 */
@@ -404,7 +368,6 @@ private:
     MapleSet<std::string> hugeSoTargets;
     uint32 hugeSoSeqence = 2;
 #endif
-    MapleMap<DBGDie *, LabelIdx> labdie2labidxTable;
     MapleMap<uint32_t, std::string> fileMap;
 };
 

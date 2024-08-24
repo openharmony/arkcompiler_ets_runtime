@@ -39,7 +39,6 @@ public:
     {
         return memPool->New<X64InsnVisitor>(*this);
     }
-    void GenSaveMethodInfoCode(BB &bb) override;
     void MergeReturn() override;
     void SelectDassign(DassignNode &stmt, Operand &opnd0) override;
     void SelectRegassign(RegassignNode &stmt, Operand &opnd0) override;
@@ -56,7 +55,6 @@ public:
     void SelectComment(CommentNode &comment) override;
     Operand *SelectDread(const BaseNode &parent, AddrofNode &expr) override;
     RegOperand *SelectRegread(RegreadNode &expr) override;
-    Operand *SelectAddrof(AddrofNode &expr, const BaseNode &parent, bool isAddrofoff) override;
     Operand *SelectIread(const BaseNode &parent, IreadNode &expr, int extraOffset = 0,
                          PrimType finalBitFieldDestType = kPtyInvalid) override;
     Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) override;
@@ -95,9 +93,8 @@ public:
     Operand *SelectRetype(TypeCvtNode &node, Operand &opnd0) override;
     Operand *SelectCvt(const BaseNode &parent, TypeCvtNode &node, Operand &opnd0) override;
     Operand *SelectTrunc(TypeCvtNode &node, Operand &opnd0, const BaseNode &parent) override;
-    Operand *SelectSelect(TernaryNode &node, Operand &cond, Operand &opnd0, Operand &opnd1, const BaseNode &parent,
-                          bool hasCompare = false) override;
     RegOperand &SelectCopy(Operand &src, PrimType srcType, PrimType dstType) override;
+    void SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &opnd0) override;
     Operand &GetOrCreateRflag() override;
     const Operand *GetRflag() const override;
     const LabelOperand *GetLabelOperand(LabelIdx labIdx) const override;

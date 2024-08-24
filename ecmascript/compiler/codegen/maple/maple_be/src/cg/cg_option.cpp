@@ -19,10 +19,9 @@
 #include "cg_options.h"
 #include "driver_options.h"
 #include "mpl_logging.h"
-#include "parser_opt.h"
-#include "mir_parser.h"
 #include "string_utils.h"
 #include "triple.h"
+#include "option.h"
 
 namespace maplebe {
 using namespace maple;
@@ -71,7 +70,6 @@ bool CGOptions::doSchedule = false;
 bool CGOptions::doWriteRefFieldOpt = false;
 bool CGOptions::noDupBB = false;
 bool CGOptions::noCalleeCFI = true;
-bool CGOptions::insertYieldPoint = false;
 bool CGOptions::lazyBinding = false;
 bool CGOptions::hotFix = false;
 bool CGOptions::useFramePointer = false;
@@ -101,18 +99,8 @@ std::ostream& CGOptions::GetLogStream() const
 }
 
 
-bool CGOptions::SolveOptions(bool isDebug)
+bool CGOptions::SolveOptions()
 {
-    for (const auto &opt : cgCategory.GetEnabledOptions()) {
-        std::string printOpt;
-        if (isDebug) {
-            for (const auto &val : opt->GetRawValues()) {
-                printOpt += opt->GetName() + " " + val + " ";
-            }
-            LogInfo::MapleLogger() << "cg options: " << printOpt << '\n';
-        }
-    }
-
     if (opts::cg::supportFuncSymbol.IsEnabledByUser()) {
         opts::cg::supportFuncSymbol ? EnableSupportFuncSymbol() : DisableSupportFuncSymbol();
     }
@@ -127,11 +115,15 @@ bool CGOptions::SolveOptions(bool isDebug)
     }
 
     if (opts::cg::spillRange.IsEnabledByUser()) {
+#ifdef ARK_LITECG_DEBUG
         SetRange(opts::cg::spillRange, "--pill-range", GetSpillRanges());
+#endif
     }
 
     if (opts::cg::range.IsEnabledByUser()) {
+#ifdef ARK_LITECG_DEBUG
         SetRange(opts::cg::range, "--range", GetRange());
+#endif
     }
 
     if (opts::cg::timePhases.IsEnabledByUser()) {
@@ -244,15 +236,21 @@ bool CGOptions::SolveOptions(bool isDebug)
     }
 
     if (opts::cg::dumpPhases.IsEnabledByUser()) {
+#ifdef ARK_LITECG_DEBUG
         SplitPhases(opts::cg::dumpPhases, GetDumpPhases());
+#endif
     }
 
     if (opts::cg::target.IsEnabledByUser()) {
+#ifdef ARK_LITECG_DEBUG
         SetTargetMachine(opts::cg::target);
+#endif
     }
 
     if (opts::cg::skipPhases.IsEnabledByUser()) {
+#ifdef ARK_LITECG_DEBUG
         SplitPhases(opts::cg::skipPhases, GetSkipPhases());
+#endif
     }
 
     if (opts::cg::skipFrom.IsEnabledByUser()) {
@@ -289,44 +287,7 @@ bool CGOptions::SolveOptions(bool isDebug)
     return true;
 }
 
-void CGOptions::ParseExclusiveFunc(const std::string &fileName)
-{
-    std::ifstream file(fileName);
-    if (!file.is_open()) {
-        ERR(kLncErr, "%s open failed!", fileName.c_str());
-        return;
-    }
-    std::string content;
-    while (file >> content) {
-        ehExclusiveFunctionName.push_back(content);
-    }
-}
-
-void CGOptions::ParseCyclePattern(const std::string &fileName)
-{
-    std::ifstream file(fileName);
-    if (!file.is_open()) {
-        ERR(kLncErr, "%s open failed!", fileName.c_str());
-        return;
-    }
-    std::string content;
-    std::string classStr("class: ");
-    while (getline(file, content)) {
-        if (content.compare(0, classStr.length(), classStr) == 0) {
-            std::vector<std::string> classPatternContent;
-            std::string patternContent;
-            while (getline(file, patternContent)) {
-                if (patternContent.length() == 0) {
-                    break;
-                }
-                classPatternContent.push_back(patternContent);
-            }
-            std::string className = content.substr(classStr.length());
-            CGOptions::cyclePatternMap[className] = std::move(classPatternContent);
-        }
-    }
-}
-
+#ifdef ARK_LITECG_DEBUG
 void CGOptions::SetRange(const std::string &str, const std::string &cmd, Range &subRange)
 {
     const std::string &tmpStr = str;
@@ -338,12 +299,6 @@ void CGOptions::SetRange(const std::string &str, const std::string &cmd, Range &
         subRange.end = std::stoul(tmpStr.substr(comma + 1, std::string::npos - (comma + 1)), nullptr);
     }
     CHECK_FATAL(range.begin < range.end, "invalid values for %s=%lu,%lu", cmd.c_str(), subRange.begin, subRange.end);
-}
-
-/* Set default options according to different languages. */
-void CGOptions::SetDefaultOptions(const maple::MIRModule &mod)
-{
-    insertYieldPoint = GenYieldPoint();
 }
 
 void CGOptions::EnableO0()
@@ -403,6 +358,7 @@ void CGOptions::EnableO2()
     SetOption(kTailCallOpt);
 #endif
 }
+#endif
 
 void CGOptions::EnableLiteCG()
 {
@@ -430,6 +386,7 @@ void CGOptions::EnableLiteCG()
     SetOption(kDoLinearScanRegAlloc);
 }
 
+#ifdef ARK_LITECG_DEBUG
 void CGOptions::SetTargetMachine(const std::string &str)
 {
     // this is a temporary plan, all ilp32 logic follow the same path with aarch64
@@ -451,6 +408,7 @@ void CGOptions::SplitPhases(const std::string &str, std::unordered_set<std::stri
     }
     StringUtils::Split(tmpStr, set, ',');
 }
+#endif
 
 bool CGOptions::DumpPhase(const std::string &phase)
 {

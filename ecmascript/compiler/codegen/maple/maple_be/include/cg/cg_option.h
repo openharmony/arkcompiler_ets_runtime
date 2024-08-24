@@ -127,7 +127,7 @@ public:
 public:
     static CGOptions &GetInstance();
     virtual ~CGOptions() = default;
-    bool SolveOptions(bool isDebug);
+    bool SolveOptions();
     std::ostream& GetLogStream() const;
     void DumpOptions();
     std::vector<std::string> &GetSequence()
@@ -166,12 +166,11 @@ public:
         }
     }
 
-    void ParseExclusiveFunc(const std::string &fileName);
-    void ParseCyclePattern(const std::string &fileName);
-
+#ifdef ARK_LITECG_DEBUG
     void EnableO0();
     void EnableO1();
     void EnableO2();
+#endif
     void EnableLiteCG();
 
     bool GenGrootList() const
@@ -263,8 +262,10 @@ public:
     static bool DumpPhase(const std::string &phase);
     static bool FuncFilter(const std::string &name);
     void SplitPhases(const std::string &str, std::unordered_set<std::string> &set);
+#ifdef ARK_LITECG_DEBUG
     void SetRange(const std::string &str, const std::string &cmd, Range &subRange);
     void SetTargetMachine(const std::string &str);
+#endif
 
     int32 GetOptimizeLevel() const
     {
@@ -762,11 +763,6 @@ public:
         return noCalleeCFI;
     }
 
-    static bool IsInsertYieldPoint()
-    {
-        return insertYieldPoint;
-    }
-
     static void EnableGeneralRegOnly()
     {
         generalRegOnly = true;
@@ -934,7 +930,6 @@ private:
     static bool checkArrayStore;
     static bool noDupBB;
     static bool noCalleeCFI;
-    static bool insertYieldPoint;
     static std::string globalVarProfile;
     static bool nativeOpt;
     static bool lazyBinding;

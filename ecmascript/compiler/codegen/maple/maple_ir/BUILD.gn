@@ -28,11 +28,9 @@ include_directories = [
 src_libmplir = [
   "src/global_tables.cpp",
   "src/intrinsics.cpp",
-  "src/lexer.cpp",
   "src/mir_symbol_builder.cpp",
   "src/mir_builder.cpp",
   "src/mir_const.cpp",
-  "src/mir_scope.cpp",
   "src/mir_function.cpp",
   "src/mir_lower.cpp",
   "src/mir_module.cpp",
@@ -41,12 +39,8 @@ src_libmplir = [
   "src/mir_type.cpp",
   "src/opcode_info.cpp",
   "src/option.cpp",
-  "src/parser.cpp",
-  "src/mir_parser.cpp",
   "src/mir_pragma.cpp",
   "src/printing.cpp",
-  "src/debug_info.cpp",
-  "src/debug_info_util.cpp",
 ]
 
 ohos_static_library("libmplir") {

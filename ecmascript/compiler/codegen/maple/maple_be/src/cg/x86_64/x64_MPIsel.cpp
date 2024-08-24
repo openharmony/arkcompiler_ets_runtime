@@ -145,86 +145,6 @@ void X64MPIsel::SelectReturn()
     cgFunc->GetExitBBsVec().emplace_back(cgFunc->GetCurBB());
 }
 
-void X64MPIsel::CreateCallStructParamPassByStack(MemOperand &memOpnd, int32 symSize, int32 baseOffset)
-{
-    int32 copyTime = static_cast<int32>(RoundUp(symSize, GetPointerSize()) / GetPointerSize());
-    for (int32 i = 0; i < copyTime; ++i) {
-        MemOperand &addrMemOpnd = cgFunc->GetOpndBuilder()->CreateMem(k64BitSize);
-        addrMemOpnd.SetBaseRegister(*memOpnd.GetBaseRegister());
-        ImmOperand &newImmOpnd =
-            static_cast<ImmOperand &>(*memOpnd.GetOffsetOperand()->Clone(*cgFunc->GetMemoryPool()));
-        newImmOpnd.SetValue(newImmOpnd.GetValue() + i * GetPointerSize());
-        addrMemOpnd.SetOffsetOperand(newImmOpnd);
-        RegOperand &spOpnd = cgFunc->GetOpndBuilder()->CreatePReg(x64::RSP, k64BitSize, kRegTyInt);
-        Operand &stMemOpnd =
-            cgFunc->GetOpndBuilder()->CreateMem(spOpnd, (baseOffset + i * GetPointerSize()), k64BitSize);
-        SelectCopy(stMemOpnd, addrMemOpnd, PTY_u64);
-    }
-}
-
-void X64MPIsel::CreateCallStructParamPassByReg(MemOperand &memOpnd, regno_t regNo, uint32 parmNum)
-{
-    CHECK_FATAL(parmNum < kMaxStructParamByReg, "Exceeded maximum allowed fp parameter registers for struct passing");
-    RegOperand &parmOpnd = cgFunc->GetOpndBuilder()->CreatePReg(regNo, k64BitSize, kRegTyInt);
-    MemOperand &addrMemOpnd = cgFunc->GetOpndBuilder()->CreateMem(k64BitSize);
-    addrMemOpnd.SetBaseRegister(*memOpnd.GetBaseRegister());
-    ImmOperand &newImmOpnd = static_cast<ImmOperand &>(*memOpnd.GetOffsetOperand()->Clone(*cgFunc->GetMemoryPool()));
-    newImmOpnd.SetValue(newImmOpnd.GetValue() + parmNum * GetPointerSize());
-    addrMemOpnd.SetOffsetOperand(newImmOpnd);
-    paramPassByReg.push_back({&parmOpnd, &addrMemOpnd, PTY_a64});
-}
-
-std::tuple<Operand *, size_t, MIRType *> X64MPIsel::GetMemOpndInfoFromAggregateNode(BaseNode &argExpr)
-{
-    /* get mirType info */
-    auto [fieldId, mirType] = GetFieldIdAndMirTypeFromMirNode(argExpr);
-    MirTypeInfo symInfo = GetMirTypeInfoFormFieldIdAndMirType(fieldId, mirType);
-    /* get symbol memOpnd info */
-    MemOperand *symMemOpnd = nullptr;
-    if (argExpr.GetOpCode() == OP_dread) {
-        AddrofNode &dread = static_cast<AddrofNode &>(argExpr);
-        MIRSymbol *symbol = cgFunc->GetFunction().GetLocalOrGlobalSymbol(dread.GetStIdx());
-        CHECK_NULL_FATAL(symbol);
-        symMemOpnd = &GetOrCreateMemOpndFromSymbol(*symbol, dread.GetFieldID());
-    } else if (argExpr.GetOpCode() == OP_iread) {
-        IreadNode &iread = static_cast<IreadNode &>(argExpr);
-        symMemOpnd = GetOrCreateMemOpndFromIreadNode(iread, symInfo.primType, symInfo.offset);
-    } else {
-        CHECK_FATAL(false, "unsupported opcode");
-    }
-    return {symMemOpnd, symInfo.size, mirType};
-}
-
-void X64MPIsel::SelectParmListForAggregate(BaseNode &argExpr, X64CallConvImpl &parmLocator, bool isArgUnused)
-{
-    auto [argOpnd, argSize, mirType] = GetMemOpndInfoFromAggregateNode(argExpr);
-    DEBUG_ASSERT(argOpnd->IsMemoryAccessOperand(), "wrong opnd");
-    MemOperand &memOpnd = static_cast<MemOperand &>(*argOpnd);
-
-    CCLocInfo ploc;
-    parmLocator.LocateNextParm(*mirType, ploc);
-    if (isArgUnused) {
-        return;
-    }
-
-    /* create call struct param pass */
-    if (argSize > k16ByteSize || ploc.reg0 == kRinvalid) {
-        CreateCallStructParamPassByStack(memOpnd, argSize, ploc.memOffset);
-    } else {
-        CHECK_FATAL(ploc.fpSize == 0, "Unknown call parameter state");
-        CreateCallStructParamPassByReg(memOpnd, ploc.reg0, kFirstReg);
-        if (ploc.reg1 != kRinvalid) {
-            CreateCallStructParamPassByReg(memOpnd, ploc.reg1, kSecondOpnd);
-        }
-        if (ploc.reg2 != kRinvalid) {
-            CreateCallStructParamPassByReg(memOpnd, ploc.reg2, kThirdOpnd);
-        }
-        if (ploc.reg3 != kRinvalid) {
-            CreateCallStructParamPassByReg(memOpnd, ploc.reg3, kFourthOpnd);
-        }
-    }
-}
-
 /*
  * SelectParmList generates an instrunction for each of the parameters
  * to load the parameter value into the corresponding register.
@@ -257,7 +177,7 @@ void X64MPIsel::SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, uint32
         DEBUG_ASSERT(primType != PTY_void, "primType should not be void");
         bool isArgUnused = (callee != nullptr && callee->GetFuncDesc().IsArgUnused(i));
         if (primType == PTY_agg) {
-            SelectParmListForAggregate(*argExpr, parmLocator, isArgUnused);
+            CHECK_FATAL(false, "NIY");
             continue;
         }
 
@@ -314,189 +234,6 @@ RegOperand &X64MPIsel::SelectSpecialRegread(PregIdx pregIdx, PrimType primType)
     }
 }
 
-bool X64MPIsel::IsParamStructCopy(const MIRSymbol &symbol)
-{
-    if (symbol.GetStorageClass() == kScFormal &&
-        cgFunc->GetBecommon().GetTypeSize(symbol.GetTyIdx().GetIdx()) > k16ByteSize) {
-        return true;
-    }
-    return false;
-}
-
-void X64MPIsel::SelectIntAggCopyReturn(MemOperand &symbolMem, uint64 aggSize)
-{
-    CHECK_FATAL((aggSize > 0) && (aggSize <= k16ByteSize), "out of range.");
-    RegOperand *baseOpnd = symbolMem.GetBaseRegister();
-    int32 stOffset = symbolMem.GetOffsetOperand()->GetValue();
-    bool isCopyOneReg = (aggSize <= k8ByteSize);
-    uint32 extraSize = (aggSize % k8ByteSize) * kBitsPerByte;
-    if (extraSize == 0) {
-        extraSize = k64BitSize;
-    } else if (extraSize <= k8BitSize) {
-        extraSize = k8BitSize;
-    } else if (extraSize <= k16BitSize) {
-        extraSize = k16BitSize;
-    } else if (extraSize <= k32BitSize) {
-        extraSize = k32BitSize;
-    } else {
-        extraSize = k64BitSize;
-    }
-    /* generate move from return registers(rax, rdx) to mem of symbol */
-    PrimType extraTy = GetIntegerPrimTypeFromSize(false, extraSize);
-    /* mov %rax mem */
-    RegOperand &regRhs0 =
-        cgFunc->GetOpndBuilder()->CreatePReg(x64::RAX, (isCopyOneReg ? extraSize : k64BitSize), kRegTyInt);
-    MemOperand &memSymbo0 = cgFunc->GetOpndBuilder()->CreateMem(*baseOpnd, static_cast<int32>(stOffset),
-                                                                isCopyOneReg ? extraSize : k64BitSize);
-    SelectCopy(memSymbo0, regRhs0, isCopyOneReg ? extraTy : PTY_u64);
-    /* mov %rdx mem */
-    if (!isCopyOneReg) {
-        RegOperand &regRhs1 = cgFunc->GetOpndBuilder()->CreatePReg(x64::RDX, extraSize, kRegTyInt);
-        MemOperand &memSymbo1 =
-            cgFunc->GetOpndBuilder()->CreateMem(*baseOpnd, static_cast<int32>(stOffset + k8ByteSize), extraSize);
-        SelectCopy(memSymbo1, regRhs1, extraTy);
-    }
-    return;
-}
-
-void X64MPIsel::SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize)
-{
-    /* in x86-64, 8 bytes data is copied at a time */
-    uint32 copyTimes = copySize / k8ByteSize;
-    uint32 extraCopySize = copySize % k8ByteSize;
-    ImmOperand *stOfstLhs = lhs.GetOffsetOperand();
-    ImmOperand *stOfstRhs = rhs.GetOffsetOperand();
-    RegOperand *baseLhs = lhs.GetBaseRegister();
-    RegOperand *baseRhs = rhs.GetBaseRegister();
-    if (copySize < 40U) {
-        for (uint32 i = 0; i < copyTimes; ++i) {
-            /* prepare dest addr */
-            MemOperand &memOpndLhs = cgFunc->GetOpndBuilder()->CreateMem(k64BitSize);
-            memOpndLhs.SetBaseRegister(*baseLhs);
-            ImmOperand &newStOfstLhs = static_cast<ImmOperand &>(*stOfstLhs->Clone(*cgFunc->GetMemoryPool()));
-            newStOfstLhs.SetValue(newStOfstLhs.GetValue() + i * k8ByteSize);
-            memOpndLhs.SetOffsetOperand(newStOfstLhs);
-            /* prepare src addr */
-            MemOperand &memOpndRhs = cgFunc->GetOpndBuilder()->CreateMem(k64BitSize);
-            memOpndRhs.SetBaseRegister(*baseRhs);
-            ImmOperand &newStOfstRhs = static_cast<ImmOperand &>(*stOfstRhs->Clone(*cgFunc->GetMemoryPool()));
-            newStOfstRhs.SetValue(newStOfstRhs.GetValue() + i * k8ByteSize);
-            memOpndRhs.SetOffsetOperand(newStOfstRhs);
-            /* copy data */
-            SelectCopy(memOpndLhs, memOpndRhs, PTY_a64);
-        }
-    } else {
-        /* adopt memcpy */
-        std::vector<Operand *> opndVec;
-        opndVec.push_back(PrepareMemcpyParm(lhs, MOP_leaq_m_r));
-        opndVec.push_back(PrepareMemcpyParm(rhs, MOP_leaq_m_r));
-        opndVec.push_back(PrepareMemcpyParm(copySize));
-        SelectLibCall("memcpy", opndVec, PTY_a64, nullptr, PTY_void);
-        return;
-    }
-    /* take care of extra content at the end less than the unit */
-    if (extraCopySize == 0) {
-        return;
-    }
-    extraCopySize = ((extraCopySize <= k4ByteSize) ? k4ByteSize : k8ByteSize) * kBitsPerByte;
-    PrimType extraTy = GetIntegerPrimTypeFromSize(false, extraCopySize);
-    MemOperand &memOpndLhs = cgFunc->GetOpndBuilder()->CreateMem(extraCopySize);
-    memOpndLhs.SetBaseRegister(*baseLhs);
-    ImmOperand &newStOfstLhs = static_cast<ImmOperand &>(*stOfstLhs->Clone(*cgFunc->GetMemoryPool()));
-    newStOfstLhs.SetValue(newStOfstLhs.GetValue() + copyTimes * k8ByteSize);
-    memOpndLhs.SetOffsetOperand(newStOfstLhs);
-    MemOperand &memOpndRhs = cgFunc->GetOpndBuilder()->CreateMem(extraCopySize);
-    memOpndRhs.SetBaseRegister(*baseRhs);
-    ImmOperand &newStOfstRhs = static_cast<ImmOperand &>(*stOfstRhs->Clone(*cgFunc->GetMemoryPool()));
-    newStOfstRhs.SetValue(newStOfstRhs.GetValue() + copyTimes * k8ByteSize);
-    memOpndRhs.SetOffsetOperand(newStOfstRhs);
-    SelectCopy(memOpndLhs, memOpndRhs, extraTy);
-}
-
-void X64MPIsel::SelectLibCall(const std::string &funcName, std::vector<Operand *> &opndVec, PrimType primType,
-                              Operand *retOpnd, PrimType retType)
-{
-    /* generate libcall */
-    std::vector<PrimType> pt(opndVec.size(), primType);
-    SelectLibCallNArg(funcName, opndVec, pt, retOpnd, retType);
-    return;
-}
-
-void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Operand *> &opndVec,
-                                  std::vector<PrimType> pt, Operand *retOpnd, PrimType retPrimType)
-{
-    std::string newName = funcName;
-    MIRSymbol *st = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
-    st->SetNameStrIdx(newName);
-    st->SetStorageClass(kScExtern);
-    st->SetSKind(kStFunc);
-
-    /* setup the type of the callee function */
-    std::vector<TyIdx> vec;
-    std::vector<TypeAttrs> vecAt;
-    for (size_t i = 0; i < opndVec.size(); ++i) {
-        vec.emplace_back(GlobalTables::GetTypeTable().GetTypeTable()[static_cast<size_t>(pt[i])]->GetTypeIndex());
-        vecAt.emplace_back(TypeAttrs());
-    }
-
-    /* only support no return function */
-    MIRType *mirRetType = GlobalTables::GetTypeTable().GetTypeTable().at(static_cast<size_t>(retPrimType));
-    CHECK_NULL_FATAL(mirRetType);
-    st->SetTyIdx(
-        cgFunc->GetBecommon().BeGetOrCreateFunctionType(mirRetType->GetTypeIndex(), vec, vecAt)->GetTypeIndex());
-
-    /* setup actual parameters */
-    ListOperand &paramOpnds = cgFunc->GetOpndBuilder()->CreateList();
-
-    X64CallConvImpl parmLocator(cgFunc->GetBecommon());
-    CCLocInfo ploc;
-    for (size_t i = 0; i < opndVec.size(); ++i) {
-        DEBUG_ASSERT(pt[i] != PTY_void, "primType check");
-        MIRType *ty;
-        ty = GlobalTables::GetTypeTable().GetTypeTable()[static_cast<size_t>(pt[i])];
-        Operand *stOpnd = opndVec[i];
-        DEBUG_ASSERT(stOpnd->IsRegister(), "exp result should be reg");
-        RegOperand *expRegOpnd = static_cast<RegOperand *>(stOpnd);
-        parmLocator.LocateNextParm(*ty, ploc);
-        if (ploc.reg0 != 0) { /* load to the register */
-            RegOperand &parmRegOpnd = cgFunc->GetOpndBuilder()->CreatePReg(ploc.reg0, expRegOpnd->GetSize(),
-                                                                           cgFunc->GetRegTyFromPrimTy(pt[i]));
-            SelectCopy(parmRegOpnd, *expRegOpnd, pt[i]);
-            paramOpnds.PushOpnd(parmRegOpnd);
-        }
-        DEBUG_ASSERT(ploc.reg1 == 0, "SelectCall NYI");
-    }
-
-    MIRSymbol *sym = cgFunc->GetFunction().GetLocalOrGlobalSymbol(st->GetStIdx(), false);
-    Operand &targetOpnd = cgFunc->GetOpndBuilder()->CreateFuncNameOpnd(*sym);
-    ListOperand &retOpnds = cgFunc->GetOpndBuilder()->CreateList();
-    Insn &callInsn = AppendCall(x64::MOP_callq_l, targetOpnd, paramOpnds, retOpnds);
-
-    /* no ret function */
-    if (retOpnd == nullptr) {
-        return;
-    }
-
-    CCLocInfo retMech;
-    parmLocator.LocateRetVal(*(GlobalTables::GetTypeTable().GetTypeTable().at(retPrimType)), retMech);
-    if (retMech.GetRegCount() <= 0 || retMech.GetRegCount() > 1) {
-        CHECK_FATAL(false, "just support one register return");
-    }
-    if (mirRetType != nullptr) {
-        callInsn.SetRetSize(static_cast<uint32>(mirRetType->GetSize()));
-        callInsn.SetIsCallReturnUnsigned(IsUnsignedInteger(mirRetType->GetPrimType()));
-    }
-    CHECK_FATAL(retOpnd->IsRegister(), "niy");
-    RegOperand *regOpnd = static_cast<RegOperand *>(retOpnd);
-    regno_t retRegNo = retMech.GetReg0();
-    if (regOpnd->GetRegisterNumber() != retRegNo) {
-        RegOperand &phyRetOpnd =
-            cgFunc->GetOpndBuilder()->CreatePReg(retRegNo, regOpnd->GetSize(), cgFunc->GetRegTyFromPrimTy(retPrimType));
-        SelectCopy(*retOpnd, phyRetOpnd, retPrimType);
-    }
-    return;
-}
-
 Operand *X64MPIsel::SelectFloatingConst(MIRConst &floatingConst, PrimType primType) const
 {
     CHECK_FATAL(primType == PTY_f64 || primType == PTY_f32, "wrong const");
@@ -526,55 +263,6 @@ RegOperand *X64MPIsel::PrepareMemcpyParm(uint64 copySize)
     ImmOperand &sizeOpnd = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, copySize);
     SelectCopy(regResult, sizeOpnd, PTY_i64);
     return &regResult;
-}
-
-void X64MPIsel::SelectAggDassign(MirTypeInfo &lhsInfo, MemOperand &symbolMem, Operand &opndRhs)
-{
-    /* rhs is Func Return, it must be from Regread */
-    if (opndRhs.IsRegister()) {
-        SelectIntAggCopyReturn(symbolMem, lhsInfo.size);
-        return;
-    }
-    /* In generally, rhs is from Dread/Iread */
-    CHECK_FATAL(opndRhs.IsMemoryAccessOperand(), "Aggregate Type RHS must be mem");
-    MemOperand &memRhs = static_cast<MemOperand &>(opndRhs);
-    SelectAggCopy(symbolMem, memRhs, lhsInfo.size);
-}
-
-void X64MPIsel::SelectAggIassign(IassignNode &stmt, Operand &AddrOpnd, Operand &opndRhs)
-{
-    /* mirSymbol info */
-    MirTypeInfo symbolInfo = GetMirTypeInfoFromMirNode(stmt);
-    MIRType *stmtMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(stmt.GetTyIdx());
-
-    /* In generally, RHS is from Dread/Iread */
-    CHECK_FATAL(opndRhs.IsMemoryAccessOperand(), "Aggregate Type RHS must be mem");
-    MemOperand &memRhs = static_cast<MemOperand &>(opndRhs);
-    ImmOperand *stOfstSrc = memRhs.GetOffsetOperand();
-    RegOperand *baseSrc = memRhs.GetBaseRegister();
-
-    if (stmtMirType->GetPrimType() == PTY_agg) {
-        /* generate move to regs for agg return */
-        RegOperand *result[kFourRegister] = {nullptr}; /* up to 2 int or 4 fp */
-        uint32 numRegs = (symbolInfo.size <= k8ByteSize) ? kOneRegister : kTwoRegister;
-        PrimType retPrimType = (symbolInfo.size <= k4ByteSize) ? PTY_u32 : PTY_u64;
-        for (uint32 i = 0; i < numRegs; i++) {
-            MemOperand &rhsMemOpnd = cgFunc->GetOpndBuilder()->CreateMem(GetPrimTypeBitSize(retPrimType));
-            rhsMemOpnd.SetBaseRegister(*baseSrc);
-            ImmOperand &newStOfstSrc = static_cast<ImmOperand &>(*stOfstSrc->Clone(*cgFunc->GetMemoryPool()));
-            newStOfstSrc.SetValue(newStOfstSrc.GetValue() + i * k8ByteSize);
-            rhsMemOpnd.SetOffsetOperand(newStOfstSrc);
-            regno_t regNo = (i == 0) ? x64::RAX : x64::RDX;
-            result[i] = &cgFunc->GetOpndBuilder()->CreatePReg(regNo, GetPrimTypeBitSize(retPrimType),
-                                                              cgFunc->GetRegTyFromPrimTy(retPrimType));
-            SelectCopy(*(result[i]), rhsMemOpnd, retPrimType);
-        }
-    } else {
-        RegOperand *lhsAddrOpnd = &SelectCopy2Reg(AddrOpnd, stmt.Opnd(0)->GetPrimType());
-        MemOperand &symbolMem =
-            cgFunc->GetOpndBuilder()->CreateMem(*lhsAddrOpnd, symbolInfo.offset, GetPrimTypeBitSize(PTY_u64));
-        SelectAggCopy(symbolMem, memRhs, symbolInfo.size);
-    }
 }
 
 Insn &X64MPIsel::AppendCall(x64::X64MOP_t mOp, Operand &targetOpnd, ListOperand &paramOpnds, ListOperand &retOpnds)
@@ -701,88 +389,6 @@ void X64MPIsel::SelectGoto(GotoNode &stmt)
     return;
 }
 
-/* This function is to generate an inline function to generate the va_list data structure */
-/* type $__va_list <struct {
-     @__stack <* void> align(8),
-     @__gr_top <* void> align(8),
-     @__vr_top <* void> align(8),
-     @__gr_offs i32 align(4),
-     @__vr_offs i32 align(4)}>
-   }
-*/
-void X64MPIsel::GenCVaStartIntrin(RegOperand &opnd, uint32 stkOffset)
-{
-    /* FPLR only pushed in regalloc() after intrin function */
-    RegOperand &fpOpnd = cgFunc->GetOpndBuilder()->CreatePReg(RFP, k64BitSize, kRegTyInt);
-
-    uint32 fpLrLength = k16BitSize;
-    /* __stack */
-    if (stkOffset != 0) {
-        stkOffset += fpLrLength;
-    }
-
-    /* isvary reset StackFrameSize */
-    ImmOperand &vaListOnPassArgStackOffset = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, stkOffset);
-    RegOperand &vReg = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, kRegTyInt);
-    SelectAdd(vReg, fpOpnd, vaListOnPassArgStackOffset, GetLoweredPtrType());
-
-    // The 8-byte data in the a structure needs to use this mop.
-    MOperator mOp = x64::MOP_movq_r_m;
-
-    /* mem operand in va_list struct (lhs) */
-    MemOperand &vaList = GetCurFunc()->GetOpndBuilder()->CreateMem(opnd, 0, k64BitSize);
-    Insn &fillInStkOffsetInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
-    fillInStkOffsetInsn.AddOpndChain(vReg).AddOpndChain(vaList);
-    cgFunc->GetCurBB()->AppendInsn(fillInStkOffsetInsn);
-
-    /* __gr_top   ; it's the same as __stack before the 1st va_arg */
-    stkOffset = 0;
-    ImmOperand &grTopOffset = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, stkOffset);
-    SelectSub(vReg, fpOpnd, grTopOffset, PTY_a64);
-
-    /* mem operand in va_list struct (lhs) */
-    MemOperand &vaListGRTop = GetCurFunc()->GetOpndBuilder()->CreateMem(opnd, k8BitSize, k64BitSize);
-    Insn &fillInGRTopInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
-    fillInGRTopInsn.AddOpndChain(vReg).AddOpndChain(vaListGRTop);
-    cgFunc->GetCurBB()->AppendInsn(fillInGRTopInsn);
-
-    /* __vr_top */
-    int32 grAreaSize = static_cast<int32>(static_cast<X64MemLayout *>(cgFunc->GetMemlayout())->GetSizeOfGRSaveArea());
-    stkOffset += static_cast<uint32>(grAreaSize);
-    stkOffset += k8BitSize;
-    ImmOperand &vaListVRTopOffset = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, stkOffset);
-    SelectSub(vReg, fpOpnd, vaListVRTopOffset, PTY_a64);
-
-    MemOperand &vaListVRTop = GetCurFunc()->GetOpndBuilder()->CreateMem(opnd, k16BitSize, k64BitSize);
-    Insn &fillInVRTopInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
-    fillInVRTopInsn.AddOpndChain(vReg).AddOpndChain(vaListVRTop);
-    cgFunc->GetCurBB()->AppendInsn(fillInVRTopInsn);
-
-    // The 4-byte data in the a structure needs to use this mop.
-    mOp = x64::MOP_movl_r_m;
-
-    /* __gr_offs */
-    int32 grOffs = 0 - grAreaSize;
-    ImmOperand &vaListGROffsOffset = cgFunc->GetOpndBuilder()->CreateImm(k32BitSize, grOffs);
-    RegOperand &grOffsRegOpnd = SelectCopy2Reg(vaListGROffsOffset, PTY_a32);
-
-    MemOperand &vaListGROffs = GetCurFunc()->GetOpndBuilder()->CreateMem(opnd, k24BitSize, k64BitSize);
-    Insn &fillInGROffsInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
-    fillInGROffsInsn.AddOpndChain(grOffsRegOpnd).AddOpndChain(vaListGROffs);
-    cgFunc->GetCurBB()->AppendInsn(fillInGROffsInsn);
-
-    /* __vr_offs */
-    int32 vrOffs = static_cast<int32>(
-        0UL - static_cast<int32>(static_cast<X64MemLayout *>(cgFunc->GetMemlayout())->GetSizeOfVRSaveArea()));
-    ImmOperand &vaListVROffsOffset = cgFunc->GetOpndBuilder()->CreateImm(k32BitSize, vrOffs);
-    RegOperand &vrOffsRegOpnd = SelectCopy2Reg(vaListVROffsOffset, PTY_a32);
-
-    MemOperand &vaListVROffs = GetCurFunc()->GetOpndBuilder()->CreateMem(opnd, k24BitSize + 4, k64BitSize);
-    Insn &fillInVROffsInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
-    fillInVROffsInsn.AddOpndChain(vrOffsRegOpnd).AddOpndChain(vaListVROffs);
-    cgFunc->GetCurBB()->AppendInsn(fillInVROffsInsn);
-}
-
 void X64MPIsel::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
 {
     DEBUG_ASSERT(intrnNode.NumOpnds() == kOpndNum2, "must be 2 operands");
@@ -827,52 +433,9 @@ void X64MPIsel::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
     return;
 }
 
-/* The second parameter in function va_start does not need to be concerned here,
- * it is mainly used in proepilog */
-void X64MPIsel::SelectCVaStart(const IntrinsiccallNode &intrnNode)
-{
-    DEBUG_ASSERT(intrnNode.NumOpnds() == kOpndNum2, "must be 2 operands");
-    /* 2 operands, but only 1 needed. Don't need to emit code for second operand
-     *
-     * va_list is a passed struct with an address, load its address
-     */
-    BaseNode *argExpr = intrnNode.Opnd(0);
-    Operand *opnd = HandleExpr(intrnNode, *argExpr);
-    RegOperand &opnd0 = SelectCopy2Reg(*opnd, GetLoweredPtrType()); /* first argument of intrinsic */
-
-    /* Find beginning of unnamed arg on stack.
-     * Ex. void foo(int i1, int i2, ... int i8, struct S r, struct S s, ...)
-     *     where struct S has size 32, address of r and s are on stack but they are named.
-     */
-    X64CallConvImpl parmLocator(cgFunc->GetBecommon());
-    CCLocInfo pLoc;
-    uint32 stkSize = 0;
-    for (uint32 i = 0; i < cgFunc->GetFunction().GetFormalCount(); i++) {
-        MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(cgFunc->GetFunction().GetNthParamTyIdx(i));
-        parmLocator.LocateNextParm(*ty, pLoc);
-        if (pLoc.reg0 == kRinvalid) { /* on stack */
-            stkSize = static_cast<uint32_t>(pLoc.memOffset + pLoc.memSize);
-        }
-    }
-
-    stkSize = static_cast<uint32>(RoundUp(stkSize, GetPointerSize()));
-
-    GenCVaStartIntrin(opnd0, stkSize);
-
-    return;
-}
-
 void X64MPIsel::SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode)
 {
     MIRIntrinsicID intrinsic = intrinsiccallNode.GetIntrinsic();
-    if (intrinsic == INTRN_C_va_start) {
-        SelectCVaStart(intrinsiccallNode);
-        return;
-    }
-    if (intrinsic == INTRN_C_stack_save || intrinsic == INTRN_C_stack_restore) {
-        return;
-    }
-    // JS
     if (intrinsic == INTRN_ADD_WITH_OVERFLOW || intrinsic == INTRN_SUB_WITH_OVERFLOW ||
         intrinsic == INTRN_MUL_WITH_OVERFLOW) {
         SelectOverFlowCall(intrinsiccallNode);
@@ -932,95 +495,6 @@ void X64MPIsel::SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOpnd)
     Insn &jmpInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
     jmpInsn.AddOpndChain(dstMemOpnd);
     cgFunc->GetCurBB()->AppendInsn(jmpInsn);
-}
-
-Operand *X64MPIsel::SelectAddrof(AddrofNode &expr, const BaseNode &parent)
-{
-    /* get mirSymbol info*/
-    MIRSymbol *symbol = cgFunc->GetFunction().GetLocalOrGlobalSymbol(expr.GetStIdx());
-    /* <prim-type> of AddrofNode must be either ptr, a32 or a64 */
-    PrimType ptype = expr.GetPrimType();
-    RegOperand &resReg =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(ptype), cgFunc->GetRegTyFromPrimTy(ptype));
-    CHECK_NULL_FATAL(symbol);
-    MemOperand &memOperand = GetOrCreateMemOpndFromSymbol(*symbol, expr.GetFieldID());
-    uint32 pSize = GetPrimTypeSize(ptype);
-    MOperator mOp;
-    if (pSize <= k4ByteSize) {
-        mOp = x64::MOP_leal_m_r;
-    } else if (pSize <= k8ByteSize) {
-        mOp = x64::MOP_leaq_m_r;
-    } else {
-        CHECK_FATAL(false, "NIY");
-    }
-    Insn &addrInsn = (cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]));
-    addrInsn.AddOpndChain(memOperand).AddOpndChain(resReg);
-    cgFunc->GetCurBB()->AppendInsn(addrInsn);
-    return &resReg;
-}
-
-Operand *X64MPIsel::SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &parent)
-{
-    uint32 instrSize = static_cast<uint32>(expr.SizeOfInstr());
-    /* <prim-type> must be either a32 or a64. */
-    PrimType primType = (instrSize == k8ByteSize) ? PTY_a64 : (instrSize == k4ByteSize) ? PTY_a32 : PTY_begin;
-    CHECK_FATAL(primType != PTY_begin, "prim-type of Func Addr must be either a32 or a64!");
-    MIRFunction *mirFunction = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(expr.GetPUIdx());
-    MIRSymbol *symbol = mirFunction->GetFuncSymbol();
-    CHECK_NULL_FATAL(symbol);
-    MIRStorageClass storageClass = symbol->GetStorageClass();
-    RegOperand &resReg =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
-    if (storageClass == maple::kScText && symbol->GetSKind() == maple::kStFunc) {
-        ImmOperand &stOpnd = cgFunc->GetOpndBuilder()->CreateImm(*symbol, 0, 0);
-        X64MOP_t mOp = x64::MOP_movabs_i_r;
-        Insn &addrInsn = (cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]));
-        addrInsn.AddOpndChain(stOpnd).AddOpndChain(resReg);
-        cgFunc->GetCurBB()->AppendInsn(addrInsn);
-    } else {
-        CHECK_FATAL(false, "NIY");
-    }
-    return &resReg;
-}
-
-Operand *X64MPIsel::SelectAddrofLabel(AddroflabelNode &expr, const BaseNode &parent)
-{
-    PrimType primType = expr.GetPrimType();
-    uint32 bitSize = GetPrimTypeBitSize(primType);
-    RegOperand &resOpnd = cgFunc->GetOpndBuilder()->CreateVReg(bitSize, cgFunc->GetRegTyFromPrimTy(primType));
-    RegOperand &baseOpnd =
-        cgFunc->GetOpndBuilder()->CreatePReg(x64::RIP, bitSize, cgFunc->GetRegTyFromPrimTy(primType));
-
-    auto labelStr = ".L." + std::to_string(cgFunc->GetUniqueID()) + "__" + std::to_string(expr.GetOffset());
-    MIRSymbol *labelSym = cgFunc->GetFunction().GetSymTab()->CreateSymbol(kScopeLocal);
-    DEBUG_ASSERT(labelSym != nullptr, "null ptr check");
-    labelSym->SetStorageClass(kScFstatic);
-    labelSym->SetSKind(kStConst);
-    labelSym->SetNameStrIdx(labelStr);
-    MIRType *etype = GlobalTables::GetTypeTable().GetTypeFromTyIdx((TyIdx)PTY_a64);
-    DEBUG_ASSERT(etype != nullptr, "null ptr check");
-    auto *labelConst =
-        cgFunc->GetMemoryPool()->New<MIRLblConst>(expr.GetOffset(), cgFunc->GetFunction().GetPuidx(), *etype);
-    DEBUG_ASSERT(labelConst != nullptr, "null ptr check");
-    labelSym->SetKonst(labelConst);
-    ImmOperand &stOpnd = cgFunc->GetOpndBuilder()->CreateImm(*labelSym, 0, 0);
-
-    MemOperand &memOpnd = cgFunc->GetOpndBuilder()->CreateMem(bitSize);
-    memOpnd.SetBaseRegister(baseOpnd);
-    memOpnd.SetOffsetOperand(stOpnd);
-
-    X64MOP_t mOp = x64::MOP_begin;
-    if (bitSize <= k32BitSize) {
-        mOp = x64::MOP_leal_m_r;
-    } else if (bitSize <= k64BitSize) {
-        mOp = x64::MOP_leaq_m_r;
-    } else {
-        CHECK_FATAL(false, "NIY");
-    }
-    Insn &addrInsn = (cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]));
-    addrInsn.AddOpndChain(memOpnd).AddOpndChain(resOpnd);
-    cgFunc->GetCurBB()->AppendInsn(addrInsn);
-    return &resOpnd;
 }
 
 /*
@@ -1434,17 +908,6 @@ void X64MPIsel::SelectMinOrMax(bool isMin, Operand &resOpnd, Operand &opnd0, Ope
     }
 }
 
-Operand *X64MPIsel::SelectCexp(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent)
-{
-    PrimType primType = node.GetPrimType();
-    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, primType);
-    Operand &retReg =
-        cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
-    std::vector<Operand *> opndVec = {&regOpnd0};
-    SelectLibCall("exp", opndVec, primType, &retReg, primType);
-    return &retReg;
-}
-
 Operand *X64MPIsel::SelectCctz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent)
 {
     CHECK_FATAL(opnd0.IsImmediate() || opnd0.IsRegister(), "unhandled operand type here!");
@@ -1505,45 +968,6 @@ Operand *X64MPIsel::SelectCclz(IntrinsicopNode &node, Operand &opnd0, const Base
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType), cgFunc->GetRegTyFromPrimTy(retType));
     SelectIntCvt(destReg, tmp3, retType, origPrimType);
     return &destReg;
-}
-
-Operand *X64MPIsel::SelectBswap(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent)
-{
-    PrimType dtype = node.GetPrimType();
-    auto bitWidth = GetPrimTypeBitSize(dtype);
-    // bswap only support 32/64-bit, xchg support 16-bit -- xchg al, ah
-    CHECK_FATAL(bitWidth == k16BitSize || bitWidth == k32BitSize || bitWidth == k64BitSize,
-                "NIY, unsupported bitWidth.");
-
-    RegOperand *resOpnd = nullptr;
-
-    if (bitWidth == k16BitSize) {
-        /*
-         * For 16-bit, use xchg, such as: xchg ah, al. So, the register must support high 8-bit.
-         * For x64, we can use RAX(AH:AL), RBX(BH:BL), RCX(CH:CL), RDX(DH:DL).
-         * The RA does not perform special processing for the high 8-bit case.
-         * So, we use the RAX regiser in here.
-         */
-        resOpnd = &cgFunc->GetOpndBuilder()->CreatePReg(x64::RAX, bitWidth, cgFunc->GetRegTyFromPrimTy(dtype));
-        SelectCopy(*resOpnd, opnd0, dtype, node.Opnd(0)->GetPrimType());
-        RegOperand &lowerOpnd =
-            cgFunc->GetOpndBuilder()->CreatePReg(x64::RAX, k8BitSize, cgFunc->GetRegTyFromPrimTy(dtype));
-        RegOperand &highOpnd =
-            cgFunc->GetOpndBuilder()->CreatePReg(x64::RAX, k8BitSize, cgFunc->GetRegTyFromPrimTy(dtype));
-        highOpnd.SetHigh8Bit();
-        x64::X64MOP_t xchgMop = MOP_xchgb_r_r;
-        Insn &xchgInsn = cgFunc->GetInsnBuilder()->BuildInsn(xchgMop, X64CG::kMd[xchgMop]);
-        xchgInsn.AddOpndChain(highOpnd).AddOpndChain(lowerOpnd);
-        cgFunc->GetCurBB()->AppendInsn(xchgInsn);
-    } else {
-        resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(bitWidth, cgFunc->GetRegTyFromPrimTy(dtype));
-        SelectCopy(*resOpnd, opnd0, dtype, node.Opnd(0)->GetPrimType());
-        x64::X64MOP_t bswapMop = (bitWidth == k64BitSize) ? MOP_bswapq_r : MOP_bswapl_r;
-        Insn &bswapInsn = cgFunc->GetInsnBuilder()->BuildInsn(bswapMop, X64CG::kMd[bswapMop]);
-        bswapInsn.AddOperand(*resOpnd);
-        cgFunc->GetCurBB()->AppendInsn(bswapInsn);
-    }
-    return resOpnd;
 }
 
 RegOperand &X64MPIsel::GetTargetStackPointer(PrimType primType)

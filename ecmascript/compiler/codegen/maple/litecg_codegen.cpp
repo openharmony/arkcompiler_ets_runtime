@@ -27,7 +27,6 @@
 #include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
 #include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/lmir_builder.h"
 #include "ecmascript/compiler/compiler_log.h"
-#include "ecmascript/compiler/debug_info.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/object_factory.h"

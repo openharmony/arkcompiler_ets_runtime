@@ -48,6 +48,11 @@ public:
         keepPosition = flag;
     }
 
+    bool IsLabelInSwitchTable(LabelIdx label) const
+    {
+        return CGCFG::InSwitchTable(label, *cgFunc);
+    }
+
     bool Search2Op(bool noOptimize);
     virtual void InitPattern() {}
     virtual bool Optimize(BB &curBB) = 0;

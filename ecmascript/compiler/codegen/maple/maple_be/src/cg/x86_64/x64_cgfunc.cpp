@@ -20,11 +20,6 @@
 #include "assembler/operand.h"
 
 namespace maplebe {
-/* null implementation yet */
-void X64CGFunc::GenSaveMethodInfoCode(BB &bb)
-{
-    CHECK_FATAL(false, "NIY");
-}
 void X64CGFunc::MergeReturn()
 {
     CHECK_FATAL(false, "NIY");
@@ -88,11 +83,6 @@ Operand *X64CGFunc::SelectDread(const BaseNode &parent, AddrofNode &expr)
     return nullptr;
 }
 RegOperand *X64CGFunc::SelectRegread(RegreadNode &expr)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
-Operand *X64CGFunc::SelectAddrof(AddrofNode &expr, const BaseNode &parent, bool isAddrofoff)
 {
     CHECK_FATAL(false, "NIY");
     return nullptr;
@@ -274,17 +264,15 @@ Operand *X64CGFunc::SelectTrunc(TypeCvtNode &node, Operand &opnd0, const BaseNod
     CHECK_FATAL(false, "NIY");
     return nullptr;
 }
-Operand *X64CGFunc::SelectSelect(TernaryNode &node, Operand &cond, Operand &opnd0, Operand &opnd1,
-                                 const BaseNode &parent, bool hasCompare)
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
 RegOperand &X64CGFunc::SelectCopy(Operand &src, PrimType srcType, PrimType dstType)
 {
     CHECK_FATAL(false, "NIY");
     RegOperand *a;
     return *a;
+}
+void X64CGFunc::SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &opnd0)
+{
+    CHECK_FATAL(false, "NIY");
 }
 Operand &X64CGFunc::GetOrCreateRflag()
 {

@@ -26,7 +26,6 @@ public:
     explicit AArch64FixShortBranch(CGFunc *cf) : cgFunc(cf) {}
     ~AArch64FixShortBranch() = default;
     void FixShortBranches() const;
-    void FixShortBranchesForSplitting();
     // for long branch which exceeds size of imm19, we need to insert pad.
     // see InsertJumpPad to know how we do this.
     void PatchLongBranch();
@@ -44,7 +43,6 @@ private:
     //                              [section end]
     //                              new_label
     //                              unconditional br target_label
-    void InsertJmpPadAtSecEnd(Insn &insn, uint32 targetLabelIdx, BB &targetBB);
     void InitSecEnd();
     uint32 CalculateAlignRange(const BB &bb, uint32 addr) const;
     uint32 CalculateIfBBNum() const;

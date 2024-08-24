@@ -16,7 +16,6 @@
 #include "label_creation.h"
 #include "cgfunc.h"
 #include "cg.h"
-#include "debug_info.h"
 
 namespace maplebe {
 using namespace maple;

@@ -32,15 +32,6 @@ void AArch64LiveAnalysis::GenerateReturnBBDefUse(BB &bb) const
     }
 }
 
-bool AArch64LiveAnalysis::CleanupBBIgnoreReg(regno_t reg)
-{
-    regno_t regNO = reg + R0;
-    if (regNO < R8 || (RLR <= regNO && regNO <= RZR)) {
-        return true;
-    }
-    return false;
-}
-
 void AArch64LiveAnalysis::ProcessCallInsnParam(BB &bb, const Insn &insn) const
 {
     /* R0 ~ R7（R0 + 0  ~ R0 + 7） and V0 ~ V7 (V0 + 0 ~ V0 + 7) is parameter register */

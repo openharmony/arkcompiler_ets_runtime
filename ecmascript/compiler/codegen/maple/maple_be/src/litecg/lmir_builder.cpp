@@ -260,7 +260,7 @@ static const FuncAttrKind FuncConvAttrMapTable[] = {
     // CCall,         Web_Kit_JS_Call,     GHC_Call
     FUNCATTR_ccall, FUNCATTR_webkitjscall, FUNCATTR_ghcall};
 
-static const StmtAttrKind StmtConvAttrMapTable[] = {STMTATTR_ccall, STMTATTR_webkitjscall, STMTATTR_ghcall};
+static const StmtAttrKind StmtConvAttrMapTable[] = {STMTATTR_ccall, STMTATTR_webkitjscall};
 
 Function &LMIRBuilder::CreateFunctionInternal(const String &name, Type *retType, Params &params_, bool isVargs,
                                               bool needBody, FuncAttr attr, ConvAttr convAttr)

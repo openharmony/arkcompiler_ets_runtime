@@ -30,15 +30,9 @@ public:
     void SelectIcall(IcallNode &icallNode) override;
     Operand &ProcessReturnReg(PrimType primType, int32 sReg) override;
     Operand &GetTargetRetOperand(PrimType primType, int32 sReg) override;
-    Operand *SelectAddrof(AddrofNode &expr, const BaseNode &parent) override;
-    Operand *SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &parent) override;
-    Operand *SelectAddrofLabel(AddroflabelNode &expr, const BaseNode &parent) override;
     Operand *SelectFloatingConst(MIRConst &floatingConst, PrimType primType) const override;
     void SelectGoto(GotoNode &stmt) override;
     void SelectIntrinsicCall(IntrinsiccallNode &intrinsiccallNode) override;
-    void SelectAggIassign(IassignNode &stmt, Operand &AddrOpnd, Operand &opndRhs) override;
-    void SelectAggDassign(maplebe::MirTypeInfo &lhsInfo, MemOperand &symbolMem, Operand &opndRhs) override;
-    void SelectAggCopy(MemOperand &lhs, MemOperand &rhs, uint32 copySize) override;
     void SelectRangeGoto(RangeGotoNode &rangeGotoNode, Operand &srcOpnd) override;
     void SelectCondGoto(CondGotoNode &stmt, BaseNode &condNode, Operand &opnd0) override;
     Operand *SelectDiv(BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent) override;
@@ -48,13 +42,10 @@ public:
     Operand *SelectLnot(const UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectSelect(TernaryNode &expr, Operand &cond, Operand &trueOpnd, Operand &falseOpnd,
                           const BaseNode &parent) override;
-    void SelectIntAggCopyReturn(MemOperand &symbolMem, uint64 aggSize) override;
     /* Create the operand interface directly */
     MemOperand &CreateMemOpndOrNull(PrimType ptype, const BaseNode &parent, BaseNode &addrExpr, int64 offset = 0);
-    Operand *SelectBswap(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectCclz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectCctz(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) override;
-    Operand *SelectCexp(IntrinsicopNode &node, Operand &opnd0, const BaseNode &parent) override;
     Operand *SelectSqrt(UnaryNode &node, Operand &opnd0, const BaseNode &parent) override;
 
 private:
@@ -63,11 +54,6 @@ private:
     Insn &AppendCall(x64::X64MOP_t mOp, Operand &targetOpnd, ListOperand &paramOpnds, ListOperand &retOpnds);
     void SelectCalleeReturn(MIRType *retType, ListOperand &retOpnds);
 
-    /* Inline function implementation of va_start */
-    void GenCVaStartIntrin(RegOperand &opnd, uint32 stkSize);
-
-    /* Subclass private instruction selector function */
-    void SelectCVaStart(const IntrinsiccallNode &intrnNode);
     void SelectOverFlowCall(const IntrinsiccallNode &intrnNode);
     void SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, uint32 &fpNum);
     void SelectMpy(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
@@ -83,17 +69,7 @@ private:
     Operand *SelectDivRem(RegOperand &opnd0, RegOperand &opnd1, PrimType primType, Opcode opcode);
     RegOperand &GetTargetStackPointer(PrimType primType) override;
     RegOperand &GetTargetBasicPointer(PrimType primType) override;
-    std::tuple<Operand *, size_t, MIRType *> GetMemOpndInfoFromAggregateNode(BaseNode &argExpr);
-    void SelectParmListForAggregate(BaseNode &argExpr, X64CallConvImpl &parmLocator, bool isArgUnused);
-    void CreateCallStructParamPassByReg(MemOperand &memOpnd, regno_t regNo, uint32 parmNum);
-    void CreateCallStructParamPassByStack(MemOperand &addrOpnd, int32 symSize, int32 baseOffset);
-    void SelectAggCopyReturn(const MIRSymbol &symbol, MIRType &symbolType, uint64 symbolSize);
-    bool IsParamStructCopy(const MIRSymbol &symbol);
     void SelectMinOrMax(bool isMin, Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType) override;
-    void SelectLibCall(const std::string &funcName, std::vector<Operand *> &opndVec, PrimType primType,
-                       Operand *retOpnd, PrimType retType);
-    void SelectLibCallNArg(const std::string &funcName, std::vector<Operand *> &opndVec, std::vector<PrimType> pt,
-                           Operand *retOpnd, PrimType retType);
     void SelectPseduoForReturn(std::vector<RegOperand *> &retRegs);
     RegOperand *PrepareMemcpyParm(MemOperand &memOperand, MOperator mOp);
     RegOperand *PrepareMemcpyParm(uint64 copySize);
