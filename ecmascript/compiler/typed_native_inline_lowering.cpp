@@ -2480,6 +2480,8 @@ GateRef TypedNativeInlineLowering::NumberToInt32(GateRef gate)
             return gate;
         case MachineType::F64:
             return builder_.ChangeFloat64ToInt32(gate);
+        case MachineType::I1:
+            return builder_.ZExtInt1ToInt32(gate);
         default:
             LOG_COMPILER(ERROR) << "Not Number Type";
             break;
