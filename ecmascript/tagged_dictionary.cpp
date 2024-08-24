@@ -539,6 +539,7 @@ std::pair<JSTaggedValue, JSTaggedValue> FunctionProtoTransitionTable::FindTransi
 
 bool FunctionProtoTransitionTable::TryInsertFakeParentItem(JSTaggedType child, JSTaggedType parent)
 {
+    LockHolder lock(fakeParentMutex_);
     // Situation:
     // 1: d1.prototype = p
     // 2: d2.prototype = p
@@ -567,8 +568,9 @@ bool FunctionProtoTransitionTable::TryInsertFakeParentItem(JSTaggedType child, J
     return false;
 }
 
-JSTaggedType FunctionProtoTransitionTable::GetFakeParent(JSTaggedType child) const
+JSTaggedType FunctionProtoTransitionTable::GetFakeParent(JSTaggedType child)
 {
+    LockHolder lock(fakeParentMutex_);
     auto iter = fakeParentMap_.find(child);
     if (iter != fakeParentMap_.end()) {
         return iter->second;
