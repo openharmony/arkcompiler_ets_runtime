@@ -43,6 +43,7 @@ using namespace panda::panda_file;
 using namespace panda::pandasm;
 
 namespace panda::test {
+using FunctionCallbackInfo = Local<JSValueRef>(*)(JsiRuntimeCallInfo *);
 class EcmaModuleTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -64,11 +65,46 @@ public:
     {
         TestHelper::DestroyEcmaVMWithScope(instance, scope);
     }
+
+    static Local<JSValueRef> MockRequireNapiUndefined(JsiRuntimeCallInfo *runtimeCallInfo);
+    static Local<JSValueRef> MockRequireNapiFailure(JsiRuntimeCallInfo *runtimeCallInfo);
+    static Local<JSValueRef> MockRequireNapiValue(JsiRuntimeCallInfo *runtimeCallInfo);
+    static Local<JSValueRef> MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo);
+
     EcmaVM *instance {nullptr};
     ecmascript::EcmaHandleScope *scope {nullptr};
     JSThread *thread {nullptr};
 };
 
+Local<JSValueRef> EcmaModuleTest::MockRequireNapiUndefined(JsiRuntimeCallInfo *runtimeCallInfo)
+{
+    EcmaVM *vm = runtimeCallInfo->GetVM();
+    return JSValueRef::Undefined(vm);
+}
+
+Local<JSValueRef> EcmaModuleTest::MockRequireNapiFailure(JsiRuntimeCallInfo *runtimeCallInfo)
+{
+    EcmaVM *vm = runtimeCallInfo->GetVM();
+    vm->SetErrorInfoEnhance(true);
+    Local<JSValueRef> exports = ObjectRef::CreateNativeModuleFailureInfo(vm, "NativeModuleFailureInfo");
+    return exports;
+}
+
+Local<JSValueRef> EcmaModuleTest::MockRequireNapiValue(JsiRuntimeCallInfo *runtimeCallInfo)
+{
+    EcmaVM *vm = runtimeCallInfo->GetVM();
+    Local<StringRef> localNameHandle = StringRef::NewFromUtf8(vm, "exportVal");
+    return localNameHandle;
+}
+
+Local<JSValueRef> EcmaModuleTest::MockRequireNapiException(JsiRuntimeCallInfo *runtimeCallInfo)
+{
+    EcmaVM *vm = runtimeCallInfo->GetVM();
+    Local<StringRef> message = StringRef::NewFromUtf8(vm, "load native module failed.");
+    Local<JSValueRef> error = Exception::ReferenceError(vm, message);
+    JSNApi::ThrowException(vm, error);
+    return message;
+}
 /*
  * Feature: Module
  * Function: AddImportEntry
@@ -311,11 +347,6 @@ HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModule)
     JSHandle<JSTaggedValue> res = moduleManager->HostResolveImportedModule(baseFileName.c_str());
 
     EXPECT_EQ(moduleRecord->GetRawData(), res.GetTaggedValue().GetRawData());
-
-    // baseFileName is not an absolute path
-    std::string baseFileName2 = "module_test_module_test_C.abc";
-    JSHandle<JSTaggedValue> res2 = moduleManager->HostResolveImportedModule(baseFileName2.c_str());
-    EXPECT_EQ(JSTaggedValue::Exception(), res2.GetTaggedValue());
 }
 
 HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModule2)
@@ -1476,7 +1507,7 @@ HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge2) {
     manager1->ResolveImportedModuleWithMerge(thread, moduleName1, recordName1, executeFromJob);
 }
 
-HWTEST_F_L0(EcmaModuleTest, IsInstaniatedSModule) {
+HWTEST_F_L0(EcmaModuleTest, IsInstantiatedSModule) {
     SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
     JSNApi::EnableUserUncaughtErrorHandler(instance);
@@ -1484,7 +1515,7 @@ HWTEST_F_L0(EcmaModuleTest, IsInstaniatedSModule) {
     EXPECT_TRUE(result);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
-    bool res = manager1->IsInstaniatedSModule(thread, module);
+    bool res = manager1->IsInstantiatedSModule(thread, module);
     EXPECT_EQ(res, true);
 }
 
@@ -1522,6 +1553,16 @@ HWTEST_F_L0(EcmaModuleTest, ProcessModuleLoadInfoForESM)
 
     JSTaggedValue res2 = ModuleTools::ProcessModuleNameSpaceLoadInfo(thread, module1, module2);
     EXPECT_NE(res2, JSTaggedValue::Exception());
+
+    // test HotReload
+    thread->GetCurrentEcmaContext()->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+    JSTaggedValue res3 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res3, val.GetTaggedValue());
+
+    thread->GetCurrentEcmaContext()->AddPatchModule(recordName2, JSHandle<JSTaggedValue>::Cast(module2));
+    JSTaggedValue res4 = ModuleTools::ProcessModuleLoadInfo(thread, module1, indexBinding.GetTaggedValue(), 0);
+    EXPECT_EQ(res4, val.GetTaggedValue());
+
     thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
     delete moduleLogger;
 }
@@ -1684,5 +1725,749 @@ HWTEST_F_L0(EcmaModuleTest, GetCurrentModuleName)
     JSHandle<JSTaggedValue> result = JSNApiHelper::ToJSHandle(res);
     CString moduleName = ConvertToString(result.GetTaggedValue());
     EXPECT_EQ(moduleName, "");
+}
+
+HWTEST_F_L0(EcmaModuleTest, ReviseLoadedModuleCount2) {
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    CString recordName2 = "b";
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->AddResolveImportedModule(recordName2, module2.GetTaggedValue());
+    module2->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
+
+    ModuleDeregister::ReviseLoadedModuleCount(thread, recordName2);
+}
+
+HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts2)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    std::set<CString> increaseModule;
+    increaseModule.insert("module_test_module_test_B");
+    increaseModule.insert("b");
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
+    ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
+}
+
+HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts2)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    std::set<CString> decreaseModule;
+    decreaseModule.insert("module_test_module_test_B");
+    decreaseModule.insert("b");
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
+    ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
+    JSHandle<JSTaggedValue> moduleRecord = JSHandle<JSTaggedValue>::Cast(module);
+    SendableClassModule::GenerateSendableFuncModule(thread, moduleRecord);
+    JSHandle<SourceTextModule> currentModule = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    EXPECT_TRUE(SourceTextModule::IsModuleInSharedHeap(currentModule));
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatMergeFileNameToNormalized)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    CString requestPath = "@normalized:N&&&har/Index&1.0.0";
+    CString recordName = "";
+    CString result = "&har/Index&1.0.0";
+    CString entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
+        requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "&index";
+    result = "&index";
+    entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
+        requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "./@normalized:N&&&har/Index&1.0.0";
+    result = "@normalized:N&&&har/Index&1.0.0&";
+    pf->InsertJSRecordInfo(result);
+    entryPoint = ModulePathHelper::ConcatMergeFileNameToNormalized(thread, pf.get(), baseFilename, recordName,
+        requestPath);
+    EXPECT_EQ(result, entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurlWithRecordName)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    CString requestPath = "@normalized:N&&&har/Index&1.0.0";
+    CString recordName = "";
+    CString entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(),
+        baseFilename, recordName, requestPath);
+    EXPECT_EQ(CString(), entryPoint);
+
+    requestPath = "@normalized:N&&&har/Index&1.0.0";
+    CString result = "&har/Index&1:0.0";
+    pf->InsertJSRecordInfo(result);
+    entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(), baseFilename,
+        recordName, requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "@normalized:N&&&har/Index&1.0.0";
+    result = "@normalized:N&&&har/Index&1.0.0/index&";
+    pf->InsertJSRecordInfo(result);
+    entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(), baseFilename,
+        recordName, requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "@normalized:N&&&har/Index&1.0.0";
+    result = "@normalized:N&&&har/Index&1.0.0&";
+    pf->InsertJSRecordInfo(result);
+    entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(), baseFilename,
+        recordName, requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "./@normalized:N&&&har/Index&1.0.0";
+    entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(), baseFilename,
+        recordName, requestPath);
+    EXPECT_EQ(result, entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, HostResolveImportedModuleWithMerge)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    CString recordName2 = "@ohos:hilog";
+    module2->SetEcmaModuleRecordNameString(recordName2);
+    module2->SetTypes(ModuleTypes::NATIVE_MODULE);
+
+    JSHandle<JSTaggedValue> nativeName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("@ohos:hilog"));
+    JSHandle<JSTaggedValue> res1 =
+        SourceTextModule::HostResolveImportedModuleWithMerge(thread, module1, nativeName, false);
+    EXPECT_TRUE(res1->IsSourceTextModule());
+
+    thread->GetCurrentEcmaContext()->GetModuleManager()->AddResolveImportedModule(
+        recordName2, module2.GetTaggedValue());
+    JSHandle<JSTaggedValue> res2 =
+        SourceTextModule::HostResolveImportedModuleWithMerge(thread, module1, nativeName, false);
+    EXPECT_TRUE(res2->IsSourceTextModule());
+}
+
+HWTEST_F_L0(EcmaModuleTest, SourceTextModuleHostResolveImportedModule)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    CString recordName2 = "@ohos:hilog";
+    module2->SetEcmaModuleRecordNameString(recordName2);
+    module2->SetTypes(ModuleTypes::NATIVE_MODULE);
+
+    JSHandle<JSTaggedValue> nativeName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("@ohos:hilog"));
+    thread->GetCurrentEcmaContext()->GetModuleManager()->AddResolveImportedModule(
+        recordName2, module2.GetTaggedValue());
+    JSHandle<JSTaggedValue> res1 =
+        SourceTextModule::HostResolveImportedModule(thread, module1, nativeName, false);
+    EXPECT_TRUE(res1->IsSourceTextModule());
+}
+
+HWTEST_F_L0(EcmaModuleTest, ResolveExportObject)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+
+    JSHandle<JSTaggedValue> exportName = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("notExist"));
+    JSHandle<NativeModuleFailureInfo> nativeModuleFailureInfo = objectFactory->NewNativeModuleFailureInfo();
+    JSHandle<JSTaggedValue> res1 = SourceTextModule::ResolveExportObject(
+        thread, module1, JSHandle<JSTaggedValue>::Cast(nativeModuleFailureInfo), exportName);
+    EXPECT_TRUE(res1->IsResolvedIndexBinding());
+
+    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
+    JSHandle<JSObject> obj(objectFactory->NewJSObjectByConstructor(ctor));
+    JSHandle<TaggedArray> exportArr = objectFactory->NewTaggedArray(2);
+    obj->SetProperties(thread, exportArr);
+    JSHandle<JSHClass> jsHclass(thread, obj->GetJSHClass());
+    JSHandle<LayoutInfo> layout = objectFactory->CreateLayoutInfo(0, MemSpaceType::OLD_SPACE, GrowMode::KEEP);
+    jsHclass->SetLayout(thread, layout);
+    JSHandle<JSTaggedValue> res2 = SourceTextModule::ResolveExportObject(
+        thread, module1, JSHandle<JSTaggedValue>::Cast(obj), exportName);
+    EXPECT_TRUE(res2->IsHole());
+
+    JSHandle<JSObject> obj1(objectFactory->NewJSObjectByConstructor(ctor));
+    JSHandle<NameDictionary> dict = NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(2));
+    obj1->SetProperties(thread, JSHandle<JSTaggedValue>::Cast(dict));
+    JSHandle<JSTaggedValue> res3 = SourceTextModule::ResolveExportObject(
+        thread, module1, JSHandle<JSTaggedValue>::Cast(obj1), exportName);
+    EXPECT_TRUE(res3->IsHole());
+}
+
+HWTEST_F_L0(EcmaModuleTest, ResolveNativeStarExport)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString recordName = "@ohos:hilog";
+    module->SetEcmaModuleRecordNameString(recordName);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+
+    JSHandle<JSTaggedValue> res1 = SourceTextModule::ResolveNativeStarExport(thread, module, val);
+    EXPECT_TRUE(res1->IsNull());
+
+    module->SetStatus(ModuleStatus::EVALUATED);
+    JSHandle<JSTaggedValue> res2 = SourceTextModule::ResolveNativeStarExport(thread, module, val);
+    EXPECT_TRUE(res2->IsNull());
+}
+
+HWTEST_F_L0(EcmaModuleTest, MakeInternalArgs)
+{
+    std::vector<Local<JSValueRef>> arguments;
+    auto vm = thread->GetEcmaVM();
+    CString soName = "@ohos:hilig";
+    arguments.emplace_back(StringRef::NewFromUtf8(vm, soName.c_str()));
+    SourceTextModule::MakeInternalArgs(vm, arguments, soName);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleImpl)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    ModuleLogger *moduleLogger = new ModuleLogger(vm);
+    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
+    // app module
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    SourceTextModule::LoadNativeModuleImpl(vm, thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+
+    // internal module
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, StringRef::NewFromUtf8(vm, "requireNapi"),
+        FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiUndefined));
+    module->SetEcmaModuleRecordNameString("@hms:xxxxx");
+    SourceTextModule::LoadNativeModuleImpl(vm, thread, module, ModuleTypes::INTERNAL_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+
+    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
+    delete moduleLogger;
+    SourceTextModule::LoadNativeModuleImpl(vm, thread, module, ModuleTypes::INTERNAL_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError1)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiFailure));
+    SourceTextModule::LoadNativeModuleMayThrowError(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError2)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiUndefined));
+    SourceTextModule::LoadNativeModuleMayThrowError(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError3)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiException));
+    SourceTextModule::LoadNativeModuleMayThrowError(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleMayThrowError4)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiValue));
+    SourceTextModule::LoadNativeModuleMayThrowError(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModule1)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiValue));
+    SourceTextModule::LoadNativeModule(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModule2)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiFailure));
+    SourceTextModule::LoadNativeModule(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, EvaluateNativeModule1)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module->SetStatus(ModuleStatus::EVALUATED);
+    SourceTextModule::EvaluateNativeModule(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, EvaluateNativeModule2)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiFailure));
+    SourceTextModule::EvaluateNativeModule(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, EvaluateNativeModule3)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiValue));
+    SourceTextModule::EvaluateNativeModule(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+
+HWTEST_F_L0(EcmaModuleTest, InnerModuleInstantiation)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    module->SetEcmaModuleFilenameString("modules.abc");
+    module->SetEcmaModuleRecordNameString("b");
+    module->SetTypes(ModuleTypes::ECMA_MODULE);
+    module->SetStatus(ModuleStatus::UNINSTANTIATED);
+    module->SetIsNewBcVersion(false);
+    CVector<JSHandle<SourceTextModule>> stack;
+    int index = SourceTextModule::InnerModuleInstantiation(thread, JSHandle<ModuleRecord>::Cast(module), stack, 1, 0);
+    EXPECT_EQ(index, 2);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleDeclarationEnvironmentSetup)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString baseFileName = "modules.abc";
+    CString recordName = "a";
+    CString recordName1 = "@ohos:hilog";
+    module->SetEcmaModuleFilenameString(baseFileName);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module->SetStatus(ModuleStatus::UNINSTANTIATED);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<JSTaggedValue> moduleRequest =
+        JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(recordName1.c_str()));
+    JSHandle<JSTaggedValue> importName = val;
+    JSHandle<JSTaggedValue> localName = val;
+    JSHandle<ImportEntry> importEntry1 =
+        objectFactory->NewImportEntry(moduleRequest, importName, localName, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module, importEntry1, 0, 2);
+    JSHandle<JSTaggedValue> starString = thread->GlobalConstants()->GetHandledStarString();
+    JSHandle<ImportEntry> importEntry2 =
+        objectFactory->NewImportEntry(moduleRequest, starString, localName, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module, importEntry2, 1, 2);
+
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module1->SetLocalExportEntries(thread, localExportEntries);
+    module1->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module1->SetStatus(ModuleStatus::EVALUATED);
+    
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->AddResolveImportedModule(recordName.c_str(), module.GetTaggedValue());
+    moduleManager->AddResolveImportedModule(recordName1.c_str(), module1.GetTaggedValue());
+    CVector<JSHandle<SourceTextModule>> stack;
+    SourceTextModule::ModuleDeclarationEnvironmentSetup(thread, module);
+    EXPECT_TRUE(!thread->HasPendingException());
+
+    module->SetEcmaModuleRecordNameString("");
+    SourceTextModule::ModuleDeclarationEnvironmentSetup(thread, module);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleDeclarationArrayEnvironmentSetup)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(thread, module);
+    EXPECT_TRUE(!thread->HasPendingException());
+
+    module->SetSharedType(SharedTypes::SHARED_MODULE);
+    SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(thread, module);
+    EXPECT_TRUE(!thread->HasPendingException());
+
+    module->SetStatus(ModuleStatus::EVALUATED);
+    SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(thread, module);
+    EXPECT_TRUE(!thread->HasPendingException());
+
+    module->SetSharedType(SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(thread, module);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, Evaluate)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString recordName = "a";
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetStatus(ModuleStatus::EVALUATED);
+    module->SetCycleRoot(thread, module);
+    SourceTextModule::Evaluate(thread, module, nullptr, 0, 0);
+    EXPECT_TRUE(!thread->HasPendingException());
+    SourceTextModule::Evaluate(thread, module, nullptr, 0, 1);
+    EXPECT_TRUE(!thread->HasPendingException());
+    ModuleLogger *moduleLogger = new ModuleLogger(vm);
+    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
+    SourceTextModule::Evaluate(thread, module, nullptr, 0, 0);
+    EXPECT_TRUE(!thread->HasPendingException());
+    SourceTextModule::Evaluate(thread, module, nullptr, 0, 1);
+    EXPECT_TRUE(!thread->HasPendingException());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModule)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->LoadNativeModule(thread, "@app:bundleName/moduleName/lib*.so");
+}
+
+HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModuleMayThrowError)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    CString recordName = "@app:bundleName/moduleName/lib*.so";
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    module->SetStatus(ModuleStatus::EVALUATED);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->ExecuteNativeModuleMayThrowError(thread, recordName);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->AddResolveImportedModule(
+        recordName, module.GetTaggedValue());
+    moduleManager->ExecuteNativeModuleMayThrowError(thread, recordName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule)
+{
+    auto vm = thread->GetEcmaVM();
+    CString recordName = "@app:bundleName/moduleName/lib*.so";
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
+    thread->GetCurrentEcmaContext()->GetModuleManager()->AddResolveImportedModule(
+        recordName, module.GetTaggedValue());
+    moduleManager->ExecuteNativeModule(thread, recordName);
+    module->SetStatus(ModuleStatus::EVALUATED);
+    moduleManager->ExecuteNativeModule(thread, recordName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule2)
+{
+    auto vm = thread->GetEcmaVM();
+    CString recordName = "@app:bundleName/moduleName/lib*.so";
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString(recordName);
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->ExecuteNativeModule(thread, recordName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetModuleNamespace)
+{
+    CString localName1 = "foo";
+    CString exportName1 = "bar";
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> localNameHandle1 = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName1));
+    JSHandle<JSTaggedValue> exportNameHandle1 = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName1));
+    JSHandle<LocalExportEntry> localExportEntry1 =
+        objectFactory->NewLocalExportEntry(exportNameHandle1, localNameHandle1, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                        SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry1, 0, 1);
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName1));
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
+    ctor->SetModule(thread, module);
+    JSTaggedValue jsFunc = ctor.GetTaggedValue();
+    moduleManager->GetModuleNamespace(key.GetTaggedValue(), jsFunc);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetModuleValueInner3)
+{
+    CString localName1 = "foo";
+    CString exportName1 = "bar";
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> localNameHandle1 = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName1));
+    JSHandle<JSTaggedValue> exportNameHandle1 = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName1));
+    JSHandle<LocalExportEntry> localExportEntry1 =
+        objectFactory->NewLocalExportEntry(exportNameHandle1, localNameHandle1, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                        SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry1, 0, 1);
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName1));
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
+    ctor->SetModule(thread, module);
+    JSTaggedValue jsFunc = ctor.GetTaggedValue();
+    moduleManager->GetModuleValueInner(key.GetTaggedValue(), jsFunc);
+    moduleManager->GetModuleValueOutter(key.GetTaggedValue(), jsFunc);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter)
+{
+    CString localName1 = "foo";
+    CString exportName1 = "bar";
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> localNameHandle1 = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName1));
+    JSHandle<JSTaggedValue> exportNameHandle1 = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName1));
+    JSHandle<LocalExportEntry> localExportEntry1 =
+        objectFactory->NewLocalExportEntry(exportNameHandle1, localNameHandle1, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                        SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry1, 0, 1);
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName1));
+
+
+    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+
+    JSHandle<NameDictionary> map(NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(1)));
+    module->SetEnvironment(thread, map);
+
+    ctor->SetModule(thread, module);
+    JSTaggedValue jsFunc = ctor.GetTaggedValue();
+    moduleManager->GetModuleValueInner(key.GetTaggedValue(), jsFunc);
+    moduleManager->GetModuleValueOutter(key.GetTaggedValue(), jsFunc);
+}
+
+HWTEST_F_L0(EcmaModuleTest, StoreModuleValue3)
+{
+    CString localName1 = "foo";
+    CString exportName1 = "bar";
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> localNameHandle1 = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(localName1));
+    JSHandle<JSTaggedValue> exportNameHandle1 = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName1));
+    JSHandle<LocalExportEntry> localExportEntry1 =
+        objectFactory->NewLocalExportEntry(exportNameHandle1, localNameHandle1, LocalExportEntry::LOCAL_DEFAULT_INDEX,
+                                        SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddLocalExportEntry(thread, module, localExportEntry1, 0, 1);
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8(exportName1));
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+
+    JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+
+    JSHandle<NameDictionary> map(NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(1)));
+    module->SetEnvironment(thread, map);
+
+    ctor->SetModule(thread, module);
+    JSTaggedValue jsFunc = ctor.GetTaggedValue();
+    moduleManager->StoreModuleValue(key.GetTaggedValue(), val.GetTaggedValue(), jsFunc);
 }
 }  // namespace panda::test

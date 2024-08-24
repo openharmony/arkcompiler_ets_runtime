@@ -211,7 +211,6 @@ namespace panda::ecmascript {
     V(ThrowTypeError)                           \
     V(GetHash32)                                \
     V(ComputeHashcode)                          \
-    V(GetTaggedArrayPtrTest)                    \
     V(NewInternalString)                        \
     V(NewTaggedArray)                           \
     V(NewCOWTaggedArray)                        \
@@ -233,10 +232,6 @@ namespace panda::ecmascript {
     V(UpdateLayOutAndAddTransition)             \
     V(CopyAndUpdateObjLayout)                   \
     V(UpdateHClassForElementsKind)              \
-    V(SetValueWithElementsKind)                 \
-    V(UpdateArrayHClassAndMigrateArrayWithKind) \
-    V(MigrateArrayWithKind)                     \
-    V(GetTaggedValueWithElementsKind)           \
     V(RuntimeDump)                              \
     V(ForceGC)                                  \
     V(NoticeThroughChainAndRefreshUser)         \

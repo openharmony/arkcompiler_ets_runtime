@@ -278,51 +278,6 @@ DEF_RUNTIME_STUBS(ComputeHashcode)
     return JSTaggedValue(static_cast<uint64_t>(result)).GetRawData();
 }
 
-void RuntimeStubs::PrintHeapReginInfo(uintptr_t argGlue)
-{
-    auto thread = JSThread::GlueToJSThread(argGlue);
-    thread->GetEcmaVM()->GetHeap()->GetNewSpace()->EnumerateRegions([](Region *current) {
-        LOG_ECMA(INFO) << "semispace region: " << current << std::endl;
-    });
-    thread->GetEcmaVM()->GetHeap()->GetOldSpace()->EnumerateRegions([](Region *current) {
-        LOG_ECMA(INFO) << "GetOldSpace region: " << current << std::endl;
-    });
-    thread->GetEcmaVM()->GetHeap()->GetNonMovableSpace()->EnumerateRegions([](Region *current) {
-        LOG_ECMA(INFO) << "GetNonMovableSpace region: " << current << std::endl;
-    });
-    thread->GetEcmaVM()->GetHeap()->GetMachineCodeSpace()->EnumerateRegions([](Region *current) {
-        LOG_ECMA(INFO) << "GetMachineCodeSpace region: " << current << std::endl;
-    });
-}
-
-DEF_RUNTIME_STUBS(GetTaggedArrayPtrTest)
-{
-    RUNTIME_STUBS_HEADER(GetTaggedArrayPtrTest);
-    // this case static static JSHandle<TaggedArray> arr don't free in first call
-    // second call trigger gc.
-    // don't call EcmaHandleScope handleScope(thread);
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSTaggedType array = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
-    bool allocated = false;
-    if (array == JSTaggedValue::VALUE_UNDEFINED) {
-        // 2 : means construct 2 elements size taggedArray
-        JSHandle<TaggedArray> arr = factory->NewTaggedArray(2);
-        arr->Set(thread, 0, JSTaggedValue(3.5)); // 3.5: first element
-        arr->Set(thread, 1, JSTaggedValue(4.5)); // 4.5: second element
-        array = arr.GetTaggedValue().GetRawData();
-        allocated = true;
-    }
-    JSHandle<TaggedArray> arr1(thread, JSTaggedValue(array));
-#ifndef NDEBUG
-    PrintHeapReginInfo(argGlue);
-#endif
-    if (!allocated) {
-        thread->GetEcmaVM()->CollectGarbage(TriggerGCType::FULL_GC);
-    }
-    LOG_ECMA(INFO) << " arr->GetData() " << std::hex << "  " << arr1->GetData();
-    return arr1.GetTaggedValue().GetRawData();
-}
-
 DEF_RUNTIME_STUBS(NewInternalString)
 {
     RUNTIME_STUBS_HEADER(NewInternalString);
@@ -587,51 +542,6 @@ DEF_RUNTIME_STUBS(UpdateHClassForElementsKind)
         thread->GetEcmaVM()->GetPGOProfiler()->UpdateTrackElementsKind(trackInfoVal, kind);
     }
     return JSTaggedValue::Hole().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(UpdateArrayHClassAndMigrateArrayWithKind)
-{
-    RUNTIME_STUBS_HEADER(UpdateArrayHClassAndMigrateArrayWithKind);
-    JSHandle<JSObject> object = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
-    ElementsKind oldKind = static_cast<ElementsKind>(GetTArg(argv, argc, 1));
-    ElementsKind newKind = static_cast<ElementsKind>(GetTArg(argv, argc, 2));
-    JSHClass::TransitToElementsKindUncheck(thread, object, newKind);
-    Elements::MigrateArrayWithKind(thread, object, oldKind, newKind);
-    return JSTaggedValue::Hole().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(SetValueWithElementsKind)
-{
-    RUNTIME_STUBS_HEADER(SetValueWithElementsKind);
-    JSHandle<JSObject> receiver = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);
-    JSTaggedValue taggedIndex = GetArg(argv, argc, 2);
-    bool needTransition = static_cast<bool>(GetArg(argv, argc, 3).GetInt());
-    ElementsKind extraKind = static_cast<ElementsKind>(GetArg(argv, argc, 4).GetInt());
-    uint32_t index = static_cast<uint32_t>(taggedIndex.GetInt());
-    ElementAccessor::Set(thread, receiver, index, value, needTransition, extraKind);
-    return JSTaggedValue::Hole().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(MigrateArrayWithKind)
-{
-    RUNTIME_STUBS_HEADER(MigrateArrayWithKind);
-    JSHandle<JSObject> object = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
-    ElementsKind oldKind = static_cast<ElementsKind>(GetTArg(argv, argc, 1));
-    ElementsKind newKind = static_cast<ElementsKind>(GetTArg(argv, argc, 2));
-    Elements::MigrateArrayWithKind(thread, object, oldKind, newKind);
-    return JSTaggedValue::Hole().GetRawData();
-}
-
-DEF_RUNTIME_STUBS(GetTaggedValueWithElementsKind)
-{
-    RUNTIME_STUBS_HEADER(GetTaggedValueWithElementsKind);
-    JSHandle<JSObject> receiver = JSHandle<JSObject>(GetHArg<JSTaggedValue>(argv, argc, 0));
-    JSTaggedValue taggedIndex = GetArg(argv, argc, 1);
-
-    JSTaggedValue value = ElementAccessor::Get(receiver, taggedIndex.GetInt());
-
-    return value.GetRawData();
 }
 
 DEF_RUNTIME_STUBS(NewMutantTaggedArray)
