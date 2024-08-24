@@ -196,7 +196,7 @@ void EdenSpace::Initialize()
 {
     auto region = AllocRegion();
     if (UNLIKELY(region == nullptr)) {
-        LOG_GC(ERROR) << "region is nullptr";
+        LOG_GC(ERROR) << "EdenSpace::Initialize: region is nullptr";
         return;
     }
     AddRegion(region);
