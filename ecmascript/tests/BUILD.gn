@@ -308,6 +308,7 @@ host_unittest_action("EcmaVm_010_Test") {
     "js_arguments_test.cpp",
     "js_array_buffer_test.cpp",
     "js_sendable_arraybuffer_test.cpp",
+    "js_shared_array_test.cpp",
   ]
 
   configs = [
