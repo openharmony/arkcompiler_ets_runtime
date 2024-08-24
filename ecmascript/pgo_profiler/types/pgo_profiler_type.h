@@ -439,6 +439,9 @@ using PGOSampleTypeRef = PGOSampleTemplate<ProfileTypeRef>;
 template <typename PGOProfileType>
 class PGOProtoChainTemplate {
 public:
+    static constexpr int32_t PROTO_CHAIN_MIN_COUNT = 0;
+    static constexpr int32_t PROTO_CHAIN_MAX_COUNT = 4096;
+
     PGOProtoChainTemplate() = default;
     PGOProtoChainTemplate(int32_t size, int32_t count) : size_(size), count_(count) {};
 
@@ -497,6 +500,9 @@ public:
     template <typename Callback>
     void IterateProtoChain(Callback callback) const
     {
+        if (count_ < PROTO_CHAIN_MIN_COUNT || count_ > PROTO_CHAIN_MAX_COUNT) {
+            return;
+        }
         for (int i = 0; i < count_; i++) {
             callback(*(&rootType_ + i), *(&rootType_ + i + 1));
         }

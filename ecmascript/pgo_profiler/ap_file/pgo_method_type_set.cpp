@@ -60,6 +60,9 @@ bool PGOMethodTypeSet::ParseFromBinary(PGOContext &context, void **buffer)
     PGOProfilerHeader *const header = context.GetHeader();
     ASSERT(header != nullptr);
     uint32_t size = base::ReadBuffer<uint32_t>(buffer, sizeof(uint32_t));
+    if (size > MAX_METHOD_TYPE_SIZE) {
+        return false;
+    }
     for (uint32_t i = 0; i < size; i++) {
         auto typeInfo = base::ReadBufferInSize<TypeInfoHeader>(buffer);
         if (typeInfo->GetInfoType() == InfoType::OP_TYPE) {
