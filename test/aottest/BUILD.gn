@@ -302,6 +302,7 @@ group("ark_aot_ts_test") {
     "try_catch_finally",
     "try_emptycatch_forloop",
     "try_emptycatch_switch_case",
+    "try_forloop_emptycatch",
     "tryldglobalbyname_global_object",
     "tryldglobalbyname_global_record",
     "trystglobalbynameprefid32",

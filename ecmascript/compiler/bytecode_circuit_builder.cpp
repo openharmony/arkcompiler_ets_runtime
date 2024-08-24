@@ -693,7 +693,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
     GateRef state = frameStateBuilder_.GetCurrentState();
     GateRef depend = frameStateBuilder_.GetCurrentDepend();
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
-    if (bytecodeInfo.IsCondJump() && bb.succs.size() == 2) { // 2: two succ
+    if (bytecodeInfo.IsCondJump() && (bb.succs.size() == 2 || IsEmptyCatchBBOfCondJump(bb))) { // 2: two succ
         size_t pcOffset = GetPcOffset(iterator.Index());
         auto methodOffset = method_->GetMethodId().GetOffset();
         auto meta = circuit_->JSBytecode(
@@ -720,13 +720,15 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
                 bbNext->expandedPreds.push_back({bb.id, iterator.Index(), false});
             }
         }
+        // handle empty catch block
+        if (bb.succs.size() == 1) {
+            AddMergeStateDepend(*bb.catches[0], ifTrue, trueRelay);
+        }
         byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
         jsGatesToByteCode_[gate] = iterator.Index();
     } else {
         if (bb.succs.size() == 0 && !bb.catches.empty()) {
-            auto catchBB = bb.catches[0];
-            catchBB->mergeState.emplace_back(state);
-            catchBB->mergeDepend.emplace_back(depend);
+            AddMergeStateDepend(*bb.catches[0], state, depend);
             return;
         }
         auto &bbNext = bb.succs.at(0);

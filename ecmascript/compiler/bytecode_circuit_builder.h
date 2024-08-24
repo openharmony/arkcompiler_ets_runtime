@@ -577,6 +577,17 @@ public:
         return catchBBOfOSRLoop_.find(&bb) != catchBBOfOSRLoop_.end();
     }
 
+    bool IsEmptyCatchBBOfCondJump(const BytecodeRegion &bb) const
+    {
+        return bb.succs.size() == 1 && !bb.catches.empty() && bb.catches[0]->IsEmptyCatchBB;
+    }
+
+    void AddMergeStateDepend(BytecodeRegion &bb, GateRef state, GateRef depend)
+    {
+        bb.mergeState.emplace_back(state);
+        bb.mergeDepend.emplace_back(depend);
+    }
+
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
     void BuildCatchBlocks(const ExceptionInfo &Exception);
