@@ -61,7 +61,6 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
     if (method == nullptr) {
         return false;
     }
-    const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     codeEntry.methodKey = methodKey;
     if (method->IsNativeWithCallField()) {
         FrameIterator itNext(it.GetSp(), it.GetThread());
@@ -69,6 +68,10 @@ bool JsStackGetter::ParseMethodInfo(struct MethodKey &methodKey,
         GetNativeMethodCallPos(itNext, codeEntry);
         GetNativeStack(vm, it, codeEntry.functionName, sizeof(codeEntry.functionName), isCpuProfiler);
     } else {
+        const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
+        if (jsPandaFile == nullptr) {
+            return false;
+        }
         EntityId methodId = reinterpret_cast<MethodLiteral *>(methodKey.methodIdentifier)->GetMethodId();
         // function name
         const char *functionName = MethodLiteral::GetMethodName(jsPandaFile, methodId, true);
