@@ -20,6 +20,12 @@
  * @tc.require: issueI5NO8G
  */
 var fastset = undefined;
+class c{
+    n = 0;
+    constructor(a){
+      this.n = a;
+    }
+  }
 if (globalThis["ArkPrivate"] != undefined) {
     fastset = ArkPrivate.Load(ArkPrivate.TreeSet);
 
@@ -215,6 +221,21 @@ if (globalThis["ArkPrivate"] != undefined) {
         flag = true;
     }
     map.set("test set throw error", flag);
+
+    // test getLower & getHigher when object
+    let newset = new fastset((x, y)=> x.n < y.n);
+    newset.add(new c(3));
+    let tmp_c = new c(5);
+    newset.add(tmp_c);
+    newset.add(undefined);
+    newset.add(new c(1));
+    newset.add(null);
+    map.set("test getHigher no.1:", newset.getHigherValue(new c(3)).n == 5);
+    map.set("test getHigher no.2:", newset.getHigherValue(new c(5)) == null);
+    map.set("test getHigher no.3:", newset.getHigherValue(null) == undefined);
+    map.set("test getLower no.1:", newset.getLowerValue(new c(3)).n == 1);
+    map.set("test getLower no.2:", newset.getLowerValue(undefined) == null);
+    map.set("test getLower no.3:", newset.getLowerValue(null) == tmp_c);
 
     flag = undefined;
     function elementsTreeSet(valueTreeSet, keyTreeSet, map) {
