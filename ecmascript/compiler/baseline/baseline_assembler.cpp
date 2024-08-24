@@ -27,6 +27,7 @@ BaselineAssembler::BaselineAssembler(const std::string &tripleStr) : stackOffset
         macroAssembler = new MacroAssemblerX64();
     } else if (tripleStr.compare(TARGET_AARCH64) == 0) {
         macroAssembler = new MacroAssemblerAArch64();
+        static_cast<MacroAssemblerAArch64*>(macroAssembler)->SetBaselineFlag();
     } else {
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();

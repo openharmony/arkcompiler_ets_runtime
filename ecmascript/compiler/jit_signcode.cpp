@@ -19,20 +19,31 @@ namespace panda::ecmascript::kungfu {
 
 JitSignCode::JitSignCode() {}
 
-void JitSignCode::SetJPtr(JitCodeSignerBase *p)
+void JitSignCode::SetCodeSigner(JitCodeSignerBase *p)
 {
-    jPtr_ = p;
+    codeSigner_ = p;
 }
 
-JitCodeSignerBase *JitSignCode::GetJPtr()
+JitCodeSignerBase *JitSignCode::GetCodeSigner()
 {
-    return jPtr_;
+    return codeSigner_;
+}
+
+void JitSignCode::SetKind(int kind)
+{
+    kind_ = kind;
+}
+
+int JitSignCode::GetKind()
+{
+    return kind_;
 }
 
 void JitSignCode::Reset()
 {
-    jPtr_ = nullptr;
-    signTableSize = 0;
+    codeSigner_ = nullptr;
+    kind_ = 0;
+    signTableSize_ = 0;
 }
 
 } // namespace panda::ecmascript::kungfu

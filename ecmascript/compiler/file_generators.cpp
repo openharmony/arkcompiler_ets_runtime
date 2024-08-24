@@ -29,7 +29,7 @@
 #include "ecmascript/compiler/codegen/maple/litecg_ir_builder.h"
 #include "ecmascript/compiler/codegen/maple/maple_be/include/litecg/litecg.h"
 #include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
 #include "ecmascript/compiler/jit_signcode.h"
 #endif
 #endif
@@ -733,13 +733,13 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     machineCodeDesc.rodataAddrAfterText = rodataAddrAfterText;
     machineCodeDesc.rodataSizeAfterText = rodataSizeAfterText;
 
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
     machineCodeDesc.codeSigner = 0;
     JitSignCode *singleton = JitSignCode::GetInstance();
-    if (singleton->GetJPtr() != 0) {
-        LOG_JIT(DEBUG) << "In GetMemoryCodeInfos, signer = " << singleton->GetJPtr();
-        LOG_JIT(DEBUG) << "     signTableSize = " << singleton->signTableSize;
-        machineCodeDesc.codeSigner = reinterpret_cast<uintptr_t>(singleton->GetJPtr());
+    if (singleton->GetCodeSigner() != 0) {
+        LOG_JIT(DEBUG) << "In GetMemoryCodeInfos, signer = " << singleton->GetCodeSigner();
+        LOG_JIT(DEBUG) << "     signTableSize = " << singleton->signTableSize_;
+        machineCodeDesc.codeSigner = reinterpret_cast<uintptr_t>(singleton->GetCodeSigner());
     }
 #endif
 

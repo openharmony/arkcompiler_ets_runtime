@@ -20,12 +20,12 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jit/jit.h"
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"
 #endif
 
 namespace panda::ecmascript {
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
 using namespace OHOS::Security::CodeSign;
 #endif
 
@@ -38,6 +38,40 @@ static bool SetPageProtect(uint8_t *textStart, size_t dataSize)
         size_t protSize = endPage - startPage;
         return PageProtect(reinterpret_cast<void*>(startPage), protSize, PAGE_PROT_EXEC_READWRITE);
     }
+    return true;
+}
+
+int MachineCode::CopyToCache(const MachineCodeDesc &desc, uint8_t *pText, std::string str)
+{
+    std::string title = str;
+#ifdef JIT_ENABLE_CODE_SIGN
+    if ((uintptr_t)desc.codeSigner == 0) {
+        if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+            LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
+            return false;
+        }
+    } else {
+        LOG_JIT(DEBUG) << "Copy: "
+                       << std::hex << (uintptr_t)pText << " <- "
+                       << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
+        LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
+        JitCodeSignerBase *signer =
+            reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
+        int err = CopyToJitCode(signer, pText, reinterpret_cast<void*>(desc.codeAddr), desc.codeSize);
+        if (err != EOK) {
+            LOG_JIT(ERROR) << "     CopyToJitCode failed, err: " << err;
+            return false;
+        } else {
+            LOG_JIT(DEBUG) << "     CopyToJitCode success!!";
+        }
+        delete reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
+    }
+#else
+    if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+        LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
+        return false;
+    }
+#endif
     return true;
 }
 
@@ -55,31 +89,9 @@ bool MachineCode::SetText(const MachineCodeDesc &desc)
     }
     if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort() ||
         !desc.isAsyncCompileMode) {
-#ifdef CODE_SIGN_ENABLE
-        if ((uintptr_t)desc.codeSigner == 0) {
-            if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
-                LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
-                return false;
-            }
-        } else {
-            LOG_JIT(DEBUG) << "Call JitVerifyAndCopy: "
-                           << std::hex << (uintptr_t)pText << " <- "
-                           << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
-            LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
-            if (Jit::GetInstance()->JitVerifyAndCopy(reinterpret_cast<void*>(desc.codeSigner),
-                pText, reinterpret_cast<void*>(desc.codeAddr), desc.codeSize) != EOK) {
-                LOG_JIT(ERROR) << "     JitVerifyAndCopy failed";
-            } else {
-                LOG_JIT(DEBUG) << "     JitVerifyAndCopy success!!";
-            }
-            delete reinterpret_cast<JitCodeSignerBase*>(desc.codeSigner);
-        }
-#else
-        if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
-            LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
+        if (CopyToCache(desc, pText, "FastJit") == false) {
             return false;
         }
-#endif
     }
     pText += desc.codeSizeAlign;
     if (desc.rodataSizeAfterTextAlign != 0) {
@@ -200,9 +212,12 @@ bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
         ASSERT(IsAligned(reinterpret_cast<uintptr_t>(textStart), TEXT_ALIGN));
     }
     uint8_t *pText = textStart;
-    if (memcpy_s(pText, instrSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
-        LOG_BASELINEJIT(ERROR) << "memcpy fail in copy baseline jit code";
-        return false;
+
+    if (!Jit::GetInstance()->IsEnableJitFort() || !Jit::GetInstance()->IsEnableAsyncCopyToFort() ||
+        !desc.isAsyncCompileMode) {
+        if (CopyToCache(desc, pText, "Baseline") == false) {
+            return false;
+        }
     }
     pText += instrSizeAlign;
 

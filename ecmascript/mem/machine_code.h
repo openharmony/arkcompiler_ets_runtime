@@ -45,7 +45,7 @@ struct MachineCodeDesc {
     uintptr_t stackMapOrOffsetTableAddr {0};
     size_t stackMapOrOffsetTableSize {0};
     MachineCodeType codeType {MachineCodeType::FAST_JIT_CODE};
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
     uintptr_t codeSigner {0};
 #endif
     uintptr_t instructionsAddr {0};
@@ -207,6 +207,7 @@ public:
     bool SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
     bool SetText(const MachineCodeDesc &desc);
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
+    static int CopyToCache(const MachineCodeDesc &desc, uint8_t *pText, std::string str);
 
     template <VisitType visitType>
     void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)

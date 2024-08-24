@@ -34,6 +34,11 @@ public:
         return assembler.GetCurrentPosition();
     }
 
+    void SetBaselineFlag()
+    {
+        assembler.SetDoCodeSign();
+    }
+
     void Move(const StackSlotOperand &dstStackSlot, Immediate value) override;
     void Move(const StackSlotOperand &dstStackSlot, const StackSlotOperand &srcStackSlot) override;
     void Cmp(const StackSlotOperand &stackSlot, Immediate value) override;

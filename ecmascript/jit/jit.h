@@ -78,7 +78,6 @@ public:
     }
 
     void DeleteJitCompile(void *compiler);
-    int JitVerifyAndCopy(void *codeSigner, void *jit_memory, void *tmpBuffer, int size);
 
     void RequestInstallCode(std::shared_ptr<JitTask> jitTask);
     void InstallTasks(uint32_t threadId);
@@ -256,7 +255,6 @@ private:
     static bool(*jitFinalize_)(void*, JitTask*);
     static void*(*createJitCompilerTask_)(JitTask*);
     static void(*deleteJitCompile_)(void*);
-    static int (*jitVerifyAndCopy_)(void*, void*, void*, int);
     static void *libHandle_;
     static bool CheckJitCompileStatus(JSHandle<JSFunction> &jsFunction,
         const CString &methodName, CompilerTier tier);
