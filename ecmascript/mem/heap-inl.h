@@ -764,6 +764,7 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon)
         // so do not need lock.
         smartGCStats_.forceGC_ = false;
     }
+    localFullMarkTriggered_ = false;
     // Record alive object size after shared gc
     NotifyHeapAliveSizeAfterGC(GetHeapObjectSize());
     // Adjust shared gc trigger threshold
