@@ -705,44 +705,71 @@ JSHandle<EcmaString> NumberHelper::DoubleToEcmaString(const JSThread *thread, do
         return factory->NewFromASCII(IntToString(static_cast<int32_t>(d)));
     }
 
-    std::string result;
+    if (std::isinf(d)) {
+        return d < 0 ? JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledMinusInfinityCapitalString())
+                     : JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledInfinityCapitalString());
+    }
+
+    char buffer[JS_DTOA_BUF_SIZE] = {0};
+    bool isNeg = false;
+
     if (d < 0) {
-        result += "-";
+        isNeg = true;
         d = -d;
     }
-
-    if (std::isinf(d)) {
-        result += "Infinity";
-        return factory->NewFromASCII(result.c_str());
-    }
-
     ASSERT(d > 0);
-    char buffer[JS_DTOA_BUF_SIZE] = {0};
+    constexpr int startIdx = 8;
+    char *result = buffer + startIdx;
     int n; // decimal point
     int k; // length
-    DtoaHelper::Dtoa(d, buffer, &n, &k); //Fast Double To Ascii.
-    std::string base = buffer;
+    DtoaHelper::Dtoa(d, result, &n, &k); //Fast Double To Ascii.
     if (n > 0 && n <= MAX_DIGITS) {
         if (k <= n) {
             // 6. If k ≤ n ≤ 21
-            base += std::string(n - k, '0');
+            for (int i = k; i < n; ++i) {
+                result[i] = '0';
+            }
         } else {
             // 7. If 0 < n ≤ 21
-            base.insert(n, 1, '.');
+            --result;
+            for (int i = 0; i < n; ++i) {
+                result[i] = result[i + 1];
+            }
+            result[n] = '.';
         }
     } else if (MIN_DIGITS < n && n <= 0) {
         // 8. If −6 < n ≤ 0
-        base = std::string("0.") + std::string(-n, '0') + base;
+        constexpr int prefixLen = 2;
+        result -= (-n + prefixLen);
+        result[0] = '0';
+        result[1] = '.';
+        for (int i = prefixLen; i < -n + prefixLen; ++i) {
+            result[i] = '0';
+        }
     } else {
         // 9. & 10. Otherwise
-        base.erase(1, k - 1);
+        int pos = k;
         if (k != 1) {
-            base += std::string(".") + std::string(buffer + 1);
+            --result;
+            result[0] = result[1];
+            result[1] = '.';
+            ++pos;
         }
-        base += "e" + (n >= 1 ? std::string("+") : "") + std::to_string(n - 1);
+        result[pos++] = 'e';
+        if (n >= 1) {
+            result[pos++] = '+';
+        }
+        auto expo = std::to_string(n - 1);
+        auto p = expo.c_str();
+        for (size_t i = 0; i < expo.length(); ++i) {
+            result[pos++] = p[i];
+        }
     }
-    result += base;
-    return factory->NewFromASCIISkippingStringTable(result.c_str());
+    if (isNeg) {
+        --result;
+        result[0] = '-';
+    }
+    return factory->NewFromASCIISkippingStringTable(result);
 }
 
 // 7.1.12.1 ToString Applied to the Number Type
