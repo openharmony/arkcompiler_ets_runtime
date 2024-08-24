@@ -93,8 +93,7 @@ public:
 
     template<class Callback>
     bool MatchWithLocation(const Callback &cb, int32_t line, int32_t column,
-        const std::string &url, const std::unordered_set<std::string> &debugRecordName,
-        Global<FunctionRef> funcRef)
+        const std::string &url, const std::unordered_set<std::string> &debugRecordName)
     {
         if (line == SPECIAL_LINE_MARK) {
             return false;
@@ -147,8 +146,7 @@ public:
                     for (const auto &pair : columnTable) {
                         if (pair.offset >= currentOffset && pair.offset < nextOffset) {
                             if (pair.column == column) {
-                                return cb(JSPtLocation(jsPandaFile_, methodId, pair.offset, funcRef,
-                                                       line, column, url));
+                                return cb(JSPtLocation(jsPandaFile_, methodId, pair.offset, url));
                             } else if (pair.column < minColumn && currentOffset < minColumnOffset) {
                                 minColumn = pair.column;
                                 minColumnOffset = currentOffset;
@@ -159,12 +157,10 @@ public:
                 }
             }
             if (minColumn != INT32_MAX) { // find the smallest column for the corresponding row
-                return cb(JSPtLocation(jsPandaFile_, minColumnMethodId, minColumnOffset, funcRef,
-                                       line, column, url));
+                return cb(JSPtLocation(jsPandaFile_, minColumnMethodId, minColumnOffset, url));
             }
             if (currentOffset != UINT32_MAX) { // find corresponding row, but not find corresponding column
-                return cb(JSPtLocation(jsPandaFile_, currentMethodId, currentOffset, funcRef,
-                                       line, column, url));
+                return cb(JSPtLocation(jsPandaFile_, currentMethodId, currentOffset, url));
             }
         }
         return false;

@@ -156,11 +156,7 @@ public:
 
     static int32_t GetObjectHash(const EcmaVM *ecmaVM, const JSHandle<JSTaggedValue> &tagged);
     static void GetObjectClassName(const EcmaVM *ecmaVM, Local<JSValueRef> &tagged, std::string &className);
-    // JSDebugger new added
-    static bool SetBreakpointWithNoMatchUrl(JSDebugger *debugger, const JSPtLocation &location);
-    static std::vector<bool> SetBreakpointByList(JSDebugger *debugger, std::vector<JSPtLocation> &list);
-    static bool RemoveBreakpointWithNoMatchUrl(JSDebugger *debugger, const JSPtLocation &location);
-    static bool RemoveAllBreakpointsByUrl(JSDebugger *debugger, const std::string &url, bool skipGlobal);
+    static bool RemoveBreakpointsByUrl(JSDebugger *debugger, const std::string &url);
 
     // HotReload
     static std::vector<DebugInfoExtractor *> GetPatchExtractors(const EcmaVM *ecmaVm, const std::string &url);

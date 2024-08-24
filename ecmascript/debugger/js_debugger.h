@@ -27,9 +27,8 @@ class JSBreakpoint {
 public:
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-member-init)
     JSBreakpoint(const std::string &sourceFile, PtMethod *ptMethod, uint32_t bcOffset,
-        const Global<FunctionRef> &condFuncRef, const std::string &url,
-        int32_t line, int32_t column) : sourceFile_(sourceFile), ptMethod_(ptMethod),
-        bcOffset_(bcOffset), condFuncRef_(condFuncRef), url_(url), line_(line), column_(column) {}
+        const Global<FunctionRef> &condFuncRef) : sourceFile_(sourceFile), ptMethod_(ptMethod),
+        bcOffset_(bcOffset), condFuncRef_(condFuncRef) {}
     ~JSBreakpoint() = default;
 
     const std::string &GetSourceFile() const
@@ -45,21 +44,6 @@ public:
     uint32_t GetBytecodeOffset() const
     {
         return bcOffset_;
-    }
-
-    const std::string &GetUrl() const
-    {
-        return url_;
-    }
-
-    int32_t GetLine() const
-    {
-        return line_;
-    }
-
-    int32_t GetColumn() const
-    {
-        return column_;
     }
 
     bool operator==(const JSBreakpoint &bpoint) const
@@ -78,14 +62,11 @@ public:
         breakpoint << "bytecodeOffset:" << bcOffset_ << ", ";
         breakpoint << "sourceFile:" << "\""<< sourceFile_ << "\""<< ", ";
         breakpoint << "jsPandaFile:" << "\"" << ptMethod_->GetJSPandaFile()->GetJSPandaFileDesc() << "\"";
-        breakpoint << "url:" << "\""<< url_ << "\""<< ", ";
-        breakpoint << "line:" << line_ << ", ";
-        breakpoint << "column:" << column_;
         breakpoint << "]";
         return breakpoint.str();
     }
 
-    Global<FunctionRef> GetConditionFunction() const
+    const Global<FunctionRef> &GetConditionFunction()
     {
         return condFuncRef_;
     }
@@ -98,11 +79,6 @@ private:
     PtMethod *ptMethod_ {nullptr};
     uint32_t bcOffset_;
     Global<FunctionRef> condFuncRef_;
-
-    // Used by new Breakpoint logic
-    std::string url_;
-    int32_t line_;
-    int32_t column_;
 };
 
 class HashJSBreakpoint {
@@ -192,14 +168,11 @@ public:
     {
         singleStepOnDebuggerStmt_ = status;
     }
-    bool SetUrlNotMatchedBreakpoint(const JSPtLocation &location);
-    std::vector<bool> SetBreakpointUsingList(std::vector<JSPtLocation> &list);
-    bool RemoveUrlNotMatchedBreakpoint(const JSPtLocation &location);
-    bool RemoveAllBreakpointsByUrl(const std::string &url, bool skipGlobal);
-    void RemoveGlobalFuncRef(const JSBreakpoint &breakpoint);
 private:
     std::unique_ptr<PtMethod> FindMethod(const JSPtLocation &location) const;
+    std::optional<JSBreakpoint> FindBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;
     std::optional<JSBreakpoint> FindSmartBreakpoint(JSHandle<Method> method, uint32_t bcOffset) const;
+    bool RemoveBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset);
     bool RemoveSmartBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset);
     void HandleExceptionThrowEvent(const JSThread *thread, JSHandle<Method> method, uint32_t bcOffset);
     bool HandleStep(JSHandle<Method> method, uint32_t bcOffset);
@@ -207,36 +180,13 @@ private:
     bool HandleBreakpoint(JSHandle<Method> method, uint32_t bcOffset);
     void DumpBreakpoints();
     bool IsBreakpointCondSatisfied(std::optional<JSBreakpoint> breakpoint) const;
-    bool PushBreakpointToLocal(const JSBreakpoint &breakpoint, const JSPtLocation &location);
-    // All methods which manipulates the globalBpList_ should be called with write lock acquired
-    // All methods thatsearches/pulls breakpoints from the globalBpList_ should be used with read lock acquired
-    std::optional<JSBreakpoint> FindLocalBreakpoint(JSHandle<Method> method, uint32_t bcOffset);
-    bool RemoveLocalBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, uint32_t bcOffset);
-    bool SetBreakpointWithMatchedUrl(const JSPtLocation &location, Global<FunctionRef> condFuncRef);
-    bool SetBreakpointWithoutMatchedUrl(const JSPtLocation &location);
-    std::vector<bool> SetBreakpointByList(std::vector<JSPtLocation> &list);
-    void PushBreakpointToGlobal(const JSBreakpoint &breakpoint, const JSPtLocation &location);
-    bool PullBreakpointFromGlobal(const JSBreakpoint &breakpoint);
-    void DumpGlobalBreakpoints();
-    std::optional<JSBreakpoint> SearchBreakpointInGlobalList(const JSPtLocation &location, PtMethod *ptMethod);
-    std::optional<JSBreakpoint> SearchBreakpointInGlobalList(JSHandle<Method> method, uint32_t bcOffset);
-    std::vector<JSBreakpoint> SearchNoMatchBreakpointInLocalList(const JSPtLocation &location);
-    std::vector<JSBreakpoint> SearchNoMatchBreakpointInGlobalList(const JSPtLocation &location);
-    bool RemoveGlobalBreakpoint(const std::unique_ptr<PtMethod> &ptMethod, const JSPtLocation &location);
-    bool RemoveGlobalBreakpoint(const JSPtLocation &location);
-    bool RemoveGlobalBreakpoint(const std::string &url);
 
     const EcmaVM *ecmaVm_;
     PtHooks *hooks_ {nullptr};
     NotificationManager *notificationMgr_ {nullptr};
     bool singleStepOnDebuggerStmt_ {false};
 
-    static std::shared_mutex listMutex_;
-    // Map<JSPandafile, Map<url, Set<JSBreakpoint>>>
-    static CUnorderedMap<CString, CUnorderedMap<std::string,
-        CUnorderedSet<JSBreakpoint, HashJSBreakpoint>>> globalBpList_;
-    CUnorderedMap<CString, CUnorderedMap<std::string,
-        CUnorderedSet<JSBreakpoint, HashJSBreakpoint>>> breakpoints_ {};
+    CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpoints_ {};
     CUnorderedSet<JSBreakpoint, HashJSBreakpoint> smartBreakpoints_ {};
 };
 }  // namespace panda::ecmascript::tooling

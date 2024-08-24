@@ -33,20 +33,6 @@ public:
     {
     }
 
-    JSPtLocation(const JSPandaFile *jsPandaFile, EntityId methodId, uint32_t bytecodeOffset,
-        Global<FunctionRef> &condFuncRef, int32_t line = -1,
-        int32_t column = -1, const std::string &sourceFile = "",
-        bool needResetBreakpoint = false, CString recordName = "") : jsPandaFile_(jsPandaFile),
-        methodId_(methodId), bytecodeOffset_(bytecodeOffset),
-        condFuncRef_(condFuncRef), line_(line), column_(column),
-        sourceFile_(sourceFile), needResetBreakpoint_(needResetBreakpoint), recordName_(recordName)
-    {
-    }
-
-    JSPtLocation(const std::string &url, int32_t line, int32_t column) : line_(line), column_(column), sourceFile_(url)
-    {
-    }
-
     const JSPandaFile *GetJsPandaFile() const
     {
         return jsPandaFile_;
@@ -67,31 +53,6 @@ public:
         return bytecodeOffset_;
     }
 
-    const Global<FunctionRef> &GetCondFuncRef() const
-    {
-        return condFuncRef_;
-    }
-
-    int32_t GetLine() const
-    {
-        return line_;
-    }
-
-    int32_t GetColumn() const
-    {
-        return column_;
-    }
-
-    const bool &GetNeedResetBreakpoint() const
-    {
-        return needResetBreakpoint_;
-    }
-
-    const CString &GetRecordName() const
-    {
-        return recordName_;
-    }
-
     bool operator==(const JSPtLocation &location) const
     {
         return methodId_ == location.methodId_ && bytecodeOffset_ == location.bytecodeOffset_ &&
@@ -105,12 +66,7 @@ public:
         location << "methodId:" << methodId_ << ", ";
         location << "bytecodeOffset:" << bytecodeOffset_ << ", ";
         location << "sourceFile:" << "\""<< sourceFile_ << "\""<< ", ";
-        if (jsPandaFile_ != nullptr) {
-            location << "jsPandaFile:" << "\"" << jsPandaFile_->GetJSPandaFileDesc() << "\"";
-        }
-        location << "line: " << line_ << ", ";
-        location << "column: " << column_ << ", ";
-        location << "needResetBreakpoint: " << needResetBreakpoint_;
+        location << "jsPandaFile:" << "\"" << jsPandaFile_->GetJSPandaFileDesc() << "\"";
         location << "]";
         return location.str();
     }
@@ -124,12 +80,7 @@ private:
     const JSPandaFile *jsPandaFile_ {nullptr};
     EntityId methodId_;
     uint32_t bytecodeOffset_ {0};
-    Global<FunctionRef> condFuncRef_;
-    int32_t line_ {-1};
-    int32_t column_ {-1};
     std::string sourceFile_; // mainly used for breakpoint
-    bool needResetBreakpoint_ {false};
-    CString recordName_ {};
 };
 }  // namespace panda::ecmascript::tooling
 
