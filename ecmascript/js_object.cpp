@@ -190,7 +190,11 @@ JSHandle<NameDictionary> JSObject::TransitionToDictionary(const JSThread *thread
     uint32_t propNumber = jshclass->NumberOfProps();
 
     ASSERT(!jshclass->GetLayout().IsNull());
-    ASSERT(!jshclass->IsJSShared());
+    if (jshclass->IsJSShared()) {
+        THROW_TYPE_ERROR_AND_RETURN(const_cast<JSThread *>(thread),
+                                    "shared obj does not support changing or deleting attributes",
+                                    JSHandle<NameDictionary>());
+    }
     JSHandle<LayoutInfo> layoutInfoHandle(thread, jshclass->GetLayout());
     JSMutableHandle<NameDictionary> dict(
         thread, NameDictionary::Create(thread, NameDictionary::ComputeHashTableSize(propNumber)));
@@ -238,7 +242,7 @@ void JSObject::ElementsToDictionary(const JSThread *thread, JSHandle<JSObject> o
     uint32_t length = elements->GetLength();
     if (obj->IsJSShared()) {
         THROW_TYPE_ERROR(const_cast<JSThread *>(thread),
-                         "shared obj does not support transition from elements to dictionary");
+                         "shared obj does not support changing or deleting attributes");
     }
     JSMutableHandle<NumberDictionary> dict(thread, NumberDictionary::Create(thread));
     auto attr = PropertyAttributes(PropertyAttributes::GetDefaultAttributes());
@@ -476,6 +480,7 @@ void JSObject::DeletePropertyInternal(JSThread *thread, const JSHandle<JSObject>
 
     if (!array->IsDictionaryMode()) {
         JSHandle<NameDictionary> dictHandle(TransitionToDictionary(thread, obj));
+        RETURN_IF_ABRUPT_COMPLETION(thread);
         int entry = dictHandle->FindEntry(key.GetTaggedValue());
         ASSERT(entry != -1);
         JSHandle<NameDictionary> newDict = NameDictionary::Remove(thread, dictHandle, entry);

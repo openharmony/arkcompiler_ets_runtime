@@ -910,6 +910,7 @@ PropertyAttributes ObjectFastOperator::AddPropertyByName(JSThread *thread, JSHan
         if (UNLIKELY(numberOfProps >= PropertyAttributes::MAX_FAST_PROPS_CAPACITY)) {
                 // change to dictionary and add one.
                 JSHandle<NameDictionary> dict(JSObject::TransitionToDictionary(thread, objHandle));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, attr);
                 JSHandle<NameDictionary> newDict =
                     NameDictionary::PutIfAbsent(thread, dict, keyHandle, valueHandle, attr);
                 objHandle->SetProperties(thread, newDict);
