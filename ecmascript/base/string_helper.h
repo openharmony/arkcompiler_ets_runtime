@@ -162,12 +162,10 @@ public:
 
     static inline std::string ToLower(const std::u16string &str)
     {
-        std::u16string tmpStr = str;
-        const char16_t *constChar16tData = tmpStr.data();
-        icu::UnicodeString uString(constChar16tData);
-        icu::UnicodeString low = uString.toLower();
+        const char16_t *constChar16tData = str.data();
+        icu::UnicodeString uString(constChar16tData, str.length());
         std::string res;
-        low.toUTF8String(res);
+        uString.toLower().toUTF8String(res);
         return res;
     }
 
