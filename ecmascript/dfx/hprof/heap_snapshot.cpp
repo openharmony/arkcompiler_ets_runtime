@@ -1175,15 +1175,14 @@ void HeapSnapshot::AddSyntheticRoot()
             if (rootNode != nullptr) {                                                                \
                 JSTaggedType valueTo = value.GetRawData();                                            \
                 auto it = values.find(valueTo);                                                       \
-                if (it != values.end()) {                                                             \
-                    return;                                                                           \
+                if (it == values.end()) {                                                             \
+                    values.insert(valueTo);                                                           \
+                    Edge *edge = Edge::NewEdge(chunk_,                                                \
+                        EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-"));         \
+                    InsertEdgeAt(edgeOffset, edge);                                                   \
+                    edgeOffset++;                                                                     \
+                    syntheticRoot->IncEdgeCount();                                                    \
                 }                                                                                     \
-                values.insert(valueTo);                                                               \
-                Edge *edge = Edge::NewEdge(chunk_,                                                    \
-                    EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-"));             \
-                InsertEdgeAt(edgeOffset, edge);                                                       \
-                edgeOffset++;                                                                         \
-                syntheticRoot->IncEdgeCount();                                                        \
             }                                                                                         \
         }                                                                                             \
     } while (false)
