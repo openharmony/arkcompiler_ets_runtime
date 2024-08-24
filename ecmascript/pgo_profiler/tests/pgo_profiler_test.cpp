@@ -1312,4 +1312,32 @@ HWTEST_F_L0(PGOProfilerTest, ProfileTypeConstructor)
     unlink("ark-profiler25/modules.ap");
     rmdir("ark-profiler25/");
 }
+
+HWTEST_F_L0(PGOProfilerTest, CompatibleWithAOTFileTest)
+{
+    constexpr uint32_t CHECKSUM = 1;
+    PGOProfilerDecoder decoder("", DECODER_THRESHOLD);
+    EXPECT_TRUE(decoder.LoadAndVerify(CHECKSUM));
+    EXPECT_FALSE(decoder.IsCompatibleWithAOTFile());
+}
+
+HWTEST_F_L0(PGOProfilerTest, ExternalMethodLiteralTest)
+{
+    mkdir("ark-profiler26/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    const char *targetRecordName = "typedarray_length";
+    ExecuteAndLoadJSPandaFile("ark-profiler26/", targetRecordName);
+    ASSERT_NE(pf_, nullptr);
+    uint32_t checksum = pf_->GetChecksum();
+
+    PGOProfilerDecoder decoder("ark-profiler26/modules.ap", DECODER_THRESHOLD);
+    ASSERT_TRUE(decoder.LoadAndVerify(checksum));
+    auto callback = []([[maybe_unused]] uint32_t offset, [[maybe_unused]] const PGOType *type) {
+        EXPECT_TRUE(false);
+    };
+    decoder.GetTypeInfo(pf_.get(), targetRecordName, nullptr,
+                        callback);
+    unlink("ark-profiler26/modules.ap");
+    rmdir("ark-profiler26/");
+}
+
 }  // namespace panda::test
