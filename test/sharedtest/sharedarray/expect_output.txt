@@ -15,6 +15,11 @@ Start Test at
 An index of 2 returns 8
 An index of -2 returns 130
 An index of 200 returns undefined
+An index of null returns 5
+An index of undefined returns 5
+An index of undefined returns 12
+An index of undefined returns 5
+An index of 2871622679 returns undefined
 Start Test entries
 0,a
 1,b
@@ -44,6 +49,9 @@ Start Test pop
 poped: 44
 Start Test randomUpdate
 30
+add element by index access failed. err: TypeError: Cannot add property in prevent extensions, code: undefined
+add element by index access failed. err: TypeError: Cannot add property in prevent extensions, code: undefined
+add element by index access failed. err: BusinessError: The value of index is out of range., code: 10200001
 Start Test randomGet
 5,12,8,130,44
 Start Test randomAdd
@@ -64,19 +72,37 @@ Elements pushed: 1,3,5,2,4,6
 Start Test concat
 1,3,5,2,4,6
 1,3,5,2,4,6,100,101,102
+1,3,5,200
+1,3,5,201,202
+1,3,5,
+null
+4
+1,3,5,
+undefined
+4
 Start Test join
 Fire,Air,Water
 FireAirWater
 Fire-Air-Water
+FirenullAirnullWater
+Fire,Air,Water
 Start Test shift
+2
 2
 undefined
 Start Test unshift
+5
 5
 Start Test slice
 ant,bison,camel,duck,elephant
 camel,duck,elephant
 camel,duck
+slice(1.5, 4) element success
+bison,camel,duck
+slice(8, 4) element success
+slice(8, 100) element success
+ant,bison,camel,duck,elephant
+ant,bison,camel,duck,elephant
 Start Test sort
 Dec,Feb,Jan,March
 1,10000,21,30,4
@@ -209,7 +235,15 @@ Start Test derivedFill
 instanceOf derived fill result: true
 Start Test array read out of range
 array[0]: 1
-read out of range success.
+read out of range success undefined
+read out of range success 1
+read out of range success 1
+read out of range success undefined
+read out of range success undefined
+read out of range success undefined
+read out of range success undefined
+read out of range success undefined
+read out of range success undefined
 Start Test array for of
 1
 3
@@ -220,11 +254,19 @@ SendableArray ...from_arr1: 0,1,2,3
 Create from SendableArray with non-sendable array error failed. err: BusinessError: Parameter error.Only accept sendable value., code: 401
 Start Test fromArrayConstructorTest
 a,b,c
+Start Test DefinePropertyTest
 defineProperty to array success
 defineProperty to array failed. err: BusinessError: Key out of length.
 defineProperty to array success
 defineProperty to array failed. err: BusinessError: Key out of length.
 defineProperty to array failed. err: BusinessError: Key out of length.
+defineProperty to array success 321
+defineProperty to array failed. err: TypeError: Cannot define property, code: undefined
+defineProperty to array failed. err: TypeError: Cannot define property, code: undefined
+defineProperty to array failed. err: TypeError: Cannot define property, code: undefined
+defineProperty to array failed. err: TypeError: Cannot define property, code: undefined
+defineProperty to array failed. err: TypeError: Cannot define property, code: undefined
+defineProperty to array failed. err: TypeError: Cannot define property, code: undefined
 Start Test SomeTest
 true
 false
