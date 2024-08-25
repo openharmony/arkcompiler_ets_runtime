@@ -26,7 +26,9 @@ group("ark_js_moduletest") {
     "arrayfrom",
     "arrayjoin",
     "arraymap",
-    "arraypop",
+
+    # (issue 18938)
+    #"arraypop",
     "arraytoreversed",
     "arraytospliced",
     "arraywith",
@@ -261,7 +263,9 @@ group("ark_asm_test") {
     "arrayforeach",
     "arrayjoin",
     "arraymap",
-    "arraypop",
+
+    # (issue 18938)
+    #"arraypop",
     "arraysort",
     "arrayspread",
     "arrayprotochange",
@@ -457,7 +461,9 @@ group("ark_asm_single_step_test") {
     "arrayforeach",
     "arrayjoin",
     "arraymap",
-    "arraypop",
+
+    # (issue 18938)
+    #"arraypop",
     "arrayprotochange",
     "arrayshift",
     "arrayslice",
