@@ -241,3 +241,20 @@ try {
 } catch (err) {
   print('sendable delete property failed. err: ' + err + ', code: ' + err.code);
 }
+//sendable can not change attr.
+class Test {
+  v: number = 123
+  constructor() {
+    'use sendable'
+  }
+}
+
+let test = new Test()
+try {
+  Object.defineProperty(test, 'v', {
+    value: 42,
+    writable: false,
+  });
+} catch (e) {
+  print("sendable can not change attr. err: " + e);
+}
