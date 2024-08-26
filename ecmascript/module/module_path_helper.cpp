@@ -263,9 +263,6 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
         moduleName = PathHelper::GetHarName(moduleName);
     }
     CString pkgname = vm->GetPkgName(moduleName);
-    if (pkgname.size() == 0) {
-        return oldEntryPoint;
-    }
     CString currentModuleName = GetModuleNameWithBaseFile(baseFileName);
     if (currentModuleName.size() == 0) {
         currentModuleName = moduleName;
@@ -276,6 +273,8 @@ CString ModulePathHelper::TransformToNormalizedOhmUrl(EcmaVM *vm, const CString 
     if (data.size() > 0) {
         version = data[PKGINFO_VERSION_INDEX];
         entryPath = data[PKGINFO_ENTRY_PATH_INDEX];
+    } else {
+        return oldEntryPoint;
     }
     // If the subPath starts with '.test', it is a preview test, no need to splice the entry path.
     CString subPath = oldEntryPoint.substr(pathPos + 1);
