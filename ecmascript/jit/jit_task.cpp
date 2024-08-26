@@ -26,8 +26,8 @@
 #include "ecmascript/ohos/jit_tools.h"
 #include "ecmascript/dfx/dump_code/jit_dump_elf.h"
 #include "ecmascript/platform/aot_crash_info.h"
-#ifdef CODE_SIGN_ENABLE
-#include "jit_code_signer_base.h"
+#ifdef JIT_ENABLE_CODE_SIGN
+#include "jit_buffer_integrity.h"
 #endif
 
 namespace panda::ecmascript {
@@ -408,36 +408,36 @@ void JitTask::WaitFinish()
 bool JitTask::AsyncTask::CopyCodeToFort()
 {
     MachineCodeDesc &desc = jitTask_->GetMachineCodeDesc();
-    size_t codeSizeAlign = AlignUp(desc.codeSize, MachineCode::DATA_ALIGN);
     uint8_t *pText = reinterpret_cast<uint8_t*>(desc.instructionsAddr);
-    size_t rodataSizeBeforeTextAlign = AlignUp(desc.rodataSizeBeforeText, MachineCode::TEXT_ALIGN);
-    if (rodataSizeBeforeTextAlign != 0) {
-        pText += rodataSizeBeforeTextAlign;
+    if (desc.rodataSizeBeforeTextAlign != 0) {
+        pText += desc.rodataSizeBeforeTextAlign;
     }
-
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
     if ((uintptr_t)desc.codeSigner == 0) {
-        if (memcpy_s(pText, codeSizeAlign,
-            reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
-            LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
+        if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+            LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
             return false;
         }
     } else {
-        LOG_JIT(DEBUG) << "JitTask: Call JitVerifyAndCopy: "
+        LOG_JIT(DEBUG) << "Copy: "
                        << std::hex << (uintptr_t)pText << " <- "
                        << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
         LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
-        if (Jit::GetInstance()->JitVerifyAndCopy(reinterpret_cast<void*>(desc.codeSigner),
-            pText, reinterpret_cast<void*>(desc.codeAddr), desc.codeSize) != EOK) {
-            LOG_JIT(ERROR) << "     JitVerifyAndCopy failed";
+        OHOS::Security::CodeSign::JitCodeSignerBase *signer =
+            reinterpret_cast<OHOS::Security::CodeSign::JitCodeSignerBase*>(desc.codeSigner);
+        int err = OHOS::Security::CodeSign::CopyToJitCode(
+            signer, pText, reinterpret_cast<void*>(desc.codeAddr), desc.codeSize);
+        if (err != EOK) {
+            LOG_JIT(ERROR) << "     CopyToJitCode failed, err: " << err;
+            return false;
         } else {
-            LOG_JIT(DEBUG) << "     JitVerifyAndCopy success!!";
+            LOG_JIT(DEBUG) << "     CopyToJitCode success!!";
         }
         delete reinterpret_cast<OHOS::Security::CodeSign::JitCodeSignerBase*>(desc.codeSigner);
     }
 #else
-    if (memcpy_s(pText, codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
-        LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
+    if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+        LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
         return false;
     }
 #endif

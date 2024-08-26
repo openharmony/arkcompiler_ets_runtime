@@ -33,13 +33,13 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/stackmap/litecg/litecg_stackmap_type.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"
 #include "ecmascript/compiler/jit_signcode.h"
 #endif
 
 namespace panda::ecmascript::kungfu {
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
 using namespace panda::ecmascript::kungfu;
 using namespace OHOS::Security::CodeSign;
 #endif
@@ -112,13 +112,14 @@ void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastComp
     liteCG.SetupLiteCGEmitMemoryManager(&codeInfo_, isJit ? AllocateCodeSectionOnDemand : AllocateCodeSection,
                                         SaveFunc2Addr, SaveFunc2FPtoPrevSPDelta, SaveFunc2CalleeOffsetInfo,
                                         SavePC2DeoptInfo, SavePC2CallSiteInfo);
-#ifdef CODE_SIGN_ENABLE
+#ifdef JIT_ENABLE_CODE_SIGN
     isJit &= IsSupportJitCodeSigner();
     if (isJit) {
         JitCodeSignerBase *jitSigner = CreateJitCodeSigner(JitBufferIntegrityLevel::Level0);
         JitSignCode *singleton = JitSignCode::GetInstance();
         singleton->Reset();
-        singleton->SetJPtr(jitSigner);
+        singleton->SetCodeSigner(jitSigner);
+        singleton->SetKind(1);
     }
 #endif
     liteCG.DoCG(isJit);

@@ -262,7 +262,7 @@ template("libark_jsruntime_common_set") {
 
     include_dirs = []
     if (enable_jit_code_sign) {
-      defines += [ "CODE_SIGN_ENABLE" ]
+      defines += [ "JIT_ENABLE_CODE_SIGN" ]
       external_deps += [ "code_signature:libjit_code_sign" ]
       if (disable_fort_switch) {
         defines += [ "JIT_FORT_DISABLE" ]

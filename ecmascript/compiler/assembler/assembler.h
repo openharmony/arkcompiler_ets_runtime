@@ -16,8 +16,15 @@
 #define ECMASCRIPT_COMPILER_ASSEMBLER_H
 
 #include "ecmascript/mem/dyn_chunk.h"
+#ifdef JIT_ENABLE_CODE_SIGN
+#include "ecmascript/compiler/jit_signcode.h"
+#include "jit_buffer_integrity.h"
+#endif
 
 namespace panda::ecmascript {
+#ifdef JIT_ENABLE_CODE_SIGN
+using namespace OHOS::Security::CodeSign;
+#endif
 enum class Triple {
     TRIPLE_AMD64,
     TRIPLE_AARCH64,
@@ -195,6 +202,15 @@ public:
     void EmitU32(uint32_t v)
     {
         buffer_.EmitU32(v);
+#ifdef JIT_ENABLE_CODE_SIGN
+        if (doCodeSign && kungfu::JitSignCode::GetInstance()->GetCodeSigner() != nullptr) {
+            int err = AppendData(kungfu::JitSignCode::GetInstance()->GetCodeSigner(),
+                                 reinterpret_cast<const uint8_t *>(&v), sizeof(v));
+            if (err != 0) {
+                LOG_BASELINEJIT(ERROR) << "Baseline AppendData failed, err = " << std::hex << err;
+            }
+        }
+#endif
     }
 
     void EmitI32(int32_t v)
@@ -215,6 +231,15 @@ public:
     void PutI32(size_t offset, int32_t data)
     {
         buffer_.PutU32(offset, static_cast<int32_t>(data));
+#ifdef JIT_ENABLE_CODE_SIGN
+        if (doCodeSign && kungfu::JitSignCode::GetInstance()->GetCodeSigner() != nullptr) {
+            int err = PatchData(kungfu::JitSignCode::GetInstance()->GetCodeSigner(),
+                                offset, reinterpret_cast<const uint8_t *>(&data), sizeof(data));
+            if (err != 0) {
+                LOG_BASELINEJIT(ERROR) << "Baseline PatchData failed, err = " << std::hex << err;
+            }
+        }
+#endif
     }
 
     uint32_t GetU32(size_t offset) const
@@ -271,8 +296,15 @@ public:
         LOG_ECMA(FATAL) << "Assembler does not currently support other platforms, please run on x64 and arm64";
 #endif
     }
+
+    void SetDoCodeSign()
+    {
+        doCodeSign = true;
+    }
+
 private:
     DynChunk buffer_;
+    bool doCodeSign = false;
 };
 }  // panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_ASSEMBLER_H

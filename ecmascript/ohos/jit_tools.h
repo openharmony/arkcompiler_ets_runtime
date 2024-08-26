@@ -84,7 +84,7 @@ public:
 
     static bool GetCodeSignDisable(bool value)
     {
-    #ifdef CODE_SIGN_ENABLE
+    #ifdef JIT_ENABLE_CODE_SIGN
         return OHOS::system::GetBoolParameter("persist.ark.jit.codesign.disable", true);
     #endif
         return value;

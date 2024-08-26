@@ -17,7 +17,7 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/jit/jit.h"
-#if defined(CODE_SIGN_ENABLE) && !defined(JIT_FORT_DISABLE)
+#if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
 #include <sys/prctl.h>
 #endif
 
@@ -247,7 +247,7 @@ JitFortRegion *JitFort::ObjectAddressToRange(uintptr_t objAddress)
 
 void JitFort::InitJitFortResource()
 {
-#if defined(CODE_SIGN_ENABLE) && !defined(JIT_FORT_DISABLE)
+#if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::InitJitFortResource");
     constexpr int prSetJitFort = 0x6a6974;
     constexpr int jitFortInit = 5;
