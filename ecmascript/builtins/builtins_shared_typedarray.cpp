@@ -799,7 +799,7 @@ JSTaggedValue BuiltinsSharedTypedArray::Join(EcmaRuntimeCallInfo *argv)
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         return globalConst->GetEmptyString();
     }
-    size_t allocateLength = 0;
+    uint64_t allocateLength = 0;
     bool isOneByte = (sep != BuiltinsSharedTypedArray::SeparatorFlag::MINUS_ONE) ||
         EcmaStringAccessor(sepStringHandle).IsUtf8();
     CVector<JSHandle<EcmaString>> vec;
@@ -824,12 +824,16 @@ JSTaggedValue BuiltinsSharedTypedArray::Join(EcmaRuntimeCallInfo *argv)
             vec.push_back(JSHandle<EcmaString>(globalConst->GetHandledEmptyString()));
         }
     }
-    allocateLength += sepLength * (length - 1);
+    allocateLength += static_cast<uint64_t>(sepLength) * (length - 1);
     if (allocateLength <= 1) {
         // sep unused, set isOneByte to default(true)
         isOneByte = true;
     }
-    auto newString = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), allocateLength, isOneByte);
+    if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+    }
+    auto newString = EcmaStringAccessor::CreateLineString(
+        thread->GetEcmaVM(), static_cast<size_t>(allocateLength), isOneByte);
     int current = 0;
     DISALLOW_GARBAGE_COLLECTION;
     for (uint32_t k = 0; k < length; k++) {
