@@ -127,7 +127,7 @@ public:
 
     using CallSiteInfo = std::tuple<uint64_t, uint8_t *, int, CalleeRegAndOffsetVec>;
 
-    bool CalCallSiteInfo(uintptr_t retAddr, CallSiteInfo &ret) const;
+    bool CalCallSiteInfo(uintptr_t retAddr, CallSiteInfo &ret, bool isInStub, bool isDeopt) const;
 
     virtual void Destroy();
 
@@ -149,6 +149,13 @@ protected:
     std::vector<ModuleSectionDes> des_ {};
     ExecutedMemoryAllocator::ExeMem stubsMem_ {};
     MemMap fileMapMem_ {};
+
+private:
+    AOTFileInfo::FuncEntryDes GetFuncEntryDesWithCallsite(uintptr_t codeAddr, uint32_t startIndex,
+                                                          uint32_t funcCount) const;
+
+    void StoreCalleeRegInfo(uint32_t calleeRegNum, int32_t *calleeReg2Offset,
+                            CalleeRegAndOffsetVec &calleeRegInfo) const;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_AOT_FILE_AOT_FILE_INFO_H

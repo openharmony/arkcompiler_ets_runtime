@@ -234,21 +234,21 @@ bool AnFileDataManager::SafeInsideAOT(uintptr_t pc)
     return false;
 }
 
-AOTFileInfo::CallSiteInfo AnFileDataManager::SafeCalCallSiteInfo(uintptr_t retAddr)
+AOTFileInfo::CallSiteInfo AnFileDataManager::SafeCalCallSiteInfo(uintptr_t retAddr, bool isDeopt)
 {
     ReadLockHolder lock(lock_);
     AOTFileInfo::CallSiteInfo callsiteInfo;
 
     bool ans = false;
     if (loadedStub_ != nullptr) {
-        ans = loadedStub_->CalCallSiteInfo(retAddr, callsiteInfo);
+        ans = loadedStub_->CalCallSiteInfo(retAddr, callsiteInfo, true, isDeopt);
     }
     if (ans) {
         return callsiteInfo;
     }
     // aot
     for (auto &info : loadedAn_) {
-        ans = info->CalCallSiteInfo(retAddr, callsiteInfo);
+        ans = info->CalCallSiteInfo(retAddr, callsiteInfo, false, isDeopt);
         if (ans) {
             return callsiteInfo;
         }

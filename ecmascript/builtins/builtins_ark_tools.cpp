@@ -48,6 +48,7 @@ using StringHelper = base::StringHelper;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
 constexpr char FILEDIR[] = "/data/storage/el2/base/files/";
 #endif
+
 JSTaggedValue BuiltinsArkTools::ObjectDump(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
@@ -1386,6 +1387,46 @@ JSTaggedValue BuiltinsArkTools::StopRuntimeStat(EcmaRuntimeCallInfo *msg)
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // start vm runtime stat statistic
     thread->GetCurrentEcmaContext()->SetRuntimeStatEnable(false);
+    return JSTaggedValue::Undefined();
+}
+
+JSTaggedValue BuiltinsArkTools::IterateFrame(EcmaRuntimeCallInfo *info)
+{
+    ASSERT(info);
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSTaggedType *currentFrame = const_cast<JSTaggedType *>(thread->GetCurrentFrame());
+    RootVisitor visitor = []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot slot) {};
+    RootBaseAndDerivedVisitor derivedVisitor = []([[maybe_unused]] Root Type, [[maybe_unused]] ObjectSlot base,
+                                                  [[maybe_unused]] ObjectSlot derived,
+                                                  [[maybe_unused]] uintptr_t baseOldObject) {};
+
+    for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+        bool ret = it.IteratorStackMap(visitor, derivedVisitor);
+        FrameType type = it.GetFrameType();
+        int delta = it.ComputeDelta();
+        kungfu::CalleeRegAndOffsetVec calleeRegInfo;
+        it.GetCalleeRegAndOffsetVec(calleeRegInfo);
+        LOG_BUILTINS(INFO) << "IterateFrameType: " << (int)type;
+        LOG_BUILTINS(INFO) << "IterateFrameDelta: " << delta;
+        LOG_BUILTINS(INFO) << "IterateFrameCalleeRegInfo: " << calleeRegInfo.size();
+        if (!ret) {
+            break;
+        }
+    }
+
+    for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::DEOPT>()) {
+        FrameType type = it.GetFrameType();
+        int delta = it.ComputeDelta();
+        kungfu::CalleeRegAndOffsetVec calleeRegInfo;
+        it.GetCalleeRegAndOffsetVec(calleeRegInfo);
+        LOG_BUILTINS(INFO) << "DeoptIterateFrameType: " << (int)type;
+        LOG_BUILTINS(INFO) << "DeoptIterateFrameDelta: " << delta;
+        LOG_BUILTINS(INFO) << "DeoptIterateFrameCalleeRegInfo: " << calleeRegInfo.size();
+    }
+
     return JSTaggedValue::Undefined();
 }
 } // namespace panda::ecmascript::builtins

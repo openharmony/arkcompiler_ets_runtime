@@ -56,7 +56,8 @@
     V("checkCircularImport",            CheckCircularImport,            2, INVALID)       \
     V("hashCode",                       HashCode,                       1, ArkToolsHashCode)    \
     V("startRuntimeStat",               StartRuntimeStat,               0, INVALID)       \
-    V("stopRuntimeStat",                StopRuntimeStat,                0, INVALID)
+    V("stopRuntimeStat",                StopRuntimeStat,                0, INVALID)       \
+    V("iterateFrame",                   IterateFrame,                   0, INVALID)
 
 // List of mock ArkTools extension builtins
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_REGRESS(V)                                                                \
@@ -393,6 +394,8 @@ public:
 
     static JSTaggedValue StartRuntimeStat(EcmaRuntimeCallInfo *info);
     static JSTaggedValue StopRuntimeStat(EcmaRuntimeCallInfo *info);
+    
+    static JSTaggedValue IterateFrame(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {

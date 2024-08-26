@@ -19,6 +19,12 @@
 #include "ecmascript/compiler/assembler/assembler.h"
 
 namespace panda::ecmascript {
+struct MainFuncEntry {
+    uint64_t mainEntry {0};
+    int32_t fpDelta {0};
+    bool isFastCall {false};
+};
+
 class PUBLIC_API AnFileInfo : public AOTFileInfo {
 public:
     using FuncEntryIndexKey = std::pair<std::string, uint32_t>; // (compilefileName, MethodID)
@@ -37,11 +43,11 @@ public:
         accumulateTotalSize(moduleDes.GetArkStackMapSize());
     }
 
-    std::pair<uint64_t, bool> GetMainFuncEntry(uint32_t fileIndex, uint32_t methodId) const
+    MainFuncEntry GetMainFuncEntry(uint32_t fileIndex, uint32_t methodId) const
     {
         auto it = mainEntryMap_.find(std::make_pair(fileIndex, methodId));
         if (it == mainEntryMap_.end()) {
-            return std::make_pair(0, false);
+            return MainFuncEntry { 0, 0, false };
         }
         return it->second;
     }
@@ -103,7 +109,7 @@ private:
     void AddFuncEntrySec();
     uint64_t curTextSecOffset_ {0};
     // Future work: add main entry mapping to ai file
-    std::map<EntryKey, std::pair<uint64_t, bool>> mainEntryMap_ {};
+    std::map<EntryKey, MainFuncEntry> mainEntryMap_ {};
     bool isLoad_ {false};
     CUnorderedMap<uint32_t, std::string> entryIdxToFileNameMap_ {};
     CMap<FuncEntryIndexKey, uint32_t> methodToEntryIndexMap_ {};

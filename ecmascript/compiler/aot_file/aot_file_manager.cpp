@@ -316,10 +316,10 @@ bool AOTFileManager::InsideAOT(uintptr_t pc)
     return anFileDataManager->SafeInsideAOT(pc);
 }
 
-AOTFileInfo::CallSiteInfo AOTFileManager::CalCallSiteInfo(uintptr_t retAddr)
+AOTFileInfo::CallSiteInfo AOTFileManager::CalCallSiteInfo(uintptr_t retAddr, bool isDeopt)
 {
     AnFileDataManager *anFileDataManager = AnFileDataManager::GetInstance();
-    return anFileDataManager->SafeCalCallSiteInfo(retAddr);
+    return anFileDataManager->SafeCalCallSiteInfo(retAddr, isDeopt);
 }
 
 void AOTFileManager::PrintAOTEntry(const JSPandaFile *file, const Method *method, uintptr_t entry)
@@ -350,15 +350,17 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     }
     // get main func method
     auto mainFuncMethodId = jsPandaFile->GetMainMethodIndex(entryPoint.data());
-    uint64_t mainEntry;
-    bool isFastCall;
-    std::tie(mainEntry, isFastCall) = anFileInfo->GetMainFuncEntry(fileIndex, mainFuncMethodId);
+    MainFuncEntry mainFuncEntry = anFileInfo->GetMainFuncEntry(fileIndex, mainFuncMethodId);
+    uint64_t mainEntry = mainFuncEntry.mainEntry;
+    int32_t fpDelta = mainFuncEntry.fpDelta;
+    bool isFastCall = mainFuncEntry.isFastCall;
     MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
     Method *method = mainFunc->GetCallTarget();
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     method->SetCodeEntryAndMarkAOTWhenBinding(static_cast<uintptr_t>(mainEntry));
+    method->SetFpDelta(fpDelta);
     method->SetIsFastCall(isFastCall);
     mainFunc->SetCompiledFuncEntry(static_cast<uintptr_t>(mainEntry), isFastCall);
 #ifndef NDEBUG
@@ -392,6 +394,7 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction 
     method->SetDeoptThreshold(vm_->GetJSOptions().GetDeoptThreshold());
     method->SetCodeEntryAndMarkAOTWhenBinding(codeEntry);
     method->SetIsFastCall(entry.isFastCall_);
+    method->SetFpDelta(entry.fpDeltaPrevFrameSp_);
     if (canFastCall != nullptr) {
         *canFastCall = entry.isFastCall_;
     }

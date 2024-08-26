@@ -149,7 +149,7 @@ void AnFileInfo::UpdateFuncEntries()
         funcDes.codeAddr_ += des.GetSecAddr(ElfSecName::TEXT);
         if (funcDes.isMainFunc_) {
             EntryKey key = std::make_pair(funcDes.abcIndexInAi_, funcDes.indexInKindOrMethodId_);
-            mainEntryMap_[key] = std::make_pair(funcDes.codeAddr_, funcDes.isFastCall_);
+            mainEntryMap_[key] = MainFuncEntry { funcDes.codeAddr_, funcDes.fpDeltaPrevFrameSp_, funcDes.isFastCall_ };
 #ifndef NDEBUG
             LOG_COMPILER(INFO) << "AnFileInfo Load main method id: " << funcDes.indexInKindOrMethodId_
                                << " code addr: " << reinterpret_cast<void *>(funcDes.codeAddr_);
