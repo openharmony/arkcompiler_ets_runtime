@@ -88,26 +88,35 @@ private:
 
 class EcmaStringTable {
 public:
-    EcmaStringTable() : cleaner_(new EcmaStringTableCleaner(this)) {}
+    EcmaStringTable() : cleaner_(new EcmaStringTableCleaner(this))
+    {
+        stringTable_.fill(Segment());
+    }
     virtual ~EcmaStringTable()
     {
         if (cleaner_ != nullptr) {
             delete cleaner_;
             cleaner_ = nullptr;
         }
-        table_.clear();
+        for (auto &seg : stringTable_) {
+            seg.table_.clear();
+        }
     }
 
+    static uint32_t GetTableId(uint32_t hashcode)
+    {
+        return hashcode % SEGMENT_COUNT;
+    }
     void InternEmptyString(JSThread *thread, EcmaString *emptyStr);
     EcmaString *GetOrInternString(EcmaVM *vm,
                                   const JSHandle<EcmaString> &firstString,
                                   const JSHandle<EcmaString> &secondString);
     EcmaString *GetOrInternStringWithoutLock(JSThread *thread,
                                              const JSHandle<EcmaString> &firstString,
-                                             const JSHandle<EcmaString> &secondString);
+                                             const JSHandle<EcmaString> &secondString, uint32_t hashcode);
     EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress);
     EcmaString *GetOrInternStringWithoutLock(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                             bool canBeCompress);
+                                             bool canBeCompress, uint32_t hashcode);
     EcmaString *CreateAndInternStringNonMovable(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len);
     EcmaString *CreateAndInternStringReadOnly(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                               bool canBeCompress);
@@ -132,32 +141,32 @@ public:
     {
         return cleaner_;
     }
+    static constexpr uint32_t SEGMENT_COUNT = 16;
 private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);
 
     std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const JSHandle<EcmaString> &firstString,
-                                                            const JSHandle<EcmaString> &secondString) const;
+                                                            const JSHandle<EcmaString> &secondString,
+                                                            uint32_t hashcode) const;
     std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len,
-                                                            bool canBeCompress) const;
-    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint16_t *utf16Data, uint32_t utf16Len) const;
+                                                            bool canBeCompress, uint32_t hashcode) const;
+    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint16_t *utf16Data,
+                                                            uint32_t utf16Len, uint32_t hashcode) const;
     EcmaString *GetStringWithHashThreadUnsafe(EcmaString *string, uint32_t hashcode) const;
-    EcmaString *GetStringThreadUnsafe(EcmaString *string) const;
+    EcmaString *GetStringThreadUnsafe(EcmaString *string, uint32_t hashcode) const;
 
-    void InternStringThreadUnsafe(EcmaString *string);
+    void InternStringThreadUnsafe(EcmaString *string, uint32_t hashcode);
     EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, EcmaString *string);
 
-    void InsertStringIfNotExistThreadUnsafe(EcmaString *string)
-    {
-        EcmaString *str = GetStringThreadUnsafe(string);
-        if (str == nullptr) {
-            InternStringThreadUnsafe(string);
-        }
-    }
+    void InsertStringIfNotExistThreadUnsafe(EcmaString *string);
 
-    CUnorderedMultiMap<uint32_t, EcmaString *> table_;
-    Mutex mutex_;
+    struct Segment {
+        CUnorderedMultiMap<uint32_t, EcmaString *> table_;
+        Mutex mutex_;
+    };
 
+    std::array<Segment, SEGMENT_COUNT> stringTable_;
     EcmaStringTableCleaner* cleaner_;
 
     friend class SnapshotProcessor;
