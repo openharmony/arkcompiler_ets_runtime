@@ -614,6 +614,7 @@ Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, si
         } else {
             region->SetHighWaterMark(region->GetEnd() - regionRemainSizeVector[regionRemainSizeIndex_++]);
         }
+        region->IncreaseAliveObject(region->GetAllocatedBytes());
         regionVector_.push_back(region);
         allocateRegions.push_back(region);
         regionNum--;
@@ -681,6 +682,10 @@ void BaseDeserializer::AllocateToSharedOldSpace(size_t sOldSpaceSize)
         Region *region = AllocateMultiSharedRegion(space, sOldSpaceSize, sOldRegionIndex_);
         sOldSpaceBeginAddr_ = region->GetBegin();
     } else {
+        if (thread_->IsSharedConcurrentMarkingOrFinished()) {
+            Region *region = Region::ObjectAddressToRange(object);
+            region->IncreaseAliveObject(sOldSpaceSize);
+        }
         FreeObject::FillFreeObject(sheap_, object, sOldSpaceSize);
         sOldSpaceBeginAddr_ = object;
     }
@@ -694,6 +699,10 @@ void BaseDeserializer::AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSi
         Region *region = AllocateMultiSharedRegion(space, sNonMovableSpaceSize, sNonMovableRegionIndex_);
         sNonMovableSpaceBeginAddr_ = region->GetBegin();
     } else {
+        if (thread_->IsSharedConcurrentMarkingOrFinished()) {
+            Region *region = Region::ObjectAddressToRange(object);
+            region->IncreaseAliveObject(sNonMovableSpaceSize);
+        }
         FreeObject::FillFreeObject(sheap_, object, sNonMovableSpaceSize);
         sNonMovableSpaceBeginAddr_ = object;
     }
