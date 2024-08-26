@@ -193,6 +193,7 @@ namespace panda::ecmascript {
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(AddElementInternal)                       \
+    V(HeapAlloc)                                \
     V(AllocateInYoung)                          \
     V(AllocateInSOld)                           \
     V(AllocateInSNonMovable)                    \
