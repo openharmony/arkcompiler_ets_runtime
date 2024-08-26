@@ -911,6 +911,7 @@ void SlowPathLowering::SaveFrameToContext(GateRef gate)
     builder_.Store(VariableType::JS_ANY(), glue_, context, methodOffset, jsFunc);
 
     // set acc
+    ASSERT(acc_.GetNumValueIn(gate) > 0);
     GateRef accOffset = builder_.IntPtr(GeneratorContext::GENERATOR_ACC_OFFSET);
     GateRef curAccGate = acc_.GetValueIn(gate, acc_.GetNumValueIn(gate) - 1); // get current acc
     builder_.Store(VariableType::JS_ANY(), glue_, context, accOffset, curAccGate);
@@ -1029,8 +1030,8 @@ void SlowPathLowering::LowerCallthisrangeImm8Imm8V8(GateRef gate)
 {
     // this
     size_t fixedInputsNum = 1;
-    ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
     size_t numIns = acc_.GetNumValueIn(gate);
+    ASSERT(numIns >= fixedInputsNum);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::CALLTHISRANGE_IMM8_IMM8_V8));
     GateRef actualArgv = builder_.IntPtr(0);
@@ -1055,8 +1056,8 @@ void SlowPathLowering::LowerWideCallthisrangePrefImm16V8(GateRef gate)
 {
     // The first register input is thisobj, second is thisObj and other inputs are common args.
     size_t fixedInputsNum = 1; // 1: acc
-    ASSERT(acc_.GetNumValueIn(gate) - fixedInputsNum >= 0);
     size_t numIns = acc_.GetNumValueIn(gate);
+    ASSERT(numIns >= fixedInputsNum);
     GateRef actualArgc = builder_.Int64(BytecodeCallArgc::ComputeCallArgc(acc_.GetNumValueIn(gate),
         EcmaOpcode::WIDE_CALLTHISRANGE_PREF_IMM16_V8));
     GateRef actualArgv = builder_.IntPtr(0);
@@ -2023,6 +2024,12 @@ void SlowPathLowering::LowerNewObjRange(GateRef gate)
     ReplaceHirWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
+bool SlowPathLowering::IsDependIfStateMent(GateRef gate, size_t idx)
+{
+    return ((acc_.GetOpCode(gate) == OpCode::DEPEND_SELECTOR) || (acc_.GetOpCode(gate) == OpCode::DEPEND_RELAY)) &&
+           (idx > 0 && (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(gate, 0), idx - 1)) != OpCode::IF_EXCEPTION));
+}
+
 void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 {
     std::vector<GateRef> trueState;
@@ -2072,9 +2079,7 @@ void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
         } else if (acc_.GetOpCode(*it) == OpCode::IF_FALSE) {
             acc_.SetMetaData(*it, circuit_->OrdinaryBlock());
             it = acc_.ReplaceIn(it, mergeFalseState);
-        } else if (((acc_.GetOpCode(*it) == OpCode::DEPEND_SELECTOR) ||
-                    (acc_.GetOpCode(*it) == OpCode::DEPEND_RELAY)) &&
-                    (acc_.GetOpCode(acc_.GetIn(acc_.GetIn(*it, 0), it.GetIndex() - 1)) != OpCode::IF_EXCEPTION)) {
+        } else if (IsDependIfStateMent(*it, it.GetIndex())) {
             it = acc_.ReplaceIn(it, acc_.GetDep(gate));
         } else {
             LOG_ECMA(FATAL) << "this branch is unreachable";

@@ -547,6 +547,7 @@ void TypedBytecodeLowering::LowerTypedLdObjByName(GateRef gate)
     size_t typeCount = tacc.GetTypeCount();
     std::vector<Label> loaders;
     std::vector<Label> fails;
+    ASSERT(typeCount > 0);
     for (size_t i = 0; i < typeCount - 1; ++i) {
         loaders.emplace_back(Label(&builder_));
         fails.emplace_back(Label(&builder_));

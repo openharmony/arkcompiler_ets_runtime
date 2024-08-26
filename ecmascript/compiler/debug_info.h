@@ -60,6 +60,7 @@ private:
 
         size_t Add(std::string &&str)
         {
+            ASSERT(comments_ != nullptr);
             comments_->push_back(std::move(str));
             return comments_->size() - 1;
         }
