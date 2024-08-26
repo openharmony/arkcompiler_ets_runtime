@@ -4837,6 +4837,11 @@ bool JSNApi::KeyIsNumber(const char* utf8)
 bool JSNApi::IsSerializationTimeoutCheckEnabled(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
+    // Open Control Timeout Consumption
+    if (const_cast<EcmaVM *>(vm)->GetJSOptions().EnableSerializationTimeoutCheck()) {
+        return thread->IsMainThread();
+    }
+
     // Currently only log trace on main thread
     auto jsDebuggerManager = vm->GetJsDebuggerManager();
     if (jsDebuggerManager != nullptr) {
