@@ -445,7 +445,8 @@ public:
     static bool DefinePropertyOrThrow(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                       const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc);
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                  const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc);
+                                  const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
+                                  SCheckMode sCheckMode = SCheckMode::CHECK);
     static bool GetOwnProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &key,
                                PropertyDescriptor &desc);
     static bool SetPrototype(JSThread *thread, const JSHandle<JSTaggedValue> &obj,

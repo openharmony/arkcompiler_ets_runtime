@@ -1201,14 +1201,15 @@ bool JSTaggedValue::DefinePropertyOrThrow(JSThread *thread, const JSHandle<JSTag
 }
 
 bool JSTaggedValue::DefineOwnProperty(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
-                                      const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc)
+                                      const JSHandle<JSTaggedValue> &key, const PropertyDescriptor &desc,
+                                      SCheckMode sCheckMode)
 {
     if (obj->IsJSArray()) {
         return JSArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
     }
 
     if (obj->IsJSSharedArray()) {
-        return JSSharedArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc);
+        return JSSharedArray::DefineOwnProperty(thread, JSHandle<JSObject>(obj), key, desc, sCheckMode);
     }
 
     if (obj->IsJSProxy()) {

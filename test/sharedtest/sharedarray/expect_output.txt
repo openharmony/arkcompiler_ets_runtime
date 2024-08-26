@@ -215,3 +215,8 @@ Start Test array for of
 3
 5
 7
+defineProperty to array success
+defineProperty to array failed. err: BusinessError: Key out of length.
+defineProperty to array success
+defineProperty to array failed. err: BusinessError: Key out of length.
+defineProperty to array failed. err: BusinessError: Key out of length.
