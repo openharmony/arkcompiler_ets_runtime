@@ -176,6 +176,18 @@ public:
             }
             return GetTaggedBoolean(false);
         }
+
+        static JSTaggedValue TestToSortedFunc(EcmaRuntimeCallInfo *argv)
+        {
+            uint32_t argc = argv->GetArgsNumber();
+            if (argc > 1) {
+                // x < y
+                if (GetCallArg(argv, 0)->GetInt() > GetCallArg(argv, 1)->GetInt()) {
+                    return GetTaggedBoolean(true);
+                }
+            }
+            return GetTaggedBoolean(false);
+        }
     };
 };
 
@@ -1189,6 +1201,73 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ExtendTo)
     JSTaggedValue result = Array::ExtendTo(ecmaRuntimeCallInfo1);
     ASSERT_EQ(result, JSTaggedValue::Undefined());
     EXPECT_EQ(arr->GetArrayLength(), 3U);
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+bool TestSharedArraySetProperty(EcmaRuntimeCallInfo *argv)
+{
+    JSThread *thread = argv->GetThread();
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> thisHandle = BuiltinsBase::GetThis(argv);
+    if (!thisHandle->IsJSSharedArray()) {
+        return false;
+    }
+
+    JSHandle<JSTaggedValue> value = BuiltinsBase::GetCallArg(argv, 1);
+    uint32_t key = static_cast<uint32_t>(BuiltinsBase::GetCallArg(argv, 0)->GetInt());
+
+    return JSSharedArray::SetProperty(thread, thisHandle, key, value, true, SCheckMode::CHECK);
+}
+
+HWTEST_F_L0(BuiltinsSharedArrayTest, SetPropertyTest001)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(5)) \
+        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSTaggedValue> obj(thread, arr);
+
+    std::vector<int> descVals{2, 3, 4, 5, 7};
+    auto keys = SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+
+
+    JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetSharedArrayFunction());
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, array.GetTaggedValue(), 8);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(0)));
+    ecmaRuntimeCallInfo->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(5)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    ASSERT_EQ(true, TestSharedArraySetProperty(ecmaRuntimeCallInfo));
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+HWTEST_F_L0(BuiltinsSharedArrayTest, IncludeInSortedValue)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    JSHandle<GlobalEnv> env = ecmaVM->GetGlobalEnv();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(7)) \
+        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    std::vector<int> descVals{2, 3, 4, 5, 7, 500, 600};
+    auto keys = SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+
+    JSHandle<JSFunction> func = factory->NewJSFunction(env, reinterpret_cast<void *>(TestClass::TestToSortedFunc));
+    JSHandle<JSTaggedValue> funcValue(thread, func.GetTaggedValue());
+
+    auto objCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
+
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(7));
+    bool res = JSSharedArray::IncludeInSortedValue(thread, JSHandle<JSTaggedValue>(obj), value);
+    ASSERT_TRUE(res);
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(100));
+    res = JSSharedArray::IncludeInSortedValue(thread, JSHandle<JSTaggedValue>(obj), value1);
+    ASSERT_TRUE(!res);
     TestHelper::TearDownFrame(thread, prev);
 }
 
