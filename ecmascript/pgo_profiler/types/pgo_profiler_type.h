@@ -675,9 +675,22 @@ public:
 
     bool operator<(const PGOObjectTemplate &right) const
     {
-        return receiverRootType_ < right.receiverRootType_ || receiverType_ < right.receiverType_ ||
-            holdRootType_ < right.holdRootType_ || holdType_ < right.holdType_ ||
-            holdTraRootType_ < right.holdTraRootType_ || holdTraType_ < right.holdTraType_;
+        if (receiverRootType_ != right.receiverRootType_) {
+            return receiverRootType_ < right.receiverRootType_;
+        }
+        if (receiverType_ != right.receiverType_) {
+            return receiverType_ < right.receiverType_;
+        }
+        if (holdRootType_ != right.holdRootType_) {
+            return holdRootType_ < right.holdRootType_;
+        }
+        if (holdType_ != right.holdType_) {
+            return holdType_ < right.holdType_;
+        }
+        if (holdTraRootType_ != right.holdTraRootType_) {
+            return holdTraRootType_ < right.holdTraRootType_;
+        }
+        return holdTraType_ < right.holdTraType_;
     }
 
     bool operator==(const PGOObjectTemplate &right) const
