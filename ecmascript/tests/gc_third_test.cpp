@@ -235,8 +235,7 @@ HWTEST_F_L0(GCTest, GlobalNativeSizeLargerThanLimitTest)
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     auto ret = heap->GlobalNativeSizeLargerThanLimit();
     EXPECT_FALSE(ret);
-    size_t increase = std::numeric_limits<uint32_t>::max();
-    heap->GetNativeAreaAllocator()->IncreaseNativeMemoryUsage(increase);
+    heap->GetNativeAreaAllocator()->IncreaseNativeMemoryUsage(300*1000*1000);
     ret = heap->GlobalNativeSizeLargerThanLimit();
     EXPECT_TRUE(ret);
 }
