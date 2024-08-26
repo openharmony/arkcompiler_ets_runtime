@@ -1076,11 +1076,6 @@ void Heap::EnableParallelGC()
 
 TriggerGCType Heap::SelectGCType() const
 {
-    if (shouldThrowOOMError_) {
-        // Force Full GC after failed Old GC to avoid OOM
-        return FULL_GC;
-    }
-
     // If concurrent mark is enabled, the TryTriggerConcurrentMarking decide which GC to choose.
     if (concurrentMarker_->IsEnabled() && !thread_->IsReadyToConcurrentMark()) {
         return YOUNG_GC;
@@ -1127,6 +1122,10 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         if (oldGCRequested_ && gcType != TriggerGCType::FULL_GC) {
             gcType = TriggerGCType::OLD_GC;
+        }
+        if (shouldThrowOOMError_) {
+            // Force Full GC after failed Old GC to avoid OOM
+            gcType = TriggerGCType::FULL_GC;
         }
         oldGCRequested_ = false;
         oldSpace_->AdjustOvershootSize();
