@@ -372,6 +372,9 @@ JSTaggedValue RBTreeNode::Delete(JSThread *thread, const JSTaggedValue &treeNode
         
         cmp = Compare(hash, key, treeNode->GetHash().GetInt(), treeNodeKey);
         rightChildVa = treeNode->GetRight();
+        if (rightChildVa.IsHole()) {
+            return Balance(thread, treeNode);
+        }
         RBTreeNode *rightChild = RBTreeNode::Cast(rightChildVa.GetTaggedObject());
         if (cmp == 0) {
             oldValue = treeNode->GetValue();
