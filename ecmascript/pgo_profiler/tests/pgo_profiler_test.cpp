@@ -44,6 +44,7 @@
 #include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/napi/include/jsnapi.h"
+#include "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
@@ -1338,6 +1339,23 @@ HWTEST_F_L0(PGOProfilerTest, ExternalMethodLiteralTest)
                         callback);
     unlink("ark-profiler26/modules.ap");
     rmdir("ark-profiler26/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, PGOObjectInfoOperatorLessThanTest)
+{
+    constexpr uint64_t rawTypeLess = 0;
+    constexpr uint64_t rawTypeGreater = 1;
+
+    ProfileType profileTypeLess(rawTypeLess);
+    ProfileType profileTypeGreater(rawTypeGreater);
+
+    PGOObjectInfo objectInfoLess(profileTypeLess, profileTypeGreater, profileTypeGreater,
+                                 profileTypeGreater, profileTypeGreater, profileTypeGreater, PGOSampleType());
+    PGOObjectInfo objectInfoGreater(profileTypeGreater, profileTypeLess, profileTypeGreater,
+                                    profileTypeGreater, profileTypeGreater, profileTypeGreater, PGOSampleType());
+
+    EXPECT_TRUE(objectInfoLess < objectInfoGreater);
+    EXPECT_FALSE(objectInfoGreater < objectInfoLess);
 }
 
 }  // namespace panda::test
