@@ -392,7 +392,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
   external_deps = [ "zlib:libz" ]
 
   if (enable_jit_code_sign) {
-    defines += [ "CODE_SIGN_ENABLE" ]
+    defines += [ "JIT_ENABLE_CODE_SIGN" ]
     external_deps += [ "code_signature:libjit_code_sign" ]
     if (disable_fort_switch) {
       defines += [ "JIT_FORT_DISABLE" ]
@@ -465,7 +465,7 @@ ohos_shared_library("libark_jsoptimizer") {
     defines = [ "RUN_WITH_ASAN" ]
   }
   if (enable_jit_code_sign) {
-    defines += [ "CODE_SIGN_ENABLE" ]
+    defines += [ "JIT_ENABLE_CODE_SIGN" ]
   }
 
   if (enable_hilog) {

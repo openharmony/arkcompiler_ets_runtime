@@ -266,9 +266,9 @@ public:
         }
 
         bool AllocFromFortAndCopy();
-        bool CopyCodeToFort();
 
     private:
+        ARK_INLINE bool CopyCodeToFort();
         std::shared_ptr<JitTask> jitTask_ { nullptr };
     };
 private:

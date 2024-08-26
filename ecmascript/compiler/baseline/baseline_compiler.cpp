@@ -16,9 +16,17 @@
 #include "ecmascript/compiler/baseline/baseline_compiler.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/js_function.h"
+#ifdef JIT_ENABLE_CODE_SIGN
+#include "jit_buffer_integrity.h"
+#include "ecmascript/compiler/jit_signcode.h"
+#endif
 
 namespace panda::ecmascript::kungfu {
 using namespace panda::ecmascript;
+#ifdef JIT_ENABLE_CODE_SIGN
+using namespace kungfu;
+using namespace OHOS::Security::CodeSign;
+#endif
 
 #define LOG_INST() LOG_BASELINEJIT(DEBUG)
 
@@ -98,6 +106,21 @@ void BaselineCompiler::SetPfHeaderAddr(const JSPandaFile *jsPandaFile)
     pfHeaderAddr = pandaFile->GetBase();
 }
 
+static void SetupCodeSigner([[maybe_unused]] EcmaVM *vm)
+{
+#ifdef JIT_ENABLE_CODE_SIGN
+    bool enableCodeSign = !vm->GetJSOptions().GetDisableCodeSign();
+    if (enableCodeSign && IsSupportJitCodeSigner()) {
+        JitSignCode *singleton = JitSignCode::GetInstance();
+        singleton->Reset();
+        JitCodeSignerBase *jitSigner = CreateJitCodeSigner(JitBufferIntegrityLevel::Level0);
+        singleton->SetCodeSigner(jitSigner);
+        LOG_INST() << "  Created Code Signer for baseline compilation: " << std::hex << (uintptr_t)jitSigner << "\n";
+    }
+#endif
+    return;
+}
+
 void BaselineCompiler::Compile(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral)
 {
     std::string tripleStr = vm->GetJSOptions().GetTargetTriple();
@@ -108,6 +131,8 @@ void BaselineCompiler::Compile(const JSPandaFile *jsPandaFile, const MethodLiter
     GetBaselineAssembler().SetStackOffsetDescriptor(stackOffsetDescriptor);
     SetPfHeaderAddr(jsPandaFile);
     firstPC = bytecodeArray;
+
+    SetupCodeSigner(vm);
 
     auto *thread = vm->GetAssociatedJSThread();
     Address bcAddr = thread->GetRTInterface(RuntimeStubCSigns::ID_CallArg1AndCheckToBaseline);
@@ -158,6 +183,15 @@ void BaselineCompiler::CollectMemoryCodeInfos(MachineCodeDesc &codeDesc)
     codeDesc.codeType = MachineCodeType::BASELINE_CODE;
     codeDesc.stackMapOrOffsetTableAddr = reinterpret_cast<uint64_t>(nativePcOffsetTable.GetData());
     codeDesc.stackMapOrOffsetTableSize = nativePcOffsetTable.GetSize();
+#ifdef JIT_ENABLE_CODE_SIGN
+    codeDesc.codeSigner = 0;
+    JitSignCode *singleton = JitSignCode::GetInstance();
+    if (singleton->GetCodeSigner() != nullptr) {
+        LOG_INST() << "In CollectMemoryCodeInfos, signer = " << singleton->GetCodeSigner();
+        LOG_INST() << "     Kind = " << singleton->GetKind();
+        codeDesc.codeSigner = reinterpret_cast<uintptr_t>(singleton->GetCodeSigner());
+    }
+#endif
 }
 
 void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end,

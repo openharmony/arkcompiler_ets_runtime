@@ -21,6 +21,7 @@
 namespace panda::ecmascript::kungfu {
 using namespace OHOS::Security::CodeSign;
 
+
 class JitSignCode {
 public:
     ~JitSignCode() = default;
@@ -31,14 +32,16 @@ public:
         return &instance;
     }
 
-    void SetJPtr(JitCodeSignerBase *p);
-    JitCodeSignerBase *GetJPtr();
+    void SetCodeSigner(JitCodeSignerBase *p);
+    JitCodeSignerBase *GetCodeSigner();
+    void SetKind(int kind);
+    int GetKind();
     void Reset();
-    int signTableSize = 0;
-
+    int signTableSize_ = -1;
 private:
     JitSignCode();
-    JitCodeSignerBase *jPtr_ {nullptr};
+    int kind_ = -1;
+    JitCodeSignerBase *codeSigner_ {nullptr};
 };
 
 } // namespace panda::ecmascript::kungfu
