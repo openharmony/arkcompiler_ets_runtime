@@ -53,6 +53,7 @@ Start Test from
 A,B,C
 E,,M,P,T,Y
 Create from sendable undefined element list success. arr: ,,1
+h,e,l,l,o
 Start Test fromTemplate
 artTSTest1: 1,2,3
 arkTSTest2: 1,2,3
