@@ -105,6 +105,10 @@ JSTaggedValue JSAPIStack::Get(const uint32_t index)
 
 JSTaggedValue JSAPIStack::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
+    uint32_t length = GetSize() + 1;
+    if (index >= length) {
+        return JSTaggedValue::Undefined();
+    }
     TaggedArray *elements = TaggedArray::Cast(GetElements().GetTaggedObject());
     elements->Set(thread, index, value);
     return JSTaggedValue::Undefined();

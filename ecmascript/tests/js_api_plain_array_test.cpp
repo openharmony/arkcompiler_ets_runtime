@@ -315,5 +315,7 @@ HWTEST_F_L0(JSAPIPlainArrayTest, SetProperty)
     EXPECT_FALSE(JSAPIPlainArray::SetProperty(thread, plainArray, key, value));
     JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(elementsNums));
     EXPECT_FALSE(JSAPIPlainArray::SetProperty(thread, plainArray, key1, value));
+    JSHandle<JSTaggedValue> key2(thread, JSTaggedValue(int64_t(-9007199254740992))); // Out-of-Bounds test
+    EXPECT_FALSE(JSAPIPlainArray::SetProperty(thread, plainArray, key1, value));
 }
 }  // namespace panda::test
