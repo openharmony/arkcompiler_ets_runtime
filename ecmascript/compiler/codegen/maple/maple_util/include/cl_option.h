@@ -17,9 +17,9 @@
 #define MAPLE_UTIL_INCLUDE_OPTION_H
 
 #include "cl_parser.h"
+#include "mpl_logging.h"
 
 #include <any>
-#include <cassert>
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -110,7 +110,7 @@ public:
     operator T()
     {
         T *pval = std::any_cast<T>(&val);
-        assert(pval);
+        DEBUG_ASSERT(pval != nullptr, "pval should not be nullptr");
         return *pval;
     }
 
@@ -157,7 +157,7 @@ public:
 
     virtual std::string GetName() const
     {
-        assert(names.size() > 0);
+        DEBUG_ASSERT(names.size() > 0, "names.size should be non zero");
         return names[0];
     }
 
@@ -290,7 +290,7 @@ public:
     std::string GetName() const override
     {
         if constexpr (std::is_same_v<bool, T>) {
-            assert(names.size() > 0);
+            DEBUG_ASSERT(names.size() > 0, "names.size should be non zero");
             return ((value == true) ? names[0] : this->GetDisabledName()[0]);
         } else {
             return OptionInterface::GetName();

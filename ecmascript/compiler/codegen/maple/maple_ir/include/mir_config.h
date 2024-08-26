@@ -58,13 +58,13 @@
     } while (0)
 #define MIR_CAST_TO(var, totype) ((totype)(var))
 #include <stdlib.h>
-#if DEBUG
+#if DEBUG // default no debug
 #include <stdio.h>
-#define MIR_FATAL(...)                                       \
-    do {                                                     \
-        printf("FATAL ERROR: (%s:%d) ", __FILE__, __LINE__); \
-        printf(__VA_ARGS__);                                 \
-        exit(1);                                             \
+#define MIR_FATAL(...)                                            \
+    do {                                                          \
+        printf("FATAL ERROR: (%s:%d) ", __FILE_NAME__, __LINE__); \
+        printf(__VA_ARGS__);                                      \
+        exit(1);                                                  \
     } while (0)
 #else
 #define MIR_FATAL(...) \
@@ -79,22 +79,40 @@
 
 namespace maple {
 #define MIR_ASSERT(...) assert(__VA_ARGS__)
+
+#ifndef IS_RELEASE_VERSION
+#define MIR_FATAL(...)                                                     \
+    do {                                                                   \
+        fprintf(stderr, "FATAL ERROR: (%s:%d) ", __FILE_NAME__, __LINE__); \
+        fprintf(stderr, __VA_ARGS__);                                      \
+        exit(EXIT_FAILURE);                                                \
+    } while (0)
+#define MIR_ERROR(...)                                               \
+    do {                                                             \
+        fprintf(stderr, "ERROR: (%s:%d) ", __FILE_NAME__, __LINE__); \
+        fprintf(stderr, __VA_ARGS__);                                \
+    } while (0)
+#define MIR_WARNING(...)                                               \
+    do {                                                               \
+        fprintf(stderr, "WARNING: (%s:%d) ", __FILE_NAME__, __LINE__); \
+        fprintf(stderr, __VA_ARGS__);                                  \
+    } while (0)
+#else
 #define MIR_FATAL(...)                                                \
     do {                                                              \
-        fprintf(stderr, "FATAL ERROR: (%s:%d) ", __FILE__, __LINE__); \
         fprintf(stderr, __VA_ARGS__);                                 \
         exit(EXIT_FAILURE);                                           \
     } while (0)
 #define MIR_ERROR(...)                                          \
     do {                                                        \
-        fprintf(stderr, "ERROR: (%s:%d) ", __FILE__, __LINE__); \
         fprintf(stderr, __VA_ARGS__);                           \
     } while (0)
 #define MIR_WARNING(...)                                          \
     do {                                                          \
-        fprintf(stderr, "WARNING: (%s:%d) ", __FILE__, __LINE__); \
         fprintf(stderr, __VA_ARGS__);                             \
     } while (0)
+#endif // IS_RELEASE_VERSION
+
 #define MIR_PRINTF(...) printf(__VA_ARGS__)
 #define MIR_INFO(...) printf(__VA_ARGS__)
 #define MIR_CAST_TO(var, totype) static_cast<totype>(var)

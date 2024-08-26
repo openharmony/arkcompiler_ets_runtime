@@ -33,7 +33,7 @@ MapleString::MapleString(const std::string &str, MemPool *currMp) : MapleString(
 
 char *MapleString::NewData(MemPool *memPool, const char *source, size_t len)
 {
-    MIR_ASSERT(memPool != nullptr);
+    CHECK_FATAL(memPool != nullptr, "MemPool should not be nullptr");
     if (source == nullptr && len == 0) {
         return nullptr;
     }

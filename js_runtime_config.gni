@@ -63,6 +63,9 @@ if (!ark_standalone_build) {
   import("$build_root/ark.gni")
   import("$build_root/config/build_type.gni")
 }
+if (!defined(build_variant)) {
+  build_variant = "root"
+}
 ark_root = "//arkcompiler/runtime_core"
 js_root = "//arkcompiler/ets_runtime"
 global_root = "//base/global/i18n"

@@ -160,7 +160,7 @@ private:
     LogMode outMode;
 };
 
-#ifdef DEBUG
+#ifdef DEBUG // no debug in default
 #define DEBUG_STMT(x) x
 #define DEBUG_TEST 1
 #define ENABLE_ASSERT 1
@@ -173,12 +173,16 @@ private:
 // for developer
 #define PRINT_LEVEL_DEV kLlLog
 
-#define DBG(tag, fmt, ...)                                                                            \
-    do {                                                                                              \
-        if (PRINT_LEVEL_DEV <= kLlLog) {                                                              \
-            logInfo.EmitLogForDev(tag, kLlLog, __FILE__, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__); \
-        }                                                                                             \
+#ifndef IS_RELEASE_VERSION
+#define DBG(tag, fmt, ...)                                                                                 \
+    do {                                                                                                   \
+        if (PRINT_LEVEL_DEV <= kLlLog) {                                                                   \
+            logInfo.EmitLogForDev(tag, kLlLog, __FILE_NAME__, __FUNCTION__, __LINE__, fmt, ##__VA_ARGS__); \
+        }                                                                                                  \
     } while (0)
+#else
+#define DBG(tag, fmt, ...)
+#endif // IS_RELEASE_VERSION
 
 // #ifdef LOG
 // #undef LOG
@@ -193,12 +197,20 @@ private:
 #ifdef CHECK
 #undef CHECK
 #endif
-#define CHECK(cond, fmt, ...)                                                             \
-    do {                                                                                  \
-        if (!(cond)) {                                                                    \
-            logInfo.EmitErrorMessage(#cond, __FILE__, __LINE__, fmt "\n", ##__VA_ARGS__); \
-        }                                                                                 \
+
+#ifndef IS_RELEASE_VERSION
+#define CHECK(cond, fmt, ...)                                                                  \
+    do {                                                                                       \
+        if (!(cond)) {                                                                         \
+            logInfo.EmitErrorMessage(#cond, __FILE_NAME__, __LINE__, fmt "\n", ##__VA_ARGS__); \
+        }                                                                                      \
     } while (0)
+#else
+#define CHECK(cond, fmt, ...)                                                                  \
+    do {                                                                                       \
+        if (!(cond)) {}                                                                        \
+    } while (0)
+#endif // IS_RELEASE_VERSION
 
 #ifdef DCHECK
 #undef DCHECK
@@ -209,16 +221,33 @@ private:
     } while (0)
 
 // To shut down the codecheck warning: boolean condition for 'if' always evaluates to 'true'
+#ifndef IS_RELEASE_VERSION
+#define CHECK_FATAL_FALSE(fmt, ...)                                                                 \
+    do {                                                                                            \
+        maple::logInfo.EmitErrorMessage("false", __FILE_NAME__, __LINE__, fmt "\n", ##__VA_ARGS__); \
+        exit(1);                                                                                    \
+    } while (0)
+
+#define CHECK_FATAL(cond, fmt, ...)                                                                   \
+    do {                                                                                              \
+        if (!(cond)) {                                                                                \
+            maple::logInfo.EmitErrorMessage(#cond, __FILE_NAME__, __LINE__, fmt "\n", ##__VA_ARGS__); \
+            if (DEBUG_TEST != 0) {                                                                    \
+                abort();                                                                              \
+            } else {                                                                                  \
+                exit(1);                                                                              \
+            }                                                                                         \
+        }                                                                                             \
+    } while (0)
+#else
 #define CHECK_FATAL_FALSE(fmt, ...)                                                            \
     do {                                                                                       \
-        maple::logInfo.EmitErrorMessage("false", __FILE__, __LINE__, fmt "\n", ##__VA_ARGS__); \
         exit(1);                                                                               \
     } while (0)
 
 #define CHECK_FATAL(cond, fmt, ...)                                                              \
     do {                                                                                         \
         if (!(cond)) {                                                                           \
-            maple::logInfo.EmitErrorMessage(#cond, __FILE__, __LINE__, fmt "\n", ##__VA_ARGS__); \
             if (DEBUG_TEST != 0) {                                                               \
                 abort();                                                                         \
             } else {                                                                             \
@@ -226,16 +255,17 @@ private:
             }                                                                                    \
         }                                                                                        \
     } while (0)
+#endif // IS_RELEASE_VERSION
 
 #define CHECK_NULL_FATAL(ptr) CHECK_FATAL((ptr) != nullptr, "Failed with nullptr.")
 
-#if ENABLE_ASSERT
-#define DEBUG_ASSERT(cond, fmt, ...)                                                             \
-    do {                                                                                         \
-        if (!(cond)) {                                                                           \
-            maple::logInfo.EmitErrorMessage(#cond, __FILE__, __LINE__, fmt "\n", ##__VA_ARGS__); \
-            abort();                                                                             \
-        }                                                                                        \
+#if ENABLE_ASSERT // assert not enabled in default
+#define DEBUG_ASSERT(cond, fmt, ...)                                                                  \
+    do {                                                                                              \
+        if (!(cond)) {                                                                                \
+            maple::logInfo.EmitErrorMessage(#cond, __FILE_NAME__, __LINE__, fmt "\n", ##__VA_ARGS__); \
+            abort();                                                                                  \
+        }                                                                                             \
     } while (0)
 
 #define ASSERT_NOT_NULL(ptr) DEBUG_ASSERT((ptr) != nullptr, "Failed with nullptr.")
