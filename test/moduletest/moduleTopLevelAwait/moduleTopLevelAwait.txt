@@ -1,0 +1,2 @@
+A.js;A;esm;A.js;xxAxx
+moduleTopLevelAwait.js;moduleTopLevelAwait;esm;moduleTopLevelAwait.js;xxmoduleTopLevelAwaitxx

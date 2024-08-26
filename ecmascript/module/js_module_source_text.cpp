@@ -424,8 +424,7 @@ Local<JSValueRef> SourceTextModule::LoadNativeModuleMayThrowError(JSThread *thre
     EscapeLocalScope scope(vm);
 
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
-    if (exportObject->IsNativeModuleFailureInfoObject(vm) || exportObject->IsUndefined()
-        || thread->HasPendingException()) {
+    if (exportObject->IsNativeModuleFailureInfoObject(vm) || exportObject->IsUndefined()) {
         CString errorMsg = "load native module failed.";
         LOG_FULL(ERROR) << errorMsg.c_str();
         auto error = GlobalError::ReferenceError(thread, errorMsg.c_str());
@@ -454,11 +453,7 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
         LOG_FULL(ERROR) << "loading fails, NativeModuleErrorObject is returned";
         return false;
     }
-    if (UNLIKELY(thread->HasPendingException())) {
-        thread->ClearException();
-        LOG_FULL(ERROR) << "LoadNativeModule has exception";
-        return false;
-    }
+    ASSERT(!thread->HasPendingException());
     requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
     if (enableESMTrace) {
         ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
@@ -477,17 +472,6 @@ void SourceTextModule::EvaluateNativeModule(JSThread *thread, JSHandle<SourceTex
         return;
     }
     nativeModule->SetStatus(ModuleStatus::EVALUATED);
-}
-
-JSHandle<SourceTextModule> SourceTextModule::GetModuleFromBinding(JSThread *thread,
-                                                                  const JSTaggedValue &resolvedBinding)
-{
-    if (resolvedBinding.IsResolvedIndexBinding()) {
-        ResolvedIndexBinding *binding = ResolvedIndexBinding::Cast(resolvedBinding.GetTaggedObject());
-        return JSHandle<SourceTextModule>(thread, binding->GetModule());
-    }
-    ResolvedBinding *binding = ResolvedBinding::Cast(resolvedBinding.GetTaggedObject());
-    return JSHandle<SourceTextModule>(thread, binding->GetModule());
 }
 
 int SourceTextModule::HandleInstantiateException([[maybe_unused]] JSHandle<SourceTextModule> &module,
@@ -773,7 +757,7 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
 void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
                                                               const JSHandle<SourceTextModule> &module)
 {
-    if (IsSharedModule(module) && SharedModuleManager::GetInstance()->IsInstaniatedSModule(thread, module)) {
+    if (IsSharedModule(module) && SharedModuleManager::GetInstance()->IsInstantiatedSModule(thread, module)) {
         return;
     }
     CheckResolvedIndexBinding(thread, module);
@@ -2187,71 +2171,5 @@ CString SourceTextModule::ReplaceModuleThroughFeature(JSThread *thread, const CS
         return vm->GetHmsModule(requestName);
     }
     return requestName;
-}
-
-// old way with bundle
-std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModule(JSThread *thread,
-    const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest)
-{
-    CString dirname = base::PathHelper::ResolveDirPath(module->GetEcmaModuleFilenameString());
-    CString moduleRequestStr = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
-    CString fileName = ResolveFilenameFromNative(thread, dirname, moduleRequestStr);
-
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, fileName, JSPandaFile::ENTRY_MAIN_FUNCTION);
-    ASSERT(!(jsPandaFile == nullptr));
-    JSRecordInfo *recordInfo = nullptr;
-    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(fileName, &recordInfo);
-    ASSERT(hasRecord);
-    if (jsPandaFile->IsSharedModule(recordInfo)) {
-        return std::make_tuple(SourceTextModule::SHARED_MODULE_TAG,
-            SharedModuleManager::GetInstance()->GetSModule(thread, fileName));
-    }
-
-    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    return std::make_tuple(!SourceTextModule::SHARED_MODULE_TAG, moduleManager->HostGetImportedModule(fileName));
-}
-
-// new way with module
-std::tuple<bool, JSHandle<SourceTextModule>> SourceTextModule::GetResolvedModuleWithMerge(JSThread *thread,
-    const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest)
-{
-    CString moduleRequestName = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
-    CString moduleRequestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
-
-    auto moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    auto [isNative, moduleType] = SourceTextModule::CheckNativeModule(moduleRequestName);
-    if (isNative) {
-        ASSERT(moduleManager->IsLocalModuleLoaded(moduleRequestStr));
-        // native module cached by current context's module manager.
-        return std::make_tuple(!SourceTextModule::SHARED_MODULE_TAG,
-            moduleManager->HostGetImportedModule(moduleRequestStr));
-    }
-
-    CString baseFilename = module->GetEcmaModuleFilenameString();
-    CString recordName = module->GetEcmaModuleRecordNameString();
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordName);
-    ASSERT(!(jsPandaFile == nullptr));
-
-    CString outFilename = baseFilename;
-    CString entryPoint = ModulePathHelper::ConcatFileNameWithMerge(
-        thread, jsPandaFile.get(), outFilename, recordName, moduleRequestName);
-
-    if (outFilename != baseFilename) { // managing scenarios across hap/hsp
-        jsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFilename, recordName);
-        if (jsPandaFile == nullptr) { // LCOV_EXCL_BR_LINE
-            LOG_FULL(FATAL) << "load pandafile failed, file name is " << baseFilename;
-        }
-    }
-
-    JSRecordInfo *recordInfo = nullptr;
-    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
-    ASSERT(hasRecord);
-    if (jsPandaFile->IsSharedModule(recordInfo)) {
-        return std::make_tuple(SourceTextModule::SHARED_MODULE_TAG,
-            SharedModuleManager::GetInstance()->GetSModule(thread, entryPoint));
-    }
-    return std::make_tuple(!SourceTextModule::SHARED_MODULE_TAG, moduleManager->HostGetImportedModule(entryPoint));
 }
 } // namespace panda::ecmascript

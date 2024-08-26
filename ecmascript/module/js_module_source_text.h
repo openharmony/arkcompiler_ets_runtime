@@ -391,10 +391,6 @@ public:
                                 int index, const JSHandle<Method> &method);
     static void CheckCircularImportTool(JSThread *thread, const CString &circularModuleRecordName,
                                         CList<CString> &referenceList, bool printOtherCircular = false);
-    static std::tuple<bool, JSHandle<SourceTextModule>> GetResolvedModule(JSThread *thread,
-        const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
-    static std::tuple<bool, JSHandle<SourceTextModule>> GetResolvedModuleWithMerge(JSThread *thread,
-        const JSHandle<SourceTextModule> &module, const JSHandle<JSTaggedValue> &moduleRequest);
 
 private:
     static void SetExportName(JSThread *thread,
@@ -426,7 +422,6 @@ private:
     static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
                                       const JSTaggedValue &dictionary);
-    static JSHandle<SourceTextModule> GetModuleFromBinding(JSThread *thread, const JSTaggedValue &JSTaggedValue);
     static void DFSModuleInstantiation(JSHandle<SourceTextModule> &module,
                                        CVector<JSHandle<SourceTextModule>> &stack);
     static std::optional<int> HandleInnerModuleInstantiation(JSThread *thread,

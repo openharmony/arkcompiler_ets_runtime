@@ -67,7 +67,7 @@ public:
 
     void PUBLIC_API TransferSModule(JSThread *thread);
 
-    bool IsInstaniatedSModule(JSThread *thread, const JSHandle<SourceTextModule> &module);
+    bool IsInstantiatedSModule(JSThread *thread, const JSHandle<SourceTextModule> &module);
 
     JSHandle<JSTaggedValue> GenerateFuncModule(JSThread *thread, const JSPandaFile *jsPandaFile,
         const CString &entryPoint, ClassKind classKind = ClassKind::NON_SENDABLE);

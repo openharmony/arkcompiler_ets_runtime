@@ -160,7 +160,6 @@ public:
     static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
-    static void PrintHeapReginInfo(uintptr_t argGlue);
 
     static inline JSTaggedValue RuntimeInc(JSThread *thread, const JSHandle<JSTaggedValue> &value);
     static inline JSTaggedValue RuntimeDec(JSThread *thread, const JSHandle<JSTaggedValue> &value);

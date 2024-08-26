@@ -272,7 +272,7 @@ StateVisit &SharedModuleManager::findModuleMutexWithLock(JSThread *thread, const
     return it->second;
 }
 
-bool SharedModuleManager::IsInstaniatedSModule(JSThread *thread, const JSHandle<SourceTextModule> &module)
+bool SharedModuleManager::IsInstantiatedSModule(JSThread *thread, const JSHandle<SourceTextModule> &module)
 {
     RuntimeLockHolder locker(thread, mutex_);
     return (module->GetStatus() >= ModuleStatus::INSTANTIATED);
