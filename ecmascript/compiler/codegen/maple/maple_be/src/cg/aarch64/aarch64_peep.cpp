@@ -339,6 +339,7 @@ Insn *RemoveIdenticalLoadAndStorePattern::FindPrevIdenticalMemInsn(const Insn &c
 bool RemoveIdenticalLoadAndStorePattern::HasMemReferenceBetweenTwoInsns(const Insn &curInsn) const
 {
     auto *curMemOpnd = static_cast<MemOperand *>(curInsn.GetMemOpnd());
+    DEBUG_ASSERT(curMemOpnd != nullptr, "curMemOpnd should not be nullptr");
     RegOperand *curBaseOpnd = curMemOpnd->GetBaseRegister();
     OfstOperand *curOfstOpnd = curMemOpnd->GetOffsetImmediate();
     for (Insn *checkedInsn = curInsn.GetPreviousMachineInsn();
@@ -1440,6 +1441,7 @@ void CbnzToCbzPattern::Run(BB &bb, Insn &insn)
         return;
     }
     /* Control flow looks nice, instruction looks nice */
+    DEBUG_ASSERT(brInsn != nullptr, "brInsn should not be nullptr");
     Operand &brTarget = brInsn->GetOperand(kInsnFirstOpnd);
     insn.SetOperand(kInsnSecondOpnd, brTarget);
     if (thisMop == MOP_wcbnz) {
@@ -2592,6 +2594,7 @@ void ComplexMemOperandAddAArch64::Run(BB &bb, Insn &insn)
         if (newBaseOpnd->GetSize() != k64BitSize) {
             return;
         }
+        DEBUG_ASSERT(memOpnd != nullptr, "memOpnd should not be nullptr");
         if (newIndexOpnd->GetSize() <= k32BitSize) {
             MemOperand &newMemOpnd = aarch64CGFunc->GetOrCreateMemOpnd(MemOperand::kAddrModeBOrX, memOpnd->GetSize(),
                                                                        newBaseOpnd, newIndexOpnd, 0, false);

@@ -649,6 +649,7 @@ void MPISel::SelectDassign(const DassignNode &stmt, Operand &opndRhs)
     MIRSymbol *symbol = cgFunc->GetFunction().GetLocalOrGlobalSymbol(stmt.GetStIdx());
     MirTypeInfo symbolInfo = GetMirTypeInfoFromMirNode(stmt);
     /* Get symbol location */
+    DEBUG_ASSERT(symbol != nullptr, "nullptr check");
     MemOperand &symbolMem = GetOrCreateMemOpndFromSymbol(*symbol, stmt.GetFieldID());
     /* rhs mirType info */
     PrimType rhsType = stmt.GetRHS()->GetPrimType();
