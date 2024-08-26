@@ -215,6 +215,12 @@ libark_jsoptimizer_sources = [
 ]
 
 config("libark_jsoptimizer_set_config") {
+  # Setting up IS_RELEASE_VERSION if compiling as release version
+  if (build_variant == "user") {
+    cflags_c = [ "-DIS_RELEASE_VERSION" ]
+    cflags_cc = [ "-DIS_RELEASE_VERSION" ]
+  }
+
   if (compile_llvm_online) {
     lib_dirs = [ "//third_party/third_party_llvm-project/build/lib" ]
   } else {
