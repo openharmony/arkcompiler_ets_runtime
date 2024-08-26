@@ -1166,7 +1166,7 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
-    if (func->IsSharedFunction()) {
+    if (!jsPandaFile->IsBundlePack() && func->IsSharedFunction()) {
         JSHandle<JSTaggedValue> sendableClassRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
         SourceTextModule::Cast(sendableClassRecord.GetTaggedValue())->SetSendableEnv(thread, sendableEnv);
         func->SetModule(thread, sendableClassRecord);

@@ -155,10 +155,4 @@ void Method::InitInterpreterStatusForCompiledMethod(const JSThread *thread)
     ClearAOTFlagsWhenInit();
     SetDeoptType(kungfu::DeoptType::INIT_AOT_FAILED);
 }
-
-bool Method::IsSharedMethod() const
-{
-    uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-    return IsSharedBit::Decode(extraLiteralInfo);
-}
 } // namespace panda::ecmascript
