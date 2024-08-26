@@ -177,7 +177,8 @@ void BaseSerializer::SerializeHClassFieldIndividually(TaggedObject *root, Object
 
 void BaseSerializer::SerializeSFunctionFieldIndividually(TaggedObject *root, ObjectSlot start, ObjectSlot end)
 {
-    ASSERT(root->GetClass()->GetObjectType() == JSType::JS_SHARED_FUNCTION);
+    ASSERT(root->GetClass()->GetObjectType() == JSType::JS_SHARED_FUNCTION ||
+        root->GetClass()->GetObjectType() == JSType::JS_SHARED_ASYNC_FUNCTION);
     ObjectSlot slot = start;
     while (slot < end) {
         size_t fieldOffset = slot.SlotAddress() - ToUintPtr(root);

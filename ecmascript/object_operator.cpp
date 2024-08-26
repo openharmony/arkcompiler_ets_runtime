@@ -640,6 +640,7 @@ void ObjectOperator::TransitionForAttributeChanged(const JSHandle<JSObject> &rec
         uint32_t index = GetIndex();
         if (!receiver->GetJSHClass()->IsDictionaryMode()) {
             JSHandle<NameDictionary> dict(JSObject::TransitionToDictionary(thread_, receiver));
+            RETURN_IF_ABRUPT_COMPLETION(thread_);
             index = static_cast<uint32_t>(dict->FindEntry(key_.GetTaggedValue()));
             PropertyAttributes origin = dict->GetAttributes(index);
             attr.SetDictSharedFieldType(attr.GetSharedFieldType());
@@ -839,6 +840,7 @@ bool ObjectOperator::WriteDataProperty(const JSHandle<JSObject> &receiver, const
                 }
 
                 JSHandle<NameDictionary> dict(JSObject::TransitionToDictionary(thread_, receiver));
+                RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                 int entry = dict->FindEntry(key_.GetTaggedValue());
                 ASSERT(entry != -1);
                 dict->UpdateValueAndAttributes(thread_, entry, accessor.GetTaggedValue(), attr);
@@ -1093,6 +1095,7 @@ void ObjectOperator::AddPropertyInternal(const JSHandle<JSTaggedValue> &value)
     }
 
     attr = ObjectFastOperator::AddPropertyByName(thread_, obj, key_, value, attr);
+    RETURN_IF_ABRUPT_COMPLETION(thread_);
     if (obj->GetJSHClass()->IsDictionaryMode()) {
         SetFound(0, value.GetTaggedValue(), attr.GetValue(), false);
     } else {

@@ -1446,6 +1446,15 @@ GateRef StubBuilder::AddPropertyByName(GateRef glue, GateRef receiver, GateRef k
                         Int32(PropertyAttributes::MAX_FAST_PROPS_CAPACITY));
                     GateRef res = CallRuntime(glue, RTSTUB_ID(NameDictPutIfAbsent),
                         { receiver, *array, key, value, Int64ToTaggedInt(*attr), TaggedTrue() });
+                    Label isPendingException(env);
+                    Label noPendingException(env);
+                    BRANCH(HasPendingException(glue), &isPendingException, &noPendingException);
+                    Bind(&isPendingException);
+                    {
+                        result = Exception();
+                        Jump(&exit);
+                    }
+                    Bind(&noPendingException);
                     SetPropertiesArray(VariableType::JS_POINTER(), glue, receiver, res);
                     result = Undefined();
                     Jump(&exit);

@@ -424,6 +424,7 @@ DEF_RUNTIME_STUBS(NameDictPutIfAbsent)
     if (needTransToDict.IsTrue()) {
         JSHandle<JSObject> objHandle(thread, JSTaggedValue(reinterpret_cast<TaggedObject *>(receiver)));
         JSHandle<NameDictionary> dictHandle(JSObject::TransitionToDictionary(thread, objHandle));
+        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
         return NameDictionary::
             PutIfAbsent(thread, dictHandle, keyHandle, valueHandle, propAttr).GetTaggedValue().GetRawData();
     } else {
