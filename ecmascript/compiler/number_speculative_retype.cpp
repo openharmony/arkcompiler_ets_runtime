@@ -2061,9 +2061,9 @@ GateRef NumberSpeculativeRetype::VisitArrayIncludesIndexOf(GateRef gate)
     BuiltinsStubCSigns::ID id = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(callID));
     if (IsRetype()) {
         if (id == BuiltinsStubCSigns::ID::ArrayIncludes) {
-            SetOutputType(gate, GateType::BooleanType());
+            return SetOutputType(gate, GateType::BooleanType());
         } else {
-            SetOutputType(gate, GateType::IntType());
+            return SetOutputType(gate, GateType::IntType());
         }
     }
     GateRef findElement = acc_.GetValueIn(gate, 2);

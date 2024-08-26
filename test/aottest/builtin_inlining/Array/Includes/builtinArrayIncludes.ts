@@ -121,6 +121,8 @@ print(nDoubleArray.includes(4.5)) //: true
 print(nDoubleArray.includes(NaN)) //: true
 //aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
 print(literalDoubleArrayWithHole.includes(undefined)) //: true
+//aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
+print(literalIntArrayNoHole.includes(literalIntArrayNoHole.length)) //: false
 
 //includes string
 //aot: [trace] aot inline builtin: Array.prototype.includes, caller function name:func_main_0@builtinArrayIncludes
