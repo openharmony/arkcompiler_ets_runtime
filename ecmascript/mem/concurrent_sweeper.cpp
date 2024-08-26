@@ -33,12 +33,12 @@ void ConcurrentSweeper::PostTask(bool fullGC)
 {
     if (ConcurrentSweepEnabled()) {
         if (!fullGC) {
-            Taskpool::GetCurrentTaskpool()->PostTask(
+            GCWorkerPool::GetCurrentTaskpool()->PostTask(
                 std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, OLD_SPACE));
         }
-        Taskpool::GetCurrentTaskpool()->PostTask(
+        GCWorkerPool::GetCurrentTaskpool()->PostTask(
             std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, NON_MOVABLE));
-        Taskpool::GetCurrentTaskpool()->PostTask(
+        GCWorkerPool::GetCurrentTaskpool()->PostTask(
             std::make_unique<SweeperTask>(heap_->GetJSThread()->GetThreadId(), this, MACHINE_CODE_SPACE));
     }
 }

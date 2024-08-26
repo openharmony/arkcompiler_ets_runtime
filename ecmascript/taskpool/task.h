@@ -58,6 +58,14 @@ public:
         return terminate_;
     }
 
+    bool IsCancellable() const
+    {
+        return isCancellable_;
+    }
+
+protected:
+    bool isCancellable_ {false};
+
 private:
     int32_t id_ {0};
     volatile bool terminate_ {false};

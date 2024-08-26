@@ -122,7 +122,10 @@ private:
 
 class SaveTask : public Task {
 public:
-    explicit SaveTask(PGOProfilerEncoder *encoder, int32_t id) : Task(id), encoder_(encoder) {};
+    explicit SaveTask(PGOProfilerEncoder *encoder, int32_t id) : Task(id), encoder_(encoder)
+    {
+        isCancellable_ = true;
+    }
     virtual ~SaveTask() override = default;
 
     bool Run([[maybe_unused]] uint32_t threadIndex) override
