@@ -27,6 +27,7 @@ declare function print(arg:any):string;
     let numObj4 = "   -1123";
     print(Number.parseInt(numObj4));
 }
+print()
 
 //isNaN
 print(Number.isNaN(NaN)); // true
@@ -35,6 +36,7 @@ print(Number.isNaN("Hello")); // false
 print(Number.isNaN(undefined)); // false
 print(Number.isNaN(null)); // false
 print(Number.isNaN({})); // false
+print()
 
 //isFinite
 print(Number.isFinite(0)); // true
@@ -42,14 +44,14 @@ print(Number.isFinite(3.14)); // true
 print(Number.isFinite(Infinity)); // false
 print(Number.isFinite(-Infinity)); // false
 print(Number.isFinite(NaN)); // false
-
+print()
 
 //isInteger
 print(Number.isInteger(0)); // true
 print(Number.isInteger(3.14)); // false
 print(Number.isInteger(123456789012345)); // true
 print(Number.isInteger(Infinity)); // false
-
+print()
 
 //isSafeIntger
 print(Number.isSafeInteger(0)); // true

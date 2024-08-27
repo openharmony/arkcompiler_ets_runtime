@@ -803,6 +803,8 @@ public:
             {SetAdd, "Set.add"},
             {BigIntConstructor, "BigInt"},
             {NumberParseFloat, "Number.parseFloat"},
+            {NumberIsInteger, "Number.isInteger"},
+            {NumberIsSafeInteger, "Number.isSafeInteger"},
             {NumberParseInt, "Number.parseInt"},
             {StringSubstring, "String.prototype.substring"},
             {StringSubStr, "String.prototype.substr"},
