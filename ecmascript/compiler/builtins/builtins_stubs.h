@@ -17,7 +17,7 @@
 #define ECMASCRIPT_COMPILER_BUILTINS_STUB_H
 
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
-#include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 
@@ -80,8 +80,8 @@ public:
 
     inline GateRef IsNumberYearMonthDay(GateRef year, GateRef month, GateRef day)
     {
-        GateRef condition = BoolAnd(TaggedIsNumber(year), TaggedIsNumber(month));
-        return BoolAnd(condition, TaggedIsNumber(day));
+        GateRef condition = BitAnd(TaggedIsNumber(year), TaggedIsNumber(month));
+        return BitAnd(condition, TaggedIsNumber(day));
     }
 };
 

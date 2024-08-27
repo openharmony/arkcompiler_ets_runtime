@@ -468,9 +468,8 @@ void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, b
             builder_.CallTargetCheck(gate, func,
                                      builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSubstring)));
             builder_.EcmaStringCheck(thisValue);
-            auto start_param_check = builder_.TaggedIsNumber(startTag);
-            auto end_param_check = builder_.TaggedIsNumber(endTag);
-            auto param_check = builder_.BoolAnd(start_param_check, end_param_check);
+            auto param_check = LogicAndBuilder(&env).And(builder_.TaggedIsNumber(startTag))
+                .And(builder_.TaggedIsNumber(endTag)).Done();
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
         ret = builder_.StringSubstring(thisValue, startTag, endTag);
@@ -511,9 +510,8 @@ void NativeInlineLowering::TryInlineStringSubStr(GateRef gate, size_t argc, bool
             builder_.CallTargetCheck(gate, func,
                                      builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSubStr)));
             builder_.EcmaStringCheck(thisValue);
-            auto start_param_check = builder_.TaggedIsNumber(intStart);
-            auto end_param_check = builder_.TaggedIsNumber(lengthTag);
-            auto param_check = builder_.BoolAnd(start_param_check, end_param_check);
+            auto param_check = LogicAndBuilder(&env).And(builder_.TaggedIsNumber(intStart))
+                .And(builder_.TaggedIsNumber(lengthTag)).Done();
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
         ret = builder_.StringSubStr(thisValue, intStart, lengthTag);
@@ -554,9 +552,8 @@ void NativeInlineLowering::TryInlineStringSlice(GateRef gate, size_t argc, bool 
             builder_.CallTargetCheck(gate, func,
                                      builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringSlice)));
             builder_.EcmaStringCheck(thisValue);
-            auto start_param_check = builder_.TaggedIsNumber(startTag);
-            auto end_param_check = builder_.TaggedIsNumber(endTag);
-            auto param_check = builder_.BoolAnd(start_param_check, end_param_check);
+            auto param_check = LogicAndBuilder(&env).And(builder_.TaggedIsNumber(startTag))
+                .And(builder_.TaggedIsNumber(endTag)).Done();
             builder_.DeoptCheck(param_check, acc_.GetFrameState(gate), DeoptType::BUILTIN_INLINING_TYPE_GUARD);
         }
         ret = builder_.StringSlice(thisValue, startTag, endTag);

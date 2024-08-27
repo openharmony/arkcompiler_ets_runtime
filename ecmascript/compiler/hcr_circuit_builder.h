@@ -16,7 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_HCR_CIRCUIT_BUILDER_H
 #define ECMASCRIPT_COMPILER_HCR_CIRCUIT_BUILDER_H
 
-#include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/js_function.h"
 
@@ -42,7 +42,7 @@ inline GateRef CircuitBuilder::IsJSFunction(GateRef obj)
         Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST)));
     GateRef less = Int32LessThanOrEqual(objectType,
         Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST)));
-    return BoolAnd(greater, less);
+    return BitAnd(greater, less);
 }
 
 GateRef CircuitBuilder::IsJsType(GateRef obj, JSType type)
@@ -53,11 +53,25 @@ GateRef CircuitBuilder::IsJsType(GateRef obj, JSType type)
 
 GateRef CircuitBuilder::IsJSObject(GateRef obj)
 {
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    auto ret = BoolAnd(
-        Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST))),
-        Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST))));
-    return LogicAnd(TaggedIsHeapObject(obj), ret);
+    Label entryPass(env_);
+    SubCfgEntry(&entryPass);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    Label heapObj(env_);
+    Label exit(env_);
+    GateRef isHeapObject = TaggedIsHeapObject(obj);
+    BRANCH_CIR2(isHeapObject, &heapObj, &exit);
+    Bind(&heapObj);
+    {
+        GateRef objectType = GetObjectType(LoadHClass(obj));
+        result = BitAnd(
+            Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_LAST))),
+            Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_OBJECT_FIRST))));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
 }
 
 GateRef CircuitBuilder::IsCallableFromBitField(GateRef bitfield)
@@ -141,7 +155,7 @@ GateRef CircuitBuilder::IsStableArguments(GateRef hClass)
     GateRef objectType = GetObjectType(hClass);
     GateRef isJsArguments = Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARGUMENTS)));
     GateRef isStableElements = IsStableElements(hClass);
-    return BoolAnd(isStableElements, isJsArguments);
+    return BitAnd(isStableElements, isJsArguments);
 }
 
 GateRef CircuitBuilder::IsStableArray(GateRef hClass)
@@ -149,7 +163,7 @@ GateRef CircuitBuilder::IsStableArray(GateRef hClass)
     GateRef objectType = GetObjectType(hClass);
     GateRef isJsArray = Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
     GateRef isStableElements = IsStableElements(hClass);
-    return BoolAnd(isStableElements, isJsArray);
+    return BitAnd(isStableElements, isJsArray);
 }
 
 GateRef CircuitBuilder::IsAOTLiteralInfo(GateRef x)
