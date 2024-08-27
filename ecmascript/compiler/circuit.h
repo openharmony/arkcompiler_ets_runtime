@@ -241,6 +241,7 @@ private:
 public:
     void Print(GateRef gate) const;
     bool AddComment(GateRef g, std::string &&str);
+    std::string_view GetComment(GateRef gate);
 
 private:
     GateType GetGateType(GateRef gate) const;
