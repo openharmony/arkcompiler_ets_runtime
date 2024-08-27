@@ -203,13 +203,18 @@ public:
     JSThread *GetAndFastCheckJSThread() const;
     bool CheckSingleThread() const;
 
+    ARK_INLINE bool GetThreadCheckStatus() const
+    {
+        return options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck();
+    }
+
     ARK_INLINE JSThread *GetJSThread() const
     {
         // default enable multi-thread check in asan
 #ifdef ECMASCRIPT_ENABLE_ASAN_THREAD_CHECK
         CheckThread();
 #else
-        if (options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck()) {
+        if (GetThreadCheckStatus()) {
             CheckThread();
         }
 #endif

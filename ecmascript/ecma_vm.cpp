@@ -131,7 +131,7 @@ void EcmaVM::PostFork()
     GCWorkerPool::GetCurrentTaskpool()->Initialize();
     Taskpool::GetCurrentTaskpool()->Initialize();
     SetPostForked(true);
-    LOG_ECMA(INFO) << "multi-thread check enabled: " << options_.EnableThreadCheck();
+    LOG_ECMA(INFO) << "multi-thread check enabled: " << GetThreadCheckStatus();
     SignalAllReg();
     SharedHeap::GetInstance()->EnableParallelGC(GetJSOptions());
     DaemonThread::GetInstance()->StartRunning();
@@ -165,7 +165,7 @@ EcmaVM::EcmaVM(JSRuntimeOptions options, EcmaParamConfiguration config)
       ecmaParamConfiguration_(std::move(config))
 {
     options_ = std::move(options);
-    LOG_ECMA(DEBUG) << "multi-thread check enabled: " << options_.EnableThreadCheck();
+    LOG_ECMA(DEBUG) << "multi-thread check enabled: " << GetThreadCheckStatus();
     icEnabled_ = options_.EnableIC();
     optionalLogEnabled_ = options_.EnableOptionalLog();
     options_.ParseAsmInterOption();
