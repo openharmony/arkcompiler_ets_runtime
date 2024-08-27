@@ -139,5 +139,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         size_test.add(i);
     }
     print(size_test.length);
+
+    const v1 = [Queue,Queue,Queue,Queue];
+    const v2 = new Queue();
+    const v3 = [-63084,3,536870889,-1926,29182,-4294967296,1222477883];
+    const v5 = [v1];
+    try {
+        Reflect.apply(v3.unshift, v2, v5);
+    } catch(error) {
+        print(error);
+    }
 }
 export let queueRes = "Test Queue done";

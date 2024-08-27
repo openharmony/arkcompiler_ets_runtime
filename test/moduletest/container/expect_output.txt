@@ -20,11 +20,13 @@ Test HashSet success!!!
 Test LightWeightMap success!!!
 Test LightWeightSet success!!!
 Test LinkedList success!!!
+0
 Test List success!!!
 Test PlainArray success!!!
 0
 Test Queue success!!!
 6
+BusinessError: Container is empty
 Test Stack success!!!
 BusinessError: Container is empty
 Test TreeMap success!!!

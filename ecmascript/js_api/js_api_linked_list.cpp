@@ -302,7 +302,14 @@ bool JSAPILinkedList::SetProperty(JSThread *thread, const JSHandle<JSAPILinkedLi
 {
     JSHandle<TaggedDoubleList> doubleList(thread, obj->GetDoubleList());
     int nodeLength = doubleList->Length();
-    int index = key->GetInt();
+    JSHandle<JSTaggedValue> indexKey = key;
+    if (indexKey->IsDouble()) {
+        indexKey = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(indexKey->GetDouble()));
+    }
+    if (!indexKey->IsInt()) {
+        return false;
+    }
+    int index = indexKey->GetInt();
     if (index < 0 || index >= nodeLength) {
         return false;
     }

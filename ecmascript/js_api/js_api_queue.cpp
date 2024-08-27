@@ -123,8 +123,11 @@ JSTaggedValue JSAPIQueue::Get(JSThread *thread, const uint32_t index)
 
 JSTaggedValue JSAPIQueue::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
+    if (GetLength().GetArrayLength() <= 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index < 0 || index >= GetLength().GetArrayLength()) {
-        ASSERT(GetLength().GetArrayLength() > 0);
         std::ostringstream oss;
         oss << "The value of \"Set property index\" is out of range. It must be >= 0 && <= "
             << (GetLength().GetArrayLength() - 1) << ". Received value is: " << index;
