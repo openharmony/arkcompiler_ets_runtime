@@ -246,6 +246,9 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
         if (thread->HasPendingException()) {
             return thread->GetException();
         }
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+        thread->CheckJSTaggedType(JSTaggedValue(res).GetRawData());
+#endif
         return JSTaggedValue(res);
     }
 #if ECMASCRIPT_ENABLE_FUNCTION_CALL_TIMER
@@ -269,6 +272,9 @@ JSTaggedValue InterpreterAssembly::Execute(EcmaRuntimeCallInfo *info)
     auto prevEntry = InterpretedEntryFrame::GetFrameFromSp(sp)->GetPrevFrameFp();
     thread->SetCurrentSPFrame(prevEntry);
 
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(JSTaggedValue(acc).GetRawData());
+#endif
     return JSTaggedValue(acc);
 }
 
