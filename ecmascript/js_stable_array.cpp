@@ -450,6 +450,52 @@ void JSStableArray::SetSepValue(JSHandle<EcmaString> sepStringHandle, int &sep, 
     }
 }
 
+bool JSStableArray::WorthUseTreeString(int sep, size_t allocateLength, uint32_t len)
+{
+    if (allocateLength >= TREE_STRING_THRESHOLD) {
+        size_t treeStringElementNum = (sep == MINUS_TWO) ? (len - 1) : (2 * (len - 1));
+        // if sep is MINUS_TWO, means all the elements in treeString is len -1;
+        // otherwise, the num of elements is (len-1)(string in vector) + (len -1)(num of seps)
+        if (treeStringElementNum * TreeEcmaString::SIZE <= allocateLength) {
+            // heuristic: if tree string uses less memory than linestring, it is worth.
+            // In other words, we hope tree string can work for the large strings join.
+            return true;
+        }
+    }
+    return false;
+}
+
+JSTaggedValue JSStableArray::JoinUseTreeString(const JSThread* thread, const JSHandle<JSTaggedValue> receiverValue,
+                                               const JSHandle<EcmaString> sepStringHandle, const int sep,
+                                               CVector<JSHandle<EcmaString>>& vec)
+{
+    // Do not concat the elements one by one, it will make the tree string unbalanced. Concat each element with its
+    // right neighbor first level by level, then the tree string will be balanced as possible.
+    if (sep != JSStableArray::SeparatorFlag::MINUS_TWO) {
+        auto last = std::prev(vec.end());
+        for (auto iter = vec.begin(); iter != last; ++iter) {
+            *iter = JSHandle<EcmaString>(
+                thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(), *iter, sepStringHandle));
+            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
+        }
+    }
+    size_t elemNum = vec.size();
+    while (elemNum > 1) {
+        size_t newNum = (elemNum + 1) / NUM_2;
+        for (size_t i = 0; i < elemNum / NUM_2; ++i) {
+            vec[i] = JSHandle<EcmaString>(
+                thread, EcmaStringAccessor::Concat(thread->GetEcmaVM(), vec[NUM_2 * i], vec[NUM_2 * i + 1]));
+            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
+        }
+        if (elemNum % NUM_2 == 1) {
+            vec[newNum - 1] = vec[elemNum - 1];
+        }
+        elemNum = newNum;
+    }
+    thread->GetCurrentEcmaContext()->JoinStackPopFastPath(receiverValue);
+    return vec.front().GetTaggedValue();
+}
+
 JSTaggedValue JSStableArray::Join(JSThread *thread, JSHandle<JSArray> receiver,
                                   JSHandle<EcmaString> sepStringHandle, int64_t length)
 {
@@ -471,7 +517,6 @@ JSTaggedValue JSStableArray::Join(JSThread *thread, JSHandle<JSArray> receiver,
     JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
     uint64_t allocateLength = 0;
     bool isOneByte = (sep != JSStableArray::SeparatorFlag::MINUS_ONE) || EcmaStringAccessor(sepStringHandle).IsUtf8();
-    CVector<JSHandle<EcmaString>> vec;
     JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     uint32_t elementsLength = ElementAccessor::GetElementsLength(obj);
@@ -483,6 +528,8 @@ JSTaggedValue JSStableArray::Join(JSThread *thread, JSHandle<JSArray> receiver,
         // sep unused, set isOneByte to default(true)
         isOneByte = true;
     }
+    CVector<JSHandle<EcmaString>> vec;
+    vec.reserve(len);
     for (uint32_t k = 0; k < len; k++) {
         JSTaggedValue element = JSTaggedValue::Undefined();
         if (k < elementsLength) {
@@ -500,12 +547,11 @@ JSTaggedValue JSStableArray::Join(JSThread *thread, JSHandle<JSArray> receiver,
                 element = strElement.GetTaggedValue();
             }
             auto nextStr = EcmaString::Cast(element.GetTaggedObject());
-            JSHandle<EcmaString> nextStrHandle(thread, nextStr);
-            vec.push_back(nextStrHandle);
+            vec.emplace_back(thread, nextStr);
             isOneByte = EcmaStringAccessor(nextStr).IsUtf8() ? isOneByte : false;
             allocateLength += EcmaStringAccessor(nextStr).GetLength();
         } else {
-            vec.push_back(JSHandle<EcmaString>(globalConst->GetHandledEmptyString()));
+            vec.emplace_back(globalConst->GetHandledEmptyString());
         }
     }
     if (len > 0) {
@@ -514,6 +560,9 @@ JSTaggedValue JSStableArray::Join(JSThread *thread, JSHandle<JSArray> receiver,
     if (allocateLength > EcmaString::MAX_STRING_LENGTH) {
         context->JoinStackPopFastPath(receiverValue);
         THROW_RANGE_ERROR_AND_RETURN(thread, "Invalid string length", JSTaggedValue::Exception());
+    }
+    if (WorthUseTreeString(sep, allocateLength, len)) {
+        return JoinUseTreeString(thread, receiverValue, sepStringHandle, sep, vec);
     }
     auto newString =
     EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), static_cast<size_t>(allocateLength), isOneByte);
@@ -568,7 +617,6 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSSharedArray> receiver, EcmaRuntimeC
     JSHandle<JSObject> obj(thread, receiverValue.GetTaggedValue());
     size_t allocateLength = 0;
     bool isOneByte = (sep != JSStableArray::SeparatorFlag::MINUS_ONE) || EcmaStringAccessor(sepStringHandle).IsUtf8();
-    CVector<JSHandle<EcmaString>> vec;
     JSMutableHandle<JSTaggedValue> elementHandle(thread, JSTaggedValue::Undefined());
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     uint32_t elementsLength = ElementAccessor::GetElementsLength(obj);
@@ -580,6 +628,8 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSSharedArray> receiver, EcmaRuntimeC
         // sep unused, set isOneByte to default(true)
         isOneByte = true;
     }
+    CVector<JSHandle<EcmaString>> vec;
+    vec.reserve(len);
     for (uint32_t k = 0; k < len; k++) {
         JSTaggedValue element = JSTaggedValue::Undefined();
         if (k < elementsLength) {
@@ -593,16 +643,18 @@ JSTaggedValue JSStableArray::Join(JSHandle<JSSharedArray> receiver, EcmaRuntimeC
                 element = strElement.GetTaggedValue();
             }
             auto nextStr = EcmaString::Cast(element.GetTaggedObject());
-            JSHandle<EcmaString> nextStrHandle(thread, nextStr);
-            vec.push_back(nextStrHandle);
+            vec.emplace_back(thread, nextStr);
             isOneByte = EcmaStringAccessor(nextStr).IsUtf8() ? isOneByte : false;
             allocateLength += EcmaStringAccessor(nextStr).GetLength();
         } else {
-            vec.push_back(JSHandle<EcmaString>(globalConst->GetHandledEmptyString()));
+            vec.emplace_back(globalConst->GetHandledEmptyString());
         }
     }
     if (len > 0) {
         allocateLength += sepLength * (len - 1);
+    }
+    if (WorthUseTreeString(sep, allocateLength, len)) {
+        return JoinUseTreeString(thread, receiverValue, sepStringHandle, sep, vec);
     }
     auto newString = EcmaStringAccessor::CreateLineString(thread->GetEcmaVM(), allocateLength, isOneByte);
     int current = 0;
