@@ -569,7 +569,7 @@ void SharedHeap::TryTriggerLocalConcurrentMarking()
     if (localFullMarkTriggered_) {
         return;
     }
-    if (reinterpret_cast<std::atomic<bool>*>(localFullMarkTriggered_)->exchange(true, std::memory_order_relaxed)
+    if (reinterpret_cast<std::atomic<bool>*>(&localFullMarkTriggered_)->exchange(true, std::memory_order_relaxed)
             != false) {
         return;
     }
