@@ -36,6 +36,7 @@
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_tools.h"
 #include "ecmascript/require/js_cjs_module.h"
+#include "ecmascript/module/module_manager_helper.h"
 
 
 using namespace panda::ecmascript;
@@ -299,6 +300,238 @@ HWTEST_F_L0(EcmaModuleTest, FindByExport)
     JSHandle<JSTaggedValue> loadKey2 = JSHandle<JSTaggedValue>::Cast(objFactory->NewFromUtf8(exportName1));
     JSTaggedValue loadValue2 = module->GetModuleValue(thread, loadKey2.GetTaggedValue(), false);
     EXPECT_EQ(valueHandle.GetTaggedValue(), loadValue2);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ReformatPath)
+{
+    // start with pkg_modules
+    CString requestPath = "pkg_modules@entry.@hw-agconnect.hmcore";
+    CString entryPoint = ModulePathHelper::ReformatPath(requestPath);
+    EXPECT_EQ("@entry.@hw-agconnect.hmcore", entryPoint);
+
+    // start with @package:
+    requestPath = "@package:pkg_modules@entry.@hw-agconnect.hmcore";
+    entryPoint = ModulePathHelper::ReformatPath(requestPath);
+    EXPECT_EQ("@entry.@hw-agconnect.hmcore", entryPoint);
+
+    // start with @app:
+    requestPath = "@app:bundleName/moduleName/lib*.so";
+    entryPoint = ModulePathHelper::ReformatPath(requestPath);
+    EXPECT_EQ("lib*.so", entryPoint);
+
+    // no special prefix
+    requestPath = "bundleName/moduleName/lib*.so";
+    entryPoint = ModulePathHelper::ReformatPath(requestPath);
+    EXPECT_EQ("bundleName/moduleName/lib*.so", entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ParseUrl)
+{
+    CString recordName = "com.bundleName.test";
+    CString res = ModulePathHelper::ParseUrl(instance, recordName);
+    EXPECT_EQ(res, CString());
+}
+
+HWTEST_F_L0(EcmaModuleTest, MakeNewRecord)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // is not start with BUNDLE_INSTALL_PATH
+    CString moduleRecordName = "moduleTest1";
+    CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
+    CString result = "requestModuleName1";
+    CString entryPoint = ModulePathHelper::MakeNewRecord(thread, pf.get(), baseFilename, moduleRecordName,
+                                                             moduleRequestName);
+    EXPECT_EQ(result, entryPoint);
+
+    // start with BUNDLE_INSTALL_PATH, is bundle pack
+    baseFilename = "/data/storage/el1/bundle/";
+    moduleRecordName = "moduleTest1";
+    moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
+    result = "requestModuleName1";
+    entryPoint = ModulePathHelper::MakeNewRecord(thread, pf.get(), baseFilename, moduleRecordName,
+                                                             moduleRequestName);
+    EXPECT_EQ(result, entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, FindPackageInTopLevelWithNamespace)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // start with pkg_modules, pos equal CString::npos
+    CString moduleRecordName = "pkg_modules@entry.@hw-agconnect.hmcore";
+    CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
+    CString entryPoint = ModulePathHelper::FindPackageInTopLevelWithNamespace(
+        pf.get(), moduleRequestName, moduleRecordName);
+    EXPECT_EQ(CString(), entryPoint);
+
+    // start with pkg_modules, pos not equal CString::npos
+    moduleRecordName = "pkg_modules@entry.@hw-agconnect.hmcore/test";
+    moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
+    entryPoint = ModulePathHelper::FindPackageInTopLevelWithNamespace(pf.get(), moduleRequestName, moduleRecordName);
+    EXPECT_EQ(CString(), entryPoint);
+
+    // moduleName has @
+    moduleRecordName = "@bundle:com.bundleName.test/@test";
+    moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
+    entryPoint = ModulePathHelper::FindPackageInTopLevelWithNamespace(pf.get(), moduleRequestName, moduleRecordName);
+    EXPECT_EQ(CString(), entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ParseOhpmPackage)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // start with pkg_modules
+    CString moduleRecordName = "pkg_modules@entry.@hw-agconnect.hmcore1";
+    CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
+    pf->InsertJSRecordInfo(moduleRecordName);
+    CString entryPoint = ModulePathHelper::ParseOhpmPackage(pf.get(), moduleRecordName, moduleRequestName);
+    EXPECT_EQ(CString(), entryPoint);
+
+    // start with pkg_modules, packageName has pkg_modules
+    moduleRecordName = "pkg_modules@entry.@hw-agconnect.hmcore2";
+    moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName1";
+    CUnorderedMap<CString, JSPandaFile::JSRecordInfo*> &recordInfo =
+        const_cast<CUnorderedMap<CString, JSPandaFile::JSRecordInfo*>&>(pf->GetJSRecordInfo());
+    JSPandaFile::JSRecordInfo *info = new JSPandaFile::JSRecordInfo();
+    info->npmPackageName = moduleRecordName;
+    recordInfo.insert({moduleRecordName, info});
+    entryPoint = ModulePathHelper::ParseOhpmPackage(pf.get(), moduleRecordName, moduleRequestName);
+    EXPECT_EQ(CString(), entryPoint);
+
+    // delete info
+    delete info;
+    recordInfo.erase(moduleRecordName);
+}
+
+HWTEST_F_L0(EcmaModuleTest, FindPackageInTopLevel)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // start with packagePath
+    CString moduleRequestName = "@bundle:com.bundleName.test/moduleName/requestModuleName";
+    CString packagePath = "pkg_modules";
+    CString result = "pkg_modules/0/@bundle:com.bundleName.test/moduleName/requestModuleName";
+    pf->InsertJSRecordInfo(result);
+    CString entryPoint = ModulePathHelper::FindPackageInTopLevel(pf.get(), moduleRequestName, packagePath);
+    EXPECT_EQ(result, entryPoint);
+}
+
+HWTEST_F_L0(EcmaModuleTest, NeedTranstale)
+{
+    // start with @bundle
+    CString requestName = "@bundle:com.bundleName.test/moduleName/requestModuleName";
+    bool res = ModulePathHelper::NeedTranstale(requestName);
+    EXPECT_EQ(res, false);
+
+    // start with @package:
+    requestName = "@package:test";
+    res = ModulePathHelper::NeedTranstale(requestName);
+    EXPECT_EQ(res, false);
+
+    // start with .
+    requestName = "./test";
+    res = ModulePathHelper::NeedTranstale(requestName);
+    EXPECT_EQ(res, false);
+
+    // start with @, has :
+    requestName = "@test:";
+    res = ModulePathHelper::NeedTranstale(requestName);
+    EXPECT_EQ(res, false);
+
+    // start with @, don't has :
+    requestName = "@test";
+    res = ModulePathHelper::NeedTranstale(requestName);
+    EXPECT_EQ(res, true);
+
+    // other branches
+    requestName = "test";
+    res = ModulePathHelper::NeedTranstale(requestName);
+    EXPECT_EQ(res, true);
+}
+
+HWTEST_F_L0(EcmaModuleTest, TranstaleExpressionInput)
+{
+    CString baseFilename = "merge.abc";
+    const char *data = R"(
+        .language ECMAScript
+        .function any func_main_0(any a0, any a1, any a2) {
+            ldai 1
+            return
+        }
+    )";
+    JSPandaFileManager *pfManager = JSPandaFileManager::GetInstance();
+    Parser parser;
+    auto res = parser.Parse(data);
+    std::unique_ptr<const File> pfPtr = pandasm::AsmEmitter::Emit(res.Value());
+    std::shared_ptr<JSPandaFile> pf = pfManager->NewJSPandaFile(pfPtr.release(), baseFilename);
+
+    // start with @arkui-x.
+    CString requestPath = "@arkui-x.test/moduleName/requestModuleName";
+    ModulePathHelper::TranstaleExpressionInput(pf.get(), requestPath);
+    EXPECT_EQ(requestPath, "@ohos:test/moduleName/requestModuleName");
+}
+
+HWTEST_F_L0(EcmaModuleTest, ParseFileNameToVMAName2)
+{
+    // has .js
+    CString filename = "test.js";
+    CString res = ModulePathHelper::ParseFileNameToVMAName(filename);
+    EXPECT_EQ(res, "ArkTS Code");
+
+    // other branches
+    filename = "test.ts";
+    res = ModulePathHelper::ParseFileNameToVMAName(filename);
+    EXPECT_EQ(res, "ArkTS Code");
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetRecordName1)
@@ -2478,5 +2711,34 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue3)
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
     moduleManager->StoreModuleValue(key.GetTaggedValue(), val.GetTaggedValue(), jsFunc);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromRecordBinding)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    CString baseFileName = "modules.abc";
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+
+    JSHandle<SourceTextModule> module2 = objectFactory->NewSourceTextModule();
+    module2->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName2 = "b";
+    module2->SetEcmaModuleRecordNameString(recordName2);
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module2->SetLocalExportEntries(thread, localExportEntries);
+    module2->StoreModuleValue(thread, 0, val);
+    module2->SetStatus(ModuleStatus::EVALUATED);
+    module2->SetTypes(ModuleTypes::NATIVE_MODULE);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->AddResolveImportedModule(recordName2, module2.GetTaggedValue());
+
+    JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8(recordName2);
+    JSHandle<ResolvedRecordBinding> nameBinding =
+        objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
+    JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(nameBinding);
+    ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(thread, module2, key.GetTaggedValue());
+    ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, module2, key.GetTaggedValue());
 }
 }  // namespace panda::test

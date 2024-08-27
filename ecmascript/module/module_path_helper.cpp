@@ -129,7 +129,7 @@ CString ModulePathHelper::ReformatPath(CString requestName)
         StringHelper::StringStartWith(requestName, PREFIX_PACKAGE)) {
         auto pos = requestName.rfind(PACKAGE_PATH_SEGMENT);
         ASSERT(pos != CString::npos);
-        normalizeStr = requestName.substr(pos + 1);
+        normalizeStr = requestName.substr(pos + PACKAGE_PATH_SEGMENT_LEN);
     } else if (StringHelper::StringStartWith(requestName, REQUIRE_NAPI_APP_PREFIX)) {
         auto pos = requestName.find(PathHelper::SLASH_TAG);
         pos = requestName.find(PathHelper::SLASH_TAG, pos + 1);
