@@ -592,8 +592,8 @@ void ProfilerStubBuilder::ProfileBranch(
                 GateRef oldFalse = Int32LSR(oldSlotValue, Int32(PGOSampleType::WEIGHT_START_BIT));
                 oldFalse = Int32And(oldFalse, Int32(PGOSampleType::WEIGHT_MASK));
                 oldPrama = Int32And(oldSlotValue, Int32(PGOSampleType::AnyType()));
-                auto condition = BoolAnd(Int32LessThan(oldTrue, Int32(PGOSampleType::WEIGHT_THRESHOLD)),
-                                         Int32LessThan(oldFalse, Int32(PGOSampleType::WEIGHT_THRESHOLD)));
+                auto condition = BitAnd(Int32LessThan(oldTrue, Int32(PGOSampleType::WEIGHT_THRESHOLD)),
+                                        Int32LessThan(oldFalse, Int32(PGOSampleType::WEIGHT_THRESHOLD)));
                 BRANCH(condition, &needUpdate, &exit); // WEIGHT_THRESHOLD: 2047 limit
                 Bind(&needUpdate);
                 {
@@ -615,7 +615,7 @@ void ProfilerStubBuilder::ProfileBranch(
                 newSlotValue = Int32Or(newSlotValue, Int32LSL(*newFalse, Int32(PGOSampleType::WEIGHT_START_BIT)));
                 SetValueToTaggedArray(
                     VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newSlotValue));
-                auto isFinal = BoolOr(Int32Equal(*newTrue, Int32(PGOSampleType::WEIGHT_THRESHOLD)),
+                auto isFinal = BitAnd(Int32Equal(*newTrue, Int32(PGOSampleType::WEIGHT_THRESHOLD)),
                                       Int32Equal(*newFalse, Int32(PGOSampleType::WEIGHT_THRESHOLD)));
                 BRANCH(isFinal, &preProfile, &exit);
             }
@@ -1109,8 +1109,8 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, OffsetInfo offsetInfo,
             GateRef jmpImm8 = Int8(static_cast<uint8_t>(EcmaOpcode::JMP_IMM8));
             GateRef jmpImm16 = Int8(static_cast<uint8_t>(EcmaOpcode::JMP_IMM16));
             GateRef jmpImm32 = Int8(static_cast<uint8_t>(EcmaOpcode::JMP_IMM32));
-            isJmp = BoolOr(Int8Equal(opcode, jmpImm8), Int8Equal(opcode, jmpImm16));
-            isJmp = BoolOr(isJmp, Int8Equal(opcode, jmpImm32));
+            isJmp = BitAnd(Int8Equal(opcode, jmpImm8), Int8Equal(opcode, jmpImm16));
+            isJmp = BitAnd(isJmp, Int8Equal(opcode, jmpImm32));
         } else {
             isJmp = Boolean(offsetInfo.offset == 0);
         }

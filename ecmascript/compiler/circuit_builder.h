@@ -80,12 +80,12 @@ class TSHCROptPass;
     V(DoubleDiv, Fdiv, MachineType::F64)                                  \
     V(Int32Mod, Smod, MachineType::I32)                                   \
     V(DoubleMod, Smod, MachineType::F64)                                  \
-    V(BoolAnd, And, MachineType::I1)                                      \
+    V(BitAnd, And, MachineType::I1)                                       \
     V(Int8And, And, MachineType::I8)                                      \
     V(Int8Xor, Xor, MachineType::I8)                                      \
     V(Int32And, And, MachineType::I32)                                    \
     V(Int64And, And, MachineType::I64)                                    \
-    V(BoolOr, Or, MachineType::I1)                                        \
+    V(BitOr, Or, MachineType::I1)                                         \
     V(Int32Or, Or, MachineType::I32)                                      \
     V(Int64Or, Or, MachineType::I64)                                      \
     V(Int32Xor, Xor, MachineType::I32)                                    \
@@ -336,8 +336,6 @@ public:
                                              GateRef profileTypeInfo, GateRef slotId);
     void UpdateProfileTypeInfoCellType(GateRef glue, GateRef profileTypeInfoCell);
 
-    inline GateRef LogicAnd(GateRef x, GateRef y);
-    inline GateRef LogicOr(GateRef x, GateRef y);
     GateRef FunctionIsResolved(GateRef function);
     GateRef HasPendingException(GateRef glue); // shareir
     GateRef IsUtf8String(GateRef string);
@@ -694,7 +692,7 @@ public:
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     inline GateRef TaggedIsJSGlobalObject(GateRef x);
     inline GateRef TaggedIsGeneratorObject(GateRef x);
-    inline GateRef TaggedIsJSArray(GateRef obj);
+    inline GateRef TaggedIsJSArray(GateRef x);
     inline GateRef TaggedIsPropertyBox(GateRef x);
     inline GateRef TaggedIsWeak(GateRef x);
     inline GateRef TaggedIsPrototypeHandler(GateRef x);
@@ -727,7 +725,6 @@ public:
     inline GateRef TaggedGetInt(GateRef x);
     inline GateRef TaggedObjectIsString(GateRef obj);
     inline GateRef TaggedObjectIsShared(GateRef obj);
-    inline GateRef TaggedObjectBothAreString(GateRef x, GateRef y);
     inline GateRef TaggedObjectIsEcmaObject(GateRef obj);
     inline GateRef TaggedObjectIsByteArray(GateRef obj);
     inline GateRef TaggedObjectIsMap(GateRef obj);
@@ -885,6 +882,7 @@ public:
     inline GateRef DoubleToTagged(GateRef x);
     inline GateRef DoubleIsNAN(GateRef x);
     inline GateRef DoubleIsINF(GateRef x);
+    inline GateRef DoubleIsNanOrInf(GateRef x);
     static MachineType GetMachineTypeFromVariableType(VariableType type);
     GateRef FastToBoolean(GateRef value);
 
@@ -962,6 +960,43 @@ private:
     friend TSHCROptPass;
 };
 
+class LogicAndBuilder {
+public:
+    inline LogicAndBuilder(Environment *env);
+    inline ~LogicAndBuilder();
+    NO_MOVE_SEMANTIC(LogicAndBuilder);
+    NO_COPY_SEMANTIC(LogicAndBuilder);
+
+    inline LogicAndBuilder &And(GateRef check);
+
+    inline GateRef Done();
+private:
+    Environment *env_ {nullptr};
+    CircuitBuilder *builder_ {nullptr};
+    Label *subentry_ {nullptr};
+    Variable *result_ {nullptr};
+    Label *exit_ {nullptr};
+    std::vector<Label*> labels_;
+};
+
+class LogicOrBuilder {
+public:
+    inline LogicOrBuilder(Environment *env);
+    inline ~LogicOrBuilder();
+    NO_MOVE_SEMANTIC(LogicOrBuilder);
+    NO_COPY_SEMANTIC(LogicOrBuilder);
+
+    inline LogicOrBuilder &Or(GateRef check);
+
+    inline GateRef Done();
+private:
+    Environment *env_ {nullptr};
+    CircuitBuilder *builder_ {nullptr};
+    Label *subentry_ {nullptr};
+    Variable *result_ {nullptr};
+    Label *exit_ {nullptr};
+    std::vector<Label*> labels_;
+};
 }  // namespace panda::ecmascript::kungfu
 
 #endif  // ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_H

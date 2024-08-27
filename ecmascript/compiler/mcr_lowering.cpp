@@ -302,11 +302,11 @@ void MCRLowering::LowerHClassStableArrayCheck(GateRef gate)
         if (Elements::IsComplex(kind)) {
             GateRef elementsKindCheck = builder_.Int32GreaterThanOrEqual(builder_.Int32(static_cast<int32_t>(kind)),
                                                                          builder_.GetElementsKindByHClass(hclass));
-            check = builder_.BoolAnd(stableCheck, elementsKindCheck);
+            check = builder_.BitAnd(stableCheck, elementsKindCheck);
         } else {
             GateRef elementsKindCheck = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)),
                                                        builder_.GetElementsKindByHClass(hclass));
-            check = builder_.BoolAnd(stableCheck, elementsKindCheck);
+            check = builder_.BitAnd(stableCheck, elementsKindCheck);
         }
     } else {
         check = stableCheck;
@@ -767,9 +767,10 @@ GateRef MCRLowering::ConvertFloat64ToInt32(GateRef gate, Label *exit)
 
 GateRef MCRLowering::ConvertFloat64ToBool(GateRef gate)
 {
-    GateRef doubleNotZero = builder_.DoubleNotEqual(gate, builder_.Double(0.0));
-    GateRef doubleNotNAN = builder_.BoolNot(builder_.DoubleIsNAN(gate));
-    return builder_.BoolAnd(doubleNotZero, doubleNotNAN);
+    return LogicAndBuilder(builder_.GetCurrentEnvironment())
+        .And(builder_.DoubleNotEqual(gate, builder_.Double(0.0)))
+        .And(builder_.BoolNot(builder_.DoubleIsNAN(gate)))
+        .Done();
 }
 
 GateRef MCRLowering::ConvertFloat64ToTaggedDouble(GateRef gate)
@@ -863,11 +864,12 @@ void MCRLowering::LowerRemainderIsNegativeZero(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
-    GateRef leftIsNegative = builder_.Int32LessThan(left, builder_.Int32(0));
-    GateRef remainder =
-        builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right, GateType::NJSValue());
-    GateRef remainderEqualZero = builder_.Int32Equal(remainder, builder_.Int32(0));
-    GateRef remainderIsNotNegative = builder_.BoolNot(builder_.BoolAnd(leftIsNegative, remainderEqualZero));
+    GateRef remainderIsNegative = LogicAndBuilder(&env)
+        .And(builder_.Int32LessThan(left, builder_.Int32(0)))
+        .And(builder_.Int32Equal(builder_.Int32(0),
+            builder_.BinaryArithmetic(circuit_->Smod(), MachineType::I32, left, right, GateType::NJSValue())))
+        .Done();
+    GateRef remainderIsNotNegative = builder_.BoolNot(remainderIsNegative);
     builder_.DeoptCheck(remainderIsNotNegative, frameState, DeoptType::REMAINDERISNEGATIVEZERO);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -960,10 +962,11 @@ void MCRLowering::LowerInt32DivWithCheck(GateRef gate)
     GateRef left = acc_.GetValueIn(gate, 0);
     GateRef right = acc_.GetValueIn(gate, 1);
     GateRef result = Circuit::NullGate();
-    GateRef rightGreaterZero = builder_.Int32GreaterThan(right, builder_.Int32(0));
-    GateRef rightLessZero = builder_.Int32LessThan(right, builder_.Int32(0));
-    GateRef leftNotZero = builder_.Int32NotEqual(left, builder_.Int32(0));
-    GateRef condition = builder_.BoolOr(rightGreaterZero, builder_.BoolAnd(rightLessZero, leftNotZero));
+    GateRef condition = LogicOrBuilder(&env)
+        .Or(builder_.Int32GreaterThan(right, builder_.Int32(0)))
+        .Or(builder_.BitAnd(builder_.Int32LessThan(right, builder_.Int32(0)),
+                            builder_.Int32NotEqual(left, builder_.Int32(0))))
+        .Done();
     builder_.DeoptCheck(condition, frameState, DeoptType::DIVZERO2);
     result = builder_.BinaryArithmetic(circuit_->Sdiv(), MachineType::I32, left, right, GateType::NJSValue());
     GateRef truncated = builder_.BinaryArithmetic(circuit_->Mul(),
@@ -1307,9 +1310,9 @@ void MCRLowering::LowerIsCallableCheck(GateRef gate)
     Environment env(gate, circuit_, &builder_);
     GateRef func = acc_.GetValueIn(gate, 0);
     GateRef frameState = acc_.GetFrameState(gate);
-    GateRef isHeapObject = builder_.TaggedIsHeapObject(func);
-    GateRef callable = builder_.IsCallable(func);
-    builder_.DeoptCheck(builder_.BoolAnd(isHeapObject, callable), frameState, DeoptType::NOTCALLABLE);
+    GateRef isCallable = LogicAndBuilder(&env).And(builder_.TaggedIsHeapObject(func))
+        .And(builder_.IsCallable(func)).Done();
+    builder_.DeoptCheck(isCallable, frameState, DeoptType::NOTCALLABLE);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 }  // namespace panda::ecmascript

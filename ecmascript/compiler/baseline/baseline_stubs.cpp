@@ -57,8 +57,8 @@ static constexpr uint32_t TWO_BYTE_ALL_ONE = 0xFFFF;
         varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);                                  \
         Label initialized(env);                                                                                \
         Label callRuntime(env);                                                                                \
-        BRANCH(BoolOr(TaggedIsUndefined(*varProfileTypeInfo),                                                  \
-                      Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),                   \
+        BRANCH(BitOr(TaggedIsUndefined(*varProfileTypeInfo),                                                   \
+                     Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),                    \
             &callRuntime, &initialized);                                                                       \
         Bind(&callRuntime);                                                                                    \
         if (!(callback).IsEmpty()) {                                                                           \
@@ -118,13 +118,14 @@ CallSignature BaselineStubCSigns::callSigns_[BaselineStubCSigns::NUM_OF_STUBS];
     METHOD_ENTRY_ENV_DEFINED(func)
 
 #define METHOD_EXIT()                                                                             \
-    GateRef isDebugModeOffset = IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())); \
-    GateRef isDebugMode = Load(VariableType::BOOL(), glue, isDebugModeOffset);                    \
-    GateRef isTracingOffset = IntPtr(JSThread::GlueData::GetIsTracingOffset(env->Is32Bit()));     \
-    GateRef isTracing = Load(VariableType::BOOL(), glue, isTracingOffset);                        \
+    auto debugModeOffset = JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit());              \
+    auto tracingOffset = JSThread::GlueData::GetIsTracingOffset(env->Is32Bit());                  \
     Label NeedCallRuntimeTrue(env);                                                               \
     Label NeedCallRuntimeFalse(env);                                                              \
-    Branch(BoolOr(isDebugMode, isTracing), &NeedCallRuntimeTrue, &NeedCallRuntimeFalse);          \
+    Branch(LogicOrBuilder(env)                                                                    \
+        .Or(Load(VariableType::BOOL(), glue, IntPtr(debugModeOffset)))                            \
+        .Or(Load(VariableType::BOOL(), glue, IntPtr(tracingOffset)))                              \
+        .Done(), &NeedCallRuntimeTrue, &NeedCallRuntimeFalse);                                    \
     Bind(&NeedCallRuntimeTrue);                                                                   \
     {                                                                                             \
         CallRuntime(glue, RTSTUB_ID(MethodExit), {});                                             \
@@ -1698,7 +1699,8 @@ void BaselineSupercallspreadImm8V8StubBuilder::GenerateCircuit()
     }
     Bind(&threadCheck);
     {
-        GateRef isError = BoolAnd(TaggedIsException(*res), HasPendingException(glue));
+        GateRef resVal = *res;
+        GateRef isError = LogicAndBuilder(env).And(TaggedIsException(resVal)).And(HasPendingException(glue)).Done();
         Branch(isError, &isException, &dispatch);
     }
     Bind(&isException);
@@ -3351,11 +3353,13 @@ void BaselineReturnStubBuilder::GenerateCircuit()
     BRANCH(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        GateRef func = GetFunctionFromFrame(frame);
-        GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
-        GateRef isJitCompiled =
-            ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, func, *varProfileTypeInfo, callback);
-        BRANCH(BoolAnd(isProfileDumped, isJitCompiled), &tryContinue, &updateHotness);
+        GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
+        GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
+            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
+            .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(
+                glue, GetFunctionFromFrame(frame), varProfileTypeInfoVal, callback))
+            .Done();
+        BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -5430,7 +5434,7 @@ void BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8StubBuilder::GenerateCircu
     GateRef v1 = Int32Argument(PARAM_INDEX(BaselineCallRuntimeDefineFieldByValuePrefImm8V8V8, V1));
     GateRef obj = GetVregValue(sp, ZExtInt8ToPtr(v1));
     GateRef propKey = GetVregValue(sp, ZExtInt8ToPtr(v0));
-    
+
     GateRef res = DefineField(glue, obj, propKey, acc);
     CHECK_EXCEPTION_WITH_ACC(res);
 }
@@ -5624,11 +5628,13 @@ void BaselineReturnundefinedStubBuilder::GenerateCircuit()
     BRANCH(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        GateRef func = GetFunctionFromFrame(frame);
-        GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
-        GateRef isJitCompiled =
-            ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, func, *varProfileTypeInfo, callback);
-        BRANCH(BoolAnd(isProfileDumped, isJitCompiled), &tryContinue, &updateHotness);
+        GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
+        GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
+            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
+            .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(
+                glue, GetFunctionFromFrame(frame), varProfileTypeInfoVal, callback))
+            .Done();
+        BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -5877,23 +5883,18 @@ void BaselineUpdateHotnessStubBuilder::GenerateCircuit()
         varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);
         Label initialized(env);
         Label callRuntime(env);
-        BRANCH(BoolOr(TaggedIsUndefined(*varProfileTypeInfo),
-                      Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),
+        BRANCH(BitOr(TaggedIsUndefined(*varProfileTypeInfo),
+                     Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),
             &callRuntime, &initialized);
         Bind(&callRuntime);
         varProfileTypeInfo = CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { func });
 
         Label handleException(env);
-        Label noException(env);
-        BRANCH(HasPendingException(glue), &handleException, &noException);
+        BRANCH(HasPendingException(glue), &handleException, &exitLabel);
         Bind(&handleException);
         {
             DISPATCH_LAST();
             Return();
-        }
-        Bind(&noException);
-        {
-            Jump(&exitLabel);
         }
         Bind(&initialized);
         ProfilerStubBuilder profiler(this);

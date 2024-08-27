@@ -106,7 +106,7 @@ void BuiltinsNumberStubBuilder::IsFinite(Variable *result, Label *exit, Label *s
         Bind(&isDouble);
         {
             GateRef f = GetDoubleOfTDouble(number);
-            BRANCH(BoolOr(DoubleIsNAN(f), DoubleIsINF(f)), &retFalse, &retTrue);
+            BRANCH(DoubleIsNanOrInf(f), &retFalse, &retTrue);
         }
     }
 
@@ -213,7 +213,7 @@ void BuiltinsNumberStubBuilder::IsSafeInteger(Variable *result, Label *exit, Lab
         {
             Label isNotNanOrInf(env);
             GateRef f = GetDoubleOfTDouble(number);
-            BRANCH(BoolOr(DoubleIsNAN(f), DoubleIsINF(f)), &retFalse, &isNotNanOrInf);
+            BRANCH(DoubleIsNanOrInf(f), &retFalse, &isNotNanOrInf);
             Bind(&isNotNanOrInf);
             {
                 Label checkSafe(env);
@@ -336,8 +336,8 @@ void BuiltinsNumberStubBuilder::ToString(Variable *result, Label *exit, Label *s
         Label throwError(env);
         Label notThrowError(env);
         GateRef msgValue = GetInt32OfTInt(msg);
-        GateRef outOfRange = BoolOr(Int32LessThan(msgValue, Int32(base::MIN_RADIX)),
-                                    Int32GreaterThan(msgValue, Int32(base::MAX_RADIX)));
+        GateRef outOfRange = BitOr(Int32LessThan(msgValue, Int32(base::MIN_RADIX)),
+                                   Int32GreaterThan(msgValue, Int32(base::MAX_RADIX)));
         BRANCH(outOfRange, &throwError, &notThrowError);
         Bind(&throwError);
         {

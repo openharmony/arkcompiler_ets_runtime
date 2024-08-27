@@ -416,11 +416,11 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
     GateRef receiverHClass = builder_.LoadHClass(receiver);
-    GateRef rootHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex);
-    GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex);
-    GateRef check1 = builder_.Equal(receiverHClass, rootHclass);
-    GateRef check2 = builder_.Equal(receiverHClass, rootOnHeapHclass);
-    builder_.DeoptCheck(builder_.BoolOr(check1, check2), frameState, deoptType);
+    GateRef check = LogicOrBuilder(&env)
+        .Or(builder_.Equal(receiverHClass, builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex)))
+        .Or(builder_.Equal(receiverHClass, builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex)))
+        .Done();
+    builder_.DeoptCheck(check, frameState, deoptType);
 
     OnHeapMode onHeapMode = accessor.GetOnHeapMode();
     if (accessor.IsAccessElement() && !OnHeap::IsNone(onHeapMode)) {
@@ -606,12 +606,11 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
             auto arrayHClassIndexMap = compilationEnv_->GetArrayHClassIndexMap();
             auto iter = arrayHClassIndexMap.find(kind);
             ASSERT(iter != arrayHClassIndexMap.end());
-            GateRef initialIhcAddress = builder_.GetGlobalConstantValue(iter->second.first);
-            GateRef initialIhcWithProtoAddress = builder_.GetGlobalConstantValue(iter->second.second);
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
-            GateRef tryIhcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
-            GateRef tryIhcWithProtoMatches = builder_.Equal(receiverHClass, initialIhcWithProtoAddress);
-            ihcMatches = builder_.BoolOr(tryIhcMatches, tryIhcWithProtoMatches);
+            ihcMatches = LogicOrBuilder(env)
+                .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(iter->second.first)))
+                .Or(builder_.Equal(receiverHClass, builder_.GetGlobalConstantValue(iter->second.second)))
+                .Done();
         } else {
             GateRef receiverHClass = builder_.LoadHClassByConstOffset(receiver);
             GateRef elementsKind = builder_.GetElementsKindByHClass(receiverHClass);
@@ -625,10 +624,11 @@ void TypedHCRLowering::BuiltinInstanceHClassCheck(Environment *env, GateRef gate
         if (IsTypedArrayType(type)) {
              // check IHC onHeap hclass
             size_t ihcOnHeapOffset = JSThread::GlueData::GetBuiltinExtraHClassOffset(type, env->IsArch32Bit());
-            GateRef initialIhcOnHeapAddress = builder_.LoadConstOffset(VariableType::JS_POINTER(),
-                                                                       glue, ihcOnHeapOffset);
-            ihcMatches = builder_.Int64Or(builder_.Equal(receiverHClass, initialIhcAddress),
-                                          builder_.Equal(receiverHClass, initialIhcOnHeapAddress));
+            ihcMatches = LogicOrBuilder(env)
+                .Or(builder_.Equal(receiverHClass, initialIhcAddress))
+                .Or(builder_.Equal(receiverHClass,
+                                   builder_.LoadConstOffset(VariableType::JS_POINTER(), glue, ihcOnHeapOffset)))
+                .Done();
         } else {
             ihcMatches = builder_.Equal(receiverHClass, initialIhcAddress);
         }
@@ -1580,9 +1580,10 @@ void TypedHCRLowering::LowerJSInlineTargetTypeCheck(GateRef gate)
     GateRef frameState = GetFrameState(gate);
     auto func = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(func, frameState);
-    GateRef isJsFunc = builder_.IsJSFunction(func);
-    GateRef GetMethodId = builder_.GetMethodId(func);
-    GateRef check = builder_.BoolAnd(isJsFunc, builder_.Equal(GetMethodId, acc_.GetValueIn(gate, 1)));
+    GateRef check = LogicAndBuilder(&env)
+        .And(builder_.IsJSFunction(func))
+        .And(builder_.Equal(builder_.GetMethodId(func), acc_.GetValueIn(gate, 1)))
+        .Done();
     builder_.DeoptCheck(check, frameState, DeoptType::INLINEFAIL1);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
@@ -1773,10 +1774,10 @@ void TypedHCRLowering::LowerPrototypeCheck(GateRef gate)
     auto protoHClass = builder_.LoadHClass(prototype);
     auto marker = builder_.LoadConstOffset(VariableType::JS_ANY(), protoHClass, JSHClass::PROTO_CHANGE_MARKER_OFFSET);
     builder_.DeoptCheck(builder_.TaggedIsNotNull(marker), frameState, DeoptType::PROTOTYPECHANGED1);
-    auto prototypeHasChanged = builder_.GetHasChanged(marker);
-    auto accessorHasChanged = builder_.GetAccessorHasChanged(marker);
-    auto check = builder_.BoolAnd(builder_.BoolNot(prototypeHasChanged), builder_.BoolNot(accessorHasChanged));
-
+    auto check = LogicAndBuilder(&env)
+        .And(builder_.BoolNot(builder_.GetHasChanged(marker)))
+        .And(builder_.BoolNot(builder_.GetAccessorHasChanged(marker)))
+        .Done();
     builder_.DeoptCheck(check, frameState, DeoptType::INLINEFAIL2);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
     return;
@@ -1851,7 +1852,7 @@ void TypedHCRLowering::LowerStringAdd(GateRef gate, GateRef glue)
                     builder_.Int32Mul(newLength, builder_.Int32(LineEcmaString::INIT_LENGTH_TIMES));
                 GateRef leftIsUtf8 = builder_.IsUtf8String(left);
                 GateRef rightIsUtf8 = builder_.IsUtf8String(right);
-                GateRef canBeCompressed = builder_.BoolAnd(leftIsUtf8, rightIsUtf8);
+                GateRef canBeCompressed = builder_.BitAnd(leftIsUtf8, rightIsUtf8);
                 GateRef isValidFirstOpt = builder_.Equal(leftIsUtf8, rightIsUtf8);
                 GateRef isValidOpt = builder_.Equal(leftIsUtf8, rightIsUtf8);
                 if (!IsFirstConcatInStringAdd(gate)) {
@@ -2320,7 +2321,7 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
             GateRef intLen = builder_.GetInt64OfTInt(arg0);
             GateRef isGEZero = builder_.Int64GreaterThanOrEqual(intLen, builder_.Int64(0));
             GateRef isLEMaxLen = builder_.Int64LessThanOrEqual(intLen, builder_.Int64(JSArray::MAX_ARRAY_INDEX));
-            BRANCH_CIR(builder_.BoolAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
+            BRANCH_CIR(builder_.BitAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
             builder_.Bind(&validIntLength);
             {
                 arrayLength = intLen;
@@ -2337,7 +2338,7 @@ void TypedHCRLowering::LowerArrayConstructor(GateRef gate, GateRef glue)
             GateRef doubleEqual = builder_.DoubleEqual(doubleLength, intToDouble);
             GateRef doubleLEMaxLen =
                 builder_.DoubleLessThanOrEqual(doubleLength, builder_.Double(JSArray::MAX_ARRAY_INDEX));
-            BRANCH_CIR(builder_.BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
+            BRANCH_CIR(builder_.BitAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
             builder_.Bind(&validDoubleLength);
             {
                 arrayLength = builder_.SExtInt32ToInt64(doubleToInt);
@@ -2417,7 +2418,7 @@ void TypedHCRLowering::ConvertFloat32ArrayConstructorLength(GateRef len, Variabl
             GateRef intLen = builder_.GetInt64OfTInt(len);
             GateRef isGEZero = builder_.Int64GreaterThanOrEqual(intLen, builder_.Int64(0));
             GateRef isLEMaxLen = builder_.Int64LessThanOrEqual(intLen, builder_.Int64(JSObject::MAX_GAP));
-            BRANCH_CIR(builder_.BoolAnd(isGEZero, isLEMaxLen), &validIntLength, slowPath);
+            BRANCH_CIR(builder_.BitAnd(isGEZero, isLEMaxLen), &validIntLength, slowPath);
             builder_.Bind(&validIntLength);
             {
                 *arrayLength = intLen;
@@ -2434,7 +2435,7 @@ void TypedHCRLowering::ConvertFloat32ArrayConstructorLength(GateRef len, Variabl
             GateRef doubleEqual = builder_.DoubleEqual(doubleLength, intToDouble);
             GateRef doubleLEMaxLen =
                 builder_.DoubleLessThanOrEqual(doubleLength, builder_.Double(JSObject::MAX_GAP));
-            BRANCH_CIR(builder_.BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, slowPath);
+            BRANCH_CIR(builder_.BitAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, slowPath);
             builder_.Bind(&validDoubleLength);
             {
                 *arrayLength = builder_.SExtInt32ToInt64(doubleToInt);
@@ -3424,16 +3425,13 @@ void TypedHCRLowering::LowerMigrateArrayWithKind(GateRef gate)
     Label doMigration(&builder_);
     Label migrateFromInt(&builder_);
     Label migrateOtherKinds(&builder_);
-    GateRef oldKindIsInt = builder_.Int32Equal(oldKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::INT)));
-    GateRef newKindIsHoleInt = builder_.Int32Equal(newKind,
-                                                   builder_.Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
-    GateRef oldKindIsNum = builder_.Int32Equal(oldKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
-    GateRef newKindIsHoleNum = builder_.Int32Equal(newKind,
-                                                   builder_.Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
-    GateRef isTransitToHoleKind = builder_.BoolOr(builder_.BoolAnd(oldKindIsInt, newKindIsHoleInt),
-                                                  builder_.BoolAnd(oldKindIsNum, newKindIsHoleNum));
-    GateRef sameKinds = builder_.Int32Equal(oldKind, newKind);
-    GateRef noNeedMigration = builder_.BoolOr(sameKinds, isTransitToHoleKind);
+    GateRef noNeedMigration = LogicOrBuilder(&env)
+        .Or(builder_.Int32Equal(oldKind, newKind))
+        .Or(builder_.BitAnd(builder_.Int32Equal(oldKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::INT))),
+            builder_.Int32Equal(newKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)))))
+        .Or(builder_.BitAnd(builder_.Int32Equal(oldKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::NUMBER))),
+            builder_.Int32Equal(newKind, builder_.Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)))))
+        .Done();
     BRANCH_CIR(noNeedMigration, &exit, &doMigration);
     builder_.Bind(&doMigration);
 

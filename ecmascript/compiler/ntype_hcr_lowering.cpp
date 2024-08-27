@@ -149,7 +149,7 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     GateRef argv = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGV);
     DEFVALUE(actualArgv, (&builder_), VariableType::NATIVE_POINTER(), argv);
     GateRef startIdx = acc_.GetValueIn(gate, 0);
-    GateRef check = builder_.BoolAnd(builder_.Equal(actualArgc, expectedArgc),
+    GateRef check = builder_.BitAnd(builder_.Equal(actualArgc, expectedArgc),
         builder_.Equal(builder_.IntPtr(0), *actualArgv));
     Label calcActualArgv(&builder_);
     Label exit(&builder_);

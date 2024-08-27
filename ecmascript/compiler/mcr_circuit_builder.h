@@ -39,7 +39,7 @@ GateRef CircuitBuilder::TaggedIsDouble(GateRef x)
     x = Int64And(x, Int64(JSTaggedValue::TAG_MARK));
     auto left = NotEqual(x, Int64(JSTaggedValue::TAG_INT));
     auto right = NotEqual(x, Int64(JSTaggedValue::TAG_OBJECT));
-    return BoolAnd(left, right);
+    return BitAnd(left, right);
 }
 
 GateRef CircuitBuilder::TaggedIsObject(GateRef x)
@@ -56,13 +56,13 @@ GateRef CircuitBuilder::TaggedIsNumber(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsNumeric(GateRef x)
 {
-    return BoolOr(TaggedIsNumber(x), TaggedIsBigInt(x));
+    return LogicOrBuilder(env_).Or(TaggedIsNumber(x)).Or(TaggedIsBigInt(x)).Done();
 }
 
 GateRef CircuitBuilder::TaggedObjectIsString(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    return BoolAnd(
+    return BitAnd(
         Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::STRING_LAST))),
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::STRING_FIRST))));
 }
@@ -76,15 +76,10 @@ GateRef CircuitBuilder::TaggedObjectIsShared(GateRef obj)
         Int32(0));
 }
 
-GateRef CircuitBuilder::TaggedObjectBothAreString(GateRef x, GateRef y)
-{
-    return BoolAnd(TaggedObjectIsString(x), TaggedObjectIsString(y));
-}
-
 GateRef CircuitBuilder::TaggedObjectIsEcmaObject(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    return BoolAnd(
+    return BitAnd(
         Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_LAST))),
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::ECMA_OBJECT_FIRST))));
 }
@@ -295,8 +290,8 @@ GateRef CircuitBuilder::TaggedObjectIsJSDate(GateRef obj)
 GateRef CircuitBuilder::TaggedObjectIsTypedArray(GateRef obj)
 {
     GateRef jsType = GetObjectType(LoadHClass(obj));
-    return BoolAnd(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
-                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
+    return BitAnd(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+                  Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
 }
 
 GateRef CircuitBuilder::TaggedObjectIsJSArray(GateRef obj)
@@ -344,26 +339,8 @@ inline GateRef CircuitBuilder::JudgeAotAndFastCall(GateRef jsFunc, JudgeMethodTy
 
 GateRef CircuitBuilder::BothAreString(GateRef x, GateRef y)
 {
-    Label subentry(env_);
-    SubCfgEntry(&subentry);
-    Label bothAreHeapObjet(env_);
-    Label bothAreStringType(env_);
-    Label exit(env_);
-    DEFVALUE(result, env_, VariableType::BOOL(), False());
-    BRANCH_CIR2(BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y)), &bothAreHeapObjet, &exit);
-    Bind(&bothAreHeapObjet);
-    {
-        BRANCH_CIR2(TaggedObjectBothAreString(x, y), &bothAreStringType, &exit);
-        Bind(&bothAreStringType);
-        {
-            result = True();
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(TaggedIsHeapObject(y))
+        .And(TaggedObjectIsString(x)).And(TaggedObjectIsString(y)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsHole(GateRef x)
@@ -403,10 +380,11 @@ GateRef CircuitBuilder::TaggedIsException(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsSpecial(GateRef x)
 {
-    return BoolOr(
-        Equal(Int64And(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::TAG_SPECIAL_MASK)),
-            Int64(JSTaggedValue::TAG_SPECIAL)),
-        TaggedIsHole(x));
+    return LogicOrBuilder(env_)
+        .Or(TaggedIsHole(x))
+        .Or(Equal(Int64And(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::TAG_SPECIAL_MASK)),
+                  Int64(JSTaggedValue::TAG_SPECIAL)))
+        .Done();
 }
 
 GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
@@ -418,85 +396,55 @@ GateRef CircuitBuilder::TaggedIsHeapObject(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsAsyncGeneratorObject(GateRef x)
 {
-    GateRef isHeapObj = TaggedIsHeapObject(x);
-    GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isAsyncGeneratorObj = Equal(objType,
-        Int32(static_cast<int32_t>(JSType::JS_ASYNC_GENERATOR_OBJECT)));
-    return LogicAnd(isHeapObj, isAsyncGeneratorObj);
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::JS_ASYNC_GENERATOR_OBJECT)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsJSGlobalObject(GateRef x)
 {
-    GateRef isHeapObj = TaggedIsHeapObject(x);
-    GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isGlobal = Equal(objType,
-        Int32(static_cast<int32_t>(JSType::JS_GLOBAL_OBJECT)));
-    return LogicAnd(isHeapObj, isGlobal);
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::JS_GLOBAL_OBJECT)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsGeneratorObject(GateRef x)
 {
-    GateRef isHeapObj = TaggedIsHeapObject(x);
-    GateRef objType = GetObjectType(LoadHClass(x));
-    GateRef isAsyncGeneratorObj = Equal(objType,
-        Int32(static_cast<int32_t>(JSType::JS_GENERATOR_OBJECT)));
-    return LogicAnd(isHeapObj, isAsyncGeneratorObj);
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::JS_GENERATOR_OBJECT)).Done();
 }
 
-GateRef CircuitBuilder::TaggedIsJSArray(GateRef obj)
+GateRef CircuitBuilder::TaggedIsJSArray(GateRef x)
 {
-    Label entry(env_);
-    SubCfgEntry(&entry);
-    Label exit(env_);
-    DEFVALUE(result, env_, VariableType::BOOL(), False());
-    Label isHeapObject(env_);
-    BRANCH_CIR2(TaggedIsHeapObject(obj), &isHeapObject, &exit);
-    Bind(&isHeapObject);
-    {
-        GateRef objType = GetObjectType(LoadHClass(obj));
-        result = Equal(objType, Int32(static_cast<int32_t>(JSType::JS_ARRAY)));
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::JS_ARRAY)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsPropertyBox(GateRef x)
 {
-    return LogicAnd(TaggedIsHeapObject(x),
-        IsJsType(x, JSType::PROPERTY_BOX));
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::PROPERTY_BOX)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsWeak(GateRef x)
 {
-    return LogicAnd(TaggedIsHeapObject(x),
-        Equal(Int64And(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::TAG_WEAK)), Int64(1)));
+    return LogicAndBuilder(env_)
+        .And(TaggedIsHeapObject(x))
+        .And(Equal(Int64And(ChangeTaggedPointerToInt64(x), Int64(JSTaggedValue::TAG_WEAK)), Int64(1)))
+        .Done();
 }
 
 GateRef CircuitBuilder::TaggedIsPrototypeHandler(GateRef x)
 {
-    return LogicAnd(TaggedIsHeapObject(x),
-        IsJsType(x, JSType::PROTOTYPE_HANDLER));
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::PROTOTYPE_HANDLER)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsTransitionHandler(GateRef x)
 {
-    return LogicAnd(TaggedIsHeapObject(x),
-        IsJsType(x, JSType::TRANSITION_HANDLER));
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::TRANSITION_HANDLER)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsStoreTSHandler(GateRef x)
 {
-    return LogicAnd(TaggedIsHeapObject(x),
-        IsJsType(x, JSType::STORE_TS_HANDLER));
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::STORE_TS_HANDLER)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsTransWithProtoHandler(GateRef x)
 {
-    return LogicAnd(TaggedIsHeapObject(x),
-        IsJsType(x, JSType::TRANS_WITH_PROTO_HANDLER));
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(x)).And(IsJsType(x, JSType::TRANS_WITH_PROTO_HANDLER)).Done();
 }
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
@@ -511,7 +459,7 @@ GateRef CircuitBuilder::TaggedIsUndefinedOrNull(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrNullOrHole(GateRef x)
 {
-    return BoolOr(TaggedIsUndefinedOrNull(x), TaggedIsHole(x));
+    return BitOr(TaggedIsHole(x), TaggedIsUndefinedOrNull(x));
 }
 
 GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
@@ -526,14 +474,14 @@ GateRef CircuitBuilder::TaggedIsNotUndefinedAndNull(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsNotUndefinedAndNullAndHole(GateRef x)
 {
-    return BoolAnd(TaggedIsNotUndefinedAndNull(x), TaggedIsNotHole(x));
+    return BitAnd(TaggedIsNotHole(x), TaggedIsNotUndefinedAndNull(x));
 }
 
 GateRef CircuitBuilder::TaggedIsUndefinedOrHole(GateRef x)
 {
     GateRef isUndefined = TaggedIsUndefined(x);
     GateRef isHole = TaggedIsHole(x);
-    GateRef result = BoolOr(isHole, isUndefined);
+    GateRef result = BitOr(isHole, isUndefined);
     return result;
 }
 
@@ -569,7 +517,7 @@ GateRef CircuitBuilder::TaggedIsNotNull(GateRef x)
 
 GateRef CircuitBuilder::TaggedIsBoolean(GateRef x)
 {
-    return BoolOr(TaggedIsFalse(x), TaggedIsTrue(x));
+    return BitOr(TaggedIsFalse(x), TaggedIsTrue(x));
 }
 
 GateRef CircuitBuilder::TaggedGetInt(GateRef x)
