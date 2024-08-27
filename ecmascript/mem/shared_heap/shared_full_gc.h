@@ -47,7 +47,7 @@ private:
     void UpdateRecordWeakReference();
     bool HasEvacuated(Region *region);
 
-    SharedHeap *sHeap_  {nullptr};
+    SharedHeap *sHeap_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
     bool isAppspawn_ {false};
 };

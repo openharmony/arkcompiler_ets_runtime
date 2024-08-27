@@ -18,21 +18,32 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/runtime_lock.h"
 namespace panda::ecmascript {
-uint32_t EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor)
+void EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor)
 {
     StartSweepWeakRefTask();
-    uint32_t curSweepCount = sweepWeakRefCount_.load(std::memory_order_relaxed);
-    GCWorkerPool::GetCurrentTaskpool()->PostTask(std::make_unique<SweepWeakRefTask>(this, visitor, curSweepCount));
-    return curSweepCount;
+    iter_ = std::make_shared<std::atomic<uint32_t>>(0U);
+    const uint32_t postTaskCount = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum();
+    for (uint32_t i = 0U; i < postTaskCount; ++i) {
+        GCWorkerPool::GetCurrentTaskpool()->PostTask(std::make_unique<SweepWeakRefTask>(iter_, this, visitor));
+    }
 }
 
-void EcmaStringTableCleaner::TakeOrWaitSweepWeakRefTask(const WeakRootVisitor &visitor, uint32_t curSweepCount)
+void EcmaStringTableCleaner::JoinAndWaitSweepWeakRefTask(const WeakRootVisitor &visitor)
 {
-    if (CheckAndSwitchRunningState(curSweepCount)) {
-        stringTable_->SweepWeakRef(visitor);
-        SwitchFinishState(curSweepCount);
-    } else {
-        WaitSweepWeakRefTask();
+    ProcessSweepWeakRef(iter_, this, visitor);
+    WaitSweepWeakRefTask();
+    iter_.reset();
+}
+
+void EcmaStringTableCleaner::ProcessSweepWeakRef(IteratorPtr& iter, EcmaStringTableCleaner *cleaner,
+                                                 const WeakRootVisitor &visitor)
+{
+    uint32_t tableId = 0U;
+    while ((tableId = GetNextTableId(iter)) < EcmaStringTable::SEGMENT_COUNT) {
+        cleaner->stringTable_->SweepWeakRef(visitor, tableId);
+        if (ReduceCountAndCheckFinish(cleaner)) {
+            cleaner->SignalSweepWeakRefTask();
+        }
     }
 }
 
@@ -40,6 +51,7 @@ void EcmaStringTableCleaner::StartSweepWeakRefTask()
 {
     // No need lock here, only the daemon thread will reset the state.
     sweepWeakRefFinished_ = false;
+    PendingTaskCount_.store(EcmaStringTable::SEGMENT_COUNT, std::memory_order_relaxed);
 }
 
 void EcmaStringTableCleaner::WaitSweepWeakRefTask()
@@ -59,11 +71,7 @@ void EcmaStringTableCleaner::SignalSweepWeakRefTask()
 
 bool EcmaStringTableCleaner::SweepWeakRefTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    if (cleaner_->CheckAndSwitchRunningState(curSweepCount_)) {
-        cleaner_->stringTable_->SweepWeakRef(visitor_);
-        cleaner_->SwitchFinishState(curSweepCount_);
-        cleaner_->SignalSweepWeakRefTask();
-    }
+    ProcessSweepWeakRef(iter_, cleaner_, visitor_);
     return true;
 }
 
@@ -478,21 +486,28 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const ui
 void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor)
 {
     // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
-    for (auto &[table, _] : stringTable_) {
-        for (auto it = table.begin(); it != table.end();) {
-            auto *object = it->second;
-            auto fwd = visitor(object);
-            ASSERT(Region::ObjectAddressToRange(object)->InSharedHeap());
-            if (fwd == nullptr) {
-                LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;
-                it = table.erase(it);
-            } else if (fwd != object) {
-                it->second = static_cast<EcmaString *>(fwd);
-                ++it;
-                LOG_ECMA(VERBOSE) << "StringTable: forward " << std::hex << object << " -> " << fwd;
-            } else {
-                ++it;
-            }
+    for (uint32_t tableId = 0; tableId < stringTable_.size(); ++tableId) {
+        SweepWeakRef(visitor, tableId);
+    }
+}
+
+void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t tableId)
+{
+    ASSERT(tableId >= 0 && tableId < stringTable_.size());
+    auto &table = stringTable_[tableId].table_;
+    for (auto it = table.begin(); it != table.end();) {
+        auto *object = it->second;
+        auto fwd = visitor(object);
+        ASSERT(Region::ObjectAddressToRange(object)->InSharedHeap());
+        if (fwd == nullptr) {
+            LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;
+            it = table.erase(it);
+        } else if (fwd != object) {
+            it->second = static_cast<EcmaString *>(fwd);
+            ++it;
+            LOG_ECMA(VERBOSE) << "StringTable: forward " << std::hex << object << " -> " << fwd;
+        } else {
+            ++it;
         }
     }
 }
