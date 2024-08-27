@@ -56,3 +56,14 @@ f();
 ArkTools.forceFullGC();
 f();
 ArkTools.forceFullGC();
+
+function SendableArrayBufferTest() {
+    try {
+        const o1 = {};
+        const v3 = new Proxy(SendableArrayBuffer, o1);
+        new v3();
+    } catch (error) {
+        print(error);
+    }
+}
+SendableArrayBufferTest()

@@ -231,9 +231,9 @@ JSTaggedValue BuiltinsSendableArrayBuffer::AllocateSendableArrayBuffer(
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     JSHandle<JSTaggedValue> arrBufFunc = env->GetSBuiltininArrayBufferFunction();
     JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(arrBufFunc), newTarget);
-    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
     // 2. ReturnIfAbrupt
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    ASSERT(obj.GetTaggedValue().IsInSharedHeap());
     // 4. Let block be CreateByteDataBlock(byteLength).
     if (byteLength > INT_MAX) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Out of range", JSTaggedValue::Exception());
