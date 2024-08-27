@@ -182,8 +182,8 @@ GateRef CircuitBuilder::IsJsCOWArray(GateRef obj)
 
 GateRef CircuitBuilder::IsCOWArray(GateRef objectType)
 {
-    return BoolOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY))),
-                  Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_MUTANT_TAGGED_ARRAY))));
+    return BitOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_TAGGED_ARRAY))),
+                 Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_MUTANT_TAGGED_ARRAY))));
 }
 
 GateRef CircuitBuilder::IsTaggedArray(GateRef object)
@@ -194,8 +194,8 @@ GateRef CircuitBuilder::IsTaggedArray(GateRef object)
 
 GateRef CircuitBuilder::IsMutantTaggedArray(GateRef objectType)
 {
-    return BoolOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY))),
-                  Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_MUTANT_TAGGED_ARRAY))));
+    return BitOr(Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::MUTANT_TAGGED_ARRAY))),
+                 Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::COW_MUTANT_TAGGED_ARRAY))));
 }
 
 GateRef CircuitBuilder::GetElementsArray(GateRef object)
@@ -228,8 +228,8 @@ GateRef CircuitBuilder::IsTypedArray(GateRef array)
 {
     GateRef hclass = LoadHClass(array);
     GateRef type = GetObjectType(hclass);
-    return BoolAnd(Int32GreaterThan(type, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
-                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), type));
+    return BitAnd(Int32GreaterThan(type, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
+                  Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), type));
 }
 
 void CircuitBuilder::Jump(Label *label)
@@ -750,20 +750,7 @@ GateRef CircuitBuilder::IsOnHeap(GateRef hClass)
 
 GateRef CircuitBuilder::IsEcmaObject(GateRef obj)
 {
-    Label entryPass(env_);
-    SubCfgEntry(&entryPass);
-    DEFVALUE(result, env_, VariableType::BOOL(), False());
-    Label heapObj(env_);
-    Label exit(env_);
-    GateRef isHeapObject = TaggedIsHeapObject(obj);
-    BRANCH_CIR2(isHeapObject, &heapObj, &exit);
-    Bind(&heapObj);
-    result = LogicAnd(isHeapObject, TaggedObjectIsEcmaObject(obj));
-    Jump(&exit);
-    Bind(&exit);
-    auto ret = *result;
-    SubCfgExit();
-    return ret;
+    return LogicAndBuilder(env_).And(TaggedIsHeapObject(obj)).And(TaggedObjectIsEcmaObject(obj)).Done();
 }
 
 GateRef CircuitBuilder::CheckJSType(GateRef object, JSType jsType)
@@ -778,8 +765,7 @@ GateRef CircuitBuilder::CheckJSType(GateRef object, JSType jsType)
     Bind(&heapObj);
     {
         GateRef objectType = GetObjectType(LoadHClass(object));
-        GateRef checkType = Int32Equal(objectType, Int32(static_cast<int32_t>(jsType)));
-        result = LogicAnd(isHeapObject, checkType);
+        result = Int32Equal(objectType, Int32(static_cast<int32_t>(jsType)));
         Jump(&exit);
     }
     Bind(&exit);
@@ -819,7 +805,7 @@ GateRef CircuitBuilder::GetObjectFromConstPool(GateRef glue, GateRef hirGate, Ga
     }
     Bind(&unshareCpMiss);
     DEFVALUE(result, env_, VariableType::JS_ANY(), *cacheValue);
-    BRANCH_CIR2(BoolOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
+    BRANCH_CIR2(BitOr(TaggedIsHole(*result), TaggedIsNullPtr(*result)), &cacheMiss, &cache);
     Bind(&cacheMiss);
     {
         if (type == ConstPoolType::STRING) {
@@ -1028,21 +1014,21 @@ GateRef CircuitBuilder::ElementsKindIsIntOrHoleInt(GateRef kind)
 {
     GateRef kindIsInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::INT)));
     GateRef kindIsHoleInt = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_INT)));
-    return BoolOr(kindIsInt, kindIsHoleInt);
+    return BitOr(kindIsInt, kindIsHoleInt);
 }
 
 GateRef CircuitBuilder::ElementsKindIsNumOrHoleNum(GateRef kind)
 {
     GateRef kindIsNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::NUMBER)));
     GateRef kindIsHoleNum = Int32Equal(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE_NUMBER)));
-    return BoolOr(kindIsNum, kindIsHoleNum);
+    return BitOr(kindIsNum, kindIsHoleNum);
 }
 
 GateRef CircuitBuilder::ElementsKindIsHeapKind(GateRef kind)
 {
     GateRef overString = Int32GreaterThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::STRING)));
     GateRef isHoleOrNone = Int32LessThanOrEqual(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE)));
-    return BoolOr(overString, isHoleOrNone);
+    return BitOr(overString, isHoleOrNone);
 }
 
 GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)

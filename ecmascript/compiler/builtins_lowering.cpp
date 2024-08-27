@@ -76,9 +76,7 @@ GateRef BuiltinLowering::TypedLocaleCompare(GateRef glue, GateRef gate, GateRef 
     Label exit(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
 
-    GateRef thisIsString = builder_.TaggedIsString(thisObj);
-    GateRef thatIsString = builder_.TaggedIsString(thatObj);
-    GateRef isString = builder_.BoolAnd(thisIsString, thatIsString);
+    GateRef isString = builder_.BothAreString(thisObj, thatObj);
     builder_.Branch(isString, &fastPath, &slowPath);
     builder_.Bind(&fastPath);
     {
@@ -325,12 +323,11 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithDetector(GateRef gate, Builtins
         }
     }
     GateRef obj = acc_.GetValueIn(gate, 2);  // 2: iterator obj
-    GateRef check1 =  builder_.BoolAnd(
-        builder_.TaggedIsHeapObjectOp(obj), builder_.IsSpecificObjectType(obj, expectType));
-    GateRef glueGlobalEnv = builder_.GetGlobalEnv();
-    GateRef markerCell = builder_.GetGlobalEnvObj(glueGlobalEnv, detectorIndex);
-    GateRef check2 = builder_.BoolAnd(check1, builder_.IsMarkerCellValid(markerCell));
-    return check2;
+    return LogicAndBuilder(builder_.GetCurrentEnvironment())
+        .And(builder_.TaggedIsHeapObjectOp(obj))
+        .And(builder_.IsSpecificObjectType(obj, expectType))
+        .And(builder_.IsMarkerCellValid(builder_.GetGlobalEnvObj(builder_.GetGlobalEnv(), detectorIndex)))
+        .Done();
 }
 
 GateRef BuiltinLowering::LowerCallTargetCheckWithObjectType(GateRef gate, BuiltinsStubCSigns::ID id)
@@ -361,26 +358,11 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithObjectType(GateRef gate, Builti
         }
     }
     GateRef obj = acc_.GetValueIn(gate, 2);  // 2: receiver obj
-
-    auto env = builder_.GetCurrentEnvironment();
-    Label entry(&builder_);
-    env->SubCfgEntry(&entry);
-
-    DEFVALUE(result, (&builder_), VariableType::BOOL(), builder_.False());
-    Label heapObject(&builder_);
-    Label exit(&builder_);
-    BRANCH_CIR(builder_.TaggedIsHeapObjectOp(obj), &heapObject, &exit);
-    builder_.Bind(&heapObject);
-    {
-        GateRef check1 = builder_.IsSpecificObjectType(obj, expectType);
-        GateRef check2 = LowerCallTargetCheckDefault(gate, id);
-        result = builder_.BoolAnd(check1, check2);
-        builder_.Jump(&exit);
-    }
-    builder_.Bind(&exit);
-    auto res = *result;
-    env->SubCfgExit();
-    return res;
+    return LogicAndBuilder(builder_.GetCurrentEnvironment())
+        .And(builder_.TaggedIsHeapObjectOp(obj))
+        .And(builder_.IsSpecificObjectType(obj, expectType))
+        .And(LowerCallTargetCheckDefault(gate, id))
+        .Done();
 }
 
 GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)

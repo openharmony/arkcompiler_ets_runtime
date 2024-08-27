@@ -223,14 +223,8 @@ public:
     GateRef Int8Xor(GateRef x, GateRef y);
     GateRef Int32And(GateRef x, GateRef y);
     GateRef IntPtrAnd(GateRef x, GateRef y);
-    GateRef BoolAnd(GateRef x, GateRef y);
-    GateRef BoolOr(GateRef x, GateRef y);
-#define SHORTCUT_BOOLAND(first, second)                                    \
-ShortcutBoolAnd([&]{ return first; }, [&]{ return second; })
-    GateRef ShortcutBoolAnd(const std::function<GateRef()>& first, const std::function<GateRef()>& second);
-#define SHORTCUT_BOOLOR(first, second)                                    \
-ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
-    GateRef ShortcutBoolOr(const std::function<GateRef()>& first, const std::function<GateRef()>& second);
+    GateRef BitAnd(GateRef x, GateRef y);
+    GateRef BitOr(GateRef x, GateRef y);
     GateRef Int32Not(GateRef x);
     GateRef IntPtrNot(GateRef x);
     GateRef BoolNot(GateRef x);
@@ -292,11 +286,13 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetNextPositionForHash(GateRef last, GateRef count, GateRef size);
     GateRef DoubleIsNAN(GateRef x);
     GateRef DoubleIsINF(GateRef x);
+    GateRef DoubleIsNanOrInf(GateRef x);
     GateRef DoubleAbs(GateRef x);
     GateRef DoubleIsInteger(GateRef x);
     GateRef DoubleTrunc(GateRef x);
     GateRef TaggedIsNull(GateRef x);
     GateRef TaggedIsUndefinedOrNull(GateRef x);
+    GateRef TaggedIsUndefinedOrNullOrHole(GateRef x);
     GateRef TaggedIsTrue(GateRef x);
     GateRef TaggedIsFalse(GateRef x);
     GateRef TaggedIsBoolean(GateRef x);
@@ -401,6 +397,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef IsLineString(GateRef obj);
     GateRef IsSlicedString(GateRef obj);
     GateRef IsConstantString(GateRef obj);
+    GateRef IsLiteralString(GateRef obj);
     GateRef IsTreeString(GateRef obj);
     GateRef TreeStringIsFlat(GateRef string);
     GateRef TaggedIsBigInt(GateRef obj);
@@ -876,6 +873,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     // method operator
     GateRef IsJSFunction(GateRef obj);
     GateRef IsBoundFunction(GateRef obj);
+    GateRef IsJSOrBoundFunction(GateRef obj);
     GateRef GetMethodFromJSFunctionOrProxy(GateRef jsfunc);
     GateRef IsNativeMethod(GateRef method);
     GateRef GetFuncKind(GateRef method);
