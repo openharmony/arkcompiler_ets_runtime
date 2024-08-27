@@ -27,6 +27,7 @@
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/tests/test_helper.h"
 
 using namespace panda::ecmascript;
@@ -344,5 +345,17 @@ HWTEST_F_L0(BuiltinsSetTest, GetIterator)
     JSHandle<JSSetIterator> iter2(thread, result2);
     EXPECT_TRUE(iter2->IsJSSetIterator());
     EXPECT_EQ(IterationKind::KEY_AND_VALUE, iter2->GetIterationKind());
+}
+
+HWTEST_F_L0(BuiltinsSetTest, Exception)
+{
+    JSHandle<JSTaggedValue> set(thread, CreateBuiltinsSet(thread));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(set.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    auto result = JSSharedSetIterator::CreateSetIterator(thread, set, IterationKind::KEY);
+    EXPECT_TRUE(result->IsUndefined());
+    TestHelper::TearDownFrame(thread, prev);
 }
 }  // namespace panda::test
