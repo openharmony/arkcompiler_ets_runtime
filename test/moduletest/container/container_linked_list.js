@@ -379,5 +379,9 @@ if (globalThis["ArkPrivate"] != undefined) {
        ("convertToArray = " + mList.convertToArray()) != "convertToArray = 1,2,3") {
         print("Test LinkedList fail!!!");
     }
+
+    const v1 = new LinkedList();
+    v1[2147483648] = v1;
+    print(v1.length);
 }
 export let linked_listRes = "Test LinkedList done";
