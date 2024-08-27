@@ -128,4 +128,8 @@ config("mapleallcompilecfg") {
       "-pie",
     ]
   }
+
+  if (enable_litecg_emit) {
+    defines = [ "ARK_LITECG_DEBUG" ]
+  }
 }

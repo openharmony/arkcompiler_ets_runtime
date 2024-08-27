@@ -211,9 +211,6 @@ ohos_source_set("libcgaarch64") {
       defines += [ "JIT_FORT_DISABLE" ]
     }
   }
-  if (enable_litecg_emit) {
-    defines += [ "ARK_LITECG_DEBUG" ]
-  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -224,9 +221,6 @@ ohos_source_set("libcgx8664") {
   sources = src_libcgx8664
   include_dirs = include_directories
   external_deps = [ "bounds_checking_function:libsec_static" ]
-  if (enable_litecg_emit) {
-    defines = [ "ARK_LITECG_DEBUG" ]
-  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
@@ -269,9 +263,6 @@ ohos_static_library("libcg") {
   deps = deps_libcg
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   defines = []
-  if (enable_litecg_emit) {
-    defines += [ "ARK_LITECG_DEBUG" ]
-  }
   external_deps = [ "bounds_checking_function:libsec_static" ]
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"

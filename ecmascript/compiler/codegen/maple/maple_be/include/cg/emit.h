@@ -359,6 +359,10 @@ private:
     MOperator currentMop = UINT_MAX;
     MapleUnorderedMap<int, std::string> rangeIdx2PrefixStr;
     const AsmInfo *asmInfo;
+#ifdef ARK_LITECG_DEBUG
+    uint32 arraySize = 0;
+    bool isFlexibleArray = false;
+#endif
     MapleSet<UStrIdx> stringPtr;
     MapleVector<UStrIdx> localStrPtr;
 #if 1 /* REQUIRE TO SEPERATE TARGAARCH64 TARGARM32 */

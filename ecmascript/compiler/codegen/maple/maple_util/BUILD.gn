@@ -53,9 +53,6 @@ ohos_static_library("libcommandline") {
   include_dirs = include_libcommandline
   external_deps = [ "bounds_checking_function:libsec_static" ]
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
-  if (enable_litecg_emit) {
-    defines += [ "ARK_LITECG_DEBUG" ]
-  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }
