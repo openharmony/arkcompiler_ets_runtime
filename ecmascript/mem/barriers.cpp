@@ -12,10 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/mem/barriers-inl.h"
-#include "ecmascript/mem/heap.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {

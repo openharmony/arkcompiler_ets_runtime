@@ -14,11 +14,7 @@
  */
 
 #include "ecmascript/mem/machine_code.h"
-#include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
-#include "ecmascript/stackmap/ark_stackmap.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/jit/jit.h"
 #ifdef CODE_SIGN_ENABLE
 #include "jit_buffer_integrity.h"

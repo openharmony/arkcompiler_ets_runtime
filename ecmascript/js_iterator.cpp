@@ -15,14 +15,8 @@
 
 #include "ecmascript/js_iterator.h"
 
-#include "ecmascript/accessor_data.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_symbol.h"
 #include "ecmascript/js_async_from_sync_iterator.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript {

@@ -15,11 +15,8 @@
 
 #include "ecmascript/mem/linear_space.h"
 
-#include "ecmascript/free_object.h"
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/mem/allocator-inl.h"
-#include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/mem_controller.h"
 
 namespace panda::ecmascript {

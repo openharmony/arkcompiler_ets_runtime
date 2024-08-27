@@ -15,14 +15,10 @@
 
 #include "ecmascript/js_proxy.h"
 
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 // ES6 9.5.15 ProxyCreate(target, handler)

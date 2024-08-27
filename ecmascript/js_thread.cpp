@@ -16,15 +16,10 @@
 #include "ecmascript/js_thread.h"
 
 #include "ecmascript/runtime.h"
-#include "ecmascript/builtin_entries.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/enum_conversion.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/runtime_call_id.h"
-#include "ecmascript/ts_types/builtin_type_id.h"
 
 #if !defined(PANDA_TARGET_WINDOWS) && !defined(PANDA_TARGET_MACOS) && !defined(PANDA_TARGET_IOS)
 #include <sys/resource.h>
@@ -38,17 +33,10 @@
 #endif
 #include "ecmascript/dfx/vm_thread_control.h"
 #include "ecmascript/ecma_global_storage.h"
-#include "ecmascript/ecma_param_configuration.h"
-#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/mark_word.h"
-#include "ecmascript/napi/include/dfx_jsnapi.h"
 #include "ecmascript/platform/file.h"
-#include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
-#include "ecmascript/builtin_entries.h"
 #include "ecmascript/jit/jit.h"
 
 namespace panda::ecmascript {

@@ -17,13 +17,8 @@
 
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_iterator.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_api/js_api_arraylist_iterator.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_iterator.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using ContainerError = containers::ContainerError;

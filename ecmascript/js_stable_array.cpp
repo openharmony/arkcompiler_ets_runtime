@@ -15,27 +15,8 @@
 
 #include "ecmascript/js_stable_array.h"
 
-#include "ecmascript/base/array_helper.h"
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
-#include "ecmascript/builtins/builtins_arraybuffer.h"
-#include "ecmascript/builtins/builtins_sendable_arraybuffer.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/element_accessor.h"
-#include "ecmascript/element_accessor-inl.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/shared_objects/js_shared_array.h"
-#include "ecmascript/tagged_array.h"
-#include "macros.h"
 
 namespace panda::ecmascript {
 using TypedArrayHelper = base::TypedArrayHelper;

@@ -14,13 +14,7 @@
  */
 
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
-
-#include "ecmascript/daemon/daemon_thread.h"
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/mem/heap.h"
-#include "ecmascript/mem/region-inl.h"
-#include "ecmascript/mem/space-inl.h"
-#include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
 SharedConcurrentSweeper::SharedConcurrentSweeper(SharedHeap *heap, EnableConcurrentSweepType type)

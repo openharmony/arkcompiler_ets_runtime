@@ -14,13 +14,7 @@
  */
 
 #include "ecmascript/js_string_iterator.h"
-
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
-
-#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 JSHandle<JSStringIterator> JSStringIterator::CreateStringIterator(const JSThread *thread,

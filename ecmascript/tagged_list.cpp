@@ -16,16 +16,10 @@
 #include "ecmascript/tagged_list.h"
 
 #include "ecmascript/base/array_helper.h"
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 template <typename Derived>

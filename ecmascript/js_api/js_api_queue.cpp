@@ -14,12 +14,7 @@
  */
 
 #include "ecmascript/js_api/js_api_queue.h"
-
-#include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/js_object.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using ContainerError = containers::ContainerError;

@@ -17,8 +17,6 @@
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 template<typename Derived>

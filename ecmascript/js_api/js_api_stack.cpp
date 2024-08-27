@@ -16,7 +16,6 @@
 #include "ecmascript/js_api/js_api_stack.h"
 
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {

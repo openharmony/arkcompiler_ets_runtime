@@ -21,7 +21,6 @@
 #include <getopt.h>
 
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
-#include "ecmascript/mem/mem_common.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/platform/os.h"
 

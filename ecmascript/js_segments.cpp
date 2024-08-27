@@ -19,18 +19,7 @@
 
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/global_env_constants.h"
 #include "ecmascript/object_factory-inl.h"
-
-#include "unicode/errorcode.h"
-#include "unicode/locdspnm.h"
-#include "unicode/locid.h"
-#include "unicode/udisplaycontext.h"
-#include "unicode/uloc.h"
-#include "unicode/unistr.h"
-#include "unicode/uscript.h"
-#include "unicode/ustring.h"
 
 namespace panda::ecmascript {
 

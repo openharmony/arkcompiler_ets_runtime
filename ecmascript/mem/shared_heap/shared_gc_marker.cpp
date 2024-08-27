@@ -16,9 +16,6 @@
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 
 #include "ecmascript/mem/object_xray.h"
-#include "ecmascript/mem/rset_worklist_handler-inl.h"
-#include "ecmascript/mem/visitor.h"
-#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {

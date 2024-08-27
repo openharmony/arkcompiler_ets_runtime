@@ -15,11 +15,8 @@
 
 #include "ecmascript/js_api/js_api_vector_iterator.h"
 
-#include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/base/typed_array_helper.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_vector.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
-#include "ecmascript/base/bit_helper.h"
-
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;
 bool PGOProfilerHeader::strictMatch_ = true;

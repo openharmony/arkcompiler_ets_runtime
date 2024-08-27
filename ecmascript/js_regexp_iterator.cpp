@@ -15,10 +15,7 @@
 
 #include "ecmascript/js_regexp_iterator.h"
 
-#include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/builtins/builtins_regexp.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
 

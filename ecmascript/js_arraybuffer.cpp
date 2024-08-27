@@ -15,16 +15,10 @@
 
 #include "ecmascript/js_arraybuffer.h"
 
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/platform/os.h"
-#include "ecmascript/tagged_array.h"
-
-#include "securec.h"
 
 namespace panda::ecmascript {
 void JSArrayBuffer::CopyDataBlockBytes(JSTaggedValue toBlock, JSTaggedValue fromBlock, int32_t fromIndex, int32_t count)

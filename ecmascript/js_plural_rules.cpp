@@ -15,10 +15,6 @@
 
 #include "ecmascript/js_plural_rules.h"
 
-#include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/global_env_constants.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/js_number_format.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"

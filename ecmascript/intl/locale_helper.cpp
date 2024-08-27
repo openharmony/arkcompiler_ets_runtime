@@ -15,13 +15,9 @@
 
 #include "ecmascript/intl/locale_helper.h"
 
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/ecma_context.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
 #if defined(__clang__)

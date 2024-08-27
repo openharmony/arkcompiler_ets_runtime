@@ -15,14 +15,7 @@
 
 #include "ecmascript/js_array.h"
 
-#include "ecmascript/accessor_data.h"
-#include "ecmascript/base/array_helper.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript {

@@ -14,10 +14,7 @@
  */
 
 #include "ecmascript/js_set.h"
-
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 void JSSet::Add(JSThread *thread, const JSHandle<JSSet> &set, const JSHandle<JSTaggedValue> &value)

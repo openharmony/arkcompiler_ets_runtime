@@ -17,14 +17,10 @@
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_array.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_intl.h"
-#include "ecmascript/js_locale.h"
-#include "ecmascript/js_object-inl.h"
 #include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {
