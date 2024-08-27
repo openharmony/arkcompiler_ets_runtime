@@ -1551,21 +1551,57 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
 JSTaggedValue BuiltinsTypedArray::Some(EcmaRuntimeCallInfo *argv)
 {
     ASSERT(argv);
+    BUILTINS_API_TRACE(argv->GetThread(), TypedArray, Some);
+    if (!GetThis(argv)->IsTypedArray()) {
+        THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), "This is not a TypedArray.", JSTaggedValue::Exception());
+    }
     JSThread *thread = argv->GetThread();
-    BUILTINS_API_TRACE(thread, TypedArray, Some);
-    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
-    // 2. Let valid be ValidateTypedArray(O).
-    TypedArrayHelper::ValidateTypedArray(thread, thisHandle);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
 
     // 1. Let O be ToObject(this value).
-    JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
-    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    JSHandle<JSTaggedValue> thisObjVal(thisObjHandle);
+    JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
 
     // 3. Let len be ToLength(Get(O, "length")).
-    int64_t len = JSHandle<JSTypedArray>::Cast(thisObjVal)->GetArrayLength();
-    return TypedArrayHelper::someCommon(argv, thisObjVal, len);
+    int64_t len = JSHandle<JSTypedArray>::Cast(thisHandle)->GetArrayLength();
+
+    // 4. If IsCallable(callbackfn) is false, throw a TypeError exception.
+    JSHandle<JSTaggedValue> callbackFnHandle = GetCallArg(argv, 0);
+    if (!callbackFnHandle->IsCallable()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "the callbackfun is not callable.", JSTaggedValue::Exception());
+    }
+
+    // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+    JSHandle<JSTaggedValue> thisArgHandle = GetCallArg(argv, 1);
+
+    // 6. Repeat, while k < len,
+    //     a. Let Pk be ! ToString(𝔽(k)).
+    //     b. Let kValue be ! Get(O, Pk).
+    //     c. Let testResult be ToBoolean(? Call(callback, thisArg, « kValue, 𝔽(k), O »)).
+    //     d. If testResult is true, return true.
+    //     e. Set k to k + 1.
+    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    JSMutableHandle<JSTaggedValue> kValue(thread, JSTaggedValue::Undefined());
+    uint32_t k = 0;
+    JSTaggedValue callResult = GetTaggedBoolean(false);
+    while (k < len) {
+        key.Update(JSTaggedValue(k));
+        kValue.Update(JSArray::FastGetPropertyByValue(thread, thisHandle, key));
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        const uint32_t argsLength = 3; // 3: «kValue, k, O»
+        JSHandle<JSTaggedValue> undefined = thread->GlobalConstants()->GetHandledUndefined();
+        EcmaRuntimeCallInfo *info =
+            EcmaInterpreter::NewRuntimeCallInfo(thread, callbackFnHandle, thisArgHandle, undefined, argsLength);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue(), thisHandle.GetTaggedValue());
+        callResult = JSFunction::Call(info);
+        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+        if (callResult.ToBoolean()) {
+            return GetTaggedBoolean(true);
+        }
+        k++;
+    }
+    // 8. Return false.
+    return GetTaggedBoolean(false);
 }
 
 // 22.2.3.25
