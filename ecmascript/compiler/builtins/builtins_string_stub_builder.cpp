@@ -1473,6 +1473,9 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
+    // Are used NATIVE_POINTERs instead JS_POINTERs, becasuse "CopyChars" have parameters "dst" and "source" which
+    // already NATIVE_POINTER to buffer of strings. We can't track original string objects, so can't insert SafePoints
+    // and call GC
     DEFVARIABLE(dstTmp, VariableType::NATIVE_POINTER(), dst);
     DEFVARIABLE(sourceTmp, VariableType::NATIVE_POINTER(), source);
     DEFVARIABLE(len, VariableType::INT32(), sourceLength);
@@ -1511,7 +1514,8 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
     Bind(&loopEnd);
     sourceTmp = PtrAdd(*sourceTmp, IntPtr(batchBytes));
     dstTmp = PtrAdd(*dstTmp, IntPtr(batchBytes));
-    LoopEnd(&loopHead, env, glue);
+    // Work with low level buffers, we can't call GC. Loop is simple.
+    LoopEnd(&loopHead);
 
     uint8_t elemInInt64 = sizeof(int64_t) / elemSize;
     Bind(&storeTail);
@@ -1532,7 +1536,6 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
         }
         Bind(&storeTail0_8);
         {
-            // Copy the remain elem by elem. Small enough so don't need the check the safe point.
             Label tailLoopHead(env);
             Label tailLoopEnd(env);
             Jump(&tailLoopHead);
@@ -1552,6 +1555,7 @@ void BuiltinsStringStubBuilder::CopyChars(GateRef glue, GateRef dst, GateRef sou
             Bind(&tailLoopEnd);
             sourceTmp = PtrAdd(*sourceTmp, size);
             dstTmp = PtrAdd(*dstTmp, size);
+            // Work with low level buffers, we can't call GC. Loop is simple.
             LoopEnd(&tailLoopHead);
         }
     }
@@ -1611,6 +1615,9 @@ void BuiltinsStringStubBuilder::CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateR
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
+    // Are used NATIVE_POINTERs instead JS_POINTERs, becasuse "CopyUtf8AsUtf16" have parameters "dst" and "src" which
+    // already NATIVE_POINTER to buffer of strings. We can't track original string objects, so can't insert SafePoints
+    // and call GC
     DEFVARIABLE(dstTmp, VariableType::NATIVE_POINTER(), dst);
     DEFVARIABLE(sourceTmp, VariableType::NATIVE_POINTER(), src);
     DEFVARIABLE(len, VariableType::INT32(), sourceLength);
@@ -1634,7 +1641,8 @@ void BuiltinsStringStubBuilder::CopyUtf8AsUtf16(GateRef glue, GateRef dst, GateR
     Bind(&loopEnd);
     sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint8_t)));
     dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint16_t)));
-    LoopEnd(&loopHead, env, glue);
+    // Work with low level buffers, we can't call GC. Loop is simple.
+    LoopEnd(&loopHead);
 
     Bind(&exit);
     env->SubCfgExit();
@@ -1648,6 +1656,9 @@ void BuiltinsStringStubBuilder::CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateR
     auto env = GetEnvironment();
     Label entry(env);
     env->SubCfgEntry(&entry);
+    // Are used NATIVE_POINTERs instead JS_POINTERs, becasuse "CopyUtf8AsUtf16" have parameters "dst" and "src" which
+    // already NATIVE_POINTER to buffer of strings. We can't track original string objects, so can't insert SafePoints
+    // and call GC.
     DEFVARIABLE(dstTmp, VariableType::NATIVE_POINTER(), dst);
     DEFVARIABLE(sourceTmp, VariableType::NATIVE_POINTER(), src);
     DEFVARIABLE(len, VariableType::INT32(), sourceLength);
@@ -1671,6 +1682,7 @@ void BuiltinsStringStubBuilder::CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateR
     Bind(&loopEnd);
     sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint16_t)));
     dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint8_t)));
+    // Work with low level buffers, we can't call GC. Loop is simple.
     LoopEnd(&loopHead, env, glue);
 
     Bind(&exit);
