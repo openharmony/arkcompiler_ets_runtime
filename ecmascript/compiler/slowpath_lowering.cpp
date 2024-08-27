@@ -1794,7 +1794,7 @@ void SlowPathLowering::LowerSuperCall(GateRef gate)
         builder_.Jump(&replaceGate);
     }
     builder_.Bind(&replaceGate);
-    ReplaceHirWithValue(gate, *result);
+    ReplaceHirWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void SlowPathLowering::LowerSuperCallArrow(GateRef gate)
@@ -1863,7 +1863,7 @@ void SlowPathLowering::LowerSuperCallSpread(GateRef gate)
         builder_.Jump(&replaceGate);
     }
     builder_.Bind(&replaceGate);
-    ReplaceHirWithValue(gate, *result);
+    ReplaceHirWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 GateRef SlowPathLowering::IsSuperFuncValid(GateRef superFunc)
