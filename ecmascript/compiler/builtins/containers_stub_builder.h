@@ -152,6 +152,26 @@ public:
         return false;
     }
 
+    bool IsArrayListReplaceAllelements(ContainersType type)
+    {
+        switch (type) {
+            case ContainersType::STACK_FOREACH:
+            case ContainersType::VECTOR_FOREACH:
+            case ContainersType::VECTOR_REPLACEALLELEMENTS:
+            case ContainersType::QUEUE_FOREACH:
+            case ContainersType::DEQUE_FOREACH:
+            case ContainersType::ARRAYLIST_FOREACH:
+            case ContainersType::PLAINARRAY_FOREACH:
+                return false;
+            case ContainersType::ARRAYLIST_REPLACEALLELEMENTS:
+                return true;
+            default:
+                LOG_ECMA(FATAL) << "this branch is unreachable";
+                UNREACHABLE();
+        }
+        return false;
+    }
+
     void ContainerSet(GateRef glue, GateRef obj, GateRef index, GateRef value, ContainersType type)
     {
         switch (type) {
