@@ -65,6 +65,10 @@
 using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::kungfu;
+static const char *TEST_KEY = "TestKey";
+static const char *TEST_VALUE = "TestValue";
+static const char *TEST_NUM1 = "-3.14";
+static const char *TEST_NUM2 = "-123.3";
 
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
@@ -604,7 +608,7 @@ HWTEST_F_L0(JSNApiTests, GetOwnProperty)
 {
     LocalScope scope(vm_);
     Local<ObjectRef> object = ObjectRef::New(vm_);
-    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, "TestKey");
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, TEST_KEY);
     Local<JSValueRef> value = ObjectRef::New(vm_);
     PropertyAttribute attribute(value, true, true, true);
 
@@ -775,6 +779,8 @@ HWTEST_F_L0(JSNApiTests, SymbolRef_GetDescription)
     LocalScope scope(vm_);
     Local<StringRef> description = StringRef::NewFromUtf8(vm_, "test");
     Local<SymbolRef> symbol = SymbolRef::New(vm_, description);
+    Local<StringRef> desc = symbol->GetDescription(vm_);
+    EXPECT_EQ(description->ToString(vm_), desc->ToString(vm_));
     EXPECT_FALSE(symbol.IsNull());
     EXPECT_FALSE(description.IsEmpty());
 }
@@ -879,9 +885,9 @@ HWTEST_F_L0(JSNApiTests, SetBundle)
 HWTEST_F_L0(JSNApiTests, JSNApi_SetMockModuleList)
 {
     LocalScope scope(vm_);
-    std::map<std::string, std::string> str = { { "10", "20" } };
+    std::map<std::string, std::string> str = { { TEST_NUM1, TEST_NUM2 } };
     JSNApi::SetMockModuleList(vm_, str);
-    ASSERT_EQ(std::string(vm_->GetMockModule("10")), "20");
+    ASSERT_EQ(std::string(vm_->GetMockModule(TEST_NUM1)), TEST_NUM2);
 }
 
 /**
@@ -1161,5 +1167,567 @@ HWTEST_F_L0(JSNApiTests, JSValueRef_IsModuleNamespaceObject)
     JSHandle<JSTaggedValue> moduleNamespaceTag = JSHandle<JSTaggedValue>::Cast(np);
     Local<JSValueRef> moduleNamespace = JSNApiHelper::ToLocal<ModuleNamespace>(moduleNamespaceTag);
     ASSERT_TRUE(moduleNamespace->IsModuleNamespaceObject(vm_));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_105
+ * @tc.name: IsHole
+ * @tc.desc: Determine if it is a hole
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsHole)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> b = JSValueRef::Hole(vm_);
+    ASSERT_TRUE(b->IsHole());
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_106
+ * @tc.name: GetValueDouble
+ * @tc.desc: Get value double from isNumber
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueDouble)
+{
+    LocalScope scope(vm_);
+    bool isNumber = true;
+    panda::JSValueRef* nativeValue = new JSValueRef();
+    ASSERT_FALSE(nativeValue->GetValueDouble(isNumber));
+    isNumber = false;
+    ASSERT_FALSE(nativeValue->GetValueDouble(isNumber));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_107
+ * @tc.name: GetValueInt32
+ * @tc.desc: Get value int32 from isNumber
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueInt32)
+{
+    LocalScope scope(vm_);
+    bool isNumber = true;
+    panda::JSValueRef* nativeValue = new JSValueRef();
+    ASSERT_FALSE(nativeValue->GetValueInt32(isNumber));
+    isNumber = false;
+    ASSERT_FALSE(nativeValue->GetValueInt32(isNumber));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_108
+ * @tc.name: GetValueUint32
+ * @tc.desc: Get value uint32 from isNumber
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueUint32)
+{
+    LocalScope scope(vm_);
+    bool isNumber = true;
+    panda::JSValueRef* nativeValue = new JSValueRef();
+    ASSERT_FALSE(nativeValue->GetValueUint32(isNumber));
+    isNumber = false;
+    ASSERT_FALSE(nativeValue->GetValueUint32(isNumber));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_109
+ * @tc.name: GetValueInt64
+ * @tc.desc: Get value int64 from isNumber
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueInt64)
+{
+    LocalScope scope(vm_);
+    bool isNumber = true;
+    panda::JSValueRef* nativeValue = new JSValueRef();
+    ASSERT_FALSE(nativeValue->GetValueInt64(isNumber));
+    isNumber = false;
+    ASSERT_FALSE(nativeValue->GetValueInt64(isNumber));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_110
+ * @tc.name: GetValueBool
+ * @tc.desc: Get value bool from isNumber
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetValueBool)
+{
+    LocalScope scope(vm_);
+    bool isNumber = true;
+    panda::JSValueRef* nativeValue = new JSValueRef();
+    ASSERT_FALSE(nativeValue->GetValueBool(isNumber));
+    isNumber = false;
+    ASSERT_FALSE(nativeValue->GetValueBool(isNumber));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_111
+ * @tc.name: ToBigInt
+ * @tc.desc: String to big int
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ToBigInt)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> toString = StringRef::NewFromUtf8(vm_, TEST_NUM2);
+    Local<JSValueRef> toValue(toString);
+    EXPECT_FALSE(toValue->ToBigInt(vm_)->IsBigInt(vm_));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_112
+ * @tc.name: IsInt && WithinInt32
+ * @tc.desc: Determine if it is int && Within Int32
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsInt)
+{
+    LocalScope scope(vm_);
+    bool input = true;
+    Local<IntegerRef> res = IntegerRef::New(vm_, input);
+    EXPECT_TRUE(res->IsInt());
+    EXPECT_TRUE(res->WithinInt32());
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_113
+ * @tc.name: IsJSFunction
+ * @tc.desc: Determine if it is JSFunction
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsJSFunction)
+{
+    LocalScope scope(vm_);
+    bool input = true;
+    Local<FunctionRef> res = IntegerRef::New(vm_, input);
+    EXPECT_FALSE(res->IsJSFunction(vm_));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_114
+ * @tc.name: IsWeakRef
+ * @tc.desc: Determine if it is JSFunction
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsWeakRef)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> tag = BooleanRef::New(vm_, true);
+    EXPECT_FALSE(tag->IsWeakRef(vm_));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_115
+ * @tc.name: IsArrayIterator
+ * @tc.desc: Determine if it is arrayIterator
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsArrayIterator)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> tag = ArrayRef::New(vm_, true);
+    EXPECT_FALSE(tag->IsArrayIterator(vm_));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_116
+ * @tc.name: IsStringIterator
+ * @tc.desc: Determine if it is string Iterator
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsStringIterator)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> toString = StringRef::NewFromUtf8(vm_, TEST_NUM2);
+    EXPECT_FALSE(toString->IsStringIterator(vm_));
+    std::string str = TEST_NUM2;
+    EXPECT_EQ(toString->DebuggerToString(vm_), str);
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_116
+ * @tc.name: IsJSSharedInt8Array
+ * @tc.desc: Determine if it is JSSharedArray
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsJSSharedInt8Array)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> tag = ArrayRef::New(vm_, true);
+    EXPECT_FALSE(tag->IsJSSharedInt8Array(vm_));
+    EXPECT_FALSE(tag->IsJSSharedUint8Array(vm_));
+    EXPECT_FALSE(tag->IsJSSharedUint8ClampedArray(vm_));
+    EXPECT_FALSE(tag->IsJSSharedInt16Array(vm_));
+    EXPECT_FALSE(tag->IsJSSharedUint16Array(vm_));
+    EXPECT_FALSE(tag->IsJSSharedInt32Array(vm_));
+    EXPECT_FALSE(tag->IsJSSharedFloat32Array(vm_));
+    EXPECT_FALSE(tag->IsJSSharedUint32Array(vm_));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_117
+ * @tc.name: IsNativeModuleFailureInfoObject
+ * @tc.desc: Determine if it is nativeModuleFailureInfoObject
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsNativeModuleFailureInfoObject)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> tag = ArrayRef::New(vm_, true);
+    EXPECT_FALSE(tag->IsNativeModuleFailureInfoObject(vm_));
+    EXPECT_FALSE(tag->IsSendableArrayBuffer(vm_));
+    EXPECT_FALSE(tag->IsJSLocale(vm_));
+    EXPECT_FALSE(tag->IsJSDateTimeFormat(vm_));
+    EXPECT_FALSE(tag->IsJSRelativeTimeFormat(vm_));
+    EXPECT_FALSE(tag->IsJSIntl(vm_));
+    EXPECT_FALSE(tag->IsJSNumberFormat(vm_));
+    EXPECT_FALSE(tag->IsJSCollator(vm_));
+    EXPECT_FALSE(tag->IsJSPluralRules(vm_));
+    EXPECT_FALSE(tag->IsJSListFormat(vm_));
+    EXPECT_FALSE(tag->IsAsyncGeneratorObject(vm_));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_118
+ * @tc.name: IsAsyncGeneratorObject
+ * @tc.desc: Determine if it is asyncGeneratorObject
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsAsyncGeneratorObject)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> tag = ArrayRef::New(vm_, true);
+    EXPECT_FALSE(tag->IsAsyncGeneratorObject(vm_));
+    EXPECT_FALSE(tag->IsArrayList(vm_));
+    EXPECT_FALSE(tag->IsDeque(vm_));
+    EXPECT_FALSE(tag->IsHashMap(vm_));
+    EXPECT_FALSE(tag->IsHashSet(vm_));
+    EXPECT_FALSE(tag->IsLightWeightMap(vm_));
+    EXPECT_FALSE(tag->IsLightWeightSet(vm_));
+    EXPECT_FALSE(tag->IsLinkedList(vm_));
+    EXPECT_FALSE(tag->IsLinkedListIterator(vm_));
+    EXPECT_FALSE(tag->IsList(vm_));
+    EXPECT_FALSE(tag->IsPlainArray(vm_));
+    EXPECT_FALSE(tag->IsQueue(vm_));
+    EXPECT_FALSE(tag->IsStack(vm_));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_119
+ * @tc.name: IsSendableObject
+ * @tc.desc: Determine if it is sendableObject
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsSendableObject)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    EXPECT_FALSE(value->IsSendableObject(vm_));
+    EXPECT_FALSE(value->IsJSShared(vm_));
+    EXPECT_FALSE(value->IsSharedArray(vm_));
+    EXPECT_FALSE(value->IsSharedTypedArray(vm_));
+    EXPECT_FALSE(value->IsSharedSet(vm_));
+    EXPECT_FALSE(value->IsSharedMap(vm_));
+    EXPECT_FALSE(value->IsSharedMapIterator(vm_));
+    EXPECT_TRUE(value->IsHeapObject());
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_120
+ * @tc.name: GetNativePointerValue
+ * @tc.desc: GetNativePointerValue
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetNativePointerValue)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    bool isNativePointer = true;
+    EXPECT_FALSE(value->GetNativePointerValue(vm_, isNativePointer));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_121
+ * @tc.name: IsDetachedArraybuffer
+ * @tc.desc: IsDetachedArraybuffer
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, IsDetachedArraybuffer)
+{
+    LocalScope scope(vm_);
+    const int32_t length = 15;
+    Local<JSValueRef> sharedArrayBuffer = ArrayBufferRef::New(vm_, length);
+    bool isNativePointer = true;
+    EXPECT_FALSE(sharedArrayBuffer->IsDetachedArraybuffer(vm_, isNativePointer));
+    sharedArrayBuffer->DetachedArraybuffer(vm_, isNativePointer);
+    EXPECT_TRUE(isNativePointer);
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_122
+ * @tc.name: MapRefGet
+ * @tc.desc: MapRef Get
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, MapRefGet)
+{
+    LocalScope scope(vm_);
+    Local<MapRef> object = MapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, TEST_KEY);
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_VALUE);
+    EXPECT_FALSE(object->Has(vm_, key));
+    object->Set(vm_, key, value);
+    EXPECT_TRUE(object->Has(vm_, key));
+    Local<JSValueRef> mapRef = object->Get(vm_, TEST_KEY);
+    EXPECT_FALSE(object->Has(vm_, mapRef));
+    object->Delete(vm_, key);
+    object->GetEntries(vm_);
+    object->GetKeys(vm_);
+    object->GetValues(vm_);
+    EXPECT_FALSE(object->Has(vm_, TEST_KEY));
+    object->Clear(vm_);
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_123
+ * @tc.name: SendableMapRef
+ * @tc.desc: SendableMapRef test
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, SendableMapRef)
+{
+    LocalScope scope(vm_);
+    Local<SendableMapRef> object = SendableMapRef::New(vm_);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, TEST_KEY);
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_VALUE);
+    EXPECT_FALSE(object->Has(vm_, key));
+    object->Set(vm_, key, value);
+    object->Set(vm_, TEST_KEY, value);
+    EXPECT_TRUE(object->Has(vm_, key));
+    Local<JSValueRef> sendableMapRef = object->Get(vm_, TEST_KEY);
+    sendableMapRef = object->Get(vm_, key);
+    EXPECT_FALSE(object->Has(vm_, sendableMapRef));
+    Local<SendableMapIteratorRef> sendableMapIteratorRef = object->GetEntries(vm_);
+    sendableMapIteratorRef->Next(vm_);
+    object->GetKey(vm_, 0);
+    object->GetKeys(vm_);
+    object->GetValue(vm_, 0);
+    object->GetValues(vm_);
+    object->GetSize(vm_);
+    object->GetTotalElements(vm_);
+    EXPECT_TRUE(object->Has(vm_, TEST_KEY));
+    object->Delete(vm_, key);
+    object->Clear(vm_);
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_124
+ * @tc.name: MapIteratorRef
+ * @tc.desc: MapIteratorRef test
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, MapIteratorRef)
+{
+    LocalScope scope(vm_);
+    Local<MapRef> mapRef = MapRef::New(vm_);
+    Local<MapIteratorRef> object = MapIteratorRef::New(vm_, mapRef);
+    Local<JSValueRef> key = StringRef::NewFromUtf8(vm_, TEST_KEY);
+    Local<JSValueRef> value = StringRef::NewFromUtf8(vm_, TEST_VALUE);
+    EXPECT_FALSE(object->Has(vm_, key));
+    ecmascript::EcmaRuntimeCallInfo *ecmaRuntimeCallInfo = object->GetEcmaRuntimeCallInfo(vm_);
+    object->Next(vm_, ecmaRuntimeCallInfo);
+    object->Next(vm_);
+    object->Set(vm_, key, value);
+    object->Set(vm_, TEST_KEY, value);
+    EXPECT_TRUE(object->Has(vm_, key));
+    Local<JSValueRef> mapIteratorRef = object->Get(vm_, TEST_KEY);
+    mapIteratorRef = object->Get(vm_, key);
+    object->Delete(vm_, key);
+    EXPECT_FALSE(object->Has(vm_, mapIteratorRef));
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_125
+ * @tc.name: SetIteratorRef
+ * @tc.desc: SetIteratorRef test
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, SetIteratorRef)
+{
+    LocalScope scope(vm_);
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> constructor = env->GetBuiltinsSetFunction();
+    JSHandle<JSSet> set =
+        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
+    set->SetLinkedSet(thread, hashSet);
+    JSHandle<JSTaggedValue> setTag = JSHandle<JSTaggedValue>::Cast(set);
+    Local<SetRef> setRef = JSNApiHelper::ToLocal<SetRef>(setTag);
+    Local<MapIteratorRef> object = SetIteratorRef::New(vm_, setRef);
+    EXPECT_TRUE(object->IsHeapObject());
+}
+
+
+/**
+ * @tc.number: ffi_interface_api_126
+ * @tc.name: PromiseRejectInfo
+ * @tc.desc: PromiseRejectInfo test
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, PromiseRejectInfo)
+{
+    LocalScope scope(vm_);
+    Local<StringRef> toStringPromise = StringRef::NewFromUtf8(vm_, TEST_NUM1);
+    Local<JSValueRef> promise(toStringPromise);
+    Local<StringRef> toStringReason = StringRef::NewFromUtf8(vm_, TEST_NUM1);
+    Local<JSValueRef> reason(toStringReason);
+    void *data = static_cast<void *>(new std::string(TEST_VALUE));
+    PromiseRejectInfo promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
+    EXPECT_EQ(promisereject.GetOperation(), PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT);
+}
+
+/**
+ * @tc.number: ffi_interface_api_127
+ * @tc.name: ObjectRef
+ * @tc.desc: ObjectRef test
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, ObjectRef)
+{
+    LocalScope scope(vm_);
+    Local<ObjectRef> object = ObjectRef::New(vm_);
+    object = ObjectRef::NewS(vm_);
+    std::string str = TEST_VALUE;
+    object->CreateNativeModuleFailureInfo(vm_, str);
+    bool input = true;
+    Local<FunctionRef> res = IntegerRef::New(vm_, input);
+    object->CreateAccessorData(vm_, res, res);
+    uintptr_t addr = ObjectRef::NewObject(vm_);
+    Local<StringRef> key = StringRef::NewFromUtf8(vm_, TEST_VALUE);
+    Local<JSValueRef> value = ObjectRef::New(vm_);
+    PropertyAttribute property(value, true, true, true);
+    object->SetConcurrentNativePointerField(vm_, 0);
+    EXPECT_FALSE(object->SetPrototype(vm_, object));
+    EXPECT_FALSE(object->HasOwnProperty(vm_, key));
+    EXPECT_FALSE(object->GetOwnProperty(vm_, key, property));
+    EXPECT_NE(addr, 1);
+}
+
+/**
+ * @tc.number: ffi_interface_api_128
+ * @tc.name: SendableArrayBufferRef
+ * @tc.desc: SendableArrayBufferRef test
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, SendableArrayBufferRef)
+{
+    LocalScope scope(vm_);
+    Local<SendableArrayBufferRef> res = SendableArrayBufferRef::New(vm_, 0);
+    const int32_t length = 33;
+    res->GetBuffer(vm_);
+    EXPECT_NE(res->ByteLength(vm_), length);
+    res->Detach(vm_);
+    EXPECT_NE(res->IsDetach(vm_), length);
+}
+
+/**
+ * @tc.number: ffi_interface_api_129
+ * @tc.name: JSNApiSetPkgAliasList
+ * @tc.desc: Used to verify whether the function of setting the map container module was successful.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, JSNApiSetPkgAliasList)
+{
+    LocalScope scope(vm_);
+    std::map<std::string, std::string> str = { { TEST_NUM1, TEST_NUM2 } };
+    JSNApi::SetPkgAliasList(vm_, str);
+    std::string moduleName = TEST_NUM1;
+    EXPECT_EQ(std::string(vm_->GetPkgNameWithAlias(TEST_NUM1)), TEST_NUM2);
+}
+
+/**
+ * @tc.number: ffi_interface_api_130
+ * @tc.name: InitForConcurrentFunction
+ * @tc.desc: Used to verify whether the function of setting the map container module was successful.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, JSNApiInitForConcurrentFunction)
+{
+    LocalScope scope(vm_);
+    void *taskInfo = reinterpret_cast<void *>(BuiltinsFunction::FunctionPrototypeInvokeSelf);
+    Local<JSValueRef> function = FunctionRef::New(vm_, FunctionCallback);
+    EXPECT_FALSE(JSNApi::InitForConcurrentFunction(vm_, function, taskInfo));
+}
+
+/**
+ * @tc.number: ffi_interface_api_131
+ * @tc.name: GetStackBeforeCallNapiSuccess
+ * @tc.desc: Used to verify whether the function of setting the map container module was successful.
+ * @tc.type: FUNC
+ * @tc.require:  parameter
+ */
+HWTEST_F_L0(JSNApiTests, GetStackBeforeCallNapiSuccess)
+{
+    LocalScope scope(vm_);
+    SourceMapCallback callback { nullptr };
+    JSNApi::SetSourceMapCallback(vm_, callback);
+    vm_->GetJSThread()->SetIsProfiling(false);
+    bool getStackBeforeCallNapiSuccess = false;
+    JSNApi::GetStackBeforeCallNapiSuccess(vm_, getStackBeforeCallNapiSuccess);
+    JSNApi::GetStackAfterCallNapi(vm_);
+    EXPECT_FALSE(getStackBeforeCallNapiSuccess);
 }
 } // namespace panda::test
