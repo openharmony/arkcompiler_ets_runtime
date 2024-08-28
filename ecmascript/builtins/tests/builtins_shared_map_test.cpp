@@ -108,6 +108,59 @@ HWTEST_F_L0(BuiltinsSharedMapTest, CreateAndGetSize)
     }
 }
 
+
+HWTEST_F_L0(BuiltinsSharedMapTest, GetKeyTest001)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSSharedMap> map(thread, CreateSBuiltinsMap(thread));
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(map.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = BuiltinsSharedMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsJSSharedMap());
+        JSHandle<JSSharedMap> jsSMap(thread, JSSharedMap::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData())));
+        EXPECT_EQ(JSSharedMap::GetSize(thread, jsSMap), i + 1);
+    }
+    JSTaggedValue result = JSSharedMap::GetKey(thread, map, 0);
+    EXPECT_NE(result.GetRawData(), JSTaggedValue::Exception().GetRawData());
+}
+
+HWTEST_F_L0(BuiltinsSharedMapTest, GetValueTest001)
+{
+    constexpr uint32_t NODE_NUMBERS = 8;
+    JSHandle<JSSharedMap> map(thread, CreateSBuiltinsMap(thread));
+    for (uint32_t i = 0; i < NODE_NUMBERS; i++) {
+        auto callInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 8);
+        callInfo->SetFunction(JSTaggedValue::Undefined());
+        callInfo->SetThis(map.GetTaggedValue());
+        callInfo->SetCallArg(0, JSTaggedValue(i));
+        callInfo->SetCallArg(1, JSTaggedValue(i));
+
+        [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, callInfo);
+        JSTaggedValue result = BuiltinsSharedMap::Set(callInfo);
+        TestHelper::TearDownFrame(thread, prev);
+        EXPECT_TRUE(result.IsJSSharedMap());
+        JSHandle<JSSharedMap> jsSMap(thread, JSSharedMap::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData())));
+        EXPECT_EQ(JSSharedMap::GetSize(thread, jsSMap), i + 1);
+    }
+    JSTaggedValue result = JSSharedMap::GetValue(thread, map, 0);
+    EXPECT_NE(result.GetRawData(), JSTaggedValue::Exception().GetRawData());
+}
+
+HWTEST_F_L0(BuiltinsSharedMapTest, DeleteTest001)
+{
+    JSHandle<JSSharedMap> map(thread, CreateSBuiltinsMap(thread));
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(10));
+    bool result = JSSharedMap::Delete(thread, map, key);
+    ASSERT_EQ(result, false);
+}
+
 enum class AlgorithmType {
     SET,
     FOR_EACH,
