@@ -5112,11 +5112,6 @@ void JSNApi::PreFork(EcmaVM *vm)
 void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
 {
     JSRuntimeOptions &jsOption = vm->GetJSOptions();
-    LOG_ECMA(INFO) << "asmint: " << jsOption.GetEnableAsmInterpreter()
-                    << ", aot: " << jsOption.GetEnableAOT()
-                    << ", jit: " << option.GetEnableJIT()
-                    << ", baseline jit: " << option.GetEnableBaselineJIT()
-                    << ", bundle name: " <<  option.GetBundleName();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
     jsOption.SetEnableJIT(option.GetEnableJIT());
     jsOption.SetEnableBaselineJIT(option.GetEnableBaselineJIT());
@@ -5127,10 +5122,21 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     Log::Initialize(runtimeOptions);
 
-    if (jsOption.GetEnableAOT() && option.GetAnDir().size() && !ecmascript::AotCrashInfo::IsAotEscaped()) {
+    // 1. system switch 2. an file dir exits 3. whitelist 4. escape mechanism
+    bool enableAOT = jsOption.GetEnableAOT() &&
+                     !option.GetAnDir().empty() &&
+                     EnableAotJitListHelper::GetInstance()->IsEnableAot(option.GetBundleName()) &&
+                     !ecmascript::AotCrashInfo::IsAotEscaped();
+    if (enableAOT) {
         ecmascript::AnFileDataManager::GetInstance()->SetDir(option.GetAnDir());
         ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
     }
+
+    LOG_ECMA(INFO) << "asmint: " << jsOption.GetEnableAsmInterpreter()
+                    << ", aot: " << enableAOT
+                    << ", jit: " << option.GetEnableJIT()
+                    << ", baseline jit: " << option.GetEnableBaselineJIT()
+                    << ", bundle name: " <<  option.GetBundleName();
 
     vm->PostFork();
 }
