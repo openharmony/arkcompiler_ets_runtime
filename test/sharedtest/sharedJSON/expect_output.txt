@@ -102,3 +102,28 @@ ASON parse asonstr2: 89
 ASON parse asonstr3: eetrue1123
 {"123":"1","124":"123","1234":"bb","xx":"yy","aaa":"ee","success":"true"}
 0
+{"text":"ASON support MAP Test Start","largeNumber":112233445566778899,"people":{"name":"Mary","sex":"1","height":"165"}}
+{"args1":true,"args2":false,"args3":null}
+{"people":{"name":"Mary","sex":"1","height":165,"args":{"arr":[1,2,3],"check":true,"num":null}}}
+{"features":{"ut":{"args":{"bizType":"SQYK","isChecked":false,"packageId":9223372036854775806}}}}
+["foo","bar","baz"]
+["foo","bar","baz"]
+{"foo":1,"bar":2,"baz":3}
+true
+true
+{"arr1":[1,2,3,4],"arr2":[3,5,7,9]}
+{}
+{"v":100,"map":{"arr1":[1,2,3,4],"arr2":[3,5,7,9]}}
+{"v":100,"map":{}}
+[{"v":100,"map":{"arr1":[1,2,3,4],"arr2":[3,5,7,9]}}]
+{}
+{"arr3":[1,2,3,4],"arr4":[3,5,7,9]}
+{}
+{"v":200,"map":{"arr3":[1,2,3,4],"arr4":[3,5,7,9]}}
+{"v":200,"map":{}}
+[{"v":200,"map":{"arr3":[1,2,3,4],"arr4":[3,5,7,9]}}]
+{}
+{"set":[{"v":200,"map":{"arr3":[1,2,3,4],"arr4":[3,5,7,9]}}]}
+{}
+[{"set":[{"v":200,"map":{"arr3":[1,2,3,4],"arr4":[3,5,7,9]}}]}]
+{}
