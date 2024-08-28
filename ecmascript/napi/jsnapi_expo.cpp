@@ -5113,7 +5113,12 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
     runtimeOptions.SetLogLevel(Log::LevelToString(Log::ConvertFromRuntime(option.GetLogLevel())));
     Log::Initialize(runtimeOptions);
 
-    if (jsOption.GetEnableAOT() && option.GetAnDir().size()) {
+    // 1. system switch 2. an file dir exits 3. whitelist 4. escape mechanism
+    bool enableAOT = jsOption.GetEnableAOT() &&
+                     !option.GetAnDir().empty() &&
+                     EnableAotJitListHelper::GetInstance()->IsEnableAot(option.GetBundleName()) &&
+                     !ecmascript::AotCrashInfo::IsAotEscaped();
+    if (enableAOT) {
         ecmascript::AnFileDataManager::GetInstance()->SetDir(option.GetAnDir());
         ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
     }
