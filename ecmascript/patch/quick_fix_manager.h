@@ -58,6 +58,7 @@ private:
                         size_t &patchSize)> callBack_;
     CMap<uint32_t, CString> baseClassInfo_ {};
     CString currentBaseFileName_;
+    std::set<CString> checkedFiles_ {};
 };
 }  // namespace panda::ecmascript
 #endif // ECMASCRIPT_PATCH_QUICK_FIX_MANAGER_H

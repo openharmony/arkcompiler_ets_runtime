@@ -958,8 +958,6 @@ JSTaggedValue RuntimeStubs::RuntimeCreateClassWithBuffer(JSThread *thread,
 
     cls->SetLexicalEnv(thread, lexenv.GetTaggedValue());
     cls->SetModule(thread, module.GetTaggedValue());
-    const JSHandle<Method> methodHandle(thread, methodObj);
-    QuickFixHelper::SetPatchModule(thread, methodHandle, cls);
     RuntimeSetClassConstructorLength(thread, cls.GetTaggedValue(), length.GetTaggedValue());
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
 
@@ -2312,7 +2310,6 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     DefineFuncTryUseAOTHClass(thread, result, ihc, aotLiteralInfo);
 
     result->SetLength(length);
-    QuickFixHelper::SetPatchModule(thread, methodHandle, result);
     return result.GetTaggedValue();
 }
 
@@ -2443,7 +2440,6 @@ JSTaggedValue RuntimeStubs::RuntimeDefineMethod(JSThread *thread, const JSHandle
     func->SetLength(length);
     func->SetLexicalEnv(thread, env);
     func->SetModule(thread, module);
-    QuickFixHelper::SetPatchModule(thread, methodHandle, func);
     return func.GetTaggedValue();
 }
 
