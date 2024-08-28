@@ -158,6 +158,7 @@ bool IreadNode::IsVolatile() const
 
 bool AddrofNode::IsVolatile(const MIRModule &mod) const
 {
+    DEBUG_ASSERT(mod.CurFunction() != nullptr, "mod.CurFunction() should not be nullptr");
     auto *symbol = mod.CurFunction()->GetLocalOrGlobalSymbol(stIdx);
     DEBUG_ASSERT(symbol != nullptr, "null ptr check on symbol");
     return symbol->IsVolatile();
@@ -704,6 +705,7 @@ void FieldsDistNode::Dump(int32) const
 void AddrofNode::Dump(int32) const
 {
     LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
+    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
     const MIRSymbol *st = theMIRModule->CurFunction()->GetLocalOrGlobalSymbol(GetStIdx());
     LogInfo::MapleLogger() << (GetStIdx().Islocal() ? " %" : " $");
     DEBUG_ASSERT(st != nullptr, "null ptr check");
@@ -768,6 +770,7 @@ void AddroffuncNode::Dump(int32) const
 
 void AddroflabelNode::Dump(int32) const
 {
+    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
     LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
     LogInfo::MapleLogger() << " @" << theMIRModule->CurFunction()->GetLabelName(static_cast<LabelIdx>(offset));
 }
@@ -776,6 +779,7 @@ void StmtNode::DumpBase(int32 indent) const
 {
     srcPosition.DumpLoc(lastPrintedLineNum, lastPrintedColumnNum);
     // dump stmtFreqs
+    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
     if (Options::profileUse && theMIRModule->CurFunction()->GetFuncProfData() &&
         theMIRModule->CurFunction()->GetFuncProfData()->GetStmtFreq(GetStmtID()) >= 0) {
         LogInfo::MapleLogger() << "stmtID " << GetStmtID() << "  freq "
@@ -1120,6 +1124,7 @@ void WhileStmtNode::Dump(int32 indent) const
 
 void DoloopNode::DumpDoVar(const MIRModule &mod) const
 {
+    DEBUG_ASSERT(mod.CurFunction() != nullptr, "mod.CurFunction() should not be nullptr");
     if (isPreg) {
         LogInfo::MapleLogger() << " %"
                                << mod.CurFunction()->GetPregTab()->PregFromPregIdx(doVarStIdx.FullIdx())->GetPregNo()
@@ -1150,6 +1155,7 @@ void DoloopNode::Dump(int32 indent) const
 void ForeachelemNode::Dump(int32 indent) const
 {
     StmtNode::DumpBase(indent);
+    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
     const MIRSymbol *st = theMIRModule->CurFunction()->GetLocalOrGlobalSymbol(elemStIdx);
     DEBUG_ASSERT(st != nullptr, "null ptr check");
     LogInfo::MapleLogger() << " %" << st->GetName();
@@ -1433,6 +1439,7 @@ void BlockNode::Dump(int32 indent, const MIRSymbolTable *theSymTab, MIRPregTable
         LogInfo::MapleLogger() << " {\n";
     }
     // output puid for debugging purpose
+    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
     if (isFuncbody) {
         theMIRModule->CurFunction()->DumpFuncBody(indent);
         if (theSymTab != nullptr || thePregTab != nullptr) {
@@ -1478,6 +1485,7 @@ void BlockNode::Dump(int32 indent, const MIRSymbolTable *theSymTab, MIRPregTable
 
 void LabelNode::Dump(int32) const
 {
+    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
     if (theMIRModule->CurFunction()->WithLocInfo()) {
         srcPosition.DumpLoc(lastPrintedLineNum, lastPrintedColumnNum);
     }
@@ -1535,7 +1543,7 @@ void EmitStr(const MapleString &mplStr)
             LogInfo::MapleLogger() << buf;
         } else {
             /* all others, print as number */
-            int ret = snprintf_s(buf, sizeof(buf), kBufSize - 1, "\\%03o", (*str) & 0xFF);
+            int ret = snprintf_s(buf, sizeof(buf), kBufSize - 1, "\\%03o", static_cast<unsigned char>(*str) & 0xFF);
             if (ret < 0) {
                 FATAL(kLncFatal, "snprintf_s failed");
             }
@@ -1666,6 +1674,7 @@ void AsmNode::Dump(int32 indent) const
     for (size_t i = 0; i < clobberList.size(); i++) {
         uStr = GlobalTables::GetUStrTable().GetStringFromStrIdx(clobberList[i]);
         PrintString(uStr);
+        DEBUG_ASSERT(clobberList.size() > 0, "must not be zero");
         if (i != clobberList.size() - 1) {
             LogInfo::MapleLogger() << ',';
         }
@@ -1675,6 +1684,7 @@ void AsmNode::Dump(int32 indent) const
     PrintIndentation(indent + 1);
     LogInfo::MapleLogger() << " :";
     size_t labelSize = gotoLabels.size();
+    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
     for (size_t i = 0; i < labelSize; i++) {
         LabelIdx offset = gotoLabels[i];
         LogInfo::MapleLogger() << " @" << theMIRModule->CurFunction()->GetLabelName(offset);

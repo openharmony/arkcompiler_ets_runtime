@@ -2733,6 +2733,7 @@ void LiteCGIRBuilder::VisitSwitch(GateRef gate, GateRef input, const std::vector
     }
 
     LiteCGType *type = ConvertLiteCGTypeFromGate(gate);
+    CHECK_NULL_FATAL(defaultOutBB);
     SwitchBuilder builder = lmirBuilder_->Switch(type, cond, *defaultOutBB);
     for (int i = 0; i < caseNum; i++) {
         if (acc_.GetOpCode(outList[i]) == OpCode::DEFAULT_CASE) {

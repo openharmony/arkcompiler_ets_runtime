@@ -281,7 +281,9 @@ Function &LMIRBuilder::CreateFunctionInternal(const String &name, Type *retType,
     for (auto param : params_) {
         params.push_back(param);
     }
-    auto &function = *mirBuilder.CreateFunction(name, *retType, params, isVargs, needBody);
+    auto func = mirBuilder.CreateFunction(name, *retType, params, isVargs, needBody);
+    DEBUG_ASSERT(func != nullptr, "CreateFunction should not be nullptr");
+    auto &function = *func;
     // check for attr
     function.SetAttr(FuncAttrMapTable[attr]);
     function.SetAttr(FuncConvAttrMapTable[convAttr]);
@@ -327,11 +329,13 @@ void LMIRBuilder::RenameFormal2Preg(Function &func)
 
 void LMIRBuilder::SetFuncFrameResverdSlot(int slot)
 {
+    CHECK_NULL_FATAL(module.CurFunction());
     module.CurFunction()->GetFuncAttrs().SetFrameResverdSlot(slot);
 }
 
 void LMIRBuilder::SetFuncFramePointer(const String &val)
 {
+    DEBUG_ASSERT(module.CurFunction() != nullptr, "module.CurFunction() should not be nullptr");
     module.CurFunction()->GetFuncAttrs().SetFramePointer(val);
 }
 
@@ -377,6 +381,7 @@ Var *LMIRBuilder::GetGlobalVar(const String &name)
 
 Var &LMIRBuilder::CreateLocalVar(Type *type, const String &name)
 {
+    DEBUG_ASSERT(type != nullptr, "type should not be null");
     return *mirBuilder.GetOrCreateLocalDecl(name, *type);
 }
 
@@ -458,7 +463,9 @@ BB &LMIRBuilder::CreateBB(bool needLabel)
     BB &bb = *module.CurFuncCodeMemPool()->New<BlockNode>();
     if (needLabel) {
         // generate implement label statement as the first statement
+        DEBUG_ASSERT(module.CurFunction() != nullptr, "module.CurFunction() should not be nullptr");
         LabelIdx labelIdx = module.CurFunction()->GetLabelTab()->CreateLabel();
+        CHECK_NULL_FATAL(module.CurFunction());
         (void)module.CurFunction()->GetLabelTab()->AddToStringLabelMap(labelIdx);
         auto *labelStmt = module.CurFuncCodeMemPool()->New<LabelNode>();
         labelStmt->SetLabelIdx(labelIdx);
@@ -499,22 +506,26 @@ void LMIRBuilder::SetStmtCallConv(Stmt &stmt, ConvAttr convAttr)
 
 void LMIRBuilder::AppendBB(BB &bb)
 {
+    DEBUG_ASSERT(module.CurFunction() != nullptr, "module.CurFunction() should not be nullptr");
     module.CurFunction()->GetBody()->AddStatement(&bb);
 }
 
 void LMIRBuilder::AppendToLast(BB &bb)
 {
+    DEBUG_ASSERT(module.CurFunction() != nullptr, "module.CurFunction() should not be nullptr");
     module.CurFunction()->GetLastPosBody()->AddStatement(&bb);
 }
 
 BB &LMIRBuilder::GetLastAppendedBB()
 {
+    CHECK_NULL_FATAL(module.CurFunction());
     BB *pb = dynamic_cast<BB *>(module.CurFunction()->GetLastPosBody()->GetLast());
     return *pb;
 }
 
 BB &LMIRBuilder::GetLastPosBB()
 {
+    CHECK_NULL_FATAL(module.CurFunction());
     return *module.CurFunction()->GetLastPosBody();
 }
 

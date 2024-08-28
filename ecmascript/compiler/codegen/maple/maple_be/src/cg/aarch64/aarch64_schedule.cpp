@@ -301,6 +301,8 @@ uint32 AArch64Schedule::ComputeEstart(uint32 cycle)
                     ++schedNum;
                 }
             }
+            DEBUG_ASSERT(static_cast<uint32>(node->GetPreds().size()) >= static_cast<uint32>(schedNum),
+                         "unsigned value overflow");
             CHECK_FATAL((static_cast<uint32>(node->GetPreds().size()) - static_cast<uint32>(schedNum)) ==
                             node->GetValidPredsSize(),
                         "validPredsSize error.");

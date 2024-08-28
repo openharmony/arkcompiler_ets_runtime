@@ -315,6 +315,7 @@ inline bool IsPowerOf2Const(uint64 i)
 inline uint64 RoundUpConst(uint64 offset, uint64 align)
 {
     CHECK_FATAL(offset <= UINT64_MAX - align, "must not be zero");
+    DEBUG_ASSERT(offset + align >= 1, "result must be uint");
     return (-align) & (offset + align - 1);
 }
 

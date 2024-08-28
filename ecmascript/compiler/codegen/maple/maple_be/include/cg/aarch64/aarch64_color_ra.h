@@ -1224,6 +1224,7 @@ public:
         if (isInt) {
             intPregs &= ~(1ULL << (regNO - RegBaseUpdate(true)));
         } else {
+            DEBUG_ASSERT(regNO >= RegBaseUpdate(false), "regNO - RegBaseUpdate(false) unsigned");
             fpPregs &= ~(1ULL << (regNO - RegBaseUpdate(false)));
         }
     }
@@ -1234,6 +1235,7 @@ public:
         if (isInt) {
             isAvailable = intPregs & (1ULL << (regNO - RegBaseUpdate(true)));
         } else {
+            DEBUG_ASSERT(regNO >= RegBaseUpdate(false), "regNO - RegBaseUpdate(false) unsigned");
             isAvailable = fpPregs & (1ULL << (regNO - RegBaseUpdate(false)));
         }
         return isAvailable;

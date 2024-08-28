@@ -360,6 +360,7 @@ void MIRFunction::DumpFlavorLoweredThanMmpl() const
         } else {
             formalDefVec[i].formalAttrs.DumpAttributes();
         }
+        DEBUG_ASSERT(formalDefVec.size() > 0, "must not be zero");
         if (i != (formalDefVec.size() - 1)) {
             LogInfo::MapleLogger() << ", ";
         }
@@ -632,15 +633,18 @@ void MIRFunction::SetBaseClassFuncNames(GStrIdx strIdx)
         size_t index = name.find(namemangler::kRightBracketStr);
         if (index != std::string::npos) {
             size_t posEnd = index + (std::string(namemangler::kRightBracketStr)).length();
+            DEBUG_ASSERT(posEnd - pos > width, "must not be zero");
             funcNameWithType = name.substr(pos + width, posEnd - pos - width);
         }
         baseFuncSigStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(funcNameWithType);
         size_t newPos = name.find(delimiter, pos + width);
         // make sure it is not __7C, but ___7C ok. stop find loop if last 2 char is '_'
-        while (newPos != std::string::npos && (name[newPos - 1] == '_' && name[newPos - 2] != '_')) {
+        while (newPos != std::string::npos && newPos >= 2 && (name[newPos - 1] == '_' &&
+               name[newPos - 2] != '_')) {  // last 2 char is '_'
             newPos = name.find(delimiter, newPos + width);
         }
         if (newPos != 0) {
+            DEBUG_ASSERT(newPos - pos > width, "must not be zero");
             std::string funcName = name.substr(pos + width, newPos - pos - width);
             baseFuncStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(funcName);
             std::string signature = name.substr(newPos + width, name.length() - newPos - width);
@@ -658,6 +662,9 @@ const MIRSymbol *MIRFunction::GetLocalOrGlobalSymbol(const StIdx &idx, bool chec
 }
 MIRSymbol *MIRFunction::GetLocalOrGlobalSymbol(const StIdx &idx, bool checkFirst)
 {
+    DEBUG_ASSERT(const_cast<MIRSymbol *>(const_cast<const MIRFunction *>(this)->
+                 GetLocalOrGlobalSymbol(idx, checkFirst)) != nullptr,
+                 "this->GetLocalOrGlobalSymbol(idx, checkFirst) should not be nullptr");
     return const_cast<MIRSymbol *>(const_cast<const MIRFunction *>(this)->GetLocalOrGlobalSymbol(idx, checkFirst));
 }
 
@@ -665,6 +672,7 @@ const MIRType *MIRFunction::GetNodeType(const BaseNode &node) const
 {
     if (node.GetOpCode() == OP_dread) {
         const MIRSymbol *sym = GetLocalOrGlobalSymbol(static_cast<const DreadNode &>(node).GetStIdx());
+        CHECK_NULL_FATAL(sym);
         return GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->GetTyIdx());
     }
     if (node.GetOpCode() == OP_regread) {

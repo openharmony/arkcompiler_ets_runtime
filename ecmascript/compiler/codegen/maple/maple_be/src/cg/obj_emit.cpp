@@ -319,6 +319,7 @@ void ObjEmitter::EmitFunctionSymbolTable(ObjFuncEmitInfo &objFuncEmitInfo, std::
 void ObjEmitter::EmitStr16Const(ObjFuncEmitInfo &objFuncEmitInfo, const MIRSymbol &str16Symbol)
 {
     MIRStr16Const *mirStr16Const = safe_cast<MIRStr16Const>(str16Symbol.GetKonst());
+    DEBUG_ASSERT(mirStr16Const != nullptr, "nullptr check");
     const std::u16string &str16 = GlobalTables::GetU16StrTable().GetStringFromStrIdx(mirStr16Const->GetValue());
 
     uint32 len = str16.length();
@@ -335,7 +336,7 @@ void ObjEmitter::EmitStr16Const(ObjFuncEmitInfo &objFuncEmitInfo, const MIRSymbo
 void ObjEmitter::EmitStrConst(ObjFuncEmitInfo &objFuncEmitInfo, const MIRSymbol &strSymbol)
 {
     MIRStrConst *mirStrConst = safe_cast<MIRStrConst>(strSymbol.GetKonst());
-
+    DEBUG_ASSERT(mirStrConst != nullptr, "null ptr check");
     auto str = GlobalTables::GetUStrTable().GetStringFromStrIdx(mirStrConst->GetValue());
     size_t size = str.length();
     /* 1 is tail 0 of the str string */

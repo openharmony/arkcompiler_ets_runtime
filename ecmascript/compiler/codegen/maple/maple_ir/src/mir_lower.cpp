@@ -24,6 +24,7 @@ namespace maple {
 
 static constexpr uint64 RoundUpConst(uint64 offset, uint32 align)
 {
+    DEBUG_ASSERT(offset <= UINT64_MAX - align, "must not be zero");
     return (-align) & (offset + align - 1);
 }
 
@@ -140,6 +141,7 @@ LabelIdx MIRLower::CreateCondGotoStmt(Opcode op, BlockNode &blk, const IfStmtNod
     auto *brStmt = mirModule.CurFuncCodeMemPool()->New<CondGotoNode>(op);
     brStmt->SetOpnd(ifStmt.Opnd(), 0);
     brStmt->SetSrcPos(ifStmt.GetSrcPos());
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "mirModule.CurFunction() should not be nullptr");
     LabelIdx lableIdx = mirModule.CurFunction()->GetLabelTab()->CreateLabel();
     mirModule.CurFunction()->GetLabelTab()->AddToStringLabelMap(lableIdx);
     brStmt->SetOffset(lableIdx);
@@ -193,6 +195,7 @@ void MIRLower::CreateBrFalseAndGotoStmt(BlockNode &blk, const IfStmtNode &ifStmt
     LabelIdx gotoLableIdx = 0;
     if (fallThroughFromThen) {
         auto *gotoStmt = mirModule.CurFuncCodeMemPool()->New<GotoNode>(OP_goto);
+        DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "mirModule.CurFunction() should not be nullptr");
         gotoLableIdx = mirModule.CurFunction()->GetLabelTab()->CreateLabel();
         mirModule.CurFunction()->GetLabelTab()->AddToStringLabelMap(gotoLableIdx);
         gotoStmt->SetOffset(gotoLableIdx);
@@ -412,6 +415,7 @@ BlockNode *MIRLower::LowerWhileStmt(WhileStmtNode &whileStmt)
 BlockNode *MIRLower::LowerDoloopStmt(DoloopNode &doloop)
 {
     DEBUG_ASSERT(doloop.GetDoBody() != nullptr, "nullptr check");
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "mirModule.CurFunction() should not be nullptr");
     doloop.SetDoBody(LowerBlock(*doloop.GetDoBody()));
     int64_t doloopnodeFreq = 0, bodynodeFreq = 0;
     if (GetFuncProfData()) {
@@ -477,6 +481,7 @@ BlockNode *MIRLower::LowerDoloopStmt(DoloopNode &doloop)
         blk->AddStatement(endRegassign);
     } else {
         const MIRSymbol *doVarSym = mirModule.CurFunction()->GetLocalOrGlobalSymbol(doloop.GetDoVarStIdx());
+        DEBUG_ASSERT(doVarSym != nullptr, "nullptr check");
         PrimType doVarPType = doVarSym->GetType()->GetPrimType();
         auto *readDovar =
             mirModule.CurFuncCodeMemPool()->New<DreadNode>(OP_dread, doVarPType, doloop.GetDoVarStIdx(), 0);
@@ -515,6 +520,7 @@ BlockNode *MIRLower::LowerDowhileStmt(WhileStmtNode &doWhileStmt)
     DEBUG_ASSERT(doWhileStmt.GetBody() != nullptr, "nullptr check");
     doWhileStmt.SetBody(LowerBlock(*doWhileStmt.GetBody()));
     auto *blk = mirModule.CurFuncCodeMemPool()->New<BlockNode>();
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "mirModule.CurFunction() should not be nullptr");
     LabelIdx lIdx = mirModule.CurFunction()->GetLabelTab()->CreateLabel();
     mirModule.CurFunction()->GetLabelTab()->AddToStringLabelMap(lIdx);
     auto *labelStmt = mirModule.CurFuncCodeMemPool()->New<LabelNode>();
@@ -639,7 +645,8 @@ void MIRLower::LowerCandCior(BlockNode &block)
     do {
         StmtNode *stmt = nextStmt;
         nextStmt = stmt->GetNext();
-        if (stmt->IsCondBr() && (stmt->Opnd(0)->GetOpCode() == OP_cand || stmt->Opnd(0)->GetOpCode() == OP_cior)) {
+        if (stmt->IsCondBr() && (stmt->Opnd(0) != nullptr &&
+           (stmt->Opnd(0)->GetOpCode() == OP_cand || stmt->Opnd(0)->GetOpCode() == OP_cior))) {
             CondGotoNode *condGoto = static_cast<CondGotoNode *>(stmt);
             BinaryNode *cond = static_cast<BinaryNode *>(condGoto->Opnd(0));
             if ((stmt->GetOpCode() == OP_brfalse && cond->GetOpCode() == OP_cand) ||
@@ -658,6 +665,7 @@ void MIRLower::LowerCandCior(BlockNode &block)
                     labelStmt = static_cast<LabelNode *>(nextStmt);
                     lIdx = labelStmt->GetLabelIdx();
                 } else {
+                    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "mirModule.CurFunction() should not be nullptr");
                     lIdx = mirModule.CurFunction()->GetLabelTab()->CreateLabel();
                     mirModule.CurFunction()->GetLabelTab()->AddToStringLabelMap(lIdx);
                     labelStmt = mirModule.CurFuncCodeMemPool()->New<LabelNode>();

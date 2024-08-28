@@ -116,6 +116,7 @@ uint64 AArch64CallConvImpl::AllocateRegisterForAgg(const MIRType &mirType, CCLoc
     size_t elemNum = 0;
     if (IsHomogeneousAggregates(mirType, baseType, elemNum)) {
         align = GetPrimTypeSize(baseType);
+        DEBUG_ASSERT(nextFloatRegNO + elemNum >= 1, "nextFloatRegNO + elemNum - 1 should be unsigned");
         if ((nextFloatRegNO + elemNum - 1) < AArch64Abi::kNumFloatParmRegs) {
             // C.2  If the argument is an HFA or an HVA and there are sufficient unallocated SIMD and
             //      Floating-point registers (NSRN + number of members <= 8), then the argument is
@@ -198,6 +199,7 @@ void AArch64CallConvImpl::AllocateGPRegister(const MIRType &mirType, CCLocInfo &
         //       The argument has now been allocated.
         DEBUG_ASSERT(mirType.GetPrimType() == PTY_agg, "NIY, primType must be PTY_agg.");
         auto regNum = (size <= k8ByteSize) ? kOneRegister : kTwoRegister;
+        DEBUG_ASSERT(nextGeneralRegNO + regNum >= 1, "nextGeneralRegNO + regNum - 1 should be unsigned");
         if (nextGeneralRegNO + regNum - 1 < AArch64Abi::kNumIntParmRegs) {
             pLoc.reg0 = AllocateGPRegister();
             pLoc.primTypeOfReg0 = (size <= k4ByteSize && !CGOptions::IsBigEndian()) ? PTY_u32 : PTY_u64;
@@ -264,6 +266,7 @@ uint64 AArch64CallConvImpl::LocateNextParm(const MIRType &mirType, CCLocInfo &pL
     }
 
     if (isFirst) {
+        DEBUG_ASSERT(beCommon.GetMIRModule().CurFunction() != nullptr, "curFunction should not be nullptr");
         auto *func = (tFunc != nullptr) ? tFunc : beCommon.GetMIRModule().CurFunction()->GetMIRFuncType();
         if (func->FirstArgReturn()) {
             // For return struct in memory, the pointer returns in x8.

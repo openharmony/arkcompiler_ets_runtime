@@ -71,6 +71,7 @@ MIRModule::~MIRModule()
 
 MemPool *MIRModule::CurFuncCodeMemPool() const
 {
+    DEBUG_ASSERT(CurFunction() != nullptr, "CurFunction() should not be nullptr");
     if (useFuncCodeMemPoolTmp) {
         return CurFunction()->GetCodeMemPoolTmp();
     }
@@ -211,6 +212,7 @@ void MIRModule::DumpGlobals(bool emitStructureType) const
         for (auto infoElem : srcFileInfo) {
             LogInfo::MapleLogger() << "  " << infoElem.second;
             LogInfo::MapleLogger() << " \"" << GlobalTables::GetStrTable().GetStringFromStrIdx(infoElem.first) << "\"";
+            DEBUG_ASSERT(size > 0, "must not be zero");
             if (i++ < size - 1) {
                 LogInfo::MapleLogger() << ",\n";
             } else {
@@ -733,11 +735,13 @@ void MIRModule::RemoveClass(TyIdx tyIdx)
 #endif  // MIR_FEATURE_FULL
 void MIRModule::ReleaseCurFuncMemPoolTmp()
 {
+    DEBUG_ASSERT(CurFunction() != nullptr, "CurFunction() should not be nullptr");
     CurFunction()->ReleaseMemory();
 }
 
 void MIRModule::SetFuncInfoPrinted() const
 {
+    DEBUG_ASSERT(CurFunction() != nullptr, "CurFunction() should not be nullptr");
     CurFunction()->SetInfoPrinted();
 }
 

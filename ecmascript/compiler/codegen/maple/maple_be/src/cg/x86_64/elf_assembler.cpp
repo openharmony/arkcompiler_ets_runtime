@@ -658,6 +658,7 @@ void ElfAssembler::InitElfHeader()
 void ElfAssembler::RegisterSection(Section &section)
 {
     sections.push_back(&section);
+    DEBUG_ASSERT(sections.size() > 0, "must not be zero");
     section.SetIndex(static_cast<SectionIndex>(sections.size() - 1));
 }
 

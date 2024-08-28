@@ -340,7 +340,7 @@ void JITProfiler::ConvertOpType(uint32_t slotId, long bcOffset)
     JSTaggedValue slotValue = profileTypeInfo_->Get(slotId);
     if (slotValue.IsInt()) {
         auto type = slotValue.GetInt();
-        UpdatePGOType(bcOffset, new PGOSampleType(type));
+        UpdatePGOType(bcOffset, chunk_->New<PGOSampleType>(type));
     }
 }
 
@@ -369,7 +369,7 @@ void JITProfiler::ConvertCall(uint32_t slotId, long bcOffset)
     } else {
         return;
     }
-    PGOSampleType* type = new PGOSampleType(ProfileType(abcId_, std::abs(calleeMethodId), kind));
+    PGOSampleType* type = chunk_->New<PGOSampleType>(ProfileType(abcId_, std::abs(calleeMethodId), kind));
     UpdatePGOType(bcOffset, type);
 }
 
@@ -400,11 +400,11 @@ void JITProfiler::ConvertNewObjRange(uint32_t slotId, long bcOffset)
     if (ctorMethodId > 0) {
         ptManager_->RecordAndGetHclassIndexForJIT(hclass);
         auto pt = ProfileType(abcId_, std::abs(ctorMethodId), ProfileType::Kind::JITClassId, true);
-        PGODefineOpType* type = new PGODefineOpType(pt, hclass);
+        PGODefineOpType* type = chunk_->New<PGODefineOpType>(pt, hclass);
         UpdatePGOType(bcOffset, type);
     } else {
         auto kind = ProfileType::Kind::BuiltinFunctionId;
-        auto type = new PGOSampleType(ProfileType(abcId_, std::abs(ctorMethodId), kind));
+        auto type = chunk_->New<PGOSampleType>(ProfileType(abcId_, std::abs(ctorMethodId), kind));
         UpdatePGOType(bcOffset, type);
     }
 }
@@ -421,7 +421,7 @@ void JITProfiler::ConvertGetIterator(uint32_t slotId, long bcOffset)
     int iterKind = value.GetInt();
     ASSERT(iterKind <= 0);
     ProfileType::Kind pgoKind = ProfileType::Kind::BuiltinFunctionId;
-    auto type = new PGOSampleType(ProfileType(abcId_, std::abs(iterKind), pgoKind));
+    auto type = chunk_->New<PGOSampleType>(ProfileType(abcId_, std::abs(iterKind), pgoKind));
     UpdatePGOType(bcOffset, type);
 }
 
@@ -435,14 +435,14 @@ void JITProfiler::ConvertCreateObject(uint32_t slotId, long bcOffset, [[maybe_un
         auto object = slotValue.GetWeakReferentUnChecked();
         if (object->GetClass()->IsHClass()) {
             auto newHClass = JSHClass::Cast(object);
-            PGODefineOpType* objDefType = new PGODefineOpType(ProfileType::CreateJITType(), newHClass);
+            PGODefineOpType* objDefType = chunk_->New<PGODefineOpType>(ProfileType::CreateJITType(), newHClass);
             ptManager_->RecordAndGetHclassIndexForJIT(newHClass);
             UpdatePGOType(bcOffset, objDefType);
         }
     } else if (slotValue.IsTrackInfoObject()) {
         TrackInfo *trackInfo = TrackInfo::Cast(slotValue.GetTaggedObject());
         auto hclass = JSHClass::Cast(trackInfo->GetCachedHClass().GetTaggedObject());
-        PGODefineOpType* objDefType = new PGODefineOpType(ProfileType::CreateJITType(), hclass);
+        PGODefineOpType* objDefType = chunk_->New<PGODefineOpType>(ProfileType::CreateJITType(), hclass);
         ptManager_->RecordAndGetHclassIndexForJIT(hclass);
         auto elementsKind = trackInfo->GetElementsKind();
         objDefType->SetElementsKind(elementsKind);
@@ -903,7 +903,7 @@ void JITProfiler::AddObjectInfoImplement(int32_t bcOffset, const PGOObjectInfo &
 {
     PGORWOpType *cur = nullptr;
     if (bcOffsetPGORwTypeMap_.find(bcOffset) == bcOffsetPGORwTypeMap_.end()) {
-        cur = new PGORWOpType();
+        cur = chunk_->New<PGORWOpType>();
         bcOffsetPGORwTypeMap_[bcOffset] = cur;
     } else {
         cur = const_cast<PGORWOpType*>(bcOffsetPGORwTypeMap_.at(bcOffset));

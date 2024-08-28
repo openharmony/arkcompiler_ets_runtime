@@ -349,6 +349,7 @@ BlockNode *SwitchLowerer::LowerSwitch()
     }
 
     // add case labels to label table's caseLabelSet
+    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
     MIRLabelTable *labelTab = mirModule.CurFunction()->GetLabelTab();
     for (CasePair &casePair : stmt->GetSwitchTable()) {
         labelTab->caseLabelSet.insert(casePair.second);

@@ -75,6 +75,7 @@ struct MapleSparseBitVectorElement {
                 unsigned trailingZeroNum = static_cast<unsigned>(__builtin_ctzll(tmp));
                 bitPos += trailingZeroNum;
                 tmp >>= trailingZeroNum;
+                DEBUG_ASSERT(tmp > 0, "tmp should not be zero; tmp should end with 1 in binary after shifting");
                 tmp -= 1;
                 res.insert(base + bitPos + i * kBitWordSize);
             }

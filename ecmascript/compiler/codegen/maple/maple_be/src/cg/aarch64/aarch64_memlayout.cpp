@@ -41,6 +41,7 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int
         CallNode *callNode = static_cast<CallNode *>(&stmt);
         MIRFunction *fn = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode->GetPUIdx());
         CHECK_FATAL(fn != nullptr, "get MIRFunction failed");
+        CHECK_NULL_FATAL(be.GetMIRModule().CurFunction());
         MIRSymbol *symbol = be.GetMIRModule().CurFunction()->GetLocalOrGlobalSymbol(fn->GetStIdx(), false);
         if (symbol->GetName() == "MCC_CallFastNative" || symbol->GetName() == "MCC_CallFastNativeExt" ||
             symbol->GetName() == "MCC_CallSlowNative0" || symbol->GetName() == "MCC_CallSlowNative1" ||
@@ -66,6 +67,7 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int
             }
             if (opndOpcode == OP_dread) {
                 DreadNode *dread = static_cast<DreadNode *>(opnd);
+                CHECK_NULL_FATAL(be.GetMIRModule().CurFunction());
                 MIRSymbol *sym = be.GetMIRModule().CurFunction()->GetLocalOrGlobalSymbol(dread->GetStIdx());
                 ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->GetTyIdx());
                 if (dread->GetFieldID() != 0) {
@@ -87,6 +89,7 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int
                     DEBUG_ASSERT(ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeClass ||
                                      ty->GetKind() == kTypeUnion,
                                  "expect struct or class");
+                    CHECK_NULL_FATAL(ty);
                     if (ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeUnion) {
                         ty = static_cast<MIRStructType *>(ty)->GetFieldType(iread->GetFieldID());
                     } else {
