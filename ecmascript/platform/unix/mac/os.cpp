@@ -18,6 +18,8 @@
 #include <ctime>
 #include <malloc/malloc.h>
 #include <sys/sysctl.h>
+#include <sys/types.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 
 #include "ecmascript/log_wrapper.h"
@@ -41,7 +43,7 @@ size_t PhysicalSize()
     mib[1] = HW_MEMSIZE;
     int64_t size = 0;
     size_t bufferLength = sizeof(size);
-    if (sysctl(mib, MIB_LENGTH, &size, &bufferLength, NULL, 0) != 0) {
+    if (sysctl(mib, MIB_LENGTH, &size, &bufferLength, nullptr, 0) != 0) {
         LOG_ECMA(FATAL) << "sysctl error";
     }
     return static_cast<size_t>(size);
@@ -66,5 +68,20 @@ void *PageMapExecFortSpace(void *addr, [[maybe_unused]] size_t size, [[maybe_unu
 {
     // basically no op
     return addr;
+}
+
+void SetSecurityLabel(const std::string& path)
+{
+    const std::string dataLevel = DEFAULT_DATA_LEVEL;
+    auto xattrValueSize = getxattr(path.c_str(), XATTR_KEY, nullptr, 0, 0, 0);
+    if (xattrValueSize == static_cast<ssize_t>(DEFAULT_DATA_LENGTH)) {
+        char xattrValue[DEFAULT_DATA_LENGTH + 1];
+        xattrValueSize = getxattr(path.c_str(), XATTR_KEY, xattrValue, xattrValueSize, 0, 0);
+        xattrValue[DEFAULT_DATA_LENGTH] = '\0';
+    }
+
+    if (setxattr(path.c_str(), XATTR_KEY, dataLevel.c_str(), dataLevel.size(), 0, 0) < 0) {
+        LOG_ECMA(WARN) << "set label failed! level: " << dataLevel << ", file: " << path;
+    }
 }
 }  // namespace panda::ecmascript

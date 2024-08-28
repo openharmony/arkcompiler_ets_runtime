@@ -21,6 +21,8 @@
 #include <sys/prctl.h>
 #include <sys/ptrace.h>
 #include <sys/sysinfo.h>
+#include <sys/types.h>
+#include <sys/xattr.h>
 #include <unistd.h>
 
 #include "ecmascript/log_wrapper.h"
@@ -84,5 +86,20 @@ void *PageMapExecFortSpace(void *addr, size_t size, int prot)
             ", prot = " << prot << ", error code is " << errno;
     }
     return res;
+}
+
+void SetSecurityLabel(const std::string& path)
+{
+    const std::string dataLevel = DEFAULT_DATA_LEVEL;
+    auto xattrValueSize = getxattr(path.c_str(), XATTR_KEY, nullptr, 0);
+    if (xattrValueSize == static_cast<ssize_t>(DEFAULT_DATA_LENGTH)) {
+        char xattrValue[DEFAULT_DATA_LENGTH + 1];
+        xattrValueSize = getxattr(path.c_str(), XATTR_KEY, xattrValue, xattrValueSize);
+        xattrValue[DEFAULT_DATA_LENGTH] = '\0';
+    }
+
+    if (setxattr(path.c_str(), XATTR_KEY, dataLevel.c_str(), dataLevel.size(), 0) < 0) {
+        LOG_ECMA(WARN) << "set label failed! level: " << dataLevel << ", file: " << path;
+    }
 }
 }  // namespace panda::ecmascript
