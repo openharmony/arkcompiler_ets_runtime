@@ -220,6 +220,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoBinaryArithme
             Bound *bound = GetBound(y);
             if (bound == nullptr) {
                 LOG_ECMA(FATAL) << "ArrayBoundsCheckElimination::DoBinaryArithmeticOp:bound is nullptr";
+                UNREACHABLE();
             }
             if (!bound->HasUpper() || !bound->HasLower()) {
                 return chunk_->New<Bound>();
@@ -240,6 +241,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoBinaryArithme
             Bound *bound = GetBound(x);
             if (bound == nullptr) {
                 LOG_ECMA(FATAL) << "ArrayBoundsCheckElimination::DoBinaryArithmeticOp:bound is nullptr";
+                UNREACHABLE();
             }
             if (bound->LowerGate() == y) {
                 return chunk_->New<Bound>(TypedBinOp::TYPED_GREATEREQ, Circuit::NullGate(), bound->Lower());
@@ -328,6 +330,7 @@ ArrayBoundsCheckElimination::Bound *ArrayBoundsCheckElimination::DoPhi(GateRef g
         Bound *vBound = GetBound(value);
         if (vBound == nullptr) {
             LOG_ECMA(FATAL) << "ArrayBoundsCheckElimination::DoPhi:vBound is nullptr";
+            UNREACHABLE();
         }
         Bound *curBound;
         GateRef curGate;

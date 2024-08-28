@@ -134,6 +134,9 @@ bool PGOProfilerHeader::ParseFromText(std::ifstream &stream)
         }
         if (!base::FileHeaderBase::CompatibleVerify(ELASTIC_HEADER_MINI_VERSION)) {
             auto *pandaInfoSection = GetPandaInfoSection();
+            if (pandaInfoSection == nullptr) {
+                return false;
+            }
             pandaInfoSection->offset_ -= sizeof(PGOProfilerHeader) - sizeof(PGOProfilerHeaderLegacy);
         }
         return true;

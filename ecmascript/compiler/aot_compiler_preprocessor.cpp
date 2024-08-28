@@ -373,6 +373,9 @@ void AotCompilerPreprocessor::GenerateMethodMap(CompilationOptions &cOptions)
             auto &methodInfo = it->second;
             auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
             auto methodLiteral = jsPandaFile->FindMethodLiteral(index);
+            if (methodLiteral == nullptr) {
+                continue;
+            }
             auto methodId = methodLiteral->GetMethodId();
             const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodId));
             bool isAotcompile = !IsSkipMethod(jsPandaFile, bytecodeInfo, MethodLiteral::GetRecordName(

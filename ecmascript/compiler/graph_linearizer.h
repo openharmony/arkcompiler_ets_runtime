@@ -394,6 +394,9 @@ private:
 
     void BindGate(GateRef gate, GateRegion* region)
     {
+        if (UNLIKELY(region == nullptr)) {
+            return;
+        }
         GateInfo& info = GetGateInfo(gate);
         info.region = region;
         region->AddGate(gate);

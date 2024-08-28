@@ -1161,7 +1161,10 @@ public:
             if (index >= bb.succs.size()) {
                 if (bb.loopNumber > 0) {
                     if (visitState_[curState.bbId] == MarkState::ON_STACK) {
-                        ASSERT(loopInfo != nullptr && loopInfo->loopHeadId == curState.bbId);
+                        if (loopInfo == nullptr) {
+                            continue;
+                        }
+                        ASSERT(loopInfo->loopHeadId == curState.bbId);
                         loopInfo = loopInfo->parentInfo;
                         visitState_[curState.bbId] = MarkState::VISITED1;
                     }

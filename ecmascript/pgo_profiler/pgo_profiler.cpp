@@ -2035,6 +2035,7 @@ void PGOProfiler::WorkList::PushBack(WorkNode *node)
 {
     if (node == nullptr) {
         LOG_ECMA(FATAL) << "PGOProfiler::WorkList::PushBack:node is nullptr";
+        UNREACHABLE();
     }
     if (last_ == nullptr) {
         first_ = node;
