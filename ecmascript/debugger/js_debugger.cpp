@@ -325,6 +325,11 @@ void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> en
     }
     auto *debuggerMgr = ecmaVm_->GetJsDebuggerManager();
     debuggerMgr->MethodEntry(method, envHandle);
+
+    // scriptParsed for sendable object
+    if (method->IsSendableMethod()) {
+        hooks_->MethodEntry(method);
+    }
 }
 
 void JSDebugger::MethodExit([[maybe_unused]] JSHandle<Method> method)
