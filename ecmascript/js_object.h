@@ -742,7 +742,7 @@ public:
     static bool IsArrayLengthWritable(JSThread *thread, const JSHandle<JSObject> &receiver);
     bool UpdatePropertyInDictionary(const JSThread *thread, JSTaggedValue key, JSTaggedValue value);
     static bool ShouldTransToDict(uint32_t capacity, uint32_t index);
-    static bool ShouldTransToFastElements(JSHandle<NumberDictionary> dictionary, uint32_t capacity, uint32_t index);
+    static bool ShouldTransToFastElements(JSThread *thread, TaggedArray *elements, uint32_t capacity, uint32_t index);
     static bool ShouldOptimizeAsFastElements(const JSThread *thread, JSHandle<JSObject> obj);
     static JSHandle<TaggedArray> GrowElementsCapacity(const JSThread *thread, const JSHandle<JSObject> &obj,
                                                       uint32_t capacity, bool highGrowth = false, bool isNew = false);
