@@ -93,8 +93,7 @@ enum class StageOfHotReload : int32_t {
 
 enum class StageOfColdReload : int32_t {
     NOT_COLD_RELOAD,
-    IS_COLD_RELOAD,
-    COLD_RELOADING
+    IS_COLD_RELOAD
 };
 
 class PatchLoader {

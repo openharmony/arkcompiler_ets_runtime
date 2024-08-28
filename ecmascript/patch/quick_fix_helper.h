@@ -22,19 +22,6 @@
 namespace panda::ecmascript {
 class QuickFixHelper {
 public:
-    static inline void SetPatchModule(JSThread *thread, const JSHandle<Method> &methodHandle,
-                                      const JSHandle<JSFunction> &func)
-    {
-        if (thread->GetCurrentEcmaContext()->GetStageOfColdReload() == StageOfColdReload::COLD_RELOADING) {
-            auto coldReloadRecordName =
-                MethodLiteral::GetRecordName(methodHandle->GetJSPandaFile(), methodHandle->GetMethodId());
-            const JSHandle<JSTaggedValue> resolvedModule =
-                thread->GetCurrentEcmaContext()->FindPatchModule(coldReloadRecordName);
-            if (!resolvedModule->IsHole()) {
-                func->SetModule(thread, resolvedModule.GetTaggedValue());
-            }
-        }
-    }
     static JSTaggedValue CreateMainFuncWithPatch(EcmaVM *vm, MethodLiteral *mainMethodLiteral,
                                                  const JSPandaFile *jsPandaFile);
 };

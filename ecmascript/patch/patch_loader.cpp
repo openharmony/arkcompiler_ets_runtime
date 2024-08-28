@@ -114,22 +114,6 @@ void PatchLoader::ExecuteFuncOrPatchMain(
 
     if (loadPatch) {
         context->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
-        if (context->GetStageOfColdReload() == StageOfColdReload::IS_COLD_RELOAD) {
-            context->SetStageOfColdReload(StageOfColdReload::COLD_RELOADING);
-            // change bc stub entry when using assembly interpreter
-            if (thread->IsAsmInterpreter()) {
-                auto handleDefinefuncImm8Id16Imm8ColdReload = thread->GetBCStubEntry(
-                    kungfu::BytecodeStubCSigns::HandleDefinefuncImm8Id16Imm8ColdReload);
-                auto handleDefinefuncImm16Id16Imm8ColdReload = thread->GetBCStubEntry(
-                    kungfu::BytecodeStubCSigns::HandleDefinefuncImm16Id16Imm8ColdReload);
-                thread->SetBCStubEntry(
-                    kungfu::BytecodeStubCSigns::ID_HandleDefinefuncImm8Id16Imm8,
-                    handleDefinefuncImm8Id16Imm8ColdReload);
-                thread->SetBCStubEntry(
-                    kungfu::BytecodeStubCSigns::ID_HandleDefinefuncImm16Id16Imm8,
-                    handleDefinefuncImm16Id16Imm8ColdReload);
-            }
-        }
     } else {
         context->SetStageOfHotReload(StageOfHotReload::UNLOAD_END_EXECUTE_PATCHMAIN);
     }
