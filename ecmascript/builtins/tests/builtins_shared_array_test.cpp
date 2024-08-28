@@ -767,6 +767,19 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Push)
         .GetValue()->GetInt(), 5);
 }
 
+HWTEST_F_L0(BuiltinsSharedArrayTest, DefineOwnProperty_Array)
+{
+    JSArray *arr = JSArray::Cast(JSArray::ArrayCreate(thread, JSTaggedNumber(0)) \
+                        .GetTaggedValue().GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    JSHandle<JSTaggedValue> key0(thread, JSTaggedValue(0));
+    PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(arr)), true, true, true);
+    bool res = JSSharedArray::DefineOwnProperty(thread, obj, key0, desc0, SCheckMode::SKIP);
+    ASSERT_TRUE(!res);
+}
+
 HWTEST_F_L0(BuiltinsSharedArrayTest, Reduce)
 {
     auto ecmaVM = thread->GetEcmaVM();
@@ -1240,6 +1253,16 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, SetPropertyTest001)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
     ASSERT_EQ(true, TestSharedArraySetProperty(ecmaRuntimeCallInfo));
     TestHelper::TearDownFrame(thread, prev);
+
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, array.GetTaggedValue(), 8);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(10)));
+    ecmaRuntimeCallInfo1->SetCallArg(1, JSTaggedValue(static_cast<int32_t>(5)));
+
+    [[maybe_unused]] auto prev1 = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    ASSERT_EQ(false, TestSharedArraySetProperty(ecmaRuntimeCallInfo1));
+    TestHelper::TearDownFrame(thread, prev1);
 }
 
 HWTEST_F_L0(BuiltinsSharedArrayTest, IncludeInSortedValue)
@@ -1263,7 +1286,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, IncludeInSortedValue)
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, objCallInfo);
 
     JSHandle<JSTaggedValue> value(thread, JSTaggedValue(7));
-    bool res = JSSharedArray::IncludeInSortedValue(thread, JSHandle<JSTaggedValue>(obj), value);
+    auto res = JSSharedArray::IncludeInSortedValue(thread, JSHandle<JSTaggedValue>(obj), value);
     ASSERT_TRUE(res);
     JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(100));
     res = JSSharedArray::IncludeInSortedValue(thread, JSHandle<JSTaggedValue>(obj), value1);
