@@ -19,6 +19,7 @@ non-sendable inherit from sendable failed. err: TypeError: The subclass of senda
 sendable contain sendable succeed.
 sendable contain non-sendable failed. err: TypeError: Cannot set sendable property with mismatched type, code: undefined
 sendable contain static non-sendable failed. err: TypeError: Cannot set sendable property with mismatched type, code: undefined
+sendable contain undefined succeed.
 sendable contain lexenv succeed.
 sendable with concurrent decorator succeed.
 sendable add property failed. err: TypeError: Cannot add property in prevent extensions, code: undefined
