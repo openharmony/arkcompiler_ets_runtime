@@ -743,7 +743,7 @@ void Heap::Initialize()
 
     size_t capacities = minSemiSpaceCapacity * 2 + nonmovableSpaceCapacity + snapshotSpaceCapacity +
         machineCodeSpaceCapacity + readOnlySpaceCapacity;
-    if (maxHeapSize < capacities || maxHeapSize - capacities < MIN_OLD_SPACE_LIMIT) {
+    if (maxHeapSize < capacities || maxHeapSize - capacities < MIN_OLD_SPACE_LIMIT) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "HeapSize is too small to initialize oldspace, heapSize = " << maxHeapSize;
     }
     size_t oldSpaceCapacity = maxHeapSize - capacities;
@@ -1098,7 +1098,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
     Jit::JitGCLockHolder lock(GetEcmaVM()->GetJSThread());
     {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
-        if (UNLIKELY(!thread_->IsInRunningStateOrProfiling())) {
+        if (UNLIKELY(!thread_->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << "Local GC must be in jsthread running state";
             UNREACHABLE();
         }

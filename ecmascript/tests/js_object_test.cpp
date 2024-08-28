@@ -1361,6 +1361,9 @@ HWTEST_F_L0(JSObjectTest, CreateObjectFromProperties)
     Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->GetSweeper()->EnsureAllTaskFinished();
     Verification(heap).VerifyAll();
+    auto sHeap = SharedHeap::GetInstance();
+    SuspendAllScope suspendScope(thread);
+    SharedHeapVerification(sHeap, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
     EXPECT_TRUE(newObj->GetClass()->IsDictionaryMode());
 }
 }  // namespace panda::test
