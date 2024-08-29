@@ -163,4 +163,9 @@ HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithFreshRegion)
     JSHandle<JSObject> objHandle(thread, obj);
     heap->GetConcurrentMarker()->HandleMarkingFinished();
 }
+
+HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingRequestBySharedSize)
+{
+    SharedHeap::GetInstance()->TryTriggerLocalConcurrentMarking();
+}
 }  // namespace panda::test
