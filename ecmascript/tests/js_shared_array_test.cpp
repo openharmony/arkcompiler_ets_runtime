@@ -91,8 +91,6 @@ HWTEST_F_L0(JSSharedArrayTest, PropertyKeyToArrayIndex)
 
 HWTEST_F_L0(JSSharedArrayTest, ArraySetLength)
 {
-    // bool JSSharedArray::ArraySetLength(JSThread *thread,
-    //  const JSHandle<JSObject> &array, const PropertyDescriptor &desc)
     JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(1))
                                                  .GetTaggedValue()
@@ -118,5 +116,104 @@ HWTEST_F_L0(JSSharedArrayTest, ArraySetLength)
     PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(6)), true, true, true);
     EXPECT_TRUE(desc1.IsWritable());
     ASSERT_FALSE(JSSharedArray::ArraySetLength(thread, obj, desc2));
+}
+
+HWTEST_F_L0(JSSharedArrayTest, ArraySetLengthTest001)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(1))
+                                                 .GetTaggedValue()
+                                                 .GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    PropertyDescriptor desc(thread);
+    ASSERT_TRUE(JSSharedArray::ArraySetLength(thread, obj, desc));
+}
+
+HWTEST_F_L0(JSSharedArrayTest, ArraySetLengthTest002)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(2))
+                                                 .GetTaggedValue()
+                                                 .GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    PropertyDescriptor desc(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(6)));
+    ASSERT_TRUE(JSSharedArray::ArraySetLength(thread, obj, desc));
+}
+
+HWTEST_F_L0(JSSharedArrayTest, ArraySetLengthTest003)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(1))
+                                                 .GetTaggedValue()
+                                                 .GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0)), false, true, false);
+    
+    ASSERT_FALSE(JSSharedArray::ArraySetLength(thread, obj, desc1));
+    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0)), false, true, true);
+    
+    ASSERT_FALSE(JSSharedArray::ArraySetLength(thread, obj, desc2));
+}
+
+HWTEST_F_L0(JSSharedArrayTest, ArraySetLengthTest004)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(2))
+                                                 .GetTaggedValue()
+                                                 .GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    PropertyDescriptor desc(thread);
+    JSSharedArray::DefineOwnProperty(thread, obj,
+        JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(0))), desc);
+    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(1)), true, false, false);
+    ASSERT_TRUE(JSSharedArray::ArraySetLength(thread, obj, desc1));
+}
+
+HWTEST_F_L0(JSSharedArrayTest, ArrayCreateTest001)
+{
+    double len = (double)std::numeric_limits<uint32_t>::max() + 1000;
+    JSHandle<JSTaggedValue> result = JSSharedArray::ArrayCreate(thread, JSTaggedNumber(len));
+    EXPECT_EQ(result->GetRawData(), JSTaggedValue::Exception().GetRawData());
+}
+
+HWTEST_F_L0(JSSharedArrayTest, ArrayCreateTest002)
+{
+    JSHandle<JSTaggedValue> result = JSSharedArray::ArrayCreate( \
+        thread, JSTaggedNumber(10), ArrayMode::LITERAL);
+    JSSharedArray *arr = JSSharedArray::Cast(result.GetTaggedValue().GetTaggedObject());
+    EXPECT_EQ(arr->GetArrayLength(), 10);
+}
+
+HWTEST_F_L0(JSSharedArrayTest, LengthSetterTest001)
+{
+    JSHandle<JSObject> self;
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(static_cast<int32_t>(-64)));
+    bool result = JSSharedArray::LengthSetter(thread, self, value, true);
+    EXPECT_EQ(result, false);
+}
+
+HWTEST_F_L0(JSSharedArrayTest, LengthSetterTest003)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(15))
+                                                 .GetTaggedValue()
+                                                 .GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> self(thread, arr);
+    auto *hclass = self->GetJSHClass();
+    LayoutInfo *layoutInfo = LayoutInfo::Cast(hclass->GetLayout().GetTaggedObject());
+    PropertyAttributes attr(layoutInfo->GetAttr(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    attr.SetWritable(false);
+    layoutInfo->SetNormalAttr(thread, 0, attr);
+    JSHandle<JSTaggedValue> value(thread, JSTaggedValue(10));
+    bool result = JSSharedArray::LengthSetter(thread, self, value, true);
+    EXPECT_EQ(result, false);
+}
+
+HWTEST_F_L0(JSSharedArrayTest, ArraySpeciesCreateTest001)
+{
+    JSArray *arr = JSArray::ArrayCreate(thread, JSTaggedNumber(0)).GetObject<JSArray>();
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    JSSharedArray::ArraySpeciesCreate(thread, obj, JSTaggedNumber(10));
 }
 } // namespace panda::test
