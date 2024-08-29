@@ -123,3 +123,54 @@ class A {
         }
     }
 }
+
+let o1 = {}
+for (let i = 0 ; i < 1; i++) {
+    try {
+        continue;
+    } catch(e19) {
+        [...o1] = [0]
+    } finally {
+        try {
+            o1[Math]
+        } catch (e) {
+        }
+    }
+}
+
+let v = []
+for (const vv in v) {
+    try {
+        continue;
+    } catch(e19) {
+        [...o1] = [0]
+    } finally {
+        try {
+            o1[Math]
+        } catch (e) {
+        }
+    }
+}
+
+var c=0, i=0;
+var fin=0;
+while(i<10){
+  i+=1;
+  try{
+    if(c===0){
+      throw "ex1";
+    }
+    c+=2;
+    if(c===1){
+      throw "ex2";
+    }
+  }
+  catch(er1){
+    c-=1;
+    continue;
+  }
+  finally{
+    fin+=1;
+  }
+}
+print(fin)

@@ -340,7 +340,7 @@ void FrameStateBuilder::UpdateFrameValues(const BytecodeInfo &bytecodeInfo,
         return;
     }
     // jump gate is null
-    if (gate != Circuit::NullGate()) {
+    if (IsGateNotEmpty(gate)) {
         FillBcInputs(bytecodeInfo, gate);
     }
     auto liveout = GetFrameLiveoutAfter(bcId);
@@ -467,6 +467,27 @@ void FrameStateBuilder::InitEntryBB(const BytecodeRegion &bb)
     }
 }
 
+bool FrameStateBuilder::IsLoopHead(const BytecodeRegion &bb)
+{
+    return !(bcBuilder_->IsOSR() && OutOfOsrLoop(bb)) && bb.loopNumber > 0;
+}
+
+bool FrameStateBuilder::IfLoopNeedMerge(const BytecodeRegion &bb) const
+{
+    return !bcBuilder_->IsOSR() && bb.numOfStatePreds - bb.numOfLoopBack != 1; // 1: loop in
+}
+
+GateRef FrameStateBuilder::InitMerge(size_t numOfIns, bool isLoop)
+{
+    const GateMetaData *metaData = isLoop ? circuit_->LoopBegin(numOfIns) : circuit_->Merge(numOfIns);
+    return circuit_->NewGate(metaData, std::vector<GateRef>(numOfIns, Circuit::NullGate()));
+}
+
+bool FrameStateBuilder::IsGateNotEmpty(GateRef gate) const
+{
+    return gate != Circuit::NullGate();
+}
+
 void FrameStateBuilder::NewMerge(const BytecodeRegion &bbNext)
 {
     auto frameContext = GetMergedBbContext(bbNext.id);
@@ -481,12 +502,42 @@ void FrameStateBuilder::NewMerge(const BytecodeRegion &bbNext)
             numOfIns++;
         }
     }
-
-    bool isLoopHead = !(bcBuilder_->IsOSR() && OutOfOsrLoop(bbNext)) && bbNext.loopNumber > 0;
-    const GateMetaData *metaData = isLoopHead ? circuit_->LoopBegin(numOfIns) : circuit_->Merge(numOfIns);
-    auto merge = circuit_->NewGate(metaData, std::vector<GateRef>(numOfIns, Circuit::NullGate()));
-    auto dependMerge =
-        circuit_->NewGate(circuit_->DependSelector(numOfIns), std::vector<GateRef>(numOfIns + 1, Circuit::NullGate()));
+    
+    bool isLoopHead = IsLoopHead(bbNext);
+    GateRef merge;
+    GateRef dependMerge;
+    if (isLoopHead) {
+        if (!IfLoopNeedMerge(bbNext)) {
+            // only generate loop begin
+            merge = InitMerge(numOfIns, true);
+            dependMerge = circuit_->NewGate(circuit_->DependSelector(numOfIns),
+                std::vector<GateRef>(numOfIns + 1, Circuit::NullGate())); // 1: merge
+        } else {
+            // generate both loop begin and merge
+            ASSERT(numOfIns - bbNext.numOfLoopBack > 1); // 1: loop in
+            size_t numOfLoopIns = bbNext.numOfLoopBack + 1; // 1: loop in
+            merge = InitMerge(numOfLoopIns, true);
+            dependMerge = circuit_->NewGate(circuit_->DependSelector(numOfLoopIns),
+                std::vector<GateRef>(numOfLoopIns + 1, Circuit::NullGate())); // 1: merge
+            size_t numOfMergeIns = numOfIns - bbNext.numOfLoopBack;
+            frameContext->mergeState_ = InitMerge(numOfMergeIns, false);
+            frameContext->mergeDepend_ = circuit_->NewGate(circuit_->DependSelector(numOfMergeIns),
+                std::vector<GateRef>(numOfMergeIns + 1, Circuit::NullGate())); // 1: merge
+            acc_.NewIn(frameContext->mergeDepend_, 0, frameContext->mergeState_);
+            acc_.NewIn(dependMerge, 1, frameContext->mergeDepend_); // 1: phi of merge
+            acc_.NewIn(merge, 0, frameContext->mergeState_);
+            frameContext->loopBackIndex_++;
+        }
+        frameContext->loopBackDepend_ = dependMerge;
+        frameContext->loopBackState_ = merge;
+    } else {
+        // only merge
+        merge = InitMerge(numOfIns, false);
+        dependMerge = circuit_->NewGate(circuit_->DependSelector(numOfIns),
+            std::vector<GateRef>(numOfIns + 1, Circuit::NullGate())); // 1: merge
+        frameContext->mergeDepend_ = dependMerge;
+        frameContext->mergeState_ = merge;
+    }
     acc_.NewIn(dependMerge, 0, merge);  // 0: is state
     // reset current state and depend
     frameContext->currentState_ = merge;
@@ -496,55 +547,6 @@ void FrameStateBuilder::NewMerge(const BytecodeRegion &bbNext)
         ChunkVector<GateRef>& headerGates = bcBuilder_->GetLoopHeaderGates();
         auto& loopInfo = GetLoopInfo(bbNext);
         headerGates[loopInfo.sortIndx] = merge;
-        ASSERT(numOfIns = loopInfo.numLoopBacks + 1); // 1: one entry
-    }
-}
-
-void FrameStateBuilder::RecordEmptyCatchBBMergeInfo(BytecodeRegion *bbNext, GateRef entryState, GateRef entryDepend)
-{
-    bbNext->mergeState.emplace_back(entryState);
-    bbNext->mergeDepend.emplace_back(entryDepend);
-}
-
-void FrameStateBuilder::HandleEmptyCatchBBLoop(const BytecodeRegion &bbNext, size_t index, GateRef mergeState,
-                                               GateRef mergeDepend)
-{
-    // Remove the record of back edge
-    const_cast<BytecodeRegion *>(&bbNext)->mergeState.pop_back();
-    const_cast<BytecodeRegion *>(&bbNext)->mergeDepend.pop_back();
-    // when index is last loop back, merging all state except loop back
-    if (index == (bbNext.numOfStatePreds - 1)) {
-        std::vector<GateRef> stateList;
-        std::vector<GateRef> dependList;
-        stateList.insert(stateList.end(), bbNext.mergeState.begin(), bbNext.mergeState.end());
-        GateRef newMerge = circuit_->NewGate(circuit_->Merge(stateList.size()), stateList);
-        dependList.emplace_back(newMerge);
-        dependList.insert(dependList.end(), bbNext.mergeDepend.begin(), bbNext.mergeDepend.end());
-        GateRef newDependSelector = circuit_->NewGate(circuit_->DependSelector(stateList.size()), dependList);
-        // Merge all gates except for loopback
-        for (size_t i = 0; i < stateList.size() - 1; i++) {
-            acc_.DecreaseIn(mergeState, 0);
-            acc_.DecreaseIn(mergeDepend, 1);
-        }
-        acc_.ReplaceIn(mergeState, 0, newMerge);
-        acc_.ReplaceIn(mergeDepend, 1, newDependSelector); // 1: skip state
-    }
-}
-
-void FrameStateBuilder::HandleEmptyCatchBBMergedGate(const BytecodeRegion &bbNext, FrameContext *mergedContext,
-                                                     GateRef entryState, size_t index)
-{
-    GateRef mergeState = mergedContext->currentState_;
-    GateRef mergeDepend = mergedContext->currentDepend_;
-
-    if (acc_.GetOpCode(mergeState) == OpCode::MERGE && acc_.GetOpCode(entryState) == OpCode::IF_EXCEPTION) {
-        // Remove the record of IF_EXCEPTION, because the existing framework has already merged all exceptions
-        const_cast<BytecodeRegion *>(&bbNext)->mergeState.pop_back();
-        const_cast<BytecodeRegion *>(&bbNext)->mergeDepend.pop_back();
-    } else if (acc_.GetOpCode(mergeState) == OpCode::LOOP_BEGIN) {
-        if (acc_.GetOpCode(entryState) == OpCode::LOOP_BACK) {
-            HandleEmptyCatchBBLoop(bbNext, index, mergeState, mergeDepend);
-        }
     }
 }
 
@@ -552,9 +554,6 @@ void FrameStateBuilder::MergeStateDepend(const BytecodeRegion &bb, const Bytecod
 {
     GateRef entryState = liveContext_->currentState_;
     GateRef entryDepend = liveContext_->currentDepend_;
-    if (bbNext.IsEmptyCatchBB) {
-        RecordEmptyCatchBBMergeInfo(const_cast<BytecodeRegion *>(&bbNext), entryState, entryDepend);
-    }
     auto mergedContext = GetMergedBbContext(bbNext.id);
     if (bbNext.numOfStatePreds == 1) { // 1: one entry edge
         mergedContext->currentState_ = liveContext_->currentState_;
@@ -572,13 +571,10 @@ void FrameStateBuilder::MergeStateDepend(const BytecodeRegion &bb, const Bytecod
         }
         entryState = circuit_->NewGate(circuit_->LoopBack(), { entryState });
     }
-    acc_.NewIn(mergedContext->currentState_, index, entryState);
-    acc_.NewIn(mergedContext->currentDepend_, index + 1, entryDepend); // 1: skip state
+    auto mergeInfo = GetCorrespondingState(bb, bbNext);
+    acc_.NewIn(mergeInfo.state, mergeInfo.index, entryState);
+    acc_.NewIn(mergeInfo.depend, mergeInfo.index + 1, entryDepend); // 1: skip state
     mergedContext->needStateSplit_ = true;
-
-    if (bbNext.IsEmptyCatchBB) {
-        HandleEmptyCatchBBMergedGate(bbNext, mergedContext, entryState, index);
-    }
 }
 
 size_t FrameStateBuilder::GetNumOfStatePreds(const BytecodeRegion &bb)
@@ -596,67 +592,101 @@ size_t FrameStateBuilder::GetNumOfStatePreds(const BytecodeRegion &bb)
     return numOfIns;
 }
 
-void FrameStateBuilder::HandleEmptyCatchBBLoopValue(const BytecodeRegion &bb, GateRef stateMerge, GateRef nextValue,
-                                                    size_t index)
-{
-    if (acc_.GetOpCode(stateMerge) == OpCode::LOOP_BEGIN) {
-        // when index is last loop_back corresponding value, merging all value except loop_back corresponding value
-        ASSERT(GetNumOfStatePreds(bb) > 0);
-        if (index == (GetNumOfStatePreds(bb) - 1)) {
-            std::vector<GateRef> valueList;
-            size_t numIn = bb.mergeState.size();
-            ASSERT(numIn > 0);
-            valueList.emplace_back(stateMerge);
-            for (size_t i = 0; i < numIn; i++) {
-                valueList.emplace_back(acc_.GetValueIn(nextValue, i));
-            }
-            auto newPhi = circuit_->NewGate(circuit_->ValueSelector(numIn), MachineType::I64, valueList.size(),
-                                            valueList.data(), GateType::AnyType());
-            for (size_t i = 0; i < numIn - 1; i++) {
-                acc_.DecreaseIn(nextValue, 1);
-            }
-            acc_.ReplaceValueIn(nextValue, newPhi, 0);
-        }
-    }
-}
-
 GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
-    GateRef stateMerge, GateRef currentValue, GateRef nextValue, size_t index)
+    [[maybe_unused]]GateRef stateMerge, GateRef currentValue, GateRef nextValue, bool isLoopBack)
 {
-    ASSERT(stateMerge != Circuit::NullGate());
-    ASSERT(currentValue != Circuit::NullGate());
-    if (nextValue != Circuit::NullGate() &&
-        (acc_.GetOpCode(nextValue) == OpCode::VALUE_SELECTOR && acc_.GetState(nextValue) == stateMerge)) {
-        ASSERT(currentValue != Circuit::NullGate());
-        acc_.NewIn(nextValue, index + 1, currentValue);
-        if (bb.IsEmptyCatchBB) {
-            HandleEmptyCatchBBLoopValue(bb, stateMerge, nextValue, index);
-        }
-        currentValue = nextValue;
-    } else if (currentValue != nextValue) {
-        size_t numOfIns = GetNumOfStatePreds(bb);
-        auto inList = std::vector<GateRef>(1 + numOfIns, Circuit::NullGate());  // 1: state
-        auto phi = circuit_->NewGate(circuit_->ValueSelector(numOfIns), MachineType::I64, inList.size(), inList.data(),
-                                     GateType::AnyType());
-        acc_.NewIn(phi, 0, stateMerge);
-        if (nextValue != Circuit::NullGate()) {
-            for (size_t i = 0; i < index; i++) {
-                acc_.NewIn(phi, i + 1, nextValue); // 1: skip state
-            }
-            acc_.NewIn(phi, index + 1, currentValue); // 1: skip state
+    ASSERT(IsGateNotEmpty(stateMerge));
+    ASSERT(IsGateNotEmpty(currentValue));
+    auto mergedContext = GetMergedBbContext(bb.id);
+    GateRef result = currentValue;
+    GateRef mergeValueSelector;
+
+    // if already a merged gate
+    if (IsGateNotEmpty(nextValue) &&
+        (acc_.GetOpCode(nextValue) == OpCode::VALUE_SELECTOR &&
+        acc_.GetState(nextValue) == mergedContext->currentState_)) {
+        ASSERT(IsGateNotEmpty(currentValue));
+        if (isLoopBack) {
+            ASSERT(IsGateNotEmpty(mergedContext->loopBackState_));
+            acc_.NewIn(nextValue, mergedContext->loopBackIndex_ + 1, currentValue); // 1: merge
         } else {
-            ASSERT(index == 0);
-            acc_.NewIn(phi, 1, currentValue); // 1: skip state
+            ASSERT(IsGateNotEmpty(mergedContext->mergeState_));
+            if (!IsGateNotEmpty(mergedContext->loopBackState_)) {
+                acc_.NewIn(nextValue, mergedContext->mergeIndex_ + 1, currentValue);  // 1: merge
+            } else {
+                mergeValueSelector = acc_.GetIn(nextValue, 1); // 1: index of phi of merge
+                acc_.NewIn(mergeValueSelector, mergedContext->mergeIndex_ + 1, currentValue); // 1: merge
+            }
         }
-        currentValue = phi;
+        result = nextValue;
+    } else if (currentValue != nextValue) {
+        // build value selector for merge.
+        if (IsGateNotEmpty(mergedContext->mergeState_)) {
+            size_t numOfIns = acc_.GetNumIns(mergedContext->mergeState_);
+            auto inList = std::vector<GateRef>(numOfIns + 1, Circuit::NullGate());  // 1: state
+            auto phi = circuit_->NewGate(
+                circuit_->ValueSelector(numOfIns), MachineType::I64, inList.size(), inList.data(),
+                GateType::AnyType());
+            acc_.NewIn(phi, 0, mergedContext->mergeState_);
+            for (size_t i = 0; i < mergedContext->mergeIndex_; i++) {
+                acc_.NewIn(phi, i + 1, nextValue);  // 1: merge
+            }
+            if (!isLoopBack) {
+                acc_.NewIn(phi, mergedContext->mergeIndex_ + 1, currentValue); // 1: merge
+            }
+            mergeValueSelector = result = phi;
+        }
+        // build value selector for loop begin.
+        if (IsGateNotEmpty(mergedContext->loopBackState_)) {
+            size_t numOfIns = acc_.GetNumIns(mergedContext->loopBackState_);
+            auto inList = std::vector<GateRef>(numOfIns + 1, Circuit::NullGate());  // 1: state
+            auto phi = circuit_->NewGate(
+                circuit_->ValueSelector(numOfIns), MachineType::I64, inList.size(), inList.data(),
+                GateType::AnyType());
+            acc_.NewIn(phi, 0, mergedContext->loopBackState_);
+            if (IsGateNotEmpty(mergedContext->mergeState_)) {
+                acc_.NewIn(phi, 1, mergeValueSelector); // 1: merge
+            }
+            if (IsGateNotEmpty(nextValue)) {
+                for (size_t i = 0; i < mergedContext->loopBackIndex_; i++) {
+                    acc_.NewIn(phi, i + 1, nextValue); // 1: merge
+                }
+            }
+            if (isLoopBack || !IsGateNotEmpty(mergedContext->mergeState_)) {
+                acc_.NewIn(phi, mergedContext->loopBackIndex_ + 1, currentValue); // 1: merge
+            }
+            result = phi;
+        }
     }
-    return currentValue;
+    return result;
 }
 
-void FrameStateBuilder::MergeAssignment(const BytecodeRegion &bbNext)
+MergeStateDependInfo FrameStateBuilder::GetCorrespondingState(const BytecodeRegion &bb, const BytecodeRegion &bbNext)
 {
     auto mergedContext = GetMergedBbContext(bbNext.id);
-    auto stateMerge = mergedContext->currentState_;
+    if (IsLoopHead(bbNext)) {
+        if (!IfLoopNeedMerge(bbNext)) { // 1: only one loop in
+            ASSERT(!IsGateNotEmpty(mergedContext->mergeState_));
+            ASSERT(!IsGateNotEmpty(mergedContext->mergeDepend_));
+            return {mergedContext->loopBackState_, mergedContext->loopBackDepend_, mergedContext->loopBackIndex_};
+        }
+        if (bbNext.IsLoopBack(bb)) {
+            return {mergedContext->loopBackState_, mergedContext->loopBackDepend_, mergedContext->loopBackIndex_};
+        } else {
+            return {mergedContext->mergeState_, mergedContext->mergeDepend_, mergedContext->mergeIndex_};
+        }
+    } else {
+        ASSERT(!IsGateNotEmpty(mergedContext->loopBackState_));
+        ASSERT(!IsGateNotEmpty(mergedContext->loopBackDepend_));
+        return {mergedContext->mergeState_, mergedContext->mergeDepend_, mergedContext->mergeIndex_};
+    }
+}
+
+void FrameStateBuilder::MergeAssignment(const BytecodeRegion &bb, const BytecodeRegion &bbNext)
+{
+    auto mergedContext = GetMergedBbContext(bbNext.id);
+    auto mergeInfo = GetCorrespondingState(bb, bbNext);
+    auto stateMerge = mergeInfo.state;
     ASSERT(acc_.IsCFGMerge(stateMerge));
     auto liveout = GetFrameLiveoutBefore(bbNext.id);
     auto *loopAssignment = GetLoopAssignment(bbNext);
@@ -667,19 +697,20 @@ void FrameStateBuilder::MergeAssignment(const BytecodeRegion &bbNext)
             GateRef value = Circuit::NullGate();
 #ifndef NDEBUG
             if (loopAssignment == nullptr) {
-                ASSERT(current != Circuit::NullGate() && next != Circuit::NullGate());
+                ASSERT(IsGateNotEmpty(current) && IsGateNotEmpty(next));
             } else if (loopAssignment->TestBit(i)) {
                 // next is null or phi
-                ASSERT(next == Circuit::NullGate() ||
-                    ((acc_.GetOpCode(next) == OpCode::VALUE_SELECTOR) && acc_.GetState(next) == stateMerge));
+                ASSERT(!IsGateNotEmpty(next) ||
+                    ((acc_.GetOpCode(next) == OpCode::VALUE_SELECTOR) &&
+                    acc_.GetState(next) == mergedContext->currentState_));
             } else {
-                ASSERT(next == Circuit::NullGate() || current == next);
+                ASSERT(!IsGateNotEmpty(next) || current == next);
             }
 #endif
             if (loopAssignment != nullptr && !loopAssignment->TestBit(i)) {
                 value = current;
             } else {
-                value = MergeValue(bbNext, stateMerge, current, next, mergedContext->currentIndex_);
+                value = MergeValue(bbNext, stateMerge, current, next, bbNext.IsLoopBack(bb));
             }
             mergedContext->SetValuesAt(i, value);
         }
@@ -744,7 +775,7 @@ void FrameStateBuilder::NewLoopExit(const BytecodeRegion &bbNext, BitSet *loopAs
             }
             liveContext_->SetValuesAt(i, current);
         } else {
-            ASSERT(liveContext_->ValuesAt(i) == Circuit::NullGate());
+            ASSERT(!IsGateNotEmpty(liveContext_->ValuesAt(i)));
         }
     }
     liveContext_->currentState_ = loopExit;
@@ -833,12 +864,19 @@ void FrameStateBuilder::MergeIntoSuccessor(const BytecodeRegion &bb, const Bytec
     MergeStateDepend(bb, bbNext);
     if (mergedContext->currentIndex_ == 0) {
         if (bbNext.loopNumber > 0) {
-            MergeAssignment(bbNext);
+            MergeAssignment(bb, bbNext);
         } else {
             CopyLiveoutValues(bbNext, mergedContext, liveContext_);
         }
     } else {
-        MergeAssignment(bbNext);
+        MergeAssignment(bb, bbNext);
+    }
+    // We should connect this gate to loop begin although it's not a loop back edge
+    // if there is no merge state, which means it's the sole loop in.
+    if (bbNext.IsLoopBack(bb) || !IsGateNotEmpty(mergedContext->mergeState_)) {
+        mergedContext->loopBackIndex_++;
+    } else {
+        mergedContext->mergeIndex_++;
     }
     mergedContext->currentIndex_++;
 }
@@ -906,6 +944,7 @@ public:
     {
         ComputeLoopBack();
         TryClearDeadBlock();
+        bcBuilder_->ComputeNumOfLoopBack();
         frameBuilder_->numLoops_ = numLoops_;
         if (numLoops_ > 0) {
             ComputeLoopInfo();
@@ -922,6 +961,7 @@ public:
     {
         loopbacks_.push_back({fromId, toId});
         auto &toBlock = bcBuilder_->GetBasicBlockById(toId);
+        toBlock.loopBacks.insert(fromId);
         if (toBlock.loopNumber == 0) {
             toBlock.loopNumber = ++numLoops_;
         }
@@ -1363,8 +1403,8 @@ GateRef FrameStateBuilder::BuildStateSplit(FrameContext* frameContext, FrameLive
     auto frameState = BuildFrameState(frameContext, liveout, bcIndex);
     auto state = frameContext->currentState_;
     auto depend = frameContext->currentDepend_;
-    ASSERT(state != Circuit::NullGate());
-    ASSERT(depend != Circuit::NullGate());
+    ASSERT(IsGateNotEmpty(state));
+    ASSERT(IsGateNotEmpty(depend));
     return circuit_->NewGate(circuit_->StateSplit(), {state, depend, frameState});
 }
 
@@ -1404,7 +1444,7 @@ GateRef FrameStateBuilder::BuildFrameValues(FrameContext* frameContext, FrameLiv
                                                    GateType::TaggedValue());
     for (size_t i = 0; i < numVregs_; i++) {
         auto value = frameContext->ValuesAt(i);
-        if (value == Circuit::NullGate() || !liveout->TestBit(i)) {
+        if (!IsGateNotEmpty(value) || !liveout->TestBit(i)) {
             value = optimizedGate;
         }
         inList[i] = value;

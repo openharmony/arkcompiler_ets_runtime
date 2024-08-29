@@ -98,10 +98,22 @@ private:
     ChunkVector<GateRef> values_;
     GateRef currentState_ {Circuit::NullGate()};
     GateRef currentDepend_ {Circuit::NullGate()};
+    GateRef loopBackState_ {Circuit::NullGate()};
+    GateRef loopBackDepend_ {Circuit::NullGate()};
+    GateRef mergeState_ {Circuit::NullGate()};
+    GateRef mergeDepend_ {Circuit::NullGate()};
     size_t currentIndex_ {0};
+    size_t loopBackIndex_ {0};
+    size_t mergeIndex_ {0};
     bool needStateSplit_ {false};
     friend class FrameStateBuilder;
     friend class BlockLoopAnalysis;
+};
+
+struct MergeStateDependInfo {
+    GateRef state;
+    GateRef depend;
+    size_t index;
 };
 
 class FrameStateBuilder {
@@ -140,6 +152,7 @@ public:
     {
         return numLoops_ > 0;
     }
+
     void UpdateAccumulator(GateRef gate)
     {
         UpdateVirtualRegister(accumulatorIndex_, gate);
@@ -226,28 +239,28 @@ private:
     void DumpLiveState();
     size_t GetNumOfStatePreds(const BytecodeRegion &bb);
     GateRef MergeValue(const BytecodeRegion &bb,
-        GateRef stateMerge, GateRef currentValue, GateRef nextValue, size_t index);
+        GateRef stateMerge, GateRef currentValue, GateRef nextValue, bool isLoopBack);
     void NewMerge(const BytecodeRegion &bbNext);
     void MergeStateDepend(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
-    void RecordEmptyCatchBBMergeInfo(BytecodeRegion *bbNext, GateRef entryState, GateRef entryDepend);
-    void HandleEmptyCatchBBMergedGate(const BytecodeRegion &bbNext, FrameContext *mergedContext,
-                                  GateRef entryState, size_t index);
-    void HandleEmptyCatchBBLoop(const BytecodeRegion &bbNext, size_t index, GateRef mergeState, GateRef mergeDepend);
-    void HandleEmptyCatchBBLoopValue(const BytecodeRegion &bb, GateRef stateMerge, GateRef nextValue, size_t index);
     void CopyLiveoutValues(const BytecodeRegion &bbNext, FrameContext* dest, FrameContext* src);
     void SaveCurrentContext(const BytecodeRegion &bb);
+    MergeStateDependInfo GetCorrespondingState(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
 
     void NewLoopExit(const BytecodeRegion &bbNext, BitSet *loopAssignment);
     size_t ComputeLoopDepth(size_t loopHead);
     void TryInsertLoopExit(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
     void ComputeLoopInfo();
     void ResizeLoopBody();
-    void MergeAssignment(const BytecodeRegion &bbNext);
+    void MergeAssignment(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
     BitSet *GetLoopAssignment(const BytecodeRegion &bb);
     LoopInfo& GetLoopInfo(const BytecodeRegion &bb);
     LoopInfo& GetLoopInfo(BytecodeRegion &bb);
     LoopInfo* GetLoopInfoByLoopBody(const BytecodeRegion &bb);
     bool IsLoopBackEdge(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
+    bool IsLoopHead(const BytecodeRegion &bb);
+    bool IfLoopNeedMerge(const BytecodeRegion &bb) const;
+    GateRef InitMerge(size_t numOfIns, bool isLoop);
+    bool IsGateNotEmpty(GateRef gate) const;
 
     GateRef BuildFrameContext(FrameContext* frameContext);
     void BindStateSplitBefore(const BytecodeInfo &bytecodeInfo, FrameLiveOut* liveout, uint32_t bcId);
