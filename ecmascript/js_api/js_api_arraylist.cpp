@@ -66,7 +66,7 @@ void JSAPIArrayList::Clear(JSThread *thread, const JSHandle<JSAPIArrayList> &arr
         int length = arrayList->GetLength().GetInt();
         JSHandle<TaggedArray> elements(thread, arrayList->GetElements());
         ASSERT(!elements->IsDictionaryMode());
-        for (int i = 0; i <= length; ++i) {
+        for (int i = 0; i < length; ++i) {
             elements->Set(thread, i, JSTaggedValue::Hole());
         }
         arrayList->SetLength(thread, JSTaggedValue(0));
