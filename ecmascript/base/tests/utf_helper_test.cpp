@@ -1022,4 +1022,33 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_012) {
     utf16.resize(converted);
     EXPECT_NE(utf16, expected_utf16);
 }
+
+/*
+* @tc.name: ConvertRegionUtf8ToUtf16
+* @tc.desc: Test four byte UTF-8 characters and proxy pairs
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_013) {
+    std::string utf8 = "\xF0\x9F\x98\x8E"; // Emoji 😎
+    std::vector<uint16_t> expected_utf16 = {0xD83D, 0xDE0E}; // surrogates
+    std::vector<uint16_t> utf16(0);
+    size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
+        utf16.data(), utf8.size(), utf16.size(), 0);
+    utf16.resize(converted);
+    EXPECT_EQ(converted, 0);
+}
+/*
+* @tc.name: ConvertRegionUtf8ToUtf16
+* @tc.desc: Test four byte UTF-8 characters and proxy pairs
+* @tc.type: FUNC
+*/
+HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_014) {
+    std::string utf8 = "\xF0\x9F\x98\x8E"; // Emoji 😎
+    std::vector<uint16_t> expected_utf16 = {0xD83D, 0xDE0E}; // surrogates
+    std::vector<uint16_t> utf16(1);
+    size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
+        utf16.data(), utf8.size(), utf16.size(), 0);
+    utf16.resize(converted);
+    EXPECT_EQ(converted, 0);
+}
 } // namespace panda:test
