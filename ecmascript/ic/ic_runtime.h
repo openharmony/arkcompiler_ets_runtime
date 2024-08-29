@@ -79,7 +79,7 @@ public:
     JSTaggedValue LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
 private:
     JSTaggedValue LoadOrdinaryGet(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
-    JSTaggedValue LoadGetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
+    inline JSTaggedValue CallPrivateGetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key);
 };
 
 class StoreICRuntime : public ICRuntime {
@@ -95,6 +95,9 @@ public:
                                  JSHandle<JSTaggedValue> value, bool isOwn = false);
     
     JSTaggedValue StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
+                                           JSHandle<JSTaggedValue> value);
+private:
+    inline JSTaggedValue CallPrivateSetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
                                            JSHandle<JSTaggedValue> value);
 };
 }  // namespace panda::ecmascript

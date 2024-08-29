@@ -146,7 +146,7 @@ function testReadIcSlotInPrivatePropertyIns() {
 
 testReadIcSlotInPrivatePropertyIns();
 
-// Invalid private key
+// Invalid private key check for ldPrivateProperty
 const v1 = [1];
 const v2 = [2];
 class C {
@@ -163,3 +163,25 @@ class C {
     }
 }
 const v3 = new C();
+
+// Invalid private key check for stPrivateProperty
+class OutSide {
+    #x = 42;
+  
+    innerclass() {
+      return class {
+        f() {
+          this.#x = 1;
+        }
+      }
+    }
+  }
+  
+  var Inner = new OutSide().innerclass();
+  var i = new Inner();
+  
+  try {
+    i.f();
+  } catch(e) {
+    print(e.name + " : " + e.message);
+}

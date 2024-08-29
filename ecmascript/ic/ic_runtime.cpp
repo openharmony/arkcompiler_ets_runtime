@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/ic/ic_runtime.h"
-
 #include "ecmascript/ic/ic_handler.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
@@ -244,7 +243,7 @@ JSTaggedValue LoadICRuntime::LoadMiss(JSHandle<JSTaggedValue> receiver, JSHandle
     }
 
     if (key->IsJSFunction()) { // key is a private getter
-        return LoadGetter(receiver, key);
+        return CallPrivateGetter(receiver, key);
     }
 
     if (key->IsSymbol() && JSSymbol::Cast(key->GetTaggedObject())->IsPrivate()) {
@@ -289,7 +288,7 @@ JSTaggedValue LoadICRuntime::LoadOrdinaryGet(JSHandle<JSTaggedValue> receiver, J
     return JSTaggedValue::GetProperty(thread_, receiver, propKey).GetValue().GetTaggedValue();
 }
 
-JSTaggedValue LoadICRuntime::LoadGetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
+inline JSTaggedValue LoadICRuntime::CallPrivateGetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key)
 {
     JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
     EcmaRuntimeCallInfo* info =
@@ -382,14 +381,15 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         return JSTaggedValue::Exception();
     }
     if (key->IsJSFunction()) { // key is a private setter
-        JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
-        EcmaRuntimeCallInfo* info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 1); // 1: setter has 1 argument
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        info->SetCallArg(value.GetTaggedValue());
-        JSTaggedValue resSetter = JSFunction::Call(info);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
-        return resSetter;
+        return CallPrivateSetter(receiver, key, value);
+    }
+
+    if (key->IsSymbol() && JSSymbol::Cast(key->GetTaggedObject())->IsPrivate()) {
+        PropertyDescriptor desc(thread_);
+        if (!JSTaggedValue::IsPropertyKey(key) ||
+            !JSTaggedValue::GetOwnProperty(thread_, receiver, key, desc)) {
+            THROW_TYPE_ERROR_AND_RETURN(thread_, "invalid or cannot find private key", JSTaggedValue::Exception());
+        }
     }
 
     ObjectOperator op(GetThread(), receiver, key, isOwn ? OperatorType::OWN : OperatorType::PROTOTYPE_CHAIN);
@@ -433,6 +433,19 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         return JSTaggedValue::Undefined();
     }
     return JSTaggedValue::Exception();
+}
+
+inline JSTaggedValue StoreICRuntime::CallPrivateSetter(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
+                                                       JSHandle<JSTaggedValue> value)
+{
+    JSHandle<JSTaggedValue> undefined = thread_->GlobalConstants()->GetHandledUndefined();
+    EcmaRuntimeCallInfo* info =
+        EcmaInterpreter::NewRuntimeCallInfo(thread_, key, receiver, undefined, 1); // 1: setter has 1 argument
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+    info->SetCallArg(value.GetTaggedValue());
+    JSTaggedValue resSetter = JSFunction::Call(info);
+    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
+    return resSetter;
 }
 
 JSTaggedValue StoreICRuntime::StoreTypedArrayValueMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
