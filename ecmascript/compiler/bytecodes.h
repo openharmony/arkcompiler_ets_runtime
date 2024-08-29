@@ -291,7 +291,7 @@ public:
     static constexpr uint32_t LAST_THROW_OPCODE =
         static_cast<uint32_t>(EcmaOpcode::THROW_UNDEFINEDIFHOLEWITHNAME_PREF_ID16);
     static constexpr uint32_t LAST_CALLRUNTIME_OPCODE =
-        static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_WIDELDLAZYSENDABLEMODULEVAR_PREF_IMM16);
+        static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8);
 
     static_assert(CALLRUNTIME_PREFIX_OPCODE_INDEX ==
         static_cast<uint32_t>(EcmaOpcode::CALLRUNTIME_NOTIFYCONCURRENTRESULT_PREF_NONE));

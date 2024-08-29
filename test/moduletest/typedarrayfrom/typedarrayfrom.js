@@ -75,8 +75,16 @@ function f2() {
 }
 class C3 extends f2 {
 }
+class C4 extends f2 {
+    constructor(...args) {
+        super(...args);
+    }
+}
 try {
-    new C3()
+    new C3()  // since ES2021, default ctor of derivative class does not call Array.prototype[Symbol.iterator]
+    print("new C3 success");
+    new C4()  // spread syntax still calls Array.prototype[Symbol.iterator]
+    print("new C4 success");  // this line should be unreachable
 } catch (e) {
     print(e);
 }

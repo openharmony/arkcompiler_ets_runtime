@@ -106,6 +106,7 @@ namespace panda::ecmascript::kungfu {
     V(WIDE_SUPERCALLTHISRANGE_PREF_IMM16_V8)                               \
     V(SUPERCALLTHISRANGE_IMM8_IMM8_V8)                                     \
     V(SUPERCALLARROWRANGE_IMM8_IMM8_V8)                                    \
+    V(CALLRUNTIME_SUPERCALLFORWARDALLARGS_PREF_V8)                         \
     V(DEFINEFUNC_IMM8_ID16_IMM8)                                           \
     V(DEFINEFUNC_IMM16_ID16_IMM8)                                          \
     V(DEFINEMETHOD_IMM8_ID16_IMM8)                                         \

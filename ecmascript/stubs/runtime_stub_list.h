@@ -472,7 +472,10 @@ namespace panda::ecmascript {
     V(FunctionPrototypeBind)                    \
     V(FunctionPrototypeCall)                    \
     V(SetPrototypeTransition)                   \
-    V(GetSharedModule)
+    V(GetSharedModule)                          \
+    V(SuperCallForwardAllArgs)                  \
+    V(OptSuperCallForwardAllArgs)
+
 
 #define RUNTIME_STUB_LIST(V)                     \
     RUNTIME_ASM_STUB_LIST(V)                     \

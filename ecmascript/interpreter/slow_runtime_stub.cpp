@@ -1004,6 +1004,14 @@ JSTaggedValue SlowRuntimeStub::SuperCallSpread(JSThread *thread, JSTaggedValue f
     return RuntimeStubs::RuntimeSuperCallSpread(thread, funcHandle, newTargetHandle, jsArray);
 }
 
+JSTaggedValue SlowRuntimeStub::SuperCallForwardAllArgs(JSThread *thread, JSTaggedType *sp, JSTaggedValue func,
+                                                       JSTaggedValue newTarget, uint32_t restNumArgs, uint32_t startIdx)
+{
+    JSHandle<JSTaggedValue> superFunc(thread, GetSuperConstructor(thread, func));
+    JSHandle<JSTaggedValue> newTargetHandle(thread, newTarget);
+    return RuntimeStubs::RuntimeSuperCallForwardAllArgs(thread, sp, superFunc, newTargetHandle, restNumArgs, startIdx);
+}
+
 JSTaggedValue SlowRuntimeStub::DefineMethod(JSThread *thread, Method *method, JSTaggedValue homeObject,
                                             uint16_t length, JSTaggedValue env, JSTaggedValue module)
 {

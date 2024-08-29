@@ -20,6 +20,7 @@
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/gate_accessor.h"
+#include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/pass_manager.h"
 #include <cstddef>
 
@@ -244,11 +245,17 @@ private:
     void LowerSuperCall(GateRef gate);
     void LowerSuperCallArrow(GateRef gate);
     void LowerSuperCallSpread(GateRef gate);
-    GateRef IsSuperFuncValid(GateRef superFunc);
+    void LowerSuperCallForwardAllArgs(GateRef gate);
+    void CheckSuperAndNewTarget(NewObjectStubBuilder &objBuilder, GateRef super, Variable &newTarget,
+                                Variable &thisObj, Label &fastPath, Label &slowPath);
+    void CallNGCRuntimeWithCallTimer(int index, GateRef gate, GateRef func, Variable &result,
+                                     const std::vector<GateRef> &args);
     GateRef IsAotOrFastCall(GateRef func, CircuitBuilder::JudgeMethodType type);
-    void LowerFastSuperCall(const std::vector<GateRef> &args, Variable *result, Label *exit, GateRef actualArgc,
-                            bool isSuperCallSpread);
-    GateRef GetSuperCallArgs(const std::vector<GateRef> &args, bool isSuperCallSpread);
+    void LowerFastSuperCallWithArgArray(GateRef array, const std::vector<GateRef> &args, bool isSpread,
+                                        Variable &result, Label &exit);
+    void LowerFastSuperCall(const std::vector<GateRef> &args, GateRef elementsPtr,
+                            Variable &result, Label &exit);
+    void GenerateSuperCallForwardAllArgsWithoutArgv(const std::vector<GateRef> &args, Variable &result, Label &exit);
     void LowerIsTrueOrFalse(GateRef gate, bool flag);
     void LowerNewObjRange(GateRef gate);
     bool IsDependIfStateMent(GateRef gate, size_t idx);
