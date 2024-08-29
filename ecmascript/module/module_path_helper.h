@@ -104,6 +104,7 @@ public:
     static constexpr size_t PREFIX_BUNDLE_LEN = 8;
     static constexpr size_t PREFIX_MODULE_LEN = 8;
     static constexpr size_t PREFIX_PACKAGE_LEN = 9;
+    static constexpr size_t PACKAGE_PATH_SEGMENT_LEN = 11;
     static constexpr size_t NATIVE_PREFIX_SIZE = 8;
     static constexpr size_t OHOS_PREFIX_SIZE = 6;
     static constexpr size_t APP_PREFIX_SIZE = 5;
