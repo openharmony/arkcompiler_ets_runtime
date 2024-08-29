@@ -201,6 +201,7 @@ namespace panda::ecmascript {
     V(StGlobalRecord)                \
     V(ThrowReferenceError)           \
     V(ThrowTypeError)                \
+    V(MismatchError)                 \
     V(ThrowSyntaxError)              \
     V(NewClassFunc)                  \
     V(DefineClass)                   \

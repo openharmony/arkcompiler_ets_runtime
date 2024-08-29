@@ -210,6 +210,7 @@ namespace panda::ecmascript {
     V(ToPropertyKeyConfigurable)                \
     V(NewJSPrimitiveRef)                        \
     V(ThrowTypeError)                           \
+    V(MismatchError)                            \
     V(GetHash32)                                \
     V(ComputeHashcode)                          \
     V(NewInternalString)                        \

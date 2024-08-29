@@ -14,6 +14,7 @@
  */
 
 #include "ecmascript/accessor_data.h"
+#include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 #include "ecmascript/dfx/hprof/heap_profiler_interface.h"
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
@@ -134,9 +135,11 @@
 #include "ecmascript/require/js_cjs_module.h"
 #include "ecmascript/require/js_cjs_require.h"
 #include "ecmascript/require/js_cjs_exports.h"
+#include <sstream>
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
+using Array = panda::ecmascript::builtins::BuiltinsArray;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define CHECK_DUMP_FIELDS(begin, end, num);                                           \
@@ -166,6 +169,54 @@ HWTEST_F_L0(EcmaDumpTest, Dump)
     objFunc.GetTaggedValue().Dump(os);
 }
 #endif  // #ifndef NDEBUG
+
+HWTEST_F_L0(EcmaDumpTest, DumpTaggedValueType)
+{
+    std::vector<JSHandle<JSTaggedValue>> loopVal {};
+    std::vector<std::string> loopRes {};
+    // [Int]
+    int32_t a = 1;
+    JSTaggedValue intVal = JSTaggedValue(a);
+    loopVal.push_back(JSHandle<JSTaggedValue>(thread, intVal));
+    loopRes.push_back("[Int]");
+    // [Double]
+    double b = 3.14;
+    JSTaggedValue doubleVal = JSTaggedValue(b);
+    loopVal.push_back(JSHandle<JSTaggedValue>(thread, doubleVal));
+    loopRes.push_back("[Double]");
+    // [Undefine]
+    JSTaggedValue undefineVal = JSTaggedValue::Undefined();
+    loopVal.push_back(JSHandle<JSTaggedValue>(thread, undefineVal));
+    loopRes.push_back("[Special Value] : Undefined");
+    // [Null]
+    JSTaggedValue nullVal = JSTaggedValue::Null();
+    loopVal.push_back(JSHandle<JSTaggedValue>(thread, nullVal));
+    loopRes.push_back("[Special Value] : Null");
+    // JSArray
+    JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
+    JSHandle<JSObject> globalObject(thread, thread->GetEcmaVM()->GetGlobalEnv()->GetGlobalObject());
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 10);
+    ecmaRuntimeCallInfo1->SetFunction(array.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetThis(globalObject.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue arrVal = Array::ArrayConstructor(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+    loopVal.push_back(JSHandle<JSTaggedValue>(thread, arrVal));
+    loopRes.push_back("[Array]");
+    // Object
+    JSHandle<GlobalEnv> globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> objFun = globalEnv->GetObjectFunction();
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> obj(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun));
+    loopVal.push_back(obj);
+    loopRes.push_back("[Object]");
+    
+    for (int i = 0; i < loopVal.size(); i++) {
+        std::stringstream oss;
+        loopVal[i].GetTaggedValue().DumpTaggedValueType(oss);
+        ASSERT_EQ(oss.str(), loopRes[i]);
+    }
+}
 
 static JSHandle<JSMap> NewJSMap(JSThread *thread, ObjectFactory *factory, JSHandle<JSTaggedValue> proto)
 {

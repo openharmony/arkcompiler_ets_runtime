@@ -2010,6 +2010,18 @@ DEF_RUNTIME_STUBS(ThrowTypeError)
     THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error.GetTaggedValue(), JSTaggedValue::Hole().GetRawData());
 }
 
+DEF_RUNTIME_STUBS(MismatchError)
+{
+    RUNTIME_STUBS_HEADER(MismatchError);
+    JSTaggedValue shareFieldType = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue value = GetArg(argv, argc, 1);  // 1: means the first parameter
+    std::stringstream oss;
+    value.DumpTaggedValueType(oss);
+    LOG_ECMA(ERROR) << "Sendable obj Match field type fail. expected type: " <<
+        ClassHelper::StaticFieldTypeToString(shareFieldType.GetInt()) << ", actual type: " << oss.str();
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(NewJSPrimitiveRef)
 {
     RUNTIME_STUBS_HEADER(NewJSPrimitiveRef);

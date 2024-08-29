@@ -712,6 +712,7 @@ public:
     static JSTaggedValue TryCastDoubleToInt32(double d);
 
     void DumpTaggedValue(std::ostream &os) const DUMP_API_ATTR;
+    void DumpTaggedValueType(std::ostream &os) const DUMP_API_ATTR;
     void Dump(std::ostream &os) const DUMP_API_ATTR;
     void D() const DUMP_API_ATTR;
     void DumpForSnapshot(std::vector<Reference> &vec, bool isVmMode = true) const;

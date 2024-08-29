@@ -285,9 +285,9 @@ public:
         return DeoptTypeBits::Update(extraLiteralInfo, type);
     }
     
-    uint64_t SetIsSendable(uint64_t extraLiteralInfo, bool isShared)
+    uint64_t SetIsSendable(uint64_t extraLiteralInfo, bool isSendable)
     {
-        return IsSharedBit::Update(extraLiteralInfo, isShared);
+        return IsSharedBit::Update(extraLiteralInfo, isSendable);
     }
 
     uint64_t SetFpDelta(uint64_t extraLitearalInfo, int32_t delta)
@@ -417,10 +417,10 @@ public:
         return IsSharedBit::Decode(extraLiteralInfo);
     }
 
-    void SetIsSendable(bool isShared)
+    void SetIsSendable(bool isSendable)
     {
         uint64_t extraLiteralInfo = GetExtraLiteralInfo();
-        uint64_t newValue = SetIsSendable(extraLiteralInfo, isShared);
+        uint64_t newValue = SetIsSendable(extraLiteralInfo, isSendable);
         SetExtraLiteralInfo(newValue);
     }
 

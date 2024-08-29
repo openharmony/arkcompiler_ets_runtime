@@ -2361,7 +2361,7 @@ inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result,
     {
         Label typeMismatch(env);
         GateRef fieldType = isDicMode ? GetDictSharedFieldTypeInPropAttr(attr) : GetSharedFieldTypeInPropAttr(attr);
-        MatchFieldType(fieldType, value, executeSetProp, &typeMismatch);
+        MatchFieldType(glue, fieldType, value, executeSetProp, &typeMismatch);
         Bind(&typeMismatch);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
@@ -2382,7 +2382,7 @@ inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result,
     {
         Label typeMismatch(env);
         GateRef fieldType = isDicMode ? GetDictSharedFieldTypeInPropAttr(attr) : GetSharedFieldTypeInPropAttr(attr);
-        MatchFieldType(fieldType, value, executeSetProp, &typeMismatch);
+        MatchFieldType(glue, fieldType, value, executeSetProp, &typeMismatch);
         Bind(&typeMismatch);
         {
             GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
@@ -2398,7 +2398,7 @@ inline void StubBuilder::MatchFieldType(Variable *result, GateRef glue, GateRef 
 {
     auto *env = GetEnvironment();
     Label typeMismatch(env);
-    MatchFieldType(fieldType, value, executeSetProp, &typeMismatch);
+    MatchFieldType(glue, fieldType, value, executeSetProp, &typeMismatch);
     Bind(&typeMismatch);
     {
         GateRef taggedId = Int32(GET_MESSAGE_STRING_ID(SetTypeMismatchedSharedProperty));
