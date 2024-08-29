@@ -70,7 +70,7 @@ public:
     // For sweeping
     void PrepareSweeping();
     void Sweep();
-    void AsyncSweep(bool isMain);
+    virtual void AsyncSweep(bool isMain);
 
     bool TryFillSweptRegion();
     // Ensure All region finished sweeping
@@ -273,6 +273,7 @@ public:
     NO_MOVE_SEMANTIC(MachineCodeSpace);  // Note: Expand() left for define
     uintptr_t GetMachineCodeObject(uintptr_t pc);
     size_t CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &machineCode, uintptr_t pc);
+    void AsyncSweep(bool isMain) override;
     void FreeRegion(Region *current, bool isMain = true) override;
     uintptr_t Allocate(size_t size, bool allowGC = true);
     uintptr_t Allocate(size_t size, MachineCodeDesc *desc, bool allowGC = true);
@@ -306,7 +307,7 @@ public:
 
 private:
     JitFort *jitFort_ {nullptr};
-    Mutex freeRegionMutex_;
+    Mutex asyncSweepMutex_;
     friend class Heap;
     friend class ConcurrentSweeper;
 };

@@ -72,10 +72,14 @@ JSHandle<TaggedArray> ConstantPool::GetFieldLiteral(JSThread *thread, JSHandle<C
     return literalArray;
 }
 
-JSTaggedValue ConstantPool::GetStringFromCacheForJit(JSThread *thread, JSTaggedValue constpool, uint32_t index)
+JSTaggedValue ConstantPool::GetStringFromCacheForJit(JSThread *thread, JSTaggedValue constpool, uint32_t index,
+    bool allowAlloc)
 {
     const ConstantPool *taggedPool = ConstantPool::Cast(constpool.GetTaggedObject());
     auto val = taggedPool->Get(index);
+    if (!allowAlloc && val.IsHole()) {
+        return JSTaggedValue::Undefined();
+    }
     if (val.IsHole()) {
         JSPandaFile *jsPandaFile = taggedPool->GetJSPandaFile();
         panda_file::File::EntityId id = taggedPool->GetEntityId(index);

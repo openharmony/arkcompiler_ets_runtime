@@ -795,7 +795,7 @@ bool JSThread::CheckSafepoint()
         vmThreadControl_->SuspendVM();
     }
     if (HasInstallMachineCode()) {
-        vm_->GetJit()->InstallTasks(GetThreadId());
+        vm_->GetJit()->InstallTasks(this);
         SetInstallMachineCode(false);
     }
 

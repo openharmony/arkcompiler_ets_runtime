@@ -31,6 +31,7 @@ group("ark_jit_ts_test") {
     "ts_inline",
     "proxy_fast_call",
     "fuzz_exception",
+    "throw_error",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]

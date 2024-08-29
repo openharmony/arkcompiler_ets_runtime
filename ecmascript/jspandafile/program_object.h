@@ -668,7 +668,8 @@ public:
         return GetLiteralFromCache<type>(thread, constpool, index, entry);
     }
 
-    static JSTaggedValue PUBLIC_API GetStringFromCacheForJit(JSThread *thread, JSTaggedValue constpool, uint32_t index);
+    static JSTaggedValue PUBLIC_API GetStringFromCacheForJit(JSThread *thread, JSTaggedValue constpool, uint32_t index,
+        bool allowAlloc = true);
 
     static JSTaggedValue PUBLIC_API GetStringFromCache(JSThread *thread, JSTaggedValue constpool, uint32_t index);
 

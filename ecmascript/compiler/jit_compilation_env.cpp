@@ -170,13 +170,13 @@ const GlobalEnvConstants *JitCompilationEnv::GlobalConstants() const
 }
 
 JSTaggedValue JitCompilationEnv::GetStringFromConstantPool([[maybe_unused]] const uint32_t methodOffset,
-    const uint16_t cpIdx) const
+    const uint16_t cpIdx, bool allowAlloc) const
 {
     JSTaggedValue constpool = GetConstantPoolByMethodOffset(methodOffset);
     if (constpool.IsUndefined()) {
         return JSTaggedValue::Undefined();
     }
-    return ConstantPool::GetStringFromCacheForJit(GetJSThread(), constpool, cpIdx);
+    return ConstantPool::GetStringFromCacheForJit(GetJSThread(), constpool, cpIdx, allowAlloc);
 }
 
 JSFunction *JitCompilationEnv::GetJsFunctionByMethodOffset(uint32_t methodOffset) const
