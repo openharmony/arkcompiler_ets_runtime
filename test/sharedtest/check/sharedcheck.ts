@@ -62,6 +62,13 @@ class SimpleNumberSendable {
   }
 }
 
+class SimpleSendableClass {
+  propNumber: number = 2023;
+  constructor() {
+    "use sendable"
+  }
+}
+
 class SuperClass {
   propString: string = "I'm propString"
   propNumber: number = 5
@@ -80,6 +87,8 @@ class SuperClass {
   propSenableOrUndefined: SimpleStringSendable | undefined
   static staticPropString: string = "I'm staticPropString";
   publicPropString: string = "I'm privatePropString";
+  propNumberToString: string = "I'm prop NumberToString";
+  propSendableObj: SimpleSendableClass | null;
 
   get accessorPrivatePropString() {
     return this.publicPropString;
@@ -88,6 +97,17 @@ class SuperClass {
   set accessorPrivatePropString(prop: string) {
     this.publicPropString = prop;
   }
+
+  set accessorNumberToString(prop: string) {
+    this.propNumberToString = String(prop);
+  }
+
+  set accessorGenerateSendable(prop: Array<number>) {
+    let obj = new SimpleSendableClass();
+    obj.propNumber = prop.pop();
+    this.propSendableObj = obj;
+  }
+
   constructor() {
     "use sendable"
     print(this.propString)
@@ -651,6 +671,13 @@ function testHotFunction(testObj: SubClass, loopIndex: number) {
   testObj.accessorPrivatePropString = loopIndex < 1000 ? "123" : 1;
 }
 
+function testHotFunctionConvertWithAccessor(testObj: SubClass, loopIndex: number) {
+  let array = new Array<number>();
+  array.push(loopIndex);
+  testObj.accessorNumberToString = loopIndex;
+  testObj.accessorGenerateSendable = array;
+}
+
 function testICCheckingUpdateInstanceAccessor(testObj: SubClass) {
   let loopIndex: number = 0;
   try {
@@ -663,11 +690,24 @@ function testICCheckingUpdateInstanceAccessor(testObj: SubClass) {
   }
 }
 
+function testICCheckingConvertWithAccessor(testObj: SubClass) {
+  let loopIndex: number = 0;
+  try {
+    for (loopIndex = 0; loopIndex < 2000; loopIndex++) {
+      testHotFunctionConvertWithAccessor(testObj, loopIndex);
+    }
+    print("[IC] Success set prop through accessor with matched type");
+  } catch (error) {
+    print("[IC] Fail to set prop through accessor with matched type. err: " + error);
+  }
+}
+
 function testICChecking(testObj: SubClass)
 {
   print("Start testICChecking");
   testICCheckingForUpdateInstanceProps(testObj);
   testICCheckingUpdateInstanceAccessor(testObj);
+  testICCheckingConvertWithAccessor(testObj);
 }
 
 function testSetMismatchedType(testObj: SubClass)
