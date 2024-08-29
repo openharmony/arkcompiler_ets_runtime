@@ -19,6 +19,7 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/module/module_path_helper.h"
 
 namespace panda::ecmascript {
 QuickFixManager::~QuickFixManager()
@@ -294,8 +295,13 @@ void QuickFixManager::SetCurrentBaseFileName(CString fileName)
     currentBaseFileName_ = fileName;
 }
 
-CString QuickFixManager::GetCurrentBaseFileName()
+CString QuickFixManager::GetBaseFileName(const JSHandle<SourceTextModule> &module)
 {
-    return currentBaseFileName_;
+    CString fileName = module->GetEcmaModuleFilenameString();
+    // Return the baseFileName of the patch module
+    if (fileName.find(ModulePathHelper::EXT_NAME_HQF) != std::string::npos) {
+        return currentBaseFileName_;
+    }
+    return fileName;
 }
 }  // namespace panda::ecmascript
