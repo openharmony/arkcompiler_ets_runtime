@@ -1018,6 +1018,45 @@ function EveryTest(): void {
     print(allEven); // should be false
 }
 
+function isArrayTest() {
+  // print true
+  print(SendableArray.isArray(new SendableArray()));
+  print(SendableArray.isArray(new SendableArray('a', 'b', 'c', 'd')));
+  print(SendableArray.isArray(new SendableArray(3)));
+  print(SendableArray.isArray(SendableArray.prototype));
+
+  // print false
+  print(SendableArray.isArray([]));
+  print(SendableArray.isArray([1]));
+  print(SendableArray.isArray());
+  print(SendableArray.isArray({}));
+  print(SendableArray.isArray(null));
+  print(SendableArray.isArray(undefined));
+  print(SendableArray.isArray(17));
+  print(SendableArray.isArray('SendableArray'));
+  print(SendableArray.isArray(true));
+  print(SendableArray.isArray(false));
+  print(SendableArray.isArray(new SendableUint8Array(32)));
+}
+
+function lastIndexOfTest() {
+  let arr = SendableArray.from([1, 2, 3, 4, 2, 5]);
+  print(arr.lastIndexOf(2));
+
+  print(arr.lastIndexOf(1));
+  print(arr.lastIndexOf(5));
+  print(arr.lastIndexOf(6));
+
+  let emptyArr = SendableArray.from([]);
+  print(emptyArr.lastIndexOf(1));
+
+  let arrWithNaN = SendableArray.from([1, 2, NaN, 4, NaN]);
+  print(arrWithNaN.lastIndexOf(NaN));
+
+  let arrWithUndefined = SendableArray.from([1, 2, undefined, 4]);
+  print(arrWithUndefined.lastIndexOf(undefined));
+}
+
 at()
 
 entries()
@@ -1094,3 +1133,5 @@ DefinePropertyTest()
 
 SomeTest()
 EveryTest()
+isArrayTest();
+lastIndexOfTest();
