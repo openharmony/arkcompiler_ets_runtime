@@ -82,7 +82,7 @@ private:
     EcmaStringTable* stringTable_;
     std::atomic<uint32_t> sweepWeakRefCount_ {0U};
     Mutex sweepWeakRefMutex_;
-    bool sweepWeakRefFinished_;
+    bool sweepWeakRefFinished_ {true};
     ConditionVariable sweepWeakRefCV_;
 };
 
