@@ -67,6 +67,7 @@ public:
     static constexpr char EXT_NAME_Z_SO[] = ".z.so";
     static constexpr char EXT_NAME_D_TS[] = ".d.ts";
     static constexpr char EXT_NAME_MJS[] = ".mjs";
+    static constexpr char EXT_NAME_HQF[] = ".hqf";
     static constexpr char PREFIX_NORMALIZED[] = "@normalized:";
     static constexpr char PREFIX_NORMALIZED_SO[] = "@normalized:Y";
     static constexpr char PREFIX_NORMALIZED_NOT_SO[] = "@normalized:N";
