@@ -18,7 +18,6 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

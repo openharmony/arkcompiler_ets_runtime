@@ -15,9 +15,7 @@
 
 #include "ecmascript/mem/free_object_set.h"
 
-#include "ecmascript/base/asan_interface.h"
 #include "ecmascript/free_object.h"
-#include "ecmascript/mem/free_object_list.h"
 
 namespace panda::ecmascript {
 template <typename T>

@@ -14,9 +14,6 @@
  */
 
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 
 namespace panda::ecmascript::pgo {

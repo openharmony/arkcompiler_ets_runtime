@@ -18,14 +18,10 @@
 #include "ecmascript/async_generator_helper.h"
 #include "ecmascript/builtins/builtins_promise.h"
 #include "ecmascript/builtins/builtins_promise_handler.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/generator_helper.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_async_generator_object.h"
-#include "ecmascript/js_promise.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsPromiseHandler = builtins::BuiltinsPromiseHandler;

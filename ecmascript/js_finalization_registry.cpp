@@ -16,11 +16,8 @@
 #include "ecmascript/js_finalization_registry.h"
 
 #include "ecmascript/ecma_context.h"
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jobs/micro_job_queue.h"
-#include "ecmascript/js_function.h"
 #include "ecmascript/js_object-inl.h"
 #include "ecmascript/linked_hash_table.h"
 

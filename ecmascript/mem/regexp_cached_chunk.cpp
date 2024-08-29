@@ -15,7 +15,6 @@
 
 #include "ecmascript/mem/regexp_cached_chunk.h"
 
-#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {

@@ -19,29 +19,10 @@
 #include <iomanip>
 #include <memory>
 #include <utility>
-
-#include "ecmascript/base/bit_helper.h"
-#include "ecmascript/base/file_header.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/log.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/c_string.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/ohos/framework_helper.h"
-#include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
-#include "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.h"
-#include "ecmascript/pgo_profiler/ap_file/pgo_profile_type_pool.h"
-#include "ecmascript/pgo_profiler/ap_file/pgo_record_pool.h"
-#include "ecmascript/pgo_profiler/pgo_context.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_encoder.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
-#include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
-#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "libpandafile/bytecode_instruction-inl.h"
-#include "macros.h"
-#include "securec.h"
 
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;

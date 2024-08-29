@@ -14,12 +14,8 @@
  */
 
 #include "ecmascript/jsnapi_sendable.h"
-
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/napi/jsnapi_helper.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_dictionary.h"
 #include "js_function.h"
 
 namespace panda::ecmascript {

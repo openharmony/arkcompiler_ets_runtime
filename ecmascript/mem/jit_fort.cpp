@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/free_object_set.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/jit/jit.h"

@@ -15,11 +15,7 @@
 
 #include "ecmascript/js_api/js_api_bitvector_iterator.h"
 
-#include "ecmascript/base/typed_array_helper.h"
-#include "ecmascript/builtins/builtins_errors.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_bitvector.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
 
 namespace panda::ecmascript {

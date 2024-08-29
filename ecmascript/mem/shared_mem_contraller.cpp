@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/shared_mem_controller.h"
-
 #include "ecmascript/mem/heap-inl.h"
 
 namespace panda::ecmascript {

@@ -25,10 +25,7 @@
 #include <sys/resource.h>
 #endif
 
-#include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/mem/mem.h"
-#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 
 namespace panda::ecmascript {

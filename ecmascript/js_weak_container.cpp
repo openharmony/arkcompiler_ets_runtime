@@ -15,10 +15,8 @@
 
 #include "ecmascript/js_weak_container.h"
 
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 void JSWeakMap::Set(JSThread *thread, const JSHandle<JSWeakMap> &map, const JSHandle<JSTaggedValue> &key,

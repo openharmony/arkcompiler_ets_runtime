@@ -15,17 +15,7 @@
 
 #include "ecmascript/js_api/js_api_bitvector.h"
 
-#include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/global_env_constants-inl.h"
-#include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
 
 namespace panda::ecmascript {

@@ -16,10 +16,7 @@
 #include "ecmascript/js_arguments.h"
 
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 bool JSArguments::GetOwnProperty(JSThread *thread, const JSHandle<JSArguments> &args,

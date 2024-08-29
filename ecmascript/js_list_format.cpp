@@ -19,22 +19,10 @@
 #include <vector>
 
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/global_env_constants.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_locale.h"
 #include "ecmascript/js_iterator.h"
 #include "ecmascript/object_factory-inl.h"
 
-#include "unicode/fieldpos.h"
-#include "unicode/fpositer.h"
-#include "unicode/formattedvalue.h"
-#include "unicode/stringpiece.h"
-#include "unicode/unistr.h"
-#include "unicode/utf8.h"
-#include "unicode/uloc.h"
-#include "unicode/ustring.h"
 
 namespace panda::ecmascript {
 icu::ListFormatter *JSListFormat::GetIcuListFormatter() const

@@ -15,21 +15,10 @@
 
 #include "ecmascript/mem/shared_heap/shared_gc.h"
 
-#include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/ecma_string_table.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/mem/barriers-inl.h"
-#include "ecmascript/mem/gc_stats.h"
-#include "ecmascript/mem/mark_stack.h"
-#include "ecmascript/mem/mem.h"
-#include "ecmascript/mem/object_xray.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
-#include "ecmascript/mem/slots.h"
-#include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/verification.h"
-#include "ecmascript/mem/visitor.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {

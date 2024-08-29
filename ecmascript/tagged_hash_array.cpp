@@ -15,11 +15,6 @@
 
 #include "ecmascript/tagged_hash_array.h"
 
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_queue.h"
-
 namespace panda::ecmascript {
 JSTaggedValue TaggedHashArray::Create(const JSThread *thread, uint32_t numberOfElements)
 {

@@ -13,18 +13,10 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/space-inl.h"
-
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/mem/heap.h"
-#include "ecmascript/mem/heap_region_allocator.h"
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/region-inl.h"
 #include "ecmascript/mem/space.h"
-#include "ecmascript/mem/jit_fort.h"
-#include "ecmascript/mem/machine_code.h"
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript {

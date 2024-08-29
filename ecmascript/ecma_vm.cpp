@@ -38,7 +38,6 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
-#include "ecmascript/runtime.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/ohos/jit_tools.h"

@@ -17,8 +17,6 @@
 
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/tagged_hash_array.h"
-#include "ecmascript/tagged_node.h"
-#include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript {
 using ContainerError = containers::ContainerError;

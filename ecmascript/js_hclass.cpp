@@ -13,27 +13,15 @@
  * limitations under the License.
  */
 
-#include "ecmascript/elements.h"
-#include "ecmascript/js_hclass-inl.h"
-
 #include <algorithm>
 
-#include "ecmascript/base/config.h"
 #include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/pgo_profiler/pgo_profiler.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_layout.h"
-#include "ecmascript/shared_objects/js_shared_array.h"
-#include "ecmascript/tagged_array.h"
-#include "ecmascript/vtable.h"
 #include "ecmascript/ic/proto_change_details.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_symbol.h"
-#include "ecmascript/mem/c_containers.h"
-#include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/tagged_dictionary.h"
-#include "ecmascript/weak_vector.h"
 
 namespace panda::ecmascript {
 using ProfileType = pgo::ProfileType;

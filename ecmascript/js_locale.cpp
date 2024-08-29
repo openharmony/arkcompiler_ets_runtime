@@ -16,10 +16,6 @@
 #include "ecmascript/js_locale.h"
 
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
@@ -36,8 +32,6 @@
 #elif defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
-
-#include "unicode/localematcher.h"
 
 namespace panda::ecmascript {
 const std::string LATN_STRING = "latn";

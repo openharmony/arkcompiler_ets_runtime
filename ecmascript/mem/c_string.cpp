@@ -20,9 +20,6 @@
 
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/js_symbol.h"
-#include "ecmascript/mem/c_containers.h"
-
-#include "libpandabase/macros.h"
 
 namespace panda::ecmascript {
 long CStringToL(const CString &str)

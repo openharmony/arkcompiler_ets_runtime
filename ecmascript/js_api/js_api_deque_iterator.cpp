@@ -15,16 +15,10 @@
 
 #include "ecmascript/js_api/js_api_deque_iterator.h"
 
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/js_api/js_api_deque.h"
-#include "ecmascript/js_handle.h"
 #include "ecmascript/js_iterator.h"
-#include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;
