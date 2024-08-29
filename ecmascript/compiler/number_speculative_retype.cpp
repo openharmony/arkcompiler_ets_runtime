@@ -301,6 +301,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::TAGGED_TO_INT64:
         case OpCode::TYPED_CALL_BUILTIN:
         case OpCode::TYPED_CALL_BUILTIN_SIDE_EFFECT:
+        case OpCode::CALL_PRIVATE_GETTER:
+        case OpCode::CALL_PRIVATE_SETTER:
         case OpCode::MAP_GET:
         case OpCode::NEW_NUMBER:
         case OpCode::TYPED_ARRAY_ENTRIES:
@@ -1718,6 +1720,18 @@ GateRef NumberSpeculativeRetype::VisitNumberParseFloat(GateRef gate)
         return SetOutputType(gate, GateType::DoubleType());
     }
     ASSERT(IsConvert());
+    Environment env(gate, circuit_, &builder_);
+    GateRef input = acc_.GetValueIn(gate, 0);
+    TypeInfo type = GetNumberTypeInfo(input);
+    if (type == TypeInfo::INT32) {
+        // replace parseFloat with cast
+        input = CheckAndConvertToFloat64(input, GateType::NumberType(), ConvertToNumber::DISABLE);
+        acc_.ReplaceGate(gate, builder_.GetStateDepend(), input);
+    } else {
+        acc_.ReplaceValueIn(gate, ConvertToTagged(input), 0);
+        acc_.ReplaceStateIn(gate, builder_.GetState());
+        acc_.ReplaceDependIn(gate, builder_.GetDepend());
+    }
     return Circuit::NullGate();
 }
 

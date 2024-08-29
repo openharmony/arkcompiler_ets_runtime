@@ -66,11 +66,11 @@ public:
         chunk_(chunk), workList_(chunk), changedList_(chunk), orderList_(chunk), passList_(chunk) {}
     virtual ~CombinedPassVisitor() = default;
     void AddPass(PassVisitor* pass);
-    
+
     int32_t GetGateOrder(GateRef gate) override;
     void SetGateOrder(GateRef gate, int32_t orderId) override;
     void Resize(int32_t size, int32_t num) override;
-    
+
     void VisitGraph();
     GateRef VisitGate(GateRef gate);
     void ReVisitGate(GateRef gate) override;
@@ -82,7 +82,7 @@ public:
     void VistDependSelectorForLoop(GateRef gate);
 
 protected:
-    
+
     void VisitTopGate(Edge& current);
 
     void PushGate(GateRef gate, size_t index)

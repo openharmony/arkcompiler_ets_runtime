@@ -250,6 +250,7 @@ group("ark_aot_ts_test") {
     "poplexenv",
     "proxy",
     "privateproperty",
+    "privateproperty_js",
     "resumegenerator",
     "rodata",
     "setobjectwithproto",

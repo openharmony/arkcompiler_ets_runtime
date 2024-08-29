@@ -51,6 +51,7 @@ void NTypeBytecodeLowering::RunNTypeBytecodeLowering()
 
 void NTypeBytecodeLowering::Lower(GateRef gate)
 {
+    [[maybe_unused]] auto scopedGate = circuit_->VisitGateBegin(gate);
     EcmaOpcode ecmaOpcode = acc_.GetByteCodeOpcode(gate);
     // initialize label manager
     Environment env(gate, circuit_, &builder_);

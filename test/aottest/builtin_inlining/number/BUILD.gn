@@ -17,6 +17,7 @@ group("ark_aot_builtin_inlining_number_test") {
     "Constructor",
     "IsInteger",
     "ParseFloat",
+    "ParseFloatNumber",
   ]
 
   deps = []
