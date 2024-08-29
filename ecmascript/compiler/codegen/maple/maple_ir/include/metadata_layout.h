@@ -326,6 +326,12 @@ struct ClassMetadata {
     };
 
 public:
+    static inline intptr_t OffsetOfInitState()
+    {
+        ClassMetadata *base = nullptr;
+        return reinterpret_cast<intptr_t>(&(base->initState));
+    }
+
     uintptr_t GetInitStateRawValue() const
     {
         return __atomic_load_n(&initState, __ATOMIC_ACQUIRE);

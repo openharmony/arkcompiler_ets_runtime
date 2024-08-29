@@ -67,67 +67,6 @@ int32 GetPrimitiveTypeSize(const std::string &name)
             return -1;
     }
 }
-DBGDieAttr *LFindAttribute(MapleVector<DBGDieAttr *> &vec, DwAt key)
-{
-    for (DBGDieAttr *at : vec)
-        if (at->GetDwAt() == key) {
-            return at;
-        }
-    return nullptr;
-}
-
-DBGAbbrevEntry *LFindAbbrevEntry(MapleVector<DBGAbbrevEntry *> &abbvec, unsigned int key)
-{
-    for (DBGAbbrevEntry *daie : abbvec) {
-        if (!daie) {
-            continue;
-        }
-        if (daie->GetAbbrevId() == key) {
-            return daie;
-        }
-    }
-    DEBUG_ASSERT(0, "");
-    return nullptr;
-}
-
-bool LShouldEmit(unsigned int dwform)
-{
-    return dwform != DW_FORM_flag_present;
-}
-
-DBGDie *LFindChildDieWithName(DBGDie *die, DwTag tag, const GStrIdx key)
-{
-    for (DBGDie *c : die->GetSubDieVec()) {
-        if (c->GetTag() == tag) {
-            for (DBGDieAttr *a : c->GetAttrVec()) {
-                if (a->GetDwAt() == DW_AT_name) {
-                    if ((a->GetDwForm() == DW_FORM_string || a->GetDwForm() == DW_FORM_strp) &&
-                        a->GetId() == key.GetIdx()) {
-                        return c;
-                    } else {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    return nullptr;
-}
-
-DBGDieAttr *LFindDieAttr(DBGDie *die, DwAt attrname)
-{
-    for (DBGDieAttr *attr : die->GetAttrVec()) {
-        if (attr->GetDwAt() == attrname) {
-            return attr;
-        }
-    }
-    return nullptr;
-}
-
-static void LUpdateAttrValue(DBGDieAttr *attr, int64_t newval)
-{
-    attr->SetI(int32_t(newval));
-}
 #endif
 }  // namespace
 

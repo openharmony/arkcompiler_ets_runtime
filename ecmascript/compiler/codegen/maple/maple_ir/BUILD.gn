@@ -57,9 +57,6 @@ ohos_static_library("libmplir") {
     "${MAPLEALL_ROOT}/maple_util:libcommandline",
     "${MAPLEALL_ROOT}/maple_util:libmplutil",
   ]
-  if (enable_litecg_emit) {
-    defines = [ "ARK_LITECG_DEBUG" ]
-  }
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"
 }

@@ -43,9 +43,6 @@ ohos_static_library("libmplphase") {
   sources = src_libmplphase
   include_dirs = include_libmplphase
   external_deps = [ "bounds_checking_function:libsec_static" ]
-  if (enable_litecg_emit) {
-    defines = [ "ARK_LITECG_DEBUG" ]
-  }
   output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
   part_name = "ets_runtime"
   subsystem_name = "arkcompiler"

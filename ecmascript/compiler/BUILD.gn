@@ -408,6 +408,10 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
     }
   }
 
+  if (enable_litecg_emit) {
+    defines = [ "ARK_LITECG_DEBUG" ]
+  }
+
   deps = []
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
