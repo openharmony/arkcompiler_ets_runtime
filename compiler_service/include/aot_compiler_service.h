@@ -16,6 +16,7 @@
 #ifndef OHOS_ARKCOMPILER_AOTCOMPILER_SERVICE_H
 #define OHOS_ARKCOMPILER_AOTCOMPILER_SERVICE_H
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -59,6 +60,7 @@ private:
     void UnRegisterScreenStatusSubscriber();
     void UnRegisterThermalMgrListener();
 
+    mutable std::mutex aotCompilerMutex_;
     std::shared_ptr<AppExecFwk::EventHandler> unLoadHandler_ { nullptr };
     ServiceRunningState state_;
     std::shared_ptr<PowerDisconnectedListener> powerDisconnectedListener_ { nullptr };

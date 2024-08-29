@@ -15,7 +15,10 @@
 
 #include <cstdint>
 #include <gtest/gtest.h>
+#include <gtest/hwext/gtest-multithread.h>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 #include <unordered_map>
 
@@ -28,6 +31,7 @@
 #include "system_ability_definition.h"
 
 using namespace testing::ext;
+using namespace testing::mt;
 
 namespace OHOS::ArkCompiler {
 namespace {
@@ -61,6 +65,16 @@ const std::unordered_map<std::string, std::string> argsMapForTest {
 };
 } // namespace ark_aot_compiler arguments
 
+class AotCompilerImplMock : public AotCompilerImpl {
+public:
+    AotCompilerImplMock() = default;
+    ~AotCompilerImplMock() = default;
+    AotCompilerImplMock(const AotCompilerImplMock&) = delete;
+    AotCompilerImplMock(AotCompilerImplMock&&) = delete;
+    AotCompilerImplMock& operator=(const AotCompilerImplMock&) = delete;
+    AotCompilerImplMock& operator=(AotCompilerImplMock&&) = delete;
+};
+
 class AotCompilerImplTest : public testing::Test {
 public:
     AotCompilerImplTest() {}
@@ -81,7 +95,7 @@ public:
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_001, TestSize.Level0)
 {
     AotCompilerImpl *aotImplPtr = nullptr;
-    aotImplPtr = &AotCompilerImpl::GetInstance();
+    aotImplPtr = &AotCompilerImplMock::GetInstance();
     EXPECT_NE(aotImplPtr, nullptr);
 }
 
@@ -93,7 +107,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_001, TestSize.Level0)
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_002, TestSize.Level0)
 {
-    AotCompilerImpl &aotImpl = AotCompilerImpl::GetInstance();
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
     std::string keyCheckPgoVersion = "compiler-check-pgo-version";
     std::string valueCheckPgoVersion = "true";
@@ -116,14 +130,18 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_002, TestSize.Level0)
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_003, TestSize.Level0)
 {
-    AotCompilerImpl &aotImpl = AotCompilerImpl::GetInstance();
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
     std::string keyCompileNoMethod = "compiler-methods-range";
     std::string valueCompileNoMethod = "0:0";
     argsMap.emplace(keyCompileNoMethod, valueCompileNoMethod);
     std::vector<int16_t> sigData { 0, 1, 2, 3, 4, 5 };
     int32_t ret = aotImpl.EcmascriptAotCompiler(argsMap, sigData);
-    EXPECT_NE(ret, ERR_OK);
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_NE(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#else
+    EXPECT_EQ(ret, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
     EXPECT_FALSE(sigData.empty());
 }
 
@@ -135,7 +153,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_003, TestSize.Level0)
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_004, TestSize.Level0)
 {
-    AotCompilerImpl &aotImpl = AotCompilerImpl::GetInstance();
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     int32_t ret = aotImpl.StopAotCompiler();
     EXPECT_EQ(ret, ERR_AOT_COMPILER_STOP_FAILED);
 }
@@ -148,7 +166,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_004, TestSize.Level0)
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_005, TestSize.Level0)
 {
-    AotCompilerImpl &aotImpl = AotCompilerImpl::GetInstance();
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     std::string sigData = "sig_data_for_test";
     int32_t ret = aotImpl.GetAOTVersion(sigData);
     EXPECT_EQ(sigData.size(), 0);
@@ -163,7 +181,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_005, TestSize.Level0)
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_006, TestSize.Level0)
 {
-    AotCompilerImpl &aotImpl = AotCompilerImpl::GetInstance();
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     std::string args = "args_for_test";
     bool sigData = true;
     int32_t ret = aotImpl.NeedReCompile(args, sigData);
@@ -179,7 +197,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_006, TestSize.Level0)
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_007, TestSize.Level0)
 {
-    AotCompilerImpl &aotImpl = AotCompilerImpl::GetInstance();
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     bool viewData1 = true;
     int32_t viewData2 = 101010;
     std::string viewData3 = "101010";
@@ -197,7 +215,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_007, TestSize.Level0)
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_008, TestSize.Level0)
 {
-    AotCompilerImpl &aotImpl = AotCompilerImpl::GetInstance();
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     bool viewData1 = true;
     int32_t viewData2 = 010101;
     std::string viewData3 = "010101";
@@ -215,7 +233,7 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_008, TestSize.Level0)
 */
 HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_009, TestSize.Level0)
 {
-    AotCompilerImpl &aotImpl = AotCompilerImpl::GetInstance();
+    AotCompilerImpl &aotImpl = AotCompilerImplMock::GetInstance();
     bool viewData1 = true;
     int32_t viewData2 = 010101;
     std::string viewData3 = "010101";
@@ -223,5 +241,79 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_009, TestSize.Level0)
     EXPECT_TRUE(viewData1);
     EXPECT_EQ(viewData2, 010101);
     EXPECT_STREQ(viewData3.c_str(), "010101");
+}
+
+/**
+ * @tc.name: AotCompilerImplTest_010
+ * @tc.desc: AotCompilerImpl::EcmascriptAotCompiler() when multi thread run
+ * @tc.type: Func
+ * @tc.require: IR/AR/SR
+*/
+AotCompilerImpl &gtAotImpl = AotCompilerImplMock::GetInstance();
+std::mutex aotCompilerMutex_;
+bool g_retGlobal = true;
+
+void ExecuteAotCompilerTask(void)
+{
+    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    std::string keyCompileNoMethod = "compiler-methods-range";
+    std::string valueCompileNoMethod = "0:0";
+    std::string keyCheckPgoVersion = "compiler-check-pgo-version";
+    std::string valueCheckPgoVersion = "true";
+    argsMap.emplace(keyCompileNoMethod, valueCompileNoMethod);
+    argsMap.emplace(keyCheckPgoVersion, valueCheckPgoVersion);
+    std::vector<int16_t> sigData { 0, 1, 2, 3, 4, 5 };
+    {
+        std::lock_guard<std::mutex> lock(aotCompilerMutex_);
+        if (gtAotImpl.EcmascriptAotCompiler(argsMap, sigData) !=
+            ERR_AOT_COMPILER_SIGNATURE_DISABLE) {
+            g_retGlobal = false;
+        }
+    }
+}
+
+void StopAotCompilerTask(void)
+{
+    (void)gtAotImpl.StopAotCompiler();
+}
+
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_010, TestSize.Level0)
+{
+    g_retGlobal = true;
+    SET_THREAD_NUM(20);  // THREAD_NUM = 20
+    GTEST_RUN_TASK(ExecuteAotCompilerTask);
+    GTEST_RUN_TASK(StopAotCompilerTask);
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_FALSE(g_retGlobal);
+#else
+    EXPECT_TRUE(g_retGlobal);
+#endif
+}
+
+/**
+ * @tc.name: AotCompilerImplTest_011
+ * @tc.desc: AotCompilerImpl::StopAotCompiler() while EcmascriptAotCompiler() is
+ *           running regarding multi threads.
+ * @tc.type: Func
+ * @tc.require: IR/AR/SR
+*/
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_011, TestSize.Level0)
+{
+    g_retGlobal = true;
+    SET_THREAD_NUM(40); // THREAD_NUM = 40
+    MTEST_ADD_TASK(RANDOM_THREAD_ID, ExecuteAotCompilerTask);
+    MTEST_ADD_TASK(RANDOM_THREAD_ID, StopAotCompilerTask);
+    EXPECT_TRUE(g_retGlobal);
+}
+
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_012, TestSize.Level0)
+{
+    g_retGlobal = true;
+    MTEST_POST_RUN();
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_FALSE(g_retGlobal);
+#else
+    EXPECT_TRUE(g_retGlobal);
+#endif
 }
 } // namespace OHOS::ArkCompiler
