@@ -195,6 +195,9 @@ function from(): void {
     } catch (err) {
         print("Create from sendable undefined element list failed. err: " + err + ", code: " + err.code);
     }
+    // trigger string cache
+    SendableArray.from("hello");
+    print(SendableArray.from("hello"));
 }
 
 function fromTemplate(): void {

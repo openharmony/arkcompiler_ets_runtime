@@ -2526,7 +2526,12 @@ void StringToListResultCache::SetCachedResult(const JSThread *thread, const JSHa
     // clone to cache array
     uint32_t arrayLength = resultArray->GetLength();
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<TaggedArray> newElements(factory->NewCOWTaggedArray(arrayLength));
+    JSMutableHandle<TaggedArray> newElements(thread, JSTaggedValue::Undefined());
+    if (resultArray.GetTaggedValue().IsInSharedHeap()) {
+        newElements.Update(factory->NewSCOWTaggedArray(arrayLength));
+    } else {
+        newElements.Update(factory->NewCOWTaggedArray(arrayLength));
+    }
     for (uint32_t i = 0; i < arrayLength; i++) {
         newElements->Set(thread, i, resultArray->Get(i));
     }
