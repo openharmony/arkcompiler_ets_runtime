@@ -944,24 +944,26 @@ public:
             for (size_t i = visitedInfo_[bbId].needVisitIndex; i < bb.succs.size(); i++) {
                 BytecodeRegion* succBlock = bb.succs[i];
                 size_t succId = succBlock->id;
+                visitedInfo_[bbId].needVisitIndex = i + 1;
                 if (visitState_[succId] == MarkState::UNVISITED) {
                     pendingList_.emplace_back(succId);
                     visitState_[succId] = MarkState::ON_STACK;
                     allVisited = false;
-                    visitedInfo_[bbId].needVisitIndex = i + 1;
                     break;
                 } else if (visitState_[succId] == MarkState::PENDING) {
                     // back edge
                     CountLoopBackEdge(bbId, succId);
                 }
             }
-            if (catchBlock != nullptr && !visitedInfo_[bbId].isVisitedCatchBlock) {
+            // we consider catchBlock as a special succ, which means if we have visited a succ,
+            // visiting catchBlock is not allowed due to the rule of RPO.
+            if (allVisited && catchBlock != nullptr && !visitedInfo_[bbId].isVisitedCatchBlock) {
                 size_t catchId = catchBlock->id;
+                visitedInfo_[bbId].isVisitedCatchBlock = true;
                 if (visitState_[catchId] == MarkState::UNVISITED) {
                     pendingList_.emplace_back(catchId);
                     visitState_[catchId] = MarkState::ON_STACK;
                     allVisited = false;
-                    visitedInfo_[bbId].isVisitedCatchBlock = true;
                 } else if (visitState_[catchId] == MarkState::PENDING) {
                     // back edge
                     CountLoopBackEdge(bbId, catchId);
