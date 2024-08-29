@@ -1711,6 +1711,7 @@ JSTaggedValue RuntimeStubs::RuntimeDynamicImport(JSThread *thread, const JSHandl
     // get current filename
     JSFunction *function = JSFunction::Cast(func->GetTaggedObject());
     const JSPandaFile *jsPandaFile = function->GetCallTarget()->GetJSPandaFile();
+    ASSERT(jsPandaFile != nullptr);
     CString currentfilename = jsPandaFile->GetJSPandaFileDesc();
 
     JSMutableHandle<JSTaggedValue> dirPath(thread, thread->GlobalConstants()->GetUndefined());

@@ -128,7 +128,8 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModule(JSThread *thr
         LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << fileName;
     }
     JSRecordInfo *recordInfo = nullptr;
-    jsPandaFile->CheckAndGetRecordInfo(fileName, &recordInfo);
+    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(fileName, &recordInfo);
+    ASSERT(hasRecord);
     if (jsPandaFile->IsSharedModule(recordInfo)) {
         return ResolveSharedImportedModule(thread, fileName, jsPandaFile.get(), recordInfo);
     }
@@ -292,7 +293,8 @@ JSHandle<JSTaggedValue> SharedModuleManager::GenerateFuncModule(JSThread *thread
     CString recordName = jsPandaFile->GetRecordName(entryPoint);
     auto vm = thread->GetEcmaVM();
     JSRecordInfo *recordInfo = nullptr;
-    jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
+    [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
+    ASSERT(hasRecord);
     if (jsPandaFile->IsModule(recordInfo)) {
         JSHandle<SourceTextModule> module;
         if (jsPandaFile->IsSharedModule(recordInfo)) {

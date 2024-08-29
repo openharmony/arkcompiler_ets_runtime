@@ -463,6 +463,8 @@ void BuiltinsArrayBuffer::SetTypeData(uint8_t *block, T value, uint32_t index)
 template<typename T>
 void BuiltinsArrayBuffer::FastSetTypeData(uint8_t *byteBeginOffset, uint8_t *byteEndOffset, T value)
 {
+    ASSERT(byteBeginOffset != nullptr);
+    ASSERT(byteEndOffset != nullptr);
     uint32_t sizeCount = sizeof(T);
     if (sizeCount == 1) {
         memset_s(byteBeginOffset, byteEndOffset-byteBeginOffset, value, byteEndOffset-byteBeginOffset);
