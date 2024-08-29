@@ -319,15 +319,6 @@ bool JSTaggedValue::IsInSharedHeap() const
     return false;
 }
 
-bool JSTaggedValue::IsInSharedSweepableSpace() const
-{
-    if (IsHeapObject()) {
-        Region *region = Region::ObjectAddressToRange(value_);
-        return region->InSharedSweepableSpace();
-    }
-    return false;
-}
-
 JSHandle<JSTaggedValue> JSTaggedValue::ToPropertyKey(JSThread *thread, const JSHandle<JSTaggedValue> &tagged)
 {
     if (tagged->IsStringOrSymbol() || tagged->IsNumber()) {

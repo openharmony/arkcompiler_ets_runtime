@@ -204,6 +204,15 @@ inline ComparisonResult JSTaggedValue::StrictNumberCompare(double x, double y)
     return ComparisonResult::EQUAL;
 }
 
+inline bool JSTaggedValue::IsInSharedSweepableSpace() const
+{
+    if (IsHeapObject()) {
+        Region *region = Region::ObjectAddressToRange(value_);
+        return region->InSharedSweepableSpace();
+    }
+    return false;
+}
+
 inline bool JSTaggedValue::IsNumber() const
 {
     return IsInt() || IsDouble();

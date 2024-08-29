@@ -56,6 +56,7 @@ private:
     Heap *heap_;
 
     bool enableExpandYoung_;
+    bool enableStealOldRegion_;
     BumpPointerAllocator youngAllocator_;
 
     LocalSpace *localSpace_;
