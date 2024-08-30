@@ -31,6 +31,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tests/test_helper.h"
+#include "ecmascript/shared_objects/js_shared_map_iterator.h"
 
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::builtins;
@@ -351,4 +352,19 @@ HWTEST_F_L0(BuiltinsMapTest, GetIterator)
     EXPECT_EQ(IterationKind::KEY_AND_VALUE, iter2->GetIterationKind());
     TestHelper::TearDownFrame(thread, prev);
 }
+
+HWTEST_F_L0(BuiltinsMapTest, Exception)
+{
+    JSHandle<JSTaggedValue> map(thread, CreateBuiltinsMap(thread));
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(map.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    auto result = JSSharedMapIterator::CreateMapIterator(thread, map, IterationKind::KEY);
+    EXPECT_TRUE(result->IsUndefined());
+    auto result1 = JSSharedMapIterator::NextInternal(thread, map);
+    EXPECT_EQ(result1, JSTaggedValue::Exception());
+    TestHelper::TearDownFrame(thread, prev);
+}
+
 }  // namespace panda::test

@@ -342,4 +342,25 @@ HWTEST_F_L0(BuiltinsSharedSetTest, GetIterator)
     EXPECT_TRUE(result2.IsJSSharedSetIterator());
     EXPECT_EQ(IterationKind::KEY_AND_VALUE, iter2->GetIterationKind());
 }
+
+HWTEST_F_L0(BuiltinsSharedSetTest, GetValue)
+{
+    JSHandle<JSTaggedValue> set(thread, CreateBuiltinsSharedSet(thread));
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(set.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    JSTaggedValue result = BuiltinsSharedSet::Values(ecmaRuntimeCallInfo);
+    JSHandle<JSSharedSetIterator> iter(thread, result);
+    EXPECT_TRUE(result.IsJSSharedSetIterator());
+    EXPECT_EQ(IterationKind::VALUE, IterationKind(iter->GetIterationKind()));
+
+    JSTaggedValue result2 = BuiltinsSharedSet::Entries(ecmaRuntimeCallInfo);
+    JSHandle<JSSharedSetIterator> iter2(thread, result2);
+    EXPECT_TRUE(result2.IsJSSharedSetIterator());
+    EXPECT_EQ(IterationKind::KEY_AND_VALUE, iter2->GetIterationKind());
+}
+
 }  // namespace panda::test
