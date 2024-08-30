@@ -1,2 +1,3 @@
 A.js;A;esm;A.js;xxAxx
+B.js;B;esm;B.js;xxBxx
 moduleTopLevelAwait.js;moduleTopLevelAwait;esm;moduleTopLevelAwait.js;xxmoduleTopLevelAwaitxx

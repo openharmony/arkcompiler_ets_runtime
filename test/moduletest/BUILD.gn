@@ -111,6 +111,7 @@ group("ark_js_moduletest") {
     "module",
     "moduleImportJson",
     "moduleLazyImport",
+    "moduleTopLevelAwait",
     "moduleUseCjs",
     "multiargs",
     "multiprotoic",

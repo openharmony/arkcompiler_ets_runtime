@@ -17,9 +17,7 @@
  * @tc.name:toplevelawait
  * @tc.desc:toplevelawait
  * @tc.type: FUNC
- * @tc.require: issueI5NO8G
+ * @tc.require: issueI5RC2C
  */
 
-var a = await import('./A.js');
-print(a.default);
-export default await Promise.reject("fail");
+export default await Promise.resolve(42);

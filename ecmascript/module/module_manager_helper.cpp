@@ -57,7 +57,7 @@ JSHandle<JSTaggedValue> ModuleManagerHelper::GetNativeOrCjsExports(JSThread *thr
         exports.Update(CjsModule::SearchFromModuleCache(thread, moduleNameHandle).GetTaggedValue());
         if (exports->IsHole()) {
             CString errorMsg =
-                "Loading cjs module:" + SourceTextModule::GetModuleName(resolvedModule) + ", failed";
+                "Loading cjs module:" + SourceTextModule::GetModuleName(module.GetTaggedValue()) + ", failed";
             JSHandle<JSTaggedValue> exception(thread, JSTaggedValue::Exception());
             THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread,
                 ErrorType::SYNTAX_ERROR, errorMsg.c_str(), exception);
