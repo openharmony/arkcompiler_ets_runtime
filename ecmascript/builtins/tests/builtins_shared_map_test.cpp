@@ -420,4 +420,10 @@ HWTEST_F_L0(BuiltinsSharedMapTest, GetIterator)
     TestHelper::TearDownFrame(thread, prev);
 }
 
+HWTEST_F_L0(BuiltinsSharedMapTest, NextInternalTest001)
+{
+    JSTaggedValue result2 =
+        JSSharedMapIterator::NextInternal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_EQ(result2.IsJSSharedSetIterator(), false);
+}
 }
