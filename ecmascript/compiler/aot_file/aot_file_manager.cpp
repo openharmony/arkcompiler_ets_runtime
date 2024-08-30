@@ -380,6 +380,10 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
     bool isFastCall;
     std::tie(mainEntry, isFastCall) = anFileInfo->GetMainFuncEntry(fileIndex, mainFuncMethodId);
     MethodLiteral *mainMethod = jsPandaFile->FindMethodLiteral(mainFuncMethodId);
+    if (mainMethod == nullptr) {
+        LOG_ECMA(FATAL) << "empty main method literal";
+        UNREACHABLE();
+    }
     mainMethod->SetAotCodeBit(true);
     mainMethod->SetNativeBit(false);
     Method *method = mainFunc->GetCallTarget();
@@ -392,6 +396,7 @@ void AOTFileManager::SetAOTMainFuncEntry(JSHandle<JSFunction> mainFunc, const JS
 #endif
 
     MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    ASSERT(methodLiteral != nullptr);
     methodLiteral->SetAotCodeBit(true);
     methodLiteral->SetIsFastCall(isFastCall);
 }
@@ -423,6 +428,7 @@ void AOTFileManager::SetAOTFuncEntry(const JSPandaFile *jsPandaFile, JSFunction 
     }
 
     MethodLiteral *methodLiteral = method->GetMethodLiteral();
+    ASSERT(methodLiteral != nullptr);
     methodLiteral->SetAotCodeBit(true);
     methodLiteral->SetIsFastCall(entry.isFastCall_);
 }
