@@ -2342,7 +2342,8 @@ void NewObjectStubBuilder::NewByteArray(Variable *result, Label *exit, GateRef e
     {
         StoreBuiltinHClass(glue_, result->ReadVariable(), hclass);
         auto startOffset = Int32(ByteArray::DATA_OFFSET);
-        InitializeWithSpeicalValue(&initializeExit, result->ReadVariable(), Int32(0), startOffset,
+        static_assert(static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT) == 8);
+        InitializeWithSpeicalValue(&initializeExit, result->ReadVariable(), Int64(0), startOffset,
                                    TruncPtrToInt32(size));
         Bind(&initializeExit);
         Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(ByteArray::ARRAY_LENGTH_OFFSET), length);
