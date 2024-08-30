@@ -16,6 +16,9 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/compiler/aot_file/func_entry_des.h"
 #include "ecmascript/jit/jit.h"
+#if ECMASCRIPT_ENABLE_CAST_CHECK
+#include "ecmascript/js_tagged_value-inl.h"
+#endif
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"
 #endif
