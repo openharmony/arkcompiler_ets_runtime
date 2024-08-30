@@ -136,11 +136,12 @@ enum LiteCGValueKind {
     kSymbolKind,
     kConstKind,
     kGlueAdd,
+    kPregPairKind,
 };
 
 struct LiteCGValue {
     LiteCGValueKind kind;
-    std::variant<PregIdx, MIRSymbol*, MIRConst*> data;
+    std::variant<PregIdx, MIRSymbol*, MIRConst*, std::pair<PregIdx, PregIdx>> data;
 };
 
 using Args = std::vector<Expr>;
@@ -404,6 +405,8 @@ public:
 
     // when result is nullptr, don't need the result (or no result)
     Stmt &IntrinsicCall(IntrinsicId func, Args &valueArgs, Var *result = nullptr);
+
+    Stmt &IntrinsicCall(IntrinsicId func, Args &valueArgs, PregIdx retPregIdx1, PregIdx retPregIdx2);
 
     Stmt &Return(Expr returnVal);
 

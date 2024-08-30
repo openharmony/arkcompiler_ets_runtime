@@ -163,9 +163,6 @@ public:
 
     void LowerAsmStmt(AsmNode *asmNode, BlockNode *blk);
 
-    /* Lower pointer/reference types if found in pseudo registers. */
-    void LowerPseudoRegs(const MIRFunction &func) const;
-
     /* A pseudo register refers to a symbol when DreadNode is converted to RegreadNode. */
     StIdx GetSymbolReferredToByPseudoRegister(PregIdx regNO) const
     {

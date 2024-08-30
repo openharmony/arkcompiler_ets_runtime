@@ -38,7 +38,6 @@ public:
           hashLabelOpndTable(mallocator.Adapter()),
           hashOfstOpndTable(mallocator.Adapter()),
           hashMemOpndTable(mallocator.Adapter()),
-          stIdx2OverflowResult(mallocator.Adapter()),
           memOpndsRequiringOffsetAdjustment(mallocator.Adapter()),
           memOpndsForStkPassedArguments(mallocator.Adapter()),
           immOpndsRequiringOffsetAdjustment(mallocator.Adapter()),
@@ -533,7 +532,6 @@ private:
     MapleUnorderedMap<LabelIdx, LabelOperand *> hashLabelOpndTable;
     MapleUnorderedMap<OfstRegIdx, OfstOperand *> hashOfstOpndTable;
     MapleUnorderedMap<MemOperand, MemOperand *> hashMemOpndTable;
-    MapleUnorderedMap<StIdx, std::pair<RegOperand *, RegOperand *>> stIdx2OverflowResult;
     /*
      * Local variables, formal parameters that are passed via registers
      * need offset adjustment after callee-saved registers are known.

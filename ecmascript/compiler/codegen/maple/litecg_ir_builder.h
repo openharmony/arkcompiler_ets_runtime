@@ -146,7 +146,9 @@ private:
         }
     }
     void SaveGate2Expr(GateRef gate, maple::litecg::Expr expr, bool isGlueAdd = false);
+    void SaveGate2Expr(GateRef gate, maple::litecg::PregIdx pregIdx1, maple::litecg::PregIdx pregIdx2);
     maple::litecg::Expr GetExprFromGate(GateRef gate);
+    maple::litecg::Expr GetExprFromGate(GateRef gate, uint32_t index);
     maple::litecg::Expr GetConstant(GateRef gate);
     void BuildInstID2BBIDMap();
     maple::litecg::BB &GetOrCreateBB(int bbID);
@@ -216,6 +218,7 @@ private:
     {
         return enableLog_;
     }
+    void VisitBinaryOpWithOverflow(GateRef gate, GateRef e1, GateRef e2, maple::litecg::IntrinsicId intrinsicId);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_LITECG_IR_BUILDER_H

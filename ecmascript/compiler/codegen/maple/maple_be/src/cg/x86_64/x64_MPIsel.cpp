@@ -416,17 +416,21 @@ void X64MPIsel::SelectOverFlowCall(const IntrinsiccallNode &intrnNode)
 
     // store
     auto *p2nrets = &intrnNode.GetReturnVec();
-    if (p2nrets->size() == k1ByteSize) {
-        StIdx stIdx = (*p2nrets)[0].first;
+    if (p2nrets->size() == k2ByteSize) {
         CHECK_NULL_FATAL(cgFunc->GetBecommon().GetMIRModule().CurFunction());
-        MIRSymbol *sym =
-            cgFunc->GetBecommon().GetMIRModule().CurFunction()->GetSymTab()->GetSymbolFromStIdx(stIdx.Idx());
-        DEBUG_ASSERT(sym != nullptr, "nullptr check");
-        MemOperand &memOperand = GetOrCreateMemOpndFromSymbol(*sym, 1);
-        MemOperand &memOperand2 = GetOrCreateMemOpndFromSymbol(*sym, 2);
-        SelectCopy(memOperand, resReg, type);
-        Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(MOP_seto_m, X64CG::kMd[MOP_seto_m]);
-        insn.AddOpndChain(memOperand2);
+        PregIdx pregIdx = (*p2nrets)[0].second.GetPregIdx();
+        MIRPreg *mirPreg = cgFunc->GetFunction().GetPregTab()->PregFromPregIdx(pregIdx);
+        PrimType regType = mirPreg->GetPrimType();
+        RegOperand &retReg = cgFunc->GetOpndBuilder()->CreateVReg(cgFunc->GetVirtualRegNOFromPseudoRegIdx(pregIdx),
+            GetPrimTypeBitSize(regType), cgFunc->GetRegTyFromPrimTy(regType));
+        SelectCopy(retReg, resReg, type);
+        PregIdx pregIdx2 = (*p2nrets)[1].second.GetPregIdx();
+        MIRPreg *mirPreg2 = cgFunc->GetFunction().GetPregTab()->PregFromPregIdx(pregIdx2);
+        PrimType regType2 = mirPreg2->GetPrimType();
+        RegOperand &retReg2 = cgFunc->GetOpndBuilder()->CreateVReg(cgFunc->GetVirtualRegNOFromPseudoRegIdx(pregIdx2),
+            GetPrimTypeBitSize(regType2), cgFunc->GetRegTyFromPrimTy(regType2));
+        Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(MOP_seto_r, X64CG::kMd[MOP_seto_r]);
+        insn.AddOpndChain(retReg2);
         cgFunc->GetCurBB()->AppendInsn(insn);
     } else {
         CHECK_FATAL(false, "should not happen");

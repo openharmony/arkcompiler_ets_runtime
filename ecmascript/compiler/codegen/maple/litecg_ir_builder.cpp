@@ -776,6 +776,11 @@ void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, Expr expr, bool isGlueAdd)
     gate2Expr_[gate] = {LiteCGValueKind::kConstKind, static_cast<maple::ConstvalNode*>(newNode)->GetConstVal()};
 }
 
+void LiteCGIRBuilder::SaveGate2Expr(GateRef gate, PregIdx pregIdx1, PregIdx pregIdx2)
+{
+    gate2Expr_[gate] = {LiteCGValueKind::kPregPairKind, std::make_pair(pregIdx1, pregIdx2)};
+}
+
 Expr LiteCGIRBuilder::GetConstant(GateRef gate)
 {
     std::bitset<64> value = acc_.GetConstantValue(gate); // 64 for bit width
@@ -833,6 +838,18 @@ Expr LiteCGIRBuilder::GetExprFromGate(GateRef gate)
     }
     ASSERT(value.kind == LiteCGValueKind::kPregKind);
     return lmirBuilder_->Regread(std::get<PregIdx>(value.data));
+}
+
+Expr LiteCGIRBuilder::GetExprFromGate(GateRef gate, uint32_t index)
+{
+    LiteCGValue value = gate2Expr_[gate];
+    ASSERT(value.kind == LiteCGValueKind::kPregPairKind);
+    ASSERT(index == 0 || index == 1);
+    std::pair<PregIdx, PregIdx> pair = std::get<std::pair<PregIdx, PregIdx>>(value.data);
+    if (index == 0) {
+        return lmirBuilder_->Regread(pair.first);
+    }
+    return lmirBuilder_->Regread(pair.second);
 }
 
 void LiteCGIRBuilder::InitializeHandlers()
@@ -2065,25 +2082,7 @@ void LiteCGIRBuilder::HandleAddWithOverflow(GateRef gate)
 
 void LiteCGIRBuilder::VisitAddWithOverflow(GateRef gate, GateRef e1, GateRef e2)
 {
-    // need use different symbol name?
-    // get return type {i32 res, u1 carry}
-    auto *retType = lmirBuilder_->GetStructType("overflow_internal@i32");
-    retType = retType ? retType
-                      : lmirBuilder_->CreateStructType("overflow_internal@i32")
-                            .Field("res", lmirBuilder_->i32Type)
-                            .Field("carry", lmirBuilder_->u1Type)
-                            .Done();
-    static uint32_t val = 0;
-    std::string retVarName = "add_overflow_ret@i32" + std::to_string(val++);
-    Var &retVar = lmirBuilder_->CreateLocalVar(retType, retVarName);
-
-    // generate function call
-    Expr e1Value = GetExprFromGate(e1);
-    Expr e2Value = GetExprFromGate(e2);
-    std::vector<Expr> args = {e1Value, e2Value};
-    auto &call = lmirBuilder_->IntrinsicCall(IntrinsicId::INTRN_ADD_WITH_OVERFLOW, args, &retVar);
-    SaveGate2Expr(gate, lmirBuilder_->Dread(retVar));
-    lmirBuilder_->AppendStmt(GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]), call);
+    VisitBinaryOpWithOverflow(gate, e1, e2, IntrinsicId::INTRN_ADD_WITH_OVERFLOW);
 }
 
 void LiteCGIRBuilder::HandleSubWithOverflow(GateRef gate)
@@ -2097,25 +2096,7 @@ void LiteCGIRBuilder::HandleSubWithOverflow(GateRef gate)
 
 void LiteCGIRBuilder::VisitSubWithOverflow(GateRef gate, GateRef e1, GateRef e2)
 {
-    // need use different symbol name?
-    // get return type {i32 res, u1 carry}
-    auto *retType = lmirBuilder_->GetStructType("overflow_internal@i32");
-    retType = retType ? retType
-                      : lmirBuilder_->CreateStructType("overflow_internal@i32")
-                            .Field("res", lmirBuilder_->i32Type)
-                            .Field("carry", lmirBuilder_->u1Type)
-                            .Done();
-    static uint32_t val = 0;
-    std::string retVarName = "sub_overflow_ret@i32" + std::to_string(val++);
-    Var &retVar = lmirBuilder_->CreateLocalVar(retType, retVarName);
-
-    // generate function call
-    Expr e1Value = GetExprFromGate(e1);
-    Expr e2Value = GetExprFromGate(e2);
-    std::vector<Expr> args = {e1Value, e2Value};
-    auto &call = lmirBuilder_->IntrinsicCall(IntrinsicId::INTRN_SUB_WITH_OVERFLOW, args, &retVar);
-    SaveGate2Expr(gate, lmirBuilder_->Dread(retVar));
-    lmirBuilder_->AppendStmt(GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]), call);
+    VisitBinaryOpWithOverflow(gate, e1, e2, IntrinsicId::INTRN_SUB_WITH_OVERFLOW);
 }
 
 void LiteCGIRBuilder::HandleMulWithOverflow(GateRef gate)
@@ -2129,24 +2110,20 @@ void LiteCGIRBuilder::HandleMulWithOverflow(GateRef gate)
 
 void LiteCGIRBuilder::VisitMulWithOverflow(GateRef gate, GateRef e1, GateRef e2)
 {
-    // need use different symbol name?
-    // get return type {i32 res, u1 carry}
-    auto *retType = lmirBuilder_->GetStructType("overflow_internal@i32");
-    retType = retType ? retType
-                      : lmirBuilder_->CreateStructType("overflow_internal@i32")
-                            .Field("res", lmirBuilder_->i32Type)
-                            .Field("carry", lmirBuilder_->u1Type)
-                            .Done();
-    static uint32_t val = 0;
-    std::string retVarName = "mul_overflow_ret@i32" + std::to_string(val++);
-    Var &retVar = lmirBuilder_->CreateLocalVar(retType, retVarName);
+    VisitBinaryOpWithOverflow(gate, e1, e2, IntrinsicId::INTRN_MUL_WITH_OVERFLOW);
+}
+
+void LiteCGIRBuilder::VisitBinaryOpWithOverflow(GateRef gate, GateRef e1, GateRef e2, IntrinsicId intrinsicId)
+{
+    PregIdx preg1 = lmirBuilder_->CreatePreg(lmirBuilder_->i32Type);
+    PregIdx preg2 = lmirBuilder_->CreatePreg(lmirBuilder_->u1Type);
 
     // generate function call
     Expr e1Value = GetExprFromGate(e1);
     Expr e2Value = GetExprFromGate(e2);
     std::vector<Expr> args = {e1Value, e2Value};
-    auto &call = lmirBuilder_->IntrinsicCall(IntrinsicId::INTRN_MUL_WITH_OVERFLOW, args, &retVar);
-    SaveGate2Expr(gate, lmirBuilder_->Dread(retVar));
+    auto &call = lmirBuilder_->IntrinsicCall(intrinsicId, args, preg1, preg2);
+    SaveGate2Expr(gate, preg1, preg2);
     lmirBuilder_->AppendStmt(GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]), call);
 }
 
@@ -2513,15 +2490,10 @@ void LiteCGIRBuilder::HandleExtractValue(GateRef gate)
 
 void LiteCGIRBuilder::VisitExtractValue(GateRef gate, GateRef e1, GateRef e2)
 {
-    Expr e1Value = GetExprFromGate(e1);
     ASSERT((acc_.GetOpCode(e2) == OpCode::CONSTANT) && acc_.GetMachineType(e2) == MachineType::I32);
     uint32_t index = static_cast<uint32_t>(acc_.GetConstantValue(e2));
-    Var *baseVar = lmirBuilder_->GetLocalVarFromExpr(e1Value);
-    ASSERT(baseVar != nullptr);
-    // in maple type system, field 0 means the agg itself and field index start from 1
-    Expr rhs = lmirBuilder_->DreadWithField(*baseVar, index + 1);
-    PregIdx pregIdx = lmirBuilder_->CreatePreg(rhs.GetType());
-    lmirBuilder_->AppendStmt(GetOrCreateBB(instID2bbID_[acc_.GetId(gate)]), lmirBuilder_->Regassign(rhs, pregIdx));
+    Expr expr = GetExprFromGate(e1, index);
+    PregIdx pregIdx = lmirBuilder_->GetPregIdxFromExpr(expr);
     SaveGate2Expr(gate, lmirBuilder_->Regread(pregIdx));
 }
 
