@@ -63,6 +63,9 @@ using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::kungfu;
 
+static constexpr char16_t UTF_16[] = u"This is a char16 array";
+static constexpr const char *DUPLICATE_KEY = "duplicateKey";
+static constexpr const char *SIMPLE_KEY = "simpleKey";
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
 using PGOProfilerManager = panda::ecmascript::pgo::PGOProfilerManager;
@@ -1011,9 +1014,9 @@ HWTEST_F_L0(JSNApiTests, NewObjectWithPropertiesDuplicate)
 {
     LocalScope scope(vm_);
     Local<JSValueRef> keys[] = {
-        StringRef::NewFromUtf8(vm_, "duplicateKey"),
-        StringRef::NewFromUtf8(vm_, "simpleKey"),
-        StringRef::NewFromUtf8(vm_, "duplicateKey"),
+        StringRef::NewFromUtf8(vm_, DUPLICATE_KEY),
+        StringRef::NewFromUtf8(vm_, SIMPLE_KEY),
+        StringRef::NewFromUtf8(vm_, DUPLICATE_KEY),
     };
     Local<JSValueRef> values[] = {
         StringRef::NewFromUtf8(vm_, "value1"),
@@ -1090,9 +1093,9 @@ HWTEST_F_L0(JSNApiTests, NewObjectWithNamedPropertiesDuplicate)
 {
     LocalScope scope(vm_);
     const char *keys[] = {
-        "duplicateKey",
-        "simpleKey",
-        "duplicateKey",
+        DUPLICATE_KEY,
+        SIMPLE_KEY,
+        DUPLICATE_KEY,
     };
     Local<JSValueRef> values[] = {
         StringRef::NewFromUtf8(vm_, "value1"),
@@ -1149,14 +1152,38 @@ HWTEST_F_L0(JSNApiTests, NewObjectWithPropertiesDuplicateWithKeyNotFromStringTab
 {
     LocalScope scope(vm_);
     Local<JSValueRef> keys[] = {
-        StringRef::NewFromUtf8WithoutStringTable(vm_, "duplicateKey"),
-        StringRef::NewFromUtf8WithoutStringTable(vm_, "simpleKey"),
-        StringRef::NewFromUtf8WithoutStringTable(vm_, "duplicateKey"),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, DUPLICATE_KEY),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, SIMPLE_KEY),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, DUPLICATE_KEY),
     };
     Local<JSValueRef> values[] = {
         StringRef::NewFromUtf8WithoutStringTable(vm_, "value1"),
         StringRef::NewFromUtf8WithoutStringTable(vm_, "value2"),
         StringRef::NewFromUtf8WithoutStringTable(vm_, "value3"),
+    };
+    PropertyAttribute attributes[] = {
+        PropertyAttribute(values[0], true, true, true),
+        PropertyAttribute(values[1], true, true, true),
+        PropertyAttribute(values[2], true, true, true),
+    };
+    Local<ObjectRef> object = ObjectRef::NewWithProperties(vm_, 3, keys, attributes);
+    JSHandle<JSTaggedValue> obj = JSNApiHelper::ToJSHandle(object);
+    EXPECT_TRUE(obj.GetTaggedValue() == JSTaggedValue::Undefined());
+    thread_->ClearException();
+}
+
+HWTEST_F_L0(JSNApiTests, NewObjectWithPropertiesDuplicateWithKeyNotFromStringTable1)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> keys[] = {
+        StringRef::NewFromUtf8WithoutStringTable(vm_, DUPLICATE_KEY, 0),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, SIMPLE_KEY, 0),
+        StringRef::NewFromUtf8WithoutStringTable(vm_, DUPLICATE_KEY, 0),
+    };
+    Local<JSValueRef> values[] = {
+        StringRef::NewFromUtf16WithoutStringTable(vm_, UTF_16, 0),
+        StringRef::NewFromUtf16WithoutStringTable(vm_, UTF_16, 0),
+        StringRef::NewFromUtf16WithoutStringTable(vm_, UTF_16, 0),
     };
     PropertyAttribute attributes[] = {
         PropertyAttribute(values[0], true, true, true),
