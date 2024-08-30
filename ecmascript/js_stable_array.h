@@ -41,7 +41,6 @@ public:
     static JSTaggedValue Shift(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Join(JSThread *thread, JSHandle<JSArray> receiver,
                               JSHandle<EcmaString> sepStringHandle, int64_t length);
-    static JSTaggedValue Join(JSHandle<JSSharedArray> receiver, EcmaRuntimeCallInfo *argv);
     static JSTaggedValue HandleFindIndexOfStable(JSThread *thread, JSHandle<JSObject> thisObjHandle,
                                                  JSHandle<JSTaggedValue> callbackFnHandle,
                                                  JSHandle<JSTaggedValue> thisArgHandle, uint32_t &k);
