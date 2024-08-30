@@ -140,6 +140,15 @@ private:
     static void HandleArray(JSHandle<JSObject> &newArrayHandle, uint32_t &actualDeleteCount,
                             JSThread *thread, uint32_t &start, JSHandle<JSObject> &thisObjHandle,
                             JSHandle<JSTaggedValue> &holeHandle);
+    static JSTaggedValue JoinUseTreeString(const JSThread* thread, JSHandle<JSTaggedValue> receiverValue,
+                                       JSHandle<EcmaString> sepStringHandle, int sep,
+                                       CVector<JSHandle<EcmaString>>& vec);
+    inline static bool WorthUseTreeString(int sep, size_t allocateLength, uint32_t len);
+
+    // Allocate object larger than 256 need liner search in the free object list,
+    // so try to use tree string when the join result is larger than 256.
+    static constexpr size_t TREE_STRING_THRESHOLD = 256;
+    static constexpr size_t NUM_2 = 2;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JS_STABLE_ARRAY_H
