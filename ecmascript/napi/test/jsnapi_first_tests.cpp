@@ -58,12 +58,16 @@
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/tagged_tree.h"
 #include "ecmascript/weak_vector.h"
+#include "ecmascript/regexp/regexp_parser.h"
 #include "gtest/gtest.h"
 #include "jsnapi_expo.h"
 
 using namespace panda;
 using namespace panda::ecmascript;
 using namespace panda::ecmascript::kungfu;
+
+static constexpr char TEST_CHAR_STRING_FLAGS[] = "gimsuy";
+static constexpr char TEST_CHAR_STRING_STATE[] = "closed";
 
 namespace panda::test {
 using BuiltinsFunction = ecmascript::builtins::BuiltinsFunction;
@@ -2181,5 +2185,49 @@ HWTEST_F_L0(JSNApiTests, IsTypedArray)
     ASSERT_TRUE(typedArray->IsTypedArray(vm_));
     ASSERT_FALSE(typedArray->IsUndefined());
     ASSERT_EQ(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_), arrayBuffer->GetBuffer(vm_));
+}
+
+HWTEST_F_L0(JSNApiTests, GetOriginalSource)
+{
+    LocalScope scope(vm_);
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = vm_->GetFactory();
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> regExpFunc = globalEnv->GetRegExpFunction();
+    JSHandle<JSRegExp> jSRegExp =
+        JSHandle<JSRegExp>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(regExpFunc), regExpFunc));
+    jSRegExp->SetOriginalSource(thread, JSTaggedValue::Undefined());
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(JSHandle<JSTaggedValue>::Cast(jSRegExp));
+    ASSERT_EQ(object->GetOriginalSource(vm_)->ToString(vm_), "");
+}
+
+HWTEST_F_L0(JSNApiTests, GetOriginalFlags)
+{
+    LocalScope scope(vm_);
+    JSThread *thread = vm_->GetJSThread();
+    ObjectFactory *factory = vm_->GetFactory();
+    auto globalEnv = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSTaggedValue> regExpFunc = globalEnv->GetRegExpFunction();
+    JSHandle<JSRegExp> jSRegExp =
+        JSHandle<JSRegExp>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(regExpFunc), regExpFunc));
+    jSRegExp->SetOriginalFlags(thread, JSTaggedValue(RegExpParser::FLAG_GLOBAL | RegExpParser::FLAG_IGNORECASE |
+                                                     RegExpParser::FLAG_MULTILINE | RegExpParser::FLAG_DOTALL |
+                                                     RegExpParser::FLAG_UTF16 | RegExpParser::FLAG_STICKY));
+    Local<RegExpRef> object = JSNApiHelper::ToLocal<RegExpRef>(JSHandle<JSTaggedValue>::Cast(jSRegExp));
+    ASSERT_EQ(object->GetOriginalFlags(vm_), TEST_CHAR_STRING_FLAGS);
+}
+
+HWTEST_F_L0(JSNApiTests, GetGeneratorState)
+{
+    LocalScope scope(vm_);
+    JSHandle<GlobalEnv> env = thread_->GetEcmaVM()->GetGlobalEnv();
+    ObjectFactory *factory = thread_->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> genFunc = env->GetGeneratorFunctionFunction();
+    JSHandle<JSGeneratorObject> genObjHandleVal = factory->NewJSGeneratorObject(genFunc);
+    genObjHandleVal->SetGeneratorState(JSGeneratorState::COMPLETED);
+    JSHandle<JSTaggedValue> genObjTagHandleVal = JSHandle<JSTaggedValue>::Cast(genObjHandleVal);
+    Local<GeneratorObjectRef> object = JSNApiHelper::ToLocal<GeneratorObjectRef>(genObjTagHandleVal);
+
+    ASSERT_EQ(object->GetGeneratorState(vm_)->ToString(vm_)->ToString(vm_), TEST_CHAR_STRING_STATE);
 }
 }  // namespace panda::test
