@@ -240,6 +240,7 @@ void PGOTypeParser::GenerateHClassForClassType(ProfileType rootType, ProfileType
     if (phValue.IsUndefined()) {
         return;
     }
+    ASSERT(phValue.IsJSHClass());
     auto thread = ptManager_->GetJSThread();
     JSHandle<JSHClass> phclass(thread, phValue);
     JSHandle<JSObject> prototype = thread->GetEcmaVM()->GetFactory()->NewJSObjectWithInit(phclass);
