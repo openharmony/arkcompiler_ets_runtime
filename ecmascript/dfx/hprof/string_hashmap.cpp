@@ -50,6 +50,33 @@ CString *StringHashMap::GetStringByKey(StringKey key) const
     return nullptr;
 }
 
+std::pair<uint64_t, CString *> StringHashMap::GetStringAndIdPair(StringKey key) const
+{
+    auto it = hashmap_.find(key);
+    if (it != hashmap_.end()) {
+        return {indexMap_.at(key), it->second};
+    }
+    return {1, nullptr};  // 1 : invalid id
+}
+
+StringId StringHashMap::InsertStrAndGetStringId(const CString &cstrArg)
+{
+    CString *cstr = const_cast<CString *>(&cstrArg);
+    StringKey key = GenerateStringKey(cstr);
+    auto it = indexMap_.find(key);
+    if (it != indexMap_.end()) {
+        return it->second;
+    } else {  // NOLINT(readability-else-after-return)
+        index_++;
+        auto *newStr = const_cast<NativeAreaAllocator *>(
+            vm_->GetNativeAreaAllocator())->New<CString>(cstr->c_str());
+        hashmap_.emplace(key, newStr);
+        orderedKey_.emplace_back(key);
+        indexMap_.emplace(key, index_);
+        return index_;
+    }
+}
+
 StringKey StringHashMap::GenerateStringKey(const CString *cstr) const
 {
     return std::hash<CString>{} (*cstr);

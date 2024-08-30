@@ -16,6 +16,9 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
+#include <atomic>
+#include <thread>
+#include <chrono>
 #include "ecmascript/dfx/hprof/heap_profiler.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
@@ -24,6 +27,8 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/base/block_hook_scope.h"
+#include "ecmascript/dfx/hprof/heap_root_visitor.h"
+#include "ecmascript/mem/object_xray.h"
 
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
 #include "faultloggerd_client.h"
@@ -149,7 +154,12 @@ void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] const DumpSnapShotOption &d
 {
 #if defined(ENABLE_DUMP_IN_FAULTLOG)
     // Write in faultlog for heap leak.
-    int32_t fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+    int32_t fd;
+    if (dumpOption.isDumpOOM && dumpOption.dumpFormat == DumpFormat::BINARY) {
+        fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_RAW_SNAPSHOT));
+    } else {
+        fd = RequestFileDescriptor(static_cast<int32_t>(FaultLoggerType::JS_HEAP_SNAPSHOT));
+    }
     if (fd < 0) {
         LOG_ECMA(ERROR) << "OOM Dump Write FD failed, fd" << fd;
         return;
@@ -191,6 +201,182 @@ bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShot
     return serializerResult;
 }
 
+ChunkDecoder::ChunkDecoder(std::string fileContent)
+{
+    auto u64Ptr = reinterpret_cast<const uint64_t *>(fileContent.c_str());
+    size_t currInd = 0;
+    heapObjCnt = u64Ptr[currInd++];
+    rootObjCnt = u64Ptr[currInd++];
+    ShareObjCnt = u64Ptr[currInd++];
+    strTableOffset = u64Ptr[currInd++];
+    LOG_ECMA(INFO) << "ChunkDecoder init: heapObjCnt=" << heapObjCnt << ", rootObjCnt=" << rootObjCnt
+                    << ", ShareObjCnt=" << ShareObjCnt << std::hex << ", strTableOffset=0x" << strTableOffset;
+    auto cPtr = fileContent.c_str();
+    for (uint64_t i = 0; i < rootObjCnt; i++) {
+        rootAddrMap[u64Ptr[currInd++]] = nullptr;
+    }
+    auto &objInfoVec = rawHeapArgs.rawObjInfoVec;
+    auto &objAddrMap = rawHeapArgs.objOldAddrMapNewAddr;
+    for (uint64_t i = 0; i < heapObjCnt; ++i) {
+        auto objInfo = new RawHeapObjInfo();
+        objInfo->tInfo.addr = u64Ptr[currInd];
+        objInfo->tInfo.id = u64Ptr[currInd + 1]; // 1 : offset of objId
+        objInfo->tInfo.objSize = u64Ptr[currInd + 2]; // 2 : offset of objSize
+        objInfo->tInfo.offset = u64Ptr[currInd + 3]; // 3 : offset of obj
+        objInfo->tInfo.stringId = u64Ptr[currInd + 4]; // 4 : offset of stringId
+        if (rootAddrMap.find(objInfo->tInfo.addr) != rootAddrMap.end()) {
+            objInfo->isRoot = true;
+            rootAddrMap[objInfo->tInfo.addr] = objInfo;
+        } else {
+            objInfo->isRoot = false;
+        }
+        objInfoVec.push_back(objInfo);
+        currInd = currInd + sizeof(AddrTableItem) / sizeof(uint64_t);
+        auto objMem = new char[objInfo->tInfo.objSize];
+        auto ret = memcpy_s(objMem, objInfo->tInfo.objSize, cPtr + objInfo->tInfo.offset, objInfo->tInfo.objSize);
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "ChunkDecoder memcpy_s failed, ret=" << ret;
+            return;
+        }
+        objInfo->newAddr = objMem;
+        objAddrMap.emplace(objInfo->tInfo.addr, objMem);
+    }
+    DecodeStrTable(cPtr, fileContent.size());
+}
+
+void ChunkDecoder::DecodeStrTable(const char *charPtr, uint64_t fileSize)
+{
+    auto currInd = strTableOffset;
+    if (currInd >= fileSize) {
+        LOG_ECMA(ERROR) << "DecodeStrTable no str table: str=" << charPtr;
+        return;
+    }
+    auto &strTableIdMap = rawHeapArgs.strTableIdMapNewStr;
+
+    auto u64Ptr = reinterpret_cast<const uint64_t *>(charPtr + currInd);
+    auto strCnt = *u64Ptr;
+    LOG_ECMA(INFO) << "DecodeStrTable: strCnt=" << std::dec << strCnt;
+    while (currInd < fileSize && strTableIdMap.size() < strCnt) {
+        auto id = *reinterpret_cast<const uint64_t *>(charPtr + currInd);
+        currInd += sizeof(uint64_t);
+        if (currInd >= fileSize) {
+            break;
+        }
+        auto *currPtr = &charPtr[currInd];
+        auto currSize = strlen(currPtr) + 1;
+        if (currSize == 1) {
+            currInd += currSize;
+            continue;
+        }
+        auto tmpCharArr = new char[currSize];
+        auto ret = memcpy_s(tmpCharArr, currSize, currPtr, currSize);
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "DecodeStrTable memcpy_s failed: str=" << currPtr;
+            return;
+        }
+        strTableIdMap[id] = tmpCharArr;
+        currInd += currSize;
+    }
+    LOG_ECMA(INFO) << "DecodeStrTable finished: strTableVec.size=" << strTableIdMap.size();
+}
+
+void DecodeObj(RawHeapInfoArgs &rawHeapArgs)
+{
+    auto &objInfoVec = rawHeapArgs.rawObjInfoVec;
+    auto &objAddrMap = rawHeapArgs.objOldAddrMapNewAddr;
+    std::set<uint64_t> notFoundObj;
+    CVector<uint64_t> *refVec = nullptr;
+
+    auto visitor = [&notFoundObj, &objAddrMap, &refVec]([[maybe_unused]] TaggedObject *root, ObjectSlot start,
+                                                        ObjectSlot end, VisitObjectArea area) {
+        if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
+            return;
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            auto taggedPointerAddr = reinterpret_cast<uint64_t **>(slot.SlotAddress());
+            JSTaggedValue value(reinterpret_cast<TaggedObject *>(*taggedPointerAddr));
+            auto originalAddr = reinterpret_cast<uint64_t>(*taggedPointerAddr);
+            if (value.IsWeakForHeapObject()) {
+                originalAddr -= 1;
+            }
+            if (!value.IsHeapObject() || originalAddr == 0) {
+                continue;
+            }
+            auto toItem = objAddrMap.find(originalAddr);
+            if (toItem == objAddrMap.end()) {
+                notFoundObj.insert(reinterpret_cast<uint64_t>(*taggedPointerAddr));
+                continue;
+            }
+            auto newAddr = reinterpret_cast<uint64_t>(toItem->second);
+            if (value.IsWeakForHeapObject()) {
+                newAddr += 1;
+            }
+            refVec->push_back(newAddr);
+            slot.Update(reinterpret_cast<TaggedObject *>(newAddr));
+        }
+    };
+
+    for (auto v : objInfoVec) {
+        refVec = &v->refVec;
+        auto item = objAddrMap.find(v->tInfo.addr);
+        auto jsHclassAddr = *reinterpret_cast<uint64_t *>(item->second);
+        auto jsHclassItem = objAddrMap.find(jsHclassAddr);
+        if (jsHclassItem == objAddrMap.end()) {
+            LOG_ECMA(ERROR) << "ark DecodeObj hclass not find";
+            continue;
+        }
+        [[maybe_unused]] TaggedObject *obj = reinterpret_cast<TaggedObject *>(item->second);
+        *reinterpret_cast<uint64_t *>(item->second) = reinterpret_cast<uint64_t>(jsHclassItem->second);
+        auto hclassObj = reinterpret_cast<JSHClass *>(jsHclassItem->second);
+        auto type = JSHClass::DumpJSType(hclassObj->GetObjectType());
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclassObj, visitor);
+    }
+
+    LOG_ECMA(INFO) << "ark visitor: not found obj num= " << notFoundObj.size();
+}
+
+bool HeapProfiler::GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath)
+{
+    LOG_ECMA(INFO) << "ark raw heap GenerateHeapSnapshot start";
+    std::ifstream file(inputFilePath, std::ios::binary);
+    if (!file.is_open()) {
+        LOG_ECMA(ERROR) << "ark raw heap open file failed:" << inputFilePath.c_str();
+        return false;
+    }
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    ChunkDecoder chunk(content);
+    file.close();
+    auto &rawHeapArgs = chunk.GetRawHeapInfoArgs();
+    auto &strTableIdMap = rawHeapArgs.strTableIdMapNewStr;
+    auto &objInfoVec = rawHeapArgs.rawObjInfoVec;
+    bool traceAllocation = false;
+    DumpSnapShotOption dumpOption;
+    LOG_ECMA(INFO) << "ark GenerateHeapSnapshot rebuild ref";
+    DecodeObj(rawHeapArgs);
+    for (auto item : strTableIdMap) {
+        GetEcmaStringTable()->GetString(item.second);
+    }
+    auto *snapshot = new HeapSnapshot(vm_, GetEcmaStringTable(), dumpOption, traceAllocation, entryIdMap_, GetChunk());
+    LOG_ECMA(INFO) << "ark GenerateHeapSnapshot generate nodes count=" << objInfoVec.size();
+    for (size_t i = 0; i < objInfoVec.size(); i++) {
+        auto obj = reinterpret_cast<TaggedObject *>(objInfoVec[i]->newAddr);
+        snapshot->GenerateNode(obj, objInfoVec[i]->tInfo.objSize);
+    }
+    LOG_ECMA(INFO) << "ark GenerateHeapSnapshot generate edges";
+    snapshot->BuildSnapshotForBinMod(objInfoVec, strTableIdMap);
+    if (outputPath.empty()) {
+        outputPath = GenDumpFileName(dumpOption.dumpFormat);
+    } else if (outputPath.back() == '/') {
+        outputPath += GenDumpFileName(dumpOption.dumpFormat);
+    }
+    LOG_GC(INFO) << "ark GenerateHeapSnapshot output file=" << outputPath.c_str();
+    FileStream newStream(outputPath);
+    auto serializerResult = HeapSnapshotJSONSerializer::Serialize(snapshot, &newStream);
+    delete snapshot;
+    LOG_ECMA(INFO) << "ark raw heap GenerateHeapSnapshot finish";
+    return serializerResult;
+}
+
 [[maybe_unused]]static void WaitProcess(pid_t pid)
 {
     time_t startTime = time(nullptr);
@@ -209,6 +395,221 @@ bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShot
         }
         usleep(DEFAULT_SLEEP_TIME);
     }
+}
+
+template<typename Callback>
+void IterateSharedHeap(Callback &cb)
+{
+    auto heap = SharedHeap::GetInstance();
+    heap->GetOldSpace()->IterateOverObjects(cb);
+    heap->GetNonMovableSpace()->IterateOverObjects(cb);
+    heap->GetHugeObjectSpace()->IterateOverObjects(cb);
+    heap->GetAppSpawnSpace()->IterateOverObjects(cb);
+    heap->GetReadOnlySpace()->IterateOverObjects(cb);
+}
+
+std::pair<uint64_t, uint64_t> GetHeapCntAndSize(const EcmaVM *vm)
+{
+    uint64_t cnt = 0;
+    uint64_t objectSize = 0;
+    auto cb = [&objectSize, &cnt]([[maybe_unused]] TaggedObject *obj) {
+        objectSize += obj->GetClass()->SizeFromJSHClass(obj);
+        ++cnt;
+    };
+    vm->GetHeap()->IterateOverObjects(cb, false);
+    return std::make_pair(cnt, objectSize);
+}
+
+std::pair<uint64_t, uint64_t> GetSharedCntAndSize()
+{
+    uint64_t cnt = 0;
+    uint64_t size = 0;
+    auto cb = [&cnt, &size](TaggedObject *obj) {
+        cnt++;
+        size += obj->GetClass()->SizeFromJSHClass(obj);
+    };
+    IterateSharedHeap(cb);
+    return std::make_pair(cnt, size);
+}
+
+static CUnorderedSet<TaggedObject*> GetRootObjects(const EcmaVM *vm)
+{
+    CUnorderedSet<TaggedObject*> result {};
+    HeapRootVisitor visitor;
+    uint32_t rootCnt1 = 0;
+    RootVisitor rootEdgeBuilder = [&result, &rootCnt1](
+        [[maybe_unused]] Root type, ObjectSlot slot) {
+        JSTaggedValue value((slot).GetTaggedType());
+        if (!value.IsHeapObject()) {
+            return;
+        }
+        ++rootCnt1;
+        TaggedObject *root = value.GetTaggedObject();
+        result.insert(root);
+    };
+    RootBaseAndDerivedVisitor rootBaseEdgeBuilder = []
+        ([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
+         [[maybe_unused]] uintptr_t baseOldObject) {
+    };
+    uint32_t rootCnt2 = 0;
+    RootRangeVisitor rootRangeEdgeBuilder = [&result, &rootCnt2]([[maybe_unused]] Root type,
+        ObjectSlot start, ObjectSlot end) {
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            JSTaggedValue value((slot).GetTaggedType());
+            if (!value.IsHeapObject()) {
+                continue;
+            }
+            ++rootCnt2;
+            TaggedObject *root = value.GetTaggedObject();
+            result.insert(root);
+        }
+    };
+    visitor.VisitHeapRoots(vm->GetJSThread(), rootEdgeBuilder, rootRangeEdgeBuilder, rootBaseEdgeBuilder);
+    SharedModuleManager::GetInstance()->Iterate(rootEdgeBuilder);
+    Runtime::GetInstance()->IterateCachedStringRoot(rootRangeEdgeBuilder);
+    return result;
+}
+
+size_t GetNotFoundObj(const EcmaVM *vm)
+{
+    size_t heapTotalSize = 0;
+    CUnorderedSet<TaggedObject*> allHeapObjSet {};
+    auto handleObj = [&allHeapObjSet, &heapTotalSize](TaggedObject *obj) {
+        allHeapObjSet.insert(obj);
+        uint64_t objSize = obj->GetClass()->SizeFromJSHClass(obj);
+        heapTotalSize += objSize;
+    };
+    vm->GetHeap()->IterateOverObjects(handleObj, false);
+    IterateSharedHeap(handleObj);
+    LOG_ECMA(INFO) << "ark GetNotFound heap count:" << allHeapObjSet.size() << ", heap size=" << heapTotalSize;
+    CUnorderedSet<TaggedObject *> notFoundObjSet {};
+    auto visitor = [&notFoundObjSet, &allHeapObjSet] ([[maybe_unused]]TaggedObject *root, ObjectSlot start,
+                                                      ObjectSlot end, VisitObjectArea area) {
+        if (area == VisitObjectArea::RAW_DATA || area == VisitObjectArea::NATIVE_POINTER) {
+            return;
+        }
+        for (ObjectSlot slot = start; slot < end; slot++) {
+            auto taggedPointerAddr = reinterpret_cast<uint64_t **>(slot.SlotAddress());
+            JSTaggedValue value(reinterpret_cast<TaggedObject *>(*taggedPointerAddr));
+            auto originalAddr = reinterpret_cast<uint64_t>(*taggedPointerAddr);
+            if (!value.IsHeapObject() || originalAddr == 0) {
+                continue;
+            }
+            if (value.IsWeakForHeapObject()) {
+                originalAddr -= 1;
+            }
+            if (allHeapObjSet.find(reinterpret_cast<TaggedObject *>(originalAddr)) != allHeapObjSet.end()) {
+                continue;
+            }
+            auto obj = reinterpret_cast<TaggedObject *>(*taggedPointerAddr);
+            if (notFoundObjSet.find(obj) != notFoundObjSet.end()) {
+                continue;
+            }
+            notFoundObjSet.insert(obj);
+        }
+    };
+    for (auto obj : allHeapObjSet) {
+        ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, obj->GetClass(), visitor);
+    }
+    LOG_ECMA(INFO) << "ark GetNotFound not found count:" << notFoundObjSet.size();
+    return notFoundObjSet.size();
+}
+
+bool FillAddrTable(const EcmaVM *vm, EntryIdMap &idMap, AddrTableItem *table, HeapSnapshot *snapshot)
+{
+    uint64_t index = 0;
+    auto handleObj = [&index, &table, &idMap, &snapshot](TaggedObject *obj) {
+        auto taggedType = JSTaggedValue(obj).GetRawData();
+        auto [exist, id] = idMap.FindId(taggedType);
+        if (!exist) {
+            idMap.InsertId(taggedType, id);
+        }
+        table[index].addr = reinterpret_cast<uint64_t>(obj);
+        table[index].id = id;
+        table[index].stringId = snapshot->GenerateStringId(obj);
+        index++;
+    };
+    vm->GetHeap()->IterateOverObjects(handleObj, false);
+    IterateSharedHeap(handleObj);
+    LOG_ECMA(INFO) << "ark FillAddrTable obj count: " << index;
+#ifdef OHOS_UNIT_TEST
+    size_t ret = GetNotFoundObj(vm);
+    return ret == 0;
+#else
+    return true;
+#endif
+}
+
+void CopyObjectMem(char *chunk, AddrTableItem *table, uint64_t len, std::atomic<uint64_t> &index,
+                   std::atomic<uint64_t> &offset, uint64_t offBase)
+{
+    auto curIdx = index.fetch_add(1);
+    while (curIdx < len) {
+        auto& item = table[curIdx];
+        auto obj = reinterpret_cast<TaggedObject *>(item.addr);
+        uint64_t objSize = obj->GetClass()->SizeFromJSHClass(obj);
+        auto curOffset = offset.fetch_add(objSize);
+        item.objSize = objSize;
+        item.offset = curOffset + offBase;
+        auto ret = memcpy_s(chunk + curOffset, objSize, reinterpret_cast<void *>(item.addr), objSize);
+        if (ret != 0) {
+            LOG_ECMA(ERROR) << "ark BinaryDump CopyObjectMem memcpy_s failed";
+            return;
+        }
+        curIdx = index.fetch_add(1);
+    }
+}
+
+bool HeapProfiler::BinaryDump(Stream *stream, [[maybe_unused]] const DumpSnapShotOption &dumpOption)
+{
+    LOG_ECMA(INFO) << "ark BinaryDump dump raw heap start";
+    auto [localCnt, heapSize] = GetHeapCntAndSize(vm_);
+    auto [sharedCnt, sharedSize] = GetSharedCntAndSize();
+    auto roots = GetRootObjects(vm_);
+    uint64_t heapTotalCnt = localCnt + sharedCnt;
+    uint64_t totalSize = sizeof(uint64_t) * (4 + roots.size()) + sizeof(AddrTableItem) * heapTotalCnt; // 4 : file head
+    uint64_t heapTotalSize = heapSize + sharedSize;
+    LOG_ECMA(INFO) << "ark rootNum=" << roots.size() << ", ObjSize=" << heapTotalSize << ", ObjNum=" << heapTotalCnt;
+    char *chunk = new char[totalSize];
+    uint64_t *header = reinterpret_cast<uint64_t *>(chunk);
+    header[0] = heapTotalCnt; // 0: obj total count offset in file
+    header[1] = roots.size(); // 1: root obj num offset in file
+    header[2] = sharedCnt; // 2: share obj num offset in file
+    auto currInd = 4; // 4 : file head num is 4, then is obj table
+    for (auto root : roots) {
+        header[currInd++] = reinterpret_cast<uint64_t>(root);
+    }
+    auto table = reinterpret_cast<AddrTableItem *>(&header[currInd]);
+    DumpSnapShotOption op;
+    auto *snapshotPtr = GetChunk()->New<HeapSnapshot>(vm_, GetEcmaStringTable(), op, false, entryIdMap_, GetChunk());
+    auto ret = FillAddrTable(vm_, *entryIdMap_, table, snapshotPtr);
+    char *heapObjData = new char[heapTotalSize];
+    uint64_t objMemStart = reinterpret_cast<uint64_t>(&table[heapTotalCnt]);
+    uint64_t offBase = objMemStart - reinterpret_cast<uint64_t>(chunk);
+    std::atomic<uint64_t> offset(0);
+    std::atomic<uint64_t> index(0);
+    auto threadMain = [&offset, &index, heapObjData, table, heapTotalCnt, offBase]() {
+        CopyObjectMem(heapObjData, table, heapTotalCnt, index, offset, offBase);
+    };
+    std::vector<std::thread> threads;
+    const uint32_t THREAD_NUM = 8; // 8 : thread num is 8
+    for (uint32_t i = 0; i < THREAD_NUM; i++) {
+        threads.emplace_back(threadMain);
+    }
+    for (uint32_t i = 0; i < THREAD_NUM; i++) {
+        threads[i].join();
+    }
+    header[3] = offBase + heapTotalSize; // 3: string table offset
+    LOG_ECMA(INFO) << "ark BinaryDump write to file";
+    stream->WriteBinBlock(chunk, offBase);
+    stream->WriteBinBlock(heapObjData, heapTotalSize);
+    delete[] heapObjData;
+    delete[] chunk;
+    LOG_ECMA(INFO) << "ark BinaryDump dump DumpStringTable";
+    HeapSnapshotJSONSerializer::DumpStringTable(snapshotPtr, stream);
+    GetChunk()->Delete(snapshotPtr);
+    LOG_ECMA(INFO) << "ark BinaryDump dump raw heap finished";
+    return ret;
 }
 
 void HeapProfiler::FillIdMap()
@@ -259,6 +660,7 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         if (dumpOption.isFullGC) {
             DISALLOW_GARBAGE_COLLECTION;
             const_cast<Heap *>(vm_->GetHeap())->Prepare();
+            SharedHeap::GetInstance()->Prepare(true);
         }
         if (dumpOption.isBeforeFill) {
             Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
@@ -268,6 +670,9 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             FillIdMap();
         }
         if (dumpOption.isDumpOOM) {
+            if (dumpOption.dumpFormat == DumpFormat::BINARY) {
+                return BinaryDump(stream, dumpOption);
+            }
             return DoDump(stream, progress, dumpOption);
         }
         // fork

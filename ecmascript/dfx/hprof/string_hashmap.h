@@ -53,6 +53,8 @@ public:
      * Get string by its hash key
      */
     CString *GetStringByKey(StringKey key) const;
+    std::pair<uint64_t, CString *> GetStringAndIdPair(StringKey key) const;
+    StringId InsertStrAndGetStringId(const CString &cstrArg);
     size_t GetCapcity() const
     {
         ASSERT(orderedKey_.size() == hashmap_.size());

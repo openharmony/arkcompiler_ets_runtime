@@ -99,6 +99,18 @@ public:
         return heapProfile->GetIdCount();
     }
 
+    bool GenerateRawHeapSnashot(const std::string &filePath)
+    {
+        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+        DumpSnapShotOption dumpOption;
+        dumpOption.dumpFormat = DumpFormat::BINARY;
+        dumpOption.isDumpOOM = true;
+        FileStream stream(filePath);
+        bool ret = heapProfile->DumpHeapSnapshot(&stream, dumpOption);
+        stream.EndOfStream();
+        return ret;
+    }
+
     bool MatchHeapDumpString(const std::string &filePath, std::string targetStr)
     {
         std::string line;
@@ -520,6 +532,11 @@ public:
     void DumpHeapSnapshot(const DumpSnapShotOption &dumpOption) override
     {
         profiler_->DumpHeapSnapshot(dumpOption);
+    }
+
+    bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override
+    {
+        return profiler_->GenerateHeapSnapshot(inputFilePath, outputPath);
     }
 
     bool StartHeapTracking(double timeInterval, bool isVmMode = true, Stream *stream = nullptr,
@@ -1052,4 +1069,37 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName9)
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"PlainArray\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_9.heapsnapshot", "\"PlainArrayIterator\""));
 }
+
+HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDump)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+    // PROMISE_ITERATOR_RECORD
+    tester.NewPromiseIteratorRecord();
+    // PROMISE_RECORD
+    factory->NewPromiseRecord();
+    // JS_ARRAY_BUFFER
+    factory->NewJSArrayBuffer(10);
+    // JS_SHARED_ARRAY_BUFFER
+    factory->NewJSSharedArrayBuffer(10);
+    // PROMISE_REACTIONS
+    factory->NewPromiseReaction();
+    // PROMISE_CAPABILITY
+    factory->NewPromiseCapability();
+    // RESOLVING_FUNCTIONS_RECORD
+    factory->NewResolvingFunctionsRecord();
+    // JS_PROMISE
+    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
+    tester.NewObject(JSPromise::SIZE, JSType::JS_PROMISE, proto);
+    // ASYNC_GENERATOR_REQUEST
+    factory->NewAsyncGeneratorRequest();
+    bool ret = tester.GenerateRawHeapSnashot("test_binary_dump.raw");
+    ASSERT_TRUE(ret);
+    std::ifstream file("test_binary_dump.raw", std::ios::binary);
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+    ASSERT_TRUE(content.size() > 0);
+    auto u64Ptr = reinterpret_cast<const uint64_t *>(content.c_str());
+    ASSERT_TRUE(*u64Ptr > 0);
+}
+
 }
