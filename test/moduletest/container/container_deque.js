@@ -85,6 +85,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     map.set("test deque popFirst:",  proxy.popFirst() === 0)
     map.set("test deque popLast:",  proxy.popLast() === 19)
 
+    try {
+        let myDeque = new Deque();
+        myDeque.insertEnd(1);
+        myDeque[2147483648];
+    } catch(err) {
+        let overFlowTest = (err == "BusinessError: The type of \"index\" must be small integer.");
+        map.set("test Deque[i] overFlowTest:", overFlowTest);
+    }
+
     let flag = undefined;
     function elements(value, key, map) {
         if (!value) {

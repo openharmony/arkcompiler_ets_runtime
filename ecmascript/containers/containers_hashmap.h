@@ -28,6 +28,7 @@ public:
     static JSTaggedValue Replace(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Keys(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Values(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue GetIteratorObj(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Entries(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ForEach(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Set(EcmaRuntimeCallInfo *argv);

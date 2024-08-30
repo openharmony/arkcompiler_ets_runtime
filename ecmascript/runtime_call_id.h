@@ -1057,6 +1057,7 @@ namespace panda::ecmascript {
     V(HashMap, Replace)                       \
     V(HashMap, Keys)                          \
     V(HashMap, Values)                        \
+    V(HashMap, GetIteratorObj)                \
     V(HashMap, Entries)                       \
     V(HashMap, ForEach)                       \
     V(HashMap, Set)                           \
@@ -1073,6 +1074,7 @@ namespace panda::ecmascript {
     V(HashSet, Remove)                        \
     V(HashSet, Clear)                         \
     V(HashSet, GetLength)                     \
+    V(HashSet, GetIteratorObj)                \
     V(HashSet, Values)                        \
     V(HashSet, Entries)                       \
     V(HashSet, ForEach)                       \

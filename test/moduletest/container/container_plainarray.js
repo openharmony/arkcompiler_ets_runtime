@@ -146,6 +146,15 @@ if (globalThis["ArkPrivate"] != undefined) {
         map.set("test setValueAt exception when arraylist is empty:", res)
     }
 
+    try {
+        let myPlainArray = new PlainArray();
+        myPlainArray.add(1);
+        myPlainArray[2147483648];
+    } catch(err) {
+        let overFlowTest = (err == "BusinessError: The type of \"index\" must be small integer.");
+        map.set("test PlainArray[i] overFlowTest:", overFlowTest);
+    }
+
     res = undefined;
     function elements(value, key, map) {
         if (!value) {
@@ -165,6 +174,19 @@ if (globalThis["ArkPrivate"] != undefined) {
             print("PlainArray forEach throw error fail");
         }
     }
+
+    // Math.floor as index input should not throw exception.
+    let myPa = new PlainArray();
+    myPa.add(0, "a");
+    myPa.add(Math.floor(1.5), "b");
+    myPa.has(Math.floor(1.5));
+    myPa.get(Math.floor(1.5));
+    myPa.getValueAt(Math.floor(1.5));
+    myPa.setValueAt(Math.floor(1.5), "c");
+    myPa.getKeyAt(Math.floor(1.5));
+    myPa.getIndexOfKey(Math.floor(1.5));
+    myPa.removeAt(Math.floor(1.5));
+
     if (!res) {
         print("Test PlainArray success!!!");
     } else {

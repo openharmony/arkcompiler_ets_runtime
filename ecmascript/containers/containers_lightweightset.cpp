@@ -144,17 +144,19 @@ JSTaggedValue ContainersLightWeightSet::GetValueAt(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
-    if (!value->IsInteger()) {
+    if (value->IsDouble()) {
+        value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(value->GetDouble()));
+    }
+    if (!value->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    int32_t index = value->GetInt();
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(self->GetTaggedObject());
-    return set->GetValueAt(index);
+    return set->GetValueAt(value->GetInt());
 }
 
 JSTaggedValue ContainersLightWeightSet::HasAll(EcmaRuntimeCallInfo *argv)
@@ -269,11 +271,17 @@ JSTaggedValue ContainersLightWeightSet::IncreaseCapacityTo(EcmaRuntimeCallInfo *
         }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
-    if (!value->IsInteger()) {
+
+    // for case like Math.foor(1.3), it gives double 1.0;
+    if (value->IsDouble()) {
+        value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(value->GetDouble()));
+    }
+
+    if (!value->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"minimumCapacity\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"minimumCapacity\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -295,7 +303,7 @@ JSTaggedValue ContainersLightWeightSet::GetIteratorObj(EcmaRuntimeCallInfo *argv
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
-                                                                "The getIteratorObj method cannot be bound");
+                                                                "The Symbol.iterator method cannot be bound");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }
@@ -440,19 +448,21 @@ JSTaggedValue ContainersLightWeightSet::RemoveAt(EcmaRuntimeCallInfo *argv)
         }
     }
     JSHandle<JSTaggedValue> value(GetCallArg(argv, 0));
-    if (!value->IsInteger()) {
+    if (value->IsDouble()) {
+        value = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(value->GetDouble()));
+    }
+    if (!value->IsInt()) {
         JSHandle<EcmaString> result = JSTaggedValue::ToString(thread, value.GetTaggedValue());
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         CString errorMsg =
-            "The type of \"index\" must be number. Received value is: " + ConvertToString(*result);
+            "The type of \"index\" must be small integer. Received value is: " + ConvertToString(*result);
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    int32_t index = value->GetInt();
     JSHandle<JSAPILightWeightSet> lightweightset(self);
     JSAPILightWeightSet::CheckAndCopyValues(thread, lightweightset);
     JSAPILightWeightSet *set = JSAPILightWeightSet::Cast(lightweightset.GetTaggedValue().GetTaggedObject());
-    return JSTaggedValue(set->RemoveAt(thread, index));
+    return JSTaggedValue(set->RemoveAt(thread, value->GetInt()));
 }
 
 JSTaggedValue ContainersLightWeightSet::Clear(EcmaRuntimeCallInfo *argv)
@@ -546,7 +556,7 @@ JSTaggedValue ContainersLightWeightSet::GetSize(EcmaRuntimeCallInfo *argv)
             self = JSHandle<JSTaggedValue>(thread, JSHandle<JSProxy>::Cast(self)->GetTarget());
         } else {
             JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::BIND_ERROR,
-                                                                "The getSize method cannot be bound");
+                                                                "The getLength method cannot be bound");
             THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
         }
     }

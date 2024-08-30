@@ -283,7 +283,20 @@ OperationResult JSAPIList::GetProperty(JSThread *thread, const JSHandle<JSAPILis
 {
     JSHandle<TaggedSingleList> singleList(thread, list->GetSingleList());
     int nodeLength = singleList->Length();
-    int index = static_cast<int>(key->GetNumber());
+    JSHandle<JSTaggedValue> indexKey = key;
+    if (indexKey->IsDouble()) {
+        // Math.floor(1) will produce TaggedDouble, we need to cast into TaggedInt
+        // For integer which is greater than INT32_MAX, it will remain TaggedDouble
+        indexKey = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(indexKey->GetDouble()));
+    }
+    if (!indexKey->IsInt()) {
+        CString errorMsg = "The type of \"index\" must be small integer.";
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                         OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+    }
+
+    int index = indexKey->GetInt();
     if (index < 0 || index >= nodeLength) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (nodeLength - 1)
