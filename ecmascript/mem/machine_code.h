@@ -207,7 +207,6 @@ public:
     bool SetData(const MachineCodeDesc &desc, JSHandle<Method> &method, size_t dataSize);
     bool SetText(const MachineCodeDesc &desc);
     bool SetNonText(const MachineCodeDesc &desc, EntityId methodId);
-    static int CopyToCache(const MachineCodeDesc &desc, uint8_t *pText, std::string str);
 
     template <VisitType visitType>
     void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)

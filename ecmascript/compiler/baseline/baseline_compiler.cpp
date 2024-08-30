@@ -110,7 +110,7 @@ static void SetupCodeSigner([[maybe_unused]] EcmaVM *vm)
 {
 #ifdef JIT_ENABLE_CODE_SIGN
     bool enableCodeSign = !vm->GetJSOptions().GetDisableCodeSign();
-    if (enableCodeSign && IsSupportJitCodeSigner()) {
+    if (enableCodeSign && JitFort::IsResourceAvailable()) {
         JitSignCode *singleton = JitSignCode::GetInstance();
         singleton->Reset();
         JitCodeSignerBase *jitSigner = CreateJitCodeSigner(JitBufferIntegrityLevel::Level0);
