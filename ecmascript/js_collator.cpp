@@ -33,6 +33,34 @@ const std::map<CaseFirstOption, UColAttributeValue> JSCollator::uColAttributeVal
     {CaseFirstOption::FALSE_OPTION, UCOL_OFF},
     {CaseFirstOption::UNDEFINED, UCOL_OFF}
 };
+const std::vector<LocaleMatcherOption> JSCollator::LOCALE_MATCHER_OPTION = {
+    LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT
+};
+const std::vector<std::string>  JSCollator::LOCALE_MATCHER_OPTION_NAME = {"lookup", "best fit"};
+
+const std::vector<CaseFirstOption>  JSCollator::CASE_FIRST_OPTION = {
+    CaseFirstOption::UPPER, CaseFirstOption::LOWER, CaseFirstOption::FALSE_OPTION
+};
+const std::vector<std::string>  JSCollator::CASE_FIRST_OPTION_NAME = {"upper", "lower", "false"};
+
+const std::set<std::string>  JSCollator::RELEVANT_EXTENSION_KEYS = {"co", "kn", "kf"};
+
+const std::vector<SensitivityOption>  JSCollator::SENSITIVITY_OPTION = {
+    SensitivityOption::BASE, SensitivityOption::ACCENT,
+    SensitivityOption::CASE, SensitivityOption::VARIANT
+};
+const std::vector<std::string>  JSCollator::SENSITIVITY_OPTION_NAME = {"base", "accent", "case", "variant"};
+
+const std::vector<UsageOption> JSCollator::USAGE_OPTION = {UsageOption::SORT, UsageOption::SEARCH};
+const std::vector<std::string> JSCollator::USAGE_OPTION_NAME = {"sort", "search"};
+
+// All the available locales that are statically known to fulfill fast path conditions.
+const char* const  JSCollator::FAST_LOCALE[] = {
+    "en-US", "en", "fr", "es", "de", "pt", "it", "ca",
+    "de-AT", "fi", "id", "id-ID", "ms", "nl", "pl", "ro",
+    "sl", "sv", "sw", "vi", "en-DE", "en-GB",
+};
+
 
 JSHandle<TaggedArray> JSCollator::GetAvailableLocales(JSThread *thread, bool enableLocaleCache)
 {
@@ -99,7 +127,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     }
     // 4. Let usage be ? GetOption(options, "usage", "string", « "sort", "search" », "sort").
     auto usage = JSLocale::GetOptionOfString<UsageOption>(thread, optionsObject, globalConst->GetHandledUsageString(),
-                                                          {UsageOption::SORT, UsageOption::SEARCH}, {"sort", "search"},
+                                                          JSCollator::USAGE_OPTION, JSCollator::USAGE_OPTION_NAME,
                                                           UsageOption::SORT);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
     collator->SetUsage(usage);
@@ -107,7 +135,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     // 5. Let matcher be ? GetOption(options, "localeMatcher", "string", « "lookup", "best fit" », "best fit").
     auto matcher = JSLocale::GetOptionOfString<LocaleMatcherOption>(
         thread, optionsObject, globalConst->GetHandledLocaleMatcherString(),
-        {LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT}, {"lookup", "best fit"},
+        JSCollator::LOCALE_MATCHER_OPTION, JSCollator::LOCALE_MATCHER_OPTION_NAME,
         LocaleMatcherOption::BEST_FIT);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
 
@@ -138,13 +166,12 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     // 14. Let caseFirst be ? GetOption(options, "caseFirst", "string", « "upper", "lower", "false" », undefined).
     CaseFirstOption caseFirst = JSLocale::GetOptionOfString<CaseFirstOption>(
         thread, optionsObject, globalConst->GetHandledCaseFirstString(),
-        {CaseFirstOption::UPPER, CaseFirstOption::LOWER, CaseFirstOption::FALSE_OPTION}, {"upper", "lower", "false"},
+        JSCollator::CASE_FIRST_OPTION, JSCollator::CASE_FIRST_OPTION_NAME,
         CaseFirstOption::UNDEFINED);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
     collator->SetCaseFirst(caseFirst);
 
     // 16. Let relevantExtensionKeys be %Collator%.[[RelevantExtensionKeys]].
-    std::set<std::string> relevantExtensionKeys = {"co", "kn", "kf"};
 
     // 17. Let r be ResolveLocale(%Collator%.[[AvailableLocales]], requestedLocales, opt,
     //     %Collator%.[[RelevantExtensionKeys]], localeData).
@@ -155,7 +182,7 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
         availableLocales = GetAvailableLocales(thread, enableLocaleCache);
     }
     ResolvedLocale r =
-        JSLocale::ResolveLocale(thread, availableLocales, requestedLocales, matcher, relevantExtensionKeys);
+        JSLocale::ResolveLocale(thread, availableLocales, requestedLocales, matcher, RELEVANT_EXTENSION_KEYS);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
     icu::Locale icuLocale = r.localeData;
     JSHandle<EcmaString> localeStr = intl::LocaleHelper::ToLanguageTag(thread, icuLocale);
@@ -251,8 +278,8 @@ JSHandle<JSCollator> JSCollator::InitializeCollator(JSThread *thread,
     //     undefined).
     SensitivityOption sensitivity = JSLocale::GetOptionOfString<SensitivityOption>(
         thread, optionsObject, globalConst->GetHandledSensitivityString(),
-        {SensitivityOption::BASE, SensitivityOption::ACCENT, SensitivityOption::CASE, SensitivityOption::VARIANT},
-        {"base", "accent", "case", "variant"}, SensitivityOption::UNDEFINED);
+        JSCollator::SENSITIVITY_OPTION, JSCollator::SENSITIVITY_OPTION_NAME,
+        SensitivityOption::UNDEFINED);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSCollator, thread);
     // 25. If sensitivity is undefined, then
     //     a. If usage is "sort", then
@@ -474,12 +501,6 @@ JSHandle<JSObject> JSCollator::ResolvedOptions(JSThread *thread, const JSHandle<
 CompareStringsOption JSCollator::CompareStringsOptionFor(JSThread* thread,
                                                          JSHandle<JSTaggedValue> locales)
 {
-    // All the available locales that are statically known to fulfill fast path conditions.
-    static const char* const FAST_LOCALE[] = {
-        "en-US", "en", "fr", "es",    "de",    "pt",    "it", "ca",
-        "de-AT", "fi", "id", "id-ID", "ms",    "nl",    "pl", "ro",
-        "sl",    "sv", "sw", "vi",    "en-DE", "en-GB",
-    };
     if (locales->IsUndefined()) {
         auto context = thread->GetCurrentEcmaContext();
         auto defaultCompareOption = context->GetDefaultCompareStringsOption();

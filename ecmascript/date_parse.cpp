@@ -16,6 +16,10 @@
 #include "ecmascript/date_parse.h"
 
 namespace panda::ecmascript {
+    const std::array<CString, MOUTH_PER_YEAR> DateParse::MONTH_NAME = {
+    "jan", "feb", "mar", "apr", "may", "jun",
+    "jul", "aug", "sep", "oct", "nov", "dec"
+};
 bool DateParse::ParseDateString(const char *str, int length, int *time)
 {
     StringReader reader(str, length);
@@ -327,12 +331,8 @@ DateParse::DateValueType DateParse::DateProxy::MatchKeyWord(const CString &str, 
         *value = 1;
         return DATE_TIME_ZONE;
     }
-    std::array<CString, MOUTH_PER_YEAR> monthName = {
-        "jan", "feb", "mar", "apr", "may", "jun",
-        "jul", "aug", "sep", "oct", "nov", "dec"
-        };
     for (int i = 0; i < MOUTH_PER_YEAR; i++) {
-        if (str == monthName[i]) {
+        if (str == DateParse::MONTH_NAME[i]) {
             *value = i + 1;
             return DATE_MONTH;
         }

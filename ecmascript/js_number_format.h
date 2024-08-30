@@ -52,6 +52,31 @@ static const std::set<std::string> SANCTIONED_UNIT({ "acre", "bit", "byte", "cel
 
 class JSNumberFormat : public JSObject {
 public:
+    static constexpr uint32_t DEFAULT_FRACTION_DIGITS = 2;
+    static constexpr uint32_t PERUNIT_STRING = 5;
+    static const std::vector<StyleOption> STYLE_OPTION;
+    static const std::vector<std::string> STYLE_OPTION_NAME;
+
+    static const std::vector<CurrencyDisplayOption> CURRENCY_DISPLAY_OPTION;
+    static const std::vector<std::string> CURRENCY_DISPLAY_OPTION_NAME;
+
+    static const std::vector<CurrencySignOption> CURRENCY_SIGN_OPTION;
+    static const std::vector<std::string> CURRENCY_SIGN_OPTION_NAME;
+
+    static const std::vector<UnitDisplayOption> UNIT_DISPLAY_OPTION;
+    static const std::vector<std::string> UNIT_DISPLAY_OPTION_NAME;
+
+    static const std::vector<LocaleMatcherOption> LOCALE_MATCHER_OPTION;
+    static const std::vector<std::string> LOCALE_MATCHER_OPTION_NAME;
+
+    static const std::vector<NotationOption> NOTATION_OPTION;
+    static const std::vector<std::string> NOTATION_OPTION_NAME;
+
+    static const std::vector<SignDisplayOption> SIGN_DISPLAY_OPTION;
+    static const std::vector<std::string> SIGN_DISPLAY_OPTION_NAME;
+
+    static const std::vector<CompactDisplayOption> COMPACT_DISPLAY_OPTION;
+    static const std::vector<std::string> COMPACT_DISPLAY_OPTION_NAME;
     CAST_CHECK(JSNumberFormat, IsJSNumberFormat);
 
     static constexpr size_t LOCALE_OFFSET = JSObject::SIZE;
