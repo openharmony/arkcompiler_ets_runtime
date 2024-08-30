@@ -2995,20 +2995,6 @@ DEF_RUNTIME_STUBS(SlowFlattenString)
     return JSTaggedValue(EcmaStringAccessor::SlowFlatten(thread->GetEcmaVM(), str)).GetRawData();
 }
 
-DEF_RUNTIME_STUBS(TryToElementsIndexOrFindInStringTable)
-{
-    RUNTIME_STUBS_HEADER(TryToElementsIndexOrFindInStringTable);
-    JSHandle<EcmaString> string = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
-    uint32_t index = 0;
-    if (EcmaStringAccessor(string).ToElementIndex(&index)) {
-        return JSTaggedValue(index).GetRawData();
-    }
-    if (!EcmaStringAccessor(string).IsInternString()) {
-        return RuntimeTryGetInternString(argGlue, string);
-    }
-    return string.GetTaggedValue().GetRawData();
-}
-
 DEF_RUNTIME_STUBS(TryGetInternString)
 {
     RUNTIME_STUBS_HEADER(TryGetInternString);

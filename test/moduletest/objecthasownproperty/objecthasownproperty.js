@@ -78,3 +78,10 @@ print(proxy.name);
 print(proxy.age);
 print(proxy.hasOwnProperty('name'));
 print(proxy.hasOwnProperty('age'));
+
+let obj2 = {};
+obj2.property1 = 12;
+// is not intern string branch and not found in intern string table
+print(obj2.hasOwnProperty(String.fromCodePoint("")));
+// is not intern string branch and found in intern string table
+print(obj2.hasOwnProperty(String.fromCodePoint(123)));
