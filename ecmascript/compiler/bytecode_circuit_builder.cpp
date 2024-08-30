@@ -238,6 +238,19 @@ void BytecodeCircuitBuilder::BuildCatchBlocks(const ExceptionInfo &byteCodeExcep
     for (size_t i = 0; i < graph_.size(); i++) {
         auto &bb = RegionAt(i);
         auto startIndex = bb.start;
+        bool noThrow = true;
+        EnumerateBlock(bb, [&noThrow](const BytecodeInfo &bytecodeInfo) -> bool {
+            if (bytecodeInfo.IsGeneral()) {
+                if (!bytecodeInfo.NoThrow()) {
+                    noThrow = false;
+                    return false;
+                }
+            }
+            return true;
+        });
+        if (noThrow) {
+            continue;
+        }
         const auto pc = pcOffsets_[startIndex];
         for (auto it = byteCodeException.cbegin(); it != byteCodeException.cend(); it++) {
             if (pc < it->startPc || pc >= it->endPc) {
@@ -250,8 +263,6 @@ void BytecodeCircuitBuilder::BuildCatchBlocks(const ExceptionInfo &byteCodeExcep
                 const auto catchStart = pcOffsets_[catchBB.start];
                 if (std::find(catches.cbegin(), catches.cend(), catchStart) != catches.cend()) {
                     bb.catches.insert(bb.catches.cbegin(), &catchBB);
-                    bb.succs.emplace_back(&catchBB);
-                    catchBB.preds.emplace_back(&bb);
                 }
             }
         }
@@ -307,12 +318,14 @@ void BytecodeCircuitBuilder::ClearUnreachableRegion(ChunkVector<BytecodeRegion*>
     auto bb = pendingList.back();
     pendingList.pop_back();
     for (auto it = bb->preds.begin(); it != bb->preds.end(); it++) {
+        ASSERT((*it)->numOfStatePreds >= 0);
         if ((*it)->numOfStatePreds != 0) {
             bb->EraseThisBlock((*it)->succs);
         }
     }
     for (auto it = bb->succs.begin(); it != bb->succs.end(); it++) {
         auto bbNext = *it;
+        ASSERT(bbNext->numOfStatePreds >= 0);
         if (bbNext->numOfStatePreds != 0) {
             bb->EraseThisBlock(bbNext->preds);
             bbNext->numOfStatePreds--;
@@ -322,12 +335,14 @@ void BytecodeCircuitBuilder::ClearUnreachableRegion(ChunkVector<BytecodeRegion*>
         }
     }
     for (auto it = bb->trys.begin(); it != bb->trys.end(); it++) {
+        ASSERT((*it)->numOfStatePreds >= 0);
         if ((*it)->numOfStatePreds != 0) {
             bb->EraseThisBlock((*it)->catches);
         }
     }
     for (auto it = bb->catches.begin(); it != bb->catches.end(); it++) {
         auto bbNext = *it;
+        ASSERT(bbNext->numOfStatePreds >= 0);
         if (bbNext->numOfStatePreds != 0) {
             RemoveUnusedPredsInfo(*bb);
             bb->EraseThisBlock(bbNext->trys);
@@ -362,7 +377,8 @@ void BytecodeCircuitBuilder::RemoveUnreachableRegion()
     ChunkVector<BytecodeRegion*> pendingList(circuit_->chunk());
     for (size_t i = 1; i < graph_.size(); i++) { // 1: skip entry bb
         auto &bb = RegionAt(i);
-        if (bb.numOfStatePreds == 0 && !IsEmptyCatchBB(bb)) {
+        ASSERT(bb.numOfStatePreds >= 0);
+        if (bb.numOfStatePreds == 0) {
             pendingList.emplace_back(&bb);
         }
     }
@@ -380,9 +396,6 @@ void BytecodeCircuitBuilder::UpdateCFG()
         bb.trys.clear();
         ChunkVector<BytecodeRegion *> newSuccs(circuit_->chunk());
         for (const auto &succ: bb.succs) {
-            if (std::count(bb.catches.cbegin(), bb.catches.cend(), succ)) {
-                continue;
-            }
             newSuccs.emplace_back(succ);
         }
         bb.succs.clear();
@@ -693,7 +706,8 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
     GateRef state = frameStateBuilder_.GetCurrentState();
     GateRef depend = frameStateBuilder_.GetCurrentDepend();
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
-    if (bytecodeInfo.IsCondJump() && (bb.succs.size() == 2 || IsEmptyCatchBBOfCondJump(bb))) { // 2: two succ
+    if (bytecodeInfo.IsCondJump()) { // 2: two succ
+        ASSERT(bb.succs.size() == 2);
         size_t pcOffset = GetPcOffset(iterator.Index());
         auto methodOffset = method_->GetMethodId().GetOffset();
         auto meta = circuit_->JSBytecode(
@@ -719,10 +733,6 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
                 frameStateBuilder_.MergeIntoSuccessor(bb, *bbNext);
                 bbNext->expandedPreds.push_back({bb.id, iterator.Index(), false});
             }
-        }
-        // handle empty catch block
-        if (bb.succs.size() == 1) {
-            AddMergeStateDepend(*bb.catches[0], ifTrue, trueRelay);
         }
         byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
         jsGatesToByteCode_[gate] = iterator.Index();
