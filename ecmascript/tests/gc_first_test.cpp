@@ -33,6 +33,8 @@ public:
     void SetUp() override
     {
         JSRuntimeOptions options;
+        options.SetEnableEdenGC(true);
+        options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
@@ -272,6 +274,25 @@ HWTEST_F_L0(GCTest, SerializeGCCheck)
     }
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+};
+
+HWTEST_F_L0(GCTest, StatisticHeapDetailTest)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(128, JSTaggedValue::Undefined(), MemSpaceType::NON_MOVABLE);
+        }
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(128, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+        }
+        for (int i = 0; i < 1024; i++) {
+            factory->NewTaggedArray(128, JSTaggedValue::Undefined(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    heap->StatisticHeapDetail();
 };
 
 }  // namespace panda::test
