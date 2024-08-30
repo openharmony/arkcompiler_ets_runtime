@@ -307,7 +307,6 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     }
 
     jsFunc->SetModule(thread, module.GetTaggedValue());
-    QuickFixHelper::SetPatchModule(thread, method, jsFunc);
     jsFunc->SetLength(length);
     return jsFunc;
 }
