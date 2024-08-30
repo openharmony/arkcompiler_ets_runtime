@@ -652,6 +652,10 @@ JSHandle<NameDictionary> ClassHelper::BuildDictionaryProperties(JSThread *thread
 
 bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
 {
+    // all sendable types can be set to undefined
+    if (value.IsUndefined()) {
+        return true;
+    }
     uint32_t sharedFieldType = static_cast<uint32_t>(fieldType);
     if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::NUMBER)) != 0 && value.IsNumber()) {
         return true;

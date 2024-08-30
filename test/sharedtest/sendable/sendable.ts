@@ -144,6 +144,17 @@ try {
 } catch (err) {
   print('sendable contain static non-sendable failed. err: ' + err + ', code: ' + err.code);
 }
+try {
+  class B {
+    static b: B;
+    constructor() {
+      'use sendable';
+    }
+  }
+  print('sendable contain undefined succeed.');
+} catch (err) {
+  print('sendable contain undefined failed. err: ' + err + ', code: ' + err.code);
+}
 
 // 5. template type of collections must be sendable
 

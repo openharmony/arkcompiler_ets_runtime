@@ -149,6 +149,8 @@ void StubBuilder::LoopEnd(Label *loopHead)
 void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch)
 {
     auto *env = GetEnvironment();
+    Label valueIsUndefined(env);
+    Label checkNumber(env);
     Label isNumber(env);
     Label checkBoolean(env);
     Label isBoolean(env);
@@ -166,14 +168,24 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     Label isUndefined(env);
     Label exit(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
-    GateRef checkType = BoolAnd(
-        Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NUMBER))), Int32(0)),
-        TaggedIsNumber(value));
-    BRANCH(checkType, &isNumber, &checkBoolean);
-    Bind(&isNumber);
+    GateRef checkType = TaggedIsUndefined(value);
+    BRANCH(checkType, &valueIsUndefined, &checkNumber);
+    Bind(&valueIsUndefined);
     {
         result = True();
         Jump(&exit);
+    }
+    Bind(&checkNumber);
+    {
+        checkType =
+            BoolAnd(Int32NotEqual(Int32And(fieldType, Int32(static_cast<int32_t>(SharedFieldType::NUMBER))), Int32(0)),
+                    TaggedIsNumber(value));
+        BRANCH(checkType, &isNumber, &checkBoolean);
+        Bind(&isNumber);
+        {
+            result = True();
+            Jump(&exit);
+        }
     }
     Bind(&checkBoolean);
     {
