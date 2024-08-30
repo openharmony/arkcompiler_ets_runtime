@@ -19,6 +19,9 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
+#include "ecmascript/linked_hash_table.h"
+#include "ecmascript/js_set.h"
+#include "ecmascript/js_set_iterator.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
 #include "ecmascript/js_object-inl.h"
@@ -70,6 +73,17 @@ JSSharedSet *CreateBuiltinsSharedSet(JSThread *thread)
     return jsSSet;
 }
 
+JSSet *CreateJSSet(JSThread *thread)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSTaggedValue> constructor = thread->GetEcmaVM()->GetGlobalEnv()->GetBuiltinsSetFunction();
+    JSHandle<JSSet> set =
+        JSHandle<JSSet>::Cast(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(constructor), constructor));
+    JSHandle<LinkedHashSet> hashSet = LinkedHashSet::Create(thread);
+    set->SetLinkedSet(thread, hashSet);
+    return JSSet::Cast(set.GetTaggedValue().GetTaggedObject());
+}
+
 enum class AlgorithmType {
     ADD,
     HAS,
@@ -98,6 +112,33 @@ JSTaggedValue SharedSetAlgorithm(JSThread *thread, JSTaggedValue jsSet, std::vec
     }
     TestHelper::TearDownFrame(thread, prev);
     return result;
+}
+
+
+HWTEST_F_L0(BuiltinsSharedSetTest, CreateSetIteratorTest001)
+{
+    JSHandle<JSSet> jsSet(thread, CreateJSSet(thread));
+    EXPECT_TRUE(*jsSet != nullptr);
+    JSHandle<JSTaggedValue> setIteratorValue1 =
+        JSSharedSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY);
+    EXPECT_EQ(setIteratorValue1->IsJSSetIterator(), false);
+}
+
+HWTEST_F_L0(BuiltinsSharedSetTest, NextInternalTest001)
+{
+    JSTaggedValue setIteratorValue1 =
+        JSSharedSetIterator::NextInternal(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
+    EXPECT_EQ(setIteratorValue1.IsJSSharedSetIterator(), false);
+}
+
+HWTEST_F_L0(BuiltinsSharedSetTest, DeleteTest001)
+{
+    JSHandle<JSSharedSet> set(thread, CreateBuiltinsSharedSet(thread));
+    JSHandle<JSTaggedValue> value1(thread, JSTaggedValue(0));
+    JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(1));
+    JSSharedSet::Add(thread, set, value1);
+    JSSharedSet::Add(thread, set, value2);
+    JSSharedSet::Delete(thread, set, JSHandle<JSTaggedValue>(thread, JSTaggedValue(20)));
 }
 
 // new Set("abrupt").toString()
