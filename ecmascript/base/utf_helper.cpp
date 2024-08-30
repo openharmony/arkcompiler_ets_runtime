@@ -424,8 +424,9 @@ size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_
                 uint32_t codePoint = ((src & LOW_3BITS) << OFFSET_18POS) | ((c2 & LOW_6BITS) << OFFSET_12POS) |
                     ((c3 & LOW_6BITS) << OFFSET_6POS) | (c4 & LOW_6BITS);
                 if (codePoint >= SURROGATE_RAIR_START) {
+                    ASSERT(utf16Len >= 1);
                     if (out_pos >= utf16Len - 1) {
-                        return out_pos - 1;
+                        return out_pos;
                     }
                     codePoint -= SURROGATE_RAIR_START;
                     utf16Out[out_pos++] = static_cast<uint16_t>((codePoint >> OFFSET_10POS) | H_SURROGATE_START);
