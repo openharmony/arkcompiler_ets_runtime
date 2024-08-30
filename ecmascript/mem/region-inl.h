@@ -158,6 +158,11 @@ inline void Region::ClearMark(void *address)
 inline bool Region::Test(void *addr) const
 {
     auto addrPtr = reinterpret_cast<uintptr_t>(addr);
+    return Test(addrPtr);
+}
+
+inline bool Region::Test(uintptr_t addrPtr) const
+{
     ASSERT(InRange(addrPtr));
     return packedData_.markGCBitset_->TestBit((addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
 }
