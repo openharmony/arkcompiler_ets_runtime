@@ -123,7 +123,9 @@ void ContainersStubBuilder::ContainersCommonFuncCall(GateRef glue, GateRef thisV
                 GateRef tempLen = ContainerGetSize(*thisObj, type);
                 BRANCH(Int32NotEqual(tempLen, *length), &lenChange, &setValue);
                 Bind(&lenChange);
-                length = tempLen;
+                if (!IsArrayListReplaceAllelements(type)) {
+                    length = tempLen;
+                }
                 BRANCH(Int32GreaterThanOrEqual(*k, *length), &afterLoop, &setValue);
                 Bind(&setValue);
                 if (IsReplaceAllElements(type)) {
