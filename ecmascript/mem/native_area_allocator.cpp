@@ -17,6 +17,9 @@
 
 #include "ecmascript/platform/os.h"
 
+#if ECMASCRIPT_ENABLE_ZAP_MEM
+#include "securec.h"
+#endif
 namespace panda::ecmascript {
 Area *NativeAreaAllocator::AllocateArea(size_t capacity)
 {
