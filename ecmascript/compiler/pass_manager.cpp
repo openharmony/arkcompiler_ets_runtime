@@ -50,6 +50,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
                              AOTFileGenerator &gen, int32_t osrOffset)
 {
     const JSPandaFile *jsPandaFile = compilationEnv_->GetJSPandaFile();
+    ASSERT(jsPandaFile != nullptr);
     MethodLiteral *methodLiteral = compilationEnv_->GetMethodLiteral();
     const uint8_t *pcStart = compilationEnv_->GetMethodPcStart();
     const panda_file::File::Header *header = jsPandaFile->GetPandaFile()->GetHeader();

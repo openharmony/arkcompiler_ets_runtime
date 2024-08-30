@@ -468,6 +468,9 @@ public:
         if (haveProfileType) {
             uint32_t methodId = profileType->GetProfileType().GetId();
             MethodLiteral *targetMethodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
+            if (UNLIKELY(targetMethodLiteral == nullptr)) {
+                return false;
+            }
             return targetMethodLiteral->IsNoGC();
         }
         return false;
@@ -542,6 +545,9 @@ public:
         if (haveProfileType) {
             uint32_t methodId = profileType->GetProfileType().GetId();
             MethodLiteral *targetMethodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
+            if (UNLIKELY(targetMethodLiteral == nullptr)) {
+                return false;
+            }
             return targetMethodLiteral->GetMethodId().GetOffset();
         }
         return 0;

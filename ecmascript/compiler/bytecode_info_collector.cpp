@@ -130,6 +130,9 @@ void BytecodeInfoCollector::ProcessCurrMethod()
 
 void BytecodeInfoCollector::ProcessMethod(MethodLiteral *methodLiteral)
 {
+    if (UNLIKELY(methodLiteral == nullptr)) {
+        return;
+    }
     panda_file::File::EntityId methodIdx = methodLiteral->GetMethodId();
     auto methodOffset = methodIdx.GetOffset();
     if (processedMethod_.find(methodOffset) != processedMethod_.end()) {
