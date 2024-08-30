@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_STRING_TABLE_H
 #define ECMASCRIPT_STRING_TABLE_H
 
+#include <array>
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/space.h"
