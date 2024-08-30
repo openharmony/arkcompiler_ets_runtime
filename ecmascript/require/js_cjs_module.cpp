@@ -96,6 +96,10 @@ JSHandle<JSTaggedValue> CjsModule::Load(JSThread *thread, JSHandle<EcmaString> &
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // Get local jsPandaFile's dirPath
     const JSPandaFile *jsPandaFile = EcmaInterpreter::GetNativeCallPandafile(thread);
+    if (jsPandaFile == nullptr) {
+        LOG_ECMA(FATAL) << "CJS REQUIRE FAIL : jsPandaFile is null";
+        UNREACHABLE();
+    }
     CString filename = jsPandaFile->GetJSPandaFileDesc();
     CString requestEntryPoint = JSPandaFile::ENTRY_MAIN_FUNCTION;
     CString requestStr = ModulePathHelper::Utf8ConvertToString(request.GetTaggedValue());

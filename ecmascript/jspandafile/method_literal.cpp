@@ -178,6 +178,7 @@ uint32_t MethodLiteral::GetCodeSize(const JSPandaFile *jsPandaFile, EntityId met
 
 std::optional<std::set<uint32_t>> MethodLiteral::GetConcurrentRequestedModules(const JSPandaFile *jsPandaFile) const
 {
+    ASSERT(jsPandaFile != nullptr);
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
     EntityId methodId = GetMethodId();
     panda_file::MethodDataAccessor mda(*pf, methodId);
