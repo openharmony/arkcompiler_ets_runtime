@@ -228,9 +228,22 @@ bool JSAPIQueue::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIQueue> &ob
 OperationResult JSAPIQueue::GetProperty(JSThread *thread, const JSHandle<JSAPIQueue> &obj,
                                         const JSHandle<JSTaggedValue> &key)
 {
-    uint32_t length = obj->GetSize();
-    double index = key->GetNumber();
-    if (index < 0 || static_cast<uint32_t>(index) >= length) {
+    int32_t length = static_cast<int32_t>(obj->GetSize());
+    JSHandle<JSTaggedValue> indexKey = key;
+    if (indexKey->IsDouble()) {
+        // Math.floor(1) will produce TaggedDouble, we need to cast into TaggedInt
+        // For integer which is greater than INT32_MAX, it will remain TaggedDouble
+        indexKey = JSHandle<JSTaggedValue>(thread, JSTaggedValue::TryCastDoubleToInt32(indexKey->GetDouble()));
+    }
+    if (!indexKey->IsInt()) {
+        CString errorMsg = "The type of \"index\" must be small integer.";
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::TYPE_ERROR, errorMsg.c_str());
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error,
+                                         OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
+    }
+
+    int index = indexKey->GetInt();
+    if (index < 0 || index >= length) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
             << ". Received value is: " << index;

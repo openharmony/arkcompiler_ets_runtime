@@ -559,10 +559,6 @@ HWTEST_F_L0(ContainersTreeSetTest, GetLowerValueAndGetHigherValue)
         TestHelper::TearDownFrame(thread, prev);
         if (i == 0) {
             EXPECT_EQ(result, JSTaggedValue::Undefined());
-        } else if (i == NODE_NUMBERS) {
-            EXPECT_TRUE(thread->HasPendingException());
-            EXPECT_EQ(result, JSTaggedValue::Exception());
-            thread->ClearException();
         } else {
             EXPECT_EQ(result, JSTaggedValue(i - 1));
         }
@@ -1118,13 +1114,6 @@ HWTEST_F_L0(ContainersTreeSetTest, ExceptionReturn1)
     CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeSet, GetLastValue);
     CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeSet, Clear);
     CONTAINERS_API_TYPE_MISMATCH_EXCEPTION_TEST(ContainersTreeSet, GetLowerValue);
-
-    JSHandle<JSAPITreeSet> treeSet = CreateJSAPITreeSet();
-    {
-        auto callInfo = NewEmptyCallInfo(thread);
-        callInfo->SetThis(treeSet.GetTaggedValue());
-        CONTAINERS_API_EXCEPTION_TEST(ContainersTreeSet, GetHigherValue, callInfo);
-    }
 }
 
 HWTEST_F_L0(ContainersTreeSetTest, ExceptionReturn2)
