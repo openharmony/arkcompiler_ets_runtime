@@ -727,6 +727,8 @@ public:
 
     void Init(JSThread *thread);
 
+    void CopySharedConstantsFrom(const GlobalEnvConstants *src);
+
     void InitSpecialForSnapshot();
 
     void InitElementKindHClass(const JSThread *thread, JSHandle<JSHClass> originHClass);

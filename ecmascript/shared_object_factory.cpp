@@ -371,12 +371,23 @@ JSHandle<TaggedArray> ObjectFactory::ExtendSArray(const JSHandle<TaggedArray> &o
     return newArray;
 }
 
-JSHandle<TaggedArray> ObjectFactory::NewSTaggedArrayWithoutInit(uint32_t length)
+JSHandle<TaggedArray> ObjectFactory::NewSTaggedArrayWithoutInit(uint32_t length, MemSpaceType spaceType)
 {
     NewSObjectHook();
     size_t size = TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), length);
+    TaggedObject *header;
     auto arrayClass = JSHClass::Cast(thread_->GlobalConstants()->GetArrayClass().GetTaggedObject());
-    TaggedObject *header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
+    switch (spaceType) {
+        case MemSpaceType::SHARED_OLD_SPACE:
+            header = sHeap_->AllocateOldOrHugeObject(thread_, arrayClass, size);
+            break;
+        case MemSpaceType::SHARED_READ_ONLY_SPACE:
+            header = sHeap_->AllocateReadOnlyOrHugeObject(thread_, arrayClass, size);
+            break;
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
     JSHandle<TaggedArray> array(thread_, header);
     array->SetLength(length);
     return array;
@@ -386,6 +397,14 @@ JSHandle<LayoutInfo> ObjectFactory::CreateSLayoutInfo(uint32_t properties)
 {
     uint32_t arrayLength = LayoutInfo::ComputeArrayLength(properties);
     JSHandle<LayoutInfo> layoutInfoHandle = JSHandle<LayoutInfo>::Cast(NewSTaggedArrayWithoutInit(arrayLength));
+    layoutInfoHandle->Initialize(thread_);
+    return layoutInfoHandle;
+}
+
+JSHandle<LayoutInfo> ObjectFactory::NewSEmptyLayoutInfo()
+{
+    JSHandle<LayoutInfo> layoutInfoHandle = JSHandle<LayoutInfo>::Cast(
+        NewSTaggedArrayWithoutInit(0, MemSpaceType::SHARED_READ_ONLY_SPACE));
     layoutInfoHandle->Initialize(thread_);
     return layoutInfoHandle;
 }
