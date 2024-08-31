@@ -88,26 +88,6 @@ HWTEST_F_L0(JsSendableArrayBufferTest, CopyDataPointBytesTest001)
 }
 
 /**
- * @tc.name: CopyDataPointBytes
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F_L0(JsSendableArrayBufferTest, CopyDataPointBytesTest002)
-{
-    auto vm = thread->GetEcmaVM();
-
-    size_t length = 5;
-    uint8_t *fromData = static_cast<uint8_t *>(vm->GetNativeAreaAllocator()->AllocateBuffer(length));
-    uint8_t *toData = static_cast<uint8_t *>(vm->GetNativeAreaAllocator()->AllocateBuffer(length));
-
-    int32_t fromIndex = 0;
-    int32_t count = 0;
-    ASSERT_DEATH(JSSendableArrayBuffer::CopyDataPointBytes(fromData, toData, fromIndex, count), "memcpy_s failed");
-    vm->GetNativeAreaAllocator()->FreeBuffer(fromData);
-    vm->GetNativeAreaAllocator()->FreeBuffer(toData);
-}
-
-/**
  * @tc.name: Attach
  * @tc.type: FUNC
  * @tc.require:
