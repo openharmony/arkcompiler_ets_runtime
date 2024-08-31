@@ -22,7 +22,9 @@ namespace panda::ecmascript {
 WorkManagerBase::WorkManagerBase(NativeAreaAllocator *allocator)
     : spaceChunk_(allocator), workSpace_(0), spaceStart_(0), spaceEnd_(0)
 {
-    workSpace_ = ToUintPtr(GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE));
+    auto allocatedSpace = GetSpaceChunk()->Allocate(WORKNODE_SPACE_SIZE);
+    ASSERT(allocatedSpace != nullptr);
+    workSpace_ = ToUintPtr(allocatedSpace);
 }
 
 WorkNode *WorkManagerBase::AllocateWorkNode()

@@ -16,7 +16,6 @@
 #include "ecmascript/mem/free_object_list.h"
 
 #include "ecmascript/free_object.h"
-#include "ecmascript/mem/free_object_list.h"
 #include "ecmascript/mem/jit_fort.h"
 
 namespace panda::ecmascript {
