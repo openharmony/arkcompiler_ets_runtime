@@ -301,7 +301,8 @@ public:
     inline bool HasProfileTypeInfo(JSThread *thread) const
     {
         return GetRawProfileTypeInfo().IsProfileTypeInfoCell() &&
-               !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo())->IsEmptyProfileTypeInfoCell(thread);
+               !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo())->IsEmptyProfileTypeInfoCell(thread) &&
+               !ProfileTypeInfoCell::Cast(GetRawProfileTypeInfo())->GetValue().IsUndefined();
     }
 
     void SetFunctionExtraInfo(JSThread *thread, void *nativeFunc, const NativePointerCallback &deleter,
