@@ -127,7 +127,11 @@ int32_t AotCompilerService::AotCompiler(const std::unordered_map<std::string, st
 {
     LOG_SA(DEBUG) << "begin to call aot compiler";
     RemoveUnloadTask(TASK_ID);
-    int32_t ret = AotCompilerImpl::GetInstance().EcmascriptAotCompiler(argsMap, sigData);
+    int32_t ret = ERR_FAIL;
+    {
+        std::lock_guard<std::mutex> lock(aotCompilerMutex_);
+        ret = AotCompilerImpl::GetInstance().EcmascriptAotCompiler(argsMap, sigData);
+    }
     LOG_SA(DEBUG) << "finish aot compiler";
     DelayUnloadTask(TASK_ID, DELAY_TIME);
     return ret;

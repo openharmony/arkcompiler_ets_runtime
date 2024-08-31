@@ -83,10 +83,9 @@ void BindMidCpuCore()
     cpu_set_t cpuset;
 
     CPU_ZERO(&cpuset);
-    CPU_SET(4, &cpuset); // 4: bind this process to cpu4
-    CPU_SET(5, &cpuset); // 5: bind this process to cpu5
-    CPU_SET(6, &cpuset); // 6: bind this process to cpu6
-    CPU_SET(7, &cpuset); // 7: bind this process to cpu7
+    for (int i = 0; i < 7; i++) { // 7: 0-3 little core, 4-6 mid core
+        CPU_SET(i, &cpuset);
+    }
 
     if (sched_setaffinity(0, sizeof(cpuset), &cpuset) == -1) {
         LOG_ECMA(ERROR) << "Set CPU affinity failed";

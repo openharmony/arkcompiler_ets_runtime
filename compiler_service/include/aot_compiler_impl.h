@@ -16,6 +16,7 @@
 #ifndef OHOS_ARKCOMPILER_AOTCOMPILER_IMPL_H
 #define OHOS_ARKCOMPILER_AOTCOMPILER_IMPL_H
 
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -36,29 +37,27 @@ public:
     int32_t EcmascriptAotCompiler(const std::unordered_map<std::string, std::string> &argsMap,
                                   std::vector<int16_t> &sigData);
     int32_t StopAotCompiler();
-
     int32_t GetAOTVersion(std::string& sigData);
-
     int32_t NeedReCompile(const std::string& args, bool& sigData);
-
     void HandlePowerDisconnected();
-
     void HandleScreenOn();
-
     void HandleThermalLevelChanged(const int32_t level);
 
-private:
-    inline int32_t FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
-                                        const std::string &keyName, int32_t &bundleID);
-    inline int32_t FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
-                                       const std::string &keyName, std::string &bundleArg);
+protected:
+    int32_t FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
+                                 const std::string &keyName, int32_t &bundleID);
+    int32_t FindArgsIdxToString(const std::unordered_map<std::string, std::string> &argsMap,
+                                const std::string &keyName, std::string &bundleArg);
     int32_t PrepareArgs(const std::unordered_map<std::string, std::string> &argsMap);
-    void DropCapabilities(const int32_t &bundleUid, const int32_t &bundleGid) const;
-    void ExecuteInChildProcess(const std::vector<std::string> &aotVector) const;
-    int32_t PrintAOTCompilerResult(const int compilerStatus);
+    void GetBundleId(int32_t &bundleUid, int32_t &bundleGid) const;
+    void DropCapabilities() const;
+    void GetAotArgsVector(std::vector<const char*> &argv) const;
+    void ExecuteInChildProcess() const;
+    int32_t PrintAOTCompilerResult(const int compilerStatus) const;
     void ExecuteInParentProcess(pid_t childPid, int32_t &ret);
-    int32_t AOTLocalCodeSign(const std::string &fileName, const std::string &appSignature,
-                             std::vector<int16_t> &sigData);
+    void GetCodeSignArgs(std::string &appSignature, std::string &fileName) const;
+    int32_t AOTLocalCodeSign(std::vector<int16_t> &sigData) const;
+    int32_t RemoveAotFiles() const;
     void InitState(const pid_t childPid);
     void AddExpandArgs(std::vector<std::string> &argVector);
     void ResetState();
@@ -67,26 +66,25 @@ private:
 
     AotCompilerImpl() = default;
     ~AotCompilerImpl() = default;
-
     AotCompilerImpl(const AotCompilerImpl&) = delete;
     AotCompilerImpl(AotCompilerImpl&&) = delete;
     AotCompilerImpl& operator=(const AotCompilerImpl&) = delete;
     AotCompilerImpl& operator=(AotCompilerImpl&&) = delete;
-private:
-    mutable std::mutex mutex_;
+protected:
+    std::atomic<bool> allowAotCompiler_ {true};
+    mutable std::mutex hapArgsMutex_;
     mutable std::mutex stateMutex_;
     struct HapArgs {
         std::vector<std::string> argVector;
         std::string fileName;
         std::string signature;
-        int32_t bundleUid;
-        int32_t bundleGid;
-    } hapArgs;
+        int32_t bundleUid {0};
+        int32_t bundleGid {0};
+    } hapArgs_;
     struct AOTState {
-        bool running = false;
-        pid_t childPid = -1;
+        bool running {false};
+        pid_t childPid {-1};
     } state_;
-    bool allowAotCompiler_ {true};
     int32_t thermalLevel_ {0};
 };
 } // namespace OHOS::ArkCompiler
