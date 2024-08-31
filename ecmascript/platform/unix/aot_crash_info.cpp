@@ -126,18 +126,21 @@ bool AotCrashInfo::IsAotEscaped(const std::string &pgoRealPath)
         return false;
     }
     auto escapeMap = ohos::AotRuntimeInfo::GetInstance().CollectCrashSum(pgoRealPath);
-    return escapeMap[ohos::RuntimeInfoType::AOT_CRASH] >= AotCrashInfo::GetAotCrashCount() ||
-        escapeMap[ohos::RuntimeInfoType::OTHERS] >= AotCrashInfo::GetOthersCrashCount() ||
-        escapeMap[ohos::RuntimeInfoType::JS] >= AotCrashInfo::GetJsCrashCount();
+    int totalCrashes = escapeMap[ohos::RuntimeInfoType::AOT_CRASH] +
+                       escapeMap[ohos::RuntimeInfoType::JIT] +
+                       escapeMap[ohos::RuntimeInfoType::OTHERS] +
+                       escapeMap[ohos::RuntimeInfoType::JS];
+    return totalCrashes >= OPT_CODE_CRASH_THRESHOLD;
 }
 
 bool AotCrashInfo::IsJitEscape()
 {
     auto escapeMap = ohos::AotRuntimeInfo::GetInstance().CollectCrashSum();
-    return escapeMap[ohos::RuntimeInfoType::JIT] >= AotCrashInfo::GetJitCrashCount() ||
-        escapeMap[ohos::RuntimeInfoType::AOT_CRASH] >= AotCrashInfo::GetAotCrashCount() ||
-        escapeMap[ohos::RuntimeInfoType::OTHERS] >= AotCrashInfo::GetOthersCrashCount() ||
-        escapeMap[ohos::RuntimeInfoType::JS] >= AotCrashInfo::GetJsCrashCount();
+    int totalCrashes = escapeMap[ohos::RuntimeInfoType::AOT_CRASH] +
+                       escapeMap[ohos::RuntimeInfoType::JIT] +
+                       escapeMap[ohos::RuntimeInfoType::OTHERS] +
+                       escapeMap[ohos::RuntimeInfoType::JS];
+    return totalCrashes >= OPT_CODE_CRASH_THRESHOLD;
 }
 
 bool AotCrashInfo::GetAotEscapeDisable()

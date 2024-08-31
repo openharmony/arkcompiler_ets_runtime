@@ -39,6 +39,7 @@ constexpr static int AOT_CRASH_COUNT = 1;
 constexpr static int OTHERS_CRASH_COUNT = 3;
 constexpr static int JIT_CRASH_COUNT = 1;
 constexpr static int JS_CRASH_COUNT = 3;
+constexpr static int OPT_CODE_CRASH_THRESHOLD = 1;
 public:
     explicit AotCrashInfo() = default;
     virtual ~AotCrashInfo() = default;
