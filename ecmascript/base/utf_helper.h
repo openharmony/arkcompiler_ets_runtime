@@ -71,6 +71,9 @@ static constexpr uint8_t UTF8_3B_FIRST = 0xe0;
 static constexpr uint8_t UTF8_3B_SECOND = 0x80;
 static constexpr uint8_t UTF8_3B_THIRD = 0x80;
 static constexpr uint8_t UTF8_3B_SECOND_MIN = 0xa0;  // the minimum for 3 bytes is 2048, which is 0xe0a080
+static constexpr uint8_t UTF8_3B_RESERVED_FIRST = 0xED;
+static constexpr uint8_t UTF8_3B_RESERVED_SECOND_MIN = 0xA0;
+static constexpr uint8_t UTF8_3B_RESERVED_SECOND_MAX = 0xBF; // U+D800~U+DFFF is reserved for UTF-16 surrogate pairs
 
 static constexpr uint8_t UTF8_4B_FIRST = 0xf0;
 static constexpr uint8_t UTF8_4B_SECOND_MIN = 0x90;  // the minimum for 4 bytes is 65536, which is 0xf0908080

@@ -113,3 +113,12 @@ print(decodeURIComponent(uri4));
     }
     print(result)
 }
+
+let invalid_uri_list = ["%ED%A0%80", "%ED%AF%BF", "%ED%B0%80", "%ED%BF%BF", "%E0%9F%BF"]
+for (let i = 0; i < invalid_uri_list.length; ++i) {
+    try {
+        decodeURIComponent(invalid_uri_list[i]);
+    } catch (err) {
+        print(err.name)
+    }
+}
