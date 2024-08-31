@@ -37,8 +37,7 @@ constexpr uint32 kShiftLowerLNO = 1U << kLowerLNO;
 // check if a block node ends with an unconditional jump
 inline bool OpCodeNoFallThrough(Opcode opCode)
 {
-    return opCode == OP_goto || opCode == OP_return || opCode == OP_switch || opCode == OP_throw ||
-           opCode == OP_gosub || opCode == OP_retsub;
+    return opCode == OP_goto || opCode == OP_return || opCode == OP_switch;
 }
 
 inline bool IfStmtNoFallThrough(const IfStmtNode &ifStmt)
@@ -71,9 +70,6 @@ public:
 
     virtual BlockNode *LowerIfStmt(IfStmtNode &ifStmt, bool recursive);
     BlockNode *LowerSwitchStmt(SwitchNode *switchNode);
-    virtual BlockNode *LowerWhileStmt(WhileStmtNode &);
-    BlockNode *LowerDowhileStmt(WhileStmtNode &);
-    BlockNode *LowerDoloopStmt(DoloopNode &);
     BlockNode *LowerBlock(BlockNode &);
     BaseNode *LowerEmbeddedCandCior(BaseNode *x, StmtNode *curstmt, BlockNode *block);
     void LowerCandCior(BlockNode &block);
@@ -83,9 +79,6 @@ public:
     BaseNode *LowerCArray(ArrayNode *array);
     void ExpandArrayMrt(MIRFunction &func);
     IfStmtNode *ExpandArrayMrtIfBlock(IfStmtNode &node);
-    WhileStmtNode *ExpandArrayMrtWhileBlock(WhileStmtNode &node);
-    DoloopNode *ExpandArrayMrtDoloopBlock(DoloopNode &node);
-    ForeachelemNode *ExpandArrayMrtForeachelemBlock(ForeachelemNode &node);
     BlockNode *ExpandArrayMrtBlock(BlockNode &block);
     void AddArrayMrtMpl(BaseNode &exp, BlockNode &newblk);
     MIRFuncType *FuncTypeFromFuncPtrExpr(BaseNode *x);

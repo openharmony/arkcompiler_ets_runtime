@@ -28,29 +28,24 @@ enum Opcode : uint8 {
 };
 
 #define CASE_OP_ASSERT_NONNULL   \
-    case OP_assertnonnull:       \
-    case OP_assignassertnonnull: \
-    case OP_callassertnonnull:   \
-    case OP_returnassertnonnull:
+    case OP_assertnonnull:
 
 inline constexpr bool IsDAssign(Opcode code)
 {
-    return (code == OP_dassign || code == OP_maydassign);
+    return (code == OP_dassign);
 }
 
 inline constexpr bool IsCallAssigned(Opcode code)
 {
-    return (code == OP_callassigned || code == OP_virtualcallassigned || code == OP_virtualicallassigned ||
-            code == OP_superclasscallassigned || code == OP_interfacecallassigned ||
-            code == OP_interfaceicallassigned || code == OP_customcallassigned || code == OP_polymorphiccallassigned ||
+    return (code == OP_callassigned || code == OP_virtualcallassigned ||
+            code == OP_superclasscallassigned ||
             code == OP_icallassigned || code == OP_icallprotoassigned || code == OP_intrinsiccallassigned ||
             code == OP_xintrinsiccallassigned || code == OP_intrinsiccallwithtypeassigned);
 }
 
 inline constexpr bool IsBranch(Opcode opcode)
 {
-    return (opcode == OP_goto || opcode == OP_brtrue || opcode == OP_brfalse || opcode == OP_switch ||
-            opcode == OP_igoto);
+    return (opcode == OP_goto || opcode == OP_brtrue || opcode == OP_brfalse || opcode == OP_switch);
 }
 
 inline constexpr bool IsLogicalShift(Opcode opcode)
@@ -70,8 +65,6 @@ constexpr bool IsCommutative(Opcode opcode)
         case OP_bxor:
         case OP_eq:
         case OP_ne:
-        case OP_land:
-        case OP_lior:
             return true;
         default:
             return false;
@@ -81,33 +74,15 @@ constexpr bool IsCommutative(Opcode opcode)
 constexpr bool IsStmtMustRequire(Opcode opcode)
 {
     switch (opcode) {
-        case OP_jstry:
-        case OP_throw:
-        case OP_try:
-        case OP_catch:
-        case OP_jscatch:
-        case OP_finally:
         case OP_endtry:
-        case OP_cleanuptry:
-        case OP_gosub:
-        case OP_retsub:
         case OP_return:
         case OP_call:
         case OP_virtualcall:
-        case OP_virtualicall:
         case OP_superclasscall:
         case OP_interfacecall:
-        case OP_interfaceicall:
-        case OP_customcall:
-        case OP_polymorphiccall:
         case OP_callassigned:
         case OP_virtualcallassigned:
-        case OP_virtualicallassigned:
         case OP_superclasscallassigned:
-        case OP_interfacecallassigned:
-        case OP_interfaceicallassigned:
-        case OP_customcallassigned:
-        case OP_polymorphiccallassigned:
         case OP_icall:
         case OP_icallassigned:
         case OP_icallproto:
@@ -119,17 +94,7 @@ constexpr bool IsStmtMustRequire(Opcode opcode)
         case OP_intrinsiccallwithtype:
         case OP_intrinsiccallwithtypeassigned:
         case OP_asm:
-        case OP_syncenter:
-        case OP_syncexit:
-        case OP_membaracquire:
-        case OP_membarrelease:
-        case OP_membarstoreload:
-        case OP_membarstorestore:
-            CASE_OP_ASSERT_NONNULL
-        case OP_free:
-        case OP_incref:
-        case OP_decref:
-        case OP_decrefreset: {
+            CASE_OP_ASSERT_NONNULL {
             return true;
         }
         default:
@@ -192,29 +157,21 @@ constexpr Opcode GetReverseCmpOp(Opcode op)
 constexpr bool IsSupportedOpForCopyInPhasesLoopUnrollAndVRP(Opcode op)
 {
     switch (op) {
-        case OP_igoto:
         case OP_switch:
         case OP_comment:
         case OP_goto:
         case OP_dassign:
         case OP_regassign:
-        case OP_membarrelease:
         case OP_brfalse:
         case OP_brtrue:
-        case OP_maydassign:
         case OP_iassign:
             CASE_OP_ASSERT_NONNULL
-        case OP_membaracquire:
         case OP_call:
         case OP_callassigned:
         case OP_virtualcallassigned:
-        case OP_virtualicallassigned:
-        case OP_interfaceicallassigned:
         case OP_intrinsiccall:
         case OP_intrinsiccallassigned:
-        case OP_intrinsiccallwithtype:
-        case OP_membarstorestore:
-        case OP_membarstoreload: {
+        case OP_intrinsiccallwithtype: {
             return true;
         }
         default:

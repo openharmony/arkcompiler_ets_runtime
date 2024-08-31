@@ -330,7 +330,6 @@ struct CompareNodeT : public BaseNodeT {  // 8B
     uint8 padding[2];                     // every compare node has two opnds.
 };
 
-using TernaryNodeT = BaseNodeT;
 using NaryNodeT = BaseNodeT;
 // need to guarantee MIRIntrinsicID is 4B
 // Note: this is not supported by c++0x

@@ -25,7 +25,6 @@ OpcodeTable::OpcodeTable()
     table[OP_##O].instrucSize = S;
 #include "opcodes.def"
 #undef OPCODE
-    table[OP_maydassign].name = "dassign";  // maydassign is printed dassign
 }
 const OpcodeTable kOpcodeInfo;
 }  // namespace maple

@@ -549,13 +549,6 @@ void MPISel::SelectCallCommon(StmtNode &stmt, const MPISel &iSel)
     if (cgFunc->GetCurBB()->GetKind() != BB::kBBFallthru) {
         cgFunc->SetCurBB(*cgFunc->StartNewBB(stmt));
     }
-    StmtNode *prevStmt = stmt.GetPrev();
-    if (prevStmt == nullptr || prevStmt->GetOpCode() != OP_catch) {
-        return;
-    }
-    if ((stmt.GetNext() != nullptr) && (stmt.GetNext()->GetOpCode() == OP_label)) {
-        cgFunc->SetCurBB(*cgFunc->StartNewBBImpl(true, stmt));
-    }
 }
 
 void MPISel::SelectBasicOp(Operand &resOpnd, Operand &opnd0, Operand &opnd1, MOperator mOp, PrimType primType)
