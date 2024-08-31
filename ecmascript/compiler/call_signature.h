@@ -618,7 +618,9 @@ private:
     V(SameValue)                                     \
     V(GetBaselineBuiltinFp)                          \
     V(StringIteratorNext)                            \
-    V(Definefunc)
+    V(Definefunc)                                    \
+    V(ConvertCharToInt32)                            \
+    V(ConvertCharToDouble)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

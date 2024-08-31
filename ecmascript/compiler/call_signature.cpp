@@ -311,6 +311,36 @@ DEF_CALL_SIGNATURE(Definefunc)
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
 }
 
+DEF_CALL_SIGNATURE(ConvertCharToInt32)
+{
+    // 2 : 2 input parameters
+    CallSignature convertCharToInt32("ConvertCharToInt32", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::INT32());
+    *callSign = convertCharToInt32;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::INT32(),              // charcode
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
+DEF_CALL_SIGNATURE(ConvertCharToDouble)
+{
+    // 2 : 2 input parameters
+    CallSignature convertCharToDouble("ConvertCharToDouble", 0, 2, ArgumentsOrder::DEFAULT_ORDER,
+        VariableType::FLOAT64());
+    *callSign = convertCharToDouble;
+    // 2 : 2 input parameters
+    std::array<VariableType, 2> params = {
+        VariableType::NATIVE_POINTER(),     // glue
+        VariableType::INT32(),              // charcode
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetCallConv(CallSignature::CallConv::CCallConv);
+}
+
 DEF_CALL_SIGNATURE(DeprecatedSetPropertyByValue)
 {
     // 4 : 4 input parameters

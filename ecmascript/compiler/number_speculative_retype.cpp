@@ -1094,6 +1094,30 @@ GateRef NumberSpeculativeRetype::TryConvertConstantToInt32(GateRef gate)
     return Circuit::NullGate();
 }
 
+GateRef NumberSpeculativeRetype::CheckTaggedAndConvertToInt32(GateRef gate, GateType gateType, OpType type)
+{
+    GateRef result = Circuit::NullGate();
+    if (gateType.IsIntType()) {
+        result = builder_.CheckTaggedIntAndConvertToInt32(gate);
+    } else if (gateType.IsDoubleType()) {
+        result = builder_.CheckTaggedDoubleAndConvertToInt32(gate);
+    } else if (gateType.IsNullType()) {
+        result = builder_.CheckNullAndConvertToInt32(gate);
+    } else if (gateType.IsBooleanType()) {
+        result = builder_.CheckTaggedBooleanAndConvertToInt32(gate);
+    } else if (gateType.IsUndefinedType()) {
+        if (type == OpType::SHIFT_AND_LOGICAL) {
+            result = builder_.CheckUndefinedAndConvertToInt32(gate);
+        } else {
+            LOG_ECMA(FATAL) << "undefined cannot convert to int type";
+        }
+    } else {
+        ASSERT(gateType.IsNumberType() || gateType.IsAnyType());
+        result = builder_.CheckTaggedNumberAndConvertToInt32(gate);
+    }
+    return result;
+}
+
 GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support,
                                                         OpType type)
 {
@@ -1108,7 +1132,10 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
         case TypeInfo::INT1:
             result = builder_.ConvertBoolToInt32(gate, support);
             break;
-        case TypeInfo::CHAR:
+        case TypeInfo::CHAR: {
+            result = builder_.ConvertCharToInt32(gate);
+            break;
+        }
         case TypeInfo::INT32:
             return gate;
         case TypeInfo::UINT32: {
@@ -1130,24 +1157,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
             break;
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
-            if (gateType.IsIntType()) {
-                result = builder_.CheckTaggedIntAndConvertToInt32(gate);
-            } else if (gateType.IsDoubleType()) {
-                result = builder_.CheckTaggedDoubleAndConvertToInt32(gate);
-            } else if (gateType.IsNullType()) {
-                result = builder_.CheckNullAndConvertToInt32(gate);
-            } else if (gateType.IsBooleanType()) {
-                result = builder_.CheckTaggedBooleanAndConvertToInt32(gate);
-            } else if (gateType.IsUndefinedType()) {
-                if (type == OpType::SHIFT_AND_LOGICAL) {
-                    result = builder_.CheckUndefinedAndConvertToInt32(gate);
-                } else {
-                    LOG_ECMA(FATAL) << "undefined cannot convert to int type";
-                }
-            } else {
-                ASSERT(gateType.IsNumberType() || gateType.IsAnyType());
-                result = builder_.CheckTaggedNumberAndConvertToInt32(gate);
-            }
+            result = CheckTaggedAndConvertToInt32(gate, gateType, type);
             break;
         }
         default: {
@@ -1175,9 +1185,7 @@ GateRef NumberSpeculativeRetype::CheckBoundAndConvertToInt32(GateRef gate, Conve
             result = builder_.ConvertBoolToInt32(gate, support);
             break;
         case TypeInfo::CHAR: {
-            GateRef number = builder_.StringToNumber(gate, builder_.ConvertCharToEcmaString(gate),
-                builder_.Int32(0), acc_.GetGlueFromArgList());
-            result = builder_.GetInt32OfTNumber(number);
+            result = builder_.ConvertCharToInt32(gate);
             break;
         }
         case TypeInfo::INT32:
@@ -1244,9 +1252,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToFloat64(GateRef gate, GateType
             result = builder_.ConvertBoolToFloat64(gate, ToConvertSupport(convert));
             break;
         case TypeInfo::CHAR: {
-            GateRef number = builder_.StringToNumber(gate, builder_.ConvertCharToEcmaString(gate),
-                builder_.Int32(0), acc_.GetGlueFromArgList());
-            result = builder_.GetDoubleOfTNumber(number);
+            result = builder_.ConvertCharToDouble(gate);
             break;
         }
         case TypeInfo::INT32:
@@ -1583,7 +1589,7 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
     TypeConvertAccessor accessor(acc_.TryGetValue(gate));
     ParamType paramType = accessor.GetLeftType();
     if (IsRetype()) {
-        if (inputInfo == TypeInfo::TAGGED) {
+        if (inputInfo == TypeInfo::TAGGED || inputInfo == TypeInfo::CHAR) {
             if (acc_.IsConstantNumber(input)) {
                 TypeInfo oldType = GetOutputTypeInfo(gate);
                 acc_.SetGateType(gate, acc_.GetGateType(input));
@@ -1600,7 +1606,7 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
     ASSERT(IsConvert());
     ASSERT(inputInfo != TypeInfo::INT1 && inputInfo != TypeInfo::NONE);
     Environment env(gate, circuit_, &builder_);
-    if (inputInfo == TypeInfo::TAGGED && !acc_.IsConstantNumber(input)) {
+    if ((inputInfo == TypeInfo::TAGGED && !acc_.IsConstantNumber(input)) || inputInfo == TypeInfo::CHAR) {
         ASSERT(paramType.HasNumberType());
         if (paramType.IsIntType()) {
             input = CheckAndConvertToInt32(input, GateType::IntType());

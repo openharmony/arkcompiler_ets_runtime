@@ -659,6 +659,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetInt32OfTInt(GateRef x);
     GateRef GetDoubleOfTInt(GateRef x);
     GateRef GetDoubleOfTDouble(GateRef x);
+    GateRef GetInt32OfTNumber(GateRef x);
     GateRef GetDoubleOfTNumber(GateRef x);
     GateRef LoadObjectFromWeakRef(GateRef x);
     GateRef ExtFloat32ToDouble(GateRef x);

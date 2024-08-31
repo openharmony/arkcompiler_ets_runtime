@@ -2524,6 +2524,11 @@ inline GateRef StubBuilder::GetDoubleOfTDouble(GateRef x)
     return env_->GetBuilder()->GetDoubleOfTDouble(x);
 }
 
+inline GateRef StubBuilder::GetInt32OfTNumber(GateRef x)
+{
+    return env_->GetBuilder()->GetInt32OfTNumber(x);
+}
+
 inline GateRef StubBuilder::GetDoubleOfTNumber(GateRef x)
 {
     return env_->GetBuilder()->GetDoubleOfTNumber(x);
