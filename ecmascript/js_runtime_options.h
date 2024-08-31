@@ -26,6 +26,11 @@
 #include "ecmascript/mem/mem_common.h"
 #include "libpandabase/os/file.h"
 
+namespace {
+constexpr size_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
+constexpr size_t DEFAULT_REL_MODE = 2;
+}  // namespace
+
 // namespace panda {
 namespace panda::ecmascript {
 using arg_list_t = std::vector<std::string>;
@@ -210,6 +215,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_STRING,
     OPTION_OPEN_ARK_TOOLS,
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
+    OPTION_COMPILER_EMPTY_CATCH_FUNCTION
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
 static_assert(OPTION_SPLIT_TWO == 128); // add new option at the bottom, DO NOT modify this value
@@ -1344,6 +1350,16 @@ public:
         enableOptInlining_ = value;
     }
 
+    void SetEnableEmptyCatchFunction(bool value)
+    {
+        enableEmptyCatchFunction_ = value;
+    }
+
+    bool IsEnableEmptyCatchFunction() const
+    {
+        return enableEmptyCatchFunction_;
+    }
+
     bool IsEnableOptInlining() const
     {
         return enableOptInlining_;
@@ -1937,7 +1953,6 @@ public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
 private:
-    static constexpr int32_t DEFAULT_OPT_LEVEL = 3; // 3: default opt level
 
     static bool StartsWith(const std::string& haystack, const std::string& needle)
     {
@@ -2033,6 +2048,7 @@ private:
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
+    bool enableEmptyCatchFunction_ {false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};
     bool enableAPPJIT_ {false};

@@ -943,6 +943,9 @@ public:
     void Run()
     {
         ComputeLoopBack();
+        if (bcBuilder_->TerminateAnalysis()) {
+            return;
+        }
         TryClearDeadBlock();
         bcBuilder_->ComputeNumOfLoopBack();
         frameBuilder_->numLoops_ = numLoops_;
@@ -964,6 +967,19 @@ public:
         toBlock.loopBacks.insert(fromId);
         if (toBlock.loopNumber == 0) {
             toBlock.loopNumber = ++numLoops_;
+        }
+    }
+
+    void CheckDominance()
+    {
+        for (size_t i = 0; i < loopbacks_.size(); i++) {
+            auto loopBackinfo = loopbacks_[i];
+            bool isDom = bcBuilder_->IsAncestor(loopBackinfo.toId, loopBackinfo.fromId);
+            if (!isDom) {
+                bcBuilder_->SetIrreducibleLoop();
+                LOG_COMPILER(INFO) << "CFG is not reducible. Compilation aborted.";
+                break;
+            }
         }
     }
 
@@ -1014,6 +1030,10 @@ public:
                 pendingList_.pop_back();
                 frameBuilder_->rpoList_.push_front(bbId);
             }
+        }
+
+        if (bcBuilder_->NeedIrreducibleLoopCheck()) {
+            CheckDominance();
         }
     }
 
@@ -1340,7 +1360,7 @@ void FrameStateBuilder::ComputeLoopInfo()
 {
     BlockLoopAnalysis loopAnalysis(this, circuit_->chunk());
     loopAnalysis.Run();
-    if (numLoops_ != 0) {
+    if (numLoops_ != 0 && !bcBuilder_->HasIrreducibleLoop()) {
         ChunkVector<GateRef>& headerGates = bcBuilder_->GetLoopHeaderGates();
         headerGates.resize(numLoops_, Circuit::NullGate());
     }

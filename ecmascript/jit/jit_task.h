@@ -270,6 +270,15 @@ public:
     private:
         ARK_INLINE bool CopyCodeToFort();
         std::shared_ptr<JitTask> jitTask_ { nullptr };
+
+        class AsyncTaskRunScope {
+        public:
+            AsyncTaskRunScope(JitTask *jitTask);
+            ~AsyncTaskRunScope();
+        private:
+            JitTask *jitTask_ { nullptr };
+            JitVM *jitvm_ { nullptr };
+        };
     };
 private:
     void SustainingJSHandles();
