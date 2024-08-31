@@ -74,6 +74,7 @@ struct CompilationOptions {
     bool isEnableLaterElimination_ {true};
     bool isEnableValueNumbering_ {true};
     bool isEnableOptInlining_ {true};
+    bool isEnableEmptyCatchFunction_ {false};
     bool isEnableOptString_ {true};
     bool isEnableOptPGOType_ {true};
     bool isEnableOptTrackField_ {true};
@@ -112,7 +113,14 @@ public:
     bool HandlePandaFileNames(const int argc, const char **argv);
 
     void AOTInitialize();
-    
+
+    void DoPreAnalysis(CompilationOptions &cOptions);
+
+    void AnalyzeGraphs(JSPandaFile *jsPandaFile, BytecodeInfoCollector &collector, CompilationOptions &cOptions);
+
+    void AnalyzeGraph(BCInfo &bytecodeInfo, CompilationOptions &cOptions, BytecodeInfoCollector &collector,
+                      MethodLiteral *methodLiteral, MethodPcInfo &methodPCInfo);
+
     void Process(CompilationOptions &cOptions);
 
     uint32_t GenerateAbcFileInfos();
@@ -134,6 +142,10 @@ public:
                       CompilationOptions &cOptions) const;
 
     void GenerateMethodMap(CompilationOptions &cOptions);
+
+    bool MethodHasTryCatch(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral) const;
+
+    bool HasSkipMethod(const CVector<std::string> &methodList, const std::string &methodName) const;
 
     void SetIsFastCall(CString fileDesc, uint32_t methodOffset, bool isFastCall)
     {
@@ -225,6 +237,8 @@ private:
     CVector<std::unique_ptr<BytecodeInfoCollector>> bcInfoCollectors_;
     CallMethodFlagMap callMethodFlagMap_;
     AOTCompilationEnv aotCompilationEnv_;
+    CVector<std::string> emptyCatchBBMethods_;
+    CVector<std::string> irreducibleMethods_;
     friend class OhosPkgArgs;
 };
 }  // namespace panda::ecmascript::kungfu

@@ -73,7 +73,7 @@ public:
 
     virtual ModuleKind GetModuleKind() const = 0;
 
-    std::string GetFuncName(const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile);
+    static std::string GetFuncName(const MethodLiteral *methodLiteral, const JSPandaFile *jsPandaFile);
 
 private:
     DebugInfo *debugInfo_ {nullptr};
