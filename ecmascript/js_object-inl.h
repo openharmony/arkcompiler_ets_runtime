@@ -372,10 +372,10 @@ inline bool JSObject::ShouldTransToFastElements(JSThread *thread, TaggedArray *e
     if (index >= static_cast<uint32_t>(INT32_MAX)) {
         return false;
     }
-    uint32_t dictionarySize = static_cast<uint32_t>(dictionary->GetLength());
     // Turn fast if only saves 50% space.
-    if (dictionarySize * SHOULD_TRANS_TO_FAST_ELEMENTS_FACTOR >= capacity ||
-        dictionary->NextEnumerationIndex(thread) > PropertyAttributes::DictionaryOrderField::MaxValue()) {
+    if (static_cast<uint32_t>(dictionary->GetLength()) * SHOULD_TRANS_TO_FAST_ELEMENTS_FACTOR >= capacity ||
+        static_cast<uint64_t>(dictionary->NextEnumerationIndex(thread)) >
+        PropertyAttributes::DictionaryOrderField::MaxValue()) {
         return true;
     }
     return false;
