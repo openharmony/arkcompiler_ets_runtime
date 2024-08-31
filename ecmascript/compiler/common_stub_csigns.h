@@ -113,6 +113,8 @@ namespace panda::ecmascript::kungfu {
     V(FastStringAdd)                  \
     V(Definefunc)                     \
     V(DefineField)                    \
+    V(ConvertCharToInt32)             \
+    V(ConvertCharToDouble)            \
     V(DeleteObjectProperty)           \
     V(SameValue)                      \
     V(StringIteratorNext)

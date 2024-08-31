@@ -390,9 +390,15 @@ StateDepend MCRLowering::LowerConvert(StateDepend stateDepend, GateRef gate)
             result = ConvertTaggedDoubleToFloat64(value);
             break;
         case ValueType::CHAR: {
-            ASSERT((dstType == ValueType::ECMA_STRING));
             GateRef glue = acc_.GetGlueFromArgList();
-            result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateStringBySingleCharCode, { glue, value });
+            if (dstType == ValueType::ECMA_STRING) {
+                result = builder_.CallStub(glue, gate, CommonStubCSigns::CreateStringBySingleCharCode, { glue, value });
+            } else if (dstType == ValueType::INT32) {
+                result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToInt32, { glue, value });
+            } else {
+                ASSERT((dstType == ValueType::FLOAT64));
+                result = builder_.CallStub(glue, gate, CommonStubCSigns::ConvertCharToDouble, { glue, value });
+            }
             break;
         }
         case ValueType::HOLE_INT:

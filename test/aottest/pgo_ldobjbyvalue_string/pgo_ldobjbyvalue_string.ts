@@ -41,3 +41,7 @@ class C3 {
     }
 }
 const v9 = new C3(SendableMap, '-39635');
+
+let x = "filter"["length"]
+x++
+print(x)

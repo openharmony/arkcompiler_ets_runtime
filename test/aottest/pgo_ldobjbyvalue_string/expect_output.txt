@@ -13,3 +13,4 @@
 
 [trace] Opcode: LOAD_ELEMENT Count:2
 6
+7
