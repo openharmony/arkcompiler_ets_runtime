@@ -21,3 +21,15 @@ var obj ={
 }
 print(obj.__proto__ == proto)
 print(obj.__proto__ == proto2);
+
+class C12 extends Set {
+}
+const v13 = new C12();
+const o59 = {
+    __proto__: v13,
+};
+try {
+    o59.values();
+} catch (error) {
+    print(o59.__proto__ == v13);
+}
