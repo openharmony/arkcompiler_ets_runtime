@@ -28,9 +28,11 @@ class EcmaContextTest : public BaseTestWithScope<false> {
 HWTEST_F_L0(EcmaContextTest, Create)
 {
     auto context = EcmaContext::CreateAndInitialize(thread);
+    thread->SwitchCurrentContext(context);
     CVector<EcmaContext *> Cv1 = thread->GetEcmaContexts();
     EXPECT_EQ(Cv1.size(), 2);  // 2: size of contexts.
     auto context2 = EcmaContext::CreateAndInitialize(thread);
+    thread->SwitchCurrentContext(context2);
     Cv1 = thread->GetEcmaContexts();
     EXPECT_EQ(Cv1.size(), 3);  // 3: size of contexts.
     EcmaContext::CheckAndDestroy(thread, context);
@@ -44,6 +46,7 @@ HWTEST_F_L0(EcmaContextTest, GetRegExpCache)
     EcmaVM *vm = thread->GetEcmaVM();
     ObjectFactory *factory = vm->GetFactory();
     auto context = EcmaContext::CreateAndInitialize(thread);
+    thread->SwitchCurrentContext(context);
     JSHandle<EcmaString> regexp = factory->NewFromASCII("\\g");
     JSHandle<JSTaggedValue> value2(regexp);
     context->SetRegExpCache(value2.GetTaggedValue());
@@ -55,6 +58,7 @@ HWTEST_F_L0(EcmaContextTest, GetRegExpCache)
 HWTEST_F_L0(EcmaContextTest, AllowAtomicWait)
 {
     auto context = EcmaContext::CreateAndInitialize(thread);
+    thread->SwitchCurrentContext(context);
     bool value = context->GetAllowAtomicWait();
     EXPECT_TRUE(value);
     context->SetAllowAtomicWait(false);

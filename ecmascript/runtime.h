@@ -80,7 +80,12 @@ public:
 
     inline const GlobalEnvConstants *GetGlobalEnvConstants()
     {
-        return globalConstants_;
+        return &globalConst_;
+    }
+
+    inline bool SharedConstInited()
+    {
+        return sharedConstInited_;
     }
 
     JSTaggedValue GetGlobalEnv() const
@@ -249,7 +254,8 @@ private:
     uint32_t serializeDataIndex_ {0};
     MutatorLock mutatorLock_;
 
-    const GlobalEnvConstants *globalConstants_ {nullptr};
+    bool sharedConstInited_ {false};
+    GlobalEnvConstants globalConst_;
     JSTaggedValue globalEnv_ {JSTaggedValue::Hole()};
     JSThread *mainThread_ {nullptr};
     // for shared heap.

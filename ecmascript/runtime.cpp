@@ -103,9 +103,10 @@ void Runtime::PostInitialization(const EcmaVM *vm)
 {
     // Use the main thread's globalconst after it has initialized,
     // and copy shared parts to other thread's later.
-    globalConstants_ = mainThread_->GlobalConstants();
+    sharedConstInited_ = true;
     globalEnv_ = vm->GetGlobalEnv().GetTaggedValue();
-    SharedHeap::GetInstance()->PostInitialization(globalConstants_, const_cast<EcmaVM*>(vm)->GetJSOptions());
+    globalConst_.CopySharedConstantsFrom(mainThread_->GlobalConstants());
+    SharedHeap::GetInstance()->PostInitialization(&globalConst_, const_cast<EcmaVM*>(vm)->GetJSOptions());
     SharedModuleManager::GetInstance()->Initialize();
 }
 
