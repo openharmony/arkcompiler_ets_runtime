@@ -81,3 +81,7 @@ regresstest/ark-regress/mjsunit/regress/regress-818070.js
 regresstest/ark-regress/mjsunit/regress/regression-crbug-1505311.js
 regresstest/ark-regress/mjsunit/es8/async-arrow-default-function-await.js
 # --- end of #18551
+
+# Issue #19210
+regresstest/ark-regress/mjsunit/compiler/regress-crbug-1479847.js
+# --- end of #19210
