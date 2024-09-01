@@ -272,6 +272,22 @@ printDelete2(mm, 1); //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
                      //: false
 
 print("case 3"); //: case 3
+
+function checkObjWithSetProto() {
+    let o = {};
+    Object.setPrototypeOf(o, Set.prototype);
+    try {
+        o.delete(1);
+    } catch(e) {
+        print(e);
+    }
+}
+
+//aot: [trace] Check Type: NotCallTarget1
+//: TypeError: obj is not JSSet
+checkObjWithSetProto();
+
+
 if (ArkTools.isAOTCompiled(printDelete2)) {
     Set.prototype.delete = function(x: any) {
         return -x * 10;
