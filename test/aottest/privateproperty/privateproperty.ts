@@ -163,3 +163,66 @@ class C {
     }
 }
 const v3 = new C();
+
+// Invalid private key check for stPrivateProperty
+class OutSide {
+    #x = 42;
+  
+    innerclass() {
+      return class {
+        f() {
+          this.#x = 1;
+        }
+      }
+    }
+  }
+  
+  var Inner = new OutSide().innerclass();
+  var i = new Inner();
+  
+  try {
+    i.f();
+  } catch(e) {
+    print(e.name + " : " + e.message);
+}
+
+// Invalid private key check for ldPrivateProperty2
+let createClass = function () {
+    return class {
+      static #m = 111;
+  
+      static access() {
+        return this.#m;
+      }
+    }
+};
+  
+let C1 = createClass(); 
+let C2 = createClass();
+try {
+    C2.access();
+    C1.access.call(C2); // C2 try to access private property of C1, forbidden
+} catch(e) {
+    print(e)
+}
+
+// Invalid private key check for stPrivateProperty2
+let createClass2 = function () {
+    return class {
+      static #m = 111;
+  
+      static store() {
+        return this.#m = 11;
+      }
+    }
+  };
+  
+  let C3 = createClass2(); 
+  let C4 = createClass2();
+  
+try {
+    C3.store();
+    C4.store.call(C3); // C3 try to access private property of C4, forbidden
+} catch(e) {
+    print(e)
+}

@@ -27,3 +27,6 @@ Symbol(symbol)
 3
 testReadIcSlotInPrivatePropertyIns success
 TypeError : invalid or cannot find private key
+TypeError : invalid or cannot find private key
+TypeError: invalid or cannot find private key
+TypeError: invalid or cannot find private key
