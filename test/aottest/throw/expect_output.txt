@@ -17,3 +17,4 @@ testError: throw from A1
 testError: throw from A1
 testError: throw from A2
 testError: throw from A2
+Error: internal error

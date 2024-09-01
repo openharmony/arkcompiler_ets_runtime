@@ -89,3 +89,19 @@ try {
 } catch (_) {};
 print(caught2);
 print(thrown2);
+
+//aot: when open inline mode, internal error should be throw correctly
+class B {
+  p(arg) {
+      throw new Error('internal error') // internal error
+  }
+}
+const v1 = new B()
+let x = v1.p
+let y = [111]
+try{
+  Reflect.apply(x, "111", y); // inline mode, error shold be throw here
+  [11] // createarraywithbuffer, not here
+} catch (e) {
+  print(e)
+};
