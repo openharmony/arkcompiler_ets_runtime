@@ -136,6 +136,11 @@ bool IsValidUTF8(const std::vector<uint8_t> &data)
             if (data.at(0) == UTF8_3B_FIRST && data.at(1) < UTF8_3B_SECOND_MIN) {
                 return false;
             }
+            // U+D800~U+DFFF is reserved for UTF-16 surrogate pairs, corresponds to %ED%A0%80~%ED%BF%BF
+            if (data.at(0) == UTF8_3B_RESERVED_FIRST && data.at(1) >= UTF8_3B_RESERVED_SECOND_MIN &&
+                data.at(1) <= UTF8_3B_RESERVED_SECOND_MAX) {
+                return false;
+            }
             break;
         case UtfLength::FOUR:
             if ((data.at(0) & BIT_MASK_5) != BIT_MASK_4) {
