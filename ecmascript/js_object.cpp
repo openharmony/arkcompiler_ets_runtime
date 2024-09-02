@@ -1505,7 +1505,9 @@ JSTaggedValue JSObject::GetPrototype(const JSHandle<JSObject> &obj)
     return hclass->GetPrototype();
 }
 
-bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, const JSHandle<JSTaggedValue> &proto)
+bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj,
+                            const JSHandle<JSTaggedValue> &proto,
+                            bool isChangeProto)
 {
     ASSERT_PRINT(proto->IsECMAObject() || proto->IsNull(), "proto must be object or null");
     JSTaggedValue current = JSObject::GetPrototype(obj);
@@ -1531,7 +1533,7 @@ bool JSObject::SetPrototype(JSThread *thread, const JSHandle<JSObject> &obj, con
         }
     }
     // map transition
-    JSHClass::SetPrototypeTransition(thread, obj, proto);
+    JSHClass::SetPrototypeTransition(thread, obj, proto, isChangeProto);
     return true;
 }
 
