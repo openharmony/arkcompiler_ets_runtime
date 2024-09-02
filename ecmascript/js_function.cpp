@@ -1119,10 +1119,6 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
     ecmascript::CString moduleName = jsPandaFile->GetJSPandaFileDesc();
     ecmascript::CString recordName = method->GetRecordNameStr();
 
-    // for debugger, to notify the script loaded and parsed which the concurrent function is in
-    auto *notificationMgr = thread->GetEcmaVM()->GetJsDebuggerManager()->GetNotificationManager();
-    notificationMgr->LoadModuleEvent(moduleName, recordName);
-
     // check ESM or CJS
     ecmascript::JSRecordInfo *recordInfo = nullptr;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(recordName, &recordInfo);
@@ -1157,6 +1153,10 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
     } else {
         func->SetModule(thread, moduleRecord);
     }
+
+    // for debugger, to notify the script loaded and parsed which the concurrent function is in
+    auto *notificationMgr = thread->GetEcmaVM()->GetJsDebuggerManager()->GetNotificationManager();
+    notificationMgr->LoadModuleEvent(moduleName, recordName);
 }
 
 bool JSFunction::IsSendableOrConcurrentFunction() const
