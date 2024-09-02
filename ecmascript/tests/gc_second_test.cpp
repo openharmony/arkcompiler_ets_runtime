@@ -33,7 +33,6 @@ public:
     {
         JSRuntimeOptions options;
         options.SetEnableEdenGC(true);
-        options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
         instance = JSNApi::CreateEcmaVM(options);
         ASSERT_TRUE(instance != nullptr) << "Cannot create EcmaVM";
         thread = instance->GetJSThread();
