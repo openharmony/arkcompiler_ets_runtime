@@ -17,6 +17,7 @@
 
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/patch/patch_loader.h"
+#include "ecmascript/module/js_module_source_text.h"
 
 namespace panda::ecmascript {
 using PatchErrorCode = panda::JSNApi::PatchErrorCode;
@@ -40,7 +41,7 @@ public:
                                    const std::string &patchFileName);
     JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId);
     void SetCurrentBaseFileName(CString fileName);
-    CString GetCurrentBaseFileName();
+    CString GetBaseFileName(const JSHandle<SourceTextModule> &module);
 private:
     // check whether the callback is registered.
     bool HasQueryQuickFixInfoFunc() const
