@@ -3883,26 +3883,12 @@ GateRef StubBuilder::GrowElementsCapacity(GateRef glue, GateRef receiver, GateRe
 {
     auto env = GetEnvironment();
     Label subEntry(env);
-    Label isShared(env);
-    Label notShared(env);
-    Label storeElements(env);
     env->SubCfgEntry(&subEntry);
     DEFVARIABLE(newElements, VariableType::JS_ANY(), Hole());
     NewObjectStubBuilder newBuilder(this);
     GateRef newCapacity = ComputeElementCapacity(capacity);
     GateRef elements = GetElementsArray(receiver);
-    Branch(IsJSShared(elements), &isShared, &notShared);
-    Bind(&isShared);
-    {
-        newElements = newBuilder.CopyArray(glue, elements, capacity, newCapacity, RegionSpaceFlag::IN_SHARED_OLD_SPACE);
-        Jump(&storeElements);
-    }
-    Bind(&notShared);
-    {
-        newElements = newBuilder.CopyArray(glue, elements, capacity, newCapacity, RegionSpaceFlag::IN_YOUNG_SPACE);
-        Jump(&storeElements);
-    }
-    Bind(&storeElements);
+    newElements = newBuilder.CopyArray(glue, elements, capacity, newCapacity);
     SetElementsArray(VariableType::JS_POINTER(), glue, receiver, *newElements);
     auto ret = *newElements;
     env->SubCfgExit();
