@@ -195,10 +195,6 @@ bool CGOptions::SolveOptions()
         opts::cg::cg ? SetOption(CGOptions::kDoCg) : ClearOption(CGOptions::kDoCg);
     }
 
-    if (opts::cg::objmap.IsEnabledByUser()) {
-        SetGenerateObjectMap(opts::cg::objmap);
-    }
-
     if (opts::cg::generalRegOnly.IsEnabledByUser()) {
         opts::cg::generalRegOnly ? EnableGeneralRegOnly() : DisableGeneralRegOnly();
     }

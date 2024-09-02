@@ -112,8 +112,7 @@ struct CCLocInfo {
 class LmbcFormalParamInfo {
 public:
     LmbcFormalParamInfo(PrimType pType, uint32 ofst, uint32 sz)
-        : type(nullptr),
-          primType(pType),
+        : primType(pType),
           offset(ofst),
           onStackOffset(0),
           size(sz),
@@ -130,14 +129,6 @@ public:
 
     ~LmbcFormalParamInfo() = default;
 
-    MIRStructType *GetType()
-    {
-        return type;
-    }
-    void SetType(MIRStructType *ty)
-    {
-        type = ty;
-    }
     PrimType GetPrimType() const
     {
         return primType;
@@ -240,7 +231,6 @@ public:
     }
 
 private:
-    MIRStructType *type;
     PrimType primType;
     uint32 offset;
     uint32 onStackOffset; /* stack location if isOnStack */

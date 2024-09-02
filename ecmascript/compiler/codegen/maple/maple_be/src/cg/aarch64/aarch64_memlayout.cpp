@@ -61,32 +61,11 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int
                 CHECK_NULL_FATAL(be.GetMIRModule().CurFunction());
                 MIRSymbol *sym = be.GetMIRModule().CurFunction()->GetLocalOrGlobalSymbol(dread->GetStIdx());
                 ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->GetTyIdx());
-                if (dread->GetFieldID() != 0) {
-                    DEBUG_ASSERT(ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeClass ||
-                                     ty->GetKind() == kTypeUnion,
-                                 "expect struct or class");
-                    if (ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeUnion) {
-                        ty = static_cast<MIRStructType *>(ty)->GetFieldType(dread->GetFieldID());
-                    } else {
-                        ty = static_cast<MIRClassType *>(ty)->GetFieldType(dread->GetFieldID());
-                    }
-                }
             } else if (opndOpcode == OP_iread) {
                 IreadNode *iread = static_cast<IreadNode *>(opnd);
                 ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iread->GetTyIdx());
                 DEBUG_ASSERT(ty->GetKind() == kTypePointer, "expect pointer");
                 ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<MIRPtrType *>(ty)->GetPointedTyIdx());
-                if (iread->GetFieldID() != 0) {
-                    DEBUG_ASSERT(ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeClass ||
-                                     ty->GetKind() == kTypeUnion,
-                                 "expect struct or class");
-                    CHECK_NULL_FATAL(ty);
-                    if (ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeUnion) {
-                        ty = static_cast<MIRStructType *>(ty)->GetFieldType(iread->GetFieldID());
-                    } else {
-                        ty = static_cast<MIRClassType *>(ty)->GetFieldType(iread->GetFieldID());
-                    }
-                }
             }
             if (ty == nullptr) { /* type mismatch */
                 continue;

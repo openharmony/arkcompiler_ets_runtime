@@ -270,58 +270,10 @@ MIRType *TypeTable::GetOrCreateFunctionType(const TyIdx &retTyIdx, const std::ve
     return typeTable.at(tyIdx);
 }
 
-MIRType *TypeTable::GetOrCreateStructOrUnion(const std::string &name, const FieldVector &fields,
-                                             const FieldVector &parentFields, MIRModule &module, bool forStruct,
-                                             const TypeAttrs &attrs)
-{
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(name);
-    MIRStructType type(forStruct ? kTypeStruct : kTypeUnion, strIdx);
-    type.SetFields(fields);
-    type.SetParentFields(parentFields);
-    type.SetTypeAttrs(attrs);
-
-    TyIdx tyIdx = GetOrCreateMIRType(&type);
-    // Global?
-    module.GetTypeNameTab()->SetGStrIdxToTyIdx(strIdx, tyIdx);
-    module.PushbackTypeDefOrder(strIdx);
-    DEBUG_ASSERT(tyIdx < typeTable.size(), "index out of range in TypeTable::GetOrCreateStructOrUnion");
-    return typeTable.at(tyIdx);
-}
-
 void TypeTable::PushIntoFieldVector(FieldVector &fields, const std::string &name, const MIRType &type)
 {
     GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(name);
     fields.push_back(FieldPair(strIdx, TyIdxFieldAttrPair(type.GetTypeIndex(), FieldAttrs())));
-}
-
-MIRType *TypeTable::GetOrCreateClassOrInterface(const std::string &name, MIRModule &module, bool forClass)
-{
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(name);
-    TyIdx tyIdx = module.GetTypeNameTab()->GetTyIdxFromGStrIdx(strIdx);
-    if (!tyIdx) {
-        if (forClass) {
-            MIRClassType type(kTypeClassIncomplete, strIdx);  // for class type
-            tyIdx = GetOrCreateMIRType(&type);
-        } else {
-            MIRInterfaceType type(kTypeInterfaceIncomplete, strIdx);  // for interface type
-            tyIdx = GetOrCreateMIRType(&type);
-        }
-        module.PushbackTypeDefOrder(strIdx);
-        module.GetTypeNameTab()->SetGStrIdxToTyIdx(strIdx, tyIdx);
-        if (typeTable[tyIdx]->GetNameStrIdx() == 0u) {
-            typeTable[tyIdx]->SetNameStrIdx(strIdx);
-        }
-    }
-    DEBUG_ASSERT(tyIdx < typeTable.size(), "index out of range in TypeTable::GetOrCreateClassOrInterface");
-    return typeTable.at(tyIdx);
-}
-
-void TypeTable::AddFieldToStructType(MIRStructType &structType, const std::string &fieldName, const MIRType &fieldType)
-{
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(fieldName);
-    FieldAttrs fieldAttrs;
-    fieldAttrs.SetAttr(FLDATTR_final);  // Mark compiler-generated struct fields as final to improve AliasAnalysis
-    structType.GetFields().push_back(FieldPair(strIdx, TyIdxFieldAttrPair(fieldType.GetTypeIndex(), fieldAttrs)));
 }
 
 void FPConstTable::PostInit()

@@ -116,29 +116,7 @@ public:
     MIRFunction *GetOrCreateFunction(const std::string &, TyIdx);
     MIRFunction *GetFunctionFromSymbol(const MIRSymbol &funcst);
     MIRFunction *GetFunctionFromName(const std::string &);
-    // For compiler-generated metadata struct
-    void AddIntFieldConst(const MIRStructType &sType, MIRAggConst &newConst, uint32 fieldID, int64 constValue);
-    void AddAddrofFieldConst(const MIRStructType &sType, MIRAggConst &newConst, uint32 fieldID,
-                             const MIRSymbol &fieldSt);
-    void AddAddroffuncFieldConst(const MIRStructType &sType, MIRAggConst &newConst, uint32 fieldID,
-                                 const MIRSymbol &funcSt);
 
-    bool TraverseToNamedField(MIRStructType &structType, GStrIdx nameIdx, uint32 &fieldID);
-    bool TraverseToNamedFieldWithTypeAndMatchStyle(MIRStructType &structType, GStrIdx nameIdx, TyIdx typeIdx,
-                                                   uint32 &fieldID, unsigned int matchStyle);
-    void TraverseToNamedFieldWithType(MIRStructType &structType, GStrIdx nameIdx, TyIdx typeIdx, uint32 &fieldID,
-                                      uint32 &idx);
-
-    FieldID GetStructFieldIDFromNameAndType(MIRType &type, const std::string &name, TyIdx idx, unsigned int matchStyle);
-    FieldID GetStructFieldIDFromNameAndType(MIRType &type, const std::string &name, TyIdx idx);
-    FieldID GetStructFieldIDFromNameAndTypeParentFirst(MIRType &type, const std::string &name, TyIdx idx);
-    FieldID GetStructFieldIDFromNameAndTypeParentFirstFoundInChild(MIRType &type, const std::string &name, TyIdx idx);
-
-    FieldID GetStructFieldIDFromFieldName(MIRType &type, const std::string &name);
-    FieldID GetStructFieldIDFromFieldNameParentFirst(MIRType *type, const std::string &name);
-
-    void SetStructFieldIDFromFieldName(MIRStructType &structType, const std::string &name, GStrIdx newStrIdx,
-                                       const MIRType &newFieldType);
     // for creating Function.
     MIRSymbol *GetFunctionArgument(MIRFunction &fun, uint32 index) const
     {

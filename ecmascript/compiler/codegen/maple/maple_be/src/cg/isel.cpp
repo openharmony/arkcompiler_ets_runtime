@@ -616,12 +616,6 @@ MirTypeInfo MPISel::GetMirTypeInfoFormFieldIdAndMirType(FieldID fieldId, MIRType
 {
     MirTypeInfo mirTypeInfo;
     /* fixup primType and offset */
-    if (fieldId != 0) {
-        DEBUG_ASSERT((mirType->IsMIRStructType() || mirType->IsMIRUnionType()), "non-structure");
-        MIRStructType *structType = static_cast<MIRStructType *>(mirType);
-        mirType = structType->GetFieldType(fieldId);
-        mirTypeInfo.offset = static_cast<uint64_t>(cgFunc->GetBecommon().GetFieldOffset(*structType, fieldId).first);
-    }
     mirTypeInfo.primType = mirType->GetPrimType();
     // aggSize for AggType
     if (mirTypeInfo.primType == maple::PTY_agg) {

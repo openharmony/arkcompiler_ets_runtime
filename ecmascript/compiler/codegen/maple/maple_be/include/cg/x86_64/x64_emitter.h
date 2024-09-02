@@ -46,9 +46,6 @@ public:
     uint64 GetSymbolSize(maple::TyIdx typeIndex);
     void EmitLocalVariable(maplebe::CGFunc &cgFunc);
     void EmitGlobalVariable(maplebe::CG &cg);
-    uint64 EmitStructure(maple::MIRConst &mirConst, maplebe::CG &cg, bool belongsToDataSec = true);
-    uint64 EmitStructure(maple::MIRConst &mirConst, maplebe::CG &cg, uint32 &subStructFieldCounts,
-                         bool belongsToDataSec = true);
     uint64 EmitVector(maple::MIRConst &mirConst, bool belongsToDataSec = true);
     uint64 EmitArray(maple::MIRConst &mirConst, maplebe::CG &cg, bool belongsToDataSec = true);
     void EmitAddrofElement(MIRConst &mirConst, bool belongsToDataSec);

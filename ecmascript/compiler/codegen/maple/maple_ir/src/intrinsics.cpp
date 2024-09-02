@@ -27,52 +27,6 @@ IntrinDesc IntrinDesc::intrinTable[INTRN_LAST + 1] = {
 #include "intrinsics.def"
 #undef DEF_MIR_INTRINSIC
 };
-MIRType *IntrinDesc::GetOrCreateJSValueType()
-{
-    if (jsValueType != nullptr) {
-        return jsValueType;
-    }
-    MIRBuilder *jsBuilder = mirModule->GetMIRBuilder();
-    FieldVector payloadFields;
-    GStrIdx i32 = jsBuilder->GetOrCreateStringIndex("i32");
-    GStrIdx u32 = jsBuilder->GetOrCreateStringIndex("u32");
-    GStrIdx boo = jsBuilder->GetOrCreateStringIndex("boo");
-    GStrIdx ptr = jsBuilder->GetOrCreateStringIndex("ptr");
-    payloadFields.push_back(
-        FieldPair(i32, TyIdxFieldAttrPair(GlobalTables::GetTypeTable().GetInt32()->GetTypeIndex(), FieldAttrs())));
-    payloadFields.push_back(
-        FieldPair(u32, TyIdxFieldAttrPair(GlobalTables::GetTypeTable().GetUInt32()->GetTypeIndex(), FieldAttrs())));
-    payloadFields.push_back(
-        FieldPair(boo, TyIdxFieldAttrPair(GlobalTables::GetTypeTable().GetUInt32()->GetTypeIndex(), FieldAttrs())));
-    payloadFields.push_back(
-        FieldPair(ptr, TyIdxFieldAttrPair(GlobalTables::GetTypeTable().GetVoidPtr()->GetTypeIndex(), FieldAttrs())));
-    FieldVector parentFields;
-    MIRType *payloadType =
-        GlobalTables::GetTypeTable().GetOrCreateUnionType("payload_type", payloadFields, parentFields, *mirModule);
-    FieldVector sFields;
-    GStrIdx payload = jsBuilder->GetOrCreateStringIndex("payload");
-    GStrIdx tag = jsBuilder->GetOrCreateStringIndex("tag");
-    sFields.push_back(FieldPair(payload, TyIdxFieldAttrPair(payloadType->GetTypeIndex(), FieldAttrs())));
-    sFields.push_back(
-        FieldPair(tag, TyIdxFieldAttrPair(GlobalTables::GetTypeTable().GetUInt32()->GetTypeIndex(), FieldAttrs())));
-    MIRType *sType = GlobalTables::GetTypeTable().GetOrCreateStructType("s_type", sFields, parentFields, *mirModule);
-    CHECK_FATAL(sType != nullptr, "can't get struct type, check it!");
-    FieldVector jsValLayoutFields;
-    GStrIdx asBits = jsBuilder->GetOrCreateStringIndex("asBits");
-    GStrIdx s = jsBuilder->GetOrCreateStringIndex("s");
-    GStrIdx asDouble = jsBuilder->GetOrCreateStringIndex("asDouble");
-    GStrIdx asPtr = jsBuilder->GetOrCreateStringIndex("asPtr");
-    jsValLayoutFields.push_back(
-        FieldPair(asBits, TyIdxFieldAttrPair(GlobalTables::GetTypeTable().GetUInt64()->GetTypeIndex(), FieldAttrs())));
-    jsValLayoutFields.push_back(FieldPair(s, TyIdxFieldAttrPair(sType->GetTypeIndex(), FieldAttrs())));
-    jsValLayoutFields.push_back(FieldPair(
-        asDouble, TyIdxFieldAttrPair(GlobalTables::GetTypeTable().GetDouble()->GetTypeIndex(), FieldAttrs())));
-    jsValLayoutFields.push_back(
-        FieldPair(asPtr, TyIdxFieldAttrPair(GlobalTables::GetTypeTable().GetVoidPtr()->GetTypeIndex(), FieldAttrs())));
-    MIRType *jsValLayoutType = GlobalTables::GetTypeTable().GetOrCreateUnionType("jsval_layout_type", jsValLayoutFields,
-                                                                                 parentFields, *mirModule);
-    return jsValLayoutType;
-}
 
 void IntrinDesc::InitMIRModule(MIRModule *mod)
 {

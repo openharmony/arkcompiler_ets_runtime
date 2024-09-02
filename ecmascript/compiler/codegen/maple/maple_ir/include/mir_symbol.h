@@ -572,25 +572,12 @@ public:
     {
         uint8 align = GetAttrs().GetAlignValue();
         if (align == 0) {
-            if (GetType()->GetKind() == kTypeStruct || GetType()->GetKind() == kTypeClass ||
-                GetType()->GetKind() == kTypeArray || GetType()->GetKind() == kTypeUnion) {
-                // when x64 does not driver, there is no triple init, this is a temporary plan
-                if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
-                    return align;
-                }
-                uint8 alignMin = 0;
-                if (GetType()->GetAlign() > 0) {
-                    alignMin = static_cast<uint8>(log2(GetType()->GetAlign()));
-                }
-                align = std::max<uint8>(3, alignMin);  // 3: alignment in bytes of uint8
-            } else {
-                align = static_cast<uint8>(GetType()->GetAlign());
-                if (Triple::GetTriple().IsAarch64BeOrLe()) {
-                    if (isArm64ilp32 && GetType()->GetPrimType() == PTY_a32) {
-                        align = 3;  // 3: alignment in bytes of uint8
-                    } else {
-                        align = static_cast<uint8>(log2(align));
-                    }
+            align = static_cast<uint8>(GetType()->GetAlign());
+            if (Triple::GetTriple().IsAarch64BeOrLe()) {
+                if (isArm64ilp32 && GetType()->GetPrimType() == PTY_a32) {
+                    align = 3;  // 3: alignment in bytes of uint8
+                } else {
+                    align = static_cast<uint8>(log2(align));
                 }
             }
         }

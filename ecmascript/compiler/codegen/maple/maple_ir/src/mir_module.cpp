@@ -246,18 +246,6 @@ void MIRModule::DumpGlobals(bool emitStructureType) const
             const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(*it);
             MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
             DEBUG_ASSERT(type != nullptr, "type should not be nullptr here");
-            bool isStructType = type->IsStructType();
-            if (isStructType) {
-                auto *structType = static_cast<MIRStructType *>(type);
-                // still emit what in extern_structtype_set_
-                if (!emitStructureType &&
-                    externStructTypeSet.find(structType->GetTypeIndex()) == externStructTypeSet.end()) {
-                    continue;
-                }
-                if (structType->IsImported()) {
-                    continue;
-                }
-            }
 
             LogInfo::MapleLogger() << "type $" << name << " ";
             if (type->GetKind() == kTypeByName) {
@@ -395,13 +383,6 @@ void MIRModule::DumpDefType()
         const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(*it);
         MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
         DEBUG_ASSERT(type != nullptr, "type should not be nullptr here");
-        bool isStructType = type->IsStructType();
-        if (isStructType) {
-            auto *structType = static_cast<MIRStructType *>(type);
-            if (structType->IsImported()) {
-                continue;
-            }
-        }
         LogInfo::MapleLogger() << "type $" << name << " ";
         if (type->GetKind() == kTypeByName) {
             LogInfo::MapleLogger() << "void";
@@ -480,85 +461,6 @@ const std::string &MIRModule::GetFileNameFromFileNum(uint32 fileNum) const
 }
 
 #ifdef ARK_LITECG_DEBUG
-void MIRModule::DumpTypeTreeToCxxHeaderFile(MIRType &ty, std::unordered_set<MIRType *> &dumpedClasses) const
-{
-    if (dumpedClasses.find(&ty) != dumpedClasses.end()) {
-        return;
-    }
-    // first, insert ty to the dumped_classes to prevent infinite recursion
-    (void)dumpedClasses.insert(&ty);
-    DEBUG_ASSERT(ty.GetKind() == kTypeClass || ty.GetKind() == kTypeStruct || ty.GetKind() == kTypeUnion ||
-                     ty.GetKind() == kTypeInterface,
-                 "Unexpected MIRType.");
-    /* No need to emit interfaces; because "interface variables are
-       final and static by default and methods are public and abstract"
-     */
-    if (ty.GetKind() == kTypeInterface) {
-        return;
-    }
-    // dump all of its parents
-    if (srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus) {
-        DEBUG_ASSERT((ty.GetKind() == kTypeStruct || ty.GetKind() == kTypeUnion),
-                     "type should be either struct or union");
-    } else {
-        DEBUG_ASSERT(false, "source languages other than C/C++ are not supported yet");
-    }
-    if (srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus) {
-        // how to access parent fields????
-        DEBUG_ASSERT(false, "not yet implemented");
-    }
-}
-
-void MIRModule::DumpToCxxHeaderFile(std::set<std::string> &leafClasses, const std::string &pathToOutf) const
-{
-    if (pathToOutf.empty()) {
-        return;
-    }
-    std::ofstream mpltFile;
-    mpltFile.open(pathToOutf, std::ios::trunc);
-    std::streambuf *backup = LogInfo::MapleLogger().rdbuf();
-    LogInfo::MapleLogger().rdbuf(mpltFile.rdbuf());  // change cout's buffer to that of file
-    char *headerGuard = strdup(pathToOutf.c_str());
-    CHECK_FATAL(headerGuard != nullptr, "strdup failed");
-    for (char *p = headerGuard; *p; ++p) {
-        if (!isalnum(*p)) {
-            *p = '_';
-        } else if (isalpha(*p) && islower(*p)) {
-            *p = toupper(*p);
-        }
-    }
-    // define a hash table
-    std::unordered_set<MIRType *> dumpedClasses;
-    const char *prefix = "__SRCLANG_UNKNOWN_";
-    if (srcLang == kSrcLangC || srcLang == kSrcLangCPlusPlus) {
-        prefix = "__SRCLANG_CXX_";
-    }
-    LogInfo::MapleLogger() << "#ifndef " << prefix << headerGuard << "__\n";
-    LogInfo::MapleLogger() << "#define " << prefix << headerGuard << "__\n";
-    LogInfo::MapleLogger() << "/* this file is compiler-generated; do not edit */\n\n";
-    LogInfo::MapleLogger() << "#include <stdint.h>\n";
-    LogInfo::MapleLogger() << "#include <complex.h>\n";
-    for (auto &s : leafClasses) {
-        CHECK_FATAL(!s.empty(), "string is null");
-        GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(s);
-        TyIdx tyIdx = typeNameTab->GetTyIdxFromGStrIdx(strIdx);
-        MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-        if (ty == nullptr) {
-            continue;
-        }
-        DEBUG_ASSERT(ty->GetKind() == kTypeClass || ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeUnion ||
-                         ty->GetKind() == kTypeInterface,
-                     "");
-        DumpTypeTreeToCxxHeaderFile(*ty, dumpedClasses);
-    }
-    LogInfo::MapleLogger() << "#endif /* " << prefix << headerGuard << "__ */\n";
-    /* restore cout */
-    LogInfo::MapleLogger().rdbuf(backup);
-    free(headerGuard);
-    headerGuard = nullptr;
-    mpltFile.close();
-}
-
 void MIRModule::DumpClassToFile(const std::string &path) const
 {
     std::string strPath(path);

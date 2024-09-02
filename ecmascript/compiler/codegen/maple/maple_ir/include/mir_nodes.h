@@ -356,11 +356,6 @@ private:
         return from.IsMIRPtrType() || from.IsMIRJarrayType();
     }
 
-    bool IsInterfaceOrClass(const MIRType &mirType) const
-    {
-        return mirType.IsMIRClassType() || mirType.IsMIRInterfaceType();
-    }
-
     TyIdx tyIdx = TyIdx(0);
 };
 
@@ -1200,8 +1195,6 @@ public:
 #ifdef ARK_LITECG_DEBUG
     void Dump(int32 indent) const override;
 #endif
-
-    bool CheckNode(const MIRModule &mod) const;
 
     AddrofNode *CloneTree(MapleAllocator &allocator) const override
     {

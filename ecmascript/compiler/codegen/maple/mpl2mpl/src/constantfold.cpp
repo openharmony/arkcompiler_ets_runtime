@@ -1395,13 +1395,6 @@ static bool ExtractbitsRedundant(const ExtractbitsNode &x, MIRFunction &f)
         MIRSymbol *sym = f.GetLocalOrGlobalSymbol(dread->GetStIdx());
         ASSERT_NOT_NULL(sym);
         mirType = sym->GetType();
-        if (dread->GetFieldID() != 0) {
-            MIRStructType *structType = dynamic_cast<MIRStructType*>(mirType);
-            if (structType == nullptr) {
-                return false;
-            }
-            mirType = structType->GetFieldType(dread->GetFieldID());
-        }
     } else if (opnd->GetOpCode() == OP_iread) {
         IreadNode *iread = static_cast<IreadNode*>(opnd);
         MIRPtrType *ptrType =
@@ -1410,13 +1403,6 @@ static bool ExtractbitsRedundant(const ExtractbitsNode &x, MIRFunction &f)
             return false;
         }
         mirType = ptrType->GetPointedType();
-        if (iread->GetFieldID() != 0) {
-            MIRStructType *structType = dynamic_cast<MIRStructType*>(mirType);
-            if (structType == nullptr) {
-                return false;
-            }
-            mirType = structType->GetFieldType(iread->GetFieldID());
-        }
     } else if (opnd->GetOpCode() == OP_extractbits &&
                 x.GetBitsSize() > static_cast<ExtractbitsNode*>(opnd)->GetBitsSize()) {
         return (x.GetOpCode() == OP_zext && x.GetPrimType() == opnd->GetPrimType() &&
@@ -1488,10 +1474,6 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldIread(IreadNode *n
     TyIdx typeId = msy->GetTyIdx();
     CHECK_FATAL(!GlobalTables::GetTypeTable().GetTypeTable().empty(), "container check");
     MIRType *msyType = GlobalTables::GetTypeTable().GetTypeTable()[typeId];
-    if (addrofNode->GetFieldID() != 0) {
-        CHECK_FATAL(msyType->IsStructType(), "must be");
-        msyType = static_cast<MIRStructType*>(msyType)->GetFieldType(addrofNode->GetFieldID());
-    }
     MIRPtrType *ptrType = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(node->GetTyIdx()));
     // If the high level type of iaddrof/iread doesn't match
     // the type of addrof's rhs, this optimization cannot be done.

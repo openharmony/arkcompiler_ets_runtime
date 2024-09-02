@@ -89,7 +89,6 @@ public:
     void MergeReturn() override;
     void SelectDassign(DassignNode &stmt, Operand &opnd0) override;
     void SelectRegassign(RegassignNode &stmt, Operand &opnd0) override;
-    MemOperand *GenFormalMemOpndWithSymbol(const MIRSymbol &sym, int64 offset);
     void SelectIassign(IassignNode &stmt) override;
     void SelectReturn(Operand *opnd0) override;
     bool DoCallerEnsureValidParm(RegOperand &destOpnd, RegOperand &srcOpnd, PrimType formalPType);

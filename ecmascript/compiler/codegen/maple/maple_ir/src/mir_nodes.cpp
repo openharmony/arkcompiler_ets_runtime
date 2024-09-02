@@ -68,76 +68,11 @@ bool BaseNode::MayThrowException()
     return false;
 }
 
-bool AddrofNode::CheckNode(const MIRModule &mod) const
-{
-    const MIRSymbol *st = mod.CurFunction()->GetLocalOrGlobalSymbol(GetStIdx());
-    DEBUG_ASSERT(st != nullptr, "null ptr check");
-    MIRType *ty = st->GetType();
-    switch (ty->GetKind()) {
-        case kTypeScalar: {
-            return IsPrimitiveScalar(GetPrimType());
-        }
-        case kTypeArray: {
-            return GetPrimType() == PTY_agg;
-        }
-        case kTypeUnion:
-        case kTypeStruct:
-        case kTypeStructIncomplete: {
-            if (GetFieldID() == 0) {
-                return GetPrimType() == PTY_agg;
-            }
-            auto *structType = static_cast<MIRStructType *>(ty);
-            TyIdx fTyIdx = structType->GetFieldTyIdx(fieldID);
-            MIRType *subType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(fTyIdx);
-            MIRTypeKind subKind = subType->GetKind();
-            return (subKind == kTypeBitField) ||
-                   (subKind == kTypeScalar && IsPrimitiveScalar(GetPrimType())) ||
-                   (subKind == kTypePointer && IsPrimitivePoint(GetPrimType())) ||
-                   (subKind == kTypeStruct && GetPrimType() == PTY_agg) || (fTyIdx != 0u && GetPrimType() == PTY_agg);
-        }
-        case kTypeClass:
-        case kTypeClassIncomplete: {
-            if (fieldID == 0) {
-                return GetPrimType() == PTY_agg;
-            }
-            auto *classType = static_cast<MIRClassType *>(ty);
-            MIRType *subType = classType->GetFieldType(fieldID);
-            MIRTypeKind subKind = subType->GetKind();
-            return (subKind == kTypeBitField) ||
-                   (subKind == kTypeScalar && IsPrimitiveScalar(GetPrimType())) ||
-                   (subKind == kTypePointer && IsPrimitivePoint(GetPrimType())) ||
-                   (subKind == kTypeStruct && GetPrimType() == PTY_agg);
-        }
-        case kTypeInterface:
-        case kTypeInterfaceIncomplete: {
-            if (fieldID == 0) {
-                return GetPrimType() == PTY_agg;
-            }
-            auto *interfaceType = static_cast<MIRInterfaceType *>(ty);
-            MIRType *subType = interfaceType->GetFieldType(fieldID);
-            MIRTypeKind subKind = subType->GetKind();
-            return (subKind == kTypeBitField) ||
-                   (subKind == kTypeScalar && IsPrimitiveScalar(GetPrimType())) ||
-                   (subKind == kTypePointer && IsPrimitivePoint(GetPrimType())) ||
-                   (subKind == kTypeStruct && GetPrimType() == PTY_agg);
-        }
-        case kTypePointer:
-            return IsPrimitivePoint(GetPrimType());
-        case kTypeParam:
-        case kTypeGenericInstant:
-            return true;
-        default:
-            return false;
-    }
-}
-
 MIRType *IreadNode::GetType() const
 {
     MIRPtrType *ptrtype = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx));
-    if (fieldID == 0) {
-        return ptrtype->GetPointedType();
-    }
-    return GlobalTables::GetTypeTable().GetTypeFromTyIdx(ptrtype->GetPointedTyIdxWithFieldID(fieldID));
+    CHECK_FATAL(fieldID == 0, "fieldID must be 0");
+    return ptrtype->GetPointedType();
 }
 
 bool IreadNode::IsVolatile() const
@@ -1433,26 +1368,6 @@ inline MIRTypeKind GetPointedTypeKind(TyIdx tyIdx)
     MIRType *pointedType = GetPointedMIRType(tyIdx);
     DEBUG_ASSERT(pointedType != nullptr, "null ptr check");
     return pointedType->GetKind();
-}
-
-MIRTypeKind GetFieldTypeKind(MIRStructType *structType, FieldID fieldId)
-{
-    TyIdx fieldTyIdx;
-    if (fieldId > 0) {
-        MIRType *mirType = structType->GetFieldType(fieldId);
-        fieldTyIdx = mirType->GetTypeIndex();
-    } else {
-        DEBUG_ASSERT(static_cast<unsigned>(-fieldId) < structType->GetParentFieldsSize() + 1,
-                     "array index out of range");
-        fieldTyIdx = structType->GetParentFieldsElemt(-fieldId - 1).second.first;
-    }
-    return GetTypeKind(fieldTyIdx);
-}
-
-inline bool IsStructureTypeKind(MIRTypeKind kind)
-{
-    return kind == kTypeStruct || kind == kTypeStructIncomplete || kind == kTypeUnion || kind == kTypeClass ||
-           kind == kTypeClassIncomplete || kind == kTypeInterface || kind == kTypeInterfaceIncomplete;
 }
 
 bool IsSignedType(const BaseNode *opnd)

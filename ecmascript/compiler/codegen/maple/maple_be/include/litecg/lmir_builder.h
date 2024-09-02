@@ -48,7 +48,6 @@ class MIRBuilder;  // currently we just delegate MIRBuilder
 class MIRModule;
 class MIRFunction;
 class MIRType;
-class MIRStructType;
 class MIRArrayType;
 class MIRFuncType;
 class MIRConst;
@@ -70,7 +69,6 @@ using Function = MIRFunction;
 
 // Note: Type is base class of all other Types
 using Type = MIRType;              // base class of all Types
-using StructType = MIRStructType;  //    |__ StructType
 using ArrayType = MIRArrayType;
 using Const = MIRConst;
 using StructConst = MIRAggConst;
@@ -270,14 +268,6 @@ public:
 
     bool IsHeapPointerType(Type *mirType) const;
 
-    /* using StructTypeBuilder interface for StructType creation
-         auto structType = CreateStructType("mystruct")
-                             .Field("field1", i32Type)
-                             .Field("field2", i64Type)
-                             .Done();
-     */
-    Type *GetStructType(const String &name);  // query for existing struct type
-
     // for function pointer
     Type *CreateFuncType(std::vector<Type *> params, Type *retType, bool isVarg);
 
@@ -330,14 +320,6 @@ public:
     Const &CreateIntConst(Type *type, int64_t val);
     Const &CreateDoubleConst(double val);
     Const *GetConstFromExpr(const Expr &expr);
-
-    // In MIR, the const for struct & array are the same. But we separate it here.
-    /* using StructConstBuilder interface for StructConst creation:
-         auto structConst = CreateStructConst(structType)
-                              .Field(1, CreateIntConst(i32Type, 0))
-                              .Filed(2, CreateIntConst(i64Type, 0))
-                              .Done();
-     */
 
     /* using ArrayConstBuilder interface for ArrayConst creation:
        Note: the elements should be added consequentially, and match the dim size.
@@ -422,7 +404,6 @@ public:
         return Dread(*var);
     }
 
-    Expr DreadWithField(Var &var, FieldId id);
     Expr IntrinsicOp(IntrinsicId id, Type *type, Args &args_);
     Expr Iread(Type *type, Expr addr, Type *baseType, FieldId fieldId = 0);
     PregIdx CreatePreg(Type *mtype);
@@ -500,61 +481,6 @@ public:
     SwitchBuilder Switch(Type *type, Expr cond, BB &defaultBB)
     {
         return SwitchBuilder(*this, type, cond, defaultBB);
-    }
-
-    class StructTypeBuilder {
-    public:
-        StructTypeBuilder(LMIRBuilder &builder_, const String &name_) : builder(builder_), name(name_) {}
-
-        StructTypeBuilder &Field(std::string_view fieldName, Type *fieldType)
-        {
-            // field type attribute?
-            fields.push_back(std::make_pair(fieldName, fieldType));
-            return *this;
-        }
-
-        Type *Done()
-        {
-            return builder.CreateStructTypeInternal(name, fields);
-        }
-
-    private:
-        LMIRBuilder &builder;
-        const String &name;
-        std::vector<std::pair<std::string_view, Type *>> fields;
-    };
-
-    StructTypeBuilder CreateStructType(const String &name)
-    {
-        return StructTypeBuilder(*this, name);
-    }
-
-    class StructConstBuilder {
-    public:
-        StructConstBuilder(LMIRBuilder &builder_, StructType *type_) : builder(builder_)
-        {
-            structConst = &builder_.CreateStructConstInternal(type_);
-        }
-
-        StructConstBuilder &Field(FieldId fieldId, Const &field)
-        {
-            builder.AddConstItemInternal(*structConst, fieldId, field);
-            return *this;
-        }
-
-        StructConst &Done()
-        {
-            return *structConst;
-        }
-
-    private:
-        LMIRBuilder &builder;
-        StructConst *structConst;
-    };
-
-    StructConstBuilder CreateStructConst(StructType *type)
-    {
-        return StructConstBuilder(*this, type);
     }
 
     class ArrayConstBuilder {
@@ -699,8 +625,6 @@ public:
 
 private:
     Stmt &CreateSwitchInternal(Type *type, Expr cond, BB &defaultBB, std::vector<std::pair<int64_t, BB *>> &cases);
-    Type *CreateStructTypeInternal(const String &name, std::vector<std::pair<std::string_view, Type *>> &fields);
-    StructConst &CreateStructConstInternal(StructType *type);
     void AddConstItemInternal(StructConst &structConst, FieldId fieldId, Const &field);
     void AddConstItemInternal(ArrayConst &structConst, Const &element);
     ArrayConst &CreateArrayConstInternal(ArrayType *type);

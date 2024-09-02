@@ -28,15 +28,14 @@ uint8 X64Emitter::GetSymbolAlign(const MIRSymbol &mirSymbol, bool isComm)
     MIRTypeKind kind = mirSymbol.GetType()->GetKind();
     if (isComm) {
         MIRStorageClass storage = mirSymbol.GetStorageClass();
-        if (((kind == kTypeStruct) || (kind == kTypeClass) || (kind == kTypeArray) || (kind == kTypeUnion)) &&
-            ((storage == kScGlobal) || (storage == kScPstatic) || (storage == kScFstatic)) &&
+        if ((kind == kTypeArray) && ((storage == kScGlobal) || (storage == kScPstatic) || (storage == kScFstatic)) &&
             alignInByte < kSizeOfPTR) {
             alignInByte = kQ;
             return alignInByte;
         }
     }
     if (alignInByte == 0) {
-        if (kind == kTypeStruct || kind == kTypeClass || kind == kTypeArray || kind == kTypeUnion) {
+        if (kind == kTypeArray) {
             return alignInByte;
         } else {
             alignInByte = Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirSymbol.GetType()->GetTypeIndex());
@@ -1544,104 +1543,6 @@ void X64Emitter::EmitFunctionFoot(CGFunc &cgFunc)
     assmbler.EmitFunctionFoot(symIdx, funcAttr);
 }
 
-uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
-{
-    uint32 subStructFieldCounts = 0;
-    uint64 valueSize = EmitStructure(mirConst, cg, subStructFieldCounts, belongsToDataSec);
-    return valueSize;
-}
-
-uint64 X64Emitter::EmitStructure(MIRConst &mirConst, CG &cg, uint32 &subStructFieldCounts, bool belongsToDataSec)
-{
-    uint64 valueSize = 0;
-#ifdef ARK_LITECG_DEBUG
-    StructEmitInfo *sEmitInfo = cg.GetMIRModule()->GetMemPool()->New<StructEmitInfo>();
-    CHECK_NULL_FATAL(sEmitInfo);
-    MIRType &mirType = mirConst.GetType();
-    MIRAggConst &structCt = static_cast<MIRAggConst &>(mirConst);
-    MIRStructType &structType = static_cast<MIRStructType &>(mirType);
-    uint8 structPack = static_cast<uint8>(structType.GetTypeAttrs().GetPack());
-    MIRTypeKind structKind = structType.GetKind();
-    /* all elements of struct. */
-    uint8 num = structKind == kTypeUnion ? 1 : static_cast<uint8>(structType.GetFieldsSize());
-    BECommon *beCommon = Globals::GetInstance()->GetBECommon();
-    /* total size of emitted elements size. */
-    uint64 sizeInByte = GetSymbolSize(structType.GetTypeIndex());
-    uint32 fieldIdx = structKind == kTypeUnion ? structCt.GetFieldIdItem(0) : 1;
-    for (uint32 i = 0; i < num; ++i) {
-        MIRConst *elemConst =
-            structKind == kTypeStruct ? structCt.GetAggConstElement(i + 1) : structCt.GetAggConstElement(fieldIdx);
-        DEBUG_ASSERT(elemConst != nullptr, "elemConst should not be nullptr");
-        MIRType *elemType = structKind == kTypeUnion ? &(elemConst->GetType()) : structType.GetElemType(i);
-        MIRType *nextElemType = i != static_cast<uint32>(num - 1) ? structType.GetElemType(i + 1) : nullptr;
-        uint64 elemSize = GetSymbolSize(elemType->GetTypeIndex());
-        uint8 charBitWidth = GetPrimTypeSize(PTY_i8) * k8Bits;
-        MIRTypeKind elemKind = elemType->GetKind();
-        if (elemKind == kTypeBitField) {
-            if (elemConst == nullptr) {
-                MIRIntConst *zeroFill = GlobalTables::GetIntConstTable().GetOrCreateIntConst(0, *elemType);
-                elemConst = zeroFill;
-            }
-            pair<int32, int32> fieldOffsetPair = beCommon->GetFieldOffset(structType, fieldIdx);
-            uint64 fieldOffset =
-                static_cast<uint64>(static_cast<int64>(fieldOffsetPair.first)) * static_cast<uint64>(charBitWidth) +
-                static_cast<uint64>(static_cast<int64>(fieldOffsetPair.second));
-            EmitBitField(*sEmitInfo, *elemConst, nextElemType, fieldOffset);
-        } else {
-            if (elemConst != nullptr) {
-                if (IsPrimitiveScalar(elemType->GetPrimType())) {
-                    valueSize += EmitSingleElement(*elemConst, belongsToDataSec, true);
-                } else if (elemKind == kTypeArray) {
-                    if (elemType->GetSize() != 0) {
-                        valueSize += EmitArray(*elemConst, cg, belongsToDataSec);
-                    }
-                } else if (elemKind == kTypeStruct || elemKind == kTypeClass || elemKind == kTypeUnion) {
-                    valueSize += EmitStructure(*elemConst, cg, subStructFieldCounts, belongsToDataSec);
-                    fieldIdx += subStructFieldCounts;
-                } else {
-                    DEBUG_ASSERT(false, "should not run here");
-                }
-            } else {
-                assmbler.EmitNull(elemSize);
-            }
-            sEmitInfo->IncreaseTotalSize(elemSize);
-            sEmitInfo->SetNextFieldOffset(sEmitInfo->GetTotalSize() * charBitWidth);
-        }
-
-        if (nextElemType != nullptr && nextElemType->GetKind() != kTypeBitField) {
-            DEBUG_ASSERT(i < static_cast<uint32>(num - 1), "NYI");
-            uint8 nextAlign = Globals::GetInstance()->GetBECommon()->GetTypeAlign(nextElemType->GetTypeIndex());
-            auto fieldAttr = structType.GetFields()[i + 1].second.second;
-            nextAlign = fieldAttr.IsPacked() ? 1 : min(nextAlign, structPack);
-            DEBUG_ASSERT(nextAlign != 0, "expect non-zero");
-            /* append size, append 0 when align need. */
-            uint64 totalSize = sEmitInfo->GetTotalSize();
-            uint64 psize = (totalSize % nextAlign == 0) ? 0 : (nextAlign - (totalSize % nextAlign));
-            /* element is uninitialized, emit null constant. */
-            if (psize != 0) {
-                assmbler.EmitNull(psize);
-                sEmitInfo->IncreaseTotalSize(psize);
-                sEmitInfo->SetNextFieldOffset(sEmitInfo->GetTotalSize() * charBitWidth);
-            }
-        }
-        fieldIdx++;
-    }
-    if (structType.GetKind() == kTypeStruct) {
-        /* The reason of subtracting one is that fieldIdx adds one at the end of the cycle. */
-        DEBUG_ASSERT(fieldIdx > 0, "must not be zero");
-        subStructFieldCounts = fieldIdx - 1;
-    } else if (structType.GetKind() == kTypeUnion) {
-        subStructFieldCounts = static_cast<uint32>(beCommon->GetStructFieldCount(structType.GetTypeIndex()));
-    }
-
-    uint64 opSize = sizeInByte - sEmitInfo->GetTotalSize();
-    if (opSize != 0) {
-        assmbler.EmitNull(opSize);
-    }
-#endif
-    return valueSize;
-}
-
 uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
 {
     uint64 valueSize = 0;
@@ -1680,9 +1581,6 @@ uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
             }
         } else if (elemConst->GetType().GetKind() == kTypeArray) {
             valueSize += EmitArray(*elemConst, cg, belongsToDataSec);
-        } else if (elemConst->GetType().GetKind() == kTypeStruct || elemConst->GetType().GetKind() == kTypeClass ||
-                   elemConst->GetType().GetKind() == kTypeUnion) {
-            valueSize += EmitStructure(*elemConst, cg);
         } else if (elemConst->GetKind() == kConstAddrofFunc) {
             valueSize += EmitSingleElement(*elemConst, belongsToDataSec);
         } else {
@@ -1729,11 +1627,6 @@ void X64Emitter::EmitAddrofElement(MIRConst &mirConst, bool belongsToDataSec)
     int32 structFieldOfs = 0;
     if (symAddr.GetOffset() != 0) {
         symAddrOfs = symAddr.GetOffset();
-    }
-    if (symAddr.GetFieldID() > 1) {
-        MIRStructType *structType = static_cast<MIRStructType *>(symAddrSym->GetType());
-        DEBUG_ASSERT(structType != nullptr, "EmitScalarConstant: non-zero fieldID for non-structure");
-        structFieldOfs = Globals::GetInstance()->GetBECommon()->GetFieldOffset(*structType, symAddr.GetFieldID()).first;
     }
     assmbler.StoreNameIntoSymMap(symIdx, addrName);
     assmbler.EmitAddrValue(symIdx, symAddrOfs, structFieldOfs, belongsToDataSec);
@@ -1939,9 +1832,7 @@ void X64Emitter::EmitLocalVariable(CGFunc &cgFunc)
                         (ct->GetKind() == maple::kConstDoubleConst || ct->GetKind() == maple::kConstFloatConst);
                     auto secType = isFloatTy ? kSText : kSData;
                     assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSALocal, secType);
-                    if (kind == kTypeStruct || kind == kTypeUnion || kind == kTypeClass) {
-                        valueSize = EmitStructure(*ct, *cgFunc.GetCG());
-                    } else if (kind == kTypeArray) {
+                    if (kind == kTypeArray) {
                         valueSize = EmitArray(*ct, *cgFunc.GetCG());
                     } else if (isFloatTy) {
                         MIRType &elmType = ct->GetType();
@@ -2033,9 +1924,6 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
             } else if (kind == kTypeArray) {
                 CHECK_FATAL(!mirSymbol->HasAddrOfValues(), "EmitGlobalVariable: need EmitConstantTable");
                 valueSize = EmitArray(*mirConst, cg);
-            } else if (kind == kTypeStruct || kind == kTypeClass || kind == kTypeUnion) {
-                CHECK_FATAL(!mirSymbol->HasAddrOfValues(), "EmitGlobalVariable: need EmitConstantTable");
-                EmitStructure(*mirConst, cg);
             } else {
                 DEBUG_ASSERT(false, "EmitGlobalVariable: Unknown mirKind");
             }
@@ -2063,8 +1951,6 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
                     }
                 } else if (kind == kTypeArray) {
                     (void)EmitArray(*mirConst, cg, false);
-                } else if (kind == kTypeStruct || kind == kTypeUnion || kind == kTypeClass) {
-                    (void)EmitStructure(*mirConst, cg);
                 } else {
                     FATAL(kLncFatal, "Unknown type in Global pstatic");
                 }

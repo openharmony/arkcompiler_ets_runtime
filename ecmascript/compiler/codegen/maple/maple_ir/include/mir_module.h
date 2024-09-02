@@ -317,7 +317,6 @@ public:
 #endif
     const std::string &GetFileNameFromFileNum(uint32 fileNum) const;
 #ifdef ARK_LITECG_DEBUG
-    void DumpToCxxHeaderFile(std::set<std::string> &leafClasses, const std::string &pathToOutf) const;
     void DumpClassToFile(const std::string &path) const;
     void DumpFunctionList(const std::unordered_set<std::string> *dumpFuncSet) const;
     void DumpGlobalArraySymbol() const;
@@ -822,10 +821,6 @@ public:
     bool HasNotWarned(uint32 postion, uint32 stmtOriginalID);
 
 private:
-#ifdef ARK_LITECG_DEBUG
-    void DumpTypeTreeToCxxHeaderFile(MIRType &ty, std::unordered_set<MIRType *> &dumpedClasses) const;
-#endif
-
     MemPool *memPool;
     MemPool *pragmaMemPool;
     MapleAllocator memPoolAllocator;
