@@ -163,6 +163,10 @@ bool PGOHClassTreeDesc::UpdateForTransition(
             return false;
         }
     }
+    if (transitionLayout_.find(parentType) == transitionLayout_.end()) {
+        return false;
+    }
+    
     bool ret = DumpForChild(child, childType);
     auto parentLayoutDesc = transitionLayout_.find(parentType)->second;
     auto childLayoutDesc = transitionLayout_.find(childType)->second;
