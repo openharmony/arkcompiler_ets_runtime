@@ -514,7 +514,7 @@ function testObjectAssign(testObj: SubClass)
   }
 
   try {
-    Object.assign(testObj, new Object({ propString: undefined }));
+    Object.assign(testObj, new Object({ propString: 0 }));
     print("Success to call Object.assign to update propString with mismatched type");
   } catch (error) {
     print("Fail to call Object.assign to update propString with mismatched type. err: " + error);
