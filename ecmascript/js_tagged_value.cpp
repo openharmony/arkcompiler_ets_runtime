@@ -563,6 +563,9 @@ bool JSTaggedValue::EqualHeapObject(JSThread *thread, const JSHandle<JSTaggedVal
         }
     }
     if (y->IsNumber() || y->IsStringOrSymbol() || y->IsBoolean() || y->IsBigInt()) {
+        if (!(x->IsECMAObject())) {
+            return false;
+        }
         JSHandle<JSTaggedValue> xPrimitive(thread, ToPrimitive(thread, x));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         return Equal(thread, xPrimitive, y);
