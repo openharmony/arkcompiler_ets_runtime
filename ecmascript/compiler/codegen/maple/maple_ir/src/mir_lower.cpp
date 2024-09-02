@@ -381,30 +381,7 @@ BlockNode *MIRLower::LowerBlock(BlockNode &block)
 BaseNode *MIRLower::LowerEmbeddedCandCior(BaseNode *x, StmtNode *curstmt, BlockNode *blk)
 {
     DEBUG_ASSERT(x != nullptr, "nullptr check");
-    if (x->GetOpCode() == OP_cand || x->GetOpCode() == OP_cior) {
-        MIRBuilder *builder = mirModule.GetMIRBuilder();
-        BinaryNode *bnode = static_cast<BinaryNode *>(x);
-        bnode->SetOpnd(LowerEmbeddedCandCior(bnode->Opnd(0), curstmt, blk), 0);
-        PregIdx pregIdx = mirFunc->GetPregTab()->CreatePreg(x->GetPrimType());
-        RegassignNode *regass = builder->CreateStmtRegassign(x->GetPrimType(), pregIdx, bnode->Opnd(0));
-        blk->InsertBefore(curstmt, regass);
-        LabelIdx labIdx = mirFunc->GetLabelTab()->CreateLabel();
-        mirFunc->GetLabelTab()->AddToStringLabelMap(labIdx);
-        BaseNode *cond = builder->CreateExprRegread(x->GetPrimType(), pregIdx);
-        CondGotoNode *cgoto =
-            mirFunc->GetCodeMempool()->New<CondGotoNode>(x->GetOpCode() == OP_cior ? OP_brtrue : OP_brfalse);
-        cgoto->SetOpnd(cond, 0);
-        cgoto->SetOffset(labIdx);
-        blk->InsertBefore(curstmt, cgoto);
-
-        bnode->SetOpnd(LowerEmbeddedCandCior(bnode->Opnd(1), curstmt, blk), 1);
-        regass = builder->CreateStmtRegassign(x->GetPrimType(), pregIdx, bnode->Opnd(1));
-        blk->InsertBefore(curstmt, regass);
-        LabelNode *lbl = mirFunc->GetCodeMempool()->New<LabelNode>();
-        lbl->SetLabelIdx(labIdx);
-        blk->InsertBefore(curstmt, lbl);
-        return builder->CreateExprRegread(x->GetPrimType(), pregIdx);
-    } else {
+    {
         for (size_t i = 0; i < x->GetNumOpnds(); i++) {
             x->SetOpnd(LowerEmbeddedCandCior(x->Opnd(i), curstmt, blk), i);
         }
@@ -423,42 +400,7 @@ void MIRLower::LowerCandCior(BlockNode &block)
     do {
         StmtNode *stmt = nextStmt;
         nextStmt = stmt->GetNext();
-        if (stmt->IsCondBr() && (stmt->Opnd(0) != nullptr &&
-           (stmt->Opnd(0)->GetOpCode() == OP_cand || stmt->Opnd(0)->GetOpCode() == OP_cior))) {
-            CondGotoNode *condGoto = static_cast<CondGotoNode *>(stmt);
-            BinaryNode *cond = static_cast<BinaryNode *>(condGoto->Opnd(0));
-            if ((stmt->GetOpCode() == OP_brfalse && cond->GetOpCode() == OP_cand) ||
-                (stmt->GetOpCode() == OP_brtrue && cond->GetOpCode() == OP_cior)) {
-                // short-circuit target label is same as original condGoto stmt
-                condGoto->SetOpnd(cond->GetBOpnd(0), 0);
-                auto *newCondGoto = mirModule.CurFuncCodeMemPool()->New<CondGotoNode>(Opcode(stmt->GetOpCode()));
-                newCondGoto->SetOpnd(cond->GetBOpnd(1), 0);
-                newCondGoto->SetOffset(condGoto->GetOffset());
-                block.InsertAfter(condGoto, newCondGoto);
-                nextStmt = stmt;  // so it will be re-processed if another cand/cior
-            } else {              // short-circuit target is next statement
-                LabelIdx lIdx;
-                LabelNode *labelStmt = nullptr;
-                if (nextStmt->GetOpCode() == OP_label) {
-                    labelStmt = static_cast<LabelNode *>(nextStmt);
-                    lIdx = labelStmt->GetLabelIdx();
-                } else {
-                    DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "mirModule.CurFunction() should not be nullptr");
-                    lIdx = mirModule.CurFunction()->GetLabelTab()->CreateLabel();
-                    mirModule.CurFunction()->GetLabelTab()->AddToStringLabelMap(lIdx);
-                    labelStmt = mirModule.CurFuncCodeMemPool()->New<LabelNode>();
-                    labelStmt->SetLabelIdx(lIdx);
-                    block.InsertAfter(condGoto, labelStmt);
-                }
-                auto *newCondGoto = mirModule.CurFuncCodeMemPool()->New<CondGotoNode>(
-                    stmt->GetOpCode() == OP_brfalse ? OP_brtrue : OP_brfalse);
-                newCondGoto->SetOpnd(cond->GetBOpnd(0), 0);
-                newCondGoto->SetOffset(lIdx);
-                block.InsertBefore(condGoto, newCondGoto);
-                condGoto->SetOpnd(cond->GetBOpnd(1), 0);
-                nextStmt = newCondGoto;  // so it will be re-processed if another cand/cior
-            }
-        } else {  // call LowerEmbeddedCandCior() for all the expression operands
+        {  // call LowerEmbeddedCandCior() for all the expression operands
             for (size_t i = 0; i < stmt->GetNumOpnds(); i++) {
                 stmt->SetOpnd(LowerEmbeddedCandCior(stmt->Opnd(i), stmt, &block), i);
             }
@@ -469,9 +411,6 @@ void MIRLower::LowerCandCior(BlockNode &block)
 void MIRLower::LowerFunc(MIRFunction &func)
 {
     mirModule.SetCurFunction(&func);
-    if (IsLowerExpandArray()) {
-        ExpandArrayMrt(func);
-    }
     BlockNode *origBody = func.GetBody();
     DEBUG_ASSERT(origBody != nullptr, "nullptr check");
     BlockNode *newBody = LowerBlock(*origBody);
@@ -481,72 +420,6 @@ void MIRLower::LowerFunc(MIRFunction &func)
         LowerCandCior(*newBody);
     }
     func.SetBody(newBody);
-}
-
-IfStmtNode *MIRLower::ExpandArrayMrtIfBlock(IfStmtNode &node)
-{
-    if (node.GetThenPart() != nullptr) {
-        node.SetThenPart(ExpandArrayMrtBlock(*node.GetThenPart()));
-    }
-    if (node.GetElsePart() != nullptr) {
-        node.SetElsePart(ExpandArrayMrtBlock(*node.GetElsePart()));
-    }
-    return &node;
-}
-
-void MIRLower::AddArrayMrtMpl(BaseNode &exp, BlockNode &newBlock)
-{
-    MIRModule &mod = mirModule;
-    MIRBuilder *builder = mod.GetMIRBuilder();
-    for (size_t i = 0; i < exp.NumOpnds(); ++i) {
-        DEBUG_ASSERT(exp.Opnd(i) != nullptr, "nullptr check");
-        AddArrayMrtMpl(*exp.Opnd(i), newBlock);
-    }
-    if (exp.GetOpCode() == OP_array) {
-        auto &arrayNode = static_cast<ArrayNode &>(exp);
-        if (arrayNode.GetBoundsCheck()) {
-            BaseNode *arrAddr = arrayNode.Opnd(0);
-            UnaryStmtNode *nullCheck = builder->CreateStmtUnary(OP_assertnonnull, arrAddr);
-            newBlock.AddStatement(nullCheck);
-        }
-    }
-}
-
-BlockNode *MIRLower::ExpandArrayMrtBlock(BlockNode &block)
-{
-    auto *newBlock = mirModule.CurFuncCodeMemPool()->New<BlockNode>();
-    if (block.GetFirst() == nullptr) {
-        return newBlock;
-    }
-    StmtNode *nextStmt = block.GetFirst();
-    do {
-        StmtNode *stmt = nextStmt;
-        DEBUG_ASSERT(stmt != nullptr, "nullptr check");
-        nextStmt = stmt->GetNext();
-        switch (stmt->GetOpCode()) {
-            case OP_if:
-                newBlock->AddStatement(ExpandArrayMrtIfBlock(static_cast<IfStmtNode &>(*stmt)));
-                break;
-            case OP_block:
-                newBlock->AddStatement(ExpandArrayMrtBlock(static_cast<BlockNode &>(*stmt)));
-                break;
-            default:
-                AddArrayMrtMpl(*stmt, *newBlock);
-                newBlock->AddStatement(stmt);
-                break;
-        }
-    } while (nextStmt != nullptr);
-    return newBlock;
-}
-
-void MIRLower::ExpandArrayMrt(MIRFunction &func)
-{
-    if (ShouldOptArrayMrt(func)) {
-        BlockNode *origBody = func.GetBody();
-        DEBUG_ASSERT(origBody != nullptr, "nullptr check");
-        BlockNode *newBody = ExpandArrayMrtBlock(*origBody);
-        func.SetBody(newBody);
-    }
 }
 
 MIRFuncType *MIRLower::FuncTypeFromFuncPtrExpr(BaseNode *x)
@@ -603,13 +476,6 @@ MIRFuncType *MIRLower::FuncTypeFromFuncPtrExpr(BaseNode *x)
             } else if (mirType->GetKind() == kTypePointer) {
                 res = static_cast<MIRPtrType *>(mirType)->GetPointedFuncType();
             }
-            break;
-        }
-        case OP_addroffunc: {
-            AddroffuncNode *addrofFunc = static_cast<AddroffuncNode *>(x);
-            PUIdx puIdx = addrofFunc->GetPUIdx();
-            MIRFunction *f = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
-            res = f->GetMIRFuncType();
             break;
         }
         case OP_retype: {

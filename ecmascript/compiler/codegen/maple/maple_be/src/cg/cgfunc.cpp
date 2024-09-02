@@ -359,22 +359,7 @@ static void HandleCondbr(StmtNode &stmt, CGFunc &cgFunc)
             return;
         }
     }
-    /*
-     * Special case:
-     * brfalse(ge (cmpg (op0, op1), 0) ==>
-     * fcmp op1, op2
-     * blo
-     */
-    if ((condGotoNode.GetOpCode() == OP_brfalse) && (condNode->GetOpCode() == OP_ge) && (op0->GetOpCode() == OP_cmpg) &&
-        (op1->GetOpCode() == OP_constval)) {
-        auto *constValNode = static_cast<ConstvalNode *>(op1);
-        MIRConst *mirConst = constValNode->GetConstVal();
-        if (mirConst->IsZero()) {
-            cgFunc.SelectCondSpecialCase2(condGotoNode, *op0);
-            cgFunc.SetCurBB(*cgFunc.StartNewBB(condGotoNode));
-            return;
-        }
-    }
+
     Operand *opnd0 = cgFunc.HandleExpr(*condNode, *condNode->Opnd(0));
     Operand *opnd1 = cgFunc.HandleExpr(*condNode, *condNode->Opnd(1));
     cgFunc.SelectCondGoto(condGotoNode, *opnd0, *opnd1);
@@ -487,7 +472,6 @@ static void InitHandleStmtFactory()
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccall, HandleIntrinsicCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallassigned, HandleIntrinsicCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtype, HandleIntrinsicCall);
-    RegisterFactoryFunction<HandleStmtFactory>(OP_intrinsiccallwithtypeassigned, HandleIntrinsicCall);
     RegisterFactoryFunction<HandleStmtFactory>(OP_dassign, HandleDassign);
     RegisterFactoryFunction<HandleStmtFactory>(OP_regassign, HandleRegassign);
     RegisterFactoryFunction<HandleStmtFactory>(OP_iassign, HandleIassign);

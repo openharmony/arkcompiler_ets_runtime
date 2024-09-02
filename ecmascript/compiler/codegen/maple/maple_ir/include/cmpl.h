@@ -315,10 +315,6 @@ struct ExtractbitsNodeT : public BaseNodeT {  // 8B
     uint16 padding;
 };
 
-struct IreadoffNodeT : public BaseNodeT {  // 8B
-    int32 offset;
-};
-
 using BinaryNodeT = BaseNodeT;
 // Add expression types to compare node, to
 // facilitate the evaluation of postorder stored kCmpl
@@ -352,23 +348,16 @@ inline MirConstT *GetConstval(const ConstvalNodeT &node)
 }
 
 // SizeoftypeNode shouldn't be seen here
-// ArrayNode shouldn't be seen here
 struct AddrofNodeT : public BaseNodeT {  // 12B
     StIdx stIdx;
     FieldID fieldID;
 };
 
 using DreadNodeT = AddrofNodeT;              // same shape.
-struct AddroffuncNodeT : public BaseNodeT {  // 8B
-    PUIdx puIdx;                             // 32bit now
-};
 
 struct RegreadNodeT : public BaseNodeT {  // 8B
     PregIdx regIdx;                       // 32bit, negative if special register
 };
 
-struct AddroflabelNodeT : public BaseNodeT {  // 8B
-    uint32 offset;
-};
 }  // namespace maple
 #endif  // MAPLE_INCLUDE_VM_CMPL_V2

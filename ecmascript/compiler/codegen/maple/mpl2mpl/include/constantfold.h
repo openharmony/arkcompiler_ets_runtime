@@ -55,11 +55,9 @@ public:
     static bool IntegerOpIsOverflow(Opcode op, PrimType primType, int64 cstA, int64 cstB);
     static MIRIntConst *FoldIntConstUnaryMIRConst(Opcode opcode, PrimType resultType, const MIRIntConst *constNode);
 private:
-    std::pair<BaseNode*, std::optional<IntVal>> FoldArray(ArrayNode *node);
     std::pair<BaseNode*, std::optional<IntVal>> FoldBase(BaseNode *node) const;
     std::pair<BaseNode*, std::optional<IntVal>> FoldBinary(BinaryNode *node);
     std::pair<BaseNode*, std::optional<IntVal>> FoldCompare(CompareNode *node);
-    std::pair<BaseNode*, std::optional<IntVal>> FoldDepositbits(DepositbitsNode *node);
     std::pair<BaseNode*, std::optional<IntVal>> FoldExtractbits(ExtractbitsNode *node);
     ConstvalNode *FoldSignExtend(Opcode opcode, PrimType resultType, uint8 size, const ConstvalNode &cst) const;
     std::pair<BaseNode*, std::optional<IntVal>> FoldIread(IreadNode *node);

@@ -465,41 +465,6 @@ protected:
 // IaddrofNode has the same member fields and member methods as IreadNode
 using IaddrofNode = IreadNode;
 
-class IreadoffNode : public UnaryNode {
-public:
-    IreadoffNode() : UnaryNode(OP_ireadoff) {}
-
-    IreadoffNode(PrimType ptyp, int32 ofst) : UnaryNode(OP_ireadoff, ptyp), offset(ofst) {}
-
-    IreadoffNode(PrimType ptyp, BaseNode *opnd, int32 ofst) : UnaryNode(OP_ireadoff, ptyp, opnd), offset(ofst) {}
-
-    virtual ~IreadoffNode() = default;
-
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int32 indent) const override;
-#endif
-
-    IreadoffNode *CloneTree(MapleAllocator &allocator) const override
-    {
-        auto *node = allocator.GetMemPool()->New<IreadoffNode>(*this);
-        node->SetOpnd(Opnd(0)->CloneTree(allocator), 0);
-        return node;
-    }
-
-    int32 GetOffset() const
-    {
-        return offset;
-    }
-
-    void SetOffset(int32 offsetValue)
-    {
-        offset = offsetValue;
-    }
-
-private:
-    int32 offset = 0;
-};
-
 class BinaryOpnds {
 public:
     virtual ~BinaryOpnds() = default;
@@ -631,56 +596,6 @@ public:
 
 private:
     PrimType opndType = kPtyInvalid;  // type of operands.
-};
-
-class DepositbitsNode : public BinaryNode {
-public:
-    DepositbitsNode() : BinaryNode(OP_depositbits) {}
-
-    DepositbitsNode(Opcode o, PrimType typ) : BinaryNode(o, typ) {}
-
-    DepositbitsNode(Opcode o, PrimType typ, uint8 offset, uint8 size, BaseNode *l, BaseNode *r)
-        : BinaryNode(o, typ, l, r), bitsOffset(offset), bitsSize(size)
-    {
-    }
-
-    virtual ~DepositbitsNode() = default;
-
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int32 indent) const override;
-#endif
-
-    DepositbitsNode *CloneTree(MapleAllocator &allocator) const override
-    {
-        auto *node = allocator.GetMemPool()->New<DepositbitsNode>(*this);
-        node->SetBOpnd(GetBOpnd(0)->CloneTree(allocator), 0);
-        node->SetBOpnd(GetBOpnd(1)->CloneTree(allocator), 1);
-        return node;
-    }
-
-    uint8 GetBitsOffset() const
-    {
-        return bitsOffset;
-    }
-
-    void SetBitsOffset(uint8 offset)
-    {
-        bitsOffset = offset;
-    }
-
-    uint8 GetBitsSize() const
-    {
-        return bitsSize;
-    }
-
-    void SetBitsSize(uint8 size)
-    {
-        bitsSize = size;
-    }
-
-private:
-    uint8 bitsOffset = 0;
-    uint8 bitsSize = 0;
 };
 
 class NaryOpnds {
@@ -990,161 +905,6 @@ private:
     MIRConst *constVal = nullptr;
 };
 
-class ConststrNode : public BaseNode {
-public:
-    ConststrNode() : BaseNode(OP_conststr) {}
-
-    explicit ConststrNode(UStrIdx i) : BaseNode(OP_conststr), strIdx(i) {}
-
-    ConststrNode(PrimType typ, UStrIdx i) : BaseNode(OP_conststr, typ, 0), strIdx(i) {}
-
-    virtual ~ConststrNode() = default;
-
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int32 indent) const override;
-#endif
-
-    ConststrNode *CloneTree(MapleAllocator &allocator) const override
-    {
-        return allocator.GetMemPool()->New<ConststrNode>(*this);
-    }
-
-    UStrIdx GetStrIdx() const
-    {
-        return strIdx;
-    }
-
-    void SetStrIdx(UStrIdx idx)
-    {
-        strIdx = idx;
-    }
-
-private:
-    UStrIdx strIdx = UStrIdx(0);
-};
-
-class Conststr16Node : public BaseNode {
-public:
-    Conststr16Node() : BaseNode(OP_conststr16) {}
-
-    explicit Conststr16Node(U16StrIdx i) : BaseNode(OP_conststr16), strIdx(i) {}
-
-    Conststr16Node(PrimType typ, U16StrIdx i) : BaseNode(OP_conststr16, typ, 0), strIdx(i) {}
-
-    virtual ~Conststr16Node() = default;
-
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int32 indent) const override;
-#endif
-
-    Conststr16Node *CloneTree(MapleAllocator &allocator) const override
-    {
-        return allocator.GetMemPool()->New<Conststr16Node>(*this);
-    }
-
-    U16StrIdx GetStrIdx() const
-    {
-        return strIdx;
-    }
-
-    void SetStrIdx(U16StrIdx idx)
-    {
-        strIdx = idx;
-    }
-
-private:
-    U16StrIdx strIdx = U16StrIdx(0);
-};
-
-class ArrayNode : public NaryNode {
-public:
-    ArrayNode(MapleAllocator &allocator) : NaryNode(allocator, OP_array) {}
-
-    explicit ArrayNode(const MIRModule &mod) : ArrayNode(mod.GetCurFuncCodeMPAllocator()) {}
-
-    ArrayNode(MapleAllocator &allocator, PrimType typ, TyIdx idx) : NaryNode(allocator, OP_array, typ), tyIdx(idx) {}
-
-    ArrayNode(const MIRModule &mod, PrimType typ, TyIdx idx) : ArrayNode(mod.GetCurFuncCodeMPAllocator(), typ, idx) {}
-
-    ArrayNode(MapleAllocator &allocator, PrimType typ, TyIdx idx, bool bcheck)
-        : NaryNode(allocator, OP_array, typ), tyIdx(idx), boundsCheck(bcheck)
-    {
-    }
-
-    ArrayNode(const MIRModule &mod, PrimType typ, TyIdx idx, bool bcheck)
-        : ArrayNode(mod.GetCurFuncCodeMPAllocator(), typ, idx, bcheck)
-    {
-    }
-
-    ArrayNode(MapleAllocator &allocator, const ArrayNode &node)
-        : NaryNode(allocator, node), tyIdx(node.tyIdx), boundsCheck(node.boundsCheck)
-    {
-    }
-
-    ArrayNode(const MIRModule &mod, const ArrayNode &node) : ArrayNode(mod.GetCurFuncCodeMPAllocator(), node) {}
-
-    ArrayNode(ArrayNode &node) = delete;
-    ArrayNode &operator=(const ArrayNode &node) = delete;
-    virtual ~ArrayNode() = default;
-
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int32 indent) const override;
-#endif
-
-    bool IsSameBase(ArrayNode *);
-
-    size_t NumOpnds() const override
-    {
-        DEBUG_ASSERT(numOpnds == GetNopndSize(), "ArrayNode has wrong numOpnds field");
-        return GetNopndSize();
-    }
-
-    ArrayNode *CloneTree(MapleAllocator &allocator) const override
-    {
-        auto *node = allocator.GetMemPool()->New<ArrayNode>(allocator, *this);
-        for (size_t i = 0; i < GetNopndSize(); ++i) {
-            node->GetNopnd().push_back(GetNopndAt(i)->CloneTree(allocator));
-        }
-        node->boundsCheck = boundsCheck;
-        node->SetNumOpnds(GetNopndSize());
-        return node;
-    }
-
-    BaseNode *GetIndex(size_t i)
-    {
-        return Opnd(i + 1);
-    }
-
-    BaseNode *GetBase()
-    {
-        return Opnd(0);
-    }
-
-    TyIdx GetTyIdx() const
-    {
-        return tyIdx;
-    }
-
-    void SetTyIdx(TyIdx idx)
-    {
-        tyIdx = idx;
-    }
-
-    bool GetBoundsCheck() const
-    {
-        return boundsCheck;
-    }
-
-    void SetBoundsCheck(bool check)
-    {
-        boundsCheck = check;
-    }
-
-private:
-    TyIdx tyIdx;
-    bool boundsCheck = true;
-};
-
 class AddrofNode : public BaseNode {
 public:
     explicit AddrofNode(Opcode o) : BaseNode(o), stIdx() {}
@@ -1219,9 +979,6 @@ public:
     int32 offset = 0;
 };
 
-// AddrofoffNode has the same member fields and member methods as DreadoffNode
-using AddrofoffNode = DreadoffNode;
-
 class RegreadNode : public BaseNode {
 public:
     RegreadNode() : BaseNode(OP_regread) {}
@@ -1257,69 +1014,7 @@ private:
     PregIdx regIdx = 0;  // 32bit, negative if special register
 };
 
-class AddroffuncNode : public BaseNode {
-public:
-    AddroffuncNode() : BaseNode(OP_addroffunc) {}
-
-    AddroffuncNode(PrimType typ, PUIdx pIdx) : BaseNode(OP_addroffunc, typ, 0), puIdx(pIdx) {}
-
-    virtual ~AddroffuncNode() = default;
-
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int32 indent) const override;
-#endif
-
-    AddroffuncNode *CloneTree(MapleAllocator &allocator) const override
-    {
-        return allocator.GetMemPool()->New<AddroffuncNode>(*this);
-    }
-
-    PUIdx GetPUIdx() const
-    {
-        return puIdx;
-    }
-
-    void SetPUIdx(PUIdx puIdxValue)
-    {
-        puIdx = puIdxValue;
-    }
-
-private:
-    PUIdx puIdx = 0;  // 32bit now
-};
-
-class AddroflabelNode : public BaseNode {
-public:
-    AddroflabelNode() : BaseNode(OP_addroflabel) {}
-
-    explicit AddroflabelNode(uint32 ofst) : BaseNode(OP_addroflabel), offset(ofst) {}
-
-    virtual ~AddroflabelNode() = default;
-
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int32 indent) const override;
-#endif
-
-    AddroflabelNode *CloneTree(MapleAllocator &allocator) const override
-    {
-        return allocator.GetMemPool()->New<AddroflabelNode>(*this);
-    }
-
-    uint32 GetOffset() const
-    {
-        return offset;
-    }
-
-    void SetOffset(uint32 offsetValue)
-    {
-        offset = offsetValue;
-    }
-
-private:
-    LabelIdx offset = 0;
-};
-
-// for finally, endtry
+// for finally
 class StmtNode : public BaseNode, public PtrListNodeBase<StmtNode> {
 public:
     static std::atomic<uint32> stmtIDNext;  // for assigning stmtID, initialized to 1; 0 is reserved
@@ -1743,7 +1438,7 @@ private:
 using MCasePair = std::pair<BaseNode *, LabelIdx>;
 using MCaseVector = MapleVector<MCasePair>;
 
-// eval, throw, free, assertnonnull
+// eval, throw, free
 class UnaryStmtNode : public StmtNode {
 public:
     explicit UnaryStmtNode(Opcode o) : StmtNode(o, 1) {}
@@ -2298,48 +1993,6 @@ public:
     }
 };
 
-class IassignoffNode : public BinaryStmtNode {
-public:
-    IassignoffNode() : BinaryStmtNode(OP_iassignoff) {}
-
-    explicit IassignoffNode(int32 ofst) : BinaryStmtNode(OP_iassignoff), offset(ofst) {}
-
-    IassignoffNode(PrimType primType, int32 offset, BaseNode *addrOpnd, BaseNode *srcOpnd) : IassignoffNode(offset)
-    {
-        BaseNodeT::SetPrimType(primType);
-        SetBOpnd(addrOpnd, 0);
-        SetBOpnd(srcOpnd, 1);
-    }
-
-    virtual ~IassignoffNode() = default;
-
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int32 indent) const override;
-#endif
-
-    IassignoffNode *CloneTree(MapleAllocator &allocator) const override
-    {
-        auto *node = allocator.GetMemPool()->New<IassignoffNode>(*this);
-        node->SetStmtID(stmtIDNext++);
-        node->SetBOpnd(GetBOpnd(0)->CloneTree(allocator), 0);
-        node->SetBOpnd(GetBOpnd(1)->CloneTree(allocator), 1);
-        return node;
-    }
-
-    int32 GetOffset() const
-    {
-        return offset;
-    }
-
-    void SetOffset(int32 newOffset)
-    {
-        offset = newOffset;
-    }
-
-private:
-    int32 offset = 0;
-};
-
 // used by return
 class NaryStmtNode : public StmtNode, public NaryOpnds {
 public:
@@ -2460,28 +2113,8 @@ private:
     GStrIdx funcNameIdx;
 };
 
-// used by assertnonnull
-class AssertNonnullStmtNode : public UnaryStmtNode, public SafetyCheckStmtNode {
-public:
-    AssertNonnullStmtNode(Opcode o, GStrIdx funcNameIdx) : UnaryStmtNode(o), SafetyCheckStmtNode(funcNameIdx) {}
-    virtual ~AssertNonnullStmtNode() {}
-
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int32 indent) const override;
-#endif
-
-    AssertNonnullStmtNode *CloneTree(MapleAllocator &allocator) const override
-    {
-        auto *node = allocator.GetMemPool()->New<AssertNonnullStmtNode>(*this);
-        node->SetStmtID(stmtIDNext++);
-        node->SetOpnd(Opnd()->CloneTree(allocator), 0);
-        return node;
-    }
-};
-
-// used by call, virtualcall, superclasscall, interfacecall,
-// callassigned, virtualcallassigned,
-// superclasscallassigned,
+// used by call,
+// callassigned,
 class CallNode : public NaryStmtNode, public DeoptBundleInfo {
 public:
     CallNode(MapleAllocator &allocator, Opcode o)
@@ -2727,7 +2360,7 @@ private:
     CallReturnVector returnValues;
 };
 
-// used by intrinsiccall and xintrinsiccall
+// used by intrinsiccall
 class IntrinsiccallNode : public NaryStmtNode, public DeoptBundleInfo {
 public:
     IntrinsiccallNode(MapleAllocator &allocator, Opcode o)
@@ -2955,77 +2588,6 @@ enum AsmQualifierKind : unsigned {  // they are alreadgy Maple IR keywords
     kASMvolatile,
     kASMinline,
     kASMgoto,
-};
-
-class AsmNode : public NaryStmtNode {
-public:
-    explicit AsmNode(MapleAllocator *alloc)
-        : NaryStmtNode(*alloc, OP_asm),
-          asmString(alloc->GetMemPool()),
-          inputConstraints(alloc->Adapter()),
-          asmOutputs(alloc->Adapter()),
-          outputConstraints(alloc->Adapter()),
-          clobberList(alloc->Adapter()),
-          gotoLabels(alloc->Adapter()),
-          qualifiers(0)
-    {
-    }
-
-    AsmNode(MapleAllocator &allocator, const AsmNode &node)
-        : NaryStmtNode(allocator, node),
-          asmString(node.asmString, allocator.GetMemPool()),
-          inputConstraints(allocator.Adapter()),
-          asmOutputs(allocator.Adapter()),
-          outputConstraints(allocator.Adapter()),
-          clobberList(allocator.Adapter()),
-          gotoLabels(allocator.Adapter()),
-          qualifiers(node.qualifiers)
-    {
-    }
-
-    virtual ~AsmNode() = default;
-
-    void SetQualifier(AsmQualifierKind x)
-    {
-        qualifiers |= (1U << static_cast<uint32>(x));
-    }
-
-    bool GetQualifier(AsmQualifierKind x) const
-    {
-        return (qualifiers & (1U << static_cast<uint32>(x))) != 0;
-    }
-
-    CallReturnVector *GetCallReturnVector() override
-    {
-        return &asmOutputs;
-    }
-
-    void SetHasWriteInputs()
-    {
-        hasWriteInputs = true;
-    }
-
-    bool HasWriteInputs() const
-    {
-        return hasWriteInputs;
-    }
-
-#ifdef ARK_LITECG_DEBUG
-    void DumpOutputs(int32 indent, std::string &uStr) const;
-    void DumpInputOperands(int32 indent, std::string &uStr) const;
-    void Dump(int32 indent) const override;
-#endif
-
-    MapleString asmString;
-    MapleVector<UStrIdx> inputConstraints;  // length is numOpnds
-    CallReturnVector asmOutputs;
-    MapleVector<UStrIdx> outputConstraints;  // length is returnValues.size()
-    MapleVector<UStrIdx> clobberList;
-    MapleVector<LabelIdx> gotoLabels;
-    uint32 qualifiers;
-
-private:
-    bool hasWriteInputs = false;
 };
 
 #ifdef ARK_LITECG_DEBUG

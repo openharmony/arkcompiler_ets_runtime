@@ -25,7 +25,6 @@
 #include "intrinsics.h" /* For IntrinDesc. This includes 'intrinsic_op.h' as well */
 #include "becommon.h"
 #include "cg.h"
-#include "bbt.h"
 /* MapleIR headers. */
 #include "mir_nodes.h"
 #include "mir_module.h"
@@ -113,8 +112,6 @@ public:
         return &addrof;
     }
 
-    BaseNode *LowerIaddrof(const IreadNode &iaddrof);
-
     DassignNode *SaveReturnValueInLocal(StIdx, uint16);
     BaseNode *NeedRetypeWhenLowerCallAssigned(PrimType pType);
     void LowerCallStmt(StmtNode &, StmtNode *&, BlockNode &, MIRType *retty = nullptr, bool uselvar = false,
@@ -144,8 +141,6 @@ public:
     void CleanupBranches(MIRFunction &func) const;
 
     void LowerTypePtr(BaseNode &expr) const;
-
-    void LowerAsmStmt(AsmNode *asmNode, BlockNode *blk);
 
     /* A pseudo register refers to a symbol when DreadNode is converted to RegreadNode. */
     StIdx GetSymbolReferredToByPseudoRegister(PregIdx regNO) const

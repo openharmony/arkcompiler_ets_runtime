@@ -27,9 +27,6 @@ enum Opcode : uint8 {
     OP_last,
 };
 
-#define CASE_OP_ASSERT_NONNULL   \
-    case OP_assertnonnull:
-
 inline constexpr bool IsDAssign(Opcode code)
 {
     return (code == OP_dassign);
@@ -37,10 +34,8 @@ inline constexpr bool IsDAssign(Opcode code)
 
 inline constexpr bool IsCallAssigned(Opcode code)
 {
-    return (code == OP_callassigned || code == OP_virtualcallassigned ||
-            code == OP_superclasscallassigned ||
-            code == OP_icallassigned || code == OP_icallprotoassigned || code == OP_intrinsiccallassigned ||
-            code == OP_xintrinsiccallassigned || code == OP_intrinsiccallwithtypeassigned);
+    return (code == OP_callassigned ||
+            code == OP_icallassigned || code == OP_icallprotoassigned || code == OP_intrinsiccallassigned);
 }
 
 inline constexpr bool IsBranch(Opcode opcode)
@@ -74,27 +69,16 @@ constexpr bool IsCommutative(Opcode opcode)
 constexpr bool IsStmtMustRequire(Opcode opcode)
 {
     switch (opcode) {
-        case OP_endtry:
         case OP_return:
         case OP_call:
-        case OP_virtualcall:
-        case OP_superclasscall:
-        case OP_interfacecall:
         case OP_callassigned:
-        case OP_virtualcallassigned:
-        case OP_superclasscallassigned:
         case OP_icall:
         case OP_icallassigned:
         case OP_icallproto:
         case OP_icallprotoassigned:
         case OP_intrinsiccall:
-        case OP_xintrinsiccall:
         case OP_intrinsiccallassigned:
-        case OP_xintrinsiccallassigned:
-        case OP_intrinsiccallwithtype:
-        case OP_intrinsiccallwithtypeassigned:
-        case OP_asm:
-            CASE_OP_ASSERT_NONNULL {
+        case OP_intrinsiccallwithtype: {
             return true;
         }
         default:
@@ -165,10 +149,8 @@ constexpr bool IsSupportedOpForCopyInPhasesLoopUnrollAndVRP(Opcode op)
         case OP_brfalse:
         case OP_brtrue:
         case OP_iassign:
-            CASE_OP_ASSERT_NONNULL
         case OP_call:
         case OP_callassigned:
-        case OP_virtualcallassigned:
         case OP_intrinsiccall:
         case OP_intrinsiccallassigned:
         case OP_intrinsiccallwithtype: {

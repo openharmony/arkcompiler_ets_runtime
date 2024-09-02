@@ -1947,19 +1947,6 @@ void AArch64CGFunc::SelectCmpOp(Operand &resOpnd, Operand &lhsOpnd, Operand &rhs
      * if OP_cmpg, CSINC RES, RES, WZR, VC (no overflow)
      */
     RegOperand &xzr = GetZeroOpnd(dsize);
-    if ((opcode == OP_cmpl) || (opcode == OP_cmpg)) {
-        DEBUG_ASSERT(isFloat, "incorrect operand types");
-        SelectTargetFPCmpQuiet(opnd0, *opnd1, GetPrimTypeBitSize(primType));
-        SelectAArch64CSINV(resOpnd, xzr, xzr, GetCondOperand(CC_GE), (dsize == k64BitSize));
-        SelectAArch64CSINC(resOpnd, resOpnd, xzr, GetCondOperand(CC_LE), (dsize == k64BitSize));
-        if (opcode == OP_cmpl) {
-            SelectAArch64CSINV(resOpnd, resOpnd, xzr, GetCondOperand(CC_VC), (dsize == k64BitSize));
-        } else {
-            SelectAArch64CSINC(resOpnd, resOpnd, xzr, GetCondOperand(CC_VC), (dsize == k64BitSize));
-        }
-        return;
-    }
-
     if (opcode == OP_cmp) {
         SelectAArch64Cmp(opnd0, *opnd1, !isFloat, GetPrimTypeBitSize(primType));
         if (unsignedIntegerComparison) {
@@ -4116,22 +4103,7 @@ MemOperand &AArch64CGFunc::CreateNonExtendMemOpnd(PrimType ptype, const BaseNode
         addrOpnd = HandleExpr(parent, addrExpr);
     }
     addrOpnd = static_cast<RegOperand *>(&LoadIntoRegister(*addrOpnd, PTY_a64));
-    Insn *lastInsn = GetCurBB() == nullptr ? nullptr : GetCurBB()->GetLastMachineInsn();
-    if ((addrExpr.GetOpCode() == OP_CG_array_elem_add) && (offset == 0) && lastInsn &&
-        (lastInsn->GetMachineOpcode() == MOP_xadrpl12) &&
-        (&lastInsn->GetOperand(kInsnFirstOpnd) == &lastInsn->GetOperand(kInsnSecondOpnd))) {
-        Operand &opnd = lastInsn->GetOperand(kInsnThirdOpnd);
-        StImmOperand &stOpnd = static_cast<StImmOperand &>(opnd);
-
-        OfstOperand &ofstOpnd = GetOrCreateOfstOpnd(static_cast<uint64>(stOpnd.GetOffset()), k32BitSize);
-        MemOperand &tmpMemOpnd =
-            GetOrCreateMemOpnd(MemOperand::kAddrModeLo12Li, GetPrimTypeBitSize(ptype),
-                               static_cast<RegOperand *>(addrOpnd), nullptr, &ofstOpnd, stOpnd.GetSymbol());
-        if (GetCurBB() && GetCurBB()->GetLastMachineInsn()) {
-            GetCurBB()->RemoveInsn(*GetCurBB()->GetLastMachineInsn());
-        }
-        return tmpMemOpnd;
-    } else {
+    {
         OfstOperand &ofstOpnd = GetOrCreateOfstOpnd(static_cast<uint64>(offset), k64BitSize);
         return GetOrCreateMemOpnd(MemOperand::kAddrModeBOi, GetPrimTypeBitSize(ptype),
                                   static_cast<RegOperand *>(addrOpnd), nullptr, &ofstOpnd, nullptr);

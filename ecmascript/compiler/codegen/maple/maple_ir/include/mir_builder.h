@@ -116,7 +116,6 @@ public:
     MIRFunction *GetOrCreateFunction(const std::string &, TyIdx);
     MIRFunction *GetFunctionFromSymbol(const MIRSymbol &funcst);
     MIRFunction *GetFunctionFromName(const std::string &);
-
     // for creating Function.
     MIRSymbol *GetFunctionArgument(MIRFunction &fun, uint32 index) const
     {
@@ -182,8 +181,6 @@ public:
     TypeCvtNode *CreateExprTypeCvt(Opcode o, PrimType toPrimType, PrimType fromPrimType, BaseNode &opnd);
     TypeCvtNode *CreateExprTypeCvt(Opcode o, const MIRType &type, const MIRType &fromtype, BaseNode *opnd);
     ExtractbitsNode *CreateExprExtractbits(Opcode o, PrimType type, uint32 bOffset, uint32 bSize, BaseNode *opnd);
-    DepositbitsNode *CreateExprDepositbits(Opcode o, PrimType type, uint32 bOffset, uint32 bSize, BaseNode *leftOpnd,
-                                           BaseNode *rightOpnd);
     RetypeNode *CreateExprRetype(const MIRType &type, const MIRType &fromType, BaseNode *opnd);
     RetypeNode *CreateExprRetype(const MIRType &type, PrimType fromType, BaseNode *opnd);
     IntrinsicopNode *CreateExprIntrinsicop(MIRIntrinsicID id, Opcode op, PrimType primType, TyIdx tyIdx,
@@ -198,34 +195,17 @@ public:
     RegassignNode *CreateStmtRegassign(PrimType pty, PregIdx regIdx, BaseNode *src);
     IassignNode *CreateStmtIassign(const MIRType &type, FieldID fieldID, BaseNode *addr, BaseNode *src);
     CallNode *CreateStmtCall(PUIdx puIdx, const MapleVector<BaseNode *> &args, Opcode opcode = OP_call);
-    CallNode *CreateStmtVirtualCall(PUIdx puIdx, const MapleVector<BaseNode *> &args)
-    {
-        return CreateStmtCall(puIdx, args, OP_virtualcall);
-    }
-
-    CallNode *CreateStmtSuperclassCall(PUIdx puIdx, const MapleVector<BaseNode *> &args)
-    {
-        return CreateStmtCall(puIdx, args, OP_superclasscall);
-    }
-
-    CallNode *CreateStmtInterfaceCall(PUIdx puIdx, const MapleVector<BaseNode *> &args)
-    {
-        return CreateStmtCall(puIdx, args, OP_interfacecall);
-    }
 
     IcallNode *CreateStmtIcall(const MapleVector<BaseNode *> &args);
     IcallNode *CreateStmtIcallAssigned(const MapleVector<BaseNode *> &args, const MIRSymbol &ret);
     IcallNode *CreateStmtIcallAssigned(const MapleVector<BaseNode *> &args, PregIdx pregIdx);
     IcallNode *CreateStmtIcallproto(const MapleVector<BaseNode *> &args, const TyIdx &prototypeIdx);
-    // For Call, VirtualCall, SuperclassCall, InterfaceCall
+    // For Call
     IntrinsiccallNode *CreateStmtIntrinsicCall(MIRIntrinsicID idx, const MapleVector<BaseNode *> &arguments,
                                                TyIdx tyIdx = TyIdx());
-    IntrinsiccallNode *CreateStmtXintrinsicCall(MIRIntrinsicID idx, const MapleVector<BaseNode *> &arguments);
     CallNode *CreateStmtCallRegassigned(PUIdx, const MapleVector<BaseNode *> &, PregIdx, Opcode);
     IntrinsiccallNode *CreateStmtIntrinsicCallAssigned(MIRIntrinsicID idx, const MapleVector<BaseNode *> &arguments,
                                                        PregIdx retPregIdx1, PregIdx retPregIdx2);
-    IntrinsiccallNode *CreateStmtIntrinsicCallAssigned(MIRIntrinsicID idx, const MapleVector<BaseNode *> &arguments,
-                                                       const MIRSymbol *ret, TyIdx tyIdx = TyIdx());
     IfStmtNode *CreateStmtIf(BaseNode *cond);
     SwitchNode *CreateStmtSwitch(BaseNode *opnd, LabelIdx defaultLabel, const CaseVector &switchTable);
     GotoNode *CreateStmtGoto(Opcode o, LabelIdx labIdx);
