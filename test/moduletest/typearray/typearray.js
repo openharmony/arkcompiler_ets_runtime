@@ -1077,3 +1077,132 @@ try {
 } catch (e) {
     print(e instanceof TypeError);
 }
+
+try {
+    var obj = {intt8: Int8Array};
+    print(obj.intt8(16));
+} catch (e){
+    print(e);
+}
+
+try {
+    const typedd = new Int8Array(Symbol());
+} catch (e){
+    print(e);
+}
+
+try {
+    const typedd1 = new Int32Array(-100.3);
+} catch (e){
+    print(e);
+}
+
+const typedd2 = new Int32Array(4294967296 + 1);
+print(typedd2.length);
+
+const typedd3 = new Int32Array(512 * 8* 4);
+print(typedd3.byteLength);
+print(typedd3.byteOffset);
+print(typedd3.length);
+
+var buffer = new ArrayBuffer(512 * 8* 4);
+
+try {
+    const typedd4 = new Int32Array(buffer, 11);
+} catch (e){
+    print(e);
+}
+
+try {
+    const typedd5 = new Int32Array(buffer, -100.5);
+} catch (e){
+    print(e);
+}
+
+try {
+    const typedd6 = new Int32Array(buffer, Symbol());
+} catch (e){
+    print(e);
+}
+
+try {
+    var buffer1 = new ArrayBuffer(13);
+    const typedd7 = new Int32Array(buffer1, 16);
+} catch (e){
+    print(e);
+}
+
+var buffer2 = new ArrayBuffer(16);
+try {
+    const typedd8 = new Float64Array(buffer2, 24);
+} catch (e){
+    print(e);
+}
+
+try {
+    const typedd9 = new Float64Array(buffer2, 8, 5);
+} catch (e){
+    print(e);
+}
+
+const typedd10 = new Int8Array(buffer2, 3, 7);
+print(typedd10.byteLength);
+print(typedd10.byteOffset);
+print(typedd10.length);
+
+try {
+    let bufferTest = new ArrayBuffer(2147483648);
+} catch (e){
+    print(e);
+}
+
+try {
+    let bufferTest = new ArrayBuffer(2147483694.55);
+} catch (e){
+    print(e);
+}
+
+try {
+    let bufferTest = new ArrayBuffer(-49.55);
+} catch (e){
+    print(e);
+}
+
+try {
+    let bufferTest = new ArrayBuffer(48  - 1);
+    const typedd11 = new Int32Array(bufferTest, 2147483648 + 7);
+} catch (e){
+    print(e);
+}
+
+try {
+    let bufferTest = new ArrayBuffer(48  - 8);
+    const typedd12 = new Int32Array(bufferTest, 8, 2147483648 + 15);
+} catch (e){
+    print(e);
+}
+
+try {
+    const typedd13 = new Int8Array(2147483648 + 3);
+} catch (e){
+    print(e);
+}
+
+try {
+    var bufferTest1 = new ArrayBuffer(1024);
+    const typedd14 = new Int8Array(bufferTest1, 2147483648 + 12);
+} catch (e){
+    print(e);
+}
+
+var source11 = new Uint16Array(16);
+var target15 = new Int16Array(source11);
+print(target15.byteLength);
+print(target15.byteOffset);
+print(target15.length);
+
+var target16 = new Uint32Array([1,2,3,4]);
+print(target16);
+
+var target17 = new Int16Array(target16);
+print(target17);

@@ -2219,6 +2219,73 @@ GateRef NewObjectStubBuilder::NewTypedArray(GateRef glue, GateRef srcTypedArray,
     return ret;
 }
 
+// use NewJSObjectByConstructor need to InitializeJSObject by type
+GateRef NewObjectStubBuilder::NewJSObjectByConstructor(GateRef glue, GateRef constructor, GateRef newTarget)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(jshclass, VariableType::JS_ANY(), Undefined());
+    Label exit(env);
+    Label slowPath(env);
+    Label newObj(env);
+    Label isValid(env);
+    Label checkIsJSShared(env);
+    Label constructorIsShared(env);
+    SetGlue(glue);
+    BRANCH(IntPtrEqual(constructor, newTarget), &isValid, &checkIsJSShared);
+    Bind(&checkIsJSShared);
+    BRANCH(IsJSShared(constructor), &constructorIsShared, &isValid);
+    Bind(&constructorIsShared);
+    {
+        BRANCH(IsJSShared(newTarget), &isValid, &slowPath);
+    }
+    Bind(&isValid);
+    {
+        Label hasFunctionPrototype(env);
+        Label notHasFunctionPrototype(env);
+        BRANCH(HasFunctionPrototype(constructor), &hasFunctionPrototype, &notHasFunctionPrototype);
+        Bind(&hasFunctionPrototype);
+        {
+            GateRef proto = GetCtorPrototype(constructor);
+            BRANCH(IsEcmaObject(proto), &notHasFunctionPrototype, &slowPath);
+        }
+        Bind(&notHasFunctionPrototype);
+        {
+            Label isEqual(env);
+            Label isHClass(env);
+            BRANCH(IntPtrEqual(constructor, newTarget), &isEqual, &slowPath);
+            Bind(&isEqual);
+            GateRef protoOrHClass = GetProtoOrHClass(constructor);
+            BRANCH(IsJSHClass(protoOrHClass), &isHClass, &slowPath);
+            Bind(&isHClass);
+            jshclass = protoOrHClass;
+            Jump(&newObj);
+        }
+    }
+    Bind(&newObj);
+    {
+        Label notShared(env);
+        BRANCH(IsJSShared(*jshclass), &slowPath, &notShared);
+        Bind(&notShared);
+        {
+            result = NewJSObject(glue, *jshclass);
+            Jump(&exit);
+        }
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(NewJSObjectByConstructor), { constructor, newTarget });
+        Jump(&exit);
+    }
+    
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef NewObjectStubBuilder::NewFloat32ArrayObj(GateRef glue, GateRef glueGlobalEnv)
 {
     GateRef arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,

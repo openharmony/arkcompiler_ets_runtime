@@ -97,6 +97,9 @@ public:
                                const JSHandle<JSTaggedValue> &secondValue);
     static bool IsNativeArrayIterator(JSThread *thread,
         const JSHandle<JSTaggedValue> &obj, JSHandle<JSTaggedValue> &iterMethod);
+    template <TypedArrayKind typedArrayKind = TypedArrayKind::NON_SHARED>
+    static JSHandle<JSObject> AllocateTypedArrayBuffer(JSThread *thread, const JSHandle<JSObject> &obj,
+                                                       uint64_t length, const DataViewType arrayType);
 
     #define DEFINE_GET_ONHEAP_HCLASS_FROM_TYPE(Type)                                                          \
         inline static JSHandle<JSHClass> GetOnHeapHclass##Type(JSThread *thread, JSHClass* objHclass);
@@ -123,9 +126,6 @@ private:
     static JSTaggedValue CreateFromSendableArrayBuffer(EcmaRuntimeCallInfo *argv,
                                                        const JSHandle<JSObject> &obj,
                                                        const DataViewType arrayType);
-    template <TypedArrayKind typedArrayKind = TypedArrayKind::NON_SHARED>
-    static JSHandle<JSObject> AllocateTypedArrayBuffer(JSThread *thread, const JSHandle<JSObject> &obj,
-                                                       uint64_t length, const DataViewType arrayType);
     template <TypedArrayKind typedArrayKind = TypedArrayKind::NON_SHARED>
     static JSTaggedValue FastCopyElementFromArray(EcmaRuntimeCallInfo *argv, const JSHandle<JSObject> &obj,
                                                          const DataViewType arrayType);

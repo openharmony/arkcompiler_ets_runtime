@@ -346,6 +346,10 @@ namespace panda::ecmascript {
     V(ThrowReferenceError)                      \
     V(StGlobalVar)                              \
     V(LdGlobalICVar)                            \
+    V(ToIndex)                                  \
+    V(NewJSObjectByConstructor)                 \
+    V(CloneHclass)                              \
+    V(AllocateTypedArrayBuffer)                 \
     V(ToNumber)                                 \
     V(ToBoolean)                                \
     V(NotEq)                                    \

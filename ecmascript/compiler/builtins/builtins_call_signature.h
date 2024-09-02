@@ -34,18 +34,7 @@ namespace panda::ecmascript::kungfu {
     BUILTINS_ARKTOOLS_STUB_BUILDER(D)
 
 #define BUILTINS_NOSTUB_LIST(V)                     \
-    V(ObjectConstructor)                            \
-    V(Int8ArrayConstructor)                         \
-    V(Uint8ArrayConstructor)                        \
-    V(Uint8ClampedArrayConstructor)                 \
-    V(Int16ArrayConstructor)                        \
-    V(Uint16ArrayConstructor)                       \
-    V(Int32ArrayConstructor)                        \
-    V(Uint32ArrayConstructor)                       \
-    V(Float32ArrayConstructor)                      \
-    V(Float64ArrayConstructor)                      \
-    V(BigInt64ArrayConstructor)                     \
-    V(BigUint64ArrayConstructor)                    \
+    V(ObjectConstructor)
 
 #define BUILTINS_METHOD_STUB_LIST(V, T, D, K)       \
     BUILTINS_WITH_STRING_STUB_BUILDER(V)            \
@@ -227,7 +216,18 @@ namespace panda::ecmascript::kungfu {
     V(DateConstructor)                              \
     V(ArrayConstructor)                             \
     V(SetConstructor)                               \
-    V(MapConstructor)
+    V(MapConstructor)                               \
+    V(Int8ArrayConstructor)                         \
+    V(Uint8ArrayConstructor)                        \
+    V(Uint8ClampedArrayConstructor)                 \
+    V(Int16ArrayConstructor)                        \
+    V(Uint16ArrayConstructor)                       \
+    V(Int32ArrayConstructor)                        \
+    V(Uint32ArrayConstructor)                       \
+    V(Float32ArrayConstructor)                      \
+    V(Float64ArrayConstructor)                      \
+    V(BigInt64ArrayConstructor)                     \
+    V(BigUint64ArrayConstructor)
 
 #define AOT_AND_BUILTINS_STUB_LIST(V)               \
     V(StringLocaleCompare)                                \

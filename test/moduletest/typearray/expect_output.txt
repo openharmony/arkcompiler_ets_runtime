@@ -265,3 +265,31 @@ true
 true
 true
 true
+TypeError: The NewTarget is undefined.
+TypeError: Cannot convert a Symbol value to a number
+RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
+1
+65536
+0
+16384
+RangeError: The offset cannot be an integral multiple of elementSize.
+RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
+TypeError: Cannot convert a Symbol value to a number
+RangeError: The byte length of Int32Array should be a multiple of 4
+RangeError: The newByteLength is less than 0.
+RangeError: The newByteLength is out of range.
+7
+3
+7
+RangeError: Out of range
+RangeError: Out of range
+RangeError: integerIndex < 0 or integerIndex > SAFE_NUMBER
+RangeError: The offset cannot be an integral multiple of elementSize.
+RangeError: The newByteLength is out of range.
+RangeError: Out of range
+RangeError: The newByteLength is less than 0.
+32
+0
+16
+1,2,3,4
+1,2,3,4
