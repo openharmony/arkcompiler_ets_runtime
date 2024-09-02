@@ -23,13 +23,14 @@
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/module_logger.h"
+#include "ecmascript/jspandafile/abc_buffer_cache.h"
 #include "ecmascript/platform/aot_crash_info.h"
+#include "ecmascript/platform/log.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/require/js_require_manager.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
-#include "ecmascript/platform/log.h"
 #include "ecmascript/sustaining_js_handle.h"
 
 namespace panda::ecmascript {
@@ -100,6 +101,7 @@ bool EcmaContext::Initialize()
     moduleManager_ = new ModuleManager(vm_);
     ptManager_ = new kungfu::PGOTypeManager(vm_);
     optCodeProfiler_ = new OptCodeProfiler();
+    abcBufferCache_ = new AbcBufferCache();
     if (vm_->GetJSOptions().GetTypedOpProfiler()) {
         typedOpProfiler_ = new TypedOpProfiler();
     }
@@ -259,6 +261,10 @@ EcmaContext::~EcmaContext()
     if (functionProtoTransitionTable_ != nullptr) {
         delete functionProtoTransitionTable_;
         functionProtoTransitionTable_ = nullptr;
+    }
+    if (abcBufferCache_ != nullptr) {
+        delete abcBufferCache_;
+        abcBufferCache_ = nullptr;
     }
     // clear join stack
     joinStack_.clear();
