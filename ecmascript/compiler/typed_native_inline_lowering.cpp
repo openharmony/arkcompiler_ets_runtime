@@ -3260,7 +3260,7 @@ void TypedNativeInlineLowering::LowerArrayFindOrFindIndex(GateRef gate)
     if (builtinsID == BuiltinsStubCSigns::ID::ArrayFind) {
         acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *findRes);
     } else {
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), builder_.Int32ToTaggedPtr(*res));
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
     }
 }
 
