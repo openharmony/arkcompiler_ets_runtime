@@ -139,9 +139,9 @@ void PandaFileTranslator::TranslateClass(const JSThread *thread, JSPandaFile *js
 JSHandle<Program> PandaFileTranslator::GenerateProgram(EcmaVM *vm, const JSPandaFile *jsPandaFile,
                                                        std::string_view entryPoint)
 {
-    uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data());
-    JSHandle<ConstantPool> sconstpool;
     bool isNewVersion = jsPandaFile->IsNewVersion();
+    uint32_t mainMethodIndex = jsPandaFile->GetMainMethodIndex(entryPoint.data(), isNewVersion);
+    JSHandle<ConstantPool> sconstpool;
     if (isNewVersion) {
         sconstpool = vm->GetJSThread()->GetCurrentEcmaContext()->FindOrCreateConstPool(
             jsPandaFile, EntityId(mainMethodIndex));
