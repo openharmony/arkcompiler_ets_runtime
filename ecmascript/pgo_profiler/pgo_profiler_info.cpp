@@ -76,7 +76,7 @@ bool PGOPandaFileInfos::ParseFromText(std::ifstream &stream)
 
         size_t start = pandaFileInfo.find_first_of(DumpUtils::ARRAY_START);
         size_t end = pandaFileInfo.find_last_of(DumpUtils::ARRAY_END);
-        if (start == std::string::npos || end == std::string::npos || start > end) {
+        if (start == std::string::npos || end == std::string::npos || start >= end) {
             return false;
         }
         auto content = pandaFileInfo.substr(start + 1, end - (start + 1) - 1);
@@ -184,6 +184,10 @@ bool PGOMethodInfoMap::AddMethod(Chunk *chunk, Method *jsMethod, SampleMode mode
         size_t strlen = methodName.size();
         size_t size = static_cast<size_t>(PGOMethodInfo::Size(strlen));
         void *infoAddr = chunk->Allocate(size);
+        if (infoAddr == nullptr) {
+            LOG_ECMA(ERROR) << "infoAddr is null!";
+            return false;
+        }
         auto info = new (infoAddr) PGOMethodInfo(methodId, 0, mode, methodName.c_str());
         info->IncreaseCount();
         methodInfos_.emplace(methodId, info);
