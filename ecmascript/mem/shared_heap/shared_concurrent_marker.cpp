@@ -18,7 +18,6 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
 #include "ecmascript/mem/verification.h"
-#include "ecmascript/mem/verification.h"
 
 namespace panda::ecmascript {
 SharedConcurrentMarker::SharedConcurrentMarker(EnableConcurrentMarkType type)

@@ -30,10 +30,13 @@ Space::Space(BaseHeap* heap, HeapRegionAllocator *heapRegionAllocator,
       maximumCapacity_(maximumCapacity),
       committedSize_(0)
 {
+    ASSERT(heap != nullptr);
+    ASSERT(heapRegionAllocator != nullptr);
 }
 
 void Space::AddAllocationInspector(AllocationInspector* inspector)
 {
+    ASSERT(inspector != nullptr);
     allocationCounter_.AddAllocationInspector(inspector);
 }
 
@@ -44,6 +47,7 @@ void Space::ClearAllocationInspector()
 
 void Space::SwapAllocationCounter(Space *space)
 {
+    ASSERT(space != nullptr);
     std::swap(allocationCounter_, space->allocationCounter_);
 }
 
@@ -54,6 +58,7 @@ void Space::Destroy()
 
 void Space::ReclaimRegions(size_t cachedSize)
 {
+    ASSERT(cachedSize >= 0);
     EnumerateRegions([this, &cachedSize](Region *current) { ClearAndFreeRegion(current, cachedSize); });
     regionList_.Clear();
     committedSize_ = 0;
@@ -61,6 +66,7 @@ void Space::ReclaimRegions(size_t cachedSize)
 
 void Space::ClearAndFreeRegion(Region *region, size_t cachedSize)
 {
+    ASSERT(region != nullptr);
     LOG_ECMA_MEM(DEBUG) << "Clear region from:" << region << " to " << ToSpaceTypeName(spaceType_);
     region->DeleteCrossRegionRSet();
     region->DeleteNewToEdenRSet();
@@ -137,6 +143,8 @@ Region *HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, 
     // mmap to enable JIT_FORT rights control:
     //     1. first mmap (without JIT_FORT option flag) region of size c above
     //     2. then mmap immutable area with MAP_FIXED and JIT_FORT option flag (to be used by codesigner verify/copy)
+    ASSERT(thread != nullptr);
+    ASSERT(pDesc != nullptr);
     MachineCodeDesc *desc = reinterpret_cast<MachineCodeDesc *>(pDesc);
     size_t mutableSize = AlignUp(
         objectSize + sizeof(Region) + HUGE_OBJECT_BITSET_SIZE - desc->instructionsSize, PageSize());
@@ -161,6 +169,8 @@ Region *HugeMachineCodeSpace::AllocateFort(size_t objectSize, JSThread *thread, 
 uintptr_t HugeMachineCodeSpace::Allocate(size_t objectSize, JSThread *thread, void *pDesc,
     AllocateEventType allocType)
 {
+    ASSERT(thread != nullptr);
+    ASSERT(pDesc != nullptr);
     // JitFort path
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
     if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {

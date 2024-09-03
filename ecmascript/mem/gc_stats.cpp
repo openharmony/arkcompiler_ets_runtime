@@ -41,6 +41,8 @@ void GCStats::PrintStatisticResult()
 
 void GCStats::PrintGCStatistic()
 {
+    ASSERT(heap_ != nullptr);
+    ASSERT(heap_->GetEcmaVM() != nullptr);
     if (heap_->GetEcmaVM()->GetJSOptions().EnableGCTracer() || CheckIfLongTimePause()) {
         LOG_GC(INFO) << " [ " << GetGCTypeName() << " ] "
                         << sizeToMB(recordData_[(uint8_t)RecordData::START_OBJ_SIZE]) << " ("
