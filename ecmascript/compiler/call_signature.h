@@ -627,7 +627,8 @@ private:
     V(Definefunc)                                    \
     V(DefineField)                                   \
     V(ASMFastWriteBarrier)                           \
-    V(ASMWriteBarrierWithEden)
+    V(ASMWriteBarrierWithEden)                       \
+    V(VerifyBarrier)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \

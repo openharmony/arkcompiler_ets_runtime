@@ -217,6 +217,8 @@ public:
     static void ASMFastWriteBarrier(ExtendedAssembler *assembler);
 
     static void ASMWriteBarrierWithEden(ExtendedAssembler *assembler);
+
+    static void ASMFastSharedWriteBarrier(ExtendedAssembler *assembler, Label& needCall);
 private:
     static void PushCallThis(ExtendedAssembler *assembler, JSCallMode mode,
                              Label *stackOverflow, FrameTransitionType type);

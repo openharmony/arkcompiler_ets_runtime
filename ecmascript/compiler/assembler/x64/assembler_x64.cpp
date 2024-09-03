@@ -866,6 +866,14 @@ void AssemblerX64::Movl(const Operand &src, Register dst)
     EmitOperand(dst, src);
 }
 
+void AssemblerX64::Movl(Register src, const Operand& dst)
+{
+    EmitRexPrefixl(src, dst);
+    // 0x89: Move r32 to r/m64
+    EmitU8(0x89);
+    EmitOperand(src, dst);
+}
+
 void AssemblerX64::Testq(Immediate src, Register dst)
 {
     if (InRange8(src.Value())) {
@@ -1005,6 +1013,16 @@ void AssemblerX64::Shrq(Immediate src, Register dst)
 {
     EmitRexPrefixW(dst);
     // C1 : Shr r/m64, imm8;
+    EmitU8(0xc1);
+    // 5: C1 /5 id
+    EmitModrm(5, dst);
+    EmitI8(static_cast<int8_t>(src.Value()));
+}
+
+void AssemblerX64::Shrl(Immediate src, Register dst)
+{
+    EmitRexPrefix(dst);
+    // C1 : Shr r/m32, imm8;
     EmitU8(0xc1);
     // 5: C1 /5 id
     EmitModrm(5, dst);
@@ -1278,6 +1296,16 @@ void AssemblerX64::Movzbl(const Operand &src, Register dst)
     EmitOperand(dst, src);
 }
 
+void AssemblerX64::Movzbl(Register src, Register dst)
+{
+    EmitRexPrefixl(dst, src);
+    // 0F B6 : Movzx r64, r/m16
+    EmitU8(0x0F);
+    EmitU8(0xB6);
+    // 0F B6 /r: Movzx r64, r/m16
+    EmitModrm(dst, src);
+}
+
 void AssemblerX64::Btq(Immediate src, Register dst)
 {
     EmitRexPrefixW(dst);
@@ -1325,6 +1353,16 @@ void AssemblerX64::Shlq(Immediate src, Register dst)
     // C1 /4
     EmitModrm(4, dst);
     EmitI8(static_cast<int8_t>(src.Value()));
+}
+
+void AssemblerX64::Btsl(Register src, Register dst)
+{
+    EmitRexPrefixl(src, dst);
+    // 0F AB: bts r32, r32;
+    EmitU8(0x0F);
+    EmitU8(0xAB);
+
+    EmitModrm(src, dst);
 }
 
 void AssemblerX64::Int3()
