@@ -216,6 +216,8 @@ private:
     SourceMapTranslateCallback sourceMapTranslateCallback_ {nullptr};
     int traceEventNodePos_ = 0;
     uint32_t traceEventSamplePos_ = 0;
+
+    friend class SamplesRecordFriendTest;
 };
 } // namespace panda::ecmascript
 #endif // ECMASCRIPT_DFX_CPU_PROFILER_SAMPLES_RECORD_H

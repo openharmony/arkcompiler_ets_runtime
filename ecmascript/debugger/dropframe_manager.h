@@ -55,6 +55,8 @@ private:
     std::stack<std::vector<std::tuple<JSHandle<JSTaggedValue>, uint16_t, JSHandle<JSTaggedValue>>>> modifiedLexVar_;
     std::stack<uint32_t> promiseQueueSizeRecord_;
     std::stack<std::tuple<JSPandaFile*, panda_file::File::EntityId>> methodInfo_;
+
+    friend class DropframeManagerFriendTest;
 };
 }
 

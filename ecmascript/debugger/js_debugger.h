@@ -188,6 +188,8 @@ private:
 
     CUnorderedSet<JSBreakpoint, HashJSBreakpoint> breakpoints_ {};
     CUnorderedSet<JSBreakpoint, HashJSBreakpoint> smartBreakpoints_ {};
+
+    friend class JsDebuggerFriendTest;
 };
 }  // namespace panda::ecmascript::tooling
 
