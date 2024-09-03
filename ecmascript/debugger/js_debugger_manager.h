@@ -221,21 +221,6 @@ public:
         return isObjHashDisplayEnabled_;
     }
 
-    void EnableBreakpointSync()
-    {
-        isBreakpointSyncEnabled_ = true;
-    }
-
-    void DisableBreakpointSync()
-    {
-        isBreakpointSyncEnabled_ = false;
-    }
-
-    bool IsBreakpointSyncEnabled()
-    {
-        return isBreakpointSyncEnabled_;
-    }
-
     void EnableSerializationTimeoutCheck()
     {
         isSerializationTimeoutCheckEnabled_ = true;
@@ -272,7 +257,6 @@ private:
     bool isMixedStackEnabled_ { false };
     bool isSignalInterrupt_ {false};
     bool isObjHashDisplayEnabled_ { true };
-    bool isBreakpointSyncEnabled_ { true };
     ProtocolHandler *debuggerHandler_ {nullptr};
     LibraryHandle debuggerLibraryHandle_ {nullptr};
     ObjectUpdaterFunc *updaterFunc_ {nullptr};
