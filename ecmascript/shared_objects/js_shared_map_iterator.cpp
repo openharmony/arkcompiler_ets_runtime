@@ -40,7 +40,7 @@ JSTaggedValue JSSharedMapIterator::NextInternal(JSThread *thread, JSHandle<JSTag
     JSHandle<JSTaggedValue> undefinedHandle(thread, JSTaggedValue::Undefined());
     if (iter->GetIteratedMap().IsUndefined()) {
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
-    };
+    }
     JSHandle<JSSharedMap> iteratedMap(thread, iter->GetIteratedMap());
     [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, JSHandle<JSTaggedValue>::Cast(iteratedMap));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());

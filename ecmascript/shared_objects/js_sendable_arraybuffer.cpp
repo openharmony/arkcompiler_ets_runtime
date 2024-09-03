@@ -31,6 +31,7 @@ void JSSendableArrayBuffer::CopyDataPointBytes(void *toBuf, void *fromBuf, int32
 {
     auto *from = static_cast<uint8_t *>(fromBuf);
     auto *to = static_cast<uint8_t *>(toBuf);
+    ASSERT(from != nullptr && to != nullptr);
     if (memcpy_s(to, count, from + fromIndex, count) != EOK) {  // NOLINT
         LOG_FULL(FATAL) << "memcpy_s failed";
         UNREACHABLE();
