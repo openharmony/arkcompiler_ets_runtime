@@ -19,8 +19,11 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include "ecmascript/platform/aot_crash_info.h"
 
-#if defined(JIT_ESCAPE_ENABLE) || defined(GET_PARAMETER_FOR_JIT)
+#if defined(JIT_ESCAPE_ENABLE) || defined(GET_PARAMETER_FOR_JIT) || defined(JIT_ENABLE_CODE_SIGN)
 #include "base/startup/init/interfaces/innerkits/include/syspara/parameters.h"
+#endif
+#if defined(JIT_ENABLE_CODE_SIGN)
+#include "jit_buffer_integrity.h"
 #endif
 
 namespace panda::ecmascript::ohos {
@@ -85,7 +88,8 @@ public:
     static bool GetCodeSignDisable(bool value)
     {
     #ifdef JIT_ENABLE_CODE_SIGN
-        return OHOS::system::GetBoolParameter("persist.ark.jit.codesign.disable", true);
+        return OHOS::system::GetBoolParameter("persist.ark.jit.codesign.disable", false) ||
+               !OHOS::Security::CodeSign::IsSupportJitCodeSigner();
     #endif
         return value;
     }
@@ -93,7 +97,7 @@ public:
     static bool GetEnableJitFort(bool value)
     {
     #ifdef GET_PARAMETER_FOR_JIT
-        return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitfort", false);
+        return OHOS::system::GetBoolParameter("persist.ark.jit.enable.jitfort", true);
     #endif
         return value;
     }

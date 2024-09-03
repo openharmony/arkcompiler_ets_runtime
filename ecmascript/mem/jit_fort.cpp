@@ -18,7 +18,12 @@
 #include "ecmascript/mem/jit_fort.h"
 #include "ecmascript/jit/jit.h"
 #if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
+#include <sys/ioctl.h>
 #include <sys/prctl.h>
+
+#define XPM_JITFORT_ENABLE_OPCODE 3
+#define XPM_MAGIC 'x'
+#define XPM_SET_JITFORT_ENABLE _IOW(XPM_MAGIC, XPM_JITFORT_ENABLE_OPCODE, unsigned long)
 #endif
 
 namespace panda::ecmascript {
@@ -32,8 +37,9 @@ FreeListAllocator<MemDesc>::FreeListAllocator(BaseHeap *heap, MemDescPool *pool,
 
 JitFort::JitFort()
 {
-    jitFortMem_ = PageMap(JIT_FORT_REG_SPACE_MAX, PageProtectProt(Jit::GetInstance()->IsDisableCodeSign()),
-        DEFAULT_REGION_SIZE, nullptr, MAP_JITFORT);
+    jitFortMem_ = PageMap(JIT_FORT_REG_SPACE_MAX,
+                          PageProtectProt(Jit::GetInstance()->IsDisableCodeSign() || !IsResourceAvailable()),
+                          DEFAULT_REGION_SIZE, nullptr, MAP_JITFORT);
     jitFortBegin_ = reinterpret_cast<uintptr_t>(jitFortMem_.GetMem());
     jitFortSize_ = JIT_FORT_REG_SPACE_MAX;
     memDescPool_ = new MemDescPool(jitFortBegin_, jitFortSize_);
@@ -251,15 +257,43 @@ JitFortRegion *JitFort::ObjectAddressToRange(uintptr_t objAddress)
     return region;
 }
 
+bool JitFort::isResourceAvailable_ = true;
+bool JitFort::IsResourceAvailable()
+{
+    return isResourceAvailable_;
+}
 void JitFort::InitJitFortResource()
 {
 #if defined(JIT_ENABLE_CODE_SIGN) && !defined(JIT_FORT_DISABLE)
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "JIT::InitJitFortResource");
+    if (!Jit::GetInstance()->IsAppJit()) {
+        int fd = open("/dev/xpm", O_RDWR);
+        if (fd < 0) {
+            isResourceAvailable_ = false;
+            LOG_JIT(ERROR) << "Failed to init jitfort resource, open xpm failed: " << strerror(errno);
+            return;
+        }
+        int rc = ioctl(fd, XPM_SET_JITFORT_ENABLE, 0);
+        if (rc < 0) {
+            isResourceAvailable_ = false;
+            LOG_JIT(ERROR) << "Failed to init jitfort resource, enable xpm failed: " << strerror(errno);
+            close(fd);
+            return;
+        }
+        close(fd);
+    }
     constexpr int prSetJitFort = 0x6a6974;
     constexpr int jitFortInit = 5;
     int res = prctl(prSetJitFort, jitFortInit, 0);
     if (res < 0) {
-        LOG_JIT(ERROR) << "Failed to init jitfort resource";
+        isResourceAvailable_ = false;
+        LOG_JIT(ERROR) << "Failed to init jitfort resource: " << strerror(errno);
+        return;
+    }
+    res = prctl(prSetJitFort, jitFortInit, 0);
+    if (res >= 0 || errno != EEXIST) {
+        isResourceAvailable_ = false;
+        LOG_JIT(ERROR) << "jitfort not support";
     }
 #endif
 }

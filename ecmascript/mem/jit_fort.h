@@ -74,8 +74,10 @@ public:
     void UpdateFreeSpace();
     JitFortRegion *ObjectAddressToRange(uintptr_t objAddress);
     static void InitJitFortResource();
+    PUBLIC_API static bool IsResourceAvailable();
 
 private:
+    static bool isResourceAvailable_;
     FreeListAllocator<MemDesc> *allocator_ {nullptr};
 
     // Fort memory space
