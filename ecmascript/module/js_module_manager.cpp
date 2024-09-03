@@ -164,7 +164,11 @@ JSTaggedValue ModuleManager::GetModuleValueOutterInternal(int32_t index, JSTagge
     if (resolvedBinding.IsResolvedRecordBinding()) {
         return ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, currentModuleHdl, resolvedBinding);
     }
-    LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding";
+
+    std::ostringstream oss;
+    currentModule.Dump(oss);
+    LOG_ECMA(FATAL) << "Get module value failed, mistaken ResolvedBinding"
+        << ", index: " << index << ", currentModule: " << oss.str();
     UNREACHABLE();
 }
 
