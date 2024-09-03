@@ -45,7 +45,7 @@
     /* Array.prototype.every ( callbackfn [ , thisArg ] ) */                \
     V("every",          Every,            1, ArrayEvery)                    \
     /* Array.prototype.fill ( value [ , start [ , end ] ] ) */              \
-    V("fill",           Fill,             1, INVALID)                       \
+    V("fill",           Fill,             1, ArrayFill)                     \
     /* Array.prototype.filter ( callbackfn [ , thisArg ] ) */               \
     V("filter",         Filter,           1, ArrayFilter)                   \
     /* Array.prototype.find ( predicate [ , thisArg ] ) */                  \
@@ -91,7 +91,7 @@
     /* Array.prototype.some ( callbackfn [ , thisArg ] ) */                 \
     V("some",           Some,             1, ArraySome)                     \
     /* Array.prototype.sort ( comparefn ) */                                \
-    V("sort",           Sort,             1, ArraySort)                          \
+    V("sort",           Sort,             1, ArraySort)                     \
     /* Array.prototype.splice ( start, deleteCount, ...items ) */           \
     V("splice",         Splice,           2, ArraySplice)                   \
     /* Array.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */  \

@@ -1618,6 +1618,12 @@ inline GateRef StubBuilder::IsJsCOWArray(GateRef obj)
     return env_->GetBuilder()->IsCOWArray(objectType);
 }
 
+inline GateRef StubBuilder::IsCOWArray(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return env_->GetBuilder()->IsCOWArray(objectType);
+}
+
 inline GateRef StubBuilder::IsMutantTaggedArray(GateRef elements)
 {
     GateRef objectType = GetObjectType(LoadHClass(elements));
@@ -3848,6 +3854,11 @@ inline GateRef StubBuilder::ToObject(GateRef glue, GateRef obj)
 inline GateRef StubBuilder::GetPrototype(GateRef glue, GateRef object)
 {
     return env_->GetBuilder()->GetPrototype(glue, object);
+}
+
+inline GateRef StubBuilder::GetLengthOfJSArray(GateRef array)
+{
+    return env_->GetBuilder()->GetLengthOfJSArray(array);
 }
 } //  namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_STUB_INL_H

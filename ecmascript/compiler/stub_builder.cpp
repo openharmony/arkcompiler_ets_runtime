@@ -9422,6 +9422,88 @@ GateRef StubBuilder::GetTaggedValueWithElementsKind(GateRef receiver, GateRef in
     return ret;
 }
 
+GateRef StubBuilder::ConvertTaggedValueWithElementsKind([[maybe_unused]] GateRef glue, GateRef value, GateRef  extraKind)
+{
+    auto env = GetEnvironment();
+    Label entryPass(env);
+    env->SubCfgEntry(&entryPass);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+    Label isHole(env);
+    Label isNotHole(env);
+    GateRef valueIsHole = TaggedIsHole(value);
+    GateRef elementsKindInNumbersLB = Int32GreaterThanOrEqual(extraKind,
+                                                              Int32(static_cast<int32_t>(ElementsKind::HOLE)));
+    GateRef elementsKindInNumbersUB = Int32LessThan(extraKind, Int32(static_cast<int32_t>(ElementsKind::STRING)));
+    GateRef checkInNumersKind = LogicAndBuilder(env)
+        .And(valueIsHole)
+        .And(elementsKindInNumbersLB)
+        .And(elementsKindInNumbersUB).Done();
+    BRANCH(checkInNumersKind, &isHole, &isNotHole);
+    Bind(&isHole);
+    {
+        Jump(&exit);
+    }
+    Bind(&isNotHole);
+    {
+        Label isInt(env);
+        Label isNotInt(env);
+        GateRef elementsKindIntLB = Int32GreaterThanOrEqual(extraKind,
+                                                            Int32(static_cast<int32_t>(ElementsKind::INT)));
+        GateRef elementsKindIntUB = Int32LessThanOrEqual(extraKind,
+                                                         Int32(static_cast<int32_t>(ElementsKind::HOLE_INT)));
+        GateRef checkIntKind = LogicAndBuilder(env)
+            .And(elementsKindIntLB)
+            .And(elementsKindIntUB)
+            .Done();
+        BRANCH(checkIntKind, &isInt, &isNotInt);
+        Bind(&isInt);
+        {
+            result = Int64ToTaggedPtr(GetInt64OfTInt(value));
+            Jump(&exit);
+        }
+        Bind(&isNotInt);
+        {
+            Label isNumber(env);
+            Label isNotNumber(env);
+            GateRef elementsKindNumberLB = Int32GreaterThanOrEqual(extraKind,
+                                                                   Int32(static_cast<int32_t>(ElementsKind::NUMBER)));
+            GateRef elementsKindNumberUB = Int32LessThanOrEqual(extraKind,
+                                                                Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER)));
+            GateRef checkNumberKind = LogicAndBuilder(env)
+                .And(elementsKindNumberLB)
+                .And(elementsKindNumberUB)
+                .Done();
+            BRANCH(checkNumberKind, &isNumber, &isNotNumber);
+            Bind(&isNumber);
+            {
+                Label isNumberInt(env);
+                Label isNotNumberInt(env);
+                BRANCH(TaggedIsInt(value), &isNumberInt, &isNotNumberInt);
+                Bind(&isNumberInt);
+                {
+                    result = Int64ToTaggedPtr(CastDoubleToInt64(GetDoubleOfTInt(value)));
+                    Jump(&exit);
+                }
+                Bind(&isNotNumberInt);
+                {
+                    result = Int64ToTaggedPtr(CastDoubleToInt64(GetDoubleOfTDouble(value)));
+                    Jump(&exit);
+                }
+            }
+            Bind(&isNotNumber);
+            {
+                result = value;
+                Jump(&exit);
+            }
+        }
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue,
                                               GateRef index, GateRef needTransition, GateRef extraKind)
 {
