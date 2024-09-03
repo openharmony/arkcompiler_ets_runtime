@@ -654,7 +654,6 @@ uintptr_t MachineCodeSpace::JitFortAllocate(MachineCodeDesc *desc)
 // Record info on JitFort mem allocated to live MachineCode objects
 void MachineCodeSpace::FreeRegion(Region *current, bool isMain)
 {
-    LockHolder holder(freeRegionMutex_);
     LOG_JIT(DEBUG) << "MachineCodeSpace FreeRegion: " << current << " isMain " << isMain;
     uintptr_t freeStart = current->GetBegin();
     current->IterateAllMarkedBits([this, &current, &freeStart, isMain](void *mem) {
@@ -676,6 +675,23 @@ void MachineCodeSpace::FreeRegion(Region *current, bool isMain)
     }
     if (jitFort_) {
         jitFort_->SetMachineCodeGC(true);
+    }
+}
+
+void MachineCodeSpace::AsyncSweep(bool isMain)
+{
+    LockHolder holder(asyncSweepMutex_);
+    Region *current = GetSweepingRegionSafe();
+    while (current != nullptr) {
+        FreeRegion(current, isMain);
+        // Main thread sweeping region is added;
+        if (!isMain) {
+            AddSweptRegionSafe(current);
+        } else {
+            current->MergeOldToNewRSetForCS();
+            current->MergeLocalToShareRSetForCS();
+        }
+        current = GetSweepingRegionSafe();
     }
 }
 
@@ -742,7 +758,7 @@ size_t MachineCodeSpace::CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &mac
 uintptr_t MachineCodeSpace::GetMachineCodeObject(uintptr_t pc)
 {
     uintptr_t machineCode = 0;
-    LockHolder holder(freeRegionMutex_);
+    LockHolder holder(asyncSweepMutex_);
     allocator_->FillBumpPointer();
 
     EnumerateRegions([&](Region *region) {

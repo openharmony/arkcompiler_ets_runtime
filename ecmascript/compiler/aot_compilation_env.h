@@ -56,7 +56,8 @@ public:
     // GlobalConstants
     const GlobalEnvConstants *GlobalConstants() const override;
 
-    JSTaggedValue GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx) const override;
+    JSTaggedValue GetStringFromConstantPool(const uint32_t methodOffset, const uint16_t cpIdx,
+        bool allowAlloc = true) const override;
 };
 } // namespace panda::ecmascript
 #endif  // ECMASCRIPT_COMPILER_AOT_COMPILATION_ENV_H
