@@ -245,6 +245,12 @@ JSTaggedValue TaggedHashArray::RemoveNode(JSThread *thread, int hash, JSTaggedVa
     } else if (node.IsRBTreeNode()) {
         JSTaggedValue oldValue = JSTaggedValue::Hole();
         JSTaggedValue rootTreeNodeVa = RBTreeNode::Delete(thread, node, hash, key, oldValue);
+        //set root node as red
+        RBTreeNode *root = RBTreeNode::Cast(rootTreeNodeVa.GetTaggedObject());
+        if (root->GetIsRed().ToBoolean()) {
+            root->SetIsRed(thread, JSTaggedValue(false));
+            rootTreeNodeVa = JSTaggedValue(root);
+        }
         if (!rootTreeNodeVa.IsHole()) {
             Set(thread, index, rootTreeNodeVa);
             return oldValue;
