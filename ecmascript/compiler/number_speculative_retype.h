@@ -71,6 +71,7 @@ private:
     GateRef SetOutputType(GateRef gate, TypeInfo type);
     TypeInfo GetNumberTypeInfo(GateRef gate);
     GateRef VisitPhi(GateRef gate);
+    GateRef VisitArrayFindOrFindIndex(GateRef gate);
     GateRef VisitConstant(GateRef gate);
     GateRef VisitTypedBinaryOp(GateRef gate);
     GateRef VisitNumberBinaryOp(GateRef gate);
