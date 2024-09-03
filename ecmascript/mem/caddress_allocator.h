@@ -107,7 +107,7 @@ public:
         // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
         void *ptr = malloc(size);
         if (ptr == nullptr) {
-            LOG_ECMA_MEM(FATAL) << "malloc failed";
+            LOG_ECMA_MEM(FATAL) << "malloc failed, size is: " << size;
             UNREACHABLE();
         }
         return ptr;

@@ -275,7 +275,10 @@ private:
 
         bool operator<(const ObjDefOpTemplate &right) const
         {
-            return this->offset_ < right.GetOffset() || this->GetType() < right.GetType();
+            if (this->offset_ != right.GetOffset()) {
+                return this->offset_ < right.GetOffset();
+            }
+            return this->GetType() < right.GetType();
         }
 
         void ProcessToText(std::string &text) const
