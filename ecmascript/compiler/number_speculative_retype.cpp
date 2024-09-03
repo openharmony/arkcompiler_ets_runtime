@@ -192,6 +192,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitIntermediateValue(gate);
         case OpCode::NUMBER_TO_STRING:
             return VisitNumberToString(gate);
+        case OpCode::ARRAY_FIND_OR_FINDINDEX:
+            return VisitArrayFindOrFindIndex(gate);
         case OpCode::MATH_LOG:
         case OpCode::MATH_LOG2:
         case OpCode::MATH_LOG10:
@@ -326,11 +328,16 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::FUNCTION_PROTOTYPE_CALL:
         case OpCode::BUILTIN_PROTOTYPE_HCLASS_CHECK:
         case OpCode::FLATTEN_TREE_STRING_CHECK:
+        case OpCode::ARRAY_POP:
+        case OpCode::ARRAY_SOME:
+        case OpCode::ARRAY_EVERY:
+        case OpCode::ARRAY_FOR_EACH:
         case OpCode::HEAP_OBJECT_CHECK:
         case OpCode::ARRAY_FILTER:
         case OpCode::ARRAY_MAP:
         case OpCode::ARRAY_SLICE:
         case OpCode::FINISH_ALLOCATE:
+        case OpCode::IS_CALLABLE_CHECK:
             return VisitOthers(gate);
         default:
             return Circuit::NullGate();
@@ -353,6 +360,24 @@ GateRef NumberSpeculativeRetype::VisitTypedBinaryOp(GateRef gate)
     }
 
     return VisitEqualCompareOrNotEqualCompare(gate);
+}
+
+GateRef NumberSpeculativeRetype::VisitArrayFindOrFindIndex(GateRef gate)
+{
+    constexpr size_t BUILTINS_FUNC_ID_INDEX = 3;
+    ASSERT(acc_.GetOpCode(gate) == OpCode::ARRAY_FIND_OR_FINDINDEX);
+    ASSERT(acc_.GetNumValueIn(gate) > BUILTINS_FUNC_ID_INDEX);
+    if (IsRetype()) {
+        GateRef builtinFunc = acc_.GetValueIn(gate, BUILTINS_FUNC_ID_INDEX);
+        auto builtinsID = static_cast<BuiltinsStubCSigns::ID>(acc_.GetConstantValue(builtinFunc));
+        if (builtinsID == BuiltinsStubCSigns::ID::ArrayFind) {
+            return SetOutputType(gate, GateType::AnyType());
+        } else {
+            return SetOutputType(gate, GateType::IntType());
+        }
+    }
+
+    return VisitWithConstantValue(gate, BUILTINS_FUNC_ID_INDEX); // ignoreIndex
 }
 
 GateRef NumberSpeculativeRetype::VisitEqualCompareOrNotEqualCompare(GateRef gate)

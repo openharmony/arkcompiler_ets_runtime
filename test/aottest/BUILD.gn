@@ -163,6 +163,7 @@ group("ark_aot_ts_test") {
     "ic",
     "inc",
     "inline",
+    "inline_array_exception",
     "instanceof",
     "isfalse",
     "isin",
