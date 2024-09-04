@@ -291,7 +291,17 @@ if (globalThis["ArkPrivate"] != undefined) {
         temp.add(val)
     })
     print(oldLen * 2 === v1.length)
-    
+    const v3 = new arrayList();
+    const v4 = [arrayList,arrayList];
+    class C4{
+    ["100"] = v4
+    }
+    const v5 = new C4();
+    try {
+        Object.assign(v3,v5)  
+    } catch (error) {
+        print(error)
+    }
     if (!flag) {
         print("Test ArrayList success!!!");
     } else {
