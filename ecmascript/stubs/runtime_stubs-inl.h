@@ -1015,6 +1015,7 @@ JSTaggedValue RuntimeStubs::RuntimeCreateSharedClass(JSThread *thread,
 
     auto methodObj = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
     JSHandle<JSTaggedValue> method(thread, methodObj);
+    JSHandle<Method>(method)->SetIsSendable(true);
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
 
     JSHandle<JSTaggedValue> sendableEnv(thread, JSTaggedValue::Undefined());
@@ -2254,7 +2255,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
     const JSHandle<Method> methodHandle(thread, method);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> result;
-    if (methodHandle->IsSharedMethod()) {
+    if (methodHandle->IsSendableMethod()) {
         result = factory->NewJSSendableFunction(methodHandle);
         ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
         JSHandle<JSTaggedValue> sendableFuncModule = moduleManager->GenerateSendableFuncModule(module);

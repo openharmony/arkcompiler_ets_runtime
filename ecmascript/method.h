@@ -284,6 +284,11 @@ public:
     {
         return DeoptTypeBits::Update(extraLiteralInfo, type);
     }
+    
+    uint64_t SetIsSendable(uint64_t extraLiteralInfo, bool isShared)
+    {
+        return IsSharedBit::Update(extraLiteralInfo, isShared);
+    }
 
     void SetDeoptType(kungfu::DeoptType type)
     {
@@ -383,6 +388,19 @@ public:
         return reinterpret_cast<const uint8_t *>(GetNativePointerOrBytecodeArray());
     }
 
+    bool IsSendableMethod() const
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        return IsSharedBit::Decode(extraLiteralInfo);
+    }
+
+    void SetIsSendable(bool isShared)
+    {
+        uint64_t extraLiteralInfo = GetExtraLiteralInfo();
+        uint64_t newValue = SetIsSendable(extraLiteralInfo, isShared);
+        SetExtraLiteralInfo(newValue);
+    }
+
     // add for AOT
     void SetCodeEntryAndMarkAOTWhenBinding(uintptr_t codeEntry);
 
@@ -393,8 +411,6 @@ public:
     void InitInterpreterStatusForCompiledMethod(const JSThread *thread);
 
     void SetCompiledFuncEntry(uintptr_t codeEntry, bool isFastCall);
-
-    bool IsSharedMethod() const;
 
     static constexpr size_t Size()
     {
