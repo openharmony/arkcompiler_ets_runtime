@@ -184,3 +184,16 @@ for (var x in large_array3) {
         next_expected = 95;
     }
 }
+
+let a3 = [1, 2, 3];
+function func1(a, b, c, d) {
+    arguments.length = 100;
+    func2.apply(null, arguments, 0, 0); // c interpreter
+}
+function func2(a) {
+    print(a.length);
+    for (let i = 0; i < a.length; ++i) {
+        print(a[i]);
+    }
+}
+func1(a3);
