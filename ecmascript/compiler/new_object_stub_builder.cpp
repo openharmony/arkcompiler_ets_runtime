@@ -831,7 +831,7 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
         BRANCH(Int32GreaterThan(newLen, oldLen), &extendArray, &notExtendArray);
         Bind(&extendArray);
         {
-            result = ExtendArrayCheck(glue, elements, newLen);
+            result = ExtendArrayCheck(glue, elements, newLen, spaceType);
             Jump(&exit);
         }
         Bind(&notExtendArray);
@@ -844,29 +844,13 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             BRANCH(checkIsMutantTaggedArray, &isMutantTaggedArray, &isNotMutantTaggedArray);
             Bind(&isMutantTaggedArray);
             {
-                size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(newLen));
-                Label afterAllocate(env);
-                auto hclass = GetGlobalConstantValue(
-                    VariableType::JS_POINTER(), glue_, ConstantIndex::MUTANT_TAGGED_ARRAY_CLASS_INDEX);
-                // Be careful. NO GC is allowed when initization is not complete.
-                HeapAlloc(&array, &afterAllocate, spaceType, hclass);
-                Bind(&afterAllocate);
-                StoreHClass(glue_, *array, hclass);
-                InitializeTaggedArrayWithSpeicalValue(&afterInitializeElements,
-                    *array, SpecialHole(), Int32(0), newLen);
+                array = newBuilder.NewMutantTaggedArray(glue, newLen);
+                Jump(&afterInitializeElements);
             }
             Bind(&isNotMutantTaggedArray);
             {
-                size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(newLen));
-                // Be careful. NO GC is allowed when initization is not complete.
-                Label afterAllocate(env);
-                auto hclass = GetGlobalConstantValue(
-                    VariableType::JS_POINTER(), glue_, ConstantIndex::ARRAY_CLASS_INDEX);
-                HeapAlloc(&array, &afterAllocate, spaceType, hclass);
-                Bind(&afterAllocate);
-                StoreBuiltinHClass(glue_, *array, hclass);
-                InitializeTaggedArrayWithSpeicalValue(&afterInitializeElements,
-                    *array, Hole(), Int32(0), newLen);
+                array = newBuilder.NewTaggedArray(glue, newLen);
+                Jump(&afterInitializeElements);
             }
             Bind(&afterInitializeElements);
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
