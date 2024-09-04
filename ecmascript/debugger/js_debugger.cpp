@@ -328,7 +328,7 @@ void JSDebugger::MethodEntry(JSHandle<Method> method, JSHandle<JSTaggedValue> en
 
     // scriptParsed for sendable object
     if (method->IsSendableMethod()) {
-        hooks_->MethodEntry(method);
+        hooks_->SendableMethodEntry(method);
     }
 }
 
