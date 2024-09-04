@@ -605,7 +605,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetPropertyMetaDataFromAttr(GateRef attr);
     GateRef TranslateToRep(GateRef value);
     GateRef GetKeyFromLayoutInfo(GateRef layout, GateRef entry);
-    void MatchFieldType(GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch);
+    void MatchFieldType(GateRef glue, GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch);
     GateRef FindElementWithCache(GateRef glue, GateRef layoutInfo, GateRef hClass,
         GateRef key, GateRef propsNum, GateRef hir = Circuit::NullGate());
     GateRef FindElementFromNumberDictionary(GateRef glue, GateRef elements, GateRef index);

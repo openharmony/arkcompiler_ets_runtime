@@ -1325,6 +1325,21 @@ void JSTaggedValue::DumpTaggedValue(std::ostream &os) const
     }
 }
 
+void JSTaggedValue::DumpTaggedValueType(std::ostream &os) const
+{
+    if (IsInt()) {
+        os << "[Int]";
+    } else if (IsDouble()) {
+        os << "[Double]";
+    } else if (IsSpecial()) {
+        DumpSpecialValue(os);
+    } else {
+        ASSERT(IsWeak() || IsHeapObject());
+        TaggedObject *obj = IsWeak() ? GetTaggedWeakRef() : GetTaggedObject();
+        os << "[" + JSHClass::DumpJSType(obj->GetClass()->GetObjectType()) + "]";
+    }
+}
+
 void JSTaggedValue::Dump(std::ostream &os) const
 {
     DumpTaggedValue(os);

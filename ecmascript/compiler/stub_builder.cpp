@@ -146,7 +146,8 @@ void StubBuilder::LoopEnd(Label *loopHead)
     env_->SetCurrentLabel(nullptr);
 }
 
-void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch)
+void StubBuilder::MatchFieldType(
+    GateRef glue, GateRef fieldType, GateRef value, Label *executeSetProp, Label *typeMismatch)
 {
     auto *env = GetEnvironment();
     Label valueIsUndefined(env);
@@ -167,6 +168,8 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
     Label checkUndefined(env);
     Label isUndefined(env);
     Label exit(env);
+    Label Mismatch(env);
+    Label CheckMatch(env);
     DEFVARIABLE(result, VariableType::BOOL(), False());
     GateRef checkType = TaggedIsUndefined(value);
     BRANCH(checkType, &valueIsUndefined, &checkNumber);
@@ -274,6 +277,13 @@ void StubBuilder::MatchFieldType(GateRef fieldType, GateRef value, Label *execut
         }
     }
     Bind(&exit);
+    Branch(BoolNot(*result), &Mismatch, &CheckMatch);
+    Bind(&Mismatch);
+    {
+        CallRuntime(glue, RTSTUB_ID(MismatchError), {IntToTaggedInt(fieldType), value});
+        Jump(&CheckMatch);
+    }
+    Bind(&CheckMatch);
     BRANCH(*result, executeSetProp, typeMismatch);
 }
 

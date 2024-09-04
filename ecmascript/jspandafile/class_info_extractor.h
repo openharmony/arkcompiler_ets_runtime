@@ -121,6 +121,7 @@ public:
                                                        const JSHandle<JSTaggedValue> &constructorHClassVal);
 
     static bool PUBLIC_API MatchFieldType(SharedFieldType fieldType, JSTaggedValue value);
+    static CString StaticFieldTypeToString(uint32_t fieldType);
 private:
     static JSHandle<NameDictionary> BuildDictionaryProperties(JSThread *thread, const JSHandle<JSObject> &object,
                                                               JSHandle<TaggedArray> &keys,

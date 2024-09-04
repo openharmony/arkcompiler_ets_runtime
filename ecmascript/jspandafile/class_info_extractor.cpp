@@ -679,7 +679,39 @@ bool ClassHelper::MatchFieldType(SharedFieldType fieldType, JSTaggedValue value)
     } else if ((sharedFieldType & static_cast<uint32_t>(SharedFieldType::UNDEFINED)) != 0 && value.IsUndefined()) {
         return true;
     }
+    std::stringstream oss;
+    value.DumpTaggedValueType(oss);
+    LOG_ECMA(ERROR) << "Sendable obj Match field type fail. expected type: " <<
+        StaticFieldTypeToString(sharedFieldType) << ", actual type: " << oss.str();
     return false;
+}
+
+CString ClassHelper::StaticFieldTypeToString(uint32_t fieldType)
+{
+    switch (fieldType) {
+        case static_cast<uint32_t>(SharedFieldType::NONE):
+            return "[None]";
+        case static_cast<uint32_t>(SharedFieldType::NUMBER):
+            return "[Number]";
+        case static_cast<uint32_t>(SharedFieldType::STRING):
+            return "[String]";
+        case static_cast<uint32_t>(SharedFieldType::BOOLEAN):
+            return "[Boolean]";
+        case static_cast<uint32_t>(SharedFieldType::SENDABLE):
+            return "[Sendable Object]";
+        case static_cast<uint32_t>(SharedFieldType::BIG_INT):
+            return "[BigInt]";
+        case static_cast<uint32_t>(SharedFieldType::GENERIC):
+            return "[Generic]";
+        case static_cast<uint32_t>(SharedFieldType::NULL_TYPE):
+            return "[Null]";
+        case static_cast<uint32_t>(SharedFieldType::UNDEFINED):
+            return "[Undefined]";
+        default: {
+            CString ret = "unknown type ";
+            return ret.append(std::to_string(fieldType));
+        }
+    }
 }
 
 void ClassHelper::HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
