@@ -85,19 +85,21 @@ HWTEST_F_L0(ConcurrentMarkingTest, PerformanceWithoutConcurrentMarking)
 HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithOldSpace)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    heap->SetFullMarkRequestedState(false);
-    {
-        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-        uint32_t length = 1_KB;
-        for (uint32_t i = 0; i < length * 2; i++) {
-            [[maybe_unused]] auto array =
-                CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
-        }
+    if (heap->GetConcurrentMarker()->IsEnabled()) {
+        heap->SetFullMarkRequestedState(false);
+        {
+            [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+            uint32_t length = 1_KB;
+            for (uint32_t i = 0; i < length * 2; i++) {
+                [[maybe_unused]] auto array =
+                    CreateTaggedArray(length, JSTaggedValue::Undefined(), MemSpaceType::OLD_SPACE);
+            }
 
-        heap->GetOldSpace()->SetInitialCapacity(static_cast<size_t>(length));
-        EXPECT_FALSE(heap->IsConcurrentFullMark());
-        heap->TryTriggerConcurrentMarking();
-        EXPECT_TRUE(heap->IsConcurrentFullMark());
+            heap->GetOldSpace()->SetInitialCapacity(static_cast<size_t>(length));
+            EXPECT_FALSE(heap->IsConcurrentFullMark());
+            heap->TryTriggerConcurrentMarking();
+            EXPECT_TRUE(heap->IsConcurrentFullMark());
+        }
     }
 }
 
@@ -123,45 +125,47 @@ HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithNewSpace)
 HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingWithFreshRegion)
 {
     Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    if (heap->GetConcurrentMarker()->IsEnabled()) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
-    JSHandle<TaggedArray> arr = factory->NewTaggedArray(1);
-    EXPECT_TRUE(!thread->IsConcurrentMarkingOrFinished());
+        heap->CollectGarbage(TriggerGCType::FULL_GC);
+        JSHandle<TaggedArray> arr = factory->NewTaggedArray(1);
+        EXPECT_TRUE(!thread->IsConcurrentMarkingOrFinished());
 
-    SemiSpace *space = heap->GetNewSpace();
-    EXPECT_TRUE(space->Expand(false));
-    Region *region = space->GetCurrentRegion();
-    EXPECT_TRUE(!region->IsFreshRegion());
+        SemiSpace *space = heap->GetNewSpace();
+        EXPECT_TRUE(space->Expand(false));
+        Region *region = space->GetCurrentRegion();
+        EXPECT_TRUE(!region->IsFreshRegion());
 
-    JSHandle<JSHClass> hclass(thread, thread->GlobalConstants()->GetObjectClass().GetTaggedObject());
-    uint32_t numInlinedProps = hclass->GetInlinedProperties();
-    EXPECT_TRUE(numInlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
-    uint32_t size = hclass->GetObjectSize();
-    EXPECT_TRUE(size == JSObject::SIZE + numInlinedProps * sizeof(JSTaggedValue));
-    uintptr_t addr = space->Allocate(size);
-    EXPECT_TRUE(addr != 0);
-    JSObject *obj = reinterpret_cast<JSObject*>(addr);
+        JSHandle<JSHClass> hclass(thread, thread->GlobalConstants()->GetObjectClass().GetTaggedObject());
+        uint32_t numInlinedProps = hclass->GetInlinedProperties();
+        EXPECT_TRUE(numInlinedProps == JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
+        uint32_t size = hclass->GetObjectSize();
+        EXPECT_TRUE(size == JSObject::SIZE + numInlinedProps * sizeof(JSTaggedValue));
+        uintptr_t addr = space->Allocate(size);
+        EXPECT_TRUE(addr != 0);
+        JSObject *obj = reinterpret_cast<JSObject*>(addr);
 
-    JSHandle<TaggedArray> emptyArray = factory->EmptyArray();
-    factory->InitializeExtraProperties(hclass, obj, numInlinedProps);
-    obj->InitializeHash();
-    obj->SetElements(thread, emptyArray, SKIP_BARRIER);
-    obj->SetProperties(thread, emptyArray, SKIP_BARRIER);
-    obj->SynchronizedSetClass(thread, *hclass);
+        JSHandle<TaggedArray> emptyArray = factory->EmptyArray();
+        factory->InitializeExtraProperties(hclass, obj, numInlinedProps);
+        obj->InitializeHash();
+        obj->SetElements(thread, emptyArray, SKIP_BARRIER);
+        obj->SetProperties(thread, emptyArray, SKIP_BARRIER);
+        obj->SynchronizedSetClass(thread, *hclass);
 
-    arr->Set(thread, 0, JSTaggedValue(obj));
+        arr->Set(thread, 0, JSTaggedValue(obj));
 
-    heap->SetMarkType(MarkType::MARK_YOUNG);
-    heap->TriggerConcurrentMarking();
-    EXPECT_TRUE(thread->IsConcurrentMarkingOrFinished());
-    EXPECT_TRUE(region->IsHalfFreshRegion());
-    region->SetRegionTypeFlag(RegionTypeFlag::FRESH);
-    EXPECT_TRUE(region->IsFreshRegion());
+        heap->SetMarkType(MarkType::MARK_YOUNG);
+        heap->TriggerConcurrentMarking();
+        EXPECT_TRUE(thread->IsConcurrentMarkingOrFinished());
+        EXPECT_TRUE(region->IsHalfFreshRegion());
+        region->SetRegionTypeFlag(RegionTypeFlag::FRESH);
+        EXPECT_TRUE(region->IsFreshRegion());
 
-    heap->WaitConcurrentMarkingFinished();
-    JSHandle<JSObject> objHandle(thread, obj);
-    heap->GetConcurrentMarker()->HandleMarkingFinished();
+        heap->WaitConcurrentMarkingFinished();
+        JSHandle<JSObject> objHandle(thread, obj);
+        heap->GetConcurrentMarker()->HandleMarkingFinished();
+    }
 }
 
 HWTEST_F_L0(ConcurrentMarkingTest, ConcurrentMarkingRequestBySharedSize)

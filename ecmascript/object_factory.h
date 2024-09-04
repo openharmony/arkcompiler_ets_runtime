@@ -847,6 +847,8 @@ public:
 
     JSHandle<LayoutInfo> PUBLIC_API CreateSLayoutInfo(uint32_t properties);
 
+    JSHandle<LayoutInfo> PUBLIC_API NewSEmptyLayoutInfo();
+
     JSHandle<ProfileTypeInfoCell> NewSEmptyProfileTypeInfoCell();
 
     JSHandle<TaggedArray> NewSEmptyArray(); // only used for EcmaVM.
@@ -855,7 +857,8 @@ public:
 
     JSHandle<TaggedArray> PUBLIC_API NewSDictionaryArray(uint32_t length);
 
-    JSHandle<TaggedArray> NewSTaggedArrayWithoutInit(uint32_t length);
+    JSHandle<TaggedArray> NewSTaggedArrayWithoutInit(uint32_t length,
+                                                     MemSpaceType spaceType = MemSpaceType::SHARED_OLD_SPACE);
 
     JSHandle<JSHClass> CreateSFunctionClass(uint32_t size, JSType type,
                                             const JSHandle<JSTaggedValue> &prototype, bool isAccessor = true);

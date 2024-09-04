@@ -56,8 +56,8 @@ namespace panda::ecmascript {
 void GlobalEnvConstants::Init(JSThread *thread)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    auto *globalConst = Runtime::GetInstance()->GetGlobalEnvConstants();
-    if (globalConst != nullptr) {
+    if (Runtime::GetInstance()->SharedConstInited()) {
+        auto *globalConst = Runtime::GetInstance()->GetGlobalEnvConstants();
         // 1. Copy shareds.
         for (size_t i = static_cast<size_t>(ConstantIndex::SHARED_BEGIN);
             i <= static_cast<size_t>(ConstantIndex::SHARED_END); i++) {
@@ -71,6 +71,21 @@ void GlobalEnvConstants::Init(JSThread *thread)
     // 2. Init non-shareds.
     InitMiscellanious(thread, factory);
     InitRootsClasses(factory);
+}
+
+void GlobalEnvConstants::CopySharedConstantsFrom(const GlobalEnvConstants *src)
+{
+    for (size_t i = 0; i < static_cast<size_t>(ConstantIndex::SHARED_BEGIN); i++) {
+        constants_[i] = JSTaggedValue::Hole();
+    }
+    for (size_t i = static_cast<size_t>(ConstantIndex::SHARED_BEGIN);
+        i <= static_cast<size_t>(ConstantIndex::SHARED_END); i++) {
+        constants_[i] = src->constants_[i];
+    }
+    for (size_t i = static_cast<size_t>(ConstantIndex::SHARED_END) + 1;
+        i < static_cast<size_t>(ConstantIndex::CONSTANT_COUNT); i++) {
+        constants_[i] = JSTaggedValue::Hole();
+    }
 }
 
 void GlobalEnvConstants::InitSharedStrings(ObjectFactory *factory)
@@ -254,7 +269,7 @@ void GlobalEnvConstants::InitSharedMiscellanious(JSThread *thread, ObjectFactory
     SetConstant(ConstantIndex::SINGLE_CHAR_TABLE_INDEX, SingleCharTable::CreateSingleCharTable(thread));
     SetConstant(ConstantIndex::EMPTY_ARRAY_OBJECT_INDEX, factory->NewSEmptyArray());
     SetConstant(ConstantIndex::EMPTY_MUTANT_ARRAY_OBJECT_INDEX, factory->NewSEmptyMutantArray());
-    SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->CreateSLayoutInfo(0));
+    SetConstant(ConstantIndex::EMPTY_SLAYOUT_INFO_OBJECT_INDEX, factory->NewSEmptyLayoutInfo());
     SetConstant(ConstantIndex::UINT64_MAX_BIGINT_INDEX, BigInt::CreateUint64MaxBigInt(thread));
     SetConstant(ConstantIndex::INT64_MAX_BIGINT_INDEX, BigInt::CreateInt64MaxBigInt(thread));
     SetConstant(ConstantIndex::EMPTY_PROFILE_TYPE_INFO_CELL_INDEX, factory->NewSEmptyProfileTypeInfoCell());

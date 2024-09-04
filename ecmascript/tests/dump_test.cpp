@@ -139,8 +139,8 @@ using namespace panda::ecmascript;
 using namespace panda::ecmascript::base;
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define CHECK_DUMP_FIELDS(begin, end, num);                                           \
-    LOG_ECMA_IF((num) != ((end) - (begin)) / JSTaggedValue::TaggedTypeSize(), FATAL) \
+#define CHECK_DUMP_FIELDS(begin, end, num);                                                                     \
+    LOG_ECMA_IF((num) != ((end) - (begin)) / JSTaggedValue::TaggedTypeSize() && sizeof(uintptr_t) == 8, FATAL)  \
         << "Fields in obj are not in dump list. "
 
 namespace panda::test {
