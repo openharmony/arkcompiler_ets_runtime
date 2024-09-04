@@ -159,17 +159,17 @@ struct BytecodeRegion {
     ChunkVector<BytecodeRegion *> succs; // List of successors blocks
     ChunkVector<BytecodeRegion *> trys; // List of trys blocks
     ChunkVector<BytecodeRegion *> catches; // List of catches blocks
+    ChunkSet<size_t> loopBacks;
+    size_t numOfLoopBack {0};
     size_t numOfStatePreds {0};
     size_t loopNumber {0};
     size_t loopIndex {0};
     ChunkVector<std::tuple<size_t, size_t, bool>> expandedPreds;
     GateRef dependCache {Circuit::NullGate()};
     BytecodeIterator bytecodeIterator_ {};
-    ChunkVector<GateRef> mergeState; // For empty catch BB
-    ChunkVector<GateRef> mergeDepend; // For empty catch BB
     bool IsEmptyCatchBB {false}; // For empty catch BB
     BytecodeRegion(Chunk* chunk) : preds(chunk), succs(chunk),
-        trys(chunk), catches(chunk), expandedPreds(chunk), mergeState(chunk), mergeDepend(chunk)
+        trys(chunk), catches(chunk), loopBacks(chunk), expandedPreds(chunk)
     {
     }
 
@@ -203,6 +203,11 @@ struct BytecodeRegion {
     bool IsEmptryBlock() const
     {
         return end == static_cast<uint32_t>(BytecodeIterator::INVALID_INDEX);
+    }
+
+    bool IsLoopBack(const BytecodeRegion &bb) const
+    {
+        return loopBacks.find(bb.id) != loopBacks.end();
     }
 };
 
@@ -577,16 +582,7 @@ public:
         return catchBBOfOSRLoop_.find(&bb) != catchBBOfOSRLoop_.end();
     }
 
-    bool IsEmptyCatchBBOfCondJump(const BytecodeRegion &bb) const
-    {
-        return bb.succs.size() == 1 && !bb.catches.empty() && bb.catches[0]->IsEmptyCatchBB;
-    }
-
-    void AddMergeStateDepend(BytecodeRegion &bb, GateRef state, GateRef depend)
-    {
-        bb.mergeState.emplace_back(state);
-        bb.mergeDepend.emplace_back(depend);
-    }
+    void ComputeNumOfLoopBack();
 
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
@@ -625,19 +621,10 @@ private:
     void BuildRegionInfo();
     void BuildFrameArgs();
     void RemoveIfInRpoList(BytecodeRegion *bb);
-    void RemoveDuplicateGates(GateRef state, std::vector<GateRef> &stateList, std::vector<GateRef> &dependList,
-                              GateRef getException);
-    void RemoveDuplicateGatesInMerge(GateRef state, std::vector<GateRef> &stateList, std::vector<GateRef> &dependList);
-    void HandleEmptyCatchBB(BytecodeRegion &bb, GateRef state, GateRef getException);
 
     BytecodeRegion &RegionAt(size_t i)
     {
         return *graph_[i];
-    }
-
-    bool IsEmptyCatchBB(BytecodeRegion &bb)
-    {
-        return bb.IsEmptyCatchBB;
     }
 
     Circuit *circuit_;

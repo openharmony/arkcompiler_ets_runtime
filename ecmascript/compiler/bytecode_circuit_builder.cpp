@@ -387,6 +387,33 @@ void BytecodeCircuitBuilder::RemoveUnreachableRegion()
     }
 }
 
+void BytecodeCircuitBuilder::ComputeNumOfLoopBack()
+{
+    for (size_t i = 0; i < graph_.size(); i++) {
+        auto &bb = RegionAt(i);
+        if (!IsEntryBlock(bb.id) && bb.numOfStatePreds == 0) {
+            continue;
+        }
+        for (auto &succ: bb.succs) {
+            if (succ->IsLoopBack(bb)) {
+                succ->numOfLoopBack++;
+            }
+        }
+        if (bb.catches.empty()) {
+            continue;
+        }
+        
+        EnumerateBlock(bb, [&bb](const BytecodeInfo &bytecodeInfo) -> bool {
+            if (bytecodeInfo.IsGeneral() && !bytecodeInfo.NoThrow() && bb.catches.at(0)->IsLoopBack(bb)) {
+                // if block which can throw exception has serval catchs block,
+                // only the innermost catch block is useful
+                ASSERT(bb.catches.size() == 1); // 1: cache size
+                bb.catches.at(0)->numOfLoopBack++;
+            }
+            return true;
+        });
+    }
+}
 // Update CFG's predecessor, successor and try catch associations
 void BytecodeCircuitBuilder::UpdateCFG()
 {
@@ -737,10 +764,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
         byteCodeToJSGates_[iterator.Index()].emplace_back(gate);
         jsGatesToByteCode_[gate] = iterator.Index();
     } else {
-        if (bb.succs.size() == 0 && !bb.catches.empty()) {
-            AddMergeStateDepend(*bb.catches[0], state, depend);
-            return;
-        }
+        ASSERT(bb.succs.size() == 1); // 1: only one succ if not condjump
         auto &bbNext = bb.succs.at(0);
         frameStateBuilder_.MergeIntoSuccessor(bb, *bbNext);
         bbNext->expandedPreds.push_back({bb.id, iterator.Index(), false});
@@ -816,57 +840,6 @@ void BytecodeCircuitBuilder::NewByteCode(BytecodeRegion &bb)
     }
 }
 
-void BytecodeCircuitBuilder::RemoveDuplicateGatesInMerge(GateRef state, std::vector<GateRef> &stateList,
-                                                         std::vector<GateRef> &dependList)
-{
-    ASSERT(gateAcc_.GetOpCode(state) == OpCode::MERGE);
-    for (size_t i = 0; i < gateAcc_.GetNumIns(state); i++) {
-        for (size_t j = 0; j < stateList.size(); j++) {
-            if (gateAcc_.GetIn(state, i) == stateList[j]) {
-                stateList.erase(std::remove(stateList.begin(), stateList.end(), stateList[j]), stateList.end());
-                dependList.erase(std::remove(dependList.begin(), dependList.end(), dependList[j]), dependList.end());
-            }
-        }
-    }
-}
-
-void BytecodeCircuitBuilder::RemoveDuplicateGates(GateRef state, std::vector<GateRef> &stateList,
-                                                  std::vector<GateRef> &dependList, GateRef getException)
-{
-    if (gateAcc_.GetOpCode(state) == OpCode::MERGE) {
-        RemoveDuplicateGatesInMerge(state, stateList, dependList);
-    }
-    if (std::find(stateList.begin(), stateList.end(), state) == stateList.end()) {
-        stateList.emplace_back(state);
-        dependList.emplace_back(getException);
-    }
-}
-
-void BytecodeCircuitBuilder::HandleEmptyCatchBB(BytecodeRegion &bb, GateRef state, GateRef getException)
-{
-    std::vector<GateRef> stateList;
-    std::vector<GateRef> dependList;
-    for (uint32_t i = 0; i < bb.mergeState.size(); i++) {
-        if (std::find(stateList.begin(), stateList.end(), bb.mergeState.at(i)) == stateList.end()) {
-            stateList.emplace_back(bb.mergeState.at(i));
-            dependList.emplace_back(bb.mergeDepend.at(i));
-        }
-    }
-    if (!stateList.empty()) {
-        if (gateAcc_.GetOpCode(state) == OpCode::LOOP_BEGIN) {
-            frameStateBuilder_.UpdateStateDepend(state, getException);
-        } else {
-            RemoveDuplicateGates(state, stateList, dependList, getException);
-            GateRef merge = circuit_->NewGate(circuit_->Merge(stateList.size()), stateList);
-            dependList.insert(dependList.begin(), merge);
-            GateRef dependSelector = circuit_->NewGate(circuit_->DependSelector(stateList.size()), dependList);
-            frameStateBuilder_.UpdateStateDepend(merge, dependSelector);
-        }
-    } else {
-        frameStateBuilder_.UpdateStateDepend(state, getException);
-    }
-}
-
 void BytecodeCircuitBuilder::BuildSubCircuit()
 {
     auto &entryBlock = RegionAt(0);
@@ -893,12 +866,8 @@ void BytecodeCircuitBuilder::BuildSubCircuit()
             GateRef depend = frameStateBuilder_.GetCurrentDepend();
             auto getException = circuit_->NewGate(circuit_->GetException(),
                 MachineType::I64, {state, depend}, GateType::AnyType());
-            if (IsEmptyCatchBB(bb)) {
-                HandleEmptyCatchBB(bb, state, getException);
-            } else {
-                frameStateBuilder_.UpdateStateDepend(state, getException);
-            }
             frameStateBuilder_.UpdateAccumulator(getException);
+            frameStateBuilder_.UpdateStateDepend(state, getException);
         }
         EnumerateBlock(bb, [this, &bb]
             (const BytecodeInfo &bytecodeInfo) -> bool {
