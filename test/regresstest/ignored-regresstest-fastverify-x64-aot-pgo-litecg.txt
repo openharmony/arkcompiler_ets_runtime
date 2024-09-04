@@ -2,10 +2,12 @@
 
 # Issue #17903
 regresstest/ark-regress/mjsunit/regress/regress-95113.js
-# Issue #17902
-regresstest/ark-regress/mjsunit/regress/regress-crbug-1439691.js
+
 # Issue #17904
 regresstest/ark-regress/mjsunit/es6/regress/regress-lookup-transition.js
+
+# Issue #18959
+regresstest/ark-regress/intl/collator/sr-sort.js
 
 # Issue #17901
 regresstest/ark-regress/intl/collator/check-co-option.js
@@ -26,6 +28,7 @@ regresstest/ark-regress/intl/relative-time-format/resolved-options.js
 regresstest/ark-regress/intl/segmenter/constructor.js
 regresstest/ark-regress/mjsunit/asm/regress-740325.js
 regresstest/ark-regress/mjsunit/asm/regress-9531.js
+regresstest/ark-regress/mjsunit/asm/float64array-outofbounds.js
 regresstest/ark-regress/mjsunit/compiler/regress-1104514.js
 regresstest/ark-regress/mjsunit/compiler/regress-crbug-1226264.js
 regresstest/ark-regress/mjsunit/es6/math-log1p.js
@@ -82,6 +85,16 @@ regresstest/ark-regress/mjsunit/regress/regression-crbug-1505311.js
 regresstest/ark-regress/mjsunit/es8/async-arrow-default-function-await.js
 # --- end of #18551
 
+# Issue #19210
+regresstest/ark-regress/mjsunit/compiler/regress-crbug-1479847.js
+# --- end of #19210
+
 # Issue #18960
+regresstest/ark-regress/mjsunit/compiler/inline-omit-arguments-object.js
+regresstest/ark-regress/mjsunit/compiler/regress-715651.js
+regresstest/ark-regress/mjsunit/regress/regress-1400053.js
+regresstest/ark-regress/mjsunit/regress/regress-1493718.js
+regresstest/ark-regress/mjsunit/regress/regress-3218915.js
+regresstest/ark-regress/mjsunit/regress/regress-crbug-630559.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-633585.js
 # --- end of #18960
