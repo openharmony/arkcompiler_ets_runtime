@@ -1683,7 +1683,7 @@ void BuiltinsStringStubBuilder::CopyUtf16AsUtf8(GateRef glue, GateRef dst, GateR
     sourceTmp = PtrAdd(*sourceTmp, IntPtr(sizeof(uint16_t)));
     dstTmp = PtrAdd(*dstTmp, IntPtr(sizeof(uint8_t)));
     // Work with low level buffers, we can't call GC. Loop is simple.
-    LoopEnd(&loopHead, env, glue);
+    LoopEnd(&loopHead);
 
     Bind(&exit);
     env->SubCfgExit();
