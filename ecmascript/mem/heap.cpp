@@ -650,7 +650,7 @@ void SharedHeap::DumpHeapSnapshotBeforeOOM([[maybe_unused]]bool isFullGC, [[mayb
         LOG_ECMA(INFO) << " DumpHeapSnapshotBeforeOOM Success. ";
     }
     DumpSnapShotOption dumpOption;
-    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
     dumpOption.isVmMode = true;
     dumpOption.isPrivate = false;
     dumpOption.captureNumericValue = false;
@@ -1542,7 +1542,7 @@ void Heap::DumpHeapSnapshotBeforeOOM([[maybe_unused]] bool isFullGC)
 #endif
     // Vm should always allocate young space successfully. Really OOM will occur in the non-young spaces.
     DumpSnapShotOption dumpOption;
-    dumpOption.dumpFormat = DumpFormat::JSON;
+    dumpOption.dumpFormat = DumpFormat::BINARY;
     dumpOption.isVmMode = true;
     dumpOption.isPrivate = false;
     dumpOption.captureNumericValue = false;

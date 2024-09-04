@@ -16,6 +16,7 @@
 #include "ecmascript/dfx/hprof/heap_snapshot_json_serializer.h"
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
+#include "securec.h"
 
 namespace panda::ecmascript {
 
@@ -42,6 +43,51 @@ bool HeapSnapshotJSONSerializer::Serialize(HeapSnapshot *snapshot, Stream *strea
 
     LOG_ECMA(INFO) << "HeapSnapshotJSONSerializer::Serialize exit";
     return true;
+}
+
+void HeapSnapshotJSONSerializer::DumpStringTable(HeapSnapshot *snapshot, Stream *stream)
+{
+    const StringHashMap *stringTable = snapshot->GetEcmaStringTable();
+    ASSERT(stringTable != nullptr);
+    size_t size5MB = 5 * 1024 * 1024;
+    char *buf = new char[size5MB]; // 5MB buf use for string dump
+    auto strNum = stringTable->GetCapcity();
+    auto ret = memcpy_s(buf, size5MB, &strNum, sizeof(size_t));
+    if (ret != EOK) {
+        delete[] buf;
+        LOG_ECMA(ERROR) << "DumpStringTable: memcpy_s failed, strNum=" << strNum;
+        return;
+    }
+    size_t offset = sizeof(size_t);
+    for (auto key : stringTable->GetOrderedKeyStorage()) {
+        auto [strId, str] = stringTable->GetStringAndIdPair(key);
+        const char *s = str->data();
+        auto currLen = str->size() + 1;
+        if (currLen + sizeof(uint64_t) > size5MB) {
+            stream->WriteBinBlock(buf, offset);
+            offset = 0;
+            delete[] buf;
+            size5MB = currLen + sizeof(uint64_t);
+            buf = new char[size5MB];
+        }
+        if (offset + currLen + sizeof(uint64_t) > size5MB) {
+            stream->WriteBinBlock(buf, offset);
+            offset = 0;
+        }
+        auto strIdPtr = reinterpret_cast<uint64_t *>(buf + offset);
+        *strIdPtr = strId;
+        ret = memcpy_s(buf + offset + sizeof(uint64_t), size5MB - offset, s, currLen);
+        if (ret != EOK) {
+            delete[] buf;
+            LOG_ECMA(ERROR) << "DumpStringTable: memcpy_s failed";
+            return;
+        }
+        offset += currLen + sizeof(uint64_t);
+    }
+    if (offset > 0) {
+        stream->WriteBinBlock(buf, offset);
+    }
+    delete[] buf;
 }
 
 void HeapSnapshotJSONSerializer::SerializeSnapshotHeader(HeapSnapshot *snapshot, StreamWriter *writer)

@@ -641,13 +641,13 @@ void HeapSnapshot::FillNodes(bool isInFinish, bool isSimplify)
     }
 }
 
-Node *HeapSnapshot::HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish)
+Node *HeapSnapshot::HandleStringNode(JSTaggedValue &entry, size_t &size, bool &isInFinish, bool isBinMod)
 {
     Node* node = nullptr;
     if (isPrivate_) {
         node = GeneratePrivateStringNode(size);
     } else {
-        node = GenerateStringNode(entry, size, isInFinish);
+        node = GenerateStringNode(entry, size, isInFinish, isBinMod);
     }
     if (node == nullptr) {
         LOG_ECMA(ERROR) << "string node nullptr";
@@ -723,7 +723,7 @@ CString HeapSnapshot::GeneratePrimitiveNameString(JSTaggedValue &entry)
     return primitiveName;
 }
 
-Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish, bool isSimplify)
+Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFinish, bool isSimplify, bool isBinMod)
 {
     Node *node = nullptr;
     if (entry.IsHeapObject()) {
@@ -731,7 +731,7 @@ Node *HeapSnapshot::GenerateNode(JSTaggedValue entry, size_t size, bool isInFini
             entry.RemoveWeakTag();
         }
         if (entry.IsString()) {
-            return HandleStringNode(entry, size, isInFinish);
+            return HandleStringNode(entry, size, isInFinish, isBinMod);
         }
         if (entry.IsJSFunction()) {
             return HandleFunctionNode(entry, size, isInFinish);
@@ -926,13 +926,13 @@ bool HeapSnapshot::AddMethodInfo(MethodLiteral *methodLiteral,
     return true;
 }
 
-Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish)
+Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool isInFinish, bool isBinMod)
 {
     static const CString EMPTY_STRING;
     JSTaggedType addr = entry.GetRawData();
     Node *existNode = entryMap_.FindEntry(addr);  // Fast Index
     if (existNode != nullptr) {
-        if (isInFinish) {
+        if (isInFinish || isBinMod) {
             existNode->SetName(GetString(EntryVisitor::ConvertKey(entry)));
         }
         existNode->SetLive(true);
@@ -943,7 +943,7 @@ Node *HeapSnapshot::GenerateStringNode(JSTaggedValue entry, size_t size, bool is
     auto originStr = static_cast<EcmaString *>(entry.GetTaggedObject());
     size_t selfsize = (size != 0) ? size : EcmaStringAccessor(originStr).GetFlatStringSize();
     const CString *nodeName = &EMPTY_STRING;
-    if (isInFinish) {
+    if (isInFinish || isBinMod) {
         nodeName = GetString(EntryVisitor::ConvertKey(entry));
     }
     auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
@@ -1077,6 +1077,97 @@ void HeapSnapshot::FillEdges(bool isSimplify)
         }
         iter++;
     }
+}
+
+void HeapSnapshot::FillEdgesForBinMod(RawHeapObjInfo *objInfo)
+{
+    auto entryFrom = entryMap_.FindEntry(reinterpret_cast<JSTaggedType>(objInfo->newAddr));
+    JSTaggedValue value(entryFrom->GetAddress());
+    auto object = value.GetTaggedObject();
+    std::vector<Reference> referenceResources;
+    auto jsHclass = object->GetClass();
+    if (jsHclass->IsJsGlobalEnv() || jsHclass->IsString()) {
+        referenceResources.emplace_back("hclass", JSTaggedValue(jsHclass));
+        for (auto refAddr : objInfo->refVec) {
+            JSTaggedValue val(refAddr);
+            auto valTy = val.GetTaggedObject()->GetClass()->GetObjectType();
+            referenceResources.emplace_back(JSHClass::DumpJSType(valTy), val);
+        }
+    } else {
+        value.DumpForSnapshot(referenceResources, false);
+    }
+    for (auto const &it : referenceResources) {
+        JSTaggedValue toValue = it.value_;
+        if (toValue.IsNumber() && !captureNumericValue_) {
+            continue;
+        }
+        Node *entryTo = nullptr;
+        EdgeType type = toValue.IsWeak() ? EdgeType::WEAK : (EdgeType)it.type_;
+        if (toValue.IsWeak()) {
+            toValue.RemoveWeakTag();
+        }
+        if (toValue.IsHeapObject()) {
+            auto *to = toValue.GetTaggedObject();
+            entryTo = entryMap_.FindEntry(Node::NewAddress(to));
+        }
+        if (entryTo == nullptr) {
+            CString name;
+            name.append("MissObj").append(std::to_string(toValue.GetRawData()));
+            Node *missObj = Node::NewNode(chunk_, 1, nodeCount_, GetString(name), NodeType::OBJECT, 0, 0, 0);
+            entryMap_.InsertEntry(missObj);
+            InsertNodeUnique(missObj);
+        }
+        if (entryTo != nullptr) {
+            Edge *edge = (it.type_ == Reference::ReferenceType::ELEMENT) ?
+                Edge::NewEdge(chunk_, type, entryFrom, entryTo, it.index_) :
+                Edge::NewEdge(chunk_, type, entryFrom, entryTo, GetString(it.name_));
+            RenameFunction(it.name_, entryFrom, entryTo);
+            InsertEdgeUnique(edge);
+            entryFrom->IncEdgeCount();  // Update Node's edgeCount_ here
+        }
+    }
+}
+
+void HeapSnapshot::AddSyntheticRootForBinMod(RawHeapObjInfo *objInfo, int &edgeOffset, Node *syntheticRoot)
+{
+    if (!objInfo->isRoot) {
+        return;
+    }
+    TaggedObject *root = reinterpret_cast<TaggedObject *>(objInfo->newAddr);
+    Node *rootNode = entryMap_.FindEntry(Node::NewAddress(root));
+    if (rootNode != nullptr) {
+        Edge *edge = Edge::NewEdge(chunk_,
+            EdgeType::SHORTCUT, syntheticRoot, rootNode, GetString("-subroot-"));
+        InsertEdgeAt(edgeOffset, edge);
+        edgeOffset++;
+        syntheticRoot->IncEdgeCount();
+    }
+}
+
+bool HeapSnapshot::BuildSnapshotForBinMod(CVector<RawHeapObjInfo *> &objInfoVec,
+                                          CUnorderedMap<uint64_t, char *> &strTableIdMap)
+{
+    Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
+                                        NodeType::SYNTHETIC, 0, 0, 0);
+    InsertNodeAt(0, syntheticRoot);
+    int edgeOffset = 0;
+    for (auto objInfo : objInfoVec) {
+        FillEdgesForBinMod(objInfo);
+        if (strTableIdMap.find(objInfo->tInfo.stringId) != strTableIdMap.end()
+            && strTableIdMap[objInfo->tInfo.stringId] != nullptr) {
+            Node *currNode = entryMap_.FindEntry(reinterpret_cast<JSTaggedType>(objInfo->newAddr));
+            if (currNode != nullptr) {
+                currNode->SetName(GetString(strTableIdMap[objInfo->tInfo.stringId]));
+            }
+        }
+        AddSyntheticRootForBinMod(objInfo, edgeOffset, syntheticRoot);
+    }
+    int reindex = 0;
+    for (Node *node : nodes_) {
+        node->SetIndex(reindex);
+        reindex++;
+    }
+    return Verify();
 }
 
 void HeapSnapshot::RenameFunction(const CString &edgeName, Node *entryFrom, Node *entryTo)

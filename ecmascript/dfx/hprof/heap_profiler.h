@@ -75,6 +75,60 @@ private:
     CUnorderedMap<JSTaggedType, NodeId> idMap_ {};
 };
 
+struct AddrTableItem {
+    uint64_t addr;
+    uint64_t id;
+    uint64_t objSize;
+    uint64_t offset; // offset to the file
+    uint64_t stringId;
+};
+
+struct RawHeapObjInfo {
+    AddrTableItem tInfo;
+    char *newAddr;
+    bool isRoot;
+    CVector<uint64_t> refVec;
+};
+
+struct RawHeapInfoArgs {
+    CVector<RawHeapObjInfo *> rawObjInfoVec;
+    CUnorderedMap<uint64_t, char *> objOldAddrMapNewAddr;
+    CUnorderedMap<uint64_t, char *> strTableIdMapNewStr;
+};
+
+class ChunkDecoder {
+public:
+    explicit ChunkDecoder(std::string fileContent);
+
+    ~ChunkDecoder()
+    {
+        auto &objInfoVec = rawHeapArgs.rawObjInfoVec;
+        for (auto obj : objInfoVec) {
+            delete[] obj->newAddr;
+            delete obj;
+        }
+        auto &strTableIdMap = rawHeapArgs.strTableIdMapNewStr;
+        for (auto obj : strTableIdMap) {
+            delete[] obj.second;
+        }
+    }
+
+    RawHeapInfoArgs &GetRawHeapInfoArgs()
+    {
+        return rawHeapArgs;
+    }
+
+private:
+    void DecodeStrTable(const char *charPtr, uint64_t fileSize);
+
+    uint64_t heapObjCnt;
+    uint64_t rootObjCnt;
+    uint64_t ShareObjCnt;
+    uint64_t strTableOffset;
+    CUnorderedMap<uint64_t, RawHeapObjInfo *> rootAddrMap;
+    RawHeapInfoArgs rawHeapArgs;
+};
+
 class HeapProfiler : public HeapProfilerInterface {
 public:
     NO_MOVE_SEMANTIC(HeapProfiler);
@@ -116,6 +170,7 @@ public:
     {
         return const_cast<StringHashMap *>(&stringTable_);
     }
+    bool GenerateHeapSnapshot(std::string &inputFilePath, std::string &outputPath) override;
 
 private:
     /**
@@ -135,6 +190,7 @@ private:
     void UpdateHeapObjects(HeapSnapshot *snapshot);
     void ClearSnapshot();
     void FillIdMap();
+    bool BinaryDump(Stream *stream, const DumpSnapShotOption &dumpOption);
 
     const size_t MAX_NUM_HPROF = 5;  // ~10MB
     const EcmaVM *vm_;

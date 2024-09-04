@@ -131,4 +131,17 @@ bool FileDescriptorStream::WriteChunk(char *data, int32_t size)
     }
     return true;
 }
+
+bool FileDescriptorStream::WriteBinBlock(char *data, int32_t size)
+{
+    if (fd_ < 0) {
+        return false;
+    }
+    ssize_t written = write(fd_, data, size);
+    if (written == -1) {
+        perror("write");
+        return false;
+    }
+    return true;
+}
 }

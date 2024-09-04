@@ -111,6 +111,7 @@ public:
     NO_MOVE_SEMANTIC(HeapSnapshotJSONSerializer);
     NO_COPY_SEMANTIC(HeapSnapshotJSONSerializer);
     static bool Serialize(HeapSnapshot *snapshot, Stream *stream);
+    static void DumpStringTable(HeapSnapshot *snapshot, Stream *stream);
 
 private:
     static constexpr char ASCII_US = 31;
