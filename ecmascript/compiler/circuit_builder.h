@@ -591,6 +591,8 @@ public:
     GateRef ConvertUInt32ToTaggedNumber(GateRef gate);
     GateRef ConvertUInt32ToFloat64(GateRef gate);
     GateRef ConvertCharToEcmaString(GateRef gate);
+    GateRef ConvertCharToInt32(GateRef gate);
+    GateRef ConvertCharToDouble(GateRef gate);
     GateRef CheckAndConvert(
         GateRef gate, ValueType src, ValueType dst, ConvertSupport support = ConvertSupport::ENABLE);
     GateRef ConvertHoleAsUndefined(GateRef receiver);

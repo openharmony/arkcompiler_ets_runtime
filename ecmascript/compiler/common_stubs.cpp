@@ -88,6 +88,34 @@ void DefinefuncStubBuilder::GenerateCircuit()
     Return(*result);
 }
 
+void ConvertCharToInt32StubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef charCode = Int32Argument(1);
+    BuiltinsStringStubBuilder builder(this);
+    // char to string
+    GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
+    // string to number
+    result = CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), {result, Int32(0)}, charCode);
+    // get int from number
+    result = NumberGetInt(glue, result);
+    Return(result);
+}
+
+void ConvertCharToDoubleStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef charCode = Int32Argument(1);
+    BuiltinsStringStubBuilder builder(this);
+    // char to string
+    GateRef result = builder.CreateStringBySingleCharCode(glue, charCode);
+    // string to number
+    result = CallNGCRuntime(glue, RTSTUB_ID(StringToNumber), {result, Int32(0)}, charCode);
+    // get double from number
+    result = GetDoubleOfTNumber(result);
+    Return(result);
+}
+
 void MulStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);

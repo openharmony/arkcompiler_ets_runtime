@@ -149,6 +149,7 @@ private:
 
     GateRef CheckAndConvertToInt32(GateRef gate, GateType gateType, ConvertSupport support = ConvertSupport::ENABLE,
                                    OpType type = OpType::NORMAL);
+    GateRef CheckTaggedAndConvertToInt32(GateRef gate, GateType gateType, OpType type);
     GateRef CheckBoundAndConvertToInt32(GateRef gate,
                                         ConvertSupport support = ConvertSupport::ENABLE,
                                         OpType type = OpType::NORMAL);
