@@ -16,6 +16,7 @@
 #ifndef OHOS_ARKCOMPILER_AOTCOMPILER_IMPL_H
 #define OHOS_ARKCOMPILER_AOTCOMPILER_IMPL_H
 
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -82,7 +83,7 @@ private:
         bool running = false;
         pid_t childPid = -1;
     } state_;
-    bool allowAotCompiler_ {true};
+    std::atomic<bool> allowAotCompiler_ {true};
 };
 } // namespace OHOS::ArkCompiler
 #endif  // OHOS_ARKCOMPILER_AOTCOMPILER_IMPL_H

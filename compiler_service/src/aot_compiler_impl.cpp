@@ -200,12 +200,12 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     if (!allowAotCompiler_) {
         return ERR_AOT_COMPILER_CONNECT_FAILED;
     }
+    std::lock_guard<std::mutex> lock(mutex_);
     if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {
         LOG_SA(ERROR) << "aot compiler arguments error";
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
     int32_t ret = ERR_OK;
-    std::lock_guard<std::mutex> lock(mutex_);
     LOG_SA(INFO) << "begin to fork";
     pid_t pid = fork();
     if (pid == -1) {
