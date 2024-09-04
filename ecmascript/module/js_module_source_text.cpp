@@ -85,7 +85,7 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
 
     CString baseFilename;
     if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
-        baseFilename = thread->GetEcmaVM()->GetQuickFixManager()->GetCurrentBaseFileName();
+        baseFilename = thread->GetEcmaVM()->GetQuickFixManager()->GetBaseFileName(module);
     } else {
         baseFilename = module->GetEcmaModuleFilenameString();
     }
