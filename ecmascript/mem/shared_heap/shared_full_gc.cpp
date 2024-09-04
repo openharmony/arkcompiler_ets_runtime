@@ -93,7 +93,7 @@ void SharedFullGC::Sweep()
         return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
     };
     auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
-    uint32_t curSweepCount = stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
+    stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
     Runtime::GetInstance()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
 
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
@@ -104,7 +104,7 @@ void SharedFullGC::Sweep()
         thread->ClearContextCachedConstantPool();
     });
 
-    stringTableCleaner->TakeOrWaitSweepWeakRefTask(gcUpdateWeak, curSweepCount);
+    stringTableCleaner->JoinAndWaitSweepWeakRefTask(gcUpdateWeak);
     sHeap_->GetSweeper()->Sweep(true);
     sHeap_->GetSweeper()->PostTask(true);
 }

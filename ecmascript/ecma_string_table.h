@@ -35,38 +35,36 @@ class EcmaStringTable;
 
 class EcmaStringTableCleaner {
 public:
+    using IteratorPtr = std::shared_ptr<std::atomic<uint32_t>>;
     EcmaStringTableCleaner(EcmaStringTable* stringTable) : stringTable_(stringTable) {}
     ~EcmaStringTableCleaner() { stringTable_ = nullptr; }
 
-    uint32_t PostSweepWeakRefTask(const WeakRootVisitor &visitor);
-    void TakeOrWaitSweepWeakRefTask(const WeakRootVisitor &visitor, uint32_t curSweepCount);
+    void PostSweepWeakRefTask(const WeakRootVisitor &visitor);
+    void JoinAndWaitSweepWeakRefTask(const WeakRootVisitor &visitor);
 
 private:
     NO_COPY_SEMANTIC(EcmaStringTableCleaner);
     NO_MOVE_SEMANTIC(EcmaStringTableCleaner);
 
+    static void ProcessSweepWeakRef(IteratorPtr& iter, EcmaStringTableCleaner *cleaner, const WeakRootVisitor &visitor);
     void StartSweepWeakRefTask();
     void WaitSweepWeakRefTask();
     void SignalSweepWeakRefTask();
 
-    inline bool CheckAndSwitchRunningState(uint32_t curSweepCount)
+    static inline uint32_t GetNextTableId(IteratorPtr& iter)
     {
-        uint32_t expected = curSweepCount;
-        // When the uint32_t overflows, it wraps around, which does not affect the correctness.
-        return sweepWeakRefCount_.compare_exchange_strong(expected, curSweepCount + 1U, // 1: Running state
-                                                          std::memory_order_relaxed, std::memory_order_relaxed);
+        return iter->fetch_add(1U, std::memory_order_relaxed);
     }
 
-    inline void SwitchFinishState(uint32_t curSweepCount)
+    static inline bool ReduceCountAndCheckFinish(EcmaStringTableCleaner* cleaner)
     {
-        // When the uint32_t overflows, it wraps around, which does not affect the correctness.
-        sweepWeakRefCount_.store(curSweepCount + 2U, std::memory_order_relaxed); // 2: Finish state
+        return (cleaner->PendingTaskCount_.fetch_sub(1U, std::memory_order_relaxed) == 1U);
     }
 
     class SweepWeakRefTask : public Task {
     public:
-        SweepWeakRefTask(EcmaStringTableCleaner* cleaner, const WeakRootVisitor& visitor, uint32_t curSweepCount)
-            : Task(0), cleaner_(cleaner), visitor_(visitor), curSweepCount_(curSweepCount) {}
+        SweepWeakRefTask(IteratorPtr iter, EcmaStringTableCleaner* cleaner, const WeakRootVisitor& visitor)
+            : Task(0), iter_(iter), cleaner_(cleaner), visitor_(visitor) {}
         ~SweepWeakRefTask() = default;
         
         bool Run(uint32_t threadIndex) override;
@@ -75,15 +73,16 @@ private:
         NO_MOVE_SEMANTIC(SweepWeakRefTask);
 
     private:
+        IteratorPtr iter_;
         EcmaStringTableCleaner* cleaner_;
         const WeakRootVisitor& visitor_;
-        uint32_t curSweepCount_;
     };
 
+    IteratorPtr iter_;
     EcmaStringTable* stringTable_;
-    std::atomic<uint32_t> sweepWeakRefCount_ {0U};
+    std::atomic<uint32_t> PendingTaskCount_ {0U};
     Mutex sweepWeakRefMutex_;
-    bool sweepWeakRefFinished_;
+    bool sweepWeakRefFinished_ {true};
     ConditionVariable sweepWeakRefCV_;
 };
 
@@ -104,9 +103,9 @@ public:
         }
     }
 
-    static uint32_t GetTableId(uint32_t hashcode)
+    static inline uint32_t GetTableId(uint32_t hashcode)
     {
-        return hashcode % SEGMENT_COUNT;
+        return hashcode & SEGMENT_MASK;
     }
     void InternEmptyString(JSThread *thread, EcmaString *emptyStr);
     EcmaString *GetOrInternString(EcmaVM *vm,
@@ -134,6 +133,7 @@ public:
     EcmaString *InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle);
 
     void SweepWeakRef(const WeakRootVisitor &visitor);
+    void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t tableId);
 
     bool CheckStringTableValidity(JSThread *thread);
     void RelocateConstantData(EcmaVM *vm, const JSPandaFile *jsPandaFile);
@@ -142,7 +142,8 @@ public:
     {
         return cleaner_;
     }
-    static constexpr uint32_t SEGMENT_COUNT = 16;
+    static constexpr uint32_t SEGMENT_COUNT = 16U; // 16: 2^4
+    static constexpr uint32_t SEGMENT_MASK = SEGMENT_COUNT - 1U;
 private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);
