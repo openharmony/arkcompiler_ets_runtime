@@ -41,12 +41,14 @@ foreach(file, test_js_files) {
   }
 }
 
-host_unittest_action("HotReloadManagerTest") {
+host_unittest_action("RuntimeDebuggerTest") {
   module_out_path = module_output_path
 
   sources = [
     # test file
+    "dropframe_manager_test.cpp",
     "hot_reload_manager_test.cpp",
+    "js_debugger_test.cpp",
   ]
 
   configs = [
@@ -87,12 +89,12 @@ group("unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":HotReloadManagerTest" ]
+  deps = [ ":RuntimeDebuggerTest" ]
 }
 
 group("host_unittest") {
   testonly = true
 
   # deps file
-  deps = [ ":HotReloadManagerTestAction" ]
+  deps = [ ":RuntimeDebuggerTestAction" ]
 }
