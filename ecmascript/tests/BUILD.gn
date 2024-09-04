@@ -1082,6 +1082,7 @@ host_unittest_action("EcmaVm_039_Test") {
   sources = [
     # test file
     "object_factory_test.cpp",
+    "shared_object_factory_test.cpp",
   ]
 
   configs = [
