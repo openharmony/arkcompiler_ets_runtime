@@ -38,19 +38,21 @@ void SharedGCMarker::MarkRoots(uint32_t threadId, SharedMarkType markType)
     runtime->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
-        MarkLocalVMRoots(threadId, vm);
+        MarkLocalVMRoots(threadId, vm, markType);
         if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
             CollectLocalVMRSet(vm);
         }
     });
 }
 
-void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm)
+void SharedGCMarker::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, SharedMarkType markType)
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGCMarker::MarkLocalVMRoots");
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
-    heap->GetSweeper()->EnsureAllTaskFinished();
-    heap->WaitClearTaskFinished();
+    if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
+        heap->GetSweeper()->EnsureAllTaskFinished();
+        heap->WaitClearTaskFinished();
+    }
     ObjectXRay::VisitVMRoots(
         localVm,
         [this, threadId](Root type, ObjectSlot slot) {this->HandleLocalRoots(threadId, type, slot);},

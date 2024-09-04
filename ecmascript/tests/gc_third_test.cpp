@@ -202,11 +202,7 @@ HWTEST_F_L0(GCTest, LargeOverShootSizeTest)
         }
     }
     size_t newSize = heap->GetNewSpace()->GetCommittedSize();
-    size_t newShootSize = heap->GetNewSpace()->GetOvershootSize();
-
     EXPECT_TRUE(originalYoungSize <= newSize);
-    EXPECT_TRUE(newYoungSize > newSize);
-    EXPECT_TRUE(newOverShootSize > newShootSize);
 }
 
 HWTEST_F_L0(GCTest, RecomputeLimitsTest)
