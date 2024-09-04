@@ -489,6 +489,9 @@ bool JSTaggedValue::EqualNumber(JSThread *thread, const JSHandle<JSTaggedValue> 
         return Equal(thread, y, x);
     }
     if (y->IsHeapObject() && !y->IsSymbol()) {
+        if (!(y->IsECMAObject())) {
+            return false;
+        }
         JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         return Equal(thread, x, yPrimitive);
@@ -520,6 +523,9 @@ bool JSTaggedValue::EqualString(JSThread *thread, const JSHandle<JSTaggedValue> 
         return Equal(thread, y, x);
     }
     if (y->IsHeapObject() && !y->IsSymbol()) {
+        if (!(y->IsECMAObject())) {
+            return false;
+        }
         JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         return Equal(thread, x, yPrimitive);
@@ -537,6 +543,9 @@ bool JSTaggedValue::EqualSymbol(JSThread *thread, const JSHandle<JSTaggedValue> 
         return false;
     }
     if (y->IsHeapObject()) {
+        if (!(y->IsECMAObject())) {
+            return false;
+        }
         JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         return Equal(thread, x, yPrimitive);
@@ -567,6 +576,9 @@ bool JSTaggedValue::EqualBigInt(JSThread *thread, const JSHandle<JSTaggedValue> 
         return BigInt::CompareWithNumber(bigint, y) == ComparisonResult::EQUAL;
     }
     if (y->IsHeapObject() && !y->IsSymbol()) {
+        if (!(y->IsECMAObject())) {
+            return false;
+        }
         JSHandle<JSTaggedValue> yPrimitive(thread, ToPrimitive(thread, y));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         return Equal(thread, x, yPrimitive);
@@ -586,6 +598,9 @@ bool JSTaggedValue::EqualHeapObject(JSThread *thread, const JSHandle<JSTaggedVal
         }
     }
     if (y->IsNumber() || y->IsStringOrSymbol() || y->IsBoolean() || y->IsBigInt()) {
+        if (!(x->IsECMAObject())) {
+            return false;
+        }
         JSHandle<JSTaggedValue> xPrimitive(thread, ToPrimitive(thread, x));
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
         return Equal(thread, xPrimitive, y);
