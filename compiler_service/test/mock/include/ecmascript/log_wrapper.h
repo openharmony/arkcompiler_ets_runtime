@@ -31,6 +31,6 @@ enum Level {
     ERROR,
     FATAL,
 };
-std::ostringstream LOG_SA(const Level level);
+std::ostringstream LOG_SA([[maybe_unused]] const Level level);
 } // namespace OHOS::ArkCompiler
 #endif  // MOCK_ECMASCRIPT_LOG_WRAPPER_H

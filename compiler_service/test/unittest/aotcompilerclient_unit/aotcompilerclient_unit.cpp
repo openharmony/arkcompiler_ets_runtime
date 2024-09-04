@@ -67,7 +67,6 @@ sptr<IRemoteObject> AotCompilerClientTest::GetAotRemoteObject(AotCompilerClient 
  * @tc.name: AotCompilerClientTest_001
  * @tc.desc: AotCompilerClient::GetInstance()
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_001, TestSize.Level0)
 {
@@ -84,7 +83,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_001, TestSize.Level0)
  * @tc.name: AotCompilerClientTest_002
  * @tc.desc: invoke aot_compiler service in client program.
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_002, TestSize.Level0)
 {
@@ -101,7 +99,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_002, TestSize.Level0)
  * @tc.name: AotCompilerClientTest_003
  * @tc.desc: LoadSystemAbility(AOT_COMPILER_SERVICE_ID, loadCallback)
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_003, TestSize.Level0)
 {
@@ -119,7 +116,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_003, TestSize.Level0)
  * @tc.name: AotCompilerClientTest_004
  * @tc.desc: aotClient.LoadAotCompilerService()
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_004, TestSize.Level0)
 {
@@ -136,7 +132,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_004, TestSize.Level0)
  * @tc.name: AotCompilerClientTest_005
  * @tc.desc: aotClient.GetAotCompilerProxy()
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_005, TestSize.Level0)
 {
@@ -152,7 +147,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_005, TestSize.Level0)
  * @tc.name: AotCompilerClientTest_006
  * @tc.desc: aotClient.StopAotCompiler()
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_006, TestSize.Level0)
 {
@@ -165,7 +159,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_006, TestSize.Level0)
  * @tc.name: AotCompilerClientTest_007
  * @tc.desc: aotClient.loadSaFinished_
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_007, TestSize.Level0)
 {
@@ -179,7 +172,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_007, TestSize.Level0)
  * @tc.name: AotCompilerClientTest_008
  * @tc.desc: aotClient.AotCompilerOnRemoteDied()
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_008, TestSize.Level0)
 {
@@ -196,7 +188,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_008, TestSize.Level0)
  * @tc.name: AotCompilerClientTest_009
  * @tc.desc: callback.OnLoadSystemAbilitySuccess()
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_009, TestSize.Level0)
 {
@@ -222,7 +213,6 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_009, TestSize.Level0)
  * @tc.name: AotCompilerClientTest_010
  * @tc.desc: callback.OnLoadSystemAbilityFail()
  * @tc.type: Func
- * @tc.require: IR/AR/SR
 */
 HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_010, TestSize.Level0)
 {
@@ -238,6 +228,51 @@ HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_010, TestSize.Level0)
     EXPECT_NE(aotClient.GetAotCompiler(), nullptr);
 
     callback.OnLoadSystemAbilityFail(AOT_COMPILER_SERVICE_ID);
+    EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_011
+ * @tc.desc: aotClient.NeedReCompile(oldVersion, sigData)
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_011, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    std::string oldVersion = "4.0.0.0";
+    bool sigData = false;
+    int32_t ret = aotClient.NeedReCompile(oldVersion, sigData);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_012
+ * @tc.desc: aotClient.GetAOTVersion(sigData)
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_012, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    std::string sigData = "test_string";
+    int32_t ret = aotClient.GetAOTVersion(sigData);
+    EXPECT_EQ(ret, ERR_OK);
+    EXPECT_STRNE(sigData.c_str(), "test_string");
+}
+
+/**
+ * @tc.name: AotCompilerClientTest_013
+ * @tc.desc: aotClient.OnRemoteDied(const wptr<IRemoteObject> &remote)
+ * @tc.type: Func
+*/
+HWTEST_F(AotCompilerClientTest, AotCompilerClientTest_013, TestSize.Level0)
+{
+    AotCompilerClient &aotClient = AotCompilerClient::GetInstance();
+    aotClient.aotCompilerDiedRecipient_->OnRemoteDied(nullptr);
+    EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
+
+    wptr<IRemoteObject> remoteObject_weak = GetAotRemoteObject(aotClient);
+    EXPECT_NE(remoteObject_weak, nullptr);
+    aotClient.aotCompilerDiedRecipient_->OnRemoteDied(remoteObject_weak);
     EXPECT_EQ(aotClient.GetAotCompiler(), nullptr);
 }
 } // namespace OHOS::ArkCompiler

@@ -50,6 +50,9 @@ int32_t AotCompilerImpl::FindArgsIdxToInteger(const std::unordered_map<std::stri
     if (argsMap.find(keyName) == argsMap.end()) {
         return ERR_AOT_COMPILER_PARAM_FAILED;
     }
+    if (argsMap.at(keyName).empty() || !isdigit(argsMap.at(keyName).at(0))) {
+        return ERR_AOT_COMPILER_PARAM_FAILED;
+    }
     size_t sz;
     bundleID = static_cast<int32_t>(std::stoi(argsMap.at(keyName), &sz));
     if (sz < static_cast<size_t>(argsMap.at(keyName).size())) {
@@ -223,6 +226,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
 {
 #ifdef CODE_SIGN_ENABLE
     if (!allowAotCompiler_) {
+        LOG_SA(ERROR) << "aot compiler is not allowed now";
         return ERR_AOT_COMPILER_CONNECT_FAILED;
     }
     if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {

@@ -19,7 +19,13 @@
 #include "ecmascript/log_wrapper.h"
 
 namespace OHOS::ArkCompiler {
-std::ostringstream LOG_SA(const Level level)
+int waitpid(const pid_t childPid, int* status, [[maybe_unused]] int option)
+{
+    *status = childPid;
+    return 0;
+}
+
+std::ostringstream LOG_SA([[maybe_unused]] const Level level)
 {
     std::ostringstream stream_;
     return stream_;
