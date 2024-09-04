@@ -286,6 +286,20 @@ print(mm.size); //: 1
 printClear2(mm) //: undefined
 print(m.size);  //: 0
 
+function checkObjWithSetProto() {
+    let o = {};
+    Object.setPrototypeOf(o, Set.prototype);
+    try {
+        o.clear(1);
+    } catch(e) {
+        print(e);
+    }
+}
+
+//aot: [trace] Check Type: NotCallTarget1
+//: TypeError: obj is not JSSet
+checkObjWithSetProto();
+
 if (ArkTools.isAOTCompiled(printClear2)) {
     Object.setPrototypeOf(mm, mimicSet)
 }

@@ -253,9 +253,13 @@ GateRef BuiltinLowering::LowerCallTargetCheck(Environment *env, GateRef gate)
             return LowerCallTargetCheckWithDetector(gate, id);
         }
         case BuiltinsStubCSigns::ID::DateGetTime:
+        case BuiltinsStubCSigns::ID::MapClear:
+        case BuiltinsStubCSigns::ID::MapDelete:
         case BuiltinsStubCSigns::ID::MapGet:
         case BuiltinsStubCSigns::ID::MapHas:
         case BuiltinsStubCSigns::ID::SetAdd:
+        case BuiltinsStubCSigns::ID::SetClear:
+        case BuiltinsStubCSigns::ID::SetDelete:
         case BuiltinsStubCSigns::ID::SetHas: {
             return LowerCallTargetCheckWithObjectType(gate, id);
         }
@@ -333,12 +337,16 @@ GateRef BuiltinLowering::LowerCallTargetCheckWithObjectType(GateRef gate, Builti
 {
     JSType expectType = JSType::INVALID;
     switch (id) {
+        case BuiltinsStubCSigns::ID::MapClear:
+        case BuiltinsStubCSigns::ID::MapDelete:
         case BuiltinsStubCSigns::ID::MapGet:
         case BuiltinsStubCSigns::ID::MapHas: {
             expectType = JSType::JS_MAP;
             break;
         }
         case BuiltinsStubCSigns::ID::SetAdd:
+        case BuiltinsStubCSigns::ID::SetClear:
+        case BuiltinsStubCSigns::ID::SetDelete:
         case BuiltinsStubCSigns::ID::SetHas: {
             expectType = JSType::JS_SET;
             break;
