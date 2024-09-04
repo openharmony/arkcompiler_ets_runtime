@@ -392,10 +392,17 @@ public:
     static void CheckCircularImportTool(JSThread *thread, const CString &circularModuleRecordName,
                                         CList<CString> &referenceList, bool printOtherCircular = false);
 
-private:
+    static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
+    static bool IsCircular(const CList<CString> &referenceList, const CString &requiredModuleName);
+    static void PrintCircular(const CList<CString> &referenceList, Level level);
+    static void SearchCircularImport(JSThread *thread, const CString &circularModuleRecordName,
+                                     const JSHandle<SourceTextModule> &module, CList<CString> &referenceList,
+                                     CString &requiredModuleName, bool printOtherCircular);
+    static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static void SetExportName(JSThread *thread,
                               const JSHandle<JSTaggedValue> &moduleRequest, const JSHandle<SourceTextModule> &module,
                               CVector<std::string> &exportedNames, JSHandle<TaggedArray> &newExportStarSet);
+private:
     static JSHandle<JSTaggedValue> GetStarResolution(JSThread *thread, const JSHandle<JSTaggedValue> &exportName,
                                                      const JSHandle<JSTaggedValue> &moduleRequest,
                                                      const JSHandle<SourceTextModule> &module,
@@ -415,11 +422,6 @@ private:
                                     const JSHandle<JSTaggedValue> &exportName,
                                     CVector<std::pair<JSHandle<SourceTextModule>,
                                     JSHandle<JSTaggedValue>>> &resolveVector);
-    static void InitializeEnvironment(JSThread *thread, const JSHandle<SourceTextModule> &currentModule,
-        CString &moduleName, JSHandle<JSTaggedValue> &exports, bool isBundle);
-
-    static void CheckResolvedBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
-    static void CheckResolvedIndexBinding(JSThread *thread, const JSHandle<SourceTextModule> &module);
     static JSTaggedValue FindByExport(const JSTaggedValue &exportEntriesTv, const JSTaggedValue &key,
                                       const JSTaggedValue &dictionary);
     static void DFSModuleInstantiation(JSHandle<SourceTextModule> &module,
@@ -437,12 +439,8 @@ private:
     static void HandleConcurrentEvaluateResult(JSThread *thread, JSHandle<SourceTextModule> &module,
                                      const CVector<JSHandle<SourceTextModule>> &stack, int result);
     bool IsAsyncEvaluating();
-    static void SearchCircularImport(JSThread *thread, const CString &circularModuleRecordName,
-                                     const JSHandle<SourceTextModule> &module, CList<CString> &referenceList,
-                                     CString &requiredModuleName, bool printOtherCircular);
-    static bool IsCircular(const CList<CString> &referenceList, const CString &requiredModuleName);
-    static void PrintCircular(const CList<CString> &referenceList, Level level);
 
+    friend class EcmaModuleTest;
     friend class SharedModuleManager;
 };
 

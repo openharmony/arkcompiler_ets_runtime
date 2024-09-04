@@ -20,4 +20,6 @@
  * @tc.require: issueI5RC2C
  */
 
-export default await Promise.resolve(42);
+var b = await import('./B')
+print(b.default);
+export default await Promise.resolve(40);
