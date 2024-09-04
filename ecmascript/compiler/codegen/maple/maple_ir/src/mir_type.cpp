@@ -60,89 +60,6 @@ PrimType GetRegPrimType(PrimType primType)
     }
 }
 
-PrimType GetReg64PrimType(PrimType primType)
-{
-    switch (primType) {
-        case PTY_i8:
-        case PTY_i16:
-        case PTY_i32:
-            return PTY_i64;
-        case PTY_u1:
-        case PTY_u8:
-        case PTY_u16:
-        case PTY_u32:
-            return PTY_u64;
-        default:
-            return primType;
-    }
-}
-
-bool VerifyPrimType(PrimType primType1, PrimType primType2)
-{
-    switch (primType1) {
-        case PTY_u1:
-        case PTY_u8:
-        case PTY_u16:
-        case PTY_u32:
-        case PTY_a32:
-            return IsUnsignedInteger(primType2);
-        case PTY_i8:
-        case PTY_i16:
-        case PTY_i32:
-            return IsSignedInteger(primType2);
-        default:
-            return primType1 == primType2;
-    }
-}
-
-PrimType GetDynType(PrimType primType)
-{
-#ifdef DYNAMICLANG
-    switch (primType) {
-        case PTY_u1:
-            return PTY_dynbool;
-        case PTY_i32:
-            return PTY_dyni32;
-        case PTY_simplestr:
-            return PTY_dynstr;
-        case PTY_simpleobj:
-            return PTY_dynobj;
-        case PTY_f32:
-            return PTY_dynf32;
-        case PTY_f64:
-            return PTY_dynf64;
-        default:
-            return primType;
-    }
-#else
-    return primType;
-#endif
-}
-
-PrimType GetNonDynType(PrimType primType)
-{
-#ifdef DYNAMICLANG
-    switch (primType) {
-        case PTY_dynbool:
-            return PTY_u1;
-        case PTY_dyni32:
-            return PTY_i32;
-        case PTY_dynstr:
-            return PTY_simplestr;
-        case PTY_dynobj:
-            return PTY_simpleobj;
-        case PTY_dynf32:
-            return PTY_f32;
-        case PTY_dynf64:
-            return PTY_f64;
-        default:
-            return primType;
-    }
-#else
-    return primType;
-#endif
-}
-
 PrimType GetIntegerPrimTypeBySizeAndSign(size_t sizeBit, bool isSign)
 {
     switch (sizeBit) {
@@ -282,215 +199,17 @@ uint32 GetPrimTypeSize(PrimType primType)
         case PTY_f32:
         case PTY_i32:
         case PTY_u32:
-        case PTY_simplestr:
-        case PTY_simpleobj:
             return k4BitSize;
         case PTY_a64:
-        case PTY_c64:
         case PTY_f64:
         case PTY_i64:
         case PTY_u64:
-        case PTY_v2i32:
-        case PTY_v4i16:
-        case PTY_v8i8:
-        case PTY_v2u32:
-        case PTY_v4u16:
-        case PTY_v8u8:
-        case PTY_v2f32:
             return k8BitSize;
-        case PTY_u128:
-        case PTY_i128:
-        case PTY_c128:
         case PTY_f128:
-        case PTY_v2i64:
-        case PTY_v4i32:
-        case PTY_v8i16:
-        case PTY_v16i8:
-        case PTY_v2u64:
-        case PTY_v4u32:
-        case PTY_v8u16:
-        case PTY_v16u8:
-        case PTY_v2f64:
-        case PTY_v4f32:
             return k16BitSize;
-#ifdef DYNAMICLANG
-        case PTY_dynf32:
-        case PTY_dyni32:
-        case PTY_dynstr:
-        case PTY_dynobj:
-        case PTY_dynundef:
-        case PTY_dynnull:
-        case PTY_dynbool:
-            return k8BitSize;
-        case PTY_dynany:
-        case PTY_dynf64:
-            return k8BitSize;
-#endif
         default:
             return k0BitSize;
     }
-}
-
-// answer is n if size in byte is (1<<n) (0: 1B; 1: 2B, 2: 4B, 3: 8B, 4:16B)
-uint32 GetPrimTypeP2Size(PrimType primType)
-{
-    switch (primType) {
-        case PTY_ptr:
-        case PTY_ref:
-            return GetP2Size();
-        case PTY_u1:
-        case PTY_i8:
-        case PTY_u8:
-            return k0BitSize;
-        case PTY_i16:
-        case PTY_u16:
-            return k1BitSize;
-        case PTY_a32:
-        case PTY_f32:
-        case PTY_i32:
-        case PTY_u32:
-        case PTY_simplestr:
-        case PTY_simpleobj:
-            return k2BitSize;
-        case PTY_a64:
-        case PTY_c64:
-        case PTY_f64:
-        case PTY_i64:
-        case PTY_u64:
-        case PTY_v2i32:
-        case PTY_v4i16:
-        case PTY_v8i8:
-        case PTY_v2u32:
-        case PTY_v4u16:
-        case PTY_v8u8:
-        case PTY_v2f32:
-            return k3BitSize;
-        case PTY_c128:
-        case PTY_f128:
-        case PTY_v2i64:
-        case PTY_v4i32:
-        case PTY_v8i16:
-        case PTY_v16i8:
-        case PTY_v2u64:
-        case PTY_v4u32:
-        case PTY_v8u16:
-        case PTY_v16u8:
-        case PTY_v2f64:
-        case PTY_v4f32:
-            return k4BitSize;
-#ifdef DYNAMICLANG
-        case PTY_dynf32:
-        case PTY_dyni32:
-        case PTY_dynstr:
-        case PTY_dynobj:
-        case PTY_dynundef:
-        case PTY_dynnull:
-        case PTY_dynbool:
-        case PTY_dynany:
-        case PTY_dynf64:
-            return k3BitSize;
-#endif
-        default:
-            DEBUG_ASSERT(false, "Power-of-2 size only applicable to sizes of 1, 2, 4, 8 or 16 bytes.");
-            return k10BitSize;
-    }
-}
-
-uint32 GetVecEleSize(PrimType primType)
-{
-    switch (primType) {
-        case PTY_v2i64:
-        case PTY_v2u64:
-        case PTY_v2f64:
-        case PTY_i64:
-        case PTY_u64:
-        case PTY_f64:
-            return k64BitSize;
-        case PTY_v2i32:
-        case PTY_v2u32:
-        case PTY_v2f32:
-        case PTY_v4i32:
-        case PTY_v4u32:
-        case PTY_v4f32:
-            return k32BitSize;
-        case PTY_v4i16:
-        case PTY_v4u16:
-        case PTY_v8i16:
-        case PTY_v8u16:
-            return k16BitSize;
-        case PTY_v8i8:
-        case PTY_v8u8:
-        case PTY_v16i8:
-        case PTY_v16u8:
-            return k8BitSize;
-        default:
-            CHECK_FATAL(false, "unexpected primtType for vector");
-    }
-}
-
-uint32 GetVecLanes(PrimType primType)
-{
-    switch (primType) {
-        case PTY_v2i32:
-        case PTY_v2u32:
-        case PTY_v2f32:
-        case PTY_v2i64:
-        case PTY_v2u64:
-        case PTY_v2f64:
-            return k2BitSize;
-        case PTY_v4i16:
-        case PTY_v4u16:
-        case PTY_v4i32:
-        case PTY_v4u32:
-        case PTY_v4f32:
-            return k4BitSize;
-        case PTY_v8i8:
-        case PTY_v8u8:
-        case PTY_v8i16:
-        case PTY_v8u16:
-            return k8BitSize;
-        case PTY_v16i8:
-        case PTY_v16u8:
-            return k16BitSize;
-        default:
-            return 0;
-    }
-}
-
-PrimType GetVecElemPrimType(PrimType primType)
-{
-    switch (primType) {
-        case PTY_v2i32:
-        case PTY_v4i32:
-            return PTY_i32;
-        case PTY_v2u32:
-        case PTY_v4u32:
-            return PTY_u32;
-        case PTY_v2i64:
-            return PTY_i64;
-        case PTY_v2u64:
-            return PTY_u64;
-        case PTY_v16i8:
-        case PTY_v8i8:
-            return PTY_i8;
-        case PTY_v16u8:
-        case PTY_v8u8:
-            return PTY_u8;
-        case PTY_v8i16:
-        case PTY_v4i16:
-            return PTY_i16;
-        case PTY_v8u16:
-        case PTY_v4u16:
-            return PTY_u16;
-        case PTY_v2f32:
-        case PTY_v4f32:
-            return PTY_f32;
-        case PTY_v2f64:
-            return PTY_f64;
-        default:
-            return PTY_begin;  // not a vector type
-    }
-    return PTY_begin;  // not a vector type
 }
 
 // return the signed version that has the same size
@@ -529,23 +248,6 @@ PrimType GetUnsignedPrimType(PrimType pty)
         default:;
     }
     return pty;
-}
-
-int64 MinValOfSignedInteger(PrimType primType)
-{
-    switch (primType) {
-        case PTY_i8:
-            return INT8_MIN;
-        case PTY_i16:
-            return INT16_MIN;
-        case PTY_i32:
-            return INT32_MIN;
-        case PTY_i64:
-            return INT64_MIN;
-        default:
-            CHECK_FATAL(false, "NIY");
-            return 0;
-    }
 }
 
 const char *GetPrimTypeName(PrimType primType)
@@ -722,12 +424,6 @@ void MIRType::DumpAsCxx(int indent) const
             break;
         case PTY_f64:
             LogInfo::MapleLogger() << "double";
-            break;
-        case PTY_c64:
-            LogInfo::MapleLogger() << "float complex";
-            break;
-        case PTY_c128:
-            LogInfo::MapleLogger() << "double complex";
             break;
         default:
             DEBUG_ASSERT(false, "not yet implemented");
@@ -1553,12 +1249,6 @@ void MIRTypeByName::Dump(int indent, bool dontUseName) const
     LogInfo::MapleLogger() << (nameIsLocal ? "<%" : "<$") << name << ">";
 }
 
-void MIRTypeParam::Dump(int indent, bool dontUseName) const
-{
-    const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(nameStrIdx);
-    LogInfo::MapleLogger() << "<!" << name << ">";
-}
-
 void MIRInstantVectorType::Dump(int indent, bool dontUseName) const
 {
     LogInfo::MapleLogger() << "{";
@@ -1955,11 +1645,6 @@ bool MIRInterfaceType::EqualTo(const MIRType &type) const
 bool MIRTypeByName::EqualTo(const MIRType &type) const
 {
     return type.GetKind() == typeKind && type.GetNameStrIdx() == nameStrIdx && type.IsNameIsLocal() == nameIsLocal;
-}
-
-bool MIRTypeParam::EqualTo(const MIRType &type) const
-{
-    return type.GetKind() == typeKind && type.GetNameStrIdx() == nameStrIdx;
 }
 
 bool MIRInstantVectorType::EqualTo(const MIRType &type) const
@@ -2696,7 +2381,7 @@ static constexpr size_t kMaxHfaOrHvaElemNumber = 4;
 
 bool CheckHomogeneousAggregatesBaseType(PrimType type)
 {
-    if (type == PTY_f32 || type == PTY_f64 || type == PTY_f128 || IsPrimitiveVector(type)) {
+    if (type == PTY_f32 || type == PTY_f64 || type == PTY_f128) {
         return true;
     }
     return false;
@@ -2705,9 +2390,6 @@ bool CheckHomogeneousAggregatesBaseType(PrimType type)
 bool IsSameHomogeneousAggregatesBaseType(PrimType type, PrimType nextType)
 {
     if ((type == PTY_f32 || type == PTY_f64 || type == PTY_f128) && type == nextType) {
-        return true;
-    } else if (IsPrimitiveVector(type) && IsPrimitiveVector(nextType) &&
-               GetPrimTypeSize(type) == GetPrimTypeSize(nextType)) {
         return true;
     }
     return false;

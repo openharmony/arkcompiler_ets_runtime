@@ -155,11 +155,6 @@ void AArch64MemLayout::LayoutFormalParams()
                         align = GetPointerSize();
                     }
                 }
-                uint32 tSize = 0;
-                if ((IsPrimitiveVector(ty->GetPrimType()) && GetPrimTypeSize(ty->GetPrimType()) > k8ByteSize) ||
-                    AArch64Abi::IsVectorArrayType(ty, tSize) != PTY_void) {
-                    align = k16ByteSize;
-                }
                 segArgsRegPassed.SetSize(static_cast<uint32>(RoundUp(segArgsRegPassed.GetSize(), align)));
                 symLoc->SetOffset(segArgsRegPassed.GetSize());
                 segArgsRegPassed.SetSize(segArgsRegPassed.GetSize() + size);
@@ -225,11 +220,6 @@ void AArch64MemLayout::LayoutLocalVariables(std::vector<MIRSymbol *> &tempVar, s
         symLoc->SetMemSegment(segLocals);
         MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
         uint32 align = ty->GetAlign();
-        uint32 tSize = 0;
-        if ((IsPrimitiveVector(ty->GetPrimType()) && GetPrimTypeSize(ty->GetPrimType()) > k8ByteSize) ||
-            AArch64Abi::IsVectorArrayType(ty, tSize) != PTY_void) {
-            align = k16ByteSize;
-        }
         if (ty->GetPrimType() == PTY_agg && align < k8BitSize) {
             segLocals.SetSize(static_cast<uint32>(RoundUp(segLocals.GetSize(), k8BitSize)));
         } else {

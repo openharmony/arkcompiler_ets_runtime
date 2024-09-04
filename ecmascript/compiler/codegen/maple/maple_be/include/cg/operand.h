@@ -426,46 +426,6 @@ public:
         return IsVirtualRegister() && IsBBLocalReg();
     }
 
-    void SetIF64Vec()
-    {
-        if64Vec = true;
-    }
-
-    bool GetIF64Vec() const
-    {
-        return if64Vec;
-    }
-
-    void SetVecLanePosition(int32 pos)
-    {
-        vecLane = static_cast<int16>(pos);
-    }
-
-    int32 GetVecLanePosition() const
-    {
-        return vecLane;
-    }
-
-    void SetVecLaneSize(uint32 size)
-    {
-        vecLaneSize = static_cast<uint16>(size);
-    }
-
-    uint32 GetVecLaneSize() const
-    {
-        return vecLaneSize;
-    }
-
-    void SetVecElementSize(uint32 size)
-    {
-        vecElementSize = size;
-    }
-
-    uint64 GetVecElementSize() const
-    {
-        return vecElementSize;
-    }
-
     void SetHigh8Bit()
     {
         isHigh8Bit = true;
@@ -2186,11 +2146,6 @@ public:
     bool IsLoadLiteral() const
     {
         return (property & operand::kIsLoadLiteral) != 0;
-    }
-
-    bool IsVectorOperand() const
-    {
-        return (property & operand::kIsVector);
     }
 
 #define DEFINE_MOP(op, ...) static const OpndDesc op;

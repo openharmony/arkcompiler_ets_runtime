@@ -21,7 +21,7 @@
 namespace maple {
 MIRType *TypeTable::CreateMirType(uint32 primTypeIdx) const
 {
-    MIRTypeKind defaultKind = (primTypeIdx == PTY_constStr ? kTypeConstString : kTypeScalar);
+    MIRTypeKind defaultKind = kTypeScalar;
     auto primType = static_cast<PrimType>(primTypeIdx);
     auto *mirType = new MIRType(defaultKind, primType);
     return mirType;
@@ -204,9 +204,6 @@ MIRType *TypeTable::GetOrCreatePointerType(const TyIdx &pointedTyIdx, PrimType p
 
 MIRType *TypeTable::GetOrCreatePointerType(const MIRType &pointTo, PrimType primType, const TypeAttrs &attrs)
 {
-    if (pointTo.GetPrimType() == PTY_constStr) {
-        primType = PTY_ptr;
-    }
     return GetOrCreatePointerType(pointTo.GetTypeIndex(), primType, attrs);
 }
 

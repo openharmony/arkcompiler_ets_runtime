@@ -1212,7 +1212,7 @@ void CGLowerer::LowerEntry(MIRFunction &func)
 #if TARGAARCH64
         if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
             PrimType pty = IsStructElementSame(retType);
-            if (pty == PTY_f32 || pty == PTY_f64 || IsPrimitiveVector(pty)) {
+            if (pty == PTY_f32 || pty == PTY_f64) {
                 func.SetStructReturnedInRegs();
                 return;
             }

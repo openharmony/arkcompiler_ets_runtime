@@ -66,10 +66,6 @@ public:
     {
         return property.IsDynamicNone();
     }
-    bool IsVector() const
-    {
-        return property.IsVector();
-    }
 
 private:
     const PrimitiveTypeProperty &property;

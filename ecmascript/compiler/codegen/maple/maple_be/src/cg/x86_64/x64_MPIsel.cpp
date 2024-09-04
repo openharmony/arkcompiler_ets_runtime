@@ -601,16 +601,10 @@ Operand *X64MPIsel::SelectMpy(BinaryNode &node, Operand &opnd0, Operand &opnd1, 
 {
     PrimType dtype = node.GetPrimType();
     RegOperand *resOpnd = nullptr;
-    if (!IsPrimitiveVector(dtype)) {
-        resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
-        RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
-        RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, dtype, node.Opnd(1)->GetPrimType());
-        SelectMpy(*resOpnd, regOpnd0, regOpnd1, dtype);
-    } else {
-        /* vector operand */
-        CHECK_FATAL(false, "NIY");
-    }
-
+    resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
+    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
+    RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, dtype, node.Opnd(1)->GetPrimType());
+    SelectMpy(*resOpnd, regOpnd0, regOpnd1, dtype);
     return resOpnd;
 }
 
@@ -653,14 +647,9 @@ Operand *X64MPIsel::SelectDiv(BinaryNode &node, Operand &opnd0, Operand &opnd1, 
 {
     PrimType primType = node.GetPrimType();
     Operand *resOpnd = nullptr;
-    if (!IsPrimitiveVector(primType)) {
-        RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, primType, node.Opnd(0)->GetPrimType());
-        RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, primType, node.Opnd(1)->GetPrimType());
-        resOpnd = SelectDivRem(regOpnd0, regOpnd1, primType, node.GetOpCode());
-    } else {
-        /* vector operand */
-        CHECK_FATAL(false, "NIY");
-    }
+    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, primType, node.Opnd(0)->GetPrimType());
+    RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, primType, node.Opnd(1)->GetPrimType());
+    resOpnd = SelectDivRem(regOpnd0, regOpnd1, primType, node.GetOpCode());
     return resOpnd;
 }
 
@@ -668,14 +657,9 @@ Operand *X64MPIsel::SelectRem(BinaryNode &node, Operand &opnd0, Operand &opnd1, 
 {
     PrimType primType = node.GetPrimType();
     Operand *resOpnd = nullptr;
-    if (!IsPrimitiveVector(primType)) {
-        RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, primType, node.Opnd(0)->GetPrimType());
-        RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, primType, node.Opnd(1)->GetPrimType());
-        resOpnd = SelectDivRem(regOpnd0, regOpnd1, primType, node.GetOpCode());
-    } else {
-        /* vector operand */
-        CHECK_FATAL(false, "NIY");
-    }
+    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, primType, node.Opnd(0)->GetPrimType());
+    RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, primType, node.Opnd(1)->GetPrimType());
+    resOpnd = SelectDivRem(regOpnd0, regOpnd1, primType, node.GetOpCode());
     return resOpnd;
 }
 
@@ -733,19 +717,14 @@ Operand *X64MPIsel::SelectLnot(const UnaryNode &node, Operand &opnd0, const Base
 {
     PrimType dtype = node.GetPrimType();
     RegOperand *resOpnd = nullptr;
-    if (!IsPrimitiveVector(dtype)) {
-        resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
-        RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
-        ImmOperand &immOpnd = cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(dtype), 0);
-        if (IsPrimitiveFloat(dtype)) {
-            SelectCmpFloatEq(*resOpnd, regOpnd0, immOpnd, dtype, dtype);
-        } else {
-            SelectCmp(regOpnd0, immOpnd, dtype);
-            SelectCmpResult(*resOpnd, OP_eq, dtype, dtype);
-        }
+    resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
+    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
+    ImmOperand &immOpnd = cgFunc->GetOpndBuilder()->CreateImm(GetPrimTypeBitSize(dtype), 0);
+    if (IsPrimitiveFloat(dtype)) {
+        SelectCmpFloatEq(*resOpnd, regOpnd0, immOpnd, dtype, dtype);
     } else {
-        /* vector operand */
-        CHECK_FATAL(false, "NIY");
+        SelectCmp(regOpnd0, immOpnd, dtype);
+        SelectCmpResult(*resOpnd, OP_eq, dtype, dtype);
     }
     return resOpnd;
 }
@@ -768,28 +747,23 @@ Operand *X64MPIsel::SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd
     RegOperand *resOpnd = nullptr;
     RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, primOpndType, node.Opnd(0)->GetPrimType());
     RegOperand &regOpnd1 = SelectCopy2Reg(opnd1, primOpndType, node.Opnd(1)->GetPrimType());
-    if (!IsPrimitiveVector(node.GetPrimType())) {
-        resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
-        auto nodeOp = node.GetOpCode();
-        Opcode parentOp = parent.GetOpCode();
-        bool isFloat = IsPrimitiveFloat(primOpndType);
-        bool isJump = (parentOp == OP_brfalse || parentOp == OP_brtrue);
-        // float eq
-        if (isFloat && (nodeOp == maple::OP_eq) && (!isJump)) {
-            SelectCmpFloatEq(*resOpnd, regOpnd0, regOpnd1, dtype, primOpndType);
-            return resOpnd;
-        }
-
-        bool isSwap = (isFloat && (nodeOp == maple::OP_le || nodeOp == maple::OP_lt) && (parentOp != OP_brfalse));
-        SelectCmp(regOpnd0, regOpnd1, primOpndType, isSwap);
-        if (isJump) {
-            return resOpnd;
-        }
-        SelectCmpResult(*resOpnd, nodeOp, dtype, primOpndType);
-    } else {
-        /* vector operand */
-        CHECK_FATAL(false, "NIY");
+    resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
+    auto nodeOp = node.GetOpCode();
+    Opcode parentOp = parent.GetOpCode();
+    bool isFloat = IsPrimitiveFloat(primOpndType);
+    bool isJump = (parentOp == OP_brfalse || parentOp == OP_brtrue);
+    // float eq
+    if (isFloat && (nodeOp == maple::OP_eq) && (!isJump)) {
+        SelectCmpFloatEq(*resOpnd, regOpnd0, regOpnd1, dtype, primOpndType);
+        return resOpnd;
     }
+
+    bool isSwap = (isFloat && (nodeOp == maple::OP_le || nodeOp == maple::OP_lt) && (parentOp != OP_brfalse));
+    SelectCmp(regOpnd0, regOpnd1, primOpndType, isSwap);
+    if (isJump) {
+        return resOpnd;
+    }
+    SelectCmpResult(*resOpnd, nodeOp, dtype, primOpndType);
     return resOpnd;
 }
 

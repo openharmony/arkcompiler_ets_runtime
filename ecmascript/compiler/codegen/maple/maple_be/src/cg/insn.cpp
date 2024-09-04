@@ -125,11 +125,6 @@ bool Insn::CanThrow() const
     DEBUG_ASSERT(md, " set insnDescription for insn ");
     return md->CanThrow();
 }
-bool Insn::IsVectorOp() const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->IsVectorOp();
-}
 bool Insn::HasLoop() const
 {
     DEBUG_ASSERT(md, " set insnDescription for insn ");
@@ -422,12 +417,6 @@ void Insn::Dump() const
         LogInfo::MapleLogger() << ")";
     }
 
-    if (IsVectorOp()) {
-        auto *vInsn = static_cast<const VectorInsn *>(this);
-        if (vInsn->GetNumOfRegSpec() != 0) {
-            LogInfo::MapleLogger() << " (vecSpec: " << vInsn->GetNumOfRegSpec() << ")";
-        }
-    }
     if (stackMap != nullptr) {
         const auto &deoptVreg2Opnd = stackMap->GetDeoptInfo().GetDeoptBundleInfo();
         if (!deoptVreg2Opnd.empty()) {
@@ -446,16 +435,5 @@ void Insn::Dump() const
         }
     }
     LogInfo::MapleLogger() << "\n";
-}
-
-VectorRegSpec *VectorInsn::GetAndRemoveRegSpecFromList()
-{
-    if (regSpecList.size() == 0) {
-        VectorRegSpec *vecSpec = CG::GetCurCGFuncNoConst()->GetMemoryPool()->New<VectorRegSpec>();
-        return vecSpec;
-    }
-    VectorRegSpec *ret = regSpecList.back();
-    regSpecList.pop_back();
-    return ret;
 }
 }  // namespace maplebe

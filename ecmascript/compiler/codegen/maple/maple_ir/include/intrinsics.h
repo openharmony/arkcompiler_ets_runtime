@@ -32,7 +32,6 @@ enum IntrinProperty {
     kIntrnIsAtomic,
     kIntrnIsRC,
     kIntrnIsSpecial,
-    kIntrnIsVector
 };
 
 enum IntrinArgType {
@@ -54,29 +53,7 @@ enum IntrinArgType {
     kArgTyF32,
     kArgTyF64,
     kArgTyF128,
-    kArgTyC64,
-    kArgTyC128,
     kArgTyAgg,
-    kArgTyV2I64,
-    kArgTyV4I32,
-    kArgTyV8I16,
-    kArgTyV16I8,
-    kArgTyV2U64,
-    kArgTyV4U32,
-    kArgTyV8U16,
-    kArgTyV16U8,
-    kArgTyV2F64,
-    kArgTyV4F32,
-    kArgTyV1I64,
-    kArgTyV2I32,
-    kArgTyV4I16,
-    kArgTyV8I8,
-    kArgTyV1U64,
-    kArgTyV2U32,
-    kArgTyV4U16,
-    kArgTyV8U8,
-    kArgTyV1F64,
-    kArgTyV2F32,
 #ifdef DYNAMICLANG
     kArgTyDynany,
     kArgTyDynu32,
@@ -105,7 +82,6 @@ constexpr uint32 INTRNNEVERRETURN = 1U << kIntrnNeverReturn;
 constexpr uint32 INTRNATOMIC = 1U << kIntrnIsAtomic;
 constexpr uint32 INTRNISRC = 1U << kIntrnIsRC;
 constexpr uint32 INTRNISSPECIAL = 1U << kIntrnIsSpecial;
-constexpr uint32 INTRNISVECTOR = 1U << kIntrnIsVector;
 class MIRType;    // circular dependency exists, no other choice
 class MIRModule;  // circular dependency exists, no other choice
 struct IntrinDesc {
@@ -171,11 +147,6 @@ struct IntrinDesc {
     bool HasNoSideEffect() const
     {
         return properties & INTRNNOSIDEEFFECT;
-    }
-
-    bool IsVectorOp() const
-    {
-        return static_cast<bool>(properties & INTRNISVECTOR);
     }
 
     MIRType *GetReturnType() const;

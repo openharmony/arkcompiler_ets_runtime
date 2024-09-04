@@ -62,9 +62,7 @@ void AArch64CGPeepHole::DoNormalOptimize(BB &bb, Insn &insn)
         case MOP_wmovrr:
         case MOP_xmovrr:
         case MOP_xvmovs:
-        case MOP_xvmovd:
-        case MOP_vmovuu:
-        case MOP_vmovvv: {
+        case MOP_xvmovd: {
             manager->NormalPatternOpt<RemoveMovingtoSameRegPattern>(cgFunc->IsAfterRegAlloc());
             break;
         }
@@ -239,9 +237,7 @@ void AArch64PeepHole0::Run(BB &bb, Insn &insn)
         case MOP_wmovrr:
         case MOP_xmovrr:
         case MOP_xvmovs:
-        case MOP_xvmovd:
-        case MOP_vmovuu:
-        case MOP_vmovvv: {
+        case MOP_xvmovd: {
             (static_cast<RemoveMovingtoSameRegAArch64 *>(optimizations[kRemoveMovingtoSameRegOpt]))->Run(bb, insn);
             break;
         }

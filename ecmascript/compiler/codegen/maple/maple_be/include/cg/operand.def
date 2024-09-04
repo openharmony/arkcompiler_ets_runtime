@@ -52,12 +52,12 @@ DEFINE_MOP(Reg128FD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat, 
 DEFINE_MOP(Reg128FS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat, 128})
 DEFINE_MOP(Reg128FDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat, 128})
 
-DEFINE_MOP(Reg64VD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat | operand::kIsVector, 64})
-DEFINE_MOP(Reg64VS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat | operand::kIsVector, 64})
-DEFINE_MOP(Reg64VDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat | operand::kIsVector, 64})
-DEFINE_MOP(Reg128VD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat | operand::kIsVector, 128})
-DEFINE_MOP(Reg128VS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat | operand::kIsVector, 128})
-DEFINE_MOP(Reg128VDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat | operand::kIsVector, 128})
+DEFINE_MOP(Reg64VD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat, 64})
+DEFINE_MOP(Reg64VS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat, 64})
+DEFINE_MOP(Reg64VDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat, 64})
+DEFINE_MOP(Reg128VD, {Operand::kOpdRegister, operand::kIsDef | operand::kFloat, 128})
+DEFINE_MOP(Reg128VS, {Operand::kOpdRegister, operand::kIsUse | operand::kFloat, 128})
+DEFINE_MOP(Reg128VDS, {Operand::kOpdRegister, operand::kIsDef | operand::kIsUse | operand::kFloat, 128})
 
 DEFINE_MOP(CCD, {Operand::kOpdRegister, operand::kRegTyCc | operand::kIsDef, 1})
 DEFINE_MOP(CCS, {Operand::kOpdRegister, operand::kRegTyCc | operand::kIsUse, 1})

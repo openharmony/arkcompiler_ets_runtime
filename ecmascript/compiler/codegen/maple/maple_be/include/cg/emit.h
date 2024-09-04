@@ -225,7 +225,6 @@ public:
     void EmitArrayConstant(MIRConst &mirConst);
     void EmitStructConstant(MIRConst &mirConst);
     void EmitStructConstant(MIRConst &mirConst, uint32 &subStructFieldCounts);
-    void EmitVectorConstant(MIRConst &mirConst);
     void EmitLocalVariable(const CGFunc &cgFunc);
     void EmitUninitializedSymbolsWithPrefixSection(const MIRSymbol &symbol, const std::string &sectionName);
     void EmitGlobalVariable();

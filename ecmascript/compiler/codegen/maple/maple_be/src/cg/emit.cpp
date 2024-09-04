@@ -1746,9 +1746,7 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
     }
     for (size_t i = 0; i < uNum; ++i) {
         MIRConst *elemConst = arrayCt.GetConstVecItem(i);
-        if (IsPrimitiveVector(subTy->GetPrimType())) {
-            EmitVectorConstant(*elemConst);
-        } else if (IsPrimitiveScalar(elemConst->GetType().GetPrimType())) {
+        if (IsPrimitiveScalar(elemConst->GetType().GetPrimType())) {
             if (cg->GetMIRModule()->IsCModule()) {
                 bool strLiteral = false;
                 if (arrayType.GetDim() == 1) {
@@ -1789,31 +1787,6 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
         } else {
             uint64 size = Globals::GetInstance()->GetBECommon()->GetTypeSize(scalarIdx.GetIdx()) * dim;
             Emit("\t.zero\t").Emit(static_cast<int64>(size)).Emit("\n");
-        }
-    }
-#endif
-}
-
-void Emitter::EmitVectorConstant(MIRConst &mirConst)
-{
-#ifdef ARK_LITECG_DEBUG
-    MIRType &mirType = mirConst.GetType();
-    MIRAggConst &vecCt = static_cast<MIRAggConst &>(mirConst);
-    size_t uNum = vecCt.GetConstVec().size();
-    for (size_t i = 0; i < uNum; ++i) {
-        MIRConst *elemConst = vecCt.GetConstVecItem(i);
-        if (IsPrimitiveScalar(elemConst->GetType().GetPrimType())) {
-            bool strLiteral = false;
-            EmitScalarConstant(*elemConst, true, false, strLiteral == false);
-        } else {
-            DEBUG_ASSERT(false, "should not run here");
-        }
-    }
-    size_t lanes = GetVecLanes(mirType.GetPrimType());
-    if (lanes > uNum) {
-        MIRIntConst zConst(0, vecCt.GetConstVecItem(0)->GetType());
-        for (size_t i = uNum; i < lanes; i++) {
-            EmitScalarConstant(zConst, true, false, false);
         }
     }
 #endif
@@ -1884,9 +1857,7 @@ void Emitter::EmitStructConstant(MIRConst &mirConst, uint32 &subStructFieldCount
             EmitBitFieldConstant(*sEmitInfo, *elemConst, nextElemType, fieldOffset);
         } else {
             if (elemConst != nullptr) {
-                if (IsPrimitiveVector(elemType->GetPrimType())) {
-                    EmitVectorConstant(*elemConst);
-                } else if (IsPrimitiveScalar(elemType->GetPrimType())) {
+                if (IsPrimitiveScalar(elemType->GetPrimType())) {
                     EmitScalarConstant(*elemConst, true, false, true);
                 } else if (elemType->GetKind() == kTypeArray) {
                     if (elemType->GetSize() != 0) {
@@ -2738,9 +2709,7 @@ void Emitter::EmitGlobalVariable()
             }
             EmitAsmLabel(*mirSymbol, kAsmSyname);
             MIRConst *mirConst = mirSymbol->GetKonst();
-            if (IsPrimitiveVector(mirType->GetPrimType())) {
-                EmitVectorConstant(*mirConst);
-            } else if (IsPrimitiveScalar(mirType->GetPrimType())) {
+            if (IsPrimitiveScalar(mirType->GetPrimType())) {
                 if (!CGOptions::IsArm64ilp32()) {
                     if (IsAddress(mirType->GetPrimType())) {
                         uint32 sizeinbits = GetPrimTypeBitSize(mirConst->GetType().GetPrimType());

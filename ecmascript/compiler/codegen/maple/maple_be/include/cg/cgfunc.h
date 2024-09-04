@@ -417,29 +417,10 @@ public:
             case PTY_a64:
             case PTY_ptr:
             case PTY_ref:
-            case PTY_i128:
-            case PTY_u128:
             case PTY_agg:
                 return kRegTyInt;
             case PTY_f32:
             case PTY_f64:
-            case PTY_v2i32:
-            case PTY_v2u32:
-            case PTY_v2i64:
-            case PTY_v2u64:
-            case PTY_v2f32:
-            case PTY_v2f64:
-            case PTY_v4i16:
-            case PTY_v4u16:
-            case PTY_v4i32:
-            case PTY_v4u32:
-            case PTY_v4f32:
-            case PTY_v8i8:
-            case PTY_v8u8:
-            case PTY_v8i16:
-            case PTY_v8u16:
-            case PTY_v16i8:
-            case PTY_v16u8:
                 return kRegTyFloat;
             default:
                 DEBUG_ASSERT(false, "Unexpected pty");

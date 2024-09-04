@@ -112,11 +112,6 @@ X64ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList, uint32
         }
     }
 
-    if (GetVecLanes(argInfo.mirTy->GetPrimType()) > 0) {
-        /* vector type */
-        CHECK_FATAL(false, "NIY");
-    }
-
     argInfo.regType = (argInfo.reg < V0) ? kRegTyInt : kRegTyFloat;
     argInfo.sym = x64CGFunc->GetFunction().GetFormal(argIndex);
     CHECK_NULL_FATAL(argInfo.sym);

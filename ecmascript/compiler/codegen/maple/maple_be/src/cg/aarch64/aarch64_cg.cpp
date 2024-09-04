@@ -113,9 +113,6 @@ bool AArch64CG::IsEffectiveCopy(Insn &insn) const
     if (mOp >= MOP_xmovrr && mOp <= MOP_xvmovrv) {
         return true;
     }
-    if (mOp == MOP_vmovuu || mOp == MOP_vmovvv) {
-        return true;
-    }
     if ((mOp >= MOP_xaddrrr && mOp <= MOP_ssub) || (mOp >= MOP_xlslrri6 && mOp <= MOP_wlsrrrr)) {
         Operand &opnd2 = insn.GetOperand(kInsnThirdOpnd);
         if (opnd2.IsIntImmediate()) {

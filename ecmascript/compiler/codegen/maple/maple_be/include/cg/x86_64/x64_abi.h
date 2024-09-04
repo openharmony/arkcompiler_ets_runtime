@@ -41,7 +41,6 @@ bool IsParamReg(X64reg reg);
 bool IsSpillReg(X64reg reg);
 bool IsExtraSpillReg(X64reg reg);
 bool IsSpillRegInRA(X64reg regNO, bool has3RegOpnd);
-PrimType IsVectorArrayType(MIRType *ty, uint32 &arraySize);
 } /* namespace x64 */
 
 /*

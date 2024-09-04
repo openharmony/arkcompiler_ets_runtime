@@ -83,7 +83,7 @@ MOperator PickLdStInsn(bool isLoad, uint32 bitSize, PrimType primType)
     DEBUG_ASSERT(__builtin_popcount(bitSize) == 1, "PTY_u1 should have been lowered?");
 
     /* __builtin_ffs(x) returns: 0 -> 0, 1 -> 1, 2 -> 2, 4 -> 3, 8 -> 4 */
-    if ((IsPrimitiveInteger(primType) || primType == PTY_agg) && !IsPrimitiveVector(primType)) {
+    if ((IsPrimitiveInteger(primType) || primType == PTY_agg)) {
         auto *table = isLoad ? ldIs : stIs;
         int32 signedUnsigned = IsUnsignedInteger(primType) ? 0 : 1;
         if (primType == PTY_agg) {
@@ -93,9 +93,6 @@ MOperator PickLdStInsn(bool isLoad, uint32 bitSize, PrimType primType)
         }
 
         /* __builtin_ffs(x) returns: 8 -> 4, 16 -> 5, 32 -> 6, 64 -> 7 */
-        if (primType == PTY_i128 || primType == PTY_u128) {
-            bitSize = k64BitSize;
-        }
         uint32 size = static_cast<uint32>(__builtin_ffs(static_cast<int32>(bitSize))) - k4BitSize;
         DEBUG_ASSERT(size <= 3, "wrong bitSize");  // size must <= 3
         return table[signedUnsigned][size];
@@ -145,15 +142,9 @@ MOperator AArch64CGFunc::PickExtInsn(PrimType dtype, PrimType stype) const
     if (IsPrimitiveInteger(stype) && IsPrimitiveInteger(dtype)) {
         MOperator(*table)[kIntByteSizeDimension];
         table = IsUnsignedInteger(stype) ? uextIs : extIs;
-        if (stype == PTY_i128 || stype == PTY_u128) {
-            sBitSize = static_cast<int32>(k64BitSize);
-        }
         /* __builtin_ffs(x) returns: 8 -> 4, 16 -> 5, 32 -> 6, 64 -> 7 */
         uint32 row = static_cast<uint32>(__builtin_ffs(sBitSize)) - k4BitSize;
         DEBUG_ASSERT(row <= k3BitSize, "wrong bitSize");
-        if (dtype == PTY_i128 || dtype == PTY_u128) {
-            dBitSize = static_cast<int32>(k64BitSize);
-        }
         uint32 col = static_cast<uint32>(__builtin_ffs(dBitSize)) - k4BitSize;
         DEBUG_ASSERT(col <= k3BitSize, "wrong bitSize");
         return table[row][col];
@@ -318,7 +309,7 @@ void AArch64CGFunc::SelectCopyMemOpnd(Operand &dest, PrimType dtype, uint32 dsiz
     PrimType regTy = PTY_void;
     RegOperand *loadReg = nullptr;
     MOperator mop = MOP_undef;
-    if (IsPrimitiveFloat(stype) || IsPrimitiveVector(stype)) {
+    if (IsPrimitiveFloat(stype)) {
         CHECK_FATAL(dsize == ssize, "dsize %u expect equals ssize %u", dtype, ssize);
         insn = &GetInsnBuilder()->BuildInsn(PickLdInsn(ssize, stype), dest, src);
     } else {
@@ -490,18 +481,6 @@ void AArch64CGFunc::SelectCopy(Operand &dest, PrimType dtype, Operand &src, Prim
                                                                GetZeroOpnd(dsize)));
             break;
         case Operand::kOpdRegister: {
-            if (opnd0Type == Operand::kOpdRegister && IsPrimitiveVector(stype)) {
-                /* check vector reg to vector reg move */
-                CHECK_FATAL(IsPrimitiveVector(dtype), "invalid vectreg to vectreg move");
-                MOperator mop = (dsize <= k64BitSize) ? MOP_vmovuu : MOP_vmovvv;
-                VectorInsn &vInsn = GetInsnBuilder()->BuildVectorInsn(mop, AArch64CG::kMd[mop]);
-                vInsn.AddOpndChain(dest).AddOpndChain(src);
-                auto *vecSpecSrc = GetMemoryPool()->New<VectorRegSpec>(dsize >> k3ByteSize, k8BitSize);
-                auto *vecSpecDest = GetMemoryPool()->New<VectorRegSpec>(dsize >> k3ByteSize, k8BitSize);
-                vInsn.PushRegSpecEntry(vecSpecDest).PushRegSpecEntry(vecSpecSrc);
-                GetCurBB()->AppendInsn(vInsn);
-                break;
-            }
             if (dest.IsRegister()) {
                 RegOperand &desReg = static_cast<RegOperand &>(dest);
                 RegOperand &srcReg = static_cast<RegOperand &>(src);
@@ -741,7 +720,7 @@ void AArch64CGFunc::SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPTyp
     }
     uint32 regSize = GetPrimTypeBitSize(rhsPType);
     MIRType *type = symbol->GetType();
-    Operand &stOpnd = LoadIntoRegister(opnd0, IsPrimitiveInteger(rhsPType) || IsPrimitiveVectorInteger(rhsPType),
+    Operand &stOpnd = LoadIntoRegister(opnd0, IsPrimitiveInteger(rhsPType),
                                        regSize, IsSignedInteger(type->GetPrimType()));
     MOperator mOp = MOP_undef;
     if ((type->GetKind() == kTypeStruct) || (type->GetKind() == kTypeUnion)) {
@@ -916,15 +895,12 @@ void AArch64CGFunc::SelectIassign(IassignNode &stmt)
 
     PrimType styp = stmt.GetRHS()->GetPrimType();
     Operand *valOpnd = HandleExpr(stmt, *stmt.GetRHS());
-    Operand &srcOpnd = LoadIntoRegister(*valOpnd, (IsPrimitiveInteger(styp) || IsPrimitiveVectorInteger(styp)),
+    Operand &srcOpnd = LoadIntoRegister(*valOpnd, (IsPrimitiveInteger(styp)),
                                         GetPrimTypeBitSize(styp));
 
     PrimType destType = pointedType->GetPrimType();
     if (destType == PTY_agg) {
         destType = PTY_a64;
-    }
-    if (IsPrimitiveVector(styp)) { /* a vector type */
-        destType = styp;
     }
     DEBUG_ASSERT(stmt.Opnd(0) != nullptr, "null ptr check");
     MemOperand &memOpnd = CreateMemOpnd(destType, stmt, *stmt.Opnd(0), offset);
@@ -1544,7 +1520,6 @@ Operand *AArch64CGFunc::SelectAdd(BinaryNode &node, Operand &opnd0, Operand &opn
     bool is64Bits = (dsize == k64BitSize);
     bool isFloat = IsPrimitiveFloat(dtype);
     RegOperand *resOpnd = nullptr;
-    CHECK_FATAL(!IsPrimitiveVector(dtype), "NIY");
     /* promoted type */
     PrimType primType =
         isFloat ? dtype : ((is64Bits ? (isSigned ? PTY_i64 : PTY_u64) : (isSigned ? PTY_i32 : PTY_u32)));
@@ -1762,7 +1737,6 @@ Operand *AArch64CGFunc::SelectSub(BinaryNode &node, Operand &opnd0, Operand &opn
     bool is64Bits = (dsize == k64BitSize);
     bool isFloat = IsPrimitiveFloat(dtype);
     RegOperand *resOpnd = nullptr;
-    CHECK_FATAL(!IsPrimitiveVector(dtype), "NIY");
     PrimType primType =
         isFloat ? dtype : ((is64Bits ? (isSigned ? PTY_i64 : PTY_u64) : (isSigned ? PTY_i32 : PTY_u32)));
     resOpnd = &GetOrCreateResOperand(parent, primType);
@@ -1778,7 +1752,6 @@ Operand *AArch64CGFunc::SelectMpy(BinaryNode &node, Operand &opnd0, Operand &opn
     bool is64Bits = (dsize == k64BitSize);
     bool isFloat = IsPrimitiveFloat(dtype);
     RegOperand *resOpnd = nullptr;
-    CHECK_FATAL(!IsPrimitiveVector(dtype), "NIY");
     PrimType primType =
         isFloat ? dtype : ((is64Bits ? (isSigned ? PTY_i64 : PTY_u64) : (isSigned ? PTY_i32 : PTY_u32)));
     resOpnd = &GetOrCreateResOperand(parent, primType);
@@ -1939,7 +1912,6 @@ Operand *AArch64CGFunc::SelectDiv(BinaryNode &node, Operand &opnd0, Operand &opn
     uint32 dsize = GetPrimTypeBitSize(dtype);
     bool is64Bits = (dsize == k64BitSize);
     bool isFloat = IsPrimitiveFloat(dtype);
-    CHECK_FATAL(!IsPrimitiveVector(dtype), "NYI DIV vector operands");
     /* promoted type */
     PrimType primType =
         isFloat ? dtype : ((is64Bits ? (isSigned ? PTY_i64 : PTY_u64) : (isSigned ? PTY_i32 : PTY_u32)));
@@ -2086,7 +2058,6 @@ Operand *AArch64CGFunc::SelectRem(BinaryNode &node, Operand &opnd0, Operand &opn
     bool isSigned = IsSignedInteger(dtype);
     uint32 dsize = GetPrimTypeBitSize(dtype);
     bool is64Bits = (dsize == k64BitSize);
-    CHECK_FATAL(!IsPrimitiveVector(dtype), "NYI DIV vector operands");
 
     /* promoted type */
     PrimType primType = ((is64Bits ? (isSigned ? PTY_i64 : PTY_u64) : (isSigned ? PTY_i32 : PTY_u32)));
@@ -2198,7 +2169,6 @@ void AArch64CGFunc::SelectCmpOp(Operand &resOpnd, Operand &lhsOpnd, Operand &rhs
 
 Operand *AArch64CGFunc::SelectCmpOp(CompareNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
 {
-    CHECK_FATAL(!IsPrimitiveVector(node.GetPrimType()), "NIY");
     RegOperand *resOpnd = &GetOrCreateResOperand(parent, node.GetPrimType());
     SelectCmpOp(*resOpnd, opnd0, opnd1, node.GetOpCode(), node.GetOpndType(), parent);
     return resOpnd;
@@ -2296,7 +2266,6 @@ Operand *AArch64CGFunc::SelectRelationOperator(RelationOperator operatorCode, co
     bool isSigned = IsSignedInteger(dtype);
     uint32 dsize = GetPrimTypeBitSize(dtype);
     bool is64Bits = (dsize == k64BitSize);
-    CHECK_FATAL(!IsPrimitiveVector(dtype), "NIY");
     PrimType primType =
         is64Bits ? (isSigned ? PTY_i64 : PTY_u64) : (isSigned ? PTY_i32 : PTY_u32); /* promoted type */
     RegOperand *resOpnd = &GetOrCreateResOperand(parent, primType);
@@ -2535,7 +2504,6 @@ Operand *AArch64CGFunc::SelectShift(BinaryNode &node, Operand &opnd0, Operand &o
     RegOperand *resOpnd = nullptr;
     Opcode opcode = node.GetOpCode();
 
-    CHECK_FATAL(!IsPrimitiveVector(dtype), "NIY");
     PrimType primType =
         isFloat ? dtype : (is64Bits ? (isSigned ? PTY_i64 : PTY_u64) : (isSigned ? PTY_i32 : PTY_u32));
     resOpnd = &GetOrCreateResOperand(parent, primType);
@@ -2641,7 +2609,6 @@ Operand *AArch64CGFunc::SelectAbsSub(Insn &lastInsn, const UnaryNode &node, Oper
 Operand *AArch64CGFunc::SelectAbs(UnaryNode &node, Operand &opnd0)
 {
     PrimType dtyp = node.GetPrimType();
-    CHECK_FATAL(!IsPrimitiveVector(dtyp), "NIY");
     if (IsPrimitiveFloat(dtyp)) {
         CHECK_FATAL(GetPrimTypeBitSize(dtyp) >= k32BitSize, "We don't support hanf-word FP operands yet");
         bool is64Bits = (GetPrimTypeBitSize(dtyp) == k64BitSize);
@@ -2681,12 +2648,11 @@ Operand *AArch64CGFunc::SelectAbs(UnaryNode &node, Operand &opnd0)
 Operand *AArch64CGFunc::SelectBnot(UnaryNode &node, Operand &opnd0, const BaseNode &parent)
 {
     PrimType dtype = node.GetPrimType();
-    DEBUG_ASSERT(IsPrimitiveInteger(dtype) || IsPrimitiveVectorInteger(dtype), "bnot expect integer or NYI");
+    DEBUG_ASSERT(IsPrimitiveInteger(dtype), "bnot expect integer or NYI");
     uint32 bitSize = GetPrimTypeBitSize(dtype);
     bool is64Bits = (bitSize == k64BitSize);
     bool isSigned = IsSignedInteger(dtype);
     RegOperand *resOpnd = nullptr;
-    CHECK_FATAL(!IsPrimitiveVector(dtype), "NIY");
     PrimType primType = is64Bits ? (isSigned ? PTY_i64 : PTY_u64) : (isSigned ? PTY_i32 : PTY_u32);
     resOpnd = &GetOrCreateResOperand(parent, primType);
 
@@ -2782,7 +2748,6 @@ Operand *AArch64CGFunc::SelectNeg(UnaryNode &node, Operand &opnd0, const BaseNod
     PrimType dtype = node.GetPrimType();
     bool is64Bits = (GetPrimTypeBitSize(dtype) == k64BitSize);
     RegOperand *resOpnd = nullptr;
-    CHECK_FATAL(!IsPrimitiveVector(dtype), "NIY");
     PrimType primType;
     if (IsPrimitiveFloat(dtype)) {
         primType = dtype;
@@ -2973,9 +2938,6 @@ Operand *AArch64CGFunc::SelectRetype(TypeCvtNode &node, Operand &opnd0)
     if (LIsPrimitivePointer(fromType) && LIsPrimitivePointer(toType)) {
         return &LoadIntoRegister(opnd0, toType);
     }
-    if (IsPrimitiveVector(fromType) || IsPrimitiveVector(toType)) {
-        return &LoadIntoRegister(opnd0, toType);
-    }
     Operand::OperandType opnd0Type = opnd0.GetKind();
     RegOperand *resOpnd = &CreateRegisterOperandOfType(toType);
     if (IsPrimitiveInteger(fromType) || IsPrimitiveFloat(fromType)) {
@@ -3073,13 +3035,7 @@ void AArch64CGFunc::SelectCvtInt2Int(const BaseNode *parent, Operand *&resOpnd, 
                                      PrimType toType)
 {
     uint32 fsize = GetPrimTypeBitSize(fromType);
-    if (fromType == PTY_i128 || fromType == PTY_u128) {
-        fsize = k64BitSize;
-    }
     uint32 tsize = GetPrimTypeBitSize(toType);
-    if (toType == PTY_i128 || toType == PTY_u128) {
-        tsize = k64BitSize;
-    }
     bool isExpand = tsize > fsize;
     bool is64Bit = (tsize == k64BitSize);
     if ((parent != nullptr) && opnd0->IsIntImmediate() &&
@@ -3216,8 +3172,6 @@ Operand *AArch64CGFunc::SelectCvt(const BaseNode &parent, TypeCvtNode &node, Ope
     } else if (IsPrimitiveInteger(fromType) && IsPrimitiveInteger(toType)) {
         SelectCvtInt2Int(&parent, resOpnd, &opnd0, fromType, toType);
     } else { /* both are float type */
-        CHECK_FATAL(!IsPrimitiveVector(fromType), "NIY");
-        CHECK_FATAL(!IsPrimitiveVector(toType), "NIY");
         SelectCvtFloat2Float(*resOpnd, opnd0, fromType, toType);
     }
     return resOpnd;
@@ -3439,11 +3393,10 @@ MemOperand *AArch64CGFunc::CreateMemOperand(MemOperand::AArch64AddressingMode mo
 
 Operand &AArch64CGFunc::GetTargetRetOperand(PrimType primType, int32 sReg)
 {
-    DEBUG_ASSERT(!IsInt128Ty(primType), "NIY");
     if (IsSpecialPseudoRegister(-sReg)) {
         return GetOrCreateSpecialRegisterOperand(sReg, primType);
     }
-    bool useFpReg = !IsPrimitiveInteger(primType) || IsPrimitiveVectorFloat(primType);
+    bool useFpReg = !IsPrimitiveInteger(primType);
     uint32 bitSize = GetPrimTypeBitSize(primType);
     bitSize = bitSize <= k32BitSize ? k32BitSize : bitSize;
     return GetOrCreatePhysicalRegisterOperand(useFpReg ? V0 : R0, bitSize, GetRegTyFromPrimTy(primType));
@@ -3603,16 +3556,7 @@ void AArch64CGFunc::SelectParmListPassByStack(const MIRType &mirType, Operand &o
         return;
     }
 
-    if (IsInt128Ty(mirType.GetPrimType())) {
-        DEBUG_ASSERT(!preCopyed, "NIY");
-        MemOperand &mem = CreateMemOpnd(RSP, memOffset, GetPrimTypeBitSize(PTY_u128));
-        mem.SetStackArgMem(true);
-        SelectCopy(mem, PTY_u128, opnd, PTY_u128);
-        return;
-    }
-
     PrimType primType = preCopyed ? PTY_a64 : mirType.GetPrimType();
-    CHECK_FATAL(primType != PTY_i128 && primType != PTY_u128, "NIY, i128 is unsupported");
     auto &valReg = LoadIntoRegister(opnd, primType);
     auto &actMemOpnd = CreateMemOpnd(RSP, memOffset, GetPrimTypeBitSize(primType));
     Insn &strInsn = GetInsnBuilder()->BuildInsn(PickStInsn(GetPrimTypeBitSize(primType), primType), valReg, actMemOpnd);
@@ -3994,7 +3938,7 @@ RegOperand &AArch64CGFunc::GetOrCreateSpecialRegisterOperand(PregIdx sregIdx, Pr
             break;
     }
 
-    bool useFpReg = !IsPrimitiveInteger(primType) || IsPrimitiveVectorFloat(primType);
+    bool useFpReg = !IsPrimitiveInteger(primType);
     AArch64reg pReg = RLAST_INT_REG;
     switch (sregIdx) {
         case kSregRetval0:
