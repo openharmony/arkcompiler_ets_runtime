@@ -348,7 +348,7 @@ JSHandle<JSHClass> JSHClass::TransitionExtension(const JSThread *thread, const J
 }
 
 JSHandle<JSHClass> JSHClass::TransitionProto(const JSThread *thread, const JSHandle<JSHClass> &jshclass,
-                                             const JSHandle<JSTaggedValue> &proto)
+                                             const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
 {
     JSHandle<JSTaggedValue> key(thread->GlobalConstants()->GetHandledPrototypeString());
 
@@ -366,7 +366,7 @@ JSHandle<JSHClass> JSHClass::TransitionProto(const JSThread *thread, const JSHan
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     // 2. new a hclass
     JSHandle<JSHClass> newJsHClass = JSHClass::Clone(thread, jshclass);
-    newJsHClass->SetPrototype(thread, proto.GetTaggedValue());
+    newJsHClass->SetPrototype(thread, proto.GetTaggedValue(), isChangeProto);
 
     JSTaggedValue layout = newJsHClass->GetLayout();
     {
@@ -461,21 +461,22 @@ JSHandle<JSHClass> JSHClass::TransProtoWithoutLayout(const JSThread *thread, con
     return CloneWithAddProto(thread, jshclass, key, proto);
 }
 
-void JSHClass::SetPrototype(const JSThread *thread, JSTaggedValue proto)
+void JSHClass::SetPrototype(const JSThread *thread, JSTaggedValue proto, bool isChangeProto)
 {
     // Because the heap-space of hclass is non-movable, this function can be non-static.
     JSHandle<JSTaggedValue> protoHandle(thread, proto);
-    SetPrototype(thread, protoHandle);
+    SetPrototype(thread, protoHandle, isChangeProto);
 }
 
 JSHandle<JSHClass> JSHClass::SetPrototypeWithNotification(const JSThread *thread,
                                                           const JSHandle<JSHClass> &hclass,
-                                                          const JSHandle<JSTaggedValue> &proto)
+                                                          const JSHandle<JSTaggedValue> &proto,
+                                                          bool isChangeProto)
 {
     // `hclass` can become prototype inside `TransitionProto` if `hclass` is HClass of `proto`.
     // In this case we don't need to notify
     auto wasPrototype = hclass->IsPrototype();
-    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto);
+    JSHandle<JSHClass> newClass = JSHClass::TransitionProto(thread, hclass, proto, isChangeProto);
     if (wasPrototype) {
         ASSERT(hclass->IsPrototype());
         JSHClass::NotifyHclassChanged(thread, hclass, newClass);
@@ -484,21 +485,21 @@ JSHandle<JSHClass> JSHClass::SetPrototypeWithNotification(const JSThread *thread
 }
 
 void JSHClass::SetPrototypeTransition(JSThread *thread, const JSHandle<JSObject> &object,
-                                      const JSHandle<JSTaggedValue> &proto)
+                                      const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
 {
     JSHandle<JSHClass> hclass(thread, object->GetJSHClass());
-    auto newClass = SetPrototypeWithNotification(thread, hclass, proto);
+    auto newClass = SetPrototypeWithNotification(thread, hclass, proto, isChangeProto);
     RestoreElementsKindToGeneric(*newClass);
     object->SynchronizedSetClass(thread, *newClass);
     thread->NotifyStableArrayElementsGuardians(object, StableArrayChangeKind::PROTO);
     ObjectOperator::UpdateDetectorOnSetPrototype(thread, object.GetTaggedValue());
 }
 
-void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto)
+void JSHClass::SetPrototype(const JSThread *thread, const JSHandle<JSTaggedValue> &proto, bool isChangeProto)
 {
     // Because the heap-space of hclass is non-movable, this function can be non-static.
     if (proto->IsJSObject()) {
-        OptimizePrototypeForIC(thread, proto);
+        OptimizePrototypeForIC(thread, proto, isChangeProto);
     }
     SetProto(thread, proto);
 }

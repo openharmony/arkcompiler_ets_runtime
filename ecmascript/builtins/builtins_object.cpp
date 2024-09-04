@@ -1042,7 +1042,7 @@ JSTaggedValue BuiltinsObject::ProtoSetter(EcmaRuntimeCallInfo *argv)
     }
 
     // 5. Let status be O.[[SetPrototypeOf]](proto).
-    bool status = JSTaggedValue::SetPrototype(thread, obj, proto);
+    bool status = JSTaggedValue::SetPrototype(thread, obj, proto, true);
 
     // 6. ReturnIfAbrupt(status).
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
