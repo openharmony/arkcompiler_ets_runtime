@@ -15,11 +15,15 @@
 
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 
+#include <algorithm>
+#include <cstddef>
+
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/gate_accessor.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "libpandafile/bytecode_instruction-inl.h"
+
 
 namespace panda::ecmascript::kungfu {
 void BytecodeCircuitBuilder::BytecodeToCircuit()
@@ -147,6 +151,161 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(ExceptionInfo &byteCodeExc
     });
 }
 
+bool BytecodeCircuitBuilder::IsAncestor(size_t nodeA, size_t nodeB)
+{
+    return timeIn_[bbIdToDfsTimestamp_[nodeA]] <= timeIn_[bbIdToDfsTimestamp_[nodeB]] &&
+        timeOut_[bbIdToDfsTimestamp_[nodeA]] >= timeOut_[bbIdToDfsTimestamp_[nodeB]];
+}
+
+void BytecodeCircuitBuilder::PerformDFS(const std::vector<size_t> &immDom, size_t listSize)
+{
+    std::vector<std::vector<size_t>> sonList(listSize);
+    for (size_t idx = 1; idx < immDom.size(); idx++) {
+        sonList[immDom[idx]].push_back(idx);
+    }
+
+    {
+        size_t timestamp = 0;
+        struct DFSState {
+            size_t cur;
+            std::vector<size_t> &succList;
+            size_t idx;
+        };
+        std::stack<DFSState> dfsStack;
+        size_t root = 0;
+        dfsStack.push({root, sonList[root], 0});
+        timeIn_[root] = timestamp++;
+        while (!dfsStack.empty()) {
+            auto &curState = dfsStack.top();
+            auto &cur = curState.cur;
+            auto &succList = curState.succList;
+            auto &idx = curState.idx;
+            if (idx == succList.size()) {
+                timeOut_[cur] = timestamp++;
+                dfsStack.pop();
+                continue;
+            }
+            const auto &succ = succList[idx];
+            dfsStack.push({succ, sonList[succ], 0});
+            timeIn_[succ] = timestamp++;
+            idx++;
+        }
+    }
+}
+
+
+void BytecodeCircuitBuilder::ReducibilityCheck()
+{
+    std::vector<size_t> basicBlockList;
+    std::vector<size_t> immDom;
+    std::unordered_map<size_t, size_t> bbDfsTimestampToIdx;
+    ComputeDominatorTree(basicBlockList, immDom, bbDfsTimestampToIdx);
+    timeIn_.resize(basicBlockList.size());
+    timeOut_.resize(basicBlockList.size());
+    PerformDFS(immDom, basicBlockList.size());
+}
+
+void BytecodeCircuitBuilder::ComputeImmediateDominators(const std::vector<size_t> &basicBlockList,
+                                                        std::unordered_map<size_t, size_t> &dfsFatherIdx,
+                                                        std::vector<size_t> &immDom,
+                                                        std::unordered_map<size_t, size_t> &bbDfsTimestampToIdx)
+{
+    std::vector<size_t> semiDom(basicBlockList.size());
+    std::vector<std::vector<size_t> > semiDomTree(basicBlockList.size());
+    {
+        std::vector<size_t> parent(basicBlockList.size());
+        std::iota(parent.begin(), parent.end(), 0);
+        std::vector<size_t> minIdx(basicBlockList.size());
+        std::function<size_t(size_t)> unionFind = [&] (size_t idx) -> size_t {
+            if (parent[idx] == idx) return idx;
+            size_t unionFindSetRoot = unionFind(parent[idx]);
+            if (semiDom[minIdx[idx]] > semiDom[minIdx[parent[idx]]]) {
+                minIdx[idx] = minIdx[parent[idx]];
+            }
+            return parent[idx] = unionFindSetRoot;
+        };
+        auto merge = [&] (size_t fatherIdx, size_t sonIdx) -> void {
+            size_t parentFatherIdx = unionFind(fatherIdx);
+            size_t parentSonIdx = unionFind(sonIdx);
+            parent[parentSonIdx] = parentFatherIdx;
+        };
+        auto calculateSemiDom = [&](size_t idx, const ChunkVector<BytecodeRegion *> &blocks) {
+            for (const auto &preBlock : blocks) {
+                if (bbDfsTimestampToIdx[preBlock->id] < idx) {
+                    semiDom[idx] = std::min(semiDom[idx], bbDfsTimestampToIdx[preBlock->id]);
+                } else {
+                    unionFind(bbDfsTimestampToIdx[preBlock->id]);
+                    semiDom[idx] = std::min(semiDom[idx], semiDom[minIdx[bbDfsTimestampToIdx[preBlock->id]]]);
+                }
+            }
+        };
+        std::iota(semiDom.begin(), semiDom.end(), 0);
+        semiDom[0] = semiDom.size();
+        for (size_t idx = basicBlockList.size() - 1; idx >= 1; idx--) {
+            calculateSemiDom(idx, graph_[basicBlockList[idx]]->preds);
+            if (!graph_[basicBlockList[idx]]->trys.empty()) {
+                calculateSemiDom(idx, graph_[basicBlockList[idx]]->trys);
+            }
+            for (const auto &succDomIdx : semiDomTree[idx]) {
+                unionFind(succDomIdx);
+                if (idx == semiDom[minIdx[succDomIdx]]) {
+                    immDom[succDomIdx] = idx;
+                } else {
+                    immDom[succDomIdx] = minIdx[succDomIdx];
+                }
+            }
+            minIdx[idx] = idx;
+            merge(dfsFatherIdx[basicBlockList[idx]], idx);
+            semiDomTree[semiDom[idx]].emplace_back(idx);
+        }
+        for (size_t idx = 1; idx < basicBlockList.size(); idx++) {
+            if (immDom[idx] != semiDom[idx]) {
+                immDom[idx] = immDom[immDom[idx]];
+            }
+        }
+        semiDom[0] = 0;
+    }
+}
+
+void BytecodeCircuitBuilder::ComputeDominatorTree(std::vector<size_t> &basicBlockList, std::vector<size_t> &immDom,
+    std::unordered_map<size_t, size_t> &bbDfsTimestampToIdx)
+{
+    std::unordered_map<size_t, size_t> dfsFatherIdx;
+    size_t timestamp = 0;
+    std::deque<size_t> pendingList;
+    std::vector<size_t> visited(graph_.size(), 0);
+    auto basicBlockId = graph_[0]->id;
+    visited[graph_[0]->id] = 1;
+    pendingList.emplace_back(basicBlockId);
+
+    auto visitConnectedBlocks = [&](const ChunkVector<BytecodeRegion *> &succs, size_t curBlockId) {
+        for (const auto &succBlock : succs) {
+            if (visited[succBlock->id] == 0) {
+                visited[succBlock->id] = 1;
+                pendingList.emplace_back(succBlock->id);
+                dfsFatherIdx[succBlock->id] = bbIdToDfsTimestamp_[curBlockId];
+            }
+        }
+    };
+
+    while (!pendingList.empty()) {
+        size_t curBlockId = pendingList.back();
+        pendingList.pop_back();
+        basicBlockList.emplace_back(curBlockId);
+        bbIdToDfsTimestamp_[curBlockId] = timestamp++;
+        visitConnectedBlocks(graph_[curBlockId]->succs, curBlockId);
+        if (!graph_[curBlockId]->catches.empty()) {
+            visitConnectedBlocks(graph_[curBlockId]->catches, curBlockId);
+        }
+    }
+    for (size_t idx = 0; idx < basicBlockList.size(); idx++) {
+        bbDfsTimestampToIdx[basicBlockList[idx]] = idx;
+    }
+
+    immDom.resize(basicBlockList.size());
+    ComputeImmediateDominators(basicBlockList, dfsFatherIdx, immDom, bbDfsTimestampToIdx);
+}
+
 void BytecodeCircuitBuilder::BuildEntryBlock()
 {
     BytecodeRegion &entryBlock = RegionAt(0);
@@ -156,23 +315,9 @@ void BytecodeCircuitBuilder::BuildEntryBlock()
     entryBlock.bytecodeIterator_.Reset(this, 0, BytecodeIterator::INVALID_INDEX);
 }
 
-void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException)
+void BytecodeCircuitBuilder::BuildBasicBlock()
 {
     auto &items = regionsInfo_.GetBlockItems();
-    auto blockSize = items.size();
-
-    // 1 : entry block. if the loop head is in the first bb block, the variables used in the head cannot correctly
-    // generate Phi nodes through the dominator-tree algorithm, resulting in an infinite loop. Therefore, an empty
-    // BB block is generated as an entry block
-    graph_.resize(blockSize + 1, nullptr);
-    for (size_t i = 0; i < graph_.size(); i++) {
-        graph_[i] = circuit_->chunk()->New<BytecodeRegion>(circuit_->chunk());
-    }
-
-    // build entry block
-    BuildEntryBlock();
-
-    // build basic block
     size_t blockId = 1;
     for (const auto &item : items) {
         auto &curBlock = GetBasicBlockById(blockId);
@@ -194,6 +339,25 @@ void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException
     auto &lastBlock = RegionAt(blockId - 1); // 1: last block
     lastBlock.end = GetLastBcIndex();
     lastBlock.bytecodeIterator_.Reset(this, lastBlock.start, lastBlock.end);
+}
+
+void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException)
+{
+    auto blockSize = regionsInfo_.GetBlockItems().size();
+
+    // 1 : entry block. if the loop head is in the first bb block, the variables used in the head cannot correctly
+    // generate Phi nodes through the dominator-tree algorithm, resulting in an infinite loop. Therefore, an empty
+    // BB block is generated as an entry block
+    graph_.resize(blockSize + 1, nullptr);
+    for (size_t i = 0; i < graph_.size(); i++) {
+        graph_[i] = circuit_->chunk()->New<BytecodeRegion>(circuit_->chunk());
+    }
+
+    // build entry block
+    BuildEntryBlock();
+
+    // build basic block
+    BuildBasicBlock();
 
     auto &splitItems = regionsInfo_.GetSplitItems();
     for (const auto &item : splitItems) {
@@ -213,7 +377,10 @@ void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException
         CollectTryPredsInfo();
     }
     RemoveUnreachableRegion();
-    if (IsLogEnabled()) {
+    if (NeedIrreducibleLoopCheck()) {
+        ReducibilityCheck();
+    }
+    if (IsLogEnabled() && !IsPreAnalysis()) {
         PrintGraph(std::string("Update CFG [" + methodName_ + "]").c_str());
     }
     BuildCircuit();
@@ -227,6 +394,7 @@ void BytecodeCircuitBuilder::UpdateEmptyCatchBB()
         if (it != candidateEmptyCatch_.end()) {
             if (it->second) {
                 bb.IsEmptyCatchBB = true;
+                hasEmptyCatchBB_ = true;
             }
         }
     }
@@ -1039,12 +1207,18 @@ void BytecodeCircuitBuilder::BuildCircuit()
         // create osr arg gates array
         BuildOSRArgs();
         frameStateBuilder_.DoBytecodeAnalysis();
+        if (TerminateAnalysis()) {
+            return;
+        }
         // build states sub-circuit of osr block
         BuildOsrCircuit();
     } else {
         // create arg gates array
         BuildCircuitArgs();
         frameStateBuilder_.DoBytecodeAnalysis();
+        if (TerminateAnalysis()) {
+            return;
+        }
         // build states sub-circuit of each block
         BuildSubCircuit();
     }

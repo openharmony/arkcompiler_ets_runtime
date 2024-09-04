@@ -149,13 +149,13 @@ public:
     Module *GetModule();
 
     template <class Callback>
-    void CompileMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
+    bool CompileMethod(const JSPandaFile *jsPandaFile, MethodLiteral *methodLiteral,
                        JSHandle<ProfileTypeInfo> &profileTypeInfo, const uint8_t *pcStart,
                        const panda_file::File::Header *header, ApEntityId abcId, const Callback &cb)
     {
         SetCurrentCompilationFile();
         if (methodLiteral == nullptr) {
-            return;
+            return false;
         }
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
 
@@ -168,7 +168,7 @@ public:
         bytecodeInfo_.EraseSkippedMethod(methodOffset);
 
         Module *module = GetModule();
-        cb(bytecodeInfo_.GetRecordNameWithIndex(0), methodName, methodLiteral, profileTypeInfo,
+        return cb(bytecodeInfo_.GetRecordNameWithIndex(0), methodName, methodLiteral, profileTypeInfo,
             methodOffset, methodPcInfo, methodInfo, module, pcStart, header, abcId);
     }
 };

@@ -12,36 +12,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+var i = 0;
 
-declare function print(str:any):string;
-declare var ArkTools:any;
-
-let a = 2
-function f3() {
+function SmallFunc() {
     try {
-      for (let i = 0; i < 1; i++) {
-        print("Test Success")
-      }
-    } catch(e) {
+      i += 10;
+    } catch (e) {
+        throw e;
     }
-    a = 3
 }
 
-f3()
-print(ArkTools.isAOTCompiled(f3));
-
-function f4() {
-  let v3 = 3;
-  for (let i44 = 0; i44 < 5; i44++) {
-      let v53 = 0;
-      do {
-          i44 = v3;
-          try {
-              i44.o(375);
-          } catch (e) {}
-          v53++;
-      } while (v53 < 2)
-      v3++;
-  }
+function EmptyCatch() {
+  try {
+    i += 10;
+  } catch (e) {}
 }
-print(ArkTools.isAOTCompiled(f4));
+
+function CallSmallFunc() {
+    SmallFunc();
+    try {
+        i += 10;
+    } catch (e) {
+        i += 10;
+        throw e;
+    }
+}
+
+EmptyCatch();
+CallSmallFunc();
+ArkTools.jitCompileAsync(EmptyCatch);
+ArkTools.jitCompileAsync(CallSmallFunc);
+var ret = ArkTools.waitJitCompileFinish(CallSmallFunc);
+for (let j = 0; j < 10; j++) {
+    EmptyCatch()
+}
+print(ret);
+print(i);

@@ -71,19 +71,19 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
                                           log_,
                                           log_->OutputASM(),
                                           maxMethodsInModule_);
-    cmpDriver_->CompileMethod(jsPandaFile, methodLiteral, profileTypeInfo, pcStart, header, abcId,
-                              [this, &fileName, &osrOffset] (
-                                const CString &recordName,
-                                const std::string &methodName,
-                                MethodLiteral *methodLiteral,
-                                JSHandle<ProfileTypeInfo> &profileTypeInfo,
-                                uint32_t methodOffset,
-                                const MethodPcInfo &methodPCInfo,
-                                MethodInfo &methodInfo,
-                                Module *m,
-                                const uint8_t *pcStart,
-                                const panda_file::File::Header *header,
-                                ApEntityId abcId) {
+    return cmpDriver_->CompileMethod(jsPandaFile, methodLiteral, profileTypeInfo, pcStart, header, abcId,
+                                     [this, &fileName, &osrOffset] (
+                                       const CString &recordName,
+                                       const std::string &methodName,
+                                       MethodLiteral *methodLiteral,
+                                       JSHandle<ProfileTypeInfo> &profileTypeInfo,
+                                       uint32_t methodOffset,
+                                       const MethodPcInfo &methodPCInfo,
+                                       MethodInfo &methodInfo,
+                                       Module *m,
+                                       const uint8_t *pcStart,
+                                       const panda_file::File::Header *header,
+                                       ApEntityId abcId) -> bool {
         if (compilationEnv_->GetJSOptions().GetTraceJIT()) {
             LOG_COMPILER(INFO) << "JIT Compile Method Start: " << methodName << ", " << methodOffset << "\n";
         }
@@ -130,7 +130,16 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         builder_->SetOsrOffset(osrOffset);
         {
             TimeScope timeScope("BytecodeToCircuit", methodName, methodOffset, log_);
+            builder_->SetJitCompile();
             builder_->BytecodeToCircuit();
+            if (builder_->HasIrreducibleLoop()) {
+                LOG_JIT(DEBUG) << "compile fail as has irreducible loop:" << methodName;
+                return false;
+            }
+            if (builder_->HasEmptyCatchBB() && compilationEnv_->GetJSOptions().IsEnableAPPJIT()) {
+                LOG_JIT(DEBUG) << "compile fail as has empty catch bb:" << methodName;
+                return false;
+            }
         }
 
         CallMethodFlagMap methodFlagMap;
@@ -192,8 +201,8 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
             pipeline.RunPass<VerifierPass>();
         }
         pipeline.RunPass<GraphLinearizerPass>();
+        return true;
     });
-    return true;
 }
 
 bool JitPassManager::RunCg()
@@ -261,7 +270,6 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         LOG_COMPILER(ERROR) << "The input panda file [" << fileName
                             << "] of AOT Compiler is debuggable version, do not use for performance test!";
     }
-
     LOptions lOptions(optLevel_, FPFlag::RESERVE_FP, relocMode_);
     CompilationDriver cmpDriver(profilerDecoder_,
                                 &collector,

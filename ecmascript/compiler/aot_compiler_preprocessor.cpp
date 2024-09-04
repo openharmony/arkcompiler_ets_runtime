@@ -14,17 +14,18 @@
  */
 #include "ecmascript/compiler/aot_compiler_preprocessor.h"
 
+#include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_parser.h"
+#include "ecmascript/compiler/pass_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/js_runtime_options.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/ohos/ohos_pgo_processor.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
 
 namespace panda::ecmascript::kungfu {
-namespace {
-constexpr int32_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
-}  // namespace
+
 using PGOProfilerManager = pgo::PGOProfilerManager;
 
 CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
@@ -49,6 +50,7 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();
     isEnableTypeLowering_ = runtimeOptions.IsEnableTypeLowering();
     isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
+    isEnableEmptyCatchFunction_ = runtimeOptions.IsEnableEmptyCatchFunction();
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
     isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
@@ -67,7 +69,6 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableInductionVariableAnalysis_ = runtimeOptions.IsEnableInductionVariableAnalysis();
     isEnableVerifierPass_ = !runtimeOptions.IsTargetCompilerMode();
     isEnableBaselinePgo_ = runtimeOptions.IsEnableBaselinePgo();
-
     std::string optionSelectMethods = runtimeOptions.GetCompilerSelectMethods();
     std::string optionSkipMethods = runtimeOptions.GetCompilerSkipMethods();
     if (!optionSelectMethods.empty() && !optionSkipMethods.empty()) {
@@ -145,6 +146,18 @@ void AotCompilerPreprocessor::HandleTargetModeInfo(CompilationOptions &cOptions)
     cOptions.optLevel_ = DEFAULT_OPT_LEVEL;
 }
 
+bool AotCompilerPreprocessor::MethodHasTryCatch(const JSPandaFile *jsPandaFile,
+                                                const MethodLiteral *methodLiteral) const
+{
+    if (jsPandaFile == nullptr || methodLiteral == nullptr) {
+        return false;
+    }
+    auto pf = jsPandaFile->GetPandaFile();
+    panda_file::MethodDataAccessor mda(*pf, methodLiteral->GetMethodId());
+    panda_file::CodeDataAccessor cda(*pf, mda.GetCodeId().value());
+    return cda.GetTriesSize() != 0;
+}
+
 bool AotCompilerPreprocessor::HandlePandaFileNames(const int argc, const char **argv)
 {
     if (runtimeOptions_.GetCompilerPkgJsonInfo().empty() || pkgsArgs_.empty()) {
@@ -174,7 +187,76 @@ void AotCompilerPreprocessor::Process(CompilationOptions &cOptions)
     GenerateBytecodeInfoCollectors(cOptions);
     GeneratePGOTypes();
     SnapshotInitialize();
+    DoPreAnalysis(cOptions);
     GenerateMethodMap(cOptions);
+}
+
+void AotCompilerPreprocessor::DoPreAnalysis(CompilationOptions &cOptions)
+{
+    for (uint32_t i = 0 ; i < fileInfos_.size(); ++i) {
+        JSPandaFile *jsPandaFile = fileInfos_[i].jsPandaFile_.get();
+        auto &collector = *bcInfoCollectors_[i];
+        AnalyzeGraphs(jsPandaFile, collector, cOptions);
+    }
+}
+
+void AotCompilerPreprocessor::AnalyzeGraphs(JSPandaFile *jsPandaFile,
+                                            BytecodeInfoCollector &collector, CompilationOptions &cOptions)
+{
+    if (jsPandaFile == nullptr) {
+        return;
+    }
+    auto &bytecodeInfo = collector.GetBytecodeInfo();
+    auto &methodPcInfos = bytecodeInfo.GetMethodPcInfos();
+    for (auto &[methodId, methodInfo] : bytecodeInfo.GetMethodList()) {
+        auto methodLiteral = jsPandaFile->FindMethodLiteral(methodId);
+        auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
+        if (MethodHasTryCatch(jsPandaFile, methodLiteral)) {
+            AnalyzeGraph(bytecodeInfo, cOptions, collector, methodLiteral, methodPcInfo);
+        }
+    }
+}
+
+void AotCompilerPreprocessor::AnalyzeGraph(BCInfo &bytecodeInfo, CompilationOptions &cOptions,
+                                           BytecodeInfoCollector &collector, MethodLiteral *methodLiteral,
+                                           MethodPcInfo &methodPCInfo)
+{
+    if (methodLiteral == nullptr) {
+        return;
+    }
+    AotMethodLogList logList(cOptions.logMethodsList_);
+    AOTCompilationEnv aotCompilationEnv(vm_);
+    CompilerLog log(cOptions.logOption_);
+    AOTFileGenerator generator(&log, &logList, &aotCompilationEnv, cOptions.triple_, false);
+    PGOProfilerDecoder profilerDecoder;
+    LOptions lOptions = LOptions(DEFAULT_OPT_LEVEL, FPFlag::RESERVE_FP, DEFAULT_REL_MODE);
+    Module *m = generator.AddModule("", cOptions.triple_, lOptions, false);
+    PassContext ctx(cOptions.triple_, &log, &collector, m->GetModule(), &profilerDecoder);
+    auto jsPandaFile = ctx.GetJSPandaFile();
+    auto cmpCfg = ctx.GetCompilerConfig();
+    auto module = m->GetModule();
+    std::string fullName = module->GetFuncName(methodLiteral, jsPandaFile);
+
+    Circuit circuit(vm_->GetNativeAreaAllocator(), ctx.GetAOTModule()->GetDebugInfo(),
+                    fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+
+    PGOProfilerDecoder *decoder = cOptions.isEnableOptPGOType_ ? &profilerDecoder : nullptr;
+
+    BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, &circuit,
+                                    ctx.GetByteCodes(), false,
+                                    cOptions.isEnableTypeLowering_,
+                                    fullName, bytecodeInfo.GetRecordNameWithIndex(0), decoder, false);
+    {
+        builder.SetPreAnalysis();
+        builder.BytecodeToCircuit();
+        if (builder.HasEmptyCatchBB()) {
+            emptyCatchBBMethods_.push_back(fullName);
+        }
+        if (builder.HasIrreducibleLoop()) {
+            irreducibleMethods_.push_back(fullName);
+        }
+    }
+    m->DestroyModule();
 }
 
 uint32_t AotCompilerPreprocessor::GenerateAbcFileInfos()
@@ -357,6 +439,15 @@ bool AotCompilerPreprocessor::IsSkipMethod(const JSPandaFile *jsPandaFile, const
         return FilterOption(cOptions.optionSkipMethods_, ConvertToStdString(recordName), methodName);
     }
 
+    std::string fullName = IRModule::GetFuncName(methodLiteral, jsPandaFile);
+    if (HasSkipMethod(irreducibleMethods_, fullName)) {
+        return true;
+    }
+
+    if (HasSkipMethod(emptyCatchBBMethods_, fullName) && !cOptions.isEnableEmptyCatchFunction_) {
+        return true;
+    }
+
     return false;
 }
 
@@ -388,6 +479,12 @@ void AotCompilerPreprocessor::GenerateMethodMap(CompilationOptions &cOptions)
             LOG_COMPILER(INFO) <<"!!!"<< fileDesc <<" "<< offset << " " << isAotcompile << " " << isFastCall;
         }
     }
+}
+
+bool AotCompilerPreprocessor::HasSkipMethod(const CVector<std::string> &methodList,
+                                            const std::string &methodName) const
+{
+    return std::find(methodList.begin(), methodList.end(), methodName) != methodList.end();
 }
 
 std::string AotCompilerPreprocessor::GetMainPkgArgsAppSignature() const
