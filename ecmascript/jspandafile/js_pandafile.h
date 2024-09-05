@@ -175,7 +175,7 @@ public:
         return constpoolIndex_;
     }
 
-    uint32_t GetMainMethodIndex(const CString &recordName = ENTRY_FUNCTION_NAME) const
+    uint32_t GetMainMethodIndex(const CString &recordName = ENTRY_FUNCTION_NAME, bool isNewVersion = false) const
     {
         if (IsBundlePack()) {
             return jsRecordInfo_.begin()->second->mainMethodIndex;
@@ -184,6 +184,15 @@ public:
         if (info != jsRecordInfo_.end()) {
             return info->second->mainMethodIndex;
         }
+
+        if (isNewVersion) {
+            for (auto recordInfo : jsRecordInfo_) {
+                LOG_ECMA(ERROR) << "All current record info: " << recordInfo.first;
+            }
+            LOG_ECMA(FATAL) << "can not get main method index: " << recordName;
+            UNREACHABLE();
+        }
+
         LOG_ECMA(ERROR) << "can not get main method index: " << recordName;
         return 0;
     }
