@@ -539,6 +539,14 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
         GateRef target = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, index, GateType::NJSValue());
         GateRef reseverdFrameArgs = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
         GateRef reseverdPc = circuit_->GetConstantGateWithoutCache(MachineType::I64, 0, GateType::NJSValue());
+#ifndef NDEBUG
+        GateRef verifyTarget = circuit_->GetConstantGateWithoutCache(MachineType::ARCH, CommonStubCSigns::VerifyBarrier,
+                                                                     GateType::NJSValue());
+        const CallSignature* verifyBarrierCs = CommonStubCSigns::Get(CommonStubCSigns::VerifyBarrier);
+        GateRef verifyBarrier = builder_.Call(verifyBarrierCs, glue, verifyTarget, builder_.GetDepend(),
+                                              {glue, base, offset, value, reseverdFrameArgs, reseverdPc},
+                                              Circuit::NullGate(), "verify barrier");
+#endif
         GateRef storeBarrier = builder_.Call(cs, glue, target, builder_.GetDepend(),
                                              { glue, base, offset, value, reseverdFrameArgs, reseverdPc },
                                              Circuit::NullGate(), comment.data());
@@ -547,6 +555,9 @@ void PostSchedule::LoweringStoreUnknownBarrierAndPrepareScheduleGate(GateRef gat
             GateRef ordinaryBlock = isHeapObject.GetControl();
             PrepareToScheduleNewGate(ordinaryBlock, barrierBBGates);
             PrepareToScheduleNewGate(storeBarrier, barrierBBGates);
+#ifndef NDEBUG
+            PrepareToScheduleNewGate(verifyBarrier, barrierBBGates);
+#endif
             PrepareToScheduleNewGate(reseverdFrameArgs, barrierBBGates);
             PrepareToScheduleNewGate(reseverdPc, barrierBBGates);
             PrepareToScheduleNewGate(ifTrue, barrierBBGates);

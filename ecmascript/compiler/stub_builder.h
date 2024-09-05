@@ -731,6 +731,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef IntPtrEuqal(GateRef x, GateRef y);
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
+    void VerifyBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
     void SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden = false,
                              MemoryAttribute::ShareFlag share = MemoryAttribute::UNKNOWN);
     GateRef GetPropertyByIndex(GateRef glue, GateRef receiver, GateRef index,

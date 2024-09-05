@@ -840,6 +840,11 @@ DEF_CALL_SIGNATURE(ASMWriteBarrierWithEden)
     callSign->SetTargetKind(CallSignature::TargetKind::ASM_CALL_BARRIER_STUB);
 }
 
+DEF_CALL_SIGNATURE(VerifyBarrier)
+{
+    SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON(VerifyBarrier);
+}
+
 #undef SETVALUEBARRIER_CALL_ARGS_SIGNATURE_COMMON
 
 DEF_CALL_SIGNATURE(NewThisObjectChecked)

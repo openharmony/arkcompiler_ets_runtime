@@ -220,6 +220,7 @@ private:
     static void JSCallCommonSlowPath(ExtendedAssembler *assembler, JSCallMode mode,
         Label *fastPathEntry, Label *pushCallThis, Label *stackOverflow);
     static void PreserveMostCall(ExtendedAssembler* assembler);
+    static void ASMFastSharedWriteBarrier(ExtendedAssembler *assembler, Label &needcall);
     friend class OptimizedCall;
     friend class BaselineCall;
 };

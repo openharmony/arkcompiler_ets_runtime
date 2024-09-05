@@ -1019,6 +1019,11 @@ void AssemblerAarch64::Tbnz(const Register &rt, int32_t bitPos, int32_t imm)
     EmitU32(code);
 }
 
+void AssemblerAarch64::Tst(const Register& rn, const Operand& operand)
+{
+    Ands(Register(Zero, rn.GetType()), rn, operand);
+}
+
 void AssemblerAarch64::Tst(const Register &rn, const LogicalImmediate &imm)
 {
     Ands(Register(Zero, rn.GetType()), rn, imm);

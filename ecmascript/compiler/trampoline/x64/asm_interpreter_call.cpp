@@ -1495,7 +1495,7 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     // region flag:         0x08, 0x09, [0x0A, 0x11], [0x12, 0x14],     0x15
     // value is share:                                [0x12,            0x15] =>  valueMaybeSweepableShare
     // readonly share:                                                  0x15  =>  return
-    // sweepable share:                               [0x12, 0x14]            =>  needCallShare
+    // sweepable share:                               [0x12, 0x14]            =>  needShareBarrier
     // value is not share:  0x08, 0x09, [0x0A, 0x11],                         =>  valueNotShare
     // value is young :           0x09                                        =>  needCallNotShare
     // value is not young : 0x08,       [0x0A, 0x11],                         =>  checkMark
@@ -1506,7 +1506,7 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     Label needCall;
     Label checkMark;
     Label needCallNotShare;
-    Label needCallShare;
+    Label needShareBarrier;
     Label valueNotShare;
     Label valueMaybeSweepableShare;
     {
@@ -1567,21 +1567,14 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     {
         // valueMaybeSweepableShare:
         // if (valueFlag != IN_SHARED_READ_ONLY_SPACE){
-        //    goto needCallShare
+        //    goto needShareBarrier
         // }
         // return
         __ Cmpl(Immediate(RegionSpaceFlag::IN_SHARED_READ_ONLY_SPACE), r11);
-        __ Jne(&needCallShare);
+        __ Jne(&needShareBarrier);
         __ Ret();
     }
 
-    __ Bind(&needCallShare);
-    {
-        int32_t SValueBarrierOffset = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
-            kungfu::CommonStubCSigns::SetSValueWithBarrier * FRAME_SLOT_SIZE;
-        __ Movq(Operand(rdi, SValueBarrierOffset), r11);
-        __ Jmp(&needCall);
-    }
     __ Bind(&needCallNotShare);
     {
         int32_t NonSValueBarrier = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
@@ -1592,14 +1585,18 @@ void AsmInterpreterCall::ASMFastWriteBarrier(ExtendedAssembler* assembler)
     {
         PreserveMostCall(assembler);
     }
+    __ Bind(&needShareBarrier);
+    {
+        ASMFastSharedWriteBarrier(assembler, needCall);
+    }
 }
 
 // ASMWriteBarrierWithEden(GateRef glue, GateRef obj, GateRef offset, GateRef value)
 // c calling convention, but preserve all general registers except %x15
-// %x0 - glue
-// %x1 - obj
-// %x2 - offset
-// %x3 - value
+// %rd1 - glue
+// %rsi - obj
+// %rdx - offset
+// %rcx - value
 void AsmInterpreterCall::ASMWriteBarrierWithEden(ExtendedAssembler* assembler)
 {
     __ BindAssemblerStub(RTSTUB_ID(ASMWriteBarrierWithEden));
@@ -1608,6 +1605,136 @@ void AsmInterpreterCall::ASMWriteBarrierWithEden(ExtendedAssembler* assembler)
         kungfu::CommonStubCSigns::SetValueWithEdenBarrier * FRAME_SLOT_SIZE;
     __ Movq(Operand(rdi, EdenBarrierOffset), r11);
     PreserveMostCall(assembler);
+}
+
+// %rd1 - glue
+// %rsi - obj
+// %rdx - offset
+// %rcx - value
+void AsmInterpreterCall::ASMFastSharedWriteBarrier(ExtendedAssembler* assembler, Label& needcall)
+{
+    Label checkBarrierForSharedValue;
+    Label restoreScratchRegister;
+    Label callSharedBarrier;
+    {
+        // int8_t *objRegion = obj & (~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK))
+        // int8_t objFlag = *objRegion
+        // if (objFlag >= SHARED_SPACE_BEGIN){
+        //    // share to share, just check the barrier
+        //    goto checkBarrierForSharedValue
+        // }
+        __ Movabs(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), r11); // r11 is the mask to get the region.
+        __ And(rsi, r11); // r11: region address of obj.
+        __ Movzbl(Operand(r11, 0), r11); // r11: the flag load from region of obj.
+        __ Cmpl(Immediate(RegionSpaceFlag::SHARED_SPACE_BEGIN), r11);
+        __ Jae(&checkBarrierForSharedValue); // if objflag >= SHARED_SPACE_BEGIN  => checkBarrierForSharedValue
+    }
+    {
+        // int8_t *objRegion = obj & (~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK))
+        // int8_t *localToShareSet = *(objRegion + LocalToShareSetOffset)
+        // if (localToShareSet == 0){
+        //    goto callSharedBarrier
+        // }
+        __ Movabs(~(JSTaggedValue::TAG_MARK | DEFAULT_REGION_MASK), r11);  // r11 is the mask to get the region.
+        __ And(rsi, r11); // r11: region address of obj.
+        __ Movq(Operand(r11, Region::PackedData::GetLocalToShareSetOffset(false)), r11);
+        // r11 is localToShareSet for obj region.
+        __ Cmpq(Immediate(0), r11);
+        __ Je(&callSharedBarrier); // if localToShareSet == 0  => callSharedBarrier
+    }
+    {
+        // r12, r13 will be used as scratch register, spill them.
+        {
+            __ Pushq(r12);
+            __ Pushq(r13);
+        }
+        // int64_t objOffset = obj & DEFAULT_REGION_MASK
+        // int64_t slotOffset = objOffset + offset
+        // int8_t lowSlotOffset = slotOffset & 0xff
+
+        __ Movabs(DEFAULT_REGION_MASK, r12);
+        __ And(rsi, r12); // obj & DEFAULT_REGION_MASK => r12 is obj's offset to region
+        __ Addq(rdx, r12); // r12 is slotAddr's offset to region
+        __ Movzbl(r12, r13); // r13 is low 8 bit of slotAddr's offset to region
+
+        // the logic to get byteIndex in stub_builder.cpp
+        //               [63-------------------------35][34------------------------8][7---3][2-0]
+        // slotOffset:    aaaaaaaaaaaaaaaaaaaaaaaaaaaaa  bbbbbbbbbbbbbbbbbbbbbbbbbbb  ccccc  ddd
+        // 1. bitOffsetPtr = LSR TAGGED_TYPE_SIZE_LOG(3) slotOffset
+        // bitOffsetPtr:     aaaaaaaaaaaaaaaaaaaaaaaaaa  aaabbbbbbbbbbbbbbbbbbbbbbbb  bbbcc  ccc
+        // 2. bitOffset = TruncPtrToInt32 bitOffsetPtr
+        // bitOffset:                                       bbbbbbbbbbbbbbbbbbbbbbbb  bbbcc  ccc
+        // 3. index = LSR BIT_PER_WORD_LOG2(5) bitOffset
+        // index:                                                bbbbbbbbbbbbbbbbbbb  bbbbb  bbb
+        // 4. byteIndex = Mul index BYTE_PER_WORD(4)
+        // byteIndex:                                          bbbbbbbbbbbbbbbbbbbbb  bbbbb  b00
+
+        // the logic to get byteIndex here:
+        //               [63-------------------------35][34------------------------8][7---3][2-0]
+        // slotOffset:    aaaaaaaaaaaaaaaaaaaaaaaaaaaaa  bbbbbbbbbbbbbbbbbbbbbbbbbbb  ccccc  ddd
+        // 1. LSR (TAGGED_TYPE_SIZE_LOG + GCBitset::BIT_PER_WORD_LOG2 - GCBitset::BYTE_PER_WORD_LOG2)(6) slotOffset
+        // r12:                 aaaaaaaaaaaaaaaaaaaaaaa  aaaaaabbbbbbbbbbbbbbbbbbbbb  bbbbb  bcc
+        // indexMask:     00000000000000000000000000000  000000111111111111111111111  11111  100
+        // 2. And r12 indexMask
+        // byteIndex:                                          bbbbbbbbbbbbbbbbbbbbb  bbbbb  b00
+        constexpr uint32_t byteIndexMask = static_cast<uint32_t>(0xffffffffffffffff >> TAGGED_TYPE_SIZE_LOG) >>
+            GCBitset::BIT_PER_WORD_LOG2 << GCBitset::BYTE_PER_WORD_LOG2;
+        static_assert(byteIndexMask == 0x1ffffffc && "LocalToShareSet is changed?");
+        __ Shrq(TAGGED_TYPE_SIZE_LOG + GCBitset::BIT_PER_WORD_LOG2 - GCBitset::BYTE_PER_WORD_LOG2, r12);
+        __ Andq(byteIndexMask, r12); // r12 is byteIndex
+
+        __ Addq(RememberedSet::GCBITSET_DATA_OFFSET, r11); // r11 is bitsetData addr
+        __ Addq(r12, r11);  // r11 is the addr of bitset value
+        __ Movl(Operand(r11, 0), r12); // r12: oldsetValue
+
+        // the logic to get mask in stub_builder.cpp
+        //               [63-------------------------35][34------------------------8][7---3][2-0]
+        // bitOffset:                                       bbbbbbbbbbbbbbbbbbbbbbbb  bbbcc  ccc
+        // bitPerWordMask:                                                               11  111
+        // indexInWord = And bitoffset bitPerWordMask
+        // indexInWord:                                                                  cc  ccc
+        // mask = 1 << indexInWord
+
+        // the logic to test bit set value here:
+        //               [63-------------------------35][34------------------------8][7---3][2-0]
+        // slotOffset:    aaaaaaaaaaaaaaaaaaaaaaaaaaaaa  bbbbbbbbbbbbbbbbbbbbbbbbbbb  ccccc  ddd
+        // lowSlotOffset:                                                             ccccc  ddd
+        // indexInWord = Shrl TAGGED_TYPE_SIZE_LOG lowSlotOffset
+        // indexInWord:                                                                  cc  ccc
+        __ Shrl(TAGGED_TYPE_SIZE_LOG, r13);
+
+        // if "r13" position in r12 is 1, goto restoreScratchRegister;
+        // if "r13" position in r12 is 0, set it to 1 and store r12 to r11(addr of bitset value)
+        __ Btsl(r13, r12);
+        __ Jb(&restoreScratchRegister);
+        __ Movl(r12, Operand(r11, 0));
+    }
+    __ Bind(&restoreScratchRegister);
+    {
+        __ Popq(r13);
+        __ Popq(r12);
+    }
+    __ Bind(&checkBarrierForSharedValue);
+    {
+        // checkBarrierForSharedValue:
+        // int8_t GCStateBitField = *(glue+SharedGCStateBitFieldOffset)
+        // if (GCStateBitField & JSThread::SHARED_CONCURRENT_MARKING_BITFIELD_MASK != 0) {
+        //    goto callSharedBarrier
+        // }
+        // return
+        __ Movl(Operand(rdi, JSThread::GlueData::GetSharedGCStateBitFieldOffset(false)), r11);
+        __ Testb(Immediate(JSThread::SHARED_CONCURRENT_MARKING_BITFIELD_MASK), r11);
+        __ Jne(&callSharedBarrier);
+        // if GCState is not READY_TO_MARK, go to needCallNotShare.
+        __ Ret();
+    }
+    __ Bind(&callSharedBarrier);
+    {
+        int32_t NonSValueBarrier = static_cast<int32_t>(JSThread::GlueData::GetCOStubEntriesOffset(false)) +
+            kungfu::CommonStubCSigns::SetSValueWithBarrier * FRAME_SLOT_SIZE;
+        __ Movq(Operand(rdi, NonSValueBarrier), r11);
+        __ Jmp(&needcall);
+    }
 }
 
 void AsmInterpreterCall::PushUndefinedWithArgcAndCheckStack(ExtendedAssembler *assembler, Register glue, Register argc,

@@ -1786,6 +1786,28 @@ void StubBuilder::SetValueWithRep(
     return;
 }
 
+void StubBuilder::VerifyBarrier(GateRef glue, GateRef obj, [[maybe_unused]] GateRef offset, GateRef value)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    // ObjectAddressToRange function may cause obj is not an object. GC may not mark this obj.
+    GateRef objectRegion = ObjectAddressToRange(obj);
+    GateRef valueRegion = ObjectAddressToRange(value);
+    Label fatal(env);
+    Label noFatal(env);
+    int msgId = GET_MESSAGE_STRING_ID(SharedObjectRefersLocalObject);
+    BRANCH(BoolAnd(InSharedHeap(objectRegion), BoolNot(InSharedHeap(valueRegion))), &fatal, &exit);
+    Bind(&fatal);
+    {
+        FatalPrint(glue, {Int32(msgId)});
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
 void StubBuilder::SetValueWithBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value, bool withEden,
                                       MemoryAttribute::ShareFlag share)
 {
