@@ -85,6 +85,7 @@ private:
     void GetPosInfo(const std::string& temp, int32_t start, std::string& line, std::string& column);
     bool GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap);
     uint32_t Base64CharToInt(char charCode);
+    friend class SourceMapFriend;
 #if defined(PANDA_TARGET_OHOS)
     bool ReadSourceMapData(const std::string& hapPath, std::string& content);
 #endif

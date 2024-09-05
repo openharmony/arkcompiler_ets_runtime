@@ -94,6 +94,7 @@ public:
      * For abc file only, to mmap to safe region.
      */
     std::shared_ptr<FileMapper> GetSafeData(const std::string &fileName);
+    friend class ExtractorFriend;
 private:
     ZipFile zipFile_;
     bool initial_ = false;
@@ -106,7 +107,7 @@ public:
     static std::string GetLoadFilePath(const std::string &hapPath);
     static std::shared_ptr<Extractor> GetExtractor(const std::string &hapPath, bool &newCreate, bool cache = false);
     static void DeleteExtractor(const std::string &hapPath);
-
+    friend class ExtractorUtilFriend;
 private:
     static std::mutex mapMutex_;
     static std::unordered_map<std::string, std::shared_ptr<Extractor>> extractorMap_;

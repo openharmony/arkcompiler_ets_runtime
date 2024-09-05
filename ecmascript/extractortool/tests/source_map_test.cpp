@@ -149,6 +149,64 @@ const std::string sourceMapDataWithJsSources =
         "  }\n"
         "}";
 
+namespace panda::ecmascript {
+class SourceMapFriend {
+public:
+    uint32_t Base64CharToInt(char charCode)
+    {
+        return sourceMap.Base64CharToInt(charCode);
+    }
+
+    void SplitSourceMap(const std::string &sourceMapData)
+    {
+        sourceMap.SplitSourceMap(sourceMapData);
+    }
+
+    void ExtractSourceMapData(const std::string &allmappings, std::shared_ptr<SourceMapData> &curMapData)
+    {
+        sourceMap.ExtractSourceMapData(allmappings, curMapData);
+    }
+
+    MappingInfo Find(int32_t row, int32_t col, const SourceMapData &targetMap)
+    {
+        return sourceMap.Find(row, col, targetMap);
+    }
+
+    void ExtractKeyInfo(const std::string &aSourceMap, std::vector<std::string> &sourceKeyInfo)
+    {
+        sourceMap.ExtractKeyInfo(aSourceMap, sourceKeyInfo);
+    }
+
+    void GetPosInfo(const std::string &temp, int32_t start, std::string &line, std::string &column)
+    {
+        sourceMap.GetPosInfo(temp, start, line, column);
+    }
+
+    std::vector<std::string> HandleMappings(const std::string &mapping)
+    {
+        return sourceMap.HandleMappings(mapping);
+    }
+
+    bool VlqRevCode(const std::string &vStr, std::vector<int32_t> &ans)
+    {
+        return sourceMap.VlqRevCode(vStr, ans);
+    }
+
+    bool TranslateUrlPositionBySourceMap(std::string &url, int &line, int &column)
+    {
+        return sourceMap.TranslateUrlPositionBySourceMap(url, line, column);
+    }
+
+    bool GetLineAndColumnNumbers(int &line, int &column, SourceMapData &targetMap)
+    {
+        return sourceMap.GetLineAndColumnNumbers(line, column, targetMap);
+    }
+
+private:
+    SourceMap sourceMap;
+};
+}
+
 namespace panda::test {
 class SourceMapTest : public testing::Test {
 public:
@@ -225,11 +283,8 @@ HWTEST_F_L0(SourceMapTest, TranslateUrlPositionBySourceMapTest)
     url = "entry/src/main/ets/pages/Index.ts";
     EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
 
-    GTEST_LOG_(INFO) << "EXPECT111";
-
     // if sourceMapData was used twice, sourceMap should cache url/modularMap
     EXPECT_FALSE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
-    GTEST_LOG_(INFO) << "EXPECT111";
 
     sourceMap = TestInit(sourceMapDataWithInvalidMappings1);
     url = "entry/src/main/ets/pages/Index.ts";
@@ -265,5 +320,193 @@ HWTEST_F_L0(SourceMapTest, TranslateUrlPositionBySourceMapTest)
     url = "entry/src/main/ets/pages/Index.js";
     sourceMap = TestInit(sourceMapDataWithJsSources);
     EXPECT_TRUE(sourceMap.TranslateUrlPositionBySourceMap(url, line, column));
+}
+
+HWTEST_F_L0(SourceMapTest, Base64CharToIntTest)
+{
+    SourceMapFriend sourceMapFriend;
+    EXPECT_EQ(sourceMapFriend.Base64CharToInt('A'), 0);
+    EXPECT_EQ(sourceMapFriend.Base64CharToInt('a'), 26);
+    EXPECT_EQ(sourceMapFriend.Base64CharToInt('0'), 52);
+    EXPECT_EQ(sourceMapFriend.Base64CharToInt('+'), 62);
+    EXPECT_EQ(sourceMapFriend.Base64CharToInt('/'), 63);
+    EXPECT_EQ(sourceMapFriend.Base64CharToInt('-'), 64);
+}
+
+void PrintSourceMapData(const SourceMapData &data)
+{
+    std::cout << "URL: " << data.url_ << std::endl;
+    std::cout << "Now Position: (" << data.nowPos_.afterRow << ", " << data.nowPos_.afterColumn << ")" << std::endl;
+
+    std::cout << "Files:" << std::endl;
+    for (const auto &file: data.files_) {
+        std::cout << "- " << file << std::endl;
+    }
+
+    std::cout << "Sources:" << std::endl;
+    for (const auto &source: data.sources_) {
+        std::cout << "- " << source << std::endl;
+    }
+
+    std::cout << "Names:" << std::endl;
+    for (const auto &name: data.names_) {
+        std::cout << "- " << name << std::endl;
+    }
+
+    std::cout << "Mappings:" << std::endl;
+    for (const auto &mapping: data.mappings_) {
+        std::cout << "- " << mapping << std::endl;
+    }
+
+    std::cout << "After Positions:" << std::endl;
+    for (const auto &pos: data.afterPos_) {
+        std::cout << "- (" << pos.beforeRow << ", " << pos.beforeColumn << ", " << pos.afterRow << ", "
+                  << pos.afterColumn << ")" << std::endl;
+    }
+}
+
+HWTEST_F_L0(SourceMapTest, ExtractSourceMapDataTest)
+{
+    SourceMapFriend sourceMapFriend;
+    std::string mappings = ";MAEO,CAAK,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA,CAAA";
+    auto sourceMapDataInstance = std::make_shared<SourceMapData>();
+    std::shared_ptr<SourceMapData> &curMapData = sourceMapDataInstance;
+
+    sourceMapFriend.ExtractSourceMapData(mappings, curMapData);
+    SourceMapData &data = *curMapData;
+    EXPECT_EQ(data.afterPos_.size(), 13);
+}
+
+HWTEST_F_L0(SourceMapTest, FindTest)
+{
+    // Find Full Covered
+    SourceMapFriend sourceMapFriend;
+    SourceMapData targetMap;
+    MappingInfo mappingInfo;
+
+    mappingInfo = sourceMapFriend.Find(0, 1, targetMap);
+    EXPECT_EQ(mappingInfo.row, 0);
+    EXPECT_EQ(mappingInfo.col, 0);
+    mappingInfo = sourceMapFriend.Find(1, 1, targetMap);
+    EXPECT_EQ(mappingInfo.row, 0);
+    EXPECT_EQ(mappingInfo.col, 0);
+
+    std::vector<SourceMapInfo> afterPos;
+    SourceMapInfo info;
+    info.beforeRow = 1;
+    info.beforeColumn = 1;
+    info.afterRow = 2;
+    info.afterColumn = 2;
+    info.sourcesVal = 1;
+    info.namesVal = 1;
+    afterPos.push_back(info);
+    targetMap.afterPos_ = afterPos;
+    mappingInfo = sourceMapFriend.Find(3, 3, targetMap);
+    EXPECT_EQ(mappingInfo.row, 2);
+    EXPECT_EQ(mappingInfo.col, 2);
+
+    mappingInfo = sourceMapFriend.Find(3, 2, targetMap);
+    EXPECT_EQ(mappingInfo.row, 2);
+    EXPECT_EQ(mappingInfo.col, 2);
+
+    mappingInfo = sourceMapFriend.Find(2, 2, targetMap);
+    EXPECT_EQ(mappingInfo.row, 2);
+    EXPECT_EQ(mappingInfo.col, 2);
+}
+
+HWTEST_F_L0(SourceMapTest, ExtractKeyInfoTest)
+{
+    // ExtractKeyInfo Full Covered
+    SourceMapFriend sourceMapFriend;
+    std::string sourceMap = R"({"key1": "value1", "key2": "value\"2"})";
+    std::vector<std::string> sourceKey;
+    std::vector<std::string> &sourceKeyInfo = sourceKey;
+    sourceMapFriend.ExtractKeyInfo(sourceMap, sourceKeyInfo);
+    EXPECT_EQ(sourceKeyInfo[0], "key1");
+    EXPECT_EQ(sourceKeyInfo[1], "value1");
+    EXPECT_EQ(sourceKeyInfo[2], "key2");
+    EXPECT_EQ(sourceKeyInfo[3], "value\"2");
+}
+
+HWTEST_F_L0(SourceMapTest, GetPosInfoTest)
+{
+    SourceMapFriend sourceMapFriend;
+    std::string temp = "005:012:0";
+    int32_t start = 6;
+    std::string line, column;
+
+    sourceMapFriend.GetPosInfo(temp, start, line, column);
+    EXPECT_EQ(line, "05");
+    EXPECT_EQ(column, "01");
+}
+
+HWTEST_F_L0(SourceMapTest, HandleMappingsTest)
+{
+    SourceMapFriend sourceMapFriend;
+    std::string mapping = "X;Y";
+    std::vector<std::string> result = sourceMapFriend.HandleMappings(mapping);
+    ASSERT_EQ(result.size(), 3u);
+    EXPECT_EQ(result[0], "X");
+    EXPECT_EQ(result[1], ";");
+    EXPECT_EQ(result[2], "Y");
+}
+
+HWTEST_F_L0(SourceMapTest, VlqRevCodeTest)
+{
+    SourceMapFriend sourceMapFriend;
+    std::string vStr;
+    std::vector<int32_t> ans;
+    EXPECT_TRUE(sourceMapFriend.VlqRevCode(vStr, ans));
+
+    vStr = "A";
+    EXPECT_TRUE(sourceMapFriend.VlqRevCode(vStr, ans));
+    ASSERT_EQ(ans.size(), 1u);
+
+    vStr = "A=A";
+    EXPECT_FALSE(sourceMapFriend.VlqRevCode(vStr, ans));
+
+    vStr = "X";
+    EXPECT_TRUE(sourceMapFriend.VlqRevCode(vStr, ans));
+
+    vStr = "A";
+    EXPECT_TRUE(sourceMapFriend.VlqRevCode(vStr, ans));
+}
+
+HWTEST_F_L0(SourceMapTest, GetLineAndColumnNumbersTest)
+{
+    // GetLineAndColumnNumbers is full covered
+    SourceMapFriend sourceMapFriend;
+    SourceMapData targetMap;
+    std::vector<SourceMapInfo> afterPos;
+    SourceMapInfo info;
+    info.beforeRow = 1;
+    info.beforeColumn = 1;
+    info.afterRow = 2;
+    info.afterColumn = 2;
+    info.sourcesVal = 1;
+    info.namesVal = 1;
+    afterPos.push_back(info);
+    targetMap.afterPos_ = afterPos;
+
+    int line = 1;
+    int column = 1;
+    bool result = sourceMapFriend.GetLineAndColumnNumbers(line, column, targetMap);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(line, 2);
+    EXPECT_EQ(column, 2);
+
+    line = 5;
+    column = 5;
+    result = sourceMapFriend.GetLineAndColumnNumbers(line, column, targetMap);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(line, 5);
+    EXPECT_EQ(column, 5);
+
+    line = 99;
+    column = 99;
+    result = sourceMapFriend.GetLineAndColumnNumbers(line, column, targetMap);
+    EXPECT_TRUE(result);
+    EXPECT_EQ(line, 99);
+    EXPECT_EQ(column, 99);
 }
 }
