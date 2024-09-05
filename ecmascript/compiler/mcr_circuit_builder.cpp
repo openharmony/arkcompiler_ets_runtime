@@ -378,6 +378,16 @@ GateRef CircuitBuilder::ConvertCharToEcmaString(GateRef gate)
     return Convert(gate, ValueType::CHAR, ValueType::ECMA_STRING);
 }
 
+GateRef CircuitBuilder::ConvertCharToInt32(GateRef gate)
+{
+    return Convert(gate, ValueType::CHAR, ValueType::INT32);
+}
+
+GateRef CircuitBuilder::ConvertCharToDouble(GateRef gate)
+{
+    return Convert(gate, ValueType::CHAR, ValueType::FLOAT64);
+}
+
 GateRef CircuitBuilder::ConvertInt32ToFloat64(GateRef gate)
 {
     return Convert(gate, ValueType::INT32, ValueType::FLOAT64);
