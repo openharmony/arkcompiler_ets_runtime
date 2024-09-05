@@ -14,6 +14,9 @@
  */
 
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
+
+#include <optional>
+
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 
 namespace panda::ecmascript::pgo {
@@ -32,26 +35,37 @@ ProfileTypeRef &ProfileTypeRef::Remap([[maybe_unused]] const PGOContext &context
     UNREACHABLE();
 }
 
-ProfileType::ProfileType(PGOContext &context, ProfileTypeRef typeRef, bool *isValid)
+ProfileType::ProfileType(PGOContext &context, ProfileTypeRef typeRef)
 {
-    if (isValid != nullptr) {
-        *isValid = true;
-    }
     if (!context.GetHeader()->SupportWideProfileType()) {
         ProfileTypeLegacy legacy(typeRef);
         UpdateId(legacy.GetId());
         UpdateKind(legacy.GetKind());
-        return;
+    } else {
+        const auto *typeEntry = context.GetProfileTypePool()->GetEntry(typeRef.GetId());
+        if (typeEntry == nullptr) {
+            LOG_ECMA(ERROR) << "Profile type ref: " << typeRef.GetTypeString() << " not found in ap file.";
+        } else {
+            type_ = typeEntry->GetProfileType().GetRaw();
+        }
     }
+}
+
+std::optional<ProfileType> ProfileType::CreateFromProfileTypeRef(PGOContext &context, ProfileTypeRef typeRef)
+{
+    if (!context.GetHeader()->SupportWideProfileType()) {
+        ProfileType type;
+        ProfileTypeLegacy legacy(typeRef);
+        type.UpdateId(legacy.GetId());
+        type.UpdateKind(legacy.GetKind());
+        return type;
+    }
+
     const auto *typeEntry = context.GetProfileTypePool()->GetEntry(typeRef.GetId());
     if (typeEntry == nullptr) {
-        if (isValid != nullptr) {
-            *isValid = false;
-        }
-        LOG_ECMA(ERROR) << "Profile type ref: " << typeRef.GetTypeString() << " not found in ap file.";
-    } else {
-        type_ = typeEntry->GetProfileType().GetRaw();
+        return std::nullopt;
     }
+    return ProfileType(typeEntry->GetProfileType().GetRaw());
 }
 
 ProfileType &ProfileType::Remap([[maybe_unused]]const PGOContext &context)

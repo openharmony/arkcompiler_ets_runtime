@@ -205,6 +205,7 @@ public:
 
     bool IsCompatibleWithAOTFile()
     {
+        // Can be null when AP file path is empty
         if (header_ == nullptr) {
             return false;
         }

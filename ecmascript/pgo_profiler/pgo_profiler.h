@@ -261,7 +261,7 @@ private:
     };
 
     using PcOffset = int32_t;
-    
+
     class WorkList;
     class WorkNode {
     public:
