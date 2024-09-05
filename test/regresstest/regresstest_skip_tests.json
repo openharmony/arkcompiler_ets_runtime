@@ -2,7 +2,6 @@
     {
         "reason": "Not support with",
         "files": [
-          "intl/regress-1074578.js",
           "mjsunit/regress-v8-13459.js",
           "mjsunit/compiler/regress-665680.js",
           "mjsunit/compiler/regress-669517.js",
@@ -3658,7 +3657,8 @@
         "mjsunit/es7/exponentiation-operator.js",
         "mjsunit/es7/array-includes-receiver.js",
         "mjsunit/d8/d8-os.js",
-        "intl/string-localecompare.js"
+        "intl/string-localecompare.js",
+        "mjsunit/es8/async-arrow-default-function-await.js"
       ]
     },
     {
