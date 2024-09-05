@@ -551,6 +551,7 @@ DBGDie *DebugInfo::CreateVarDie(MIRSymbol *sym)
 DBGDie *DebugInfo::CreateVarDie(MIRSymbol *sym, GStrIdx strIdx)
 {
     DBGDie *die = module->GetMemPool()->New<DBGDie>(module, DW_TAG_variable);
+    DEBUG_ASSERT(sym != nullptr, "nullptr check");
 
     /* var Name */
     die->AddAttr(DW_AT_name, DW_FORM_strp, strIdx.GetIdx());

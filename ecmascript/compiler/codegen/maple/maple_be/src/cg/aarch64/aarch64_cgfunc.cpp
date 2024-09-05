@@ -8405,6 +8405,8 @@ MemOperand &AArch64CGFunc::GetOrCreateMemOpnd(const MIRSymbol &symbol, int64 off
                 }
             } else {
                 Operand *offOpnd = (it->second)->GetOffset();
+                DEBUG_ASSERT(static_cast<OfstOperand *>(offOpnd) != nullptr,
+                    "static cast of offOpnd should not be nullptr");
                 if (((static_cast<OfstOperand *>(offOpnd))->GetOffsetValue() == (stOffset + offset)) &&
                     (it->second->GetSize() == size)) {
                     return *(it->second);

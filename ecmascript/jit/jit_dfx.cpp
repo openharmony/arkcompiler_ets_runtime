@@ -102,6 +102,7 @@ void JitDfx::DumpBytecodeInst(Method *method)
     MethodLiteral *methodLiteral = method->GetMethodLiteral();
     auto jsPandaFile = method->GetJSPandaFile();
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
+    ASSERT(methodLiteral != nullptr);
     panda_file::File::EntityId methodIdx = methodLiteral->GetMethodId();
     panda_file::MethodDataAccessor mda(*pf, methodIdx);
     auto codeId = mda.GetCodeId();

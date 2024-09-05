@@ -291,6 +291,7 @@ void ObjEmitter::EmitFunctionSymbolTable(ObjFuncEmitInfo &objFuncEmitInfo, std::
             switch (st->GetKonst()->GetType().GetPrimType()) {
                 case PTY_u32: {
                     MIRIntConst *intConst = safe_cast<MIRIntConst>(st->GetKonst());
+                    DEBUG_ASSERT(intConst != nullptr, "intConst should not be nullptr");
                     uint32 value = static_cast<uint32>(intConst->GetValue().GetExtValue());
                     objFuncEmitInfo.AppendTextData(&value, sizeof(value));
                     break;

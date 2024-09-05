@@ -195,6 +195,7 @@ StubAnInfo CollectStubAnInfo(uintptr_t fileAddr)
             strtabHdr = shdr;
         }
     }
+    ASSERT(symtabHdr != nullptr);
     Elf64_Sym *symtab = reinterpret_cast<Elf64_Sym *>(fileAddr + symtabHdr->sh_offset);
     const char *strtab = reinterpret_cast<const char *>(fileAddr + strtabHdr->sh_offset);
     uint32_t symCnt = 2;
