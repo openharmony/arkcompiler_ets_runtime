@@ -363,7 +363,7 @@ void ParallelEvacuator::UpdateWeakReference()
 template<TriggerGCType gcType>
 void ParallelEvacuator::UpdateRecordWeakReferenceOpt()
 {
-    auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+    auto totalThreadCount = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
     for (uint32_t i = 0; i < totalThreadCount; i++) {
         ProcessQueue *queue = heap_->GetWorkManager()->GetWeakReferenceQueue(i);
 
