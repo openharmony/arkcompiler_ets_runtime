@@ -118,7 +118,7 @@ JSTaggedValue JSAPIQueue::Get(JSThread *thread, const uint32_t index)
 
 JSTaggedValue JSAPIQueue::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
-    if (GetLength().GetArrayLength() <= 0) {
+    if (GetLength().GetArrayLength() == 0) {
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
