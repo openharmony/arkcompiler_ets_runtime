@@ -60,8 +60,6 @@ public:
         return cyclePatternMap;
     }
 
-    void GenerateObjectMaps(BECommon &beCommon) override;
-
     bool IsExclusiveFunc(MIRFunction &) override;
 
     void EmitGCTIBLabel(GCTIBKey *key, const std::string &gcTIBName, std::vector<uint64> &bitmapWords, uint32 rcHeader);

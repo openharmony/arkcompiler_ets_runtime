@@ -79,15 +79,6 @@ void MemRWNodeHelper::GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mi
 
 void MemRWNodeHelper::GetTrueMirInfo(const BECommon &beCommon)
 {
-    // fixup mirType, primType and offset
-    if (fieldId != 0) {  // get true field type
-        DEBUG_ASSERT((mirType->IsMIRStructType() || mirType->IsMIRUnionType()),
-                     "non-structure");
-        auto *structType = static_cast<MIRStructType *>(mirType);
-        mirType = structType->GetFieldType(fieldId);
-        byteOffset = static_cast<int32>(structType->GetFieldOffsetFromBaseAddr(fieldId).byteOffset);
-        isRefField = beCommon.IsRefField(*structType, fieldId);
-    }
     primType = mirType->GetPrimType();
     // get mem size
     memSize = static_cast<uint32>(mirType->GetSize());
@@ -451,7 +442,6 @@ static void HandleReturn(StmtNode &stmt, CGFunc &cgFunc)
     DEBUG_ASSERT(retNode.NumOpnds() <= 1, "NYI return nodes number > 1");
     Operand *opnd = nullptr;
     if (retNode.NumOpnds() != 0) {
-        CHECK_FATAL(!cgFunc.GetFunction().StructReturnedInRegs(), "NIY");
         opnd = cgFunc.HandleExpr(retNode, *retNode.Opnd(0));
     }
     cgFunc.SelectReturn(opnd);

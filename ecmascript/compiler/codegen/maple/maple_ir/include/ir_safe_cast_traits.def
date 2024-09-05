@@ -38,16 +38,7 @@ REGISTER_SAFE_CAST(MIRPtrType, from.GetKind() == kTypePointer);
 REGISTER_SAFE_CAST(MIRArrayType, from.GetKind() == kTypeArray);
 REGISTER_SAFE_CAST(MIRFarrayType, from.GetKind() == kTypeFArray ||
                                   instance_of<MIRJarrayType>(from));
-REGISTER_SAFE_CAST(MIRStructType, from.GetKind() == kTypeStruct ||
-                                  from.GetKind() == kTypeStructIncomplete ||
-                                  from.GetKind() == kTypeUnion ||
-                                  instance_of<MIRClassType>(from) ||
-                                  instance_of<MIRInterfaceType>(from));
 REGISTER_SAFE_CAST(MIRJarrayType, from.GetKind() == kTypeJArray);
-REGISTER_SAFE_CAST(MIRClassType, from.GetKind() == kTypeClass ||
-                                 from.GetKind() == kTypeClassIncomplete);
-REGISTER_SAFE_CAST(MIRInterfaceType, from.GetKind() == kTypeInterface ||
-                                     from.GetKind() == kTypeInterfaceIncomplete);
 REGISTER_SAFE_CAST(MIRBitFieldType, from.GetKind() == kTypeBitField);
 REGISTER_SAFE_CAST(MIRFuncType, from.GetKind() == kTypeFunction);
 REGISTER_SAFE_CAST(MIRTypeByName, from.GetKind() == kTypeByName);

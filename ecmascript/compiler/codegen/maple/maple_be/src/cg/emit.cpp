@@ -373,19 +373,8 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
             emit(align.c_str());
 #else /* ELF */
             /* output align, symbol name begin with "classInitProtectRegion" align is 4096 */
-            MIRTypeKind kind = mirSymbol.GetType()->GetKind();
-            MIRStorageClass storage = mirSymbol.GetStorageClass();
             if (symName.find("classInitProtectRegion") == 0) {
                 Emit(4096);  // symbol name begin with "classInitProtectRegion" align is 4096
-            } else if (((kind == kTypeStruct) || (kind == kTypeClass) || (kind == kTypeArray) ||
-                        (kind == kTypeUnion)) &&
-                       ((storage == kScGlobal) || (storage == kScPstatic) || (storage == kScFstatic))) {
-                int32 align = Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex());
-                if (GetPointerSize() < align) {
-                    (void)Emit(std::to_string(align));
-                } else {
-                    (void)Emit(std::to_string(k8ByteSize));
-                }
             } else {
                 (void)Emit(
                     std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex())));
@@ -397,22 +386,13 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
         case kAsmAlign: {
             uint8 align = mirSymbol.GetAttrs().GetAlignValue();
             if (align == 0) {
-                if (mirSymbol.GetType()->GetKind() == kTypeStruct || mirSymbol.GetType()->GetKind() == kTypeClass ||
-                    mirSymbol.GetType()->GetKind() == kTypeArray || mirSymbol.GetType()->GetKind() == kTypeUnion) {
-                    if (GetCG()->GetTargetMachine()->isX8664()) {
-                        return;
-                    } else {
+                align = Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirSymbol.GetType()->GetTypeIndex());
+                if (GetCG()->GetTargetMachine()->isAArch64() || GetCG()->GetTargetMachine()->isRiscV() ||
+                    GetCG()->GetTargetMachine()->isArm32() || GetCG()->GetTargetMachine()->isArk()) {
+                    if (CGOptions::IsArm64ilp32() && mirSymbol.GetType()->GetPrimType() == PTY_a32) {
                         align = kAlignOfU8;
-                    }
-                } else {
-                    align = Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirSymbol.GetType()->GetTypeIndex());
-                    if (GetCG()->GetTargetMachine()->isAArch64() || GetCG()->GetTargetMachine()->isRiscV() ||
-                        GetCG()->GetTargetMachine()->isArm32() || GetCG()->GetTargetMachine()->isArk()) {
-                        if (CGOptions::IsArm64ilp32() && mirSymbol.GetType()->GetPrimType() == PTY_a32) {
-                            align = kAlignOfU8;
-                        } else {
-                            align = static_cast<uint8>(log2(align));
-                        }
+                    } else {
+                        align = static_cast<uint8>(log2(align));
                     }
                 }
             }
@@ -847,12 +827,6 @@ void Emitter::EmitScalarConstant(MIRConst &mirConst, bool newLine, bool flag32, 
             }
             if (symAddr.GetOffset() != 0) {
                 (void)Emit(" + ").Emit(symAddr.GetOffset());
-            }
-            if (symAddr.GetFieldID() > 1) {
-                MIRStructType *structType = static_cast<MIRStructType *>(symAddrSym->GetType());
-                DEBUG_ASSERT(structType != nullptr, "EmitScalarConstant: non-zero fieldID for non-structure");
-                (void)Emit(" + ").Emit(
-                    Globals::GetInstance()->GetBECommon()->GetFieldOffset(*structType, symAddr.GetFieldID()).first);
             }
             break;
         }
@@ -1343,23 +1317,9 @@ int64 Emitter::GetFieldOffsetValue(const std::string &className, const MIRIntCon
     uint64 idx = static_cast<uint64>(intConst.GetExtValue());
     bool isDefTabIndex = idx & 0x1;
     int64 fieldIdx = idx >> 1;
-    if (isDefTabIndex) {
-        /* it's def table index. */
-        return fieldIdx;
-    } else {
-        /* really offset. */
-        uint8 charBitWidth = GetPrimTypeSize(PTY_i8) * kBitsPerByte;
-        GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(className);
-        auto it = strIdx2Type.find(strIdx);
-        CHECK_FATAL(it->second != nullptr, "valid iterator check");
-        DEBUG_ASSERT(it != strIdx2Type.end(), "Can not find type");
-        MIRType &ty = *it->second;
-        MIRStructType &structType = static_cast<MIRStructType &>(ty);
-        std::pair<int32, int32> fieldOffsetPair =
-            Globals::GetInstance()->GetBECommon()->GetFieldOffset(structType, fieldIdx);
-        int64 fieldOffset = fieldOffsetPair.first * static_cast<int64>(charBitWidth) + fieldOffsetPair.second;
-        return fieldOffset;
-    }
+    CHECK_FATAL(isDefTabIndex > 0, "isDefTabIndex > 0");
+    /* it's def table index. */
+    return fieldIdx;
 #else
     return 0;
 #endif
@@ -1703,7 +1663,7 @@ void Emitter::EmitConstantTable(const MIRSymbol &mirSymbol, MIRConst &mirConst,
             } else { /* intconst */
                 EmitIntConst(mirSymbol, aggConst, itabConflictIndex, strIdx2Type, i);
             }
-        } else if (elemConst->GetType().GetKind() == kTypeArray || elemConst->GetType().GetKind() == kTypeStruct) {
+        } else if (elemConst->GetType().GetKind() == kTypeArray) {
             if (StringUtils::StartsWith(mirSymbol.GetName(), namemangler::kOffsetTabStr) && (i == 0 || i == 1)) {
                 /* EmitOffsetValueTable */
 #ifdef USE_32BIT_REF
@@ -1761,9 +1721,6 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
             }
         } else if (elemConst->GetType().GetKind() == kTypeArray) {
             EmitArrayConstant(*elemConst);
-        } else if (elemConst->GetType().GetKind() == kTypeStruct || elemConst->GetType().GetKind() == kTypeClass ||
-                   elemConst->GetType().GetKind() == kTypeUnion) {
-            EmitStructConstant(*elemConst);
         } else if (elemConst->GetKind() == kConstAddrofFunc) {
             EmitScalarConstant(*elemConst);
         } else {
@@ -1788,125 +1745,6 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
             uint64 size = Globals::GetInstance()->GetBECommon()->GetTypeSize(scalarIdx.GetIdx()) * dim;
             Emit("\t.zero\t").Emit(static_cast<int64>(size)).Emit("\n");
         }
-    }
-#endif
-}
-
-void Emitter::EmitStructConstant(MIRConst &mirConst)
-{
-#ifdef ARK_LITECG_DEBUG
-    uint32_t subStructFieldCounts = 0;
-    EmitStructConstant(mirConst, subStructFieldCounts);
-#endif
-}
-
-void Emitter::EmitStructConstant(MIRConst &mirConst, uint32 &subStructFieldCounts)
-{
-#ifdef ARK_LITECG_DEBUG
-    StructEmitInfo *sEmitInfo = cg->GetMIRModule()->GetMemPool()->New<StructEmitInfo>();
-    CHECK_FATAL(sEmitInfo != nullptr, "create a new struct emit info failed in Emitter::EmitStructConstant");
-    MIRType &mirType = mirConst.GetType();
-    MIRAggConst &structCt = static_cast<MIRAggConst &>(mirConst);
-    MIRStructType &structType = static_cast<MIRStructType &>(mirType);
-    auto structPack = static_cast<uint8>(structType.GetTypeAttrs().GetPack());
-    /* all elements of struct. */
-    uint8 num;
-    if (structType.GetKind() == kTypeUnion) {
-        num = 1;
-    } else {
-        num = static_cast<uint8>(structType.GetFieldsSize());
-    }
-    BECommon *beCommon = Globals::GetInstance()->GetBECommon();
-    /* total size of emitted elements size. */
-    uint32 size = beCommon->GetTypeSize(structType.GetTypeIndex());
-    uint32 fieldIdx = 1;
-    if (structType.GetKind() == kTypeUnion) {
-        fieldIdx = structCt.GetFieldIdItem(0);
-    }
-    for (uint32 i = 0; i < num; ++i) {
-        if (((i + 1) == num) && cg->GetMIRModule()->GetSrcLang() == kSrcLangC) {
-            isFlexibleArray = beCommon->GetHasFlexibleArray(mirType.GetTypeIndex().GetIdx());
-            arraySize = 0;
-        }
-        MIRConst *elemConst;
-        if (structType.GetKind() == kTypeStruct) {
-            elemConst = structCt.GetAggConstElement(i + 1);
-        } else {
-            elemConst = structCt.GetAggConstElement(fieldIdx);
-        }
-        MIRType *elemType = structType.GetElemType(i);
-        if (structType.GetKind() == kTypeUnion) {
-            CHECK_NULL_FATAL(elemConst);
-            elemType = &(elemConst->GetType());
-        }
-        MIRType *nextElemType = nullptr;
-        if (i != static_cast<uint32>(num - 1)) {
-            nextElemType = structType.GetElemType(i + 1);
-        }
-        uint64 elemSize = beCommon->GetTypeSize(elemType->GetTypeIndex());
-        uint8 charBitWidth = GetPrimTypeSize(PTY_i8) * kBitsPerByte;
-        if (elemType->GetKind() == kTypeBitField) {
-            if (elemConst == nullptr) {
-                MIRIntConst *zeroFill = GlobalTables::GetIntConstTable().GetOrCreateIntConst(0, *elemType);
-                elemConst = zeroFill;
-            }
-            std::pair<int32_t, int32_t> fieldOffsetPair = beCommon->GetFieldOffset(structType, fieldIdx);
-            uint64_t fieldOffset = static_cast<uint64_t>(static_cast<int64_t>(fieldOffsetPair.first)) *
-                                       static_cast<uint64_t>(charBitWidth) +
-                                   static_cast<uint64_t>(static_cast<int64_t>(fieldOffsetPair.second));
-            EmitBitFieldConstant(*sEmitInfo, *elemConst, nextElemType, fieldOffset);
-        } else {
-            if (elemConst != nullptr) {
-                if (IsPrimitiveScalar(elemType->GetPrimType())) {
-                    EmitScalarConstant(*elemConst, true, false, true);
-                } else if (elemType->GetKind() == kTypeArray) {
-                    if (elemType->GetSize() != 0) {
-                        EmitArrayConstant(*elemConst);
-                    }
-                } else if ((elemType->GetKind() == kTypeStruct) || (elemType->GetKind() == kTypeClass) ||
-                           (elemType->GetKind() == kTypeUnion)) {
-                    EmitStructConstant(*elemConst, subStructFieldCounts);
-                    fieldIdx += subStructFieldCounts;
-                } else {
-                    DEBUG_ASSERT(false, "should not run here");
-                }
-            } else {
-                EmitNullConstant(elemSize);
-            }
-            sEmitInfo->IncreaseTotalSize(elemSize);
-            sEmitInfo->SetNextFieldOffset(sEmitInfo->GetTotalSize() * charBitWidth);
-        }
-
-        if (nextElemType != nullptr && kTypeBitField != nextElemType->GetKind()) {
-            DEBUG_ASSERT(i < static_cast<uint32>(num - 1), "NYI");
-            uint8 nextAlign = Globals::GetInstance()->GetBECommon()->GetTypeAlign(nextElemType->GetTypeIndex());
-            auto fieldAttr = structType.GetFields()[i + 1].second.second;
-            nextAlign = fieldAttr.IsPacked() ? 1 : std::min(nextAlign, structPack);
-            DEBUG_ASSERT(nextAlign != 0, "expect non-zero");
-            /* append size, append 0 when align need. */
-            uint64 totalSize = sEmitInfo->GetTotalSize();
-            uint64 psize = (totalSize % nextAlign == 0) ? 0 : (nextAlign - (totalSize % nextAlign));
-            if (psize != 0) {
-                EmitNullConstant(psize);
-                sEmitInfo->IncreaseTotalSize(psize);
-                sEmitInfo->SetNextFieldOffset(sEmitInfo->GetTotalSize() * charBitWidth);
-            }
-            /* element is uninitialized, emit null constant. */
-        }
-        fieldIdx++;
-    }
-    if (structType.GetKind() == kTypeStruct) {
-        /* The reason of subtracting one is that fieldIdx adds one at the end of the cycle. */
-        CHECK_FATAL(fieldIdx > 0, "must not be zero");
-        subStructFieldCounts = fieldIdx - 1;
-    } else if (structType.GetKind() == kTypeUnion) {
-        subStructFieldCounts = static_cast<uint32>(beCommon->GetStructFieldCount(structType.GetTypeIndex()));
-    }
-
-    isFlexibleArray = false;
-    uint64 opSize = size - sEmitInfo->GetTotalSize();
-    if (opSize != 0) {
-        EmitNullConstant(opSize);
     }
 #endif
 }
@@ -2314,10 +2152,6 @@ void Emitter::EmitLocalVariable(const CGFunc &cgFunc)
                     MIRConst *ct = st->GetKonst();
                     if (ct == nullptr) {
                         EmitAsmLabel(*st, kAsmComm);
-                    } else if (kTypeStruct == ty->GetKind() || kTypeUnion == ty->GetKind() ||
-                               kTypeClass == ty->GetKind()) {
-                        EmitAsmLabel(*st, kAsmSyname);
-                        EmitStructConstant(*ct);
                     } else if (kTypeArray == ty->GetKind()) {
                         if (ty->GetSize() != 0) {
                             EmitAsmLabel(*st, kAsmSyname);
@@ -2727,13 +2561,6 @@ void Emitter::EmitGlobalVariable()
                 } else {
                     EmitArrayConstant(*mirConst);
                 }
-            } else if (mirType->GetKind() == kTypeStruct || mirType->GetKind() == kTypeClass ||
-                       mirType->GetKind() == kTypeUnion) {
-                if (mirSymbol->HasAddrOfValues()) {
-                    EmitConstantTable(*mirSymbol, *mirConst, strIdx2Type);
-                } else {
-                    EmitStructConstant(*mirConst);
-                }
             } else {
                 DEBUG_ASSERT(false, "NYI");
             }
@@ -2769,10 +2596,6 @@ void Emitter::EmitGlobalVariable()
             } else if (kTypeArray == mirType->GetKind()) {
                 EmitAsmLabel(*mirSymbol, kAsmSyname);
                 EmitArrayConstant(*ct);
-            } else if (kTypeStruct == mirType->GetKind() || kTypeClass == mirType->GetKind() ||
-                       kTypeUnion == mirType->GetKind()) {
-                EmitAsmLabel(*mirSymbol, kAsmSyname);
-                EmitStructConstant(*ct);
             } else {
                 CHECK_FATAL(0, "Unknown type in Global pstatic");
             }

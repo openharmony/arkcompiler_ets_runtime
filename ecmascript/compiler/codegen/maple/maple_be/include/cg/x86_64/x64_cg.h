@@ -84,9 +84,6 @@ public:
 
     bool IsExclusiveFunc(MIRFunction &mirFunc) override;
 
-    /* NOTE: Consider making be_common a field of CG. */
-    void GenerateObjectMaps(BECommon &beCommon) override;
-
     void DoNothing()
     {
         (void)ehExclusiveNameVec;

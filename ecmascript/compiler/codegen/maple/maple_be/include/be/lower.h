@@ -92,7 +92,8 @@ public:
         if (iread.GetPrimType() == PTY_u1) {
             iread.SetPrimType(PTY_u8);
         }
-        return (iread.GetFieldID() == 0 ? &iread : LowerIreadBitfield(iread));
+        CHECK_FATAL(iread.GetFieldID() == 0, "fieldID must be 0");
+        return &iread;
     }
 
     BaseNode *LowerCastExpr(BaseNode &expr);
@@ -106,8 +107,6 @@ public:
     void LowerIassign(IassignNode &iassign, BlockNode &block);
 
     void LowerRegassign(RegassignNode &regAssign, BlockNode &block);
-
-    StmtNode *LowerIntrinsicopDassign(const DassignNode &dassign, IntrinsicopNode &intrinsic, BlockNode &block);
 
     BaseNode *LowerAddrof(AddrofNode &addrof) const
     {
@@ -126,11 +125,6 @@ public:
      * To be able to handle them in a unified manner, we lower intrinsiccall to Intrinsicsicop.
      */
     BlockNode *LowerIntrinsiccallToIntrinsicop(StmtNode &stmt);
-    bool LowerStructReturnInRegs(BlockNode &newBlk, StmtNode &stmt, const MIRSymbol &retSym);
-    void LowerStructReturnInGpRegs(BlockNode &newBlk, const StmtNode &stmt, const MIRSymbol &symbol);
-    void LowerStructReturnInFpRegs(BlockNode &newBlk, const StmtNode &stmt, const MIRSymbol &symbol, PrimType primType,
-                                   size_t elemNum);
-    bool LowerStructReturn(BlockNode &newBlk, StmtNode &stmt, bool &lvar);
 
     void LowerStmt(StmtNode &stmt, BlockNode &block);
 
@@ -156,10 +150,6 @@ public:
                             BaseNode *baseAddr, BaseNode *rhs, BlockNode *block);
     BaseNode *ReadBitField(const std::pair<int32, int32> &byteBitOffsets, const MIRBitFieldType *fieldType,
                            BaseNode *baseAddr);
-    BaseNode *LowerDreadBitfield(DreadNode &dread);
-    BaseNode *LowerIreadBitfield(IreadNode &iread);
-    StmtNode *LowerDassignBitfield(DassignNode &dassign, BlockNode &block);
-    StmtNode *LowerIassignBitfield(IassignNode &iassign, BlockNode &block);
 
     void LowerAsmStmt(AsmNode *asmNode, BlockNode *blk);
 

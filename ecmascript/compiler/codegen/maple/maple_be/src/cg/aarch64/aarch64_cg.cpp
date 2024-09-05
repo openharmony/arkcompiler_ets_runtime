@@ -231,21 +231,6 @@ std::string AArch64CG::FindGCTIBPatternName(const std::string &name) const
     return iter->second->GetName();
 }
 
-void AArch64CG::GenerateObjectMaps(BECommon &beCommon)
-{
-    for (auto &tyId : GetMIRModule()->GetClassList()) {
-        TyIdx tyIdx(tyId);
-        MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-        DEBUG_ASSERT(ty != nullptr, "ty nullptr check");
-        /* Only emit GCTIB for classes owned by this module */
-        DEBUG_ASSERT(ty->IsStructType(), "ty isn't MIRStructType* in AArch64CG::GenerateObjectMaps");
-        MIRStructType *strTy = static_cast<MIRStructType *>(ty);
-        if (!strTy->IsLocal()) {
-            continue;
-        }
-    }
-}
-
 void AArch64CG::EnrollTargetPhases(MaplePhaseManager *pm) const
 {
     if (!GetMIRModule()->IsCModule()) {

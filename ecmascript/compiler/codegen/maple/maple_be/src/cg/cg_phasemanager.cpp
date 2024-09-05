@@ -382,9 +382,6 @@ void CgFuncPM::DumpFuncCGIR(const CGFunc &f, const std::string &phaseName) const
 void CgFuncPM::EmitGlobalInfo(MIRModule &m) const
 {
     EmitDuplicatedAsmFunc(m);
-    if (cgOptions->IsGenerateObjectMap()) {
-        cg->GenerateObjectMaps(*beCommon);
-    }
     cg->template Emit<CG::EmitterType::AsmEmitter>([](Emitter* emitter) {
         emitter->EmitGlobalVariable();
         emitter->CloseOutput();

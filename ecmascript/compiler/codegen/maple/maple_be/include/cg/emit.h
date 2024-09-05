@@ -223,8 +223,6 @@ public:
     void EmitMethodDeclaringClass(const MIRSymbol &mirSymbol, const std::string &sectionName);
     void MarkVtabOrItabEndFlag(const std::vector<MIRSymbol *> &mirSymbolVec);
     void EmitArrayConstant(MIRConst &mirConst);
-    void EmitStructConstant(MIRConst &mirConst);
-    void EmitStructConstant(MIRConst &mirConst, uint32 &subStructFieldCounts);
     void EmitLocalVariable(const CGFunc &cgFunc);
     void EmitUninitializedSymbolsWithPrefixSection(const MIRSymbol &symbol, const std::string &sectionName);
     void EmitGlobalVariable();

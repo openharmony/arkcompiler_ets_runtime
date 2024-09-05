@@ -26,15 +26,8 @@ MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, Fie
 {
     PrimType symType;
     int32 fieldOffset = 0;
-    if (fieldId == 0) {
-        symType = symbol.GetType()->GetPrimType();
-    } else {
-        MIRType *mirType = symbol.GetType();
-        DEBUG_ASSERT((mirType->IsMIRStructType() || mirType->IsMIRUnionType()), "non-structure");
-        MIRStructType *structType = static_cast<MIRStructType *>(mirType);
-        symType = structType->GetFieldType(fieldId)->GetPrimType();
-        fieldOffset = static_cast<int32>(cgFunc->GetBecommon().GetFieldOffset(*structType, fieldId).first);
-    }
+    CHECK_FATAL(fieldId == 0, "fieldId must be 0");
+    symType = symbol.GetType()->GetPrimType();
     uint32 opndSz = (symType == PTY_agg) ? k64BitSize : GetPrimTypeBitSize(symType);
     return GetOrCreateMemOpndFromSymbol(symbol, opndSz, fieldOffset);
 }
@@ -79,45 +72,13 @@ void X64MPIsel::SelectReturn(NaryStmtNode &retNode, Operand &opnd)
         return;
     }
     std::vector<RegOperand *> retRegs;
-    if (!cgFunc->GetFunction().StructReturnedInRegs() || retNode.Opnd(0)->GetOpCode() == OP_constval) {
-        PrimType oriPrimType = retMech.GetPrimTypeOfReg0();
-        regno_t retReg = retMech.GetReg0();
-        DEBUG_ASSERT(retReg != kRinvalid, "NIY");
-        RegOperand &retOpnd = cgFunc->GetOpndBuilder()->CreatePReg(retReg, GetPrimTypeBitSize(oriPrimType),
-                                                                   cgFunc->GetRegTyFromPrimTy(oriPrimType));
-        retRegs.push_back(&retOpnd);
-        SelectCopy(retOpnd, opnd, oriPrimType, retNode.Opnd(0)->GetPrimType());
-    } else {
-        CHECK_FATAL(opnd.IsMemoryAccessOperand(), "NIY");
-        MemOperand &memOpnd = static_cast<MemOperand &>(opnd);
-        ImmOperand *offsetOpnd = memOpnd.GetOffsetOperand();
-        RegOperand *baseOpnd = memOpnd.GetBaseRegister();
-
-        PrimType oriPrimType0 = retMech.GetPrimTypeOfReg0();
-        regno_t retReg0 = retMech.GetReg0();
-        DEBUG_ASSERT(retReg0 != kRinvalid, "NIY");
-        RegOperand &retOpnd0 = cgFunc->GetOpndBuilder()->CreatePReg(retReg0, GetPrimTypeBitSize(oriPrimType0),
-                                                                    cgFunc->GetRegTyFromPrimTy(oriPrimType0));
-        MemOperand &rhsMemOpnd0 = cgFunc->GetOpndBuilder()->CreateMem(GetPrimTypeBitSize(oriPrimType0));
-        rhsMemOpnd0.SetBaseRegister(*baseOpnd);
-        rhsMemOpnd0.SetOffsetOperand(*offsetOpnd);
-        retRegs.push_back(&retOpnd0);
-        SelectCopy(retOpnd0, rhsMemOpnd0, oriPrimType0);
-
-        regno_t retReg1 = retMech.GetReg1();
-        if (retReg1 != kRinvalid) {
-            PrimType oriPrimType1 = retMech.GetPrimTypeOfReg1();
-            RegOperand &retOpnd1 = cgFunc->GetOpndBuilder()->CreatePReg(retReg1, GetPrimTypeBitSize(oriPrimType1),
-                                                                        cgFunc->GetRegTyFromPrimTy(oriPrimType1));
-            MemOperand &rhsMemOpnd1 = cgFunc->GetOpndBuilder()->CreateMem(GetPrimTypeBitSize(oriPrimType1));
-            ImmOperand &newOffsetOpnd = static_cast<ImmOperand &>(*offsetOpnd->Clone(*cgFunc->GetMemoryPool()));
-            newOffsetOpnd.SetValue(newOffsetOpnd.GetValue() + GetPrimTypeSize(oriPrimType0));
-            rhsMemOpnd1.SetBaseRegister(*baseOpnd);
-            rhsMemOpnd1.SetOffsetOperand(newOffsetOpnd);
-            retRegs.push_back(&retOpnd1);
-            SelectCopy(retOpnd1, rhsMemOpnd1, oriPrimType1);
-        }
-    }
+    PrimType oriPrimType = retMech.GetPrimTypeOfReg0();
+    regno_t retReg = retMech.GetReg0();
+    DEBUG_ASSERT(retReg != kRinvalid, "NIY");
+    RegOperand &retOpnd = cgFunc->GetOpndBuilder()->CreatePReg(retReg, GetPrimTypeBitSize(oriPrimType),
+                                                               cgFunc->GetRegTyFromPrimTy(oriPrimType));
+    retRegs.push_back(&retOpnd);
+    SelectCopy(retOpnd, opnd, oriPrimType, retNode.Opnd(0)->GetPrimType());
     /* for optimization ,insert pseudo ret ,in case rax,rdx is removed*/
     SelectPseduoForReturn(retRegs);
 }

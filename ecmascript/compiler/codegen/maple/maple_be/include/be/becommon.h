@@ -43,10 +43,6 @@ public:
 
     void ComputeTypeSizesAligns(MIRType &type, uint8 align = 0);
 
-    std::pair<int32, int32> GetFieldOffset(MIRStructType &structType, FieldID fieldID);
-
-    bool IsRefField(MIRStructType &structType, FieldID fieldID) const;
-
     void AddNewTypeAfterBecommon(uint32 oldTypeTableSize, uint32 newTypeTableSize);
 
     bool HasFuncReturnType(MIRFunction &func) const
@@ -86,13 +82,6 @@ public:
 
     uint32 GetFieldIdxIncrement(const MIRType &ty) const
     {
-        if (ty.GetKind() == kTypeClass) {
-            /* number of fields + 2 */
-            return static_cast<const MIRClassType &>(ty).GetFieldsSize() + 2;
-        } else if (ty.GetKind() == kTypeStruct) {
-            /* number of fields + 1 */
-            return static_cast<const MIRStructType &>(ty).GetFieldsSize() + 1;
-        }
         return 1;
     }
 
@@ -182,7 +171,6 @@ public:
 private:
     bool TyIsInSizeAlignTable(const MIRType &) const;
     void AddAndComputeSizeAlign(MIRType &);
-    void ComputeStructTypeSizesAligns(MIRType &ty, const TyIdx &tyIdx);
 
     MIRModule &mirModule;
     MapleVector<uint64> typeSizeTable;      /* index is TyIdx */

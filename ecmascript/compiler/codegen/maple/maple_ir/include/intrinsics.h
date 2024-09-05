@@ -155,7 +155,6 @@ struct IntrinDesc {
     static MIRType *jsValueType;
     static MIRModule *mirModule;
     static void InitMIRModule(MIRModule *mirModule);
-    static MIRType *GetOrCreateJSValueType();
     static IntrinDesc intrinTable[INTRN_LAST + 1];
 };
 }  // namespace maple

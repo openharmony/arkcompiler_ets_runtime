@@ -712,24 +712,11 @@ void AArch64CGFunc::SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPTyp
     MIRSymbol *symbol = GetFunction().GetLocalOrGlobalSymbol(stIdx);
     int32 offset = 0;
     bool parmCopy = false;
-    if (fieldId != 0) {
-        MIRStructType *structType = static_cast<MIRStructType *>(symbol->GetType());
-        DEBUG_ASSERT(structType != nullptr, "SelectDassign: non-zero fieldID for non-structure");
-        offset = GetBecommon().GetFieldOffset(*structType, fieldId).first;
-        parmCopy = IsParamStructCopy(*symbol);
-    }
     uint32 regSize = GetPrimTypeBitSize(rhsPType);
     MIRType *type = symbol->GetType();
     Operand &stOpnd = LoadIntoRegister(opnd0, IsPrimitiveInteger(rhsPType),
                                        regSize, IsSignedInteger(type->GetPrimType()));
     MOperator mOp = MOP_undef;
-    if ((type->GetKind() == kTypeStruct) || (type->GetKind() == kTypeUnion)) {
-        MIRStructType *structType = static_cast<MIRStructType *>(type);
-        type = structType->GetFieldType(fieldId);
-    } else if (type->GetKind() == kTypeClass) {
-        MIRClassType *classType = static_cast<MIRClassType *>(type);
-        type = classType->GetFieldType(fieldId);
-    }
 
     uint32 dataSize = GetPrimTypeBitSize(type->GetPrimType());
     if (type->GetPrimType() == PTY_agg) {
@@ -748,9 +735,7 @@ void AArch64CGFunc::SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPTyp
     /* In bpl mode, a func symbol's type is represented as a MIRFuncType instead of a MIRPtrType (pointing to
      * MIRFuncType), so we allow `kTypeFunction` to appear here */
     DEBUG_ASSERT(((type->GetKind() == kTypeScalar) || (type->GetKind() == kTypePointer) ||
-                  (type->GetKind() == kTypeFunction) || (type->GetKind() == kTypeStruct) ||
-                  (type->GetKind() == kTypeUnion) || (type->GetKind() == kTypeArray)),
-                 "NYI dassign type");
+        (type->GetKind() == kTypeFunction) || (type->GetKind() == kTypeArray)), "NYI dassign type");
     PrimType ptyp = type->GetPrimType();
     if (ptyp == PTY_agg) {
         ptyp = PTY_a64;
@@ -823,19 +808,6 @@ void AArch64CGFunc::SelectRegassign(RegassignNode &stmt, Operand &opnd0)
     }
 }
 
-MemOperand *AArch64CGFunc::GenFormalMemOpndWithSymbol(const MIRSymbol &sym, int64 offset)
-{
-    MemOperand *memOpnd = nullptr;
-    if (IsParamStructCopy(sym)) {
-        memOpnd = &GetOrCreateMemOpnd(sym, 0, k64BitSize);
-        RegOperand *vreg = &CreateVirtualRegisterOperand(NewVReg(kRegTyInt, k8ByteSize));
-        Insn &ldInsn = GetInsnBuilder()->BuildInsn(PickLdInsn(k64BitSize, PTY_i64), *vreg, *memOpnd);
-        GetCurBB()->AppendInsn(ldInsn);
-        return CreateMemOperand(k64BitSize, *vreg, CreateImmOperand(offset, k32BitSize, false), sym.IsVolatile());
-    }
-    return &GetOrCreateMemOpnd(sym, offset, k64BitSize);
-}
-
 CCImpl *AArch64CGFunc::GetOrCreateLocator(CallConvKind cc)
 {
     auto it = hashCCTable.find(cc);
@@ -876,22 +848,7 @@ void AArch64CGFunc::SelectIassign(IassignNode &stmt)
     DEBUG_ASSERT(pointerType != nullptr, "expect a pointer type at iassign node");
     MIRType *pointedType = nullptr;
     bool isRefField = false;
-
-    if (stmt.GetFieldID() != 0) {
-        MIRType *pointedTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerType->GetPointedTyIdx());
-        MIRStructType *structType = nullptr;
-        if (pointedTy->GetKind() != kTypeJArray) {
-            structType = static_cast<MIRStructType *>(pointedTy);
-        } else {
-            structType = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
-        }
-        DEBUG_ASSERT(structType != nullptr, "SelectIassign: non-zero fieldID for non-structure");
-        pointedType = structType->GetFieldType(stmt.GetFieldID());
-        offset = GetBecommon().GetFieldOffset(*structType, stmt.GetFieldID()).first;
-        isRefField = GetBecommon().IsRefField(*structType, stmt.GetFieldID());
-    } else {
-        pointedType = GetPointedToType(*pointerType);
-    }
+    pointedType = GetPointedToType(*pointerType);
 
     PrimType styp = stmt.GetRHS()->GetPrimType();
     Operand *valOpnd = HandleExpr(stmt, *stmt.GetRHS());
@@ -917,13 +874,6 @@ Operand *AArch64CGFunc::SelectDread(const BaseNode &parent, DreadNode &expr)
     PrimType symType = symbol->GetType()->GetPrimType();
     uint32 offset = 0;
     bool parmCopy = false;
-    if (expr.GetFieldID() != 0) {
-        MIRStructType *structType = static_cast<MIRStructType *>(symbol->GetType());
-        DEBUG_ASSERT(structType != nullptr, "SelectDread: non-zero fieldID for non-structure");
-        symType = structType->GetFieldType(expr.GetFieldID())->GetPrimType();
-        offset = static_cast<uint32>(GetBecommon().GetFieldOffset(*structType, expr.GetFieldID()).first);
-        parmCopy = IsParamStructCopy(*symbol);
-    }
 
     uint32 dataSize = GetPrimTypeBitSize(symType);
     uint32 aggSize = 0;
@@ -1014,22 +964,7 @@ Operand *AArch64CGFunc::SelectIread(const BaseNode &parent, IreadNode &expr, int
     MIRType *pointedType = nullptr;
     bool isRefField = false;
 
-    if (expr.GetFieldID() != 0) {
-        MIRType *pointedTy = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerType->GetPointedTyIdx());
-        MIRStructType *structType = nullptr;
-        if (pointedTy->GetKind() != kTypeJArray) {
-            structType = static_cast<MIRStructType *>(pointedTy);
-        } else {
-            structType = static_cast<MIRJarrayType *>(pointedTy)->GetParentType();
-        }
-
-        DEBUG_ASSERT(structType != nullptr, "SelectIread: non-zero fieldID for non-structure");
-        pointedType = structType->GetFieldType(expr.GetFieldID());
-        offset = GetBecommon().GetFieldOffset(*structType, expr.GetFieldID()).first;
-        isRefField = GetBecommon().IsRefField(*structType, expr.GetFieldID());
-    } else {
-        pointedType = GetPointedToType(*pointerType);
-    }
+    pointedType = GetPointedToType(*pointerType);
 
     RegType regType = GetRegTyFromPrimTy(expr.GetPrimType());
     uint32 regSize = GetPrimTypeSize(expr.GetPrimType());
@@ -1061,13 +996,7 @@ Operand *AArch64CGFunc::SelectIread(const BaseNode &parent, IreadNode &expr, int
         bitSize = GetPrimTypeBitSize(expr.GetPrimType());
         maple::LogInfo::MapleLogger(kLlErr) << "Warning: objsize is zero! \n";
     } else {
-        if (pointedType->IsStructType()) {
-            MIRStructType *structType = static_cast<MIRStructType *>(pointedType);
-            /* size << 3, that is size * 8, change bytes to bits */
-            bitSize = std::min(structType->GetSize(), static_cast<size_t>(GetPointerSize())) << 3;
-        } else {
-            bitSize = GetPrimTypeBitSize(destType);
-        }
+        bitSize = GetPrimTypeBitSize(destType);
         if (regType == kRegTyFloat) {
             destType = expr.GetPrimType();
             bitSize = GetPrimTypeBitSize(destType);

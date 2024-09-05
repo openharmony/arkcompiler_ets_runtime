@@ -98,10 +98,6 @@ LiteCGTypeKind LMIRBuilder::LiteCGGetTypeKind(Type *type) const
             return kLiteCGTypeFArray;
         case MIRTypeKind::kTypeJArray:
             return kLiteCGTypeJArray;
-        case MIRTypeKind::kTypeStruct:
-            return kLiteCGTypeStruct;
-        case MIRTypeKind::kTypeUnion:
-            return kLiteCGTypeUnion;
         case MIRTypeKind::kTypeClass:
             return kLiteCGTypeClass;
         case MIRTypeKind::kTypeInterface:
@@ -168,33 +164,6 @@ Type *LMIRBuilder::CreateRefType(Type *mirType)
 bool LMIRBuilder::IsHeapPointerType(Type *mirType) const
 {
     return mirType->GetPrimType() == PTY_ref;
-}
-
-Type *LMIRBuilder::CreateStructTypeInternal(const String &name,
-                                            std::vector<std::pair<std::string_view, Type *>> &fields_)
-{
-    FieldVector parentFields;  // parentFields not used.
-    // not sure about the cost
-    FieldVector fields;
-    for (auto field : fields_) {
-        auto strIdx = mirBuilder.GetOrCreateStringIndex(field.first.data());
-        fields.push_back(FieldPair(strIdx, TyIdxFieldAttrPair(field.second->GetTypeIndex(), FieldAttrs())));
-    }
-    auto type = GlobalTables::GetTypeTable().GetOrCreateStructType(name, fields, parentFields, module);
-    return type;
-}
-
-Type *LMIRBuilder::GetStructType(const String &name)
-{
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetStrIdxFromName(name);
-    TyIdx typeIdx = GlobalTables::GetTypeNameTable().GetTyIdxFromGStrIdx(strIdx);
-    MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(typeIdx);
-    return type;
-}
-
-StructConst &LMIRBuilder::CreateStructConstInternal(StructType *type)
-{
-    return *module.GetMemPool()->New<StructConst>(module, *type);
 }
 
 ArrayConst &LMIRBuilder::CreateArrayConstInternal(ArrayType *type)
@@ -599,14 +568,6 @@ Expr LMIRBuilder::IntrinsicOp(IntrinsicId id, Type *type, Args &args_)
         args.emplace_back(arg.GetNode());
     }
     return Expr(mirBuilder.CreateExprIntrinsicop(func, OP_intrinsicop, *type, args), type);
-}
-
-Expr LMIRBuilder::DreadWithField(Var &var, FieldId id)
-{
-    auto *type = var.GetType();
-    CHECK_FATAL(type->IsStructType(), "DreadWithField: must be a struct type!");
-    auto *fldType = static_cast<MIRStructType *>(type)->GetFieldType(id);
-    return Expr(mirBuilder.CreateExprDread(*fldType, id, var), fldType);
 }
 
 Expr LMIRBuilder::Iread(Type *type, Expr addr, Type *baseType, FieldId fieldId)

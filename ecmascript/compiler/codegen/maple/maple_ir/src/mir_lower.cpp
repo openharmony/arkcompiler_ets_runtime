@@ -789,11 +789,6 @@ MIRFuncType *MIRLower::FuncTypeFromFuncPtrExpr(BaseNode *x)
             if (preg->GetOp() == OP_dread) {
                 const MIRSymbol *symbol = preg->rematInfo.sym;
                 MIRType *mirType = symbol->GetType();
-                if (preg->fieldID != 0) {
-                    MIRStructType *structty = static_cast<MIRStructType *>(mirType);
-                    FieldPair thepair = structty->TraverseToField(preg->fieldID);
-                    mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
-                }
 
                 if (mirType->GetKind() == kTypePointer) {
                     res = static_cast<MIRPtrType *>(mirType)->GetPointedFuncType();
@@ -821,11 +816,6 @@ MIRFuncType *MIRLower::FuncTypeFromFuncPtrExpr(BaseNode *x)
             DreadNode *dread = static_cast<DreadNode *>(x);
             MIRSymbol *symbol = func->GetLocalOrGlobalSymbol(dread->GetStIdx());
             MIRType *mirType = symbol->GetType();
-            if (dread->GetFieldID() != 0) {
-                MIRStructType *structty = static_cast<MIRStructType *>(mirType);
-                FieldPair thepair = structty->TraverseToField(dread->GetFieldID());
-                mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(thepair.second.first);
-            }
             if (mirType->GetKind() == kTypePointer) {
                 res = static_cast<MIRPtrType *>(mirType)->GetPointedFuncType();
             }

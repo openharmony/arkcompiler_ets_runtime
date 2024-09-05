@@ -212,9 +212,6 @@ public:
 
     virtual bool IsExclusiveFunc(MIRFunction &mirFunc) = 0;
 
-    /* NOTE: Consider making be_common a field of CG. */
-    virtual void GenerateObjectMaps(BECommon &beCommon) = 0;
-
     /* Used for GCTIB pattern merging */
     virtual std::string FindGCTIBPatternName(const std::string &name) const = 0;
 

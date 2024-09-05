@@ -345,30 +345,8 @@ public:
     MIRType *GetOrCreateJarrayType(const MIRType &elem);
     MIRType *GetOrCreateFunctionType(const TyIdx &, const std::vector<TyIdx> &, const std::vector<TypeAttrs> &,
                                      bool isVarg = false, const TypeAttrs &retAttrs = TypeAttrs());
-    MIRType *GetOrCreateStructType(const std::string &name, const FieldVector &fields, const FieldVector &prntFields,
-                                   MIRModule &module)
-    {
-        return GetOrCreateStructOrUnion(name, fields, prntFields, module);
-    }
-
-    MIRType *GetOrCreateUnionType(const std::string &name, const FieldVector &fields, const FieldVector &parentFields,
-                                  MIRModule &module)
-    {
-        return GetOrCreateStructOrUnion(name, fields, parentFields, module, false);
-    }
-
-    MIRType *GetOrCreateClassType(const std::string &name, MIRModule &module)
-    {
-        return GetOrCreateClassOrInterface(name, module, true);
-    }
-
-    MIRType *GetOrCreateInterfaceType(const std::string &name, MIRModule &module)
-    {
-        return GetOrCreateClassOrInterface(name, module, false);
-    }
 
     void PushIntoFieldVector(FieldVector &fields, const std::string &name, const MIRType &type);
-    void AddFieldToStructType(MIRStructType &structType, const std::string &fieldName, const MIRType &fieldType);
 
     TyIdx lastDefaultTyIdx;
 
@@ -408,10 +386,6 @@ private:
 
     void CreateMirTypeNodeAt(MIRType &pType, TyIdx tyIdxUsed, MIRModule *module, bool isObject, bool isIncomplete);
     MIRType *CreateAndUpdateMirTypeNode(MIRType &pType);
-    MIRType *GetOrCreateStructOrUnion(const std::string &name, const FieldVector &fields,
-                                      const FieldVector &printFields, MIRModule &module, bool forStruct = true,
-                                      const TypeAttrs &attrs = TypeAttrs());
-    MIRType *GetOrCreateClassOrInterface(const std::string &name, MIRModule &module, bool forClass);
 
     MIRType *CreateMirType(uint32 primTypeIdx) const;
     void PutToHashTable(MIRType *mirType);

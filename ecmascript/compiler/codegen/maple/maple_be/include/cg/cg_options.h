@@ -30,7 +30,6 @@ extern maplecl::Option<bool> cg;
 extern maplecl::Option<bool> generalRegOnly;
 extern maplecl::Option<bool> lazyBinding;
 extern maplecl::Option<bool> hotFix;
-extern maplecl::Option<bool> objmap;
 extern maplecl::Option<bool> yieldpoint;
 extern maplecl::Option<bool> localRc;
 extern maplecl::Option<bool> debug;

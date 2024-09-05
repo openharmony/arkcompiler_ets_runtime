@@ -79,9 +79,6 @@ bool X64CG::IsExclusiveFunc(MIRFunction &mirFunc)
     return false;
 }
 
-/* NOTE: Consider making be_common a field of CG. */
-void X64CG::GenerateObjectMaps(BECommon &beCommon) {}
-
 /* Used for GCTIB pattern merging */
 std::string X64CG::FindGCTIBPatternName(const std::string &name) const
 {

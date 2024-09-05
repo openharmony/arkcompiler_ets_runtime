@@ -292,16 +292,6 @@ public:
         asmEmitterEnable = flag;
     }
 
-    bool IsGenerateObjectMap() const
-    {
-        return generateObjectMap;
-    }
-
-    void SetGenerateObjectMap(bool flag)
-    {
-        generateObjectMap = flag;
-    }
-
     void SetParserOption(uint32 option)
     {
         parserOption |= option;
@@ -888,7 +878,6 @@ private:
 
     bool runCGFlag = true;
     bool asmEmitterEnable = false;
-    bool generateObjectMap = true;
     uint32 parserOption = 0;
     int32 optimizeLevel = 0;
 

@@ -55,12 +55,6 @@ maplecl::Option<bool> hotFix({"--hot-fix"},
                              "  --no-hot-fix\n",
                              {cgCategory}, maplecl::DisableWith("--no-hot-fix"));
 
-maplecl::Option<bool> objmap({"--objmap"},
-                             "  --objmap"
-                             "                    \tCreate object maps (GCTIBs) inside the main output (.s) file\n"
-                             "  --no-objmap\n",
-                             {cgCategory}, maplecl::DisableWith("--no-objmap"));
-
 maplecl::Option<bool> yieldpoint({"--yieldpoint"},
                                  "  --yieldpoint                \tGenerate yieldpoints [default]\n"
                                  "  --no-yieldpoint\n",

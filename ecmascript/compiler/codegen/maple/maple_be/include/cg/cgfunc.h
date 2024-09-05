@@ -25,7 +25,6 @@
 #include "cfi.h"
 #include "cg_cfg.h"
 #include "cg_irbuilder.h"
-#include "call_conv.h"
 /* MapleIR headers. */
 #include "mir_function.h"
 
@@ -1173,16 +1172,6 @@ protected:
         uint32 offset = RoundUp(nextSpillLocation, static_cast<uint64>(size));
         nextSpillLocation = offset + size;
         return offset;
-    }
-
-    /* See if the symbol is a structure parameter that requires a copy. */
-    bool IsParamStructCopy(const MIRSymbol &symbol) const
-    {
-        auto *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(symbol.GetTyIdx());
-        if (symbol.GetStorageClass() == kScFormal && IsParamStructCopyToMemory(*mirType)) {
-            return true;
-        }
-        return false;
     }
 
     PrimType GetPrimTypeFromSize(uint32 byteSize, PrimType defaultType) const
