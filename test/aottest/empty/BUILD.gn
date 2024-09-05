@@ -11,7 +11,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[trace] Opcode: LOAD_ELEMENT Count:2
-6
-7
-true
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_aot_assert_test_action("empty") {
+  deps = []
+  is_enable_pgo = true
+}

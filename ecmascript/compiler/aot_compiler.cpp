@@ -211,7 +211,7 @@ int Main(const int argc, const char **argv)
 
         passManager.CompileValidFiles(generator, ret, compilerStats);
         if (compilerStats.GetCompilerMethodCount() == 0) {
-            return ERR_AN_EMPTY;
+            return runtimeOptions.IsPartialCompilerMode() ? ERR_AN_EMPTY : ERR_OK;
         }
         if (!generator.SaveAOTFile(cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN, appSignature)) {
             return ERR_AN_FAIL;
