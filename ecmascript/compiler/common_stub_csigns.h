@@ -90,7 +90,6 @@ namespace panda::ecmascript::kungfu {
     V(CreateArrayWithBuffer)          \
     V(NewJSObject)                    \
     V(JsBoundCallInternal)            \
-    V(JsProxyCallInternal)            \
     V(CreateStringBySingleCharCode)   \
     V(Getpropiterator)                \
     V(Getnextpropname)                \

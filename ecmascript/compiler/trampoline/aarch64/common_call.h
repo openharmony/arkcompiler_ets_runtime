@@ -115,7 +115,6 @@ private:
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register sp);
     static void JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Register glue,
                                             Register actualArgC, Register jsfunc, int stubId);
-    static void JSProxyCallInternal(ExtendedAssembler *assembler, Register sp, Register jsfunc);
     static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);
     static void PushMandatoryJSArgs(ExtendedAssembler *assembler, Register jsfunc,
                                     Register thisObj, Register newTarget, Register currentSp);
