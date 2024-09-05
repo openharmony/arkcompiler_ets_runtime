@@ -29,6 +29,7 @@
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
+#include "ecmascript/jit/jit.h"
 #if defined(PANDA_TARGET_OHOS)
 #include "ecmascript/extractortool/src/extractor.h"
 #endif
@@ -261,7 +262,7 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
     if (JsStackInfo::loader == nullptr || JsStackInfo::options == nullptr) {
         return;
     }
-    if (!JsStackInfo::loader->IsEnableAOT() && !JsStackInfo::options->IsEnableJIT() &&
+    if (!JsStackInfo::loader->IsEnableAOT() && !Jit::GetInstance()->IsEnableFastJit() &&
         !JsStackInfo::options->IsEnablePGOProfiler()) {
         return;
     }
@@ -274,7 +275,7 @@ void JsStackInfo::BuildCrashInfo(bool isJsCrash, uintptr_t pc, JSThread *thread)
         type = ohos::RuntimeInfoType::OTHERS;
     }
     ohos::AotRuntimeInfo::GetInstance().BuildCrashRuntimeInfo(type);
-    if (isJsCrash) {
+    if (isJsCrash && thread != nullptr) {
         DumpJitCode(thread);
     }
 }
