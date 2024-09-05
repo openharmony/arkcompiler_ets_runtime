@@ -5237,6 +5237,7 @@ void JSNApi::NotifyTaskBegin(const EcmaVM *vm)
 
 void JSNApi::NotifyTaskFinished(const EcmaVM *vm)
 {
+    ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerTaskFinishedGC();
 }
 

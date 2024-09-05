@@ -2135,7 +2135,7 @@ void Heap::CheckAndTriggerTaskFinishedGC()
     double objectSizeOfTaskBegin = GetRecordObjectSize();
     double nativeSizeOfTaskBegin = static_cast<double>(GetRecordNativeSize());
     double objectSizeOfTaskFinished = GetHeapObjectSize();
-    double nativeSizeOfTaskFinished = GetNativeBindingSize();
+    double nativeSizeOfTaskFinished = GetGlobalNativeSize();
     bool objectSizeFlag = objectSizeOfTaskFinished - objectSizeOfTaskBegin > TRIGGER_OLDGC_OBJECT_SIZE_LIMIT
         || (objectSizeOfTaskBegin != 0
             && objectSizeOfTaskFinished/objectSizeOfTaskBegin > TRIGGER_OLDGC_OBJECT_LIMIT_RATE);
