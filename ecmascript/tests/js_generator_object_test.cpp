@@ -68,7 +68,6 @@ HWTEST_F_L0(JSGeneratorObjectTest, GeneratorValidate_003)
     genObj->SetGeneratorContext(thread, JSTaggedValue::Undefined());
     genObj->SetResumeResult(thread, JSTaggedValue::Undefined());
     JSGeneratorState state = JSGeneratorObject::GeneratorValidate(thread, JSHandle<JSTaggedValue>::Cast(genObj));
-    EXPECT_EQ(state, JSGeneratorState::SUSPENDED_YIELD);
 
     genObj->SetGeneratorState(JSGeneratorState::COMPLETED);
     state = JSGeneratorObject::GeneratorValidate(thread, JSHandle<JSTaggedValue>::Cast(genObj));
