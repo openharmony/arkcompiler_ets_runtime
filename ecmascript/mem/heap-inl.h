@@ -783,15 +783,6 @@ void SharedHeap::CollectGarbageFinish(bool inDaemon)
     GetEcmaGCStats()->RecordStatisticAfterGC();
     GetEcmaGCStats()->PrintGCStatistic();
     ProcessAllGCListeners();
-
-    sharedMemController_->UpdateAllocationAfterGC();
-    sharedMemController_->UpdateObjectUsageRateAfterGC();
-    if (GetGCType() == TriggerGCType::SHARED_FULL_GC) {
-        UpdateFullGCTimePoint();
-        SetNeedCheckFullGCForIdle(false);
-    } else {
-        SetNeedCheckFullGCForIdle(true);
-    }
 }
 
 TaggedObject *SharedHeap::AllocateNonMovableOrHugeObject(JSThread *thread, JSHClass *hclass)

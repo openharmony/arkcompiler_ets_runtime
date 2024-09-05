@@ -158,12 +158,6 @@ HWTEST_F_L0(GCTest, ObjectExceedMaxHeapSizeTest001)
     ASSERT_EQ(heap->ObjectExceedMaxHeapSize(), false);
 }
 
-HWTEST_F_L0(GCTest, CheckAndTriggerGCForIdleTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    ASSERT_EQ(heap->CheckAndTriggerGCForIdle(1, CheckIdleGCType::VSYNC), false);
-}
-
 HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest001)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());

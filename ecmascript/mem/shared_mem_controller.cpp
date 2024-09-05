@@ -37,17 +37,6 @@ bool SharedMemController::CheckLowAllocationUsageState() const
     return GetIdleSharedSpaceAllocationThroughputPerMS() < LOW_ALLOCATION_RATE_PER_MS;
 }
 
-void SharedMemController::UpdateObjectUsageRateAfterGC()
-{
-    lastGCObjectUsageRate_ = static_cast<double>(sheap_->GetHeapObjectSize()) /
-                                static_cast<double>(sheap_->GetCommittedSize());
-
-    lastGCOldSpaceObjectUsageRate_ = static_cast<double>(sheap_->GetOldSpace()->GetHeapObjectSize()) /
-                                        static_cast<double>(sheap_->GetOldSpace()->GetCommittedSize());
-    LOG_GC(DEBUG) << "UpdateObjectUsageRateAfterGC Local lastGCObjectUsageRate:" << lastGCObjectUsageRate_
-                    << ",lastGCOldSpaceObjectUsageRate:" << lastGCOldSpaceObjectUsageRate_;
-}
-
 void SharedMemController::UpdateAllocationAfterGC()
 {
     sharedSpaceAllocSizeSinceIdle_ = sheap_->GetHeapObjectSize();
