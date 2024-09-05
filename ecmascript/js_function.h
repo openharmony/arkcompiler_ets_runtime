@@ -126,6 +126,8 @@ public:
         return TaskConcurrentFuncFlagBit::Decode(bitField);
     }
 
+    JSTaggedValue GetFunctionExtraInfo() const;
+
     /* compiled code flag field */
     using IsCompiledCodeBit = BitField<bool, 0, 1>;        // offset 0
     using IsFastCallBit = IsCompiledCodeBit::NextFlag;     // offset 1
@@ -315,7 +317,6 @@ public:
                                           JSHandle<JSFunction> targetFunc);
     void SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode);
 
-    JSTaggedValue GetFunctionExtraInfo() const;
     JSTaggedValue GetNativeFunctionExtraInfo() const;
     CString GetRecordName() const;
     JSTaggedValue GetProfileTypeInfo() const

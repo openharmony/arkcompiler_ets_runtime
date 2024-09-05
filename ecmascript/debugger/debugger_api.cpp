@@ -930,7 +930,7 @@ std::vector<void *> DebuggerApi::GetNativePointer(const EcmaVM *ecmaVm)
         if (method->IsNativeWithCallField()) {
             JSTaggedValue function = it.GetFunction();
             JSHandle<JSTaggedValue> extraInfoValue(
-                thread, JSFunction::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
+                thread, JSFunctionBase::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
             auto cb = ecmaVm->GetNativePtrGetter();
             if (extraInfoValue->IsJSNativePointer() && cb != nullptr) {
                 JSHandle<JSNativePointer> extraInfo(extraInfoValue);

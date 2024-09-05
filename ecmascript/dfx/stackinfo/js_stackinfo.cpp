@@ -93,6 +93,8 @@ std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, Las
         data.push_back('?');
     }
     data.append(")\n");
+    LOG_ECMA(DEBUG) << "stack: " << data << "\nfileName: " << pandaFile->GetJSPandaFileDesc()
+                    << "\nrecordName: " << method->GetRecordNameStr();
     return data;
 }
 
@@ -329,7 +331,7 @@ std::vector<struct JsFrameInfo> JsStackInfo::BuildJsStackInfo(JSThread *thread, 
         } else {
             JSTaggedValue function = it.GetFunction();
             JSHandle<JSTaggedValue> extraInfoValue(
-                thread, JSFunction::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
+                thread, JSFunctionBase::Cast(function.GetTaggedObject())->GetFunctionExtraInfo());
             if (extraInfoValue->IsJSNativePointer()) {
                 JSHandle<JSNativePointer> extraInfo(extraInfoValue);
                 native = reinterpret_cast<uintptr_t *>(extraInfo->GetData());

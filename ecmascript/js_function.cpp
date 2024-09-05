@@ -1070,7 +1070,7 @@ void JSFunction::SetJitMachineCodeCache(const JSThread *thread, const JSHandle<M
     handleRaw->SetMachineCode(thread, machineCode.GetTaggedValue().CreateAndGetWeakRef(), WRITE_BARRIER);
 }
 
-JSTaggedValue JSFunction::GetFunctionExtraInfo() const
+JSTaggedValue JSFunctionBase::GetFunctionExtraInfo() const
 {
     JSTaggedType hashField = Barriers::GetValue<JSTaggedType>(this, HASH_OFFSET);
     JSTaggedValue value(hashField);
