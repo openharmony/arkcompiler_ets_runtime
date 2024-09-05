@@ -54,10 +54,8 @@ BlockNode *CGLowerer::LowerReturnStructUsingFakeParm(NaryStmtNode &retNode)
         retNode.SetOpnd(LowerExpr(retNode, *retNode.GetNopndAt(i), *blk), i);
     }
     BaseNode *opnd0 = retNode.Opnd(0);
-    if (!(opnd0 && opnd0->GetPrimType() == PTY_agg)) {
-        /* It is possible function never returns and have a dummy return const instead of a struct. */
-        maple::LogInfo::MapleLogger(kLlWarn) << "return struct should have a kid" << std::endl;
-    }
+    /* It is possible function never returns and have a dummy return const instead of a struct. */
+    maple::LogInfo::MapleLogger(kLlWarn) << "return struct should have a kid" << std::endl;
 
     MIRFunction *curFunc = GetCurrentFunc();
     MIRSymbol *retSt = curFunc->GetFormal(0);
@@ -142,7 +140,7 @@ void CGLowerer::LowerAsmStmt(AsmNode *asmNode, BlockNode *newBlk)
         StmtNode *assignNode = nullptr;
         BaseNode *readOpnd = nullptr;
         PrimType type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdxUsed)->GetPrimType();
-        if ((type != PTY_agg) && CGOptions::GetInstance().GetOptimizeLevel() >= CGOptions::kLevel2) {
+        if (CGOptions::GetInstance().GetOptimizeLevel() >= CGOptions::kLevel2) {
             DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
             PregIdx pregIdx = mirModule.CurFunction()->GetPregTab()->CreatePreg(type);
             assignNode = mirBuilder->CreateStmtRegassign(type, pregIdx, opnd);

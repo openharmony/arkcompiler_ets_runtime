@@ -40,7 +40,6 @@ public:
     bool GenerateLiveIn(BB &bb);
     void BuildInOutforFunc();
     void ResetLiveSet();
-    void ClearInOutDataInfo();
     void GetBBDefUse(BB &bb) const;
     void ProcessAsmListOpnd(BB &bb, Operand &opnd, uint32 idx) const;
     void ProcessListOpnd(BB &bb, Operand &opnd, bool isDef) const;

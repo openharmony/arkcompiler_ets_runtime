@@ -134,13 +134,11 @@ uint8 GetPointerSize()
 
 PrimType GetLoweredPtrType()
 {
-#if TARGX86 || TARGARM32 || TARGVM
-    return PTY_a32;
-#elif TARGX86_64 || TARGAARCH64
+#if TARGX86_64 || TARGAARCH64
     if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
         return PTY_a64;
     } else if (Triple::GetTriple().GetArch() == Triple::ArchType::aarch64) {
-        auto pty = (Triple::GetTriple().GetEnvironment() == Triple::GNUILP32) ? PTY_a32 : PTY_a64;
+        auto pty = PTY_a64;
         return pty;
     } else {
         CHECK_FATAL(false, "Unsupported target");
@@ -152,7 +150,7 @@ PrimType GetLoweredPtrType()
 
 PrimType GetExactPtrPrimType()
 {
-    return (GetPointerSize() == k8ByteSize) ? PTY_a64 : PTY_a32;
+    return PTY_a64;
 }
 
 // answer in bytes; 0 if unknown
@@ -160,7 +158,6 @@ uint32 GetPrimTypeSize(PrimType primType)
 {
     switch (primType) {
         case PTY_void:
-        case PTY_agg:
             return k0BitSize;
         case PTY_ptr:
         case PTY_ref:
@@ -172,7 +169,6 @@ uint32 GetPrimTypeSize(PrimType primType)
         case PTY_i16:
         case PTY_u16:
             return k2BitSize;
-        case PTY_a32:
         case PTY_f32:
         case PTY_i32:
         case PTY_u32:
@@ -182,8 +178,6 @@ uint32 GetPrimTypeSize(PrimType primType)
         case PTY_i64:
         case PTY_u64:
             return k8BitSize;
-        case PTY_f128:
-            return k16BitSize;
         default:
             return k0BitSize;
     }
@@ -305,9 +299,6 @@ void MIRType::DumpAsCxx(int indent) const
             break;
         case PTY_ref:
             LogInfo::MapleLogger() << "void* ";
-            break;
-        case PTY_a32:
-            LogInfo::MapleLogger() << "int32";
             break;
         case PTY_a64:
             LogInfo::MapleLogger() << "void* ";

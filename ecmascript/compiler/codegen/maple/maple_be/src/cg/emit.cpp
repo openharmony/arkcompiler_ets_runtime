@@ -389,11 +389,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
                 align = Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirSymbol.GetType()->GetTypeIndex());
                 if (GetCG()->GetTargetMachine()->isAArch64() || GetCG()->GetTargetMachine()->isRiscV() ||
                     GetCG()->GetTargetMachine()->isArm32() || GetCG()->GetTargetMachine()->isArk()) {
-                    if (CGOptions::IsArm64ilp32() && mirSymbol.GetType()->GetPrimType() == PTY_a32) {
-                        align = kAlignOfU8;
-                    } else {
-                        align = static_cast<uint8>(log2(align));
-                    }
+                    align = static_cast<uint8>(log2(align));
                 }
             }
             Emit(asmInfo->GetAlign());

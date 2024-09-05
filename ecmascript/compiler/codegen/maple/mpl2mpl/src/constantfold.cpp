@@ -659,7 +659,7 @@ MIRConst *ConstantFold::FoldConstComparisonMIRConst(Opcode opcode, PrimType resu
                                                     const MIRConst &const0, const MIRConst &const1) const
 {
     MIRConst *returnValue = nullptr;
-    if (IsPrimitiveInteger(opndType) || IsPrimitiveDynInteger(opndType)) {
+    if (IsPrimitiveInteger(opndType)) {
         const auto *intConst0 = safe_cast<MIRIntConst>(&const0);
         const auto *intConst1 = safe_cast<MIRIntConst>(&const1);
         ASSERT_NOT_NULL(intConst0);
@@ -677,7 +677,7 @@ ConstvalNode *ConstantFold::FoldConstComparison(Opcode opcode, PrimType resultTy
                                                 const ConstvalNode &const0, const ConstvalNode &const1) const
 {
     ConstvalNode *returnValue = nullptr;
-    if (IsPrimitiveInteger(opndType) || IsPrimitiveDynInteger(opndType)) {
+    if (IsPrimitiveInteger(opndType)) {
         returnValue = FoldIntConstComparison(opcode, resultType, opndType, const0, const1);
     } else if (opndType == PTY_f32 || opndType == PTY_f64) {
         returnValue = FoldFPConstComparison(opcode, resultType, opndType, const0, const1);
@@ -729,7 +729,7 @@ ConstvalNode *ConstantFold::FoldConstBinary(Opcode opcode, PrimType resultType, 
                                             const ConstvalNode &const1) const
 {
     ConstvalNode *returnValue = nullptr;
-    if (IsPrimitiveInteger(resultType) || IsPrimitiveDynInteger(resultType)) {
+    if (IsPrimitiveInteger(resultType)) {
         returnValue = FoldIntConstBinary(opcode, resultType, const0, const1);
     } else if (resultType == PTY_f32 || resultType == PTY_f64) {
         returnValue = FoldFPConstBinary(opcode, resultType, const0, const1);
@@ -828,7 +828,7 @@ ConstvalNode *ConstantFold::FoldFPConstUnary(Opcode opcode, PrimType resultType,
 ConstvalNode *ConstantFold::FoldConstUnary(Opcode opcode, PrimType resultType, ConstvalNode &constNode) const
 {
     ConstvalNode *returnValue = nullptr;
-    if (IsPrimitiveInteger(resultType) || IsPrimitiveDynInteger(resultType)) {
+    if (IsPrimitiveInteger(resultType)) {
         const MIRIntConst *cst = safe_cast<MIRIntConst>(constNode.GetConstVal());
         auto constValue = FoldIntConstUnaryMIRConst(opcode, resultType, cst);
         returnValue = mirModule->CurFuncCodeMemPool()->New<ConstvalNode>();
@@ -838,8 +838,6 @@ ConstvalNode *ConstantFold::FoldConstUnary(Opcode opcode, PrimType resultType, C
         returnValue = FoldFPConstUnary<MIRFloatConst>(opcode, resultType, &constNode);
     } else if (resultType == PTY_f64) {
         returnValue = FoldFPConstUnary<MIRDoubleConst>(opcode, resultType, &constNode);
-    } else if (resultType == PTY_f128) {
-        DEBUG_ASSERT(false, "Unhandled case for FoldConstUnary");
     } else {
         DEBUG_ASSERT(false, "Unhandled case for FoldConstUnary");
     }
@@ -1050,11 +1048,6 @@ ConstvalNode *ConstantFold::FoldFloor(const ConstvalNode &cst, PrimType fromType
 
 MIRConst *ConstantFold::FoldRoundMIRConst(const MIRConst &cst, PrimType fromType, PrimType toType) const
 {
-    if (fromType == PTY_f128 || toType == PTY_f128) {
-        // folding while rounding float128 is not supported yet
-        return nullptr;
-    }
-
     MIRType &resultType = *GlobalTables::GetTypeTable().GetPrimType(toType);
     if (fromType == PTY_f32) {
         const auto &constValue = static_cast<const MIRFloatConst&>(cst);
@@ -1148,15 +1141,6 @@ ConstvalNode *ConstantFold::FoldTrunc(const ConstvalNode &cst, PrimType fromType
 
 MIRConst *ConstantFold::FoldTypeCvtMIRConst(const MIRConst &cst, PrimType fromType, PrimType toType) const
 {
-    if (IsPrimitiveDynType(fromType) || IsPrimitiveDynType(toType)) {
-        // do not fold
-        return nullptr;
-    }
-    if (fromType == PTY_f128 || toType == PTY_f128) {
-        // folding while Cvt float128 is not supported yet
-        return nullptr;
-    }
-
     if (IsPrimitiveInteger(fromType) && IsPrimitiveInteger(toType)) {
         MIRConst *toConst = nullptr;
         uint32 fromSize = GetPrimTypeBitSize(fromType);
@@ -1247,9 +1231,6 @@ PrimType GetNearestSizePtyp(uint8 bitSize, PrimType ptyp)
     }
     if (bitSize <= 64) { // 64 bit
         return isFloat ? PTY_f64 : (isSigned ? PTY_i64 : PTY_u64);
-    }
-    if (bitSize <= 128) { // 128 bit
-        return PTY_f128;
     }
     return ptyp;
 }
@@ -1535,10 +1516,6 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldBinary(BinaryNode 
     PrimType primType = node->GetPrimType();
     PrimType lPrimTypes = node->Opnd(0)->GetPrimType();
     PrimType rPrimTypes = node->Opnd(1)->GetPrimType();
-    if (lPrimTypes == PTY_f128 || rPrimTypes == PTY_f128 || node->GetPrimType() == PTY_f128) {
-        // folding of non-unary float128 is not supported yet
-        return std::make_pair(static_cast<BaseNode*>(node), std::nullopt);
-    }
     std::pair<BaseNode*, std::optional<IntVal>> lp = DispatchFold(node->Opnd(0));
     std::pair<BaseNode*, std::optional<IntVal>> rp = DispatchFold(node->Opnd(1));
     BaseNode *l = lp.first;
@@ -1889,12 +1866,8 @@ std::pair<BaseNode*, std::optional<IntVal>> ConstantFold::FoldCompare(CompareNod
     std::pair<BaseNode*, std::optional<IntVal>> rp = DispatchFold(node->Opnd(1));
     ConstvalNode *lConst = safe_cast<ConstvalNode>(lp.first);
     ConstvalNode *rConst = safe_cast<ConstvalNode>(rp.first);
-    if (node->GetOpndType() == PTY_f128 || node->GetPrimType() == PTY_f128) {
-        // folding of non-unary float128 is not supported yet
-        return std::make_pair(static_cast<BaseNode*>(node), std::nullopt);
-    }
     Opcode opcode = node->GetOpCode();
-    if (lConst != nullptr && rConst != nullptr && !IsPrimitiveDynType(node->GetOpndType())) {
+    if (lConst != nullptr && rConst != nullptr) {
         result = FoldConstComparison(node->GetOpCode(), node->GetPrimType(), node->GetOpndType(), *lConst, *rConst);
     } else if (lConst != nullptr && rConst == nullptr && opcode != OP_cmp &&
                lConst->GetConstVal()->GetKind() == kConstInt) {

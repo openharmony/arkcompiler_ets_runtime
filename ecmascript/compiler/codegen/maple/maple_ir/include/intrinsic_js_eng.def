@@ -15,20 +15,20 @@
 
 // DEF_MIR_INTRINSIC(STR, NAME, INTRN_CLASS, RETURN_TYPE, ARG0, ARG1, ARG2, ARG3, ARG4, ARG5)
 DEF_MIR_INTRINSIC(JS_GET_ARGUMENTOBJECT,\
-                  "__jsobj_get_or_create_argument", INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+                  "__jsobj_get_or_create_argument", kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JS_GET_ERROR_OBJECT,\
-                  "__jsobj_get_or_create_error", INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+                  "__jsobj_get_or_create_error", kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JS_GET_EVALERROR_OBJECT,\
-                  "__jsobj_get_or_create_evalError", INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+                  "__jsobj_get_or_create_evalError", kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JS_GET_RANGEERROR_OBJECT,\
-                  "__jsobj_get_or_create_rangeError", INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+                  "__jsobj_get_or_create_rangeError", kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JS_GET_REFERENCEERROR_OBJECT,\
-                  "__jsobj_get_or_create_referenceError", INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+                  "__jsobj_get_or_create_referenceError", kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JS_GET_SYNTAXERROR_OBJECT,\
-                  "__jsobj_get_or_create_syntaxError", INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+                  "__jsobj_get_or_create_syntaxError", kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JS_GET_TYPEERROR_OBJECT,\
-                  "__jsobj_get_or_create_typeError", INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+                  "__jsobj_get_or_create_typeError", kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JS_GET_URIERROR_OBJECT,\
-                  "__jsobj_get_or_create_uriError", INTRNISJS | INTRNISPURE, kArgTySimpleobj, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+                  "__jsobj_get_or_create_uriError", kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
 DEF_MIR_INTRINSIC(JSOP_ASSERTVALUE,
-                  "__jsop_assert_value", INTRNISJS, kArgTyDynany, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)
+                  "__jsop_assert_value", kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef, kArgTyUndef)

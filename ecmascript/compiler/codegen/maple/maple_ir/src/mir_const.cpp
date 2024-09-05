@@ -182,21 +182,6 @@ bool MIRDoubleConst::operator==(const MIRConst &rhs) const
     return (floatConst.value.intValue == value.intValue);
 }
 
-bool MIRFloat128Const::operator==(const MIRConst &rhs) const
-{
-    if (&rhs == this) {
-        return true;
-    }
-    if (GetKind() != rhs.GetKind()) {
-        return false;
-    }
-    const auto &floatConst = static_cast<const MIRFloat128Const &>(rhs);
-    if ((value[0] == floatConst.value[0]) && (value[1] == floatConst.value[1])) {
-        return true;
-    }
-    return false;
-}
-
 bool MIRAggConst::operator==(const MIRConst &rhs) const
 {
     if (&rhs == this) {
@@ -226,16 +211,6 @@ void MIRFloatConst::Dump(const MIRSymbolTable *) const
 void MIRDoubleConst::Dump(const MIRSymbolTable *) const
 {
     LogInfo::MapleLogger() << std::setprecision(std::numeric_limits<double>::max_digits10) << value.dValue;
-}
-
-void MIRFloat128Const::Dump(const MIRSymbolTable *) const
-{
-    constexpr int fieldWidth = 16;
-    std::ios::fmtflags f(LogInfo::MapleLogger().flags());
-    LogInfo::MapleLogger().setf(std::ios::uppercase);
-    LogInfo::MapleLogger() << "0xL" << std::hex << std::setfill('0') << std::setw(fieldWidth) << value[0]
-                           << std::setfill('0') << std::setw(fieldWidth) << value[1];
-    LogInfo::MapleLogger().flags(f);
 }
 
 void MIRAggConst::Dump(const MIRSymbolTable *localSymTab) const

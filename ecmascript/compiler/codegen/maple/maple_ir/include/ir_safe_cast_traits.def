@@ -27,7 +27,6 @@ REGISTER_SAFE_CAST(MIRStrConst, from.GetKind() == kConstStrConst);
 REGISTER_SAFE_CAST(MIRStr16Const, from.GetKind() == kConstStr16Const);
 REGISTER_SAFE_CAST(MIRFloatConst, from.GetKind() == kConstFloatConst);
 REGISTER_SAFE_CAST(MIRDoubleConst, from.GetKind() == kConstDoubleConst);
-REGISTER_SAFE_CAST(MIRFloat128Const, from.GetKind() == kConstFloat128Const);
 REGISTER_SAFE_CAST(MIRAggConst, from.GetKind() == kConstAggConst);
 REGISTER_SAFE_CAST(MIRStConst, from.GetKind() == kConstStConst);
 #endif

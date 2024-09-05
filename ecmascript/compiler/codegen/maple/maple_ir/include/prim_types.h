@@ -50,23 +50,10 @@ public:
     {
         return property.IsPointer();
     }
-    bool IsDynamic() const
-    {
-        return property.IsDynamic();
-    }
     bool IsSimple() const
     {
         return property.IsSimple();
     }
-    bool IsDynamicAny() const
-    {
-        return property.IsDynamicAny();
-    }
-    bool IsDynamicNone() const
-    {
-        return property.IsDynamicNone();
-    }
-
 private:
     const PrimitiveTypeProperty &property;
 };

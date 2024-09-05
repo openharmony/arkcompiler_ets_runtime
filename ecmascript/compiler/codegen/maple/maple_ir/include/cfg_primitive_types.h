@@ -37,17 +37,14 @@ struct PrimitiveTypeProperty {
     PrimType type;
 
     PrimitiveTypeProperty(PrimType type, bool isInteger, bool isUnsigned, bool isAddress, bool isFloat, bool isPointer,
-                          bool isSimple, bool isDynamic, bool isDynamicAny, bool isDynamicNone)
+                          bool isSimple)
         : type(type),
           isInteger(isInteger),
           isUnsigned(isUnsigned),
           isAddress(isAddress),
           isFloat(isFloat),
           isPointer(isPointer),
-          isSimple(isSimple),
-          isDynamic(isDynamic),
-          isDynamicAny(isDynamicAny),
-          isDynamicNone(isDynamicNone)
+          isSimple(isSimple)
     {
     }
 
@@ -97,18 +94,6 @@ struct PrimitiveTypeProperty {
     {
         return isSimple;
     }
-    bool IsDynamic() const
-    {
-        return isDynamic;
-    }
-    bool IsDynamicAny() const
-    {
-        return isDynamicAny;
-    }
-    bool IsDynamicNone() const
-    {
-        return isDynamicNone;
-    }
 
 private:
     bool isInteger;
@@ -117,9 +102,6 @@ private:
     bool isFloat;
     bool isPointer;
     bool isSimple;
-    bool isDynamic;
-    bool isDynamicAny;
-    bool isDynamicNone;
 };
 
 const PrimitiveTypeProperty &GetPrimitiveTypeProperty(PrimType pType);

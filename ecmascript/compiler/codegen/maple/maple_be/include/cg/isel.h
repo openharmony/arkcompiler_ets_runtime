@@ -154,7 +154,6 @@ private:
     void SelectExtractbits(RegOperand &resOpnd, RegOperand &opnd0, uint8 bitOffset, uint8 bitSize, PrimType primType);
     void SelectBxor(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
     virtual RegOperand &GetTargetBasicPointer(PrimType primType) = 0;
-    virtual RegOperand &GetTargetStackPointer(PrimType primType) = 0;
     void SelectMin(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
     void SelectMax(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType);
     virtual void SelectMinOrMax(bool isMin, Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType) = 0;

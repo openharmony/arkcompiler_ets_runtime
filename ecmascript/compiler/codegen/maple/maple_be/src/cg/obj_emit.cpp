@@ -152,14 +152,6 @@ void ObjEmitter::WriteObjFile()
     }
 }
 
-void ObjEmitter::AddSymbol(const std::string &name, Word size, const Section &section, Address value)
-{
-    auto nameIndex = strTabSection->AddString(name);
-    symbolTabSection->AppendSymbol({static_cast<Word>(nameIndex),
-                                    static_cast<uint8_t>((STB_GLOBAL << 4) + (STT_SECTION & 0xf)), 0,
-                                    section.GetIndex(), value, size});
-}
-
 void ObjEmitter::AddFuncSymbol(const MapleString &name, Word size, Address value)
 {
     auto symbolStrIndex = strTabSection->AddString(name);
@@ -202,51 +194,6 @@ void ObjEmitter::InitELFHeader()
     header.e_phoff = 0;
     header.e_shnum = sections.size();
     header.e_phnum = 0;
-}
-
-void ObjEmitter::EmitMIRIntConst(EmitInfo &emitInfo)
-{
-    DEBUG_ASSERT(IsPrimitiveScalar(emitInfo.elemConst.GetType().GetPrimType()), "must be primitive type!");
-    MIRIntConst &intConst = static_cast<MIRIntConst &>(emitInfo.elemConst);
-    size_t size = GetPrimTypeSize(emitInfo.elemConst.GetType().GetPrimType());
-    const IntVal &value = intConst.GetValue();
-    int64 val = value.GetExtValue();
-    dataSection->AppendData(&val, size);
-    emitInfo.offset += size;
-#ifdef OBJ_DEBUG
-    LogInfo::MapleLogger() << val << " size: " << size << "\n";
-#endif
-}
-
-void ObjEmitter::EmitMIRAddrofConstCommon(EmitInfo &emitInfo, uint64 specialOffset)
-{
-    MIRAddrofConst &symAddr = static_cast<MIRAddrofConst &>(emitInfo.elemConst);
-    MIRSymbol *symAddrSym = GlobalTables::GetGsymTable().GetSymbolFromStidx(symAddr.GetSymbolIndex().Idx());
-    DEBUG_ASSERT(symAddrSym != nullptr, "null ptr check");
-    const std::string &symAddrName = symAddrSym->GetName();
-    LabelFixup labelFixup(symAddrName, emitInfo.offset, kLabelFixupDirect64);
-    if (specialOffset != 0) {
-        DataSection::AddLabelFixup(emitInfo.labelFixups, labelFixup);
-    }
-    uint64 value = specialOffset - emitInfo.offset;
-    size_t size = GetPrimTypeSize(emitInfo.elemConst.GetType().GetPrimType());
-    dataSection->AppendData(&value, size);
-    emitInfo.offset += size;
-
-#ifdef OBJ_DEBUG
-    LogInfo::MapleLogger() << symAddrName << " size: " << size << "\n";
-#endif
-}
-
-void ObjEmitter::EmitMIRAddrofConst(EmitInfo &emitInfo)
-{
-    EmitMIRAddrofConstCommon(emitInfo, 0);
-}
-
-void ObjEmitter::EmitMIRAddrofConstOffset(EmitInfo &emitInfo)
-{
-    /* 2 is fixed offset in runtime */
-    EmitMIRAddrofConstCommon(emitInfo, 2);
 }
 
 void ObjEmitter::EmitFunctionSymbolTable(ObjFuncEmitInfo &objFuncEmitInfo, std::vector<uint32> &symbol2Offset)

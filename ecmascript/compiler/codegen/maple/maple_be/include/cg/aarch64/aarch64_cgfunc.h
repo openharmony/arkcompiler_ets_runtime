@@ -563,7 +563,7 @@ private:
         PrimType pTy;
         if (o.GetKind() == Operand::kOpdRegister && static_cast<RegOperand &>(o).GetRegisterType() == kRegTyFloat) {
             // f128 is a vector placeholder, no use for now
-            pTy = dsize == k32BitSize ? PTY_f32 : (dsize == k64BitSize ? PTY_f64 : PTY_f128);
+            pTy = dsize == k32BitSize ? PTY_f32 : PTY_f64;
         } else {
             pTy = GetOperandTy(isIntty, dsize, asSigned);
         }

@@ -101,14 +101,10 @@ X64ArgInfo X64MoveRegArgs::GetArgInfo(std::map<uint32, X64reg> &argsList, uint32
     } else if (argInfo.symSize > k16ByteSize) {
         /* For large struct passing, a pointer to the copy is used. */
         argInfo.symSize = argInfo.stkSize = GetPointerSize();
-    } else if ((argInfo.mirTy->GetPrimType() == PTY_agg) && (argInfo.symSize < k8ByteSize)) {
-        argInfo.symSize = argInfo.stkSize = k8ByteSize;
     } else {
         argInfo.stkSize = (argInfo.symSize < k4ByteSize) ? k4ByteSize : argInfo.symSize;
         if (argInfo.symSize > k4ByteSize) {
             argInfo.symSize = k8ByteSize;
-        } else if ((argInfo.mirTy->GetPrimType() == PTY_agg) && (argInfo.symSize <= k4ByteSize)) {
-            argInfo.symSize = k4ByteSize;
         }
     }
 

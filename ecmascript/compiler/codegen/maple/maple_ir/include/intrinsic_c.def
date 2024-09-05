@@ -16,21 +16,21 @@
 // DEF_MIR_INTRINSIC(STR, NAME, INTRN_CLASS, RETURN_TYPE, ARG0, ARG1, ARG2, ARG3, ARG4, ARG5)
 
 DEF_MIR_INTRINSIC(C_strcmp,\
-                  "strcmp", INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyI32, kArgTyPtr, kArgTyPtr)
+                  "strcmp", kArgTyI32, kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(C_strncmp,\
-                  "strncmp", INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyI32, kArgTyPtr, kArgTyPtr, kArgTyU32)
+                  "strncmp", kArgTyI32, kArgTyPtr, kArgTyPtr, kArgTyU32)
 DEF_MIR_INTRINSIC(C_strcpy,\
                   "strcpy", 0, kArgTyVoid, kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(C_strncpy,\
                   "strncpy", 0, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyU64)
 DEF_MIR_INTRINSIC(C_strlen,\
-                  "strlen", INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyU64, kArgTyPtr)
+                  "strlen", kArgTyU64, kArgTyPtr)
 DEF_MIR_INTRINSIC(C_strchr,\
-                  "strchr", INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyPtr, kArgTyPtr, kArgTyU32)
+                  "strchr", kArgTyPtr, kArgTyPtr, kArgTyU32)
 DEF_MIR_INTRINSIC(C_strrchr,\
-                  "strrchr", INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyPtr, kArgTyPtr, kArgTyU32)
+                  "strrchr", kArgTyPtr, kArgTyPtr, kArgTyU32)
 DEF_MIR_INTRINSIC(C_memcmp,\
-                  "memcmp", INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyI32, kArgTyPtr, kArgTyPtr, kArgTyU64)
+                  "memcmp", kArgTyI32, kArgTyPtr, kArgTyPtr, kArgTyU64)
 DEF_MIR_INTRINSIC(C_memcpy,\
                   "memcpy", 0, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyU64)
 DEF_MIR_INTRINSIC(C_memmove,\
@@ -38,87 +38,87 @@ DEF_MIR_INTRINSIC(C_memmove,\
 DEF_MIR_INTRINSIC(C_memset,\
                   "memset", 0, kArgTyVoid, kArgTyPtr, kArgTyI32, kArgTyU64)
 DEF_MIR_INTRINSIC(C_acosf,\
-                  "acosf", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "acosf", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_asinf,\
-                  "asinf", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "asinf", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_atanf,\
-                  "atanf", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "atanf", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_cosf,\
-                  "cosf", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "cosf", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_coshf,\
-                  "coshf", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "coshf", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_expf,\
-                  "expf", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "expf", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_logf,\
-                  "logf", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "logf", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_log10f,\
-                  "log10f", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "log10f", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_sinf,\
-                  "sinf", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "sinf", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_sinhf,\
-                  "sinhf", INTRNISPURE, kArgTyF32, kArgTyF32)
+                  "sinhf", kArgTyF32, kArgTyF32)
 DEF_MIR_INTRINSIC(C_acos,\
-                  "acos", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "acos", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_asin,\
-                  "asin", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "asin", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_atan,\
-                  "atan", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "atan", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_cos,\
-                  "cos", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "cos", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_cosh,\
-                  "cosh", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "cosh", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_exp,\
-                  "exp", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "exp", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_log,\
-                  "log", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "log", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_log10,\
-                  "log10", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "log10", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_sin,\
-                  "sin", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "sin", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_sinh,\
-                  "sinh", INTRNISPURE, kArgTyF64, kArgTyF64)
+                  "sinh", kArgTyF64, kArgTyF64)
 DEF_MIR_INTRINSIC(C_ffs,\
-                  "ffs", INTRNISPURE, kArgTyI32, kArgTyI32)
+                  "ffs", kArgTyI32, kArgTyI32)
 DEF_MIR_INTRINSIC(C_va_start,\
-                  "sinh", INTRNISPURE | INTRNISSPECIAL, kArgTyVoid, kArgTyPtr, kArgTyI32)
+                  "sinh", INTRNISSPECIAL, kArgTyVoid, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C_constant_p,\
-                  "sinh", 0, kArgTyI32, kArgTyDynany)
+                  "sinh", 0, kArgTyI32)
 DEF_MIR_INTRINSIC(C_clz32,\
-                  "sinh", INTRNISPURE, kArgTyI32, kArgTyU32)
+                  "sinh", kArgTyI32, kArgTyU32)
 DEF_MIR_INTRINSIC(C_clz64,\
-                  "sinh", INTRNISPURE, kArgTyI32, kArgTyU64)
+                  "sinh", kArgTyI32, kArgTyU64)
 DEF_MIR_INTRINSIC(C_ctz32,\
-                  "sinh", INTRNISPURE, kArgTyI32, kArgTyU32)
+                  "sinh", kArgTyI32, kArgTyU32)
 DEF_MIR_INTRINSIC(C_ctz64,\
-                  "sinh", INTRNISPURE, kArgTyI32, kArgTyU64)
+                  "sinh", kArgTyI32, kArgTyU64)
 DEF_MIR_INTRINSIC(C_popcount32,\
-                  "popcount32", INTRNISPURE, kArgTyI32, kArgTyU32)
+                  "popcount32", kArgTyI32, kArgTyU32)
 DEF_MIR_INTRINSIC(C_popcount64,\
-                  "popcount64", INTRNISPURE, kArgTyI32, kArgTyU64)
+                  "popcount64", kArgTyI32, kArgTyU64)
 DEF_MIR_INTRINSIC(C_parity32,\
-                  "parity32", INTRNISPURE, kArgTyI32, kArgTyU32)
+                  "parity32", kArgTyI32, kArgTyU32)
 DEF_MIR_INTRINSIC(C_parity64,\
-                  "parity64", INTRNISPURE, kArgTyI32, kArgTyU64)
+                  "parity64", kArgTyI32, kArgTyU64)
 DEF_MIR_INTRINSIC(C_clrsb32,\
-                  "clrsb32", INTRNISPURE, kArgTyI32, kArgTyU32)
+                  "clrsb32", kArgTyI32, kArgTyU32)
 DEF_MIR_INTRINSIC(C_clrsb64,\
-                  "clrsb64", INTRNISPURE, kArgTyI32, kArgTyU64)
+                  "clrsb64", kArgTyI32, kArgTyU64)
 DEF_MIR_INTRINSIC(C_isaligned,\
-                  "isaligned", INTRNISPURE, kArgTyU1, kArgTyPtr, kArgTyU64)
+                  "isaligned", kArgTyU1, kArgTyPtr, kArgTyU64)
 DEF_MIR_INTRINSIC(C_alignup,\
-                  "alignup", INTRNISPURE, kArgTyU1, kArgTyPtr, kArgTyU64)
+                  "alignup", kArgTyU1, kArgTyPtr, kArgTyU64)
 DEF_MIR_INTRINSIC(C_aligndown,\
-                  "aligndown", INTRNISPURE, kArgTyU1, kArgTyPtr, kArgTyU64)
+                  "aligndown", kArgTyU1, kArgTyPtr, kArgTyU64)
 DEF_MIR_INTRINSIC(C_rev16_2,\
-                  "rev16", INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyI16, kArgTyI16)
+                  "rev16", kArgTyI16, kArgTyI16)
 DEF_MIR_INTRINSIC(C_rev_4,\
-                  "rev", INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyI32, kArgTyI32)
+                  "rev", kArgTyI32, kArgTyI32)
 DEF_MIR_INTRINSIC(C_rev_8,\
-                  "rev", INTRNISPURE | INTRNNOSIDEEFFECT, kArgTyI64, kArgTyI64)
+                  "rev", kArgTyI64, kArgTyI64)
 DEF_MIR_INTRINSIC(C_stack_save,\
-                  "stack_save", INTRNISPURE | INTRNISSPECIAL, kArgTyPtr)
+                  "stack_save", INTRNISSPECIAL, kArgTyPtr)
 DEF_MIR_INTRINSIC(C_stack_restore,\
-                  "stack_restore", INTRNISPURE | INTRNISSPECIAL, kArgTyPtr)
+                  "stack_restore", INTRNISSPECIAL, kArgTyPtr)
 // sync
 DEF_MIR_INTRINSIC(C___sync_add_and_fetch_1,\
                   "__sync_add_and_fetch_1", INTRNATOMIC, kArgTyU8, kArgTyPtr, kArgTyU8)
@@ -252,51 +252,51 @@ DEF_MIR_INTRINSIC(C___sync_synchronize,\
                   "__sync_synchronize", INTRNATOMIC, kArgTyUndef)
 
 DEF_MIR_INTRINSIC(C__builtin_return_address,\
-                  "__builtin_return_address", INTRNISPURE, kArgTyPtr, kArgTyU32)
+                  "__builtin_return_address", kArgTyPtr, kArgTyU32)
 DEF_MIR_INTRINSIC(C__builtin_extract_return_addr,\
-                  "__builtin_extract_return_addr", INTRNISPURE, kArgTyPtr, kArgTyPtr)
+                  "__builtin_extract_return_addr", kArgTyPtr, kArgTyPtr)
 DEF_MIR_INTRINSIC(C___builtin_expect,\
-                  "__builtin_expect", INTRNISPURE, kArgTyI32, kArgTyI32, kArgTyI32)
+                  "__builtin_expect", kArgTyI32, kArgTyI32, kArgTyI32)
 DEF_MIR_INTRINSIC(C___builtin_division_exception,\
-                  "__builtin_division_exception", INTRNNOSIDEEFFECT | INTRNISPURE, kArgTyVoid, kArgTyI64)
+                  "__builtin_division_exception", kArgTyVoid, kArgTyI64)
 
 // atomic
 DEF_MIR_INTRINSIC(C___atomic_load_n,\
-                  "__atomic_load_n", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyI32)
+                  "__atomic_load_n", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_load,\
                   "__atomic_load", INTRNATOMIC, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_store_n,\
-                  "__atomic_store_n", INTRNATOMIC, kArgTyVoid, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_store_n", INTRNATOMIC, kArgTyVoid, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_store,\
                   "__atomic_store", INTRNATOMIC, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_exchange_n,\
-                  "__atomic_exchange_n", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_exchange_n", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_exchange,\
                   "__atomic_exchange", INTRNATOMIC, kArgTyVoid, kArgTyPtr, kArgTyPtr, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_add_fetch,\
-                  "__atomic_add_fetch", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_add_fetch", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_sub_fetch,\
-                  "__atomic_sub_fetch", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_sub_fetch", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_and_fetch,\
-                  "__atomic_and_fetch", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_and_fetch", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_xor_fetch,\
-                  "__atomic_xor_fetch", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_xor_fetch", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_or_fetch,\
-                  "__atomic_or_fetch", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_or_fetch", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_nand_fetch,\
-                  "__atomic_nand_fetch", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_nand_fetch", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_fetch_add,\
-                  "__atomic_fetch_add", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_fetch_add", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_fetch_sub,\
-                  "__atomic_fetch_sub", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_fetch_sub", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_fetch_and,\
-                  "__atomic_fetch_and", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_fetch_and", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_fetch_xor,\
-                  "__atomic_fetch_xor", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_fetch_xor", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_fetch_or,\
-                  "__atomic_fetch_or", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_fetch_or", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_fetch_nand,\
-                  "__atomic_fetch_nand", INTRNATOMIC, kArgTyDynany, kArgTyPtr, kArgTyDynany, kArgTyI32)
+                  "__atomic_fetch_nand", INTRNATOMIC, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_test_and_set,\
                   "__atomic_test_and_set", INTRNATOMIC, kArgTyU1, kArgTyPtr, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_clear,\
@@ -310,6 +310,6 @@ DEF_MIR_INTRINSIC(C___atomic_always_lock_free,\
 DEF_MIR_INTRINSIC(C___atomic_is_lock_free,\
                   "__atomic_is_lock_free", INTRNATOMIC, kArgTyU1, kArgTyU64, kArgTyPtr)
 DEF_MIR_INTRINSIC(C___atomic_compare_exchange_n,\
-                  "__atomic_compare_exchange_n", INTRNATOMIC, kArgTyU1, kArgTyPtr, kArgTyPtr, kArgTyDynany, kArgTyU1, kArgTyI32, kArgTyI32)
+                  "__atomic_compare_exchange_n", INTRNATOMIC, kArgTyU1, kArgTyPtr, kArgTyPtr, kArgTyU1, kArgTyI32, kArgTyI32)
 DEF_MIR_INTRINSIC(C___atomic_compare_exchange,\
                   "__atomic_compare_exchange", INTRNATOMIC, kArgTyU1, kArgTyPtr, kArgTyPtr, kArgTyPtr, kArgTyU1, kArgTyI32, kArgTyI32)
