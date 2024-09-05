@@ -119,4 +119,27 @@ HWTEST_F_L0(BuiltinsSharedObjectTest, SharedBuiltinsMethod)
     ASSERT_TRUE(hclass->IsCallable());
     ASSERT_TRUE(hclass->IsJSSharedFunction());
 }
+
+HWTEST_F_L0(BuiltinsSharedObjectTest, SendableMethod)
+{
+    // Mock create sendable function
+    auto factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+
+    uint32_t methodOffset = 100;
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(methodOffset));
+    methodLiteral->SetIsShared(true);
+    JSHandle<Method> method = factory->NewSMethod(methodLiteral);
+    method->SetFunctionKind(FunctionKind::BASE_CONSTRUCTOR);
+    JSHandle<JSFunction> func = factory->NewJSSendableFunction(method);
+    ASSERT_TRUE(Method::Cast(func->GetMethod())->IsSendableMethod());
+
+    uint32_t methodOffset1 = 101;
+    MethodLiteral *methodLiteral1 = new MethodLiteral(EntityId(methodOffset1));
+    JSHandle<Method> method1 = factory->NewSMethod(methodLiteral1);
+    method1->SetIsSendable(true);
+    JSHandle<JSFunction> func1 = factory->NewSFunctionByHClass(
+        method1, JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto()));
+    ASSERT_TRUE(Method::Cast(func1->GetMethod())->IsSendableMethod());
+}
 }  // namespace panda::test
