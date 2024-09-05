@@ -93,9 +93,6 @@ private:
     NO_COPY_SEMANTIC(SharedModuleManager);
     NO_MOVE_SEMANTIC(SharedModuleManager);
 
-    JSHandle<JSTaggedValue> ResolveSharedImportedModule(JSThread *thread, const CString &referencingModule,
-        const JSPandaFile *jsPandaFile, JSRecordInfo *recordInfo);
-
     JSHandle<JSTaggedValue> ResolveSharedImportedModuleWithMerge(JSThread *thread, const CString &fileName,
         const CString &recordName, const JSPandaFile *jsPandaFile, JSRecordInfo *recordInfo);
 

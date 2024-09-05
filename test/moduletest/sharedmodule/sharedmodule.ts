@@ -26,6 +26,7 @@ declare function print(str: any): string;
 import {Test1} from "./func"
 import {strA, strB, foo} from "./string"
 
+"shared module"
 class SendableClassA {
     static staticField: string = strA;
     constructor() {

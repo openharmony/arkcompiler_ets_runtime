@@ -2744,6 +2744,117 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule2)
     moduleManager->ExecuteNativeModule(thread, recordName);
 }
 
+HWTEST_F_L0(EcmaModuleTest, GetResolvedRecordIndexBindingModule)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    std::string baseFileNameStr = MODULE_ABC_PATH "module_unexecute.abc";
+    CString baseFileName = baseFileNameStr.c_str();
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "module_unexecute";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<ImportEntry> importEntry =
+        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
+
+    // test GetResolvedRecordIndexBindingModule
+    JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8(recordName1);
+    JSHandle<EcmaString> baseFileNameHdl = objectFactory->NewFromUtf8(baseFileName);
+    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
+        objectFactory->NewSResolvedRecordIndexBindingRecord(recordNameHdl, baseFileNameHdl, 0);
+
+    JSHandle<SourceTextModule> resolvedModule = ecmascript::ModuleManagerHelper::
+        GetResolvedRecordIndexBindingModule(thread, module1, recordIndexBinding);
+    EXPECT_TRUE(resolvedModule->GetStatus() == ModuleStatus::EVALUATED);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetResolvedRecordBindingModule)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    std::string baseFileNameStr = MODULE_ABC_PATH "module_unexecute_A.abc";
+    CString baseFileName = baseFileNameStr.c_str();
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "module_unexecute_A";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+
+    // test GetResolvedRecordBindingModule
+    JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8(recordName1);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<ResolvedRecordBinding> nameBinding =
+        objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
+
+    JSHandle<SourceTextModule> resolvedModule = ecmascript::ModuleManagerHelper::
+        GetResolvedRecordBindingModule(thread, module1, nameBinding);
+    EXPECT_TRUE(resolvedModule->GetStatus() == ModuleStatus::EVALUATED);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromIndexBindingTest)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    std::string baseFileNameStr = MODULE_ABC_PATH "module_unexecute.abc";
+    CString baseFileName = baseFileNameStr.c_str();
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "module_unexecute";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("stringOut"));
+    JSHandle<ImportEntry> importEntry =
+        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
+
+    // test GetLazyModuleValueFromIndexBinding
+    JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8(recordName1);
+    JSHandle<EcmaString> baseFileNameHdl = objectFactory->NewFromUtf8(baseFileName);
+    JSHandle<ResolvedRecordIndexBinding> recordIndexBinding =
+        objectFactory->NewSResolvedRecordIndexBindingRecord(recordNameHdl, baseFileNameHdl, 0);
+
+    JSTaggedValue value = ecmascript::ModuleManagerHelper::GetLazyModuleValueFromIndexBinding(
+        thread, module1, recordIndexBinding.GetTaggedValue());
+
+    EXPECT_TRUE(value.IsString());
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromRecordBindingTest)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSSourceTextModule();
+    std::string baseFileNameStr1 = MODULE_ABC_PATH "module_unexecute_C.abc";
+    CString baseFileName1 = baseFileNameStr1.c_str();
+    module1->SetEcmaModuleFilenameString(baseFileName1);
+    CString recordName1 = "module_unexecute_C";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("default"));
+
+
+    // test GetLazyModuleValueFromRecordBinding
+    JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8(recordName1);
+    JSHandle<ResolvedRecordBinding> nameBinding =
+        objectFactory->NewSResolvedRecordBindingRecord(recordNameHdl, val);
+
+    JSTaggedValue resolvedModuleVal1 = ecmascript::ModuleManagerHelper::
+        GetLazyModuleValueFromRecordBinding(thread, module1, nameBinding.GetTaggedValue());
+    EXPECT_TRUE(resolvedModuleVal1.IsString());
+}
+
+HWTEST_F_L0(EcmaModuleTest, ExecuteCjsModule)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_unexecute_C.abc";
+    const CString baseFileNameStr = baseFileName.c_str();
+    CString recordName = "module_unexecute_C";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    JSNApi::Execute(instance, baseFileName, "module_unexecute_C");
+
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFileNameStr, recordName, false);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->ExecuteCjsModule(thread, recordName, jsPandaFile.get());
+    EXPECT_TRUE(moduleManager->IsEvaluatedModule(recordName));
+}
+
 HWTEST_F_L0(EcmaModuleTest, GetModuleNamespace)
 {
     CString localName1 = "foo";

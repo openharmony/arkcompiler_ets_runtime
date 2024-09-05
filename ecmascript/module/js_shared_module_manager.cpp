@@ -120,40 +120,10 @@ JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModule(JSThread *thr
     }
     JSRecordInfo *recordInfo = nullptr;
     [[maybe_unused]] bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(fileName, &recordInfo);
-    ASSERT(hasRecord);
-    if (jsPandaFile->IsSharedModule(recordInfo)) {
-        return ResolveSharedImportedModule(thread, fileName, jsPandaFile.get(), recordInfo);
-    }
+    ASSERT(hasRecord && !jsPandaFile->IsSharedModule(recordInfo));
     // loading unshared module though current context's module manager
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     return moduleManager->HostResolveImportedModule(fileName, executeFromJob);
-}
-
-JSHandle<JSTaggedValue> SharedModuleManager::ResolveSharedImportedModule(JSThread *thread,
-    const CString &referencingModule, const JSPandaFile *jsPandaFile, [[maybe_unused]] JSRecordInfo *recordInfo)
-{
-    if (SearchInSModuleManager(thread, referencingModule)) {
-        return JSHandle<JSTaggedValue>(GetSModule(thread, referencingModule));
-    }
-    CString fileName = referencingModule;
-    if (!AOTFileManager::GetAbsolutePath(referencingModule, fileName)) {
-        CString msg = "Parse absolute shared module" + referencingModule + " path failed";
-        THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
-    }
-
-    // before resolving module completely, shared-module put into isolate -thread resolvedModules_ temporarily.
-    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    JSHandle<JSTaggedValue> module = moduleManager->TryGetImportedModule(fileName);
-    if (!module->IsUndefined()) {
-        return module;
-    }
-
-    ASSERT(jsPandaFile->IsModule(recordInfo));
-    JSHandle<JSTaggedValue> moduleRecord = SharedModuleHelper::ParseSharedModule(thread,
-        jsPandaFile, fileName, fileName, recordInfo);
-    moduleManager->AddResolveImportedModule(fileName, moduleRecord.GetTaggedValue());
-    moduleManager->AddToInstantiatingSModuleList(fileName);
-    return moduleRecord;
 }
 
 JSHandle<JSTaggedValue> SharedModuleManager::ResolveImportedModuleWithMerge(JSThread *thread,
