@@ -174,7 +174,7 @@ public:
     static JSTaggedValue Construct(EcmaRuntimeCallInfo *info);
     static JSTaggedValue Invoke(EcmaRuntimeCallInfo *info, const JSHandle<JSTaggedValue> &key);
     static JSTaggedValue InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> mainFunc,
-        JSHandle<JSTaggedValue> &thisArg, std::string_view entryPoint, CJSInfo* cjsInfo);
+        JSHandle<JSTaggedValue> &thisArg, CJSInfo* cjsInfo);
     static JSTaggedValue InvokeOptimizedEntrypoint(JSThread *thread, JSHandle<JSFunction> func,
         EcmaRuntimeCallInfo *info);
     // 9.2.2[[Construct]](argumentsList, newTarget)

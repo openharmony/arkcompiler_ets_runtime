@@ -529,8 +529,7 @@ JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, cons
     INTERPRETER_TRACE(thread_, ExecuteAot);
     ASSERT(thread_->IsInManagedState());
     auto entry = thread_->GetRTInterface(kungfu::RuntimeStubCSigns::ID_OptimizedFastCallEntry);
-    // do not modify this log to INFO, this will call many times
-    LOG_ECMA(DEBUG) << "start to execute aot entry: " << (void*)entry;
+    // entry of aot
     auto res = reinterpret_cast<FastCallAotEntryType>(entry)(thread_->GetGlueAddr(),
                                                              actualNumArgs,
                                                              args,
