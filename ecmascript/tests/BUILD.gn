@@ -1455,6 +1455,33 @@ host_unittest_action("EcmaVm_052_Test") {
   deps += hiviewdfx_deps
 }
 
+host_unittest_action("EcmaVm_053_Test") {
+  module_out_path = module_output_path
+
+  sources = [
+    # test file
+    "barrier_test.cpp",
+  ]
+
+  configs = [
+    "../../:ecma_test_config",
+    "$ark_root/assembler:arkassembler_public_config",
+    "$ark_root/libpandafile:arkfile_public_config",
+  ]
+
+  deps = [
+    "$ark_third_party_root/icu/icu4c:shared_icui18n",
+    "$ark_third_party_root/icu/icu4c:shared_icuuc",
+    "../../:libark_jsruntime_test",
+    "../../../runtime_core/assembler:libarkassembler_static",
+    sdk_libc_secshared_dep,
+  ]
+
+  # hiviewdfx libraries
+  external_deps = hiviewdfx_ext_deps
+  deps += hiviewdfx_deps
+}
+
 group("unittest") {
   testonly = true
 
@@ -1510,6 +1537,7 @@ group("unittest") {
     ":EcmaVm_050_Test",
     ":EcmaVm_051_Test",
     ":EcmaVm_052_Test",
+    ":EcmaVm_053_Test",
   ]
 }
 
@@ -1568,6 +1596,7 @@ group("host_unittest") {
     ":EcmaVm_050_TestAction",
     ":EcmaVm_051_TestAction",
     ":EcmaVm_052_TestAction",
+    ":EcmaVm_053_TestAction",
   ]
 
   if (is_mac) {
@@ -1622,6 +1651,7 @@ group("host_unittest") {
       ":EcmaVm_050_TestAction",
       ":EcmaVm_051_TestAction",
       ":EcmaVm_052_TestAction",
+      ":EcmaVm_053_TestAction",
     ]
   }
 }

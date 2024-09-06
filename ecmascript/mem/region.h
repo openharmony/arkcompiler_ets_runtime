@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_MEM_REGION_H
 #define ECMASCRIPT_MEM_REGION_H
 
+#include <type_traits>
+
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/base/asan_interface.h"
 #include "ecmascript/js_tagged_value.h"
@@ -184,6 +186,72 @@ public:
     NO_COPY_SEMANTIC(Region);
     NO_MOVE_SEMANTIC(Region);
 
+    enum RegionSpaceKind { InYoung, InGeneralOld, Other };
+
+    template <RegionSpaceKind kind>
+    class Updater {
+    public:
+        Updater(uintptr_t updateAddress, Region& region)
+            : bitsetUpdater_(updateAddress),
+              region_(region)
+        {
+        }
+
+        NO_COPY_SEMANTIC(Updater);
+
+        ARK_INLINE void AddLocalToShare()
+        {
+            Update(LocalToShareIdx);
+        }
+
+        template <RegionSpaceKind T = kind, std::enable_if_t<T == InYoung, int>  = 0>
+        ARK_INLINE void AddNewToEden()
+        {
+            Update(NewToEdenIdx);
+        }
+
+        template <RegionSpaceKind T = kind, std::enable_if_t<T == InGeneralOld, int>  = 0>
+        ARK_INLINE void AddOldToNew()
+        {
+            Update(OldToNewIdx);
+        }
+
+        ARK_INLINE void Step()
+        {
+            if (bitsetUpdater_.Step()) {
+                Flush();
+            }
+        }
+
+        ARK_INLINE void Flush();
+
+    private:
+        ARK_INLINE void Update(size_t setIdx);
+
+        static constexpr size_t CalculateBitSetNum()
+        {
+            constexpr size_t InYoungBitSetNum = 2;
+            constexpr size_t InGeneralOldBitSetNum = 2;
+            constexpr size_t OtherBitSetNum = 1;
+            switch (kind) {
+                case InYoung:
+                    return InYoungBitSetNum;
+                case InGeneralOld:
+                    return InGeneralOldBitSetNum;
+                case Other:
+                    return OtherBitSetNum;
+            }
+            return 0;
+        }
+
+        static constexpr size_t BitSetNum = CalculateBitSetNum();
+        static constexpr size_t LocalToShareIdx = 0;
+        static constexpr size_t NewToEdenIdx = 1; // NewToEden and OldToNew can't be used at same time.
+        static constexpr size_t OldToNewIdx = 1;
+        GCBitSetUpdater<BitSetNum> bitsetUpdater_;
+        Region& region_;
+    };
+
     void Initialize()
     {
         lock_ = new Mutex();
@@ -282,6 +350,8 @@ public:
     bool HasLocalToShareRememberedSet() const;
     RememberedSet *ExtractLocalToShareRSet();
     void InsertLocalToShareRSet(uintptr_t addr);
+    template<RegionSpaceKind kind>
+    Updater<kind> GetBatchRSetUpdater(uintptr_t addr);
     void AtomicInsertLocalToShareRSet(uintptr_t addr);
     void ClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);
     void AtomicClearLocalToShareRSetInRange(uintptr_t start, uintptr_t end);

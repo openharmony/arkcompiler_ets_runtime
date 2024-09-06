@@ -68,5 +68,16 @@ inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSTagge
     }
 }
 
+template <bool needBarrier>
+inline void TaggedArray::Copy(const JSThread* thread, uint32_t dstStart, uint32_t srcStart,
+                              const TaggedArray* srcArray, uint32_t count)
+{
+    ASSERT((dstStart + count <= GetLength()) && "TaggedArray::Copy dst count is out of range");
+    ASSERT((srcStart + count <= srcArray->GetLength()) && "TaggedArray::Copy src count is out of range");
+    size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
+    JSTaggedValue* to = reinterpret_cast<JSTaggedValue*>(ToUintPtr(GetData()) + taggedTypeSize * dstStart);
+    JSTaggedValue* from = reinterpret_cast<JSTaggedValue*>(ToUintPtr(srcArray->GetData()) + taggedTypeSize * srcStart);
+    Barriers::CopyObject<needBarrier, false>(thread, to, from, count);
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_TAGGED_ARRAY_INL_H

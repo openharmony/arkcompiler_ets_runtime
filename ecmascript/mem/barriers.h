@@ -48,6 +48,11 @@ public:
     template<bool needWriteBarrier = true>
     static void SetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value);
 
+    template<bool needWriteBarrier, bool maybeOverlap>
+    static void CopyObject(const JSThread *thread, JSTaggedValue* dst, JSTaggedValue* src, size_t count);
+
+    template<bool maybeOverlap>
+    static void CopyObjectPrimitive(JSTaggedValue* dst, JSTaggedValue* src, size_t count);
     static void SynchronizedSetClass(const JSThread *thread, void *obj, JSTaggedType value);
     static void SynchronizedSetObject(const JSThread *thread, void *obj, size_t offset, JSTaggedType value,
                                       bool isPrimitive = false);

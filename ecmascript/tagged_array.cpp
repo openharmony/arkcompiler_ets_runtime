@@ -204,9 +204,7 @@ void TaggedArray::CopyTaggedArrayElement(const JSThread *thread, JSHandle<Tagged
 {
     ASSERT(effectiveLength <= srcElements->GetLength());
     ASSERT(effectiveLength <= dstElements->GetLength());
-    for (uint32_t i = 0; i < effectiveLength; i++) {
-        dstElements->Set(thread, i, srcElements->Get(i));
-    }
+    dstElements->Copy(thread, 0, 0, srcElements.GetObject<TaggedArray>(), effectiveLength);
 }
 
 bool TaggedArray::IsDictionaryMode() const

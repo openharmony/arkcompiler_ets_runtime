@@ -30,6 +30,8 @@ namespace panda::ecmascript {
 template<WriteBarrierType writeType = WriteBarrierType::NORMAL>
 static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t offset, JSTaggedType value)
 {
+    // NOTE: The logic in WriteBarrier should be synced with CopyObject.
+    // if any new feature/bugfix be added in WriteBarrier, it should also be added to CopyObject.
     ASSERT(value != JSTaggedValue::VALUE_UNDEFINED);
     Region *objectRegion = Region::ObjectAddressToRange(static_cast<TaggedObject *>(obj));
     Region *valueRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(value));
@@ -57,8 +59,9 @@ static ARK_INLINE void WriteBarrier(const JSThread *thread, void *obj, size_t of
     if (!valueRegion->InSharedHeap() && thread->IsConcurrentMarkingOrFinished()) {
         Barriers::Update(thread, slotAddr, objectRegion, reinterpret_cast<TaggedObject *>(value),
                          valueRegion, writeType);
-    }
-    if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
+        // NOTE: ConcurrentMarking and SharedConcurrentMarking can be enabled at the same time, but a specific value
+        // can't be "not shared heap" and "in SharedSweepableSpace" at the same time. So using "if - else if" is safe.
+    } else if (valueRegion->InSharedSweepableSpace() && thread->IsSharedConcurrentMarkingOrFinished()) {
         if constexpr (writeType != WriteBarrierType::DESERIALIZE) {
             Barriers::UpdateShared(thread, reinterpret_cast<TaggedObject *>(value), valueRegion);
         } else {
@@ -98,6 +101,82 @@ inline void Barriers::SynchronizedSetObject(const JSThread *thread, void *obj, s
         WriteBarrier(thread, obj, offset, value);
     }
 }
-}  // namespace panda::ecmascript
+
+static inline void CopyMaybeOverlap(JSTaggedValue* dst, JSTaggedValue* src, size_t count)
+{
+    std::copy_n(src, count, dst);
+}
+
+static inline void CopyNoOverlap(JSTaggedValue* __restrict__ dst, JSTaggedValue* __restrict__ src, size_t count)
+{
+    std::copy_n(src, count, dst);
+}
+
+template <Region::RegionSpaceKind kind>
+bool BatchBitSet(const JSThread* thread, Region* objectRegion, JSTaggedValue* dst, size_t count);
+
+template <bool needWriteBarrier, bool maybeOverlap>
+void Barriers::CopyObject(const JSThread* thread, JSTaggedValue* dst, JSTaggedValue* src, size_t count)
+{
+    // NOTE: The logic in CopyObject should be synced with WriteBarrier.
+    // if any new feature/bugfix be added in CopyObject, it should also be added to WriteBarrier.
+
+    // step 1. copy from src to dst directly.
+    CopyObjectPrimitive<maybeOverlap>(dst, src, count);
+    if constexpr (!needWriteBarrier) {
+        return;
+    }
+    // step 2. According to object region, update the corresponding bit set batch.
+    Region* objectRegion = Region::ObjectAddressToRange(ToUintPtr(dst));
+    if (!objectRegion->InSharedHeap()) {
+        bool allValueNotHeap = false;
+        if (objectRegion->InYoungSpace()) {
+            allValueNotHeap = BatchBitSet<Region::InYoung>(thread, objectRegion, dst, count);
+        } else if (objectRegion->InGeneralOldSpace()) {
+            allValueNotHeap = BatchBitSet<Region::InGeneralOld>(thread, objectRegion, dst, count);
+        } else {
+            allValueNotHeap = BatchBitSet<Region::Other>(thread, objectRegion, dst, count);
+        }
+        if (allValueNotHeap) {
+            return;
+        }
+    }
+    // step 3. According to marking status, update the barriers.
+    const bool marking = thread->IsConcurrentMarkingOrFinished();
+    const bool sharedMarking = thread->IsSharedConcurrentMarkingOrFinished();
+    if (!marking && !sharedMarking) {
+        return;
+    }
+    for (uint32_t i = 0; i < count; i++) {
+        JSTaggedValue taggedValue = *(dst + i);
+        if (!taggedValue.IsHeapObject()) {
+            continue;
+        }
+        Region* valueRegion = Region::ObjectAddressToRange(taggedValue.GetTaggedObject());
+        ASSERT(!objectRegion->InSharedHeap() || valueRegion->InSharedHeap());
+        if (marking && !valueRegion->InSharedHeap()) {
+            const uintptr_t slotAddr = ToUintPtr(dst) + JSTaggedValue::TaggedTypeSize() * i;
+            Barriers::Update(thread, slotAddr, objectRegion, taggedValue.GetTaggedObject(), valueRegion);
+            // NOTE: ConcurrentMarking and SharedConcurrentMarking can be enabled at the same time, but a specific
+            // value can't be "not shared heap" and "in SharedSweepableSpace" at the same time. So using "if - else if"
+            // is safe.
+        } else if (sharedMarking && valueRegion->InSharedSweepableSpace()) {
+            Barriers::UpdateShared(thread, taggedValue.GetTaggedObject(), valueRegion);
+        }
+    }
+}
+
+template <bool maybeOverlap>
+inline void Barriers::CopyObjectPrimitive(JSTaggedValue* dst, JSTaggedValue* src, size_t count)
+{
+    // Copy Primitive value don't need thread.
+    ASSERT((ToUintPtr(dst) % static_cast<uint8_t>(MemAlignment::MEM_ALIGN_OBJECT)) == 0);
+    if constexpr (maybeOverlap) {
+        CopyMaybeOverlap(dst, src, count);
+    } else {
+        CopyNoOverlap(dst, src, count);
+    }
+}
+} // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_BARRIERS_INL_H

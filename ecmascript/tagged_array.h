@@ -45,6 +45,10 @@ public:
     template <bool needBarrier = true>
     inline void Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
 
+    template <bool needBarrier = true>
+    inline void Copy(const JSThread* thread, uint32_t dstStart, uint32_t srcStart,
+                                  const TaggedArray *srcArray, uint32_t count);
+
     void Set(uint32_t idx, const JSTaggedValue &value);
     void SetBit(const JSThread* thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue& value);
 
