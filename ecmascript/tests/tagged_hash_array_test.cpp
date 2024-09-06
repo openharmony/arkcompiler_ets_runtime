@@ -253,6 +253,187 @@ HWTEST_F_L0(TaggedHashArrayTest, RemoveTreeNode)
     EXPECT_EQ(hashTreeNode->GetCount(), 1U);
 }
 
+bool HasNode(JSTaggedValue hashTreeNodeVa, JSTaggedValue key)
+{
+    if (hashTreeNodeVa.IsHole()) {
+        return false;
+    }
+
+    RBTreeNode *hashTreeNode = RBTreeNode::Cast(hashTreeNodeVa.GetTaggedObject());
+    JSTaggedValue rootKey = hashTreeNode->GetKey();
+    if (JSTaggedValue::SameValue(rootKey, key)) {
+        return true;
+    }
+    return HasNode(hashTreeNode->GetLeft(), key) || HasNode(hashTreeNode->GetRight(), key);
+}
+
+int CheckRBTreeNodeNums(JSTaggedValue hashTreeNodeVa, int count)
+{
+    if (hashTreeNodeVa.IsHole()) {
+        return count;
+    }
+
+    count++;
+    int temp = count;
+    RBTreeNode *hashTreeNode = RBTreeNode::Cast(hashTreeNodeVa.GetTaggedObject());
+    return CheckRBTreeNodeNums(hashTreeNode->GetLeft(), count) +
+           CheckRBTreeNodeNums(hashTreeNode->GetRight(), count) - temp;
+}
+
+template <typename T>
+bool CheckRBTreeOfAllPaths(JSHandle<T> &tree, int numsOfBlack, JSTaggedValue hashTreeNodeVa, int count)
+{
+    if (hashTreeNodeVa.IsHole()) {
+        return count == numsOfBlack;
+    }
+    if (!RBTreeNode::IsRed(hashTreeNodeVa)) {
+        count++;
+    }
+    RBTreeNode *hashTreeNode = RBTreeNode::Cast(hashTreeNodeVa.GetTaggedObject());
+    if (CheckRBTreeOfAllPaths(tree, numsOfBlack, hashTreeNode->GetLeft(), count) &&
+        CheckRBTreeOfAllPaths(tree, numsOfBlack, hashTreeNode->GetRight(), count)) {
+        return true;
+    }
+    return false;
+}
+
+bool CheckRedNode(JSTaggedValue hashTreeNodeva)
+{
+    if (hashTreeNodeva.IsHole()) {
+        return true;
+    }
+    RBTreeNode *hashTreeNode = RBTreeNode::Cast(hashTreeNodeva.GetTaggedObject());
+    JSTaggedValue leftChildVa = hashTreeNode->GetLeft();
+    JSTaggedValue rightChildVa = hashTreeNode->GetRight();
+    if (hashTreeNode->GetIsRed().ToBoolean()) {
+        if (!leftChildVa.IsHole() && RBTreeNode::IsRed(leftChildVa)) {
+            return false;
+        }
+        if (!rightChildVa.IsHole() && RBTreeNode::IsRed(rightChildVa)) {
+            return false;
+        }
+    }
+    return CheckRedNode(leftChildVa) && CheckRedNode(rightChildVa);
+}
+
+template <typename T>
+bool CheckBlackNodeNumbers(JSHandle<T> &tree, JSHandle<RBTreeNode> hashTreeNode)
+{
+    int numsOfBlack = 0;
+    JSTaggedValue ChildVa = hashTreeNode.GetTaggedValue();
+    while (!ChildVa.IsHole()) {
+        if (!RBTreeNode::IsRed(ChildVa)) {
+            numsOfBlack++;
+        }
+        ChildVa = RBTreeNode::Cast(ChildVa.GetTaggedObject())->GetLeft();
+        if (ChildVa.IsHole()) {
+            break;
+        }
+    }
+
+    return CheckRBTreeOfAllPaths(tree, numsOfBlack, hashTreeNode.GetTaggedValue(), 0);
+}
+
+template <typename T>
+bool IsVaildRBTree(JSThread *thread, JSHandle<T> &tree, JSHandle<RBTreeNode> hashTreeNode)
+{
+    if (hashTreeNode.GetTaggedValue().IsHole()) {
+        return true;
+    }
+
+    if (hashTreeNode->GetIsRed().ToBoolean()) {
+        return false;
+    }
+
+    JSTaggedValue leftChildVa = hashTreeNode->GetLeft();
+    JSTaggedValue rightChildVa = hashTreeNode->GetRight();
+    JSTaggedValue treeNodeKey = hashTreeNode->GetKey();
+    int hash = hashTreeNode->GetHash().GetInt();
+    if (!leftChildVa.IsHole()) {
+        RBTreeNode *leftTreeNode = RBTreeNode::Cast(leftChildVa.GetTaggedObject());
+        int cmp = RBTreeNode::Compare(leftTreeNode->GetHash().GetInt(), leftTreeNode->GetKey(), hash, treeNodeKey);
+        if (cmp > 0) {
+            return false;
+        }
+    }
+    if (!rightChildVa.IsHole()) {
+        RBTreeNode *rightTreeNode = RBTreeNode::Cast(rightChildVa.GetTaggedObject());
+        int cmp = RBTreeNode::Compare(rightTreeNode->GetHash().GetInt(), rightTreeNode->GetKey(), hash, treeNodeKey);
+        if (cmp < 0) {
+            return false;
+        }
+    }
+
+    // check red node
+    if (!CheckRedNode(leftChildVa) || !CheckRedNode(rightChildVa)) {
+        return false;
+    }
+    // check black node
+    if (!CheckBlackNodeNumbers(tree, hashTreeNode)) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * @tc.name: RemoveRBTreeNode
+ * @tc.desc: Call "Create" function Create TaggedHashArray object and "SetVal" function to add a key value pair to
+ *           the taggedharray object,The value set is the RBTreeNode object,call "RemoveNode" function to delete a
+ *           node, check if it can be hole then return.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(TaggedHashArrayTest, RemoveRBTreeNode)
+{
+    int numOfElement = 1;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedHashArray> taggedHashArray(thread, TaggedHashArray::Create(thread, numOfElement));
+    std::string myKey("mykey");
+    std::string myValue("myvalue");
+    HashCommon1(thread, taggedHashArray, myKey, myValue, static_cast<uint32_t>(numOfElement));
+    for (int i = numOfElement; i < numOfElement + 100; i++) {
+        JSHandle<JSTaggedValue> myKey1(factory->NewFromStdString(myKey + std::to_string(i)));
+        JSHandle<JSTaggedValue> myKey1Value(factory->NewFromStdString(myValue + std::to_string(i)));
+        auto keyHash = TaggedNode::Hash(thread, myKey1.GetTaggedValue());
+        TaggedHashArray::SetVal(thread, taggedHashArray, keyHash, myKey1, myKey1Value);
+        uint32_t keyHashIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
+        JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
+        EXPECT_TRUE(IsVaildRBTree(thread, taggedHashArray, hashTreeNode));
+    }
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(2, 30);
+    for (int i = numOfElement; i < numOfElement + 20; i++) {
+        int index = dis(gen);
+        JSHandle<JSTaggedValue> myKey1(factory->NewFromStdString(myKey + std::to_string(index)));
+        auto keyHash = TaggedNode::Hash(thread, myKey1.GetTaggedValue());
+        uint32_t keyHashIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
+        JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
+        EXPECT_EQ(taggedHashArray->GetLength(), numOfElement);
+        int beforeNum = CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex), 0);
+        taggedHashArray->RemoveNode(thread, keyHash, myKey1.GetTaggedValue());
+        if (HasNode(taggedHashArray->Get(keyHashIndex), myKey1.GetTaggedValue())) {
+            EXPECT_EQ(beforeNum - 1, CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex), 0));
+        }
+        EXPECT_TRUE(!HasNode(taggedHashArray->Get(keyHashIndex), myKey1.GetTaggedValue()));
+        JSHandle<RBTreeNode> hashTreeNode1(thread, taggedHashArray->Get(keyHashIndex));
+        EXPECT_TRUE(IsVaildRBTree(thread, taggedHashArray, hashTreeNode1));
+        JSHandle<JSTaggedValue> myKey2(factory->NewFromStdString(myKey + std::to_string(index + 100)));
+        JSHandle<JSTaggedValue> myKey2Value(factory->NewFromStdString(myValue + std::to_string(index + 100)));
+        auto keyHash1 = TaggedNode::Hash(thread, myKey2.GetTaggedValue());
+        uint32_t keyHashIndex1 = static_cast<uint32_t>(numOfElement - 1) & keyHash1;
+        beforeNum = CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex1), 0);
+        TaggedHashArray::SetVal(thread, taggedHashArray, keyHash1, myKey2, myKey2Value);
+        if (!HasNode(taggedHashArray->Get(keyHashIndex1), myKey2.GetTaggedValue())) {
+            EXPECT_EQ(beforeNum + 1, CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex1), 0));
+        }
+        EXPECT_TRUE(HasNode(taggedHashArray->Get(keyHashIndex1), myKey2.GetTaggedValue()));
+        JSHandle<RBTreeNode> hashTreeNode2(thread, taggedHashArray->Get(keyHashIndex1));
+        EXPECT_TRUE(IsVaildRBTree(thread, taggedHashArray, hashTreeNode2));
+    }
+}
+
 /**
  * @tc.name: ResetLinkNodeSize
  * @tc.desc: Call "Create" function Create TaggedHashArray object and "SetVal" function to add a key value pair to
