@@ -502,7 +502,9 @@ public:
         return stringTable_;
     }
 
-    bool BuildSnapshotForBinMod(CVector<RawHeapObjInfo *> &objInfoVec, CUnorderedMap<uint64_t, char *> &strTableIdMap);
+    bool BuildSnapshotForBinMod(CVector<RawHeapObjInfo *> &objInfoVec);
+    Node *GenerateNodeForBinMod(TaggedObject *obj, RawHeapObjInfo *objInfo,
+                                CUnorderedMap<uint64_t, const char *> &strTableIdMap);
 
     StringId GenerateStringId(TaggedObject *obj)
     {
@@ -514,11 +516,6 @@ public:
             return stringTable_->InsertStrAndGetStringId(ParseFunctionName(obj));
         }
         return 1; // 1 : invalid id
-    }
-
-    Node *GenerateNode(TaggedObject *obj, size_t size)
-    {
-        return GenerateNode(JSTaggedValue(obj), size, false, false, true);
     }
 
 private:

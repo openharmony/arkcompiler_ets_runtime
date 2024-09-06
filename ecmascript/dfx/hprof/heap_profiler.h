@@ -84,32 +84,27 @@ struct AddrTableItem {
 };
 
 struct RawHeapObjInfo {
-    AddrTableItem tInfo;
+    AddrTableItem *tInfo;
     char *newAddr;
     bool isRoot;
-    CVector<uint64_t> refVec;
+    CUnorderedSet<uint64_t> refSet;
 };
 
 struct RawHeapInfoArgs {
     CVector<RawHeapObjInfo *> rawObjInfoVec;
-    CUnorderedMap<uint64_t, char *> objOldAddrMapNewAddr;
-    CUnorderedMap<uint64_t, char *> strTableIdMapNewStr;
+    CUnorderedMap<uint64_t, RawHeapObjInfo *> oldAddrMapObjInfo;
+    CUnorderedMap<uint64_t, const char *> strTableIdMapNewStr;
 };
 
 class ChunkDecoder {
 public:
-    explicit ChunkDecoder(std::string fileContent);
+    explicit ChunkDecoder(char *mAddr, uint64_t fSize);
 
     ~ChunkDecoder()
     {
         auto &objInfoVec = rawHeapArgs.rawObjInfoVec;
         for (auto obj : objInfoVec) {
-            delete[] obj->newAddr;
             delete obj;
-        }
-        auto &strTableIdMap = rawHeapArgs.strTableIdMapNewStr;
-        for (auto obj : strTableIdMap) {
-            delete[] obj.second;
         }
     }
 
@@ -119,14 +114,15 @@ public:
     }
 
 private:
-    void DecodeStrTable(const char *charPtr, uint64_t fileSize);
+    void DecodeStrTable(const char *charPtr);
 
     uint64_t heapObjCnt;
     uint64_t rootObjCnt;
-    uint64_t ShareObjCnt;
+    uint64_t shareObjCnt;
     uint64_t strTableOffset;
-    CUnorderedMap<uint64_t, RawHeapObjInfo *> rootAddrMap;
     RawHeapInfoArgs rawHeapArgs;
+    char *mapAddr;
+    uint64_t fileSize;
 };
 
 class HeapProfiler : public HeapProfilerInterface {

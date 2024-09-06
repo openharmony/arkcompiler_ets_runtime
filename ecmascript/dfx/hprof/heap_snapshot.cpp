@@ -1088,7 +1088,7 @@ void HeapSnapshot::FillEdgesForBinMod(RawHeapObjInfo *objInfo)
     auto jsHclass = object->GetClass();
     if (jsHclass->IsJsGlobalEnv() || jsHclass->IsString()) {
         referenceResources.emplace_back("hclass", JSTaggedValue(jsHclass));
-        for (auto refAddr : objInfo->refVec) {
+        for (auto refAddr : objInfo->refSet) {
             JSTaggedValue val(refAddr);
             auto valTy = val.GetTaggedObject()->GetClass()->GetObjectType();
             referenceResources.emplace_back(JSHClass::DumpJSType(valTy), val);
@@ -1144,8 +1144,20 @@ void HeapSnapshot::AddSyntheticRootForBinMod(RawHeapObjInfo *objInfo, int &edgeO
     }
 }
 
-bool HeapSnapshot::BuildSnapshotForBinMod(CVector<RawHeapObjInfo *> &objInfoVec,
-                                          CUnorderedMap<uint64_t, char *> &strTableIdMap)
+Node *HeapSnapshot::GenerateNodeForBinMod(TaggedObject *obj, RawHeapObjInfo *objInfo,
+                                          CUnorderedMap<uint64_t, const char *> &strTableIdMap)
+{
+    auto currNode = GenerateNode(JSTaggedValue(obj), objInfo->tInfo->objSize, false, false, true);
+    if (strTableIdMap.find(objInfo->tInfo->stringId) != strTableIdMap.end()
+        && strTableIdMap[objInfo->tInfo->stringId] != nullptr) {
+        if (currNode != nullptr) {
+            currNode->SetName(GetString(strTableIdMap[objInfo->tInfo->stringId]));
+        }
+    }
+    return currNode;
+}
+
+bool HeapSnapshot::BuildSnapshotForBinMod(CVector<RawHeapObjInfo *> &objInfoVec)
 {
     Node *syntheticRoot = Node::NewNode(chunk_, 1, nodeCount_, GetString("SyntheticRoot"),
                                         NodeType::SYNTHETIC, 0, 0, 0);
@@ -1153,13 +1165,6 @@ bool HeapSnapshot::BuildSnapshotForBinMod(CVector<RawHeapObjInfo *> &objInfoVec,
     int edgeOffset = 0;
     for (auto objInfo : objInfoVec) {
         FillEdgesForBinMod(objInfo);
-        if (strTableIdMap.find(objInfo->tInfo.stringId) != strTableIdMap.end()
-            && strTableIdMap[objInfo->tInfo.stringId] != nullptr) {
-            Node *currNode = entryMap_.FindEntry(reinterpret_cast<JSTaggedType>(objInfo->newAddr));
-            if (currNode != nullptr) {
-                currNode->SetName(GetString(strTableIdMap[objInfo->tInfo.stringId]));
-            }
-        }
         AddSyntheticRootForBinMod(objInfo, edgeOffset, syntheticRoot);
     }
     int reindex = 0;
