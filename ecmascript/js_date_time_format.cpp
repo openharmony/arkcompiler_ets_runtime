@@ -1187,12 +1187,12 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
         RETURN_IF_ABRUPT_COMPLETION(thread);
     }
     // [[DateStyle]], [[TimeStyle]].
-    icu::UnicodeString patternUnicode;
-    icuSimpleDateFormat->toPattern(patternUnicode);
-    std::string pattern;
-    patternUnicode.toUTF8String(pattern);
     if (dateTimeFormat->GetDateStyle() == DateTimeStyleOption::UNDEFINED &&
         dateTimeFormat->GetTimeStyle() == DateTimeStyleOption::UNDEFINED) {
+        icu::UnicodeString patternUnicode;
+        icuSimpleDateFormat->toPattern(patternUnicode);
+        std::string pattern;
+        patternUnicode.toUTF8String(pattern);
         for (const auto &item : BuildIcuPatternDescs()) {
             // fractionalSecondsDigits need to be added before timeZoneName.
             if (item.property == "timeZoneName") {
@@ -1205,10 +1205,10 @@ void JSDateTimeFormat::ResolvedOptions(JSThread *thread, const JSHandle<JSDateTi
                     RETURN_IF_ABRUPT_COMPLETION(thread);
                 }
             }
-            property = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(item.property));
             for (const auto &pair : item.pairs) {
                 if (pattern.find(pair.first) != std::string::npos) {
                     hcValue = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(pair.second));
+                    property = JSHandle<JSTaggedValue>::Cast(factory->NewFromStdString(item.property));
                     JSObject::CreateDataPropertyOrThrow(thread, options, property, hcValue);
                     RETURN_IF_ABRUPT_COMPLETION(thread);
                     break;
@@ -1425,7 +1425,7 @@ Value JSDateTimeFormat::TrackValue(int32_t beginning, int32_t ending,
 
 std::vector<IcuPatternDesc> BuildIcuPatternDescs()
 {
-    std::vector<IcuPatternDesc> items = {
+    static const std::vector<IcuPatternDesc> items = {
         IcuPatternDesc("weekday", ICU_WEEKDAY_PE, ICU_NARROW_LONG_SHORT),
         IcuPatternDesc("era", ICU_ERA_PE, ICU_NARROW_LONG_SHORT),
         IcuPatternDesc("year", ICU_YEAR_PE, ICU2_DIGIT_NUMERIC),
