@@ -2310,6 +2310,11 @@ inline GateRef StubBuilder::GetUnsharedConstpoolIndex(GateRef constpool)
     return GetValueFromTaggedArray(constpool, unshareIdx);
 }
 
+inline GateRef StubBuilder::GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool)
+{
+    return env_->GetBuilder()->GetUnsharedConstpoolFromGlue(glue, constpool);
+}
+
 inline GateRef StubBuilder::GetUnsharedConstpool(GateRef arrayAddr, GateRef index)
 {
     GateRef dataOffset =
