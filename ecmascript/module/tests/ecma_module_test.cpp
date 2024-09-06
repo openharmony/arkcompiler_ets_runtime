@@ -1795,12 +1795,20 @@ HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts)
     std::set<CString> increaseModule;
 
     ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
+    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
+
     module->SetRegisterCounts(INT8_MAX);
     ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
+    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
+
     module2->SetRegisterCounts(INT8_MAX);
     ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
+    EXPECT_EQ(module2->GetRequestedModules().IsUndefined(), true);
+
     module2->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
     ModuleDeregister::IncreaseRegisterCounts(thread, module2, increaseModule);
+    bool res = module2->GetLoadingTypes() == LoadingTypes::STABLE_MODULE;
+    EXPECT_EQ(res, true);
 }
 
 HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts)
@@ -1816,10 +1824,17 @@ HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts)
     std::set<CString> decreaseModule;
 
     ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
+    bool res1 = module->GetLoadingTypes() != LoadingTypes::DYNAMITC_MODULE;
+    EXPECT_EQ(res1, true);
+
     module->SetRegisterCounts(INT8_MAX);
     ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
+    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
+
     module2->SetLoadingTypes(LoadingTypes::DYNAMITC_MODULE);
     ModuleDeregister::DecreaseRegisterCounts(thread, module2, decreaseModule);
+    bool res2 = module2->GetLoadingTypes() != LoadingTypes::DYNAMITC_MODULE;
+    EXPECT_EQ(res2, false);
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl) {
@@ -1828,7 +1843,9 @@ HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl) {
     SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
     int32_t index = 2;
     JSTaggedValue currentModule1 = module1.GetTaggedValue();
-    manager1->GetSendableModuleValueImpl(thread, index, currentModule1);
+    JSTaggedValue res1 = manager1->GetSendableModuleValueImpl(
+        thread, index, currentModule1);
+    EXPECT_EQ(res1, thread->GlobalConstants()->GetUndefined());
 
     SharedModuleManager* manager2 = SharedModuleManager::GetInstance();
     std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
@@ -1838,7 +1855,9 @@ HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl) {
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSHandle<SourceTextModule> module2 = moduleManager->HostGetImportedModule("module_test_module_test_C");
     JSTaggedValue currentModule2 = module2.GetTaggedValue();
-    manager2->GetSendableModuleValueImpl(thread, index, currentModule2);
+    JSTaggedValue res2 = manager2->GetSendableModuleValueImpl(
+        thread, index, currentModule2);
+    EXPECT_NE(res2, thread->GlobalConstants()->GetUndefined());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetLazySendableModuleValueImpl) {
@@ -1847,7 +1866,9 @@ HWTEST_F_L0(EcmaModuleTest, GetLazySendableModuleValueImpl) {
     SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
     int32_t index = 2;
     JSTaggedValue currentModule1 = module1.GetTaggedValue();
-    manager1->GetLazySendableModuleValueImpl(thread, index, currentModule1);
+    JSTaggedValue res1 = manager1->GetLazySendableModuleValueImpl(
+        thread, index, currentModule1);
+    EXPECT_EQ(res1, thread->GlobalConstants()->GetUndefined());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge) {
@@ -1862,7 +1883,9 @@ HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge) {
     CString recordName2 = "testModule";
     SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
     bool executeFromJob = false;
-    manager1->ResolveImportedModuleWithMerge(thread, baseFileName.c_str(), recordName2, executeFromJob);
+    JSHandle<JSTaggedValue> res = manager1->ResolveImportedModuleWithMerge(
+        thread, baseFileName.c_str(), recordName2, executeFromJob);
+    EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Exception());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge2) {
@@ -1871,7 +1894,9 @@ HWTEST_F_L0(EcmaModuleTest, ResolveImportedModuleWithMerge2) {
 
     SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
     bool executeFromJob = false;
-    manager1->ResolveImportedModuleWithMerge(thread, moduleName1, recordName1, executeFromJob);
+    JSHandle<JSTaggedValue> res = manager1->ResolveImportedModuleWithMerge(
+        thread, moduleName1, recordName1, executeFromJob);
+    EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Exception());
 }
 
 HWTEST_F_L0(EcmaModuleTest, IsInstantiatedSModule) {
@@ -2103,6 +2128,7 @@ HWTEST_F_L0(EcmaModuleTest, ReviseLoadedModuleCount2) {
     module2->SetLoadingTypes(LoadingTypes::STABLE_MODULE);
 
     ModuleDeregister::ReviseLoadedModuleCount(thread, recordName2);
+    EXPECT_EQ(module2->GetLoadingTypes(), LoadingTypes::STABLE_MODULE);
 }
 
 HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts2)
@@ -2118,6 +2144,7 @@ HWTEST_F_L0(EcmaModuleTest, IncreaseRegisterCounts2)
     increaseModule.insert("b");
     module->SetSharedType(SharedTypes::SHARED_MODULE);
     ModuleDeregister::IncreaseRegisterCounts(thread, module, increaseModule);
+    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
 }
 
 HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts2)
@@ -2133,6 +2160,7 @@ HWTEST_F_L0(EcmaModuleTest, DecreaseRegisterCounts2)
     decreaseModule.insert("b");
     module->SetSharedType(SharedTypes::SHARED_MODULE);
     ModuleDeregister::DecreaseRegisterCounts(thread, module, decreaseModule);
+    EXPECT_EQ(module->GetRequestedModules().IsUndefined(), false);
 }
 
 HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule)
@@ -2673,7 +2701,9 @@ HWTEST_F_L0(EcmaModuleTest, LoadNativeModule)
     module->StoreModuleValue(thread, 0, val);
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    moduleManager->LoadNativeModule(thread, "@app:bundleName/moduleName/lib*.so");
+    JSHandle<JSTaggedValue> res = moduleManager->LoadNativeModule(
+        thread, "@app:bundleName/moduleName/lib*.so");
+    EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModuleMayThrowError)
@@ -2693,10 +2723,15 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModuleMayThrowError)
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     module->SetStatus(ModuleStatus::EVALUATED);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    moduleManager->ExecuteNativeModuleMayThrowError(thread, recordName);
+    JSHandle<JSTaggedValue> res = moduleManager->ExecuteNativeModuleMayThrowError(
+        thread, recordName);
+    EXPECT_EQ(res.GetTaggedValue(), JSTaggedValue::Undefined());
+
     thread->GetCurrentEcmaContext()->GetModuleManager()->AddResolveImportedModule(
         recordName, module.GetTaggedValue());
-    moduleManager->ExecuteNativeModuleMayThrowError(thread, recordName);
+    JSHandle<JSTaggedValue> res2 = moduleManager->ExecuteNativeModuleMayThrowError(
+        thread, recordName);
+    EXPECT_NE(res2.GetTaggedValue(), JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule)
@@ -2721,7 +2756,8 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule)
         recordName, module.GetTaggedValue());
     moduleManager->ExecuteNativeModule(thread, recordName);
     module->SetStatus(ModuleStatus::EVALUATED);
-    moduleManager->ExecuteNativeModule(thread, recordName);
+    JSHandle<JSTaggedValue> res = moduleManager->ExecuteNativeModule(thread, recordName);
+    EXPECT_NE(res.GetTaggedValue(), JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule2)
@@ -2741,7 +2777,8 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteNativeModule2)
     module->SetTypes(ModuleTypes::NATIVE_MODULE);
     
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    moduleManager->ExecuteNativeModule(thread, recordName);
+    JSHandle<JSTaggedValue> res = moduleManager->ExecuteNativeModule(thread, recordName);
+    EXPECT_NE(res.GetTaggedValue(), JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetResolvedRecordIndexBindingModule)
@@ -2872,7 +2909,8 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleNamespace)
     JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
-    moduleManager->GetModuleNamespace(key.GetTaggedValue(), jsFunc);
+    JSTaggedValue res = moduleManager->GetModuleNamespace(key.GetTaggedValue(), jsFunc);
+    EXPECT_EQ(res, JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetModuleValueInner3)
@@ -2893,7 +2931,8 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValueInner3)
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
     moduleManager->GetModuleValueInner(key.GetTaggedValue(), jsFunc);
-    moduleManager->GetModuleValueOutter(key.GetTaggedValue(), jsFunc);
+    JSTaggedValue res = moduleManager->GetModuleValueOutter(key.GetTaggedValue(), jsFunc);
+    EXPECT_EQ(res, JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter)
@@ -2920,7 +2959,8 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter)
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
     moduleManager->GetModuleValueInner(key.GetTaggedValue(), jsFunc);
-    moduleManager->GetModuleValueOutter(key.GetTaggedValue(), jsFunc);
+    JSTaggedValue res = moduleManager->GetModuleValueOutter(key.GetTaggedValue(), jsFunc);
+    EXPECT_EQ(res, JSTaggedValue::Undefined());
 }
 
 HWTEST_F_L0(EcmaModuleTest, StoreModuleValue3)
@@ -2947,6 +2987,7 @@ HWTEST_F_L0(EcmaModuleTest, StoreModuleValue3)
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
     moduleManager->StoreModuleValue(key.GetTaggedValue(), val.GetTaggedValue(), jsFunc);
+    EXPECT_TRUE(!thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromRecordBinding)
@@ -2976,6 +3017,7 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueFromRecordBinding)
     JSHandle<JSTaggedValue> key = JSHandle<JSTaggedValue>::Cast(nameBinding);
     ModuleManagerHelper::GetLazyModuleValueFromRecordBinding(thread, module2, key.GetTaggedValue());
     ModuleManagerHelper::GetModuleValueFromRecordBinding(thread, module2, key.GetTaggedValue());
+    EXPECT_TRUE(!thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ReplaceModuleThroughFeature1)
@@ -3272,6 +3314,7 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteCjsModuleTest)
 
     CString recordName2 = "testModule";
     moduleManager->ExecuteCjsModule(thread, recordName2, jsPandaFile.get());
+    EXPECT_TRUE(!thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, ExecuteCjsModuleTest2)
@@ -3305,6 +3348,7 @@ HWTEST_F_L0(EcmaModuleTest, ExecuteCjsModuleTest2)
     CString recordName = "testModule";
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->ExecuteCjsModule(thread, recordName, pf.get());
+    EXPECT_TRUE(!thread->HasPendingException());
 }
 
 
@@ -3330,6 +3374,7 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueOutter)
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
     moduleManager->GetLazyModuleValueOutter(0, jsFunc);
+    EXPECT_TRUE(thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueOutter2)
@@ -3349,6 +3394,7 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueOutter2)
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
     moduleManager->GetLazyModuleValueOutter(0, jsFunc);
+    EXPECT_TRUE(!thread->HasPendingException());
 
     JSHandle<EcmaString> recordNameHdl = objectFactory->NewFromUtf8(recordName);
     JSHandle<EcmaString> baseFileNameHdl = objectFactory->NewFromUtf8(baseFileName);
@@ -3361,6 +3407,7 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueOutter2)
     ctor->SetModule(thread, module);
     jsFunc = ctor.GetTaggedValue();
     moduleManager->GetLazyModuleValueOutter(0, jsFunc);
+    EXPECT_TRUE(thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueOutter3)
@@ -3388,6 +3435,7 @@ HWTEST_F_L0(EcmaModuleTest, GetLazyModuleValueOutter3)
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
     moduleManager->GetLazyModuleValueOutter(0, jsFunc);
+    EXPECT_TRUE(thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter1)
@@ -3412,6 +3460,7 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter1)
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
     moduleManager->GetModuleValueOutter(0, jsFunc);
+    EXPECT_TRUE(thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter2)
@@ -3426,6 +3475,7 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter2)
     module->SetStatus(ModuleStatus::EVALUATED);
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     moduleManager->AddResolveImportedModule(recordName, module.GetTaggedValue());
+    EXPECT_TRUE(!thread->HasPendingException());
 
     JSHandle<JSFunction> ctor(thread->GetEcmaVM()->GetGlobalEnv()->GetObjectFunction());
     ctor->SetModule(thread, module);
@@ -3443,6 +3493,7 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter2)
     ctor->SetModule(thread, module);
     jsFunc = ctor.GetTaggedValue();
     moduleManager->GetModuleValueOutter(0, jsFunc);
+    EXPECT_TRUE(thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter3)
@@ -3470,6 +3521,7 @@ HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutter3)
     ctor->SetModule(thread, module);
     JSTaggedValue jsFunc = ctor.GetTaggedValue();
     moduleManager->GetModuleValueOutter(0, jsFunc);
+    EXPECT_TRUE(thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl2) {
@@ -3493,6 +3545,7 @@ HWTEST_F_L0(EcmaModuleTest, GetSendableModuleValueImpl2) {
     envRec->Set(thread, 0, resolution);
     module->SetEnvironment(thread, envRec);
     manager->GetSendableModuleValueImpl(thread, 0, module.GetTaggedValue());
+    EXPECT_TRUE(thread->HasPendingException());
 }
 
 HWTEST_F_L0(EcmaModuleTest, GetLazySendableModuleValueImpl2) {
@@ -3516,5 +3569,39 @@ HWTEST_F_L0(EcmaModuleTest, GetLazySendableModuleValueImpl2) {
     envRec->Set(thread, 0, resolution);
     module->SetEnvironment(thread, envRec);
     manager->GetLazySendableModuleValueImpl(thread, 0, module.GetTaggedValue());
+    EXPECT_TRUE(thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, GenerateSendableFuncModule2)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    JSHandle<JSTaggedValue> moduleRecord = JSHandle<JSTaggedValue>::Cast(module);
+    SendableClassModule::GenerateSendableFuncModule(thread, moduleRecord);
+    JSHandle<SourceTextModule> currentModule = JSHandle<SourceTextModule>::Cast(moduleRecord);
+    EXPECT_FALSE(SourceTextModule::IsModuleInSharedHeap(currentModule));
+}
+
+HWTEST_F_L0(EcmaModuleTest, CloneEnvForSModule1)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSourceTextModule();
+    CString baseFileName = "modules.abc";
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "a";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<ImportEntry> importEntry =
+        objectFactory->NewImportEntry(val, val, val, SharedTypes::UNSENDABLE_MODULE);
+    SourceTextModule::AddImportEntry(thread, module1, importEntry, 0, 1);
+    JSHandle<TaggedArray> envRec = objectFactory->NewTaggedArray(1);
+    JSHandle<JSTaggedValue> resolution = JSHandle<JSTaggedValue>::Cast(
+        objectFactory->NewResolvedBindingRecord(module1, val));
+    envRec->Set(thread, 0, resolution);
+    module1->SetEnvironment(thread, envRec);
+    module1->SetTypes(ModuleTypes::NATIVE_MODULE);
+    JSHandle<TaggedArray> elements = JSSharedModule::CloneEnvForSModule(thread, module1, envRec);
+    EXPECT_TRUE(elements->GetLength() == 1U);
 }
 }  // namespace panda::test
