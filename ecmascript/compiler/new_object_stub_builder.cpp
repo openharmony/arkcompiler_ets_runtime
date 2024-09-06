@@ -807,29 +807,25 @@ GateRef NewObjectStubBuilder::NewJSFunction(GateRef glue, GateRef constpool, Gat
     DEFVARIABLE(val, VariableType::JS_ANY(), Undefined());
     DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
 
+    val = GetValueFromTaggedArray(constpool, index);
+
     Label isHeapObject(env);
     Label afterAOTLiteral(env);
-    Label tryGetAOTIhc(env);
-    //AOT ihc infos always in unshareConstpool
-    //If is runing on AOT,unshareConstpool is definitely not a hole
-    //So wo can skip if unshareConstpool is hole
-    GateRef unsharedConstpool = GetUnsharedConstpoolFromGlue(glue, constpool);
-    BRANCH(TaggedIsHole(unsharedConstpool), &afterAOTLiteral, &tryGetAOTIhc);
-    Bind(&tryGetAOTIhc);
+    BRANCH(TaggedIsHeapObject(*val), &isHeapObject, &afterAOTLiteral);
     {
-        val = GetValueFromTaggedArray(unsharedConstpool, index);
-        BRANCH(TaggedIsHeapObject(*val), &isHeapObject, &afterAOTLiteral);
+        Bind(&isHeapObject);
+        Label isAOTLiteral(env);
+        BRANCH(IsAOTLiteralInfo(*val), &isAOTLiteral, &afterAOTLiteral);
         {
-            Bind(&isHeapObject);
-            Label isAOTLiteral(env);
-            BRANCH(IsAOTLiteralInfo(*val), &isAOTLiteral, &afterAOTLiteral);
-            {
-                Bind(&isAOTLiteral);
-                {
-                    ihc = GetIhcFromAOTLiteralInfo(*val);
-                    Jump(&afterAOTLiteral);
-                }
-            }
+            Bind(&isAOTLiteral);
+            // Avoiding shareobj references to unshareobj.
+            GateRef unshareIdx = GetUnsharedConstpoolIndex(constpool);
+            GateId unshareCpOffset = JSThread::GlueData::GetUnSharedConstpoolsOffset(env->Is32Bit());
+            GateRef unshareCpAddr = Load(VariableType::NATIVE_POINTER(), glue, IntPtr(unshareCpOffset));
+            GateRef unshareCp = GetUnsharedConstpool(unshareCpAddr, unshareIdx);
+            val = GetValueFromTaggedArray(unshareCp, index);
+            ihc = GetIhcFromAOTLiteralInfo(*val);
+            Jump(&afterAOTLiteral);
         }
     }
     Bind(&afterAOTLiteral);
