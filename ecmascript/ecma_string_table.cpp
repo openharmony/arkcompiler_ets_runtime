@@ -418,11 +418,11 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const ui
 
 void EcmaStringTable::SweepWeakReference(const WeakRootVisitor &visitor)
 {
-    // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
     for (auto it = table_.begin(); it != table_.end();) {
+        // Strings in string table should not be in the young space. Only old gc will sweep string table.
         auto *object = it->second;
         auto fwd = visitor(object);
-        ASSERT(Region::ObjectAddressToRange(object)->InSharedHeap());
+        ASSERT(!Region::ObjectAddressToRange(object)->InYoungSpace());
         if (fwd == nullptr) {
             LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;
             it = table_.erase(it);

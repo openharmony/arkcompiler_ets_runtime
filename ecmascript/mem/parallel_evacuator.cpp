@@ -381,7 +381,7 @@ void ParallelEvacuator::UpdateWeakReference()
             if (markWord.IsForwardingAddress()) {
                 return markWord.ToForwardingAddress();
             }
-            return nullptr;
+            return reinterpret_cast<TaggedObject *>(ToUintPtr(nullptr));
         }
         if (objectRegion->InGeneralNewSpaceOrCSet()) {
             if (objectRegion->InNewToNewSet()) {
