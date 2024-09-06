@@ -133,4 +133,170 @@ HWTEST_F_L0(GCTest, LargeOverShootSizeTest)
     size_t newSize = heap->GetNewSpace()->GetCommittedSize();
     EXPECT_TRUE(originalYoungSize <= newSize);
 }
+
+HWTEST_F_L0(GCTest, CheckAndTriggerSharedGCTest001)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    ASSERT_EQ(heap->CheckAndTriggerSharedGC(thread), false);
+}
+
+HWTEST_F_L0(GCTest, CheckHugeAndTriggerSharedGCTest001)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    ASSERT_EQ(heap->CheckHugeAndTriggerSharedGC(thread, 1374210560), true);
+}
+
+HWTEST_F_L0(GCTest, CheckHugeAndTriggerSharedGCTest002)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    ASSERT_EQ(heap->CheckHugeAndTriggerSharedGC(thread, 1), false);
+}
+
+HWTEST_F_L0(GCTest, ObjectExceedMaxHeapSizeTest001)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    ASSERT_EQ(heap->ObjectExceedMaxHeapSize(), false);
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerGCForIdleTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_EQ(heap->CheckAndTriggerGCForIdle(1, CheckIdleGCType::VSYNC), false);
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(), true);
+}
+
+HWTEST_F_L0(GCTest, CalculateIdleDurationTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_EDEN);
+    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_EDEN);
+    heap->CalculateIdleDuration();
+}
+
+HWTEST_F_L0(GCTest, CalculateIdleDurationTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_YOUNG);
+    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_YOUNG);
+    heap->CalculateIdleDuration();
+}
+
+HWTEST_F_L0(GCTest, CalculateIdleDurationTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_FULL);
+    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
+    heap->CalculateIdleDuration();
+}
+
+HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_EQ(heap->TryTriggerFullMarkBySharedLimit(), false);
+}
+
+HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
+    ASSERT_EQ(heap->TryTriggerFullMarkBySharedLimit(), false);
+}
+
+HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedLimitTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    for (size_t i = 0; i < 4; i++) {
+        ConcurrentMarker::TryIncreaseTaskCounts();
+    }
+    ASSERT_EQ(heap->TryTriggerFullMarkBySharedLimit(), true);
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerTaskFinishedGCTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->CheckAndTriggerTaskFinishedGC();
+}
+
+HWTEST_F_L0(GCTest, TryTriggerFullMarkBySharedSizeTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->TryTriggerFullMarkBySharedSize(81579214);
+}
+
+HWTEST_F_L0(GCTest, DecreaseNativeBindingSizeTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->DecreaseNativeBindingSize(0);
+}
+
+HWTEST_F_L0(GCTest, TriggerConcurrentMarkingTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_FULL);
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->TriggerConcurrentMarking();
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::NO_TASK);
+    heap->TriggerIdleCollection(1000);
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::INCREMENTAL_MARK);
+    heap->TriggerIdleCollection(1000);
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
+    heap->TriggerIdleCollection(-1);
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest004)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
+    heap->SetMarkType(MarkType::MARK_FULL);
+    heap->TriggerIdleCollection(1000);
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest005)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::FINISH_MARKING);
+    heap->SetMarkType(MarkType::MARK_EDEN);
+    heap->TriggerIdleCollection(1000);
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest006)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->TriggerIdleCollection(1000);
+}
+
+HWTEST_F_L0(GCTest, NotifyFinishColdStartTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::YOUNG_GC);
+    heap->NotifyFinishColdStart(true);
+}
+
+HWTEST_F_L0(GCTest, NotifyFinishColdStartSoonTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->NotifyFinishColdStartSoon();
+}
+
 } // namespace panda::test
