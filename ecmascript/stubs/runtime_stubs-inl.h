@@ -2204,15 +2204,12 @@ JSTaggedValue RuntimeStubs::RuntimeNewObjRange(JSThread *thread, const JSHandle<
     return tagged;
 }
 
-void RuntimeStubs::DefineFuncTryUseAOTHClass(JSThread* thread,
-                                             const JSHandle<JSFunction>& func,
-                                             const JSHandle<JSTaggedValue>& ihc,
-                                             const JSHandle<AOTLiteralInfo>& aotLiteralInfo)
+void RuntimeStubs::DefineFuncTryUseAOTHClass(JSThread *thread, const JSHandle<JSFunction> &func,
+                                             const JSHandle<JSTaggedValue> &ihc)
 {
     FunctionKind kind = Method::Cast(func->GetMethod())->GetFunctionKind();
     // The HClass of AOT comes from .ai deserialization
     if (!ihc->IsUndefined() && kind == FunctionKind::BASE_CONSTRUCTOR) {
-        ASSERT(!aotLiteralInfo.GetTaggedValue().IsHole());
         JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
         func->SetProtoOrHClass(thread, ihc);
@@ -2235,8 +2232,6 @@ void RuntimeStubs::DefineFuncTryUseAOTHClass(JSThread* thread,
         } else {
             JSHClass::EnablePHCProtoChangeMarker(thread, JSHandle<JSHClass>(thread, clsPrototype->GetClass()));
         }
-        //avoid one thread uses ihc twice or more times
-        aotLiteralInfo->SetIhc(JSTaggedValue::Undefined());
     }
 }
 
@@ -2247,20 +2242,16 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
 {
     JSHandle<ConstantPool> constpoolHandle = JSHandle<ConstantPool>::Cast(constpool);
     JSMutableHandle<JSTaggedValue> ihc(thread, JSTaggedValue::Undefined());
-    JSMutableHandle<AOTLiteralInfo> aotLiteralInfo(thread, JSTaggedValue::Hole());
-    //AOT ihc infos always in unshareConstpool
-    //If is runing on AOT,unshareConstpool is definitely not a hole
-    //So wo can skip if unshareConstpool is hole
-    JSTaggedValue unsharedCp = thread->GetCurrentEcmaContext()->FindUnsharedConstpool(constpoolHandle.GetTaggedValue());
-    if (!unsharedCp.IsHole()) {
+    JSTaggedValue val = constpoolHandle->GetObjectFromCache(methodId);
+    if (val.IsAOTLiteralInfo()) {
+        JSTaggedValue unsharedCp =
+            thread->GetCurrentEcmaContext()->FindOrCreateUnsharedConstpool(constpool.GetTaggedValue());
         JSHandle<ConstantPool> unsharedCpHandle(thread, unsharedCp);
-        JSTaggedValue val = unsharedCpHandle->GetObjectFromCache(methodId);
-        if (val.IsAOTLiteralInfo()) {
-            aotLiteralInfo.Update(val);
-            ihc.Update(aotLiteralInfo->GetIhc());
-        }
+        val = unsharedCpHandle->GetObjectFromCache(methodId);
+        JSHandle<AOTLiteralInfo> aotLiteralInfo(thread, val);
+        ihc.Update(aotLiteralInfo->GetIhc());
     }
-    JSTaggedValue method = ConstantPool::GetMethodFromCache(thread, constpoolHandle.GetTaggedValue(), methodId);
+    JSTaggedValue method = ConstantPool::GetMethodFromCache(thread, constpool.GetTaggedValue(), methodId);
     const JSHandle<Method> methodHandle(thread, method);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
     JSHandle<JSFunction> result;
@@ -2277,7 +2268,7 @@ JSTaggedValue RuntimeStubs::RuntimeDefinefunc(JSThread *thread, const JSHandle<J
         result->SetLexicalEnv(thread, envHandle.GetTaggedValue());
         result->SetHomeObject(thread, homeObject.GetTaggedValue());
     }
-    DefineFuncTryUseAOTHClass(thread, result, ihc, aotLiteralInfo);
+    DefineFuncTryUseAOTHClass(thread, result, ihc);
 
     result->SetLength(length);
     return result.GetTaggedValue();
