@@ -9,6 +9,9 @@ regresstest/ark-regress/mjsunit/es6/regress/regress-lookup-transition.js
 # Issue #18959
 regresstest/ark-regress/intl/collator/sr-sort.js
 
+# Issue #19479
+regresstest/ark-regress/intl/regress-925216.js
+
 # Issue #17901
 regresstest/ark-regress/intl/collator/check-co-option.js
 regresstest/ark-regress/intl/displaynames/constructor.js
