@@ -601,9 +601,11 @@ void FrameStateBuilder::HandleEmptyCatchBBLoopValue(const BytecodeRegion &bb, Ga
 {
     if (acc_.GetOpCode(stateMerge) == OpCode::LOOP_BEGIN) {
         // when index is last loop_back corresponding value, merging all value except loop_back corresponding value
+        ASSERT(GetNumOfStatePreds(bb) > 0);
         if (index == (GetNumOfStatePreds(bb) - 1)) {
             std::vector<GateRef> valueList;
             size_t numIn = bb.mergeState.size();
+            ASSERT(numIn > 0);
             valueList.emplace_back(stateMerge);
             for (size_t i = 0; i < numIn; i++) {
                 valueList.emplace_back(acc_.GetValueIn(nextValue, i));

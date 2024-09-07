@@ -916,6 +916,9 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM8_ID16:
             case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM8_ID16:
             case EcmaOpcode::CREATEEMPTYARRAY_IMM8: {
+                if (method->GetJSPandaFile() == nullptr) {
+                    break;
+                }
                 auto header = method->GetJSPandaFile()->GetPandaFile()->GetHeader();
                 auto traceId =
                     static_cast<int32_t>(reinterpret_cast<uintptr_t>(pc) - reinterpret_cast<uintptr_t>(header));
@@ -927,6 +930,9 @@ void PGOProfiler::ProfileBytecode(ApEntityId abcId, const CString &recordName, J
             case EcmaOpcode::CREATEOBJECTWITHBUFFER_IMM16_ID16:
             case EcmaOpcode::CREATEARRAYWITHBUFFER_IMM16_ID16:
             case EcmaOpcode::CREATEEMPTYARRAY_IMM16: {
+                if (method->GetJSPandaFile() == nullptr) {
+                    break;
+                }
                 auto header = method->GetJSPandaFile()->GetPandaFile()->GetHeader();
                 auto traceId =
                     static_cast<int32_t>(reinterpret_cast<uintptr_t>(pc) - reinterpret_cast<uintptr_t>(header));
