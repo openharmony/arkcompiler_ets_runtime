@@ -270,6 +270,22 @@ printClear1(mm) //aot: [trace] Check Type: BuiltinInstanceHClassMismatch
                 //: undefined
 
 print("case 3") //: case 3
+
+function checkObjWithMapProto() {
+    let o = {};
+    Object.setPrototypeOf(o, Map.prototype);
+    try {
+        print((o as Map<number, number>).clear(1));
+    } catch(e) {
+        print(e);
+    }
+}
+
+//aot: [trace] Check Type: NotCallTarget1
+//: TypeError: obj is not JSMap
+checkObjWithMapProto();
+
+
 if (ArkTools.isAOTCompiled(printClear1)) {
     Map.prototype.clear = function() {
         return "prototype";
