@@ -17,9 +17,12 @@
 
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
+#include "ecmascript/compiler/rt_call_signature.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/compiler/interpreter_stub-inl.h"
+#include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
+#include "ecmascript/compiler/variable_type.h"
 #include "ecmascript/ic/profile_type_info.h"
 
 namespace panda::ecmascript::kungfu {
@@ -245,12 +248,17 @@ void ProfilerStubBuilder::ProfileCall(
         Label targetIsNotHot(env);
         Label targetIsHot(env);
         Label currentIsHot(env);
+        Label updateTargetIC(env);
 
-        BRANCH(IsProfileTypeInfoHotAndValid(targetProfileInfo), &targetIsHot, &targetIsNotHot);
-        Bind(&targetIsNotHot);
+        BRANCH(IsEnableForceIC(glue), &updateTargetIC, &targetIsHot);
+        Bind(&updateTargetIC);
         {
-            CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { target });
-            Jump(&targetIsHot);
+            BRANCH(IsProfileTypeInfoHotAndValid(targetProfileInfo), &targetIsHot, &targetIsNotHot);
+            Bind(&targetIsNotHot);
+            {
+                CallRuntime(glue, RTSTUB_ID(UpdateHotnessCounterWithProf), { target });
+                Jump(&targetIsHot);
+            }
         }
         Bind(&targetIsHot);
         {
@@ -849,6 +857,13 @@ GateRef ProfilerStubBuilder::IsProfileTypeInfoHotAndValid(GateRef profileTypeInf
     auto ret = *res;
     env->SubCfgExit();
     return ret;
+}
+
+GateRef ProfilerStubBuilder::IsEnableForceIC(GateRef glue)
+{
+    auto env = GetEnvironment();
+    GateRef offset = IntPtr(JSThread::GlueData::GetIsEnableForceICOffSet(env->Is32Bit()));
+    return Load(VariableType::BOOL(), glue, offset);
 }
 
 void ProfilerStubBuilder::SetDumpPeriodIndex(GateRef glue, GateRef profileTypeInfo)
