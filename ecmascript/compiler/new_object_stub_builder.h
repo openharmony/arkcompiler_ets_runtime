@@ -81,6 +81,8 @@ public:
     GateRef NewJSBoundFunction(GateRef glue, GateRef target, GateRef boundThis, GateRef args);
     GateRef EnumerateObjectProperties(GateRef glue, GateRef obj);
     void NewArgumentsList(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs);
+    void FillArgumentsList(GateRef argumentsList, GateRef sp, GateRef startIdx, GateRef numArgs);
+    GateRef NewArgumentsListObj(GateRef numArgs);
     void NewArgumentsObj(Variable *result, Label *exit, GateRef argumentsList, GateRef numArgs);
     void AssignRestArg(Variable *result, Label *exit, GateRef sp, GateRef startIdx, GateRef numArgs,
                        GateRef intialHClass);

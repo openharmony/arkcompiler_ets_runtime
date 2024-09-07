@@ -884,16 +884,17 @@ DEF_CALL_SIGNATURE(CreateArrayWithBuffer)
 
 DEF_CALL_SIGNATURE(CopyRestArgs)
 {
-    // 4 : 4 input parameters
-    CallSignature signature("CopyRestArgs", 0, 4,
+    // 5 : 5 input parameters
+    CallSignature signature("CopyRestArgs", 0, 5,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 4 : 4 input parameters
-    std::array<VariableType, 4> params = {
+    // 5 : 5 input parameters
+    std::array<VariableType, 5> params = {
         VariableType::NATIVE_POINTER(),  // glue
         VariableType::NATIVE_POINTER(),  // actual argv
         VariableType::INT32(),           // startIdx
         VariableType::INT32(),           // numArgs
+        VariableType::JS_ANY(),          // actual argv Array
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);
@@ -932,15 +933,16 @@ DEF_CALL_SIGNATURE(NewLexicalEnv)
 
 DEF_CALL_SIGNATURE(GetUnmappedArgs)
 {
-    // 3 : 3 input parameters
-    CallSignature signature("GetUnmappedArgs", 0, 3,
+    // 4 : 4 input parameters
+    CallSignature signature("GetUnmappedArgs", 0, 4,
         ArgumentsOrder::DEFAULT_ORDER, VariableType::JS_ANY());
     *callSign = signature;
-    // 3 : 3 input parameters
-    std::array<VariableType, 3> params = {
+    // 4 : 4 input parameters
+    std::array<VariableType, 4> params = {
         VariableType::NATIVE_POINTER(),  // glue
         VariableType::NATIVE_POINTER(),  // actual argv
         VariableType::INT32(),           // numArgs
+        VariableType::JS_ANY(),          // actual argv Array
     };
     callSign->SetParameters(params.data());
     callSign->SetCallConv(CallSignature::CallConv::CCallConv);

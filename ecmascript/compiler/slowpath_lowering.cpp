@@ -3047,7 +3047,7 @@ void SlowPathLowering::LowerGetUnmappedArgs(GateRef gate)
 {
     GateRef actualArgc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::ACTUAL_ARGC);
     GateRef newGate = builder_.CallStub(glue_, gate, CommonStubCSigns::GetUnmappedArgs,
-        { glue_, builder_.IntPtr(0), builder_.TruncInt64ToInt32(actualArgc) });
+        { glue_, builder_.IntPtr(0), builder_.TruncInt64ToInt32(actualArgc), builder_.Undefined() });
     ReplaceHirWithValue(gate, newGate);
 }
 
