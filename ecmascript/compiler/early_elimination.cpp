@@ -105,6 +105,7 @@ GateRef EarlyElimination::VisitGate(GateRef gate)
             if (acc_.GetDependCount(gate) == 1) { // 1: depend in is 1
                 return TryEliminateOther(gate);
             }
+            break;
     }
     return Circuit::NullGate();
 }

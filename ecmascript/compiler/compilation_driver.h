@@ -71,6 +71,9 @@ public:
             bytecodeInfo_.AddMethodOffsetToRecordName(methodId, methodInfo.GetRecordName());
             auto &methodPcInfo = methodPcInfos[methodInfo.GetMethodPcInfoIndex()];
             auto methodLiteral = jsPandaFile_->FindMethodLiteral(methodId);
+            if (methodLiteral == nullptr) {
+                continue;
+            }
             const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile_, methodLiteral->GetMethodId()));
             if (!callMethonFlagMap.IsAotCompile(jsPandaFile_->GetNormalizedFileDesc(),
                                                 methodLiteral->GetMethodId().GetOffset())) {
@@ -151,6 +154,9 @@ public:
                        const panda_file::File::Header *header, ApEntityId abcId, const Callback &cb)
     {
         SetCurrentCompilationFile();
+        if (methodLiteral == nullptr) {
+            return;
+        }
         const std::string methodName(MethodLiteral::GetMethodName(jsPandaFile, methodLiteral->GetMethodId()));
 
         auto &methodList = bytecodeInfo_.GetMethodList();
