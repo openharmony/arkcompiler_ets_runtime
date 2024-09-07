@@ -111,7 +111,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
             sharedFullGC_->RunPhases();
             break;
         }
-        default:
+        default: // LOCV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
             break;
@@ -382,7 +382,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
                 sharedFullGC_->RunPhases();
                 break;
             }
-            default:
+            default: // LOCV_EXCL_BR_LINE
                 LOG_ECMA(FATAL) << "this branch is unreachable";
                 UNREACHABLE();
                 break;
@@ -1178,7 +1178,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
                     fullGC_->SetForAppSpawn(true);
                     fullGC_->RunPhasesForAppSpawn();
                     break;
-                default:
+                default: // LOCV_EXCL_BR_LINE
                     LOG_ECMA(FATAL) << "this branch is unreachable";
                     UNREACHABLE();
                     break;
@@ -2475,7 +2475,7 @@ bool Heap::ParallelGCTask::Run(uint32_t threadIndex)
         case ParallelGCTaskPhase::CONCURRENT_HANDLE_OLD_TO_NEW_TASK:
             heap_->GetNonMovableMarker()->ProcessOldToNew(threadIndex);
             break;
-        default:
+        default: // LOCV_EXCL_BR_LINE
             LOG_GC(FATAL) << "this branch is unreachable, type: " << static_cast<int>(taskPhase_);
             UNREACHABLE();
     }

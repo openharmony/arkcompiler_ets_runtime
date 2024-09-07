@@ -31,7 +31,7 @@ LinearSpace::LinearSpace(Heap *heap, MemSpaceType type, size_t initialCapacity, 
 uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
 {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
-    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) {
+    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
         UNREACHABLE();
     }

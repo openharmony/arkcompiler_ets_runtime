@@ -170,7 +170,7 @@ void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
         }
         LOG_ECMA_IF(address == 0, FATAL) << "Evacuate object failed:" << size;
 
-        if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) {
+        if (memcpy_s(ToVoidPtr(address), size, ToVoidPtr(ToUintPtr(mem)), size) != EOK) { // LOCV_EXCL_BR_LINE
             LOG_FULL(FATAL) << "memcpy_s failed";
         }
         if (inHeapProfiler) {
@@ -402,7 +402,7 @@ void ParallelEvacuator::UpdateWeakReferenceOpt()
                 }
                 return header;
             }
-        } else {
+        } else { // LOCV_EXCL_BR_LINE
             LOG_GC(FATAL) << "WeakRootVisitor: not support gcType yet";
             UNREACHABLE();
         }

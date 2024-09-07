@@ -52,7 +52,7 @@ void SparseSpace::ResetTopPointer(uintptr_t top)
 uintptr_t SparseSpace::Allocate(size_t size, bool allowGC)
 {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
-    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) {
+    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
         UNREACHABLE();
     }
@@ -117,7 +117,7 @@ void SparseSpace::PrepareSweeping()
     EnumerateRegions([this](Region *current) {
         if (!current->InCollectSet()) {
             if (UNLIKELY(localHeap_->ShouldVerifyHeap() &&
-                current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) {
+                current->IsGCFlagSet(RegionGCFlags::HAS_BEEN_SWEPT))) { // LOCV_EXCL_BR_LINE
                 LOG_ECMA(FATAL) << "Region should not be swept before PrepareSweeping: " << current;
             }
             IncreaseLiveObjectSize(current->AliveObject());
@@ -547,7 +547,7 @@ LocalSpace::LocalSpace(Heap *heap, size_t initialCapacity, size_t maximumCapacit
 
 bool LocalSpace::AddRegionToList(Region *region)
 {
-    if (committedSize_ >= maximumCapacity_) {
+    if (committedSize_ >= maximumCapacity_) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "AddRegionTotList::Committed size " << committedSize_ << " of local space is too big.";
         return false;
     }
@@ -698,7 +698,7 @@ uintptr_t MachineCodeSpace::Allocate(size_t size, bool allowGC)
 uintptr_t MachineCodeSpace::Allocate(size_t size, MachineCodeDesc *desc, bool allowGC)
 {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
-    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) {
+    if (UNLIKELY(!localHeap_->GetJSThread()->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
         UNREACHABLE();
     }

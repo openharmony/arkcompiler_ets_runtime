@@ -24,7 +24,7 @@ uintptr_t WorkSpaceChunk::NewArea(size_t size)
 {
     ASSERT(allocator_ != nullptr);
     auto area = reinterpret_cast<uintptr_t>(allocator_->AllocateBuffer(size));
-    if (!area) {
+    if (!area) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "OOM WorkSpaceChunk : NewArea area is nullptr";
         UNREACHABLE();
     }

@@ -24,7 +24,7 @@ namespace panda::ecmascript {
 Area *NativeAreaAllocator::AllocateArea(size_t capacity)
 {
     size_t headerSize = sizeof(Area);
-    if (capacity < headerSize) {
+    if (capacity < headerSize) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "capacity must have a size not less than sizeof Area.";
         UNREACHABLE();
     }
@@ -35,13 +35,13 @@ Area *NativeAreaAllocator::AllocateArea(size_t capacity)
     }
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
     void *mem = malloc(capacity);
-    if (mem == nullptr) {
+    if (mem == nullptr) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "malloc failed, current alloc size = " << capacity
                             << ", total allocated size = " << nativeMemoryUsage_.load(std::memory_order_relaxed);
         UNREACHABLE();
     }
 #if ECMASCRIPT_ENABLE_ZAP_MEM
-    if (memset_s(mem, capacity, 0, capacity) != EOK) {
+    if (memset_s(mem, capacity, 0, capacity) != EOK) { // LOCV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
     }
@@ -65,7 +65,7 @@ void NativeAreaAllocator::FreeArea(Area *area)
     auto size = area->GetSize() + sizeof(Area);
     DecreaseNativeMemoryUsage(size);
 #if ECMASCRIPT_ENABLE_ZAP_MEM
-    if (memset_s(area, size, INVALID_VALUE, size) != EOK) {
+    if (memset_s(area, size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
     }
@@ -81,7 +81,7 @@ void NativeAreaAllocator::Free(void *mem, size_t size)
     }
     DecreaseNativeMemoryUsage(size);
 #if ECMASCRIPT_ENABLE_ZAP_MEM
-    if (memset_s(mem, size, INVALID_VALUE, size) != EOK) {
+    if (memset_s(mem, size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
     }
@@ -92,19 +92,19 @@ void NativeAreaAllocator::Free(void *mem, size_t size)
 
 void *NativeAreaAllocator::AllocateBuffer(size_t size)
 {
-    if (size == 0) {
+    if (size == 0) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "size must have a size bigger than 0";
         UNREACHABLE();
     }
     // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
     void *ptr = malloc(size);
-    if (ptr == nullptr) {
+    if (ptr == nullptr) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "malloc failed, current alloc size = " << size
                             << ", total allocated size = " << nativeMemoryUsage_.load(std::memory_order_relaxed);
         UNREACHABLE();
     }
 #if ECMASCRIPT_ENABLE_ZAP_MEM
-    if (memset_s(ptr, size, INVALID_VALUE, size) != EOK) {
+    if (memset_s(ptr, size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
     }
@@ -122,7 +122,7 @@ void NativeAreaAllocator::FreeBuffer(void *mem)
     DecreaseNativeMemoryUsage(size);
 
 #if ECMASCRIPT_ENABLE_ZAP_MEM
-    if (memset_s(mem, size, INVALID_VALUE, size) != EOK) {
+    if (memset_s(mem, size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
     }

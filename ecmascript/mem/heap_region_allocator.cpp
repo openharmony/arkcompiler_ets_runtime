@@ -24,7 +24,7 @@ constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
 Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity, JSThread* thread, BaseHeap *heap,
                                                    bool isFresh)
 {
-    if (capacity == 0) {
+    if (capacity == 0) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "capacity must have a size bigger than 0";
         UNREACHABLE();
     }
@@ -41,7 +41,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
                                                          isRegular, isMachineCode,
                                                          Jit::GetInstance()->IsEnableJitFort());
     void *mapMem = pool.GetMem();
-    if (mapMem == nullptr) {
+    if (mapMem == nullptr) { // LOCV_EXCL_BR_LINE
         if (thread != nullptr) {
             heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
                 "HeapRegionAllocator::AllocateAlignedRegion", false);
@@ -50,7 +50,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
         UNREACHABLE();
     }
 #if ECMASCRIPT_ENABLE_ZAP_MEM
-    if (memset_s(mapMem, capacity, 0, capacity) != EOK) {
+    if (memset_s(mapMem, capacity, 0, capacity) != EOK) { // LOCV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
     }
@@ -81,7 +81,7 @@ void HeapRegionAllocator::FreeRegion(Region *region, size_t cachedSize)
     region->Invalidate();
     region->ClearMembers();
 #if ECMASCRIPT_ENABLE_ZAP_MEM
-    if (memset_s(ToVoidPtr(allocateBase), size, INVALID_VALUE, size) != EOK) {
+    if (memset_s(ToVoidPtr(allocateBase), size, INVALID_VALUE, size) != EOK) { // LOCV_EXCL_BR_LINE
         LOG_FULL(FATAL) << "memset_s failed";
         UNREACHABLE();
     }

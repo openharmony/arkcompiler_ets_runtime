@@ -117,7 +117,7 @@ MemDesc *JitFort::RecordLiveJitCodeNoLock(uintptr_t addr, size_t size, bool inst
             LOG_JIT(DEBUG) << "RecordLiveJitCode duplicate " << (void *)addr << " size " << size;
             return nullptr;
         }
-        if (liveJitCodeBlks_[i]->GetBegin() == addr) {
+        if (liveJitCodeBlks_[i]->GetBegin() == addr) { // LOCV_EXCL_BR_LINE
             LOG_JIT(FATAL) << "RecordLiveJitCode duplicate addr " << std::hex << addr << std::dec << " size " <<
                 size << " existing entry size " << liveJitCodeBlks_[i]->Available() << std::endl;
             return nullptr;
@@ -210,7 +210,7 @@ void JitFort::CollectFreeRanges(JitFortRegion *region)
                 << " freeEnd = "<< (void*)freeEnd
                 << " desc->GetBegin() = " << (void *)(desc->GetBegin())
                 << " desc->GetEnd() = " << (void *)(desc->GetEnd());
-            if (freeStart != freeEnd && freeEnd <= freeStart) {
+            if (freeStart != freeEnd && freeEnd <= freeStart) { // LOCV_EXCL_BR_LINE
                     LOG_JIT(FATAL) << "CollectFreeRanges Abort: freeEnd smaller than freeStart";
                     return;
             }
