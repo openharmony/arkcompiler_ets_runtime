@@ -132,9 +132,7 @@ GateRef NTypeHCRLowering::NewActualArgv(GateRef gate, GateRef glue)
         GateRef value = argAcc.ArgsAt(i);
         builder_.StoreToTaggedArray(array, i - funcIdx, value);
     }
-    GateRef argv = builder_.PtrAdd(builder_.TaggedCastToIntPtr(array),
-                                   builder_.IntPtr(TaggedArray::DATA_OFFSET));
-    return argv;
+    return array;
 }
 
 void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
@@ -148,6 +146,7 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     GateRef expectedArgc = builder_.Int32(methodLiteral_->GetNumArgs());
     GateRef argv = argAcc.GetFrameArgsIn(frameState, FrameArgIdx::ACTUAL_ARGV);
     DEFVALUE(actualArgv, (&builder_), VariableType::NATIVE_POINTER(), argv);
+    DEFVALUE(actualArgvArray, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     GateRef startIdx = acc_.GetValueIn(gate, 0);
     GateRef check = builder_.BitAnd(builder_.Equal(actualArgc, expectedArgc),
         builder_.Equal(builder_.IntPtr(0), *actualArgv));
@@ -156,20 +155,20 @@ void NTypeHCRLowering::LowerCreateArguments(GateRef gate, GateRef glue)
     BRANCH_CIR(check, &calcActualArgv, &exit);
     builder_.Bind(&calcActualArgv);
     {
-        actualArgv = NewActualArgv(gate, glue);
+        actualArgvArray = NewActualArgv(gate, glue);
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
     switch (mode) {
         case CreateArgumentsAccessor::Mode::REST_ARGUMENTS: {
             GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::CopyRestArgs,
-                { glue, *actualArgv, startIdx, actualArgc });
+                { glue, *actualArgv, startIdx, actualArgc, *actualArgvArray });
             ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), newGate);
             break;
         }
         case CreateArgumentsAccessor::Mode::UNMAPPED_ARGUMENTS: {
             GateRef newGate = builder_.CallStub(glue, gate, CommonStubCSigns::GetUnmappedArgs,
-                { glue, *actualArgv, actualArgc });
+                { glue, *actualArgv, actualArgc, *actualArgvArray });
             ReplaceGateWithPendingException(gate, builder_.GetState(), builder_.GetDepend(), newGate);
             break;
         }
