@@ -646,6 +646,12 @@ inline GateRef StubBuilder::TaggedIsSymbol(GateRef obj)
     return env_->GetBuilder()->TaggedIsSymbol(obj);
 }
 
+inline GateRef StubBuilder::TaggedIsArrayBuffer(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_ARRAY_BUFFER)));
+}
+
 inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
 {
     Label entryPass(env_);
@@ -1114,6 +1120,11 @@ inline GateRef StubBuilder::Int64GreaterThanOrEqual(GateRef x, GateRef y)
 inline GateRef StubBuilder::Int64UnsignedLessThanOrEqual(GateRef x, GateRef y)
 {
     return env_->GetBuilder()->Int64UnsignedLessThanOrEqual(x, y);
+}
+
+inline GateRef StubBuilder::Int64UnsignedGreaterThan(GateRef x, GateRef y)
+{
+    return env_->GetBuilder()->Int64UnsignedGreaterThan(x, y);
 }
 
 inline GateRef StubBuilder::Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y)
@@ -3075,6 +3086,50 @@ inline void StubBuilder::SetProtoOrHClassToFunction(GateRef glue, GateRef functi
     Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
+inline GateRef StubBuilder::GetProtoOrHClass(GateRef function)
+{
+    GateRef offset = IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET);
+    return Load(VariableType::JS_ANY(), function, offset);
+}
+
+inline void StubBuilder::SetTypedArrayName(GateRef glue, GateRef typedArray, GateRef name,
+                                           MemoryAttribute mAttr)
+{
+    GateRef offset = IntPtr(JSTypedArray::TYPED_ARRAY_NAME_OFFSET);
+    Store(VariableType::JS_ANY(), glue, typedArray, offset, name, mAttr);
+}
+
+inline void StubBuilder::SetContentType(GateRef glue, GateRef typedArray, GateRef type)
+{
+    GateRef offset = IntPtr(JSTypedArray::CONTENT_TYPE_OFFSET);
+    Store(VariableType::INT8(), glue, typedArray, offset, type, MemoryAttribute::NoBarrier());
+}
+
+inline void StubBuilder::SetViewedArrayBufferOrByteArray(GateRef glue, GateRef typedArray, GateRef data,
+    MemoryAttribute mAttr)
+{
+    GateRef offset = IntPtr(JSTypedArray::VIEWED_ARRAY_BUFFER_OFFSET);
+    Store(VariableType::JS_ANY(), glue, typedArray, offset, data, mAttr);
+}
+
+inline void StubBuilder::SetByteLength(GateRef glue, GateRef typedArray, GateRef byteLength)
+{
+    GateRef offset = IntPtr(JSTypedArray::BYTE_LENGTH_OFFSET);
+    Store(VariableType::INT8(), glue, typedArray, offset, byteLength, MemoryAttribute::NoBarrier());
+}
+
+inline void StubBuilder::SetByteOffset(GateRef glue, GateRef typedArray, GateRef byteOffset)
+{
+    GateRef offset = IntPtr(JSTypedArray::BYTE_OFFSET_OFFSET);
+    Store(VariableType::INT8(), glue, typedArray, offset, byteOffset, MemoryAttribute::NoBarrier());
+}
+
+inline void StubBuilder::SetTypedArrayLength(GateRef glue, GateRef typedArray, GateRef arrayLength)
+{
+    GateRef offset = IntPtr(JSTypedArray::ARRAY_LENGTH_OFFSET);
+    Store(VariableType::INT8(), glue, typedArray, offset, arrayLength, MemoryAttribute::NoBarrier());
+}
+
 inline void StubBuilder::SetHomeObjectToFunction(GateRef glue, GateRef function, GateRef value,
                                                  MemoryAttribute mAttr)
 {
@@ -3729,6 +3784,18 @@ inline GateRef StubBuilder::GetArrayBufferData(GateRef buffer)
 {
     GateRef offset = IntPtr(JSArrayBuffer::DATA_OFFSET);
     return Load(VariableType::JS_ANY(), buffer, offset);
+}
+
+inline GateRef StubBuilder::GetArrayBufferByteLength(GateRef buffer)
+{
+    GateRef offset = IntPtr(JSArrayBuffer::BYTE_LENGTH_OFFSET);
+    return Load(VariableType::INT32(), buffer, offset);
+}
+
+inline void StubBuilder::SetArrayBufferByteLength(GateRef glue, GateRef buffer, GateRef length)
+{
+    GateRef offset = IntPtr(JSArrayBuffer::BYTE_LENGTH_OFFSET);
+    Store(VariableType::INT32(), glue, buffer, offset, length);
 }
 
 inline GateRef StubBuilder::GetLastLeaveFrame(GateRef glue)

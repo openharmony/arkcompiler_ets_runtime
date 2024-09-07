@@ -570,4 +570,16 @@ DECLARE_BUILTINS(SetConstructor)
     GateRef arg0 = GetArgFromArgv(IntPtr(0), numArgs, true);
     hashTableBuilder.GenMapSetConstructor(nativeCode, func, newTarget, thisValue, numArgs, arg0, GetArgv());
 }
+
+#define DECLARE_BUILTINS_TYPED_ARRAY_STUB_BUILDER(TYPE, type, index)                                \
+DECLARE_BUILTINS(type##ArrayConstructor)                                                            \
+{                                                                                                   \
+    GateRef ctorName = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,                     \
+                                              ConstantIndex::TYPE##_ARRAY_STRING_INDEX);            \
+    BuiltinsTypedArrayStubBuilder builtinsTypedArrayStubBuilder(this);                              \
+    builtinsTypedArrayStubBuilder.GenTypedArrayConstructor(glue, nativeCode, func, newTarget,       \
+        thisValue, numArgs, ctorName, DataViewType::TYPE);                                          \
+}
+BUILTIN_COMPILER_TYPED_ARRAY_TYPES(DECLARE_BUILTINS_TYPED_ARRAY_STUB_BUILDER)
+#undef DECLARE_BUILTINS_TYPED_ARRAY_STUB_BUILDER
 }  // namespace panda::ecmascript::kungfu

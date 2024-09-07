@@ -5892,6 +5892,28 @@ GateRef StubBuilder::GetCtorPrototype(GateRef ctor)
     return ret;
 }
 
+GateRef StubBuilder::HasFunctionPrototype(GateRef ctor)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(result, VariableType::BOOL(), True());
+    Label exit(env);
+    Label isHole(env);
+
+    GateRef ctorProtoOrHC = Load(VariableType::JS_POINTER(), ctor, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+    BRANCH(TaggedIsHole(ctorProtoOrHC), &isHole, &exit);
+    Bind(&isHole);
+    {
+        result = False();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 GateRef StubBuilder::OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj)
 {
     auto env = GetEnvironment();
@@ -8811,6 +8833,49 @@ GateRef StubBuilder::ToNumber(GateRef glue, GateRef tagged)
     {
         result = CallRuntime(glue, RTSTUB_ID(ToNumber), { tagged });
         Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::ToIndex(GateRef glue, GateRef tagged)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label isInt(env);
+    Label notInt(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
+    BRANCH(TaggedIsInt(tagged), &isInt, &notInt);
+    Bind(&isInt);
+    {
+        Label lessThanZero(env);
+        Label greaterOrEqualZero(env);
+        BRANCH(Int32GreaterThanOrEqual(TaggedGetInt(tagged), Int32(0)), &greaterOrEqualZero, &notInt);
+        Bind(&greaterOrEqualZero);
+        {
+            result = tagged;
+            Jump(&exit);
+        }
+    }
+    Bind(&notInt);
+    {
+        Label isUndef(env);
+        Label notUndef(env);
+        BRANCH(TaggedIsUndefined(tagged), &isUndef, &notUndef);
+        Bind(&isUndef);
+        {
+            result = IntToTaggedPtr(Int32(0));
+            Jump(&exit);
+        }
+        Bind(&notUndef);
+        {
+            result = CallRuntime(glue, RTSTUB_ID(ToIndex), { tagged });
+            Jump(&exit);
+        }
     }
     Bind(&exit);
     auto ret = *result;

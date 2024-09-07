@@ -21,6 +21,19 @@
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_typed_array.h"
 
+#define BUILTIN_COMPILER_TYPED_ARRAY_TYPES(V)                      \
+    V(INT8,           Int8,             0)                         \
+    V(UINT8,          Uint8,            1)                         \
+    V(UINT8_CLAMPED,  Uint8Clamped,     2)                         \
+    V(INT16,          Int16,            3)                         \
+    V(UINT16,         Uint16,           4)                         \
+    V(INT32,          Int32,            5)                         \
+    V(UINT32,         Uint32,           6)                         \
+    V(FLOAT32,        Float32,          7)                         \
+    V(FLOAT64,        Float64,          8)                         \
+    V(BIGINT64,       BigInt64,         9)                         \
+    V(BIGUINT64,      BigUint64,        10)
+
 namespace panda::ecmascript::kungfu {
 class BuiltinsTypedArrayStubBuilder : public BuiltinsStubBuilder {
 public:
@@ -42,6 +55,19 @@ public:
     void FastSetPropertyByIndex(GateRef glue, GateRef value, GateRef array, GateRef index, GateRef jsType);
     void SetValueToBuffer(GateRef glue, GateRef value, GateRef buffer, GateRef index,
                           GateRef offset, GateRef jsType, Label *slowPath);
+    void GenTypedArrayConstructor(GateRef glue, GateRef nativeCode, GateRef func,
+        GateRef newTarget, GateRef thisValue, GateRef numArgs, GateRef constructorName, const DataViewType arrayType);
+    GateRef AllocateTypedArray(GateRef glue, GateRef constructorName, GateRef func, GateRef newTarget,
+                               GateRef length, GateRef lengthTagged, const DataViewType arrayType);
+    GateRef AllocateTypedArray(GateRef glue, GateRef constructorName,
+                               GateRef func, GateRef newTarget, const DataViewType arrayType);
+    GateRef AllocateTypedArrayBuffer(GateRef glue, GateRef typedArray, GateRef length, GateRef lengthTagged,
+                                     const DataViewType arrayType);
+    void CreateFromArrayBuffer(Variable *result, GateRef glue, GateRef numArgs,
+                               Label *exit, Label *slowPath, const DataViewType arrayType);
+    void SetArrayBufferProperties(GateRef glue, GateRef typedArray,
+                                  GateRef newByteLength, GateRef offset, GateRef arrayLength);
+    GateRef GetOnHeapHclassFromType(GateRef glue, GateRef objHclass, const DataViewType arrayType);
 
 #define DECLARE_BUILTINS_TYPEDARRAY_STUB_BUILDER(method, ...)           \
     void method(GateRef glue, GateRef numArgs, GateRef end, Variable *result, Label *exit, Label *slowPath);

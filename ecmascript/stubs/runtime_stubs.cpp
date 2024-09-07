@@ -20,6 +20,7 @@
 
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/base/json_stringifier.h"
+#include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
 #include "ecmascript/js_stable_array.h"
@@ -2128,6 +2129,39 @@ DEF_RUNTIME_STUBS(StGlobalVar)
     JSHandle<JSTaggedValue> prop = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
     return RuntimeStGlobalVar(thread, prop, value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(ToIndex)
+{
+    RUNTIME_STUBS_HEADER(ToIndex);
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    return JSTaggedValue::ToIndex(thread, value).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(NewJSObjectByConstructor)
+{
+    RUNTIME_STUBS_HEADER(NewJSObjectByConstructor);
+    JSHandle<JSFunction> constructor = GetHArg<JSFunction>(argv, argc, 0);      // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<JSObject> obj = factory->NewJSObjectByConstructor(constructor, newTarget);
+    return obj.GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(CloneHclass)
+{
+    RUNTIME_STUBS_HEADER(CloneHclass);
+    JSHandle<JSHClass> objHclass = GetHArg<JSHClass>(argv, argc, 0);      // 0: means the zeroth parameter
+    return JSHClass::Clone(thread, objHclass).GetTaggedValue().GetRawData();
+}
+
+DEF_RUNTIME_STUBS(AllocateTypedArrayBuffer)
+{
+    RUNTIME_STUBS_HEADER(AllocateTypedArrayBuffer);
+    JSHandle<JSObject> obj = GetHArg<JSObject>(argv, argc, 0);    // 0: means the zeroth parameter
+    JSTaggedValue length = GetArg(argv, argc, 1);  // 1: means the first parameter
+    return base::TypedArrayHelper::AllocateTypedArrayBuffer(thread, obj, length.GetNumber(),
+        base::TypedArrayHelper::GetType(JSHandle<JSTypedArray>(obj))).GetTaggedValue().GetRawData();
 }
 
 DEF_RUNTIME_STUBS(ToNumber)

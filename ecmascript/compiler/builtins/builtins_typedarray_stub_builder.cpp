@@ -15,7 +15,7 @@
 
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 
-#include "ecmascript/base/typed_array_helper.h"
+#include "ecmascript/base/typed_array_helper-inl.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/compiler/builtins/builtins_array_stub_builder.h"
 #include "ecmascript/compiler/call_stub_builder.h"
@@ -3083,5 +3083,358 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
     Bind(&exit);
     env->SubCfgExit();
     return;
+}
+
+void BuiltinsTypedArrayStubBuilder::GenTypedArrayConstructor(GateRef glue, GateRef nativeCode, GateRef func,
+    GateRef newTarget, GateRef thisValue, GateRef numArgs, GateRef constructorName, const DataViewType arrayType)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(res, VariableType::JS_ANY(), Undefined());
+    DEFVARIABLE(elementLength, VariableType::INT32(), Int32(0));
+    DEFVARIABLE(elementLengthTagged, VariableType::JS_ANY(), IntToTaggedPtr(Int32(0)));
+
+    Label newTargetIsHeapObject(env);
+    Label newTargetIsJSFunction(env);
+    Label slowPath(env);
+    Label slowPath1(env);
+    Label hasException(env);
+    Label exit(env);
+
+    BRANCH(TaggedIsHeapObject(newTarget), &newTargetIsHeapObject, &slowPath);
+    Bind(&newTargetIsHeapObject);
+    BRANCH(IsJSFunction(newTarget), &newTargetIsJSFunction, &slowPath);
+    Bind(&newTargetIsJSFunction);
+    {
+        Label intialHClassIsHClass(env);
+        GateRef intialHClass = Load(VariableType::JS_ANY(), newTarget,
+                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
+        BRANCH(IsJSHClass(intialHClass), &intialHClassIsHClass, &slowPath1);
+        Bind(&intialHClassIsHClass);
+        {
+            Label isEcmaObj(env);
+            Label notEcmaObj(env);
+            GateRef arg0 = GetArgFromArgv(IntPtr(0), numArgs, true);
+            BRANCH(IsEcmaObject(arg0), &isEcmaObj, &notEcmaObj);
+            Bind(&notEcmaObj);
+            {
+                Label isUndef(env);
+                Label notUndef(env);
+                BRANCH(TaggedIsUndefined(arg0), &isUndef, &notUndef);
+                Bind(&notUndef);
+                {
+                    Label notException(env);
+                    GateRef index = ToIndex(glue, arg0);
+                    elementLengthTagged = index;
+                    BRANCH(HasPendingException(glue), &hasException, &notException);
+                    Bind(&notException);
+                    {
+                        elementLength = DoubleToInt(glue, GetDoubleOfTNumber(index));
+                        Jump(&isUndef);
+                    }
+                }
+                Bind(&isUndef);
+                {
+                    res = AllocateTypedArray(glue, constructorName, func, newTarget,
+                        *elementLength, *elementLengthTagged, arrayType);
+                    BRANCH(HasPendingException(glue), &hasException, &exit);
+                }
+            }
+            Bind(&isEcmaObj);
+            {
+                Label isArrayBuffer(env);
+                Branch(TaggedIsArrayBuffer(arg0), &isArrayBuffer, &slowPath);
+                Bind(&isArrayBuffer);
+                {
+                    Label createFromArrayBuffer(env);
+                    res = AllocateTypedArray(glue, constructorName, func, newTarget, arrayType);
+                    BRANCH(HasPendingException(glue), &hasException, &createFromArrayBuffer);
+                    Bind(&createFromArrayBuffer);
+                    CreateFromArrayBuffer(&res, glue, numArgs, &exit, &slowPath, arrayType);
+                }
+            }
+            Bind(&hasException);
+            {
+                res = Exception();
+                Jump(&exit);
+            }
+        }
+        Bind(&slowPath1);
+        {
+            GateRef argv = GetArgv();
+            res = CallBuiltinRuntimeWithNewTarget(glue,
+                { glue, nativeCode, func, thisValue, numArgs, argv, newTarget });
+            Jump(&exit);
+        }
+    }
+    Bind(&slowPath);
+    {
+        GateRef argv = GetArgv();
+        res = CallBuiltinRuntime(glue, { glue, nativeCode, func, thisValue, numArgs, argv }, true);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    Return(*res);
+}
+
+GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArray(GateRef glue, GateRef constructorName,
+    GateRef func, GateRef newTarget, GateRef length, GateRef lengthTagged, const DataViewType arrayType)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+
+    NewObjectStubBuilder newObjectStubBuilder(this);
+    res = newObjectStubBuilder.NewJSObjectByConstructor(glue, func, newTarget);
+    Label hasException(env);
+    Label notException(env);
+    BRANCH(HasPendingException(glue), &hasException, &notException);
+    Bind(&notException);
+    {
+        SetViewedArrayBufferOrByteArray(glue, *res, Undefined(), MemoryAttribute::NoBarrier());
+        SetTypedArrayName(glue, *res, constructorName);
+        AllocateTypedArrayBuffer(glue, *res, length, lengthTagged, arrayType);
+        BRANCH(HasPendingException(glue), &hasException, &exit);
+    }
+    Bind(&hasException);
+    {
+        res = Exception();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArray(GateRef glue, GateRef constructorName,
+    GateRef func, GateRef newTarget, const DataViewType arrayType)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(res, VariableType::JS_ANY(), Hole());
+    Label exit(env);
+
+    NewObjectStubBuilder newObjectStubBuilder(this);
+    res = newObjectStubBuilder.NewJSObjectByConstructor(glue, func, newTarget);
+    Label hasException(env);
+    Label notException(env);
+    BRANCH(HasPendingException(glue), &hasException, &notException);
+    Bind(&notException);
+    {
+        SetViewedArrayBufferOrByteArray(glue, *res, Undefined(), MemoryAttribute::NoBarrier());
+        if (arrayType == DataViewType::BIGINT64 ||
+            arrayType == DataViewType::BIGUINT64) {
+            SetContentType(glue, *res, Int8(static_cast<uint8_t>(ContentType::BigInt)));
+        } else {
+            SetContentType(glue, *res, Int8(static_cast<uint8_t>(ContentType::Number)));
+        }
+        SetTypedArrayName(glue, *res, constructorName);
+        SetByteLength(glue, *res, Int32(0));
+        SetByteOffset(glue, *res, Int32(0));
+        SetTypedArrayLength(glue, *res, Int32(0));
+        Jump(&exit);
+    }
+    Bind(&hasException);
+    {
+        res = Exception();
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *res;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef BuiltinsTypedArrayStubBuilder::AllocateTypedArrayBuffer(GateRef glue, GateRef typedArray,
+    GateRef length, GateRef lengthTagged, const DataViewType arrayType)
+{
+    auto env = GetEnvironment();
+    Label subentry(env);
+    env->SubCfgEntry(&subentry);
+    DEFVARIABLE(data, VariableType::JS_ANY(), Hole());
+    DEFVARIABLE(result, VariableType::JS_ANY(), typedArray);
+    Label exit(env);
+    Label slowPath(env);
+    Label valid(env);
+    Label next(env);
+
+    BRANCH(Int32UnsignedGreaterThan(length, Int32(JSTypedArray::MAX_TYPED_ARRAY_INDEX)), &slowPath, &valid);
+    Bind(&valid);
+    GateRef elementSize = Int32(base::TypedArrayHelper::GetSizeFromType(arrayType));
+    GateRef byteLength = Int64Mul(ZExtInt32ToInt64(elementSize), ZExtInt32ToInt64(length));
+    BRANCH(Int64UnsignedLessThanOrEqual(byteLength, Int64(JSTypedArray::MAX_ONHEAP_LENGTH)), &next, &slowPath);
+    Bind(&next);
+    {
+        Label newByteArrayExit(env);
+        NewObjectStubBuilder newObjectStubBuilder(this);
+        newObjectStubBuilder.SetParameters(glue, 0);
+        newObjectStubBuilder.NewByteArray(&data, &newByteArrayExit, elementSize, length);
+        Bind(&newByteArrayExit);
+        {
+            Label hasException(env);
+            Label notException(env);
+            BRANCH(HasPendingException(glue), &hasException, &notException);
+            Bind(&hasException);
+            {
+                result = Exception();
+                Jump(&exit);
+            }
+            Bind(&notException);
+            GateRef objHclass = LoadHClass(typedArray);
+            GateRef newHclass = GetOnHeapHclassFromType(glue, objHclass, arrayType);
+            NotifyHClassChanged(glue, objHclass, newHclass);
+            Store(VariableType::JS_ANY(), glue, typedArray, IntPtr(TaggedObject::HCLASS_OFFSET),
+                  newHclass, MemoryAttribute::NeedBarrierAndAtomic());
+            if (arrayType == DataViewType::BIGINT64 ||
+                arrayType == DataViewType::BIGUINT64) {
+                SetContentType(glue, typedArray, Int8(static_cast<uint8_t>(ContentType::BigInt)));
+            } else {
+                SetContentType(glue, typedArray, Int8(static_cast<uint8_t>(ContentType::Number)));
+            }
+            SetViewedArrayBufferOrByteArray(glue, typedArray, *data);
+            SetByteLength(glue, typedArray, TruncInt64ToInt32(byteLength));
+            SetByteOffset(glue, typedArray, Int32(0));
+            SetTypedArrayLength(glue, typedArray, length);
+            Jump(&exit);
+        }
+    }
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(AllocateTypedArrayBuffer), { typedArray, lengthTagged });
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void BuiltinsTypedArrayStubBuilder::CreateFromArrayBuffer(Variable *result, GateRef glue, GateRef numArgs,
+    Label *exit, Label *slowPath, const DataViewType arrayType)
+{
+    auto env = GetEnvironment();
+    DEFVARIABLE(newByteLength, VariableType::INT64(), Int64(0));
+    Label hasException(env);
+    Label notHasException(env);
+    Label next(env);
+    Label setArrayBufferProperties(env);
+
+    GateRef elementSize = Int32(base::TypedArrayHelper::GetSizeFromType(arrayType));
+    GateRef byteOffset = GetArgFromArgv(IntPtr(base::BuiltinsBase::ArgsPosition::SECOND), numArgs, true);
+    GateRef index = ToIndex(glue, byteOffset);
+    BRANCH(HasPendingException(glue), &hasException, &notHasException)
+    Bind(&notHasException);
+    GateRef offset = DoubleToInt(glue, GetDoubleOfTNumber(index));
+    BRANCH(Int32Equal(Int32Mod(offset, elementSize), Int32(0)), &next, slowPath);
+    Bind(&next);
+    {
+        Label notDetach(env);
+        Label isUndef(env);
+        Label notUndef(env);
+        GateRef length = GetArgFromArgv(IntPtr(base::BuiltinsBase::ArgsPosition::THIRD), numArgs, true);
+        GateRef buffer = GetArgFromArgv(IntPtr(0));
+        BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetach);
+        Bind(&notDetach);
+        GateRef bufferByteLength = GetArrayBufferByteLength(buffer);
+        BRANCH(TaggedIsUndefined(length), &isUndef, &notUndef);
+        Bind(&notUndef);
+        {
+            Label notHasException1(env);
+            GateRef indexLength = ToIndex(glue, length);
+            BRANCH(HasPendingException(glue), &hasException, &notHasException1);
+            Bind(&notHasException1);
+            {
+                GateRef newLength = DoubleToInt(glue, GetDoubleOfTNumber(indexLength));
+                newByteLength = Int64Mul(ZExtInt32ToInt64(newLength), ZExtInt32ToInt64(elementSize));
+                BRANCH(Int64UnsignedGreaterThan(
+                    Int64Add(ZExtInt32ToInt64(offset), *newByteLength), ZExtInt32ToInt64(bufferByteLength)),
+                    slowPath, &setArrayBufferProperties);
+            }
+        }
+        Bind(&isUndef);
+        {
+            Label next1(env);
+            Label next2(env);
+            BRANCH(Int32Equal(Int32Mod(bufferByteLength, elementSize), Int32(0)), &next1, slowPath);
+            Bind(&next1);
+            {
+                BRANCH(Int32UnsignedLessThan(bufferByteLength, offset), slowPath, &next2);
+                Bind(&next2);
+                newByteLength = ZExtInt32ToInt64(Int32Sub(bufferByteLength, offset));
+                Jump(&setArrayBufferProperties);
+            }
+        }
+    }
+    Bind(&setArrayBufferProperties);
+    {
+        SetArrayBufferProperties(glue, result->ReadVariable(), TruncInt64ToInt32(*newByteLength),
+                                 offset, TruncInt64ToInt32(Int64Div(*newByteLength, ZExtInt32ToInt64(elementSize))));
+        Jump(exit);
+    }
+
+    Bind(&hasException);
+    {
+        result->WriteVariable(Exception());
+        Jump(exit);
+    }
+}
+
+void BuiltinsTypedArrayStubBuilder::SetArrayBufferProperties(GateRef glue, GateRef typedArray,
+    GateRef newByteLength, GateRef offset, GateRef arrayLength)
+{
+    GateRef buffer = GetArgFromArgv(IntPtr(0));
+    SetViewedArrayBufferOrByteArray(glue, typedArray, buffer);
+    SetByteLength(glue, typedArray, newByteLength);
+    SetByteOffset(glue, typedArray, offset);
+    SetTypedArrayLength(glue, typedArray, arrayLength);
+}
+
+GateRef BuiltinsTypedArrayStubBuilder::GetOnHeapHclassFromType(GateRef glue, GateRef objHclass,
+                                                               const DataViewType arrayType)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    GateRef glueGlobalEnvOffset = IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+    GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+    Label slowPath(env);
+    Label exit(env);
+
+    switch (arrayType) {
+#define BUILTIN_COMPILER_TYPED_ARRAY_LABEL(TYPE, type, index)                           \
+        case DataViewType::TYPE:                                                        \
+        {                                                                               \
+            Label isEqual(env);                                                         \
+            GateRef hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,   \
+                GlobalEnv::TYPE##_ARRAY_ROOT_HCLASS_INDEX);                             \
+            BRANCH(IntPtrEqual(objHclass, hclass), &isEqual, &slowPath);                \
+            Bind(&isEqual);                                                             \
+            result = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,           \
+                GlobalEnv::TYPE##_ARRAY_ROOT_HCLASS_ON_HEAP_INDEX);                     \
+            Jump(&exit);                                                                \
+            break;                                                                      \
+        }
+BUILTIN_COMPILER_TYPED_ARRAY_TYPES(BUILTIN_COMPILER_TYPED_ARRAY_LABEL)
+#undef BUILTIN_COMPILER_TYPED_ARRAY_LABEL
+        default:
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+    }
+
+    Bind(&slowPath);
+    {
+        result = CallRuntime(glue, RTSTUB_ID(CloneHclass), { objHclass });
+        Jump(&exit);
+    }
+
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
 }
 }  // namespace panda::ecmascript::kungfu

@@ -297,6 +297,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef BothAreString(GateRef x, GateRef y);
     GateRef TaggedIsStringOrSymbol(GateRef obj);
     GateRef TaggedIsSymbol(GateRef obj);
+    GateRef TaggedIsArrayBuffer(GateRef obj);
     GateRef TaggedIsProtoChangeMarker(GateRef obj);
     GateRef GetNextPositionForHash(GateRef last, GateRef count, GateRef size);
     GateRef DoubleIsNAN(GateRef x);
@@ -355,6 +356,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef Int64LessThanOrEqual(GateRef x, GateRef y);
     GateRef Int64GreaterThanOrEqual(GateRef x, GateRef y);
     GateRef Int64UnsignedLessThanOrEqual(GateRef x, GateRef y);
+    GateRef Int64UnsignedGreaterThan(GateRef x, GateRef y);
     GateRef Int64UnsignedGreaterThanOrEqual(GateRef x, GateRef y);
     GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     // cast operation
@@ -362,6 +364,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef ZExtInt32ToPtr(GateRef val);
     GateRef ChangeIntPtrToInt32(GateRef val);
     GateRef ToLength(GateRef glue, GateRef target);
+    GateRef ToIndex(GateRef glue, GateRef tagged);
 
     // math operation
     GateRef Sqrt(GateRef x);
@@ -492,6 +495,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef HclassIsPropertyBox(GateRef hClass);
     GateRef PropAttrGetOffset(GateRef attr);
     GateRef GetCtorPrototype(GateRef ctor);
+    GateRef HasFunctionPrototype(GateRef ctor);
     GateRef InstanceOf(GateRef glue, GateRef object, GateRef target, GateRef profileTypeInfo, GateRef slotId,
         ProfileOperation callback);
     GateRef OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj);
@@ -768,6 +772,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef GetHomeObjectFromJSFunction(GateRef object);
     GateRef GetCallFieldFromMethod(GateRef method);
     GateRef GetSendableEnvFromModule(GateRef module);
+    GateRef GetProtoOrHClass(GateRef function);
     GateRef IsSendableFunctionModule(GateRef module);
     inline GateRef GetBuiltinId(GateRef method);
     void SetLexicalEnvToFunction(GateRef glue, GateRef object, GateRef lexicalEnv,
@@ -799,6 +804,14 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     void SetBitFieldToFunction(GateRef glue, GateRef function, GateRef value);
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
                                   MemoryAttribute mAttr = MemoryAttribute::Default());
+    void SetTypedArrayName(GateRef glue, GateRef typedArray, GateRef name,
+                           MemoryAttribute mAttr = MemoryAttribute::Default());
+    void SetContentType(GateRef glue, GateRef typedArray, GateRef type);
+    void SetViewedArrayBufferOrByteArray(GateRef glue, GateRef typedArray, GateRef data,
+                                         MemoryAttribute mAttr = MemoryAttribute::Default());
+    void SetByteLength(GateRef glue, GateRef typedArray, GateRef byteLength);
+    void SetByteOffset(GateRef glue, GateRef typedArray, GateRef offset);
+    void SetTypedArrayLength(GateRef glue, GateRef typedArray, GateRef arrayLength);
     GateRef GetGlobalObject(GateRef glue);
     GateRef GetMethodFromFunction(GateRef function);
     GateRef GetModuleFromFunction(GateRef function);
@@ -971,6 +984,8 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     inline GateRef GetByteOffset(GateRef dataView);
     inline GateRef GetByteLength(GateRef dataView);
     inline GateRef GetArrayBufferData(GateRef buffer);
+    inline GateRef GetArrayBufferByteLength(GateRef buffer);
+    inline void SetArrayBufferByteLength(GateRef glue, GateRef buffer, GateRef length);
     GateRef IsDetachedBuffer(GateRef buffer);
     inline GateRef IsMarkerCellValid(GateRef cell);
     inline GateRef GetAccessorHasChanged(GateRef obj);
