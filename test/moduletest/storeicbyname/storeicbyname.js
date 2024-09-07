@@ -42,3 +42,23 @@ let bad_proto = {
 let obj = {};
 obj.__proto__ = bad_proto;
 print("test set bad_proto successful!");
+
+let obj1 = {};
+Object.defineProperty(obj1, 'foo', {
+    set: function(value) {
+        Object.defineProperty(this, 'bar', {
+            get: function() {
+                return this._bar;
+            },
+            set: function(value) {
+                this._bar = value;
+            },
+        });
+    }
+});
+ 
+obj.foo = 'some value';
+for (let i = 0; i < 20; i++) {
+    obj.bar = 'new value';
+}
+print("test accessor ic successful!");
