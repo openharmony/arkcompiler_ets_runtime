@@ -457,6 +457,7 @@ bool CmpCsetVBPattern::CheckCondition(Insn &csetInsn)
         return false;
     }
     VRegVersion *ccRegVersion = ssaInfo->FindSSAVersion(ccRegNo);
+    DEBUG_ASSERT(ccRegVersion != nullptr, "nullptr check");
     if (ccRegVersion->GetAllUseInsns().size() > k1BitSize) {
         return false;
     }

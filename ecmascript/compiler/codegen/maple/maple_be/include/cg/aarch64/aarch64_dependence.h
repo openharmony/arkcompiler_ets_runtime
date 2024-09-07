@@ -48,7 +48,6 @@ protected:
     void BuildDepsMayThrowInsn(Insn &insn) override;
     bool NeedBuildDepsMem(const MemOperand &memOpnd, const MemOperand *nextMemOpnd, const Insn &memInsn) const;
     void BuildDepsUseMem(Insn &insn, MemOperand &memOpnd) override;
-    void BuildDepsDefMem(Insn &insn, MemOperand &memOpnd) override;
     void BuildAntiDepsDefStackMem(Insn &insn, MemOperand &memOpnd, const MemOperand *nextMemOpnd);
     void BuildOutputDepsDefStackMem(Insn &insn, MemOperand &memOpnd, const MemOperand *nextMemOpnd);
     void BuildDepsMemBar(Insn &insn) override;

@@ -45,7 +45,6 @@ void LiveIntervalAnalysis::Analysis()
 {
     bfs = memPool->New<Bfs>(*cgFunc, *memPool);
     bfs->ComputeBlockOrder();
-    ComputeLiveIntervals();
 }
 
 /* bfs is not utilized outside the function. */
@@ -104,6 +103,7 @@ MAPLE_ANALYSIS_PHASE_REGISTER_CANSKIP(CGliveIntervalAnalysis, cgliveintervalanan
 bool CgRegCoalesce::PhaseRun(maplebe::CGFunc &f)
 {
     LiveAnalysis *live = GET_ANALYSIS(CgLiveAnalysis, f);
+    DEBUG_ASSERT(live != nullptr, "nullptr check");
     live->ResetLiveSet();
     MemPool *memPool = GetPhaseMemPool();
     LiveIntervalAnalysis *ll = f.GetCG()->CreateLLAnalysis(*memPool, f);

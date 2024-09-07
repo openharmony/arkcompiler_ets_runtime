@@ -22,11 +22,9 @@
 
 #include <cassert>
 #include <fstream>
-#include <sstream>
 #include <unordered_map>
 #include <vector>
 #include <string>
-#include "cg_option.h"
 #include "operand.h"
 #include "stackmap.h"
 
@@ -61,11 +59,10 @@ public:
     Assembler() = default;
     virtual ~Assembler() = default;
 
-    virtual void CloseOutput()
+    void CloseOutput()
     {
-        if (outFStream.is_open()) {
-            outFStream << outStream.str();
-            outFStream.close();
+        if (outStream.is_open()) {
+            outStream.close();
         }
     }
 
@@ -385,8 +382,7 @@ public:
     virtual void SetLastModulePC(uint32 pc) = 0;
 
 protected:
-    std::ostringstream outStream;
-    std::ofstream outFStream;
+    std::ofstream outStream;
     std::string fileName;
     std::unordered_map<int64, const std::string> globalSymMap; /* store global variable symbols */
     std::unordered_map<int64, const std::string> localSymMap;  /* store local variable symbols for each function */

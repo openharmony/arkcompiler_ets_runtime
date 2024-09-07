@@ -670,9 +670,10 @@ bool BackPropPattern::CheckReplacedUseInsn(Insn &insn)
             return true;
         };
         /* ensure that the use insns to be replaced is defined by defInsnForSecondOpnd only */
-        if (useInsn->IsMemAccess() &&
-            static_cast<MemOperand *>(useInsn->GetMemOpnd())->GetIndexOpt() != MemOperand::kIntact) {
-            return false;
+        if (useInsn->IsMemAccess() && static_cast<MemOperand *>(useInsn->GetMemOpnd()) != nullptr) {
+            if (static_cast<MemOperand *>(useInsn->GetMemOpnd())->GetIndexOpt() != MemOperand::kIntact) {
+                return false;
+            }
         }
         InsnSet defInsnVecOfSrcOpnd = cgFunc.GetRD()->FindDefForRegOpnd(*useInsn, secondRegNO, true);
         if (!checkOneDefOnly(defInsnVecOfSrcOpnd, *defInsnForSecondOpnd, true)) {

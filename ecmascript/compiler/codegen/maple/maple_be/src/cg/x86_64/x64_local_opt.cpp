@@ -120,6 +120,7 @@ void X64RedundantDefRemove::Optimize(BB &bb, Insn &insn)
     if (nextInsn == nullptr) {
         return;
     }
+    DEBUG_ASSERT(regDef != nullptr, "nullptr check");
     reachingDef->FindRegUseBetweenInsn(regDef->GetRegisterNumber(), nextInsn, bb.GetLastInsn(), useInsnSet);
     if (useInsnSet.size() == 0) {
         bb.RemoveInsn(insn);

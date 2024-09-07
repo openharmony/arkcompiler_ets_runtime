@@ -950,7 +950,7 @@ bool GraphColorRegAllocator::CheckOverlap(uint64 val, uint32 i, LiveRange &lr1, 
             if (lu1 != lr1.EndOfLuMap() && lu2 != lr2.EndOfLuMap() &&
                 !((lu1->second->GetBegin() < lu2->second->GetBegin() &&
                    lu1->second->GetEnd() < lu2->second->GetBegin()) ||
-                  (lu2->second->GetBegin() < lu1->second->GetEnd() &&
+                   (lu2->second->GetBegin() < lu1->second->GetEnd() &&
                    lu2->second->GetEnd() < lu1->second->GetBegin()))) {
                 lr1.SetConflictBitArrElem(lr2RegNO);
                 lr2.SetConflictBitArrElem(lr1RegNO);
@@ -2853,7 +2853,7 @@ void CallerSavePre::ApplySSAPRE()
         workCand = workList.front();
         workCand->SetIndex(static_cast<int32>(cnt));
         workLr = regAllocator->GetLiveRange(static_cast<RegOperand *>(workCand->GetTheOperand())->GetRegisterNumber());
-        DEBUG_ASSERT(workLr != nullptr, "expected non null lr");
+        DEBUG_ASSERT(workLr != nullptr, "exepected non null lr");
         workList.pop_front();
         if (workCand->GetRealOccs().empty()) {
             continue;
@@ -2870,7 +2870,7 @@ void CallerSavePre::ApplySSAPRE()
         // #2 Rename
         ComputeDS();
         ComputeAvail();
-        DEBUG_ASSERT(workLr->GetProcessed() == false, "expected unprocessed");
+        DEBUG_ASSERT(workLr->GetProcessed() == false, "exepected unprocessed");
         workLr->SetProcessed();
     }
 }

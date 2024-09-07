@@ -930,7 +930,7 @@ bool UnreachBBPattern::Optimize(BB &curBB)
             isRemoved = false;
         }
 
-        /* flush after remove; */
+        /* flush after remove */
         for (BB *bb : curBB.GetSuccs()) {
             bb->RemovePreds(curBB);
             cgFunc->GetTheCFG()->FlushUnReachableStatusAndRemoveRelations(*bb, *cgFunc);
@@ -1353,6 +1353,7 @@ bool CgPreCfgo::PhaseRun(maplebe::CGFunc &f)
 {
     auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
     CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f, *loopInfo);
+    DEBUG_ASSERT(cfgOptimizer != nullptr, "nullptr check");
     const std::string &funcClass = f.GetFunction().GetBaseClassName();
     const std::string &funcName = f.GetFunction().GetBaseFuncName();
     const std::string &name = funcClass + funcName;
@@ -1405,6 +1406,7 @@ bool CgPostCfgo::PhaseRun(maplebe::CGFunc &f)
 {
     auto *loopInfo = GET_ANALYSIS(CgLoopAnalysis, f);
     CFGOptimizer *cfgOptimizer = f.GetCG()->CreateCFGOptimizer(*GetPhaseMemPool(), f, *loopInfo);
+    DEBUG_ASSERT(cfgOptimizer != nullptr, "nullptr check");
     const std::string &funcClass = f.GetFunction().GetBaseClassName();
     const std::string &funcName = f.GetFunction().GetBaseFuncName();
     const std::string &name = funcClass + funcName;

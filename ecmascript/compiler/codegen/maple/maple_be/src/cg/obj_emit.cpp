@@ -142,7 +142,7 @@ void ObjEmitter::WriteObjFile()
         }
 
         SetFileOffset(section->GetOffset());
-        section->WriteSection(outStream);
+        section->WriteSection(fileStream);
     }
 
     /* write section table */

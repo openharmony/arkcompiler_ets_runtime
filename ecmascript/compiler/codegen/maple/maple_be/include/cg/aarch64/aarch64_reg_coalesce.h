@@ -29,7 +29,6 @@ public:
 
     ~AArch64LiveIntervalAnalysis() override = default;
 
-    void ComputeLiveIntervals() override;
     bool IsUnconcernedReg(const RegOperand &regOpnd) const;
     LiveInterval *GetOrCreateLiveInterval(regno_t regNO);
     void UpdateCallInfo();

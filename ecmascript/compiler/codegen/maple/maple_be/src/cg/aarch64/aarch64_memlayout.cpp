@@ -86,10 +86,10 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int
                 DEBUG_ASSERT(ty->GetKind() == kTypePointer, "expect pointer");
                 ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<MIRPtrType *>(ty)->GetPointedTyIdx());
                 if (iread->GetFieldID() != 0) {
+                    CHECK_NULL_FATAL(ty);
                     DEBUG_ASSERT(ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeClass ||
                                      ty->GetKind() == kTypeUnion,
                                  "expect struct or class");
-                    CHECK_NULL_FATAL(ty);
                     if (ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeUnion) {
                         ty = static_cast<MIRStructType *>(ty)->GetFieldType(iread->GetFieldID());
                     } else {
@@ -699,7 +699,6 @@ int32 AArch64MemLayout::GetCalleeSaveBaseLoc() const
 {
     uint32 offset = RealStackFrameSize() - static_cast<AArch64CGFunc *>(cgFunc)->SizeOfCalleeSaved();
     offset = (offset - SizeOfArgsToStackPass()) + kAarch64SizeOfFplr - cgFunc->GetFunction().GetFrameReseverdSlot();
-
     if (cgFunc->GetMirModule().IsCModule() && cgFunc->GetFunction().GetAttr(FUNCATTR_varargs)) {
         /* GR/VR save areas are above the callee save area */
         // According to AAPCS64 document:

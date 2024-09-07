@@ -57,6 +57,7 @@ void A64DeleteRegUseVisitor::Visit(RegOperand *v)
 {
     if (v->IsSSAForm()) {
         VRegVersion *regVersion = GetSSAInfo()->FindSSAVersion(v->GetRegisterNumber());
+        DEBUG_ASSERT(regVersion != nullptr, "nullptr check");
         MapleUnorderedMap<uint32, DUInsnInfo *> &useInfos = regVersion->GetAllUseInsns();
         auto it = useInfos.find(deleteInsnId);
         if (it != useInfos.end()) {

@@ -75,6 +75,7 @@ bool CgTargetProp::PhaseRun(maplebe::CGFunc &f)
     CGSSAInfo *ssaInfo = GET_ANALYSIS(CgSSAConstruct, f);
     LiveIntervalAnalysis *ll = GET_ANALYSIS(CGliveIntervalAnalysis, f);
     CGProp *cgProp = f.GetCG()->CreateCGProp(*GetPhaseMemPool(), f, *ssaInfo, *ll);
+    DEBUG_ASSERT(cgProp != nullptr, "nullptr check");
     cgProp->DoTargetProp();
     ll->ClearBFS();
     return false;

@@ -1730,10 +1730,7 @@ bool ArithResTypeVerify(PrimType pTyp)
 
     // Arithmetic operations on all vector types are allowed
     PrimitiveType pt(pTyp);
-    if (pt.IsVector())
-        return true;
-
-    return false;
+    return pt.IsVector();
 }
 
 inline bool UnaryTypeVerify1(PrimType pType)

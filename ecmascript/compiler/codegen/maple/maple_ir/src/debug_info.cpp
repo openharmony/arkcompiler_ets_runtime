@@ -23,16 +23,9 @@
 #include "securec.h"
 #include "mpl_logging.h"
 #include "version.h"
+#include "debug_info_util.h"
 
 namespace maple {
-extern const char *GetDwTagName(unsigned n);
-extern const char *GetDwFormName(unsigned n);
-extern const char *GetDwAtName(unsigned n);
-extern const char *GetDwOpName(unsigned n);
-extern const char *GetDwAteName(unsigned n);
-extern const char *GetDwCfaName(unsigned n);
-extern DwAte GetAteFromPTY(PrimType pty);
-
 constexpr uint32 kIndx2 = 2;
 constexpr uint32 kStructDBGSize = 8888;
 

@@ -659,8 +659,7 @@ void MIRModule::OutputAsciiMpl(const char *phaseName, const char *suffix,
     } else {
         fileStem = fileName.substr(0, lastDot).append(phaseName);
     }
-    std::string outfileName;
-    outfileName = fileStem + suffix;
+    std::string outfileName = fileStem + suffix;
     if (!binaryform) {
         std::ofstream mplFile;
         mplFile.open(outfileName, std::ios::trunc);

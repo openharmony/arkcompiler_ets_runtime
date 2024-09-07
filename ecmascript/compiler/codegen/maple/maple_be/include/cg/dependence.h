@@ -64,7 +64,6 @@ protected:
     virtual void BuildDepsAmbiInsn(Insn &insn) = 0;
     virtual void BuildDepsMayThrowInsn(Insn &insn) = 0;
     virtual void BuildDepsUseMem(Insn &insn, MemOperand &memOpnd) = 0;
-    virtual void BuildDepsDefMem(Insn &insn, MemOperand &memOpnd) = 0;
     virtual void BuildDepsMemBar(Insn &insn) = 0;
     virtual void BuildDepsSeparator(DepNode &newSepNode, MapleVector<DepNode *> &nodes) = 0;
     virtual void BuildDepsControlAll(DepNode &depNode, const MapleVector<DepNode *> &nodes) = 0;

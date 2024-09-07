@@ -266,8 +266,6 @@ static constexpr uintptr_t kClInitStateAddrBase = 0xc0000000 - (1u << 20) * 2;
 // Hence we add 1 cache line (64 byte) offset here to avoid such conflict
 static constexpr uintptr_t kClassInitializedState = kClInitStateAddrBase + kCacheLine;
 
-extern "C" uint8_t classInitProtectRegion[];
-
 // Note there is no state to indicate a class is already initialized.
 // Any state beyond listed below is treated as initialized.
 enum ClassInitState {
@@ -326,6 +324,10 @@ struct ClassMetadata {
     };
 
 public:
+    static inline intptr_t OffsetOfInitState()
+    {
+        return reinterpret_cast<intptr_t>(nullptr);
+    }
     uintptr_t GetInitStateRawValue() const
     {
         return __atomic_load_n(&initState, __ATOMIC_ACQUIRE);

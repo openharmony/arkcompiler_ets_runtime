@@ -900,6 +900,7 @@ BaseNode *MIRLower::LowerCArray(ArrayNode *array)
     eSize->SetPrimType(array->GetPrimType());
     rMul = mirModule.CurFuncCodeMemPool()->New<BinaryNode>(OP_mul);
     PrimType signedInt4AddressCompute = GetSignedPrimType(array->GetPrimType());
+    DEBUG_ASSERT(resNode != nullptr, "nullptr check");
     if (!IsPrimitiveInteger(resNode->GetPrimType())) {
         resNode = mirModule.CurFuncCodeMemPool()->New<TypeCvtNode>(OP_cvt, signedInt4AddressCompute,
                                                                    resNode->GetPrimType(), resNode);

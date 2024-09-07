@@ -27,7 +27,6 @@
 #include "mir_module.h"
 
 namespace maple {
-extern char appArray[];
 constexpr uint32 kTwoBitVectors = 2;
 struct MirFuncT {  // 28B
     uint16 frameSize;

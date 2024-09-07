@@ -31,6 +31,7 @@ JitCompilationEnv::JitCompilationEnv(EcmaVM *jitVm, EcmaVM *jsVm, JSHandle<JSFun
     pcStart_ = method->GetBytecodeArray();
     abcId_ = PGOProfiler::GetMethodAbcId(*jsFunction);
     if (method->GetFunctionKind() == FunctionKind::CLASS_CONSTRUCTOR) {
+        ASSERT(methodLiteral_ != nullptr);
         methodLiteral_->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
     }
 }

@@ -17,7 +17,6 @@
 #define MAPLEBE_INCLUDE_CG_IFILE_H
 
 #include <fstream>
-#include <sstream>
 #include "elf_types.h"
 #include "types_def.h"
 #include "common_utils.h"
@@ -104,7 +103,7 @@ public:
 
     virtual ~Section() = default;
     virtual void GenerateData() = 0;
-    virtual void WriteSection(std::ostringstream &outStream) = 0;
+    virtual void WriteSection(std::ofstream &outStream) = 0;
     virtual void ClearData()
     {
         return;
@@ -245,7 +244,7 @@ public:
         return;
     }
 
-    virtual void WriteSection(std::ostringstream &outStream) override
+    virtual void WriteSection(std::ofstream &outStream) override
     {
         outStream.write(reinterpret_cast<const char *>(data.data()), data.size());
     }
@@ -371,7 +370,7 @@ public:
         SetDataSize(symbols.size() * sizeof(Symbol));
     }
 
-    void WriteSection(std::ostringstream &outStream) override
+    void WriteSection(std::ofstream &outStream) override
     {
         outStream.write(reinterpret_cast<const char *>(symbols.data()), symbols.size() * sizeof(Symbol));
     }
@@ -430,7 +429,7 @@ public:
         SetDataSize(relas.size() * sizeof(Rela));
     }
 
-    void WriteSection(std::ostringstream &outStream) override
+    void WriteSection(std::ofstream &outStream) override
     {
         outStream.write(reinterpret_cast<const char *>(relas.data()), relas.size() * sizeof(Rela));
     }

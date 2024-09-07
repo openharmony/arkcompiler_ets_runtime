@@ -21,7 +21,6 @@
 #include <functional>
 #include <map>
 #include <array>
-#include <sstream>
 #include "isa.h"
 #include "lsda.h"
 #include "asm_info.h"
@@ -164,10 +163,8 @@ public:
     virtual void CloseOutput()
     {
         if (fileStream.is_open()) {
-            fileStream << outStream.str();
             fileStream.close();
         }
-
         rangeIdx2PrefixStr.clear();
         hugeSoTargets.clear();
         labdie2labidxTable.clear();
@@ -242,38 +239,38 @@ public:
 
     Emitter &Emit(int64 val)
     {
-        outStream << val;
+        fileStream << val;
         return *this;
     }
 
     Emitter &Emit(const IntVal &val)
     {
-        outStream << val.GetExtValue();
+        fileStream << val.GetExtValue();
         return *this;
     }
 
     Emitter &Emit(const MapleString &str)
     {
         DEBUG_ASSERT(str.c_str() != nullptr, "nullptr check");
-        outStream << str;
+        fileStream << str;
         return *this;
     }
 
     Emitter &Emit(const std::string &str)
     {
-        outStream << str;
+        fileStream << str;
         return *this;
     }
 
     Emitter &Emit(const void *data, size_t size)
     {
-        outStream.write(reinterpret_cast<const char *>(data), size);
+        fileStream.write(reinterpret_cast<const char *>(data), size);
         return *this;
     }
 
     void SetFileOffset(uint64 offset)
     {
-        outStream.seekp(offset);
+        fileStream.seekp(offset);
     }
 
     void EmitLabelRef(LabelIdx labIdx);
@@ -381,7 +378,6 @@ protected:
     ~Emitter() = default;
 
 protected:
-    std::ostringstream outStream;
     std::ofstream fileStream;
     MemPool *memPool;
     CG *cg;

@@ -225,7 +225,6 @@ public:
         bfs = nullptr;
     }
 
-    virtual void ComputeLiveIntervals() = 0;
     virtual void CoalesceRegisters() = 0;
     void Run();
     void Analysis();

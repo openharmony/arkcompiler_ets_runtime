@@ -77,6 +77,7 @@ void AlignAnalysis::Dump()
             LogInfo::MapleLogger() << "[labeled with " << loopHeader->GetLabIdx() << "]> ===\n";
         }
         auto *loop = loopInfo.GetBBLoopParent(loopHeader->GetId());
+        DEBUG_ASSERT(loop != nullptr, "nullptr check");
         LogInfo::MapleLogger() << "\tLoop Level: " << loop->GetNestDepth() << "\n";
         FOR_BB_INSNS_CONST(insn, loopHeader) {
             insn->Dump();

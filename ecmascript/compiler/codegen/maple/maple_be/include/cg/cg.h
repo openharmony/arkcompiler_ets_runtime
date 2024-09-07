@@ -226,8 +226,13 @@ public:
         : memPool(memPoolCtrler.NewMemPool("maplecg mempool", false /* isLocalPool */)),
           allocator(memPool),
           mirModule(&mod),
-          cgOption(cgOptions)
+          emitter(nullptr),
+          labelOrderCnt(0),
+          cgOption(cgOptions),
+          instrumentationFunction(nullptr),
+          fileGP(nullptr)
     {
+        isLibcore = false;
         DefineDebugTraceFunctions();
         isLmbc = (mirModule->GetFlavor() == MIRFlavor::kFlavorLmbc);
     }
@@ -368,36 +373,14 @@ public:
         return mirModule;
     }
 
-    void SetObjEmitter(Emitter &emitter)
+    void SetEmitter(Emitter &emitter)
     {
-        DEBUG_ASSERT(emitters.empty(), "ObjEmitter already exist");
-        emitters.push_back(&emitter);
+        this->emitter = &emitter;
     }
 
-    void SetAsmEmitter(Emitter &emitter)
+    Emitter *GetEmitter() const
     {
-        DEBUG_ASSERT(emitters.size() == 1U, "AsmEmitter need to be added after objEmmiter");
-        emitters.push_back(&emitter);
-    }
-
-    enum EmitterType: uint8_t {
-        ObjEmiter = 0,
-        AsmEmitter = 1,
-        All
-    };
-
-    // NOTE: It's would de better to remove EmmiterType and always use EmitterType::All,
-    //       but it's need to unify interfaces. It's better because, it's harder to make a error.
-    template <EmitterType emitType = EmitterType::All>
-    void Emit(const std::function<void(Emitter*)> &cb) const
-    {
-        if constexpr (emitType == EmitterType::All) {
-            EmitAllEmitters(cb);
-        } else if constexpr (emitType == EmitterType::AsmEmitter) {
-            EmitAsmEmitters(cb);
-        } else if constexpr (emitType == EmitterType::ObjEmiter) {
-            EmitObjEmitters(cb);
-        }
+        return emitter;
     }
 
     MIRModule *GetMIRModule() const
@@ -532,7 +515,10 @@ public:
     {
         return nullptr;
     };
-    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const = 0;
+    virtual CFGOptimizer *CreateCFGOptimizer(MemPool &mp, CGFunc &f, LoopAnalysis &loop) const
+    {
+        return nullptr;
+    }
 
     /* Object map generation helper */
     std::vector<int64> GetReferenceOffsets64(const BECommon &beCommon, MIRStructType &structType);
@@ -589,24 +575,19 @@ protected:
     MapleAllocator allocator;
 
 private:
-    void EmitAllEmitters(const std::function<void(Emitter *)>& cb) const;
-    void EmitAsmEmitters(const std::function<void(Emitter *)>& cb) const;
-    void EmitObjEmitters(const std::function<void(Emitter *)>& cb) const;
-
-private:
     MIRModule *mirModule;
-    std::vector<Emitter *> emitters;
+    Emitter *emitter;
     TargetMachine *targetMachine = nullptr;
-    LabelIDOrder labelOrderCnt = 0;
+    LabelIDOrder labelOrderCnt;
     static CGFunc *currentCGFunction; /* current cg function being compiled */
     CGOptions cgOption;
-    MIRSymbol *instrumentationFunction = nullptr;
+    MIRSymbol *instrumentationFunction;
     MIRSymbol *dbgTraceEnter = nullptr;
     MIRSymbol *dbgTraceExit = nullptr;
     MIRSymbol *dbgFuncProfile = nullptr;
-    MIRSymbol *fileGP = nullptr; /* for lmbc, one local %GP per file */
+    MIRSymbol *fileGP; /* for lmbc, one local %GP per file */
     static std::map<MIRFunction *, std::pair<LabelIdx, LabelIdx>> funcWrapLabels;
-    bool isLibcore = false;
+    bool isLibcore;
     bool isLmbc;
 }; /* class CG */
 } /* namespace maplebe */

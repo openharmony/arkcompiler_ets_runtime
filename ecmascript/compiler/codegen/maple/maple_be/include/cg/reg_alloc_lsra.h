@@ -21,6 +21,10 @@
 #include "loop.h"
 
 namespace maplebe {
+#ifdef RA_PERF_ANALYSIS
+extern void printLSRATime();
+#endif
+
 class LSRALinearScanRegAllocator : public RegAllocator {
     enum RegInCatch : uint8 {
         /*

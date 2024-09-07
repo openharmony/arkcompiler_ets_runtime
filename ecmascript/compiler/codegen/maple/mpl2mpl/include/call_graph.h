@@ -486,7 +486,6 @@ public:
     }
 
     MIRType *GetFuncTypeFromFuncAddr(const BaseNode *);
-    void RecordLocalConstValue(const StmtNode *stmt);
     CallNode *ReplaceIcallToCall(BlockNode &body, IcallNode *icall, PUIdx newPUIdx);
     void CollectAddroffuncFromExpr(const BaseNode *expr);
     void CollectAddroffuncFromStmt(const StmtNode *stmt);
@@ -550,7 +549,6 @@ private:
     CallType GetCallType(Opcode op) const;
     void FindRootNodes();
     void RemoveFileStaticRootNodes();  // file static and inline but not extern root nodes can be removed
-    void RemoveFileStaticSCC();        // SCC can be removed if it has no caller and all its nodes is file static
     void SetCompilationFunclist() const;
 
     CallInfo *GenCallInfo(CallType type, MIRFunction *call, StmtNode *s, uint32 loopDepth, uint32 callsiteID)

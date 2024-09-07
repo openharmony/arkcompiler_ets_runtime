@@ -154,6 +154,7 @@ static MIRStructType *GetDassignedStructType(const DassignNode *dassign, MIRFunc
 {
     const auto &lhsStIdx = dassign->GetStIdx();
     auto lhsSymbol = func->GetLocalOrGlobalSymbol(lhsStIdx);
+    DEBUG_ASSERT(lhsSymbol != nullptr, "lhsSymbol should not be nullptr");
     auto lhsAggType = lhsSymbol->GetType();
     if (!lhsAggType->IsStructType()) {
         return nullptr;
@@ -201,6 +202,7 @@ static MIRStructType *GetReadedStructureType(const DreadNode *dread, const MIRFu
 {
     const auto &rhsStIdx = dread->GetStIdx();
     auto rhsSymbol = func->GetLocalOrGlobalSymbol(rhsStIdx);
+    DEBUG_ASSERT(rhsSymbol != nullptr, "rhsSymbol should not be nullptr");
     auto rhsAggType = rhsSymbol->GetType();
     auto rhsFieldID = dread->GetFieldID();
     if (rhsFieldID != 0) {
@@ -394,6 +396,7 @@ BaseNode *Simplify::ReplaceExprWithConst(DreadNode &dread)
     auto stIdx = dread.GetStIdx();
     auto fieldId = dread.GetFieldID();
     auto *symbol = currFunc->GetLocalOrGlobalSymbol(stIdx);
+    DEBUG_ASSERT(symbol != nullptr, "nullptr check");
     auto *symbolConst = symbol->GetKonst();
     if (!currFunc->GetModule()->IsCModule() || !symbolConst || !stIdx.IsGlobal() ||
         !IsSymbolReplaceableWithConst(*symbol)) {
@@ -536,6 +539,7 @@ static bool IsComplexExpr(const BaseNode *expr, MIRFunction &func)
     }
     if (op == OP_dread) {
         auto *symbol = func.GetLocalOrGlobalSymbol(static_cast<const DreadNode *>(expr)->GetStIdx());
+        DEBUG_ASSERT(symbol != nullptr, "nullptr check");
         if (symbol->IsGlobal() || symbol->GetStorageClass() == kScPstatic) {
             return true;  // dread global/static var is complex expr because it will be lowered to adrp + add
         } else {

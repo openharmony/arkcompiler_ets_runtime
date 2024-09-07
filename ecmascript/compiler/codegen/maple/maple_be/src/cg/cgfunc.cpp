@@ -579,6 +579,7 @@ Operand *HandleVectorGetElement(const IntrinsicopNode &intrnNode, CGFunc &cgFunc
     int32 laneNum = -1;
     if (opndLane->IsConstImmediate()) {
         MIRConst *mirConst = static_cast<ConstvalNode *>(intrnNode.Opnd(1))->GetConstVal();
+        DEBUG_ASSERT(mirConst != nullptr, "mirConst should not be nullptr");
         laneNum = static_cast<int32>(safe_cast<MIRIntConst>(mirConst)->GetExtValue());
     } else {
         CHECK_FATAL(0, "VectorGetElement does not have lane const");
@@ -617,6 +618,7 @@ Operand *HandleVectorSetElement(const IntrinsicopNode &intrnNode, CGFunc &cgFunc
     int32 laneNum = -1;
     if (opnd2->IsConstImmediate()) {
         MIRConst *mirConst = static_cast<ConstvalNode *>(arg2)->GetConstVal();
+        DEBUG_ASSERT(mirConst != nullptr, "mirConst should not be nullptr");
         laneNum = static_cast<int32>(safe_cast<MIRIntConst>(mirConst)->GetExtValue());
     } else {
         CHECK_FATAL(0, "VectorSetElement does not have lane const");

@@ -125,6 +125,7 @@ MIRFunction *Clone::CloneFunction(MIRFunction &originalFunction, const std::stri
     klass->AddMethod(newFunc);
     newFunc->SetClassTyIdx(originalFunction.GetClassTyIdx());
     MIRClassType *classType = klass->GetMIRClassType();
+    DEBUG_ASSERT(newFunc->GetFuncSymbol() != nullptr, "nullpt check");
     classType->GetMethods().push_back(MethodPair(
         newFunc->GetStIdx(), TyidxFuncAttrPair(newFunc->GetFuncSymbol()->GetTyIdx(), originalFunction.GetFuncAttrs())));
     newFunc->SetFlag(originalFunction.GetFlag());
@@ -217,6 +218,7 @@ MIRFunction *Clone::CloneFunctionNoReturn(MIRFunction &originalFunction)
     GStrIdx fullNameStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(newFuncFullName);
     newFunction->OverrideBaseClassFuncNames(fullNameStrIdx);
     MIRSymbol *funcSt = newFunction->GetFuncSymbol();
+    DEBUG_ASSERT(funcSt != nullptr, "nullptr check");
     GlobalTables::GetGsymTable().RemoveFromStringSymbolMap(*funcSt);
     funcSt->SetNameStrIdx(fullNameStrIdx);
     GlobalTables::GetGsymTable().AddToStringSymbolMap(*funcSt);
@@ -234,26 +236,11 @@ void Clone::UpdateReturnVoidIfPossible(CallMeStmt *callMeStmt, const MIRFunction
         replaceRetIgnored->IsInCloneList(targetFunc.GetName())) {
         std::string funcNameReturnVoid = replaceRetIgnored->GenerateNewFullName(targetFunc);
         GStrIdx gStrIdx = GlobalTables::GetStrTable().GetStrIdxFromName(funcNameReturnVoid);
+        DEBUG_ASSERT(GlobalTables::GetGsymTable().GetSymbolFromStrIdx(gStrIdx) != nullptr,
+            "nullptr check");
         MIRFunction *funcReturnVoid = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(gStrIdx)->GetFunction();
         CHECK_FATAL(funcReturnVoid != nullptr, "target function not found at ssadevirtual");
         callMeStmt->SetPUIdx(funcReturnVoid->GetPuidx());
-    }
-}
-
-void Clone::DoClone()
-{
-    std::set<std::string> clonedNewFuncMap;
-    for (const MapleString &funcName : *(replaceRetIgnored->GetTobeClonedFuncNames())) {
-        GStrIdx gStrIdx = GlobalTables::GetStrTable().GetStrIdxFromName(std::string(funcName.c_str()));
-        MIRSymbol *symbol = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(gStrIdx);
-        if (symbol != nullptr) {
-            GStrIdx gStrIdxOfFunc = GlobalTables::GetStrTable().GetStrIdxFromName(std::string(funcName.c_str()));
-            MIRSymbol *symb = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(gStrIdxOfFunc);
-            DEBUG_ASSERT(symb != NULL, "symb is null");
-            MIRFunction *oriFunc = symb->GetFunction();
-            mirModule->SetCurFunction(oriFunc);
-            (void)clonedNewFuncMap.insert(CloneFunctionNoReturn(*oriFunc)->GetName());
-        }
     }
 }
 

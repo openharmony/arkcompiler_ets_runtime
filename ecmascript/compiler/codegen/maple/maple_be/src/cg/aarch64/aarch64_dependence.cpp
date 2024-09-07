@@ -223,6 +223,7 @@ void AArch64DepAnalysis::ClearDepNodeInfo(DepNode &depNode) const
     Reservation *seRev = mad.FindReservation(insn);
     depNode.SetInsn(insn);
     depNode.SetType(kNodeTypeEmpty);
+    DEBUG_ASSERT(seRev != nullptr, "seRev should not be nullptr");
     depNode.SetReservation(*seRev);
     depNode.SetUnitNum(0);
     depNode.ClearCfiInsns();
@@ -495,6 +496,7 @@ bool AArch64DepAnalysis::NeedBuildDepsMem(const MemOperand &memOpnd, const MemOp
                                           const Insn &memInsn) const
 {
     auto *memOpndOfmemInsn = static_cast<MemOperand *>(memInsn.GetMemOpnd());
+    DEBUG_ASSERT(memOpndOfmemInsn != nullptr, "nullptr check");
     if (!NoAlias(memOpnd, *memOpndOfmemInsn) ||
         ((nextMemOpnd != nullptr) && !NoAlias(*nextMemOpnd, *memOpndOfmemInsn))) {
         return true;
@@ -543,43 +545,6 @@ void AArch64DepAnalysis::BuildOutputDepsDefStackMem(Insn &insn, MemOperand &memO
             AddDependence(*defInsn->GetDepNode(), *insn.GetDepNode(), kDependenceTypeOutput);
         }
     }
-}
-
-/* Build dependences of stack memory and heap memory definitions. */
-void AArch64DepAnalysis::BuildDepsDefMem(Insn &insn, MemOperand &aarchMemOpnd)
-{
-    RegOperand *baseRegister = aarchMemOpnd.GetBaseRegister();
-    MemOperand *nextMemOpnd = GetNextMemOperand(insn, aarchMemOpnd);
-
-    /* Build anti dependences. */
-    BuildAntiDepsDefStackMem(insn, aarchMemOpnd, nextMemOpnd);
-    /* Build output depnedence. */
-    BuildOutputDepsDefStackMem(insn, aarchMemOpnd, nextMemOpnd);
-    if (lastCallInsn != nullptr) {
-        /* Build a dependence between stack passed arguments and call. */
-        DEBUG_ASSERT(baseRegister != nullptr, "baseRegister shouldn't be null here");
-        if (baseRegister->GetRegisterNumber() == RSP) {
-            AddDependence(*lastCallInsn->GetDepNode(), *insn.GetDepNode(), kDependenceTypeControl);
-        }
-    }
-
-    /* Heap memory
-     * Build anti dependences.
-     */
-    AddDependence4InsnInVectorByType(heapUses, insn, kDependenceTypeAnti);
-    /* Build output depnedence. */
-    AddDependence4InsnInVectorByType(heapDefs, insn, kDependenceTypeOutput);
-
-    if (((baseRegister != nullptr) && IsFrameReg(*baseRegister)) || aarchMemOpnd.IsStackMem()) {
-        stackDefs.emplace_back(&insn);
-    } else {
-        heapDefs.emplace_back(&insn);
-    }
-    if (memBarInsn != nullptr) {
-        AddDependence(*memBarInsn->GetDepNode(), *insn.GetDepNode(), kDependenceTypeMembar);
-    }
-    /* Memory definition can not across may-throw insns. */
-    AddDependence4InsnInVectorByType(mayThrows, insn, kDependenceTypeThrow);
 }
 
 /* Build dependences of memory barrior instructions. */
@@ -674,6 +639,7 @@ void AArch64DepAnalysis::BuildStackPassArgsDeps(Insn &insn)
         Operand *opnd = stackDefInsn->GetMemOpnd();
         DEBUG_ASSERT(opnd->IsMemoryAccessOperand(), "make sure opnd is memOpnd");
         MemOperand *memOpnd = static_cast<MemOperand *>(opnd);
+        DEBUG_ASSERT(memOpnd != nullptr, "memOpnd should not be nullptr");
         RegOperand *baseReg = memOpnd->GetBaseRegister();
         if ((baseReg != nullptr) && (baseReg->GetRegisterNumber() == RSP)) {
             AddDependence(*stackDefInsn->GetDepNode(), *insn.GetDepNode(), kDependenceTypeControl);
@@ -829,7 +795,6 @@ void AArch64DepAnalysis::BuildMemOpndDependency(Insn &insn, Operand &opnd, const
     if (regProp.IsUse()) {
         BuildDepsUseMem(insn, *memOpnd);
     } else {
-        BuildDepsDefMem(insn, *memOpnd);
         BuildDepsAmbiInsn(insn);
     }
     if (IsYieldPoint(insn)) {

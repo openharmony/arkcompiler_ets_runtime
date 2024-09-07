@@ -139,7 +139,7 @@ void Emitter::EmitLabelRef(LabelIdx labIdx)
     PUIdx pIdx = GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
     char *idx = strdup(std::to_string(pIdx).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");
-    outStream << ".L." << idx << "__" << labIdx;
+    fileStream << ".L." << idx << "__" << labIdx;
     free(idx);
     idx = nullptr;
 }
@@ -147,16 +147,16 @@ void Emitter::EmitLabelRef(LabelIdx labIdx)
 void Emitter::EmitStmtLabel(LabelIdx labIdx)
 {
     EmitLabelRef(labIdx);
-    outStream << ":\n";
+    fileStream << ":\n";
 }
 
 void Emitter::EmitLabelPair(const LabelPair &pairLabel)
 {
     DEBUG_ASSERT(pairLabel.GetEndOffset() || pairLabel.GetStartOffset(), "NYI");
     EmitLabelRef(pairLabel.GetEndOffset()->GetLabelIdx());
-    outStream << " - ";
+    fileStream << " - ";
     EmitLabelRef(pairLabel.GetStartOffset()->GetLabelIdx());
-    outStream << "\n";
+    fileStream << "\n";
 }
 
 void Emitter::EmitLabelForFunc(const MIRFunction *func, LabelIdx labIdx)
@@ -164,7 +164,7 @@ void Emitter::EmitLabelForFunc(const MIRFunction *func, LabelIdx labIdx)
     DEBUG_ASSERT(func != nullptr, "null ptr check");
     char *idx = strdup(std::to_string(func->GetPuidx()).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");
-    outStream << ".L." << idx << "__" << labIdx;
+    fileStream << ".L." << idx << "__" << labIdx;
     free(idx);
     idx = nullptr;
 }
@@ -421,7 +421,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
                 std::string align = std::to_string(
                     static_cast<int>(
                         log2(Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex()))));
-            else {
+            } else {
                 std::string align =
                     std::to_string(Globals::GetInstance()->GetBECommon()->GetTypeAlign(mirType->GetTypeIndex()));
             }
@@ -3001,6 +3001,7 @@ void Emitter::EmitGlobalRootList(const MIRSymbol &mirSymbol)
                     CHECK_FATAL(symAddr != nullptr, "nullptr of symAddr");
                     MIRSymbol *symAddrSym =
                         GlobalTables::GetGsymTable().GetSymbolFromStidx(symAddr->GetSymbolIndex().Idx());
+                    DEBUG_ASSERT(symAddrSym != nullptr, "nullptr check");
                     const std::string &symAddrName = symAddrSym->GetName();
                     EmitAddressString(symAddrName + "\n");
                 } else {
@@ -3178,23 +3179,23 @@ void Emitter::EmitDWRef(const std::string &name)
 
 void Emitter::EmitDecSigned(int64 num)
 {
-    std::ios::fmtflags flag(outStream.flags());
-    outStream << std::dec << num;
-    outStream.flags(flag);
+    std::ios::fmtflags flag(fileStream.flags());
+    fileStream << std::dec << num;
+    fileStream.flags(flag);
 }
 
 void Emitter::EmitDecUnsigned(uint64 num)
 {
-    std::ios::fmtflags flag(outStream.flags());
-    outStream << std::dec << num;
-    outStream.flags(flag);
+    std::ios::fmtflags flag(fileStream.flags());
+    fileStream << std::dec << num;
+    fileStream.flags(flag);
 }
 
 void Emitter::EmitHexUnsigned(uint64 num)
 {
-    std::ios::fmtflags flag(outStream.flags());
-    outStream << "0x" << std::hex << num;
-    outStream.flags(flag);
+    std::ios::fmtflags flag(fileStream.flags());
+    fileStream << "0x" << std::hex << num;
+    fileStream.flags(flag);
 }
 
 #ifndef TARGX86_64
@@ -3301,7 +3302,7 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTa
         }
         case DW_FORM_strp:
             Emit(".L" XSTR(DEBUG_STR_LABEL));
-            outStream << attr->GetId();
+            fileStream << attr->GetId();
             break;
         case DW_FORM_data1:
 #if DEBUG
@@ -3463,9 +3464,8 @@ void Emitter::EmitDIAttrValue(DBGDie *die, DBGDieAttr *attr, DwAt attrName, DwTa
                     Emit("\n\t.byte    ");
                     EmitHexUnsigned(elp->GetOp());
                     Emit("\n\t.8byte   ");
-                    (void)Emit(GlobalTables::GetStrTable()
-                                   .GetStringFromStrIdx(static_cast<uint32>(elp->GetGvarStridx()))
-                                   .c_str());
+                    (void)Emit(GlobalTables::GetStrTable().GetStringFromStrIdx(
+                        static_cast<uint32>(elp->GetGvarStridx())).c_str());
                     break;
                 case DW_OP_fbreg:
                     EmitHexUnsigned(1 + namemangler::GetSleb128Size(elp->GetFboffset()));
@@ -3694,7 +3694,7 @@ void Emitter::EmitDIDebugStrSection()
     Emit("\t.section\t.debug_str,\"MS\",@progbits,1\n");
     for (auto it : GetCG()->GetMIRModule()->GetDbgInfo()->GetStrps()) {
         Emit(".L" XSTR(DEBUG_STR_LABEL));
-        outStream << it;
+        fileStream << it;
         Emit(":\n");
         const std::string &name = GlobalTables::GetStrTable().GetStringFromStrIdx(it);
         Emit("\t.string \"").Emit(name).Emit("\"\n");
@@ -3843,25 +3843,26 @@ void LabelOperand::Dump() const
 }
 
 /* new phase manager */
-bool CgEmission::PhaseRun(maplebe::CGFunc &f) {
+bool CgEmission::PhaseRun(maplebe::CGFunc &f)
+{
+    Emitter *emitter = f.GetCG()->GetEmitter();
+    CHECK_NULL_FATAL(emitter);
+
     if (Triple::GetTriple().IsAarch64BeOrLe()) {
-        f.GetCG()->template Emit<CG::EmitterType::AsmEmitter>([&f](Emitter *emitter) {
+        if (CGOptions::GetEmitFileType() == CGOptions::kAsm) {
             AsmFuncEmitInfo funcEmitInfo(f);
             emitter->EmitLocalVariable(f);
             static_cast<AArch64AsmEmitter *>(emitter)->Run(funcEmitInfo);
             emitter->EmitHugeSoRoutines();
-        });
-        f.GetCG()->template Emit<CG::EmitterType::ObjEmiter>([&f](Emitter *emitter) {
-            auto objEmitter = static_cast<AArch64ObjEmitter *>(emitter);
-            FuncEmitInfo &funcEmitInfo = objEmitter->CreateFuncEmitInfo(f);
-            objEmitter->Run(funcEmitInfo);
+        } else {
+            FuncEmitInfo &funcEmitInfo = static_cast<AArch64ObjEmitter *>(emitter)->CreateFuncEmitInfo(f);
+            static_cast<AArch64ObjEmitter *>(emitter)->Run(funcEmitInfo);
             f.SetFuncEmitInfo(&funcEmitInfo);
-        });
+        }
     } else if (Triple::GetTriple().GetArch() == Triple::ArchType::x64) {
-        f.GetCG()->Emit([&f](Emitter *emitter) {
-            CHECK_NULL_FATAL(emitter);
-            static_cast<X64Emitter *>(emitter)->Run(f);
-        });
+        Emitter *emitter = f.GetCG()->GetEmitter();
+        CHECK_NULL_FATAL(emitter);
+        static_cast<X64Emitter *>(emitter)->Run(f);
     } else {
         CHECK_FATAL(false, "unsupportted");
     }
