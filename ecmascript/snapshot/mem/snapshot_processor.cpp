@@ -1827,7 +1827,7 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
             EncodeBit encodeBit(stringVector_.size());
             if (EcmaStringAccessor(objectHeader).IsTreeString()) {
                 data->emplace(ToUintPtr(objectHeader), std::make_pair(0U, encodeBit));
-                objectHeader = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(objectHeader));
+                objectHeader = EcmaStringAccessor::FlattenNoGCForSnapshot(vm_, EcmaString::Cast(objectHeader));
             }
             stringVector_.emplace_back(ToUintPtr(objectHeader));
             data->emplace(ToUintPtr(objectHeader), std::make_pair(0U, encodeBit));
@@ -1846,7 +1846,7 @@ EncodeBit SnapshotProcessor::EncodeTaggedObject(TaggedObject *objectHeader, CQue
     auto oldObjHeader = objectHeader;
     if (objectHeader->GetClass()->IsString()) {
         if (EcmaStringAccessor(objectHeader).IsTreeString()) {
-            objectHeader = EcmaStringAccessor::FlattenNoGC(vm_, EcmaString::Cast(objectHeader));
+            objectHeader = EcmaStringAccessor::FlattenNoGCForSnapshot(vm_, EcmaString::Cast(objectHeader));
         }
     }
     queue->emplace(objectHeader);

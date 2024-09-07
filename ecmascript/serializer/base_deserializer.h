@@ -222,8 +222,8 @@ private:
     uintptr_t machineCodeSpaceBeginAddr_ {0};
     uintptr_t sOldSpaceBeginAddr_ {0};
     uintptr_t sNonMovableSpaceBeginAddr_ {0};
-    JSTaggedType const *valueVector_ {nullptr};
-    size_t vectorSize_ {0};
+    // SerializationChunk store shared objects which have been serialized
+    SerializationChunk *sharedObjChunk_ {nullptr};
     CVector<JSTaggedType> objectVector_;
     CVector<Region *> regionVector_;
     size_t oldRegionIndex_ {0};
