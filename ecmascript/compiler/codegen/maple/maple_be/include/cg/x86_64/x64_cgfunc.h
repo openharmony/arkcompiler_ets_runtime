@@ -102,12 +102,10 @@ public:
     LabelOperand &GetOrCreateLabelOperand(BB &bb) override;
     RegOperand &CreateVirtualRegisterOperand(regno_t vRegNO) override;
     RegOperand &GetOrCreateVirtualRegisterOperand(regno_t vRegNO) override;
-    RegOperand &GetOrCreateVirtualRegisterOperand(RegOperand &regOpnd) override;
     RegOperand &GetOrCreateFramePointerRegOperand() override;
     RegOperand &GetOrCreateStackBaseRegOperand() override;
     RegOperand &GetZeroOpnd(uint32 size) override;
     Operand &CreateCfiRegOperand(uint32 reg, uint32 size) override;
-    Operand &GetTargetRetOperand(PrimType primType, int32 sReg) override;
     Operand &CreateImmOperand(PrimType primType, int64 val) override;
     MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) override;
     MemOperand *GetPseudoRegisterSpillMemoryOperand(PregIdx idx) override;

@@ -29,11 +29,6 @@ namespace maple {
 constexpr uint32 kTypeHashLength = 12289;   // hash length for mirtype, ref: planetmath.org/goodhashtableprimes
 const std::string kRenameKeyWord = "_MNO";  // A static symbol name will be renamed as oriname_MNOxxx.
 const uint8 kAlignBase = 0;                 // alignment base
-
-class FieldAttrs;  // circular dependency exists, no other choice
-using TyIdxFieldAttrPair = std::pair<TyIdx, FieldAttrs>;
-using FieldPair = std::pair<GStrIdx, TyIdxFieldAttrPair>;
-using FieldVector = std::vector<FieldPair>;
 using MIRTypePtr = MIRType *;
 
 constexpr size_t kMaxArrayDim = 20;
@@ -44,9 +39,10 @@ extern bool VerifyPrimType(PrimType primType1, PrimType primType2);  // verify i
 extern PrimType GetExactPtrPrimType();                               // return either PTY_a64 or PTY_a32
 extern uint32 GetPrimTypeSize(PrimType primType);                    // answer in bytes; 0 if unknown
 extern uint32 GetPrimTypeP2Size(PrimType primType);                  // answer in bytes in power-of-two.
-extern PrimType GetSignedPrimType(PrimType pty);                     // return signed version
 extern PrimType GetUnsignedPrimType(PrimType pty);                   // return unsigned version
+#ifdef ARK_LITECG_DEBUG
 extern const char *GetPrimTypeName(PrimType primType);
+#endif
 extern int64 MinValOfSignedInteger(PrimType primType);
 extern PrimType GetVecElemPrimType(PrimType primType);
 constexpr uint32 k0BitSize = 0;
@@ -166,10 +162,8 @@ inline bool IsPrimitivePoint(PrimitiveType primitiveType)
 }
 
 bool IsNoCvtNeeded(PrimType toType, PrimType fromType);
-bool NeedCvtOrRetype(PrimType origin, PrimType compared);
 
 uint8 GetPointerSize();
-uint8 GetP2Size();
 PrimType GetLoweredPtrType();
 
 inline bool IsRefOrPtrAssign(PrimType toType, PrimType fromType)
@@ -179,22 +173,11 @@ inline bool IsRefOrPtrAssign(PrimType toType, PrimType fromType)
 
 enum MIRTypeKind : std::uint8_t {
     kTypeScalar,
-    kTypeBitField,
     kTypeArray,
-    kTypeFArray,
-    kTypeJArray,
-    kTypeClass,
-    kTypeInterface,
-    kTypeStructIncomplete,
-    kTypeClassIncomplete,
-    kTypeInterfaceIncomplete,
     kTypePointer,
     kTypeFunction,
     kTypeVoid,
     kTypeByName,          // type definition not yet seen
-    kTypeParam,           // to support j generics
-    kTypeInstantVector,   // represent a vector of instantiation pairs
-    kTypeGenericInstant,  // type to be formed by instantiation of a generic type
 };
 
 enum AttrKind : unsigned {
@@ -370,7 +353,9 @@ public:
         return !(*this == tA);
     }
 
+#ifdef ARK_LITECG_DEBUG
     void DumpAttributes() const;
+#endif
 
     const AttrBoundary &GetAttrBoundary() const
     {
@@ -442,104 +427,6 @@ enum FieldAttrKind {
 #undef FIELD_ATTR
 };
 
-class FieldAttrs {
-public:
-    FieldAttrs() = default;
-    FieldAttrs(const FieldAttrs &ta) = default;
-    FieldAttrs &operator=(const FieldAttrs &p) = default;
-    ~FieldAttrs() = default;
-
-    uint8 GetAlignValue() const
-    {
-        return attrAlign;
-    }
-
-    void SetAttrFlag(uint32 flag)
-    {
-        attrFlag = flag;
-    }
-
-    uint32 GetAttrFlag() const
-    {
-        return attrFlag;
-    }
-
-    void SetAttr(FieldAttrKind x)
-    {
-        attrFlag |= (1u << static_cast<unsigned int>(x));
-    }
-
-    bool GetAttr(FieldAttrKind x) const
-    {
-        return (attrFlag & (1u << static_cast<unsigned int>(x))) != 0;
-    }
-
-    void SetAlign(uint32 x)
-    {
-        DEBUG_ASSERT((~(x - 1) & x) == x, "SetAlign called with non-power-of-2");
-        attrAlign = 0;
-        while (x != 1) {
-            x >>= 1;
-            ++attrAlign;
-        }
-    }
-
-    uint32 GetAlign() const
-    {
-        return 1U << attrAlign;
-    }
-
-    bool operator==(const FieldAttrs &tA) const
-    {
-        return attrFlag == tA.attrFlag && attrAlign == tA.attrAlign && attrBoundary == tA.attrBoundary;
-    }
-
-    bool operator!=(const FieldAttrs &tA) const
-    {
-        return !(*this == tA);
-    }
-
-    bool operator<(const FieldAttrs &tA) const
-    {
-        return attrFlag < tA.attrFlag && attrAlign < tA.attrAlign && attrBoundary < tA.attrBoundary;
-    }
-
-    void Clear()
-    {
-        attrFlag = 0;
-        attrAlign = 0;
-        attrBoundary.Clear();
-    }
-
-    void DumpAttributes() const;
-    TypeAttrs ConvertToTypeAttrs();
-
-    const AttrBoundary &GetAttrBoundary() const
-    {
-        return attrBoundary;
-    }
-
-    AttrBoundary &GetAttrBoundary()
-    {
-        return attrBoundary;
-    }
-
-    bool IsPacked() const
-    {
-        return GetAttr(FLDATTR_pack);
-    }
-
-    bool HasAligned() const
-    {
-        return GetAttr(FLDATTR_aligned) || GetAlign() != 1;
-    }
-
-private:
-    uint8 attrAlign = 0;  // alignment in bytes is 2 to the power of attrAlign
-    uint32 attrFlag = 0;
-    AttrBoundary attrBoundary;
-};
-
 enum StmtAttrKind : unsigned {
 #define STMT_ATTR
 #define ATTR(STR) STMTATTR_##STR,
@@ -589,7 +476,9 @@ public:
         attrFlag = 0;
     }
 
+#ifdef ARK_LITECG_DEBUG
     void DumpAttributes() const;
+#endif
 
 private:
     uint32 attrFlag = 0;
@@ -664,7 +553,9 @@ public:
         return !(*this == tA);
     }
 
+#ifdef ARK_LITECG_DEBUG
     void DumpAttributes() const;
+#endif
 
     const AttrBoundary &GetAttrBoundary() const
     {
@@ -815,16 +706,6 @@ struct OffsetType {
 };
 class MIRFuncType;
 
-// if it is a bitfield, byteoffset gives the offset of the container for
-// extracting the bitfield and bitoffset is with respect to the current byte
-struct FieldInfo {
-    FieldInfo(uint32 byte, uint32 bit) : byteOffset(byte), bitOffset(bit) {}
-    FieldInfo(uint32 byte, uint32 bit, FieldPair &pair) : byteOffset(byte), bitOffset(bit), fieldPair(&pair) {}
-    uint32 byteOffset;
-    uint32 bitOffset;
-    FieldPair *fieldPair = nullptr;
-};
-
 class MIRType {
 public:
     MIRType(MIRTypeKind kind, PrimType pType) : typeKind(kind), primType(pType) {}
@@ -837,10 +718,6 @@ public:
     virtual void DumpAsCxx(int indent) const;
 #endif
     virtual bool EqualTo(const MIRType &mirType) const;
-    virtual bool IsStructType() const
-    {
-        return false;
-    }
 
     virtual MIRType *CopyMIRTypeNode() const
     {
@@ -921,27 +798,11 @@ public:
         return false;
     }
 
-    virtual bool IsIncomplete() const
-    {
-        return typeKind == kTypeStructIncomplete || typeKind == kTypeClassIncomplete ||
-               typeKind == kTypeInterfaceIncomplete;
-    }
-
     bool IsVolatile(int fieldID) const;
 
     bool IsMIRPtrType() const
     {
         return typeKind == kTypePointer;
-    }
-
-    bool IsMIRInterfaceType() const
-    {
-        return (typeKind == kTypeInterface) || (typeKind == kTypeInterfaceIncomplete);
-    }
-
-    bool IsMIRJarrayType() const
-    {
-        return typeKind == kTypeJArray;
     }
 
     bool IsMIRArrayType() const
@@ -964,46 +825,10 @@ public:
         return typeKind == kTypeByName;
     }
 
-    bool IsMIRBitFieldType() const
-    {
-        return typeKind == kTypeBitField;
-    }
-
-    virtual bool IsUnsafeType() const
-    {
-        return false;
-    }
-    virtual bool IsVoidPointer() const
-    {
-        return false;
-    }
-
-    bool ValidateClassOrInterface(const std::string &className, bool noWarning) const;
-    bool IsOfSameType(MIRType &type);
-    const std::string &GetName() const;
-    virtual std::string GetMplTypeName() const;
-    virtual std::string GetCompactMplTypeName() const;
-    virtual bool PointsToConstString() const;
     virtual size_t GetHashIndex() const
     {
         constexpr uint8 idxShift = 2;
         return ((static_cast<uint32>(primType) << idxShift) + (typeKind << kShiftNumOfTypeKind)) % kTypeHashLength;
-    }
-
-    virtual bool HasFields() const
-    {
-        return false;
-    }
-    // total number of field IDs the type is consisted of, excluding its own field ID
-    virtual uint32 NumberOfFieldIDs() const
-    {
-        return 0;
-    }
-
-    virtual int64 GetBitOffsetFromBaseAddr(FieldID fieldID)
-    {
-        (void)fieldID;
-        return 0;
     }
 
 protected:
@@ -1056,11 +881,8 @@ public:
     }
 
     bool EqualTo(const MIRType &type) const override;
-
     bool HasTypeParam() const override;
     bool IsPointedTypeVolatile(int fieldID) const;
-    bool IsUnsafeType() const override;
-    bool IsVoidPointer() const override;
 #ifdef ARK_LITECG_DEBUG
     void Dump(int indent, bool dontUseName = false) const override;
 #endif
@@ -1089,11 +911,9 @@ public:
 
     MIRFuncType *GetPointedFuncType() const;
 
-    bool PointsToConstString() const override;
-
-    std::string GetMplTypeName() const override;
-
-    std::string GetCompactMplTypeName() const override;
+#ifdef ARK_LITECG_DEBUG
+    bool PointsToConstString() const;
+#endif
 
 private:
     TyIdx pointedTyIdx;
@@ -1198,87 +1018,16 @@ public:
         return hIdx % kTypeHashLength;
     }
 
-    int64 GetBitOffsetFromBaseAddr(FieldID fieldID) override
-    {
-        (void)fieldID;
-        return kOffsetUnknown;
-    }
-    int64 GetBitOffsetFromArrayAddress(std::vector<int64> &indexArray);
-
-    std::string GetMplTypeName() const override;
-    std::string GetCompactMplTypeName() const override;
-    bool HasFields() const override;
-    uint32 NumberOfFieldIDs() const override;
+#ifdef ARK_LITECG_DEBUG
     size_t ElemNumber() const;
+#endif
 
 private:
     TyIdx eTyIdx {0};
     uint16 dim = 0;
     std::array<uint64, kMaxArrayDim> sizeArray {{0}};
     TypeAttrs typeAttrs;
-    mutable uint32 fieldsNum = kInvalidFieldNum;
     mutable size_t size = kInvalidSize;
-};
-
-// flexible array type, must be last field of a top-level struct
-class MIRFarrayType : public MIRType {
-public:
-    MIRFarrayType() : MIRType(kTypeFArray, PTY_agg), elemTyIdx(TyIdx(0)) {};
-
-    explicit MIRFarrayType(TyIdx elemTyIdx) : MIRType(kTypeFArray, PTY_agg), elemTyIdx(elemTyIdx) {}
-
-    explicit MIRFarrayType(GStrIdx strIdx) : MIRType(kTypeFArray, PTY_agg, strIdx), elemTyIdx(TyIdx(0)) {}
-
-    ~MIRFarrayType() override = default;
-
-    MIRType *CopyMIRTypeNode() const override
-    {
-        return new MIRFarrayType(*this);
-    };
-
-    MIRType *GetElemType() const;
-
-    bool HasTypeParam() const override
-    {
-        return GetElemType()->HasTypeParam();
-    }
-
-    TyIdx GetElemTyIdx() const
-    {
-        return elemTyIdx;
-    }
-    void SetElemtTyIdx(TyIdx idx)
-    {
-        elemTyIdx = idx;
-    }
-
-    bool EqualTo(const MIRType &type) const override;
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int indent, bool dontUseName = false) const override;
-#endif
-    size_t GetHashIndex() const override
-    {
-        constexpr uint8 idxShift = 5;
-        return ((static_cast<size_t>(elemTyIdx) << idxShift) + (typeKind << kShiftNumOfTypeKind)) % kTypeHashLength;
-    }
-
-    std::string GetMplTypeName() const override;
-    std::string GetCompactMplTypeName() const override;
-
-    bool HasFields() const override;
-    uint32 NumberOfFieldIDs() const override;
-
-    int64 GetBitOffsetFromBaseAddr(FieldID fieldID) override
-    {
-        (void)fieldID;
-        return kOffsetUnknown;
-    }
-
-    int64 GetBitOffsetFromArrayAddress(int64 arrayIndex);
-
-private:
-    TyIdx elemTyIdx;
-    mutable uint32 fieldsNum = kInvalidFieldNum;
 };
 
 using TyidxFuncAttrPair = std::pair<TyIdx, FuncAttrs>;
@@ -1289,98 +1038,6 @@ using MIREncodedArray = std::vector<EncodedValue>;
 class GenericDeclare;
 class AnnotationType;
 class GenericType;
-// used by kTypeStruct, kTypeStructIncomplete, kTypeUnion
-class MIRJarrayType : public MIRFarrayType {
-public:
-    MIRJarrayType()
-    {
-        typeKind = kTypeJArray;
-    };
-
-    explicit MIRJarrayType(TyIdx elemTyIdx) : MIRFarrayType(elemTyIdx)
-    {
-        typeKind = kTypeJArray;
-    }
-
-    explicit MIRJarrayType(GStrIdx strIdx) : MIRFarrayType(strIdx)
-    {
-        typeKind = kTypeJArray;
-    }
-
-    ~MIRJarrayType() override = default;
-
-    MIRType *CopyMIRTypeNode() const override
-    {
-        return new MIRJarrayType(*this);
-    }
-
-    int GetDim()
-    {
-        if (jNameStrIdx == 0u) {
-            DetermineName();
-        }
-        return dim;
-    }
-
-    size_t GetHashIndex() const override
-    {
-        constexpr uint8 idxShift = 5;
-        return ((static_cast<size_t>(GetElemTyIdx()) << idxShift) + (typeKind << kShiftNumOfTypeKind)) %
-               kTypeHashLength;
-    }
-
-private:
-    void DetermineName();        // determine the internal name of this type
-    TyIdx parentTyIdx {0};       // since Jarray is also an object, this is j.lang.Object
-    GStrIdx jNameStrIdx {0};     // for internal j name of Jarray. nameStrIdx is used for other purpose
-    int dim = 0;                 // the dimension if decidable at compile time. otherwise 0
-};
-
-// used by kTypeClass, kTypeClassIncomplete
-class MIRBitFieldType : public MIRType {
-public:
-    MIRBitFieldType(uint8 field, PrimType pt) : MIRType(kTypeBitField, pt), fieldSize(field) {}
-    MIRBitFieldType(uint8 field, PrimType pt, GStrIdx strIdx) : MIRType(kTypeBitField, pt, strIdx), fieldSize(field) {}
-    ~MIRBitFieldType() override = default;
-
-    uint8 GetFieldSize() const
-    {
-        return fieldSize;
-    }
-
-    bool EqualTo(const MIRType &type) const override;
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int indent, bool dontUseName = false) const override;
-#endif
-    MIRType *CopyMIRTypeNode() const override
-    {
-        return new MIRBitFieldType(*this);
-    }
-
-    size_t GetSize() const override
-    {
-        if (fieldSize == 0) {
-            return 0;
-        } else if (fieldSize <= k8ByteSize) {
-            return 1;
-        } else {
-            return (fieldSize + k7ByteSize) / k8ByteSize;
-        }
-    }  // size not be in bytes
-
-    uint32 GetAlign() const override
-    {
-        return 0;
-    }  // align not be in bytes
-
-    size_t GetHashIndex() const override
-    {
-        return ((static_cast<uint32>(primType) << fieldSize) + (typeKind << kShiftNumOfTypeKind)) % kTypeHashLength;
-    }
-
-private:
-    uint8 fieldSize;
-};
 
 class MIRFuncType : public MIRType {
 public:
@@ -1401,7 +1058,6 @@ public:
     ~MIRFuncType() override = default;
 
     bool EqualTo(const MIRType &type) const override;
-    bool CompatibleWith(const MIRType &type) const;
     MIRType *CopyMIRTypeNode() const override
     {
         return new MIRFuncType(*this);
@@ -1565,112 +1221,6 @@ public:
                kTypeHashLength;
     }
 };
-
-using TypePair = std::pair<TyIdx, TyIdx>;
-using GenericInstantVector = std::vector<TypePair>;
-class MIRInstantVectorType : public MIRType {
-public:
-    MIRInstantVectorType() : MIRType(kTypeInstantVector, PTY_agg) {}
-
-    explicit MIRInstantVectorType(MIRTypeKind kind) : MIRType(kind, PTY_agg) {}
-
-    MIRInstantVectorType(MIRTypeKind kind, GStrIdx strIdx) : MIRType(kind, PTY_agg, strIdx) {}
-
-    ~MIRInstantVectorType() override = default;
-
-    MIRType *CopyMIRTypeNode() const override
-    {
-        return new MIRInstantVectorType(*this);
-    }
-
-    bool EqualTo(const MIRType &type) const override;
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int indent, bool dontUseName = false) const override;
-#endif
-    size_t GetSize() const override
-    {
-        return 0;
-    }  // size unknown
-
-    const GenericInstantVector &GetInstantVec() const
-    {
-        return instantVec;
-    }
-
-    GenericInstantVector &GetInstantVec()
-    {
-        return instantVec;
-    }
-
-    void AddInstant(TypePair typePair)
-    {
-        instantVec.push_back(typePair);
-    }
-
-    size_t GetHashIndex() const override
-    {
-        constexpr uint8 idxShift = 3;
-        uint32 hIdx = typeKind << kShiftNumOfTypeKind;
-        for (const TypePair &typePair : instantVec) {
-            hIdx += static_cast<uint32>(typePair.first + typePair.second) << idxShift;
-        }
-        return hIdx % kTypeHashLength;
-    }
-
-protected:
-    GenericInstantVector instantVec {};  // in each pair, first is generic type, second is real type
-};
-
-class MIRGenericInstantType : public MIRInstantVectorType {
-public:
-    explicit MIRGenericInstantType(TyIdx genTyIdx) : MIRInstantVectorType(kTypeGenericInstant), genericTyIdx(genTyIdx)
-    {
-    }
-
-    explicit MIRGenericInstantType(GStrIdx strIdx) : MIRInstantVectorType(kTypeGenericInstant, strIdx), genericTyIdx(0)
-    {
-    }
-
-    ~MIRGenericInstantType() override = default;
-
-    MIRType *CopyMIRTypeNode() const override
-    {
-        return new MIRGenericInstantType(*this);
-    }
-
-    bool EqualTo(const MIRType &type) const override;
-#ifdef ARK_LITECG_DEBUG
-    void Dump(int indent, bool dontUseName = false) const override;
-#endif
-    size_t GetSize() const override
-    {
-        return 0;
-    }  // size unknown
-
-    TyIdx GetGenericTyIdx() const
-    {
-        return genericTyIdx;
-    }
-    void SetGenericTyIdx(TyIdx idx)
-    {
-        genericTyIdx = idx;
-    }
-
-    size_t GetHashIndex() const override
-    {
-        constexpr uint8 idxShift = 2;
-        uint32 hIdx = (static_cast<uint32>(genericTyIdx) << idxShift) + (typeKind << kShiftNumOfTypeKind);
-        for (const TypePair &typePair : instantVec) {
-            hIdx += static_cast<uint32>(typePair.first + typePair.second) << 3;  // shift bit is 3
-        }
-        return hIdx % kTypeHashLength;
-    }
-
-private:
-    TyIdx genericTyIdx;  // the generic type to be instantiated
-};
-
-MIRType *GetElemType(const MIRType &arrayType);
 // aarch64 specific
 bool IsHomogeneousAggregates(const MIRType &ty, PrimType &primType, size_t &elemNum, bool firstDepth = true);
 bool IsParamStructCopyToMemory(const MIRType &ty);

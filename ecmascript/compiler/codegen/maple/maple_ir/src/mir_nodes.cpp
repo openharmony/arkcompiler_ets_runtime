@@ -44,73 +44,11 @@ const char *GetIntrinsicName(MIRIntrinsicID intrn)
     }
 }
 
-const char *BaseNode::GetOpName() const
-{
-    return kOpcodeInfo.GetTableItemAt(GetOpCode()).name.c_str();
-}
-
-bool BaseNode::MayThrowException()
-{
-    if (kOpcodeInfo.MayThrowException(GetOpCode())) {
-        if (GetOpCode() != OP_array) {
-            return true;
-        }
-        auto *arry = static_cast<ArrayNode *>(this);
-        if (arry->GetBoundsCheck()) {
-            return true;
-        }
-    }
-    for (size_t i = 0; i < NumOpnds(); ++i) {
-        if (Opnd(i)->MayThrowException()) {
-            return true;
-        }
-    }
-    return false;
-}
-
 MIRType *IreadNode::GetType() const
 {
     MIRPtrType *ptrtype = static_cast<MIRPtrType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx));
     CHECK_FATAL(fieldID == 0, "fieldID must be 0");
     return ptrtype->GetPointedType();
-}
-
-bool IreadNode::IsVolatile() const
-{
-    MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-    DEBUG_ASSERT(type != nullptr, "null ptr check");
-    DEBUG_ASSERT(type->IsMIRPtrType(), "type of iread should be pointer type");
-    return static_cast<MIRPtrType *>(type)->IsPointedTypeVolatile(fieldID);
-}
-
-bool AddrofNode::IsVolatile(const MIRModule &mod) const
-{
-    DEBUG_ASSERT(mod.CurFunction() != nullptr, "mod.CurFunction() should not be nullptr");
-    auto *symbol = mod.CurFunction()->GetLocalOrGlobalSymbol(stIdx);
-    DEBUG_ASSERT(symbol != nullptr, "null ptr check on symbol");
-    return symbol->IsVolatile();
-}
-
-bool DreadoffNode::IsVolatile(const MIRModule &mod) const
-{
-    auto *symbol = mod.CurFunction()->GetLocalOrGlobalSymbol(stIdx);
-    DEBUG_ASSERT(symbol != nullptr, "null ptr check on symbol");
-    return symbol->IsVolatile();
-}
-
-bool DassignNode::AssigningVolatile(const MIRModule &mod) const
-{
-    auto *symbol = mod.CurFunction()->GetLocalOrGlobalSymbol(stIdx);
-    DEBUG_ASSERT(symbol != nullptr, "null ptr check on symbol");
-    return symbol->IsVolatile();
-}
-
-bool IassignNode::AssigningVolatile() const
-{
-    MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-    DEBUG_ASSERT(type != nullptr, "null ptr check");
-    DEBUG_ASSERT(type->IsMIRPtrType(), "type of iassign should be pointer type");
-    return static_cast<MIRPtrType *>(type)->IsPointedTypeVolatile(fieldID);
 }
 
 void BlockNode::AddStatement(StmtNode *stmt)
@@ -141,27 +79,6 @@ void BlockNode::InsertLast(StmtNode *stmt)
     stmtNodeList.push_back(stmt);
 }
 
-void BlockNode::ReplaceStmtWithBlock(StmtNode &stmtNode, BlockNode &blk)
-{
-    stmtNodeList.splice(&stmtNode, blk.GetStmtNodes());
-    stmtNodeList.erase(&stmtNode);
-    stmtNode.SetNext(blk.GetLast()->GetNext());
-}
-
-void BlockNode::ReplaceStmt1WithStmt2(const StmtNode *stmtNode1, StmtNode *stmtNode2)
-{
-    if (stmtNode2 == stmtNode1) {
-        // do nothing
-    } else if (stmtNode2 == nullptr) {
-        // delete stmtNode1
-        stmtNodeList.erase(stmtNode1);
-    } else {
-        // replace stmtNode1 with stmtNode2
-        stmtNodeList.insert(stmtNode1, stmtNode2);
-        (void)stmtNodeList.erase(stmtNode1);
-    }
-}
-
 // remove sstmtNode1 from block
 void BlockNode::RemoveStmt(const StmtNode *stmtNode1)
 {
@@ -179,72 +96,6 @@ void BlockNode::InsertBefore(const StmtNode *stmtNode1, StmtNode *stmtNode2)
 void BlockNode::InsertAfter(const StmtNode *stmtNode1, StmtNode *stmtNode2)
 {
     stmtNodeList.insertAfter(stmtNode1, stmtNode2);
-}
-
-// insert all the stmts in inblock to the current block after stmt1
-void BlockNode::InsertBlockAfter(BlockNode &inblock, const StmtNode *stmt1)
-{
-    DEBUG_ASSERT(stmt1 != nullptr, "null ptr check");
-    DEBUG_ASSERT(!inblock.IsEmpty(), "NYI");
-    stmtNodeList.splice(stmt1, inblock.GetStmtNodes());
-}
-
-BlockNode *BlockNode::CloneTreeWithFreqs(MapleAllocator &allocator, std::unordered_map<uint32_t, uint64_t> &toFreqs,
-                                         std::unordered_map<uint32_t, uint64_t> &fromFreqs, uint64_t numer,
-                                         uint64_t denom, uint32_t updateOp)
-{
-    auto *nnode = allocator.GetMemPool()->New<BlockNode>();
-    nnode->SetStmtID(stmtIDNext++);
-    if (fromFreqs.count(GetStmtID()) > 0) {
-        uint64_t oldFreq = fromFreqs[GetStmtID()];
-        uint64_t newFreq;
-        if (updateOp & kUpdateUnrollRemainderFreq) {
-            newFreq = denom > 0 ? (oldFreq * numer % denom) : oldFreq;
-        } else {
-            newFreq = numer == 0 ? 0 : (denom > 0 ? (oldFreq * numer / denom) : oldFreq);
-        }
-        toFreqs[nnode->GetStmtID()] = (newFreq > 0 || (numer == 0)) ? newFreq : 1;
-        if (updateOp & kUpdateOrigFreq) {  // upateOp & 1 : update from
-            int64_t left = ((oldFreq - newFreq) > 0 || (oldFreq == 0)) ? static_cast<int64_t>(oldFreq - newFreq) : 1;
-            fromFreqs[GetStmtID()] = static_cast<uint64_t>(left);
-        }
-    }
-    for (auto &stmt : stmtNodeList) {
-        StmtNode *newStmt;
-        if (stmt.GetOpCode() == OP_block) {
-            newStmt = static_cast<StmtNode *>(
-                (static_cast<BlockNode *>(&stmt))
-                    ->CloneTreeWithFreqs(allocator, toFreqs, fromFreqs, numer, denom, updateOp));
-        } else if (stmt.GetOpCode() == OP_if) {
-            newStmt = static_cast<StmtNode *>(
-                (static_cast<IfStmtNode *>(&stmt))
-                    ->CloneTreeWithFreqs(allocator, toFreqs, fromFreqs, numer, denom, updateOp));
-        } else {
-            newStmt = static_cast<StmtNode *>(stmt.CloneTree(allocator));
-            if (fromFreqs.count(stmt.GetStmtID()) > 0) {
-                uint64_t oldFreq = fromFreqs[stmt.GetStmtID()];
-                uint64_t newFreq;
-                if (updateOp & kUpdateUnrollRemainderFreq) {
-                    newFreq = denom > 0 ? (oldFreq * numer % denom) : oldFreq;
-                } else {
-                    newFreq = numer == 0 ? 0 : (denom > 0 ? (oldFreq * numer / denom) : oldFreq);
-                }
-                toFreqs[newStmt->GetStmtID()] =
-                    (newFreq > 0 || oldFreq == 0 || numer == 0) ? static_cast<uint64_t>(newFreq) : 1;
-                if (updateOp & kUpdateOrigFreq) {
-                    int64_t left = ((oldFreq - newFreq) > 0 || oldFreq == 0) ?
-                        static_cast<int64_t>(oldFreq - newFreq) : 1;
-                    fromFreqs[stmt.GetStmtID()] = static_cast<uint64_t>(left);
-                }
-            }
-        }
-        DEBUG_ASSERT(newStmt != nullptr, "null ptr check");
-        newStmt->SetSrcPos(stmt.GetSrcPos());
-        newStmt->SetPrev(nullptr);
-        newStmt->SetNext(nullptr);
-        nnode->AddStatement(newStmt);
-    }
-    return nnode;
 }
 
 #ifdef ARK_LITECG_DEBUG
@@ -442,33 +293,7 @@ void NaryNode::Dump(int32 indent) const
     BaseNode::DumpBase(0);
     NaryOpnds::Dump(indent);
 }
-#endif
 
-const MIRType *ArrayNode::GetArrayType(const TypeTable &tt) const
-{
-    const MIRType *type = tt.GetTypeFromTyIdx(tyIdx);
-    CHECK_FATAL(type->GetKind() == kTypePointer, "expect array type pointer");
-    const auto *pointType = static_cast<const MIRPtrType *>(type);
-    return tt.GetTypeFromTyIdx(pointType->GetPointedTyIdx());
-}
-MIRType *ArrayNode::GetArrayType(const TypeTable &tt)
-{
-    return const_cast<MIRType *>(const_cast<const ArrayNode *>(this)->GetArrayType(tt));
-}
-
-const BaseNode *ArrayNode::GetDim(const MIRModule &mod, TypeTable &tt, int i) const
-{
-    const auto *arrayType = static_cast<const MIRArrayType *>(GetArrayType(tt));
-    auto *mirConst =
-        GlobalTables::GetIntConstTable().GetOrCreateIntConst(i, *tt.GetTypeFromTyIdx(arrayType->GetElemTyIdx()));
-    return mod.CurFuncCodeMemPool()->New<ConstvalNode>(mirConst);
-}
-BaseNode *ArrayNode::GetDim(const MIRModule &mod, TypeTable &tt, int i)
-{
-    return const_cast<BaseNode *>(const_cast<const ArrayNode *>(this)->GetDim(mod, tt, i));
-}
-
-#ifdef ARK_LITECG_DEBUG
 void ArrayNode::Dump(int32 indent) const
 {
     PrintIndentation(0);
@@ -611,44 +436,7 @@ void StmtNode::Dump(int32 indent) const
     StmtNode::DumpBase(indent);
     LogInfo::MapleLogger() << '\n';
 }
-#endif
 
-// Get the next stmt skip the comment stmt.
-StmtNode *StmtNode::GetRealNext() const
-{
-    StmtNode *stmt = this->GetNext();
-    while (stmt != nullptr) {
-        if (stmt->GetOpCode() != OP_comment) {
-            break;
-        }
-        stmt = stmt->GetNext();
-    }
-    return stmt;
-}
-
-// insert this before pos
-void StmtNode::InsertAfterThis(StmtNode &pos)
-{
-    this->SetNext(&pos);
-    if (pos.GetPrev()) {
-        this->SetPrev(pos.GetPrev());
-        pos.GetPrev()->SetNext(this);
-    }
-    pos.SetPrev(this);
-}
-
-// insert stmtnode after pos
-void StmtNode::InsertBeforeThis(StmtNode &pos)
-{
-    this->SetPrev(&pos);
-    if (pos.GetNext()) {
-        this->SetNext(pos.GetNext());
-        pos.GetNext()->SetPrev(this);
-    }
-    pos.SetNext(this);
-}
-
-#ifdef ARK_LITECG_DEBUG
 void DassignNode::Dump(int32 indent) const
 {
     StmtNode::DumpBase(indent);
@@ -891,65 +679,7 @@ void DumpCallReturns(const MIRModule &mod, CallReturnVector nrets, int32 indent)
     PrintIndentation(indent + 1);
     LogInfo::MapleLogger() << "}\n";
 }
-#endif
 
-// iread expr has sideeffect, may cause derefference error
-bool HasIreadExpr(const BaseNode *expr)
-{
-    if (expr->GetOpCode() == OP_iread) {
-        return true;
-    }
-    for (size_t i = 0; i < expr->GetNumOpnds(); ++i) {
-        if (HasIreadExpr(expr->Opnd(i))) {
-            return true;
-        }
-    }
-    return false;
-}
-
-// layer to leaf node
-size_t MaxDepth(const BaseNode *expr)
-{
-    if (expr->IsLeaf()) {
-        return 1;
-    }
-    size_t maxSubDepth = 0;
-    for (size_t i = 0; i < expr->GetNumOpnds(); ++i) {
-        size_t depth = MaxDepth(expr->Opnd(i));
-        maxSubDepth = (depth > maxSubDepth) ? depth : maxSubDepth;
-    }
-    return maxSubDepth + 1;  // expr itself
-}
-
-MIRType *CallNode::GetCallReturnType()
-{
-    if (!kOpcodeInfo.IsCallAssigned(GetOpCode())) {
-        return nullptr;
-    }
-    DEBUG_ASSERT(GlobalTables::GetFunctionTable().GetFuncTable().empty() == false, "container check");
-    MIRFunction *mirFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
-    return mirFunc->GetReturnType();
-}
-
-const MIRSymbol *CallNode::GetCallReturnSymbol(const MIRModule &mod) const
-{
-    if (!kOpcodeInfo.IsCallAssigned(GetOpCode())) {
-        return nullptr;
-    }
-    const CallReturnVector &nRets = this->GetReturnVec();
-    if (nRets.size() == 1) {
-        StIdx stIdx = nRets.begin()->first;
-        RegFieldPair regFieldPair = nRets.begin()->second;
-        if (!regFieldPair.IsReg()) {
-            const MIRFunction *mirFunc = mod.CurFunction();
-            const MIRSymbol *st = mirFunc->GetLocalOrGlobalSymbol(stIdx);
-            return st;
-        }
-    }
-    return nullptr;
-}
-
-#ifdef ARK_LITECG_DEBUG
 void CallNode::Dump(int32 indent, bool newline) const
 {
     StmtNode::DumpBase(indent);
@@ -981,24 +711,6 @@ MIRType *IcallNode::GetCallReturnType()
     return GlobalTables::GetTypeTable().GetTypeFromTyIdx(funcType->GetRetTyIdx());
 }
 
-const MIRSymbol *IcallNode::GetCallReturnSymbol(const MIRModule &mod) const
-{
-    if (!kOpcodeInfo.IsCallAssigned(GetOpCode())) {
-        return nullptr;
-    }
-    const CallReturnVector &nRets = this->GetReturnVec();
-    if (nRets.size() == 1) {
-        StIdx stIdx = nRets.begin()->first;
-        RegFieldPair regFieldPair = nRets.begin()->second;
-        if (!regFieldPair.IsReg()) {
-            const MIRFunction *mirFunc = mod.CurFunction();
-            const MIRSymbol *st = mirFunc->GetLocalOrGlobalSymbol(stIdx);
-            return st;
-        }
-    }
-    return nullptr;
-}
-
 #ifdef ARK_LITECG_DEBUG
 void IcallNode::Dump(int32 indent, bool newline) const
 {
@@ -1016,16 +728,7 @@ void IcallNode::Dump(int32 indent, bool newline) const
         LogInfo::MapleLogger() << '\n';
     }
 }
-#endif
 
-MIRType *IntrinsiccallNode::GetCallReturnType()
-{
-    CHECK_FATAL(intrinsic < INTRN_LAST, "Index out of bound in IntrinsiccallNode::GetCallReturnType");
-    IntrinDesc *intrinDesc = &IntrinDesc::intrinTable[intrinsic];
-    return intrinDesc->GetReturnType();
-}
-
-#ifdef ARK_LITECG_DEBUG
 void IntrinsiccallNode::Dump(int32 indent, bool newline) const
 {
     StmtNode::DumpBase(indent);
@@ -1106,7 +809,6 @@ void CommentNode::Dump(int32 indent) const
     PrintIndentation(indent);
     LogInfo::MapleLogger() << "#" << comment << '\n';
 }
-#endif
 
 void EmitStr(const MapleString &mplStr)
 {
@@ -1160,32 +862,6 @@ void EmitStr(const MapleString &mplStr)
     LogInfo::MapleLogger() << "\"\n";
 }
 
-AsmNode *AsmNode::CloneTree(MapleAllocator &allocator) const
-{
-    auto *node = allocator.GetMemPool()->New<AsmNode>(allocator, *this);
-    for (size_t i = 0; i < GetNopndSize(); ++i) {
-        node->GetNopnd().push_back(GetNopndAt(i)->CloneTree(allocator));
-    }
-    for (size_t i = 0; i < inputConstraints.size(); ++i) {
-        node->inputConstraints.push_back(inputConstraints[i]);
-    }
-    for (size_t i = 0; i < asmOutputs.size(); ++i) {
-        node->asmOutputs.push_back(asmOutputs[i]);
-    }
-    for (size_t i = 0; i < outputConstraints.size(); ++i) {
-        node->outputConstraints.push_back(outputConstraints[i]);
-    }
-    for (size_t i = 0; i < clobberList.size(); ++i) {
-        node->clobberList.push_back(clobberList[i]);
-    }
-    for (size_t i = 0; i < gotoLabels.size(); ++i) {
-        node->gotoLabels.push_back(gotoLabels[i]);
-    }
-    node->SetNumOpnds(static_cast<uint8>(GetNopndSize()));
-    return node;
-}
-
-#ifdef ARK_LITECG_DEBUG
 void AsmNode::DumpOutputs(int32 indent, std::string &uStr) const
 {
     PrintIndentation(indent + 1);
@@ -1299,265 +975,10 @@ void AsmNode::Dump(int32 indent) const
     }
     LogInfo::MapleLogger() << " }\n";
 }
-#endif
-
-enum PTYGroup {
-    kPTYGi32u32a32,
-    kPTYGi32u32a32PtrRef,
-    kPTYGi64u64a64,
-    kPTYGPtrRef,
-    kPTYGDynall,
-    kPTYGu1,
-    kPTYGSimpleObj,
-    kPTYGSimpleStr,
-    kPTYGOthers
-};
-
-uint8 GetPTYGroup(PrimType primType)
-{
-    switch (primType) {
-        case PTY_i32:
-        case PTY_u32:
-        case PTY_a32:
-            return kPTYGi32u32a32;
-        case PTY_i64:
-        case PTY_u64:
-        case PTY_a64:
-            return kPTYGi64u64a64;
-        case PTY_ref:
-        case PTY_ptr:
-            return kPTYGPtrRef;
-        case PTY_u1:
-            return kPTYGu1;
-        default:
-            return kPTYGOthers;
-    }
-}
-
-uint8 GetCompGroupID(const BaseNode &opnd)
-{
-    return GetPTYGroup(opnd.GetPrimType());
-}
-
-inline MIRTypeKind GetTypeKind(StIdx stIdx)
-{
-    const MIRSymbol *var = theMIRModule->CurFunction()->GetLocalOrGlobalSymbol(stIdx);
-    DEBUG_ASSERT(var != nullptr, "null ptr check");
-    MIRType *type = var->GetType();
-    DEBUG_ASSERT(type != nullptr, "null ptr check");
-    return type->GetKind();
-}
-
-inline MIRTypeKind GetTypeKind(TyIdx tyIdx)
-{
-    MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-    DEBUG_ASSERT(type != nullptr, "null ptr check");
-    return type->GetKind();
-}
-
-inline MIRType *GetPointedMIRType(TyIdx tyIdx)
-{
-    MIRType *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-    CHECK_FATAL(type->GetKind() == kTypePointer, "TyIdx: %d is not pointer type", static_cast<uint32>(tyIdx));
-    auto *ptrType = static_cast<MIRPtrType *>(type);
-    return ptrType->GetPointedType();
-}
-
-inline MIRTypeKind GetPointedTypeKind(TyIdx tyIdx)
-{
-    MIRType *pointedType = GetPointedMIRType(tyIdx);
-    DEBUG_ASSERT(pointedType != nullptr, "null ptr check");
-    return pointedType->GetKind();
-}
-
-bool IsSignedType(const BaseNode *opnd)
-{
-    switch (opnd->GetPrimType()) {
-        case PTY_i32:
-        case PTY_i64:
-        case PTY_f32:
-        case PTY_f64:
-            return true;
-        default:
-            break;
-    }
-    return false;
-}
 
 std::string SafetyCheckStmtNode::GetFuncName() const
 {
     return GlobalTables::GetStrTable().GetStringFromStrIdx(funcNameIdx);
 }
-
-bool UnaryNode::IsSameContent(const BaseNode *node) const
-{
-    auto *unaryNode = dynamic_cast<const UnaryNode *>(node);
-    if ((this == unaryNode) || (unaryNode != nullptr && (GetOpCode() == unaryNode->GetOpCode()) &&
-                                (GetPrimType() == unaryNode->GetPrimType()) &&
-                                (uOpnd && unaryNode->Opnd(0) && uOpnd->IsSameContent(unaryNode->Opnd(0))))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool TypeCvtNode::IsSameContent(const BaseNode *node) const
-{
-    auto *tyCvtNode = dynamic_cast<const TypeCvtNode *>(node);
-    if ((this == tyCvtNode) ||
-        (tyCvtNode != nullptr && (fromPrimType == tyCvtNode->FromType()) && UnaryNode::IsSameContent(tyCvtNode))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool IreadNode::IsSameContent(const BaseNode *node) const
-{
-    auto *ireadNode = dynamic_cast<const IreadNode *>(node);
-    if ((this == ireadNode) || (ireadNode != nullptr && (tyIdx == ireadNode->GetTyIdx()) &&
-                                (fieldID == ireadNode->GetFieldID()) && UnaryNode::IsSameContent(ireadNode))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool IreadoffNode::IsSameContent(const BaseNode *node) const
-{
-    auto *ireadoffNode = dynamic_cast<const IreadoffNode *>(node);
-    if ((this == ireadoffNode) || (ireadoffNode != nullptr && (GetOffset() == ireadoffNode->GetOffset()) &&
-                                   UnaryNode::IsSameContent(ireadoffNode))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool BinaryOpnds::IsSameContent(const BaseNode *node) const
-{
-    auto *binaryOpnds = dynamic_cast<const BinaryOpnds *>(node);
-    if ((this == binaryOpnds) || (binaryOpnds != nullptr && GetBOpnd(0)->IsSameContent(binaryOpnds->GetBOpnd(0)) &&
-                                  GetBOpnd(1)->IsSameContent(binaryOpnds->GetBOpnd(1)))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool BinaryNode::IsSameContent(const BaseNode *node) const
-{
-    auto *binaryNode = dynamic_cast<const BinaryNode *>(node);
-    if ((this == binaryNode) ||
-        (binaryNode != nullptr && (GetOpCode() == binaryNode->GetOpCode()) &&
-         (GetPrimType() == binaryNode->GetPrimType()) && BinaryOpnds::IsSameContent(binaryNode))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool ConstvalNode::IsSameContent(const BaseNode *node) const
-{
-    auto *constvalNode = dynamic_cast<const ConstvalNode *>(node);
-    if (this == constvalNode) {
-        return true;
-    }
-    if (constvalNode == nullptr) {
-        return false;
-    }
-    const MIRConst *mirConst = constvalNode->GetConstVal();
-    if (constVal == mirConst) {
-        return true;
-    }
-    if (constVal->GetKind() != mirConst->GetKind()) {
-        return false;
-    }
-    if (constVal->GetKind() == kConstInt) {
-        // integer may differ in primtype, and they may be different MIRIntConst Node
-        return static_cast<MIRIntConst *>(constVal)->GetValue() ==
-               static_cast<const MIRIntConst *>(mirConst)->GetValue();
-    } else {
-        return false;
-    }
-}
-
-bool ConststrNode::IsSameContent(const BaseNode *node) const
-{
-    if (node->GetOpCode() != OP_conststr) {
-        return false;
-    }
-    auto *cstrNode = static_cast<const ConststrNode *>(node);
-    return strIdx == cstrNode->strIdx;
-}
-
-bool Conststr16Node::IsSameContent(const BaseNode *node) const
-{
-    if (node->GetOpCode() != OP_conststr16) {
-        return false;
-    }
-    auto *cstr16Node = static_cast<const Conststr16Node *>(node);
-    return strIdx == cstr16Node->strIdx;
-}
-
-bool AddrofNode::IsSameContent(const BaseNode *node) const
-{
-    auto *addrofNode = dynamic_cast<const AddrofNode *>(node);
-    if ((this == addrofNode) ||
-        (addrofNode != nullptr && (GetOpCode() == addrofNode->GetOpCode()) &&
-         (GetPrimType() == addrofNode->GetPrimType()) && (GetNumOpnds() == addrofNode->GetNumOpnds()) &&
-         (stIdx.FullIdx() == addrofNode->GetStIdx().FullIdx()) && (fieldID == addrofNode->GetFieldID()))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool DreadoffNode::IsSameContent(const BaseNode *node) const
-{
-    auto *dreaddoffNode = dynamic_cast<const DreadoffNode *>(node);
-    if ((this == dreaddoffNode) || (dreaddoffNode != nullptr && (GetOpCode() == dreaddoffNode->GetOpCode()) &&
-                                    (GetPrimType() == dreaddoffNode->GetPrimType()) &&
-                                    (stIdx == dreaddoffNode->stIdx) && (offset == dreaddoffNode->offset))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool RegreadNode::IsSameContent(const BaseNode *node) const
-{
-    auto *regreadNode = dynamic_cast<const RegreadNode *>(node);
-    if ((this == regreadNode) ||
-        (regreadNode != nullptr && (GetOpCode() == regreadNode->GetOpCode()) &&
-         (GetPrimType() == regreadNode->GetPrimType()) && (regIdx == regreadNode->GetRegIdx()))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool AddroffuncNode::IsSameContent(const BaseNode *node) const
-{
-    auto *addroffuncNode = dynamic_cast<const AddroffuncNode *>(node);
-    if ((this == addroffuncNode) ||
-        (addroffuncNode != nullptr && (GetOpCode() == addroffuncNode->GetOpCode()) &&
-         (GetPrimType() == addroffuncNode->GetPrimType()) && (puIdx == addroffuncNode->GetPUIdx()))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-bool AddroflabelNode::IsSameContent(const BaseNode *node) const
-{
-    auto *addroflabelNode = dynamic_cast<const AddroflabelNode *>(node);
-    if ((this == addroflabelNode) ||
-        (addroflabelNode != nullptr && (GetOpCode() == addroflabelNode->GetOpCode()) &&
-         (GetPrimType() == addroflabelNode->GetPrimType()) && (offset == addroflabelNode->GetOffset()))) {
-        return true;
-    } else {
-        return false;
-    }
-}
+#endif
 }  // namespace maple

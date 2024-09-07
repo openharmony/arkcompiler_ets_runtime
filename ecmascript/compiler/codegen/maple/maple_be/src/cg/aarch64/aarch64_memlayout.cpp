@@ -85,24 +85,9 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int
 void AArch64MemLayout::SetSizeAlignForTypeIdx(uint32 typeIdx, uint32 &size, uint32 &align) const
 {
     auto *mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(typeIdx);
-    if (IsParamStructCopyToMemory(*mirType)) {
-        align = GetPointerSize();
-        size = GetPointerSize();
-    } else {
-        align = mirType->GetAlign();
-        size = static_cast<uint32>(mirType->GetSize());
-    }
-}
-
-void AArch64MemLayout::SetSegmentSize(AArch64SymbolAlloc &symbolAlloc, MemSegment &segment, uint32 typeIdx) const
-{
-    uint32 size;
-    uint32 align;
-    SetSizeAlignForTypeIdx(typeIdx, size, align);
-    segment.SetSize(static_cast<uint32>(RoundUp(static_cast<uint64>(segment.GetSize()), align)));
-    symbolAlloc.SetOffset(segment.GetSize());
-    segment.SetSize(segment.GetSize() + size);
-    segment.SetSize(static_cast<uint32>(RoundUp(static_cast<uint64>(segment.GetSize()), GetPointerSize())));
+    
+    align = mirType->GetAlign();
+    size = static_cast<uint32>(mirType->GetSize());
 }
 
 void AArch64MemLayout::LayoutFormalParams()
@@ -306,25 +291,6 @@ bool AArch64MemLayout::IsSegMentVaried(const MemSegment *seg) const
     return false;
 }
 
-void AArch64MemLayout::AssignSpillLocationsToPseudoRegisters()
-{
-    MIRPregTable *pregTab = cgFunc->GetFunction().GetPregTab();
-
-    /* BUG: n_regs include index 0 which is not a valid preg index. */
-    size_t nRegs = pregTab->Size();
-    spillLocTable.resize(nRegs);
-    for (size_t i = 1; i < nRegs; ++i) {
-        PrimType pType = pregTab->PregFromPregIdx(i)->GetPrimType();
-        AArch64SymbolAlloc *symLoc = memAllocator->GetMemPool()->New<AArch64SymbolAlloc>();
-        symLoc->SetMemSegment(segLocals);
-        segLocals.SetSize(RoundUp(segLocals.GetSize(), GetPrimTypeSize(pType)));
-        symLoc->SetOffset(segLocals.GetSize());
-        MIRType *mirTy = GlobalTables::GetTypeTable().GetTypeTable()[pType];
-        segLocals.SetSize(segLocals.GetSize() + static_cast<uint32>(mirTy->GetSize()));
-        spillLocTable[i] = symLoc;
-    }
-}
-
 uint64 AArch64MemLayout::StackFrameSize() const
 {
     // regpassed + calleesaved + reflocals + locals + spill + cold + args to callee
@@ -344,17 +310,6 @@ uint32 AArch64MemLayout::RealStackFrameSize() const
     auto size = StackFrameSize();
     return static_cast<uint32>(size);
 }
-
-int32 AArch64MemLayout::GetRefLocBaseLoc() const
-{
-    AArch64CGFunc *aarchCGFunc = static_cast<AArch64CGFunc *>(cgFunc);
-    auto beforeSize = GetSizeOfLocals();
-    if (aarchCGFunc->UsedStpSubPairForCallFrameAllocation()) {
-        return static_cast<int32>(beforeSize);
-    }
-    return static_cast<int32>(beforeSize + kAarch64SizeOfFplr);
-}
-
 // fp - callee base =
 // RealStackFrameSize - [GR,16] - [VR,16] - [cold,16] - ([callee] - 16(fplr)) - stack protect - stkpass
 // callsave area size includes fp lr, real callee save area size is callee save size - fplr

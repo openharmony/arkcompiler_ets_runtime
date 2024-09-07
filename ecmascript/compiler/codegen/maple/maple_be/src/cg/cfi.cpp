@@ -38,6 +38,7 @@ static CfiDescr cfiDescrTable[kOpCfiLast + 1] = {
 
 void CfiInsn::Dump() const
 {
+#ifdef ARK_LITECG_DEBUG
     MOperator mOp = GetMachineOpcode();
     CfiDescr &cfiDescr = cfiDescrTable[mOp];
     LogInfo::MapleLogger() << "CFI " << cfiDescr.name;
@@ -47,10 +48,12 @@ void CfiInsn::Dump() const
         curOperand.Dump();
     }
     LogInfo::MapleLogger() << "\n";
+#endif
 }
 
 bool CfiInsn::CheckMD() const
 {
+#ifdef ARK_LITECG_DEBUG
     CfiDescr &cfiDescr = cfiDescrTable[GetMachineOpcode()];
     /* cfi instruction's 3rd /4th/5th operand must be null */
     for (uint32 i = 0; i < static_cast<uint32>(cfiDescr.opndCount); ++i) {
@@ -59,46 +62,64 @@ bool CfiInsn::CheckMD() const
             return false;
         }
     }
+#endif
     return true;
 }
 
 void RegOperand::Dump() const
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "reg: " << regNO << "[ size: " << GetSize() << "] ";
+#endif
 }
 
 void ImmOperand::Dump() const
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "imm: " << val << "[ size: " << GetSize() << "] ";
+#endif
 }
 
 void StrOperand::Dump() const
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << str;
+#endif
 }
 
 void LabelOperand::Dump() const
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "label:" << labelIndex;
+#endif
 }
 void CFIOpndEmitVisitor::Visit(RegOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     emitter.Emit(v->GetRegisterNO());
+#endif
 }
 void CFIOpndEmitVisitor::Visit(ImmOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     emitter.Emit(v->GetValue());
+#endif
 }
 void CFIOpndEmitVisitor::Visit(SymbolOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     CHECK_FATAL(false, "NIY");
+#endif
 }
 void CFIOpndEmitVisitor::Visit(StrOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     emitter.Emit(v->GetStr());
+#endif
 }
 void CFIOpndEmitVisitor::Visit(LabelOperand *v)
 {
+#ifdef ARK_LITECG_DEBUG
     if (emitter.GetCG()->GetMIRModule()->IsCModule()) {
         CHECK_NULL_FATAL(emitter.GetCG()->GetMIRModule()->CurFunction());
         PUIdx pIdx = emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
@@ -110,5 +131,6 @@ void CFIOpndEmitVisitor::Visit(LabelOperand *v)
     } else {
         emitter.Emit(".label.").Emit(v->GetParentFunc()).Emit(v->GetIabelIdx());
     }
+#endif
 }
 } /* namespace cfi */

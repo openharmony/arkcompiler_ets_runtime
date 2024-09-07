@@ -100,38 +100,6 @@ MIRFunction *MIRBuilder::CreateFunction(const std::string &name, const MIRType &
     return fn;
 }
 
-MIRFunction *MIRBuilder::CreateFunction(StIdx stIdx, bool addToTable) const
-{
-    auto *fn = mirModule->GetMemPool()->New<MIRFunction>(mirModule, stIdx);
-    fn->SetPuidx(GlobalTables::GetFunctionTable().GetFuncTable().size());
-    if (addToTable) {
-        GlobalTables::GetFunctionTable().GetFuncTable().push_back(fn);
-    }
-
-    auto *funcType = mirModule->GetMemPool()->New<MIRFuncType>();
-    fn->SetMIRFuncType(funcType);
-    return fn;
-}
-
-MIRSymbol *MIRBuilder::GetOrCreateGlobalDecl(const std::string &str, TyIdx tyIdx, bool &created) const
-{
-    GStrIdx strIdx = GetStringIndex(str);
-    if (strIdx != 0u) {
-        StIdx stIdx = GlobalTables::GetGsymTable().GetStIdxFromStrIdx(strIdx);
-        if (stIdx.Idx() != 0) {
-            created = false;
-            return GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
-        }
-    }
-    created = true;
-    strIdx = GetOrCreateStringIndex(str);
-    MIRSymbol *st = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
-    st->SetNameStrIdx(strIdx);
-    st->SetTyIdx(tyIdx);
-    (void)GlobalTables::GetGsymTable().AddToStringSymbolMap(*st);
-    return st;
-}
-
 MIRSymbol *MIRBuilder::GetOrCreateLocalDecl(const std::string &str, TyIdx tyIdx, MIRSymbolTable &symbolTable,
                                             bool &created) const
 {
@@ -174,106 +142,10 @@ MIRSymbol *MIRBuilder::GetOrCreateLocalDecl(const std::string &str, const MIRTyp
     return GetOrCreateDeclInFunc(str, type, *currentFunc);
 }
 
-MIRSymbol *MIRBuilder::GetGlobalDecl(const std::string &str)
-{
-    return MIRSymbolBuilder::Instance().GetGlobalDecl(GetStringIndex(str));
-}
-
 MIRSymbol *MIRBuilder::GetLocalDecl(const std::string &str)
 {
     MIRFunction *currentFunctionInner = GetCurrentFunctionNotNull();
     return MIRSymbolBuilder::Instance().GetLocalDecl(*currentFunctionInner->GetSymTab(), GetStringIndex(str));
-}
-
-// search the scope hierarchy
-MIRSymbol *MIRBuilder::GetDecl(const std::string &str)
-{
-    GStrIdx strIdx = GetStringIndex(str);
-    MIRSymbol *sym = nullptr;
-    if (strIdx != 0u) {
-        // try to find the decl in local scope first
-        MIRFunction *currentFunctionInner = GetCurrentFunction();
-        if (currentFunctionInner != nullptr) {
-            sym = currentFunctionInner->GetSymTab()->GetSymbolFromStrIdx(strIdx);
-        }
-        if (sym == nullptr) {
-            sym = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(strIdx);
-        }
-    }
-    return sym;
-}
-
-MIRSymbol *MIRBuilder::CreateGlobalDecl(const std::string &str, const MIRType &type, MIRStorageClass sc)
-{
-    return MIRSymbolBuilder::Instance().CreateGlobalDecl(GetOrCreateStringIndex(str), type, sc);
-}
-
-MIRSymbol *MIRBuilder::GetOrCreateGlobalDecl(const std::string &str, const MIRType &type)
-{
-    bool isCreated = false;
-    MIRSymbol *st = GetOrCreateGlobalDecl(str, type.GetTypeIndex(), isCreated);
-    DEBUG_ASSERT(st != nullptr, "null ptr check");
-    if (isCreated) {
-        st->SetStorageClass(kScGlobal);
-        st->SetSKind(kStVar);
-    } else {
-        // Existing symbol may come from anther module. We need to register it
-        // in the current module so that per-module mpl file is self-sustained.
-        mirModule->AddSymbol(st);
-    }
-    MIRConst *cst = GlobalTables::GetConstPool().GetConstFromPool(st->GetNameStrIdx());
-    if (cst != nullptr) {
-        st->SetKonst(cst);
-    }
-    return st;
-}
-
-MIRSymbol *MIRBuilder::GetSymbolFromEnclosingScope(StIdx stIdx) const
-{
-    if (stIdx.FullIdx() == 0) {
-        return nullptr;
-    }
-    if (stIdx.Islocal()) {
-        MIRFunction *fun = GetCurrentFunctionNotNull();
-        MIRSymbol *st = fun->GetSymTab()->GetSymbolFromStIdx(stIdx.Idx());
-        if (st != nullptr) {
-            return st;
-        }
-    }
-    return GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
-}
-
-MIRSymbol *MIRBuilder::GetSymbol(TyIdx tyIdx, const std::string &name, MIRSymKind mClass, MIRStorageClass sClass,
-                                 uint8 scpID, bool sameType = false) const
-{
-    return GetSymbol(tyIdx, GetOrCreateStringIndex(name), mClass, sClass, scpID, sameType);
-}
-
-// when sametype is true, it means match everything the of the symbol
-MIRSymbol *MIRBuilder::GetSymbol(TyIdx tyIdx, GStrIdx strIdx, MIRSymKind mClass, MIRStorageClass sClass, uint8 scpID,
-                                 bool sameType = false) const
-{
-    if (scpID != kScopeGlobal) {
-        ERR(kLncErr, "not yet implemented");
-        return nullptr;
-    }
-    return MIRSymbolBuilder::Instance().GetSymbol(tyIdx, strIdx, mClass, sClass, sameType);
-}
-
-MIRSymbol *MIRBuilder::GetOrCreateSymbol(TyIdx tyIdx, const std::string &name, MIRSymKind mClass,
-                                         MIRStorageClass sClass, MIRFunction *func, uint8 scpID,
-                                         bool sametype = false) const
-{
-    return GetOrCreateSymbol(tyIdx, GetOrCreateStringIndex(name), mClass, sClass, func, scpID, sametype);
-}
-
-MIRSymbol *MIRBuilder::GetOrCreateSymbol(TyIdx tyIdx, GStrIdx strIdx, MIRSymKind mClass, MIRStorageClass sClass,
-                                         MIRFunction *func, uint8 scpID, bool sameType = false) const
-{
-    if (MIRSymbol *st = GetSymbol(tyIdx, strIdx, mClass, sClass, scpID, sameType)) {
-        return st;
-    }
-    return CreateSymbol(tyIdx, strIdx, mClass, sClass, func, scpID);
 }
 
 // when func is null, create global symbol, otherwise create local symbol
@@ -307,34 +179,6 @@ ConstvalNode *MIRBuilder::CreateIntConst(uint64 val, PrimType pty)
     return NewNode<ConstvalNode>(pty, mirConst);
 }
 
-ConstvalNode *MIRBuilder::CreateFloatConst(float val)
-{
-    auto *mirConst =
-        GetCurrentFuncDataMp()->New<MIRFloatConst>(val, *GlobalTables::GetTypeTable().GetPrimType(PTY_f32));
-    return NewNode<ConstvalNode>(PTY_f32, mirConst);
-}
-
-ConstvalNode *MIRBuilder::CreateDoubleConst(double val)
-{
-    auto *mirConst =
-        GetCurrentFuncDataMp()->New<MIRDoubleConst>(val, *GlobalTables::GetTypeTable().GetPrimType(PTY_f64));
-    return NewNode<ConstvalNode>(PTY_f64, mirConst);
-}
-
-ConstvalNode *MIRBuilder::CreateFloat128Const(const uint64 *val)
-{
-    auto *mirConst =
-        GetCurrentFuncDataMp()->New<MIRFloat128Const>(*val, *GlobalTables::GetTypeTable().GetPrimType(PTY_f128));
-    return NewNode<ConstvalNode>(PTY_f128, mirConst);
-}
-
-ConstvalNode *MIRBuilder::GetConstInt(MemPool &memPool, int val)
-{
-    auto *mirConst =
-        GlobalTables::GetIntConstTable().GetOrCreateIntConst(val, *GlobalTables::GetTypeTable().GetInt64());
-    return memPool.New<ConstvalNode>(PTY_i32, mirConst);
-}
-
 AddrofNode *MIRBuilder::CreateExprAddrof(FieldID fieldID, const MIRSymbol &symbol, MemPool *memPool)
 {
     return CreateExprAddrof(fieldID, symbol.GetStIdx(), memPool);
@@ -346,16 +190,6 @@ AddrofNode *MIRBuilder::CreateExprAddrof(FieldID fieldID, StIdx symbolStIdx, Mem
         memPool = GetCurrentFuncCodeMp();
     }
     auto node = memPool->New<AddrofNode>(OP_addrof, PTY_ptr, symbolStIdx, fieldID);
-    node->SetDebugComment(currComment);
-    return node;
-}
-
-AddroffuncNode *MIRBuilder::CreateExprAddroffunc(PUIdx puIdx, MemPool *memPool)
-{
-    if (memPool == nullptr) {
-        memPool = GetCurrentFuncCodeMp();
-    }
-    auto node = memPool->New<AddroffuncNode>(PTY_ptr, puIdx);
     node->SetDebugComment(currComment);
     return node;
 }
@@ -377,30 +211,10 @@ RegreadNode *MIRBuilder::CreateExprRegread(PrimType pty, PregIdx regIdx)
     return NewNode<RegreadNode>(pty, regIdx);
 }
 
-AddrofNode *MIRBuilder::CreateExprDread(MIRType &type, MIRSymbol &symbol)
-{
-    return CreateExprDread(type, 0, symbol);
-}
-
-AddrofNode *MIRBuilder::CreateExprDread(MIRSymbol &symbol, uint16 fieldID)
-{
-    if (fieldID == 0) {
-        return CreateExprDread(symbol);
-    }
-    DEBUG_ASSERT(false, "NYI");
-    return nullptr;
-}
 
 AddrofNode *MIRBuilder::CreateExprDread(MIRSymbol &symbol)
 {
     return CreateExprDread(*symbol.GetType(), 0, symbol);
-}
-
-AddrofNode *MIRBuilder::CreateExprDread(PregIdx pregID, PrimType pty)
-{
-    auto *dread = NewNode<AddrofNode>(OP_dread, pty);
-    dread->SetStFullIdx(pregID);
-    return dread;
 }
 
 IreadNode *MIRBuilder::CreateExprIread(const MIRType &returnType, const MIRType &ptrType, FieldID fieldID,
@@ -413,11 +227,6 @@ IreadNode *MIRBuilder::CreateExprIread(const MIRType &returnType, const MIRType 
                  "Error: Fieldid should not be 0 when trying to iread a field from type ");
     PrimType type = GetRegPrimType(returnType.GetPrimType());
     return NewNode<IreadNode>(OP_iread, type, ptrType.GetTypeIndex(), fieldID, addr);
-}
-
-IreadoffNode *MIRBuilder::CreateExprIreadoff(PrimType pty, int32 offset, BaseNode *opnd0)
-{
-    return NewNode<IreadoffNode>(pty, opnd0, offset);
 }
 
 UnaryNode *MIRBuilder::CreateExprUnary(Opcode opcode, const MIRType &type, BaseNode *opnd)
@@ -435,22 +244,10 @@ TypeCvtNode *MIRBuilder::CreateExprTypeCvt(Opcode o, const MIRType &type, const 
     return CreateExprTypeCvt(o, type.GetPrimType(), fromType.GetPrimType(), *opnd);
 }
 
-ExtractbitsNode *MIRBuilder::CreateExprExtractbits(Opcode o, const MIRType &type, uint32 bOffset, uint32 bSize,
-                                                   BaseNode *opnd)
-{
-    return CreateExprExtractbits(o, type.GetPrimType(), bOffset, bSize, opnd);
-}
-
 ExtractbitsNode *MIRBuilder::CreateExprExtractbits(Opcode o, PrimType type, uint32 bOffset, uint32 bSize,
                                                    BaseNode *opnd)
 {
     return NewNode<ExtractbitsNode>(o, type, bOffset, bSize, opnd);
-}
-
-DepositbitsNode *MIRBuilder::CreateExprDepositbits(Opcode o, PrimType type, uint32 bOffset, uint32 bSize,
-                                                   BaseNode *leftOpnd, BaseNode *rightOpnd)
-{
-    return NewNode<DepositbitsNode>(o, type, bOffset, bSize, leftOpnd, rightOpnd);
 }
 
 RetypeNode *MIRBuilder::CreateExprRetype(const MIRType &type, const MIRType &fromType, BaseNode *opnd)
@@ -510,28 +307,12 @@ IassignNode *MIRBuilder::CreateStmtIassign(const MIRType &type, FieldID fieldID,
     return NewNode<IassignNode>(type.GetTypeIndex(), fieldID, addr, src);
 }
 
-IassignoffNode *MIRBuilder::CreateStmtIassignoff(PrimType pty, int32 offset, BaseNode *addr, BaseNode *src)
-{
-    return NewNode<IassignoffNode>(pty, offset, addr, src);
-}
-
 CallNode *MIRBuilder::CreateStmtCall(PUIdx puIdx, const MapleVector<BaseNode *> &args, Opcode opCode)
 {
     auto *stmt = NewNode<CallNode>(*GetCurrentFuncCodeMpAllocator(), opCode, puIdx, TyIdx());
     stmt->SetNOpnd(args);
     stmt->SetNumOpnds(args.size());
     return stmt;
-}
-
-CallNode *MIRBuilder::CreateStmtCall(const std::string &callee, const MapleVector<BaseNode *> &args)
-{
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetStrIdxFromName(callee);
-    StIdx stIdx = GlobalTables::GetGsymTable().GetStIdxFromStrIdx(strIdx);
-    MIRSymbol *st = GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
-    DEBUG_ASSERT(st != nullptr, "MIRSymbol st is null");
-    MIRFunction *func = st->GetFunction();
-    DEBUG_ASSERT(func != nullptr, "func st is null");
-    return CreateStmtCall(func->GetPuidx(), args, OP_call);
 }
 
 IcallNode *MIRBuilder::CreateStmtIcall(const MapleVector<BaseNode *> &args)
@@ -609,40 +390,6 @@ IntrinsiccallNode *MIRBuilder::CreateStmtXintrinsicCall(MIRIntrinsicID idx, cons
     return stmt;
 }
 
-CallNode *MIRBuilder::CreateStmtCallAssigned(PUIdx puIdx, const MIRSymbol *ret, Opcode op)
-{
-    auto *stmt = NewNode<CallNode>(*GetCurrentFuncCodeMpAllocator(), op, puIdx);
-    if (ret) {
-        DEBUG_ASSERT(ret->IsLocal(), "Not Excepted ret");
-        stmt->GetReturnVec().push_back(CallReturnPair(ret->GetStIdx(), RegFieldPair(0, 0)));
-    }
-    return stmt;
-}
-
-CallNode *MIRBuilder::CreateStmtCallAssigned(PUIdx puIdx, const MapleVector<BaseNode *> &args, const MIRSymbol *ret,
-                                             Opcode opcode, TyIdx tyIdx)
-{
-    auto *stmt = NewNode<CallNode>(*GetCurrentFuncCodeMpAllocator(), opcode, puIdx, tyIdx);
-    DEBUG_ASSERT(stmt != nullptr, "stmt is null");
-    stmt->SetOpnds(args);
-    if (ret != nullptr) {
-        DEBUG_ASSERT(ret->IsLocal(), "Not Excepted ret");
-        stmt->GetReturnVec().push_back(CallReturnPair(ret->GetStIdx(), RegFieldPair(0, 0)));
-    }
-    return stmt;
-}
-
-CallNode *MIRBuilder::CreateStmtCallRegassigned(PUIdx puIdx, PregIdx pRegIdx, Opcode opcode, BaseNode *arg)
-{
-    auto *stmt = NewNode<CallNode>(*GetCurrentFuncCodeMpAllocator(), opcode, puIdx);
-    stmt->GetNopnd().push_back(arg);
-    stmt->SetNumOpnds(stmt->GetNopndSize());
-    if (pRegIdx > 0) {
-        stmt->GetReturnVec().push_back(CallReturnPair(StIdx(), RegFieldPair(0, pRegIdx)));
-    }
-    return stmt;
-}
-
 CallNode *MIRBuilder::CreateStmtCallRegassigned(PUIdx puIdx, const MapleVector<BaseNode *> &args, PregIdx pRegIdx,
                                                 Opcode opcode)
 {
@@ -651,19 +398,6 @@ CallNode *MIRBuilder::CreateStmtCallRegassigned(PUIdx puIdx, const MapleVector<B
     stmt->SetOpnds(args);
     if (pRegIdx > 0) {
         stmt->GetReturnVec().push_back(CallReturnPair(StIdx(), RegFieldPair(0, pRegIdx)));
-    }
-    return stmt;
-}
-
-IntrinsiccallNode *MIRBuilder::CreateStmtIntrinsicCallAssigned(MIRIntrinsicID idx, const MapleVector<BaseNode *> &args,
-                                                               PregIdx retPregIdx)
-{
-    auto *stmt =
-        NewNode<IntrinsiccallNode>(*GetCurrentFuncCodeMpAllocator(), OP_intrinsiccallassigned, idx);
-    DEBUG_ASSERT(stmt != nullptr, "stmt is null");
-    stmt->SetOpnds(args);
-    if (retPregIdx > 0) {
-        stmt->GetReturnVec().push_back(CallReturnPair(StIdx(), RegFieldPair(0, retPregIdx)));
     }
     return stmt;
 }
@@ -709,30 +443,6 @@ NaryStmtNode *MIRBuilder::CreateStmtReturn(BaseNode *rVal)
     return stmt;
 }
 
-NaryStmtNode *MIRBuilder::CreateStmtNary(Opcode op, const MapleVector<BaseNode *> &rVals)
-{
-    auto *stmt = NewNode<NaryStmtNode>(*GetCurrentFuncCodeMpAllocator(), op);
-    DEBUG_ASSERT(stmt != nullptr, "stmt is null");
-    stmt->SetOpnds(rVals);
-    return stmt;
-}
-
-NaryStmtNode *MIRBuilder::CreateStmtNary(Opcode op, BaseNode *rVal)
-{
-    auto *stmt = NewNode<NaryStmtNode>(*GetCurrentFuncCodeMpAllocator(), op);
-    DEBUG_ASSERT(stmt != nullptr, "stmt is null");
-    stmt->PushOpnd(rVal);
-    return stmt;
-}
-
-AssertNonnullStmtNode *MIRBuilder::CreateStmtAssertNonnull(Opcode op, BaseNode *rVal, GStrIdx funcNameIdx)
-{
-    auto *stmt = NewNode<AssertNonnullStmtNode>(op, funcNameIdx);
-    DEBUG_ASSERT(stmt != nullptr, "stmt is null");
-    stmt->SetRHS(rVal);
-    return stmt;
-}
-
 UnaryStmtNode *MIRBuilder::CreateStmtUnary(Opcode op, BaseNode *rVal)
 {
     return NewNode<UnaryStmtNode>(op, kPtyInvalid, rVal);
@@ -744,18 +454,6 @@ IfStmtNode *MIRBuilder::CreateStmtIf(BaseNode *cond)
     ifStmt->SetOpnd(cond, 0);
     BlockNode *thenBlock = NewNode<BlockNode>();
     ifStmt->SetThenPart(thenBlock);
-    return ifStmt;
-}
-
-IfStmtNode *MIRBuilder::CreateStmtIfThenElse(BaseNode *cond)
-{
-    auto *ifStmt = NewNode<IfStmtNode>();
-    ifStmt->SetOpnd(cond, 0);
-    auto *thenBlock = NewNode<BlockNode>();
-    ifStmt->SetThenPart(thenBlock);
-    auto *elseBlock = NewNode<BlockNode>();
-    ifStmt->SetElsePart(elseBlock);
-    ifStmt->SetNumOpnds(3);  // 3 operands
     return ifStmt;
 }
 
@@ -781,46 +479,9 @@ StmtNode *MIRBuilder::CreateStmtComment(const std::string &cmnt)
     return NewNode<CommentNode>(*GetCurrentFuncCodeMpAllocator(), cmnt);
 }
 
-AddrofNode *MIRBuilder::CreateAddrof(const MIRSymbol &st, PrimType pty)
-{
-    return NewNode<AddrofNode>(OP_addrof, pty, st.GetStIdx(), 0);
-}
-
-AddrofNode *MIRBuilder::CreateDread(const MIRSymbol &st, PrimType pty)
-{
-    return NewNode<AddrofNode>(OP_dread, pty, st.GetStIdx(), 0);
-}
-
 CondGotoNode *MIRBuilder::CreateStmtCondGoto(BaseNode *cond, Opcode op, LabelIdx labIdx)
 {
     return NewNode<CondGotoNode>(op, labIdx, cond);
-}
-
-LabelIdx MIRBuilder::GetOrCreateMIRLabel(const std::string &name)
-{
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(name);
-    MIRFunction *currentFunctionInner = GetCurrentFunctionNotNull();
-    LabelIdx lableIdx = currentFunctionInner->GetLabelTab()->GetLabelIdxFromStrIdx(strIdx);
-    if (lableIdx == 0) {
-        lableIdx = currentFunctionInner->GetLabelTab()->CreateLabel();
-        currentFunctionInner->GetLabelTab()->SetSymbolFromStIdx(lableIdx, strIdx);
-        currentFunctionInner->GetLabelTab()->AddToStringLabelMap(lableIdx);
-    }
-    return lableIdx;
-}
-
-LabelIdx MIRBuilder::CreateLabIdx(MIRFunction &mirFunc)
-{
-    LabelIdx lableIdx = mirFunc.GetLabelTab()->CreateLabel();
-    mirFunc.GetLabelTab()->AddToStringLabelMap(lableIdx);
-    return lableIdx;
-}
-
-void MIRBuilder::AddStmtInCurrentFunctionBody(StmtNode &stmt)
-{
-    MIRFunction *fun = GetCurrentFunctionNotNull();
-    stmt.GetSrcPos().CondSetLineNum(lineNum);
-    fun->GetBody()->AddStatement(&stmt);
 }
 
 MemPool *MIRBuilder::GetCurrentFuncCodeMp()
@@ -839,39 +500,5 @@ MapleAllocator *MIRBuilder::GetCurrentFuncCodeMpAllocator()
     return &mirModule->GetMPAllocator();
 }
 
-MemPool *MIRBuilder::GetCurrentFuncDataMp()
-{
-    if (MIRFunction *curFunction = GetCurrentFunction()) {
-        return curFunction->GetDataMemPool();
-    }
-    return mirModule->GetMemPool();
-}
-
-MIRBuilderExt::MIRBuilderExt(MIRModule *module, pthread_mutex_t *mutex) : MIRBuilder(module), mutex(mutex) {}
-
-MemPool *MIRBuilderExt::GetCurrentFuncCodeMp()
-{
-    DEBUG_ASSERT(curFunction, "curFunction is null");
-    return curFunction->GetCodeMemPool();
-}
-
-MapleAllocator *MIRBuilderExt::GetCurrentFuncCodeMpAllocator()
-{
-    DEBUG_ASSERT(curFunction, "curFunction is null");
-    return &curFunction->GetCodeMemPoolAllocator();
-}
-
-void MIRBuilderExt::GlobalLock()
-{
-    if (mutex) {
-        DEBUG_ASSERT(pthread_mutex_lock(mutex) == 0, "lock failed");
-    }
-}
-
-void MIRBuilderExt::GlobalUnlock()
-{
-    if (mutex) {
-        DEBUG_ASSERT(pthread_mutex_unlock(mutex) == 0, "unlock failed");
-    }
-}
+MIRBuilderExt::MIRBuilderExt(MIRModule *module) : MIRBuilder(module) {}
 }  // namespace maple

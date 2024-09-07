@@ -116,11 +116,6 @@ public:
         return std::set<uint32>();
     }
 
-    uint32 GetBothDefUseOpnd() const override
-    {
-        return maplebe::kInsnMaxOpnd;
-    }
-
 private:
     CfiInsn &operator=(const CfiInsn &);
 };

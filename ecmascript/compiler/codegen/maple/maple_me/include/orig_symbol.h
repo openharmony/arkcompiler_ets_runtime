@@ -45,12 +45,6 @@ public:
     {
     }
 
-    OriginalSt(uint32 index, MIRSymbol &mirSt, PUIdx pIdx, FieldID fieldID, MapleAllocator &alloc)
-        : OriginalSt(OStIdx(index), alloc, mirSt.IsLocal(), mirSt.GetStorageClass() == kScFormal, fieldID, pIdx,
-                     kSymbolOst, mirSt.IgnoreRC(), {.mirSt = &mirSt})
-    {
-    }
-
     ~OriginalSt() = default;
 
     void Dump() const;
@@ -279,7 +273,7 @@ public:
             return false;
         }
         MIRType *mirtype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
-        if (IsPrimitiveInteger(mirtype->GetPrimType()) && (mirtype->GetKind() != kTypeBitField)) {
+        if (IsPrimitiveInteger(mirtype->GetPrimType())) {
             // additional check using MIRSymbol's tyIdx
             if (IsSymbolOst()) {
                 return IsPrimitiveInteger(GetMIRSymbol()->GetType()->GetPrimType());

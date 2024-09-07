@@ -36,7 +36,10 @@ constexpr size_t kFourthOpnd = 3;
 constexpr size_t kOpndNum = 3;
 
 extern MIRModule *theMIRModule;
+
+#ifdef ARK_LITECG_DEBUG
 extern void EmitStr(const MapleString &mplStr);
+#endif
 
 class MIRPregTable;  // circular dependency exists, no other choice
 class TypeTable;     // circular dependency exists, no other choice
@@ -135,8 +138,6 @@ public:
         return kOpcodeInfo.GetTableItemAt(GetOpCode()).instrucSize;
     }
 
-    const char *GetOpName() const;
-    bool MayThrowException();
     virtual size_t NumOpnds() const
     {
         return numOpnds;
@@ -194,11 +195,6 @@ public:
     }
 
     virtual bool IsSSANode() const
-    {
-        return false;
-    }
-
-    virtual bool IsSameContent([[maybe_unused]] const BaseNode *node) const
     {
         return false;
     }
@@ -265,8 +261,6 @@ public:
         return true;
     }
 
-    bool IsSameContent(const BaseNode *node) const override;
-
 private:
     BaseNode *uOpnd = nullptr;
 };
@@ -304,8 +298,6 @@ public:
     {
         fromPrimType = from;
     }
-
-    bool IsSameContent(const BaseNode *node) const override;
 
 private:
     PrimType fromPrimType = kPtyInvalid;
@@ -348,14 +340,6 @@ public:
     }
 
 private:
-    bool BothPointerOrJarray(const MIRType &from, const MIRType &to) const
-    {
-        if (from.GetKind() != to.GetKind()) {
-            return false;
-        }
-        return from.IsMIRPtrType() || from.IsMIRJarrayType();
-    }
-
     TyIdx tyIdx = TyIdx(0);
 };
 
@@ -461,8 +445,6 @@ public:
         fieldID = fieldIDVal;
     }
 
-    bool IsSameContent(const BaseNode *node) const override;
-
     // the base of an address expr is either a leaf or an iread
     BaseNode &GetAddrExprBase() const
     {
@@ -472,8 +454,6 @@ public:
         }
         return *base;
     }
-
-    bool IsVolatile() const;
 
     MIRType *GetType() const;
 
@@ -516,8 +496,6 @@ public:
         offset = offsetValue;
     }
 
-    bool IsSameContent(const BaseNode *node) const override;
-
 private:
     int32 offset = 0;
 };
@@ -541,8 +519,6 @@ public:
         CHECK_FATAL(i < kOperandNumBinary, "Invalid operand idx in BinaryOpnds");
         bOpnd[i] = node;
     }
-
-    virtual bool IsSameContent(const BaseNode *node) const;
 
 private:
     BaseNode *bOpnd[kOperandNumBinary];
@@ -615,7 +591,6 @@ public:
     {
         return true;
     }
-    bool IsSameContent(const BaseNode *node) const override;
 };
 
 class CompareNode : public BinaryNode {
@@ -1011,8 +986,6 @@ public:
         constVal = val;
     }
 
-    bool IsSameContent(const BaseNode *node) const override;
-
 private:
     MIRConst *constVal = nullptr;
 };
@@ -1030,8 +1003,6 @@ public:
 #ifdef ARK_LITECG_DEBUG
     void Dump(int32 indent) const override;
 #endif
-
-    bool IsSameContent(const BaseNode *node) const override;
 
     ConststrNode *CloneTree(MapleAllocator &allocator) const override
     {
@@ -1065,8 +1036,6 @@ public:
 #ifdef ARK_LITECG_DEBUG
     void Dump(int32 indent) const override;
 #endif
-
-    bool IsSameContent(const BaseNode *node) const override;
 
     Conststr16Node *CloneTree(MapleAllocator &allocator) const override
     {
@@ -1141,16 +1110,10 @@ public:
         return node;
     }
 
-    const MIRType *GetArrayType(const TypeTable &tt) const;
-    MIRType *GetArrayType(const TypeTable &tt);
-
     BaseNode *GetIndex(size_t i)
     {
         return Opnd(i + 1);
     }
-
-    const BaseNode *GetDim(const MIRModule &mod, TypeTable &tt, int i) const;
-    BaseNode *GetDim(const MIRModule &mod, TypeTable &tt, int i);
 
     BaseNode *GetBase()
     {
@@ -1226,10 +1189,6 @@ public:
         fieldID = fieldIDVal;
     }
 
-    bool IsVolatile(const MIRModule &mod) const;
-
-    bool IsSameContent(const BaseNode *node) const override;
-
 private:
     StIdx stIdx;
     FieldID fieldID = 0;
@@ -1254,10 +1213,6 @@ public:
     {
         return allocator.GetMemPool()->New<DreadoffNode>(*this);
     }
-
-    bool IsVolatile(const MIRModule &mod) const;
-
-    bool IsSameContent(const BaseNode *node) const override;
 
 public:
     StIdx stIdx;
@@ -1298,8 +1253,6 @@ public:
         regIdx = reg;
     }
 
-    bool IsSameContent(const BaseNode *node) const override;
-
 private:
     PregIdx regIdx = 0;  // 32bit, negative if special register
 };
@@ -1331,8 +1284,6 @@ public:
         puIdx = puIdxValue;
     }
 
-    bool IsSameContent(const BaseNode *node) const override;
-
 private:
     PUIdx puIdx = 0;  // 32bit now
 };
@@ -1363,8 +1314,6 @@ public:
     {
         offset = offsetValue;
     }
-
-    bool IsSameContent(const BaseNode *node) const override;
 
 private:
     LabelIdx offset = 0;
@@ -1414,9 +1363,6 @@ public:
     void DumpBase(int32 indent) const override;
     void Dump(int32 indent) const override;
 #endif
-
-    void InsertAfterThis(StmtNode &pos);
-    void InsertBeforeThis(StmtNode &pos);
 
     virtual StmtNode *CloneTree(MapleAllocator &allocator) const override
     {
@@ -1470,8 +1416,6 @@ public:
     {
         meStmtID = id;
     }
-
-    StmtNode *GetRealNext() const;
 
     virtual BaseNode *GetRHS() const
     {
@@ -1636,8 +1580,6 @@ public:
     {
         rhs = node;
     }
-
-    bool AssigningVolatile() const;
 
 private:
     TyIdx tyIdx;
@@ -1931,8 +1873,6 @@ public:
         fieldID = f;
     }
 
-    bool AssigningVolatile(const MIRModule &mod) const;
-
 private:
     StIdx stIdx;
     FieldID fieldID = 0;
@@ -2142,13 +2082,9 @@ public:
     void AppendStatementsFromBlock(BlockNode &blk);
     void InsertFirst(StmtNode *stmt);  // Insert stmt as the first
     void InsertLast(StmtNode *stmt);   // Insert stmt as the last
-    void ReplaceStmtWithBlock(StmtNode &stmtNode, BlockNode &blk);
-    void ReplaceStmt1WithStmt2(const StmtNode *stmtNode1, StmtNode *stmtNode2);
     void RemoveStmt(const StmtNode *stmtNode1);
     void InsertBefore(const StmtNode *stmtNode1, StmtNode *stmtNode2);  // Insert ss2 before ss1 in current block.
-    void InsertAfter(const StmtNode *stmtNode1, StmtNode *stmtNode2);   // Insert ss2 after ss1 in current block.
-    // insert all the stmts in inblock to the current block after stmt1
-    void InsertBlockAfter(BlockNode &inblock, const StmtNode *stmt1);
+    void InsertAfter(const StmtNode *stmtNode1, StmtNode *stmtNode2);   // Insert ss2 after ss1 in current block
 
 #ifdef ARK_LITECG_DEBUG
     void Dump(int32 indent, const MIRSymbolTable *theSymTab, MIRPregTable *thePregTab, bool withInfo, bool isFuncbody,
@@ -2189,10 +2125,6 @@ public:
         }
         return blk;
     }
-
-    BlockNode *CloneTreeWithFreqs(MapleAllocator &allocator, std::unordered_map<uint32_t, uint64_t> &toFreqs,
-                                  std::unordered_map<uint32_t, uint64_t> &fromFreqs, uint64_t numer, uint64_t denom,
-                                  uint32_t updateOp);
 
     bool IsEmpty() const
     {
@@ -2270,30 +2202,6 @@ public:
         node->thenPart = thenPart->CloneTree(allocator);
         if (elsePart != nullptr) {
             node->elsePart = elsePart->CloneTree(allocator);
-        }
-        node->SetMeStmtID(GetMeStmtID());
-        return node;
-    }
-
-    IfStmtNode *CloneTreeWithFreqs(MapleAllocator &allocator, std::unordered_map<uint32_t, uint64_t> &toFreqs,
-                                   std::unordered_map<uint32_t, uint64_t> &fromFreqs, uint64_t numer, uint64_t denom,
-                                   uint32_t updateOp)
-    {
-        auto *node = allocator.GetMemPool()->New<IfStmtNode>(*this);
-        node->SetStmtID(stmtIDNext++);
-        node->SetOpnd(Opnd()->CloneTree(allocator), 0);
-        if (fromFreqs.count(GetStmtID()) > 0) {
-            uint64_t oldFreq = fromFreqs[GetStmtID()];
-            uint64_t newFreq = numer == 0 ? 0 : (denom > 0 ? (oldFreq * numer / denom) : oldFreq);
-            toFreqs[node->GetStmtID()] = (newFreq > 0 || numer == 0) ? newFreq : 1;
-            if (updateOp & kUpdateOrigFreq) {
-                uint64_t left = ((oldFreq - newFreq) > 0 || oldFreq == 0) ? (oldFreq - newFreq) : 1;
-                fromFreqs[GetStmtID()] = left;
-            }
-        }
-        node->thenPart = thenPart->CloneTreeWithFreqs(allocator, toFreqs, fromFreqs, numer, denom, updateOp);
-        if (elsePart != nullptr) {
-            node->elsePart = elsePart->CloneTreeWithFreqs(allocator, toFreqs, fromFreqs, numer, denom, updateOp);
         }
         node->SetMeStmtID(GetMeStmtID());
         return node;
@@ -2532,7 +2440,9 @@ public:
 
     virtual ~SafetyCheckStmtNode() = default;
 
+#ifdef ARK_LITECG_DEBUG
     std::string GetFuncName() const;
+#endif
 
     GStrIdx GetFuncNameIdx() const
     {
@@ -2615,9 +2525,6 @@ public:
 #ifdef ARK_LITECG_DEBUG
     virtual void Dump(int32 indent, bool newline) const;
 #endif
-
-    MIRType *GetCallReturnType() override;
-    const MIRSymbol *GetCallReturnSymbol(const MIRModule &mod) const;
 
     CallNode *CloneTree(MapleAllocator &allocator) const override
     {
@@ -2755,7 +2662,6 @@ public:
 #endif
 
     MIRType *GetCallReturnType() override;
-    const MIRSymbol *GetCallReturnSymbol(const MIRModule &mod) const;
     IcallNode *CloneTree(MapleAllocator &allocator) const override
     {
         auto *node = allocator.GetMemPool()->New<IcallNode>(allocator, *this);
@@ -2870,8 +2776,6 @@ public:
 #ifdef ARK_LITECG_DEBUG
     virtual void Dump(int32 indent, bool newline) const;
 #endif
-
-    MIRType *GetCallReturnType() override;
 
     IntrinsiccallNode *CloneTree(MapleAllocator &allocator) const override
     {
@@ -3081,8 +2985,6 @@ public:
 
     virtual ~AsmNode() = default;
 
-    AsmNode *CloneTree(MapleAllocator &allocator) const override;
-
     void SetQualifier(AsmQualifierKind x)
     {
         qualifiers |= (1U << static_cast<uint32>(x));
@@ -3129,9 +3031,6 @@ private:
 #ifdef ARK_LITECG_DEBUG
 void DumpCallReturns(const MIRModule &mod, CallReturnVector nrets, int32 indent);
 #endif
-
-bool HasIreadExpr(const BaseNode *expr);
-size_t MaxDepth(const BaseNode *expr);
 }  // namespace maple
 
 #define LOAD_SAFE_CAST_FOR_MIR_NODE

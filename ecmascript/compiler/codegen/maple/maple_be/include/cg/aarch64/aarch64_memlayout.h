@@ -152,7 +152,7 @@ public:
 
     void LayoutStackFrame(int32 &structCopySize, int32 &maxParmStackSize) override;
 
-    void AssignSpillLocationsToPseudoRegisters() override;
+    void AssignSpillLocationsToPseudoRegisters() override {};
 
     uint64 StackFrameSize() const;
 
@@ -205,7 +205,6 @@ public:
 
     uint64 GetSizeOfColdToStk() const;
     bool IsSegMentVaried(const MemSegment *seg) const;
-    int32 GetRefLocBaseLoc() const;
     int32 GetCalleeSaveBaseLoc() const override;
 
 private:
@@ -216,7 +215,6 @@ private:
     MemSegment segVrSaveArea = MemSegment(kMsVrSaveArea);
     int32 fixStackSize = 0;
     void SetSizeAlignForTypeIdx(uint32 typeIdx, uint32 &size, uint32 &align) const;
-    void SetSegmentSize(AArch64SymbolAlloc &symbolAlloc, MemSegment &segment, uint32 typeIdx) const;
     void LayoutVarargParams();
     void LayoutFormalParams();
     void LayoutActualParams();

@@ -203,8 +203,6 @@ public:
 
     bool OpndIsDef(uint32 id) const;
 
-    bool OpndIsUse(uint32 id) const;
-
     virtual bool IsPCLoad() const
     {
         return false;
@@ -212,17 +210,10 @@ public:
 
     Operand *GetMemOpnd() const;
 
-    uint32 GetMemOpndIdx() const;
-
-    void SetMemOpnd(MemOperand *memOpnd);
-
     bool IsCall() const;
     bool IsSpecialCall() const;
     bool IsTailCall() const;
     bool IsAsmInsn() const;
-    bool IsClinit() const;
-    bool CanThrow() const;
-    bool MayThrow() const;
     bool IsBranch() const;
     bool IsCondBranch() const;
     bool IsUnCondBranch() const;
@@ -235,9 +226,6 @@ public:
     bool IsStore() const;
     bool IsConversion() const;
     bool IsAtomic() const;
-
-    bool IsLoadPair() const;
-    bool IsStorePair() const;
     bool IsLoadStorePair() const;
     bool IsLoadLabel() const;
 
@@ -246,18 +234,12 @@ public:
         return false;
     }
 
-    bool IsVolatile() const;
-
-    bool IsMemAccessBar() const;
-
     bool IsMemAccess() const;
 
     virtual bool HasSideEffects() const
     {
         return false;
     }
-
-    bool HasLoop() const;
 
     virtual bool IsSpecialIntrinsic() const;
 
@@ -286,19 +268,9 @@ public:
         return false;
     }
 
-    bool IsDMBInsn() const;
-
     virtual Operand *GetCallTargetOperand() const;
 
     uint32 GetAtomicNum() const;
-    /*
-     * returns a ListOperand
-     * Note that we don't really need this for Emit
-     * Rather, we need it for register allocation, to
-     * correctly state the live ranges for operands
-     * use for passing call arguments
-     */
-    virtual ListOperand *GetCallArgumentOperand();
     bool IsAtomicStore() const
     {
         return IsStore() && IsAtomic();
@@ -451,8 +423,6 @@ public:
         }
         return nullptr;
     }
-
-    uint32 GetLatencyType() const;
 
     void SetPrev(Insn *prev)
     {
@@ -640,8 +610,6 @@ public:
         return isPhiMovInsn;
     }
 
-    Insn *Clone(MemPool &memPool) const;
-
     void SetInsnDescrption(const InsnDesc &newMD)
     {
         md = &newMD;
@@ -737,8 +705,6 @@ public:
     virtual bool IsRegDefined(regno_t regNO) const;
 
     virtual std::set<uint32> GetDefRegs() const;
-
-    virtual uint32 GetBothDefUseOpnd() const;
 
     void SetStackMapDef(SparseDataInfo &def)
     {

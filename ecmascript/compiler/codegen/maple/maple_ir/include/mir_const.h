@@ -131,8 +131,10 @@ public:
             "Constant is tried to be constructed with non-integral type or bit-width is not appropriate for it");
     }
 
+#ifdef ARK_LITECG_DEBUG
     /// @return number of used bits in the value
     uint8 GetActualBitWidth() const;
+#endif
 
     void Trunc(uint8 width)
     {

@@ -252,10 +252,6 @@ public:
         return typeAttrs.GetAttr(ATTR_volatile);
     }
 
-    bool IsTypeVolatile(int fieldID) const;
-
-    bool NeedPIC() const;
-
     bool IsThreadLocal() const
     {
         return typeAttrs.GetAttr(ATTR_tls_static) || typeAttrs.GetAttr(ATTR_tls_dynamic);
@@ -269,12 +265,6 @@ public:
     bool IsPUStatic() const
     {
         return GetStorageClass() == kScPstatic;
-    }
-
-    bool IsFinal() const
-    {
-        return (typeAttrs.GetAttr(ATTR_final) || typeAttrs.GetAttr(ATTR_readonly)) ||
-               IsLiteral() || IsLiteralPtr();
     }
 
     bool IsWeak() const
@@ -438,6 +428,7 @@ public:
         value.mirFunc = func;
     }
 
+#ifdef ARK_LITECG_DEBUG
     bool HasAddrOfValues() const;
     bool IsLiteral() const;
     bool IsLiteralPtr() const;
@@ -454,12 +445,9 @@ public:
     bool IsReflectionMethodAddrData() const;
     bool IsReflectionMethodSignature() const;
     bool IsReflectionClassInfo() const;
-    bool IsReflectionArrayClassInfo() const;
     bool IsReflectionClassInfoPtr() const;
     bool IsReflectionClassInfoRO() const;
     bool IsITabConflictInfo() const;
-    bool IsVTabInfo() const;
-    bool IsITabInfo() const;
     bool IsReflectionPrimitiveClassInfo() const;
     bool IsReflectionMethodsInfo() const;
     bool IsReflectionMethodsInfoCompact() const;
@@ -476,19 +464,10 @@ public:
     bool IsMuidDataDefTab() const;
     bool IsMuidDataDefOrigTab() const;
     bool IsMuidDataUndefTab() const;
-    bool IsMuidFuncDefMuidTab() const;
-    bool IsMuidFuncUndefMuidTab() const;
-    bool IsMuidDataDefMuidTab() const;
-    bool IsMuidDataUndefMuidTab() const;
-    bool IsMuidFuncMuidIdxMuidTab() const;
     bool IsMuidRangeTab() const;
     bool IsArrayClassCache() const;
     bool IsArrayClassCacheName() const;
-    bool IsForcedGlobalClassinfo() const;
     bool IsGctibSym() const;
-    bool IsPrimordialObject() const;
-    bool IgnoreRC() const;
-#ifdef ARK_LITECG_DEBUG
     void Dump(bool isLocal, int32 indent, bool suppressInit = false, const MIRSymbolTable *localsymtab = nullptr) const;
     void DumpAsLiteralVar() const;
 #endif
@@ -768,8 +747,6 @@ public:
         return labelIdx;
     }
 
-    LabelIdx CreateLabelWithPrefix(char c);
-
     LabelIdx AddLabel(GStrIdx nameIdx)
     {
         LabelIdx labelIdx = labelTable.size();
@@ -793,7 +770,11 @@ public:
         return labelTable.size();
     }
 
-    const std::string &GetName(LabelIdx labelIdx) const;
+    const std::string &GetName(LabelIdx labelIdx) const
+    {
+        CHECK_FATAL(labelIdx < labelTable.size(), "index out of range in MIRLabelTable::GetName");
+        return GlobalTables::GetStrTable().GetStringFromStrIdx(labelTable[labelIdx]);
+    }
 
     size_t Size() const
     {

@@ -54,13 +54,6 @@ bool X64CG::IsPseudoInsn(MOperator mOp) const
     return false;
 }
 
-Insn &X64CG::BuildPhiInsn(RegOperand &defOpnd, Operand &listParam)
-{
-    CHECK_FATAL(false, "NIY");
-    Insn *a = nullptr;
-    return *a;
-}
-
 PhiOperand &X64CG::CreatePhiOperand(MemPool &mp, MapleAllocator &mAllocator)
 {
     CHECK_FATAL(false, "NIY");
@@ -79,9 +72,11 @@ bool X64CG::IsExclusiveFunc(MIRFunction &mirFunc)
     return false;
 }
 
+#ifdef ARK_LITECG_DEBUG
 /* Used for GCTIB pattern merging */
 std::string X64CG::FindGCTIBPatternName(const std::string &name) const
 {
     return "";
 }
+#endif
 }  // namespace maplebe

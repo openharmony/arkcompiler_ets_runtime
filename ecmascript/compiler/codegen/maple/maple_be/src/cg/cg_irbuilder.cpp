@@ -168,15 +168,4 @@ LabelOperand &OperandBuilder::CreateLabel(const char *parent, LabelIdx idx, MemP
 {
     return mp ? *mp->New<LabelOperand>(parent, idx, *mp) : *alloc.New<LabelOperand>(parent, idx, *alloc.GetMemPool());
 }
-
-CommentOperand &OperandBuilder::CreateComment(const std::string &s, MemPool *mp)
-{
-    return mp ? *mp->New<CommentOperand>(s, *mp) : *alloc.New<CommentOperand>(s, *alloc.GetMemPool());
-}
-
-CommentOperand &OperandBuilder::CreateComment(const MapleString &s, MemPool *mp)
-{
-    return mp ? *mp->New<CommentOperand>(s.c_str(), *mp) : *alloc.New<CommentOperand>(s.c_str(), *alloc.GetMemPool());
-}
-
 }  // namespace maplebe

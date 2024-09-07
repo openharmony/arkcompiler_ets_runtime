@@ -77,74 +77,6 @@ private:
     MapleSet<MemOperand *, MemOpndCmp> reuseSpillLocMem;
 };
 
-// Memory read/write node helper - such as: iread, dread, iassign, dassign
-class MemRWNodeHelper {
-public:
-    MemRWNodeHelper(const BaseNode &node, MIRFunction &mirFunc, const BECommon &beCommon)
-    {
-        GetMemRWNodeBaseInfo(node, mirFunc);
-        GetTrueMirInfo(beCommon);
-    }
-    ~MemRWNodeHelper() = default;
-
-    FieldID GetFieldID() const
-    {
-        return fieldId;
-    }
-
-    const MIRType *GetMIRType() const
-    {
-        return mirType;
-    }
-
-    MIRType *GetMIRType()
-    {
-        return mirType;
-    }
-
-    int32 GetByteOffset() const
-    {
-        return byteOffset;
-    }
-
-    uint32 GetMemSize() const
-    {
-        return memSize;
-    }
-
-    PrimType GetPrimType() const
-    {
-        return primType;
-    }
-
-    bool IsRefField() const
-    {
-        return isRefField;
-    }
-
-    const MIRSymbol *GetSymbol() const
-    {
-        return symbol;
-    }
-
-    MIRSymbol *GetSymbol()
-    {
-        return symbol;
-    }
-
-private:
-    FieldID fieldId = FieldID(0);  // fieldId from node
-    MIRType *mirType = nullptr;    // true mirType
-    MIRSymbol *symbol = nullptr;   // date sym, for dread/dassign
-    int32 byteOffset = 0;
-    uint32 memSize = 0;
-    PrimType primType = PTY_unknown;
-    bool isRefField = false;
-
-    void GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mirFunc);
-    void GetTrueMirInfo(const BECommon &beCommon);
-};
-
 #if TARGARM32
 class LiveRange;
 #endif /* TARGARM32 */
@@ -306,14 +238,12 @@ public:
     virtual LabelOperand &GetOrCreateLabelOperand(BB &bb) = 0;
     virtual RegOperand &CreateVirtualRegisterOperand(regno_t vRegNO) = 0;
     virtual RegOperand &GetOrCreateVirtualRegisterOperand(regno_t vRegNO) = 0;
-    virtual RegOperand &GetOrCreateVirtualRegisterOperand(RegOperand &regOpnd) = 0;
     virtual RegOperand &GetOrCreateFramePointerRegOperand() = 0;
     virtual RegOperand &GetOrCreateStackBaseRegOperand() = 0;
     virtual RegOperand *GetBaseReg(const SymbolAlloc &symAlloc) = 0;
     virtual int32 GetBaseOffset(const SymbolAlloc &symbolAlloc) = 0;
     virtual RegOperand &GetZeroOpnd(uint32 size) = 0;
     virtual Operand &CreateCfiRegOperand(uint32 reg, uint32 size) = 0;
-    virtual Operand &GetTargetRetOperand(PrimType primType, int32 sReg) = 0;
     virtual Operand &CreateImmOperand(PrimType primType, int64 val) = 0;
     virtual MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize) = 0;
 
@@ -447,10 +377,6 @@ public:
 #endif
 
     void VerifyAllInsn();
-
-    void GenerateCfiPrologEpilog();
-
-    void PatchLongBranch();
 
     virtual uint32 MaxCondBranchDistance()
     {
@@ -695,8 +621,6 @@ public:
     {
         return lab2BBMap;
     }
-
-    void DumpCFGToDot(const std::string &fileNamePrefix);
 
     BECommon &GetBecommon()
     {

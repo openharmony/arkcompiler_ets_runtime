@@ -135,140 +135,6 @@ void CgFuncPM::PostOutPut(MIRModule &m)
     }
 }
 
-void MarkUsedStaticSymbol(const StIdx &symbolIdx);
-std::map<StIdx, bool> visitedSym;
-
-void CollectStaticSymbolInVar(MIRConst *mirConst)
-{
-    if (mirConst->GetKind() == kConstAddrof) {
-        auto *addrSymbol = static_cast<MIRAddrofConst *>(mirConst);
-        MIRSymbol *sym = GlobalTables::GetGsymTable().GetSymbolFromStidx(addrSymbol->GetSymbolIndex().Idx(), true);
-        if (sym != nullptr) {
-            MarkUsedStaticSymbol(sym->GetStIdx());
-        }
-    } else if (mirConst->GetKind() == kConstAggConst) {
-        auto &constVec = static_cast<MIRAggConst *>(mirConst)->GetConstVec();
-        for (auto &cst : constVec) {
-            CollectStaticSymbolInVar(cst);
-        }
-    }
-}
-
-void MarkUsedStaticSymbol(const StIdx &symbolIdx)
-{
-    if (!symbolIdx.IsGlobal()) {
-        return;
-    }
-    MIRSymbol *symbol = GlobalTables::GetGsymTable().GetSymbolFromStidx(symbolIdx.Idx(), true);
-    if (symbol == nullptr) {
-        return;
-    }
-    if (visitedSym[symbolIdx]) {
-        return;
-    } else {
-        visitedSym[symbolIdx] = true;
-    }
-    symbol->ResetIsDeleted();
-    if (symbol->IsConst()) {
-        auto *konst = symbol->GetKonst();
-        CollectStaticSymbolInVar(konst);
-    }
-}
-
-void RecursiveMarkUsedStaticSymbol(const BaseNode *baseNode)
-{
-    if (baseNode == nullptr) {
-        return;
-    }
-    Opcode op = baseNode->GetOpCode();
-    switch (op) {
-        case OP_block: {
-            const BlockNode *blk = static_cast<const BlockNode *>(baseNode);
-            for (auto &stmt : blk->GetStmtNodes()) {
-                RecursiveMarkUsedStaticSymbol(&stmt);
-            }
-            break;
-        }
-        case OP_dassign: {
-            const DassignNode *dassignNode = static_cast<const DassignNode *>(baseNode);
-            MarkUsedStaticSymbol(dassignNode->GetStIdx());
-            break;
-        }
-        case OP_addrof:
-        case OP_addrofoff:
-        case OP_dread: {
-            const AddrofNode *dreadNode = static_cast<const AddrofNode *>(baseNode);
-            MarkUsedStaticSymbol(dreadNode->GetStIdx());
-            break;
-        }
-        default: {
-            break;
-        }
-    }
-    for (size_t i = 0; i < baseNode->NumOpnds(); ++i) {
-        RecursiveMarkUsedStaticSymbol(baseNode->Opnd(i));
-    }
-}
-
-void CollectStaticSymbolInFunction(MIRFunction &func)
-{
-    RecursiveMarkUsedStaticSymbol(func.GetBody());
-}
-
-void CgFuncPM::SweepUnusedStaticSymbol(MIRModule &m)
-{
-    if (!m.IsCModule()) {
-        return;
-    }
-    size_t size = GlobalTables::GetGsymTable().GetSymbolTableSize();
-    for (size_t i = 0; i < size; ++i) {
-        MIRSymbol *mirSymbol = GlobalTables::GetGsymTable().GetSymbolFromStidx(static_cast<uint32>(i));
-        if (mirSymbol != nullptr && (mirSymbol->GetSKind() == kStVar || mirSymbol->GetSKind() == kStConst) &&
-            (mirSymbol->GetStorageClass() == kScFstatic || mirSymbol->GetStorageClass() == kScPstatic)) {
-            mirSymbol->SetIsDeleted();
-        }
-    }
-
-    visitedSym.clear();
-    /* scan all funtions  */
-    std::vector<MIRFunction *> &funcTable = GlobalTables::GetFunctionTable().GetFuncTable();
-    /* don't optimize this loop to iterator or range-base loop
-     * because AddCallGraphNode(mirFunc) will change GlobalTables::GetFunctionTable().GetFuncTable()
-     */
-    for (size_t index = 0; index < funcTable.size(); ++index) {
-        MIRFunction *mirFunc = funcTable.at(index);
-        if (mirFunc == nullptr || mirFunc->GetBody() == nullptr) {
-            continue;
-        }
-        m.SetCurFunction(mirFunc);
-        CollectStaticSymbolInFunction(*mirFunc);
-        /* scan function symbol declaration
-         * find addrof static const */
-        MIRSymbolTable *funcSymTab = mirFunc->GetSymTab();
-        if (funcSymTab) {
-            size_t localSymSize = funcSymTab->GetSymbolTableSize();
-            for (uint32 i = 0; i < localSymSize; ++i) {
-                MIRSymbol *st = funcSymTab->GetSymbolFromStIdx(i);
-                if (st && st->IsConst()) {
-                    MIRConst *mirConst = st->GetKonst();
-                    CollectStaticSymbolInVar(mirConst);
-                }
-            }
-        }
-    }
-    /* scan global symbol declaration
-     * find addrof static const */
-    auto &symbolSet = m.GetSymbolSet();
-    for (auto sit = symbolSet.begin(); sit != symbolSet.end(); ++sit) {
-        MIRSymbol *s = GlobalTables::GetGsymTable().GetSymbolFromStidx(sit->Idx(), true);
-        DEBUG_ASSERT(s != nullptr, "s should not be nullptr");
-        if (s->IsConst()) {
-            MIRConst *mirConst = s->GetKonst();
-            CollectStaticSymbolInVar(mirConst);
-        }
-    }
-}
-
 /* =================== new phase manager ===================  */
 #ifdef RA_PERF_ANALYSIS
 extern void printLSRATime();
@@ -313,15 +179,13 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
                 continue;
             }
             if (userDefinedOptLevel == CGOptions::kLevel2 && m.HasPartO2List()) {
+#ifdef ARK_LITECG_DEBUG
                 if (m.IsInPartO2List(mirFunc->GetNameStrIdx())) {
-#ifdef ARK_LITECG_DEBUG
                     cgOptions->EnableO2();
-#endif
                 } else {
-#ifdef ARK_LITECG_DEBUG
                     cgOptions->EnableO0();
-#endif
                 }
+#endif
                 ClearAllPhases();
                 cg->EnrollTargetPhases(this);
                 cg->UpdateCGOptions(*cgOptions);
@@ -373,10 +237,12 @@ bool CgFuncPM::PhaseRun(MIRModule &m)
 
 void CgFuncPM::DumpFuncCGIR(const CGFunc &f, const std::string &phaseName) const
 {
+#ifdef ARK_LITECG_DEBUG
     if (CGOptions::DumpPhase(phaseName) && CGOptions::FuncFilter(f.GetName())) {
         LogInfo::MapleLogger() << "\n******** CG IR After " << phaseName << ": *********\n";
         f.DumpCGIR();
     }
+#endif
 }
 
 void CgFuncPM::EmitGlobalInfo(MIRModule &m) const
@@ -473,6 +339,7 @@ void CgFuncPM::DoFuncCGLower(const MIRModule &m, MIRFunction &mirFunc)
 
 void CgFuncPM::EmitDuplicatedAsmFunc(MIRModule &m) const
 {
+#ifdef ARK_LITECG_DEBUG
     if (CGOptions::IsDuplicateAsmFileEmpty()) {
         return;
     }
@@ -506,6 +373,7 @@ void CgFuncPM::EmitDuplicatedAsmFunc(MIRModule &m) const
         });
     }
     duplicateAsmFileFD.close();
+#endif
 }
 
 bool CgFuncPM::IsFramework([[maybe_unused]] MIRModule &m) const

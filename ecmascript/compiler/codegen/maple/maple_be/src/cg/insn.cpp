@@ -21,11 +21,7 @@ bool Insn::IsMachineInstruction() const
 {
     return md && md->IsPhysicalInsn() && Globals::GetInstance()->GetTarget()->IsTargetInsn(mOp);
 }
-/* phi is not physical insn */
-bool Insn::IsPhi() const
-{
-    return md ? md->IsPhi() : false;
-}
+
 bool Insn::IsLoad() const
 {
     DEBUG_ASSERT(md, " set insnDescription for insn ");
@@ -95,45 +91,15 @@ bool Insn::IsAsmInsn() const
     DEBUG_ASSERT(md, " set insnDescription for insn ");
     return md->IsInlineAsm();
 }
-bool Insn::IsDMBInsn() const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->IsDMB();
-}
 bool Insn::IsAtomic() const
 {
     DEBUG_ASSERT(md, " set insnDescription for insn ");
     return md->IsAtomic();
 }
-bool Insn::IsVolatile() const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->IsVolatile();
-}
-bool Insn::IsMemAccessBar() const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->IsMemAccessBar();
-}
 bool Insn::IsMemAccess() const
 {
     DEBUG_ASSERT(md, " set insnDescription for insn ");
     return md->IsMemAccess();
-}
-bool Insn::CanThrow() const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->CanThrow();
-}
-bool Insn::HasLoop() const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->HasLoop();
-}
-uint32 Insn::GetLatencyType() const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->GetLatencyType();
 }
 uint32 Insn::GetAtomicNum() const
 {
@@ -144,16 +110,6 @@ bool Insn::IsSpecialIntrinsic() const
 {
     DEBUG_ASSERT(md, " set insnDescription for insn ");
     return md->IsSpecialIntrinsic();
-}
-bool Insn::IsLoadPair() const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->IsLoadPair();
-}
-bool Insn::IsStorePair() const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->IsStorePair();
 }
 bool Insn::IsLoadStorePair() const
 {
@@ -168,15 +124,6 @@ bool Insn::OpndIsDef(uint32 id) const
 {
     DEBUG_ASSERT(md, " set insnDescription for insn ");
     return md->GetOpndDes(id)->IsDef();
-}
-bool Insn::OpndIsUse(uint32 id) const
-{
-    DEBUG_ASSERT(md, " set insnDescription for insn ");
-    return md->GetOpndDes(id)->IsUse();
-}
-bool Insn::IsClinit() const
-{
-    return Globals::GetInstance()->GetTarget()->IsClinitInsn(mOp);
 }
 bool Insn::IsComment() const
 {
@@ -202,28 +149,6 @@ Operand *Insn::GetMemOpnd() const
         }
     }
     return nullptr;
-}
-
-uint32 Insn::GetMemOpndIdx() const
-{
-    uint32 opndIdx = kInsnMaxOpnd;
-    for (uint32 i = 0; i < static_cast<uint32>(opnds.size()); ++i) {
-        Operand &opnd = GetOperand(i);
-        if (opnd.IsMemoryAccessOperand()) {
-            return i;
-        }
-    }
-    return opndIdx;
-}
-void Insn::SetMemOpnd(MemOperand *memOpnd)
-{
-    for (uint32 i = 0; i < static_cast<uint32>(opnds.size()); ++i) {
-        Operand &opnd = GetOperand(i);
-        if (opnd.IsMemoryAccessOperand()) {
-            SetOperand(i, *memOpnd);
-            return;
-        }
-    }
 }
 
 bool Insn::IsRegDefined(regno_t regNO) const
@@ -266,6 +191,7 @@ std::set<uint32> Insn::GetDefRegs() const
 
 bool Insn::CheckMD() const
 {
+#ifdef ARK_LITECG_DEBUG
     if (!md) {
         LogInfo::MapleLogger() << " need machine description for target insn\n";
         return false;
@@ -286,25 +212,14 @@ bool Insn::CheckMD() const
             return (opnd.GetKind() == opndDesc->GetOperandType());
         }
     }
+#endif
     return true;
 }
 
-Insn *Insn::Clone(MemPool &memPool) const
-{
-    CHECK_FATAL(false, "NIY");
-    return nullptr;
-}
 Operand *Insn::GetCallTargetOperand() const
 {
     DEBUG_ASSERT(IsCall() || IsTailCall(), "should be call");
     return &GetOperand(kInsnFirstOpnd);
-}
-
-ListOperand *Insn::GetCallArgumentOperand()
-{
-    DEBUG_ASSERT(IsCall(), "should be call");
-    DEBUG_ASSERT(GetOperand(1).IsList(), "should be list");
-    return &static_cast<ListOperand &>(GetOperand(kInsnSecondOpnd));
 }
 
 void Insn::CommuteOperands(uint32 dIndex, uint32 sIndex)
@@ -312,30 +227,6 @@ void Insn::CommuteOperands(uint32 dIndex, uint32 sIndex)
     Operand *tempCopy = opnds[sIndex];
     opnds[sIndex] = opnds[dIndex];
     opnds[dIndex] = tempCopy;
-}
-
-uint32 Insn::GetBothDefUseOpnd() const
-{
-    size_t opndNum = opnds.size();
-    uint32 opndIdx = kInsnMaxOpnd;
-    if (md->GetAtomicNum() > 1) {
-        return opndIdx;
-    }
-    for (uint32 i = 0; i < opndNum; ++i) {
-        auto *opndProp = md->GetOpndDes(i);
-        if (opndProp->IsRegUse() && opndProp->IsDef()) {
-            DEBUG_ASSERT(opndIdx == kInsnMaxOpnd, "Do not support yet");
-            opndIdx = i;
-        }
-        if (opnds[i]->IsMemoryAccessOperand()) {
-            auto *MemOpnd = static_cast<MemOperand *>(opnds[i]);
-            if (!MemOpnd->IsIntactIndexed()) {
-                DEBUG_ASSERT(opndIdx == kInsnMaxOpnd, "Do not support yet");
-                opndIdx = i;
-            }
-        }
-    }
-    return opndIdx;
 }
 
 uint32 Insn::GetMemoryByteSize() const
@@ -386,18 +277,6 @@ bool Insn::ScanReg(regno_t regNO) const
     return false;
 }
 
-bool Insn::MayThrow() const
-{
-    if (md->IsMemAccess() && !IsLoadLabel()) {
-        auto *memOpnd = static_cast<MemOperand *>(GetMemOpnd());
-        DEBUG_ASSERT(memOpnd != nullptr, "CG invalid memory operand.");
-        if (memOpnd->IsStackMem()) {
-            return false;
-        }
-    }
-    return md->CanThrow();
-}
-
 void Insn::SetMOP(const InsnDesc &idesc)
 {
     mOp = idesc.GetOpc();
@@ -406,6 +285,7 @@ void Insn::SetMOP(const InsnDesc &idesc)
 
 void Insn::Dump() const
 {
+#ifdef ARK_LITECG_DEBUG
     DEBUG_ASSERT(md != nullptr, "md should not be nullptr");
     LogInfo::MapleLogger() << "< " << GetId() << " > ";
     LogInfo::MapleLogger() << md->name << "(" << mOp << ")";
@@ -435,5 +315,6 @@ void Insn::Dump() const
         }
     }
     LogInfo::MapleLogger() << "\n";
+#endif
 }
 }  // namespace maplebe

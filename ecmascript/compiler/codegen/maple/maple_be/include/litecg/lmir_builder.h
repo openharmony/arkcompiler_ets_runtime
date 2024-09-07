@@ -48,7 +48,6 @@ class MIRBuilder;  // currently we just delegate MIRBuilder
 class MIRModule;
 class MIRFunction;
 class MIRType;
-class MIRArrayType;
 class MIRFuncType;
 class MIRConst;
 class MIRAggConst;
@@ -69,7 +68,6 @@ using Function = MIRFunction;
 
 // Note: Type is base class of all other Types
 using Type = MIRType;              // base class of all Types
-using ArrayType = MIRArrayType;
 using Const = MIRConst;
 using StructConst = MIRAggConst;
 using ArrayConst = MIRAggConst;
@@ -194,24 +192,11 @@ enum FloatCmpCondition {
 enum LiteCGTypeKind {
     kLiteCGTypeUnknown,
     kLiteCGTypeScalar,
-    kLiteCGTypeBitField,
     kLiteCGTypeArray,
-    kLiteCGTypeFArray,
-    kLiteCGTypeJArray,
-    kLiteCGTypeStruct,
-    kLiteCGTypeUnion,
-    kLiteCGTypeClass,
-    kLiteCGTypeInterface,
-    kLiteCGTypeStructIncomplete,
-    kLiteCGTypeClassIncomplete,
-    kLiteCGTypeInterfaceIncomplete,
     kLiteCGTypePointer,
     kLiteCGTypeFunction,
     kLiteCGTypeVoid,
     kLiteCGTypeByName,
-    kLiteCGTypeParam,
-    kLiteCGTypeInstantVector,
-    kLiteCGTypeGenericInstant,
 };
 
 // FieldAttr: do we need to support volatile here?
@@ -483,51 +468,6 @@ public:
         return SwitchBuilder(*this, type, cond, defaultBB);
     }
 
-    class ArrayConstBuilder {
-    public:
-        ArrayConstBuilder(LMIRBuilder &builder_, ArrayType *type_) : builder(builder_)
-        {
-            arrayConst = &builder.CreateArrayConstInternal(type_);
-        }
-
-        ArrayConstBuilder &Element(Const &element)
-        {
-            builder.AddConstItemInternal(*arrayConst, element);
-            return *this;
-        }
-
-        template <class T>
-        ArrayConstBuilder &Dim(const std::vector<T> init)
-        {
-            for (const auto &value : init) {
-                // fix the element type.
-                Const &element = builder.CreateIntConst(builder.i32Type, static_cast<int64_t>(value));
-                Element(element);
-            }
-            return *this;
-        }
-
-        template <class T>
-        ArrayConstBuilder &Dim(std::initializer_list<T> literal)
-        {
-            return Dim(std::vector<T>(literal));
-        }
-
-        ArrayConst &Done()
-        {
-            return *arrayConst;
-        }
-
-    private:
-        LMIRBuilder &builder;
-        ArrayConst *arrayConst;
-    };
-
-    ArrayConstBuilder CreateArrayConst(ArrayType *type)
-    {
-        return ArrayConstBuilder(*this, type);
-    }
-
     class FunctionBuilder {
     public:
         FunctionBuilder(LMIRBuilder &builder_, const String &name_, bool needBody_)
@@ -627,7 +567,6 @@ private:
     Stmt &CreateSwitchInternal(Type *type, Expr cond, BB &defaultBB, std::vector<std::pair<int64_t, BB *>> &cases);
     void AddConstItemInternal(StructConst &structConst, FieldId fieldId, Const &field);
     void AddConstItemInternal(ArrayConst &structConst, Const &element);
-    ArrayConst &CreateArrayConstInternal(ArrayType *type);
     Function &CreateFunctionInternal(const String &name, Type *retType, Params &params, bool isVargs, bool needBody,
                                      FuncAttr attr, ConvAttr convAttr);
 

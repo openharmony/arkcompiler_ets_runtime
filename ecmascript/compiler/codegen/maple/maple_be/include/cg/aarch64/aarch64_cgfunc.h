@@ -112,7 +112,6 @@ public:
     Operand *SelectIread(const BaseNode &parent, IreadNode &expr, int extraOffset = 0,
                          PrimType finalBitFieldDestType = kPtyInvalid) override;
     Operand *SelectIntConst(const MIRIntConst &intConst, const BaseNode &parent) override;
-    Operand *SelectIntConst(const MIRIntConst &intConst);
     Operand *HandleFmovImm(PrimType stype, int64 val, MIRConst &mirConst, const BaseNode &parent);
     Operand *SelectFloatConst(MIRFloatConst &floatConst, const BaseNode &parent) override;
     Operand *SelectDoubleConst(MIRDoubleConst &doubleConst, const BaseNode &parent) override;
@@ -179,7 +178,6 @@ public:
     void SelectCopy(Operand &dest, PrimType dtype, Operand &src, PrimType stype, BaseNode *baseNode = nullptr);
     void SelectCopyImm(Operand &dest, PrimType dType, ImmOperand &src, PrimType sType);
     void SelectCopyImm(Operand &dest, ImmOperand &src, PrimType dtype);
-    Operand &GetTargetRetOperand(PrimType primType, int32 sReg) override;
     Operand &GetOrCreateRflag() override;
     MemOperand *GetOrCreatSpillMem(regno_t vrNum, uint32 bitSize = k64BitSize) override;
     const Operand *GetRflag() const override;
@@ -193,7 +191,6 @@ public:
     RegOperand *CreateVirtualRegisterOperand(regno_t vRegNO, uint32 size, RegType kind, uint32 flg = 0) const;
     RegOperand &CreateVirtualRegisterOperand(regno_t vregNO) override;
     RegOperand &GetOrCreateVirtualRegisterOperand(regno_t vregNO) override;
-    RegOperand &GetOrCreateVirtualRegisterOperand(RegOperand &regOpnd) override;
     const LabelOperand *GetLabelOperand(LabelIdx labIdx) const override;
     LabelOperand &GetOrCreateLabelOperand(LabelIdx labIdx) override;
     LabelOperand &GetOrCreateLabelOperand(BB &bb) override;
@@ -253,8 +250,6 @@ public:
     {
         return GetOrCreatePhysicalRegisterOperand(RFP, GetPointerSize() * kBitsPerByte, kRegTyInt);
     }
-
-    RegOperand &GenStructParamIndex(RegOperand &base, const BaseNode &indexExpr, int shift, PrimType baseType);
 
     MemOperand &GetOrCreateMemOpnd(const MIRSymbol &symbol, int64 offset, uint32 size, bool forLocalRef = false,
                                    bool needLow12 = false, RegOperand *regOp = nullptr);
@@ -486,8 +481,6 @@ public:
 
     void InsertJumpPad(Insn *insn) override;
 
-    MIRPreg *GetPseudoRegFromVirtualRegNO(const regno_t vRegNO, bool afterSSA = false) const;
-
     MapleVector<AArch64reg> &GetProEpilogSavedRegs()
     {
         return proEpilogSavedRegs;
@@ -628,7 +621,6 @@ private:
 
     /* Helper functions for translating complex Maple IR instructions/inrinsics */
     void SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPType, Operand &opnd0);
-    LabelIdx CreateLabeledBB(StmtNode &stmt);
 
     MemOperand *GetPseudoRegisterSpillMemoryOperand(PregIdx i) override;
 

@@ -25,23 +25,12 @@ using namespace namemangler;
 uint32 MIRSymbol::lastPrintedLineNum = 0;
 uint16 MIRSymbol::lastPrintedColumnNum = 0;
 
-bool MIRSymbol::NeedPIC() const
-{
-    return (storageClass == kScGlobal) || (storageClass == kScExtern) ||
-           (sKind == kStFunc && !GetFunction()->IsStatic());
-}
-
-bool MIRSymbol::IsTypeVolatile(int fieldID) const
-{
-    const MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(GetTyIdx());
-    return ty->IsVolatile(fieldID);
-}
-
 void MIRSymbol::SetNameStrIdx(const std::string &name)
 {
     nameStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(name);
 }
 
+#ifdef ARK_LITECG_DEBUG
 bool MIRSymbol::HasAddrOfValues() const
 {
     return StringUtils::StartsWith(GetName(), VTAB_PREFIX_STR) || StringUtils::StartsWith(GetName(), ITAB_PREFIX_STR) ||
@@ -60,12 +49,14 @@ bool MIRSymbol::IsLiteralPtr() const
 {
     return StringUtils::StartsWith(GetName(), kConstStringPtr);
 }
+#endif
 
 MIRType *MIRSymbol::GetType() const
 {
     return GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
 }
 
+#ifdef ARK_LITECG_DEBUG
 bool MIRSymbol::PointsToConstString() const
 {
     MIRType *origType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
@@ -158,31 +149,6 @@ bool MIRSymbol::IsMuidDataUndefTab() const
     return StringUtils::StartsWith(GetName(), kMuidDataUndefTabPrefixStr);
 }
 
-bool MIRSymbol::IsMuidFuncDefMuidTab() const
-{
-    return StringUtils::StartsWith(GetName(), kMuidFuncDefMuidTabPrefixStr);
-}
-
-bool MIRSymbol::IsMuidFuncUndefMuidTab() const
-{
-    return StringUtils::StartsWith(GetName(), kMuidFuncUndefMuidTabPrefixStr);
-}
-
-bool MIRSymbol::IsMuidDataDefMuidTab() const
-{
-    return StringUtils::StartsWith(GetName(), kMuidDataDefMuidTabPrefixStr);
-}
-
-bool MIRSymbol::IsMuidDataUndefMuidTab() const
-{
-    return StringUtils::StartsWith(GetName(), kMuidDataUndefMuidTabPrefixStr);
-}
-
-bool MIRSymbol::IsMuidFuncMuidIdxMuidTab() const
-{
-    return StringUtils::StartsWith(GetName(), kMuidFuncMuidIdxTabPrefixStr);
-}
-
 bool MIRSymbol::IsMuidRangeTab() const
 {
     return StringUtils::StartsWith(GetName(), kMuidRangeTabPrefixStr);
@@ -196,12 +162,6 @@ bool MIRSymbol::IsArrayClassCache() const
 bool MIRSymbol::IsArrayClassCacheName() const
 {
     return StringUtils::StartsWith(GetName(), kArrayClassCacheNameTable);
-}
-
-// mrt/maplert/include/mrt_classinfo.h
-bool MIRSymbol::IsForcedGlobalClassinfo() const
-{
-    return StringUtils::StartsWith(GetName(), "__cinf_Llibcore_2Freflect_2FGenericSignatureParser_3B");
 }
 
 bool MIRSymbol::IsClassInitBridge() const
@@ -256,11 +216,6 @@ bool MIRSymbol::IsReflectionClassInfo() const
     return StringUtils::StartsWith(GetName(), CLASSINFO_PREFIX_STR);
 }
 
-bool MIRSymbol::IsReflectionArrayClassInfo() const
-{
-    return StringUtils::StartsWith(GetName(), kArrayClassInfoPrefixStr);
-}
-
 bool MIRSymbol::IsReflectionClassInfoPtr() const
 {
     return StringUtils::StartsWith(GetName(), kClassINfoPtrPrefixStr);
@@ -274,16 +229,6 @@ bool MIRSymbol::IsReflectionClassInfoRO() const
 bool MIRSymbol::IsITabConflictInfo() const
 {
     return StringUtils::StartsWith(GetName(), ITAB_CONFLICT_PREFIX_STR);
-}
-
-bool MIRSymbol::IsVTabInfo() const
-{
-    return StringUtils::StartsWith(GetName(), VTAB_PREFIX_STR);
-}
-
-bool MIRSymbol::IsITabInfo() const
-{
-    return StringUtils::StartsWith(GetName(), ITAB_PREFIX_STR);
 }
 
 bool MIRSymbol::IsReflectionPrimitiveClassInfo() const
@@ -301,50 +246,11 @@ bool MIRSymbol::IsReflectionMethodsInfoCompact() const
     return StringUtils::StartsWith(GetName(), kMethodsInfoCompactPrefixStr);
 }
 
-bool MIRSymbol::IsPrimordialObject() const
-{
-    return IsReflectionClassInfo() || IsReflectionPrimitiveClassInfo();
-}
-
 bool MIRSymbol::IsGctibSym() const
 {
     return StringUtils::StartsWith(GetName(), GCTIB_PREFIX_STR);
 }
 
-// [Note]
-// Some symbols are ignored by reference counting as they represent objects not managed by us. These include
-// string-based exact comparison for "current_vptr", "vtabptr", "itabptr", "funcptr", "env_ptr", "retvar_stubfunc".
-GStrIdx MIRSymbol::reflectClassNameIdx;
-GStrIdx MIRSymbol::reflectMethodNameIdx;
-GStrIdx MIRSymbol::reflectFieldNameIdx;
-bool MIRSymbol::IgnoreRC() const
-{
-    if (isDeleted || GetAttr(ATTR_rcunowned)) {
-        return true;
-    }
-    const std::string &name = GetName();
-    // ignore %current_vptr, %vtabptr, %itabptr, %funcptr, %env_ptr
-    if (name == "current_vptr" || name == "vtabptr" || name == "itabptr" || name == "funcptr" || name == "env_ptr" ||
-        name == "retvar_stubfunc" || name == "_dummy_stub_object_retval") {
-        return true;
-    }
-    if (IsReflectionInfo() || IsRegJNITab() || IsRegJNIFuncTab()) {
-        return true;
-    }
-    MIRType *type = GetType();
-    // only consider reference
-    if (type == nullptr || type->GetPrimType() != PTY_ref) {
-        return true;
-    }
-    if ((type->GetKind() == kTypeScalar) && (name != "__mapleRC__")) {
-        return true;
-    }
-    const auto *pType = static_cast<MIRPtrType *>(type);
-    GStrIdx strIdx = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pType->GetPointedTyIdx())->GetNameStrIdx();
-    return strIdx == reflectClassNameIdx;
-}
-
-#ifdef ARK_LITECG_DEBUG
 void MIRSymbol::Dump(bool isLocal, int32 indent, bool suppressInit, const MIRSymbolTable *localsymtab) const
 {
     if (sKind == kStVar || sKind == kStFunc) {
@@ -432,24 +338,6 @@ void MIRSymbolTable::Dump(bool isLocal, int32 indent, bool printDeleted, MIRFlav
     }
 }
 #endif
-
-LabelIdx MIRLabelTable::CreateLabelWithPrefix(char c)
-{
-    LabelIdx labelIdx = labelTable.size();
-    std::ostringstream labelNameStream;
-    labelNameStream << "@" << c << labelIdx;
-    std::string labelName = labelNameStream.str();
-    GStrIdx nameIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(labelName);
-    labelTable.push_back(nameIdx);
-    strIdxToLabIdxMap[nameIdx] = labelIdx;
-    return labelIdx;
-}
-
-const std::string &MIRLabelTable::GetName(LabelIdx labelIdx) const
-{
-    CHECK_FATAL(labelIdx < labelTable.size(), "index out of range in MIRLabelTable::GetName");
-    return GlobalTables::GetStrTable().GetStringFromStrIdx(labelTable[labelIdx]);
-}
 
 void MIRLabelTable::AddToStringLabelMap(LabelIdx labelIdx)
 {

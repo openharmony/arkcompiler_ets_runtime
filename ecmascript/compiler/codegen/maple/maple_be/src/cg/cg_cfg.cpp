@@ -459,11 +459,6 @@ void CGCFG::UpdateCommonExitBBInfo()
     WontExitAnalysis();
 }
 
-void CGCFG::RetargetJump(BB &srcBB, BB &targetBB) const
-{
-    insnVisitor->ModifyJumpTarget(srcBB, targetBB);
-}
-
 BB *CGCFG::GetTargetSuc(BB &curBB, bool branchOnly, bool isGotoIf)
 {
     switch (curBB.GetKind()) {
@@ -607,17 +602,6 @@ void CGCFG::WontExitAnalysis()
         }
         bb = bb->GetNext();
     }
-}
-
-BB *CGCFG::FindLastRetBB()
-{
-    FOR_ALL_BB_REV(bb, cgFunc)
-    {
-        if (bb->GetKind() == BB::kBBReturn) {
-            return bb;
-        }
-    }
-    return nullptr;
 }
 
 void CgHandleCFG::GetAnalysisDependence(AnalysisDep &aDep) const

@@ -33,8 +33,6 @@ public:
 
 private:
     CGFunc *cgFunc = nullptr;
-    BB *boundaryBB = nullptr;
-    BB *lastBB = nullptr;
     // For long branch caused by cold-hot bb splitting ,
     // insert an unconditional branch at the end section in order to minimize the negative impact
     //   From                       To
@@ -43,7 +41,6 @@ private:
     //                              [section end]
     //                              new_label
     //                              unconditional br target_label
-    void InitSecEnd();
     uint32 CalculateAlignRange(const BB &bb, uint32 addr) const;
     uint32 CalculateIfBBNum() const;
     void SetInsnId() const;

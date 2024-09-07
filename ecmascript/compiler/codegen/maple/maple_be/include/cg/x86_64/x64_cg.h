@@ -73,10 +73,6 @@ public:
         return mp.New<X64CFGOptimizer>(f, mp, loop);
     }
 
-    /* Init SubTarget optimization */
-
-    Insn &BuildPhiInsn(RegOperand &defOpnd, Operand &listParam) override;
-
     PhiOperand &CreatePhiOperand(MemPool &mp, MapleAllocator &mAllocator) override;
 
     CGFunc *CreateCGFunc(MIRModule &mod, MIRFunction &mirFunc, BECommon &bec, MemPool &memPool, StackMemPool &stackMp,
@@ -92,8 +88,10 @@ public:
         (void)symbolPatternMap;
     }
 
+#ifdef ARK_LITECG_DEBUG
     /* Used for GCTIB pattern merging */
     std::string FindGCTIBPatternName(const std::string &name) const override;
+#endif
     enum : uint8 { kR8LowList, kR8HighList, kR16List, kR32List, kR64List, kR128List };
     bool IsEffectiveCopy(Insn &insn) const final;
     bool IsTargetInsn(MOperator mOp) const final;

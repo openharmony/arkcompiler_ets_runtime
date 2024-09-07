@@ -31,11 +31,6 @@ void X64InsnVisitor::ModifyJumpTarget(LabelIdx targetLabel, BB &bb)
     ModifyJumpTarget(GetCGFunc()->GetOpndBuilder()->CreateLabel(lableName.c_str(), targetLabel), bb);
 }
 
-void X64InsnVisitor::ModifyJumpTarget(BB &newTarget, BB &bb)
-{
-    ModifyJumpTarget(newTarget.GetLastInsn()->GetOperand(x64::GetJumpTargetIdx(*newTarget.GetLastInsn())), bb);
-}
-
 /*
  * Precondition: The given insn is a jump instruction.
  * Get the jump target label operand index from the given instruction.
@@ -49,77 +44,5 @@ LabelIdx X64InsnVisitor::GetJumpLabel(const Insn &insn) const
     }
     DEBUG_ASSERT(false, "Operand is not label");
     return 0;
-}
-
-bool X64InsnVisitor::IsCompareInsn(const Insn &insn) const
-{
-    switch (insn.GetMachineOpcode()) {
-        case x64::MOP_cmpb_r_r:
-        case x64::MOP_cmpb_m_r:
-        case x64::MOP_cmpb_i_r:
-        case x64::MOP_cmpb_r_m:
-        case x64::MOP_cmpb_i_m:
-        case x64::MOP_cmpw_r_r:
-        case x64::MOP_cmpw_m_r:
-        case x64::MOP_cmpw_i_r:
-        case x64::MOP_cmpw_r_m:
-        case x64::MOP_cmpw_i_m:
-        case x64::MOP_cmpl_r_r:
-        case x64::MOP_cmpl_m_r:
-        case x64::MOP_cmpl_i_r:
-        case x64::MOP_cmpl_r_m:
-        case x64::MOP_cmpl_i_m:
-        case x64::MOP_cmpq_r_r:
-        case x64::MOP_cmpq_m_r:
-        case x64::MOP_cmpq_i_r:
-        case x64::MOP_cmpq_r_m:
-        case x64::MOP_cmpq_i_m:
-        case x64::MOP_testq_r_r:
-            return true;
-        default:
-            return false;
-    }
-}
-
-bool X64InsnVisitor::IsSimpleJumpInsn(const Insn &insn) const
-{
-    return (insn.GetMachineOpcode() == x64::MOP_jmpq_l);
-}
-
-bool X64InsnVisitor::IsTestAndSetCCInsn(const Insn &insn) const
-{
-    return false;
-}
-
-void X64InsnVisitor::ReTargetSuccBB(BB &bb, LabelIdx newTarget) const
-{
-    DEBUG_ASSERT(false, "not implement in X86_64");
-    (void)bb;
-    (void)newTarget;
-    return;
-}
-
-void X64InsnVisitor::FlipIfBB(BB &bb, LabelIdx ftLabel) const
-{
-    DEBUG_ASSERT(false, "not implement in X86_64");
-    (void)bb;
-    (void)ftLabel;
-    return;
-}
-
-BB *X64InsnVisitor::CreateGotoBBAfterCondBB(BB &bb, BB &fallthru, bool isTargetFallthru) const
-{
-    DEBUG_ASSERT(false, "not implement in X86_64");
-    (void)bb;
-    (void)fallthru;
-    (void)isTargetFallthru;
-    return nullptr;
-}
-
-void X64InsnVisitor::ModifyFathruBBToGotoBB(BB &bb, LabelIdx labelIdx) const
-{
-    DEBUG_ASSERT(false, "not implement in X86_64");
-    (void)bb;
-    return;
 }
 } /* namespace maplebe */

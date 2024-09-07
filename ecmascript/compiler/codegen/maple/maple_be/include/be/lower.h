@@ -145,12 +145,6 @@ public:
 
     void LowerTypePtr(BaseNode &expr) const;
 
-    BaseNode *GetBitField(int32 byteOffset, BaseNode *baseAddr, PrimType fieldPrimType);
-    StmtNode *WriteBitField(const std::pair<int32, int32> &byteBitOffsets, const MIRBitFieldType *fieldType,
-                            BaseNode *baseAddr, BaseNode *rhs, BlockNode *block);
-    BaseNode *ReadBitField(const std::pair<int32, int32> &byteBitOffsets, const MIRBitFieldType *fieldType,
-                           BaseNode *baseAddr);
-
     void LowerAsmStmt(AsmNode *asmNode, BlockNode *blk);
 
     /* A pseudo register refers to a symbol when DreadNode is converted to RegreadNode. */
@@ -208,7 +202,6 @@ private:
         return (options & kVerboseCG) != 0;
     }
 
-    MIRType *GetArrayNodeType(BaseNode &baseNode);
     LabelIdx GetLabelIdx(MIRFunction &curFunc) const;
     StmtNode *GenCallNode(const StmtNode &stmt, PUIdx &funcCalled, CallNode &origCall);
     StmtNode *GenIntrinsiccallNode(const StmtNode &stmt, PUIdx &funcCalled, bool &handledAtLowerLevel,

@@ -51,14 +51,6 @@ void AArch64RegInfo::Fini()
     a64CGFunc->NoteFPLRAddedToCalleeSavedList();
 }
 
-void AArch64RegInfo::SaveCalleeSavedReg(MapleSet<regno_t> savedRegs)
-{
-    AArch64CGFunc *a64CGFunc = static_cast<AArch64CGFunc *>(GetCurrFunction());
-    for (auto reg : savedRegs) {
-        a64CGFunc->AddtoCalleeSaved(static_cast<AArch64reg>(reg));
-    }
-}
-
 bool AArch64RegInfo::IsSpillRegInRA(regno_t regNO, bool has3RegOpnd)
 {
     return AArch64Abi::IsSpillRegInRA(static_cast<AArch64reg>(regNO), has3RegOpnd);
@@ -87,19 +79,6 @@ bool AArch64RegInfo::IsUnconcernedReg(regno_t regNO) const
         return true;
     }
     return false;
-}
-
-bool AArch64RegInfo::IsUnconcernedReg(const RegOperand &regOpnd) const
-{
-    RegType regType = regOpnd.GetRegisterType();
-    if (regType == kRegTyCc || regType == kRegTyVary) {
-        return true;
-    }
-    uint32 regNO = regOpnd.GetRegisterNumber();
-    if (regNO == RZR) {
-        return true;
-    }
-    return IsUnconcernedReg(regNO);
 }
 
 RegOperand *AArch64RegInfo::GetOrCreatePhyRegOperand(regno_t regNO, uint32 size, maplebe::RegType kind, uint32 flag)

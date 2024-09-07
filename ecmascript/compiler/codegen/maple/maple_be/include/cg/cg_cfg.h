@@ -51,19 +51,7 @@ public:
      *
      * The jump target of bb is modified to newTarget's jump target.
      */
-    virtual void ModifyJumpTarget(BB &newTarget, BB &bb) = 0;
     virtual LabelIdx GetJumpLabel(const Insn &insn) const = 0;
-    virtual bool IsCompareInsn(const Insn &insn) const = 0;
-    virtual bool IsTestAndSetCCInsn(const Insn &insn) const = 0;
-    virtual bool IsSimpleJumpInsn(const Insn &insn) const = 0;
-
-    virtual void ReTargetSuccBB(BB &bb, LabelIdx newTarget) const = 0;
-    virtual void FlipIfBB(BB &bb, LabelIdx ftLabel) const = 0;
-    virtual BB *CreateGotoBBAfterCondBB(BB &bb, BB &fallthru, bool isTargetFallthru) const = 0;
-
-    // Change ftBB to gotoBB, Append new jumpInsn in curBB.
-    virtual void ModifyFathruBBToGotoBB(BB &bb, LabelIdx labelIdx) const = 0;
-
 private:
     CGFunc *cgFunc;
 }; /* class InsnVisitor; */
@@ -97,8 +85,6 @@ public:
      * Prev, next, preds and sucs are all modified accordingly.
      */
     void RemoveBB(BB &curBB, bool isGotoIf = false) const;
-    /* Skip the successor of bb, directly jump to bb's successor'ssuccessor */
-    void RetargetJump(BB &srcBB, BB &targetBB) const;
 
     /*
      * Update the preds of CommonExitBB after changing cfg,
@@ -115,7 +101,6 @@ public:
     void UnreachCodeAnalysis() const;
     void FindWillExitBBs(BB *bb, std::set<BB *, BBIdCmp> *visitedBBs);
     void WontExitAnalysis();
-    BB *FindLastRetBB();
 private:
     CGFunc *cgFunc = nullptr;
     static InsnVisitor *insnVisitor;

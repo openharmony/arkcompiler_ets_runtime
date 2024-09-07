@@ -176,21 +176,6 @@ void AArch64FixShortBranch::FixShortBranches() const
     } while (change);
 }
 
-
-void AArch64FixShortBranch::InitSecEnd()
-{
-    FOR_ALL_BB(bb, cgFunc)
-    {
-        if (bb->IsInColdSection() && boundaryBB == nullptr) {
-            boundaryBB = bb;
-        }
-        if (bb->GetNext() == nullptr) {
-            CHECK_FATAL(lastBB == nullptr, " last bb exist");
-            lastBB = bb;
-        }
-    }
-}
-
 bool AArch64FixShortBranch::CheckFunctionSize(uint32 maxSize) const
 {
     uint32 firstInsnId = 0;
