@@ -1298,8 +1298,8 @@ void AsmInterpreterCall::ResumeRspAndReturnBaseline(ExtendedAssembler *assembler
             __ Bind(&notEcmaObject);
             {
                 // load constructor
-                intptr_t funcOffset = static_cast<intptr_t>(
-                    AsmInterpretedFrame::GetFunctionOffset(false) - AsmInterpretedFrame::GetSize(false));
+                intptr_t funcOffset = AsmInterpretedFrame::GetFunctionOffsetAsIntptr(false) -
+                    AsmInterpretedFrame::GetSizeAsIntptr(false);
                 __ Movq(Operand(currentSp, static_cast<int32_t>(funcOffset)), temp);
                 __ Movq(Operand(temp, JSFunctionBase::METHOD_OFFSET), temp);
                 __ Movq(Operand(temp, Method::EXTRA_LITERAL_INFO_OFFSET), temp);
