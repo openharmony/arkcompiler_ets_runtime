@@ -171,7 +171,7 @@ void WorkManager::Initialize(TriggerGCType gcType, ParallelGCTaskPhase taskPhase
             holder.allocator_ = new TlabAllocator(heap_);
         }
     }
-    if (initialized_.load(std::memory_order_acquire)) {
+    if (initialized_.load(std::memory_order_acquire)) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }
@@ -211,7 +211,7 @@ void SharedGCWorkManager::Initialize(TriggerGCType gcType, SharedParallelMarkPha
             holder.allocator_ = new SharedTlabAllocator(sHeap_);
         }
     }
-    if (initialized_.load(std::memory_order_acquire)) {
+    if (initialized_.load(std::memory_order_acquire)) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "this branch is unreachable";
         UNREACHABLE();
     }

@@ -49,7 +49,7 @@ void IncrementalMarker::TriggerIncrementalMark(int64_t idleMicroSec)
             RecordIdleTime(idleMicroSec, startTime);
             PrintGCIdleUsageStatistic();
             break;
-        default:
+        default: // LOCV_EXCL_BR_LINE
             LOG_ECMA(FATAL) << "this branch is unreachable";
             UNREACHABLE();
     }

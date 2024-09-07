@@ -58,7 +58,7 @@ uintptr_t SharedSparseSpace::AllocateWithoutGC(JSThread *thread, size_t size)
 uintptr_t SharedSparseSpace::Allocate(JSThread *thread, size_t size, bool allowGC)
 {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
-    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
         UNREACHABLE();
     }
@@ -108,7 +108,7 @@ uintptr_t SharedSparseSpace::TryAllocateAndExpand(JSThread *thread, size_t size,
 uintptr_t SharedSparseSpace::AllocateNoGCAndExpand(JSThread *thread, size_t size)
 {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
-    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
         UNREACHABLE();
     }
@@ -149,7 +149,7 @@ bool SharedSparseSpace::Expand(JSThread *thread)
         return false;
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
-    if (region == nullptr) {
+    if (region == nullptr) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "SharedSparseSpace::Expand:region is nullptr";
     }
     AddRegion(region);
@@ -160,7 +160,7 @@ bool SharedSparseSpace::Expand(JSThread *thread)
 Region *SharedSparseSpace::AllocateDeserializeRegion(JSThread *thread)
 {
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, sHeap_);
-    if (region == nullptr) {
+    if (region == nullptr) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "SharedSparseSpace::AllocateDeserializeRegion:region is nullptr";
     }
     return region;
@@ -461,7 +461,7 @@ SharedLocalSpace::SharedLocalSpace(SharedHeap *heap, size_t initialCapacity, siz
 
 bool SharedLocalSpace::AddRegionToList(Region *region)
 {
-    if (committedSize_ >= maximumCapacity_) {
+    if (committedSize_ >= maximumCapacity_) { // LOCV_EXCL_BR_LINE
         LOG_ECMA_MEM(FATAL) << "AddRegionTotList::Committed size " << committedSize_ << " of local space is too big.";
         return false;
     }
@@ -517,7 +517,7 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
         currentRegion->SetHighWaterMark(top);
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, heap_);
-    if (region == nullptr) {
+    if (region == nullptr) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "SharedReadOnlySpace::Expand:region is nullptr";
     }
     allocator_.Reset(region->GetBegin(), region->GetEnd());
@@ -528,7 +528,7 @@ bool SharedReadOnlySpace::Expand(JSThread *thread)
 uintptr_t SharedReadOnlySpace::Allocate(JSThread *thread, size_t size)
 {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
-    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
         UNREACHABLE();
     }
@@ -589,7 +589,7 @@ SharedHugeObjectSpace::SharedHugeObjectSpace(BaseHeap *heap, HeapRegionAllocator
 uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, AllocateEventType allocType)
 {
 #if ECMASCRIPT_ENABLE_THREAD_STATE_CHECK
-    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) {
+    if (UNLIKELY(!thread->IsInRunningStateOrProfiling())) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "Allocate must be in jsthread running state";
         UNREACHABLE();
     }
@@ -607,7 +607,7 @@ uintptr_t SharedHugeObjectSpace::Allocate(JSThread *thread, size_t objectSize, A
         return 0;
     }
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, alignedSize, thread, heap_);
-    if (region == nullptr) {
+    if (region == nullptr) { // LOCV_EXCL_BR_LINE
         LOG_ECMA(FATAL) << "SharedHugeObjectSpace::Allocate:region is nullptr";
     }
     AddRegion(region);
