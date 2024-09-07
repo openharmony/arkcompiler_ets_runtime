@@ -328,7 +328,6 @@ JSTaggedValue RBTreeNode::DeleteMin(JSThread *thread, RBTreeNode *treeNode)
     RBTreeNode *leftChild = RBTreeNode::Cast(treeNode->GetLeft().GetTaggedObject());
     if (!IsRed(treeNode->GetLeft()) && !IsRed(leftChild->GetLeft())) {
         treeNode = treeNode->MoveRedLeft(thread);
-        leftChild = RBTreeNode::Cast(treeNode->GetLeft().GetTaggedObject());
     }
 
     treeNode->SetLeft(thread, DeleteMin(thread, leftChild));
