@@ -225,7 +225,7 @@ private:
     uintptr_t machineCodeSpaceBeginAddr_ {0};
     uintptr_t sOldSpaceBeginAddr_ {0};
     uintptr_t sNonMovableSpaceBeginAddr_ {0};
-    CVector<JSHandle<JSTaggedValue>> objectVector_;
+    CVector<uintptr_t> objectVector_;
     CVector<Region *> regionVector_;
     size_t oldRegionIndex_ {0};
     size_t nonMovableRegionIndex_ {0};
@@ -241,7 +241,7 @@ private:
     bool functionInShared_ {false};
     CVector<NativeBindingInfo *> nativeBindingInfos_;
     CVector<JSErrorInfo *> jsErrorInfos_;
-    CVector<JSHandle<JSFunction>> concurrentFunctions_;
+    CVector<JSFunction *> concurrentFunctions_;
     size_t position_ {0};
 };
 }

@@ -101,9 +101,9 @@ bool BaseSerializer::SerializeRootObject(TaggedObject *object)
 void BaseSerializer::SerializeSharedObject(TaggedObject *object)
 {
     data_->WriteEncodeFlag(EncodeFlag::SHARED_OBJECT);
-    data_->WriteUint32(sharedObjects_.size());
+    data_->WriteJSTaggedType(reinterpret_cast<JSTaggedType>(object));
     referenceMap_.emplace(object, objectIndex_++);
-    sharedObjects_.emplace_back(static_cast<JSTaggedType>(ToUintPtr(object)));
+    sharedObjects_.emplace_back(object);
 }
 
 bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root,

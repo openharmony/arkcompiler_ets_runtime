@@ -73,7 +73,7 @@ void SharedGC::Initialize()
             ASSERT(current->InSharedSweepableSpace());
             current->ResetAliveObject();
         });
-        sWorkManager_->Initialize(TriggerGCType::SHARED_GC, SharedParallelMarkPhase::SHARED_MARK_TASK);
+        sWorkManager_->Initialize();
     }
 }
 void SharedGC::Mark()
@@ -117,15 +117,15 @@ void SharedGC::Sweep()
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
     });
 
-    sHeap_->GetSweeper()->Sweep(false);
-    sHeap_->GetSweeper()->PostTask(false);
+    sHeap_->GetSweeper()->Sweep();
+    sHeap_->GetSweeper()->PostTask();
 }
 
 void SharedGC::Finish()
 {
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SharedGC::Finish");
     TRACE_GC(GCStats::Scope::ScopeId::Finish, sHeap_->GetEcmaGCStats());
-    sHeap_->Reclaim(TriggerGCType::SHARED_GC);
+    sHeap_->Reclaim();
     if (markingInProgress_) {
         sHeap_->GetConcurrentMarker()->Reset(false);
     } else {

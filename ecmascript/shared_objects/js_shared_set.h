@@ -30,11 +30,11 @@ public:
 
     static void Clear(JSThread *thread, const JSHandle<JSSharedSet> &set);
 
-    static bool Has(JSThread *thread, const JSHandle<JSSharedSet> &set, JSTaggedValue value);
+    bool Has(JSThread *thread, JSTaggedValue value) const;
 
-    static uint32_t GetSize(JSThread *thread, const JSHandle<JSSharedSet> &set);
+    uint32_t GetSize(JSThread *thread) const;
 
-    static JSTaggedValue GetValue(JSThread *thread, const JSHandle<JSSharedSet> &set, int entry);
+    JSTaggedValue GetValue(JSThread *thread, int entry) const;
 
     static constexpr size_t LINKED_SET_OFFSET = JSObject::SIZE;
     ACCESSORS_SYNCHRONIZED(LinkedSet, LINKED_SET_OFFSET, MOD_RECORD_OFFSET)

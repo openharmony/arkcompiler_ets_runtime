@@ -1117,12 +1117,12 @@ JSTaggedValue JSFunction::GetNativeFunctionExtraInfo() const
     return JSTaggedValue::Undefined();
 }
 
-void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFunction> &func)
+void JSFunction::InitializeForConcurrentFunction(JSThread *thread)
 {
-    JSHandle<Method> method(thread, func->GetMethod());
+    JSHandle<Method> method(thread, this->GetMethod());
     JSTaggedValue sendableEnv = JSTaggedValue::Undefined();
-    if (func->IsSharedFunction() && !func->GetModule().IsUndefined()) {
-        sendableEnv = SourceTextModule::Cast(func->GetModule())->GetSendableEnv();
+    if (this->IsSharedFunction() && !this->GetModule().IsUndefined()) {
+        sendableEnv = SourceTextModule::Cast(this->GetModule())->GetSendableEnv();
     }
     const JSPandaFile *jsPandaFile = method->GetJSPandaFile();
     if (jsPandaFile == nullptr) {
@@ -1163,12 +1163,12 @@ void JSFunction::InitializeForConcurrentFunction(JSThread *thread, JSHandle<JSFu
     JSHandle<ecmascript::SourceTextModule> module = JSHandle<ecmascript::SourceTextModule>::Cast(moduleRecord);
     module->SetStatus(ecmascript::ModuleStatus::INSTANTIATED);
     ecmascript::SourceTextModule::EvaluateForConcurrent(thread, module, method);
-    if (func->IsSharedFunction()) {
+    if (this->IsSharedFunction()) {
         JSHandle<JSTaggedValue> sendableClassRecord = moduleManager->GenerateSendableFuncModule(moduleRecord);
         SourceTextModule::Cast(sendableClassRecord.GetTaggedValue())->SetSendableEnv(thread, sendableEnv);
-        func->SetModule(thread, sendableClassRecord);
+        this->SetModule(thread, sendableClassRecord);
     } else {
-        func->SetModule(thread, moduleRecord);
+        this->SetModule(thread, moduleRecord);
     }
 }
 

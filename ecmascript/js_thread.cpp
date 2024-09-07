@@ -1065,13 +1065,6 @@ bool JSThread::EraseContext(EcmaContext *context)
     return false;
 }
 
-void JSThread::ClearContextCachedConstantPool()
-{
-    for (EcmaContext *context : contexts_) {
-        context->ClearCachedConstantPool();
-    }
-}
-
 PropertiesCache *JSThread::GetPropertiesCache() const
 {
     return glueData_.currentContext_->GetPropertiesCache();
