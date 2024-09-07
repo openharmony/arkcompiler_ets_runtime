@@ -77,7 +77,7 @@ void AllocationCounter::InvokeAllocationInspector(Address object, size_t objectS
         return;
     }
 
-    ASSERT(alignedObjectSize > nextCounter_ - currentCounter_);
+    ASSERT(alignedObjectSize >= nextCounter_ - currentCounter_);
     ASSERT(object != 0);
     {
         DISALLOW_GARBAGE_COLLECTION;
