@@ -222,6 +222,7 @@ public:
     std::unique_ptr<FileMapper> CreateFileMapper(const std::string &fileName, FileMapperType type) const;
     bool ExtractToBufByName(const std::string &fileName, std::unique_ptr<uint8_t[]> &dataPtr,
         size_t &len) const;
+    friend class ZipFileFriend;
 private:
     bool GetDataOffsetRelative(const ZipEntry &zipEntry, ZipPos &offset, uint32_t &length) const;
     /**

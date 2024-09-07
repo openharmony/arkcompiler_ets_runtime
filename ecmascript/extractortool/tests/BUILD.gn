@@ -16,12 +16,21 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 module_output_path = "arkcompiler/ets_runtime"
 
-host_unittest_action("SourceMapTest") {
+host_unittest_action("ExtractorToolTest") {
   module_out_path = module_output_path
 
   sources = [
     # test file
+    "../src/extractor.cpp",
+    "../src/file_mapper.cpp",
+    "../src/file_path_utils.cpp",
+    "../src/zip_file.cpp",
+    "../src/zip_file_reader.cpp",
+    "../src/zip_file_reader_io.cpp",
+    "../src/zip_file_reader_mem.cpp",
+    "extractor_test.cpp",
     "source_map_test.cpp",
+    "zip_file_test.cpp",
   ]
 
   configs = [ "../../../:ecma_test_config" ]
@@ -35,18 +44,19 @@ host_unittest_action("SourceMapTest") {
 
   # hiviewdfx libraries
   external_deps = hiviewdfx_ext_deps
+  external_deps += [ "zlib:libz" ]
   deps += hiviewdfx_deps
 }
 
 group("unittest") {
   testonly = true
-  deps = [ ":SourceMapTest" ]
+  deps = [ ":ExtractorToolTest" ]
 }
 
 group("host_unittest") {
   testonly = true
-  deps = [ ":SourceMapTestAction" ]
+  deps = [ ":ExtractorToolTestAction" ]
   if (is_mac) {
-    deps -= [ ":SourceMapTestAction" ]
+    deps -= [ ":ExtractorToolTestAction" ]
   }
 }
