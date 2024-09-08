@@ -51,7 +51,7 @@ void DaemonThread::StartRunning()
     ASSERT(thread_ == nullptr);
     ASSERT(!IsRunning());
     ASSERT(tasks_.empty());
-    GCWorkerPool::GetCurrentTaskpool()->Initialize();
+    Taskpool::GetCurrentTaskpool()->Initialize();
     ASSERT(GetThreadId() == 0);
     thread_ = std::make_unique<std::thread>([this] {this->Run();});
     // Wait until daemon thread is running.
@@ -78,7 +78,7 @@ void DaemonThread::WaitFinished()
         CheckAndPostTask(TerminateDaemonTask(nullptr));
         thread_->join();
         thread_.reset();
-        GCWorkerPool::GetCurrentTaskpool()->Destroy(GetThreadId());
+        Taskpool::GetCurrentTaskpool()->Destroy(GetThreadId());
     }
     ASSERT(!IsInRunningState());
     ASSERT(!IsRunning());

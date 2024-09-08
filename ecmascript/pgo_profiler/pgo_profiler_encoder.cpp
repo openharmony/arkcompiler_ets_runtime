@@ -31,7 +31,6 @@
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/mutex.h"
-#include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/platform/os.h"
 
 namespace panda::ecmascript::pgo {

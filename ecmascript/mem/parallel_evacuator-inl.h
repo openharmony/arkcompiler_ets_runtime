@@ -386,7 +386,7 @@ int ParallelEvacuator::CalculateEvacuationThreadNum()
     uint32_t count = evacuateWorkloadSet_.GetWorkloadCount();
     uint32_t regionPerThread = 8;
     uint32_t maxThreadNum = std::min(heap_->GetMaxEvacuateTaskCount(),
-        GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum());
+        Taskpool::GetCurrentTaskpool()->GetTotalThreadNum());
     return static_cast<int>(std::min(std::max(1U, count / regionPerThread), maxThreadNum));
 }
 
@@ -396,7 +396,7 @@ int ParallelEvacuator::CalculateUpdateThreadNum()
     double regionPerThread = 1.0 / 4;
     count = std::pow(count, regionPerThread);
     uint32_t maxThreadNum = std::min(heap_->GetMaxEvacuateTaskCount(),
-        GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum());
+        Taskpool::GetCurrentTaskpool()->GetTotalThreadNum());
     return static_cast<int>(std::min(std::max(1U, count), maxThreadNum));
 }
 
