@@ -148,10 +148,10 @@ public:
     static JSHandle<LinkedNode> Detreeing(JSThread *thread, const JSHandle<RBTreeNode> &root);
     static uint32_t Count(JSTaggedValue nodeValue);
     static int Compare(int hash1, JSTaggedValue key1, int hash2, JSTaggedValue key2);
+    static bool IsRed(JSTaggedValue treeNodeValue);
 private:
     static void InOrderTraverse(JSThread *thread, const JSHandle<RBTreeNode> &treeNode,
                                 int bit, LinkedNodeStruct &nodeStruct);
-    static bool IsRed(JSTaggedValue treeNodeValue);
     static JSTaggedValue Balance(JSThread *thread, RBTreeNode *treeNode);
     static JSTaggedValue DeleteMin(JSThread *thread, RBTreeNode *treeNode);
     RBTreeNode *RotateLeft(JSThread *thread);

@@ -328,6 +328,7 @@ JSTaggedValue RBTreeNode::DeleteMin(JSThread *thread, RBTreeNode *treeNode)
     RBTreeNode *leftChild = RBTreeNode::Cast(treeNode->GetLeft().GetTaggedObject());
     if (!IsRed(treeNode->GetLeft()) && !IsRed(leftChild->GetLeft())) {
         treeNode = treeNode->MoveRedLeft(thread);
+        leftChild = RBTreeNode::Cast(treeNode->GetLeft().GetTaggedObject());
     }
 
     treeNode->SetLeft(thread, DeleteMin(thread, leftChild));
@@ -338,12 +339,16 @@ JSTaggedValue RBTreeNode::DeleteMin(JSThread *thread, RBTreeNode *treeNode)
 JSTaggedValue RBTreeNode::Delete(JSThread *thread, const JSTaggedValue &treeNodeVa, int hash,
                                  const JSTaggedValue &key, JSTaggedValue &oldValue)
 {
+    if (treeNodeVa.IsHole()) {
+        return JSTaggedValue::Hole();
+    }
     RBTreeNode *treeNode = RBTreeNode::Cast(treeNodeVa.GetTaggedObject());
     JSTaggedValue leftChildVa = treeNode->GetLeft();
     JSTaggedValue treeNodeKey = treeNode->GetKey();
     int cmp = Compare(hash, key, treeNode->GetHash().GetInt(), treeNodeKey);
     if (cmp < 0) {
-        if (!IsRed(treeNode->GetLeft()) && !IsRed(RBTreeNode::Cast(leftChildVa.GetTaggedObject())->GetLeft())) {
+        if (!leftChildVa.IsHole() &&
+            !IsRed(treeNode->GetLeft()) && !IsRed(RBTreeNode::Cast(leftChildVa.GetTaggedObject())->GetLeft())) {
             treeNode = treeNode->MoveRedLeft(thread);
         }
         leftChildVa = treeNode->GetLeft();
@@ -360,13 +365,17 @@ JSTaggedValue RBTreeNode::Delete(JSThread *thread, const JSTaggedValue &treeNode
             return JSTaggedValue::Hole();
         }
         JSTaggedValue rightChildVa = treeNode->GetRight();
-        if (!IsRed(rightChildVa) && !IsRed(RBTreeNode::Cast(rightChildVa.GetTaggedObject())->GetLeft())) {
+        if (!rightChildVa.IsHole() &&
+            !IsRed(rightChildVa) && !IsRed(RBTreeNode::Cast(rightChildVa.GetTaggedObject())->GetLeft())) {
             treeNode = treeNode->MoveRedRight(thread);
             treeNodeKey = treeNode->GetKey();
         }
         
         cmp = Compare(hash, key, treeNode->GetHash().GetInt(), treeNodeKey);
         rightChildVa = treeNode->GetRight();
+        if (rightChildVa.IsHole()) {
+            return Balance(thread, treeNode);
+        }
         RBTreeNode *rightChild = RBTreeNode::Cast(rightChildVa.GetTaggedObject());
         if (cmp == 0) {
             oldValue = treeNode->GetValue();
