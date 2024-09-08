@@ -6096,7 +6096,6 @@ void TryCatch::ClearException()
 
 bool ExternalStringCache::RegisterStringCacheTable(const EcmaVM *vm, uint32_t size)
 {
-    SINGLE_THREAD_CHECK_WITH_RETURN(vm, false);
     auto instance = ecmascript::Runtime::GetInstance();
     ASSERT(instance != nullptr);
 
@@ -6106,7 +6105,6 @@ bool ExternalStringCache::RegisterStringCacheTable(const EcmaVM *vm, uint32_t si
 
 bool ExternalStringCache::SetCachedString(const EcmaVM *vm, const char *name, uint32_t propertyIndex)
 {
-    SINGLE_THREAD_CHECK_WITH_RETURN(vm, false);
     auto instance = ecmascript::Runtime::GetInstance();
     ASSERT(instance != nullptr);
 
@@ -6119,7 +6117,6 @@ bool ExternalStringCache::SetCachedString(const EcmaVM *vm, const char *name, ui
 
 Local<StringRef> ExternalStringCache::GetCachedString(const EcmaVM *vm, uint32_t propertyIndex)
 {
-    SINGLE_THREAD_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     auto instance = ecmascript::Runtime::GetInstance();
     ASSERT(instance != nullptr);
 
@@ -6128,9 +6125,8 @@ Local<StringRef> ExternalStringCache::GetCachedString(const EcmaVM *vm, uint32_t
     return JSNApiHelper::ToLocal<StringRef>(JSHandle<JSTaggedValue>(str));
 }
 
-bool ExternalStringCache::HasCachedString(const EcmaVM *vm, uint32_t propertyIndex)
+bool ExternalStringCache::HasCachedString([[maybe_unused]] const EcmaVM *vm, uint32_t propertyIndex)
 {
-    SINGLE_THREAD_CHECK_WITH_RETURN(vm, false);
     auto instance = ecmascript::Runtime::GetInstance();
     ASSERT(instance != nullptr);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
