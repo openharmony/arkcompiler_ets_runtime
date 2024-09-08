@@ -96,6 +96,8 @@ public:
 
     virtual bool NativeOut() = 0;
 
+    virtual void SendableMethodEntry(JSHandle<Method> method) = 0;
+
     virtual ~PtHooks() = default;
 
     NO_COPY_SEMANTIC(PtHooks);
