@@ -1511,11 +1511,11 @@ void NativeInlineLowering::TryInlineArrayIterator(GateRef gate, BuiltinsStubCSig
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, tacc.GetFunc(), builder_.IntPtr(static_cast<int64_t>(id)), {tacc.GetThisObj()});
     }
+    GateRef thisObj = acc_.GetValueIn(gate, 0);
+    builder_.EcmaObjectCheck(thisObj);
     if (EnableTrace()) {
         AddTraceLogs(gate, id);
     }
-    GateRef thisObj = acc_.GetValueIn(gate, 0);
-    builder_.EcmaObjectCheck(thisObj);
     GateRef CallIDRef = builder_.Int32(static_cast<int32_t>(id));
     GateRef ret = builder_.ArrayIteratorBuiltin(thisObj, CallIDRef);
     acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
