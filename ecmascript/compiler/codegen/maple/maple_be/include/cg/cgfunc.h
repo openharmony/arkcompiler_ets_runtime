@@ -1157,9 +1157,11 @@ public:
         MIRAggConst *arrayConst = safe_cast<MIRAggConst>(st->GetKonst());
         MIRType *etype = GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_a64));
         MIRConst *mirConst = GetMemoryPool()->New<MIRLblConst>(newLabelIdx, GetFunction().GetPuidx(), *etype);
+        DEBUG_ASSERT(arrayConst != nullptr, "nullptr check");
         for (size_t i = 0; i < arrayConst->GetConstVec().size(); ++i) {
             CHECK_FATAL(arrayConst->GetConstVecItem(i)->GetKind() == kConstLblConst, "not a kConstLblConst");
             MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
+            DEBUG_ASSERT(lblConst != nullptr, "nullptr check");
             if (oldLabelIdx == lblConst->GetValue()) {
                 arrayConst->SetConstVecItem(i, *mirConst);
                 ++switchLabelCnt[newLabelIdx];

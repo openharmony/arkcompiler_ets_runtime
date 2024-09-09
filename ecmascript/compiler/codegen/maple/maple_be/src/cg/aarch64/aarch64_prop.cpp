@@ -95,6 +95,7 @@ void A64ConstProp::DoOpt()
             CHECK_FATAL(constOpnd.IsImmediate(), "must be imm operand");
             auto &immOperand = static_cast<ImmOperand &>(constOpnd);
             bool isZero = immOperand.IsZero();
+            DEBUG_ASSERT(destVersion != nullptr, "destVersion should not be nullptr");
             for (auto useDUInfoIt : destVersion->GetAllUseInsns()) {
                 if (isZero) {
                     ZeroRegProp(*useDUInfoIt.second, *destVersion->GetSSAvRegOpnd());
@@ -1799,6 +1800,7 @@ bool ValidBitNumberProp::CheckCondition(Insn &insn)
 void ValidBitNumberProp::Optimize(Insn &insn)
 {
     optSsaInfo->ReplaceAllUse(destVersion, srcVersion);
+    DEBUG_ASSERT(srcVersion != nullptr, "srcVersion should not be nullptr");
     cgFunc.InsertExtendSet(srcVersion->GetSSAvRegOpnd()->GetRegisterNumber());
 }
 
@@ -1988,6 +1990,7 @@ void FpSpConstProp::PropInCopy(DUInsnInfo &useDUInfo, Insn &useInsn, MOperator o
 
 void FpSpConstProp::Optimize(Insn &insn)
 {
+    DEBUG_ASSERT(replaced != nullptr, "nullptr check");
     for (auto &useInsnInfo : replaced->GetAllUseInsns()) {
         Insn *useInsn = useInsnInfo.second->GetInsn();
         MOperator useMop = useInsn->GetMachineOpcode();
@@ -2105,6 +2108,7 @@ bool A64PregCopyPattern::CheckMultiUsePoints(const Insn *defInsn) const
     CHECK_FATAL(dstOpnd.IsRegister(), "dstOpnd must be register");
     VRegVersion *defVersion = optSsaInfo->FindSSAVersion(static_cast<RegOperand &>(dstOpnd).GetRegisterNumber());
     /* use: (phi) or (mov preg) */
+    DEBUG_ASSERT(defVersion != nullptr, "nullptr check");
     for (auto &useInfoIt : defVersion->GetAllUseInsns()) {
         DUInsnInfo *useInfo = useInfoIt.second;
         CHECK_FATAL(useInfo, "get useDUInfo failed");
@@ -2188,6 +2192,7 @@ bool A64PregCopyPattern::CheckUselessDefInsn(const Insn *defInsn) const
     Operand &dstOpnd = defInsn->GetOperand(kInsnFirstOpnd);
     CHECK_FATAL(dstOpnd.IsRegister(), "dstOpnd must be register");
     VRegVersion *defVersion = optSsaInfo->FindSSAVersion(static_cast<RegOperand &>(dstOpnd).GetRegisterNumber());
+    DEBUG_ASSERT(defVersion != nullptr, "nullptr check");
     if (defVersion->GetAllUseInsns().size() == 1) {
         return true;
     }
@@ -2335,6 +2340,7 @@ RegOperand *A64PregCopyPattern::CheckAndGetExistPhiDef(Insn &phiInsn, std::vecto
          *           we need to create a new phi(2): R140(R80), [R106, R118].
          *           so we need to check whether all phiOpnds have correct ssaRegNO.
          */
+        DEBUG_ASSERT(defVersion != nullptr, "defVersion should not be nullptr");
         if (defVersion->GetOriginalRegNO() == differOrigNO) {
             auto &phiOpnd = static_cast<PhiOperand &>(phiIt.second->GetOperand(kInsnSecondOpnd));
             if (phiOpnd.GetOperands().size() == validDifferRegNOs.size()) {

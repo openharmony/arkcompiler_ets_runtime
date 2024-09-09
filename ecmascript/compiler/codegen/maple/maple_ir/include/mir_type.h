@@ -2636,7 +2636,7 @@ public:
         constexpr uint8 idxShift = 2;
         uint32 hIdx = (static_cast<uint32>(genericTyIdx) << idxShift) + (typeKind << kShiftNumOfTypeKind);
         for (const TypePair &typePair : instantVec) {
-            hIdx += static_cast<uint32>(typePair.first + typePair.second) << 3;  // shift bit is 3
+            hIdx += static_cast<uint32>(typePair.first + typePair.second) << k8BitShift;  // shift bit is 3
         }
         return hIdx % kTypeHashLength;
     }

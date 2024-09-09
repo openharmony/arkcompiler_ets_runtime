@@ -54,10 +54,6 @@ public:
     {
         CHECK_FATAL(false, "NYI");
     }
-    virtual PrimType GetOpndType()
-    {
-        CHECK_FATAL(false, "NYI");
-    }
 
     bool IsInvalid() const
     {
@@ -94,36 +90,6 @@ public:
     BaseNode *GetOpnd(size_t index) override
     {
         return expr->Opnd(index);
-    }
-
-    PrimType GetOpndType() override
-    {
-        switch (GetOp()) {
-            case OP_retype: {
-                return GetOpnd(0)->GetPrimType();
-            }
-            case OP_cvt:
-                return static_cast<const TypeCvtNode *>(expr)->FromType();
-            case OP_regread: {
-                const auto *regread = static_cast<const RegreadNode *>(expr);
-                PregIdx regIdx = regread->GetRegIdx();
-                MIRPreg *preg = theMIRModule->CurFunction()->GetPregItem(regIdx);
-                return preg->GetPrimType();
-            }
-            case OP_iread: {
-                const auto *iread = static_cast<const IreadNode *>(expr);
-                return iread->GetType()->GetPrimType();
-            }
-            case OP_dread: {
-                const auto *dread = static_cast<const DreadNode *>(expr);
-                StIdx stIdx = dread->GetStIdx();
-                MIRSymbol *symbol = theMIRModule->CurFunction()->GetLocalOrGlobalSymbol(stIdx);
-                return symbol->GetType()->GetPrimType();
-            }
-            default:
-                CHECK_FATAL(false, "NYI");
-                break;
-        }
     }
 };
 

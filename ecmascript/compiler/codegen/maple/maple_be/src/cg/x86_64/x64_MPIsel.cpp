@@ -452,8 +452,7 @@ void X64MPIsel::SelectLibCallNArg(const std::string &funcName, std::vector<Opera
     CCLocInfo ploc;
     for (size_t i = 0; i < opndVec.size(); ++i) {
         DEBUG_ASSERT(pt[i] != PTY_void, "primType check");
-        MIRType *ty;
-        ty = GlobalTables::GetTypeTable().GetTypeTable()[static_cast<size_t>(pt[i])];
+        MIRType *ty = GlobalTables::GetTypeTable().GetTypeTable()[static_cast<size_t>(pt[i])];
         Operand *stOpnd = opndVec[i];
         DEBUG_ASSERT(stOpnd->IsRegister(), "exp result should be reg");
         RegOperand *expRegOpnd = static_cast<RegOperand *>(stOpnd);

@@ -63,7 +63,6 @@ class Clone : public AnalysisResult {
 public:
     Clone(MIRModule *mod, MemPool *memPool, MIRBuilder &builder, KlassHierarchy *kh)
         : AnalysisResult(memPool),
-          mirModule(mod),
           allocator(memPool),
           mirBuilder(builder),
           kh(kh),
@@ -79,7 +78,6 @@ public:
     MIRFunction *CloneFunction(MIRFunction &originalFunction, const std::string &newBaseFuncName,
                                MIRType *returnType = nullptr) const;
     MIRFunction *CloneFunctionNoReturn(MIRFunction &originalFunction);
-    void DoClone();
     void CopyFuncInfo(MIRFunction &originalFunction, MIRFunction &newFunc) const;
     void UpdateFuncInfo(MIRFunction &newFunc);
     void CloneArgument(MIRFunction &originalFunction, ArgVector &argument) const;
@@ -91,7 +89,6 @@ public:
     void UpdateReturnVoidIfPossible(CallMeStmt *callMeStmt, const MIRFunction &targetFunc);
 
 private:
-    MIRModule *mirModule;
     MapleAllocator allocator;
     MIRBuilder &mirBuilder;
     KlassHierarchy *kh;

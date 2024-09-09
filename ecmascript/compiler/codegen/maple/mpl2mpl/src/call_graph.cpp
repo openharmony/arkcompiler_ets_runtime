@@ -264,6 +264,7 @@ void CallGraph::DelNode(CGNode &node)
         }
     }
     GlobalTables::GetFunctionTable().SetFunctionItem(func->GetPuidx(), nullptr);
+    DEBUG_ASSERT(func->GetFuncSymbol() != nullptr, "nullptr check");
     // func will be erased, so the coressponding symbol should be set as Deleted
     func->GetFuncSymbol()->SetIsDeleted();
     nodesMap.erase(func);
@@ -406,6 +407,7 @@ bool CallGraph::IsRootNode(MIRFunction *func) const
 // if expr has addroffunc expr as its opnd, store all the addroffunc puidx into result
 void CallGraph::CollectAddroffuncFromExpr(const BaseNode *expr)
 {
+    DEBUG_ASSERT(expr != nullptr, "nullptr check");
     if (expr->GetOpCode() == OP_addroffunc) {
         addressTakenPuidxs.insert(static_cast<const AddroffuncNode *>(expr)->GetPUIdx());
         return;
@@ -432,24 +434,6 @@ void CallGraph::CollectAddroffuncFromConst(MIRConst *mirConst)
             CollectAddroffuncFromConst(cst);
         }
     }
-}
-
-void CallGraph::RecordLocalConstValue(const StmtNode *stmt)
-{
-    if (stmt->GetOpCode() != OP_dassign) {
-        return;
-    }
-    auto *dassign = static_cast<const DassignNode *>(stmt);
-    MIRSymbol *lhs = CurFunction()->GetLocalOrGlobalSymbol(dassign->GetStIdx());
-    if (!lhs->IsLocal() || !lhs->GetAttr(ATTR_const) || dassign->GetFieldID() != 0) {
-        return;
-    }
-    if (localConstValueMap.find(lhs->GetStIdx()) != localConstValueMap.end()) {
-        // Multi def found, put nullptr to indicate that we cannot handle this.
-        localConstValueMap[lhs->GetStIdx()] = nullptr;
-        return;
-    }
-    localConstValueMap[lhs->GetStIdx()] = dassign->GetRHS();
 }
 
 CallNode *CallGraph::ReplaceIcallToCall(BlockNode &body, IcallNode *icall, PUIdx newPUIdx)
@@ -483,6 +467,7 @@ MIRType *CallGraph::GetFuncTypeFromFuncAddr(const BaseNode *base)
         case OP_dread: {
             auto *dread = static_cast<const DreadNode *>(base);
             const MIRSymbol *st = CurFunction()->GetLocalOrGlobalSymbol(dread->GetStIdx());
+            DEBUG_ASSERT(st != nullptr, "st should not be nullptr");
             funcType = st->GetType();
             if (funcType->IsStructType()) {
                 funcType = static_cast<MIRStructType *>(funcType)->GetFieldType(dread->GetFieldID());
@@ -551,40 +536,6 @@ void CallGraph::RemoveFileStaticRootNodes()
     // rebuild rootNodes
     rootNodes.clear();
     FindRootNodes();
-}
-
-void CallGraph::RemoveFileStaticSCC()
-{
-    for (size_t idx = 0; idx < sccTopologicalVec.size();) {
-        SCCNode<CGNode> *sccNode = sccTopologicalVec[idx];
-        if (sccNode->HasInScc() || sccNode == nullptr) {
-            ++idx;
-            continue;
-        }
-        bool canBeDel = true;
-        for (auto *node : sccNode->GetNodes()) {
-            // If the function is not static, it may be referred in other module;
-            // If the function is taken address, we should deal with this situation conservatively,
-            // because we are not sure whether the func pointer may escape from this SCC
-            if (!node->GetMIRFunction()->IsStatic() || node->IsAddrTaken()) {
-                canBeDel = false;
-                break;
-            }
-        }
-        if (canBeDel) {
-            sccTopologicalVec.erase(sccTopologicalVec.begin() + static_cast<ssize_t>(idx));
-            for (auto *calleeSCC : sccNode->GetOutScc()) {
-                calleeSCC->RemoveInScc(sccNode);
-            }
-            for (auto *cgnode : sccNode->GetNodes()) {
-                DelNode(*cgnode);
-            }
-            // this sccnode is deleted from sccTopologicalVec, so we don't inc idx here
-            continue;
-        }
-        ++idx;
-    }
-    ClearFunctionList();
 }
 
 void CallGraph::Dump() const

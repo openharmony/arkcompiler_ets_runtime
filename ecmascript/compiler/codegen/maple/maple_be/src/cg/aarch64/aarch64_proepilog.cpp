@@ -177,6 +177,7 @@ RegOperand &AArch64GenProEpilog::GenStackGuard(AArch64reg regNO)
 
     MIRSymbol *stkGuardSym = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(
         GlobalTables::GetStrTable().GetStrIdxFromName(std::string("__stack_chk_guard")));
+    DEBUG_ASSERT(stkGuardSym != nullptr, "nullptr check");
     StImmOperand &stOpnd = aarchCGFunc.CreateStImmOperand(*stkGuardSym, 0, 0);
     RegOperand &stAddrOpnd = aarchCGFunc.GetOrCreatePhysicalRegisterOperand(regNO, GetPointerBitSize(), kRegTyInt);
     aarchCGFunc.SelectAddrof(stAddrOpnd, stOpnd);
@@ -221,6 +222,7 @@ BB &AArch64GenProEpilog::GetOrGenStackGuardCheckFailBB(BB &bb)
     cgFunc.SetCurBB(*stackChkFailBB);
     MIRSymbol *failFunc = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(
         GlobalTables::GetStrTable().GetStrIdxFromName(std::string("__stack_chk_fail")));
+    DEBUG_ASSERT(failFunc != nullptr, "nullptr check");
     ListOperand *srcOpnds = aarchCGFunc.CreateListOpnd(*cgFunc.GetFuncScopeAllocator());
     Insn &callInsn = aarchCGFunc.AppendCall(*failFunc, *srcOpnds);
     callInsn.SetDoNotRemove(true);
@@ -1073,8 +1075,8 @@ void AArch64GenProEpilog::AppendInstructionDeallocateCallFrameDebug(AArch64reg r
             cgFunc.GetCurBB()->AppendInsn(deallocInsn);
         }
     } else {
-        Operand *o2;
-        o2 = aarchCGFunc.CreateStackMemOpnd(RSP, static_cast<int32>(fpToSpDistance), GetPointerBitSize());
+        Operand *o2 =
+            aarchCGFunc.CreateStackMemOpnd(RSP, static_cast<int32>(fpToSpDistance), GetPointerBitSize());
         if (fpToSpDistance > kStpLdpImm64UpperBound) {
             (void)AppendInstructionForAllocateOrDeallocateCallFrame(fpToSpDistance, reg0, reg1, rty, false);
         } else {

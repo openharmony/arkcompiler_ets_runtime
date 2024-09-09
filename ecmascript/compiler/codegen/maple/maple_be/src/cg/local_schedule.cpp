@@ -116,6 +116,7 @@ bool CgLocalSchedule::PhaseRun(maplebe::CGFunc &f)
     auto *ddb = memPool->New<AArch64DataDepBase>(*memPool, f, *mad, true);
     auto *dda = memPool->New<DataDepAnalysis>(f, *memPool, *ddb);
     auto *localScheduler = f.GetCG()->CreateLocalSchedule(*memPool, f, *cda, *dda);
+    DEBUG_ASSERT(localScheduler != nullptr, "nullptr check");
     localScheduler->Run();
     return true;
 }

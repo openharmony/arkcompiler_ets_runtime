@@ -469,7 +469,6 @@ public:
     void RegisterSection(Section *section)
     {
         sections.push_back(section);
-        DEBUG_ASSERT(sections.size() > 0, "sections not empty");
         section->SetIndex(sections.size() - 1);
     }
 
@@ -498,7 +497,6 @@ public:
     void CloseOutput() override
     {
         if (fileStream.is_open()) {
-            fileStream << outStream.str();
             fileStream.close();
         }
     }

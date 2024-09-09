@@ -97,14 +97,7 @@ void SavePC2CallSiteInfo(void *object, uint64_t pc, std::vector<uint8_t> callSit
 
 void LiteCGAssembler::Run(const CompilerLog &log, [[maybe_unused]] bool fastCompileMode, bool isJit)
 {
-    std::vector<std::string> options(litecgOptions);
-    if (log.OutputASM()) {
-        options.push_back("--verbose-asm");
-    }
-    if (log.OutputLLIR()) {
-        options.push_back("-verbose");
-    }
-    maple::litecg::LiteCG liteCG(*lmirModule.GetModule(), options);
+    maple::litecg::LiteCG liteCG(*lmirModule.GetModule(), litecgOptions);
     if (log.OutputLLIR()) {
         std::string irFileName = lmirModule.GetModule()->GetFileName() + ".mpl";
         liteCG.DumpIRToFile(irFileName);

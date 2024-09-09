@@ -12,3 +12,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#ifndef MAPLE_IR_INCLUDE_DEBUG_INFO_UTIL_H
+#define MAPLE_IR_INCLUDE_DEBUG_INFO_UTIL_H
+#include "cfg_primitive_types.h"
+#include "debug_info.h"
+
+namespace maple {
+extern const char *GetDwTagName(unsigned n);
+extern const char *GetDwFormName(unsigned n);
+extern const char *GetDwAtName(unsigned n);
+extern const char *GetDwOpName(unsigned n);
+extern const char *GetDwAteName(unsigned n);
+extern DwAte GetAteFromPTY(PrimType pty);
+} // namespace maple
+#endif

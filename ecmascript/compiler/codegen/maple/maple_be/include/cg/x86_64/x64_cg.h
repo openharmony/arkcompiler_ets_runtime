@@ -43,7 +43,7 @@ public:
     static const InsnDesc kMd[x64::kMopLast];
     void EnrollTargetPhases(MaplePhaseManager *pm) const override;
     /* Init SubTarget phase */
-    /* AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f) const override;*/
+    /* AlignAnalysis *CreateAlignAnalysis(MemPool &mp, CGFunc &f) const override */
 
     LiveAnalysis *CreateLiveAnalysis(MemPool &mp, CGFunc &f) const override
     {

@@ -44,13 +44,13 @@ std::map<MIRFunction *, std::pair<LabelIdx, LabelIdx>> CG::funcWrapLabels;
 
 CG::~CG()
 {
-    Emit([](Emitter *emitter) {
+    if (emitter != nullptr) {
         emitter->CloseOutput();
-    });
+    }
     delete memPool;
     memPool = nullptr;
     mirModule = nullptr;
-    emitters.clear();
+    emitter = nullptr;
     currentCGFunction = nullptr;
     instrumentationFunction = nullptr;
     dbgTraceEnter = nullptr;
@@ -161,6 +161,7 @@ void CG::AddStackGuardvar()
     MIRFunction *func = GetMIRModule()->GetMIRBuilder()->GetOrCreateFunction(
         "__stack_chk_fail", GlobalTables::GetTypeTable().GetVoid()->GetTypeIndex());
     MIRSymbol *chkFuncSym = func->GetFuncSymbol();
+    DEBUG_ASSERT(chkFuncSym != nullptr, "nullptr check");
     chkFuncSym->SetAppearsInCode(true);
     chkFuncSym->SetStorageClass(kScExtern);
     GlobalTables::GetGsymTable().AddToStringSymbolMap(*chkFuncSym);
@@ -311,27 +312,4 @@ const std::string CG::ExtractFuncName(const std::string &str)
     }
     return funcName;
 }
-
-void CG::EmitAllEmitters(const std::function<void(Emitter *)>& cb) const
-{
-    DEBUG_ASSERT(!emitters.empty(), "Emitter were not set");
-    DEBUG_ASSERT(emitters.size() <= 2U, "Emitters number isn't correct");
-    for (auto emitter: emitters) {
-        cb(emitter);
-    }
-}
-
-void CG::EmitAsmEmitters(const std::function<void(Emitter *)>& cb) const
-{
-    if (emitters.size() == 2U) {
-        cb(emitters[1]);
-    }
-}
-
-void CG::EmitObjEmitters(const std::function<void(Emitter *)>& cb) const
-{
-    DEBUG_ASSERT(!emitters.empty(), "ObjEmmiter wasn't set");
-    cb(emitters[0]);
-}
-
 } /* namespace maplebe */

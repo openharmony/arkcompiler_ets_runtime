@@ -514,10 +514,9 @@ bool AArch64RegSavesOpt::DetermineCalleeRestoreLocations()
                 Insn *lastInsn = bb->GetLastInsn();
                 if (lastInsn != nullptr && lastInsn->IsBranch() &&
                     (!lastInsn->GetOperand(0).IsRegister() || /* not a reg OR */
-                     (!AArch64Abi::IsCalleeSavedReg(          /* reg but not cs */
-                                                    static_cast<AArch64reg>(
-                                                        static_cast<RegOperand &>(lastInsn->GetOperand(0))
-                                                            .GetRegisterNumber()))))) {
+                        (!AArch64Abi::IsCalleeSavedReg(          /* reg but not cs */
+                            static_cast<AArch64reg>(
+                                static_cast<RegOperand &>(lastInsn->GetOperand(0)).GetRegisterNumber()))))) {
                     /* To insert in this block - 1 instr */
                     SavedRegInfo *sp = GetbbSavedRegsEntry(exitBB);
                     sp->InsertExitReg(reg);

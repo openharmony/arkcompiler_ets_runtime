@@ -120,6 +120,7 @@ bool CgPhiElimination::PhaseRun(maplebe::CGFunc &f)
 {
     CGSSAInfo *ssaInfo = GET_ANALYSIS(CgSSAConstruct, f);
     PhiEliminate *pe = f.GetCG()->CreatePhiElimintor(*GetPhaseMemPool(), f, *ssaInfo);
+    DEBUG_ASSERT(pe != nullptr, "nullptr check");
     pe->TranslateTSSAToCSSA();
     return false;
 }

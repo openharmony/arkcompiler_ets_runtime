@@ -117,7 +117,6 @@ public:
         LogInfo::MapleLogger() << "PhiOcc at bb" << cgbb->GetId() << " classId" << classId << " Phi[";
         for (size_t i = 0; i < phiOpnds.size(); i++) {
             phiOpnds[i]->Dump();
-            DEBUG_ASSERT(phiOpnds.size() >= 1, "phiopnds size -1 should be unit");
             if (i != phiOpnds.size() - 1) {
                 LogInfo::MapleLogger() << ", ";
             }

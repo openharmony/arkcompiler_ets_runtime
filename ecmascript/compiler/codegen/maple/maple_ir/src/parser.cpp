@@ -350,8 +350,7 @@ bool MIRParser::ParseBitFieldType(TyIdx &fieldTyIdx)
 
 bool MIRParser::ParsePragmaElementForArray(MIRPragmaElement &elem)
 {
-    TokenKind tk;
-    tk = lexer.GetTokenKind();
+    TokenKind tk = lexer.GetTokenKind();
     if (tk != TK_lbrack) {
         Error("parsing pragma error: expecting [ but get ");
         return false;

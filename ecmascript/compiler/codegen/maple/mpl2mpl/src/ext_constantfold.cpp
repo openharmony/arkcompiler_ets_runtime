@@ -171,8 +171,7 @@ StmtNode *ExtConstantFold::ExtSimplifyIf(IfStmtNode *node)
 StmtNode *ExtConstantFold::ExtSimplifyDassign(DassignNode *node)
 {
     CHECK_NULL_FATAL(node);
-    BaseNode *returnValue;
-    returnValue = ExtFold(node->GetRHS());
+    BaseNode *returnValue = ExtFold(node->GetRHS());
     if (returnValue != node->GetRHS()) {
         node->SetRHS(returnValue);
     }
@@ -182,8 +181,7 @@ StmtNode *ExtConstantFold::ExtSimplifyDassign(DassignNode *node)
 StmtNode *ExtConstantFold::ExtSimplifyIassign(IassignNode *node)
 {
     CHECK_NULL_FATAL(node);
-    BaseNode *returnValue;
-    returnValue = ExtFold(node->GetRHS());
+    BaseNode *returnValue = ExtFold(node->GetRHS());
     if (returnValue != node->GetRHS()) {
         node->SetRHS(returnValue);
     }

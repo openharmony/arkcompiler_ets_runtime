@@ -55,6 +55,7 @@ void LabelCreation::CreateStartEndLabel() const
     if (cg->GetCGOptions().WithDwarf() && cgFunc->GetWithSrc()) {
         DebugInfo *di = cg->GetMIRModule()->GetDbgInfo();
         DBGDie *fdie = di->GetFuncDie(*func);
+        DEBUG_ASSERT(fdie != nullptr, "nullptr check");
         fdie->SetAttr(DW_AT_low_pc, startLblIdx);
         fdie->SetAttr(DW_AT_high_pc, endLblIdx);
     }

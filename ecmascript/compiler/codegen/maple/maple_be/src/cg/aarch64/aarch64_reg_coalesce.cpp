@@ -224,68 +224,6 @@ bool AArch64LiveIntervalAnalysis::IsRegistersCopy(Insn &insn)
     return false;
 }
 
-void AArch64LiveIntervalAnalysis::ComputeLiveIntervals()
-{
-    /* colloct refpoints and build interfere only for cands. */
-    CollectCandidate();
-
-    uint32 currPoint =
-        static_cast<uint32>(cgFunc->GetTotalNumberOfInstructions()) + static_cast<uint32>(bfs->sortedBBs.size());
-    /* distinguish use/def */
-    CHECK_FATAL(currPoint < (INT_MAX >> k4BitShift), "integer overflow check");
-    currPoint = currPoint << k4BitShift;
-    for (size_t bbIdx = bfs->sortedBBs.size(); bbIdx > 0; --bbIdx) {
-        BB *bb = bfs->sortedBBs[bbIdx - 1];
-
-        vregLive.clear();
-        for (auto liveOut : bb->GetLiveOutRegNO()) {
-            SetupLiveIntervalInLiveOut(liveOut, *bb, currPoint);
-        }
-        --currPoint;
-
-        if (bb->GetLastInsn() != nullptr && bb->GetLastInsn()->IsMachineInstruction() && bb->GetLastInsn()->IsCall()) {
-            UpdateCallInfo();
-        }
-
-        FOR_BB_INSNS_REV_SAFE(insn, bb, ninsn) {
-            if (!runAnalysis) {
-                insn->SetId(currPoint);
-            }
-            if (!insn->IsMachineInstruction() && !insn->IsPhi()) {
-                --currPoint;
-                if (ninsn != nullptr && ninsn->IsMachineInstruction() && ninsn->IsCall()) {
-                    UpdateCallInfo();
-                }
-                continue;
-            }
-
-            ComputeLiveIntervalsForEachDefOperand(*insn);
-            ComputeLiveIntervalsForEachUseOperand(*insn);
-
-            if (ninsn != nullptr && ninsn->IsMachineInstruction() && ninsn->IsCall()) {
-                UpdateCallInfo();
-            }
-
-            currPoint -= 2; /* 2 for distinguish use/def */
-        }
-        for (auto lin : bb->GetLiveInRegNO()) {
-            if (lin >= kAllRegNum) {
-                LiveInterval *li = GetLiveInterval(lin);
-                if (li != nullptr) {
-                    li->AddRange(bb->GetId(), currPoint, currPoint);
-                }
-            }
-        }
-        /* move one more step for each BB */
-        --currPoint;
-    }
-
-    if (REGCOAL_DUMP) {
-        LogInfo::MapleLogger() << "\nAfter ComputeLiveIntervals\n";
-        Dump();
-    }
-}
-
 void AArch64LiveIntervalAnalysis::CheckInterference(LiveInterval &li1, LiveInterval &li2) const
 {
     auto ranges1 = li1.GetRanges();

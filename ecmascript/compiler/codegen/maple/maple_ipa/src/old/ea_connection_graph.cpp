@@ -238,8 +238,7 @@ void EACGObjectNode::DumpDotFile(std::ostream &fout, std::map<EACGBaseNode *, bo
     dumped[this] = true;
 
     std::string name = GetName(nullptr);
-    std::string label;
-    label = GetName(irMap) + " Object\\n";
+    std::string label = GetName(irMap) + " Object\\n";
     std::string color;
     GetNodeFormatInDot(label, color);
     std::string style;
@@ -269,8 +268,7 @@ void EACGRefNode::DumpDotFile(std::ostream &fout, std::map<EACGBaseNode *, bool>
     dumped[this] = true;
 
     std::string name = GetName(nullptr);
-    std::string label;
-    label = GetName(irMap) + " Reference\\n";
+    std::string label = GetName(irMap) + " Reference\\n";
     if (IsStaticRef()) {
         label += "Static\\n";
     }
@@ -335,8 +333,7 @@ void EACGPointerNode::DumpDotFile(std::ostream &fout, std::map<EACGBaseNode *, b
     }
     dumped[this] = true;
     std::string name = GetName(nullptr);
-    std::string label;
-    label = GetName(irMap) + "\\nPointer Indirect Level : " + std::to_string(indirectLevel) + "\\n";
+    std::string label = GetName(irMap) + "\\nPointer Indirect Level : " + std::to_string(indirectLevel) + "\\n";
     std::string color;
     GetNodeFormatInDot(label, color);
     fout << name << " [shape=ellipse, label=\"" << label << "\", fontcolor=" << color << "];"

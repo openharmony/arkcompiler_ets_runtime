@@ -105,6 +105,7 @@ void CGLowerer::RegisterExternalLibraryFunctions()
         beCommon.UpdateTypeTable(*func->GetMIRFuncType());
         func->AllocSymTab();
         MIRSymbol *funcSym = func->GetFuncSymbol();
+        DEBUG_ASSERT(funcSym != nullptr, "nullptr check");
         funcSym->SetStorageClass(kScExtern);
         funcSym->SetAppearsInCode(true);
         /* return type */
@@ -1302,6 +1303,7 @@ bool CGLowerer::LowerStructReturn(BlockNode &newBlk, StmtNode &stmt, bool &lvar)
     }
     DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "CurFunction should not be nullptr");
     MIRSymbol *retSym = mirModule.CurFunction()->GetLocalOrGlobalSymbol(retPair.first);
+    DEBUG_ASSERT(retSym != nullptr, "retSym should not be nullptr");
     if (retSym->GetType()->GetPrimType() != PTY_agg) {
         return false;
     }
@@ -1760,6 +1762,7 @@ MIRType *CGLowerer::GetArrayNodeType(BaseNode &baseNode)
     if (baseNode.GetOpCode() == OP_dread) {
         DreadNode *dreadNode = static_cast<DreadNode *>(&baseNode);
         MIRSymbol *symbol = curFunc->GetLocalOrGlobalSymbol(dreadNode->GetStIdx());
+        DEBUG_ASSERT(symbol != nullptr, "nullptr check");
         baseType = symbol->GetType();
     }
     MIRType *arrayElemType = nullptr;
@@ -2224,6 +2227,7 @@ void CGLowerer::RegisterBuiltIns()
         beCommon.UpdateTypeTable(*func->GetMIRFuncType());
         func->AllocSymTab();
         MIRSymbol *funcSym = func->GetFuncSymbol();
+        DEBUG_ASSERT(funcSym != nullptr, "funcSym should not be nullptr");
         funcSym->SetStorageClass(kScExtern);
         funcSym->SetAppearsInCode(true);
         /* return type */
@@ -2941,6 +2945,7 @@ StmtNode *CGLowerer::LowerIntrinsicRCCall(const IntrinsiccallNode &intrincall)
         /* add funcid into map */
         MIRFunction *fn = mirBuilder->GetOrCreateFunction(intrinDesc->name, TyIdx(PTY_void));
         fn->GetFuncSymbol()->SetAppearsInCode(true);
+        DEBUG_ASSERT(fn != nullptr, "nullptr check");
         beCommon.UpdateTypeTable(*fn->GetMIRFuncType());
         fn->AllocSymTab();
         intrinFuncIDs[intrinDesc] = fn->GetPuidx();
@@ -2970,6 +2975,7 @@ void CGLowerer::LowerArrayStore(const IntrinsiccallNode &intrincall, BlockNode &
 
     if (needCheckStore) {
         MIRFunction *fn = mirBuilder->GetOrCreateFunction("MCC_Reflect_Check_Arraystore", TyIdx(PTY_void));
+        DEBUG_ASSERT(fn->GetFuncSymbol() != nullptr, "fn->GetFuncSymbol() should not be null ptr");
         fn->GetFuncSymbol()->SetAppearsInCode(true);
         beCommon.UpdateTypeTable(*fn->GetMIRFuncType());
         fn->AllocSymTab();
@@ -3031,6 +3037,7 @@ StmtNode *CGLowerer::LowerIntrinsicMplCleanupLocalRefVarsSkip(IntrinsiccallNode 
     DreadNode *refNode = static_cast<DreadNode *>(skipExpr);
     DEBUG_ASSERT(mirFunc != nullptr, "mirFunc should not nullptr");
     MIRSymbol *skipSym = mirFunc->GetLocalOrGlobalSymbol(refNode->GetStIdx());
+    DEBUG_ASSERT(skipSym != nullptr, "skipSym should not be nullptr");
     if (skipSym->GetAttr(ATTR_localrefvar)) {
         mirFunc->InsertMIRSymbol(skipSym);
     }
@@ -3095,6 +3102,7 @@ StmtNode *CGLowerer::LowerSyncEnterSyncExit(StmtNode &stmt)
         CHECK_FATAL(nStmt.Opnd(1)->GetOpCode() == OP_constval, "wrong 2nd arg type for syncenter");
         ConstvalNode *cst = static_cast<ConstvalNode *>(nStmt.GetNopndAt(1));
         MIRIntConst *intConst = safe_cast<MIRIntConst>(cst->GetConstVal());
+        DEBUG_ASSERT(intConst != nullptr, "intConst should not be nullptr");
         switch (intConst->GetExtValue()) {
             case kMCCSyncEnterFast0:
                 id = INTRN_FIRST_SYNC_ENTER;

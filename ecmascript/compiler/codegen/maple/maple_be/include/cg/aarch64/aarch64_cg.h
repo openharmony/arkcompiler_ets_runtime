@@ -74,8 +74,6 @@ public:
 
     bool IsExclusiveFunc(MIRFunction &) override;
 
-    void EmitGCTIBLabel(GCTIBKey *key, const std::string &gcTIBName, std::vector<uint64> &bitmapWords, uint32 rcHeader);
-
     void FindOrCreateRepresentiveSym(std::vector<uint64> &bitmapWords, uint32 rcHeader, const std::string &name);
 
     void CreateRefSymForGlobalPtn(GCTIBPattern &ptn) const;

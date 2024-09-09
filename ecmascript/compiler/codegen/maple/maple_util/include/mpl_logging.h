@@ -140,7 +140,7 @@ public:
 
     ~LogInfo()
     {
-        fclose(outStream);
+        (void)fclose(outStream);
     }
 
     static std::ostream &MapleLogger(LogLevel level = kLlLog);

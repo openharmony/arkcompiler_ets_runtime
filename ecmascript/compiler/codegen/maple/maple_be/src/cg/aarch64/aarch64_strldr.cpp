@@ -518,6 +518,7 @@ void AArch64StoreLoadOpt::MemProp(Insn &insn)
 {
     MemPropInit();
     MemOperand *currMemOpnd = static_cast<MemOperand *>(insn.GetMemOpnd());
+    DEBUG_ASSERT(currMemOpnd != nullptr, "nullptr check");
     SelectPropMode(*currMemOpnd);
     bool memReplaced = false;
 

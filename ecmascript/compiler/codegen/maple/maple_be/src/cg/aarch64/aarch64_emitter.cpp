@@ -21,7 +21,6 @@
 #include "cfi.h"
 #include "dbg.h"
 #include "aarch64_obj_emitter.h"
-#include "operand.h"
 
 namespace {
 using namespace maple;
@@ -37,6 +36,7 @@ void AArch64AsmEmitter::EmitFastLSDA(FuncEmitInfo &funcEmitInfo)
     AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
     CG *currCG = cgFunc.GetCG();
 
+    Emitter *emitter = currCG->GetEmitter();
     CHECK_NULL_FATAL(currCG->GetMIRModule()->CurFunction());
     PUIdx pIdx = currCG->GetMIRModule()->CurFunction()->GetPuidx();
     char *idx = strdup(std::to_string(pIdx).c_str());
@@ -45,17 +45,15 @@ void AArch64AsmEmitter::EmitFastLSDA(FuncEmitInfo &funcEmitInfo)
      * .word 0xFFFFFFFF
      * .word .Label.LTest_3B_7C_3Cinit_3E_7C_28_29V3-func_start_label
      */
-    currCG->template Emit<CG::EmitterType::AsmEmitter>([&cgFunc, &aarchCGFunc, idx](Emitter* emitter) {
-        (void)emitter->Emit("\t.word 0xFFFFFFFF\n");
-        (void)emitter->Emit("\t.word .L.").Emit(idx).Emit("__");
-        if (aarchCGFunc.NeedCleanup()) {
-            emitter->Emit(cgFunc.GetCleanupLabel()->GetLabelIdx());
-        } else {
-            DEBUG_ASSERT(!cgFunc.GetExitBBsVec().empty(), "exitbbsvec is empty in AArch64AsmEmitter::EmitFastLSDA");
-            emitter->Emit(cgFunc.GetExitBB(0)->GetLabIdx());
-        }
-        emitter->Emit("-.L.").Emit(idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
-    });
+    (void)emitter->Emit("\t.word 0xFFFFFFFF\n");
+    (void)emitter->Emit("\t.word .L.").Emit(idx).Emit("__");
+    if (aarchCGFunc.NeedCleanup()) {
+        emitter->Emit(cgFunc.GetCleanupLabel()->GetLabelIdx());
+    } else {
+        DEBUG_ASSERT(!cgFunc.GetExitBBsVec().empty(), "exitbbsvec is empty in AArch64AsmEmitter::EmitFastLSDA");
+        emitter->Emit(cgFunc.GetExitBB(0)->GetLabIdx());
+    }
+    emitter->Emit("-.L.").Emit(idx).Emit("__").Emit(cgFunc.GetStartLabel()->GetLabelIdx()).Emit("\n");
     free(idx);
     idx = nullptr;
 }
@@ -66,6 +64,7 @@ void AArch64AsmEmitter::EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std:
     CGFunc &cgFunc = funcEmitInfo.GetCGFunc();
     AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
     CG *currCG = cgFunc.GetCG();
+    Emitter &emitter = *(currCG->GetEmitter());
     LabelOperand &label = aarchCGFunc.GetOrCreateLabelOperand(labIdx);
     /* if label order is default value -1, set new order */
     if (label.GetLabelOrder() == 0xFFFFFFFF) {
@@ -76,25 +75,23 @@ void AArch64AsmEmitter::EmitBBHeaderLabel(FuncEmitInfo &funcEmitInfo, const std:
     PUIdx pIdx = currCG->GetMIRModule()->CurFunction()->GetPuidx();
     char *puIdx = strdup(std::to_string(pIdx).c_str());
     CHECK_FATAL(puIdx != nullptr, "strdup failed");
-    currCG->template Emit<CG::EmitterType::AsmEmitter>([&cgFunc, currCG, puIdx, labIdx, label](Emitter* emitter) {
-        const std::string &labelName = cgFunc.GetFunction().GetLabelTab()->GetName(labIdx);
-        if (currCG->GenerateVerboseCG()) {
-            (void)emitter->Emit(".L.")
-                .Emit(puIdx)
-                .Emit("__")
-                .Emit(labIdx)
-                .Emit(":\t//label order ")
-                .Emit(label.GetLabelOrder());
-            if (!labelName.empty() && labelName.at(0) != '@') {
-                /* If label name has @ as its first char, it is not from MIR */
-                (void)emitter->Emit(", MIR: @").Emit(labelName).Emit("\n");
-            } else {
-                (void)emitter->Emit("\n");
-            }
+    const std::string &labelName = cgFunc.GetFunction().GetLabelTab()->GetName(labIdx);
+    if (currCG->GenerateVerboseCG()) {
+        (void)emitter.Emit(".L.")
+            .Emit(puIdx)
+            .Emit("__")
+            .Emit(labIdx)
+            .Emit(":\t//label order ")
+            .Emit(label.GetLabelOrder());
+        if (!labelName.empty() && labelName.at(0) != '@') {
+            /* If label name has @ as its first char, it is not from MIR */
+            (void)emitter.Emit(", MIR: @").Emit(labelName).Emit("\n");
         } else {
-            (void)emitter->Emit(".L.").Emit(puIdx).Emit("__").Emit(labIdx).Emit(":\n");
+            (void)emitter.Emit("\n");
         }
-    });
+    } else {
+        (void)emitter.Emit(".L.").Emit(puIdx).Emit("__").Emit(labIdx).Emit(":\n");
+    }
     free(puIdx);
     puIdx = nullptr;
 }
@@ -193,154 +190,153 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
     AArch64CGFunc &aarchCGFunc = static_cast<AArch64CGFunc &>(cgFunc);
     CG *currCG = cgFunc.GetCG();
     /* emit header of this function */
-    currCG->Emit([this, &cgFunc, &aarchCGFunc, currCG, &funcEmitInfo](Emitter *emitter) {
-        // insert for  __cxx_global_var_init
-        if (cgFunc.GetName() == "__cxx_global_var_init") {
-            (void)emitter->Emit("\t.section\t.init_array,\"aw\"\n");
-            (void)emitter->Emit("\t.quad\t").Emit(cgFunc.GetName()).Emit("\n");
-        }
-        if (cgFunc.GetFunction().GetAttr(FUNCATTR_initialization)) {
-            (void)emitter->Emit("\t.section\t.init_array,\"aw\"\n");
-            (void)emitter->Emit("\t.quad\t").Emit(cgFunc.GetName()).Emit("\n");
-        }
-        if (cgFunc.GetFunction().GetAttr(FUNCATTR_termination)) {
-            (void)emitter->Emit("\t.section\t.fini_array,\"aw\"\n");
-            (void)emitter->Emit("\t.quad\t").Emit(cgFunc.GetName()).Emit("\n");
-        }
-        (void)emitter->Emit("\n");
-        if (cgFunc.GetFunction().GetAttr(FUNCATTR_section)) {
-            const std::string &sectionName = cgFunc.GetFunction().GetAttrs().GetPrefixSectionName();
-            (void)emitter->Emit("\t.section  " + sectionName).Emit(",\"ax\",@progbits\n");
-        } else if (CGOptions::IsFunctionSections()) {
-            (void)emitter->Emit("\t.section  .text.").Emit(cgFunc.GetName()).Emit(",\"ax\",@progbits\n");
-        } else if (cgFunc.GetFunction().GetAttr(FUNCATTR_constructor_priority)) {
-            (void)emitter->Emit("\t.section\t.text.startup").Emit(",\"ax\",@progbits\n");
-        } else {
-            (void)emitter->Emit("\t.text\n");
-        }
-        if (CGOptions::GetFuncAlignPow() != 0) {
-            (void)emitter->Emit("\t.align ").Emit(CGOptions::GetFuncAlignPow()).Emit("\n");
-        }
-        MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(cgFunc.GetFunction().GetStIdx().Idx());
-        const std::string &funcName = std::string(cgFunc.GetShortFuncName().c_str());
+    Emitter &emitter = *currCG->GetEmitter();
+    // insert for  __cxx_global_var_init
+    if (cgFunc.GetName() == "__cxx_global_var_init") {
+        (void)emitter.Emit("\t.section\t.init_array,\"aw\"\n");
+        (void)emitter.Emit("\t.quad\t").Emit(cgFunc.GetName()).Emit("\n");
+    }
+    if (cgFunc.GetFunction().GetAttr(FUNCATTR_initialization)) {
+        (void)emitter.Emit("\t.section\t.init_array,\"aw\"\n");
+        (void)emitter.Emit("\t.quad\t").Emit(cgFunc.GetName()).Emit("\n");
+    }
+    if (cgFunc.GetFunction().GetAttr(FUNCATTR_termination)) {
+        (void)emitter.Emit("\t.section\t.fini_array,\"aw\"\n");
+        (void)emitter.Emit("\t.quad\t").Emit(cgFunc.GetName()).Emit("\n");
+    }
+    (void)emitter.Emit("\n");
+    if (cgFunc.GetFunction().GetAttr(FUNCATTR_section)) {
+        const std::string &sectionName = cgFunc.GetFunction().GetAttrs().GetPrefixSectionName();
+        (void)emitter.Emit("\t.section  " + sectionName).Emit(",\"ax\",@progbits\n");
+    } else if (CGOptions::IsFunctionSections()) {
+        (void)emitter.Emit("\t.section  .text.").Emit(cgFunc.GetName()).Emit(",\"ax\",@progbits\n");
+    } else if (cgFunc.GetFunction().GetAttr(FUNCATTR_constructor_priority)) {
+        (void)emitter.Emit("\t.section\t.text.startup").Emit(",\"ax\",@progbits\n");
+    } else {
+        (void)emitter.Emit("\t.text\n");
+    }
+    if (CGOptions::GetFuncAlignPow() != 0) {
+        (void)emitter.Emit("\t.align ").Emit(CGOptions::GetFuncAlignPow()).Emit("\n");
+    }
+    MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(cgFunc.GetFunction().GetStIdx().Idx());
+    const std::string &funcName = std::string(cgFunc.GetShortFuncName().c_str());
 
-        CHECK_NULL_FATAL(funcSt);
-        std::string funcStName = funcSt->GetName();
-        if (funcSt->GetFunction()->GetAttr(FUNCATTR_weak)) {
-            (void)emitter->Emit("\t.weak\t" + funcStName + "\n");
-            (void)emitter->Emit("\t.hidden\t" + funcStName + "\n");
-        } else if (funcSt->GetFunction()->GetAttr(FUNCATTR_local)) {
-            (void)emitter->Emit("\t.local\t" + funcStName + "\n");
-        } else if (funcSt->GetFunction() && funcSt->GetFunction()->IsStatic()) {
-            // nothing
-        } else {
-            /* should refer to function attribute */
-            (void)emitter->Emit("\t.globl\t").Emit(funcSt->GetName()).Emit("\n");
-            if (!currCG->GetMIRModule()->IsCModule()) {
-                (void)emitter->Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
-            }
+    CHECK_NULL_FATAL(funcSt);
+    std::string funcStName = funcSt->GetName();
+    if (funcSt->GetFunction()->GetAttr(FUNCATTR_weak)) {
+        (void)emitter.Emit("\t.weak\t" + funcStName + "\n");
+        (void)emitter.Emit("\t.hidden\t" + funcStName + "\n");
+    } else if (funcSt->GetFunction()->GetAttr(FUNCATTR_local)) {
+        (void)emitter.Emit("\t.local\t" + funcStName + "\n");
+    } else if (funcSt->GetFunction() && funcSt->GetFunction()->IsStatic()) {
+        // nothing
+    } else {
+        /* should refer to function attribute */
+        (void)emitter.Emit("\t.globl\t").Emit(funcSt->GetName()).Emit("\n");
+        if (!currCG->GetMIRModule()->IsCModule()) {
+            (void)emitter.Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
         }
-        (void)emitter->Emit("\t.type\t" + funcStName + ", %function\n");
-        (void)emitter->Emit(funcStName + ":\n");
+    }
+    (void)emitter.Emit("\t.type\t" + funcStName + ", %function\n");
+    (void)emitter.Emit(funcStName + ":\n");
 
-        /* if the last  insn is call, then insert nop */
-        bool found = false;
-        FOR_ALL_BB_REV(bb, &aarchCGFunc)
+    /* if the last  insn is call, then insert nop */
+    bool found = false;
+    FOR_ALL_BB_REV(bb, &aarchCGFunc)
+    {
+        FOR_BB_INSNS_REV(insn, bb)
         {
-            FOR_BB_INSNS_REV(insn, bb)
-            {
-                if (insn->IsMachineInstruction()) {
-                    if (insn->IsCall()) {
-                        Insn &newInsn = aarchCGFunc.GetInsnBuilder()->BuildInsn<AArch64CG>(MOP_nop);
-                        bb->InsertInsnAfter(*insn, newInsn);
-                    }
-                    found = true;
-                    break;
+            if (insn->IsMachineInstruction()) {
+                if (insn->IsCall()) {
+                    Insn &newInsn = aarchCGFunc.GetInsnBuilder()->BuildInsn<AArch64CG>(MOP_nop);
+                    bb->InsertInsnAfter(*insn, newInsn);
                 }
-            }
-            if (found) {
+                found = true;
                 break;
             }
         }
+        if (found) {
+            break;
+        }
+    }
 
-        RecordRegInfo(funcEmitInfo);
+    RecordRegInfo(funcEmitInfo);
 
-        /* emit instructions */
-        FOR_ALL_BB(bb, &aarchCGFunc)
+    /* emit instructions */
+    FOR_ALL_BB(bb, &aarchCGFunc)
+    {
+        if (bb->IsUnreachable()) {
+            continue;
+        }
+        if (currCG->GenerateVerboseCG()) {
+            (void)emitter.Emit("#    freq:").Emit(bb->GetFrequency()).Emit("\n");
+        }
+        /* emit bb headers */
+        if (bb->GetLabIdx() != MIRLabelTable::GetDummyLabel()) {
+            if (aarchCGFunc.GetMirModule().IsCModule() && bb->IsBBNeedAlign() &&
+                bb->GetAlignNopNum() != kAlignMovedFlag) {
+                uint32 power = bb->GetAlignPower();
+                (void)emitter.Emit("\t.p2align ").Emit(power).Emit("\n");
+            }
+            EmitBBHeaderLabel(funcEmitInfo, funcName, bb->GetLabIdx());
+        }
+
+        FOR_BB_INSNS(insn, bb)
         {
-            if (bb->IsUnreachable()) {
-                continue;
-            }
-            if (currCG->GenerateVerboseCG()) {
-                (void)emitter->Emit("#    freq:").Emit(bb->GetFrequency()).Emit("\n");
-            }
-            /* emit bb headers */
-            if (bb->GetLabIdx() != MIRLabelTable::GetDummyLabel()) {
-                if (aarchCGFunc.GetMirModule().IsCModule() && bb->IsBBNeedAlign() &&
-                    bb->GetAlignNopNum() != kAlignMovedFlag) {
-                    uint32 power = bb->GetAlignPower();
-                    (void)emitter->Emit("\t.p2align ").Emit(power).Emit("\n");
-                }
-                EmitBBHeaderLabel(funcEmitInfo, funcName, bb->GetLabIdx());
-            }
-
-            FOR_BB_INSNS(insn, bb)
-            {
-                if (insn->IsCfiInsn()) {
-                    EmitAArch64CfiInsn(*emitter, *insn);
-                } else if (insn->IsDbgInsn()) {
-                    EmitAArch64DbgInsn(*emitter, *insn);
-                } else {
-                    EmitAArch64Insn(*emitter, *insn);
-                }
+            if (insn->IsCfiInsn()) {
+                EmitAArch64CfiInsn(emitter, *insn);
+            } else if (insn->IsDbgInsn()) {
+                EmitAArch64DbgInsn(emitter, *insn);
+            } else {
+                EmitAArch64Insn(emitter, *insn);
             }
         }
-        if (CGOptions::IsMapleLinker()) {
-            /* Emit a label for calculating method size */
-            (void)emitter->Emit(".Label.end." + funcStName + ":\n");
-        }
-        (void)emitter->Emit("\t.size\t" + funcStName + ", .-").Emit(funcStName + "\n");
+    }
+    if (CGOptions::IsMapleLinker()) {
+        /* Emit a label for calculating method size */
+        (void)emitter.Emit(".Label.end." + funcStName + ":\n");
+    }
+    (void)emitter.Emit("\t.size\t" + funcStName + ", .-").Emit(funcStName + "\n");
 
-        auto constructorAttr = funcSt->GetFunction()->GetAttrs().GetConstructorPriority();
-        if (constructorAttr != -1) {
-            (void)emitter->Emit("\t.section\t.init_array." + std::to_string(constructorAttr) + ",\"aw\"\n");
-            (void)emitter->Emit("\t.align 3\n");
-            (void)emitter->Emit("\t.xword\t" + funcStName + "\n");
-        }
+    auto constructorAttr = funcSt->GetFunction()->GetAttrs().GetConstructorPriority();
+    if (constructorAttr != -1) {
+        (void)emitter.Emit("\t.section\t.init_array." + std::to_string(constructorAttr) + ",\"aw\"\n");
+        (void)emitter.Emit("\t.align 3\n");
+        (void)emitter.Emit("\t.xword\t" + funcStName + "\n");
+    }
 
-        EmitFunctionSymbolTable(funcEmitInfo);
+    EmitFunctionSymbolTable(funcEmitInfo);
 
-        for (auto &it : cgFunc.GetEmitStVec()) {
-            /* emit switch table only here */
-            MIRSymbol *st = it.second;
-            DEBUG_ASSERT(st->IsReadOnly(), "NYI");
-            (void)emitter->Emit("\n");
-            (void)emitter->Emit("\t.align 3\n");
-            (void)emitter->Emit(st->GetName() + ":\n");
-            MIRAggConst *arrayConst = safe_cast<MIRAggConst>(st->GetKonst());
-            CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
-            PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
-            char *idx = strdup(std::to_string(pIdx).c_str());
-            CHECK_FATAL(arrayConst != nullptr, "null ptr check");
-            for (size_t i = 0; i < arrayConst->GetConstVec().size(); i++) {
-                MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
-                CHECK_FATAL(lblConst != nullptr, "null ptr check");
-                CHECK_FATAL(idx != nullptr, "strdup failed");
-                (void)emitter->Emit("\t.quad\t.L.").Emit(idx).Emit("__").Emit(lblConst->GetValue());
-                (void)emitter->Emit(" - " + st->GetName() + "\n");
-            }
-            free(idx);
-            idx = nullptr;
+    for (auto &it : cgFunc.GetEmitStVec()) {
+        /* emit switch table only here */
+        MIRSymbol *st = it.second;
+        DEBUG_ASSERT(st->IsReadOnly(), "NYI");
+        (void)emitter.Emit("\n");
+        (void)emitter.Emit("\t.align 3\n");
+        (void)emitter.Emit(st->GetName() + ":\n");
+        MIRAggConst *arrayConst = safe_cast<MIRAggConst>(st->GetKonst());
+        CHECK_FATAL(arrayConst != nullptr, "null ptr check");
+        PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
+        char *idx = strdup(std::to_string(pIdx).c_str());
+        CHECK_FATAL(idx != nullptr, "strdup failed");
+        for (size_t i = 0; i < arrayConst->GetConstVec().size(); i++) {
+            MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
+            CHECK_FATAL(lblConst != nullptr, "null ptr check");
+            CHECK_FATAL(idx != nullptr, "strdup failed");
+            (void)emitter.Emit("\t.quad\t.L.").Emit(idx).Emit("__").Emit(lblConst->GetValue());
+            (void)emitter.Emit(" - " + st->GetName() + "\n");
         }
+        free(idx);
+        idx = nullptr;
+    }
 
-        for (const auto &mpPair : cgFunc.GetLabelAndValueMap()) {
-            LabelOperand &labelOpnd = aarchCGFunc.GetOrCreateLabelOperand(mpPair.first);
-            A64OpndEmitVisitor visitor(*emitter, nullptr);
-            labelOpnd.Accept(visitor);
-            (void)emitter->Emit(":\n");
-            (void)emitter->Emit("\t.quad ").Emit(static_cast<int64>(mpPair.second)).Emit("\n");
-        }
-    });
+    for (const auto &mpPair : cgFunc.GetLabelAndValueMap()) {
+        LabelOperand &labelOpnd = aarchCGFunc.GetOrCreateLabelOperand(mpPair.first);
+        A64OpndEmitVisitor visitor(emitter, nullptr);
+        labelOpnd.Accept(visitor);
+        (void)emitter.Emit(":\n");
+        (void)emitter.Emit("\t.quad ").Emit(static_cast<int64>(mpPair.second)).Emit("\n");
+    }
 }
 
 void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) const
@@ -367,6 +363,10 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
         }
         case MOP_asm: {
             EmitInlineAsm(emitter, insn);
+            return;
+        }
+        case MOP_clinit_tail: {
+            EmitClinitTail(emitter, insn);
             return;
         }
         case MOP_lazy_ldr: {
@@ -662,6 +662,31 @@ void AArch64AsmEmitter::EmitInlineAsm(Emitter &emitter, const Insn &insn) const
     (void)emitter.Emit("\n\t//Inline asm end\n");
 }
 
+void AArch64AsmEmitter::EmitClinitTail(Emitter &emitter, const Insn &insn) const
+{
+    /*
+     * ldr x17, [xs, #112]
+     * ldr wzr, [x17]
+     */
+    const InsnDesc *md = &AArch64CG::kMd[MOP_clinit_tail];
+
+    Operand *opnd0 = &insn.GetOperand(kInsnFirstOpnd);
+
+    const OpndDesc *prop0 = md->opndMD[0];
+    A64OpndEmitVisitor visitor(emitter, prop0);
+
+    /* emit "ldr  x17,[xs#112]" */
+    (void)emitter.Emit("\t").Emit("ldr").Emit("\tx17, [");
+    opnd0->Accept(visitor);
+    (void)emitter.Emit(", #");
+    (void)emitter.Emit(static_cast<uint32>(ClassMetadata::OffsetOfInitState()));
+    (void)emitter.Emit("]");
+    (void)emitter.Emit("\n");
+    
+    /* emit "ldr  xzr, [x17]" */
+    (void)emitter.Emit("\t").Emit("ldr\txzr, [x17]\n");
+}
+
 void AArch64AsmEmitter::EmitLazyLoad(Emitter &emitter, const Insn &insn) const
 {
     /*
@@ -764,10 +789,9 @@ void AArch64AsmEmitter::EmitAdrpLabel(Emitter &emitter, const Insn &insn) const
     (void)emitter.Emit("\t").Emit("adrp").Emit("\t");
     opnd0->Accept(visitor);
     (void)emitter.Emit(", ");
-    char *idx;
     CHECK_NULL_FATAL(Globals::GetInstance()->GetBECommon()->GetMIRModule().CurFunction());
-    idx =
-        strdup(std::to_string(Globals::GetInstance()->GetBECommon()->GetMIRModule().CurFunction()->GetPuidx()).c_str());
+    char *idx = strdup(std::to_string(
+        Globals::GetInstance()->GetBECommon()->GetMIRModule().CurFunction()->GetPuidx()).c_str());
     CHECK_FATAL(idx != nullptr, "strdup failed");
     (void)emitter.Emit(".L.").Emit(idx).Emit("__").Emit(lidx).Emit("\n");
 

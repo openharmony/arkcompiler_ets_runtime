@@ -318,6 +318,7 @@ void A64OpndSSAUpdateVsitor::Visit(ListOperand *v)
 void A64OpndSSAUpdateVsitor::UpdateRegUse(uint32 ssaIdx)
 {
     VRegVersion *curVersion = ssaInfo->FindSSAVersion(ssaIdx);
+    DEBUG_ASSERT(curVersion != nullptr, "curVersion should not be nullptr");
     if (isDecrease) {
         curVersion->RemoveUseInsn(*insn, idx);
     } else {
@@ -330,6 +331,7 @@ void A64OpndSSAUpdateVsitor::UpdateRegDef(uint32 ssaIdx)
     VRegVersion *curVersion = ssaInfo->FindSSAVersion(ssaIdx);
     if (isDecrease) {
         deletedDef.emplace(ssaIdx);
+        DEBUG_ASSERT(curVersion != nullptr, "nullptr check");
         curVersion->MarkDeleted();
     } else {
         if (deletedDef.count(ssaIdx)) {

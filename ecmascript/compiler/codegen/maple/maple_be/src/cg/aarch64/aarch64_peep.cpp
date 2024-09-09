@@ -585,8 +585,11 @@ bool LdrCmpPattern::SetInsns()
         return false;
     }
     prevCmp = bne2->GetPreviousMachineInsn();
+    if (prevCmp == nullptr) {
+        return false;
+    }
     prevLdr2 = prevCmp->GetPreviousMachineInsn();
-    if (prevCmp == nullptr || prevLdr2 == nullptr) {
+    if (prevLdr2 == nullptr) {
         return false;
     }
     if (!IsLdr(prevCmp->GetPreviousMachineInsn())) {
@@ -1211,7 +1214,7 @@ void CsetToCincPattern::Run(BB &bb, Insn &insn)
         return;
     }
 
-    MOperator newMop = (insn.GetMachineOpcode() == MOP_waddrrr) ? MOP_wcincrc : MOP_xcincrc;
+    MOperator newMop = MOP_undef;
     int32 cincOpnd2 = (csetOpnd1 == kInsnSecondOpnd) ? kInsnThirdOpnd : kInsnSecondOpnd;
     RegOperand &opnd2 = static_cast<RegOperand &>(insn.GetOperand(static_cast<uint32>(cincOpnd2)));
     Operand &condOpnd = defInsn->GetOperand(kInsnSecondOpnd);
@@ -3624,7 +3627,7 @@ ImmOperand *EnhanceStrLdrAArch64::GetInsnAddOrSubNewOffset(Insn &insn, ImmOperan
     } else {
         auto &immOpnd = static_cast<ImmOperand &>(insn.GetOperand(kInsnThirdOpnd));
         auto &shiftOpnd = static_cast<BitShiftOperand &>(insn.GetOperand(kInsnFourthOpnd));
-        CHECK_FATAL(shiftOpnd.GetShiftAmount() == 12, "invalid shiftAmount");
+        CHECK_FATAL(shiftOpnd.GetShiftAmount() == 12, "invalid shiftAmount"); // ShiftAmount must be 12
         val = (immOpnd.GetValue() << shiftOpnd.GetShiftAmount());
     }
 
@@ -6979,6 +6982,7 @@ bool LdrStrRevPattern::CheckCondition(Insn &insn)
         if (!RegOperand::IsSameReg(lsrDst, adjacentSrc) || !RegOperand::IsSameReg(lsrSrc, currSrc)) {
             return false;
         }
+        DEBUG_ASSERT(adjacentMemOpnd != nullptr, "nullptr check");
         if (!IsAdjacentMem(*adjacentMemOpnd, *curMemOpnd)) {
             return false;
         }
@@ -7226,6 +7230,7 @@ void ComplexMemOperandPreAddAArch64::Run(BB &bb, Insn &insn)
             return;
         }
         auto &newIndexOpnd = static_cast<RegOperand &>(insn.GetOperand(kInsnThirdOpnd));
+        DEBUG_ASSERT(memOpnd != nullptr, "memOpnd should not be nullptr");
         if (newIndexOpnd.GetSize() <= k32BitSize) {
             MemOperand &newMemOpnd = aarch64CGFunc->GetOrCreateMemOpnd(MemOperand::kAddrModeBOrX, memOpnd->GetSize(),
                                                                        &newBaseOpnd, &newIndexOpnd, 0, false);

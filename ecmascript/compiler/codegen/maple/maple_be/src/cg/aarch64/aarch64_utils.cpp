@@ -31,7 +31,6 @@ MemOperand *GetOrCreateMemOperandForNewMOP(CGFunc &cgFunc, const Insn &loadIns, 
 
     uint32 memSize = AArch64CG::kMd[loadMop].GetOperandSize();
     uint32 newMemSize = AArch64CG::kMd[newLoadMop].GetOperandSize();
-
     if (newMemSize == memSize) {
         // if sizes are the same just return old memory operand
         return newMemOp;
