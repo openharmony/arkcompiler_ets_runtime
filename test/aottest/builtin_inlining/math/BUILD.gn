@@ -45,6 +45,8 @@ group("ark_aot_builtin_inlining_math_test") {
     "Round",
     "Fround",
     "Imul",
+    "Ceil",
+    "Floor",
   ]
 
   deps = []
