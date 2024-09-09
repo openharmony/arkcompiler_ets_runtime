@@ -1601,6 +1601,12 @@ inline GateRef StubBuilder::IsJSAPIArrayList(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST)));
 }
 
+inline GateRef StubBuilder::IsJSCollator(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_COLLATOR)));
+}
+
 inline GateRef StubBuilder::IsJSObjectType(GateRef obj, JSType jsType)
 {
     auto env = GetEnvironment();

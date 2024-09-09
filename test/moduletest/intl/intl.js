@@ -57,3 +57,12 @@ try {
         print(o instanceof c);
     }
 }
+
+{
+    try {
+        const proto = this.Intl.Collator.prototype;
+        proto.resolvedOptions();
+    } catch (err) {
+        print(err instanceof TypeError);
+    }
+}

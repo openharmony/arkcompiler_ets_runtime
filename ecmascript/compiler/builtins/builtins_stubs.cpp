@@ -27,6 +27,7 @@
 #include "ecmascript/compiler/builtins/builtins_typedarray_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_vector_stub_builder.h"
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_collator_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_collection_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_object_stub_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_ir_builder.h"

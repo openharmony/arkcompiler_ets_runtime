@@ -3465,7 +3465,8 @@ void Builtins::InitializeCollator(const JSHandle<GlobalEnv> &env)
     SetAccessor(collatorPrototype, thread_->GlobalConstants()->GetHandledCompareString(), compareGetter, compareSetter);
 
     // 11.3.4 Intl.Collator.prototype.resolvedOptions ()
-    SetFunction(env, collatorPrototype, "resolvedOptions", Collator::ResolvedOptions, FunctionLength::ZERO);
+    SetFunction(env, collatorPrototype, "resolvedOptions", Collator::ResolvedOptions, FunctionLength::ZERO,
+                kungfu::BuiltinsStubCSigns::CollatorResolvedOptions);
 }
 
 void Builtins::InitializePluralRules(const JSHandle<GlobalEnv> &env)
