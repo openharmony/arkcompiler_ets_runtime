@@ -20,5 +20,6 @@ host_aot_test_action("pgo_call") {
   is_enable_opt_inlining = true
   is_enable_inline_trace = true
   is_enable_trace_deopt = true
+  disable_opt_loop_peeling = true
   log_option = " --log-info=trace"
 }
