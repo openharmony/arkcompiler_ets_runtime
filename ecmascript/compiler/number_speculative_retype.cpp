@@ -1613,9 +1613,14 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
     TypeInfo inputInfo = GetOutputTypeInfo(input);
     TypeConvertAccessor accessor(acc_.TryGetValue(gate));
     ParamType paramType = accessor.GetLeftType();
+    bool optForConstant = acc_.IsConstantNumber(input) || acc_.GetOpCode(input) == OpCode::TYPE_CONVERT;
     if (IsRetype()) {
-        if (inputInfo == TypeInfo::TAGGED || inputInfo == TypeInfo::CHAR) {
-            if (acc_.IsConstantNumber(input)) {
+        if (inputInfo == TypeInfo::CHAR) {
+            ASSERT(paramType.HasNumberType());
+            return SetOutputType(gate, paramType);
+        }
+        if (inputInfo == TypeInfo::TAGGED) {
+            if (optForConstant) {
                 TypeInfo oldType = GetOutputTypeInfo(gate);
                 acc_.SetGateType(gate, acc_.GetGateType(input));
                 SetOutputTypeInfo(gate, inputInfo);
@@ -1631,7 +1636,7 @@ GateRef NumberSpeculativeRetype::VisitTypeConvert(GateRef gate)
     ASSERT(IsConvert());
     ASSERT(inputInfo != TypeInfo::INT1 && inputInfo != TypeInfo::NONE);
     Environment env(gate, circuit_, &builder_);
-    if ((inputInfo == TypeInfo::TAGGED && !acc_.IsConstantNumber(input)) || inputInfo == TypeInfo::CHAR) {
+    if ((inputInfo == TypeInfo::TAGGED && !optForConstant) || inputInfo == TypeInfo::CHAR) {
         ASSERT(paramType.HasNumberType());
         if (paramType.IsIntType()) {
             input = CheckAndConvertToInt32(input, GateType::IntType());
