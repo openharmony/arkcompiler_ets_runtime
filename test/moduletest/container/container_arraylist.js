@@ -281,7 +281,17 @@ if (globalThis["ArkPrivate"] != undefined) {
     myAl.add(3);
     myAl.insert(30, Math.floor(1.3));
     myAl.removeByIndex(Math.floor(1.3));
-
+    const v3 = new arrayList();
+    const v4 = [arrayList,arrayList];
+    class C4{
+    ["100"] = v4
+    }
+    const v5 = new C4();
+    try {
+        Object.assign(v3,v5)  
+    } catch (error) {
+        print(error)
+    }
     if (!flag) {
         print("Test ArrayList success!!!");
     } else {
