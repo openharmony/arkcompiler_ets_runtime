@@ -28,8 +28,8 @@
 #if defined(ENABLE_UNWINDER) && defined(__aarch64__)
 #if defined(__clang__)
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wshadow"
 #pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wshadow"
 #endif
 #include "fp_unwinder.h"
 #if defined(__clang__)
