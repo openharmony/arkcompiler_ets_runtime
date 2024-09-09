@@ -74,6 +74,12 @@ regresstest/ark-regress/mjsunit/regress/short-circuit.js
 regresstest/ark-regress/mjsunit/string-indexof-1.js
 regresstest/ark-regress/mjsunit/substr.js
 # --- end of Issue #17827
+
+# Issue #19210 
+regresstest/ark-regress/mjsunit/indexed-value-properties.js
+regresstest/ark-regress/mjsunit/regress/regress-crbug-772610.js
+regresstest/ark-regress/mjsunit/asm/float32array-negative-offset.js 
+
 # Compilation error: Issue #18551
 regresstest/ark-regress/mjsunit/fixed-context-shapes-when-recompiling.js
 regresstest/ark-regress/mjsunit/compiler/minus-zero.js

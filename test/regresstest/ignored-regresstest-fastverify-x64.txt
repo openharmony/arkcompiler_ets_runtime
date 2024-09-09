@@ -68,6 +68,9 @@ regresstest/ark-regress/mjsunit/string-indexof-1.js
 regresstest/ark-regress/mjsunit/substr.js
 # --- end of Issue #17827
 
+# Issue #19330 	
+regresstest/ark-regress/mjsunit/es6/proxies-keys.js
+
 # Issue #18773
 regresstest/ark-regress/intl/locale/property.js
 regresstest/ark-regress/mjsunit/smi-ops-inlined.js
