@@ -124,9 +124,9 @@ uint8_t *CodeInfo::CodeSpace::Alloca(uintptr_t size, bool isReq, size_t alignSiz
     auto &curPos = isReq ? reqBufPos_ : unreqBufPos_;
     size_t limit = isReq ? REQUIRED_SECS_LIMIT : UNREQUIRED_SECS_LIMIT;
     if (curPos + size > limit) {
-        LOG_COMPILER(FATAL) << std::hex << "Alloca Section failed. Current curPos:" << curPos
+        LOG_COMPILER(ERROR) << std::hex << "Alloca Section failed. Current curPos:" << curPos
                             << " plus size:" << size << "exceed limit:" << limit;
-        return nullptr;
+        exit(-1);
     }
     if (alignSize > 0) {
         curPos = AlignUp(curPos, alignSize);
