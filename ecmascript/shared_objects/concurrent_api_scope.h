@@ -31,8 +31,8 @@ enum class ModType : uint8_t {
 template<typename Container, ModType modType = ModType::READ>
 class ConcurrentApiScope final {
 public:
-    ConcurrentApiScope(JSThread *thread, const JSHandle<JSTaggedValue> &objHandle, SCheckMode mode = SCheckMode::CHECK)
-        : thread_(thread), objHandle_(objHandle), checkMode_(mode)
+    ConcurrentApiScope(JSThread *thread, const TaggedObject *obj, SCheckMode mode = SCheckMode::CHECK)
+        : thread_(thread), obj_(obj), checkMode_(mode)
     {
         if (checkMode_ == SCheckMode::SKIP) {
             return;
@@ -64,8 +64,7 @@ private:
     inline uint32_t GetModRecord()
     {
         return reinterpret_cast<volatile std::atomic<uint32_t> *>(
-            ToUintPtr(objHandle_->GetTaggedObject()) +
-            Container::MOD_RECORD_OFFSET)->load(std::memory_order_acquire);
+            ToUintPtr(obj_) + Container::MOD_RECORD_OFFSET)->load(std::memory_order_acquire);
     }
 
     inline void CanWrite()
@@ -73,8 +72,8 @@ private:
         // Set to ModType::WRITE, expect no writer and readers
         constexpr uint32_t expectedModRecord = 0;
         constexpr uint32_t desiredModRecord = WRITE_MOD_MASK;
-        uint32_t ret = Barriers::AtomicSetPrimitive(objHandle_->GetTaggedObject(),
-            Container::MOD_RECORD_OFFSET, expectedModRecord, desiredModRecord);
+        uint32_t ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
+            expectedModRecord, desiredModRecord);
         if (ret != expectedModRecord) {
             auto error = containers::ContainerError::BusinessError(
                 thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
@@ -86,8 +85,8 @@ private:
     {
         constexpr uint32_t expectedModRecord = WRITE_MOD_MASK;
         constexpr uint32_t desiredModRecord = 0u;
-        uint32_t ret = Barriers::AtomicSetPrimitive(objHandle_->GetTaggedObject(),
-            Container::MOD_RECORD_OFFSET, expectedModRecord, desiredModRecord);
+        uint32_t ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
+            expectedModRecord, desiredModRecord);
         if (ret != expectedModRecord) {
             auto error = containers::ContainerError::BusinessError(
                 thread_, containers::ErrorFlag::CONCURRENT_MODIFICATION_ERROR, "Concurrent modification exception");
@@ -107,8 +106,8 @@ private:
             }
             // Increase readers by 1
             desiredModRecord_ = expectModRecord_ + 1;
-            auto ret = Barriers::AtomicSetPrimitive(objHandle_->GetTaggedObject(),
-                Container::MOD_RECORD_OFFSET, expectModRecord_, desiredModRecord_);
+            auto ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
+                expectModRecord_, desiredModRecord_);
             if (ret == expectModRecord_) {
                 break;
             }
@@ -119,8 +118,8 @@ private:
     {
         std::swap(expectModRecord_, desiredModRecord_);
         while (true) {
-            auto ret = Barriers::AtomicSetPrimitive(objHandle_->GetTaggedObject(),
-                Container::MOD_RECORD_OFFSET, expectModRecord_, desiredModRecord_);
+            auto ret = Barriers::AtomicSetPrimitive(const_cast<TaggedObject *>(obj_), Container::MOD_RECORD_OFFSET,
+                expectModRecord_, desiredModRecord_);
             if (ret == expectModRecord_) {
                 break;
             }
@@ -137,7 +136,7 @@ private:
     }
 
     JSThread *thread_ {nullptr};
-    JSHandle<JSTaggedValue> objHandle_;
+    const TaggedObject *obj_ {nullptr};
     SCheckMode checkMode_ { SCheckMode::CHECK };
     // For readers
     uint32_t expectModRecord_ {0};

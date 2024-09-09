@@ -25,6 +25,7 @@
 #include "ecmascript/mem/tlab_allocator-inl.h"
 
 namespace panda::ecmascript {
+constexpr size_t HEAD_SIZE = TaggedObject::TaggedObjectSize();
 
 template <typename Callback>
 ARK_INLINE bool NonMovableMarker::VisitBodyInObj(TaggedObject *root, ObjectSlot start, ObjectSlot end,

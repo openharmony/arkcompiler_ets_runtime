@@ -48,11 +48,13 @@ JSTaggedValue JSSharedArrayIterator::Next(EcmaRuntimeCallInfo *argv)
     JSHandle<JSSharedArrayIterator> iter(thisObj);
     JSHandle<JSTaggedValue> array(thread, iter->GetIteratedArray());
     if (array->IsJSSharedArray()) {
-        [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, array);
+        JSHandle<JSSharedArray> iteratedArray(thread, iter->GetIteratedArray());
+        [[maybe_unused]] ConcurrentApiScope<JSSharedArray> scope(thread, *iteratedArray);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         return NextInternal(thread, iter, array);
     } else if (array->IsSharedTypedArray())  {
-        [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, array);
+        JSHandle<JSSharedTypedArray> iteratedArray(thread, iter->GetIteratedArray());
+        [[maybe_unused]] ConcurrentApiScope<JSSharedTypedArray> scope(thread, *iteratedArray);
         RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         return NextInternal(thread, iter, array);
     }

@@ -21,7 +21,6 @@
 #include "ecmascript/common.h"
 #include "ecmascript/taskpool/runner.h"
 #include "ecmascript/platform/mutex.h"
-#include "ecmascript/daemon/daemon_thread.h"
 
 namespace panda::ecmascript {
 class PUBLIC_API Taskpool {
@@ -62,13 +61,6 @@ public:
     bool IsInThreadPool(std::thread::id id) const
     {
         return runner_->IsInThreadPool(id);
-    }
-
-    bool IsDaemonThreadOrInThreadPool(std::thread::id id) const
-    {
-        DaemonThread *dThread = DaemonThread::GetInstance();
-        return IsInThreadPool(id) || (dThread != nullptr
-            && dThread->GetThreadId() == JSThread::GetCurrentThreadId());
     }
 
     void SetThreadPriority(PriorityMode mode)

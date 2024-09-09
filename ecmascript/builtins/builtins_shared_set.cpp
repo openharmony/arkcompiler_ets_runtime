@@ -173,9 +173,9 @@ JSTaggedValue BuiltinsSharedSet::Has(EcmaRuntimeCallInfo *argv)
                                                                "The has method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSHandle<JSSharedSet> set(self);
+    JSSharedSet* jsSet = JSSharedSet::Cast(self.GetTaggedValue().GetTaggedObject());
     JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
-    bool flag = JSSharedSet::Has(thread, set, value.GetTaggedValue());
+    bool flag = jsSet->Has(thread, value.GetTaggedValue());
     return GetTaggedBoolean(flag);
 }
 
@@ -190,7 +190,7 @@ JSTaggedValue BuiltinsSharedSet::ForEach(EcmaRuntimeCallInfo *argv)
                                                                "The forEach method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, self);
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, self.GetTaggedValue().GetTaggedObject());
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
 
     JSHandle<JSSharedSet> set(self);
@@ -234,8 +234,8 @@ JSTaggedValue BuiltinsSharedSet::GetSize(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSSharedSet()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedSet", JSTaggedValue::Exception());
     }
-    JSHandle<JSSharedSet> set(self);
-    uint32_t size = JSSharedSet::GetSize(thread, set);
+    JSSharedSet* jsSet = JSSharedSet::Cast(self.GetTaggedValue().GetTaggedObject());
+    uint32_t size = jsSet->GetSize(thread);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue(0));
     return JSTaggedValue(size);
 }

@@ -488,7 +488,7 @@ void EcmaVM::CheckThread() const
     if (thread_ == nullptr) {
         LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
     }
-    if (!Taskpool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool(std::this_thread::get_id()) &&
+    if (!Taskpool::GetCurrentTaskpool()->IsInThreadPool(std::this_thread::get_id()) &&
         thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()
@@ -649,9 +649,6 @@ void EcmaVM::ProcessSharedNativeDelete(const WeakRootVisitor &visitor)
                 std::make_pair(object->GetDeleter(), std::make_pair(object->GetExternalPointer(), object->GetData())));
             sharedIter = sharedNativePointerList_.erase(sharedIter);
         } else {
-            if (fwd != reinterpret_cast<TaggedObject *>(object)) {
-                *sharedIter = reinterpret_cast<JSNativePointer *>(fwd);
-            }
             ++sharedIter;
         }
     }
@@ -659,6 +656,9 @@ void EcmaVM::ProcessSharedNativeDelete(const WeakRootVisitor &visitor)
 
 void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
 {
+    if (thread_->GetCurrentEcmaContext()->GetRegExpParserCache() != nullptr) {
+        thread_->GetCurrentEcmaContext()->GetRegExpParserCache()->Clear();
+    }
     // process native ref should be limited to OldGC or FullGC only
     if (!heap_->IsGeneralYoungGC()) {
         heap_->ResetNativeBindingSize();
