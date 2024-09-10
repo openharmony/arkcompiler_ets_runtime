@@ -68,6 +68,9 @@ regresstest/ark-regress/mjsunit/string-indexof-1.js
 regresstest/ark-regress/mjsunit/substr.js
 # --- end of Issue #17827
 
+# Issue #19523
+regresstest/ark-regress/intl/segmenter/getoptionsobject.js
+
 # Issue #19330 	
 regresstest/ark-regress/mjsunit/es6/proxies-keys.js
 
@@ -79,6 +82,11 @@ regresstest/ark-regress/mjsunit/compiler/fast-api-helpers.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-594955.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-605862.js
 regresstest/ark-regress/mjsunit/harmony/regress/regress-771470.js
+
+# Issue #19479
+regresstest/ark-regress/mjsunit/regress/regress-crbug-944435.js
+regresstest/ark-regress/mjsunit/regress/regress-361025.js
+regresstest/ark-regress/mjsunit/compiler/for-stmt.js
 
 # Issue #19465
 regresstest/ark-regress/mjsunit/es6/typedarray-indexing.js
