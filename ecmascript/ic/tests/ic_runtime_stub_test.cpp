@@ -20,6 +20,7 @@
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/js_object.h"
+#include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_operator.h"
 #include "ecmascript/tests/test_helper.h"
