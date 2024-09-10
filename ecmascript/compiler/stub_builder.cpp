@@ -948,7 +948,8 @@ GateRef StubBuilder::FindEntryFromTransitionDictionary(GateRef glue, GateRef ele
                     {
                         Label isMatch(env);
                         Label notMatch(env);
-                        BRANCH(IsMatchInTransitionDictionary(element, key, metaData,
+                        BRANCH(
+                            IsMatchInTransitionDictionary(element, key, metaData,
                             // metaData is int32 type
                             TruncInt64ToInt32(GetAttributesFromDictionary<TransitionsDictionary>(elements, *entry))),
                             &isMatch, &notMatch);
@@ -4312,8 +4313,8 @@ GateRef StubBuilder::SetPropertyByIndex(GateRef glue, GateRef receiver, GateRef 
     {
         Label success(env);
         Label failed(env);
-        BRANCH(AddElementInternal(glue, receiver, index, value, Int64(PropertyAttributes::GetDefaultAttributes())),
-               &success, &failed);
+        BRANCH(AddElementInternal(glue, receiver, index, value,
+            Int64(PropertyAttributes::GetDefaultAttributes())), &success, &failed);
         Bind(&success);
         {
             returnValue = Undefined();
