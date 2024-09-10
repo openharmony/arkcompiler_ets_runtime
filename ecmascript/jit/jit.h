@@ -229,7 +229,7 @@ public:
     };
 
 private:
-    bool SupportJIT(JSHandle<JSFunction> &jsFunction, CompilerTier tier) const;
+    bool SupportJIT(JSHandle<JSFunction> &jsFunction, EcmaVM *vm, CompilerTier tier) const;
     bool initialized_ { false };
     bool fastJitEnable_ { false };
     bool baselineJitEnable_ { false };
