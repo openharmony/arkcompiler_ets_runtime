@@ -4878,7 +4878,7 @@ bool JSNApi::ExecuteForAbsolutePath(const EcmaVM *vm, const std::string &fileNam
     if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbsolutePathAbcFile(
         thread, fileName.c_str(), entry, needUpdate, executeFromJob)) {
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(thread);
+            ecmascript::JsStackInfo::BuildCrashInfo(true);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
         }
         LOG_ECMA(ERROR) << "Cannot execute absolute path ark file '" << fileName
