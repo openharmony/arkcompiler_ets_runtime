@@ -175,7 +175,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define INTERPRETER_RETURN_IF_ABRUPT(result)      \
     do {                                          \
-        if (result.IsException()) {               \
+        if ((result).IsException()) {               \
             INTERPRETER_GOTO_EXCEPTION_HANDLER(); \
         }                                         \
     } while (false)
@@ -560,9 +560,9 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define READ_INST_8_8() READ_INST_8(9)              // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
 #define READ_INST_8_9() READ_INST_8(10)             // NOLINT(hicpp-signed-bitwise, cppcoreguidelines-macro-usage)
 #define READ_INST_8(offset) (*(pc + (offset)))
-#define MOVE_AND_READ_INST_8(currentInst, offset) \
-    currentInst <<= 8;                            \
-    currentInst += READ_INST_8(offset);           \
+#define MOVE_AND_READ_INST_8(currentInst, offset)   \
+    (currentInst) <<= 8;                            \
+    (currentInst) += READ_INST_8(offset);           \
 
 #define READ_INST_16_0() READ_INST_16(2)
 #define READ_INST_16_1() READ_INST_16(3)
@@ -575,7 +575,7 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define READ_INST_16(offset)                          \
     ({                                                \
         uint16_t currentInst = READ_INST_8(offset);   \
-        MOVE_AND_READ_INST_8(currentInst, offset - 1) \
+        MOVE_AND_READ_INST_8(currentInst, (offset) - 1) \
     })
 
 #define READ_INST_32_0() READ_INST_32(4)
@@ -584,9 +584,9 @@ using CommonStubCSigns = kungfu::CommonStubCSigns;
 #define READ_INST_32(offset)                          \
     ({                                                \
         uint32_t currentInst = READ_INST_8(offset);   \
-        MOVE_AND_READ_INST_8(currentInst, offset - 1) \
-        MOVE_AND_READ_INST_8(currentInst, offset - 2) \
-        MOVE_AND_READ_INST_8(currentInst, offset - 3) \
+        MOVE_AND_READ_INST_8(currentInst, (offset) - 1) \
+        MOVE_AND_READ_INST_8(currentInst, (offset) - 2) \
+        MOVE_AND_READ_INST_8(currentInst, (offset) - 3) \
     })
 
 #define READ_INST_64_0()                       \
@@ -4035,7 +4035,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t firstArgRegIdx = READ_INST_8_2();
         LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
             methodHandle.Update(ctorFunc->GetMethod());
@@ -4171,7 +4170,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t firstArgRegIdx = READ_INST_8_3();
         LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
             methodHandle.Update(ctorFunc->GetMethod());
@@ -4308,7 +4306,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         uint16_t firstArgRegIdx = READ_INST_8_3();
         LOG_INST() << "intrinsics::newobjRange " << numArgs << " v" << firstArgRegIdx;
         JSTaggedValue ctor = GET_VREG_VALUE(firstArgRegIdx);
-
         if (ctor.IsJSFunction() && ctor.IsConstructor()) {
             JSFunction *ctorFunc = JSFunction::Cast(ctor.GetTaggedObject());
             methodHandle.Update(ctorFunc->GetMethod());
@@ -5176,7 +5173,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::resumegenerator";
         uint16_t vs = READ_INST_8_1();
         JSTaggedValue objVal = GET_VREG_VALUE(vs);
-
         if (objVal.IsAsyncGeneratorObject()) {
             JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
             SET_ACC(obj->GetResumeResult());
@@ -5203,7 +5199,6 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
         LOG_INST() << "intrinsics::getresumemode";
         uint16_t vs = READ_INST_8_1();
         JSTaggedValue objVal = GET_VREG_VALUE(vs);
-
         if (objVal.IsAsyncGeneratorObject()) {
             JSAsyncGeneratorObject *obj = JSAsyncGeneratorObject::Cast(objVal.GetTaggedObject());
             SET_ACC(JSTaggedValue(static_cast<int>(obj->GetResumeMode())));
@@ -5814,9 +5809,9 @@ NO_UB_SANITIZE void EcmaInterpreter::RunInternal(JSThread *thread, const uint8_t
     HANDLE_OPCODE(STOWNBYINDEX_IMM8_V8_IMM16) {
         uint8_t v0 = READ_INST_8_1();
         uint16_t index = READ_INST_16_2();
-        JSTaggedValue receiver = GET_VREG_VALUE(v0);
         LOG_INST() << "intrinsics::stownbyindex"
                    << " v" << v0 << " imm" << index;
+        JSTaggedValue receiver = GET_VREG_VALUE(v0);
 #if ECMASCRIPT_ENABLE_IC
         auto profileTypeInfo = GetRuntimeProfileTypeInfo(sp);
         if (!profileTypeInfo.IsUndefined()) {
