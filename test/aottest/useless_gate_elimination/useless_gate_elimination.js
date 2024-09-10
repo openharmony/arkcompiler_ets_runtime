@@ -21,3 +21,21 @@ for (i = 0; i < 10000; i++) {
         cnt = cnt + i + j;
     }
 }
+
+class C3 {}
+
+let v4 = new C3()
+
+class C27 {
+    static #a;
+    constructor() {
+        try{
+            this.#a
+        } catch(e) {
+            v4.a = 1
+        }
+    }
+}
+
+new C27()
+new C27()
