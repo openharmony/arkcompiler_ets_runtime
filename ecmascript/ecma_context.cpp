@@ -479,7 +479,7 @@ void EcmaContext::ResetProtoTransitionTableOnConstpool(JSTaggedValue constpool)
     ConstantPool::Cast(constpool.GetTaggedObject())->SetProtoTransTableInfo(thread_, JSTaggedValue::Undefined());
 }
 
-// just find unshared constpool,not create
+// just find unshared constpool, not create
 JSTaggedValue EcmaContext::FindUnsharedConstpool(JSTaggedValue sharedConstpool)
 {
     ConstantPool *shareCp = ConstantPool::Cast(sharedConstpool.GetTaggedObject());

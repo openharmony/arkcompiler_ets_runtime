@@ -43,12 +43,12 @@ public:
     static uint32_t GetElementsLength(JSObject *receiver);
 
     static JSTaggedValue GetTaggedValueWithElementsKind(JSTaggedType rawValue, ElementsKind kind);
-    static JSTaggedType PUBLIC_API ConvertTaggedValueWithElementsKind(JSTaggedValue rawValue, ElementsKind kind);
 
     static void CopyJSArrayObject(const JSThread *thread, JSHandle<JSObject>srcObj, JSHandle<JSObject>dstObj,
                                   uint32_t effectiveLength);
     static void CopyJSArrayToTaggedArray(const JSThread *thread, JSHandle<JSObject>srcObj,
                                          JSHandle<TaggedArray>dstElements, uint32_t effectiveLength);
+    static JSTaggedType PUBLIC_API ConvertTaggedValueWithElementsKind(JSTaggedValue rawValue, ElementsKind kind);
 private:
 };
 }  // namespace ecmascript
