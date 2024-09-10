@@ -476,7 +476,6 @@ bool JitTask::AsyncTask::AllocFromFortAndCopy()
 
 bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
 {
-    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "AsyncTask::Run");
     if (IsTerminate() || !jitTask_->GetHostThread()->GetEcmaVM()->IsInitialized()) {
         return false;
     }
@@ -484,15 +483,8 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
 
     CString info = "compile method:" + jitTask_->GetMethodName();
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, ConvertToStdString("JIT::Compile:" + info));
-    // JitCompileMode ASYNC
-    // check init ok
-    jitTask_->SetRunState(RunState::RUNNING);
 
-    JSThread *compilerThread = jitTask_->GetCompilerThread();
-    ASSERT(compilerThread->IsJitThread());
-    JitThread *jitThread = static_cast<JitThread*>(compilerThread);
-    JitVM *jitvm = jitThread->GetJitVM();
-    jitvm->SetHostVM(jitTask_->GetHostThread());
+    AsyncTaskRunScope asyncTaskRunScope(jitTask_.get());
 
     if (jitTask_->GetJsFunction().GetAddress() == 0) {
         // for unit test
@@ -520,8 +512,23 @@ bool JitTask::AsyncTask::Run([[maybe_unused]] uint32_t threadIndex)
         JitDfx::GetInstance()->RecordSpentTimeAndPrintStatsLogInJitThread(compilerTime, jitTask_->methodName_,
             jitTask_->compilerTier_ == CompilerTier::BASELINE, jitTask_->mainThreadCompileTime_);
     }
-    jitvm->ReSetHostVM();
-    jitTask_->SetRunStateFinish();
     return true;
+}
+
+JitTask::AsyncTask::AsyncTaskRunScope::AsyncTaskRunScope(JitTask *jitTask)
+{
+    jitTask_ = jitTask;
+    jitTask_->SetRunState(RunState::RUNNING);
+    JSThread *compilerThread = jitTask_->GetCompilerThread();
+    ASSERT(compilerThread->IsJitThread());
+    JitThread *jitThread = static_cast<JitThread*>(compilerThread);
+    jitvm_ = jitThread->GetJitVM();
+    jitvm_->SetHostVM(jitTask_->GetHostThread());
+}
+
+JitTask::AsyncTask::AsyncTaskRunScope::~AsyncTaskRunScope()
+{
+    jitvm_->ReSetHostVM();
+    jitTask_->SetRunStateFinish();
 }
 }  // namespace panda::ecmascript

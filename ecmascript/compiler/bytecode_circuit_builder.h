@@ -567,6 +567,51 @@ public:
         }
     }
 
+    void SetIrreducibleLoop()
+    {
+        isIrreducible_ = true;
+    }
+
+    bool HasIrreducibleLoop() const
+    {
+        return isIrreducible_;
+    }
+
+    void SetJitCompile()
+    {
+        isJitCompile_ = true;
+    }
+
+    bool IsJitCompile() const
+    {
+        return isJitCompile_;
+    }
+
+    void SetPreAnalysis()
+    {
+        preAnalysis_ = true;
+    }
+
+    bool IsPreAnalysis() const
+    {
+        return preAnalysis_;
+    }
+
+    bool HasEmptyCatchBB() const
+    {
+        return hasEmptyCatchBB_;
+    }
+
+    bool NeedIrreducibleLoopCheck() const
+    {
+        return IsPreAnalysis() || IsJitCompile();
+    }
+
+    bool TerminateAnalysis() const
+    {
+        return IsPreAnalysis() || HasIrreducibleLoop();
+    }
+
     bool IsOSR() const
     {
         return osrOffset_ != MachineCode::INVALID_OSR_OFFSET;
@@ -577,10 +622,26 @@ public:
         return catchBBOfOSRLoop_.find(&bb) != catchBBOfOSRLoop_.end();
     }
 
+    enum class MarkState : uint8_t {
+        UNVISITED = 0,
+        ON_STACK,
+        PENDING,
+        VISITED,
+        VISITED1,
+        UNVISITED1 = VISITED
+    };
+
+    struct VisitedInfo {
+        size_t needVisitIndex;
+        bool isVisitedCatchBlock = false;
+    };
+    bool IsAncestor(size_t nodeA, size_t nodeB);
+
 private:
     void CollectTryCatchBlockInfo(ExceptionInfo &Exception);
     void BuildCatchBlocks(const ExceptionInfo &Exception);
     void BuildEntryBlock();
+    void BuildBasicBlock();
     void BuildRegions(const ExceptionInfo &Exception);
     // build circuit
     void BuildCircuitArgs();
@@ -618,6 +679,13 @@ private:
                               GateRef getException);
     void RemoveDuplicateGatesInMerge(GateRef state, std::vector<GateRef> &stateList, std::vector<GateRef> &dependList);
     void HandleEmptyCatchBB(BytecodeRegion &bb, GateRef state, GateRef getException);
+    void PerformDFS(const std::vector<size_t> &immDom, size_t listSize);
+    void ReducibilityCheck();
+    void ComputeImmediateDominators(const std::vector<size_t> &basicBlockList,
+                                    std::unordered_map<size_t, size_t> &dfsFatherIdx, std::vector<size_t> &immDom,
+                                    std::unordered_map<size_t, size_t> &bbDfsTimestampToIdx);
+    void ComputeDominatorTree(std::vector<size_t> &basicBlockList, std::vector<size_t> &immDom,
+        std::unordered_map<size_t, size_t> &bbDfsTimestampToIdx);
 
     BytecodeRegion &RegionAt(size_t i)
     {
@@ -656,8 +724,15 @@ private:
     size_t numOfLiveBB_ {0};
     bool isInline_ {false};
     uint32_t methodId_ {0};
+    bool preAnalysis_ {false};
     std::set<const BytecodeRegion *> catchBBOfOSRLoop_{};
     std::map<uint32_t, bool> candidateEmptyCatch_ {};
+    bool hasEmptyCatchBB_ {false};
+    bool isIrreducible_ {false};
+    bool isJitCompile_ {false};
+    CVector<size_t> timeIn_ {};
+    CVector<size_t> timeOut_ {};
+    std::unordered_map<size_t, size_t> bbIdToDfsTimestamp_ {};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_CLASS_LINKER_BYTECODE_CIRCUIT_IR_BUILDER_H
