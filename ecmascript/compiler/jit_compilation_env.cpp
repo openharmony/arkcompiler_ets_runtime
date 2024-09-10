@@ -170,6 +170,8 @@ const GlobalEnvConstants *JitCompilationEnv::GlobalConstants() const
     return hostThread_->GlobalConstants();
 }
 
+// The caller should add assessment for undefined constpool.
+// When slotValue in profileTypeInfo is changed in main thread, constpool may be undefined.
 JSTaggedValue JitCompilationEnv::GetStringFromConstantPool([[maybe_unused]] const uint32_t methodOffset,
     const uint16_t cpIdx, bool allowAlloc) const
 {
