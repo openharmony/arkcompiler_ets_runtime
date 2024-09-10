@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2023 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,12 +19,14 @@
 #include <optional>
 #include "ecmascript/base/config.h"
 #include "ecmascript/common.h"
+#include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/frames.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/patch/patch_loader.h"
-#include "ecmascript/stackmap/ark_stackmap.h"
+#include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/waiter_list.h"
 #include "global_handle_collection.h"
 #include "libpandafile/file.h"
@@ -63,7 +65,6 @@ class ModuleManager;
 class AOTFileManager;
 class QuickFixManager;
 class OptCodeProfiler;
-class TypedOpProfiler;
 struct CJSInfo;
 class FunctionProtoTransitionTable;
 class ModuleLogger;
@@ -379,7 +380,17 @@ public:
         return nullptr;
     }
 
-    void ClearIcuCache(JSThread *thread);
+    void ClearIcuCache(JSThread *thread)
+    {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(IcuFormatterType::ICU_FORMATTER_TYPE_COUNT); i++) {
+            auto &icuFormatter = icuObjCache_[i];
+            NativePointerCallback deleteEntry = icuFormatter.deleteEntry;
+            if (deleteEntry != nullptr) {
+                deleteEntry(thread->GetEnv(), icuFormatter.icuObj, vm_);
+            }
+            icuFormatter = EcmaContext::IcuFormatter{};
+        }
+    }
 
     EcmaRuntimeStat *GetRuntimeStat() const
     {

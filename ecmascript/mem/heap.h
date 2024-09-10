@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,15 +17,16 @@
 #define ECMASCRIPT_MEM_HEAP_H
 
 #include "ecmascript/base/config.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/daemon/daemon_thread.h"
 #include "ecmascript/frames.h"
-#include "ecmascript/js_object_resizing_strategy.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/linear_space.h"
 #include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/shared_heap/shared_space.h"
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
-#include "ecmascript/mem/machine_code.h"
 
 namespace panda::ecmascript {
 class ConcurrentMarker;
@@ -54,9 +55,6 @@ class SharedGC;
 class SharedGCMarker;
 class STWYoungGC;
 class ThreadLocalAllocationBuffer;
-class JSThread;
-class DaemonThread;
-class GlobalEnvConstants;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
@@ -438,7 +436,10 @@ public:
         return false;
     }
 
-    bool IsReadyToConcurrentMark() const override;
+    bool IsReadyToConcurrentMark() const override
+    {
+        return dThread_->IsReadyToConcurrentMark();
+    }
 
     bool NeedStopCollection() override;
 
@@ -961,7 +962,10 @@ public:
 
     void ProcessSharedGCRSetWorkList();
 
-    const GlobalEnvConstants *GetGlobalConst() const override;
+    const GlobalEnvConstants *GetGlobalConst() const override
+    {
+        return thread_->GlobalConstants();
+    }
 
     MemController *GetMemController() const
     {
@@ -1046,7 +1050,7 @@ public:
     GCStats *GetEcmaGCStats() override;
 
     GCKeyStats *GetEcmaGCKeyStats();
-
+    
     JSObjectResizingStrategy *GetJSObjectResizingStrategy();
 
     void TriggerIdleCollection(int idleMicroSec);
@@ -1297,7 +1301,10 @@ public:
 
     void AdjustSpaceSizeForAppSpawn();
 
-    static bool ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object);
+    static bool ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object)
+    {
+        return hclass->IsString() && !Region::ObjectAddressToRange(object)->InHugeObjectSpace();
+    }
 
     bool IsFullMarkRequested() const
     {
@@ -1351,9 +1358,15 @@ public:
 
     void CheckAndTriggerTaskFinishedGC();
 
-    bool IsMarking() const override;
+    bool IsMarking() const override
+    {
+        return thread_->IsMarking();
+    }
 
-    bool IsReadyToConcurrentMark() const override;
+    bool IsReadyToConcurrentMark() const override
+    {
+        return thread_->IsReadyToConcurrentMark();
+    }
 
     bool IsEdenGC() const
     {

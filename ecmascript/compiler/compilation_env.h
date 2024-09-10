@@ -16,9 +16,8 @@
 #ifndef ECMASCRIPT_COMPILER_COMPILATION_ENV_H
 #define ECMASCRIPT_COMPILER_COMPILATION_ENV_H
 
-#include "ecmascript/global_env.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/js_handle.h"
-#include "ecmascript/jspandafile/method_literal.h"
 #include "ecmascript/pgo_profiler/pgo_utils.h"
 
 namespace panda::ecmascript {
@@ -29,8 +28,6 @@ class ConstantPool;
 namespace pgo {
 class PGOProfiler;
 };
-class JSThread;
-
 class CompilationEnv {
 public:
     CompilationEnv(EcmaVM *vm);

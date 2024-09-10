@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,9 +17,8 @@
 #define ECMASCRIPT_JSNATIVEPOINTER_H
 
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/mem/barriers.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/tagged_object.h"
-#include "ecmascript/mem/visitor.h"
 #include "ecmascript/mem/native_area_allocator.h"
 
 namespace panda::ecmascript {
@@ -32,11 +31,26 @@ public:
         return reinterpret_cast<JSNativePointer *>(object);
     }
 
-    void ResetExternalPointer(JSThread *thread, void *externalPointer);
+    inline void ResetExternalPointer(JSThread *thread, void *externalPointer)
+    {
+        DeleteExternalPointer(thread);
+        SetExternalPointer(externalPointer);
+    }
 
-    void Destroy(JSThread *thread);
+    inline void Destroy(JSThread *thread)
+    {
+        DeleteExternalPointer(thread);
+        SetExternalPointer(nullptr);
+        SetDeleter(nullptr);
+        SetData(nullptr);
+        SetNativeFlag(NativeFlag::NO_DIV);
+    }
 
-    void Detach();
+    inline void Detach()
+    {
+        // Keep other fields accessible after detached
+        SetDeleter(nullptr);
+    }
 
     static constexpr size_t POINTER_OFFSET = TaggedObjectSize();
     ACCESSORS_NATIVE_FIELD(ExternalPointer, void, POINTER_OFFSET, DELETER_OFFSET);
@@ -50,7 +64,15 @@ public:
     DECL_VISIT_NATIVE_FIELD(POINTER_OFFSET, DATA_SIZE_OFFSET)
 
 private:
-    void DeleteExternalPointer(JSThread *thread);
+    inline void DeleteExternalPointer(JSThread *thread)
+    {
+        void *externalPointer = GetExternalPointer();
+        NativePointerCallback deleter = GetDeleter();
+        auto env = thread->GetEnv();
+        if (deleter != nullptr) {
+            deleter(env, externalPointer, GetData());
+        }
+    }
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_JSNATIVEPOINTER_H

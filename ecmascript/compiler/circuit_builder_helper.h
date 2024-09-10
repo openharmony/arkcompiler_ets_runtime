@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2021 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,16 +17,24 @@
 #define ECMASCRIPT_COMPILER_CIRCUIT_BUILDER_HELPER_H
 
 #include "ecmascript/compiler/circuit_builder.h"
-
-namespace panda::ecmascript {
-    class JSRuntimeOptions;
-} // namespace panda::ecmascript
+#include "ecmascript/mem/region.h"
+#include "ecmascript/method.h"
 
 namespace panda::ecmascript::kungfu {
 
 class CompilationConfig {
 public:
-    explicit CompilationConfig(const std::string &triple, const JSRuntimeOptions *options = nullptr);
+    explicit CompilationConfig(const std::string &triple, const JSRuntimeOptions *options = nullptr)
+        : tripleStr_(triple), triple_(GetTripleFromString(triple))
+    {
+        if (options != nullptr) {
+            isTraceBc_ = options->IsTraceBC();
+            profiling_ = options->GetOptCodeProfiler();
+            stressDeopt_ = options->GetStressDeopt();
+            verifyVTable_ = options->GetVerifyVTable();
+            typedOpProfiling_ = options->GetTypedOpProfiler();
+        }
+    }
     ~CompilationConfig() = default;
 
     inline bool Is32Bit() const
@@ -346,7 +354,7 @@ public:
         rawLabels_.emplace_back(impl);
         return impl;
     }
-    void SubCfgEntry(Label *entry)
+    inline void SubCfgEntry(Label *entry)
     {
         if (currentLabel_ != nullptr) {
             GateRef control = currentLabel_->GetControl();
@@ -357,7 +365,7 @@ public:
             currentLabel_->SetDepend(depend);
         }
     }
-    void SubCfgExit()
+    inline void SubCfgExit()
     {
         if (currentLabel_ != nullptr) {
             GateRef control = currentLabel_->GetControl();
