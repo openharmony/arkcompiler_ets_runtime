@@ -132,7 +132,6 @@
       panda::ecmascript::BindSmallCpuCore*;
       panda::ecmascript::SetSecurityLabel*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
-      panda::ecmascript::ConstantPool::GetMethodFromCache*;
       panda::ecmascript::ConvertToStdString*;
       panda::ecmascript::ConvertToString*;
       panda::ecmascript::Deoptimizier::ComputeShift*;
@@ -358,6 +357,7 @@
       panda::panda_file::FieldDataAccessor::GetValueInternal*;
       panda::panda_file::MethodDataAccessor::MethodDataAccessor*;
       panda::ecmascript::JitCompilationEnv::GetMethodFromCache*;
+      panda::ecmascript::ConstantPool::GetMethodFromCache*;
       panda::ecmascript::SetAppFreezeFilterCallback*;
     };
     extern "C" {
