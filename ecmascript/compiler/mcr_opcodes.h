@@ -226,8 +226,6 @@ namespace panda::ecmascript::kungfu {
     V(TypeOf, TYPE_OF, GateFlags::NO_WRITE, 1, 1, 0)                                       \
     V(TypedCallTargetCheckOp, TYPED_CALLTARGETCHECK_OP, GateFlags::CHECKABLE, 1, 1, 2)
 
-// NOTICE-PGO: wx typedcalltargetcheckop can adopt different number of valueIn
-
 #define MCR_GATE_META_DATA_LIST_WITH_ONE_PARAMETER(V)         \
     MCR_GATE_META_DATA_LIST_WITH_VALUE(V)                     \
     MCR_GATE_META_DATA_LIST_WITH_GATE_TYPE(V)
@@ -240,5 +238,4 @@ namespace panda::ecmascript::kungfu {
 #define MCR_GATE_META_DATA_LIST_WITH_SIZE(V)                                       \
     MCR_GATE_META_DATA_LIST_WITH_VALUE_IN(V)
 }
-
 #endif  // ECMASCRIPT_COMPILER_MCR_OPCODE_H
