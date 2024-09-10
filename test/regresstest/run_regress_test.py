@@ -84,6 +84,14 @@ def parse_args():
                         default=None, help='target out dir')
     parser.add_argument('--force-clone', action="store_true",
                         default=False, help='Force to clone tests folder')
+    parser.add_argument('--ark-arch',
+                        default=RegressTestConfig.DEFAULT_ARK_ARCH,
+                        required=False,
+                        nargs='?', choices=RegressTestConfig.ARK_ARCH_LIST, type=str)
+    parser.add_argument('--ark-arch-root',
+                        default=RegressTestConfig.DEFAULT_ARK_ARCH,
+                        required=False,
+                        help="the root path for qemu-aarch64 or qemu-arm")
     return parser.parse_args()
 
 
@@ -516,17 +524,24 @@ class RegressTestPgo(RegressTestStep):
         ap_file = change_extension(abc_file, ".ap")
         entry_point = Utils.get_file_only_name(RegressTestConfig.TEST_TOOL_FILE_JS_NAME)
         os.environ["LD_LIBRARY_PATH"] = self.args.ld_library_path
-        gen_ap_cmd = [
-            self.args.ark_tool,
-            "--log-level=info",
-            f"--icu-data-path={self.args.icu_path}",
-            "--enable-pgo-profiler=true",
-            "--compiler-opt-inlining=true",
-            f"--compiler-pgo-profiler-path={ap_file}",
-            "--asm-interpreter=true",
-            f"--entry-point={entry_point}",
-            f"{abc_file}",
-        ]
+        gen_ap_cmd = []
+        if self.args.ark_arch == RegressTestConfig.ARK_ARCH_LIST[1]:
+            qemu_tool = "qemu-aarch64"
+            gen_ap_cmd = [
+                qemu_tool,
+                "-L",
+                self.args.ark_arch_root
+            ]
+        gen_ap_cmd.append(self.args.ark_tool)
+        gen_ap_cmd.append("--log-level=info")
+        gen_ap_cmd.append(f"--icu-data-path={self.args.icu_path}")
+        gen_ap_cmd.append("--compiler-target-triple=aarch64-unknown-linux-gn")
+        gen_ap_cmd.append("--enable-pgo-profiler=true")
+        gen_ap_cmd.append("--compiler-opt-inlining=true")
+        gen_ap_cmd.append(f"--compiler-pgo-profiler-path={ap_file}")
+        gen_ap_cmd.append("--asm-interpreter=true")
+        gen_ap_cmd.append(f"--entry-point={entry_point}")
+        gen_ap_cmd.append(f"{abc_file}")
         return gen_ap_cmd
 
     def generate_ap(self, test_report: Optional[TestReport]) -> Optional[TestReport]:
@@ -660,6 +675,21 @@ class RegressTestAot(RegressTestStep):
         ap_file = change_extension(abc_file, ".ap")
         aot_file = change_extension(abc_file, "")
         os.environ["LD_LIBRARY_PATH"] = self.args.ld_library_path
+        if self.args.ark_arch == RegressTestConfig.ARK_ARCH_LIST[1]:
+            aot_cmd = [
+                "qemu-aarch64",
+                "-L",
+                self.args.ark_arch_root,
+                self.args.ark_aot_tool,
+                "--compiler-target-triple=aarch64-unknown-linux-gnu",
+                f"--aot-file={aot_file}"
+            ]
+        else:
+            aot_cmd = [
+            self.args.ark_aot_tool,
+            f"--aot-file={aot_file}",
+        ]
+
         pgo = [
             "--compiler-opt-loop-peeling=true",
             "--compiler-fast-compile=false",
@@ -671,10 +701,6 @@ class RegressTestAot(RegressTestStep):
         ]
         litecg = [
             "--compiler-enable-litecg=true",
-        ]
-        aot_cmd = [
-            self.args.ark_aot_tool,
-            f"--aot-file={aot_file}",
         ]
         aot_cmd_tail = [
             f"{abc_file}",
@@ -796,6 +822,11 @@ class RegressTestRun(RegressTestStep):
         test_name = test_report.test_id.replace('regresstest/ark-regress/', '')
         set_test_environ(test_report.src_path)
         command = []
+        if self.args.ark_arch == RegressTestConfig.ARK_ARCH_LIST[1]:
+            qemu_tool = "qemu-aarch64"
+            qemu_arg1 = "-L"
+            qemu_arg2 = self.args.ark_arch_root
+            command = [qemu_tool, qemu_arg1, qemu_arg2]
         command.append(self.args.ark_tool)
         command.append(f"--icu-data-path={self.args.icu_path}")
         command.append(f"--entry-point={entry_point}")

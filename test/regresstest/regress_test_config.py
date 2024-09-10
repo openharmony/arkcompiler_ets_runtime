@@ -44,3 +44,11 @@ class RegressTestConfig:
     ICU_PATH = f"{CODE_ROOT}/third_party/icu/"
     LLVM_DIR = f"{CODE_ROOT}/prebuilts/clang/ohos/linux-x86_64/llvm/lib/"
     DEFAULT_LIBS_DIR = f"{ICU_PATH}:{ICU_PATH_DATA}:{LLVM_DIR}"
+
+    ARK_ARCH_LIST = [
+        "x64",
+        "aarch64",
+        "arm"
+    ]
+
+    DEFAULT_ARK_ARCH = ARK_ARCH_LIST[0]
