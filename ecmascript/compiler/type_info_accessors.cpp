@@ -904,6 +904,9 @@ bool LoadObjByNameTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessInf
 bool LoadObjByNameTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
 {
     JSTaggedValue key = parent_.GetKeyTaggedValue();
+    if (key.IsUndefined()) {
+        return false;
+    }
     for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
         JSHClass *receiver = parent_.jitTypes_[i].GetReceiverHclass();
         JSHClass *holder = parent_.jitTypes_[i].GetHolderHclass();
@@ -1046,6 +1049,9 @@ bool StoreObjByNameTypeInfoAccessor::AotAccessorStrategy::GenerateObjectAccessIn
 bool StoreObjByNameTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
 {
     JSTaggedValue key = parent_.GetKeyTaggedValue();
+    if (key.IsUndefined()) {
+        return false;
+    }
     for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
         JSHClass* receiverType = parent_.jitTypes_[i].GetReceiverHclass();
         JSHClass* holderType = parent_.jitTypes_[i].GetHolderHclass();
@@ -1187,6 +1193,9 @@ bool InstanceOfTypeInfoAccessor::JitAccessorStrategy::GenerateObjectAccessInfo()
         return false;
     }
     JSTaggedValue key = parent_.GetKeyTaggedValue();
+    if (key.IsUndefined()) {
+        return false;
+    }
     for (size_t i = 0; i < parent_.jitTypes_.size(); ++i) {
         JSHClass *receiver = parent_.jitTypes_[i].GetReceiverHclass();
         if (receiver->IsJsPrimitiveRef()) {

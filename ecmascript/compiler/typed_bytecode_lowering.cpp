@@ -940,7 +940,11 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(GateRef gate)
 
 bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltin(const LoadBulitinObjTypeInfoAccessor &tacc)
 {
-    EcmaString *propString = EcmaString::Cast(tacc.GetKeyTaggedValue().GetTaggedObject());
+    JSTaggedValue key = tacc.GetKeyTaggedValue();
+    if (key.IsUndefined()) {
+        return false;
+    }
+    EcmaString *propString = EcmaString::Cast(key.GetTaggedObject());
     // (1) get length
     EcmaString *lengthString =
         EcmaString::Cast(compilationEnv_->GlobalConstants()->GetLengthString().GetTaggedObject());
@@ -977,6 +981,9 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForGlobalsId(const LoadBulit
     GateRef receiver = tacc.GetReceiver();
     GateRef gate = tacc.GetGate();
     JSTaggedValue key = tacc.GetKeyTaggedValue();
+    if (key.IsUndefined()) {
+        return false;
+    }
     GateRef frameState = acc_.FindNearestFrameState(gate);
     if (globalsId.IsGlobalConstId()) {
         ConstantIndex index = static_cast<ConstantIndex>(globalsId.GetGlobalConstId());
@@ -1037,6 +1044,9 @@ bool TypedBytecodeLowering::TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef ga
         auto math = globalEnv->GetMathFunction();
         JSHClass *hclass = math.GetTaggedValue().GetTaggedObject()->GetClass();
         JSTaggedValue key = tacc.GetKeyTaggedValue();
+        if (key.IsUndefined()) {
+            return false;
+        }
         PropertyLookupResult plr = JSHClass::LookupPropertyInBuiltinHClass(compilationEnv_->GetJSThread(), hclass, key);
         if (!plr.IsFound() || plr.IsAccessor()) {
             return false;
@@ -1113,7 +1123,7 @@ bool TypedBytecodeLowering::TryLowerTypedLdObjByNameForBuiltinMethod(const LoadB
     GateRef gate = tacc.GetGate();
     JSTaggedValue key = tacc.GetKeyTaggedValue();
     std::optional<GlobalEnvField> protoField = ToGlobelEnvPrototypeField(type);
-    if (!protoField.has_value()) {
+    if (key.IsUndefined() || !protoField.has_value()) {
         return false;
     }
     size_t protoFieldIndex = static_cast<size_t>(*protoField);
