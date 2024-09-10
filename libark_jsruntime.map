@@ -11,7 +11,6 @@
       vtable?for?panda::ecmascript::kungfu::ObjectLiteralSnapshotInfo;
       vtable?for?panda::ecmascript::kungfu::StringSnapshotInfo;
       vtable?for?panda::ecmascript::Taskpool;
-      vtable?for?panda::ecmascript::base::Utf8JsonParser;
 
       panda::ecmascript::COMMON_HELP_HEAD_MSG*;
       panda::ecmascript::HELP_OPTION_MSG*;
@@ -134,7 +133,6 @@
       panda::ecmascript::SetSecurityLabel*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
       panda::ecmascript::ConstantPool::GetMethodFromCache*;
-      panda::ecmascript::ConstantPool::GetStringFromCacheForJit*;
       panda::ecmascript::ConvertToStdString*;
       panda::ecmascript::ConvertToString*;
       panda::ecmascript::Deoptimizier::ComputeShift*;
@@ -159,7 +157,6 @@
       panda::ecmascript::EcmaStringAccessor::CreateLineString*;
       panda::ecmascript::EcmaStringAccessor::EcmaStringAccessor*;
       panda::ecmascript::EcmaStringAccessor::ToStdString*;
-      panda::ecmascript::EcmaVM::CheckThread*;
       panda::ecmascript::EcmaVM::GetGlobalEnv*;
       panda::ecmascript::EcmaVM::IsEnableElementsKind*;
       panda::ecmascript::EcmaVM::IsEnablePGOProfiler*;
@@ -211,8 +208,6 @@
       panda::ecmascript::JSPandaFile::GetRecordNameWithBundlePack*;
       panda::ecmascript::JSPandaFile::IsFirstMergedAbc*;
       panda::ecmascript::JSProxy::IsArray*;
-      panda::ecmascript::JSTaggedValue::IsTaggedArray*;
-      panda::ecmascript::JSTaggedValue::IsJSProxy*;
       panda::ecmascript::JSTaggedValue::IsJSCOWArray*;
       panda::ecmascript::JSTaggedValue::IsInSharedHeap*;
       panda::ecmascript::JITProfiler::ProfileBytecode*;
@@ -308,7 +303,6 @@
       panda::ecmascript::base::NumberHelper::DoubleInRangeInt32*;
       panda::ecmascript::base::NumberHelper::StringToBigInt*;
       panda::ecmascript::base::NumberHelper::TruncateDouble*;
-      panda::ecmascript::base::Utf8JsonParser::Parse*;
       panda::ecmascript::kungfu::AOTSnapshot::StoreConstantPoolInfo*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::Collect*;
       panda::ecmascript::kungfu::ArkStackMapBuilder::GenerateArkStackMap*;

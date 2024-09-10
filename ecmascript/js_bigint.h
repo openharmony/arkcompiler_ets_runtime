@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,6 +18,7 @@
 
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/js_object.h"
 #include "ecmascript/mem/mem_common.h"
 
@@ -26,7 +27,6 @@
 namespace panda::ecmascript {
 enum class Operate : uint32_t { AND = 0, OR, XOR };
 enum class ComparisonResult;
-class JSThread;
 
 class BigInt : public TaggedObject {
 public:
