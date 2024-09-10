@@ -71,7 +71,6 @@ public:
         }
         void *block = malloc(size);
         CHECK_FATAL(block != nullptr, "malloc failed");
-
         mallocMemories.push_front(block);
         return reinterpret_cast<uint8_t *>(block);
     }

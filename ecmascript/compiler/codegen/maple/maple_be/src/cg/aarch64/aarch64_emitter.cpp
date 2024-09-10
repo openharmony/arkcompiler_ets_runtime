@@ -675,14 +675,14 @@ void AArch64AsmEmitter::EmitClinitTail(Emitter &emitter, const Insn &insn) const
     const OpndDesc *prop0 = md->opndMD[0];
     A64OpndEmitVisitor visitor(emitter, prop0);
 
-    /* emit "ldr  x17,[xs#112]" */
+    /* emit "ldr  x17,[xs,#112]" */
     (void)emitter.Emit("\t").Emit("ldr").Emit("\tx17, [");
     opnd0->Accept(visitor);
     (void)emitter.Emit(", #");
     (void)emitter.Emit(static_cast<uint32>(ClassMetadata::OffsetOfInitState()));
     (void)emitter.Emit("]");
     (void)emitter.Emit("\n");
-    
+
     /* emit "ldr  xzr, [x17]" */
     (void)emitter.Emit("\t").Emit("ldr\txzr, [x17]\n");
 }

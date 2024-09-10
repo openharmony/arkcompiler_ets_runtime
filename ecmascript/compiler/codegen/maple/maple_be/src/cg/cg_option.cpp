@@ -804,7 +804,7 @@ void CGOptions::EnableLiteCG()
     doAlignAnalysis = false;
     doCondBrAlign = false;
     supportFuncSymbol = true;
-    
+
     ClearOption(kUseStackProtectorStrong);
     ClearOption(kUseStackProtectorAll);
     ClearOption(kConstFold);

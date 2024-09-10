@@ -61,8 +61,8 @@ struct MirFuncT {  // 28B
     // a dynamic memory block that needs reference
     // count; the bitvector's size is given by
     // BlockSize2BitvectorSize(frameSize)
-    // uint16 numlabels; // removed. label table size
-    // StmtNode **lbl2stmt; // lbl2stmt table, removed
+    // uint16 numlabels // removed. label table size
+    // StmtNode **lbl2stmt // lbl2stmt table, removed
     // the first statement immediately follow MirFuncT
     // since it starts with expression, BaseNodeT* is returned
     void *FirstInst() const
@@ -146,7 +146,7 @@ union MirIntConstT {
 
 // currently in VM, only intconst are used.
 using MirConstT = MirIntConstT;
-//
+
 // It's a stacking of POD data structure to allow precise memory layout
 // control and emulate the inheritance relationship of corresponding C++
 // data structures to keep the interface consistent (as much as possible).

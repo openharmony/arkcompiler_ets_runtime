@@ -33,7 +33,7 @@
  */
 #define TRANS(f, a, b, c, d, x, t, s)                        \
     (a) += f((b), (c), (d)) + (x) + (t);                     \
-    (a) = (((a) << (s)) | (((a)&0xffffffff) >> (32 - (s)))); \
+    (a) = (((a) << (s)) | (((a) & 0xffffffff) >> (32 - (s)))); \
     (a) += (b);
 
 /*

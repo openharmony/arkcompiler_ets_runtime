@@ -28,8 +28,8 @@ namespace namemangler {
 const int KLOCAL_CODE_BUF_SIZE = 1024;
 const int KMAX_CODEC_BUF_SIZE = (1 << 16);
 
-#define GETHEXCHAR(n) static_cast<char>((n) < 10 ? (n) + '0' : (n)-10 + 'a')
-#define GETHEXCHARU(n) static_cast<char>((n) < 10 ? (n) + '0' : (n)-10 + 'A')
+#define GETHEXCHAR(n) static_cast<char>((n) < 10 ? (n) + '0' : (n) - 10 + 'a')
+#define GETHEXCHARU(n) static_cast<char>((n) < 10 ? (n) + '0' : (n) - 10 + 'A')
 
 using StringMap = std::map<const std::string, const std::string>;
 
@@ -186,15 +186,15 @@ std::string DecodeName(const std::string &name)
                 if (count == 2) {  // the count of str equal 2 to 4, use array to save the utf8
                     newName[pos++] = str[0];
                     newName[pos++] = str[1];
-                } else if (count == 3) {
+                } else if (count == 3) {  // the count of str equal 2 to 4, deal 3 new
                     newName[pos++] = str[0];
                     newName[pos++] = str[1];
-                    newName[pos++] = str[2]; // 2 is index of third char
-                } else if (count == 4) {
+                    newName[pos++] = str[2];  // 2 is index of third char
+                } else if (count == 4) {      // the count of str equal 2 to 4
                     newName[pos++] = str[0];
                     newName[pos++] = str[1];
-                    newName[pos++] = str[2]; // 2 is index of third char
-                    newName[pos++] = str[3]; // 3 is index of fourth char
+                    newName[pos++] = str[2];  // 2 is index of third char
+                    newName[pos++] = str[3];  // 3 is index of fourth char
                 }
             } else {
                 c = static_cast<unsigned char>(namePtr[i++]);
