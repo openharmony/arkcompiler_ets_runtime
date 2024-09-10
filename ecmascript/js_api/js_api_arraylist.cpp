@@ -124,6 +124,10 @@ void JSAPIArrayList::TrimToCurrentLength(JSThread *thread, const JSHandle<JSAPIA
 
 JSTaggedValue JSAPIArrayList::Get(JSThread *thread, const uint32_t index)
 {
+    if (GetLength().GetArrayLength() == 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index >= GetLength().GetArrayLength()) {
         ASSERT(GetLength().GetArrayLength() > 0);
         std::ostringstream oss;
@@ -285,6 +289,10 @@ JSTaggedValue JSAPIArrayList::ReplaceAllElements(JSThread *thread, const JSHandl
 
 JSTaggedValue JSAPIArrayList::Set(JSThread *thread, const uint32_t index, JSTaggedValue value)
 {
+    if (GetLength().GetArrayLength() == 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+    }
     if (index >= GetLength().GetArrayLength()) {
         ASSERT(GetLength().GetArrayLength() > 0);
         std::ostringstream oss;
