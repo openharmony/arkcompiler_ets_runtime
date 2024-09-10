@@ -673,7 +673,7 @@ bool BackPropPattern::CheckReplacedUseInsn(Insn &insn)
         if (useInsn->IsMemAccess() && static_cast<MemOperand *>(useInsn->GetMemOpnd()) != nullptr) {
             if (static_cast<MemOperand *>(useInsn->GetMemOpnd())->GetIndexOpt() != MemOperand::kIntact) {
                 return false;
-            }
+	    }
         }
         InsnSet defInsnVecOfSrcOpnd = cgFunc.GetRD()->FindDefForRegOpnd(*useInsn, secondRegNO, true);
         if (!checkOneDefOnly(defInsnVecOfSrcOpnd, *defInsnForSecondOpnd, true)) {

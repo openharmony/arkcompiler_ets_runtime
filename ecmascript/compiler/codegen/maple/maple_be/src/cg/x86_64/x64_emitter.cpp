@@ -2111,7 +2111,7 @@ void X64Emitter::EmitGlobalVariable(CG &cg)
                 assmbler.EmitVariable(symIdx, sizeInByte, alignInByte, kSAGlobal, kSData);
             }
             if (IsPrimitiveVector(mirType->GetPrimType())) {
-                ASSERT_NOT_NULL(mirConst);
+		ASSERT_NOT_NULL(mirConst);
                 valueSize = EmitVector(*mirConst);
             } else if (IsPrimitiveScalar(mirType->GetPrimType())) {
                 valueSize = EmitSingleElement(*mirConst, true, cg.GetMIRModule()->IsCModule());
