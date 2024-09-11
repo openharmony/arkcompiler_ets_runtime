@@ -165,6 +165,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         pipeline.RunPass<TypeBytecodeLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<InductionVariableAnalysisPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
@@ -333,6 +334,7 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         pipeline.RunPass<TypeBytecodeLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<InductionVariableAnalysisPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
