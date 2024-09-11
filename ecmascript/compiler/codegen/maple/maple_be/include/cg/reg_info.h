@@ -238,10 +238,8 @@ public:
     virtual bool IsCalleeSavedReg(regno_t regno) const = 0;
     virtual bool IsYieldPointReg(regno_t regNO) const = 0;
     virtual bool IsUnconcernedReg(regno_t regNO) const = 0;
-    virtual bool IsUnconcernedReg(const RegOperand &regOpnd) const = 0;
     virtual bool IsVirtualRegister(const RegOperand &regOpnd) = 0;
     virtual bool IsVirtualRegister(regno_t regno) = 0;
-    virtual void SaveCalleeSavedReg(MapleSet<regno_t> savedRegs) = 0;
     virtual uint32 GetIntRegsParmsNum() = 0;
     virtual uint32 GetIntRetRegsNum() = 0;
     virtual uint32 GetFpRetRegsNum() = 0;

@@ -455,100 +455,6 @@ void Emitter::EmitNullConstant(uint64 size)
 #endif
 }
 
-void Emitter::EmitCombineBfldValue(StructEmitInfo &structEmitInfo)
-{
-#ifdef ARK_LITECG_DEBUG
-    uint8 charBitWidth = GetPrimTypeSize(PTY_i8) * kBitsPerByte;
-    auto emitBfldValue = [&structEmitInfo, charBitWidth, this](bool flag) {
-        while (structEmitInfo.GetCombineBitFieldWidth() > charBitWidth) {
-            uint8 shift = flag ? (structEmitInfo.GetCombineBitFieldWidth() - charBitWidth) : 0U;
-            uint64 tmp = (structEmitInfo.GetCombineBitFieldValue() >> shift) & 0x00000000000000ffUL;
-            EmitAsmLabel(kAsmByte);
-            Emit(std::to_string(tmp));
-            Emit("\n");
-            structEmitInfo.DecreaseCombineBitFieldWidth(charBitWidth);
-            uint64 value =
-                flag ? structEmitInfo.GetCombineBitFieldValue() - (tmp << structEmitInfo.GetCombineBitFieldWidth())
-                     : structEmitInfo.GetCombineBitFieldValue() >> charBitWidth;
-            structEmitInfo.SetCombineBitFieldValue(value);
-        }
-    };
-    if (CGOptions::IsBigEndian()) {
-        /*
-         * If the total number of bits in the bit field is not a multiple of 8,
-         * the bits must be aligned to 8 bits to prevent errors in the emit.
-         */
-        auto width = static_cast<uint8>(RoundUp(structEmitInfo.GetCombineBitFieldWidth(), charBitWidth));
-        if (structEmitInfo.GetCombineBitFieldWidth() < width) {
-            structEmitInfo.SetCombineBitFieldValue(structEmitInfo.GetCombineBitFieldValue()
-                                                   << (width - structEmitInfo.GetCombineBitFieldWidth()));
-            structEmitInfo.IncreaseCombineBitFieldWidth(
-                static_cast<uint8>(width - structEmitInfo.GetCombineBitFieldWidth()));
-        }
-        emitBfldValue(true);
-    } else {
-        emitBfldValue(false);
-    }
-    if (structEmitInfo.GetCombineBitFieldWidth() != 0) {
-        EmitAsmLabel(kAsmByte);
-        uint64 value = structEmitInfo.GetCombineBitFieldValue() & 0x00000000000000ffUL;
-        Emit(std::to_string(value));
-        Emit("\n");
-    }
-    CHECK_FATAL(charBitWidth != 0, "divide by zero");
-    if ((structEmitInfo.GetNextFieldOffset() % charBitWidth) != 0) {
-        uint8 value = charBitWidth - (structEmitInfo.GetNextFieldOffset() % charBitWidth);
-        structEmitInfo.IncreaseNextFieldOffset(value);
-    }
-    structEmitInfo.SetTotalSize(structEmitInfo.GetNextFieldOffset() / charBitWidth);
-    structEmitInfo.SetCombineBitFieldValue(0);
-    structEmitInfo.SetCombineBitFieldWidth(0);
-#endif
-}
-
-void Emitter::EmitBitFieldConstant(StructEmitInfo &structEmitInfo, MIRConst &mirConst, const MIRType *nextType,
-                                   uint64 fieldOffset)
-{
-#ifdef ARK_LITECG_DEBUG
-    MIRType &mirType = mirConst.GetType();
-    if (fieldOffset > structEmitInfo.GetNextFieldOffset()) {
-        uint16 curFieldOffset = structEmitInfo.GetNextFieldOffset() - structEmitInfo.GetCombineBitFieldWidth();
-        structEmitInfo.SetCombineBitFieldWidth(fieldOffset - curFieldOffset);
-        EmitCombineBfldValue(structEmitInfo);
-        DEBUG_ASSERT(structEmitInfo.GetNextFieldOffset() <= fieldOffset,
-                     "structEmitInfo's nextFieldOffset should be <= fieldOffset");
-        structEmitInfo.SetNextFieldOffset(fieldOffset);
-    }
-    uint32 fieldSize = static_cast<MIRBitFieldType &>(mirType).GetFieldSize();
-    MIRIntConst &fieldValue = static_cast<MIRIntConst &>(mirConst);
-    /* Truncate the size of FieldValue to the bit field size. */
-    if (fieldSize < fieldValue.GetActualBitWidth()) {
-        fieldValue.Trunc(fieldSize);
-    }
-    /* Clear higher Bits for signed value  */
-    if (structEmitInfo.GetCombineBitFieldValue() != 0) {
-        structEmitInfo.SetCombineBitFieldValue((~(~0ULL << structEmitInfo.GetCombineBitFieldWidth())) &
-                                               structEmitInfo.GetCombineBitFieldValue());
-    }
-    if (CGOptions::IsBigEndian()) {
-        uint64 beValue = static_cast<uint64>(fieldValue.GetExtValue());
-        if (fieldValue.IsNegative()) {
-            beValue = beValue - ((beValue >> fieldSize) << fieldSize);
-        }
-        structEmitInfo.SetCombineBitFieldValue((structEmitInfo.GetCombineBitFieldValue() << fieldSize) + beValue);
-    } else {
-        structEmitInfo.SetCombineBitFieldValue((fieldValue.GetExtValue() << structEmitInfo.GetCombineBitFieldWidth()) +
-                                               structEmitInfo.GetCombineBitFieldValue());
-    }
-    structEmitInfo.IncreaseCombineBitFieldWidth(fieldSize);
-    structEmitInfo.IncreaseNextFieldOffset(fieldSize);
-    if ((nextType == nullptr) || (kTypeBitField != nextType->GetKind())) {
-        /* emit structEmitInfo->combineBitFieldValue */
-        EmitCombineBfldValue(structEmitInfo);
-    }
-#endif
-}
-
 void Emitter::EmitFunctionSymbolTable(FuncEmitInfo &funcEmitInfo)
 {
 #ifdef ARK_LITECG_DEBUG
@@ -2280,15 +2186,6 @@ void Emitter::EmitGlobalVariable()
     std::vector<MIRSymbol *> typeStVec;
     std::vector<MIRSymbol *> typeNameStVec;
     std::map<GStrIdx, MIRType *> strIdx2Type;
-
-    /* Create name2type map which will be used by reflection. */
-    for (MIRType *type : GlobalTables::GetTypeTable().GetTypeTable()) {
-        if (type == nullptr || (type->GetKind() != kTypeClass && type->GetKind() != kTypeInterface)) {
-            continue;
-        }
-        GStrIdx strIdx = type->GetNameStrIdx();
-        strIdx2Type[strIdx] = type;
-    }
 
     /* sort symbols; classinfo-->field-->method */
     size_t size = GlobalTables::GetGsymTable().GetSymbolTableSize();

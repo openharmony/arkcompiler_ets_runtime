@@ -64,15 +64,13 @@ public:
 
     void EmitGCTIBLabel(GCTIBKey *key, const std::string &gcTIBName, std::vector<uint64> &bitmapWords, uint32 rcHeader);
 
-    void FindOrCreateRepresentiveSym(std::vector<uint64> &bitmapWords, uint32 rcHeader, const std::string &name);
-
     void CreateRefSymForGlobalPtn(GCTIBPattern &ptn) const;
-
-    Insn &BuildPhiInsn(RegOperand &defOpnd, Operand &listParam) override;
 
     PhiOperand &CreatePhiOperand(MemPool &mp, MapleAllocator &mAllocator) override;
 
+#ifdef ARK_LITECG_DEBUG
     std::string FindGCTIBPatternName(const std::string &name) const override;
+#endif
 
     LiveAnalysis *CreateLiveAnalysis(MemPool &mp, CGFunc &f) const override
     {

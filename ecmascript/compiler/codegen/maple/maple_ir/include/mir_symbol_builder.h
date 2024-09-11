@@ -43,15 +43,9 @@ public:
     }
 
     MIRSymbol *GetLocalDecl(const MIRSymbolTable &symbolTable, const GStrIdx &strIdx) const;
-    MIRSymbol *GetGlobalDecl(GStrIdx strIdx) const;
-    MIRSymbol *CreateGlobalDecl(GStrIdx strIdx, const MIRType &type, MIRStorageClass sc) const;
-    MIRSymbol *GetSymbol(TyIdx tyIdx, GStrIdx strIdx, MIRSymKind mClass, MIRStorageClass sClass,
-                         bool sameType = false) const;
     MIRSymbol *CreateSymbol(TyIdx tyIdx, GStrIdx strIdx, MIRSymKind mClass, MIRStorageClass sClass, MIRFunction *func,
                             uint8 scpID) const;
     MIRSymbol *CreatePregFormalSymbol(TyIdx tyIdx, PregIdx pRegIdx, MIRFunction &func) const;
-    size_t GetSymbolTableSize(const MIRFunction *func = nullptr) const;
-    const MIRSymbol *GetSymbolFromStIdx(uint32 idx, const MIRFunction *func = nullptr) const;
 
 private:
     MIRSymbolBuilder() = default;

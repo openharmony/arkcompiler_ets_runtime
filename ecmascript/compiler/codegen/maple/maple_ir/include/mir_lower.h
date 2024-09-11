@@ -75,8 +75,6 @@ public:
     void LowerCandCior(BlockNode &block);
     void LowerBuiltinExpect(BlockNode &block);
     void LowerFunc(MIRFunction &func);
-    BaseNode *LowerFarray(ArrayNode *array);
-    BaseNode *LowerCArray(ArrayNode *array);
     void ExpandArrayMrt(MIRFunction &func);
     IfStmtNode *ExpandArrayMrtIfBlock(IfStmtNode &node);
     BlockNode *ExpandArrayMrtBlock(BlockNode &block);

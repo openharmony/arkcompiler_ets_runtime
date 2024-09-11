@@ -67,18 +67,13 @@ void BECommon::ComputeTypeSizesAligns(MIRType &ty, uint8 align)
     switch (ty.GetKind()) {
         case kTypeScalar:
         case kTypePointer:
-        case kTypeBitField:
         case kTypeFunction:
             SetTypeSize(tyIdx, GetPrimTypeSize(ty.GetPrimType()));
             SetTypeAlign(tyIdx, GetTypeSize(tyIdx));
             break;
         case kTypeArray:
-        case kTypeFArray:
-        case kTypeJArray:
-        case kTypeInterface: { /* cannot have union or bitfields */
             CHECK_FATAL(false, "unsupported type");
             break;
-        }
         case kTypeByName:
         case kTypeVoid:
         default:
@@ -142,26 +137,6 @@ void BECommon::FinalizeTypeTable(const MIRType &ty)
         } else {
             CHECK_FATAL(ty.GetTypeIndex() == typeSizeTable.size(), "make sure the ty idx is exactly the table size");
         }
-    }
-}
-
-BaseNode *BECommon::GetAddressOfNode(const BaseNode &node)
-{
-    switch (node.GetOpCode()) {
-        case OP_dread: {
-            const DreadNode &dNode = static_cast<const DreadNode &>(node);
-            const StIdx &index = dNode.GetStIdx();
-            DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
-            DEBUG_ASSERT(mirModule.CurFunction()->GetLocalOrGlobalSymbol(index) != nullptr, "nullptr check");
-            return mirModule.GetMIRBuilder()->CreateAddrof(*mirModule.CurFunction()->GetLocalOrGlobalSymbol(index));
-        }
-        case OP_iread: {
-            const IreadNode &iNode = static_cast<const IreadNode &>(node);
-            CHECK_FATAL(iNode.GetFieldID() == 0, "fieldId must be 0");
-            return iNode.Opnd(0);
-        }
-        default:
-            return nullptr;
     }
 }
 } /* namespace maplebe */

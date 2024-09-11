@@ -24,13 +24,11 @@ namespace {
 using namespace maple;
 enum FuncProp : uint32_t {
     kFuncPropHasCall = 1U,                    // the function has call
-    kFuncPropUserFunc = 1U << 2,              // the function is a user func
+#ifdef ARK_LITECG_DEBUG
     kFuncPropInfoPrinted = 1U << 3,           // to avoid printing frameSize/moduleid/funcSize info more
                                               // than once per function since they
                                               // can only be printed at the beginning of a block
-    kFuncPropNeverReturn = 1U << 4,           // the function when called never returns
-    kFuncPropHasSetjmp = 1U << 5,             // the function contains call to setjmp
-    kFuncPropHasAsm = 1U << 6,                // the function has use of inline asm
+#endif
 };
 }  // namespace
 
@@ -53,12 +51,14 @@ const std::string &MIRFunction::GetName() const
     return mirSymbol->GetName();
 }
 
+#ifdef ARK_LITECG_DEBUG
 GStrIdx MIRFunction::GetNameStrIdx() const
 {
     MIRSymbol *mirSymbol = GlobalTables::GetGsymTable().GetSymbolFromStidx(symbolTableIdx.Idx());
     DEBUG_ASSERT(mirSymbol != nullptr, "null ptr check");
     return mirSymbol->GetNameStrIdx();
 }
+#endif
 
 const std::string &MIRFunction::GetBaseClassName() const
 {
@@ -70,21 +70,6 @@ const std::string &MIRFunction::GetBaseFuncName() const
     return GlobalTables::GetStrTable().GetStringFromStrIdx(baseFuncStrIdx);
 }
 
-const std::string &MIRFunction::GetBaseFuncNameWithType() const
-{
-    return GlobalTables::GetStrTable().GetStringFromStrIdx(baseFuncWithTypeStrIdx);
-}
-
-const std::string &MIRFunction::GetBaseFuncSig() const
-{
-    return GlobalTables::GetStrTable().GetStringFromStrIdx(baseFuncSigStrIdx);
-}
-
-const std::string &MIRFunction::GetSignature() const
-{
-    return GlobalTables::GetStrTable().GetStringFromStrIdx(signatureStrIdx);
-}
-
 const MIRType *MIRFunction::GetReturnType() const
 {
     CHECK_FATAL(funcType != nullptr, "funcType should not be nullptr");
@@ -94,10 +79,7 @@ MIRType *MIRFunction::GetReturnType()
 {
     return const_cast<MIRType *>(const_cast<const MIRFunction *>(this)->GetReturnType());
 }
-const MIRType *MIRFunction::GetClassType() const
-{
-    return GlobalTables::GetTypeTable().GetTypeFromTyIdx(classTyIdx);
-}
+
 const MIRType *MIRFunction::GetNthParamType(size_t i) const
 {
     CHECK_FATAL(funcType != nullptr, "funcType should not be nullptr");
@@ -125,14 +107,6 @@ MIRFuncType *MIRFunction::ReconstructFormals(const std::vector<MIRSymbol *> &sym
         newFuncType->GetParamAttrsList().push_back(symbol->GetAttrs());
     }
     return newFuncType;
-}
-
-void MIRFunction::UpdateFuncTypeAndFormals(const std::vector<MIRSymbol *> &symbols, bool clearOldArgs)
-{
-    auto *newFuncType = ReconstructFormals(symbols, clearOldArgs);
-    auto newFuncTypeIdx = GlobalTables::GetTypeTable().GetOrCreateMIRType(newFuncType);
-    funcType = static_cast<MIRFuncType *>(GlobalTables::GetTypeTable().GetTypeFromTyIdx(newFuncTypeIdx));
-    delete newFuncType;
 }
 
 void MIRFunction::UpdateFuncTypeAndFormalsAndReturnType(const std::vector<MIRSymbol *> &symbols, const TyIdx &retTyIdx,
@@ -166,91 +140,20 @@ void MIRFunction::SetHasCall()
     flag |= kFuncPropHasCall;
 }
 
-bool MIRFunction::IsUserFunc() const
-{
-    return flag & kFuncPropUserFunc;
-}
-void MIRFunction::SetUserFunc()
-{
-    flag |= kFuncPropUserFunc;
-}
-
+#ifdef ARK_LITECG_DEBUG
 bool MIRFunction::IsInfoPrinted() const
 {
     return flag & kFuncPropInfoPrinted;
 }
+
 void MIRFunction::SetInfoPrinted()
 {
     flag |= kFuncPropInfoPrinted;
 }
+
 void MIRFunction::ResetInfoPrinted()
 {
     flag &= ~kFuncPropInfoPrinted;
-}
-
-void MIRFunction::SetNoReturn()
-{
-    flag |= kFuncPropNeverReturn;
-}
-bool MIRFunction::NeverReturns() const
-{
-    return flag & kFuncPropNeverReturn;
-}
-
-void MIRFunction::SetHasSetjmp()
-{
-    flag |= kFuncPropHasSetjmp;
-}
-
-bool MIRFunction::HasSetjmp() const
-{
-    return ((flag & kFuncPropHasSetjmp) != kTypeflagZero);
-}
-
-void MIRFunction::SetHasAsm()
-{
-    flag |= kFuncPropHasAsm;
-}
-
-bool MIRFunction::HasAsm() const
-{
-    return ((flag & kFuncPropHasAsm) != kTypeflagZero);
-}
-
-void MIRFunction::SetAttrsFromSe(uint8 specialEffect)
-{
-    // NoPrivateDefEffect
-    if ((specialEffect & kDefEffect) == kDefEffect) {
-        funcAttrs.SetAttr(FUNCATTR_noprivate_defeffect);
-    }
-    // NoPrivateUseEffect
-    if ((specialEffect & kUseEffect) == kUseEffect) {
-        funcAttrs.SetAttr(FUNCATTR_noretarg);
-    }
-    // IpaSeen
-    if ((specialEffect & kIpaSeen) == kIpaSeen) {
-        funcAttrs.SetAttr(FUNCATTR_ipaseen);
-    }
-    // Pure
-    if ((specialEffect & kPureFunc) == kPureFunc) {
-        funcAttrs.SetAttr(FUNCATTR_pure);
-    }
-    // NoDefArgEffect
-    if ((specialEffect & kNoDefArgEffect) == kNoDefArgEffect) {
-        funcAttrs.SetAttr(FUNCATTR_nodefargeffect);
-    }
-    // NoDefEffect
-    if ((specialEffect & kNoDefEffect) == kNoDefEffect) {
-        funcAttrs.SetAttr(FUNCATTR_nodefeffect);
-    }
-    // NoRetNewlyAllocObj
-    if ((specialEffect & kNoRetNewlyAllocObj) == kNoRetNewlyAllocObj) {
-        funcAttrs.SetAttr(FUNCATTR_noretglobal);
-    }
-    // NoThrowException
-    if ((specialEffect & kNoThrowException) == kNoThrowException) {
-        funcAttrs.SetAttr(FUNCATTR_nothrow_exception);
-    }
 }
 
 void FuncAttrs::DumpAttributes() const
@@ -285,7 +188,6 @@ void FuncAttrs::DumpAttributes() const
     }
 }
 
-#ifdef ARK_LITECG_DEBUG
 void MIRFunction::DumpFlavorLoweredThanMmpl() const
 {
     LogInfo::MapleLogger() << " (";
@@ -520,96 +422,6 @@ void MIRFunction::DumpFuncBody(int32 indent)
 }
 #endif
 
-bool MIRFunction::IsEmpty() const
-{
-    return (body == nullptr || body->IsEmpty());
-}
-
-bool MIRFunction::IsClinit() const
-{
-    const std::string clinitPostfix = "_7C_3Cclinit_3E_7C_28_29V";
-    const std::string &funcName = this->GetName();
-    // this does not work for smali files like test/511-clinit-interface/smali/BogusInterface.smali,
-    // which is decorated without "constructor".
-    return StringUtils::EndsWith(funcName, clinitPostfix);
-}
-
-uint32 MIRFunction::GetInfo(GStrIdx strIdx) const
-{
-    for (const auto &item : info) {
-        if (item.first == strIdx) {
-            return item.second;
-        }
-    }
-    DEBUG_ASSERT(false, "get info error");
-    return 0;
-}
-
-uint32 MIRFunction::GetInfo(const std::string &string) const
-{
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetStrIdxFromName(string);
-    return GetInfo(strIdx);
-}
-
-void MIRFunction::OverrideBaseClassFuncNames(GStrIdx strIdx)
-{
-    baseClassStrIdx.reset();
-    baseFuncStrIdx.reset();
-    SetBaseClassFuncNames(strIdx);
-}
-
-// there are two ways to represent the delimiter: '|' or "_7C"
-// where 7C is the ascii value of char '|' in hex
-void MIRFunction::SetBaseClassFuncNames(GStrIdx strIdx)
-{
-    if (baseClassStrIdx != 0u || baseFuncStrIdx != 0u) {
-        return;
-    }
-    const std::string name = GlobalTables::GetStrTable().GetStringFromStrIdx(strIdx);
-    std::string delimiter = "|";
-    uint32 width = 1;  // delimiter width
-    size_t pos = name.find(delimiter);
-    if (pos == std::string::npos) {
-        delimiter = namemangler::kNameSplitterStr;
-        width = 3;  // delimiter "_7C" width is 3
-        pos = name.find(delimiter);
-        // make sure it is not __7C, but ___7C ok. stop find loop if last 2 char is '_'
-        while (pos != std::string::npos &&
-               ((pos == 1 && name[pos - 1] == '_') ||
-                (pos > 1 && name[pos - 1] == '_' && name[pos - 2] != '_'))) {  // last 2 char is '_'
-            pos = name.find(delimiter, pos + width);
-        }
-    }
-    if (pos != std::string::npos && pos > 0) {
-        const std::string className = name.substr(0, pos);
-        baseClassStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(className);
-        std::string funcNameWithType = name.substr(pos + width, name.length() - pos - width);
-        baseFuncWithTypeStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(funcNameWithType);
-        size_t index = name.find(namemangler::kRightBracketStr);
-        if (index != std::string::npos) {
-            size_t posEnd = index + (std::string(namemangler::kRightBracketStr)).length();
-            DEBUG_ASSERT(posEnd - pos > width, "must not be zero");
-            funcNameWithType = name.substr(pos + width, posEnd - pos - width);
-        }
-        baseFuncSigStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(funcNameWithType);
-        size_t newPos = name.find(delimiter, pos + width);
-        // make sure it is not __7C, but ___7C ok. stop find loop if last 2 char is '_'
-        while (newPos != std::string::npos && newPos >= 2 && (name[newPos - 1] == '_' &&
-               name[newPos - 2] != '_')) {  // last 2 char is '_'
-            newPos = name.find(delimiter, newPos + width);
-        }
-        if (newPos != 0) {
-            DEBUG_ASSERT(newPos - pos > width, "must not be zero");
-            std::string funcName = name.substr(pos + width, newPos - pos - width);
-            baseFuncStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(funcName);
-            std::string signature = name.substr(newPos + width, name.length() - newPos - width);
-            signatureStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(signature);
-        }
-        return;
-    }
-    baseFuncStrIdx = strIdx;
-}
-
 const MIRSymbol *MIRFunction::GetLocalOrGlobalSymbol(const StIdx &idx, bool checkFirst) const
 {
     return idx.Islocal() ? GetSymbolTabItem(idx.Idx(), checkFirst)
@@ -621,23 +433,6 @@ MIRSymbol *MIRFunction::GetLocalOrGlobalSymbol(const StIdx &idx, bool checkFirst
                  GetLocalOrGlobalSymbol(idx, checkFirst)) != nullptr,
                  "this->GetLocalOrGlobalSymbol(idx, checkFirst) should not be nullptr");
     return const_cast<MIRSymbol *>(const_cast<const MIRFunction *>(this)->GetLocalOrGlobalSymbol(idx, checkFirst));
-}
-
-const MIRType *MIRFunction::GetNodeType(const BaseNode &node) const
-{
-    if (node.GetOpCode() == OP_dread) {
-        const MIRSymbol *sym = GetLocalOrGlobalSymbol(static_cast<const DreadNode &>(node).GetStIdx());
-        CHECK_NULL_FATAL(sym);
-        return GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->GetTyIdx());
-    }
-    if (node.GetOpCode() == OP_regread) {
-        const auto &nodeReg = static_cast<const RegreadNode &>(node);
-        const MIRPreg *pReg = GetPregTab()->PregFromPregIdx(nodeReg.GetRegIdx());
-        if (pReg->GetPrimType() == PTY_ref) {
-            return pReg->GetMIRType();
-        }
-    }
-    return nullptr;
 }
 
 void MIRFunction::EnterFormals()
@@ -711,21 +506,4 @@ void MIRFunction::NewBody()
                      "Does not expect to process labelTab in MIRFunction::NewBody");
     }
 }
-
-#ifdef DEBUGME
-void MIRFunction::SetUpGDBEnv()
-{
-    if (codeMemPool != nullptr) {
-        delete codeMemPool;
-    }
-    codeMemPool = new ThreadLocalMemPool(memPoolCtrler, "tmp debug");
-    codeMemPoolAllocator.SetMemPool(codeMemPool);
-}
-
-void MIRFunction::ResetGDBEnv()
-{
-    delete codeMemPool;
-    codeMemPool = nullptr;
-}
-#endif
 }  // namespace maple

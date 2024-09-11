@@ -40,14 +40,6 @@ void X64RegInfo::Init()
     return;
 }
 
-void X64RegInfo::SaveCalleeSavedReg(MapleSet<regno_t> savedRegs)
-{
-    X64CGFunc *x64CGFunc = static_cast<X64CGFunc *>(GetCurrFunction());
-    for (auto reg : savedRegs) {
-        x64CGFunc->AddtoCalleeSaved(static_cast<X64reg>(reg));
-    }
-}
-
 bool X64RegInfo::IsCalleeSavedReg(regno_t regno) const
 {
     return x64::IsCalleeSavedReg(static_cast<X64reg>(regno));
@@ -70,16 +62,6 @@ bool X64RegInfo::IsUnconcernedReg(regno_t regNO) const
         return true;
     }
     return false;
-}
-
-bool X64RegInfo::IsUnconcernedReg(const RegOperand &regOpnd) const
-{
-    RegType regType = regOpnd.GetRegisterType();
-    if (regType == kRegTyCc || regType == kRegTyVary) {
-        return true;
-    }
-    uint32 regNO = regOpnd.GetRegisterNumber();
-    return IsUnconcernedReg(regNO);
 }
 
 void X64RegInfo::Fini() {}

@@ -41,6 +41,7 @@ bool MIRIntConst::operator==(const MIRConst &rhs) const
     return ((&intConst.GetType() == &GetType()) && (intConst.value == value));
 }
 
+#ifdef ARK_LITECG_DEBUG
 uint8 MIRIntConst::GetActualBitWidth() const
 {
     if (value == 0) {
@@ -59,7 +60,6 @@ uint8 MIRIntConst::GetActualBitWidth() const
     return width;
 }
 
-#ifdef ARK_LITECG_DEBUG
 void MIRAddrofConst::Dump(const MIRSymbolTable *localSymTab) const
 {
     LogInfo::MapleLogger() << "addrof " << GetPrimTypeName(PTY_ptr);

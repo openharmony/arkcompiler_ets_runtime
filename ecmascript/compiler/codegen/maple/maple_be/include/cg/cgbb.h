@@ -117,7 +117,6 @@ public:
     bool IsCommentBB() const;
     bool IsEmptyOrCommentOnly() const;
     bool IsSoloGoto() const;
-    BB *GetValidPrev();
 
     bool IsEmpty() const
     {
@@ -215,7 +214,6 @@ public:
     /* append all insns from bb into this bb */
     void InsertAtBeginning(BB &bb);
     void InsertAtEnd(BB &bb);
-    void InsertAtEndMinus1(BB &bb);
 
     /* clear BB but don't remove insns of this */
     void ClearInsns()
@@ -620,7 +618,6 @@ public:
     {
         isCritical = arg;
     }
-    bool HasCriticalEdge();
     bool GetInsertUse() const
     {
         return insertUse;
@@ -763,8 +760,6 @@ public:
     {
         return phiInsnList;
     }
-    bool IsInPhiList(regno_t regNO);
-    bool IsInPhiDef(regno_t regNO);
     const Insn *GetFirstLoc() const
     {
         return firstLoc;

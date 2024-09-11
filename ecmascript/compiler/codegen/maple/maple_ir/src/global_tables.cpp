@@ -69,18 +69,6 @@ void TypeTable::ReleaseTypes()
     voidPtrType = nullptr;
 }
 
-void TypeTable::SetTypeWithTyIdx(const TyIdx &tyIdx, MIRType &type)
-{
-    CHECK_FATAL(tyIdx < typeTable.size(), "array index out of range");
-    MIRType *oldType = typeTable.at(tyIdx);
-    typeTable.at(tyIdx) = &type;
-    if (oldType != nullptr && oldType != &type) {
-        (void)typeHashTable.erase(oldType);
-        (void)typeHashTable.insert(&type);
-        delete oldType;
-    }
-}
-
 TypeTable::~TypeTable()
 {
     ReleaseTypes();
@@ -89,50 +77,6 @@ TypeTable::~TypeTable()
 void TypeTable::PutToHashTable(MIRType *mirType)
 {
     (void)typeHashTable.insert(mirType);
-}
-
-void TypeTable::UpdateMIRType(const MIRType &pType, const TyIdx tyIdx)
-{
-    MIRType *nType = pType.CopyMIRTypeNode();
-    ASSERT_NOT_NULL(nType);
-    nType->SetTypeIndex(tyIdx);
-    SetTypeWithTyIdx(tyIdx, *nType);
-}
-
-// used only by bin_mpl_import
-void TypeTable::CreateMirTypeNodeAt(MIRType &pType, TyIdx tyIdxUsed, MIRModule *module, bool isObject,
-                                    bool isIncomplete)
-{
-    MIRType *nType = pType.CopyMIRTypeNode();
-    nType->SetTypeIndex(tyIdxUsed);
-    typeTable[tyIdxUsed] = nType;
-
-    if (pType.IsMIRPtrType()) {
-        auto &pty = static_cast<MIRPtrType &>(pType);
-        if (pty.GetTypeAttrs() == TypeAttrs()) {
-            if (pty.GetPrimType() != PTY_ref) {
-                ptrTypeMap[pty.GetPointedTyIdx()] = nType->GetTypeIndex();
-            } else {
-                refTypeMap[pty.GetPointedTyIdx()] = nType->GetTypeIndex();
-            }
-        } else {
-            (void)typeHashTable.insert(nType);
-        }
-    } else {
-        (void)typeHashTable.insert(nType);
-    }
-
-    GStrIdx stridx = pType.GetNameStrIdx();
-    if (stridx != 0u) {
-        module->GetTypeNameTab()->SetGStrIdxToTyIdx(stridx, tyIdxUsed);
-        module->PushbackTypeDefOrder(stridx);
-        if (isObject) {
-            module->AddClass(tyIdxUsed);
-            if (!isIncomplete) {
-                GlobalTables::GetTypeNameTable().SetGStrIdxToTyIdx(stridx, tyIdxUsed);
-            }
-        }
-    }
 }
 
 MIRType *TypeTable::CreateAndUpdateMirTypeNode(MIRType &pType)
@@ -207,56 +151,6 @@ MIRType *TypeTable::GetOrCreatePointerType(const MIRType &pointTo, PrimType prim
     return GetOrCreatePointerType(pointTo.GetTypeIndex(), primType, attrs);
 }
 
-const MIRType *TypeTable::GetPointedTypeIfApplicable(MIRType &type) const
-{
-    if (type.GetKind() != kTypePointer) {
-        return &type;
-    }
-    auto &ptrType = static_cast<MIRPtrType &>(type);
-    return GetTypeFromTyIdx(ptrType.GetPointedTyIdx());
-}
-MIRType *TypeTable::GetPointedTypeIfApplicable(MIRType &type)
-{
-    return const_cast<MIRType *>(const_cast<const TypeTable *>(this)->GetPointedTypeIfApplicable(type));
-}
-
-MIRArrayType *TypeTable::GetOrCreateArrayType(const MIRType &elem, uint8 dim, const uint64 *sizeArray,
-                                              const TypeAttrs &attrs)
-{
-    std::vector<uint64> sizeVector;
-    for (size_t i = 0; i < dim; ++i) {
-        sizeVector.push_back(sizeArray != nullptr ? sizeArray[i] : 0);
-    }
-    MIRArrayType arrayType(elem.GetTypeIndex(), sizeVector);
-    arrayType.SetTypeAttrs(attrs);
-    TyIdx tyIdx = GetOrCreateMIRType(&arrayType);
-    return static_cast<MIRArrayType *>(typeTable[tyIdx]);
-}
-
-// For one dimension array
-MIRArrayType *TypeTable::GetOrCreateArrayType(const MIRType &elem, uint64 size, const TypeAttrs &attrs)
-{
-    return GetOrCreateArrayType(elem, 1, &size, attrs);
-}
-
-MIRType *TypeTable::GetOrCreateFarrayType(const MIRType &elem)
-{
-    MIRFarrayType type;
-    type.SetElemtTyIdx(elem.GetTypeIndex());
-    TyIdx tyIdx = GetOrCreateMIRType(&type);
-    DEBUG_ASSERT(tyIdx < typeTable.size(), "index out of range in TypeTable::GetOrCreateFarrayType");
-    return typeTable.at(tyIdx);
-}
-
-MIRType *TypeTable::GetOrCreateJarrayType(const MIRType &elem)
-{
-    MIRJarrayType type;
-    type.SetElemtTyIdx(elem.GetTypeIndex());
-    TyIdx tyIdx = GetOrCreateMIRType(&type);
-    DEBUG_ASSERT(tyIdx < typeTable.size(), "index out of range in TypeTable::GetOrCreateJarrayType");
-    return typeTable.at(tyIdx);
-}
-
 MIRType *TypeTable::GetOrCreateFunctionType(const TyIdx &retTyIdx, const std::vector<TyIdx> &vecType,
                                             const std::vector<TypeAttrs> &vecAttrs, bool isVarg,
                                             const TypeAttrs &retAttrs)
@@ -268,12 +162,6 @@ MIRType *TypeTable::GetOrCreateFunctionType(const TyIdx &retTyIdx, const std::ve
     TyIdx tyIdx = GetOrCreateMIRType(&funcType);
     DEBUG_ASSERT(tyIdx < typeTable.size(), "index out of range in TypeTable::GetOrCreateFunctionType");
     return typeTable.at(tyIdx);
-}
-
-void TypeTable::PushIntoFieldVector(FieldVector &fields, const std::string &name, const MIRType &type)
-{
-    GStrIdx strIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(name);
-    fields.push_back(FieldPair(strIdx, TyIdxFieldAttrPair(type.GetTypeIndex(), FieldAttrs())));
 }
 
 void FPConstTable::PostInit()
@@ -290,11 +178,6 @@ void FPConstTable::PostInit()
     minusZeroDoubleConst = new MIRDoubleConst(-0.0, typeDouble);
 }
 
-MIRIntConst *IntConstTable::GetOrCreateIntConst(const IntVal &val, MIRType &type)
-{
-    return DoGetOrCreateIntConst(val.GetExtValue(), type);
-}
-
 MIRIntConst *IntConstTable::GetOrCreateIntConst(uint64 val, MIRType &type)
 {
     return DoGetOrCreateIntConst(val, type);
@@ -306,20 +189,6 @@ MIRIntConst *IntConstTable::DoGetOrCreateIntConst(uint64 val, MIRType &type)
     if (intConstTable.find(key) != intConstTable.end()) {
         return intConstTable[key];
     }
-    intConstTable[key] = new MIRIntConst(val, type);
-    return intConstTable[key];
-}
-
-MIRIntConst *IntConstTable::DoGetOrCreateIntConstTreadSafe(uint64 val, MIRType &type)
-{
-    IntConstKey key(val, type.GetTypeIndex());
-    {
-        std::shared_lock<std::shared_timed_mutex> lock(mtx);
-        if (intConstTable.find(key) != intConstTable.end()) {
-            return intConstTable[key];
-        }
-    }
-    std::unique_lock<std::shared_timed_mutex> lock(mtx);
     intConstTable[key] = new MIRIntConst(val, type);
     return intConstTable[key];
 }
@@ -357,22 +226,6 @@ MIRFloatConst *FPConstTable::DoGetOrCreateFloatConst(float floatVal)
     return floatConst;
 }
 
-MIRFloatConst *FPConstTable::DoGetOrCreateFloatConstThreadSafe(float floatVal)
-{
-    {
-        std::shared_lock<std::shared_timed_mutex> lock(floatMtx);
-        const auto it = floatConstTable.find(floatVal);
-        if (it != floatConstTable.cend()) {
-            return it->second;
-        }
-    }
-    // create a new one
-    std::unique_lock<std::shared_timed_mutex> lock(floatMtx);
-    auto *floatConst = new MIRFloatConst(floatVal, *GlobalTables::GetTypeTable().GetTypeFromTyIdx(TyIdx {PTY_f32}));
-    floatConstTable[floatVal] = floatConst;
-    return floatConst;
-}
-
 MIRDoubleConst *FPConstTable::GetOrCreateDoubleConst(double doubleVal)
 {
     if (std::isnan(doubleVal)) {
@@ -394,23 +247,6 @@ MIRDoubleConst *FPConstTable::DoGetOrCreateDoubleConst(double doubleVal)
         return it->second;
     }
     // create a new one
-    auto *doubleConst =
-        new MIRDoubleConst(doubleVal, *GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f64)));
-    doubleConstTable[doubleVal] = doubleConst;
-    return doubleConst;
-}
-
-MIRDoubleConst *FPConstTable::DoGetOrCreateDoubleConstThreadSafe(double doubleVal)
-{
-    {
-        std::shared_lock<std::shared_timed_mutex> lock(doubleMtx);
-        const auto it = doubleConstTable.find(doubleVal);
-        if (it != doubleConstTable.cend()) {
-            return it->second;
-        }
-    }
-    // create a new one
-    std::unique_lock<std::shared_timed_mutex> lock(doubleMtx);
     auto *doubleConst =
         new MIRDoubleConst(doubleVal, *GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f64)));
     doubleConstTable[doubleVal] = doubleConst;
@@ -482,16 +318,6 @@ bool GSymbolTable::AddToStringSymbolMap(const MIRSymbol &st)
     }
     strIdxToStIdxMap[strIdx] = st.GetStIdx();
     return true;
-}
-
-bool GSymbolTable::RemoveFromStringSymbolMap(const MIRSymbol &st)
-{
-    const auto it = strIdxToStIdxMap.find(st.GetNameStrIdx());
-    if (it != strIdxToStIdxMap.cend()) {
-        strIdxToStIdxMap.erase(it);
-        return true;
-    }
-    return false;
 }
 
 #ifdef ARK_LITECG_DEBUG

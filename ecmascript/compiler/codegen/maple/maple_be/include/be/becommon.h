@@ -62,8 +62,6 @@ public:
     MIRType *BeGetOrCreateFunctionType(TyIdx tyIdx, const std::vector<TyIdx> &vecTy,
                                        const std::vector<TypeAttrs> &vecAt);
 
-    BaseNode *GetAddressOfNode(const BaseNode &node);
-
     PrimType GetAddressPrimType() const
     {
         return GetLoweredPtrType();

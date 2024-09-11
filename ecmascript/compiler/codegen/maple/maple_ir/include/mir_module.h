@@ -254,9 +254,6 @@ public:
         typeDefOrder.push_back(gstrIdx);
     }
 
-    void AddClass(TyIdx tyIdx);
-    void RemoveClass(TyIdx tyIdx);
-
     void SetCurFunction(MIRFunction *f)
     {
         curFunction = f;
@@ -315,7 +312,6 @@ public:
     void DumpInlineCandidateToFile(const std::string &fileNameStr);
     void DumpDefType();
 #endif
-    const std::string &GetFileNameFromFileNum(uint32 fileNum) const;
 #ifdef ARK_LITECG_DEBUG
     void DumpClassToFile(const std::string &path) const;
     void DumpFunctionList(const std::unordered_set<std::string> *dumpFuncSet) const;
@@ -338,7 +334,6 @@ public:
         return entryFunc;
     }
 
-    MIRFunction *FindEntryFunction();
     uint32 GetFileinfo(GStrIdx strIdx) const;
     void OutputFunctionListAsciiMpl(const std::string &phaseName);
     const std::string &GetFileName() const
@@ -356,7 +351,9 @@ public:
         return needFile;
     }
 
+#ifdef ARK_LITECG_DEBUG
     std::string GetFileNameAsPostfix() const;
+#endif
     void SetFileName(const std::string &name)
     {
         fileName = name;
@@ -397,7 +394,6 @@ public:
         return superCallSet.find(func) != superCallSet.end();
     }
 
-    void ReleaseCurFuncMemPoolTmp();
     void SetUseFuncCodeMemPoolTmp()
     {
         useFuncCodeMemPoolTmp = true;
@@ -408,7 +404,6 @@ public:
         useFuncCodeMemPoolTmp = false;
     }
 
-    void SetFuncInfoPrinted() const;
     size_t GetOptFuncsSize() const
     {
         return optimizedFuncs.size();
@@ -752,7 +747,6 @@ public:
         hasPartO2List = value;
     }
 
-    void InitPartO2List(const std::string &list);
     bool IsInPartO2List(const GStrIdx &idx) const
     {
         return partO2FuncList.count(idx) > 0;
@@ -817,8 +811,6 @@ public:
     {
         return isAArch64;
     }
-
-    bool HasNotWarned(uint32 postion, uint32 stmtOriginalID);
 
 private:
     MemPool *memPool;

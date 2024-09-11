@@ -90,24 +90,8 @@ LiteCGTypeKind LMIRBuilder::LiteCGGetTypeKind(Type *type) const
     switch (type->GetKind()) {
         case MIRTypeKind::kTypeScalar:
             return kLiteCGTypeScalar;
-        case MIRTypeKind::kTypeBitField:
-            return kLiteCGTypeBitField;
         case MIRTypeKind::kTypeArray:
             return kLiteCGTypeArray;
-        case MIRTypeKind::kTypeFArray:
-            return kLiteCGTypeFArray;
-        case MIRTypeKind::kTypeJArray:
-            return kLiteCGTypeJArray;
-        case MIRTypeKind::kTypeClass:
-            return kLiteCGTypeClass;
-        case MIRTypeKind::kTypeInterface:
-            return kLiteCGTypeInterface;
-        case MIRTypeKind::kTypeStructIncomplete:
-            return kLiteCGTypeStructIncomplete;
-        case MIRTypeKind::kTypeClassIncomplete:
-            return kLiteCGTypeClassIncomplete;
-        case MIRTypeKind::kTypeInterfaceIncomplete:
-            return kLiteCGTypeInterfaceIncomplete;
         case MIRTypeKind::kTypePointer:
             return kLiteCGTypePointer;
         case MIRTypeKind::kTypeFunction:
@@ -116,12 +100,6 @@ LiteCGTypeKind LMIRBuilder::LiteCGGetTypeKind(Type *type) const
             return kLiteCGTypeVoid;
         case MIRTypeKind::kTypeByName:
             return kLiteCGTypeByName;
-        case MIRTypeKind::kTypeParam:
-            return kLiteCGTypeParam;
-        case MIRTypeKind::kTypeInstantVector:
-            return kLiteCGTypeInstantVector;
-        case MIRTypeKind::kTypeGenericInstant:
-            return kLiteCGTypeGenericInstant;
         default:
             return kLiteCGTypeUnknown;
     }
@@ -164,11 +142,6 @@ Type *LMIRBuilder::CreateRefType(Type *mirType)
 bool LMIRBuilder::IsHeapPointerType(Type *mirType) const
 {
     return mirType->GetPrimType() == PTY_ref;
-}
-
-ArrayConst &LMIRBuilder::CreateArrayConstInternal(ArrayType *type)
-{
-    return *module.GetMemPool()->New<ArrayConst>(module, *type);
 }
 
 Type *LMIRBuilder::CreateFuncType(std::vector<Type *> params_, Type *retType, bool isVarg)

@@ -76,7 +76,6 @@ private:
     void EmitGlobalInfo(MIRModule &m) const;
     void EmitDuplicatedAsmFunc(MIRModule &m) const;
     bool IsFramework(MIRModule &m) const;
-    void SweepUnusedStaticSymbol(MIRModule &m);
 
     CG *cg = nullptr;
     BECommon *beCommon = nullptr;

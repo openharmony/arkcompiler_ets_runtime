@@ -27,50 +27,6 @@ MIRSymbol *MIRSymbolBuilder::GetLocalDecl(const MIRSymbolTable &symbolTable, con
     return nullptr;
 }
 
-MIRSymbol *MIRSymbolBuilder::GetGlobalDecl(GStrIdx strIdx) const
-{
-    if (strIdx != 0u) {
-        const StIdx stIdx = GlobalTables::GetGsymTable().GetStIdxFromStrIdx(strIdx);
-        if (stIdx.FullIdx() != 0) {
-            return GlobalTables::GetGsymTable().GetSymbolFromStidx(stIdx.Idx());
-        }
-    }
-    return nullptr;
-}
-
-MIRSymbol *MIRSymbolBuilder::CreateGlobalDecl(GStrIdx strIdx, const MIRType &type, MIRStorageClass sc) const
-{
-    MIRSymbol *st = GlobalTables::GetGsymTable().CreateSymbol(kScopeGlobal);
-    st->SetNameStrIdx(strIdx);
-    st->SetTyIdx(type.GetTypeIndex());
-    (void)GlobalTables::GetGsymTable().AddToStringSymbolMap(*st);
-    st->SetStorageClass(sc);
-    st->SetSKind(kStVar);
-    return st;
-}
-
-// when sametype is true, it means match everything the of the symbol
-MIRSymbol *MIRSymbolBuilder::GetSymbol(TyIdx tyIdx, GStrIdx strIdx, MIRSymKind mClass, MIRStorageClass sClass,
-                                       bool sameType) const
-{
-    MIRSymbol *st = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(strIdx);
-    if (st == nullptr || st->GetTyIdx() != tyIdx) {
-        return nullptr;
-    }
-
-    if (sameType) {
-        if (st->GetStorageClass() == sClass && st->GetSKind() == mClass) {
-            return st;
-        }
-        return nullptr;
-    }
-    DEBUG_ASSERT(mClass == st->GetSKind(),
-                 "trying to create a new symbol that has the same name and GtyIdx. might cause problem");
-    DEBUG_ASSERT(sClass == st->GetStorageClass(),
-                 "trying to create a new symbol that has the same name and tyIdx. might cause problem");
-    return st;
-}
-
 // when func is null, create global symbol, otherwise create local symbol
 MIRSymbol *MIRSymbolBuilder::CreateSymbol(TyIdx tyIdx, GStrIdx strIdx, MIRSymKind mClass, MIRStorageClass sClass,
                                           MIRFunction *func, uint8 scpID) const
@@ -90,6 +46,7 @@ MIRSymbol *MIRSymbolBuilder::CreateSymbol(TyIdx tyIdx, GStrIdx strIdx, MIRSymKin
     return st;
 }
 
+
 MIRSymbol *MIRSymbolBuilder::CreatePregFormalSymbol(TyIdx tyIdx, PregIdx pRegIdx, MIRFunction &func) const
 {
     MIRSymbol *st = func.GetSymTab()->CreateSymbol(kScopeLocal);
@@ -100,22 +57,5 @@ MIRSymbol *MIRSymbolBuilder::CreatePregFormalSymbol(TyIdx tyIdx, PregIdx pRegIdx
     MIRPregTable *pregTab = func.GetPregTab();
     st->SetPreg(pregTab->PregFromPregIdx(pRegIdx));
     return st;
-}
-
-size_t MIRSymbolBuilder::GetSymbolTableSize(const MIRFunction *func) const
-{
-    return (func == nullptr) ? GlobalTables::GetGsymTable().GetSymbolTableSize()
-                             : func->GetSymTab()->GetSymbolTableSize();
-}
-
-const MIRSymbol *MIRSymbolBuilder::GetSymbolFromStIdx(uint32 idx, const MIRFunction *func) const
-{
-    if (func == nullptr) {
-        auto &symTab = GlobalTables::GetGsymTable();
-        return symTab.GetSymbolFromStidx(idx);
-    } else {
-        auto &symTab = *func->GetSymTab();
-        return symTab.GetSymbolFromStIdx(idx);
-    }
 }
 }  // namespace maple

@@ -50,9 +50,6 @@ public:
     uint64 EmitArray(maple::MIRConst &mirConst, maplebe::CG &cg, bool belongsToDataSec = true);
     void EmitAddrofElement(MIRConst &mirConst, bool belongsToDataSec);
     uint32 EmitSingleElement(maple::MIRConst &mirConst, bool belongsToDataSec = true, bool isIndirect = false);
-    void EmitBitField(maplebe::StructEmitInfo &structEmitInfo, maple::MIRConst &mirConst,
-                      const maple::MIRType *nextType, uint64 fieldOffset, bool belongsToDataSec = true);
-    void EmitCombineBfldValue(maplebe::StructEmitInfo &structEmitInfo, bool belongsToDataSec = true);
     void EmitStringPointers();
     void Run(maplebe::CGFunc &cgFunc);
 

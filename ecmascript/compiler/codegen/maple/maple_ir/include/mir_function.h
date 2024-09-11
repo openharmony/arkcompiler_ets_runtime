@@ -93,30 +93,21 @@ public:
     const MIRSymbol *GetFuncSymbol() const;
     MIRSymbol *GetFuncSymbol();
 
-    void SetBaseClassFuncNames(GStrIdx strIdx);
     void SetMemPool(MemPool *memPool)
     {
         SetCodeMemPool(memPool);
         codeMemPoolAllocator.SetMemPool(codeMemPool);
     }
 
-    /// update signature_strIdx, basefunc_strIdx, baseclass_strIdx, basefunc_withtype_strIdx
-    /// without considering baseclass_strIdx, basefunc_strIdx's original non-zero values
-    /// \param strIdx full_name strIdx of the new function name
-    void OverrideBaseClassFuncNames(GStrIdx strIdx);
     const std::string &GetName() const;
 
+#ifdef ARK_LITECG_DEBUG
     GStrIdx GetNameStrIdx() const;
+#endif
 
     const std::string &GetBaseClassName() const;
 
     const std::string &GetBaseFuncName() const;
-
-    const std::string &GetBaseFuncNameWithType() const;
-
-    const std::string &GetBaseFuncSig() const;
-
-    const std::string &GetSignature() const;
 
     GStrIdx GetBaseClassNameStrIdx() const
     {
@@ -170,7 +161,6 @@ public:
         funcType->SetRetTyIdx(tyidx);
     }
 
-    const MIRType *GetClassType() const;
     TyIdx GetClassTyIdx() const
     {
         return classTyIdx;
@@ -223,8 +213,6 @@ public:
         DEBUG_ASSERT(formalDefVec[i].formalSym != nullptr, "null ptr check");
         return formalDefVec[i].formalSym->GetAttrs();
     }
-
-    void UpdateFuncTypeAndFormals(const std::vector<MIRSymbol *> &symbols, bool clearOldArgs = false);
     void UpdateFuncTypeAndFormalsAndReturnType(const std::vector<MIRSymbol *> &symbols, const TyIdx &retTyIdx,
                                                bool clearOldArgs = false);
     LabelIdx GetOrCreateLableIdxFromName(const std::string &name);
@@ -242,8 +230,6 @@ public:
 
     const MIRSymbol *GetLocalOrGlobalSymbol(const StIdx &idx, bool checkFirst = false) const;
     MIRSymbol *GetLocalOrGlobalSymbol(const StIdx &idx, bool checkFirst = false);
-
-    void SetAttrsFromSe(uint8 specialEffect);
 
     const FuncAttrs &GetAttrs() const
     {
@@ -478,26 +464,11 @@ public:
     bool HasCall() const;
     void SetHasCall();
 
-    bool IsUserFunc() const;
-    void SetUserFunc();
-
+#ifdef ARK_LITECG_DEBUG
     bool IsInfoPrinted() const;
     void SetInfoPrinted();
     void ResetInfoPrinted();
-
-    void SetNoReturn();
-    bool NeverReturns() const;
-
-    void SetHasSetjmp();
-    bool HasSetjmp() const;
-
-    void SetHasAsm();
-    bool HasAsm() const;
-
-    bool IsEmpty() const;
-    bool IsClinit() const;
-    uint32 GetInfo(GStrIdx strIdx) const;
-    uint32 GetInfo(const std::string &str) const;
+#endif
     bool IsAFormal(const MIRSymbol *st) const
     {
         for (const auto &formalDef : formalDefVec) {
@@ -548,12 +519,6 @@ public:
         return FormalDef();
     }
 
-    const MIRType *GetNodeType(const BaseNode &node) const;
-
-#ifdef DEBUGME
-    void SetUpGDBEnv();
-    void ResetGDBEnv();
-#endif
     void ReleaseMemory()
     {
         if (codeMemPoolTmp != nullptr) {

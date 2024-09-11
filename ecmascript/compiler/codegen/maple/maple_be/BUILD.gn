@@ -98,7 +98,6 @@ src_libcgaarch64 = [
   "src/cg/aarch64/aarch64_offset_adjust.cpp",
   "src/cg/aarch64/aarch64_optimize_common.cpp",
   "src/cg/aarch64/aarch64_peep.cpp",
-  "src/cg/aarch64/aarch64_utils.cpp",
   "src/cg/aarch64/aarch64_cg.cpp",
   "src/cg/aarch64/aarch64_cfgo.cpp",
   "src/cg/aarch64/aarch64_imm_valid.cpp",

@@ -187,37 +187,6 @@ void BB::InsertAtEnd(BB &bb)
     bb.firstInsn = bb.lastInsn = nullptr;
 }
 
-/* Insert all insns from bb into this bb before the last instr */
-void BB::InsertAtEndMinus1(BB &bb)
-{
-    if (bb.firstInsn == nullptr) { /* nothing to add */
-        return;
-    }
-
-    if (NumInsn() == 1) {
-        InsertAtBeginning(bb);
-        return;
-    }
-
-    FOR_BB_INSNS(insn, &bb)
-    {
-        insn->SetBB(this);
-    }
-
-    if (firstInsn == nullptr) {
-        firstInsn = bb.firstInsn;
-        lastInsn = bb.lastInsn;
-    } else {
-        /* Add between prevLast and lastInsn */
-        Insn *prevLast = lastInsn->GetPrev();
-        bb.firstInsn->SetPrev(prevLast);
-        prevLast->SetNext(bb.firstInsn);
-        lastInsn->SetPrev(bb.lastInsn);
-        bb.lastInsn->SetNext(lastInsn);
-    }
-    bb.firstInsn = bb.lastInsn = nullptr;
-}
-
 /* Number of instructions excluding DbgInsn and comments */
 int32 BB::NumInsn() const
 {
@@ -230,59 +199,6 @@ int32 BB::NumInsn() const
         ++bbSize;
     }
     return bbSize;
-}
-
-bool BB::IsInPhiList(regno_t regNO)
-{
-    for (auto phiInsnIt : phiInsnList) {
-        Insn *phiInsn = phiInsnIt.second;
-        if (phiInsn == nullptr) {
-            continue;
-        }
-        auto &phiListOpnd = static_cast<PhiOperand &>(phiInsn->GetOperand(kInsnSecondOpnd));
-        for (auto phiListIt : phiListOpnd.GetOperands()) {
-            RegOperand *phiUseOpnd = phiListIt.second;
-            if (phiUseOpnd == nullptr) {
-                continue;
-            }
-            if (phiUseOpnd->GetRegisterNumber() == regNO) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool BB::IsInPhiDef(regno_t regNO)
-{
-    for (auto phiInsnIt : phiInsnList) {
-        Insn *phiInsn = phiInsnIt.second;
-        if (phiInsn == nullptr) {
-            continue;
-        }
-        auto &phiDefOpnd = static_cast<RegOperand &>(phiInsn->GetOperand(kInsnFirstOpnd));
-        if (phiDefOpnd.GetRegisterNumber() == regNO) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool BB::HasCriticalEdge()
-{
-    constexpr int minPredsNum = 2;
-    if (preds.size() < minPredsNum) {
-        return false;
-    }
-    for (BB *pred : preds) {
-        if (pred->GetKind() == BB::kBBGoto) {
-            continue;
-        }
-        if (pred->GetSuccs().size() > 1) {
-            return true;
-        }
-    }
-    return false;
 }
 
 void BB::Dump() const
@@ -346,15 +262,6 @@ bool BB::IsSoloGoto() const
         return (insn->IsUnCondBranch());
     }
     return false;
-}
-
-BB *BB::GetValidPrev()
-{
-    BB *pre = GetPrev();
-    while (pre != nullptr && (pre->IsEmptyOrCommentOnly() || pre->IsUnreachable())) {
-        pre = pre->GetPrev();
-    }
-    return pre;
 }
 
 void Bfs::SeekCycles()

@@ -313,12 +313,6 @@ RegOperand &X64CGFunc::GetOrCreateVirtualRegisterOperand(regno_t vRegNO)
     RegOperand *a;
     return *a;
 }
-RegOperand &X64CGFunc::GetOrCreateVirtualRegisterOperand(RegOperand &regOpnd)
-{
-    CHECK_FATAL(false, "NIY");
-    RegOperand *a;
-    return *a;
-}
 RegOperand &X64CGFunc::GetOrCreateFramePointerRegOperand()
 {
     CHECK_FATAL(false, "NIY");
@@ -336,12 +330,6 @@ RegOperand &X64CGFunc::GetZeroOpnd(uint32 size)
     return *a;
 }
 Operand &X64CGFunc::CreateCfiRegOperand(uint32 reg, uint32 size)
-{
-    CHECK_FATAL(false, "NIY");
-    Operand *a;
-    return *a;
-}
-Operand &X64CGFunc::GetTargetRetOperand(PrimType primType, int32 sReg)
 {
     CHECK_FATAL(false, "NIY");
     Operand *a;

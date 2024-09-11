@@ -447,19 +447,6 @@ void MIRModule::DumpInlineCandidateToFile(const std::string &fileNameStr)
 }
 #endif
 
-// This is not efficient. Only used in debug mode for now.
-const std::string &MIRModule::GetFileNameFromFileNum(uint32 fileNum) const
-{
-    GStrIdx nameIdx(0);
-    for (auto &info : srcFileInfo) {
-        if (info.second == fileNum) {
-            nameIdx = info.first;
-            break;
-        }
-    }
-    return GlobalTables::GetStrTable().GetStringFromStrIdx(nameIdx);
-}
-
 #ifdef ARK_LITECG_DEBUG
 void MIRModule::DumpClassToFile(const std::string &path) const
 {
@@ -493,17 +480,6 @@ void MIRModule::DumpClassToFile(const std::string &path) const
 }
 #endif
 
-MIRFunction *MIRModule::FindEntryFunction()
-{
-    for (MIRFunction *currFunc : functionList) {
-        if (currFunc->GetName() == entryFuncName) {
-            entryFunc = currFunc;
-            return currFunc;
-        }
-    }
-    return nullptr;
-}
-
 uint32 MIRModule::GetFileinfo(GStrIdx strIdx) const
 {
     for (auto &infoElem : fileInfo) {
@@ -515,6 +491,7 @@ uint32 MIRModule::GetFileinfo(GStrIdx strIdx) const
     return 0;
 }
 
+#ifdef ARK_LITECG_DEBUG
 std::string MIRModule::GetFileNameAsPostfix() const
 {
     std::string fileNameStr = namemangler::kFileNameSplitterStr;
@@ -540,66 +517,7 @@ std::string MIRModule::GetFileNameAsPostfix() const
     }
     return fileNameStr;
 }
-
-void MIRModule::AddClass(TyIdx tyIdx)
-{
-    (void)classList.insert(tyIdx);
-}
-
-void MIRModule::RemoveClass(TyIdx tyIdx)
-{
-    (void)classList.erase(tyIdx);
-}
+#endif
 
 #endif  // MIR_FEATURE_FULL
-void MIRModule::ReleaseCurFuncMemPoolTmp()
-{
-    DEBUG_ASSERT(CurFunction() != nullptr, "CurFunction() should not be nullptr");
-    CurFunction()->ReleaseMemory();
-}
-
-void MIRModule::SetFuncInfoPrinted() const
-{
-    DEBUG_ASSERT(CurFunction() != nullptr, "CurFunction() should not be nullptr");
-    CurFunction()->SetInfoPrinted();
-}
-
-void MIRModule::InitPartO2List(const std::string &list)
-{
-    if (list.empty()) {
-        return;
-    }
-    SetHasPartO2List(true);
-    std::ifstream infile(list);
-    if (!infile.is_open()) {
-        LogInfo::MapleLogger(kLlErr) << "Cannot open partO2 function list file " << list << '\n';
-        return;
-    }
-    std::string str;
-
-    while (getline(infile, str)) {
-        if (str.empty()) {
-            continue;
-        }
-        GStrIdx funcStrIdx = GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(str);
-        partO2FuncList.insert(funcStrIdx);
-    }
-    infile.close();
-}
-
-bool MIRModule::HasNotWarned(uint32 position, uint32 stmtOriginalID)
-{
-    auto warnedOp = safetyWarningMap.find(position);
-    if (warnedOp == safetyWarningMap.end()) {
-        MapleSet<uint32> opSet(memPoolAllocator.Adapter());
-        opSet.emplace(stmtOriginalID);
-        safetyWarningMap.emplace(std::pair<uint32, MapleSet<uint32>>(position, std::move(opSet)));
-        return true;
-    }
-    if (warnedOp->second.find(stmtOriginalID) == warnedOp->second.end()) {
-        warnedOp->second.emplace(stmtOriginalID);
-        return true;
-    }
-    return false;
-}
 }  // namespace maple

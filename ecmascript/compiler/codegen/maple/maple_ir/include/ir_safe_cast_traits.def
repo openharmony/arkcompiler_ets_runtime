@@ -36,14 +36,8 @@ REGISTER_SAFE_CAST(MIRStConst, from.GetKind() == kConstStConst);
 #undef LOAD_SAFE_CAST_FOR_MIR_TYPE
 REGISTER_SAFE_CAST(MIRPtrType, from.GetKind() == kTypePointer);
 REGISTER_SAFE_CAST(MIRArrayType, from.GetKind() == kTypeArray);
-REGISTER_SAFE_CAST(MIRFarrayType, from.GetKind() == kTypeFArray ||
-                                  instance_of<MIRJarrayType>(from));
-REGISTER_SAFE_CAST(MIRJarrayType, from.GetKind() == kTypeJArray);
-REGISTER_SAFE_CAST(MIRBitFieldType, from.GetKind() == kTypeBitField);
 REGISTER_SAFE_CAST(MIRFuncType, from.GetKind() == kTypeFunction);
 REGISTER_SAFE_CAST(MIRTypeByName, from.GetKind() == kTypeByName);
-REGISTER_SAFE_CAST(MIRInstantVectorType, from.GetKind() == kTypeInstantVector);
-REGISTER_SAFE_CAST(MIRGenericInstantType, from.GetKind() == kTypeGenericInstant);
 #endif
 
 #ifdef LOAD_SAFE_CAST_FOR_MIR_NODE

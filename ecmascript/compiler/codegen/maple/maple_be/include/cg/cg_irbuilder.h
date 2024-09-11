@@ -96,8 +96,6 @@ public:
     ListOperand &CreateList(MemPool *mp = nullptr);
     FuncNameOperand &CreateFuncNameOpnd(MIRSymbol &symbol, MemPool *mp = nullptr);
     LabelOperand &CreateLabel(const char *parent, LabelIdx idx, MemPool *mp = nullptr);
-    CommentOperand &CreateComment(const std::string &s, MemPool *mp = nullptr);
-    CommentOperand &CreateComment(const MapleString &s, MemPool *mp = nullptr);
 
     uint32 GetCurrentVRegNum() const
     {

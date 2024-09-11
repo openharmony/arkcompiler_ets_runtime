@@ -30,9 +30,6 @@
 #include "mir_const.h"
 
 namespace maple {
-using TyIdxFieldAttrPair = std::pair<TyIdx, FieldAttrs>;
-using FieldPair = std::pair<GStrIdx, TyIdxFieldAttrPair>;
-using FieldVector = std::vector<FieldPair>;
 
 class BinaryMplImport;  // circular dependency exists, no other choice
 
@@ -154,7 +151,6 @@ public:
         return typeTable.at(tyIdx)->GetPrimType();
     }
 
-    void SetTypeWithTyIdx(const TyIdx &tyIdx, MIRType &type);
     MIRType *GetOrCreateMIRTypeNode(MIRType &ptype);
 
     TyIdx GetOrCreateMIRType(MIRType *pType)
@@ -328,25 +324,14 @@ public:
                                     const TypeAttrs &attrs = TypeAttrs());
     MIRType *GetOrCreatePointerType(const MIRType &pointTo, PrimType primType = PTY_ptr,
                                     const TypeAttrs &attrs = TypeAttrs());
-    const MIRType *GetPointedTypeIfApplicable(MIRType &type) const;
-    MIRType *GetPointedTypeIfApplicable(MIRType &type);
     MIRType *GetVoidPtr() const
     {
         DEBUG_ASSERT(voidPtrType != nullptr, "voidPtrType should not be null");
         return voidPtrType;
     }
 
-    void UpdateMIRType(const MIRType &pType, const TyIdx tyIdx);
-    MIRArrayType *GetOrCreateArrayType(const MIRType &elem, uint8 dim, const uint64 *sizeArray,
-                                       const TypeAttrs &attrs = TypeAttrs());
-    // For one dimention array
-    MIRArrayType *GetOrCreateArrayType(const MIRType &elem, uint64 size, const TypeAttrs &attrs = TypeAttrs());
-    MIRType *GetOrCreateFarrayType(const MIRType &elem);
-    MIRType *GetOrCreateJarrayType(const MIRType &elem);
     MIRType *GetOrCreateFunctionType(const TyIdx &, const std::vector<TyIdx> &, const std::vector<TypeAttrs> &,
                                      bool isVarg = false, const TypeAttrs &retAttrs = TypeAttrs());
-
-    void PushIntoFieldVector(FieldVector &fields, const std::string &name, const MIRType &type);
 
     TyIdx lastDefaultTyIdx;
 
@@ -384,7 +369,6 @@ private:
         typeTable.pop_back();
     }
 
-    void CreateMirTypeNodeAt(MIRType &pType, TyIdx tyIdxUsed, MIRModule *module, bool isObject, bool isIncomplete);
     MIRType *CreateAndUpdateMirTypeNode(MIRType &pType);
 
     MIRType *CreateMirType(uint32 primTypeIdx) const;
@@ -526,8 +510,6 @@ private:
     void PostInit();
     MIRFloatConst *DoGetOrCreateFloatConst(float);
     MIRDoubleConst *DoGetOrCreateDoubleConst(double);
-    MIRFloatConst *DoGetOrCreateFloatConstThreadSafe(float);
-    MIRDoubleConst *DoGetOrCreateDoubleConstThreadSafe(double);
     std::shared_timed_mutex floatMtx;
     std::shared_timed_mutex doubleMtx;
     std::unordered_map<float, MIRFloatConst *> floatConstTable;     // map float const value to the table;
@@ -548,7 +530,6 @@ public:
     IntConstTable &operator=(const IntConstTable &p) = delete;
     ~IntConstTable();
 
-    MIRIntConst *GetOrCreateIntConst(const IntVal &val, MIRType &type);
     MIRIntConst *GetOrCreateIntConst(uint64 val, MIRType &type);
 
     static std::unique_ptr<IntConstTable> Create()
@@ -560,7 +541,6 @@ public:
 private:
     IntConstTable() = default;
     MIRIntConst *DoGetOrCreateIntConst(uint64 val, MIRType &type);
-    MIRIntConst *DoGetOrCreateIntConstTreadSafe(uint64 val, MIRType &type);
     std::shared_timed_mutex mtx;
     std::unordered_map<IntConstKey, MIRIntConst *, IntConstHash, IntConstCmp> intConstTable;
 };
@@ -714,7 +694,6 @@ public:
 
     MIRSymbol *CreateSymbol(uint8 scopeID);
     bool AddToStringSymbolMap(const MIRSymbol &st);
-    bool RemoveFromStringSymbolMap(const MIRSymbol &st);
 #ifdef ARK_LITECG_DEBUG
     void Dump(bool isLocal, int32 indent = 0) const;
 #endif

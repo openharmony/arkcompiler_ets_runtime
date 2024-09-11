@@ -204,7 +204,6 @@ public:
     /* enroll all code generator phases for target machine */
     virtual void EnrollTargetPhases(MaplePhaseManager *pm) const = 0;
 
-    virtual Insn &BuildPhiInsn(RegOperand &defOpnd, Operand &listParam) = 0;
     virtual PhiOperand &CreatePhiOperand(MemPool &mp, MapleAllocator &mAllocator) = 0;
 
     virtual CGFunc *CreateCGFunc(MIRModule &mod, MIRFunction &, BECommon &, MemPool &, StackMemPool &, MapleAllocator &,
@@ -212,8 +211,10 @@ public:
 
     virtual bool IsExclusiveFunc(MIRFunction &mirFunc) = 0;
 
+#ifdef ARK_LITECG_DEBUG
     /* Used for GCTIB pattern merging */
     virtual std::string FindGCTIBPatternName(const std::string &name) const = 0;
+#endif
 
     bool GenerateVerboseAsm() const
     {

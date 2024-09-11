@@ -129,11 +129,9 @@ public:
 
     void Init() override;
     void Fini() override;
-    void SaveCalleeSavedReg(MapleSet<regno_t> savedRegs) override;
     bool IsCalleeSavedReg(regno_t regno) const override;
     bool IsYieldPointReg(regno_t regNO) const override;
     bool IsUnconcernedReg(regno_t regNO) const override;
-    bool IsUnconcernedReg(const RegOperand &regOpnd) const override;
     bool IsSpillRegInRA(regno_t regNO, bool has3RegOpnd) override;
     RegOperand *GetOrCreatePhyRegOperand(regno_t regNO, uint32 size, RegType kind, uint32 flag = 0) override;
     Insn *BuildStrInsn(uint32 regSize, PrimType stype, RegOperand &phyOpnd, MemOperand &memOpnd) override;

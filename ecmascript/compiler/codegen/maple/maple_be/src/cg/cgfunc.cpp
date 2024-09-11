@@ -29,61 +29,6 @@
 namespace maplebe {
 using namespace maple;
 
-// deal mem read/write node base info
-void MemRWNodeHelper::GetMemRWNodeBaseInfo(const BaseNode &node, MIRFunction &mirFunc)
-{
-    if (node.GetOpCode() == maple::OP_iread) {
-        auto &iread = static_cast<const IreadNode &>(node);
-        fieldId = iread.GetFieldID();
-        auto *type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iread.GetTyIdx());
-        DEBUG_ASSERT(type->IsMIRPtrType(), "expect a pointer type at iread node");
-        auto *pointerType = static_cast<MIRPtrType *>(type);
-        mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerType->GetPointedTyIdx());
-        if (mirType->GetKind() == kTypeArray) {
-            auto *arrayType = static_cast<MIRArrayType *>(mirType);
-            mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(arrayType->GetElemTyIdx());
-        }
-    } else if (node.GetOpCode() == maple::OP_dassign) {
-        auto &dassign = static_cast<const DassignNode &>(node);
-        fieldId = dassign.GetFieldID();
-        symbol = mirFunc.GetLocalOrGlobalSymbol(dassign.GetStIdx());
-        CHECK_FATAL(symbol != nullptr, "symbol should not be nullptr");
-        mirType = symbol->GetType();
-    } else if (node.GetOpCode() == maple::OP_dread) {
-        auto &dread = static_cast<const AddrofNode &>(node);
-        fieldId = dread.GetFieldID();
-        symbol = mirFunc.GetLocalOrGlobalSymbol(dread.GetStIdx());
-        CHECK_FATAL(symbol != nullptr, "symbol should not be nullptr");
-        mirType = symbol->GetType();
-    } else {
-        CHECK_FATAL(node.GetOpCode() == maple::OP_iassign, "unsupported OpCode");
-        auto &iassign = static_cast<const IassignNode &>(node);
-        fieldId = iassign.GetFieldID();
-        auto &addrofNode = static_cast<AddrofNode &>(iassign.GetAddrExprBase());
-        auto *iassignMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iassign.GetTyIdx());
-        MIRPtrType *pointerType = nullptr;
-        if (iassignMirType->GetPrimType() == PTY_agg) {
-            auto *addrSym = mirFunc.GetLocalOrGlobalSymbol(addrofNode.GetStIdx());
-            DEBUG_ASSERT(addrSym != nullptr, "addrSym should not be nullptr");
-            auto *addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrSym->GetTyIdx());
-            addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrMirType->GetTypeIndex());
-            DEBUG_ASSERT(addrMirType->GetKind() == kTypePointer, "non-pointer");
-            pointerType = static_cast<MIRPtrType *>(addrMirType);
-        } else {
-            DEBUG_ASSERT(iassignMirType->GetKind() == kTypePointer, "non-pointer");
-            pointerType = static_cast<MIRPtrType *>(iassignMirType);
-        }
-        mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerType->GetPointedTyIdx());
-    }
-}
-
-void MemRWNodeHelper::GetTrueMirInfo(const BECommon &beCommon)
-{
-    primType = mirType->GetPrimType();
-    // get mem size
-    memSize = static_cast<uint32>(mirType->GetSize());
-}
-
 static Operand *HandleDread(const BaseNode &parent, BaseNode &expr, CGFunc &cgFunc)
 {
     auto &dreadNode = static_cast<AddrofNode &>(expr);
@@ -683,23 +628,6 @@ LabelIdx CGFunc::CreateLabel()
     return func.GetOrCreateLableIdxFromName(labelStr);
 }
 
-void CGFunc::GenerateCfiPrologEpilog()
-{
-    if (GenCfi() == false) {
-        return;
-    }
-    Insn &ipoint = GetInsnBuilder()->BuildCfiInsn(cfi::OP_CFI_startproc);
-    /* prolog */
-    if (firstBB->GetFirstInsn() != nullptr) {
-        firstBB->InsertInsnBefore(*firstBB->GetFirstInsn(), ipoint);
-    } else {
-        firstBB->AppendInsn(ipoint);
-    }
-
-    /* epilog */
-    lastBB->AppendInsn(GetInsnBuilder()->BuildCfiInsn(cfi::OP_CFI_endproc));
-}
-
 void CGFunc::ProcessExitBBVec()
 {
     if (exitBBVec.empty()) {
@@ -766,6 +694,7 @@ void CGFunc::HandleFunction()
 
 void CGFunc::DumpCFG() const
 {
+#ifdef ARK_LITECG_DEBUG
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
     DEBUG_ASSERT(funcSt != nullptr, "null ptr check");
     LogInfo::MapleLogger() << "\n****** CFG built by CG for " << funcSt->GetName() << " *******\n";
@@ -787,7 +716,6 @@ void CGFunc::DumpCFG() const
             }
             LogInfo::MapleLogger() << "]\n";
         }
-#ifdef ARK_LITECG_DEBUG
         const StmtNode *stmt = bb->GetFirstStmt();
         if (stmt != nullptr) {
             bool done = false;
@@ -800,12 +728,13 @@ void CGFunc::DumpCFG() const
         } else {
             LogInfo::MapleLogger() << "<empty BB>\n";
         }
-#endif
     }
+#endif
 }
 
 void CGFunc::DumpBBInfo(const BB *bb) const
 {
+#ifdef ARK_LITECG_DEBUG
     LogInfo::MapleLogger() << "=== BB " << " <" << bb->GetKindName();
     if (bb->GetLabIdx() != MIRLabelTable::GetDummyLabel()) {
         LogInfo::MapleLogger() << "[labeled with " << bb->GetLabIdx();
@@ -833,10 +762,12 @@ void CGFunc::DumpBBInfo(const BB *bb) const
     }
     LogInfo::MapleLogger() << "===\n";
     LogInfo::MapleLogger() << "frequency:" << bb->GetFrequency() << "\n";
+#endif
 }
 
 void CGFunc::DumpCGIR() const
 {
+#ifdef ARK_LITECG_DEBUG
     MIRSymbol *funcSt = GlobalTables::GetGsymTable().GetSymbolFromStidx(func.GetStIdx().Idx());
     DEBUG_ASSERT(funcSt != nullptr, "null ptr check");
     LogInfo::MapleLogger() << "\n******  CGIR for " << funcSt->GetName() << " *******\n";
@@ -851,32 +782,13 @@ void CGFunc::DumpCGIR() const
             insn->Dump();
         }
     }
-}
-
-void CGFunc::DumpCFGToDot(const std::string &fileNamePrefix)
-{
-    std::ofstream file(fileNamePrefix + GetName());
-    file << "digraph {" << std::endl;
-    for (auto *bb : GetAllBBs()) {
-        if (bb == nullptr) {
-            continue;
-        }
-        auto &succs = bb->GetSuccs();
-        if (succs.empty()) {
-            continue;
-        }
-        file << "  " << bb->GetId() << "->{";
-        for (auto *succ : succs) {
-            file << succ->GetId() << " ";
-        }
-        file << "};";
-    }
-    file << "}" << std::endl;
+#endif
 }
 
 // Cgirverify phase function: all insns will be verified before cgemit.
 void CGFunc::VerifyAllInsn()
 {
+#ifdef ARK_LITECG_DEBUG
     FOR_ALL_BB(bb, this)
     {
         FOR_BB_INSNS(insn, bb)
@@ -890,29 +802,7 @@ void CGFunc::VerifyAllInsn()
             CHECK_FATAL_FALSE("The problem is illegal insn, info is above.");
         }
     }
-}
-
-void CGFunc::PatchLongBranch()
-{
-    for (BB *bb = firstBB->GetNext(); bb != nullptr; bb = bb->GetNext()) {
-        bb->SetInternalFlag1(bb->GetInternalFlag1() + bb->GetPrev()->GetInternalFlag1());
-    }
-    BB *next = nullptr;
-    for (BB *bb = firstBB; bb != nullptr; bb = next) {
-        next = bb->GetNext();
-        if (bb->GetKind() != BB::kBBIf && bb->GetKind() != BB::kBBGoto) {
-            continue;
-        }
-        Insn *insn = bb->GetLastInsn();
-        while (insn->IsImmaterialInsn()) {
-            insn = insn->GetPrev();
-        }
-        BB *tbb = GetBBFromLab2BBMap(GetLabelInInsn(*insn));
-        if ((tbb->GetInternalFlag1() - bb->GetInternalFlag1()) < MaxCondBranchDistance()) {
-            continue;
-        }
-        InsertJumpPad(insn);
-    }
+#endif
 }
 
 bool CgHandleFunction::PhaseRun(maplebe::CGFunc &f)
@@ -924,10 +814,12 @@ MAPLE_TRANSFORM_PHASE_REGISTER(CgHandleFunction, handlefunction)
 
 bool CgVerify::PhaseRun(maplebe::CGFunc &f)
 {
+#ifdef ARK_LITECG_DEBUG
     f.VerifyAllInsn();
     if (!f.GetCG()->GetCGOptions().DoEmitCode() || f.GetCG()->GetCGOptions().DoDumpCFG()) {
         f.DumpCFG();
     }
+#endif
     return false;
 }
 MAPLE_TRANSFORM_PHASE_REGISTER(CgVerify, cgirverify)

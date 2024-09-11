@@ -190,23 +190,6 @@ void AArch64CG::EmitGCTIBLabel(GCTIBKey *key, const std::string &gcTIBName,
 }
 
 /*
- * Find if there exist same GCTIB (both rcheader and bitmap are same)
- * for different class. If ture reuse, if not emit and record new GCTIB.
- */
-void AArch64CG::FindOrCreateRepresentiveSym(std::vector<uint64> &bitmapWords, uint32 rcHeader, const std::string &name)
-{
-    GCTIBKey *key = memPool->New<GCTIBKey>(allocator, rcHeader, bitmapWords);
-    const std::string &gcTIBName = GCTIB_PREFIX_STR + name;
-    MapleUnorderedMap<GCTIBKey *, GCTIBPattern *, Hasher, EqualFn>::const_iterator iter = keyPatternMap.find(key);
-    if (iter == keyPatternMap.end()) {
-        /* Emit the GCTIB label for the class */
-        EmitGCTIBLabel(key, gcTIBName, bitmapWords, rcHeader);
-    } else {
-        (void)symbolPatternMap.insert(make_pair(gcTIBName, iter->second));
-    }
-}
-
-/*
  * Add local symbol REF_XXX to global GCTIB symbol,
  * and replace the global GCTIBPattern in keyPatternMap.
  */
@@ -222,6 +205,7 @@ void AArch64CG::CreateRefSymForGlobalPtn(GCTIBPattern &ptn) const
     ptn.SetName(refPtnString);
 }
 
+#ifdef ARK_LITECG_DEBUG
 std::string AArch64CG::FindGCTIBPatternName(const std::string &name) const
 {
     auto iter = symbolPatternMap.find(name);
@@ -230,6 +214,7 @@ std::string AArch64CG::FindGCTIBPatternName(const std::string &name) const
     }
     return iter->second->GetName();
 }
+#endif
 
 void AArch64CG::EnrollTargetPhases(MaplePhaseManager *pm) const
 {
@@ -237,23 +222,6 @@ void AArch64CG::EnrollTargetPhases(MaplePhaseManager *pm) const
         CGOptions::DisableCGSSA();
     }
 #include "aarch64_phases.def"
-}
-
-Insn &AArch64CG::BuildPhiInsn(RegOperand &defOpnd, Operand &listParam)
-{
-    DEBUG_ASSERT(defOpnd.IsRegister(), "build SSA on register operand");
-    /* There are cases that CCRegs need add phi insn. */
-    CHECK_FATAL(defOpnd.IsOfIntClass() || defOpnd.IsOfFloatOrSIMDClass() || defOpnd.IsOfCC(), " unknown operand type ");
-    bool is64bit = defOpnd.GetSize() == k64BitSize;
-    MOperator mop = MOP_nop;
-    if (defOpnd.GetSize() == k128BitSize) {
-        DEBUG_ASSERT(defOpnd.IsOfFloatOrSIMDClass(), "unexpect 128bit int operand in aarch64");
-        mop = MOP_xvphivd;
-    } else {
-        mop = defOpnd.IsOfIntClass() ? is64bit ? MOP_xphirr : MOP_wphirr : is64bit ? MOP_xvphid : MOP_xvphis;
-    }
-    DEBUG_ASSERT(mop != MOP_nop, "unexpect 128bit int operand in aarch64");
-    return GetCurCGFuncNoConst()->GetInsnBuilder()->BuildInsn(mop, defOpnd, listParam);
 }
 
 PhiOperand &AArch64CG::CreatePhiOperand(MemPool &mp, MapleAllocator &mAllocator)

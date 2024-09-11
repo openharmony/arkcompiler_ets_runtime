@@ -18,7 +18,6 @@
 #include "mpl_logging.h"
 #include "common_utils.h"
 #include "cg_option.h"
-#include "aarch64_utils.h"
 #include "cg_irbuilder.h"
 #include "aarch64_cg.h"
 

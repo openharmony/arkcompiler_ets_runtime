@@ -834,10 +834,6 @@ static MIRType *GetPointedToType(const MIRPtrType &pointerType)
         MIRArrayType *arrayType = static_cast<MIRArrayType *>(aType);
         return GlobalTables::GetTypeTable().GetTypeFromTyIdx(arrayType->GetElemTyIdx());
     }
-    if (aType->GetKind() == kTypeFArray || aType->GetKind() == kTypeJArray) {
-        MIRFarrayType *farrayType = static_cast<MIRFarrayType *>(aType);
-        return GlobalTables::GetTypeTable().GetTypeFromTyIdx(farrayType->GetElemTyIdx());
-    }
     return aType;
 }
 
@@ -990,36 +986,29 @@ Operand *AArch64CGFunc::SelectIread(const BaseNode &parent, IreadNode &expr, int
 
     PrimType destType = pointedType->GetPrimType();
 
-    uint32 bitSize = 0;
-    if ((pointedType->GetKind() == kTypeStructIncomplete) || (pointedType->GetKind() == kTypeClassIncomplete) ||
-        (pointedType->GetKind() == kTypeInterfaceIncomplete)) {
-        bitSize = GetPrimTypeBitSize(expr.GetPrimType());
-        maple::LogInfo::MapleLogger(kLlErr) << "Warning: objsize is zero! \n";
-    } else {
+    uint32 bitSize = GetPrimTypeBitSize(destType);
+    if (regType == kRegTyFloat) {
+        destType = expr.GetPrimType();
         bitSize = GetPrimTypeBitSize(destType);
-        if (regType == kRegTyFloat) {
-            destType = expr.GetPrimType();
-            bitSize = GetPrimTypeBitSize(destType);
-        } else if (destType == PTY_agg) {
-            switch (bitSize) {
-                case k8BitSize:
-                    destType = PTY_u8;
-                    break;
-                case k16BitSize:
-                    destType = PTY_u16;
-                    break;
-                case k32BitSize:
-                    destType = PTY_u32;
-                    break;
-                case k64BitSize:
-                    destType = PTY_u64;
-                    break;
-                default:
-                    destType = PTY_u64;  // when eval agg . a way to round up
-                    DEBUG_ASSERT(bitSize == 0, " round up empty agg ");
-                    bitSize = k64BitSize;
-                    break;
-            }
+    } else if (destType == PTY_agg) {
+        switch (bitSize) {
+            case k8BitSize:
+                destType = PTY_u8;
+                break;
+            case k16BitSize:
+                destType = PTY_u16;
+                break;
+            case k32BitSize:
+                destType = PTY_u32;
+                break;
+            case k64BitSize:
+                destType = PTY_u64;
+                break;
+            default:
+                destType = PTY_u64;  // when eval agg . a way to round up
+                DEBUG_ASSERT(bitSize == 0, " round up empty agg ");
+                bitSize = k64BitSize;
+                break;
         }
     }
 
@@ -1095,12 +1084,6 @@ Operand *AArch64CGFunc::SelectIntConst(const MIRIntConst &intConst, const BaseNo
         primType = static_cast<const CompareNode &>(parent).GetOpndType();
     }
     return &CreateImmOperand(intConst.GetExtValue(), GetPrimTypeBitSize(primType), false);
-}
-
-Operand *AArch64CGFunc::SelectIntConst(const MIRIntConst &intConst)
-{
-    return &CreateImmOperand(intConst.GetExtValue(), GetPrimTypeSize(intConst.GetType().GetPrimType()) * kBitsPerByte,
-                             false);
 }
 
 Operand *AArch64CGFunc::HandleFmovImm(PrimType stype, int64 val, MIRConst &mirConst, const BaseNode &parent)
@@ -3320,17 +3303,6 @@ MemOperand *AArch64CGFunc::CreateMemOperand(MemOperand::AArch64AddressingMode mo
     return memOp;
 }
 
-Operand &AArch64CGFunc::GetTargetRetOperand(PrimType primType, int32 sReg)
-{
-    if (IsSpecialPseudoRegister(-sReg)) {
-        return GetOrCreateSpecialRegisterOperand(sReg, primType);
-    }
-    bool useFpReg = !IsPrimitiveInteger(primType);
-    uint32 bitSize = GetPrimTypeBitSize(primType);
-    bitSize = bitSize <= k32BitSize ? k32BitSize : bitSize;
-    return GetOrCreatePhysicalRegisterOperand(useFpReg ? V0 : R0, bitSize, GetRegTyFromPrimTy(primType));
-}
-
 RegOperand &AArch64CGFunc::CreateRegisterOperandOfType(PrimType primType)
 {
     RegType regType = GetRegTyFromPrimTy(primType);
@@ -3414,31 +3386,6 @@ RegOperand &AArch64CGFunc::GetOrCreateVirtualRegisterOperand(regno_t vRegNO)
 {
     auto it = maplebe::VregInfo::vRegOperandTable.find(vRegNO);
     return (it != maplebe::VregInfo::vRegOperandTable.end()) ? *(it->second) : CreateVirtualRegisterOperand(vRegNO);
-}
-
-RegOperand &AArch64CGFunc::GetOrCreateVirtualRegisterOperand(RegOperand &regOpnd)
-{
-    regno_t regNO = regOpnd.GetRegisterNumber();
-    auto it = maplebe::VregInfo::vRegOperandTable.find(regNO);
-    if (it != maplebe::VregInfo::vRegOperandTable.end()) {
-        it->second->SetSize(regOpnd.GetSize());
-        it->second->SetRegisterNumber(regNO);
-        it->second->SetRegisterType(regOpnd.GetRegisterType());
-        it->second->SetValidBitsNum(regOpnd.GetValidBitsNum());
-        return *it->second;
-    } else {
-        auto *newRegOpnd = static_cast<RegOperand *>(regOpnd.Clone(*memPool));
-        regno_t newRegNO = newRegOpnd->GetRegisterNumber();
-        if (newRegNO >= GetMaxRegNum()) {
-            SetMaxRegNum(newRegNO + kRegIncrStepLen);
-            vReg.VRegTableResize(GetMaxRegNum());
-        }
-        maplebe::VregInfo::vRegOperandTable[newRegNO] = newRegOpnd;
-        VirtualRegNode *vregNode = memPool->New<VirtualRegNode>(newRegOpnd->GetRegisterType(), newRegOpnd->GetSize());
-        vReg.VRegTableElementSet(newRegNO, vregNode);
-        vReg.SetCount(GetMaxRegNum());
-        return *newRegOpnd;
-    }
 }
 
 // Stage B - Pre-padding and extension of arguments
@@ -4038,7 +3985,7 @@ MemOperand &AArch64CGFunc::GetOrCreateMemOpnd(const MIRSymbol &symbol, int64 off
                 offsetOpnd->SetVary(kUnAdjustVary);
             }
             MemOperand *res = CreateMemOperand(MemOperand::kAddrModeBOi, size, *baseOpnd, nullptr, offsetOpnd, &symbol);
-            if ((symbol.GetType()->GetKind() != kTypeClass) && !forLocalRef) {
+            if (!forLocalRef) {
                 memOpndsRequiringOffsetAdjustment[idx] = res;
             }
             return *res;
@@ -4107,24 +4054,6 @@ MemOperand &AArch64CGFunc::CreateMemOpnd(RegOperand &baseOpnd, int64 offset, uin
     OfstOperand &offsetOpnd = CreateOfstOpnd(static_cast<uint64>(offset), k32BitSize);
     DEBUG_ASSERT(ImmOperand::IsInBitSizeRot(kMaxImmVal12Bits, offset), "");
     return *CreateMemOperand(MemOperand::kAddrModeBOi, size, baseOpnd, nullptr, &offsetOpnd, &sym);
-}
-
-RegOperand &AArch64CGFunc::GenStructParamIndex(RegOperand &base, const BaseNode &indexExpr, int shift,
-                                               PrimType baseType)
-{
-    RegOperand *index = &LoadIntoRegister(*HandleExpr(indexExpr, *(indexExpr.Opnd(0))), PTY_a64);
-    RegOperand *srcOpnd = &CreateRegisterOperandOfType(PTY_a64);
-    ImmOperand *imm = &CreateImmOperand(PTY_a64, shift);
-    SelectShift(*srcOpnd, *index, *imm, kShiftLeft, PTY_a64);
-    RegOperand *result = &CreateRegisterOperandOfType(PTY_a64);
-    SelectAdd(*result, base, *srcOpnd, PTY_a64);
-
-    OfstOperand *offopnd = &CreateOfstOpnd(0, k32BitSize);
-    MemOperand &mo = GetOrCreateMemOpnd(MemOperand::kAddrModeBOi, k64BitSize, result, nullptr, offopnd, nullptr);
-    RegOperand &structAddr = CreateVirtualRegisterOperand(NewVReg(kRegTyInt, k8ByteSize));
-    GetCurBB()->AppendInsn(
-        GetInsnBuilder()->BuildInsn(PickLdInsn(GetPrimTypeBitSize(baseType), baseType), structAddr, mo));
-    return structAddr;
 }
 
 /*
@@ -4228,10 +4157,6 @@ MemOperand *AArch64CGFunc::CheckAndCreateExtendMemOpnd(PrimType ptype, const Bas
     TypeCvtNode *typeCvtNode = static_cast<TypeCvtNode *>(indexExpr);
     PrimType fromType = typeCvtNode->FromType();
     PrimType toType = typeCvtNode->GetPrimType();
-    if (isAggParamInReg) {
-        aggParamReg = &GenStructParamIndex(base, *indexExpr, shift, ptype);
-        return nullptr;
-    }
     MemOperand *memOpnd = nullptr;
     if ((fromType == PTY_i32) && (toType == PTY_a64)) {
         RegOperand &index =
@@ -4571,14 +4496,6 @@ MemOperand *AArch64CGFunc::GetPseudoRegisterSpillMemoryOperand(PregIdx i)
     return &memOpnd;
 }
 
-MIRPreg *AArch64CGFunc::GetPseudoRegFromVirtualRegNO(const regno_t vRegNO, bool afterSSA) const
-{
-    PregIdx pri = afterSSA ? VRegNOToPRegIdx(vRegNO) : GetPseudoRegIdxFromVirtualRegNO(vRegNO);
-    if (pri == -1)
-        return nullptr;
-    return GetFunction().GetPregTab()->PregFromPregIdx(pri);
-}
-
 Insn &AArch64CGFunc::AppendCall(const MIRSymbol &sym, ListOperand &srcOpnds)
 {
     Insn *callInsn = nullptr;
@@ -4681,21 +4598,6 @@ Operand *AArch64CGFunc::SelectCclz(IntrinsicopNode &intrnNode)
     RegOperand &dst = CreateRegisterOperandOfType(ptype);
     GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mop, dst, *opnd));
     return &dst;
-}
-
-/*
- * NOTE: consider moving the following things into aarch64_cg.cpp  They may
- * serve not only inrinsics, but other MapleIR instructions as well.
- * Do it as if we are adding a label in straight-line assembly code.
- */
-LabelIdx AArch64CGFunc::CreateLabeledBB(StmtNode &stmt)
-{
-    LabelIdx labIdx = CreateLabel();
-    BB *newBB = StartNewBBImpl(false, stmt);
-    newBB->AddLabel(labIdx);
-    SetLab2BBMap(labIdx, *newBB);
-    SetCurBB(*newBB);
-    return labIdx;
 }
 
 RegType AArch64CGFunc::GetRegisterType(regno_t reg) const

@@ -40,80 +40,6 @@ BaseNode *CGLowerer::LowerIaddrof(const IreadNode &iaddrof)
     return iaddrof.Opnd(0);
 }
 
-StmtNode *CGLowerer::WriteBitField(const std::pair<int32, int32> &byteBitOffsets, const MIRBitFieldType *fieldType,
-                                   BaseNode *baseAddr, BaseNode *rhs, BlockNode *block)
-{
-    auto bitSize = fieldType->GetFieldSize();
-    auto primType = fieldType->GetPrimType();
-    auto byteOffset = byteBitOffsets.first;
-    auto bitOffset = byteBitOffsets.second;
-    auto *builder = mirModule.GetMIRBuilder();
-    auto *bitField = builder->CreateExprIreadoff(primType, byteOffset, baseAddr);
-    auto primTypeBitSize = GetPrimTypeBitSize(primType);
-    if ((static_cast<uint32>(bitOffset) + bitSize) <= primTypeBitSize) {
-        if (CGOptions::IsBigEndian()) {
-            bitOffset =
-                (static_cast<int64>(beCommon.GetTypeSize(fieldType->GetTypeIndex()) * kBitsPerByte) - bitOffset) -
-                bitSize;
-        }
-        auto depositBits = builder->CreateExprDepositbits(OP_depositbits, primType, static_cast<uint32>(bitOffset),
-                                                          bitSize, bitField, rhs);
-        return builder->CreateStmtIassignoff(primType, byteOffset, baseAddr, depositBits);
-    }
-    // if space not enough in the unit with size of primType, we would make an extra assignment from next bound
-    auto bitsRemained = (bitOffset + bitSize) - primTypeBitSize;
-    auto bitsExtracted = primTypeBitSize - static_cast<uint32>(bitOffset);
-    if (CGOptions::IsBigEndian()) {
-        bitOffset = 0;
-    }
-    auto *depositedLowerBits = builder->CreateExprDepositbits(OP_depositbits, primType, static_cast<uint32>(bitOffset),
-                                                              bitsExtracted, bitField, rhs);
-    auto *assignedLowerBits = builder->CreateStmtIassignoff(primType, byteOffset, baseAddr, depositedLowerBits);
-    block->AddStatement(assignedLowerBits);
-    auto *extractedHigherBits =
-        builder->CreateExprExtractbits(OP_extractbits, primType, bitsExtracted, bitsRemained, rhs);
-    auto *bitFieldRemained =
-        builder->CreateExprIreadoff(primType, byteOffset + static_cast<int32>(GetPrimTypeSize(primType)), baseAddr);
-    auto *depositedHigherBits = builder->CreateExprDepositbits(OP_depositbits, primType, 0, bitsRemained,
-                                                               bitFieldRemained, extractedHigherBits);
-    auto *assignedHigherBits = builder->CreateStmtIassignoff(
-        primType, byteOffset + static_cast<int32>(GetPrimTypeSize(primType)), baseAddr, depositedHigherBits);
-    return assignedHigherBits;
-}
-
-BaseNode *CGLowerer::ReadBitField(const std::pair<int32, int32> &byteBitOffsets, const MIRBitFieldType *fieldType,
-                                  BaseNode *baseAddr)
-{
-    auto bitSize = fieldType->GetFieldSize();
-    auto primType = fieldType->GetPrimType();
-    auto byteOffset = byteBitOffsets.first;
-    auto bitOffset = byteBitOffsets.second;
-    auto *builder = mirModule.GetMIRBuilder();
-    auto *bitField = builder->CreateExprIreadoff(primType, byteOffset, baseAddr);
-    auto primTypeBitSize = GetPrimTypeBitSize(primType);
-    if ((static_cast<uint32>(bitOffset) + bitSize) <= primTypeBitSize) {
-        if (CGOptions::IsBigEndian()) {
-            bitOffset =
-                (static_cast<int64>(beCommon.GetTypeSize(fieldType->GetTypeIndex()) * kBitsPerByte) - bitOffset) -
-                bitSize;
-        }
-        return builder->CreateExprExtractbits(OP_extractbits, primType, static_cast<uint32>(bitOffset), bitSize,
-                                              bitField);
-    }
-    // if space not enough in the unit with size of primType, the result would be binding of two exprs of load
-    auto bitsRemained = (bitOffset + bitSize) - primTypeBitSize;
-    if (CGOptions::IsBigEndian()) {
-        bitOffset = 0;
-    }
-    auto *extractedLowerBits = builder->CreateExprExtractbits(OP_extractbits, primType, static_cast<uint32>(bitOffset),
-                                                              bitSize - bitsRemained, bitField);
-    auto *bitFieldRemained =
-        builder->CreateExprIreadoff(primType, byteOffset + static_cast<int32>(GetPrimTypeSize(primType)), baseAddr);
-    auto *result = builder->CreateExprDepositbits(OP_depositbits, primType, bitSize - bitsRemained, bitsRemained,
-                                                  extractedLowerBits, bitFieldRemained);
-    return result;
-}
-
 // input node must be cvt, retype, zext or sext
 BaseNode *CGLowerer::LowerCastExpr(BaseNode &expr)
 {
@@ -674,43 +600,6 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
         newBlk->AddStatement(node);
     }
     return newBlk;
-}
-
-MIRType *CGLowerer::GetArrayNodeType(BaseNode &baseNode)
-{
-    MIRType *baseType = nullptr;
-    auto curFunc = mirModule.CurFunction();
-    DEBUG_ASSERT(curFunc != nullptr, "curFunc should not be nullptr");
-    if (baseNode.GetOpCode() == OP_regread) {
-        RegreadNode *rrNode = static_cast<RegreadNode *>(&baseNode);
-        MIRPreg *pReg = curFunc->GetPregTab()->PregFromPregIdx(rrNode->GetRegIdx());
-        if (pReg->IsRef()) {
-            baseType = pReg->GetMIRType();
-        }
-    }
-    if (baseNode.GetOpCode() == OP_dread) {
-        DreadNode *dreadNode = static_cast<DreadNode *>(&baseNode);
-        MIRSymbol *symbol = curFunc->GetLocalOrGlobalSymbol(dreadNode->GetStIdx());
-        baseType = symbol->GetType();
-    }
-    MIRType *arrayElemType = nullptr;
-    if (baseType != nullptr) {
-        MIRType *stType =
-            GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<MIRPtrType *>(baseType)->GetPointedTyIdx());
-        while (stType->GetKind() == kTypeJArray) {
-            MIRJarrayType *baseType1 = static_cast<MIRJarrayType *>(stType);
-            MIRType *elemType = baseType1->GetElemType();
-            if (elemType->GetKind() == kTypePointer) {
-                const TyIdx &index = static_cast<MIRPtrType *>(elemType)->GetPointedTyIdx();
-                stType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(index);
-            } else {
-                stType = elemType;
-            }
-        }
-
-        arrayElemType = stType;
-    }
-    return arrayElemType;
 }
 
 StmtNode *CGLowerer::LowerCall(CallNode &callNode, StmtNode *&nextStmt, BlockNode &newBlk, MIRType *retTy, bool uselvar)
