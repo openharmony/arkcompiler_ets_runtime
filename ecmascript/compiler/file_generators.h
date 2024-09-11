@@ -215,7 +215,7 @@ public:
 
     void GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc);
     void JitCreateLitecgModule();
-    bool isAArch64() const;
+    bool IsAArch64() const;
 
 private:
     // collect aot component info
