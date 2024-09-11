@@ -344,7 +344,6 @@ void CircuitBuilder::DeoptCheck(GateRef condition, GateRef frameState, DeoptType
     GateRef deoptCheck = GetCircuit()->NewGate(circuit_->DeoptCheck(),
         MachineType::I1, { currentControl, currentDepend, condition,
         frameState, Int64(static_cast<int64_t>(type))}, GateType::NJSValue(), comment.c_str());
-    // Add a state output to avoid schedule a phi node to deoptCheck's BB by mistake
     GateRef trueBB = circuit_->NewGate(circuit_->OrdinaryBlock(), { deoptCheck });
     auto dependRelay = DependRelay(trueBB, currentDepend);
     currentLabel->SetControl(trueBB);
