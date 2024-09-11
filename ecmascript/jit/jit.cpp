@@ -290,7 +290,7 @@ Jit::~Jit()
 {
 }
 
-bool Jit::SupportJIT(JSHandle<JSFunction> &jsFunction, CompilerTier tier) const
+bool Jit::SupportJIT(JSHandle<JSFunction> &jsFunction, [[maybe_unused]] EcmaVM *vm, CompilerTier tier) const
 {
     Method *method = Method::Cast(jsFunction->GetMethod().GetTaggedObject());
     if (jsFunction.GetTaggedValue().IsJSSharedFunction()) {
@@ -422,7 +422,7 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
 
         return;
     }
-    if (!jit->SupportJIT(jsFunction, tier)) {
+    if (!jit->SupportJIT(jsFunction, vm, tier)) {
         return;
     }
     bool needCompile = jit->CheckJitCompileStatus(jsFunction, methodName, tier);
