@@ -327,9 +327,9 @@ JSTaggedValue BuiltinsArrayBuffer::CloneArrayBuffer(JSThread *thread, const JSHa
     JSHandle<JSArrayBuffer> newArrBuf(thread, taggedBuf);
     // Perform CopyDataBlockBytes(targetBlock, 0, srcBlock, srcByteOffset, cloneLength).
     // 7. Let srcBlock be the value of srcBuffer’s [[ArrayBufferData]] internal slot.
-    void *fromBuf = GetDataPointFromBuffer(srcBuffer.GetTaggedValue());
-    void *toBuf = GetDataPointFromBuffer(taggedBuf);
     if (cloneLen > 0) {
+        void *fromBuf = GetDataPointFromBuffer(srcBuffer.GetTaggedValue());
+        void *toBuf = GetDataPointFromBuffer(taggedBuf);
         JSArrayBuffer::CopyDataPointBytes(toBuf, fromBuf, srcByteOffset, cloneLen);
     }
     return taggedBuf;
@@ -781,9 +781,11 @@ void *BuiltinsArrayBuffer::GetDataPointFromBuffer(JSTaggedValue arrBuf, uint32_t
     JSArrayBuffer *arrayBuffer = JSArrayBuffer::Cast(arrBuf.GetTaggedObject());
     if (arrayBuffer == nullptr) {
         LOG_ECMA(FATAL) << "BuiltinsArrayBuffer::GetDataPointFromBuffer:arrayBuffer is nullptr";
+        UNREACHABLE();
     }
     if (arrayBuffer->GetArrayBufferByteLength() == 0) {
-        return nullptr;
+        LOG_ECMA(FATAL) << "BuiltinsArrayBuffer::GetDataPointFromBuffer:arrayBuffer length is 0";
+        UNREACHABLE();
     }
 
     JSTaggedValue data = arrayBuffer->GetArrayBufferData();
