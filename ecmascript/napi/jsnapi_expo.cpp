@@ -1906,6 +1906,9 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, uintptr_t value)
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSTaggedValue arg = *reinterpret_cast<JSTaggedValue *>(value);
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+    thread->CheckJSTaggedType(arg.GetRawData());
+#endif
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(capacity, FATAL);
     JSTaggedValue resolve = capacity->GetResolve();
@@ -1930,6 +1933,9 @@ bool PromiseCapabilityRef::Resolve(const EcmaVM *vm, Local<JSValueRef> value)
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> arg = JSNApiHelper::ToJSHandle(value);
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+    thread->CheckJSTaggedType(arg.GetTaggedValue().GetRawData());
+#endif
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(capacity, FATAL);
     JSHandle<JSTaggedValue> resolve(thread, capacity->GetResolve());
@@ -1954,6 +1960,9 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, uintptr_t reason)
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSTaggedValue arg = *reinterpret_cast<JSTaggedValue *>(reason);
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+    thread->CheckJSTaggedType(arg.GetRawData());
+#endif
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(capacity, FATAL);
     JSTaggedValue reject = capacity->GetReject();
@@ -1979,6 +1988,9 @@ bool PromiseCapabilityRef::Reject(const EcmaVM *vm, Local<JSValueRef> reason)
     const GlobalEnvConstants *constants = thread->GlobalConstants();
 
     JSHandle<JSTaggedValue> arg = JSNApiHelper::ToJSHandle(reason);
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+    thread->CheckJSTaggedType(arg.GetTaggedValue().GetRawData());
+#endif
     JSHandle<PromiseCapability> capacity(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(capacity, FATAL);
     JSHandle<JSTaggedValue> reject(thread, capacity->GetReject());
@@ -3438,9 +3450,15 @@ Local<JSValueRef> FunctionRef::Call(const EcmaVM *vm, Local<JSValueRef> thisObj,
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     for (int32_t i = 0; i < length; i++) {
         JSHandle<JSTaggedValue> arg = JSNApiHelper::ToJSHandle(argv[i]);
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+        thread->CheckJSTaggedType(arg.GetTaggedValue().GetRawData());
+#endif
         info->SetCallArg(i, arg.GetTaggedValue());
     }
     JSTaggedValue result = JSFunction::Call(info);
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(result.GetRawData());
+#endif
     if (thread->HasPendingException()) {
         ecmascript::JsStackInfo::BuildCrashInfo(thread);
     }
@@ -3479,6 +3497,9 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Hole(vm));
         for (int32_t i = 0; i < length; i++) {
             if (argv[i]) {
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+                thread->CheckJSTaggedType(JSNApiHelper::ToJSTaggedValue(argv[i]).GetRawData());
+#endif
                 // NewRuntimeCallInfo has set Undefined defaultly in Argv's slot.
                 info->SetCallArg(i, JSNApiHelper::ToJSTaggedValue(argv[i]));
             }
@@ -3495,6 +3516,9 @@ JSValueRef* FunctionRef::CallForNapi(const EcmaVM *vm, JSValueRef *thisObj,
         } else {
             result = JSFunction::Call(info);
         }
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+        thread->CheckJSTaggedType(result.GetRawData());
+#endif
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Hole(vm));
         if (thread->GetCurrentEcmaContext()->HasKeptObjects()) {
             thread->GetCurrentEcmaContext()->ClearKeptObjects();
@@ -3526,10 +3550,15 @@ Local<JSValueRef> FunctionRef::Constructor(const EcmaVM *vm,
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     for (int32_t i = 0; i < length; i++) {
         JSHandle<JSTaggedValue> arg = JSNApiHelper::ToJSHandle(argv[i]);
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+        thread->CheckJSTaggedType(arg.GetTaggedValue().GetRawData());
+#endif
         info->SetCallArg(i, arg.GetTaggedValue());
     }
     JSTaggedValue result = JSFunction::Construct(info);
-
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(result.GetRawData());
+#endif
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     JSHandle<JSTaggedValue> resultValue(thread, result);
     return JSNApiHelper::ToLocal<JSValueRef>(resultValue);
@@ -3555,11 +3584,17 @@ JSValueRef* FunctionRef::ConstructorOptimize(const EcmaVM *vm,
         for (int32_t i = 0; i < length; ++i) {
             JSTaggedValue arg =
                 argv[i] == nullptr ? JSTaggedValue::Undefined() : JSNApiHelper::ToJSTaggedValue(argv[i]);
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+                thread->CheckJSTaggedType(arg.GetRawData());
+#endif
             info->SetCallArg(i, arg);
         }
         result = JSFunction::ConstructInternal(info);
         RETURN_VALUE_IF_ABRUPT(thread, *JSValueRef::Undefined(vm));
     }
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(result.GetRawData());
+#endif
     JSHandle<JSTaggedValue> resultValue(thread, result);
     return reinterpret_cast<JSValueRef*>(resultValue.GetAddress());
 }
@@ -5742,9 +5777,14 @@ Local<PromiseRef> PromiseRef::Catch(const EcmaVM *vm, Local<FunctionRef> handler
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, promise, undefined, 1);
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+    thread->CheckJSTaggedType(reject.GetTaggedValue().GetRawData());
+#endif
     info->SetCallArg(reject.GetTaggedValue());
     JSTaggedValue result = JSFunction::Invoke(info, catchKey);
-
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(result.GetRawData());
+#endif
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, result));
 }
@@ -5763,9 +5803,15 @@ Local<PromiseRef> PromiseRef::Finally(const EcmaVM *vm, Local<FunctionRef> handl
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, promise, undefined, 2); // 2: two args
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+    thread->CheckJSTaggedType(resolver.GetTaggedValue().GetRawData());
+    thread->CheckJSTaggedType(undefined.GetTaggedValue().GetRawData());
+#endif
     info->SetCallArg(resolver.GetTaggedValue(), undefined.GetTaggedValue());
     JSTaggedValue result = JSFunction::Invoke(info, finallyKey);
-
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(result.GetRawData());
+#endif
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, result));
 }
@@ -5784,9 +5830,15 @@ Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> handler)
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, promise, undefined, 2); // 2: two args
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+    thread->CheckJSTaggedType(resolver.GetTaggedValue().GetRawData());
+    thread->CheckJSTaggedType(undefined.GetTaggedValue().GetRawData());
+#endif
     info->SetCallArg(resolver.GetTaggedValue(), undefined.GetTaggedValue());
     JSTaggedValue result = JSFunction::Invoke(info, thenKey);
-
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(result.GetRawData());
+#endif
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, result));
 }
@@ -5806,9 +5858,15 @@ Local<PromiseRef> PromiseRef::Then(const EcmaVM *vm, Local<FunctionRef> onFulfil
     EcmaRuntimeCallInfo *info =
         ecmascript::EcmaInterpreter::NewRuntimeCallInfo(thread, undefined, promise, undefined, 2); // 2: two args
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
+#if ECMASCRIPT_ENABLE_STUB_ARGV_CHECK
+    thread->CheckJSTaggedType(resolver.GetTaggedValue().GetRawData());
+    thread->CheckJSTaggedType(reject.GetTaggedValue().GetRawData());
+#endif
     info->SetCallArg(resolver.GetTaggedValue(), reject.GetTaggedValue());
     JSTaggedValue result = JSFunction::Invoke(info, thenKey);
-
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(result.GetRawData());
+#endif
     RETURN_VALUE_IF_ABRUPT(thread, JSValueRef::Undefined(vm));
     return JSNApiHelper::ToLocal<PromiseRef>(JSHandle<JSTaggedValue>(thread, result));
 }

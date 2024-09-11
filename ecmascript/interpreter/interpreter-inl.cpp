@@ -634,6 +634,9 @@ JSTaggedValue EcmaInterpreter::ExecuteNative(EcmaRuntimeCallInfo *info)
     InterpretedEntryFrame *entryState = GET_ENTRY_FRAME(sp);
     JSTaggedType *prevSp = entryState->base.prev;
     thread->SetCurrentSPFrame(prevSp);
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(tagged.GetRawData());
+#endif
     return tagged;
 }
 #endif
@@ -649,6 +652,11 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     INTERPRETER_TRACE(thread, Execute);
     // check stack overflow before re-enter interpreter
     STACK_LIMIT_CHECK(thread, JSTaggedValue::Exception());
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    for (uint32_t i = 0; i < info->GetArgsNumber(); i++) {
+        thread->CheckJSTaggedType(info->GetCallArgValue(i).GetRawData());
+    }
+#endif
     if (thread->IsAsmInterpreter()) {
         return InterpreterAssembly::Execute(info);
     }
@@ -754,11 +762,17 @@ JSTaggedValue EcmaInterpreter::Execute(EcmaRuntimeCallInfo *info)
     if (thread->IsEntryFrameDroppedTrue()) {
         thread->PendingEntryFrameDroppedState();
         InterpretedFrame *prevState = GET_FRAME(prevSp);
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+        thread->CheckJSTaggedType(prevState->acc.GetRawData());
+#endif
         return prevState->acc;
     }
 
     // pop frame
     thread->SetCurrentSPFrame(prevSp);
+#if ECMASCRIPT_ENABLE_STUB_RESULT_CHECK
+    thread->CheckJSTaggedType(resAcc.GetRawData());
+#endif
     return resAcc;
 #else
     return JSTaggedValue::Exception();
