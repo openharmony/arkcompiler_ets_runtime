@@ -764,21 +764,21 @@ function RangeTest() {
     } catch (err) {
       print('defineProperty to array failed. err: ' + err);
     }
-
+ 
     try {
       Object.defineProperty(array, '1200', {writable: true, configurable: true, enumerable: true, value: "321"});
       print('defineProperty to array success');
     } catch (err) {
       print('defineProperty to array failed. err: ' + err);
     }
-
+ 
     try {
       Object.defineProperty(array, 0, {writable: true, configurable: true, enumerable: true, value: "321"});
       print('defineProperty to array success');
     } catch (err) {
       print('defineProperty to array failed. err: ' + err);
     }
-
+ 
     try {
       Object.defineProperty(array, 1200, {writable: true, configurable: true, enumerable: true, value: "321"});
       print('defineProperty to array success');
@@ -863,5 +863,5 @@ derivedForEach();
 derivedMap()
 derivedFill()
 readOutOfRange()
-forOf();
+forOf()
 RangeTest()

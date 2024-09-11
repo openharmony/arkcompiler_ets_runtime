@@ -375,7 +375,6 @@ bool JSSharedArray::DefineOwnProperty(JSThread *thread, const JSHandle<JSObject>
         // a. Return ArraySetLength(A, Desc).
         return ArraySetLength(thread, array, desc);
     }
-
     // 3. Else if P is an array index, then
     // already do in step 4.
     // 4. Return OrdinaryDefineOwnProperty(A, P, Desc).
