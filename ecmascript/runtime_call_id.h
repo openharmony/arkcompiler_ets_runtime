@@ -78,6 +78,7 @@ namespace panda::ecmascript {
     V(Definelocalvar)                \
     V(Definefuncexpr)                \
     V(DefineFunc)                    \
+    V(SetPatchModule)                \
     V(NewobjRange)                   \
     V(Refeq)                         \
     V(Typeof)                        \
@@ -208,7 +209,6 @@ namespace panda::ecmascript {
     V(SuperCall)                     \
     V(SuperCallSpread)               \
     V(DefineMethod)                  \
-    V(SetPatchModule)                \
     V(LdSuperByValue)                \
     V(StSuperByValue)                \
     V(ThrowDeleteSuperProperty)      \
