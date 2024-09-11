@@ -289,7 +289,8 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDINFINITY)
     (void)bytecodeArray;
 
     LOG_INST() << "    ldinfinity " << std::hex << base::POSITIVE_INFINITY;
-    GetBaselineAssembler().Move(SpecialRegister::ACC_REGISTER, Immediate(JSTaggedValue(base::POSITIVE_INFINITY).GetRawData()));
+    GetBaselineAssembler().Move(SpecialRegister::ACC_REGISTER,
+                                Immediate(JSTaggedValue(base::POSITIVE_INFINITY).GetRawData()));
 }
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(LDNULL)
@@ -1871,7 +1872,6 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(STOWNBYVALUE_IMM16_V8_V8)
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(STOWNBYINDEX_IMM8_V8_IMM16)
 {
-    uint8_t slotId = READ_INST_8_0();
     uint8_t object = READ_INST_8_1();
     uint16_t propKey = READ_INST_16_2();
 
@@ -1879,21 +1879,19 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(STOWNBYINDEX_IMM8_V8_IMM16)
     Address builtinAddress =
             thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineStownbyindexImm8V8Imm16);
     LOG_INST() << "    BaselineStownbyindexImm8V8Imm16 Address: " << std::hex << builtinAddress;
-    LOG_INST() << "      slotId: " << static_cast<int32_t>(slotId);
     LOG_INST() << "      propKey: " << static_cast<int32_t>(propKey);
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(VirtualRegister(object));
     parameters.emplace_back(static_cast<int32_t>(propKey));
-    parameters.emplace_back(static_cast<int32_t>(slotId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
 }
 
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(STOWNBYINDEX_IMM16_V8_IMM16)
 {
-    uint16_t slotId = READ_INST_16_0();
     uint8_t object = READ_INST_8_2();
     uint16_t propKey = READ_INST_16_3();
 
@@ -1901,15 +1899,14 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(STOWNBYINDEX_IMM16_V8_IMM16)
     Address builtinAddress =
             thread->GetBaselineStubEntry(BaselineStubCSigns::BaselineStownbyindexImm16V8Imm16);
     LOG_INST() << "    BaselineStownbyindexImm16V8Imm16 Address: " << std::hex << builtinAddress;
-    LOG_INST() << "      slotId: " << static_cast<int32_t>(slotId);
     LOG_INST() << "      propKey: " << static_cast<int32_t>(propKey);
 
     std::vector<BaselineParameter> parameters;
     parameters.emplace_back(BaselineSpecialParameter::GLUE);
     parameters.emplace_back(BaselineSpecialParameter::SP);
+    parameters.emplace_back(BaselineSpecialParameter::ACC);
     parameters.emplace_back(VirtualRegister(object));
     parameters.emplace_back(static_cast<int32_t>(propKey));
-    parameters.emplace_back(static_cast<int32_t>(slotId));
     GetBaselineAssembler().CallBuiltin(builtinAddress, parameters);
 }
 
@@ -5609,7 +5606,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLEEXTERNALMODULEVAR_PREF
     (void)bytecodeArray;
 }
 
-BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16)
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4)
 {
     (void)bytecodeArray;
 }
@@ -5619,7 +5616,12 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_NEWSENDABLEENV_PREF_IMM8)
     (void)bytecodeArray;
 }
 
-BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16)
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16)
 {
     (void)bytecodeArray;
 }
@@ -5629,17 +5631,7 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_STSENDABLEVAR_PREF_IMM4_IMM4)
     (void)bytecodeArray;
 }
 
-BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_STSENDABLEVAR_PREF_IMM8_IMM8)
-{
-    (void)bytecodeArray;
-}
-
 BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDESTSENDABLEVAR_PREF_IMM16_IMM16)
-{
-    (void)bytecodeArray;
-}
-
-BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM4_IMM4)
 {
     (void)bytecodeArray;
 }
@@ -5649,7 +5641,12 @@ BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_LDSENDABLEVAR_PREF_IMM8_IMM8)
     (void)bytecodeArray;
 }
 
-BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDELDSENDABLEVAR_PREF_IMM16_IMM16)
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDENEWSENDABLEENV_PREF_IMM16)
+{
+    (void)bytecodeArray;
+}
+
+BYTECODE_BASELINE_HANDLER_IMPLEMENT(CALLRUNTIME_WIDELDSENDABLEEXTERNALMODULEVAR_PREF_IMM16)
 {
     (void)bytecodeArray;
 }
