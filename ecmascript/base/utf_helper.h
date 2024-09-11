@@ -122,8 +122,7 @@ std::pair<uint32_t, size_t> ConvertUtf8ToUtf16Pair(const uint8_t *data, bool com
 
 size_t Utf8ToUtf16Size(const uint8_t *utf8, size_t utf8Len);
 
-size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_t utf8Len, size_t utf16Len,
-                                size_t start);
+size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_t utf8Len, size_t utf16Len);
 
 size_t ConvertRegionUtf16ToLatin1(const uint16_t *utf16In, uint8_t *latin1Out, size_t utf16Len, size_t latin1Len);
 

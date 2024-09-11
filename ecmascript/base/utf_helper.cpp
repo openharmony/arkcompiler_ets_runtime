@@ -350,11 +350,31 @@ std::pair<uint32_t, size_t> ConvertUtf8ToUtf16Pair(const uint8_t *data, bool com
     return {pair, UtfLength::FOUR};
 }
 
+// drop the tail bytes if the remain length can't fill the length it represents.
+static inline size_t FixUtf8Len(const uint8_t* utf8, size_t utf8Len)
+{
+    size_t trimSize = 0;
+    if (utf8Len >= 1 && utf8[utf8Len - 1] >= 0xC0) {
+        // The last one char claim there are more than 1 byte next to it, it's invalid, so drop the last one.
+        trimSize = 1;
+    }
+    if (utf8Len >= CONST_2 && utf8[utf8Len - CONST_2] >= 0xE0) {
+        // The second to last char claim there are more than 2 bytes next to it, it's invalid, so drop the last two.
+        trimSize = CONST_2;
+    }
+    if (utf8Len >= CONST_3 && utf8[utf8Len - CONST_3] >= 0xF0) {
+        // The third to last char claim there are more than 3 bytes next to it, it's invalid, so drop the last three.
+        trimSize = CONST_3;
+    }
+    return utf8Len - trimSize;
+}
+
 size_t Utf8ToUtf16Size(const uint8_t *utf8, size_t utf8Len)
 {
+    size_t safeUtf8Len = FixUtf8Len(utf8, utf8Len);
     size_t in_pos = 0;
     size_t res = 0;
-    while (in_pos < utf8Len) {
+    while (in_pos < safeUtf8Len) {
         uint8_t src = utf8[in_pos];
         switch (src & 0xF0) {
             case 0xF0: {
@@ -386,40 +406,21 @@ size_t Utf8ToUtf16Size(const uint8_t *utf8, size_t utf8Len)
                 do {
                     in_pos++;
                     res++;
-                } while (in_pos < utf8Len && utf8[in_pos] < 0x80);
+                } while (in_pos < safeUtf8Len && utf8[in_pos] < 0x80);
                 break;
         }
     }
+    // The remain chars should be treated as single byte char.
+    res += utf8Len - in_pos;
     return res;
 }
 
-size_t ConvertUtf8ToUtf16Int(const uint8_t data, size_t max_bytes)
+size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_t utf8Len, size_t utf16Len)
 {
-    if ((data & MASK1) == 0 || max_bytes < CONST_4) {
-        return 1;
-    }
-    if ((data & MASK2) == 0) {
-        return CONST_2;
-    }
-    if ((data & MASK3) == 0) {
-        return CONST_3;
-    }
-    return CONST_4;
-}
-
-size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_t utf8Len, size_t utf16Len,
-                                size_t start)
-{
+    size_t safeUtf8Len = FixUtf8Len(utf8In, utf8Len);
     size_t in_pos = 0;
     size_t out_pos = 0;
-
-    while (in_pos < utf8Len && start > 0) {
-        auto nbytes = ConvertUtf8ToUtf16Int(utf8In[in_pos], utf8Len - in_pos);
-        in_pos += nbytes;
-        start -= nbytes;
-    }
-
-    while (in_pos < utf8Len && out_pos < utf16Len) {
+    while (in_pos < safeUtf8Len && out_pos < utf16Len) {
         uint8_t src = utf8In[in_pos];
         switch (src & 0xF0) {
             case 0xF0: {
@@ -460,9 +461,13 @@ size_t ConvertRegionUtf8ToUtf16(const uint8_t *utf8In, uint16_t *utf16Out, size_
             default:
                 do {
                     utf16Out[out_pos++] = static_cast<uint16_t>(utf8In[in_pos++]);
-                } while (in_pos < utf8Len && out_pos < utf16Len && utf8In[in_pos] < 0x80);
+                } while (in_pos < safeUtf8Len && out_pos < utf16Len && utf8In[in_pos] < 0x80);
                 break;
         }
+    }
+    // The remain chars should be treated as single byte char.
+    while (in_pos < utf8Len && out_pos < utf16Len) {
+        utf16Out[out_pos++] = static_cast<uint16_t>(utf8In[in_pos++]);
     }
     return out_pos;
 }

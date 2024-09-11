@@ -557,7 +557,6 @@ HWTEST_F_L0(UtfHelperTest, DebuggerConvertRegionUtf16ToUtf8)
 HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16)
 {
     size_t utf16Len = 100;
-    size_t start = 0;
     uint8_t utf8Value[10] = {
         0x7F, // 1-length UTF16 encoding
         0xDF, 0xBF, // 1-length UTF16 encoding
@@ -565,25 +564,13 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16)
         0xF4, 0x8F, 0xBF, 0xBF}; // 2-length UTF16 encoding
     const uint8_t *utf8ValuePtr = utf8Value;
     uint16_t *utf16Out = (uint16_t*)malloc(utf16Len);
-    size_t outPos = ConvertRegionUtf8ToUtf16(utf8ValuePtr, utf16Out, sizeof(utf8Value), utf16Len, start);
+    size_t outPos = ConvertRegionUtf8ToUtf16(utf8ValuePtr, utf16Out, sizeof(utf8Value), utf16Len);
     // 1 + 1 + 1 + 2 = 5s
     EXPECT_EQ(outPos, 5U);
     // 1 + 2 = 3
-    start = 3;
-    outPos = ConvertRegionUtf8ToUtf16(utf8ValuePtr, utf16Out, sizeof(utf8Value), utf16Len, start);
+    utf8ValuePtr = utf8Value + 3;
+    outPos = ConvertRegionUtf8ToUtf16(utf8ValuePtr, utf16Out, sizeof(utf8Value) - 3, utf16Len);
     EXPECT_EQ(outPos, 3U);
-
-    // When "start" is in the middle of a symbol sequence
-    start = 2;
-    outPos = ConvertRegionUtf8ToUtf16(utf8ValuePtr, utf16Out, sizeof(utf8Value), utf16Len, start);
-    EXPECT_EQ(outPos, 0U);
-    start = 4;
-    outPos = ConvertRegionUtf8ToUtf16(utf8ValuePtr, utf16Out, sizeof(utf8Value), utf16Len, start);
-    EXPECT_EQ(outPos, 0U);
-    start = 7;
-    outPos = ConvertRegionUtf8ToUtf16(utf8ValuePtr, utf16Out, sizeof(utf8Value), utf16Len, start);
-    EXPECT_EQ(outPos, 0U);
-    free(utf16Out);
 }
 
 /*
@@ -852,7 +839,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_001) {
     std::vector<uint16_t> expected_utf16 = {0x0048, 0x0065, 0x006C, 0x006C, 0x006F}; // "Hello"
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -867,7 +854,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_002) {
     std::vector<uint16_t> expected_utf16 = {0x4F60, 0x597D, 0xFF0C, 0x4E16, 0x754C, 0xFF01}; // "你好，世界！"
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -882,7 +869,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_003) {
     std::vector<uint16_t> expected_utf16 = {}; // Empty
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -897,7 +884,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_004) {
     std::vector<uint16_t> expected_utf16 = {0x0048, 0x0065, 0x006C, 0x006C, 0x006F, 0x002C, 0x20, 0x4F60};
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), 10, utf16.size(), 0); // Only process the first 9 bytes
+                                                utf16.data(), 10, utf16.size()); // Only process the first 9 bytes
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -912,7 +899,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_005) {
     std::vector<uint16_t> expected_utf16 = {0x4F60, 0x597D}; // "你好"
     std::vector<uint16_t> utf16(2); // Limit buffer length
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -927,7 +914,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_006) {
     std::vector<uint16_t> expected_utf16 = {}; // Expected empty output, handling erroneous data
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_NE(utf16, expected_utf16);
 }
@@ -942,7 +929,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_007) {
     std::vector<uint16_t> expected_utf16 = {0x0041, 0x0042, 0x0043}; // ASCII characters: A, B, C
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -957,7 +944,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_008) {
     std::vector<uint16_t> expected_utf16 = {0x00A2, 0x00FC}; // Unicode .
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -972,7 +959,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_009) {
     std::vector<uint16_t> expected_utf16 = {0x20AC}; // Unicode .
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -987,7 +974,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_010) {
     std::vector<uint16_t> expected_utf16 = {0xD83D, 0xDE0E}; // surrogates
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -1003,7 +990,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_011) {
         0x0000, 0x0057, 0x006F, 0x0072, 0x006C, 0x0064}; // Including NULL characters
     std::vector<uint16_t> utf16(15);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8Nul.data()),
-        utf16.data(), utf8Nul.size(), utf16.size(), 0);
+                                                utf16.data(), utf8Nul.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(utf16, expected_utf16);
 }
@@ -1018,7 +1005,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_012) {
     std::vector<uint16_t> expected_utf16 = {};
     std::vector<uint16_t> utf16(10);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_NE(utf16, expected_utf16);
 }
@@ -1033,7 +1020,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_013) {
     std::vector<uint16_t> expected_utf16 = {0xD83D, 0xDE0E}; // surrogates
     std::vector<uint16_t> utf16(0);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(converted, 0);
 }
@@ -1047,7 +1034,7 @@ HWTEST_F_L0(UtfHelperTest, ConvertRegionUtf8ToUtf16_014) {
     std::vector<uint16_t> expected_utf16 = {0xD83D, 0xDE0E}; // surrogates
     std::vector<uint16_t> utf16(1);
     size_t converted = ConvertRegionUtf8ToUtf16(reinterpret_cast<const uint8_t*>(utf8.data()),
-        utf16.data(), utf8.size(), utf16.size(), 0);
+                                                utf16.data(), utf8.size(), utf16.size());
     utf16.resize(converted);
     EXPECT_EQ(converted, 0);
 }
