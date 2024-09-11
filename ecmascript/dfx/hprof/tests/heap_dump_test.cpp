@@ -12,7 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include <fcntl.h>
+#include <unistd.h>
 #include <chrono>
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
 #include "ecmascript/dfx/hprof/heap_profiler.h"
@@ -105,8 +106,12 @@ public:
         DumpSnapShotOption dumpOption;
         dumpOption.dumpFormat = DumpFormat::BINARY;
         dumpOption.isDumpOOM = true;
-        FileStream stream(filePath);
-        bool ret = heapProfile->DumpHeapSnapshot(&stream, dumpOption);
+        fstream outputString(filePath, std::ios::out);
+        outputString.close();
+        outputString.clear();
+        int fd = open(filePath.c_str(), O_RDWR | O_CREAT);
+        FileDescriptorStream stream(fd);
+        auto ret = heapProfile->DumpHeapSnapshot(&stream, dumpOption);
         stream.EndOfStream();
         return ret;
     }

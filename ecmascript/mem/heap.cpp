@@ -2782,7 +2782,7 @@ void Heap::ThresholdReachedDump()
             GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
                                                         GetHeapLimitSize(), GetLiveObjectSize());
             DumpSnapShotOption dumpOption;
-            dumpOption.dumpFormat = DumpFormat::JSON;
+            dumpOption.dumpFormat = DumpFormat::BINARY;
             dumpOption.isVmMode = true;
             dumpOption.isPrivate = false;
             dumpOption.captureNumericValue = false;
@@ -2790,6 +2790,7 @@ void Heap::ThresholdReachedDump()
             dumpOption.isSimplify = true;
             dumpOption.isSync = false;
             dumpOption.isBeforeFill = false;
+            dumpOption.isDumpOOM = true; // aim's to do binary dump
             heapProfile->DumpHeapSnapshot(dumpOption);
             hasOOMDump_ = false;
             HeapProfilerInterface::Destroy(ecmaVm_);
