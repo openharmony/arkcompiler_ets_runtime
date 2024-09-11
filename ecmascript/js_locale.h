@@ -49,6 +49,7 @@
 #include "unicode/uversion.h"
 
 namespace panda::ecmascript {
+
 enum class OptionType : uint8_t { STRING = 0x01, BOOLEAN };
 enum class LocaleMatcherOption : uint8_t { LOOKUP = 0x01, BEST_FIT, EXCEPTION };
 enum class FormatMatcherOption : uint8_t { BASIC = 0x01, BEST_FIT, EXCEPTION };
@@ -148,6 +149,18 @@ struct TagElements {
 
 class JSLocale : public JSObject {
 public:
+    static const std::set<std::string> WELL_NUMBER_SYSTEM;
+    static const std::set<std::string> WELL_COLLATION;
+
+    static const std::string LATN_STRING;
+
+    static const std::vector<LocaleMatcherOption> LOCALE_MATCHER_OPTION;
+    static const std::vector<std::string> LOCALE_MATCHER_OPTION_NAME;
+
+    static const std::map<std::string, std::set<std::string>> LOCALE_MAP;
+
+    static const std::vector<std::string> HOUR_CYCLE;
+    static const std::vector<std::string> CASE_FIRST;
     static JSLocale *Cast(TaggedObject *object)
     {
         ASSERT(JSTaggedValue(object).IsJSLocale());
@@ -321,8 +334,7 @@ public:
 
     static bool IsWellNumberingSystem(const std::string &value)
     {
-        std::set<std::string> irregularList = {"native", "traditio", "finance"};
-        if (irregularList.find(value) != irregularList.end()) {
+        if (JSLocale::WELL_NUMBER_SYSTEM.find(value) != JSLocale::WELL_NUMBER_SYSTEM.end()) {
             return false;
         }
         UErrorCode status = U_ZERO_ERROR;
@@ -335,8 +347,7 @@ public:
 
     static bool IsWellCollation(const icu::Locale &locale, const std::string &value)
     {
-        std::set<std::string> irregularList = {"standard", "search"};
-        if (irregularList.find(value) != irregularList.end()) {
+        if (JSLocale::WELL_COLLATION.find(value) != JSLocale::WELL_COLLATION.end()) {
             return false;
         }
         return IsWellExtension<icu::Collator>(locale, "collation", value);

@@ -19,8 +19,57 @@
 #include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript {
-constexpr uint32_t DEFAULT_FRACTION_DIGITS = 2;
-constexpr uint32_t PERUNIT_STRING = 5;
+
+const std::vector<StyleOption> JSNumberFormat::STYLE_OPTION = {
+    StyleOption::DECIMAL, StyleOption::PERCENT, StyleOption::CURRENCY, StyleOption::UNIT
+};
+const std::vector<std::string> JSNumberFormat::STYLE_OPTION_NAME = {
+    "decimal", "percent", "currency", "unit"
+};
+
+const std::vector<CurrencyDisplayOption> JSNumberFormat::CURRENCY_DISPLAY_OPTION = {
+    CurrencyDisplayOption::CODE, CurrencyDisplayOption::SYMBOL,
+    CurrencyDisplayOption::NARROWSYMBOL, CurrencyDisplayOption::NAME
+};
+const std::vector<std::string> JSNumberFormat::CURRENCY_DISPLAY_OPTION_NAME = {
+    "code", "symbol", "narrowSymbol", "name"
+};
+
+const std::vector<CurrencySignOption> JSNumberFormat::CURRENCY_SIGN_OPTION = {
+    CurrencySignOption::STANDARD, CurrencySignOption::ACCOUNTING
+};
+const std::vector<std::string> JSNumberFormat::CURRENCY_SIGN_OPTION_NAME = {"standard", "accounting"};
+
+const std::vector<UnitDisplayOption> JSNumberFormat::UNIT_DISPLAY_OPTION = {
+    UnitDisplayOption::SHORT, UnitDisplayOption::NARROW, UnitDisplayOption::LONG
+};
+const std::vector<std::string> JSNumberFormat::UNIT_DISPLAY_OPTION_NAME = {"short", "narrow", "long"};
+
+const std::vector<LocaleMatcherOption> JSNumberFormat::LOCALE_MATCHER_OPTION = {
+    LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT
+};
+const std::vector<std::string> JSNumberFormat::LOCALE_MATCHER_OPTION_NAME = {"lookup", "best fit"};
+
+const std::vector<NotationOption> JSNumberFormat::NOTATION_OPTION = {
+    NotationOption::STANDARD, NotationOption::SCIENTIFIC,
+    NotationOption::ENGINEERING, NotationOption::COMPACT
+};
+const std::vector<std::string> JSNumberFormat::NOTATION_OPTION_NAME = {
+    "standard", "scientific", "engineering", "compact"
+};
+
+const std::vector<SignDisplayOption> JSNumberFormat::SIGN_DISPLAY_OPTION = {
+    SignDisplayOption::AUTO, SignDisplayOption::NEVER,
+    SignDisplayOption::ALWAYS, SignDisplayOption::EXCEPTZERO
+};
+const std::vector<std::string> JSNumberFormat::SIGN_DISPLAY_OPTION_NAME = {
+    "auto", "never", "always", "exceptZero"
+};
+
+const std::vector<CompactDisplayOption> JSNumberFormat::COMPACT_DISPLAY_OPTION = {
+    CompactDisplayOption::SHORT, CompactDisplayOption::LONG
+};
+const std::vector<std::string> JSNumberFormat::COMPACT_DISPLAY_OPTION_NAME = {"short", "long"};
 
 JSHandle<JSTaggedValue> OptionToEcmaString(JSThread *thread, StyleOption style)
 {
@@ -225,7 +274,7 @@ bool IsWellFormedUnitIdentifier(const std::string &unit, icu::MeasureUnit &icuUn
 
     // 2. If the substring "-per-" does not occur exactly once in unitIdentifier,
     //      a. then false
-    size_t afterPos = pos + PERUNIT_STRING;
+    size_t afterPos = pos + JSNumberFormat::PERUNIT_STRING;
     if (pos == std::string::npos || unit.find("-per-", afterPos) != std::string::npos) {
         return false;
     }
@@ -241,7 +290,7 @@ bool IsWellFormedUnitIdentifier(const std::string &unit, icu::MeasureUnit &icuUn
     }
 
     // 5. Let denominator be the substring of unitIdentifier from just after "-per-" to the end.
-    std::string denominator = unit.substr(pos + PERUNIT_STRING);
+    std::string denominator = unit.substr(pos + JSNumberFormat::PERUNIT_STRING);
 
     // 6. If the result of IsSanctionedUnitIdentifier(denominator) is false, then
     //      a. Return false
@@ -270,8 +319,8 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
     JSHandle<JSTaggedValue> property = globalConst->GetHandledStyleString();
     auto style = JSLocale::GetOptionOfString<StyleOption>(
         thread, optionsObject, property,
-        {StyleOption::DECIMAL, StyleOption::PERCENT, StyleOption::CURRENCY, StyleOption::UNIT},
-        {"decimal", "percent", "currency", "unit"}, StyleOption::DECIMAL);
+        JSNumberFormat::STYLE_OPTION, JSNumberFormat::STYLE_OPTION_NAME,
+        StyleOption::DECIMAL);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, fractionDigitsOption);
 
     // 4. Set intlObj.[[Style]] to style.
@@ -307,17 +356,17 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
     property = globalConst->GetHandledCurrencyDisplayString();
     auto currencyDisplay = JSLocale::GetOptionOfString<CurrencyDisplayOption>(
         thread, optionsObject, property,
-        {CurrencyDisplayOption::CODE, CurrencyDisplayOption::SYMBOL, CurrencyDisplayOption::NARROWSYMBOL,
-         CurrencyDisplayOption::NAME},
-        {"code", "symbol", "narrowSymbol", "name"}, CurrencyDisplayOption::SYMBOL);
+        JSNumberFormat::CURRENCY_DISPLAY_OPTION, JSNumberFormat::CURRENCY_DISPLAY_OPTION_NAME,
+        CurrencyDisplayOption::SYMBOL);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, fractionDigitsOption);
     numberFormat->SetCurrencyDisplay(currencyDisplay);
 
     // 9. Let currencySign be ? GetOption(options, "currencySign", "string", « "standard", "accounting" », "standard").
     property = globalConst->GetHandledCurrencySignString();
     auto currencySign = JSLocale::GetOptionOfString<CurrencySignOption>(
-        thread, optionsObject, property, {CurrencySignOption::STANDARD, CurrencySignOption::ACCOUNTING},
-        {"standard", "accounting"}, CurrencySignOption::STANDARD);
+        thread, optionsObject, property,
+        JSNumberFormat::CURRENCY_SIGN_OPTION, JSNumberFormat::CURRENCY_SIGN_OPTION_NAME,
+        CurrencySignOption::STANDARD);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, fractionDigitsOption);
     numberFormat->SetCurrencySign(currencySign);
 
@@ -351,8 +400,9 @@ FractionDigitsOption SetNumberFormatUnitOptions(JSThread *thread,
     // 13. Let unitDisplay be ? GetOption(options, "unitDisplay", "string", « "short", "narrow", "long" », "short").
     property = globalConst->GetHandledUnitDisplayString();
     auto unitDisplay = JSLocale::GetOptionOfString<UnitDisplayOption>(
-        thread, optionsObject, property, {UnitDisplayOption::SHORT, UnitDisplayOption::NARROW, UnitDisplayOption::LONG},
-        {"short", "narrow", "long"}, UnitDisplayOption::SHORT);
+        thread, optionsObject, property,
+        JSNumberFormat::UNIT_DISPLAY_OPTION, JSNumberFormat::UNIT_DISPLAY_OPTION_NAME,
+        UnitDisplayOption::SHORT);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, fractionDigitsOption);
     numberFormat->SetUnitDisplay(unitDisplay);
 
@@ -463,8 +513,9 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     // 5. Let matcher be ? GetOption(options, "localeMatcher", "string", « "lookup", "best fit" », "best fit").
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleMatcherString();
     auto matcher = JSLocale::GetOptionOfString<LocaleMatcherOption>(
-        thread, optionsObject, property, {LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT},
-        {"lookup", "best fit"}, LocaleMatcherOption::BEST_FIT);
+        thread, optionsObject, property,
+        JSNumberFormat::LOCALE_MATCHER_OPTION, JSNumberFormat::LOCALE_MATCHER_OPTION_NAME,
+        LocaleMatcherOption::BEST_FIT);
     RETURN_IF_ABRUPT_COMPLETION(thread);
 
     // 7. Let numberingSystem be ? GetOption(options, "numberingSystem", "string", undefined, undefined).
@@ -569,8 +620,8 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     property = globalConst->GetHandledNotationString();
     auto notation = JSLocale::GetOptionOfString<NotationOption>(
         thread, optionsObject, property,
-        {NotationOption::STANDARD, NotationOption::SCIENTIFIC, NotationOption::ENGINEERING, NotationOption::COMPACT},
-        {"standard", "scientific", "engineering", "compact"}, NotationOption::STANDARD);
+        JSNumberFormat::NOTATION_OPTION, JSNumberFormat::NOTATION_OPTION_NAME,
+        NotationOption::STANDARD);
     RETURN_IF_ABRUPT_COMPLETION(thread);
     numberFormat->SetNotation(notation);
 
@@ -583,7 +634,8 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     // 22. Let compactDisplay be ? GetOptionOfString(options, "compactDisplay", "string", « "short", "long" », "short").
     property = globalConst->GetHandledCompactDisplayString();
     auto compactDisplay = JSLocale::GetOptionOfString<CompactDisplayOption>(
-        thread, optionsObject, property, {CompactDisplayOption::SHORT, CompactDisplayOption::LONG}, {"short", "long"},
+        thread, optionsObject, property,
+        JSNumberFormat::COMPACT_DISPLAY_OPTION, JSNumberFormat::COMPACT_DISPLAY_OPTION_NAME,
         CompactDisplayOption::SHORT);
     numberFormat->SetCompactDisplay(compactDisplay);
 
@@ -632,8 +684,8 @@ void JSNumberFormat::InitializeNumberFormat(JSThread *thread, const JSHandle<JSN
     property = globalConst->GetHandledSignDisplayString();
     auto signDisplay = JSLocale::GetOptionOfString<SignDisplayOption>(
         thread, optionsObject, property,
-        {SignDisplayOption::AUTO, SignDisplayOption::NEVER, SignDisplayOption::ALWAYS, SignDisplayOption::EXCEPTZERO},
-        {"auto", "never", "always", "exceptZero"}, SignDisplayOption::AUTO);
+        JSNumberFormat::SIGN_DISPLAY_OPTION, JSNumberFormat::SIGN_DISPLAY_OPTION_NAME,
+        SignDisplayOption::AUTO);
     RETURN_IF_ABRUPT_COMPLETION(thread);
     numberFormat->SetSignDisplay(signDisplay);
 
@@ -701,7 +753,7 @@ int32_t JSNumberFormat::CurrencyDigits(const icu::UnicodeString &currency)
     if (U_SUCCESS(status)) {
         return fractionDigits;
     }
-    return DEFAULT_FRACTION_DIGITS;
+    return JSNumberFormat::DEFAULT_FRACTION_DIGITS;
 }
 
 icu::number::LocalizedNumberFormatter *JSNumberFormat::GetCachedIcuNumberFormatter(JSThread *thread,

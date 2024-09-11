@@ -34,7 +34,27 @@
 #endif
 
 namespace panda::ecmascript {
-const std::string LATN_STRING = "latn";
+const std::string JSLocale::LATN_STRING = "latn";
+
+const std::vector<LocaleMatcherOption> JSLocale::LOCALE_MATCHER_OPTION = {
+    LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT
+};
+const std::vector<std::string> JSLocale::LOCALE_MATCHER_OPTION_NAME = {
+    "lookup", "best fit"
+};
+
+const std::map<std::string, std::set<std::string>> JSLocale::LOCALE_MAP = {
+    {"hc", {"h11", "h12", "h23", "h24"}},
+    {"lb", {"strict", "normal", "loose"}},
+    {"kn", {"true", "false"}},
+    {"kf", {"upper", "lower", "false"}}
+};
+
+const std::vector<std::string> JSLocale::HOUR_CYCLE = {"h11", "h12", "h23", "h24"};
+const std::vector<std::string> JSLocale::CASE_FIRST = {"upper", "lower", "false"};
+
+const std::set<std::string> JSLocale::WELL_NUMBER_SYSTEM = {"native", "traditio", "finance"};
+const std::set<std::string> JSLocale::WELL_COLLATION = {"standard", "search"};
 // 6.4.1 IsValidTimeZoneName ( timeZone )
 bool JSLocale::IsValidTimeZoneName(const icu::TimeZone &tz)
 {
@@ -236,7 +256,7 @@ JSHandle<JSArray> JSLocale::SupportedLocales(JSThread *thread, const JSHandle<Ta
 
         [[maybe_unused]] LocaleMatcherOption matcher = GetOptionOfString<LocaleMatcherOption>(thread,
             obj, globalConst->GetHandledLocaleMatcherString(),
-            {LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT}, {"lookup", "best fit"},
+            JSLocale::LOCALE_MATCHER_OPTION, JSLocale::LOCALE_MATCHER_OPTION_NAME,
             LocaleMatcherOption::BEST_FIT);
         RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSArray, thread);
     }
@@ -445,13 +465,6 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
                                        [[maybe_unused]] LocaleMatcherOption matcher,
                                        const std::set<std::string> &relevantExtensionKeys)
 {
-    std::map<std::string, std::set<std::string>> localeMap = {
-        {"hc", {"h11", "h12", "h23", "h24"}},
-        {"lb", {"strict", "normal", "loose"}},
-        {"kn", {"true", "false"}},
-        {"kf", {"upper", "lower", "false"}}
-    };
-
     // 1. Let matcher be options.[[localeMatcher]].
     // 2. If matcher is "lookup" "lookup", then
     //    a. Let r be LookupMatcher(availableLocales, requestedLocales).
@@ -497,9 +510,12 @@ ResolvedLocale JSLocale::ResolveLocale(JSThread *thread, const JSHandle<TaggedAr
         // c. Let keyLocaleData be foundLocaleData.[[<key>]].
         // e. Let value be keyLocaleData[0].
         if ((key != "ca") && (key != "co") && (key != "nu")) {
-            keyLocaleData = localeMap[key];
+            auto find = JSLocale::LOCALE_MAP.find(key);
+            if (find != JSLocale::LOCALE_MAP.end()) {
+                keyLocaleData = find->second;
+            }
             if (key == "") {
-                keyLocaleData = localeMap["lb"];
+                keyLocaleData = JSLocale::LOCALE_MAP.at("lb");
             }
             value = *keyLocaleData.begin();
         }
@@ -627,7 +643,7 @@ std::string JSLocale::GetNumberingSystem(const icu::Locale &icuLocale)
     if (U_SUCCESS(status) != 0) {
         return numberingSystem->getName();
     }
-    return LATN_STRING;
+    return JSLocale::LATN_STRING;
 }
 
 bool JSLocale::IsWellFormedCurrencyCode(const std::string &currency)
@@ -857,8 +873,6 @@ bool BuildOptionsTags(const JSHandle<EcmaString> &tag, icu::LocaleBuilder *build
 
 bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::LocaleBuilder *builder)
 {
-    const std::vector<std::string> hourCycleValues = {"h11", "h12", "h23", "h24"};
-    const std::vector<std::string> caseFirstValues = {"upper", "lower", "false"};
     const std::vector<std::string> emptyValues = {};
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
     std::string strResult;
@@ -885,7 +899,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
     }
 
     bool findhc = JSLocale::GetOptionOfString(thread, options, globalConst->GetHandledHourCycleString(),
-                                              hourCycleValues, &strResult);
+                                              JSLocale::HOUR_CYCLE, &strResult);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (findhc) {
         if (!uloc_toLegacyType(uloc_toLegacyKey("hc"), strResult.c_str())) {
@@ -896,7 +910,7 @@ bool InsertOptions(JSThread *thread, const JSHandle<JSObject> &options, icu::Loc
     }
 
     bool findkf = JSLocale::GetOptionOfString(thread, options, globalConst->GetHandledCaseFirstString(),
-                                              caseFirstValues, &strResult);
+                                              JSLocale::CASE_FIRST, &strResult);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, false);
     if (findkf) {
         if (!uloc_toLegacyType(uloc_toLegacyKey("kf"), strResult.c_str())) {

@@ -21,6 +21,7 @@
 namespace panda::ecmascript {
 class DateParse {
 public:
+    static const std::array<CString, MOUTH_PER_YEAR> MONTH_NAME;
     static bool ParseDateString(const char *str, int length, int *time);
 
 private:

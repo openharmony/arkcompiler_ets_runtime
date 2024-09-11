@@ -35,6 +35,23 @@ public:
 
     static const std::map<CaseFirstOption, UColAttributeValue> uColAttributeValueMap;
 
+    static const std::vector<LocaleMatcherOption> LOCALE_MATCHER_OPTION;
+    static const std::vector<std::string> LOCALE_MATCHER_OPTION_NAME;
+
+    static const std::vector<CaseFirstOption> CASE_FIRST_OPTION;
+    static const std::vector<std::string> CASE_FIRST_OPTION_NAME;
+
+    static const std::set<std::string> RELEVANT_EXTENSION_KEYS;
+
+    static const std::vector<SensitivityOption> SENSITIVITY_OPTION;
+    static const std::vector<std::string> SENSITIVITY_OPTION_NAME;
+
+    static const std::vector<UsageOption> USAGE_OPTION;
+    static const std::vector<std::string> USAGE_OPTION_NAME;
+
+    // All the available locales that are statically known to fulfill fast path conditions.
+    static const char *const FAST_LOCALE[];
+
     CAST_CHECK(JSCollator, IsJSCollator);
 
     static constexpr size_t ICU_FIELD_OFFSET = JSObject::SIZE;

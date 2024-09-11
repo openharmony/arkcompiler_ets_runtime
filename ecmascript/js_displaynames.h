@@ -63,6 +63,20 @@ enum class LanguageDisplayOption : uint8_t {
 
 class JSDisplayNames : public JSObject {
 public:
+    static const std::vector<LocaleMatcherOption> LOCALE_MATCHER_OPTION;
+    static const std::vector<std::string> LOCALE_MATCHER_OPTION_NAME;
+
+    static const std::vector<StyOption> STY_OPTION;
+    static const std::vector<std::string> STY_OPTION_NAME;
+
+    static const std::vector<TypednsOption> TYPED_NS_OPTION;
+    static const std::vector<std::string> TYPED_NS_OPTION_NAME;
+
+    static const std::vector<FallbackOption> FALLBACK_OPTION;
+    static const std::vector<std::string> FALLBACK_OPTION_OPTION_NAME;
+
+    static const std::vector<LanguageDisplayOption> LANGUAGE_DISPLAY_OPTION;
+    static const std::vector<std::string> LANGUAGE_DISPLAY_OPTION_NAME;
     CAST_CHECK(JSDisplayNames, IsJSDisplayNames);
 
     static constexpr size_t LOCALE_OFFSET = JSObject::SIZE;

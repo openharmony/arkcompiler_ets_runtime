@@ -35,6 +35,41 @@
 #endif
 
 namespace panda::ecmascript {
+
+const std::vector<LocaleMatcherOption> JSDisplayNames::LOCALE_MATCHER_OPTION = {
+    LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT
+};
+const std::vector<std::string> JSDisplayNames::LOCALE_MATCHER_OPTION_NAME = {"lookup", "best fit"};
+
+const std::vector<StyOption> JSDisplayNames::STY_OPTION = {
+    StyOption::NARROW, StyOption::SHORT, StyOption::LONG
+};
+const std::vector<std::string> JSDisplayNames::STY_OPTION_NAME = {"narrow", "short", "long"};
+
+const std::vector<TypednsOption> JSDisplayNames::TYPED_NS_OPTION = {
+    TypednsOption::LANGUAGE, TypednsOption::REGION,
+    TypednsOption::SCRIPT, TypednsOption::CURRENCY,
+    TypednsOption::CALENDAR, TypednsOption::DATETIMEFIELD
+};
+const std::vector<std::string> JSDisplayNames::TYPED_NS_OPTION_NAME = {
+    "language", "region", "script", "currency",
+    "calendar", "dateTimeField"
+};
+
+const std::vector<FallbackOption> JSDisplayNames::FALLBACK_OPTION = {
+    FallbackOption::CODE, FallbackOption::NONE
+};
+const std::vector<std::string> JSDisplayNames::FALLBACK_OPTION_OPTION_NAME = {
+    "code", "none"
+};
+
+const std::vector<LanguageDisplayOption> JSDisplayNames::LANGUAGE_DISPLAY_OPTION = {
+    LanguageDisplayOption::DIALECT, LanguageDisplayOption::STANDARD
+};
+const std::vector<std::string> JSDisplayNames::LANGUAGE_DISPLAY_OPTION_NAME = {
+    "dialect", "standard"
+};
+
 icu::LocaleDisplayNames *JSDisplayNames::GetIcuLocaleDisplayNames() const
 {
     ASSERT(GetIcuLDN().IsJSNativePointer());
@@ -125,8 +160,9 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     // 8. Let matcher be ? GetOption(options, "localeMatcher", "string", « "lookup", "best fit" », "best fit").
     JSHandle<JSTaggedValue> property = globalConst->GetHandledLocaleMatcherString();
     auto matcher = JSLocale::GetOptionOfString<LocaleMatcherOption>(
-        thread, optionsObject, property, {LocaleMatcherOption::LOOKUP, LocaleMatcherOption::BEST_FIT},
-        {"lookup", "best fit"}, LocaleMatcherOption::BEST_FIT);
+        thread, optionsObject, property,
+        JSDisplayNames::LOCALE_MATCHER_OPTION, JSDisplayNames::LOCALE_MATCHER_OPTION_NAME,
+        LocaleMatcherOption::BEST_FIT);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
 
     // 10. Let r be ResolveLocale(%DisplayNames%.[[AvailableLocales]], requestedLocales, opt,
@@ -146,8 +182,8 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     // 11. Let style be ? GetOption(options, "style", "string", « "narrow", "short", "long" », "long").
     property = globalConst->GetHandledStyleString();
     auto StyOpt = JSLocale::GetOptionOfString<StyOption>(thread, optionsObject, property,
-                                                         {StyOption::NARROW, StyOption::SHORT, StyOption::LONG},
-                                                         {"narrow", "short", "long"}, StyOption::LONG);
+        JSDisplayNames::STY_OPTION, JSDisplayNames::STY_OPTION_NAME,
+        StyOption::LONG);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
 
     // 12. Set DisplayNames.[[Style]] to style.
@@ -157,12 +193,8 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     // "undefined").
     property = globalConst->GetHandledTypeString();
     auto type = JSLocale::GetOptionOfString<TypednsOption>(thread, optionsObject, property,
-                                                           {TypednsOption::LANGUAGE, TypednsOption::REGION,
-                                                           TypednsOption::SCRIPT, TypednsOption::CURRENCY,
-                                                           TypednsOption::CALENDAR, TypednsOption::DATETIMEFIELD},
-                                                           {"language", "region", "script", "currency",
-                                                           "calendar", "dateTimeField"},
-                                                           TypednsOption::UNDEFINED);
+        JSDisplayNames::TYPED_NS_OPTION, JSDisplayNames::TYPED_NS_OPTION_NAME,
+        TypednsOption::UNDEFINED);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
 
     // 14. If type is undefined, throw a TypeError exception.
@@ -176,8 +208,8 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     // 16. Let fallback be ? GetOption(options, "fallback", "string", « "code", "none" », "code").
     property = globalConst->GetHandledFallbackString();
     auto fallback = JSLocale::GetOptionOfString<FallbackOption>(thread, optionsObject, property,
-                                                                {FallbackOption::CODE, FallbackOption::NONE},
-                                                                {"code", "none"}, FallbackOption::CODE);
+        JSDisplayNames::FALLBACK_OPTION, JSDisplayNames::FALLBACK_OPTION_OPTION_NAME,
+        FallbackOption::CODE);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
 
     // 17. Set displayNames.[[Fallback]] to fallback.
@@ -186,8 +218,9 @@ JSHandle<JSDisplayNames> JSDisplayNames::InitializeDisplayNames(JSThread *thread
     // Let languageDisplay be ? GetOption(options, "languageDisplay", string, « "dialect", "standard" », "dialect").
     property = globalConst->GetHandledLanguageDisplayString();
     auto langDisplay = JSLocale::GetOptionOfString<LanguageDisplayOption>(
-        thread, optionsObject, property, {LanguageDisplayOption::DIALECT, LanguageDisplayOption::STANDARD},
-        {"dialect", "standard"}, LanguageDisplayOption::DIALECT);
+        thread, optionsObject, property,
+        JSDisplayNames::LANGUAGE_DISPLAY_OPTION,
+        JSDisplayNames::LANGUAGE_DISPLAY_OPTION_NAME, LanguageDisplayOption::DIALECT);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSDisplayNames, thread);
     displayNames->SetLanguageDisplay(langDisplay);
 
