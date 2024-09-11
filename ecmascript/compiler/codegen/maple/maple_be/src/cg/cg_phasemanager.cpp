@@ -57,7 +57,6 @@ void DumpMIRFunc(MIRFunction &func, const char *msg, bool printAlways = false, c
 {
     bool dumpAll = (CGOptions::GetDumpPhases().find("*") != CGOptions::GetDumpPhases().end());
     bool dumpFunc = CGOptions::FuncFilter(func.GetName());
-
     if (printAlways || (dumpAll && dumpFunc)) {
         LogInfo::MapleLogger() << msg << '\n';
         func.Dump();
@@ -283,7 +282,6 @@ void CgFuncPM::SweepUnusedStaticSymbol(MIRModule &m)
 }
 
 /* =================== new phase manager ===================  */
-
 bool CgFuncPM::PhaseRun(MIRModule &m)
 {
     // registry target based on build, cgfunc, emitter need to be registried.

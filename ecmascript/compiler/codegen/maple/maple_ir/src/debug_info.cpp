@@ -1266,7 +1266,7 @@ size_t DBGDieAttr::SizeOf(DBGDieAttr *attr)
         case DW_FORM_string: {
             GStrIdx stridx(attr->value.id);
             const std::string &str = GlobalTables::GetStrTable().GetStringFromStrIdx(stridx);
-            return str.length() + 1 /* terminal null byte */;
+            return str.length() + 1; /* 1 for   ` terminal null byte */
         }
         case DW_FORM_exprloc: {
             DBGExprLoc *ptr = attr->value.ptr;
@@ -1339,10 +1339,6 @@ void DebugInfo::ComputeSizeAndOffset(DBGDie *die, uint32 &cuOffset)
     }
 }
 
-/* ///////////////
- * Dumps
- * ///////////////
- */
 void DebugInfo::Dump(int indent)
 {
     LogInfo::MapleLogger() << "\n" << std::endl;

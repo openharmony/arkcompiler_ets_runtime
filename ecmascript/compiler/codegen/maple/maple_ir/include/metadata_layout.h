@@ -328,6 +328,7 @@ public:
     {
         return reinterpret_cast<intptr_t>(nullptr);
     }
+
     uintptr_t GetInitStateRawValue() const
     {
         return __atomic_load_n(&initState, __ATOMIC_ACQUIRE);

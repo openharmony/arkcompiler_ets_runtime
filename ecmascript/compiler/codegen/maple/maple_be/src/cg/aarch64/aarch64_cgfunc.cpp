@@ -2801,7 +2801,7 @@ Operand *AArch64CGFunc::SelectIreadfpoff(const BaseNode &parent, IreadFPoffNode 
     RegOperand *result = nullptr;
     if (offset >= 0) {
         LmbcFormalParamInfo *info = GetLmbcFormalParamInfo(static_cast<uint32>(offset));
-	    DEBUG_ASSERT(info != nullptr, "nullptr check");
+        DEBUG_ASSERT(info != nullptr, "nullptr check");
         if (info->GetPrimType() == PTY_agg) {
             if (info->IsOnStack()) {
                 result = GenLmbcParamLoad(info->GetOnStackOffset(), GetPrimTypeSize(PTY_a64), kRegTyInt, PTY_a64);
@@ -3615,7 +3615,7 @@ Operand &AArch64CGFunc::SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &p
         case OP_addrof: {
             AddrofNode *addrofNode = static_cast<AddrofNode *>(opnd0);
             CHECK_NULL_FATAL(mirModule.CurFunction());
-	        DEBUG_ASSERT(mirModule.CurFunction()->GetLocalOrGlobalSymbol(addrofNode->GetStIdx()) != nullptr, "nullptr check");
+            DEBUG_ASSERT(mirModule.CurFunction()->GetLocalOrGlobalSymbol(addrofNode->GetStIdx()) != nullptr, "nullptr check");
             MIRSymbol &symbol = *mirModule.CurFunction()->GetLocalOrGlobalSymbol(addrofNode->GetStIdx());
             DEBUG_ASSERT(addrofNode->GetFieldID() == 0, "For debug SelectCGArrayElemAdd.");
 

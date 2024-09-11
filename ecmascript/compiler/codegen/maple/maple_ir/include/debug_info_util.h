@@ -25,5 +25,5 @@ extern const char *GetDwAtName(unsigned n);
 extern const char *GetDwOpName(unsigned n);
 extern const char *GetDwAteName(unsigned n);
 extern DwAte GetAteFromPTY(PrimType pty);
-} // namespace maple
+}  // namespace maple
 #endif

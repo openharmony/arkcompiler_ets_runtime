@@ -43,16 +43,13 @@ MIRConst *TruncateUnionConstant(const MIRStructType &unionType, MIRConst *fieldC
 
     auto *bitFieldType = safe_cast<MIRBitFieldType>(unionFieldType);
     auto *intCst = safe_cast<MIRIntConst>(fieldCst);
-
     if (!bitFieldType || !intCst) {
         return nullptr;
     }
 
     bool isBigEndian = Triple::GetTriple().IsBigEndian();
-
     IntVal val = intCst->GetValue();
     uint8 bitSize = bitFieldType->GetFieldSize();
-
     if (bitSize >= val.GetBitWidth()) {
         return nullptr;
     }

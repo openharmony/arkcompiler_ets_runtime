@@ -134,8 +134,8 @@ constexpr bool IsStmtMustRequire(Opcode opcode)
         case OP_membarrelease:
         case OP_membarstoreload:
         case OP_membarstorestore:
-            CASE_OP_ASSERT_NONNULL
-            CASE_OP_ASSERT_BOUNDARY
+        CASE_OP_ASSERT_NONNULL
+        CASE_OP_ASSERT_BOUNDARY
         case OP_free:
         case OP_incref:
         case OP_decref:
@@ -213,8 +213,8 @@ constexpr bool IsSupportedOpForCopyInPhasesLoopUnrollAndVRP(Opcode op)
         case OP_brtrue:
         case OP_maydassign:
         case OP_iassign:
-            CASE_OP_ASSERT_NONNULL
-            CASE_OP_ASSERT_BOUNDARY
+        CASE_OP_ASSERT_NONNULL
+        CASE_OP_ASSERT_BOUNDARY
         case OP_membaracquire:
         case OP_call:
         case OP_callassigned:
