@@ -158,7 +158,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-fast-compile               Disable some time-consuming pass. Default: 'true'\n"
     "--compiler-no-check                   Enable remove checks for aot compiler. Default: 'false'\n"
     "--compiler-pipeline-host-aot          Enable pipeline host aot compiler. Default: 'false'\n"
-    "--compiler-opt-loop-peeling:          Enable loop peeling for aot compiler: Default: 'false'\n"
+    "--compiler-opt-loop-peeling:          Enable loop peeling for aot compiler: Default: 'true'\n"
     "--compiler-pkg-info                   Specify the package json info for ark aot compiler\n"
     "--compiler-external-pkg-info          Specify the external package json info for ark aot compiler\n"
     "--compiler-enable-external-pkg        Enable compile with external package for ark aot compiler\n"
