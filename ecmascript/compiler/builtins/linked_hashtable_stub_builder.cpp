@@ -203,12 +203,12 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     GateRef numOfDelElements = GetNumberOfDeletedElements(linkedTable);
     GateRef nof = Int32Add(numberOfElements, numOfAddElements);
     GateRef capacity = GetCapacity(linkedTable);
-    GateRef less = Int32LessThan(nof, capacity);
-    GateRef half = Int32Div(Int32Sub(capacity, nof), Int32(2));
-    GateRef lessHalf = Int32LessThanOrEqual(numOfDelElements, half);
-
+    GateRef isLess = LogicAndBuilder(env)
+        .And(Int32LessThan(nof, capacity))
+        .And(Int32LessThanOrEqual(numOfDelElements, Int32Div(Int32Sub(capacity, nof), Int32(2))))
+        .Done();
     Label lessLable(env);
-    BRANCH(BoolAnd(less, lessHalf), &lessLable, &exit);
+    BRANCH(isLess, &lessLable, &exit);
     Bind(&lessLable);
     {
         Label need(env);
@@ -669,10 +669,9 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
         mapOrSetFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
                                          GlobalEnv::BUILTINS_SET_FUNCTION_INDEX);
     }
-    GateRef funcEq = Equal(mapOrSetFunc, newTarget);
     GateRef newTargetHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-    GateRef isHClass = IsJSHClass(newTargetHClass);
-    BRANCH(BoolAnd(funcEq, isHClass), &fastGetHClass, &slowPath);
+    BRANCH(LogicAndBuilder(env).And(Equal(mapOrSetFunc, newTarget)).And(IsJSHClass(newTargetHClass)).Done(),
+        &fastGetHClass, &slowPath);
 
     Bind(&fastGetHClass);
     Label isUndefinedOrNull(env);

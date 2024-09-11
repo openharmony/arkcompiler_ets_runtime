@@ -956,7 +956,11 @@ void BuiltinsTypedArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, 
     Bind(&afterCalculateCount);
     {
         direction = Int64(1);
-        BRANCH(BoolAnd(Int64LessThan(*copyFrom, *copyTo), Int64LessThan(*copyTo, Int64Add(*copyFrom, *count))),
+        GateRef copyFromVal = *copyFrom;
+        GateRef copyToVal = *copyTo;
+        GateRef countVal = *count;
+        BRANCH(LogicAndBuilder(env).And(Int64LessThan(copyFromVal, copyToVal))
+            .And(Int64LessThan(copyToVal, Int64Add(copyFromVal, countVal))).Done(),
             &needToAdjustParam, &afterAdjustParam);
         Bind(&needToAdjustParam);
         {
@@ -1036,7 +1040,7 @@ void BuiltinsTypedArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue,
     Bind(&callbackFnHandleCallable);
     GateRef thisLenIsZero = Int32Equal(thisLen, Int32(0));
     GateRef numArgsLessThanTwo = Int64LessThan(numArgs, IntPtr(2));
-    BRANCH(BoolAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
+    BRANCH(BitAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
     Bind(&noTypeError);
     {
         DEFVARIABLE(accumulator, VariableType::JS_ANY(), Undefined());
@@ -1144,7 +1148,7 @@ void BuiltinsTypedArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, Gate
     Bind(&callbackFnHandleCallable);
     GateRef thisLenIsZero = Int32Equal(thisLen, Int32(0));
     GateRef numArgsLessThanTwo = Int64LessThan(numArgs, IntPtr(2));
-    BRANCH(BoolAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
+    BRANCH(BitAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
     Bind(&noTypeError);
     {
         DEFVARIABLE(accumulator, VariableType::JS_ANY(), Undefined());
@@ -1653,8 +1657,9 @@ void BuiltinsTypedArrayStubBuilder::SubArray(GateRef glue, GateRef thisValue, Ga
     GateRef arrayLen = GetArrayLength(thisValue);
     GateRef buffer = GetViewedArrayBuffer(thisValue);
     Label offHeap(env);
-    BRANCH(BoolOr(IsJSObjectType(buffer, JSType::JS_ARRAY_BUFFER),
-        IsJSObjectType(buffer, JSType::JS_SHARED_ARRAY_BUFFER)), &offHeap, slowPath);
+    BRANCH(LogicOrBuilder(env).Or(IsJSObjectType(buffer, JSType::JS_ARRAY_BUFFER))
+        .Or(IsJSObjectType(buffer, JSType::JS_SHARED_ARRAY_BUFFER)).Done(),
+        &offHeap, slowPath);
     Bind(&offHeap);
     Label notDetached(env);
     BRANCH(IsDetachedBuffer(buffer), slowPath, &notDetached);
@@ -1767,7 +1772,7 @@ void BuiltinsTypedArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRe
     }
     Bind(&next);
     {
-        BRANCH(BoolOr(Int64GreaterThanOrEqual(*actualIndex, thisLen), Int64LessThan(*actualIndex, Int64(0))),
+        BRANCH(BitOr(Int64GreaterThanOrEqual(*actualIndex, thisLen), Int64LessThan(*actualIndex, Int64(0))),
             slowPath, &notOutOfRange);
         Bind(&notOutOfRange);
         {
@@ -2069,7 +2074,7 @@ void BuiltinsTypedArrayStubBuilder::DoSort(
                 Label shouldCopy(env);
                 GateRef isGreater0 = Int64GreaterThanOrEqual(*endIndex, Int64(0));
                 GateRef isLessI = Int64LessThan(*endIndex, *i);
-                BRANCH(BoolAnd(isGreater0, isLessI), &shouldCopy, &loopEnd);
+                BRANCH(BitAnd(isGreater0, isLessI), &shouldCopy, &loopEnd);
                 Bind(&shouldCopy);
                 {
                     DEFVARIABLE(j, VariableType::INT64(), *i);
@@ -2379,8 +2384,7 @@ void BuiltinsTypedArrayStubBuilder::BuildArrayIterator(GateRef glue, GateRef thi
     Label thisExists(env);
     Label isEcmaObject(env);
     Label isTypedArray(env);
-
-    BRANCH(BoolOr(TaggedIsHole(thisValue), TaggedIsUndefinedOrNull(thisValue)), slowPath, &thisExists);
+    BRANCH(TaggedIsUndefinedOrNullOrHole(thisValue), slowPath, &thisExists);
     Bind(&thisExists);
     BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
@@ -2543,12 +2547,15 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
     BRANCH(Int32LessThanOrEqual(Int32(1), *newArrayLen), &firstArg, &writeResult);
     Bind(&firstArg);
     {
+        auto checkValueValid = [this, env](GateRef value) -> GateRef {
+            return LogicOrBuilder(env).Or(TaggedIsUndefined(value)).Or(TaggedIsNumber(value))
+                .Or(TaggedIsString(value)).Done();
+        };
         Label setValue0(env);
         Label hasException0(env);
         Label notHasException0(env);
         kValue = GetCallArg0(numArgs);
-        BRANCH(BoolOr(BoolOr(TaggedIsString(*kValue), TaggedIsNumber(*kValue)),
-            TaggedIsUndefined(*kValue)), &setValue0, slowPath);
+        BRANCH(checkValueValid(*kValue), &setValue0, slowPath);
         Bind(&setValue0);
         // 0: first element in newArray
         FastSetPropertyByIndex(glue, *kValue, thisObj, Int32(0), arrayType);
@@ -2567,8 +2574,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
             Label hasException1(env);
             Label notHasException1(env);
             kValue = GetCallArg1(numArgs);
-            BRANCH(BoolOr(BoolOr(TaggedIsString(*kValue), TaggedIsNumber(*kValue)),
-                TaggedIsUndefined(*kValue)), &setValue1, slowPath);
+            BRANCH(checkValueValid(*kValue), &setValue1, slowPath);
             Bind(&setValue1);
             // 1: second element in newArray
             FastSetPropertyByIndex(glue, *kValue, thisObj, Int32(1), arrayType);
@@ -2586,8 +2592,7 @@ void BuiltinsTypedArrayStubBuilder::Of(GateRef glue, GateRef thisValue,
                 Label setValue2(env);
                 Label hasException2(env);
                 kValue = GetCallArg2(numArgs);
-                BRANCH(BoolOr(BoolOr(TaggedIsString(*kValue), TaggedIsNumber(*kValue)),
-                    TaggedIsUndefined(*kValue)), &setValue2, slowPath);
+                BRANCH(checkValueValid(*kValue), &setValue2, slowPath);
                 Bind(&setValue2);
                 // 2: third element in newArray
                 FastSetPropertyByIndex(glue, *kValue, thisObj, Int32(2), arrayType);
@@ -2842,19 +2847,18 @@ void BuiltinsTypedArrayStubBuilder::SetValueToBuffer(GateRef glue, GateRef value
     BRANCH(valueType, &valueTypeIsInt, &valueTypeIsDouble);
     Bind(&valueTypeIsInt);
     {
-        GateRef valueLessthanMin = Int32LessThanOrEqual(TruncInt64ToInt32(
-            ChangeTaggedPointerToInt64(value)), Int32(INT32_MIN));
-        GateRef valueMorethanMax = Int32GreaterThanOrEqual(TruncInt64ToInt32(
-            ChangeTaggedPointerToInt64(value)), Int32(INT32_MAX));
-        BRANCH(BoolOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
+        GateRef intValue = TruncInt64ToInt32(ChangeTaggedPointerToInt64(value));
+        GateRef valueLessthanMin = Int32LessThanOrEqual(intValue, Int32(INT32_MIN));
+        GateRef valueMorethanMax = Int32GreaterThanOrEqual(intValue, Int32(INT32_MAX));
+        BRANCH(BitOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
     }
     Bind(&valueTypeIsDouble);
     {
-        GateRef valueLessthanMin = Int32LessThanOrEqual(ChangeFloat64ToInt32(CastInt64ToFloat64(
-            ChangeTaggedPointerToInt64(value))), Int32(INT32_MIN));
-        GateRef valueMorethanMax = Int32GreaterThanOrEqual(ChangeFloat64ToInt32(CastInt64ToFloat64(
-            ChangeTaggedPointerToInt64(value))), Int32(INT32_MAX));
-        BRANCH(BoolOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
+        GateRef intValue = ChangeFloat64ToInt32(CastInt64ToFloat64(
+            ChangeTaggedPointerToInt64(value)));
+        GateRef valueLessthanMin = Int32LessThanOrEqual(intValue, Int32(INT32_MIN));
+        GateRef valueMorethanMax = Int32GreaterThanOrEqual(intValue, Int32(INT32_MAX));
+        BRANCH(BitOr(valueLessthanMin, valueMorethanMax), slowPath, &fastPath);
     }
     Bind(&fastPath);
 
