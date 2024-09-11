@@ -426,9 +426,9 @@ private:
         CVector<uint8_t> tmpBuf;
         const uint8_t *data = EcmaString::GetUtf8DataFlat(this, tmpBuf);
         if (length > bufLength) {
-            return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, bufLength, bufLength, 0);
+            return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, bufLength, bufLength);
         }
-        return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, length, bufLength, 0);
+        return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, length, bufLength);
     }
 
     // It allows user to copy into buffer even if maxLength < length
@@ -501,31 +501,23 @@ private:
 
     inline uint32_t CopyDataUtf16(uint16_t *buf, uint32_t maxLength) const
     {
-        return CopyDataRegionUtf16(buf, 0, GetLength(), maxLength);
-    }
-
-    uint32_t CopyDataRegionUtf16(uint16_t *buf, uint32_t start, uint32_t length, uint32_t maxLength) const
-    {
+        uint32_t length = GetLength();
         if (length > maxLength) {
-            return 0;
-        }
-        uint32_t len = GetLength();
-        if (start + length > len) {
             return 0;
         }
         if (IsUtf16()) {
             // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
             CVector<uint16_t> tmpBuf;
-            const uint16_t *data = EcmaString::GetUtf16DataFlat(this, tmpBuf);
-            if (memcpy_s(buf, maxLength * sizeof(uint16_t), data + start, length * sizeof(uint16_t)) != EOK) {
+            const uint16_t *data = GetUtf16DataFlat(this, tmpBuf);
+            if (memcpy_s(buf, maxLength * sizeof(uint16_t), data, length * sizeof(uint16_t)) != EOK) {
                 LOG_FULL(FATAL) << "memcpy_s failed";
                 UNREACHABLE();
             }
             return length;
         }
         CVector<uint8_t> tmpBuf;
-        const uint8_t *data = EcmaString::GetUtf8DataFlat(this, tmpBuf);
-        return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, len, maxLength, start);
+        const uint8_t *data = GetUtf8DataFlat(this, tmpBuf);
+        return base::utf_helper::ConvertRegionUtf8ToUtf16(data, buf, length, maxLength);
     }
 
     std::u16string ToU16String(uint32_t len = 0);

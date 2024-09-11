@@ -824,7 +824,7 @@ uint32_t EcmaString::ComputeHashcodeUtf8(const uint8_t *utf8Data, size_t utf8Len
         auto utf16Len = base::utf_helper::Utf8ToUtf16Size(utf8Data, utf8Len);
         CVector<uint16_t> tmpBuffer(utf16Len);
         [[maybe_unused]] auto len = base::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, tmpBuffer.data(), utf8Len,
-                                                                               utf16Len, 0);
+                                                                               utf16Len);
         ASSERT(len == utf16Len);
         uint32_t hash = ComputeHashForData(tmpBuffer.data(), utf16Len, 0);
         return MixHashcode(hash, NOT_INTEGER);
