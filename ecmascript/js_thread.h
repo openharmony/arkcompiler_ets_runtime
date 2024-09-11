@@ -1381,6 +1381,14 @@ public:
         finalizeTaskCallback_ = callback;
     }
 
+    uint64_t GetJobId()
+    {
+        if (jobId_ == UINT64_MAX) {
+            jobId_ = 0;
+        }
+        return ++jobId_;
+    }
+
     void SetAsyncCleanTaskCallback(const NativePointerTaskCallback &callback)
     {
         asyncCleanTaskCb_ = callback;
@@ -1432,14 +1440,6 @@ public:
     bool IsMachineCodeLowMemory()
     {
         return machineCodeLowMemory_;
-    }
-
-    uint64_t GetJobId()
-    {
-        if (jobId_ == UINT64_MAX) {
-            jobId_ = 0;
-        }
-        return ++jobId_;
     }
 
     void *GetEnv() const
@@ -1610,12 +1610,12 @@ private:
     ConditionVariable suspendCondVar_;
     SuspendBarrier *suspendBarrier_ {nullptr};
 
+    uint64_t jobId_ {0};
+
     ThreadType threadType_ {ThreadType::JS_THREAD};
     RecursiveMutex jitMutex_;
     bool machineCodeLowMemory_ {false};
     RecursiveMutex profileTypeAccessorLockMutex_;
-
-    uint64_t jobId_ {0};
 
 #ifndef NDEBUG
     MutatorLock::MutatorLockState mutatorLockState_ = MutatorLock::MutatorLockState::UNLOCKED;
