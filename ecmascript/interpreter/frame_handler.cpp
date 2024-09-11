@@ -156,6 +156,7 @@ const JSPandaFile* FrameHandler::GetJSPandaFile() const
 std::string FrameHandler::GetFileName() const
 {
     auto pandaFile = GetJSPandaFile();
+    ASSERT(pandaFile != nullptr);
     return pandaFile->GetJSPandaFileDesc().c_str();
 }
 
