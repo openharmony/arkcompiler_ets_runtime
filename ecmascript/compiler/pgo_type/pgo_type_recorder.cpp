@@ -111,6 +111,15 @@ uint32_t PGOTypeRecorder::GetElementsLength(int32_t offset) const
     return 0;
 }
 
+RegionSpaceFlag PGOTypeRecorder::GetRegionSpaceFlag(int32_t offset) const
+{
+    if (bcOffsetPGODefOpTypeMap_.find(offset) != bcOffsetPGODefOpTypeMap_.end()) {
+        const auto iter = bcOffsetPGODefOpTypeMap_.at(offset);
+        return iter->GetSpaceFlag();
+    }
+    return RegionSpaceFlag::IN_YOUNG_SPACE;
+}
+
 PGOTypeRef PGOTypeRecorder::GetPGOType(int32_t offset) const
 {
     if (bcOffsetPGOOpTypeMap_.find(offset) != bcOffsetPGOOpTypeMap_.end()) {

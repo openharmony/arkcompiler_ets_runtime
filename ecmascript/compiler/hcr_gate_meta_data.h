@@ -141,6 +141,16 @@ public:
         return elementsLength_;
     }
 
+    void SetRegionSpaceFlag(RegionSpaceFlag flag)
+    {
+        regionSpaceFlag_ = flag;
+    }
+
+    RegionSpaceFlag GetRegionSpaceFlag() const
+    {
+        return regionSpaceFlag_;
+    }
+
     std::string Str() const
     {
         return GetEcmaOpcodeStr(opcode_);
@@ -166,6 +176,7 @@ private:
     std::vector<ElementsKind> elementsKinds_ {};
     std::vector<ElementsKind> transitionElementsKinds_ {};
     OnHeapMode onHeapMode_ {OnHeapMode::NONE};
+    RegionSpaceFlag regionSpaceFlag_ {RegionSpaceFlag::IN_YOUNG_SPACE};
 };
 
 

@@ -195,6 +195,7 @@ namespace panda::ecmascript {
     V(AddElementInternal)                       \
     V(HeapAlloc)                                \
     V(AllocateInYoung)                          \
+    V(AllocateInOld)                            \
     V(AllocateInSOld)                           \
     V(AllocateInSNonMovable)                    \
     V(TypedArraySpeciesCreate)                  \

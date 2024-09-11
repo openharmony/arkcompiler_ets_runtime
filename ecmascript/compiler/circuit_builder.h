@@ -389,9 +389,9 @@ public:
     }
 
     // **************************** High IR ******************************
-    GateRef CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength);
+    GateRef CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength, RegionSpaceFlag flag);
     GateRef CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode, GateRef cpId,
-                                  GateRef constPoolIndex);
+                                  GateRef constPoolIndex, RegionSpaceFlag flag);
     GateRef CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
     GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool needPushArgv = false);

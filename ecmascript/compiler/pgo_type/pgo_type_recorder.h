@@ -39,6 +39,7 @@ public:
     std::vector<ElementsKind> PUBLIC_API GetTransitionElementsKindsForUser(int32_t offset) const;
     ElementsKind PUBLIC_API GetElementsKindForCreater(int32_t offset) const;
     uint32_t PUBLIC_API GetElementsLength(int32_t offset) const;
+    RegionSpaceFlag PUBLIC_API GetRegionSpaceFlag(int32_t offset) const;
 
     PGOTypeRef PUBLIC_API GetPGOType(int32_t offset) const;
 

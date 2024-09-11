@@ -450,8 +450,9 @@ public:
         bool enableLog = data->GetLog()->EnableMethodCIRLog();
         Chunk chunk(data->GetNativeAreaAllocator());
         CombinedPassVisitor visitor(data->GetCircuit(), enableLog, data->GetMethodName(), &chunk);
+        JSRuntimeOptions runtimeOption = data->GetPassContext()->GetCompilationEnv()->GetJSOptions();
         NTypeHCRLowering lowering(data->GetCircuit(), &visitor, data->GetPassContext(),
-                                  data->GetRecordName(), data->GetMethodLiteral(), &chunk);
+            data->GetRecordName(), data->GetMethodLiteral(), runtimeOption.IsCompilerEnablePgoSpace(), &chunk);
         visitor.AddPass(&lowering);
         visitor.VisitGraph();
         visitor.PrintLog("NTypeHCRLowering");

@@ -512,12 +512,13 @@ GateRef CircuitBuilder::CallNew(GateRef hirGate, std::vector<GateRef> args,
     return callGate;
 }
 
-GateRef CircuitBuilder::CreateArray(ElementsKind kind, uint32_t arraySize, GateRef elementsLength)
+GateRef CircuitBuilder::CreateArray(ElementsKind kind, uint32_t arraySize,
+                                    GateRef elementsLength, RegionSpaceFlag flag)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
-    ArrayMetaDataAccessor accessor(kind, ArrayMetaDataAccessor::Mode::CREATE, arraySize);
+    ArrayMetaDataAccessor accessor(kind, ArrayMetaDataAccessor::Mode::CREATE, arraySize, flag);
     GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArray(accessor.ToValue()), MachineType::I64,
                                             { currentControl, currentDepend, elementsLength },
                                             GateType::TaggedValue());
@@ -527,13 +528,13 @@ GateRef CircuitBuilder::CreateArray(ElementsKind kind, uint32_t arraySize, GateR
 }
 
 GateRef CircuitBuilder::CreateArrayWithBuffer(ElementsKind kind, ArrayMetaDataAccessor::Mode mode, GateRef cpId,
-                                              GateRef constPoolIndex)
+                                              GateRef constPoolIndex, RegionSpaceFlag flag)
 {
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();
     auto frameState = acc_.FindNearestFrameState(currentDepend);
-    ArrayMetaDataAccessor accessor(kind, mode);
+    ArrayMetaDataAccessor accessor(kind, mode, 0, flag);
     GateRef newGate = GetCircuit()->NewGate(circuit_->CreateArrayWithBuffer(accessor.ToValue()),
                                             MachineType::I64,
                                             { currentControl, currentDepend, cpId, constPoolIndex, frameState },

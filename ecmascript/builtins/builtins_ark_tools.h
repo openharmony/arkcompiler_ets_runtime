@@ -129,7 +129,9 @@
     V("notifyContextDisposed",                     NotifyContextDisposed,                     0, INVALID)     \
     V("optimizeObjectForAddingMultipleProperties", OptimizeObjectForAddingMultipleProperties, 2, INVALID)     \
     V("isBeingInterpreted",                        IsBeingInterpreted,                        0, INVALID)     \
-    V("clearFunctionFeedback",                     ClearFunctionFeedback,                     1, INVALID)
+    V("clearFunctionFeedback",                     ClearFunctionFeedback,                     1, INVALID)     \
+    V("inYoungSpace",                              InYoungSpace,                              1, INVALID)     \
+    V("inOldSpace",                                InOldSpace,                                1, INVALID)
 
 #define BUILTIN_ARK_TOOLS_FUNCTIONS_JITCOMPILE(V)                                                             \
     V("jitCompileSync",                            JitCompileSync,                            1, INVALID)     \
@@ -183,6 +185,8 @@ public:
     static JSTaggedValue IsSlicedString(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue IsNotHoleProperty(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue ForcePartialGC(EcmaRuntimeCallInfo *info);
 
     static JSTaggedValue ForceFullGC(EcmaRuntimeCallInfo *info);
 
@@ -396,6 +400,9 @@ public:
     static JSTaggedValue StopRuntimeStat(EcmaRuntimeCallInfo *info);
     
     static JSTaggedValue IterateFrame(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue InYoungSpace(EcmaRuntimeCallInfo *info);
+    static JSTaggedValue InOldSpace(EcmaRuntimeCallInfo *info);
 
     static Span<const base::BuiltinFunctionEntry> GetArkToolsFunctions()
     {

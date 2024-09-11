@@ -166,6 +166,22 @@ DEF_RUNTIME_STUBS(AllocateInYoung)
     return JSTaggedValue(result).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(AllocateInOld)
+{
+    RUNTIME_STUBS_HEADER(AllocateInOld);
+    JSTaggedValue allocateSize = GetArg(argv, argc, 0);  // 0: means the zeroth parameter
+    auto size = static_cast<size_t>(allocateSize.GetLargeUInt());
+    auto heap = const_cast<Heap*>(thread->GetEcmaVM()->GetHeap());
+    auto result = heap->AllocateOldOrHugeObject(size);
+    ASSERT(result != nullptr);
+    if (argc > 1) { // 1: means the first parameter
+        JSHandle<JSHClass> hclassHandle = GetHArg<JSHClass>(argv, argc, 1);  // 1: means the first parameter
+        auto hclass = JSHClass::Cast(hclassHandle.GetTaggedValue().GetTaggedObject());
+        heap->SetHClassAndDoAllocateEvent(thread, result, hclass, size);
+    }
+    return JSTaggedValue(result).GetRawData();
+}
+
 #define ALLOCATE_IN_SHARED_HEAP(SPACE)                                                     \
     DEF_RUNTIME_STUBS(AllocateInS##SPACE)                                                  \
     {                                                                                      \

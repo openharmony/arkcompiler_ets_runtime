@@ -216,6 +216,7 @@ enum CommandValues {
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
     OPTION_COMPILER_EMPTY_CATCH_FUNCTION,
     OPTION_ENABLE_FORCE_IC,
+    OPTION_COMPILER_ENABLE_PGO_SPACE,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
 static_assert(OPTION_SPLIT_TWO == 128); // add new option at the bottom, DO NOT modify this value
@@ -1964,6 +1965,17 @@ public:
     {
         return aotHasException_;
     }
+    
+    void SetCompilerEnablePgoSpace(bool value)
+    {
+        enablePgoSpace_ = value;
+    }
+
+    bool IsCompilerEnablePgoSpace() const
+    {
+        return enablePgoSpace_;
+    }
+
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
@@ -2126,6 +2138,7 @@ private:
     bool enableLiteCG_ {false};
     bool enableTypedOpProfiler_ {false};
     bool enableBranchProfiling_ {true};
+    bool enablePgoSpace_ {false};
     bool testAssert_ {false};
     std::pair<uint32_t, uint32_t> compileMethodsRange_ {0, UINT32_MAX};
     arg_list_t compileCodegenOption_ {{""}};

@@ -78,6 +78,8 @@ public:
             if (type.GetProfileType().IsArrayLiteralType())  {
                 const_cast<PGODefineOpTemplate<ProfileType> *>(&((*result).GetTypeRef()))
                     ->SetElementsKind(type.GetElementsKind());
+                const_cast<PGODefineOpTemplate<ProfileType> *>(&((*result).GetTypeRef()))
+                    ->SetSpaceFlag(type.GetSpaceFlag());
             }
             return;
         }

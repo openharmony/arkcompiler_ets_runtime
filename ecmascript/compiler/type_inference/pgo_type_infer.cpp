@@ -91,6 +91,8 @@ void PGOTypeInfer::InferCreateArray(GateRef gate)
     }
     auto length = builder_->GetArrayElementsLength(gate);
     acc_.TrySetArrayElementsLength(gate, length);
+    auto regionSpaceFlag = builder_->GetRegionSpaceFlag(gate);
+    acc_.TrySetRegionSpaceFlag(gate, regionSpaceFlag);
     ElementsKind kind = builder_->GetElementsKindForCreater(gate);
     if (Elements::IsGeneric(kind)) {
         return;

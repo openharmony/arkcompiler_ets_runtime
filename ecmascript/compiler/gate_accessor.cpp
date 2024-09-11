@@ -229,6 +229,15 @@ void GateAccessor::SetElementsKind(GateRef gate, ElementsKind kind)
     const_cast<OneParameterMetaData *>(gatePtr->GetOneParameterMetaData())->SetValue(accessor.ToValue());
 }
 
+RegionSpaceFlag GateAccessor::GetRegionSpaceFlag(GateRef gate) const
+{
+    ASSERT(GetOpCode(gate) == OpCode::CREATE_ARRAY ||
+           GetOpCode(gate) == OpCode::CREATE_ARRAY_WITH_BUFFER);
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    auto array = gatePtr->GetOneParameterMetaData()->GetValue();
+    return ArrayMetaDataAccessor(array).GetRegionSpaceFlag();
+}
+
 uint32_t GateAccessor::GetStringStatus(GateRef gate) const
 {
     ASSERT(GetOpCode(gate) == OpCode::STRING_ADD);
@@ -660,6 +669,25 @@ void GateAccessor::TrySetArrayElementsLength(GateRef gate, uint32_t length)
     OpCode op = GetOpCode(gate);
     if (op == OpCode::JS_BYTECODE) {
         const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetElementsLength(length);
+    }
+}
+
+RegionSpaceFlag GateAccessor::TryGetRegionSpaceFlag(GateRef gate) const
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        return gatePtr->GetJSBytecodeMetaData()->GetRegionSpaceFlag();
+    }
+    return RegionSpaceFlag::IN_YOUNG_SPACE;
+}
+
+void GateAccessor::TrySetRegionSpaceFlag(GateRef gate, RegionSpaceFlag flag)
+{
+    Gate *gatePtr = circuit_->LoadGatePtr(gate);
+    OpCode op = GetOpCode(gate);
+    if (op == OpCode::JS_BYTECODE) {
+        const_cast<JSBytecodeMetaData *>(gatePtr->GetJSBytecodeMetaData())->SetRegionSpaceFlag(flag);
     }
 }
 

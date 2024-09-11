@@ -25,6 +25,7 @@
 #include "ecmascript/js_thread_hclass_entries.h"
 #include "ecmascript/mem/chunk.h"
 #include "ecmascript/mem/chunk_containers.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 #include "libpandabase/macros.h"
 
@@ -501,9 +502,16 @@ public:
     static constexpr int BITS_SIZE = 8;
     static constexpr int ARRAY_LENGTH_BITS_SIZE = 32;
     explicit ArrayMetaDataAccessor(uint64_t value) : bitField_(value) {}
-    explicit ArrayMetaDataAccessor(ElementsKind kind, Mode mode, uint32_t length = 0)
+    explicit ArrayMetaDataAccessor(ElementsKind kind, Mode mode,
+                                   uint32_t length = 0, RegionSpaceFlag flag = RegionSpaceFlag::IN_YOUNG_SPACE)
     {
-        bitField_ = ElementsKindBits::Encode(kind) | ModeBits::Encode(mode) | ArrayLengthBits::Encode(length);
+        bitField_ = ElementsKindBits::Encode(kind) | ModeBits::Encode(mode) |
+                    ArrayLengthBits::Encode(length) | RegionSpaceFlagBits::Encode(flag);
+    }
+
+    RegionSpaceFlag GetRegionSpaceFlag() const
+    {
+        return RegionSpaceFlagBits::Get(bitField_);
     }
 
     ElementsKind GetElementsKind() const
@@ -524,6 +532,11 @@ public:
     void SetArrayLength(uint32_t length)
     {
         bitField_ = ArrayLengthBits::Update(bitField_, length);
+    }
+
+    void SetRegionSpaceFlag(RegionSpaceFlag flag)
+    {
+        bitField_ = RegionSpaceFlagBits::Update(bitField_, flag);
     }
 
     uint32_t GetArrayLength() const
@@ -550,6 +563,7 @@ private:
     using ElementsKindBits = panda::BitField<ElementsKind, 0, BITS_SIZE>;
     using ModeBits = ElementsKindBits::NextField<Mode, BITS_SIZE>;
     using ArrayLengthBits = ModeBits::NextField<uint32_t, ARRAY_LENGTH_BITS_SIZE>;
+    using RegionSpaceFlagBits = ArrayLengthBits::NextField<RegionSpaceFlag, BITS_SIZE>;
 
     uint64_t bitField_;
 };
