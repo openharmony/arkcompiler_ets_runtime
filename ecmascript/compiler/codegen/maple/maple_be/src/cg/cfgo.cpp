@@ -204,9 +204,10 @@ bool ChainingPattern::ClearCurBBAndResetTargetBB(BB &curBB, BB &sucBB)
         return false;
     }
     ASSERT_NOT_NULL(brInsn);
-    if (brInsn->GetPreviousMachineInsn() &&
-        !DoSameThing(*newTarget, *last1, curBB, *brInsn->GetPreviousMachineInsn())) {
-        return false;
+    if (brInsn->GetPreviousMachineInsn()) {
+        if (!DoSameThing(*newTarget, *last1, curBB, *brInsn->GetPreviousMachineInsn())) {
+            return false;
+        }
     }
 
     Log(curBB.GetId());

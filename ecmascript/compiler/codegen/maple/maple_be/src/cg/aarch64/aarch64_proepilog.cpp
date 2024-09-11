@@ -444,6 +444,7 @@ void AArch64GenProEpilog::GeneratePushRegs()
         } else {
             uint16 reg0NO = (regType == kRegTyInt) ?
                 static_cast<uint16>(firstHalf - 1) : static_cast<uint16>(firstHalf  - V8 + 72);
+            DEBUG_ASSERT(reg >= V8, "number overflow check");
             uint16 reg1NO = (regType == kRegTyInt) ? static_cast<uint16>(reg - 1) : static_cast<uint16>(reg - V8 + 72);
             calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(reg0NO, offset));
             calleeRegAndOffsetVec.push_back(std::pair<uint16, int32>(reg1NO, offset + k8ByteSize));
