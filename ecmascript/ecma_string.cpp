@@ -1242,7 +1242,7 @@ FlatStringInfo EcmaString::FlattenAllString(const EcmaVM *vm, const JSHandle<Ecm
     return FlatStringInfo(s, startIndex, string->GetLength());
 }
 
-EcmaString *EcmaString::FlattenNoGC(const EcmaVM *vm, EcmaString *string)
+EcmaString *EcmaString::FlattenNoGCForSnapshot(const EcmaVM *vm, EcmaString *string)
 {
     DISALLOW_GARBAGE_COLLECTION;
     if (string->IsLineOrConstantString()) {

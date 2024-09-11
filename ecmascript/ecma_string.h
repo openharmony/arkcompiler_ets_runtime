@@ -739,7 +739,7 @@ private:
     static FlatStringInfo FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
                                             MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
 
-    static EcmaString *FlattenNoGC(const EcmaVM *vm, EcmaString *string);
+    static EcmaString *FlattenNoGCForSnapshot(const EcmaVM *vm, EcmaString *string);
 
     static EcmaString *ToLower(const EcmaVM *vm, const JSHandle<EcmaString> &src);
 
@@ -1557,9 +1557,9 @@ public:
         return EcmaString::SlowFlatten(vm, string, type);
     }
 
-    static EcmaString *FlattenNoGC(const EcmaVM *vm, EcmaString *string)
+    static EcmaString *FlattenNoGCForSnapshot(const EcmaVM *vm, EcmaString *string)
     {
-        return EcmaString::FlattenNoGC(vm, string);
+        return EcmaString::FlattenNoGCForSnapshot(vm, string);
     }
 
     static const uint8_t *GetUtf8DataFlat(const EcmaString *src, CVector<uint8_t> &buf)

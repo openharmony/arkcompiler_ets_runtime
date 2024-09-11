@@ -252,7 +252,7 @@ JSTaggedValue JSAPIArrayList::RemoveByRange(JSThread *thread, const JSHandle<JSA
     }
     int32_t newLength = length - (endIndex - startIndex);
     arrayList->SetLength(thread, JSTaggedValue(newLength));
-    elements->SetLength(newLength);
+    elements->Trim(thread, newLength);
     return JSTaggedValue::Undefined();
 }
 

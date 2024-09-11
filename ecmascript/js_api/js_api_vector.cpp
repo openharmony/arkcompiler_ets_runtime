@@ -223,7 +223,7 @@ JSTaggedValue JSAPIVector::RemoveByRange(JSThread *thread, const JSHandle<JSAPIV
     }
 
     int32_t newLength = length - (endIndex - fromIndex);
-    elements->SetLength(newLength);
+    elements->Trim(thread, newLength);
     vector->SetLength(newLength);
     return JSTaggedValue::True();
 }

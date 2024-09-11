@@ -36,7 +36,10 @@ EcmaString *ObjectFactory::AllocLineStringObjectNoGC(size_t size)
     } else {
         object = reinterpret_cast<TaggedObject *>(sHeap_->GetOldSpace()->TryAllocateAndExpand(thread_, size, true));
     }
-    ASSERT(object != nullptr);
+    if (object == nullptr) {
+        LOG_ECMA(FATAL) << "Alloc size " << size << " bytes string fail";
+        UNREACHABLE();
+    }
     object->SetClass(thread_, JSHClass::Cast(thread_->GlobalConstants()->GetLineStringClass().GetTaggedObject()));
     return EcmaString::Cast(object);
 }
