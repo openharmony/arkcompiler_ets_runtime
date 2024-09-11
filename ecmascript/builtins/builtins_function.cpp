@@ -82,15 +82,19 @@ static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
     } else if (arrayObj->IsStableJSArray(thread)) {
         JSHandle<JSArray> argList = JSHandle<JSArray>::Cast(arrayObj);
         TaggedArray *elements = nullptr;
-        JSHandle<JSObject> obj(arrayObj);
-        int elementsLength = static_cast<int>(ElementAccessor::GetElementsLength(obj));
-        JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->
-                                            NewTaggedArray(elementsLength, JSTaggedValue::Undefined());
-        for (int i = 0; i < elementsLength; ++i) {
-            JSTaggedValue value = ElementAccessor::Get(obj, i);
-            newElements->Set(thread, i, value);
+        if (argList->GetElements().IsMutantTaggedArray()) {
+            JSHandle<JSObject> obj(arrayObj);
+            int elementsLength = static_cast<int>(ElementAccessor::GetElementsLength(obj));
+            JSHandle<TaggedArray> newElements = thread->GetEcmaVM()->GetFactory()->
+                                                NewTaggedArray(elementsLength, JSTaggedValue::Undefined());
+            for (int i = 0; i < elementsLength; ++i) {
+                JSTaggedValue value = ElementAccessor::Get(obj, i);
+                newElements->Set(thread, i, value);
+            }
+            elements = *newElements;
+        } else {
+            elements = TaggedArray::Cast(argList->GetElements().GetTaggedObject());
         }
-        elements = *newElements;
         size_t length = argList->GetArrayLength();
         if (elements->GetLength() == 0 && length != 0) {
             JSHandle<TaggedArray> array =
