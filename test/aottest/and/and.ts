@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-declare function assert_equal(a: Object, b: Object):void;
 var x1 = 15;
 var y1 = 1;
 var r1 = x1 & y1;

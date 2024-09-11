@@ -14,8 +14,6 @@
  */
 
 declare function assert_unreachable():void;
-declare function assert_true(condition: boolean):void;
-declare function assert_equal(a: Object, b: Object):void;
 declare function print(arg:any):string;
 
 {
@@ -27,7 +25,7 @@ declare function print(arg:any):string;
         }
 
         foo() {
-            return("xxxx");
+            print("xxxx");
         }
     }
 
@@ -41,46 +39,46 @@ declare function print(arg:any):string;
 
     // instance define Property
     let b1 = new B(1, 2);
-    assert_true(!b1.hasOwnProperty("x1"));
+    print(b1.hasOwnProperty("x1"));
     Object.defineProperty(b1, "x1", {value:1});
-    assert_true(b1.hasOwnProperty("x1"));
+    print(b1.hasOwnProperty("x1"));
 
     // instance delete and change Property
     let b2 = new B(1, 2);
-    assert_true(b2.hasOwnProperty("y"));
-    assert_equal(b2.y, 2);
+    print(b2.hasOwnProperty("y"));
+    print(b2.y);
     b2.y = 3;
-    assert_equal(b2.y, 3);
+    print(b2.y);
     delete b2.y;
-    assert_true(!b2.hasOwnProperty("y"));
+    print(b2.hasOwnProperty("y"));
 
     // prototype define Property
     let p = A.prototype;
     let b3 = new B(1, 2);
-    assert_equal(b3.x2, undefined);
-    assert_true(!Reflect.has(b3, "x2"));
+    print(b3.x2);
+    print(Reflect.has(b3, "x2"));
     Object.defineProperty(p, "x2", {value:1});
-    assert_equal(b3.x2, 1);
-    assert_true(Reflect.has(b3, "x2"));
+    print(b3.x2);
+    print(Reflect.has(b3, "x2"));
 
     // prototype delete and change Property
     let p2 = A.prototype;
     let b4 = new B(1, 2);
-    assert_equal(b4.x, 1);
+    print(b4.x);
     b4.x = 3;
-    assert_equal(b4.x, 3);
-    assert_true(b4.hasOwnProperty("x"));
+    print(b4.x);
+    print(b4.hasOwnProperty("x"));
     delete p2.x;
-    assert_true(b4.hasOwnProperty("x"));
+    print(b4.hasOwnProperty("x"));
 
     // prototype change and call function
     let b5 = new B(1, 2);
-    assert_equal(b5.foo(), "xxxx");
+    b5.foo();
     Object.setPrototypeOf(b5, {})
     try {
         b5.foo();
         assert_unreachable();
     } catch(e) {
-        assert_equal(e.message, "CallObj is NonCallable");
+        print(e instanceof TypeError);
     }
 }

@@ -1100,14 +1100,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_TEST_ASSERT:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetTestAssert(argBool);
-                } else {
-                    return false;
-                }
-                break;
             case OPTION_COMPILER_ENABLE_JIT_PGO:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {
@@ -1155,6 +1147,14 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
             case OPTION_COMPILER_CODEGEN_OPT:
                 ParseListArgParam(optarg, &argListStr, " ");
                 SetCompilerCodegenOptions(argListStr);
+                break;
+            case OPTION_TEST_ASSERT:
+                ret = ParseBoolParam(&argBool);
+                if (ret) {
+                    SetTestAssert(argBool);
+                } else {
+                    return false;
+                }
                 break;
             case OPTION_COMPILER_OPT_ESCAPE_ANALYSIS:
                 ret = ParseBoolParam(&argBool);
