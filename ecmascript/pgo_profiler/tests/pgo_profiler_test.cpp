@@ -1358,4 +1358,28 @@ HWTEST_F_L0(PGOProfilerTest, PGOObjectInfoOperatorLessThanTest)
     EXPECT_FALSE(objectInfoGreater < objectInfoLess);
 }
 
+HWTEST_F_L0(PGOProfilerTest, PGODisableWithAOTFileTest)
+{
+    mkdir("ark-profiler27/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    std::ofstream fWriter("ark-profiler27/tmp.an", std::fstream::app);
+    fWriter.close();
+    RuntimeOption option;
+    EcmaVM *ecmaVM = JSNApi::CreateJSVM(option);
+    option.SetEnableProfile(true);
+    option.SetProfileDir("ark-profiler27/");
+    JSNApi::PreFork(ecmaVM);
+    JSNApi::PostFork(ecmaVM, option);
+    EXPECT_TRUE(ecmaVM->IsEnablePGOProfiler());
+    ecmaVM->DisablePGOProfilerWithAOTFile("ark-profiler27/tmp");
+    EXPECT_FALSE(ecmaVM->IsEnablePGOProfiler());
+    const char *targetRecordName = "typedarray_length";
+    std::string targetAbcPath = std::string(TARGET_ABC_PATH) + targetRecordName + ".abc";
+    auto result = JSNApi::Execute(ecmaVM, targetAbcPath, targetRecordName, false);
+    EXPECT_TRUE(result);
+    JSNApi::DestroyJSVM(ecmaVM);
+    EXPECT_FALSE(FileExist("ark-profiler27/modules.ap"));
+    unlink("ark-profiler27/tmp.an");
+    rmdir("ark-profiler27/");
+}
+
 }  // namespace panda::test

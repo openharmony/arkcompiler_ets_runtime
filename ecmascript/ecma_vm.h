@@ -160,6 +160,7 @@ public:
 
     void InitializePGOProfiler();
     void ResetPGOProfiler();
+    void DisablePGOProfilerWithAOTFile(const std::string &aotFileName);
 
     bool PUBLIC_API IsEnablePGOProfiler() const;
     bool PUBLIC_API IsEnableElementsKind() const;
