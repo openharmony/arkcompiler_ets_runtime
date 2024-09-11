@@ -324,20 +324,24 @@ void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
     }
 }
 
-std::unique_ptr<ParallelEvacuator::Workload> ParallelEvacuator::GetWorkloadSafe()
+bool ParallelEvacuator::AcquireItem::TryAcquire()
 {
-    LockHolder holder(mutex_);
-    std::unique_ptr<Workload> workload;
-    if (!workloads_.empty()) {
-        workload = std::move(workloads_.back());
-        workloads_.pop_back();
-    }
-    return workload;
+    return acquire_.exchange(true, std::memory_order_relaxed) == false;
 }
 
-void ParallelEvacuator::AddWorkload(std::unique_ptr<Workload> workload)
+void ParallelEvacuator::WorkloadSet::Add(std::unique_ptr<Workload> workload)
 {
-    workloads_.emplace_back(std::move(workload));
+    workloads_.emplace_back(AcquireItem{}, std::move(workload));
+}
+
+bool ParallelEvacuator::WorkloadSet::HasRemaningWorkload() const
+{
+    return remainingWorkloadNum_.load(std::memory_order_relaxed) > 0;
+}
+
+bool ParallelEvacuator::WorkloadSet::FetchSubAndCheckWorkloadCount(size_t finishedCount)
+{
+    return remainingWorkloadNum_.fetch_sub(finishedCount, std::memory_order_relaxed) == finishedCount;
 }
 
 TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAddress)
@@ -379,21 +383,27 @@ TaggedObject* ParallelEvacuator::UpdateAddressAfterEvacation(TaggedObject *oldAd
 
 int ParallelEvacuator::CalculateEvacuationThreadNum()
 {
-    uint32_t length = workloads_.size();
+    uint32_t count = evacuateWorkloadSet_.GetWorkloadCount();
     uint32_t regionPerThread = 8;
     uint32_t maxThreadNum = std::min(heap_->GetMaxEvacuateTaskCount(),
         GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum());
-    return static_cast<int>(std::min(std::max(1U, length / regionPerThread), maxThreadNum));
+    return static_cast<int>(std::min(std::max(1U, count / regionPerThread), maxThreadNum));
 }
 
 int ParallelEvacuator::CalculateUpdateThreadNum()
 {
-    uint32_t length = workloads_.size();
+    uint32_t count = updateWorkloadSet_.GetWorkloadCount();
     double regionPerThread = 1.0 / 4;
-    length = std::pow(length, regionPerThread);
+    count = std::pow(count, regionPerThread);
     uint32_t maxThreadNum = std::min(heap_->GetMaxEvacuateTaskCount(),
         GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum());
-    return static_cast<int>(std::min(std::max(1U, length), maxThreadNum));
+    return static_cast<int>(std::min(std::max(1U, count), maxThreadNum));
 }
+
+size_t ParallelEvacuator::WorkloadSet::GetWorkloadCount() const
+{
+    return workloads_.size();
+}
+
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_EVACUATOR_INL_H

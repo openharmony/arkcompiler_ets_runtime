@@ -38,6 +38,8 @@ void ParallelEvacuator::Finalize()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuatorFinalize);
     delete allocator_;
+    evacuateWorkloadSet_.Clear();
+    updateWorkloadSet_.Clear();
 }
 
 void ParallelEvacuator::Evacuate()
@@ -72,21 +74,23 @@ void ParallelEvacuator::EvacuateSpace()
     TRACE_GC(GCStats::Scope::ScopeId::EvacuateSpace, heap_->GetEcmaVM()->GetEcmaGCStats());
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::EvacuateSpace");
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), ParallelEvacuator);
+    auto &workloadSet = evacuateWorkloadSet_;
     if (heap_->IsEdenMark()) {
-        heap_->GetEdenSpace()->EnumerateRegions([this] (Region *current) {
-            AddWorkload(std::make_unique<EvacuateWorkload>(this, current));
+        heap_->GetEdenSpace()->EnumerateRegions([this, &workloadSet](Region *current) {
+            workloadSet.Add(std::make_unique<EvacuateWorkload>(this, current));
         });
     } else if (heap_->IsConcurrentFullMark() || heap_->IsYoungMark()) {
-        heap_->GetEdenSpace()->EnumerateRegions([this] (Region *current) {
-            AddWorkload(std::make_unique<EvacuateWorkload>(this, current));
+        heap_->GetEdenSpace()->EnumerateRegions([this, &workloadSet](Region *current) {
+            workloadSet.Add(std::make_unique<EvacuateWorkload>(this, current));
         });
-        heap_->GetFromSpaceDuringEvacuation()->EnumerateRegions([this] (Region *current) {
-            AddWorkload(std::make_unique<EvacuateWorkload>(this, current));
+        heap_->GetFromSpaceDuringEvacuation()->EnumerateRegions([this, &workloadSet](Region *current) {
+            workloadSet.Add(std::make_unique<EvacuateWorkload>(this, current));
         });
-        heap_->GetOldSpace()->EnumerateCollectRegionSet([this](Region *current) {
-            AddWorkload(std::make_unique<EvacuateWorkload>(this, current));
+        heap_->GetOldSpace()->EnumerateCollectRegionSet([this, &workloadSet](Region *current) {
+            workloadSet.Add(std::make_unique<EvacuateWorkload>(this, current));
         });
     }
+    workloadSet.PrepareWorkloads();
     if (heap_->IsParallelGCEnabled()) {
         LockHolder holder(mutex_);
         parallel_ = CalculateEvacuationThreadNum();
@@ -112,12 +116,10 @@ void ParallelEvacuator::EvacuateSpace()
 
 bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadIndex, bool isMain)
 {
-    std::unique_ptr<Workload> region = GetWorkloadSafe();
     auto &arrayTrackInfoSet = ArrayTrackInfoSet(threadIndex);
-    while (region != nullptr) {
+    DrainWorkloads(evacuateWorkloadSet_, [&](std::unique_ptr<Workload> &region) {
         EvacuateRegion(allocator, region->GetRegion(), arrayTrackInfoSet);
-        region = GetWorkloadSafe();
-    }
+    });
     allocator->Finalize();
     if (!isMain) {
         LockHolder holder(mutex_);
@@ -204,31 +206,37 @@ void ParallelEvacuator::UpdateReference()
     uint32_t youngeRegionMoveCount = 0;
     uint32_t youngeRegionCopyCount = 0;
     uint32_t oldRegionCount = 0;
+    auto &workloadSet = updateWorkloadSet_;
     if (heap_->IsEdenMark()) {
-        heap_->GetNewSpace()->EnumerateRegions([&] ([[maybe_unused]] Region *current) {
-            AddWorkload(std::make_unique<UpdateNewToEdenRSetWorkload>(this, current));
+        heap_->GetNewSpace()->EnumerateRegions([&]([[maybe_unused]] Region *current) {
+            workloadSet.Add(
+                std::make_unique<UpdateNewToEdenRSetWorkload>(this, current));
         });
     } else {
-        heap_->GetNewSpace()->EnumerateRegions([&] (Region *current) {
+        heap_->GetNewSpace()->EnumerateRegions([&](Region *current) {
             if (current->InNewToNewSet()) {
-                AddWorkload(std::make_unique<UpdateAndSweepNewRegionWorkload>(this, current, heap_->IsYoungMark()));
+                workloadSet.Add(
+                    std::make_unique<UpdateAndSweepNewRegionWorkload>(
+                        this, current, heap_->IsYoungMark()));
                 youngeRegionMoveCount++;
             } else {
-                AddWorkload(std::make_unique<UpdateNewRegionWorkload>(this, current, heap_->IsYoungMark()));
+                workloadSet.Add(
+                    std::make_unique<UpdateNewRegionWorkload>(this, current, heap_->IsYoungMark()));
                 youngeRegionCopyCount++;
             }
         });
     }
-    heap_->EnumerateOldSpaceRegions([this, &oldRegionCount] (Region *current) {
+    heap_->EnumerateOldSpaceRegions([this, &oldRegionCount, &workloadSet](Region *current) {
         if (current->InCollectSet()) {
             return;
         }
-        AddWorkload(std::make_unique<UpdateRSetWorkload>(this, current, heap_->IsEdenMark()));
+        workloadSet.Add(std::make_unique<UpdateRSetWorkload>(this, current, heap_->IsEdenMark()));
         oldRegionCount++;
     });
-    heap_->EnumerateSnapshotSpaceRegions([this] (Region *current) {
-        AddWorkload(std::make_unique<UpdateRSetWorkload>(this, current, heap_->IsEdenMark()));
+    heap_->EnumerateSnapshotSpaceRegions([this, &workloadSet](Region *current) {
+        workloadSet.Add(std::make_unique<UpdateRSetWorkload>(this, current, heap_->IsEdenMark()));
     });
+    workloadSet.PrepareWorkloads();
     LOG_GC(DEBUG) << "UpdatePointers statistic: younge space region compact moving count:"
                         << youngeRegionMoveCount
                         << "younge space region compact coping count:" << youngeRegionCopyCount
@@ -561,11 +569,9 @@ void ParallelEvacuator::WaitFinished()
 
 bool ParallelEvacuator::ProcessWorkloads(bool isMain)
 {
-    std::unique_ptr<Workload> region = GetWorkloadSafe();
-    while (region != nullptr) {
+    DrainWorkloads(updateWorkloadSet_, [&](std::unique_ptr<Workload> &region) {
         region->Process(isMain);
-        region = GetWorkloadSafe();
-    }
+        });
     if (!isMain) {
         LockHolder holder(mutex_);
         if (--parallel_ <= 0) {
@@ -575,6 +581,84 @@ bool ParallelEvacuator::ProcessWorkloads(bool isMain)
     return true;
 }
 
+template <typename WorkloadCallback>
+void ParallelEvacuator::DrainWorkloads(WorkloadSet &workloadSet, WorkloadCallback callback)
+{
+    std::unique_ptr<Workload> region;
+    while (workloadSet.HasRemaningWorkload()) {
+        std::optional<size_t> index = workloadSet.GetNextIndex();
+        if (!index.has_value()) {
+            return;
+        }
+        size_t count = workloadSet.GetWorkloadCount();
+        size_t finishedCount = 0;
+        for (size_t i = index.value(); i < count; i++) {
+            region = workloadSet.TryGetWorkload(i);
+            if (region == nullptr) {
+                break;
+            }
+            callback(region);
+            finishedCount++;
+        }
+        if (finishedCount && workloadSet.FetchSubAndCheckWorkloadCount(finishedCount)) {
+            return;
+        }
+    }
+}
+
+void ParallelEvacuator::WorkloadSet::PrepareWorkloads()
+{
+    size_t size = workloads_.size();
+    remainingWorkloadNum_.store(size, std::memory_order_relaxed);
+    /*
+    Construct indexList_ containing starting indices for multi-threaded acquire workload.
+    The construction method starts with the interval [0, size] and recursively
+    selects midpoints as starting indices for subintervals.
+    The first starting index is 0 to ensure no workloads are missed.
+    */
+    indexList_.reserve(size);
+    indexList_.emplace_back(0);
+    std::vector<std::pair<size_t, size_t>> pairList{{0, size}};
+    pairList.reserve(size);
+    while (!pairList.empty()) {
+        auto [start, end] = pairList.back();
+        pairList.pop_back();
+        size_t mid = (start + end) >> 1;
+        indexList_.emplace_back(mid);
+        if (end - mid > 1U) {
+            pairList.emplace_back(mid, end);
+        }
+        if (mid - start > 1U) {
+            pairList.emplace_back(start, mid);
+        }
+    }
+}
+
+std::optional<size_t> ParallelEvacuator::WorkloadSet::GetNextIndex()
+{
+    size_t cursor = indexCursor_.fetch_add(1, std::memory_order_relaxed);
+    if (cursor >= indexList_.size()) {
+        return std::nullopt;
+    }
+    return indexList_[cursor];
+}
+
+std::unique_ptr<ParallelEvacuator::Workload> ParallelEvacuator::WorkloadSet::TryGetWorkload(size_t index)
+{
+    std::unique_ptr<Workload> workload;
+    if (workloads_.at(index).first.TryAcquire()) {
+        workload = std::move(workloads_[index].second);
+    }
+    return workload;
+}
+
+void ParallelEvacuator::WorkloadSet::Clear()
+{
+    workloads_.clear();
+    indexList_.clear();
+    indexCursor_.store(0, std::memory_order_relaxed);
+    remainingWorkloadNum_.store(0, std::memory_order_relaxed);
+}
 ParallelEvacuator::EvacuationTask::EvacuationTask(int32_t id, ParallelEvacuator *evacuator)
     : Task(id), evacuator_(evacuator)
 {
