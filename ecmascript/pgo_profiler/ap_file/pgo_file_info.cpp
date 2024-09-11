@@ -20,6 +20,10 @@ bool PGOProfilerHeader::strictMatch_ = true;
 
 bool PGOProfilerHeader::BuildFromLegacy(void *buffer, PGOProfilerHeader **header)
 {
+    if (buffer == nullptr || header == nullptr) {
+        LOG_ECMA(ERROR) << "buffer or header is null!";
+        return false;
+    }
     auto *inHeader = reinterpret_cast<PGOProfilerHeaderLegacy *>(buffer);
     size_t desSize = Size(inHeader->GetSectionNumber());
     if (desSize > LastSize()) {
