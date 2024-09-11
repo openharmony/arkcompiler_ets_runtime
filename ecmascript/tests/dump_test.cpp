@@ -210,7 +210,7 @@ HWTEST_F_L0(EcmaDumpTest, DumpTaggedValueType)
     JSHandle<JSTaggedValue> obj(factory->NewJSObjectByConstructor(JSHandle<JSFunction>(objFun), objFun));
     loopVal.push_back(obj);
     loopRes.push_back("[Object]");
-    
+
     for (int i = 0; i < loopVal.size(); i++) {
         std::stringstream oss;
         loopVal[i].GetTaggedValue().DumpTaggedValueType(oss);
@@ -974,6 +974,14 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
                 JSHandle<ProfileTypeInfoCell> profileTypeInfoCell = factory->NewProfileTypeInfoCell(handleUndefined);
                 DUMP_FOR_HANDLE(profileTypeInfoCell);
+                break;
+            }
+            case JSType::FUNCTION_TEMPLATE: {
+                auto method = JSFunction::Cast(globalEnv->GetTaggedObjectFunction())->GetMethod();
+                JSHandle<Method> methodHandle(thread, method);
+                JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
+                JSHandle<FunctionTemplate> funcTemp = factory->NewFunctionTemplate(methodHandle, handleUndefined, 0);
+                DUMP_FOR_HANDLE(funcTemp);
                 break;
             }
             case JSType::TAGGED_ARRAY:

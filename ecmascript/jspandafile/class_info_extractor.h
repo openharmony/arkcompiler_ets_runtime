@@ -128,8 +128,13 @@ private:
                                                               JSHandle<TaggedArray> &properties, ClassPropertyType type,
                                                               const JSHandle<JSTaggedValue> &lexenv);
 
+    static JSHandle<JSFunction> CreateJSFunctionFromTemplate(JSThread *thread,
+                                                             const JSHandle<FunctionTemplate> &funcTemp,
+                                                             const JSHandle<JSObject> &homeObject,
+                                                             const JSHandle<JSTaggedValue> &lexenv);
+
     static void HandleElementsProperties(JSThread *thread, const JSHandle<JSObject> &object,
-                                         JSHandle<TaggedArray> &elements);
+                                         const JSHandle<JSTaggedValue> &lexenv, JSHandle<TaggedArray> &elements);
 };
 
 class SendableClassDefiner : public ClassHelper {
@@ -185,6 +190,11 @@ private:
                                                                       JSHandle<TaggedArray> &properties,
                                                                       ClassPropertyType type,
                                                                       const JSHandle<JSFunction> &ctor);
+
+    static JSHandle<JSFunction> CreateSFunctionFromTemplate(JSThread *thread,
+                                                            const JSHandle<FunctionTemplate> &funcTemp,
+                                                            const JSHandle<JSObject> &homeObject,
+                                                            const JSHandle<JSTaggedValue> &lexenv);
 
     static void UpdateAccessorFunction(JSThread *thread, const JSMutableHandle<JSTaggedValue> &value,
                                        const JSHandle<JSTaggedValue> &homeObject, const JSHandle<JSFunction> &ctor);

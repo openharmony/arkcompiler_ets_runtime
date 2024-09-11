@@ -178,6 +178,7 @@ class MachineCode;
 class ClassInfoExtractor;
 class AOTLiteralInfo;
 class ProfileTypeInfoCell;
+class FunctionTemplate;
 class VTable;
 namespace kungfu {
 class TSHClassGenerator;
@@ -497,6 +498,8 @@ public:
     JSHandle<JSFunction> CloneSFunction(JSHandle<JSFunction> func);
     JSHandle<JSFunction> CloneClassCtor(JSHandle<JSFunction> ctor, const JSHandle<JSTaggedValue> &lexenv,
                                         bool canShareHClass);
+    JSHandle<JSFunction> CreateJSFunctionFromTemplate(JSHandle<FunctionTemplate> funcTemp);
+    JSHandle<JSFunction> CreateSFunctionFromTemplate(JSHandle<FunctionTemplate> funcTemp);
 
     void NewJSArrayBufferData(const JSHandle<JSArrayBuffer> &array, int32_t length);
     void NewJSSendableArrayBufferData(const JSHandle<JSSendableArrayBuffer> &array, int32_t length);
@@ -712,6 +715,8 @@ public:
     JSHandle<AOTLiteralInfo> NewAOTLiteralInfo(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<ExtraProfileTypeInfo> NewExtraProfileTypeInfo();
     JSHandle<ProfileTypeInfoCell> NewProfileTypeInfoCell(const JSHandle<JSTaggedValue> &value);
+    JSHandle<FunctionTemplate> NewFunctionTemplate(
+        const JSHandle<Method> &method, const JSHandle<JSTaggedValue> &module, int32_t length);
     JSHandle<VTable> NewVTable(uint32_t length, JSTaggedValue initVal = JSTaggedValue::Hole());
     JSHandle<JSHClass> NewEcmaHClass(JSHClass *hclass, uint32_t size, JSType type,
                                      uint32_t inlinedProps = JSHClass::DEFAULT_CAPACITY_OF_IN_OBJECTS);
@@ -850,6 +855,9 @@ public:
     JSHandle<LayoutInfo> PUBLIC_API NewSEmptyLayoutInfo();
 
     JSHandle<ProfileTypeInfoCell> NewSEmptyProfileTypeInfoCell();
+
+    JSHandle<FunctionTemplate> NewSFunctionTemplate(
+        const JSHandle<Method> &method, const JSHandle<JSTaggedValue> &module, int32_t length);
 
     JSHandle<TaggedArray> NewSEmptyArray(); // only used for EcmaVM.
 

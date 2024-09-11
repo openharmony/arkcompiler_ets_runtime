@@ -49,6 +49,12 @@ public:
         bool isLoadedAOT = false, JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>(),
         ElementsKind *newKind = nullptr, JSHandle<JSTaggedValue> sendableEnv = JSHandle<JSTaggedValue>(),
         ClassKind classKind = ClassKind::NON_SENDABLE);
+    static PUBLIC_API JSHandle<TaggedArray> GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,
+        EntityId id, JSHandle<ConstantPool> constpool, const CString &entryPoint = "",
+        bool isLoadedAOT = false, JSHandle<AOTLiteralInfo> entryIndexes = JSHandle<AOTLiteralInfo>(),
+        ElementsKind *newKind = nullptr, JSHandle<JSTaggedValue> sendableEnv = JSHandle<JSTaggedValue>(),
+        ClassKind classKind = ClassKind::NON_SENDABLE);
+
     static JSHandle<TaggedArray> GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,
                                                             size_t index, JSHandle<ConstantPool> constpool,
                                                             const CString &entryPoint = "");
@@ -67,6 +73,11 @@ public:
     static void PUBLIC_API GetMethodOffsets(const JSPandaFile *jsPandaFile, EntityId id,
                                             std::vector<uint32_t> &methodOffsets);
 private:
+    static JSHandle<FunctionTemplate> DefineFunctionTemplate(JSThread *thread, const JSPandaFile *jsPandaFile,
+        uint32_t offset, JSHandle<ConstantPool> constpool, FunctionKind kind, uint16_t length,
+        const CString &entryPoint = "", bool isLoadedAOT = false, uint32_t entryIndex = 0,
+        JSHandle<JSTaggedValue> sendableEnv = JSHandle<JSTaggedValue>(), ClassKind classKind = ClassKind::NON_SENDABLE);
+
     static JSHandle<JSFunction> CreateJSFunctionInLiteral(EcmaVM *vm, const JSHandle<Method> &method,
                                                           FunctionKind kind, ClassKind classKind);
     static JSHandle<TaggedArray> EnumerateLiteralVals(JSThread *thread, panda_file::LiteralDataAccessor &lda,
