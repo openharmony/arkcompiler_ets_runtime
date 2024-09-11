@@ -16,6 +16,8 @@
 #ifndef ECMASCRIPT_SERIALIZER_SERIALIZE_DATA_H
 #define ECMASCRIPT_SERIALIZER_SERIALIZE_DATA_H
 
+#include <limits>
+
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/dyn_chunk.h"
 #include "ecmascript/runtime.h"
@@ -190,7 +192,10 @@ public:
             LOG_FULL(ERROR) << "Failed to memcpy_s Data";
             return -1;
         }
-        ssize_t res = offset;
+        if (UNLIKELY(offset > std::numeric_limits<ssize_t>::max())) {
+            return -1;
+        }
+        ssize_t res = static_cast<ssize_t>(offset);
         if (bufferSize_ == offset) {
             bufferSize_ += length;
         }
