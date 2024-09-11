@@ -17,6 +17,7 @@
 #define ECMASCRIPT_PGO_PROFILER_TYPES_PGO_PROFILE_TYPE_H
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <variant>
 
@@ -200,7 +201,7 @@ public:
 
     ProfileType() = default;
     explicit ProfileType(uint64_t rawType) : type_(rawType) {};
-    ProfileType(PGOContext &context, ProfileTypeRef typeRef, bool *isValid = nullptr);
+    ProfileType(PGOContext &context, ProfileTypeRef typeRef);
     ProfileType(ApEntityId abcId, uint32_t type, Kind kind = Kind::ClassId, bool root = false,
                 bool everOutOfBounds = false)
     {
@@ -221,6 +222,8 @@ public:
         type.UpdateKind(Kind::MegaStateKinds);
         return type;
     }
+
+    static std::optional<ProfileType> CreateFromProfileTypeRef(PGOContext &context, ProfileTypeRef typeRef);
 
     static ProfileType CreateJITType()
     {

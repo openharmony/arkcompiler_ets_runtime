@@ -120,8 +120,8 @@ public:
     static constexpr uint32_t MAX_SLOT_INDEX = 0xFFFF;
     static constexpr size_t BIT_FIELD_INDEX = 2;
     static constexpr size_t JIT_OSR_INDEX = 3;
-    static constexpr size_t EXTRA_MAP_INFO_INDEX = 4;
-    static constexpr size_t RESERVED_LENGTH = EXTRA_MAP_INFO_INDEX;
+    static constexpr size_t EXTRA_INFO_MAP_INDEX = 4;
+    static constexpr size_t RESERVED_LENGTH = EXTRA_INFO_MAP_INDEX;
     static constexpr size_t INITIAL_PERIOD_INDEX = 0;
     static constexpr size_t PRE_DUMP_PERIOD_INDEX = 1;
     static constexpr size_t DUMP_PERIOD_INDEX = 2;
@@ -195,6 +195,22 @@ public:
         SetJitCallCnt(INITIAL_JIT_CALL_CNT);
     }
 
+    inline void InitializeExtraInfoMap()
+    {
+        // the last-1 of the cache is used to save extra info map
+        Barriers::SetPrimitive<JSTaggedType>(
+            GetData(), GetIcSlotLength() * JSTaggedValue::TaggedTypeSize(),
+            JSTaggedValue::Undefined().GetRawData());
+    }
+
+    inline void InitializeJitOsr()
+    {
+        // the last of the cache is used to save osr jit tagged array
+        Barriers::SetPrimitive<JSTaggedType>(
+            GetData(), (GetIcSlotLength() + 1) * JSTaggedValue::TaggedTypeSize(),
+            JSTaggedValue::Undefined().GetRawData());
+    }
+
     inline void InitializeWithSpecialValue(JSTaggedValue initValue, uint32_t icSlotSize, uint32_t extraLength = 0)
     {
         ASSERT(initValue.IsSpecial());
@@ -202,14 +218,8 @@ public:
         SetLength(icSlotSize + RESERVED_LENGTH);
         SetExtraLength(extraLength);
         SetPrimitiveOfSlot(initValue, icSlotSize);
-        // the last-1 of the cache is used to save extra info map
-        Barriers::SetPrimitive<JSTaggedType>(
-            GetData(), GetIcSlotLength() * JSTaggedValue::TaggedTypeSize(),
-            JSTaggedValue::Undefined().GetRawData());
-        // the last of the cache is used to save osr jit tagged array
-        Barriers::SetPrimitive<JSTaggedType>(
-            GetData(), (GetIcSlotLength() + 1) * JSTaggedValue::TaggedTypeSize(),
-            JSTaggedValue::Undefined().GetRawData());
+        InitializeExtraInfoMap();
+        InitializeJitOsr();
         SetSpecialValue();
     }
 
@@ -377,7 +387,7 @@ private:
 
     inline size_t GetExtraInfoMapOffset() const
     {
-        return JSTaggedValue::TaggedTypeSize() * (GetLength() - EXTRA_MAP_INFO_INDEX);
+        return JSTaggedValue::TaggedTypeSize() * (GetLength() - EXTRA_INFO_MAP_INDEX);
     }
 
     // jit hotness(16bits) + count(16bits)

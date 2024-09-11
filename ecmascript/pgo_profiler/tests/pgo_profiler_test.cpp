@@ -1301,15 +1301,13 @@ HWTEST_F_L0(PGOProfilerTest, ProfileTypeConstructor)
     PGOProfilerDecoder decoder("ark-profiler25/modules.ap", 1);
     ASSERT_TRUE(decoder.LoadFull());
 
-    ProfileType recordType;
-    bool isValid = true;
-    auto invalidType = ProfileTypeRef(inValidId);
-    recordType = ProfileType(decoder.GetRecordDetailInfos(), invalidType, &isValid);
-    ASSERT_TRUE(!isValid);
+    auto invalidRes = ProfileTypeRef(inValidId);
+    auto expectFalse = ProfileType::CreateFromProfileTypeRef(decoder.GetRecordDetailInfos(), invalidRes);
+    EXPECT_FALSE(expectFalse.has_value());
 
-    auto validType = ProfileTypeRef(validId);
-    recordType = ProfileType(decoder.GetRecordDetailInfos(), validType, &isValid);
-    ASSERT_TRUE(isValid);
+    auto validRes = ProfileTypeRef(validId);
+    auto expectTrue = ProfileType::CreateFromProfileTypeRef(decoder.GetRecordDetailInfos(), validRes);
+    EXPECT_TRUE(expectTrue.has_value());
     unlink("ark-profiler25/modules.ap");
     rmdir("ark-profiler25/");
 }

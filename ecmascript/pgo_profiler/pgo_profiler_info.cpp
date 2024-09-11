@@ -754,12 +754,12 @@ bool PGORecordDetailInfos::ParseFromBinary(void *buffer, PGOProfilerHeader *cons
         ProfileType recordType;
         if (header->SupportProfileTypeWithAbcId()) {
             auto recordTypeRef = ProfileTypeRef(base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId)));
-            bool isValid = true;
-            recordType = ProfileType(*this, recordTypeRef, &isValid);
-            if (!isValid) {
+            auto res = ProfileType::CreateFromProfileTypeRef(*this, recordTypeRef);
+            if (!res.has_value()) {
                 LOG_ECMA(ERROR) << "ParseFromBinary failed, current addr: " << addr << std::endl;
                 return false;
             }
+            recordType = res.value();
             recordId = recordType.GetId();
         } else if (header->SupportRecordPool()) {
             recordId = base::ReadBuffer<ApEntityId>(&addr, sizeof(ApEntityId));
