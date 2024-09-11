@@ -652,20 +652,29 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpFunctionUrl)
     std::string line;
     std::ifstream inputStream("testFunctionUrl.heapsnapshot");
     bool strMatched = false;
+    bool funcTempMatched = false;
     while (getline(inputStream, line)) {
+        if (strMatched && funcTempMatched) {
+            break;
+        }
         if (line == "\"heapdump greet(line:98)\",") {
             strMatched = true;
-            break;
+            continue;
+        }
+        if (line == "\"ArkInternalFunctionTemplate\",") {
+            funcTempMatched = true;
+            continue;
         }
     }
     ASSERT_TRUE(strMatched);
+    ASSERT_TRUE(funcTempMatched);
 }
 
 HWTEST_F_L0(HeapDumpTest, DISABLED_TestAllocationMassiveMoveNode)
 {
     const std::string abcFileName = HPROF_TEST_ABC_FILES_DIR"allocation.abc";
     HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
-    
+
     // start allocation
     bool start = heapProfile->StartHeapTracking(50);
     EXPECT_TRUE(start);
@@ -673,9 +682,9 @@ HWTEST_F_L0(HeapDumpTest, DISABLED_TestAllocationMassiveMoveNode)
     auto currentTime = std::chrono::system_clock::now();
     auto currentTimeBeforeMs =
         std::chrono::time_point_cast<std::chrono::milliseconds>(currentTime).time_since_epoch().count();
-    
+
     bool result = JSNApi::Execute(ecmaVm_, abcFileName, "allocation");
-    
+
     currentTime = std::chrono::system_clock::now();
     auto currentTimeAfterMs =
         std::chrono::time_point_cast<std::chrono::milliseconds>(currentTime).time_since_epoch().count();
@@ -812,7 +821,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName3)
     tester.CreateNumberTypedArray(JSType::JS_BIGINT64_ARRAY);
     // JS_BIGUINT64_ARRAY
     tester.CreateNumberTypedArray(JSType::JS_BIGUINT64_ARRAY);
-    
+
     tester.GenerateSnapShot("testGenerateNodeName_3.heapsnapshot");
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Int8 Array\""));
     ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_3.heapsnapshot", "\"Uint8 Array\""));
@@ -831,7 +840,7 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpGenerateNodeName4)
 {
     ObjectFactory *factory = ecmaVm_->GetFactory();
     HeapDumpTestHelper tester(ecmaVm_);
-    
+
     JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
     // JS_SET
     tester.NewJSSet();

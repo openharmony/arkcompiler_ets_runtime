@@ -464,6 +464,21 @@ JSHandle<ProfileTypeInfoCell> ObjectFactory::NewSEmptyProfileTypeInfoCell()
     return profileTypeInfoCell;
 }
 
+JSHandle<FunctionTemplate> ObjectFactory::NewSFunctionTemplate(
+    const JSHandle<Method> &method, const JSHandle<JSTaggedValue> &module, int32_t length)
+{
+    NewSObjectHook();
+    auto globalConstants = thread_->GlobalConstants();
+    auto header = sHeap_->AllocateOldOrHugeObject(thread_,
+        JSHClass::Cast(globalConstants->GetFunctionTemplateClass().GetTaggedObject()));
+    JSHandle<FunctionTemplate> functionTemplate(thread_, header);
+    functionTemplate->SetMethod(thread_, method);
+    functionTemplate->SetModule(thread_, module);
+    functionTemplate->SetRawProfileTypeInfo(thread_, globalConstants->GetEmptyProfileTypeInfoCell(), SKIP_BARRIER);
+    functionTemplate->SetLength(length);
+    return functionTemplate;
+}
+
 JSHandle<TaggedArray> ObjectFactory::NewSEmptyArray()
 {
     NewSObjectHook();

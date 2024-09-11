@@ -925,6 +925,14 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 DUMP_FOR_HANDLE(profileTypeInfoCell);
                 break;
             }
+            case JSType::FUNCTION_TEMPLATE: {
+                auto method = JSFunction::Cast(globalEnv->GetTaggedObjectFunction())->GetMethod();
+                JSHandle<Method> methodHandle(thread, method);
+                JSHandle<JSTaggedValue> handleUndefined(thread, JSTaggedValue::Undefined());
+                JSHandle<FunctionTemplate> funcTemp = factory->NewFunctionTemplate(methodHandle, handleUndefined, 0);
+                DUMP_FOR_HANDLE(funcTemp);
+                break;
+            }
             case JSType::TAGGED_ARRAY:
             case JSType::VTABLE:
             case JSType::LEXICAL_ENV:

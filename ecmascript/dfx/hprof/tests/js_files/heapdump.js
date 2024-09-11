@@ -98,8 +98,8 @@ class Person {
     print(`Hello, my name is ${this.name} and I'm ${this.age} years old.`);
   }
 }
-  
-let person = new Person('Alice', 25);
+
+globalThis.person = new Person('Alice', 25);
 
 // Exception
 function divide(a, b) {

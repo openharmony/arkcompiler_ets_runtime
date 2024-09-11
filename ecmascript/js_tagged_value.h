@@ -491,6 +491,7 @@ public:
     bool IsExtraProfileTypeInfo() const;
     bool IsProfileTypeInfoCell() const;
     bool IsProfileTypeInfoCell0() const;
+    bool IsFunctionTemplate() const;
     bool IsVTable() const;
     bool IsLinkedNode() const;
     bool IsRBTreeNode() const;

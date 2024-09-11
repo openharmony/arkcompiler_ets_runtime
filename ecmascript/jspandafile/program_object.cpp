@@ -40,7 +40,7 @@ JSTaggedValue ConstantPool::GetClassLiteralFromCache(JSThread *thread, JSHandle<
         ASSERT(jsPandaFile->IsNewVersion());
         panda_file::File::EntityId literalId = constpool->GetEntityId(literal);
         bool needSetAotFlag = isLoadedAOT && !entryIndexes.GetTaggedValue().IsUndefined();
-        JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreType(thread,
+        JSHandle<TaggedArray> literalArray = LiteralDataExtractor::GetDatasIgnoreTypeForClass(thread,
             jsPandaFile, literalId, constpool, entry, needSetAotFlag, entryIndexes, nullptr, sendableEnv, kind);
         JSHandle<ClassLiteral> classLiteral;
         if (kind == ClassKind::SENDABLE) {

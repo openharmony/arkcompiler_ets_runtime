@@ -207,8 +207,8 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
                 }
                 case LiteralTag::METHODAFFILIATE: {
                     uint16_t length = std::get<uint16_t>(value);
-                    JSHandle<JSFunction> jsFunc =
-                        DefineMethodInLiteral(thread, jsPandaFile, methodId, constpool, kind, length, entryPoint);
+                    JSHandle<FunctionTemplate> jsFunc =
+                        DefineFunctionTemplate(thread, jsPandaFile, methodId, constpool, kind, length, entryPoint);
                     jt = jsFunc.GetTaggedValue();
                     break;
                 }
@@ -236,6 +236,50 @@ JSHandle<TaggedArray> LiteralDataExtractor::EnumerateLiteralVals(JSThread *threa
             }
         });
     return literals;
+}
+
+JSHandle<FunctionTemplate> LiteralDataExtractor::DefineFunctionTemplate(JSThread *thread,
+                                                                        const JSPandaFile *jsPandaFile,
+                                                                        uint32_t offset,
+                                                                        JSHandle<ConstantPool> constpool,
+                                                                        FunctionKind kind, uint16_t length,
+                                                                        const CString &entryPoint,
+                                                                        bool isLoadedAOT, uint32_t entryIndex,
+                                                                        JSHandle<JSTaggedValue> sendableEnv,
+                                                                        ClassKind classKind)
+{
+    EcmaVM *vm = thread->GetEcmaVM();
+    ObjectFactory *factory = vm->GetFactory();
+
+    // New Method
+    auto methodLiteral = jsPandaFile->FindMethodLiteral(offset);
+    ASSERT(methodLiteral != nullptr);
+    FunctionKind literalKind = methodLiteral->GetFunctionKind();
+    if (literalKind == FunctionKind::NONE_FUNCTION || classKind == ClassKind::SENDABLE) {
+        methodLiteral->SetFunctionKind(kind);
+    } else {
+        kind = literalKind;
+    }
+    JSHandle<Method> method = factory->NewSMethod(jsPandaFile, methodLiteral, constpool, entryIndex, isLoadedAOT);
+    if (classKind == ClassKind::SENDABLE) {
+        method->SetIsSendable(true);
+    }
+
+    // Generate Module
+    JSHandle<JSTaggedValue> module = SharedModuleManager::GetInstance()->GenerateFuncModule(thread, jsPandaFile,
+                                                                                            entryPoint, classKind);
+    if (module->IsSourceTextModule()) {
+        SourceTextModule::Cast(module->GetTaggedObject())->SetSendableEnv(thread, sendableEnv);
+    }
+
+    // New FunctionTemplate
+    JSHandle<FunctionTemplate> funcTemp;
+    if (classKind == ClassKind::SENDABLE) {
+        funcTemp = factory->NewSFunctionTemplate(method, module, length);
+    } else {
+        funcTemp = factory->NewFunctionTemplate(method, module, length);
+    }
+    return funcTemp;
 }
 
 JSHandle<JSFunction> LiteralDataExtractor::CreateJSFunctionInLiteral(EcmaVM *vm,
@@ -425,7 +469,7 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
                 kind = FunctionKind::ASYNC_GENERATOR_FUNCTION;
                 break;
             }
-            
+
             case LiteralTag::METHODAFFILIATE: {
                 uint16_t length = std::get<uint16_t>(value);
                 int entryIndex = 0;
@@ -466,6 +510,26 @@ void LiteralDataExtractor::ExtractObjectDatas(JSThread *thread, const JSPandaFil
             }
         }
     });
+}
+
+JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreTypeForClass(JSThread *thread, const JSPandaFile *jsPandaFile,
+                                                                       EntityId id, JSHandle<ConstantPool> constpool,
+                                                                       const CString &entryPoint, bool isLoadedAOT,
+                                                                       JSHandle<AOTLiteralInfo> entryIndexes,
+                                                                       ElementsKind *newKind,
+                                                                       JSHandle<JSTaggedValue> sendableEnv,
+                                                                       ClassKind classKind)
+{
+    ASSERT(jsPandaFile != nullptr);
+    LiteralDataAccessor lda = jsPandaFile->GetLiteralDataAccessor();
+    uint32_t num = lda.GetLiteralValsNum(id) / 2;  // 2: half
+    // The num is 1, indicating that the current class has no member variable.
+    if (num == 1) {
+        ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+        return factory->EmptyArray();
+    }
+    return GetDatasIgnoreType(
+        thread, jsPandaFile, id, constpool, entryPoint, isLoadedAOT, entryIndexes, newKind, sendableEnv, classKind);
 }
 
 JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread, const JSPandaFile *jsPandaFile,
@@ -549,10 +613,9 @@ JSHandle<TaggedArray> LiteralDataExtractor::GetDatasIgnoreType(JSThread *thread,
                             needSetAotFlag = false;
                         }
                     }
-                    JSHandle<JSFunction> jsFunc =
-                        DefineMethodInLiteral(thread, jsPandaFile, methodId, constpool,
-                            kind, length, entryPoint, needSetAotFlag, entryIndex, sendableEnv, classKind);
-                    jt = jsFunc.GetTaggedValue();
+                    JSHandle<FunctionTemplate> funcTemp = DefineFunctionTemplate(thread, jsPandaFile, methodId,
+                        constpool, kind, length, entryPoint, needSetAotFlag, entryIndex, sendableEnv, classKind);
+                    jt = funcTemp.GetTaggedValue();
                     break;
                 }
                 case LiteralTag::ACCESSOR: {

@@ -135,8 +135,14 @@ void BaseSnapshotInfo::CollectLiteralInfo(JSHandle<TaggedArray> array, uint32_t 
     std::vector<int> methodOffsetVec;
     for (uint32_t i = 0; i < len; i++) {
         valueHandle.Update(array->Get(i));
+        uint32_t methodOffset = 0;
         if (valueHandle->IsJSFunction()) {
-            auto methodOffset = JSHandle<JSFunction>(valueHandle)->GetCallTarget()->GetMethodId().GetOffset();
+            methodOffset = JSHandle<JSFunction>(valueHandle)->GetCallTarget()->GetMethodId().GetOffset();
+        } else if (valueHandle->IsFunctionTemplate()) {
+            auto method = Method::Cast(JSHandle<FunctionTemplate>(valueHandle)->GetMethod());
+            methodOffset = method->GetMethodId().GetOffset();
+        }
+        if (methodOffset != 0) {
             if (skippedMethods.find(methodOffset) != skippedMethods.end()) {
                 methodOffsetVec.emplace_back(AOTLiteralInfo::NO_FUNC_ENTRY_VALUE);
             } else {

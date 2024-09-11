@@ -315,7 +315,7 @@ public:
                                void *data, size_t nativeBindingsize = 0);
     static void SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFunction> &func,
                                    const JSHandle<JSTaggedValue> &value, BarrierMode mode = WRITE_BARRIER);
-    static void UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<JSFunction> literalFunc,
+    static void UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<FunctionTemplate> literalFunc,
                                           JSHandle<JSFunction> targetFunc);
     void SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode);
 
@@ -579,6 +579,38 @@ public:
     static constexpr uint32_t MAX_INLINE = PropertyAttributes::MAX_FAST_PROPS_CAPACITY -
         SIZE / JSTaggedValue::TaggedTypeSize() + 1;
     DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSFunction, SIZE, SIZE)
+};
+
+class FunctionTemplate : public TaggedObject {
+public:
+    FunctionKind GetFunctionKind() const
+    {
+        JSTaggedValue method = GetMethod();
+        return Method::ConstCast(method.GetTaggedObject())->GetFunctionKind();
+    }
+
+    inline bool IsGetterOrSetter() const
+    {
+        FunctionKind kind = GetFunctionKind();
+        return kind == FunctionKind::GETTER_FUNCTION || kind == FunctionKind::SETTER_FUNCTION;
+    }
+
+    inline bool IsGetter() const
+    {
+        FunctionKind kind = GetFunctionKind();
+        return kind == FunctionKind::GETTER_FUNCTION;
+    }
+
+    CAST_CHECK(FunctionTemplate, IsFunctionTemplate);
+    static constexpr size_t METHOD_OFFSET = TaggedObject::SIZE;
+    ACCESSORS(Method, METHOD_OFFSET, MODULE_OFFSET);
+    ACCESSORS(Module, MODULE_OFFSET, RAW_PROFILE_TYPE_INFO_OFFSET);
+    ACCESSORS(RawProfileTypeInfo, RAW_PROFILE_TYPE_INFO_OFFSET, LENGTH_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(Length, uint32_t, LENGTH_OFFSET, LAST_OFFSET)
+    DEFINE_ALIGN_SIZE(LAST_OFFSET);
+
+    DECL_VISIT_OBJECT(METHOD_OFFSET, LENGTH_OFFSET);
+    DECL_DUMP()
 };
 
 }  // namespace panda::ecmascript
