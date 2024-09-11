@@ -83,6 +83,16 @@ JsAotReaderCallback AOTFileManager::GetJsAotReader()
 }
 #endif
 
+bool AOTFileManager::AOTFileExist(const std::string &aotFileName, const std::string &extension)
+{
+    std::string realPath;
+    std::string filename = aotFileName + extension;
+    if (!RealPath(filename, realPath, false)) {
+        return false;
+    }
+    return FileExist(realPath.c_str());
+}
+
 void AOTFileManager::DumpAOTInfo()
 {
     AnFileDataManager *m = AnFileDataManager::GetInstance();
