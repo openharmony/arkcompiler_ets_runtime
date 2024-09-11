@@ -263,10 +263,8 @@
       panda::ecmascript::ObjectFactory::NewFromUtf8*;
       panda::ecmascript::ObjectFactory::NewFromUtf8LiteralCompress*;
       panda::ecmascript::ObjectFactory::NewJSArray*;
-      panda::ecmascript::ObjectFactory::NewJSSArray*;
       panda::ecmascript::ObjectFactory::NewJSObject*;
       panda::ecmascript::ObjectFactory::NewJsonFixedArray*;
-      panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;
       panda::ecmascript::ObjectFactory::NewTaggedArray*;
       panda::ecmascript::ObjectFactory::CreateSLayoutInfo*;
       panda::ecmascript::ObjectFactory::NewSEcmaHClass*;
@@ -276,6 +274,8 @@
       panda::ecmascript::ObjectFactory::NewSEcmaHClassDictMode*;
       panda::ecmascript::ObjectFactory::GetRawStringFromStringTable*;
       panda::ecmascript::SendableClassDefiner::AddFieldTypeToHClass*;
+      panda::ecmascript::ObjectFactory::NewJSSArray*;
+      panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;
       panda::ecmascript::ObjectFactory::NewSMethod*;
       panda::ecmascript::ObjectFactory::NewFromStdString*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
