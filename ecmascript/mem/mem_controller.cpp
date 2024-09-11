@@ -153,18 +153,6 @@ bool MemController::CheckLowAllocationUsageState() const
                 GetIdleOldSpaceAllocationThroughputPerMS() < LOW_ALLOCATION_RATE_PER_MS;
 }
 
-void MemController::UpdateObjectUsageRateAfterGC()
-{
-    lastGCObjectUsageRate_ = static_cast<double>(heap_->GetHeapObjectSize()) /
-        static_cast<double>(heap_->GetCommittedSize());
-
-    lastGCOldSpaceObjectUsageRate_ = static_cast<double>(heap_->GetOldSpace()->GetHeapObjectSize()) /
-        static_cast<double>(heap_->GetOldSpace()->GetCommittedSize());
-
-    LOG_GC(DEBUG) << "UpdateObjectUsageRateAfterGC Shared lastGCObjectUsageRate:" << lastGCObjectUsageRate_
-                << ",lastGCOldSpaceObjectUsageRate:" << lastGCOldSpaceObjectUsageRate_;
-}
-
 void MemController::StopCalculationAfterGC(TriggerGCType gcType)
 {
     startCounter_--;
@@ -253,7 +241,7 @@ double MemController::CalculateAverageSpeed(const base::GCRingBuffer<BytesAndDur
         initial);
     uint64_t bytes = sum.first;
     double durations = sum.second;
-    if (durations == 0.0) {
+    if (fabs(durations) <= 1e-6) {
         return 0;
     }
     double speed = bytes / durations;

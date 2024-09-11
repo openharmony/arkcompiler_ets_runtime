@@ -146,6 +146,7 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
 static Mutex *mutex = new panda::Mutex();
+StartIdleMonitorCallback JSNApi::startIdleMonitorCallback_ = nullptr;
 
 // ----------------------------------- JSValueRef --------------------------------------
 Local<PrimitiveRef> JSValueRef::Undefined(const EcmaVM *vm)
@@ -4035,6 +4036,11 @@ void JSNApi::SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallba
     vm->GetAssociatedJSThread()->SetAsyncCleanTaskCallback(callback);
 }
 
+void JSNApi::SetTriggerGCTaskCallback(EcmaVM *vm, const TriggerGCTaskCallback& callback)
+{
+    vm->GetHeap()->GetIdleGCTrigger()->SetTriggerGCTaskCallback(callback);
+}
+
 std::string JSNApi::GetAssetPath(EcmaVM *vm)
 {
     return vm->GetAssetPath().c_str();
@@ -4338,6 +4344,25 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
                 break;
         }
     }
+}
+
+void JSNApi::TriggerIdleGC(const EcmaVM *vm, TRIGGER_IDLE_GC_TYPE gcType)
+{
+    CROSS_THREAD_CHECK(vm);
+    if (thread != nullptr && vm->IsInitialized()) {
+        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+        vm->GetHeap()->GetIdleGCTrigger()->TryTriggerIdleGC(gcType);
+    }
+}
+
+void JSNApi::SetStartIdleMonitorCallback(const StartIdleMonitorCallback& callback)
+{
+    startIdleMonitorCallback_ = callback;
+}
+
+StartIdleMonitorCallback JSNApi::GetStartIdleMonitorCallback()
+{
+    return startIdleMonitorCallback_;
 }
 
 void JSNApi::ThrowException(const EcmaVM *vm, Local<JSValueRef> error)
@@ -4840,19 +4865,23 @@ void JSNApi::NotifyLoadModule([[maybe_unused]] const EcmaVM *vm)
 #endif
 }
 
-void JSNApi::NotifyUIIdle(const EcmaVM *vm, int idleTime)
+void JSNApi::NotifyUIIdle(const EcmaVM *vm, [[maybe_unused]] int idleTime)
 {
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-    const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerGCForIdle(idleTime,
-        ecmascript::CheckIdleGCType::VSYNC);
+    vm->GetHeap()->GetIdleGCTrigger()->NotifyVsyncIdleStart();
 }
 
-void JSNApi::NotifyLooperIdle(const EcmaVM *vm, int idleTime)
+void JSNApi::NotifyLooperIdleStart(const EcmaVM *vm, int64_t timestamp, int idleTime)
 {
     if (vm->IsPostForked()) {
-        ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
-        const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerGCForIdle(idleTime,
-            ecmascript::CheckIdleGCType::LOOPER);
+        vm->GetHeap()->GetIdleGCTrigger()->NotifyLooperIdleStart(timestamp, idleTime);
+    }
+}
+
+void JSNApi::NotifyLooperIdleEnd(const EcmaVM *vm, int64_t timestamp)
+{
+    if (vm->IsPostForked()) {
+        vm->GetHeap()->GetIdleGCTrigger()->NotifyLooperIdleEnd(timestamp);
     }
 }
 

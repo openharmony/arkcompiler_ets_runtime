@@ -54,7 +54,6 @@ public:
     void StopCalculationAfterGC(TriggerGCType gcType);
 
     void RecordAllocationForIdle();
-    void UpdateObjectUsageRateAfterGC();
     double GetIdleNewSpaceAllocationThroughputPerMS() const;
     double GetIdleOldSpaceAllocationThroughputPerMS() const;
     bool CheckLowAllocationUsageState() const;
@@ -173,16 +172,6 @@ public:
         recordedSurvivalRates_.Reset();
     }
 
-    double GetLastGCOldSpaceObjectUsageRate() const
-    {
-        return lastGCOldSpaceObjectUsageRate_;
-    }
-
-    double GetLastGCObjectUsageRate() const
-    {
-        return lastGCObjectUsageRate_;
-    }
-
 private:
     static constexpr int LENGTH = 10;
     // Decayed weight for predicting survival rate.
@@ -214,8 +203,6 @@ private:
 
     // Records data at idle time points.
     double allocTimeMsIdle_ {0.0};
-    double lastGCObjectUsageRate_ {1.0f};
-    double lastGCOldSpaceObjectUsageRate_ {1.0f};
     size_t newSpaceRecordLastTimeSizeIdle_ {0};
     size_t oldSpaceRecordLastTimeSizeIdle_ {0};
     base::GCRingBuffer<BytesAndDuration, LENGTH> recordedIdleNewSpaceAllocations_;

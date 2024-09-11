@@ -26,6 +26,7 @@
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
 #include "ecmascript/mem/machine_code.h"
+#include "ecmascript/mem/idle_gc_trigger.h"
 
 namespace panda::ecmascript {
 class ConcurrentMarker;
@@ -61,6 +62,7 @@ class JSThread;
 class DaemonThread;
 class GlobalEnvConstants;
 class SharedMemController;
+class IdleGCTrigger;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
@@ -171,12 +173,6 @@ public:
 
     virtual bool ObjectExceedMaxHeapSize() const = 0;
 
-    virtual bool ReachIdleOldGCThresholds() const = 0;
-
-    virtual bool InLowAllocationUsageState() = 0;
-
-    virtual bool ShouldTriggerFullGC() = 0;
-
     MarkType GetMarkType() const
     {
         return markType_;
@@ -278,16 +274,6 @@ public:
         return heapAliveSizeAfterGC_;
     }
 
-    void UpdateFullGCTimePoint()
-    {
-        lastFullGCTimestamps_ = Clock::now();
-    }
-
-    void SetNeedCheckFullGCForIdle(bool need)
-    {
-        needCheckFullGCForIdle_ = need;
-    }
-
     size_t GetGlobalSpaceAllocLimit() const
     {
         return globalSpaceAllocLimit_;
@@ -324,8 +310,6 @@ public:
         bool NonMovableObjNearOOM = false);
     void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
     void SetAppFreezeFilterCallback(AppFreezeFilterCallback cb);
-    bool ShouldCheckIdleFullGC();
-    bool ShouldCheckIdleOldGC() const;
 
 protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
@@ -391,7 +375,6 @@ protected:
     bool isVerifying_ {false};
     Clock::time_point lastFullGCTimestamps_;
     Clock::time_point lastCheckIdleFullGCTimestamps_;
-    bool needCheckFullGCForIdle_ {false};
     int32_t recursionDepth_ {0};
 };
 
@@ -504,12 +487,6 @@ public:
     }
 
     bool ObjectExceedMaxHeapSize() const override;
-
-    bool ReachIdleOldGCThresholds() const override;
-
-    bool InLowAllocationUsageState() override;
-
-    bool ShouldTriggerFullGC() override;
 
     bool CheckAndTriggerSharedGC(JSThread *thread);
 
@@ -1032,6 +1009,11 @@ public:
         return sharedGCData_.sharedConcurrentMarkingLocalBuffer_;
     }
 
+    IdleGCTrigger *GetIdleGCTrigger() const
+    {
+        return idleGCTrigger_;
+    }
+
     void SetRSetWorkListHandler(RSetWorkListHandler *handler)
     {
         ASSERT((sharedGCData_.rSetWorkListHandler_ == nullptr) != (handler == nullptr));
@@ -1109,8 +1091,6 @@ public:
      */
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
     bool CheckAndTriggerOldGC(size_t size = 0);
-    static void IdleGCTask();
-    bool CheckAndTriggerGCForIdle(int idletime, CheckIdleGCType type);
     bool CheckAndTriggerHintGC();
     TriggerGCType SelectGCType() const;
     /*
@@ -1285,12 +1265,6 @@ public:
     bool HandleExitHighSensitiveEvent();
 
     bool ObjectExceedMaxHeapSize() const override;
-
-    bool ReachIdleOldGCThresholds() const override;
-
-    bool InLowAllocationUsageState() override;
-
-    bool ShouldTriggerFullGC() override;
 
     bool NeedStopCollection() override;
 
@@ -1725,6 +1699,8 @@ private:
      * The listeners which are called at the end of GC
      */
     std::vector<std::pair<FinishGCListener, void *>> gcListeners_;
+
+    IdleGCTrigger *idleGCTrigger_ {nullptr};
 
     bool hasOOMDump_ {false};
     bool enableEdenGC_ {false};

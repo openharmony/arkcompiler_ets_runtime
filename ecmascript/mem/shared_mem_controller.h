@@ -40,7 +40,6 @@ public:
 
     void RecordAllocationForIdle();
     bool CheckLowAllocationUsageState() const;
-    void UpdateObjectUsageRateAfterGC();
     void UpdateAllocationAfterGC();
 
     double GetIdleSharedSpaceAllocationThroughputPerMS() const
