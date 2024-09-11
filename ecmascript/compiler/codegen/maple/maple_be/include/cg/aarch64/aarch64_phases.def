@@ -18,8 +18,6 @@
  ADDTARGETPHASE("handlefunction", true);
  ADDTARGETPHASE("moveargs", true);
  /* Normal OPT PHASES */
- ADDTARGETPHASE("cgprepeephole", CGOptions::DoPrePeephole());
- ADDTARGETPHASE("prepeephole", CGOptions::DoPrePeephole())
  ADDTARGETPHASE("precfgo", false);
  ADDTARGETPHASE("cfgo", !GetMIRModule()->IsCModule() && CGOptions::DoCFGO());
 

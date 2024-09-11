@@ -33,41 +33,6 @@ public:
     void DoNormalOptimize(BB &bb, Insn &insn) override;
 };
 
-/* Find up identical two mem insns in local bb to eliminate redundancy, as following:
- * 1. str[BOI] + str[BOI] :
- *    Remove first str insn when the [MEM] operand is exactly same, and the [srcOpnd] of two str don't need to be same,
- *    and there is no redefinition of [srcOpnd] between two strs.
- * 2. str[BOI] + ldr[BOI] :
- *    Remove ldr insn when the [MEM] operand is exactly same and the [srcOpnd] of str
- *    is same as the [destOpnd] of ldr, and there is no redefinition of [srcOpnd] and [destOpnd] between two insns.
- * 3. ldr[BOI] + ldr[BOI] :
- *    Remove second ldr insn
- */
-class RemoveIdenticalLoadAndStorePattern : public CGPeepPattern {
-public:
-    RemoveIdenticalLoadAndStorePattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn)
-        : CGPeepPattern(cgFunc, currBB, currInsn)
-    {
-    }
-    ~RemoveIdenticalLoadAndStorePattern() override
-    {
-        prevIdenticalInsn = nullptr;
-    }
-    void Run(BB &bb, Insn &insn) override;
-    bool CheckCondition(Insn &insn) override;
-    std::string GetPatternName() override
-    {
-        return "RemoveIdenticalLoadAndStorePattern";
-    }
-
-private:
-    bool IsIdenticalMemOpcode(const Insn &curInsn, const Insn &checkedInsn) const;
-    Insn *FindPrevIdenticalMemInsn(const Insn &curInsn) const;
-    bool HasImplictSizeUse(const Insn &curInsn) const;
-    bool HasMemReferenceBetweenTwoInsns(const Insn &curInsn) const;
-    Insn *prevIdenticalInsn = nullptr;
-};
-
 /* ======== CGPeepPattern End ======== */
 /*
  * Looking for identical mem insn to eliminate.
@@ -332,41 +297,6 @@ private:
     Insn *prevInsn = nullptr;
     bool loadAfterStore = false;
     bool loadAfterLoad = false;
-};
-
-/*
- *    mov     w1, #34464
- *    movk    w1, #1,  LSL #16
- *    sdiv    w2, w0, w1
- *  ========>
- *    mov     w1, #34464         // may deleted if w1 not live anymore.
- *    movk    w1, #1,  LSL #16   // may deleted if w1 not live anymore.
- *    mov     w16, #0x588f
- *    movk    w16, #0x4f8b, LSL #16
- *    smull   x16, w0, w16
- *    asr     x16, x16, #32
- *    add     x16, x16, w0, SXTW
- *    asr     x16, x16, #17
- *    add     x2, x16, x0, LSR #31
- */
-class ReplaceDivToMultiPattern : public CGPeepPattern {
-public:
-    ReplaceDivToMultiPattern(CGFunc &cgFunc, BB &currBB, Insn &currInsn) : CGPeepPattern(cgFunc, currBB, currInsn) {}
-    ~ReplaceDivToMultiPattern() override
-    {
-        prevInsn = nullptr;
-        prePrevInsn = nullptr;
-    }
-    void Run(BB &bb, Insn &insn) override;
-    bool CheckCondition(Insn &insn) override;
-    std::string GetPatternName() override
-    {
-        return "ReplaceDivToMultiPattern";
-    }
-
-private:
-    Insn *prevInsn = nullptr;
-    Insn *prePrevInsn = nullptr;
 };
 
 /*
@@ -670,7 +600,6 @@ private:
         kCbnzToCbzOpt,
         kCsetCbzToBeqOpt,
         kContiLDRorSTRToSameMEMOpt,
-        kRemoveIncDecRefOpt,
         kInlineReadBarriersOpt,
         kReplaceDivToMultiOpt,
         kAndCmpBranchesToCsetOpt,
