@@ -22,6 +22,12 @@
 #include "libpandafile/bytecode_instruction.h"
 
 namespace panda::ecmascript::tooling {
+enum class MethodType : uint8_t {
+    OTHER_METHOD = 0,
+    NORMAL_METHOD,
+    SENDABLE_METHOD
+};
+
 class DropframeManager {
 public:
     DropframeManager() = default;
@@ -33,6 +39,7 @@ public:
     void MethodExit(JSThread *thread, JSHandle<Method> method);
     void DropLastFrame(JSThread *thread);
     uint32_t GetPromiseQueueSizeRecordOfTopFrame();
+    bool CheckIsSendableMethod();
 private:
     bool IsNewlexenvOpcode(BytecodeInstruction::Opcode op);
     bool IsStlexvarOpcode(BytecodeInstruction::Opcode op);
@@ -52,8 +59,15 @@ private:
     bool CheckExitMethodInfo(std::tuple<JSPandaFile*, panda_file::File::EntityId> methodInfo);
     void PopMethodInfo();
 
+    void PushMethodType(MethodType  methodType);
+    void PopMethodType();
+
+    void AddLexPropertiesToRecord(JSThread *thread, BytecodeInstruction &bcIns, uint16_t &newEnvCount,
+        std::set<std::pair<uint16_t, uint16_t>> &modifiedLexVarPos, JSHandle<JSTaggedValue> envHandle);
+
     std::stack<std::vector<std::tuple<JSHandle<JSTaggedValue>, uint16_t, JSHandle<JSTaggedValue>>>> modifiedLexVar_;
     std::stack<uint32_t> promiseQueueSizeRecord_;
+    std::stack<MethodType> methodType_;
     std::stack<std::tuple<JSPandaFile*, panda_file::File::EntityId>> methodInfo_;
 
     friend class DropframeManagerFriendTest;
