@@ -83,7 +83,7 @@ void BindMidCpuCore()
     cpu_set_t cpuset;
 
     CPU_ZERO(&cpuset);
-    for (int i = 0; i < 7; i++) { // 7: 0-3 little core, 4-6 mid core
+    for (size_t i = 0; i < 7; i++) { // 7: 0-3 little core, 4-6 mid core
         CPU_SET(i, &cpuset);
     }
 

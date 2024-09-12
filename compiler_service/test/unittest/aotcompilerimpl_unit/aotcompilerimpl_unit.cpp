@@ -106,6 +106,37 @@ public:
         AddExpandArgs(argVector);
     }
 
+    int32_t EcmascriptAotCompilerMock(const std::unordered_map<std::string, std::string> &argsMap,
+                                      std::vector<int16_t> &sigData)
+    {
+    #ifdef CODE_SIGN_ENABLE
+        if (!allowAotCompiler_) {
+            return ERR_AOT_COMPILER_CONNECT_FAILED;
+        }
+        if (argsMap.empty() || (PrepareArgs(argsMap) != ERR_OK)) {
+            return ERR_AOT_COMPILER_PARAM_FAILED;
+        }
+        int32_t ret = ERR_OK;
+        pid_t pid = fork();
+        if (pid == -1) {
+            return ERR_AOT_COMPILER_CALL_FAILED;
+        } else if (pid == 0) {
+            DropCapabilities();
+            sleep(2);  // 2: mock ark aot compiler run time with 2s
+            ExecuteInChildProcess();
+        } else {
+            mockChildPid_ = pid;
+            ExecuteInParentProcess(pid, ret);
+        }
+        if (ret == ERR_OK_NO_AOT_FILE) {
+            return ERR_OK;
+        }
+        return ret != ERR_OK ? ret : AOTLocalCodeSign(sigData);
+    #else
+        return ERR_AOT_COMPILER_SIGNATURE_DISABLE;
+    #endif
+    }
+
     int32_t AOTLocalCodeSignMock(std::vector<int16_t> &sigData) const
     {
         return AOTLocalCodeSign(sigData);
@@ -130,6 +161,14 @@ public:
     {
         AllowAotCompiler();
     }
+
+    pid_t GetChildPidMock()
+    {
+        return mockChildPid_;
+    }
+
+private:
+    pid_t mockChildPid_ = -1;
 };
 
 class AotCompilerImplTest : public testing::Test {
@@ -614,5 +653,62 @@ HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_027, TestSize.Level0)
     aotImplMock.HandleThermalLevelChanged(aotImplMock.AOT_COMPILE_STOP_LEVEL);
     aotImplMock.HandleThermalLevelChanged(aotImplMock.AOT_COMPILE_STOP_LEVEL - 1);
     EXPECT_TRUE(viewData);
+}
+
+/**
+ * @tc.name: AotCompilerImplTest_028
+ * @tc.desc: AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
+ *              child process terminate with signal SIGKILL;
+ *                  parent process receive SIGKILL signal;
+ * @tc.type: Func
+*/
+AotCompilerImplMock g_aotImplMock;
+int32_t g_aotRet = INVALID_ERR_CODE;
+
+void RunAotCompilerTask(void)
+{
+    std::unordered_map<std::string, std::string> argsMap(argsMapForTest);
+    std::vector<int16_t> sigData;
+    {
+        std::lock_guard<std::mutex> lock(aotCompilerMutex_);
+        int32_t aotRet = g_aotImplMock.EcmascriptAotCompilerMock(argsMap, sigData);
+        if (aotRet == ERR_AOT_COMPILER_CALL_CRASH     ||
+            aotRet == ERR_AOT_COMPILER_CALL_CANCELLED ||
+            aotRet == ERR_AOT_COMPILER_SIGNATURE_DISABLE) {
+            g_aotRet = aotRet;
+        }
+    }
+}
+
+void CancelAotCompilerTask(void)
+{
+    sleep(1); // 1: delay 1s
+    pid_t childPid = g_aotImplMock.GetChildPidMock();
+    if (childPid > 0) {
+        g_aotImplMock.InitStateMock(childPid);
+        (void)g_aotImplMock.StopAotCompiler();
+    }
+}
+
+void TestCancelAotCompilerTask()
+{
+    std::thread([]() {
+        RunAotCompilerTask();
+    }).detach();
+    std::thread([]() {
+        CancelAotCompilerTask();
+    }).detach();
+    sleep(3); // 3: delay 3s
+}
+
+HWTEST_F(AotCompilerImplTest, AotCompilerImplTest_028, TestSize.Level0)
+{
+    g_aotRet = INVALID_ERR_CODE;
+    TestCancelAotCompilerTask();
+#ifdef CODE_SIGN_ENABLE
+    EXPECT_EQ(g_aotRet, ERR_AOT_COMPILER_CALL_CANCELLED);
+#else
+    EXPECT_EQ(g_aotRet, ERR_AOT_COMPILER_SIGNATURE_DISABLE);
+#endif
 }
 } // namespace OHOS::ArkCompiler

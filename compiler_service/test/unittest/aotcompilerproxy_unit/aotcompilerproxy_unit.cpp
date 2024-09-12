@@ -331,7 +331,7 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_014, TestSize.Level0)
 {
     std::string sigData;
     std::string testData = "test";
-    auto func = [&](MessageParcel &reply) -> int32_t {
+    auto func = [testData](MessageParcel &reply) -> int32_t {
         reply.WriteInt32(ERR_OK);
         reply.WriteString16(Str8ToStr16(testData));
         return ERR_OK;
@@ -389,7 +389,7 @@ HWTEST_F(AotCompilerProxyTest, AotCompilerProxyTest_017, TestSize.Level0)
     std::string args;
     bool sigData = false;
     bool testData = true;
-    auto func = [=](MessageParcel &data, MessageParcel &reply) -> int32_t {
+    auto func = [testData](MessageParcel &data, MessageParcel &reply) -> int32_t {
         reply.WriteInt32(ERR_OK);
         reply.WriteBool(testData);
         return ERR_OK;

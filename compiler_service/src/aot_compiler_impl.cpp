@@ -113,12 +113,12 @@ void AotCompilerImpl::DropCapabilities() const
     int32_t bundleUid = 0;
     int32_t bundleGid = 0;
     GetBundleId(bundleUid, bundleGid);
-    if (setuid(bundleUid)) {
-        LOG_SA(ERROR) << "dropCapabilities setuid failed : " << strerror(errno);
-        exit(-1);
-    }
     if (setgid(bundleGid)) {
         LOG_SA(ERROR) << "dropCapabilities setgid failed : " << strerror(errno);
+        exit(-1);
+    }
+    if (setuid(bundleUid)) {
+        LOG_SA(ERROR) << "dropCapabilities setuid failed : " << strerror(errno);
         exit(-1);
     }
     struct __user_cap_header_struct capHeader;
@@ -203,7 +203,7 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
     } else if (WIFSIGNALED(status)) {
         int signalNumber = WTERMSIG(status);
         LOG_SA(WARN) << "child process terminated by signal: " << signalNumber;
-        ret = ERR_AOT_COMPILER_CALL_FAILED;
+        ret = signalNumber == SIGKILL ? ERR_AOT_COMPILER_CALL_CANCELLED : ERR_AOT_COMPILER_CALL_CRASH;
     } else if (WIFSTOPPED(status)) {
         int signalNumber = WSTOPSIG(status);
         LOG_SA(WARN) << "child process was stopped by signal: " << signalNumber;
@@ -248,7 +248,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     if (ret == ERR_OK_NO_AOT_FILE) {
         return ERR_OK;
     }
-    return ret != ERR_OK ? ERR_AOT_COMPILER_CALL_FAILED : AOTLocalCodeSign(sigData);
+    return ret != ERR_OK ? ret : AOTLocalCodeSign(sigData);
 #else
     LOG_SA(ERROR) << "no need to AOT compile when code signature disable";
     return ERR_AOT_COMPILER_SIGNATURE_DISABLE;
