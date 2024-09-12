@@ -2042,6 +2042,96 @@ HWTEST_F_L0(JSNApiTests, AotTrigger)
     ASSERT_EQ(trigger, 0);
 }
 
+HWTEST_F_L0(JSNApiTests, JSNApiInternalsTest)
+{
+#define CHECK_VALUE(VAL) ASSERT_EQ(JSValueRefInternals::VAL, JSTaggedValue::VAL)
+    CHECK_VALUE(BIT_PER_BYTE);
+    CHECK_VALUE(TAG_BITS_SIZE);
+    CHECK_VALUE(TAG_BITS_SHIFT);
+    CHECK_VALUE(TAG_MARK);
+    CHECK_VALUE(TAG_INT);
+    CHECK_VALUE(TAG_INT32_INC_MAX);
+    CHECK_VALUE(TAG_INT32_DEC_MIN);
+    CHECK_VALUE(TAG_OBJECT);
+    CHECK_VALUE(TAG_WEAK);
+    CHECK_VALUE(TAG_NULL);
+    CHECK_VALUE(TAG_SPECIAL);
+    CHECK_VALUE(TAG_BOOLEAN);
+    CHECK_VALUE(TAG_EXCEPTION);
+    CHECK_VALUE(TAG_OPTIMIZED_OUT);
+    CHECK_VALUE(TAG_SPECIAL_MASK);
+    CHECK_VALUE(TAG_BOOLEAN_MASK);
+    CHECK_VALUE(TAG_HEAPOBJECT_MASK);
+    CHECK_VALUE(TAG_WEAK_MASK);
+    CHECK_VALUE(VALUE_HOLE);
+    CHECK_VALUE(VALUE_NULL);
+    CHECK_VALUE(VALUE_FALSE);
+    CHECK_VALUE(VALUE_TRUE);
+    CHECK_VALUE(VALUE_UNDEFINED);
+    CHECK_VALUE(VALUE_EXCEPTION);
+    CHECK_VALUE(VALUE_ZERO);
+    CHECK_VALUE(VALUE_OPTIMIZED_OUT);
+    CHECK_VALUE(INT_SIGN_BIT_OFFSET);
+    CHECK_VALUE(DOUBLE_ENCODE_OFFSET_BIT);
+    CHECK_VALUE(DOUBLE_ENCODE_OFFSET);
+    CHECK_VALUE(VALUE_POSITIVE_ZERO);
+    CHECK_VALUE(VALUE_NEGATIVE_ZERO);
+#undef CHECK_VALUE
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApiInternalsTestNumberRef)
+{
+    // double
+    TestNumberRef(0., JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+    TestNumberRef(NAN, base::bit_cast<TaggedType>(ecmascript::base::NAN_VALUE) + JSTaggedValue::DOUBLE_ENCODE_OFFSET);
+
+    // int32_t
+    TestNumberRef(static_cast<int32_t>(0), JSTaggedValue::TAG_INT);
+    TestNumberRef(INT32_MIN, static_cast<JSTaggedType>(INT32_MIN) | JSTaggedValue::TAG_INT);
+    TestNumberRef(INT32_MAX, static_cast<JSTaggedType>(INT32_MAX) | JSTaggedValue::TAG_INT);
+
+    // uint32_t
+    TestNumberRef(static_cast<uint32_t>(0), JSTaggedValue::TAG_INT);
+    TestNumberRef(static_cast<uint32_t>(INT32_MAX), static_cast<uint32_t>(INT32_MAX) | JSTaggedValue::TAG_INT);
+    auto val = static_cast<uint32_t>(INT32_MAX + 1UL);
+    TestNumberRef(val, ConvertDouble(static_cast<double>(val)));
+    TestNumberRef(UINT32_MAX, ConvertDouble(static_cast<double>(UINT32_MAX)));
+
+    // int64_t
+    TestNumberRef(static_cast<int64_t>(INT32_MIN), static_cast<JSTaggedType>(INT32_MIN) | JSTaggedValue::TAG_INT);
+    TestNumberRef(static_cast<int64_t>(INT32_MAX), static_cast<JSTaggedType>(INT32_MAX) | JSTaggedValue::TAG_INT);
+    TestNumberRef(INT64_MIN, ConvertDouble(static_cast<double>(INT64_MIN)));
+    TestNumberRef(INT64_MAX, ConvertDouble(static_cast<double>(INT64_MAX)));
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApiInternalsTestBooleanRef)
+{
+    LocalScope scope(vm_);
+    bool input = true;
+    Local<BooleanRef> res = BooleanRef::New(vm_, input);
+    EXPECT_TRUE(res->IsBoolean());
+    EXPECT_TRUE(res->BooleaValue(vm_));
+    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*res).GetRawData(), JSTaggedValue::VALUE_TRUE);
+
+    input = false;
+    res = BooleanRef::New(vm_, input);
+    EXPECT_TRUE(res->IsBoolean());
+    EXPECT_FALSE(res->BooleaValue(vm_));
+    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*res).GetRawData(), JSTaggedValue::VALUE_FALSE);
+}
+
+HWTEST_F_L0(JSNApiTests, JSNApiInternalsTestNullUndefined)
+{
+    LocalScope scope(vm_);
+    Local<JSValueRef> null = JSValueRef::Null(vm_);
+    ASSERT_TRUE(null->IsNull());
+    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*null).GetRawData(), JSTaggedValue::VALUE_NULL);
+
+    Local<JSValueRef> undefined = JSValueRef::Undefined(vm_);
+    ASSERT_TRUE(undefined->IsUndefined());
+    ASSERT_EQ(JSNApiHelper::ToJSTaggedValue(*undefined).GetRawData(), JSTaggedValue::VALUE_UNDEFINED);
+}
+
 /**
  * @tc.number: ffi_interface_api_048
  * @tc.name: FunctionRef_New_GetFunctionPrototype
