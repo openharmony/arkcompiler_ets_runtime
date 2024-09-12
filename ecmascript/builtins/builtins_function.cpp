@@ -49,18 +49,18 @@ static size_t MakeArgListWithHole(JSThread *thread, TaggedArray *argv, int lengt
     if (length <= 0) {
         return 0;
     }
-    size_t newlength = static_cast<size_t>(length);
-    size_t arryLength = argv->GetLength();
-    if (newlength > arryLength) {
-        length = static_cast<int>(arryLength);
+    uint32_t inputLength = static_cast<uint32_t>(length);
+    uint32_t arrayLength = argv->GetLength();
+    if (inputLength > arrayLength) {
+        inputLength = arrayLength;
     }
-    for (size_t index = 0; index < newlength; ++index) {
+    for (uint32_t index = 0; index < inputLength; ++index) {
         JSTaggedValue value = argv->Get(thread, index);
         if (value.IsHole()) {
             argv->Set(thread, index, JSTaggedValue::Undefined());
         }
     }
-    return length;
+    return static_cast<size_t>(inputLength);
 }
 
 static std::pair<TaggedArray*, size_t> BuildArgumentsListFast(JSThread *thread,
