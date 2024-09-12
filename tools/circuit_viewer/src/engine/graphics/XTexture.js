@@ -17,7 +17,9 @@ import { gl } from '../GLFrame.js';
 
 export class XTexture {
   static gi() {
-    if (XTexture.pinstance_ === null) XTexture.pinstance_ = new XTexture();
+    if (XTexture.pinstance_ === null) {
+      XTexture.pinstance_ = new XTexture();
+    }
     return XTexture.pinstance_;
   }
   constructor() {
@@ -103,10 +105,16 @@ export class XTexture {
     }
   }
   TmpCut(rid, x = 0, y = 0, w = -1, h = -1, ww = 1024, hh = 1024) {
-    if (this.ximages[rid].stat !== 1) return -1;
+    if (this.ximages[rid].stat !== 1) {
+      return -1;
+    }
 
-    if (w === -1) w = ww;
-    if (h === -1) h = hh;
+    if (w === -1) {
+      w = ww;
+    }
+    if (h === -1) {
+      h = hh;
+    }
     this.allCuts[this.tmpCutid] = {
       rid: rid,
       x: x,
@@ -126,10 +134,18 @@ export class XTexture {
     return this.tmpCutid - 1;
   }
   makeCut(rid, x = 0, y = 0, w = -1, h = -1, ww = -1, hh = -1) {
-    if (ww === -1) ww = this.ximages[rid].w;
-    if (hh === -1) hh = this.ximages[rid].h;
-    if (w ===-1) w = ww;
-    if (h === -1) h = hh;
+    if (ww === -1) {
+      ww = this.ximages[rid].w;
+    }
+    if (hh === -1) {
+      hh = this.ximages[rid].h;
+    }
+    if (w ===-1) {
+      w = ww;
+    }
+    if (h === -1) {
+      h = hh;
+    }
     this.allCuts[this.aiCutid] = {
       rid: rid,
       x: x,
@@ -198,7 +214,9 @@ export class XTexture {
       h -= 1;
       for (x = 0; x < 128; x++) {
         let p = (h * 1024 + x) * 4;
-        if (imgd[p] !== 0) break;
+        if (imgd[p] !== 0) {
+          break;
+        }
       }
     }
     let y = h;
@@ -206,7 +224,9 @@ export class XTexture {
       w -= 1;
       for (y = 0; y < h; y++) {
         let p = (y * 1024 + w) * 4;
-        if (imgd[p] !== 0) break;
+        if (imgd[p] !== 0) {
+          break;
+        }
       }
     }
     return this.textCtx.getImageData(0, 0, w + 1, h + 1);
