@@ -23,8 +23,8 @@ class MockAotRuntimeInfo : public ecmascript::ohos::AotRuntimeInfo {
 public:
     static constexpr const char *SANBOX_DIR = "ohos-crash-test";
     static constexpr const char *AOT_RUNTIME_INFO = "aot_runtime_info.log";
-
     MockAotRuntimeInfo();
+    MockAotRuntimeInfo(bool isRuntimeInfoCrashTest) : isRuntimeInfoCrashTest_(isRuntimeInfoCrashTest) {}
     ~MockAotRuntimeInfo();
 
     bool GetRuntimeBuildId(char *buildId, int length) const override;
@@ -33,7 +33,15 @@ public:
 
     bool BuildRuntimeInfoPart(char *runtimeInfoPart, const char *soBuildId, const char *timestamp,
         ecmascript::ohos::RuntimeInfoType type) const;
-    void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE], int length) const;
+    void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE], int length) const override;
+
+protected:
+    bool IsRuntimeInfoCrashTest() const
+    {
+        return isRuntimeInfoCrashTest_;
+    }
+
+    bool isRuntimeInfoCrashTest_ = false;
 };
 };  // namespace panda::test
 #endif // MOCK_ECMASCRIPT_AOT_RUNTIME_INFO_H

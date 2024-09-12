@@ -57,4 +57,25 @@ bool MockAotRuntimeInfo::BuildRuntimeInfoPart(char *runtimeInfoPart, const char 
 {
     return ecmascript::ohos::AotRuntimeInfo::BuildRuntimeInfoPart(runtimeInfoPart, soBuildId, timestamp, type);
 }
+
+void MockAotRuntimeInfo::SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE], int length) const
+    {
+        int fd = open(realOutPath,  O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (fd == -1) {
+            return;
+        }
+        for (int i = 0; i < length && lines[i] != NULL; i++) {
+            if (lines[i][0] != '\0') {
+                write(fd, lines[i], strlen(lines[i]));
+                if (IsRuntimeInfoCrashTest()) {
+                    char buffer[BUFFER_SIZE];
+                    memset_s(buffer, BUFFER_SIZE, 'a', BUFFER_SIZE);
+                    write(fd, buffer, strlen(buffer));
+                    continue;
+                }
+                write(fd, "\n", 1);
+            }
+        }
+        close(fd);
+    }
 };
