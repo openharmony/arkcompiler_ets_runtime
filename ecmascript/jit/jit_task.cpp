@@ -99,8 +99,7 @@ void JitTask::InstallOsrCode(JSHandle<MachineCode> &codeObj)
         LOG_JIT(DEBUG) << "[OSR] Empty profile for installing code:" << GetMethodName();
         return;
     }
-    FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(codeObj->GetFuncEntryDes());
-    jsFunction_->SetIsCompiledFastCall(funcEntryDes->isFastCall_);
+    jsFunction_->SetIsCompiledFastCall(codeObj->GetIsFastCall());
     JSHandle<ProfileTypeInfo> profileInfoHandle =
         JSHandle<ProfileTypeInfo>::Cast(JSHandle<JSTaggedValue>(hostThread_, profile));
     uint32_t slotId = profileInfoHandle->GetIcSlotToOsrLength() - 1; // 1 : get last slot
@@ -317,8 +316,7 @@ void JitTask::InstallCodeByCompilerTier(JSHandle<MachineCode> &machineCodeObj,
 {
     uintptr_t codeAddr = machineCodeObj->GetFuncAddr();
     if (compilerTier_ == CompilerTier::FAST) {
-        FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(machineCodeObj->GetFuncEntryDes());
-        jsFunction_->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
+        jsFunction_->SetCompiledFuncEntry(codeAddr, machineCodeObj->GetIsFastCall());
         methodHandle->SetDeoptThreshold(hostThread_->GetEcmaVM()->GetJSOptions().GetDeoptThreshold());
         jsFunction_->SetMachineCode(hostThread_, machineCodeObj);
         jsFunction_->SetJitMachineCodeCache(hostThread_, machineCodeObj);

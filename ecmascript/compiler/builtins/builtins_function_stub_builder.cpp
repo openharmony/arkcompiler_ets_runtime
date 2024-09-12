@@ -717,7 +717,7 @@ void BuiltinsFunctionStubBuilder::InitializeFunctionWithMethod(GateRef glue,
     // 2) define func with the deopted method, set the AOTToAsmInterpBridge
     Bind(&tryInitFuncCodeEntry);
     {
-        SetCodeEntryToFunction(glue, func, method);
+        SetCodeEntryToFunctionFromMethod(glue, func, method);
         Jump(&exit);
     }
 

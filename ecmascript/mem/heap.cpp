@@ -2580,7 +2580,7 @@ std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> Heap::CalCal
          code->GetInstructionsSize() + code->GetStackMapOrOffsetTableSize())) { // baseline code
         return {};
     }
-    return code->CalCallSiteInfo(retAddr);
+    return code->CalCallSiteInfo();
 };
 
 GCListenerId Heap::AddGCListener(FinishGCListener listener, void *data)

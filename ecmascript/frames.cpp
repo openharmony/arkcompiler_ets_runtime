@@ -117,7 +117,7 @@ AOTFileInfo::CallSiteInfo FrameIterator::TryCalCallSiteInfoFromMachineCode(uintp
         auto machineCode = thread_->GetEcmaVM()->GetHeap()->GetMachineCodeObject(retAddr);
         ASSERT(machineCode != nullptr);
         const_cast<FrameIterator*>(this)->machineCode_ = reinterpret_cast<JSTaggedType>(machineCode);
-        return reinterpret_cast<MachineCode*>(machineCode_)->CalCallSiteInfo(retAddr);
+        return reinterpret_cast<MachineCode*>(machineCode_)->CalCallSiteInfo();
     }
     return {};
 }

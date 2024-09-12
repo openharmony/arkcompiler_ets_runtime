@@ -734,6 +734,7 @@ public:
     void UpdateValueInDict(GateRef glue, GateRef elements, GateRef index, GateRef value);
     GateRef GetBitMask(GateRef bitoffset);
     GateRef IntPtrEuqal(GateRef x, GateRef y);
+    GateRef IntPtrNotEqual(GateRef x, GateRef y);
     void SetValueWithAttr(GateRef glue, GateRef obj, GateRef offset, GateRef key, GateRef value, GateRef attr);
     void SetValueWithRep(GateRef glue, GateRef obj, GateRef offset, GateRef value, GateRef rep, Label *repChange);
     void VerifyBarrier(GateRef glue, GateRef obj, GateRef offset, GateRef value);
@@ -790,7 +791,8 @@ public:
                              MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetMethodToFunction(GateRef glue, GateRef function, GateRef value,
                              MemoryAttribute mAttr = MemoryAttribute::Default());
-    void SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetCodeEntryToFunctionFromMethod(GateRef glue, GateRef function, GateRef value);
+    void SetCodeEntryToFunctionFromFuncEntry(GateRef glue, GateRef function, GateRef value);
     void SetCompiledCodeFlagToFunctionFromMethod(GateRef glue, GateRef function, GateRef value);
     void SetLengthToFunction(GateRef glue, GateRef function, GateRef value);
     void SetRawProfileTypeInfoToFunction(GateRef glue, GateRef function, GateRef value,
@@ -801,6 +803,11 @@ public:
     void SetSendableEnvToModule(GateRef glue, GateRef module, GateRef value,
                                 MemoryAttribute mAttr = MemoryAttribute::Default());
     void SetCompiledCodeFlagToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetCompiledFastCallFlagToFunction(GateRef glue, GateRef function, GateRef value);
+    void SetCompiledFuncEntry(GateRef glue, GateRef jsFunc, GateRef codeEntry, GateRef isFastCall);
+    GateRef GetFuncEntryDes(GateRef glue, GateRef machineCode, GateRef codeAddr);
+    GateRef GetFuncEntryDesAddress(GateRef machineCode);
+    GateRef IsAlign(GateRef address, GateRef alignByte);
     void SetTaskConcurrentFuncFlagToFunction(GateRef glue, GateRef function, GateRef value);
     void SetBitFieldToFunction(GateRef glue, GateRef function, GateRef value);
     void SetMachineCodeToFunction(GateRef glue, GateRef function, GateRef value,
@@ -1014,6 +1021,9 @@ public:
                                              GateRef profileTypeInfo, GateRef slotId);
     GateRef Loadlocalmodulevar(GateRef glue, GateRef index, GateRef module);
     GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);
+    void TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
+    GateRef GetIsFastCall(GateRef machineCode);
+
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode Op>

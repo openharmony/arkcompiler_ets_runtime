@@ -902,6 +902,12 @@ GateRef ProfilerStubBuilder::GetJitHotnessCntOffset(GateRef profileTypeInfo)
     return PtrAdd(thresholdOffset, IntPtr(ProfileTypeInfo::JIT_CNT_OFFSET_FROM_THRESHOLD));
 }
 
+void ProfilerStubBuilder::SetJitHotnessCnt(GateRef glue, GateRef profileTypeInfo, GateRef hotnessCnt)
+{
+    GateRef hotnessCntOffset = GetJitHotnessCntOffset(profileTypeInfo);
+    Store(VariableType::INT16(), glue, profileTypeInfo, hotnessCntOffset, hotnessCnt);
+}
+
 GateRef ProfilerStubBuilder::GetJitHotnessCnt(GateRef profileTypeInfo)
 {
     GateRef hotnessCntOffset = GetJitHotnessCntOffset(profileTypeInfo);

@@ -321,6 +321,7 @@ public:
     static void UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<FunctionTemplate> literalFunc,
                                           JSHandle<JSFunction> targetFunc);
     void SetJitMachineCodeCache(const JSThread *thread, const JSHandle<MachineCode> &machineCode);
+    void ClearMachineCode(const JSThread *thread);
 
     JSTaggedValue GetNativeFunctionExtraInfo() const;
     CString GetRecordName() const;

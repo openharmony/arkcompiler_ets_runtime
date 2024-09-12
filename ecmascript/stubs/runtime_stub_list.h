@@ -308,7 +308,6 @@ namespace panda::ecmascript {
     V(PGOPreDump)                               \
     V(JitCompile)                               \
     V(CountInterpExecFuncs)                     \
-    V(JitReuseCompiledFunc)                     \
     V(BaselineJitCompile)                       \
     V(UpdateHotnessCounterWithProf)             \
     V(GetModuleNamespaceByIndex)                \
