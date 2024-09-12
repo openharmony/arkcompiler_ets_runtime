@@ -524,7 +524,7 @@ void AOTFileGenerator::CompileLatestModuleThenDestroy(bool isJit)
         lastModulePC = AlignUp(lastModulePC, AOTFileInfo::PAGE_ALIGN);
         lmirModule->GetModule()->SetLastModulePC(lastModulePC);
         // pass triple to litecg
-        lmirModule->GetModule()->SetIsAArch64(isAArch64());
+        lmirModule->GetModule()->SetIsAArch64(IsAArch64());
     }
 #endif
     ASSERT(GetModuleVecSize() > 0);
@@ -711,7 +711,7 @@ void AOTFileGenerator::JitCreateLitecgModule()
 #endif
 }
 
-bool AOTFileGenerator::isAArch64() const
+bool AOTFileGenerator::IsAArch64() const
 {
     return cfg_.IsAArch64();
 }

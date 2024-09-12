@@ -244,7 +244,7 @@ group("ark_aot_ts_test") {
     "pgo_call_deopt_js",
     "pgo_call_recursive_js",
 
-    #"pgo_call_with_repetitive_method_id",
+    "pgo_call_with_repetitive_method_id",
     "pgo_char_to_string_deopt",
     "pgo_on_heap",
     "pgo_store_deopt",
@@ -323,10 +323,10 @@ group("ark_aot_ts_test") {
     "builtins_number",
     "builtins_parseint",
     "constructor",
-    "proxy_fast_call",
     "shared_module",
-    "func_profile_type_info",
+    "proxy_fast_call",
     "webkit_call_convention",
+    "func_profile_type_info",
   ]
 
   if (!is_debug) {
