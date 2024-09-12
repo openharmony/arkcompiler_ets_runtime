@@ -901,8 +901,7 @@ void BytecodeCircuitBuilder::NewJump(BytecodeRegion &bb)
     GateRef state = frameStateBuilder_.GetCurrentState();
     GateRef depend = frameStateBuilder_.GetCurrentDepend();
     size_t numValueInputs = bytecodeInfo.ComputeValueInputCount();
-    if (bytecodeInfo.IsCondJump()) { // 2: two succ
-        ASSERT(bb.succs.size() == 2);
+    if (bytecodeInfo.IsCondJump() && bb.succs.size() == 2) { // 2: two succ
         size_t pcOffset = GetPcOffset(iterator.Index());
         auto methodOffset = method_->GetMethodId().GetOffset();
         auto meta = circuit_->JSBytecode(
