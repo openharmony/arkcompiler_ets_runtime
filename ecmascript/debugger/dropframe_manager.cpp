@@ -76,48 +76,62 @@ std::pair<uint16_t, uint16_t> DropframeManager::ReadStlexvarParams(const uint8_t
 void DropframeManager::MethodEntry(JSThread *thread, JSHandle<Method> method, JSHandle<JSTaggedValue> envHandle)
 {
     std::set<std::pair<uint16_t, uint16_t>> modifiedLexVarPos;
-    NewLexModifyRecordLevel();
     const JSPandaFile* methodJsPandaFile = method->GetJSPandaFile();
     panda_file::File::EntityId methodId = method->GetMethodId();
     PushMethodInfo(std::make_tuple(const_cast<JSPandaFile *>(methodJsPandaFile), methodId));
-    if (!envHandle->IsLexicalEnv()) {
+    if (method->IsSendableMethod()) {
+        PushMethodType(MethodType::SENDABLE_METHOD);
         return;
     }
+    NewLexModifyRecordLevel();
+    PushPromiseQueueSizeRecord(thread);
+    if (!envHandle->IsLexicalEnv()) {
+        PushMethodType(MethodType::OTHER_METHOD);
+        return;
+    }
+    PushMethodType(MethodType::NORMAL_METHOD);
     uint32_t codeSize = method->GetCodeSize();
     uint16_t newEnvCount = 0;
     auto bcIns = BytecodeInstruction(method->GetBytecodeArray());
     auto bcInsLast = bcIns.JumpTo(codeSize);
     while (bcIns.GetAddress() != bcInsLast.GetAddress()) {
-        BytecodeInstruction::Opcode op = bcIns.GetOpcode();
-        if (IsNewlexenvOpcode(op)) {
-            newEnvCount++;
-        } else if (IsStlexvarOpcode(op)) {
-            std::pair<uint16_t, uint16_t> lexVarPos = ReadStlexvarParams(bcIns.GetAddress(), op);
-            uint16_t level;
-            uint16_t slot;
-            std::tie(level, slot) = lexVarPos;
-            JSTaggedValue env = envHandle.GetTaggedValue();
-            for (uint16_t i = 0; ; i++) {
-                if ((level < newEnvCount || i >= level - newEnvCount) &&
-                    slot < LexicalEnv::Cast(env.GetTaggedObject())->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH &&
-                    !modifiedLexVarPos.count({i, slot})) {
-                    JSTaggedValue value = LexicalEnv::Cast(env.GetTaggedObject())->GetProperties(slot);
-                    EmplaceLexModifyRecord(thread, env, slot, value);
-                    modifiedLexVarPos.insert({i, slot});
-                }
-                if (i >= level) {
-                    break;
-                }
-                JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
-                if (!taggedParentEnv.IsLexicalEnv()) {
-                    break;
-                }
-                env = taggedParentEnv;
-            }
-        }
+        AddLexPropertiesToRecord(thread, bcIns, newEnvCount, modifiedLexVarPos, envHandle);
         bcIns = bcIns.GetNext();
     }
-    PushPromiseQueueSizeRecord(thread);
+}
+
+void DropframeManager::AddLexPropertiesToRecord(JSThread *thread, BytecodeInstruction &bcIns, uint16_t &newEnvCount,
+    std::set<std::pair<uint16_t, uint16_t>> &modifiedLexVarPos, JSHandle<JSTaggedValue> envHandle)
+{
+    BytecodeInstruction::Opcode op = bcIns.GetOpcode();
+    if (IsNewlexenvOpcode(op)) {
+        newEnvCount++;
+        return;
+    }
+    if (IsStlexvarOpcode(op)) {
+        std::pair<uint16_t, uint16_t> lexVarPos = ReadStlexvarParams(bcIns.GetAddress(), op);
+        uint16_t level;
+        uint16_t slot;
+        std::tie(level, slot) = lexVarPos;
+        JSTaggedValue env = envHandle.GetTaggedValue();
+        for (uint16_t i = 0; ; i++) {
+            if ((level < newEnvCount || i >= level - newEnvCount) &&
+                slot < LexicalEnv::Cast(env.GetTaggedObject())->GetLength() - LexicalEnv::RESERVED_ENV_LENGTH &&
+                !modifiedLexVarPos.count({i, slot})) {
+                JSTaggedValue value = LexicalEnv::Cast(env.GetTaggedObject())->GetProperties(slot);
+                EmplaceLexModifyRecord(thread, env, slot, value);
+                modifiedLexVarPos.insert({i, slot});
+            }
+            if (i >= level) {
+                break;
+            }
+            JSTaggedValue taggedParentEnv = LexicalEnv::Cast(env.GetTaggedObject())->GetParentEnv();
+            if (!taggedParentEnv.IsLexicalEnv()) {
+                break;
+            }
+            env = taggedParentEnv;
+        }
+    }
 }
 
 void DropframeManager::MethodExit(JSThread *thread, [[maybe_unused]] JSHandle<Method> method)
@@ -128,6 +142,11 @@ void DropframeManager::MethodExit(JSThread *thread, [[maybe_unused]] JSHandle<Me
         return;
     }
     PopMethodInfo();
+    if (CheckIsSendableMethod()) {
+        PopMethodType();
+        return;
+    }
+    PopMethodType();
     MergeLexModifyRecordOfTopFrame(thread);
     PopPromiseQueueSizeRecord();
 }
@@ -146,6 +165,7 @@ void DropframeManager::DropLastFrame(JSThread *thread)
         LexicalEnv::Cast(env.GetTaggedObject())->SetProperties(thread, slot, valueHandle.GetTaggedValue());
     }
     PopMethodInfo();
+    PopMethodType();
     RemoveLexModifyRecordOfTopFrame(thread);
     PopPromiseQueueSizeRecord();
 
@@ -230,6 +250,11 @@ void DropframeManager::MergeLexModifyRecordOfTopFrame(JSThread *thread)
     std::vector<std::tuple<JSHandle<JSTaggedValue>, uint16_t, JSHandle<JSTaggedValue>>> lexModifyRecord;
     lexModifyRecord = modifiedLexVar_.top();
     modifiedLexVar_.pop();
+    if (!modifiedLexVar_.empty() && modifiedLexVar_.top().empty()) {
+        modifiedLexVar_.pop();
+        modifiedLexVar_.push(lexModifyRecord);
+        return;
+    }
     for (const auto &item : lexModifyRecord) {
         JSHandle<JSTaggedValue> envHandle;
         uint16_t slot;
@@ -297,6 +322,24 @@ void DropframeManager::PopMethodInfo()
 {
     if (!methodInfo_.empty()) {
         methodInfo_.pop();
+    }
+}
+
+void DropframeManager::PushMethodType(MethodType methodType)
+{
+    methodType_.push(methodType);
+}
+
+bool DropframeManager::CheckIsSendableMethod()
+{
+    ASSERT(!methodType_.empty());
+    return methodType_.top() == MethodType::SENDABLE_METHOD;
+}
+
+void DropframeManager::PopMethodType()
+{
+    if (!methodType_.empty()) {
+        methodType_.pop();
     }
 }
 }
