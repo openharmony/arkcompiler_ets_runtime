@@ -1473,7 +1473,7 @@ void X64Emitter::EmitFunctionHeader(CGFunc &cgFunc)
         funcAttr = kSAWeak;
     } else if (funcSymbol->GetFunction()->GetAttr(FUNCATTR_local)) {
         funcAttr = kSALocal;
-    } else if (!cgFunc.GetCG()->GetMIRModule()->IsCModule()) {
+    } else {
         funcAttr = kSAHidden;
     }
     if (cgFunc.GetFunction().GetAttr(FUNCATTR_section)) {
@@ -1567,18 +1567,7 @@ uint64 X64Emitter::EmitArray(MIRConst &mirConst, CG &cg, bool belongsToDataSec)
     for (size_t i = 0; i < uNum; ++i) {
         MIRConst *elemConst = arrayCt.GetConstVecItem(i);
         if (IsPrimitiveScalar(elemConst->GetType().GetPrimType())) {
-            if (cg.GetMIRModule()->IsCModule()) {
-                bool strLiteral = false;
-                if (arrayType.GetDim() == 1) {
-                    MIRType *ety = arrayType.GetElemType();
-                    if (ety->GetPrimType() == PTY_i8 || ety->GetPrimType() == PTY_u8) {
-                        strLiteral = true;
-                    }
-                }
-                valueSize += EmitSingleElement(*elemConst, belongsToDataSec, !strLiteral);
-            } else {
-                valueSize += EmitSingleElement(*elemConst, belongsToDataSec);
-            }
+            valueSize += EmitSingleElement(*elemConst, belongsToDataSec);
         } else if (elemConst->GetType().GetKind() == kTypeArray) {
             valueSize += EmitArray(*elemConst, cg, belongsToDataSec);
         } else if (elemConst->GetKind() == kConstAddrofFunc) {

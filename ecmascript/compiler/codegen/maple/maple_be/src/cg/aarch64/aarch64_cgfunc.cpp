@@ -406,11 +406,7 @@ void AArch64CGFunc::SelectCopyRegOpnd(Operand &dest, PrimType dtype, Operand::Op
     DEBUG_ASSERT(!isPostIndexed, "memOpnd should not be post-index type");
     DEBUG_ASSERT(!isPreIndexed, "memOpnd should not be pre-index type");
     bool isInRange = false;
-    if (!GetMirModule().IsCModule()) {
-        isInRange = IsImmediateValueInRange(strMop, immVal, is64Bits, isIntactIndexed, isPostIndexed, isPreIndexed);
-    } else {
-        isInRange = IsOperandImmValid(strMop, memOpnd, kInsnSecondOpnd);
-    }
+    isInRange = IsImmediateValueInRange(strMop, immVal, is64Bits, isIntactIndexed, isPostIndexed, isPreIndexed);
     bool isMopStr = IsStoreMop(strMop);
     if (isInRange || !isMopStr) {
         GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(strMop, src, dest));
@@ -3605,13 +3601,6 @@ void AArch64CGFunc::SelectCall(CallNode &callNode)
     }
 
     GetFunction().SetHasCall();
-    if (GetMirModule().IsCModule()) { /* do not mark abort BB in C at present */
-        if (fsym->GetName() == "__builtin_unreachable") {
-            GetCurBB()->ClearInsns();
-            GetCurBB()->SetUnreachable(true);
-        }
-        return;
-    }
 }
 
 void AArch64CGFunc::SelectIcall(IcallNode &icallNode)

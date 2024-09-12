@@ -56,62 +56,6 @@ void X64MemLayout::SetSizeAlignForTypeIdx(uint32 typeIdx, uint32 &size, uint32 &
     size = GlobalTables::GetTypeTable().GetTypeFromTyIdx(typeIdx)->GetSize();
 }
 
-void X64MemLayout::LayoutVarargParams()
-{
-    uint32 nIntRegs = 0;
-    uint32 nFpRegs = 0;
-    X64CallConvImpl parmlocator(be);
-    CCLocInfo ploc;
-    MIRFunction *func = mirFunction;
-    if (be.GetMIRModule().IsCModule() && func->GetAttr(FUNCATTR_varargs)) {
-        for (uint32 i = 0; i < func->GetFormalCount(); i++) {
-            if (i == 0) {
-                if (be.HasFuncReturnType(*func)) {
-                    TyIdx tidx = be.GetFuncReturnType(*func);
-                    if (GlobalTables::GetTypeTable().GetTypeFromTyIdx(tidx.GetIdx())->GetSize() <= k16ByteSize) {
-                        continue;
-                    }
-                }
-            }
-            MIRType *ty = func->GetNthParamType(i);
-            parmlocator.LocateNextParm(*ty, ploc, i == 0, func);
-            if (ploc.reg0 != kRinvalid) {
-                /* The range here is R0 to R15. However, not all registers in the range are parameter registers.
-                 * If necessary later, you can add parameter register checks. */
-                if (ploc.reg0 >= R0 && ploc.reg0 <= R15) {
-                    nIntRegs++;
-                } else if (ploc.reg0 >= V0 && ploc.reg0 <= V7) {
-                    nFpRegs++;
-                }
-            }
-            if (ploc.reg1 != kRinvalid) {
-                if (ploc.reg1 >= R0 && ploc.reg1 <= R15) {
-                    nIntRegs++;
-                } else if (ploc.reg1 >= V0 && ploc.reg1 <= V7) {
-                    nFpRegs++;
-                }
-            }
-            if (ploc.reg2 != kRinvalid) {
-                if (ploc.reg2 >= R0 && ploc.reg2 <= R15) {
-                    nIntRegs++;
-                } else if (ploc.reg2 >= V0 && ploc.reg2 <= V7) {
-                    nFpRegs++;
-                }
-            }
-            if (ploc.reg3 != kRinvalid) {
-                if (ploc.reg3 >= R0 && ploc.reg3 <= R15) {
-                    nIntRegs++;
-                } else if (ploc.reg2 >= V0 && ploc.reg2 <= V7) {
-                    nFpRegs++;
-                }
-            }
-        }
-
-        SetSizeOfGRSaveArea((k6BitSize - nIntRegs) * GetPointerSize());
-        SetSizeOfVRSaveArea((k6BitSize - nFpRegs) * GetPointerSize() * k2ByteSize);
-    }
-}
-
 void X64MemLayout::LayoutFormalParams()
 {
     X64CallConvImpl parmLocator(be);
@@ -211,7 +155,6 @@ void X64MemLayout::LayoutReturnRef(int32 &structCopySize, int32 &maxParmStackSiz
 
 void X64MemLayout::LayoutStackFrame(int32 &structCopySize, int32 &maxParmStackSize)
 {
-    LayoutVarargParams();
     LayoutFormalParams();
 
     // Need to be aligned ?

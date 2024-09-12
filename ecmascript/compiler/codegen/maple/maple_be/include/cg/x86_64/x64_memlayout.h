@@ -150,7 +150,6 @@ private:
     /* Layout function */
     void LayoutFormalParams();
     void LayoutLocalVariables();
-    void LayoutVarargParams();
 
     /* util function */
     void SetSizeAlignForTypeIdx(uint32 typeIdx, uint32 &size, uint32 &align) const;

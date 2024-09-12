@@ -299,7 +299,7 @@ void CgFuncPM::CreateCGAndBeCommon(MIRModule &m, const Target *t)
     Globals::GetInstance()->SetBECommon(*beCommon);
     Globals::GetInstance()->SetTarget(*cg);
 
-    if (!m.IsCModule() && Triple::GetTriple().IsAarch64BeOrLe()) {
+    if (Triple::GetTriple().IsAarch64BeOrLe()) {
         CGOptions::EnableFramePointer();
     }
 }

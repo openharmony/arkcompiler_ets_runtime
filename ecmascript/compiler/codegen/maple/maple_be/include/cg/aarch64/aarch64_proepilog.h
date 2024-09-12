@@ -61,7 +61,6 @@ private:
     void AppendInstructionAllocateCallFrame(AArch64reg reg0, AArch64reg reg1, RegType rty);
     void AppendInstructionAllocateCallFrameDebug(AArch64reg reg0, AArch64reg reg1, RegType rty);
     void GeneratePushRegs();
-    void GeneratePushUnnamedVarargRegs();
     void GenerateProlog(BB &bb);
 
     void GenerateRet(BB &bb);
@@ -85,7 +84,6 @@ private:
     bool storeFP = false;
     /* frame pointer(x29) is available as a general-purpose register if useFP is set as false */
     AArch64reg stackBaseReg = RFP;
-    BB *stackChkFailBB = nullptr;  // only one stack check fail BB is need
 };
 } /* namespace maplebe */
 

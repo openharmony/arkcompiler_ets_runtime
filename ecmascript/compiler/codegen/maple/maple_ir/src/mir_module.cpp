@@ -405,9 +405,6 @@ void MIRModule::DumpInlineCandidateToFile(const std::string &fileNameStr)
     std::streambuf *backup = LogInfo::MapleLogger().rdbuf();
     LogInfo::MapleLogger().rdbuf(file.rdbuf());
     file.open(fileNameStr, std::ios::trunc);
-    if (IsCModule()) {
-        DumpDefType();
-    }
     // dump global variables needed for inlining file
     for (auto symbolIdx : inliningGlobals) {
         MIRSymbol *s = GlobalTables::GetGsymTable().GetSymbolFromStidx(symbolIdx);

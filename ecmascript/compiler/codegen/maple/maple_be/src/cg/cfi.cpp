@@ -120,17 +120,7 @@ void CFIOpndEmitVisitor::Visit(StrOperand *v)
 void CFIOpndEmitVisitor::Visit(LabelOperand *v)
 {
 #ifdef ARK_LITECG_DEBUG
-    if (emitter.GetCG()->GetMIRModule()->IsCModule()) {
-        CHECK_NULL_FATAL(emitter.GetCG()->GetMIRModule()->CurFunction());
-        PUIdx pIdx = emitter.GetCG()->GetMIRModule()->CurFunction()->GetPuidx();
-        char *idx = strdup(std::to_string(pIdx).c_str());
-        CHECK_FATAL(idx != nullptr, "strdup failed");
-        emitter.Emit(".label.").Emit(idx).Emit("__").Emit(v->GetIabelIdx());
-        free(idx);
-        idx = nullptr;
-    } else {
-        emitter.Emit(".label.").Emit(v->GetParentFunc()).Emit(v->GetIabelIdx());
-    }
+    emitter.Emit(".label.").Emit(v->GetParentFunc()).Emit(v->GetIabelIdx());
 #endif
 }
 } /* namespace cfi */

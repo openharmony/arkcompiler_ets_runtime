@@ -215,7 +215,6 @@ private:
     MemSegment segVrSaveArea = MemSegment(kMsVrSaveArea);
     int32 fixStackSize = 0;
     void SetSizeAlignForTypeIdx(uint32 typeIdx, uint32 &size, uint32 &align) const;
-    void LayoutVarargParams();
     void LayoutFormalParams();
     void LayoutActualParams();
     void LayoutLocalVariables(std::vector<MIRSymbol *> &tempVar, std::vector<MIRSymbol *> &returnDelays);
