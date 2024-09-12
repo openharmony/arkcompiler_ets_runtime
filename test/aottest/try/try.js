@@ -33,4 +33,10 @@ function bar(a) {
     }
 }
 
+let o={}
+try {
+    if (o.webView) {}
+} catch (e) {
+}
+
 print("compiler succ")
