@@ -16,6 +16,7 @@ group("ark_jit_ts_test") {
   test_list = [
     "create_arguments",
     "try_catch_empty",
+    "uint32_array",
     "ldobjbyname",
     "for_loop",
     "typed_array",
