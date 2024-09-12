@@ -3715,7 +3715,7 @@ void* FunctionRef::GetData(const EcmaVM *vm)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, nullptr);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> funcValue = JSNApiHelper::ToJSHandle(this);
-    JSHandle<JSFunction> function(funcValue);
+    JSHandle<JSFunctionBase> function(funcValue);
     JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
     if (!extraInfoValue.IsNativePointer()) {
         return nullptr;
@@ -3905,7 +3905,7 @@ void *JsiRuntimeCallInfo::GetData()
     if (!constructor->IsJSFunction()) {
         return nullptr;
     }
-    JSHandle<JSFunction> function(constructor);
+    JSHandle<JSFunctionBase> function(constructor);
     JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
     if (!extraInfoValue.IsJSNativePointer()) {
         return nullptr;

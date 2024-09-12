@@ -441,7 +441,7 @@ JSTaggedValue Callback::RegisterCallback(ecmascript::EcmaRuntimeCallInfo *ecmaRu
         return JSTaggedValue::False();
     }
     [[maybe_unused]] LocalScope scope(thread->GetEcmaVM());
-    JSHandle<JSFunction> function(constructor);
+    JSHandle<JSFunctionBase> function(constructor);
     JSTaggedValue extraInfoValue = function->GetFunctionExtraInfo();
     if (!extraInfoValue.IsJSNativePointer()) {
         return JSTaggedValue::False();
