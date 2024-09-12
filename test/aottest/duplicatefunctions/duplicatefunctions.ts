@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-declare function assert_equal(a: Object, b: Object):void;
+declare function print(str:any):string;
 
 function foo1(a:number, b:number)
 {
