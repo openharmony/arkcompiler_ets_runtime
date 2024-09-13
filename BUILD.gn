@@ -822,6 +822,7 @@ ecma_source = [
   "ecmascript/mem/free_object_list.cpp",
   "ecmascript/mem/free_object_set.cpp",
   "ecmascript/mem/gc_stats.cpp",
+  "ecmascript/mem/idle_gc_trigger.cpp",
   "ecmascript/mem/gc_key_stats.cpp",
   "ecmascript/mem/heap.cpp",
   "ecmascript/mem/heap_region_allocator.cpp",

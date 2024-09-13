@@ -21,10 +21,12 @@
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/tests/ecma_test_common.h"
+#include "ecmascript/napi/include/jsnapi_expo.h"
 
 using namespace panda;
 
 using namespace panda::ecmascript;
+using TRIGGER_IDLE_GC_TYPE = panda::JSNApi::TRIGGER_IDLE_GC_TYPE;
 
 namespace panda::test {
 class GCTest : public BaseTestWithScope<false> {
@@ -243,6 +245,7 @@ HWTEST_F_L0(GCTest, GlobalNativeSizeLargerThanLimitTest)
 HWTEST_F_L0(GCTest, IdleGCTriggerTest)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto idleGCTrigger = heap->GetIdleGCTrigger();
     auto sHeap = SharedHeap::GetInstance();
     heap->CollectGarbage(TriggerGCType::FULL_GC);
     int baseLocalGCCount = heap->GetEcmaGCStats()->GetGCCount();
@@ -254,7 +257,7 @@ HWTEST_F_L0(GCTest, IdleGCTriggerTest)
         factory->NewTaggedArray(1024, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
         factory->NewSOldSpaceTaggedArray(1024, JSTaggedValue::Hole());
     }
-    for (size_t i = 0; i < 20480; i++)
+    for (size_t i = 0; i < 10240; i++)
     {
         factory->NewTaggedArray(512, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
         factory->NewSOldSpaceTaggedArray(512, JSTaggedValue::Hole());
@@ -264,10 +267,11 @@ HWTEST_F_L0(GCTest, IdleGCTriggerTest)
         [[maybe_unused]] JSHandle<TaggedArray> sArray = factory->NewSOldSpaceTaggedArray(1024,
                     JSTaggedValue::Hole());
         if (i%340 == 0) {
-            heap->CheckAndTriggerGCForIdle(0);
+            idleGCTrigger->NotifyVsyncIdleStart();
         }
     }
-    heap->CheckAndTriggerGCForIdle(0);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::FULL_GC);
+    idleGCTrigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC);
     int afterLocalGCCount = heap->GetEcmaGCStats()->GetGCCount();
     int afterSharedGCCount = sHeap->GetEcmaGCStats()->GetGCCount();
     EXPECT_TRUE(afterLocalGCCount - baseLocalGCCount < 10);
