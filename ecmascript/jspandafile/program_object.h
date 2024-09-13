@@ -426,6 +426,11 @@ public:
         return JSTaggedValue::Hole();
     }
 
+    inline void SetAotHClassInfoWithBarrier(JSThread *thread, JSTaggedValue info)
+    {
+        Set(thread, (GetLength() - AOT_HCLASS_INFO_INDEX), info);
+    }
+
     inline void SetAotHClassInfo(const JSThread *thread, JSTaggedValue info)
     {
         Set(thread, (GetLength() - AOT_HCLASS_INFO_INDEX), info);
