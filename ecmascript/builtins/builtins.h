@@ -336,10 +336,16 @@ private:
 
     void SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle<JSObject> &obj,
                             std::string_view key) const;
+
     JSHandle<JSTaggedValue> CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
-                                         std::string_view name, int length) const;
+                                         std::string_view name, int length,
+                                         kungfu::BuiltinsStubCSigns::ID builtinId =
+                                         kungfu::BuiltinsStubCSigns::INVALID) const;
+
     JSHandle<JSTaggedValue> CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
-                                         JSHandle<JSTaggedValue> key, int length) const;
+                                         JSHandle<JSTaggedValue> key, int length,
+                                         kungfu::BuiltinsStubCSigns::ID builtinId =
+                                         kungfu::BuiltinsStubCSigns::INVALID) const;
 
     void SetConstant(const JSHandle<JSObject> &obj, std::string_view key, JSTaggedValue value) const;
 

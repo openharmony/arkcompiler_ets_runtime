@@ -672,3 +672,8 @@ pattern = /\d$/gm;
 result = string.match(pattern);
 print(1 == result.length);
 print('9' == result[0]);
+
+// test getFlags
+const res = /abc/giymsud;
+res.lastIndex = -1;
+print(res.flags);

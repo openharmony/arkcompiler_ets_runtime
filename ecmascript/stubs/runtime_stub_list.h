@@ -480,7 +480,9 @@ namespace panda::ecmascript {
     V(SuperCallForwardAllArgs)                  \
     V(OptSuperCallForwardAllArgs)               \
     V(GetCollationValueFromIcuCollator)         \
-    V(DecodeURIComponent)
+    V(DecodeURIComponent)                       \
+    V(IsFastRegExp)                             \
+    V(GetAllFlagsInternal)
 
 
 #define RUNTIME_STUB_LIST(V)                     \
