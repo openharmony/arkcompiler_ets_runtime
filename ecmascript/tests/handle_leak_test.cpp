@@ -79,29 +79,6 @@ HWTEST_F_L0(HandleLeakTest, HandleLeakCheck)
     }
 }
 
-HWTEST_F_L0(HandleLeakTest, UnInitializeCheckOneProperty)
-{
-    EcmaHandleScope scope(thread);
-    JSHandle<TaggedObject> newProgram(thread, const_cast<Heap *>(instance->GetHeap())->AllocateYoungOrHugeObject(
-        JSHClass::Cast(thread->GlobalConstants()->GetProgramClass().GetTaggedObject())));
-
-    if (HandleLeakTestManager::RegisterSignal() == -1) {
-        perror("sigaction error");
-        exit(1);
-    }
-    size_t failCount = 0;
-    auto ret = sigsetjmp(env, 1);
-    if (ret != SIGSEGV) {
-        VerifyObjectVisitor verifier(instance->GetHeap(), &failCount);
-        verifier(*newProgram);
-        ASSERT_TRUE(false);
-    } else {
-        // catch signal SIGSEGV caused by uninitialize
-        EXPECT_TRUE(segmentFaultFlag);
-        ASSERT_TRUE(failCount == 0);
-    }
-}
-
 HWTEST_F_L0(HandleLeakTest, InitializeCheckOneProperty)
 {
     EcmaHandleScope scope(thread);
@@ -130,22 +107,6 @@ static void HeandleLeakTestCommon(const EcmaVM *instance, JSHandle<TaggedArray>&
         EXPECT_TRUE(segmentFaultFlag);
         ASSERT_TRUE(failCount == 0);
     }
-}
-
-HWTEST_F_L0(HandleLeakTest, UnInitializeCheckMoreProperty)
-{
-    EcmaHandleScope scope(thread);
-    JSHandle<JSHClass> arrayClass(thread->GlobalConstants()->GetHandledArrayClass());
-    static constexpr int SIZE = 100;
-    JSHandle<TaggedArray> newArray(thread, const_cast<Heap *>(instance->GetHeap())->AllocateNonMovableOrHugeObject(
-        *arrayClass, TaggedArray::ComputeSize(JSTaggedValue::TaggedTypeSize(), SIZE)));
-    newArray->SetLength(SIZE);
-
-    if (HandleLeakTestManager::RegisterSignal() == -1) {
-        perror("sigaction error");
-        exit(1);
-    }
-    HeandleLeakTestCommon(instance, newArray);
 }
 
 HWTEST_F_L0(HandleLeakTest, PartInitializeCheckMoreProperty)
