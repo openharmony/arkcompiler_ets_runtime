@@ -729,8 +729,8 @@ private:
     // string must be not flat
     static EcmaString *SlowFlatten(const EcmaVM *vm, const JSHandle<EcmaString> &string, MemSpaceType type);
 
-    PUBLIC_API static EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
-                               MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
+    static PUBLIC_API EcmaString *Flatten(const EcmaVM *vm, const JSHandle<EcmaString> &string,
+                               MemSpaceType type = MemSpaceType::SEMI_SPACE);
 
     static FlatStringInfo FlattenAllString(const EcmaVM *vm, const JSHandle<EcmaString> &string,
                                             MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);

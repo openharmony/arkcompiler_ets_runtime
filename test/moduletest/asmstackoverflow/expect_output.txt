@@ -41,5 +41,5 @@ SyntaxError
 RangeError
 RangeError
 RangeError
-recursive stack overflow
 matchAll success
+recursive stack overflow
