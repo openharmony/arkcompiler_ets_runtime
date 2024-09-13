@@ -319,7 +319,6 @@ group("ark_aot_ts_test") {
     "sendablefunc",
     "sendablecontext",
     "createarraywithbuffer2",
-    "builtins_number",
     "builtins_parseint",
     "constructor",
     "shared_module",

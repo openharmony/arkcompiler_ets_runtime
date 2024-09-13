@@ -81,7 +81,7 @@ private:
     {
         return GetEnvironment()->GetBuilder()->ChangeTaggedPointerToInt64(x);
     }
-private:
+
     void BuildArrayIterator(GateRef glue, GateRef thisValue, GateRef numArgs,
         Variable *result, Label *exit, Label *slowPath, IterationKind iteratorKind);
 };
