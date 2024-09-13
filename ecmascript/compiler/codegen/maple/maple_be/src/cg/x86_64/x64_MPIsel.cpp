@@ -28,7 +28,7 @@ MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, Fie
     int32 fieldOffset = 0;
     CHECK_FATAL(fieldId == 0, "fieldId must be 0");
     symType = symbol.GetType()->GetPrimType();
-    uint32 opndSz = (symType == PTY_agg) ? k64BitSize : GetPrimTypeBitSize(symType);
+    uint32 opndSz = GetPrimTypeBitSize(symType);
     return GetOrCreateMemOpndFromSymbol(symbol, opndSz, fieldOffset);
 }
 MemOperand &X64MPIsel::GetOrCreateMemOpndFromSymbol(const MIRSymbol &symbol, uint32 opndSize, int64 offset) const
@@ -137,10 +137,6 @@ void X64MPIsel::SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, uint32
         PrimType primType = argExpr->GetPrimType();
         DEBUG_ASSERT(primType != PTY_void, "primType should not be void");
         bool isArgUnused = (callee != nullptr && callee->GetFuncDesc().IsArgUnused(i));
-        if (primType == PTY_agg) {
-            CHECK_FATAL(false, "NIY");
-            continue;
-        }
 
         Operand *argOpnd = HandleExpr(naryNode, *argExpr);
         DEBUG_ASSERT(argOpnd != nullptr, "not null check");
@@ -209,23 +205,6 @@ Operand *X64MPIsel::SelectFloatingConst(MIRConst &floatingConst, PrimType primTy
     return result;
 }
 
-RegOperand *X64MPIsel::PrepareMemcpyParm(MemOperand &memOperand, MOperator mOp)
-{
-    RegOperand &regResult = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, kRegTyInt);
-    Insn &addrInsn = (cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]));
-    addrInsn.AddOpndChain(memOperand).AddOpndChain(regResult);
-    cgFunc->GetCurBB()->AppendInsn(addrInsn);
-    return &regResult;
-}
-
-RegOperand *X64MPIsel::PrepareMemcpyParm(uint64 copySize)
-{
-    RegOperand &regResult = cgFunc->GetOpndBuilder()->CreateVReg(k64BitSize, kRegTyInt);
-    ImmOperand &sizeOpnd = cgFunc->GetOpndBuilder()->CreateImm(k64BitSize, copySize);
-    SelectCopy(regResult, sizeOpnd, PTY_i64);
-    return &regResult;
-}
-
 Insn &X64MPIsel::AppendCall(x64::X64MOP_t mOp, Operand &targetOpnd, ListOperand &paramOpnds, ListOperand &retOpnds)
 {
     Insn &callInsn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, X64CG::kMd[mOp]);
@@ -242,7 +221,7 @@ void X64MPIsel::SelectCalleeReturn(MIRType *retType, ListOperand &retOpnds)
         return;
     }
     auto retSize = retType->GetSize() * kBitsPerByte;
-    if (retType->GetPrimType() != PTY_agg || retSize <= k128BitSize) {
+    if (retSize <= k128BitSize) {
         if (retSize > k0BitSize) {
             retOpnds.PushOpnd(cgFunc->GetOpndBuilder()->CreatePReg(x64::RAX, k64BitSize, kRegTyInt));
         }
@@ -883,12 +862,6 @@ Operand *X64MPIsel::SelectCclz(IntrinsicopNode &node, Operand &opnd0, const Base
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(retType), cgFunc->GetRegTyFromPrimTy(retType));
     SelectIntCvt(destReg, tmp3, retType, origPrimType);
     return &destReg;
-}
-
-RegOperand &X64MPIsel::GetTargetStackPointer(PrimType primType)
-{
-    return cgFunc->GetOpndBuilder()->CreatePReg(x64::RSP, GetPrimTypeBitSize(primType),
-                                                cgFunc->GetRegTyFromPrimTy(primType));
 }
 
 RegOperand &X64MPIsel::GetTargetBasicPointer(PrimType primType)

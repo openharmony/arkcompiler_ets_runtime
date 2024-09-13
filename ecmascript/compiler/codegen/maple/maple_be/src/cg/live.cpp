@@ -402,18 +402,6 @@ void LiveAnalysis::InitBB(BB &bb)
     bb.SetUse(*NewUse(maxRegCount));
 }
 
-void LiveAnalysis::ClearInOutDataInfo()
-{
-    FOR_ALL_BB(bb, cgFunc)
-    {
-        bb->SetLiveInChange(false);
-        bb->DefClearDataInfo();
-        bb->UseClearDataInfo();
-        bb->LiveInClearDataInfo();
-        bb->LiveOutClearDataInfo();
-    }
-}
-
 void CgLiveAnalysis::GetAnalysisDependence(AnalysisDep &aDep) const
 {
 #if TARGX86_64

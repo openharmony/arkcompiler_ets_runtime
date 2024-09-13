@@ -547,17 +547,13 @@ public:
         }
     }
 
-    uint8 GetSymbolAlign(bool isArm64ilp32) const
+    uint8 GetSymbolAlign() const
     {
         uint8 align = GetAttrs().GetAlignValue();
         if (align == 0) {
             align = static_cast<uint8>(GetType()->GetAlign());
             if (Triple::GetTriple().IsAarch64BeOrLe()) {
-                if (isArm64ilp32 && GetType()->GetPrimType() == PTY_a32) {
-                    align = 3;  // 3: alignment in bytes of uint8
-                } else {
-                    align = static_cast<uint8>(log2(align));
-                }
+                align = static_cast<uint8>(log2(align));
             }
         }
         return align;

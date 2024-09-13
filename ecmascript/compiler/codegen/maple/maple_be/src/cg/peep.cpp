@@ -26,40 +26,6 @@
 
 namespace maplebe {
 #if TARGAARCH64
-int64 CGPeepPattern::GetLogValueAtBase2(int64 val) const
-{
-    return (__builtin_popcountll(static_cast<uint64>(val)) == 1) ? (__builtin_ffsll(val) - 1) : -1;
-}
-
-void CGPeepPattern::DumpAfterPattern(std::vector<Insn *> &prevInsns, const Insn *replacedInsn, const Insn *newInsn)
-{
-    LogInfo::MapleLogger() << ">>>>>>> In " << GetPatternName() << " : <<<<<<<\n";
-    if (!prevInsns.empty()) {
-        if ((replacedInsn == nullptr) && (newInsn == nullptr)) {
-            LogInfo::MapleLogger() << "======= RemoveInsns : {\n";
-        } else {
-            LogInfo::MapleLogger() << "======= PrevInsns : {\n";
-        }
-        for (auto *prevInsn : prevInsns) {
-            if (prevInsn != nullptr) {
-                LogInfo::MapleLogger() << "[primal form] ";
-                prevInsn->Dump();
-            }
-        }
-        LogInfo::MapleLogger() << "}\n";
-    }
-    if (replacedInsn != nullptr) {
-        LogInfo::MapleLogger() << "======= OldInsn :\n";
-        LogInfo::MapleLogger() << "[primal form] ";
-        replacedInsn->Dump();
-    }
-    if (newInsn != nullptr) {
-        LogInfo::MapleLogger() << "======= NewInsn :\n";
-        LogInfo::MapleLogger() << "[primal form] ";
-        newInsn->Dump();
-    }
-}
-
 /* Check if a regOpnd is live after insn. True if live, otherwise false. */
 bool CGPeepPattern::IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &insn)
 {

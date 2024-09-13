@@ -36,7 +36,7 @@ inline bool StrLdr16Valid(Operand *o)
         uint8 symAlign = 0;
         const MIRSymbol *sym = memOpnd->GetSymbol();
         if (sym) {
-            symAlign = 1U << sym->GetSymbolAlign(CGOptions::IsArm64ilp32());
+            symAlign = 1U << sym->GetSymbolAlign();
         }
         return ((symAlign + static_cast<uint64>(AArch64isa::GetMemOpndOffsetValue(o))) &
                 static_cast<int64>(k1BitSize)) == static_cast<int64>(k0BitSize);
@@ -52,7 +52,7 @@ inline bool StrLdr32Valid(Operand *o)
         uint8 symAlign = 0;
         const MIRSymbol *sym = memOpnd->GetSymbol();
         if (sym) {
-            symAlign = 1U << sym->GetSymbolAlign(CGOptions::IsArm64ilp32());
+            symAlign = 1U << sym->GetSymbolAlign();
         }
         return ((symAlign + static_cast<uint64>(AArch64isa::GetMemOpndOffsetValue(o))) &
                 static_cast<int64>(k3BitSize)) == static_cast<int64>(k0BitSize);
@@ -79,7 +79,7 @@ inline bool StrLdr64Valid(Operand *o)
         uint8 symAlign = 0;
         const MIRSymbol *sym = memOpnd->GetSymbol();
         if (sym) {
-            symAlign = 1U << sym->GetSymbolAlign(CGOptions::IsArm64ilp32());
+            symAlign = 1U << sym->GetSymbolAlign();
         }
         return ((symAlign + static_cast<uint64>(AArch64isa::GetMemOpndOffsetValue(o))) &
                 static_cast<int64>(k7BitSize)) == static_cast<int64>(k0BitSize);
@@ -106,7 +106,7 @@ inline bool StrLdr128Valid(Operand *o)
         uint8 symAlign = 0;
         const MIRSymbol *sym = memOpnd->GetSymbol();
         if (sym && sym->IsConst()) {
-            symAlign = 1U << sym->GetSymbolAlign(CGOptions::IsArm64ilp32());
+            symAlign = 1U << sym->GetSymbolAlign();
         }
         return ((symAlign + static_cast<uint64>(AArch64isa::GetMemOpndOffsetValue(o))) &
                 static_cast<int64>(k15BitSize)) == static_cast<int64>(k0BitSize);

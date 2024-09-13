@@ -223,8 +223,6 @@ IreadNode *MIRBuilder::CreateExprIread(const MIRType &returnType, const MIRType 
     TyIdx returnTypeIdx = returnType.GetTypeIndex();
     CHECK(returnTypeIdx < GlobalTables::GetTypeTable().GetTypeTable().size(),
           "index out of range in MIRBuilder::CreateExprIread");
-    DEBUG_ASSERT(fieldID != 0 || ptrType.GetPrimType() != PTY_agg,
-                 "Error: Fieldid should not be 0 when trying to iread a field from type ");
     PrimType type = GetRegPrimType(returnType.GetPrimType());
     return NewNode<IreadNode>(OP_iread, type, ptrType.GetTypeIndex(), fieldID, addr);
 }

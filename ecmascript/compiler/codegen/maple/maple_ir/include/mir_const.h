@@ -536,57 +536,6 @@ private:
     } value;
 };
 
-class MIRFloat128Const : public MIRConst {
-public:
-    MIRFloat128Const(const uint64 &val, MIRType &type) : MIRConst(type, kConstFloat128Const)
-    {
-        value = &val;
-    }
-
-    ~MIRFloat128Const() = default;
-
-    const uint64 *GetIntValue() const
-    {
-        return value;
-    }
-
-    static PrimType GetPrimType()
-    {
-        return kPrimType;
-    }
-
-    bool IsZero() const override
-    {
-        MIR_ASSERT(value && "value must not be nullptr!");
-        return value[0] == 0 && value[1] == 0;
-    }
-
-    bool IsOne() const override
-    {
-        MIR_ASSERT(value && "value must not be nullptr!");
-        return value[0] == 0 && value[1] == 0x3FFF000000000000;
-    };
-    bool IsAllBitsOne() const
-    {
-        MIR_ASSERT(value && "value must not be nullptr!");
-        return (value[0] == 0xffffffffffffffff && value[1] == 0xffffffffffffffff);
-    };
-    bool operator==(const MIRConst &rhs) const override;
-
-    MIRFloat128Const *Clone(MemPool &memPool) const override
-    {
-        auto *res = memPool.New<MIRFloat128Const>(*this);
-        return res;
-    }
-#ifdef ARK_LITECG_DEBUG
-    void Dump(const MIRSymbolTable *localSymTab) const override;
-#endif
-
-private:
-    static const PrimType kPrimType = PTY_f128;
-    // value[0]: Low 64 bits; value[1]: High 64 bits.
-    const uint64 *value;
-};
 
 class MIRAggConst : public MIRConst {
 public:

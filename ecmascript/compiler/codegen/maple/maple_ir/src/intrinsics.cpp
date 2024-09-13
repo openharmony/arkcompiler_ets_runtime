@@ -60,18 +60,12 @@ MIRType *IntrinDesc::GetTypeFromArgTy(IntrinArgType argType) const
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_ptr));
         case kArgTyRef:
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_ref));
-        case kArgTyA32:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_a32));
         case kArgTyA64:
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_a64));
         case kArgTyF32:
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f32));
         case kArgTyF64:
             return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f64));
-        case kArgTyF128:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_f128));
-        case kArgTyAgg:
-            return GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<TyIdx>(PTY_agg));
         default:
             return nullptr;
     }

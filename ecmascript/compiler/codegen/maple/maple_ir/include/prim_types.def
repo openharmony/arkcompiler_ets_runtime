@@ -28,12 +28,9 @@
   PRIMTYPE(u1)
   PRIMTYPE(ptr)
   PRIMTYPE(ref)
-  PRIMTYPE(a32)
   PRIMTYPE(a64)
   PRIMTYPE(f32)
   PRIMTYPE(f64)
-  PRIMTYPE(f128)
-  PRIMTYPE(agg)
   PRIMTYPE(unknown)
 #endif // ~LOAD_ALGO_PRIMARY_TYPE
 
@@ -43,109 +40,94 @@
 
 static const PrimitiveTypeProperty PTProperty_begin = {
   /*type=*/PTY_begin, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_void = {
   /*type=*/PTY_void, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_i8 = {
   /*type=*/PTY_i8, /*isInteger=*/true, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_i16 = {
   /*type=*/PTY_i16, /*isInteger=*/true, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_i32 = {
   /*type=*/PTY_i32, /*isInteger=*/true, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_i64 = {
   /*type=*/PTY_i64, /*isInteger=*/true, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_u8 = {
   /*type=*/PTY_u8, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_u16 = {
   /*type=*/PTY_u16, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 /* isAddress and isPointer are overloaded in getter method for PTProperty_u32 */
 static const PrimitiveTypeProperty PTProperty_u32 = {
   /*type=*/PTY_u32, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 /* isAddress and isPointer are overloaded in getter method for PTProperty_64 */
 static const PrimitiveTypeProperty PTProperty_u64 = {
   /*type=*/PTY_u64, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/true, /*isFloat=*/false,
-  /*isPointer=*/true, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false,
+  /*isPointer=*/true, /*isSimple=*/false,
 };
 
 static const PrimitiveTypeProperty PTProperty_u1 = {
   /*type=*/PTY_u1, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_ptr = {
   /*type=*/PTY_ptr, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/true, /*isFloat=*/false,
-  /*isPointer=*/true, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/true, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_ref = {
   /*type=*/PTY_ref, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/true, /*isFloat=*/false,
-  /*isPointer=*/true, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
-};
-
-static const PrimitiveTypeProperty PTProperty_a32 = {
-  /*type=*/PTY_a32, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/true, /*isFloat=*/false,
-  /*isPointer=*/true, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/true, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_a64 = {
   /*type=*/PTY_a64, /*isInteger=*/true, /*isUnsigned=*/true, /*isAddress=*/true, /*isFloat=*/false,
-  /*isPointer=*/true, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/true, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_f32 = {
   /*type=*/PTY_f32, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/true,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_f64 = {
   /*type=*/PTY_f64, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/true,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
-};
-
-static const PrimitiveTypeProperty PTProperty_f128 = {
-  /*type=*/PTY_f128, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/true,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
-};
-
-static const PrimitiveTypeProperty PTProperty_agg = {
-  /*type=*/PTY_agg, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_unknown = {
   /*type=*/PTY_unknown, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 static const PrimitiveTypeProperty PTProperty_end = {
   /*type=*/PTY_end, /*isInteger=*/false, /*isUnsigned=*/false, /*isAddress=*/false, /*isFloat=*/false,
-  /*isPointer=*/false, /*isSimple=*/false, /*isDynamic=*/false, /*isDynamicAny=*/false, /*isDynamicNone=*/false
+  /*isPointer=*/false, /*isSimple=*/false
 };
 
 #endif // ~LOAD_PRIMARY_TYPE_PROPERTY

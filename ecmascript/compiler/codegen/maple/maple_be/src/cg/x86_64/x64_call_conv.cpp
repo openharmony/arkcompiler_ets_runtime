@@ -35,7 +35,6 @@ int32 CCallConventionInfo::Classification(const BECommon &be, MIRType &mirType,
         case PTY_i8:
         case PTY_u16:
         case PTY_i16:
-        case PTY_a32:
         case PTY_u32:
         case PTY_i32:
         case PTY_a64:
@@ -69,7 +68,6 @@ int32 WebKitJSCallConventionInfo::Classification(const BECommon &be, MIRType &mi
         case PTY_i8:
         case PTY_u16:
         case PTY_i16:
-        case PTY_a32:
         case PTY_u32:
         case PTY_i32:
             classes.push_back(kIntegerClass);
@@ -102,7 +100,6 @@ int32 GHCCallConventionInfo::Classification(const BECommon &be, MIRType &mirType
         case PTY_i8:
         case PTY_u16:
         case PTY_i16:
-        case PTY_a32:
         case PTY_u32:
         case PTY_i32:
         case PTY_a64:
@@ -172,7 +169,7 @@ int32 X64CallConvImpl::LocateRetVal(MIRType &retType, CCLocInfo &pLoc)
         pLoc.reg0 = AllocateGPReturnRegister();
         DEBUG_ASSERT(nextGeneralReturnRegNO <= GetCallConvInfo().GetIntReturnRegsNum(), "RegNo should be pramRegNO");
         CHECK_FATAL(nextGeneralReturnRegNO == kOneRegister, "RegNo should be pramRegNO");
-        pLoc.primTypeOfReg0 = retType.GetPrimType() == PTY_agg ? PTY_u64 : retType.GetPrimType();
+        pLoc.primTypeOfReg0 = retType.GetPrimType();
         return 0;
     } else if (classes[0] == kFloatClass) {
         /* If the class is SSE, the next available vector register of the sequence %xmm0, */
@@ -181,7 +178,7 @@ int32 X64CallConvImpl::LocateRetVal(MIRType &retType, CCLocInfo &pLoc)
         pLoc.regCount = 1;
         pLoc.reg0 = AllocateSIMDFPReturnRegister();
         CHECK_FATAL(nextFloatRetRegNO == kOneRegister, "RegNo should be pramRegNO");
-        pLoc.primTypeOfReg0 = retType.GetPrimType() == PTY_agg ? PTY_f64 : retType.GetPrimType();
+        pLoc.primTypeOfReg0 = retType.GetPrimType();
         return 0;
     }
     CHECK_FATAL(false, "NYI");

@@ -342,11 +342,9 @@ public:
             case PTY_u32:
             case PTY_i64:
             case PTY_u64:
-            case PTY_a32:
             case PTY_a64:
             case PTY_ptr:
             case PTY_ref:
-            case PTY_agg:
                 return kRegTyInt;
             case PTY_f32:
             case PTY_f64:

@@ -446,7 +446,6 @@ void AArch64AsmEmitter::EmitAArch64Insn(maplebe::Emitter &emitter, Insn &insn) c
             (void)emitter.Emit(nameOpnd->GetName() + emitter.HugeSoPostFix());
             break;
         }
-        auto *opnd = &insn.GetOperand(static_cast<uint32>(seq[i]));
         A64OpndEmitVisitor visitor(emitter, md->opndMD[static_cast<uint32>(seq[i])]);
 
         insn.GetOperand(static_cast<uint32>(seq[i])).Accept(visitor);

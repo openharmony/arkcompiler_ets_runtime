@@ -122,8 +122,6 @@ public:
     }
 
     virtual std::string GetPatternName() = 0;
-    void DumpAfterPattern(std::vector<Insn *> &prevInsns, const Insn *replacedInsn, const Insn *newInsn);
-    int64 GetLogValueAtBase2(int64 val) const;
     /* optimization support function */
     bool IfOperandIsLiveAfterInsn(const RegOperand &regOpnd, Insn &insn);
     bool FindRegLiveOut(const RegOperand &regOpnd, const BB &bb);

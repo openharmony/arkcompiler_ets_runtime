@@ -440,7 +440,6 @@ public:
     }
 
     void InitELFHeader();
-    void AddSymbol(const std::string &name, Word size, const Section &section, Address value);
     void AddFuncSymbol(const MapleString &name, Word size, Address value);
     void ClearData();
     void HandleExceptFixup();
@@ -532,10 +531,6 @@ public:
         return textDataSize;
     }
 
-    void EmitMIRIntConst(EmitInfo &emitInfo);
-    void EmitMIRAddrofConst(EmitInfo &emitInfo);
-    void EmitMIRAddrofConstOffset(EmitInfo &emitInfo);
-    void EmitMIRAddrofConstCommon(EmitInfo &emitInfo, uint64 specialOffset);
     void EmitFunctionSymbolTable(ObjFuncEmitInfo &objFuncEmitInfo, std::vector<uint32> &symbol2Offset);
     void EmitStr16Const(ObjFuncEmitInfo &objFuncEmitInfo, const MIRSymbol &str16Symbol);
     void EmitStrConst(ObjFuncEmitInfo &objFuncEmitInfo, const MIRSymbol &strSymbol);

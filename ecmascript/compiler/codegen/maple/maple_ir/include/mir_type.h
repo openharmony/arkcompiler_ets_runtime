@@ -106,13 +106,13 @@ inline bool IsPossible64BitAddress(PrimType tp)
 
 inline bool IsPossible32BitAddress(PrimType tp)
 {
-    return (tp == PTY_ptr || tp == PTY_ref || tp == PTY_u32 || tp == PTY_a32);
+    return (tp == PTY_ptr || tp == PTY_ref || tp == PTY_u32);
 }
 
 
 inline bool IsPrimitivePureScalar(PrimitiveType primitiveType)
 {
-    return primitiveType.IsInteger() && !primitiveType.IsAddress() && !primitiveType.IsDynamic();
+    return primitiveType.IsInteger() && !primitiveType.IsAddress();
 }
 
 inline bool IsPrimitiveUnsigned(PrimitiveType primitiveType)
@@ -122,38 +122,27 @@ inline bool IsPrimitiveUnsigned(PrimitiveType primitiveType)
 
 inline bool IsUnsignedInteger(PrimitiveType primitiveType)
 {
-    return IsPrimitiveUnsigned(primitiveType) && primitiveType.IsInteger() && !primitiveType.IsDynamic();
+    return IsPrimitiveUnsigned(primitiveType) && primitiveType.IsInteger();
 }
 
 inline bool IsSignedInteger(PrimitiveType primitiveType)
 {
-    return !IsPrimitiveUnsigned(primitiveType) && primitiveType.IsInteger() && !primitiveType.IsDynamic();
+    return !IsPrimitiveUnsigned(primitiveType) && primitiveType.IsInteger();
 }
 
 inline bool IsPrimitiveInteger(PrimitiveType primitiveType)
 {
-    return primitiveType.IsInteger() && !primitiveType.IsDynamic();
-}
-
-inline bool IsPrimitiveDynType(PrimitiveType primitiveType)
-{
-    return primitiveType.IsDynamic();
-}
-
-inline bool IsPrimitiveDynInteger(PrimitiveType primitiveType)
-{
-    return primitiveType.IsDynamic() && primitiveType.IsInteger();
+    return primitiveType.IsInteger();
 }
 
 inline bool IsPrimitiveFloat(PrimitiveType primitiveType)
 {
-    return primitiveType.IsFloat() && !primitiveType.IsDynamic();
+    return primitiveType.IsFloat();
 }
 
 inline bool IsPrimitiveScalar(PrimitiveType primitiveType)
 {
-    return primitiveType.IsInteger() || primitiveType.IsFloat() ||
-           (primitiveType.IsDynamic() && !primitiveType.IsDynamicNone()) || primitiveType.IsSimple();
+    return primitiveType.IsInteger() || primitiveType.IsFloat() || primitiveType.IsSimple();
 }
 
 inline bool IsPrimitivePoint(PrimitiveType primitiveType)
@@ -708,7 +697,11 @@ class MIRFuncType;
 
 class MIRType {
 public:
+    MIRType(MIRTypeKind kind) : typeKind(kind) {}
+
     MIRType(MIRTypeKind kind, PrimType pType) : typeKind(kind), primType(pType) {}
+
+    MIRType(MIRTypeKind kind, GStrIdx strIdx) : typeKind(kind), nameStrIdx(strIdx) {}
 
     MIRType(MIRTypeKind kind, PrimType pType, GStrIdx strIdx) : typeKind(kind), primType(pType), nameStrIdx(strIdx) {}
 
@@ -922,11 +915,11 @@ private:
 
 class MIRArrayType : public MIRType {
 public:
-    MIRArrayType() : MIRType(kTypeArray, PTY_agg) {}
-    explicit MIRArrayType(GStrIdx strIdx) : MIRType(kTypeArray, PTY_agg, strIdx) {}
+    MIRArrayType() : MIRType(kTypeArray) {}
+    explicit MIRArrayType(GStrIdx strIdx) : MIRType(kTypeArray, strIdx) {}
 
     MIRArrayType(TyIdx eTyIdx, const std::vector<uint64> &sizeArray)
-        : MIRType(kTypeArray, PTY_agg), eTyIdx(eTyIdx), dim(sizeArray.size())
+        : MIRType(kTypeArray), eTyIdx(eTyIdx), dim(sizeArray.size())
     {
         for (size_t i = 0; i < kMaxArrayDim; ++i) {
             this->sizeArray[i] = (i < dim) ? sizeArray[i] : 0;

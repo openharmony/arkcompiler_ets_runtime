@@ -182,12 +182,6 @@ public:
         return typeTable.at(PTY_f64);
     }
 
-    MIRType *GetFloat128() const
-    {
-        DEBUG_ASSERT(PTY_f128 < typeTable.size(), "array index out of range");
-        return typeTable.at(PTY_f128);
-    }
-
     MIRType *GetUInt1() const
     {
         DEBUG_ASSERT(PTY_u1 < typeTable.size(), "array index out of range");
@@ -295,12 +289,6 @@ public:
         return typeTable.at(PTY_ref);
     }
 
-    MIRType *GetAddr32() const
-    {
-        DEBUG_ASSERT(PTY_a32 < typeTable.size(), "array index out of range");
-        return typeTable.at(PTY_a32);
-    }
-
     MIRType *GetAddr64() const
     {
         DEBUG_ASSERT(PTY_a64 < typeTable.size(), "array index out of range");
@@ -311,12 +299,6 @@ public:
     {
         DEBUG_ASSERT(PTY_void < typeTable.size(), "array index out of range");
         return typeTable.at(PTY_void);
-    }
-
-    MIRType *GetUnknown() const
-    {
-        DEBUG_ASSERT(PTY_unknown < typeTable.size(), "array index out of range");
-        return typeTable.at(PTY_unknown);
     }
 
     // Get or Create derived types.

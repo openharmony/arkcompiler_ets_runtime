@@ -38,24 +38,7 @@ uint32 X64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int32 &
     for (uint32 anum = 0; i < stmt.NumOpnds(); ++i, ++anum) {
         BaseNode *opnd = stmt.Opnd(i);
         MIRType *ty = nullptr;
-        if (opnd->GetPrimType() != PTY_agg) {
-            ty = GlobalTables::GetTypeTable().GetTypeTable()[static_cast<uint32>(opnd->GetPrimType())];
-        } else {
-            Opcode opndOpcode = opnd->GetOpCode();
-            DEBUG_ASSERT(opndOpcode == OP_dread || opndOpcode == OP_iread, "opndOpcode should be OP_dread or OP_iread");
-            if (opndOpcode == OP_dread) {
-                DreadNode *dread = static_cast<DreadNode *>(opnd);
-                CHECK_NULL_FATAL(be.GetMIRModule().CurFunction());
-                MIRSymbol *sym = be.GetMIRModule().CurFunction()->GetLocalOrGlobalSymbol(dread->GetStIdx());
-                ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(sym->GetTyIdx());
-            } else {
-                /* OP_iread */
-                IreadNode *iread = static_cast<IreadNode *>(opnd);
-                ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iread->GetTyIdx());
-                DEBUG_ASSERT(ty->GetKind() == kTypePointer, "expect pointer");
-                ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<MIRPtrType *>(ty)->GetPointedTyIdx());
-            }
-        }
+        ty = GlobalTables::GetTypeTable().GetTypeTable()[static_cast<uint32>(opnd->GetPrimType())];
         CCLocInfo ploc;
         aggCopySize += parmLocator.LocateNextParm(*ty, ploc);
         if (ploc.reg0 != 0) {
@@ -159,11 +142,6 @@ void X64MemLayout::LayoutFormalParams()
             if (!sym->IsPreg()) {
                 SetSizeAlignForTypeIdx(ptyIdx, size, align);
                 symLoc->SetMemSegment(GetSegArgsRegPassed());
-                if (ty->GetPrimType() == PTY_agg &&
-                    GlobalTables::GetTypeTable().GetTypeFromTyIdx(ptyIdx)->GetSize() > k4ByteSize) {
-                    /* struct param aligned on 8 byte boundary unless it is small enough */
-                    align = GetPointerSize();
-                }
                 segArgsRegPassed.SetSize(static_cast<uint32>(RoundUp(segArgsRegPassed.GetSize(), align)));
                 symLoc->SetOffset(segArgsRegPassed.GetSize());
                 segArgsRegPassed.SetSize(segArgsRegPassed.GetSize() + size);
@@ -196,11 +174,7 @@ void X64MemLayout::LayoutLocalVariables()
         symLoc->SetMemSegment(segLocals);
         MIRType *ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx);
         uint32 align = ty->GetAlign();
-        if (ty->GetPrimType() == PTY_agg && align < k8BitSize) {
-            segLocals.SetSize(static_cast<uint32>(RoundUp(segLocals.GetSize(), k8BitSize)));
-        } else {
-            segLocals.SetSize(static_cast<uint32>(RoundUp(segLocals.GetSize(), align)));
-        }
+        segLocals.SetSize(static_cast<uint32>(RoundUp(segLocals.GetSize(), align)));
         symLoc->SetOffset(segLocals.GetSize());
         segLocals.SetSize(segLocals.GetSize() + GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->GetSize());
     }

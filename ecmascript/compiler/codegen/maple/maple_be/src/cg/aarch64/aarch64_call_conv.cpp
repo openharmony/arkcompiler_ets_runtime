@@ -254,7 +254,6 @@ int32 AArch64WebKitJSCC::ClassificationArg(const BECommon &be, const MIRType &mi
         case PTY_i8:
         case PTY_u16:
         case PTY_i16:
-        case PTY_a32:
         case PTY_u32:
         case PTY_i32:
             classes.push_back(kIntegerClass);

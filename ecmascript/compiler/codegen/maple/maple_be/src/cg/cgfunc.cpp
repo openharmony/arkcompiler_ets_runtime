@@ -419,10 +419,6 @@ static void HandleDassign(StmtNode &stmt, CGFunc &cgFunc)
     DEBUG_ASSERT(dassignNode.GetOpCode() == OP_dassign, "expect dassign");
     BaseNode *rhs = dassignNode.GetRHS();
     DEBUG_ASSERT(rhs != nullptr, "get rhs of dassignNode failed");
-    if (rhs->GetPrimType() == PTY_agg) {
-        CHECK_FATAL(false, "NIY");
-        return;
-    }
     bool isSaveRetvalToLocal = false;
     if (rhs->GetOpCode() == OP_regread) {
         isSaveRetvalToLocal = (static_cast<RegreadNode *>(rhs)->GetRegIdx() == -kSregRetval0);
@@ -455,7 +451,7 @@ static void HandleIassign(StmtNode &stmt, CGFunc &cgFunc)
 {
     DEBUG_ASSERT(stmt.GetOpCode() == OP_iassign, "expect stmt");
     auto &iassignNode = static_cast<IassignNode &>(stmt);
-    if ((iassignNode.GetRHS() != nullptr) && iassignNode.GetRHS()->GetPrimType() != PTY_agg) {
+    if ((iassignNode.GetRHS() != nullptr)) {
         cgFunc.SelectIassign(iassignNode);
     } else {
         CHECK_FATAL(false, "NIY");

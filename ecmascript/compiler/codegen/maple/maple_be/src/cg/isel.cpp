@@ -163,11 +163,7 @@ static void HandleIassign(StmtNode &stmt, MPISel &iSel)
     if (opndRhs == nullptr || opndAddr == nullptr) {
         return;
     }
-    if (rhs->GetPrimType() != PTY_agg) {
-        iSel.SelectIassign(iassignNode, *opndAddr, *opndRhs);
-    } else {
-        CHECK_FATAL(false, "NIY");
-    }
+    iSel.SelectIassign(iassignNode, *opndAddr, *opndRhs);
 }
 
 static void HandleRegassign(StmtNode &stmt, MPISel &iSel)
@@ -591,20 +587,10 @@ std::pair<FieldID, MIRType *> MPISel::GetFieldIdAndMirTypeFromMirNode(const Base
     } else if (node.GetOpCode() == maple::OP_iassign) {
         auto &iassign = static_cast<const IassignNode &>(node);
         fieldId = iassign.GetFieldID();
-        AddrofNode &addrofNode = static_cast<AddrofNode &>(iassign.GetAddrExprBase());
         MIRType *iassignMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(iassign.GetTyIdx());
         MIRPtrType *pointerType = nullptr;
-        if (iassignMirType->GetPrimType() == PTY_agg) {
-            CHECK_NULL_FATAL(cgFunc->GetMirModule().CurFunction());
-            MIRSymbol *addrSym = cgFunc->GetMirModule().CurFunction()->GetLocalOrGlobalSymbol(addrofNode.GetStIdx());
-            MIRType *addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrSym->GetTyIdx());
-            addrMirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(addrMirType->GetTypeIndex());
-            DEBUG_ASSERT(addrMirType->GetKind() == kTypePointer, "non-pointer");
-            pointerType = static_cast<MIRPtrType *>(addrMirType);
-        } else {
-            DEBUG_ASSERT(iassignMirType->GetKind() == kTypePointer, "non-pointer");
-            pointerType = static_cast<MIRPtrType *>(iassignMirType);
-        }
+        DEBUG_ASSERT(iassignMirType->GetKind() == kTypePointer, "non-pointer");
+        pointerType = static_cast<MIRPtrType *>(iassignMirType);
         mirType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(pointerType->GetPointedTyIdx());
     } else {
         CHECK_FATAL(false, "unsupported OpCode");
@@ -617,10 +603,6 @@ MirTypeInfo MPISel::GetMirTypeInfoFormFieldIdAndMirType(FieldID fieldId, MIRType
     MirTypeInfo mirTypeInfo;
     /* fixup primType and offset */
     mirTypeInfo.primType = mirType->GetPrimType();
-    // aggSize for AggType
-    if (mirTypeInfo.primType == maple::PTY_agg) {
-        mirTypeInfo.size = cgFunc->GetBecommon().GetTypeSize(mirType->GetTypeIndex());
-    }
     return mirTypeInfo;
 }
 
@@ -641,14 +623,7 @@ void MPISel::SelectDassign(const DassignNode &stmt, Operand &opndRhs)
     /* rhs mirType info */
     PrimType rhsType = stmt.GetRHS()->GetPrimType();
     /* Generate Insn */
-    if (rhsType == PTY_agg) {
-        CHECK_FATAL(false, "NIY");
-        return;
-    }
     PrimType memType = symbolInfo.primType;
-    if (memType == PTY_agg) {
-        memType = PTY_a64;
-    }
     SelectCopy(symbolMem, opndRhs, memType, rhsType);
     if (rhsType == PTY_ref) {
         cgFunc->AddReferenceStackSlot(symbolMem.GetOffsetImmediate()->GetOffsetValue());
@@ -663,9 +638,6 @@ void MPISel::SelectIassign(const IassignNode &stmt, Operand &opndAddr, Operand &
     MirTypeInfo symbolInfo = GetMirTypeInfoFromMirNode(stmt);
     /* handle Lhs, generate (%Rxx) via Rxx*/
     PrimType memType = symbolInfo.primType;
-    if (memType == PTY_agg) {
-        memType = PTY_a64;
-    }
     RegOperand &lhsBaseOpnd = SelectCopy2Reg(opndAddr, stmt.Opnd(0)->GetPrimType());
     MemOperand &lhsMemOpnd =
         cgFunc->GetOpndBuilder()->CreateMem(lhsBaseOpnd, symbolInfo.offset, GetPrimTypeBitSize(memType));
@@ -808,11 +780,6 @@ Operand *MPISel::SelectDread(const BaseNode &parent, const AddrofNode &expr)
         cgFunc->AddReferenceStackSlot(symbolMem.GetOffsetImmediate()->GetOffsetValue());
     }
 
-    /* for AggType, return it's location in stack. */
-    if (symbolType == maple::PTY_agg) {
-        CHECK_FATAL(primType == maple::PTY_agg, "NIY");
-        return &symbolMem;
-    }
     /* for BasicType, load symbolVal to register. */
     RegOperand &regOpnd =
         cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(primType), cgFunc->GetRegTyFromPrimTy(primType));
@@ -1069,32 +1036,6 @@ void MPISel::SelectAdd(Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimTyp
     SelectBasicOp(resOpnd, opnd0, opnd1, mOp, primType);
 }
 
-Operand *MPISel::SelectNeg(const UnaryNode &node, Operand &opnd0, const BaseNode &parent)
-{
-    PrimType dtype = node.GetPrimType();
-
-    RegOperand *resOpnd = nullptr;
-    resOpnd = &cgFunc->GetOpndBuilder()->CreateVReg(GetPrimTypeBitSize(dtype), cgFunc->GetRegTyFromPrimTy(dtype));
-    RegOperand &regOpnd0 = SelectCopy2Reg(opnd0, dtype, node.Opnd(0)->GetPrimType());
-    SelectNeg(*resOpnd, regOpnd0, dtype);
-    return resOpnd;
-}
-
-void MPISel::SelectNeg(Operand &resOpnd, Operand &opnd0, PrimType primType)
-{
-    MOperator mOp = abstract::MOP_undef;
-    if (IsPrimitiveInteger(primType)) {
-        const static auto fastNegMappingFunc = DEF_MOPERATOR_MAPPING_FUNC(neg);
-        mOp = fastNegMappingFunc(GetPrimTypeBitSize(primType));
-    } else {
-        const static auto fastNegFloatMappingFunc = DEF_FLOAT_MOPERATOR_MAPPING_FUNC(neg);
-        mOp = fastNegFloatMappingFunc(GetPrimTypeBitSize(primType));
-    }
-    Insn &insn = cgFunc->GetInsnBuilder()->BuildInsn(mOp, InsnDesc::GetAbstractId(mOp));
-    (void)insn.AddOpndChain(resOpnd).AddOpndChain(opnd0);
-    cgFunc->GetCurBB()->AppendInsn(insn);
-}
-
 Operand *MPISel::SelectBior(const BinaryNode &node, Operand &opnd0, Operand &opnd1, const BaseNode &parent)
 {
     PrimType primType = node.GetPrimType();
@@ -1147,10 +1088,6 @@ Operand *MPISel::SelectIread(const BaseNode &parent, const IreadNode &expr, int 
     MirTypeInfo lhsInfo = GetMirTypeInfoFromMirNode(expr);
     /* get memOpnd */
     MemOperand &memOpnd = *GetOrCreateMemOpndFromIreadNode(expr, lhsInfo.primType, lhsInfo.offset + extraOffset);
-    /* for AggType, return addr it self. */
-    if (lhsInfo.primType == PTY_agg) {
-        return &memOpnd;
-    }
     /* for BasicType, load val in addr to register. */
     PrimType primType = expr.GetPrimType();
     RegOperand &result =

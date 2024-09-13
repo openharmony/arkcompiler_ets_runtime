@@ -65,12 +65,9 @@ private:
                       PrimType cmpPrimType);
 
     Operand *SelectDivRem(RegOperand &opnd0, RegOperand &opnd1, PrimType primType, Opcode opcode);
-    RegOperand &GetTargetStackPointer(PrimType primType) override;
     RegOperand &GetTargetBasicPointer(PrimType primType) override;
     void SelectMinOrMax(bool isMin, Operand &resOpnd, Operand &opnd0, Operand &opnd1, PrimType primType) override;
     void SelectPseduoForReturn(std::vector<RegOperand *> &retRegs);
-    RegOperand *PrepareMemcpyParm(MemOperand &memOperand, MOperator mOp);
-    RegOperand *PrepareMemcpyParm(uint64 copySize);
     RegOperand &SelectSpecialRegread(PregIdx pregIdx, PrimType primType) override;
     void SelectRetypeFloat(RegOperand &resOpnd, Operand &opnd0, PrimType toType, PrimType fromType) override;
 

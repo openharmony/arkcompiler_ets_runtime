@@ -359,10 +359,6 @@ BlockNode *MIRLower::LowerBlock(BlockNode &block)
                     MIRFuncType *funcType = FuncTypeFromFuncPtrExpr(stmt->Opnd(0));
                     CHECK_FATAL(funcType != nullptr, "MIRLower::LowerBlock: cannot find prototype for icall");
                     ic->SetRetTyIdx(funcType->GetTypeIndex());
-                    MIRType *retType = GlobalTables::GetTypeTable().GetTypeFromTyIdx(funcType->GetRetTyIdx());
-                    if (retType->GetPrimType() == PTY_agg && retType->GetSize() > k16BitSize) {
-                        funcType->funcAttrs.SetAttr(FUNCATTR_firstarg_return);
-                    }
                 }
                 newBlock->AddStatement(stmt);
                 break;

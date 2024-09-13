@@ -83,14 +83,9 @@ MOperator PickLdStInsn(bool isLoad, uint32 bitSize, PrimType primType)
     DEBUG_ASSERT(__builtin_popcount(bitSize) == 1, "PTY_u1 should have been lowered?");
 
     /* __builtin_ffs(x) returns: 0 -> 0, 1 -> 1, 2 -> 2, 4 -> 3, 8 -> 4 */
-    if ((IsPrimitiveInteger(primType) || primType == PTY_agg)) {
+    if ((IsPrimitiveInteger(primType))) {
         auto *table = isLoad ? ldIs : stIs;
         int32 signedUnsigned = IsUnsignedInteger(primType) ? 0 : 1;
-        if (primType == PTY_agg) {
-            CHECK_FATAL(bitSize >= k8BitSize, " unexpect agg size");
-            bitSize = static_cast<uint32>(RoundUp(bitSize, k8BitSize));
-            DEBUG_ASSERT((bitSize & (bitSize - 1)) == 0, "bitlen error");
-        }
 
         /* __builtin_ffs(x) returns: 8 -> 4, 16 -> 5, 32 -> 6, 64 -> 7 */
         uint32 size = static_cast<uint32>(__builtin_ffs(static_cast<int32>(bitSize))) - k4BitSize;
@@ -313,11 +308,7 @@ void AArch64CGFunc::SelectCopyMemOpnd(Operand &dest, PrimType dtype, uint32 dsiz
         CHECK_FATAL(dsize == ssize, "dsize %u expect equals ssize %u", dtype, ssize);
         insn = &GetInsnBuilder()->BuildInsn(PickLdInsn(ssize, stype), dest, src);
     } else {
-        if (stype == PTY_agg && dtype == PTY_agg) {
-            mop = MOP_undef;
-        } else {
-            mop = PickExtInsn(dtype, stype);
-        }
+        mop = PickExtInsn(dtype, stype);
         if (ssize == (GetPrimTypeSize(dtype) * kBitsPerByte) || mop == MOP_undef) {
             insn = &GetInsnBuilder()->BuildInsn(PickLdInsn(ssize, stype), dest, src);
         } else {
@@ -386,9 +377,6 @@ void AArch64CGFunc::SelectCopyRegOpnd(Operand &dest, PrimType dtype, Operand::Op
                                       Operand &src, PrimType stype)
 {
     if (opndType != Operand::kOpdMem) {
-        if (!CGOptions::IsArm64ilp32()) {
-            DEBUG_ASSERT(stype != PTY_a32, "");
-        }
         GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(PickMovBetweenRegs(dtype, stype), dest, src));
         return;
     }
@@ -719,9 +707,6 @@ void AArch64CGFunc::SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPTyp
     MOperator mOp = MOP_undef;
 
     uint32 dataSize = GetPrimTypeBitSize(type->GetPrimType());
-    if (type->GetPrimType() == PTY_agg) {
-        dataSize = GetPrimTypeBitSize(PTY_a64);
-    }
     MemOperand *memOpnd = nullptr;
     if (parmCopy) {
         memOpnd = &LoadStructCopyBase(*symbol, offset, static_cast<int>(dataSize));
@@ -737,9 +722,6 @@ void AArch64CGFunc::SelectDassign(StIdx stIdx, FieldID fieldId, PrimType rhsPTyp
     DEBUG_ASSERT(((type->GetKind() == kTypeScalar) || (type->GetKind() == kTypePointer) ||
         (type->GetKind() == kTypeFunction) || (type->GetKind() == kTypeArray)), "NYI dassign type");
     PrimType ptyp = type->GetPrimType();
-    if (ptyp == PTY_agg) {
-        ptyp = PTY_a64;
-    }
 
     mOp = PickStInsn(GetPrimTypeBitSize(ptyp), ptyp);
     Insn &insn = GetInsnBuilder()->BuildInsn(mOp, stOpnd, *memOpnd);
@@ -852,9 +834,6 @@ void AArch64CGFunc::SelectIassign(IassignNode &stmt)
                                         GetPrimTypeBitSize(styp));
 
     PrimType destType = pointedType->GetPrimType();
-    if (destType == PTY_agg) {
-        destType = PTY_a64;
-    }
     DEBUG_ASSERT(stmt.Opnd(0) != nullptr, "null ptr check");
     MemOperand &memOpnd = CreateMemOpnd(destType, stmt, *stmt.Opnd(0), offset);
     SelectCopy(memOpnd, destType, srcOpnd, destType);
@@ -874,16 +853,6 @@ Operand *AArch64CGFunc::SelectDread(const BaseNode &parent, DreadNode &expr)
     uint32 dataSize = GetPrimTypeBitSize(symType);
     uint32 aggSize = 0;
     PrimType resultType = expr.GetPrimType();
-    if (symType == PTY_agg) {
-        if (expr.GetPrimType() == PTY_agg) {
-            aggSize = static_cast<uint32>(GetBecommon().GetTypeSize(symbol->GetType()->GetTypeIndex().GetIdx()));
-            dataSize = ((expr.GetFieldID() == 0) ? GetPointerSize() : aggSize) << k8BitShift;
-            resultType = PTY_u64;
-            symType = resultType;
-        } else {
-            dataSize = GetPrimTypeBitSize(expr.GetPrimType());
-        }
-    }
     MemOperand *memOpnd = nullptr;
     if (aggSize > k8ByteSize) {
         if (parent.op == OP_eval) {
@@ -964,15 +933,7 @@ Operand *AArch64CGFunc::SelectIread(const BaseNode &parent, IreadNode &expr, int
 
     RegType regType = GetRegTyFromPrimTy(expr.GetPrimType());
     uint32 regSize = GetPrimTypeSize(expr.GetPrimType());
-    if (expr.GetFieldID() == 0 && pointedType->GetPrimType() == PTY_agg) {
-        /* Maple IR can passing small struct to be loaded into a single register. */
-        if (regType == kRegTyFloat) {
-            /* regsize is correct */
-        } else {
-            uint32 sz = GetBecommon().GetTypeSize(pointedType->GetTypeIndex().GetIdx());
-            regSize = (sz <= k4ByteSize) ? k4ByteSize : k8ByteSize;
-        }
-    } else if (regSize < k4ByteSize) {
+    if (regSize < k4ByteSize) {
         regSize = k4ByteSize; /* 32-bit */
     }
     Operand *result = nullptr;
@@ -990,26 +951,6 @@ Operand *AArch64CGFunc::SelectIread(const BaseNode &parent, IreadNode &expr, int
     if (regType == kRegTyFloat) {
         destType = expr.GetPrimType();
         bitSize = GetPrimTypeBitSize(destType);
-    } else if (destType == PTY_agg) {
-        switch (bitSize) {
-            case k8BitSize:
-                destType = PTY_u8;
-                break;
-            case k16BitSize:
-                destType = PTY_u16;
-                break;
-            case k32BitSize:
-                destType = PTY_u32;
-                break;
-            case k64BitSize:
-                destType = PTY_u64;
-                break;
-            default:
-                destType = PTY_u64;  // when eval agg . a way to round up
-                DEBUG_ASSERT(bitSize == 0, " round up empty agg ");
-                bitSize = k64BitSize;
-                break;
-        }
     }
 
     PrimType memType = (finalBitFieldDestType == kPtyInvalid ? destType : finalBitFieldDestType);
@@ -2733,7 +2674,6 @@ void AArch64CGFunc::SelectCvtFloat2Int(Operand &resOpnd, Operand &srcOpnd, PrimT
             mOp = !is64BitsFloat ? MOP_vcvtrf : MOP_vcvtrd;
             break;
         case PTY_u32:
-        case PTY_a32:
             mOp = !is64BitsFloat ? MOP_vcvturf : MOP_vcvturd;
             break;
         case PTY_i64:
@@ -3427,11 +3367,6 @@ std::pair<MIRFunction *, MIRFuncType *> AArch64CGFunc::GetCalleeFunction(StmtNod
 void AArch64CGFunc::SelectParmListPassByStack(const MIRType &mirType, Operand &opnd, uint32 memOffset, bool preCopyed,
                                               std::vector<Insn *> &insnForStackArgs)
 {
-    if (!preCopyed && mirType.GetPrimType() == PTY_agg) {
-        CHECK_FATAL(false, "NIY");
-        return;
-    }
-
     PrimType primType = preCopyed ? PTY_a64 : mirType.GetPrimType();
     auto &valReg = LoadIntoRegister(opnd, primType);
     auto &actMemOpnd = CreateMemOpnd(RSP, memOffset, GetPrimTypeBitSize(primType));
@@ -3488,8 +3423,6 @@ void AArch64CGFunc::SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, bo
             opnd = &CreateVirtualRegisterOperand(NewVReg(kRegTyInt, k8ByteSize));
             auto &spReg = GetOrCreatePhysicalRegisterOperand(RSP, k64BitSize, kRegTyInt);
             SelectAdd(*opnd, spReg, CreateImmOperand(argsDesc[i].offset, k64BitSize, false), PTY_a64);
-        } else if (mirType->GetPrimType() == PTY_agg) {
-            CHECK_FATAL(false, "NIY");
         } else {  // base type, clac true val
             opnd = &LoadIntoRegister(*HandleExpr(naryNode, *argsDesc[i].argExpr), mirType->GetPrimType());
         }
@@ -3501,24 +3434,20 @@ void AArch64CGFunc::SelectParmList(StmtNode &naryNode, ListOperand &srcOpnds, bo
         }
 
         if (ploc.reg0 != kRinvalid) {  // load to the register.
-            if (mirType->GetPrimType() == PTY_agg && !preCopyed) {
-                CHECK_FATAL(false, "NIY");
-            } else {
-                CHECK_FATAL(ploc.reg1 == kRinvalid, "NIY");
-                auto &phyReg = GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg>(ploc.reg0),
-                                                                  GetPrimTypeBitSize(ploc.primTypeOfReg0),
-                                                                  GetRegTyFromPrimTy(ploc.primTypeOfReg0));
-                DEBUG_ASSERT(opnd->IsRegister(), "NIY, must be reg");
-                if (!DoCallerEnsureValidParm(phyReg, static_cast<RegOperand &>(*opnd), ploc.primTypeOfReg0)) {
-                    if (argsDesc[i].isSpecialArg) {
-                        regMapForTmpBB.emplace_back(RegMapForPhyRegCpy(
-                            &phyReg, ploc.primTypeOfReg0, static_cast<RegOperand *>(opnd), ploc.primTypeOfReg0));
-                    } else {
-                        SelectCopy(phyReg, ploc.primTypeOfReg0, *opnd, ploc.primTypeOfReg0);
-                    }
+            CHECK_FATAL(ploc.reg1 == kRinvalid, "NIY");
+            auto &phyReg = GetOrCreatePhysicalRegisterOperand(static_cast<AArch64reg>(ploc.reg0),
+                                                              GetPrimTypeBitSize(ploc.primTypeOfReg0),
+                                                              GetRegTyFromPrimTy(ploc.primTypeOfReg0));
+            DEBUG_ASSERT(opnd->IsRegister(), "NIY, must be reg");
+            if (!DoCallerEnsureValidParm(phyReg, static_cast<RegOperand &>(*opnd), ploc.primTypeOfReg0)) {
+                if (argsDesc[i].isSpecialArg) {
+                    regMapForTmpBB.emplace_back(RegMapForPhyRegCpy(
+                        &phyReg, ploc.primTypeOfReg0, static_cast<RegOperand *>(opnd), ploc.primTypeOfReg0));
+                } else {
+                    SelectCopy(phyReg, ploc.primTypeOfReg0, *opnd, ploc.primTypeOfReg0);
                 }
-                srcOpnds.PushOpnd(phyReg);
             }
+            srcOpnds.PushOpnd(phyReg);
             continue;
         }
 
