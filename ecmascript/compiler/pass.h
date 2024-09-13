@@ -52,6 +52,7 @@
 #include "ecmascript/compiler/type_inference/pgo_type_infer.h"
 #include "ecmascript/compiler/typed_hcr_lowering.h"
 #include "ecmascript/compiler/typed_native_inline_lowering.h"
+#include "ecmascript/compiler/useless_gate_elimination.h"
 #include "ecmascript/compiler/value_numbering.h"
 #include "ecmascript/compiler/instruction_combine.h"
 #include "ecmascript/compiler/verifier.h"
@@ -679,6 +680,19 @@ public:
         visitor.AddPass(&laterElimination);
         visitor.VisitGraph();
         visitor.PrintLog("later elimination");
+        return true;
+    }
+};
+
+class UselessGateEliminationPass {
+public:
+    bool Run(PassData* data)
+    {
+        TimeScope timescope("UselessGateEliminationPass", data->GetMethodName(),
+                            data->GetMethodOffset(), data->GetLog());
+        bool enableLog = data->GetLog()->EnableMethodCIRLog();
+        UselessGateElimination uselessGateElimination(data->GetCircuit(), enableLog, data->GetMethodName());
+        uselessGateElimination.Run();
         return true;
     }
 };

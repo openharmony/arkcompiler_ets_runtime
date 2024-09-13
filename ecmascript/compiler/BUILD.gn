@@ -210,6 +210,7 @@ libark_jsoptimizer_sources = [
   "typed_bytecode_lowering.cpp",
   "typed_hcr_lowering.cpp",
   "typed_native_inline_lowering.cpp",
+  "useless_gate_elimination.cpp",
   "value_numbering.cpp",
   "verifier.cpp",
 ]
