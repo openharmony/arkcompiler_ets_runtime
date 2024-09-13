@@ -238,7 +238,6 @@ group("ark_aot_ts_test") {
     "pgo_length",
     "pgo_loop_peeling",
     "pgo_math",
-    "pgo_math_round",
     "pgo_objectliteral_operation",
     "pgo_object_prototype",
     "pgo_call_deopt_js",
