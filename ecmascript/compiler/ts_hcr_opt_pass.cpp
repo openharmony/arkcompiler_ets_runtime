@@ -142,6 +142,9 @@ GateRef TSHCROptPass::ConvertConstSingleCharToInt32(GateRef gate)
     uint32_t strId = acc_.GetStringIdFromLdaStrGate(gate);
     auto methodOffset = acc_.TryGetMethodOffset(gate);
     JSTaggedValue str = GetStringFromConstantPool(methodOffset, strId);
+    if (str == JSTaggedValue::Undefined()) {
+        return Circuit::NullGate();
+    }
     ASSERT(EcmaStringAccessor(str).GetLength() == 1);
     uint16_t strToInt = EcmaStringAccessor(str).Get(0);
     return builder_.Int32(strToInt);
