@@ -150,11 +150,14 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         pipeline.RunPass<TypeBytecodeLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<InductionVariableAnalysisPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<NumberSpeculativePass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<LaterEliminationPass>();
         if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
             pipeline.RunPass<ValueNumberingPass>();
@@ -164,9 +167,11 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         pipeline.RunPass<StringOptimizationPass>();
         pipeline.RunPass<NTypeHCRLoweringPass>();
         pipeline.RunPass<TypeHCRLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LCRLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<ConstantFoldingPass>();
         if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
             pipeline.RunPass<ValueNumberingPass>();
@@ -177,6 +182,7 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
         }
         pipeline.RunPass<InstructionCombinePass>();
         pipeline.RunPass<EarlyEliminationPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         if (!compilationEnv_->GetJSOptions().IsEnableJitFastCompile()) {
             pipeline.RunPass<VerifierPass>();
         }
@@ -313,11 +319,14 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<AsyncFunctionLoweringPass>();
         pipeline.RunPass<TypeBytecodeLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<InductionVariableAnalysisPass>();
         pipeline.RunPass<RedundantPhiEliminationPass>();
         pipeline.RunPass<NTypeBytecodeLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<NumberSpeculativePass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<StateSplitLinearizerPass>();
@@ -325,15 +334,18 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         pipeline.RunPass<StringOptimizationPass>();
         pipeline.RunPass<NTypeHCRLoweringPass>();
         pipeline.RunPass<TypeHCRLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<LaterEliminationPass>();
         pipeline.RunPass<EarlyEliminationPass>();
         pipeline.RunPass<LCRLoweringPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         pipeline.RunPass<ConstantFoldingPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<SlowPathLoweringPass>();
         pipeline.RunPass<ValueNumberingPass>();
         pipeline.RunPass<InstructionCombinePass>();
         pipeline.RunPass<EarlyEliminationPass>();
+        pipeline.RunPass<UselessGateEliminationPass>();
         if (passOptions_->EnableVerifierPass()) {
             pipeline.RunPass<VerifierPass>();
         }

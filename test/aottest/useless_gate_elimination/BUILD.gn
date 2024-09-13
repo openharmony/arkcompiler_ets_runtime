@@ -13,7 +13,7 @@
 
 import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-host_aot_js_test_action("combined_pass") {
+host_aot_js_test_action("useless_gate_elimination") {
   deps = []
   is_enable_pgo = true
   is_enable_opt_inlining = true
