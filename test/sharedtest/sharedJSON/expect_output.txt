@@ -97,3 +97,7 @@ sendableMap6 arr: 1,2,3
 sendableMap6 boolA: true
 sendableMap6 boolB: false
 sendableMap6 nullText: null
+ASON parse asonstr1: 45
+ASON parse asonstr2: 89
+ASON parse asonstr3: eetrue1123
+{"123":"1","124":"123","1234":"bb","xx":"yy","aaa":"ee","success":"true"}

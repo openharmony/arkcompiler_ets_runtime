@@ -303,6 +303,23 @@ function testASONMap() {
     print("sendableMap6 nullText: " + map6.get("nullText"));
 }
 
+function testIndexASON()
+{
+    let asonstr1 = '{"12":"45", "67":"89"}';
+    let asonstr2 = '{"12":"45", "67":"89", "a":"b"}';
+    let a = JSON.parseSendable(asonstr1);
+    let b = JSON.parseSendable(asonstr2);
+    print("ASON parse asonstr1: " + a["12"]);
+    print("ASON parse asonstr2: " + b["67"]);
+    let asonstr3 =
+        '{"123":"aa", "xx":"yy", "aaa":"es", "1234":"bb", "aaa":"ee", "124":"123", "success":"true", "123":"1"}';
+    let c = JSON.parseSendable(asonstr3);
+    let outstr = c.aaa + c.success + c[123] + c[124];
+    print("ASON parse asonstr3: " + outstr);
+    let out3 = JSON.stringifySendable(c)
+    print(out3);
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
@@ -311,3 +328,4 @@ testJSONNormal();
 testJSONreviver();
 testJSONZeroDeci();
 testASONMap();
+testIndexASON();
