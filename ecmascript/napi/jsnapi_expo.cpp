@@ -47,6 +47,7 @@ namespace panda {
 using ecmascript::AccessorData;
 using ecmascript::BigInt;
 using ecmascript::ByteArray;
+using ecmascript::DataViewType;
 using ecmascript::ECMAObject;
 using ecmascript::EcmaRuntimeCallInfo;
 using ecmascript::EcmaString;
@@ -2179,6 +2180,30 @@ Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> napiWapperString = thread->GlobalConstants()->GetHandledNapiWrapperString();
     return JSNApiHelper::ToLocal<StringRef>(napiWapperString);
+}
+
+Local<TypedArrayRef> StringRef::EncodeIntoUint8Array(const EcmaVM *vm)
+{
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSHandle<JSTaggedValue> string = JSNApiHelper::ToJSHandle(this);
+    uint32_t length = this->Utf8Length(vm, true);
+    // 1 because Utf8Length adds 1 for the return value
+    if (length <= 1) {
+        return Undefined(vm);
+    }
+
+    JSHandle<JSObject> obj =
+        TypedArrayHelper::FastCreateTypedArray(thread, thread->GlobalConstants()->GetHandledUint8ArrayString(),
+                                               length - 1, DataViewType::UINT8);
+    JSHandle<JSObject> arrayBuffer(thread, JSTypedArray::Cast(*obj)->GetViewedArrayBufferOrByteArray());
+    JSTaggedValue bufferData = JSHandle<JSArrayBuffer>::Cast(arrayBuffer)->GetArrayBufferData();
+    void *buffer = JSNativePointer::Cast(bufferData.GetTaggedObject())->GetExternalPointer();
+
+    JSHandle<EcmaString> stringHandle = JSHandle<EcmaString>::Cast(string);
+    EcmaStringAccessor(stringHandle).WriteToFlatUtf8(reinterpret_cast<uint8_t*>(buffer), length - 1, true);
+    JSHandle<JSTaggedValue> typedArrayTag = JSHandle<JSTaggedValue>::Cast(obj);
+    return JSNApiHelper::ToLocal<TypedArrayRef>(typedArrayTag);
 }
 
 // ---------------------------------- PromiseRejectInfo ---------------------------------

@@ -45,6 +45,10 @@ public:
     static JSTaggedValue SharedTypedArrayConstructor(EcmaRuntimeCallInfo *argv,
                                                      const JSHandle<JSTaggedValue> &constructorName,
                                                      const DataViewType arrayType);
+    static JSHandle<JSObject> FastCreateTypedArray(JSThread *thread,
+                                                   const JSHandle<JSTaggedValue> &constructorName,
+                                                   uint32_t length,
+                                                   const DataViewType arrayType);
     static JSHandle<JSObject> AllocateTypedArray(JSThread *thread,
                                                  const JSHandle<JSTaggedValue> &constructorName,
                                                  const JSHandle<JSTaggedValue> &newTarget,

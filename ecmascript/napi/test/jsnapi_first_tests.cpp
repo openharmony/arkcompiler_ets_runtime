@@ -381,6 +381,30 @@ HWTEST_F_L0(JSNApiTests, StringUtf8_003)
     EXPECT_EQ(buffer2[2], 'b');
 }
 
+HWTEST_F_L0(JSNApiTests, StringEncodeIntoUint8_001) {
+    LocalScope scope(vm_);
+    std::string test = "";
+
+    Local<StringRef> testString1 =
+        StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
+    Local<TypedArrayRef> typedArray = testString1->EncodeIntoUint8Array(vm_);
+    EXPECT_TRUE(typedArray->IsUndefined());
+}
+
+HWTEST_F_L0(JSNApiTests, StringEncodeIntoUint8_002) {
+    LocalScope scope(vm_);
+    std::string test = "abc123";
+    char excepted[7] = {0x61, 0x62, 0x63, 0x31, 0x32, 0x33, 0};
+
+    Local<StringRef> testString1 =
+        StringRef::NewFromUtf8(vm_, test.c_str(), test.length());
+    Local<TypedArrayRef> typedArray = testString1->EncodeIntoUint8Array(vm_);
+
+    char *res = reinterpret_cast<char *>(typedArray->GetArrayBuffer(vm_)->GetBuffer(vm_));
+
+    ASSERT_STREQ(res, excepted);
+}
+
 /**
  * @tc.number: ffi_interface_api_007
  * @tc.name: StringLatin1_001

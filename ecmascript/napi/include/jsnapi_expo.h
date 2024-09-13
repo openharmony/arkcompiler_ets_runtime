@@ -63,6 +63,7 @@ class MapIteratorRef;
 class SendableMapIteratorRef;
 class BooleanRef;
 class NativePointerRef;
+class TypedArrayRef;
 class JsiRuntimeCallInfo;
 class RuntimeOption;
 namespace test {
@@ -871,6 +872,7 @@ public:
     int WriteUtf16(const EcmaVM *vm, char16_t *buffer, int length);
     int WriteLatin1(const EcmaVM *vm, char *buffer, int length);
     static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
+    Local<TypedArrayRef> EncodeIntoUint8Array(const EcmaVM *vm);
 };
 
 class ECMA_PUBLIC_API PromiseRejectInfo {
