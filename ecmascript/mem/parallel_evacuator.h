@@ -96,6 +96,33 @@ private:
         Region *region_;
     };
 
+    class AcquireItem {
+    public:
+        AcquireItem() = default;
+        AcquireItem(AcquireItem&& other) noexcept {(void)other;};
+        bool TryAcquire();
+    private:
+        std::atomic<bool> acquire_{false};
+    };
+
+    class WorkloadSet {
+    public:
+        inline void Add(std::unique_ptr<Workload> workload);
+        inline size_t GetWorkloadCount() const;
+        inline bool HasRemaningWorkload() const;
+        inline bool FetchSubAndCheckWorkloadCount(size_t finishedCount);
+        void PrepareWorkloads();
+        std::optional<size_t> GetNextIndex();
+        std::unique_ptr<ParallelEvacuator::Workload> TryGetWorkload(size_t index);
+        void Clear();
+    private:
+        using WorkItem = std::pair<AcquireItem, std::unique_ptr<Workload>>;
+        std::vector<WorkItem> workloads_;
+        std::vector<size_t> indexList_;
+        std::atomic<size_t> indexCursor_ = 0;
+        std::atomic<size_t> remainingWorkloadNum_ = 0;
+    };
+    
     class EvacuateWorkload : public Workload {
     public:
         EvacuateWorkload(ParallelEvacuator *evacuator, Region *region) : Workload(evacuator, region) {}
@@ -139,6 +166,9 @@ private:
     private:
         bool isYoungGC_;
     };
+
+    template <typename WorkloadCallback>
+    void DrainWorkloads(WorkloadSet &workloadSet, WorkloadCallback callback);
 
     std::unordered_set<JSTaggedType> &ArrayTrackInfoSet(uint32_t threadIndex)
     {
@@ -198,9 +228,6 @@ private:
     template<TriggerGCType gcType>
     inline bool UpdateWeakObjectSlotOpt(JSTaggedValue value, ObjectSlot &slot);
 
-    inline std::unique_ptr<Workload> GetWorkloadSafe();
-    inline void AddWorkload(std::unique_ptr<Workload> region);
-
     inline int CalculateEvacuationThreadNum();
     inline int CalculateUpdateThreadNum();
     void WaitFinished();
@@ -209,13 +236,14 @@ private:
     TlabAllocator *allocator_ {nullptr};
 
     uintptr_t waterLine_ = 0;
-    std::vector<std::unique_ptr<Workload>> workloads_;
     std::unordered_set<JSTaggedType> arrayTrackInfoSets_[MAX_TASKPOOL_THREAD_NUM + 1];
     std::atomic_int parallel_ = 0;
     Mutex mutex_;
     ConditionVariable condition_;
     std::atomic<size_t> promotedSize_ = 0;
     std::atomic<size_t> edenToYoungSize_ = 0;
+    WorkloadSet evacuateWorkloadSet_;
+    WorkloadSet updateWorkloadSet_;
 };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_PARALLEL_EVACUATOR_H
