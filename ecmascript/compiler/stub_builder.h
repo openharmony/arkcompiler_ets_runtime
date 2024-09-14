@@ -957,7 +957,6 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
-    GateRef GetLastLeaveFrame(GateRef glue);
     inline GateRef GetPropertiesCache(GateRef glue);
     GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key,
                                         GateRef hir = Circuit::NullGate());
@@ -973,6 +972,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
                          GateRef hir = Circuit::NullGate());
     void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
                                              GateRef profileTypeInfo, GateRef slotId);
+    GateRef GetLastLeaveFrame(GateRef glue);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
