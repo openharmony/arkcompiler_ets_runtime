@@ -884,6 +884,7 @@ ShortcutBoolOr([&]{ return first; }, [&]{ return second; })
     GateRef IsClassConstructorKind(GateRef kind);
     GateRef IsGeneratorKind(GateRef kind);
     GateRef IsBaseKind(GateRef kind);
+    GateRef IsBaseConstructorKind(GateRef kind);
     GateRef IsSendableFunction(GateRef method);
 
     GateRef IsAOTLiteralInfo(GateRef info);

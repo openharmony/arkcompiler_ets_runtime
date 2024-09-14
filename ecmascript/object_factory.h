@@ -863,7 +863,8 @@ public:
                                                      MemSpaceType spaceType = MemSpaceType::SHARED_OLD_SPACE);
 
     JSHandle<JSHClass> CreateSFunctionClass(uint32_t size, JSType type,
-                                            const JSHandle<JSTaggedValue> &prototype, bool isAccessor = true);
+                                            const JSHandle<JSTaggedValue> &prototype,
+                                            bool isAccessor = true, bool setProto = false);
 
     JSHandle<JSNativePointer> NewSJSNativePointer(void *externalPointer,
                                                   const NativePointerCallback &callBack,

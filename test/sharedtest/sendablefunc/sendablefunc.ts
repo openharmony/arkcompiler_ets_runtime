@@ -123,3 +123,7 @@ let d = new D()
 d.fooD()
 let e = new E(barAsync)
 e.callback();
+print(fooAsyncTop.name);
+print(fooTop.name);
+print(fooTop.length)
+print(fooTop.prototype);

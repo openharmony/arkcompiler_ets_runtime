@@ -388,6 +388,10 @@ void Builtins::InitializeSFunction(const JSHandle<GlobalEnv> &env,
         factory_->CreateSFunctionClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION,
                                        sFuncPrototypeVal);
     env->SetSFunctionClassWithoutProto(thread_, functionClass);
+    JSHandle<JSHClass> functionClassWithProto =
+        factory_->CreateSFunctionClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION,
+                                       sFuncPrototypeVal, true, true);
+    env->SetSFunctionClassWithProto(thread_, functionClassWithProto);
 
     JSHandle<JSHClass> functionClassWithoutAccessor =
         factory_->CreateSFunctionClass(JSSharedFunction::SIZE, JSType::JS_SHARED_FUNCTION,
