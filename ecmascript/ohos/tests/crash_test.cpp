@@ -131,4 +131,25 @@ HWTEST_F_L0(CrashTest, BuildCompileRuntimeInfo)
     unlink(sanboxRealPath);
     rmdir(MockAotRuntimeInfo::SANBOX_DIR);
 }
+
+HWTEST_F_L0(CrashTest, CrashGetRuntimeInfoByPath)
+{
+    char timestamp[ohos::AotRuntimeInfo::TIME_STAMP_SIZE];
+    char soBuildId[NAME_MAX];
+    ohos::AotRuntimeInfo *runtimeInfo = new MockAotRuntimeInfo(true);
+
+    runtimeInfo->GetMicrosecondsTimeStamp(timestamp, ohos::AotRuntimeInfo::TIME_STAMP_SIZE);
+    runtimeInfo->GetRuntimeBuildId(soBuildId, NAME_MAX);
+    char sanboxRealPath[PATH_MAX];
+    mkdir(MockAotRuntimeInfo::SANBOX_DIR, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    std::ofstream file(sanboxRealPath);
+    file.close();
+
+    runtimeInfo->GetCrashSandBoxRealPath(sanboxRealPath, NAME_MAX);
+    runtimeInfo->BuildCrashRuntimeInfo(ecmascript::ohos::RuntimeInfoType::AOT_CRASH);
+    runtimeInfo->CollectCrashSum();
+
+    unlink(sanboxRealPath);
+    rmdir(MockAotRuntimeInfo::SANBOX_DIR);
+}
 } // namespace panda::test

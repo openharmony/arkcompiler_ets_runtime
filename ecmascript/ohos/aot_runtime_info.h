@@ -348,7 +348,7 @@ protected:
         GetRuntimeInfoByPath(lines, realOutPath.c_str(), soBuildId);
     }
 
-    void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE], int length) const
+    virtual void SetRuntimeInfo(const char *realOutPath, char lines[][BUFFER_SIZE], int length) const
     {
         int fd = open(realOutPath,  O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (fd == -1) {
@@ -374,7 +374,7 @@ protected:
         char *token;
         ssize_t bytesRead;
         int lineCount = 0;
-        while ((bytesRead = read(fd, buffer, BUFFER_SIZE)) > 0) {
+        while ((bytesRead = read(fd, buffer, BUFFER_SIZE - 1)) > 0) {
             token = strtok_r(buffer, "\n", &saveptr);
             while (token != NULL) {
                 if (strcmp(GetInfoFromBuffer(token, RUNTIME_INDEX_BUILDID), soBuildId) == 0 &&
