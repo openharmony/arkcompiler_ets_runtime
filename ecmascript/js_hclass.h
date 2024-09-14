@@ -470,7 +470,7 @@ public:
     static bool IsInitialArrayHClassWithElementsKind(const JSThread *thread, const JSHClass *targetHClass,
                                                      const ElementsKind targetKind);
     static bool PUBLIC_API TransitToElementsKindUncheck(const JSThread *thread, const JSHandle<JSObject> &obj,
-                                             ElementsKind newKind);
+                                                        ElementsKind newKind);
     static void PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSArray> &array,
                                                  ElementsKind newKind = ElementsKind::NONE);
     static bool PUBLIC_API TransitToElementsKind(const JSThread *thread, const JSHandle<JSObject> &object,
