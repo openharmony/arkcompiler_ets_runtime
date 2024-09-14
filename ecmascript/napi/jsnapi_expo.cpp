@@ -2176,6 +2176,8 @@ int StringRef::WriteLatin1(const EcmaVM *vm, char *buffer, int length)
 
 Local<StringRef> StringRef::GetNapiWrapperString(const EcmaVM *vm)
 {
+    // Omit exception check because ark calls here may not
+    // cause side effect even pending exception exists.
     CROSS_THREAD_CHECK(vm);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<JSTaggedValue> napiWapperString = thread->GlobalConstants()->GetHandledNapiWrapperString();
