@@ -2244,15 +2244,15 @@ HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedSet1)
     for (int i = 0; i < INITIALIZE_SIZE; i++) {
         JSSharedSet::Add(thread, jsSet, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
     }
-    constexpr uint32_t MAX_NUM_DESERIALZIERS = 10;
-    JSDeserializerTest jsDeserializerTests[MAX_NUM_DESERIALZIERS];
-    std::thread threads[MAX_NUM_DESERIALZIERS];
-    for (int32_t i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
+    constexpr uint32_t maxNumDeserialziers = 10;
+    JSDeserializerTest jsDeserializerTests[maxNumDeserialziers];
+    std::thread threads[maxNumDeserialziers];
+    for (int32_t i = 0; i < maxNumDeserialziers; i++) {
         threads[i] = std::thread(&JSDeserializerTest::JSSharedSetMultiThreadTest1,
             jsDeserializerTests[i], data.get());
     }
     ThreadSuspensionScope scope(thread);
-    for (int i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
+    for (int i = 0; i < maxNumDeserialziers; i++) {
         threads[i].join();
     }
     EXPECT_TRUE(jsSet->GetModRecord() == 0);
@@ -2268,24 +2268,24 @@ HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedSet2)
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize JSSharedSet fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
-    constexpr uint32_t MAX_NUM_DESERIALZIERS = 10;
+    constexpr uint32_t maxNumDeserialziers = 10;
     std::atomic<uint32_t> pendingExceptions = 0;
-    JSDeserializerTest jsDeserializerTests[MAX_NUM_DESERIALZIERS];
-    std::thread threads[MAX_NUM_DESERIALZIERS];
-    for (int32_t i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
+    JSDeserializerTest jsDeserializerTests[maxNumDeserialziers];
+    std::thread threads[maxNumDeserialziers];
+    for (int32_t i = 0; i < maxNumDeserialziers; i++) {
         threads[i] = std::thread(&JSDeserializerTest::JSSharedSetMultiThreadTest2,
             jsDeserializerTests[i], data.get(),
-            std::make_pair<int32_t, int32_t>(i * MAX_NUM_DESERIALZIERS, (i + 1) * MAX_NUM_DESERIALZIERS),
+            std::make_pair<int32_t, int32_t>(i * maxNumDeserialziers, (i + 1) * maxNumDeserialziers),
             std::ref(pendingExceptions));
     }
     ThreadSuspensionScope scope(thread);
-    for (int i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
+    for (int i = 0; i < maxNumDeserialziers; i++) {
         threads[i].join();
     }
     if (pendingExceptions != 0) {
-        EXPECT_TRUE(jsSet->GetSize(thread) != MAX_NUM_DESERIALZIERS * MAX_NUM_DESERIALZIERS);
+        EXPECT_TRUE(jsSet->GetSize(thread) != maxNumDeserialziers * maxNumDeserialziers);
     } else {
-        EXPECT_TRUE(jsSet->GetSize(thread) == MAX_NUM_DESERIALZIERS * MAX_NUM_DESERIALZIERS);
+        EXPECT_TRUE(jsSet->GetSize(thread) == maxNumDeserialziers * maxNumDeserialziers);
     }
     delete serializer;
 };
@@ -2339,24 +2339,24 @@ HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedMap)
                                           JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined()));
     EXPECT_TRUE(success) << "Serialize JSSharedMap fail";
     std::unique_ptr<SerializeData> data = serializer->Release();
-    constexpr uint32_t MAX_NUM_DESERIALZIERS = 10;
+    constexpr uint32_t maxNumDeserialziers = 10;
     std::atomic<uint32_t> pendingExceptions = 0;
-    JSDeserializerTest jsDeserializerTests[MAX_NUM_DESERIALZIERS];
-    std::thread threads[MAX_NUM_DESERIALZIERS];
-    for (int32_t i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
+    JSDeserializerTest jsDeserializerTests[maxNumDeserialziers];
+    std::thread threads[maxNumDeserialziers];
+    for (int32_t i = 0; i < maxNumDeserialziers; i++) {
         threads[i] = std::thread(&JSDeserializerTest::JSSharedMapMultiThreadTest,
             jsDeserializerTests[i], data.get(),
-            std::make_pair<int32_t, int32_t>(i * MAX_NUM_DESERIALZIERS, (i + 1) * MAX_NUM_DESERIALZIERS),
+            std::make_pair<int32_t, int32_t>(i * maxNumDeserialziers, (i + 1) * maxNumDeserialziers),
             std::ref(pendingExceptions));
     }
     ThreadSuspensionScope scope(thread);
-    for (int i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
+    for (int i = 0; i < maxNumDeserialziers; i++) {
         threads[i].join();
     }
     if (pendingExceptions != 0) {
-        EXPECT_TRUE(jsMap->GetSize(thread) != MAX_NUM_DESERIALZIERS * MAX_NUM_DESERIALZIERS);
+        EXPECT_TRUE(jsMap->GetSize(thread) != maxNumDeserialziers * maxNumDeserialziers);
     } else {
-        EXPECT_TRUE(jsMap->GetSize(thread) == MAX_NUM_DESERIALZIERS * MAX_NUM_DESERIALZIERS);
+        EXPECT_TRUE(jsMap->GetSize(thread) == maxNumDeserialziers * maxNumDeserialziers);
     }
     delete serializer;
 };
