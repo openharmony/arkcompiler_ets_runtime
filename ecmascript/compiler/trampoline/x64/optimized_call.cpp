@@ -138,7 +138,7 @@ void OptimizedCall::OptimizedCallAndPushArgv(ExtendedAssembler *assembler)
     __ Movl(Operand(rsp, FRAME_SLOT_SIZE), rdx); // argc rdx
     __ Movq(rsp, r8);
     Register argvReg = r8;
-    
+
     __ Addq(funcSlotOffset * FRAME_SLOT_SIZE, argvReg); // skip return addr, argc and agv
 
     Register expectedNumArgsReg = rcx;
@@ -1427,7 +1427,7 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
     {
         [[maybe_unused]] TempRegisterScope scope(assembler);
         Register temp = __ TempRegister();
-        AsmInterpreterCall::ThrowStackOverflowExceptionAndReturn(assembler,
+        AsmInterpreterCall::ThrowStackOverflowExceptionAndReturnToAotFrame(assembler,
             glueRegister, rsp, temp);
     }
 }

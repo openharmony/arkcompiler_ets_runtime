@@ -85,6 +85,7 @@ group("ark_aot_ts_test") {
     "combined_pass",
     "compiler_test",
     "constpool",
+    "construct_deopt_frame_stack_overflow",
     "continue_from_finally",
     "copyrestargs",
     "createarray_meta_data",
