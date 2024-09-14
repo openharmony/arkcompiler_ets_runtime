@@ -376,13 +376,14 @@ JSTaggedValue BuiltinsSharedArray::Create(EcmaRuntimeCallInfo *argv)
         THROW_TYPE_ERROR_AND_RETURN(thread, "Failed to construct the array.", JSTaggedValue::Exception());
     }
     JSHandle<JSObject> newArrayHandle(thread, newArray);
-    JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    auto elements = factory->NewSOldSpaceTaggedArray(arrayLength, JSTaggedValue::Hole());
     for (uint32_t k = 0; k < arrayLength; k++) {
-        key.Update(JSTaggedValue(k));
-        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, key, initValue, SCheckMode::SKIP);
+        elements->Set(thread, k, initValue);
     }
-    key.Update(JSTaggedValue(arrayLength));
-    JSSharedArray::LengthSetter(thread, newArrayHandle, key, true);
+    newArrayHandle->SetElements(thread, elements);
+    auto len = JSHandle<JSTaggedValue>(thread, JSTaggedValue(arrayLength));
+    JSSharedArray::LengthSetter(thread, newArrayHandle, len, true);
     newArrayHandle->GetJSHClass()->SetExtensible(false);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     // Return A.

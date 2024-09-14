@@ -356,6 +356,12 @@ function staticCreate() {
         print("Create with negative length failed. err: " + err + ", code: " + err.code);
     }
     try {
+        const array = SendableArray.create<number>(13107200, 1); // 13107200: 12.5MB
+        print("Create huge sendableArrayWith initialValue success.");
+    } catch (err) {
+        print("Create huge sendableArrayWith initialValue failed. err: " + err + ", code: " + err.code);
+    }
+    try {
         const array = SendableArray.create<number>(0x100000000, 5);
         print("Create with exceed max length success.");
     } catch (err) {

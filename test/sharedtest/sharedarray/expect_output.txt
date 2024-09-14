@@ -113,6 +113,7 @@ Start Test staticCreate
 5,5,5,5,5,5,5,5,5,5
 Create with without initialValue failed. err: BusinessError: Parameter error.Not enough parameters., code: 401
 Create with negative length failed. err: BusinessError: Parameter error.Invalid array length., code: 401
+Create huge sendableArrayWith initialValue success.
 Create with exceed max length failed. err: BusinessError: Parameter error.Invalid array length., code: 401
 Start Test readonlyLength
 10
