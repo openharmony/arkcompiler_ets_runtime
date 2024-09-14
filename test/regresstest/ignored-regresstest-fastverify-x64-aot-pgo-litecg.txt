@@ -101,6 +101,15 @@ regresstest/ark-regress/mjsunit/compiler/regress-crbug-1479847.js
 regresstest/ark-regress/mjsunit/compiler/regress-758096.js
 # --- end of #19413
 
+# Issue #19479
+regresstest/ark-regress/mjsunit/es6/array-concat-spreadable-function.js
+regresstest/ark-regress/intl/regress-1074578.js
+# --- end of #19479
+
+# Issue #19413
+regresstest/ark-regress/mjsunit/compiler/regress-1068494.js
+# --- end of #19413
+
 # Issue #18960
 regresstest/ark-regress/mjsunit/compiler/inline-omit-arguments-object.js
 regresstest/ark-regress/mjsunit/compiler/regress-715651.js

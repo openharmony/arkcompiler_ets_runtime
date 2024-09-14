@@ -97,3 +97,7 @@ regresstest/ark-regress/mjsunit/regress/regress-11115.js
 regresstest/ark-regress/mjsunit/compiler/regress-675704.js
 regresstest/ark-regress/mjsunit/regress/regress-copy-hole-to-field.js
 # --- end of #19210
+
+# Issue #19523
+regresstest/ark-regress/mjsunit/regress/regress-358088.js
+# --- end of #19523

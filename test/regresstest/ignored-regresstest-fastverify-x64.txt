@@ -91,6 +91,17 @@ regresstest/ark-regress/mjsunit/compiler/for-stmt.js
 # Issue #19465
 regresstest/ark-regress/mjsunit/es6/typedarray-indexing.js
 
+# Issue #19479
+regresstest/ark-regress/mjsunit/regress/regress-crbug-878845.js
+regresstest/ark-regress/mjsunit/compiler/regress-4389-5.js
+regresstest/ark-regress/mjsunit/compiler/regress-796041.js
+
+# Issue #19523
+regresstest/ark-regress/mjsunit/compiler/multiply-sub.js
+regresstest/ark-regress/mjsunit/regress/regress-7254.js
+regresstest/ark-regress/mjsunit/regress/regress-917988.js
+regresstest/ark-regress/mjsunit/regress/regress-852258.js
+
 # Compilation error: Issue #18551
 regresstest/ark-regress/mjsunit/fixed-context-shapes-when-recompiling.js
 regresstest/ark-regress/mjsunit/compiler/minus-zero.js
