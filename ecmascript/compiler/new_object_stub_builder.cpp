@@ -1024,7 +1024,7 @@ GateRef NewObjectStubBuilder::LoadSHClassFromMethod(GateRef glue, GateRef method
         Bind(&isNormal);
         {
             hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                       GlobalEnv::SHARED_FUNCTION_CLASS_WITHOUT_PROTO);
+                                       GlobalEnv::SHARED_FUNCTION_CLASS_WITH_PROTO);
             Jump(&exit);
         }
         Bind(&notNormal);
