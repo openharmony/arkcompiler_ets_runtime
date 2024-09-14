@@ -651,10 +651,10 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     Label exit(env);
 
     // 1.If NewTarget is undefined, throw a TypeError exception
-    BRANCH(TaggedIsHeapObject(newTarget), &newTargetObject, &newTargetNotObject);
+    Branch(TaggedIsHeapObject(newTarget), &newTargetObject, &newTargetNotObject);
 
     Bind(&newTargetObject);
-    BRANCH(IsJSFunction(newTarget), &newTargetFunction, &slowPath);
+    Branch(IsJSFunction(newTarget), &newTargetFunction, &slowPath);
 
     Bind(&newTargetFunction);
     Label fastGetHClass(env);
@@ -672,11 +672,11 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Gen
     GateRef funcEq = Equal(mapOrSetFunc, newTarget);
     GateRef newTargetHClass = Load(VariableType::JS_ANY(), newTarget, IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
     GateRef isHClass = IsJSHClass(newTargetHClass);
-    BRANCH(BoolAnd(funcEq, isHClass), &fastGetHClass, &slowPath);
+    Branch(BoolAnd(funcEq, isHClass), &fastGetHClass, &slowPath);
 
     Bind(&fastGetHClass);
     Label isUndefinedOrNull(env);
-    BRANCH(TaggedIsUndefinedOrNull(arg0), &isUndefinedOrNull, &slowPath);
+    Branch(TaggedIsUndefinedOrNull(arg0), &isUndefinedOrNull, &slowPath);
 
     Bind(&isUndefinedOrNull);
     StoreHashTableToNewObject(newTargetHClass, returnValue);
