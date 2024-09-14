@@ -139,6 +139,8 @@ private:
     std::atomic_bool isBuildNapiStack_ {false};
     bool enableVMTag_ {false};
     RunParams *params_ = nullptr;
+
+    friend class CpuProfilerFriendTest;
 };
 
 class CallNapiScope {

@@ -21,6 +21,7 @@ host_unittest_action("CpuProfilerTest") {
 
   sources = [
     # test file
+    "cpu_profiler_test.cpp",
     "samples_record_test.cpp",
   ]
 
