@@ -25,7 +25,7 @@
 #include "ecmascript/mem/area.h"
 
 namespace panda::ecmascript {
-enum class NativeFlag {
+enum class NativeFlag : uint32_t {
     NO_DIV,
     ARRAY_BUFFER,
     REGEXP_BTYECODE,

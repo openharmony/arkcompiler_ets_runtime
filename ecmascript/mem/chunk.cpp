@@ -16,6 +16,7 @@
 #include "ecmascript/mem/chunk.h"
 
 #include "ecmascript/mem/heap.h"
+#include "native_area_allocator.h"
 
 namespace panda::ecmascript {
 Chunk::Chunk(NativeAreaAllocator *allocator) : allocator_(allocator) {}

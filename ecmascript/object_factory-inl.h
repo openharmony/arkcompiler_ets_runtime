@@ -116,10 +116,12 @@ JSHandle<JSNativePointer> ObjectFactory::NewJSNativePointer(void *externalPointe
     obj->SetExternalPointer(externalPointer);
     obj->SetDeleter(callBack);
     obj->SetData(data);
-    obj->SetBindingSize(nativeBindingsize);
+    uint32_t fixedNativeBindingsize = nativeBindingsize < UINT32_MAX ? nativeBindingsize
+                                                                     : UINT32_MAX;
+    obj->SetBindingSize(fixedNativeBindingsize);
     obj->SetNativeFlag(flag);
 
-    heap_->IncreaseNativeBindingSize(nativeBindingsize);
+    heap_->IncreaseNativeBindingSize(fixedNativeBindingsize);
     if (callBack != nullptr) {
         vm_->PushToNativePointerList(static_cast<JSNativePointer *>(header), isConcurrent);
         // In some cases, the size of JS/TS object is too small and the native binding size is too large.
