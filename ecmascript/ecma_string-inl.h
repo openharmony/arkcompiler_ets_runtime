@@ -58,7 +58,7 @@ inline EcmaString *EcmaString::CreateFromUtf8(const EcmaVM *vm, const uint8_t *u
         ASSERT(string != nullptr);
 
         [[maybe_unused]] auto len =
-            base::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, string->GetDataUtf16Writable(), utf8Len, utf16Len, 0);
+            base::utf_helper::ConvertRegionUtf8ToUtf16(utf8Data, string->GetDataUtf16Writable(), utf8Len, utf16Len);
         ASSERT(len == utf16Len);
     }
 
