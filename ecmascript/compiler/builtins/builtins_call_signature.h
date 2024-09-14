@@ -46,7 +46,8 @@ namespace panda::ecmascript::kungfu {
     BUILTINS_WITH_NUMBER_STUB_BUILDER(T)            \
     BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)        \
     BUILTINS_WITH_DATAVIEW_STUB_BUILDER(K)          \
-    BUILTINS_WITH_REFLECT_STUB_BUILDER(T)
+    BUILTINS_WITH_REFLECT_STUB_BUILDER(T)           \
+    BUILTINS_WITH_COLLATOR_STUB_BUILDER(V)
 
 #define BUILTINS_WITH_STRING_STUB_BUILDER(V)                                            \
     V(CharAt,             String,   Hole())                                             \
@@ -155,6 +156,9 @@ namespace panda::ecmascript::kungfu {
 
 #define BUILTINS_WITH_REFLECT_STUB_BUILDER(V)       \
     V(Get,             Reflect,   Undefined())
+
+#define BUILTINS_WITH_COLLATOR_STUB_BUILDER(V)      \
+    V(ResolvedOptions, Collator,   Undefined())
 
 #define BUILTINS_WITH_TYPEDARRAY_STUB_BUILDER(V)    \
     V(Reverse,         TypedArray,  Undefined())    \

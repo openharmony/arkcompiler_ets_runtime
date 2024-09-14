@@ -3994,6 +3994,22 @@ DEF_RUNTIME_STUBS(FunctionPrototypeCall)
     return JSFunction::Call(info).GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetCollationValueFromIcuCollator)
+{
+    RUNTIME_STUBS_HEADER(GetCollationValueFromIcuCollator);
+    JSHandle<JSCollator> collator = GetHArg<JSCollator>(argv, argc, 0);  // 0: means the zeroth parameter
+
+    UErrorCode status = U_ZERO_ERROR;
+    icu::Collator *icuCollator = collator->GetIcuCollator();
+    icu::Locale icu_locale(icuCollator->getLocale(ULOC_VALID_LOCALE, status));
+    std::string collation_value =
+        icu_locale.getUnicodeKeywordValue<std::string>("co", status);
+    if (collation_value != "search" && collation_value != "") {
+        return thread->GetEcmaVM()->GetFactory()->NewFromStdString(collation_value).GetTaggedValue().GetRawData();
+    }
+    return thread->GlobalConstants()->GetDefaultString().GetRawData();
+}
+
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name

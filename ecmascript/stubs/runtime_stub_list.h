@@ -478,7 +478,8 @@ namespace panda::ecmascript {
     V(SetPrototypeTransition)                   \
     V(GetSharedModule)                          \
     V(SuperCallForwardAllArgs)                  \
-    V(OptSuperCallForwardAllArgs)
+    V(OptSuperCallForwardAllArgs)               \
+    V(GetCollationValueFromIcuCollator)
 
 
 #define RUNTIME_STUB_LIST(V)                     \

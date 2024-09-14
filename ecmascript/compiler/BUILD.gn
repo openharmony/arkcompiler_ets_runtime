@@ -110,6 +110,7 @@ libark_jsoptimizer_sources = [
   "bc_call_signature.cpp",
   "builtins/builtins_array_stub_builder.cpp",
   "builtins/builtins_call_signature.cpp",
+  "builtins/builtins_collator_stub_builder.cpp",
   "builtins/builtins_collection_stub_builder.cpp",
   "builtins/builtins_dataview_stub_builder.cpp",
   "builtins/builtins_function_stub_builder.cpp",

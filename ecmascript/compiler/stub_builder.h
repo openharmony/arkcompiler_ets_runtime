@@ -463,6 +463,7 @@ public:
     GateRef IsJSAPILinkedList(GateRef obj);
     GateRef IsJSAPIList(GateRef obj);
     GateRef IsJSAPIArrayList(GateRef obj);
+    GateRef IsJSCollator(GateRef obj);
     GateRef IsJSObjectType(GateRef obj, JSType jsType);
     GateRef IsJSRegExp(GateRef obj);
     GateRef GetTarget(GateRef proxyObj);
