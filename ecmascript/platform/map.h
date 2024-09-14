@@ -102,7 +102,8 @@ void PUBLIC_API PagePreRead(void *mem, size_t size);
 void PageTag(void *mem, size_t size, PageTagType type, const std::string &spaceName = EMPTY_STRING,
              const uint32_t threadId = 0);
 void PageClearTag(void *mem, size_t size);
-const CString GetPageTagString(PageTagType type, const std::string &spaceName, const uint32_t threadId = 0);
+const std::string GetPageTagString(PageTagType type, const std::string &spaceName, const uint32_t threadId = 0);
+const char *GetPageTagString(PageTagType type);
 bool PageProtect(void *mem, size_t size, int prot);
 size_t PUBLIC_API PageSize();
 }  // namespace panda::ecmascript
