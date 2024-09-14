@@ -506,7 +506,7 @@ CVector<MethodInfo> JSStackTrace::ReadAllMethodInfos(std::shared_ptr<JSPandaFile
 {
     CVector<MethodInfo> result;
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(ERROR) << "Failed to read all methods info.";
+        LOG_ECMA(DEBUG) << "Read all methods info in file failed, file is nullptr.";
         return result;
     }
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
@@ -1570,7 +1570,7 @@ bool ArkParseJSFileInfo([[maybe_unused]] uintptr_t byteCodePc, [[maybe_unused]] 
         extractor->CreateJSPandaFile();
     }
     ret = ArkParseJsFrameInfo(byteCodePc, methodId, mapBase, extractor->GetLoadOffset(),
-            extractor->GetData(), extractor->GetDataSize(), extractorptr, jsFunction);
+                              extractor->GetData(), extractor->GetDataSize(), extractorptr, jsFunction);
 #endif
     return ret;
 }
