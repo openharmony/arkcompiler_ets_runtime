@@ -617,7 +617,12 @@ void OptimizedCall::GenJSCall(ExtendedAssembler *assembler, bool isNew)
         JSBoundFunctionCallInternal(assembler, jsFuncReg, &jsCall);
     }
     __ Bind(&lJSProxy);
-    JSProxyCallInternal(assembler, jsFuncReg);
+    {
+        __ Mov(Operand(jsFuncReg, JSProxy::METHOD_OFFSET), method);
+        __ Mov(Operand(method, Method::CALL_FIELD_OFFSET), methodCallField);
+        __ Mov(Operand(rsp, FRAME_SLOT_SIZE), argc);
+        __ Jmp(&lCallNativeMethod);
+    }
 }
 
 // After the callee function of common aot call deopt, use this bridge to deal with this aot call.
@@ -1006,19 +1011,6 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
         __ Pop(rbp);
         __ Ret();
     }
-}
-
-void OptimizedCall::JSProxyCallInternal(ExtendedAssembler *assembler, Register jsFuncReg)
-{
-    __ Movq(jsFuncReg, rdx); // calltarget
-    __ Movq(rsp, rcx);
-    __ Addq(FRAME_SLOT_SIZE, rcx); // skip returnAddr
-    __ Mov(Operand(rcx, 0), rsi); // get origin argc
-    __ Addq(kungfu::ArgumentAccessor::GetExtraArgsNum() * FRAME_SLOT_SIZE, rcx); // skip extra args: argc and argv
-    __ Movq(kungfu::CommonStubCSigns::JsProxyCallInternal, r9);
-    __ Movq(Operand(rdi, r9, Scale::Times8, JSThread::GlueData::GetCOStubEntriesOffset(false)), r8);
-    __ Jmp(r8);
-    __ Ret();
 }
 
 // * uint64_t CallRuntime(uintptr_t glue, uint64_t runtime_id, uint64_t argc, uintptr_t arg0, ...)

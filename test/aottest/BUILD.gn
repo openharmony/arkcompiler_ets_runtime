@@ -345,6 +345,8 @@ group("ark_aot_ts_test") {
   if (!is_debug) {
     test_list += [
       "pgo_function_operation",
+      "proxy2",
+
       #"lexenv_specialization",
       #"lexenv_specialization_multi_inline",
       #"lexenv_specialization_noopt",
