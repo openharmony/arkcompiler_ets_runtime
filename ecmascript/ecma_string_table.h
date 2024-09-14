@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_STRING_TABLE_H
 #define ECMASCRIPT_STRING_TABLE_H
 
+#include <array>
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
@@ -23,30 +24,99 @@
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/taskpool/task.h"
 
 namespace panda::ecmascript {
 class EcmaString;
 class EcmaVM;
 class JSPandaFile;
 
-class EcmaStringTable {
+class EcmaStringTable;
+
+class EcmaStringTableCleaner {
 public:
-    EcmaStringTable() = default;
-    virtual ~EcmaStringTable()
+    using IteratorPtr = std::shared_ptr<std::atomic<uint32_t>>;
+    EcmaStringTableCleaner(EcmaStringTable* stringTable) : stringTable_(stringTable) {}
+    ~EcmaStringTableCleaner() { stringTable_ = nullptr; }
+
+    void PostSweepWeakRefTask(const WeakRootVisitor &visitor);
+    void JoinAndWaitSweepWeakRefTask(const WeakRootVisitor &visitor);
+
+private:
+    NO_COPY_SEMANTIC(EcmaStringTableCleaner);
+    NO_MOVE_SEMANTIC(EcmaStringTableCleaner);
+
+    static void ProcessSweepWeakRef(IteratorPtr& iter, EcmaStringTableCleaner *cleaner, const WeakRootVisitor &visitor);
+    void StartSweepWeakRefTask();
+    void WaitSweepWeakRefTask();
+    void SignalSweepWeakRefTask();
+
+    static inline uint32_t GetNextTableId(IteratorPtr& iter)
     {
-        table_.clear();
+        return iter->fetch_add(1U, std::memory_order_relaxed);
     }
 
+    static inline bool ReduceCountAndCheckFinish(EcmaStringTableCleaner* cleaner)
+    {
+        return (cleaner->PendingTaskCount_.fetch_sub(1U, std::memory_order_relaxed) == 1U);
+    }
+
+    class SweepWeakRefTask : public Task {
+    public:
+        SweepWeakRefTask(IteratorPtr iter, EcmaStringTableCleaner* cleaner, const WeakRootVisitor& visitor)
+            : Task(0), iter_(iter), cleaner_(cleaner), visitor_(visitor) {}
+        ~SweepWeakRefTask() = default;
+        
+        bool Run(uint32_t threadIndex) override;
+
+        NO_COPY_SEMANTIC(SweepWeakRefTask);
+        NO_MOVE_SEMANTIC(SweepWeakRefTask);
+
+    private:
+        IteratorPtr iter_;
+        EcmaStringTableCleaner* cleaner_;
+        const WeakRootVisitor& visitor_;
+    };
+
+    IteratorPtr iter_;
+    EcmaStringTable* stringTable_;
+    std::atomic<uint32_t> PendingTaskCount_ {0U};
+    Mutex sweepWeakRefMutex_;
+    bool sweepWeakRefFinished_ {true};
+    ConditionVariable sweepWeakRefCV_;
+};
+
+class EcmaStringTable {
+public:
+    EcmaStringTable() : cleaner_(new EcmaStringTableCleaner(this))
+    {
+        stringTable_.fill(Segment());
+    }
+    virtual ~EcmaStringTable()
+    {
+        if (cleaner_ != nullptr) {
+            delete cleaner_;
+            cleaner_ = nullptr;
+        }
+        for (auto &seg : stringTable_) {
+            seg.table_.clear();
+        }
+    }
+
+    static inline uint32_t GetTableId(uint32_t hashcode)
+    {
+        return hashcode & SEGMENT_MASK;
+    }
     void InternEmptyString(JSThread *thread, EcmaString *emptyStr);
     EcmaString *GetOrInternString(EcmaVM *vm,
                                   const JSHandle<EcmaString> &firstString,
                                   const JSHandle<EcmaString> &secondString);
     EcmaString *GetOrInternStringWithoutLock(JSThread *thread,
                                              const JSHandle<EcmaString> &firstString,
-                                             const JSHandle<EcmaString> &secondString);
+                                             const JSHandle<EcmaString> &secondString, uint32_t hashcode);
     EcmaString *GetOrInternString(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len, bool canBeCompress);
     EcmaString *GetOrInternStringWithoutLock(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
-                                             bool canBeCompress);
+                                             bool canBeCompress, uint32_t hashcode);
     EcmaString *CreateAndInternStringNonMovable(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len);
     EcmaString *CreateAndInternStringReadOnly(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
                                               bool canBeCompress);
@@ -62,34 +132,45 @@ public:
     void InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode);
     EcmaString *InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle);
 
-    void SweepWeakReference(const WeakRootVisitor &visitor);
+    void SweepWeakRef(const WeakRootVisitor &visitor);
+    void SweepWeakRef(const WeakRootVisitor &visitor, uint32_t tableId);
+
     bool CheckStringTableValidity(JSThread *thread);
     void RelocateConstantData(EcmaVM *vm, const JSPandaFile *jsPandaFile);
+
+    EcmaStringTableCleaner* GetCleaner()
+    {
+        return cleaner_;
+    }
+    static constexpr uint32_t SEGMENT_COUNT = 16U; // 16: 2^4
+    static constexpr uint32_t SEGMENT_MASK = SEGMENT_COUNT - 1U;
 private:
     NO_COPY_SEMANTIC(EcmaStringTable);
     NO_MOVE_SEMANTIC(EcmaStringTable);
 
     std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const JSHandle<EcmaString> &firstString,
-                                                            const JSHandle<EcmaString> &secondString) const;
+                                                            const JSHandle<EcmaString> &secondString,
+                                                            uint32_t hashcode) const;
     std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint8_t *utf8Data, uint32_t utf8Len,
-                                                            bool canBeCompress) const;
-    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint16_t *utf16Data, uint32_t utf16Len) const;
+                                                            bool canBeCompress, uint32_t hashcode) const;
+    std::pair<EcmaString *, uint32_t> GetStringThreadUnsafe(const uint16_t *utf16Data,
+                                                            uint32_t utf16Len, uint32_t hashcode) const;
     EcmaString *GetStringWithHashThreadUnsafe(EcmaString *string, uint32_t hashcode) const;
-    EcmaString *GetStringThreadUnsafe(EcmaString *string) const;
+    EcmaString *GetStringThreadUnsafe(EcmaString *string, uint32_t hashcode) const;
 
-    void InternStringThreadUnsafe(EcmaString *string);
+    void InternStringThreadUnsafe(EcmaString *string, uint32_t hashcode);
     EcmaString *GetOrInternStringThreadUnsafe(EcmaVM *vm, EcmaString *string);
 
-    void InsertStringIfNotExistThreadUnsafe(EcmaString *string)
-    {
-        EcmaString *str = GetStringThreadUnsafe(string);
-        if (str == nullptr) {
-            InternStringThreadUnsafe(string);
-        }
-    }
+    void InsertStringIfNotExistThreadUnsafe(EcmaString *string);
 
-    CUnorderedMultiMap<uint32_t, EcmaString *> table_;
-    Mutex mutex_;
+    struct Segment {
+        CUnorderedMultiMap<uint32_t, EcmaString *> table_;
+        Mutex mutex_;
+    };
+
+    std::array<Segment, SEGMENT_COUNT> stringTable_;
+    EcmaStringTableCleaner* cleaner_;
+
     friend class SnapshotProcessor;
     friend class BaseDeserializer;
 };
