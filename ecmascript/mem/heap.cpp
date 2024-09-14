@@ -1321,8 +1321,6 @@ void Heap::AdjustOldSpaceLimit()
     if (newGlobalSpaceAllocLimit < globalSpaceAllocLimit_) {
         globalSpaceAllocLimit_ = newGlobalSpaceAllocLimit;
     }
-    // temporarily regard the heap limit is the same as the native limit.
-    globalSpaceNativeLimit_ = globalSpaceAllocLimit_;
     OPTIONAL_LOG(ecmaVm_, INFO) << "AdjustOldSpaceLimit oldSpaceAllocLimit_: " << oldSpaceAllocLimit
         << " globalSpaceAllocLimit_: " << globalSpaceAllocLimit_;
 }
@@ -2068,8 +2066,7 @@ void Heap::NotifyFinishColdStart(bool isMainThread)
     GetNewSpace()->SetOverShootSize(std::max(overshootSize, (int64_t)0));
 
     if (isMainThread && CheckCanTriggerConcurrentMarking()) {
-        markType_ = MarkType::MARK_FULL;
-        TriggerConcurrentMarking();
+        TryTriggerConcurrentMarking();
     }
     GetEdenSpace()->AllowTryEnable();
 }
