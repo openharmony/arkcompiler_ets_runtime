@@ -22,6 +22,7 @@
 #include "ecmascript/shared_objects/js_shared_map.h"
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
+#include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript {
 void ClassInfoExtractor::BuildClassInfoExtractorFromLiteral(JSThread *thread, JSHandle<ClassInfoExtractor> &extractor,
@@ -936,12 +937,18 @@ void SendableClassDefiner::AddFieldTypeToDict(JSThread *thread, const JSHandle<T
 }
 
 void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
-    uint32_t length, const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass,
-    size_t start, std::vector<JSHandle<JSTaggedValue>> &&propertyList)
+                                                uint32_t length, const JSHandle<LayoutInfo> &layout,
+                                                const JSHandle<JSHClass> &hclass, size_t start,
+                                                const JSHandle<NumberDictionary> &elementsDic,
+                                                std::vector<JSHandle<JSTaggedValue>> &&propertyList)
 {
     ASSERT(length <= fieldTypeArray->GetLength());
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     uint32_t index = static_cast<uint32_t>(layout->NumberOfElements());
+    JSMutableHandle<NumberDictionary> elementsDicUpdate(thread, elementsDic);
+    const GlobalEnvConstants *globalConst = thread->GlobalConstants();
+    JSHandle<JSTaggedValue> undefinedVal(thread, globalConst->GetUndefined());
+    JSMutableHandle<JSTaggedValue> eleIndexKey(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 0; i < length; i += 2) { // 2: key-value pair;
         PropertyAttributes attributes = PropertyAttributes::Default(true, true, false);
         key.Update(fieldTypeArray->Get(i));
@@ -966,6 +973,13 @@ void SendableClassDefiner::AddFieldTypeToHClass(JSThread *thread, const JSHandle
             attributes.SetSharedFieldType(type);
             attributes.SetOffset(index);
             layout->AddKey(thread, index++, key.GetTaggedValue(), attributes);
+            int64_t eleIndex = ObjectFastOperator::TryToElementsIndex(key.GetTaggedValue());
+            if (eleIndex >= 0 && !elementsDic.IsEmpty()) {
+                eleIndexKey.Update(JSTaggedValue(eleIndex));
+                JSHandle<NumberDictionary> newElementsDic = NumberDictionary::Put(
+                    thread, elementsDic, eleIndexKey, undefinedVal, attributes);
+                elementsDicUpdate.Update(newElementsDic);
+            }
         }
     }
     hclass->SetLayout(thread, layout);
