@@ -515,32 +515,45 @@ bool EcmaString::CanBeCompressed(const EcmaString *string)
 // static
 bool EcmaString::CanBeCompressed(const uint8_t *utf8Data, uint32_t utf8Len)
 {
-    bool isCompressed = true;
     uint32_t index = 0;
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    while (index < utf8Len) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        if (!IsASCIICharacter(utf8Data[index])) {
-            isCompressed = false;
-            break;
+    for (; index + 4 <= utf8Len; index += 4) { // 4: process the data in chunks of 4 elements to improve speed
+        // Check if all four characters in the current block are ASCII characters
+        if (!IsASCIICharacter(utf8Data[index]) ||
+            !IsASCIICharacter(utf8Data[index + 1]) || // 1: the second element of the block
+            !IsASCIICharacter(utf8Data[index + 2]) || // 2: the third element of the block
+            !IsASCIICharacter(utf8Data[index + 3])) { // 3: the fourth element of the block
+            return false;
         }
-        ++index;
     }
-    return isCompressed;
+    // Check remaining characters if they are ASCII
+    for (; index < utf8Len; ++index) {
+        if (!IsASCIICharacter(utf8Data[index])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 /* static */
 bool EcmaString::CanBeCompressed(const uint16_t *utf16Data, uint32_t utf16Len)
 {
-    bool isCompressed = true;
-    Span<const uint16_t> data(utf16Data, utf16Len);
-    for (uint32_t i = 0; i < utf16Len; i++) {
-        if (!IsASCIICharacter(data[i])) {
-            isCompressed = false;
-            break;
+    uint32_t index = 0;
+    for (; index + 4 <= utf16Len; index += 4) { // 4: process the data in chunks of 4 elements to improve speed
+        // Check if all four characters in the current block are ASCII characters
+        if (!IsASCIICharacter(utf16Data[index]) ||
+            !IsASCIICharacter(utf16Data[index + 1]) || // 1: the second element of the block
+            !IsASCIICharacter(utf16Data[index + 2]) || // 2: the third element of the block
+            !IsASCIICharacter(utf16Data[index + 3])) { // 3: the fourth element of the block
+            return false;
         }
     }
-    return isCompressed;
+    // Check remaining characters if they are ASCII
+    for (; index < utf16Len; ++index) {
+        if (!IsASCIICharacter(utf16Data[index])) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool EcmaString::EqualToSplicedString(const EcmaString *str1, const EcmaString *str2)

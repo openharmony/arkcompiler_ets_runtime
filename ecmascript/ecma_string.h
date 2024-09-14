@@ -111,7 +111,7 @@ private:
     friend class panda::test::EcmaStringEqualsTest;
 
     static constexpr int SMALL_STRING_SIZE = 128;
-
+    static constexpr size_t HASH_SHIFT = 5;
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, bool isConstantString = false,
@@ -652,8 +652,7 @@ private:
         uint32_t hash = hashSeed;
         Span<const T> sp(data, size);
         for (auto c : sp) {
-            constexpr size_t SHIFT = 5;
-            hash = (hash << SHIFT) - hash + c;
+            hash = (hash << HASH_SHIFT) - hash + c;
         }
         return hash;
     }
