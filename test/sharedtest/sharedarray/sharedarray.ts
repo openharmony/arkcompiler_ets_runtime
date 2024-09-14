@@ -47,6 +47,13 @@ class SubSharedClass extends SendableArray {
   }
 }
 
+class SuperUnSharedClass {
+    public num: number = 0;
+    constructor(num: number) {
+        this.num = num;
+    }
+}
+
 SendableArray.from<string>(['a', 'r', 'k']);
 
 function at() {
@@ -399,6 +406,21 @@ function reduce() {
     print(array.reduce<string>((acc: number, currValue: number) => "" + acc + " " + currValue, "10")); // 10, 1, 2, 3, 4
 }
 
+function f0() {
+    const o1 = {
+    };
+
+    return o1;
+}
+
+const v2 = f0();
+class C3 {
+    constructor(a5,a6) {
+        const v9 = new SendableArray();
+        v9.splice(0,0, v2);
+    }
+}
+
 function splice() {
     print("Start Test splice")
     const array = new SendableArray<string>('Jan', 'March', 'April', 'June');
@@ -410,6 +432,28 @@ function splice() {
     const removeArray1 = array.splice(2, 3);
     print(array); // "Jan", "Feb"
     print(removeArray1); // "Oct", "March", "May"
+
+    const array2 = new SendableArray<SubClass>(
+        new SubClass(5),
+        new SubClass(32),
+        new SubClass(8),
+        new SubClass(130),
+        new SubClass(44),
+    );
+
+    try {
+        array2.splice(0, 0, new SuperUnSharedClass(48));
+        print("Add one element by splice api.");
+    } catch (err) {
+        print("Add one element by splice api failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        new C3();
+        print("Add one element by splice api.");
+    } catch (err) {
+        print("Add one element by splice api failed. err: " + err + ", code: " + err.code);
+    }
 }
 
 function staticCreate() {
