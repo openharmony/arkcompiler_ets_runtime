@@ -37,7 +37,7 @@ enum RunState : uint8_t {
     FINISH
 };
 
-class JitTaskpool : public ThreadedTaskpool {
+class JitTaskpool : public Taskpool {
 public:
     PUBLIC_API static JitTaskpool *GetCurrentTaskpool();
     JitTaskpool() = default;
@@ -65,9 +65,9 @@ public:
         }
     }
 
-    void Init(bool needInitJitFort)
+    void Initialize(bool needInitJitFort)
     {
-        ThreadedTaskpool::InitializeWithHooks(0, [needInitJitFort](os::thread::native_handle_type thread) {
+        Taskpool::Initialize(0, [needInitJitFort](os::thread::native_handle_type thread) {
             os::thread::SetThreadName(thread, "OS_JIT_Thread");
             constexpr int32_t priorityVal = 5; // 5: The priority can be set within range [-20, 19]
             os::thread::SetPriority(os::thread::GetCurrentThreadId(), priorityVal);
@@ -82,9 +82,9 @@ public:
         });
     }
 
-    void Finalize()
+    void Destroy()
     {
-        ThreadedTaskpool::Destroy(threadId_);
+        Taskpool::Destroy(threadId_);
     }
 
 private:
