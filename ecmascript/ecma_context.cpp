@@ -1116,6 +1116,7 @@ void EcmaContext::LoadStubFile()
 bool EcmaContext::LoadAOTFilesInternal(const std::string& aotFileName)
 {
 #ifdef AOT_ESCAPE_ENABLE
+    vm_->DisablePGOProfilerWithAOTFile(aotFileName);
     std::string bundleName = pgo::PGOProfilerManager::GetInstance()->GetBundleName();
     if (AotCrashInfo::GetInstance().IsAotEscapedOrNotInEnableList(vm_, bundleName)) {
         return false;

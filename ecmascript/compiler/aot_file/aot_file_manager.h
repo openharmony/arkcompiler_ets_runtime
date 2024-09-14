@@ -164,6 +164,7 @@ public:
     static bool TryReadLock();
     static bool InsideStub(uintptr_t pc);
     static bool InsideAOT(uintptr_t pc);
+    static bool AOTFileExist(const std::string &aotFileName, const std::string &extension);
     bool IsEnableAOT() const;
     void Iterate(const RootVisitor& v);
 
