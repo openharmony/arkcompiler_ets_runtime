@@ -57,7 +57,8 @@ void ObjectFactory::NewSObjectHook() const
 }
 
 JSHandle<JSHClass> ObjectFactory::CreateSFunctionClass(uint32_t size, JSType type,
-                                                       const JSHandle<JSTaggedValue> &prototype, bool isAccessor)
+                                                       const JSHandle<JSTaggedValue> &prototype,
+                                                       bool isAccessor, bool setProto)
 {
     const GlobalEnvConstants *globalConst = thread_->GlobalConstants();
     uint32_t fieldOrder = 0;
@@ -79,6 +80,15 @@ JSHandle<JSHClass> ObjectFactory::CreateSFunctionClass(uint32_t size, JSType typ
         layoutInfoHandle->AddKey(thread_, fieldOrder,
                                  globalConst->GetHandledNameString().GetTaggedValue(), attributes);
         fieldOrder++;
+    }
+    if (setProto) {
+        ASSERT(JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX == fieldOrder);
+        {
+            attributes.SetOffset(fieldOrder);
+            layoutInfoHandle->AddKey(thread_, fieldOrder,
+                                     globalConst->GetPrototypeString(), attributes);
+            fieldOrder++;
+        }
     }
     JSHandle<JSHClass> functionClass = NewSEcmaHClass(size, fieldOrder, type, prototype,
         JSHandle<JSTaggedValue>(layoutInfoHandle));
@@ -904,7 +914,7 @@ JSHandle<JSFunction> ObjectFactory::NewJSSendableFunction(const JSHandle<Method>
             break;
         }
         case FunctionKind::BASE_CONSTRUCTOR: {
-            hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithoutProto());
+            hclass = JSHandle<JSHClass>::Cast(env->GetSFunctionClassWithProto());
             break;
         }
         default:

@@ -85,8 +85,12 @@ void JSFunction::InitializeSFunction(JSThread *thread, const JSHandle<JSFunction
 {
     InitializeWithDefaultValue(thread, func);
     auto globalConst = thread->GlobalConstants();
-    if (HasAccessor(kind)) {
-        JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionNameAccessor();
+    JSHandle<JSTaggedValue> accessor = globalConst->GetHandledFunctionPrototypeAccessor();
+    if (HasAccessor(kind) || IsBaseConstructorKind(kind)) {
+        if (IsBaseConstructorKind(kind)) {
+            func->SetPropertyInlinedProps(thread, PROTOTYPE_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
+        }
+        accessor = globalConst->GetHandledFunctionNameAccessor();
         func->SetPropertyInlinedProps(thread, NAME_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
         accessor = globalConst->GetHandledFunctionLengthAccessor();
         func->SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, accessor.GetTaggedValue());
@@ -114,7 +118,12 @@ JSHandle<JSObject> JSFunction::NewJSFunctionPrototype(JSThread *thread, const JS
 {
     JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
     const GlobalEnvConstants *globalConst = thread->GlobalConstants();
-    JSHandle<JSFunction> objFun(env->GetObjectFunction());
+    JSHandle<JSFunction> objFun;
+    if (func->IsSharedFunction()) {
+        objFun = JSHandle<JSFunction>(env->GetSObjectFunction());
+    } else {
+        objFun = JSHandle<JSFunction>(env->GetObjectFunction());
+    }
     JSHandle<JSObject> funPro = thread->GetEcmaVM()->GetFactory()->NewJSObjectByConstructor(objFun);
     SetFunctionPrototypeOrInstanceHClass(thread, func, funPro.GetTaggedValue());
 

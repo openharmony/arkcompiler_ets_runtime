@@ -238,6 +238,7 @@
     V(JSTaggedValue, SBuiltininMapFunction, SHARED_BUILTIN_MAP_FUNCTION_INDEX)                                   \
     V(JSTaggedValue, SConstructorClass, SHARED_CONSTRUCTOR_CLASS_INDEX)                                          \
     V(JSTaggedValue, SFunctionClassWithoutProto, SHARED_FUNCTION_CLASS_WITHOUT_PROTO)                            \
+    V(JSTaggedValue, SFunctionClassWithProto, SHARED_FUNCTION_CLASS_WITH_PROTO)                                  \
     V(JSTaggedValue, SFunctionClassWithoutAccessor, SHARED_FUNCTION_CLASS_WITHOUT_ACCESSOR)                      \
     V(JSTaggedValue, SNormalFunctionClass, SHARED_NORMAL_FUNCTION_CLASS)                                         \
     V(JSTaggedValue, SAsyncFunctionFunction, SHARED_ASYNC_FUNCTION_FUNCTION_INDEX)                               \

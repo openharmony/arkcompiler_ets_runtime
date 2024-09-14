@@ -22,3 +22,7 @@ sendable async foo top
 sendable class C top
 await send data
 sendable async func bar
+fooAsyncTop
+fooTop
+0
+[object Object]
