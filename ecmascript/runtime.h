@@ -66,6 +66,12 @@ public:
     void GCIterateThreadList(const Callback &cb)
     {
         LockHolder lock(threadsLock_);
+        GCIterateThreadListWithoutLock(cb);
+    }
+
+    template<class Callback>
+    void GCIterateThreadListWithoutLock(const Callback &cb)
+    {
         for (auto thread : threads_) {
             if (thread->ReadyForGCIterating()) {
                 cb(thread);

@@ -273,7 +273,7 @@ void SharedGCMovableMarker::EvacuateObject(uint32_t threadId, TaggedObject *obje
     auto result = Barriers::AtomicSetPrimitive(object, 0, oldValue,
                                                MarkWord::FromForwardingAddress(forwardAddress));
     if (result == oldValue) {
-        UpdateForwardAddressIfSuccess(threadId, klass, forwardAddress, size, slot);
+        UpdateForwardAddressIfSuccess(threadId, object, klass, forwardAddress, size, slot);
         return;
     }
     UpdateForwardAddressIfFailed(object, forwardAddress, size, slot);
@@ -301,13 +301,18 @@ inline void SharedGCMovableMarker::RawCopyObject(uintptr_t fromAddress, uintptr_
     *reinterpret_cast<MarkWordType *>(toAddress) = markWord.GetValue();
 }
 
-void SharedGCMovableMarker::UpdateForwardAddressIfSuccess(uint32_t threadId, JSHClass *klass, uintptr_t toAddress,
-    size_t size, ObjectSlot slot)
+void SharedGCMovableMarker::UpdateForwardAddressIfSuccess(uint32_t threadId, TaggedObject *object, JSHClass *klass,
+                                                          uintptr_t toAddress, size_t size, ObjectSlot slot)
 {
     sWorkManager_->IncreaseAliveSize(threadId, size);
     if (klass->HasReferenceField()) {
         sWorkManager_->Push(threadId, reinterpret_cast<TaggedObject *>(toAddress));
     }
+
+    if (UNLIKELY(sHeap_->InHeapProfiler())) {
+        sHeap_->OnMoveEvent(reinterpret_cast<intptr_t>(object), reinterpret_cast<TaggedObject *>(toAddress), size);
+    }
+
     slot.Update(reinterpret_cast<TaggedObject *>(toAddress));
 }
 
