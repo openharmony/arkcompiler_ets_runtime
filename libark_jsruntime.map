@@ -250,6 +250,7 @@
       panda::ecmascript::NumberDictionary::Hash*;
       panda::ecmascript::NumberDictionary::IsMatch*;
       panda::ecmascript::NumberDictionary::UpdateValue*;
+      panda::ecmascript::NumberDictionary::CreateInSharedHeap*;
       panda::ecmascript::ObjectFactory::CopyArray*;
       panda::ecmascript::ObjectFactory::CreateLayoutInfo*;
       panda::ecmascript::ObjectFactory::GetJSError*;
@@ -278,6 +279,7 @@
       panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;
       panda::ecmascript::ObjectFactory::NewSMethod*;
       panda::ecmascript::ObjectFactory::NewFromStdString*;
+      panda::ecmascript::ObjectFactory::NewAndCopySNameDictionary*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageSize*;

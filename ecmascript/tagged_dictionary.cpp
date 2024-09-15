@@ -387,6 +387,11 @@ JSHandle<NumberDictionary> NumberDictionary::Create(const JSThread *thread, int 
     return OrderHashTableT::Create(thread, numberOfElements);
 }
 
+JSHandle<NumberDictionary> NumberDictionary::CreateInSharedHeap(const JSThread *thread, int numberOfElements)
+{
+    return OrderHashTableT::Create(thread, numberOfElements, MemSpaceKind::SHARED);
+}
+
 PropertyAttributes NumberDictionary::GetAttributes(int entry) const
 {
     int index = GetEntryIndex(entry) + ENTRY_DETAILS_INDEX;

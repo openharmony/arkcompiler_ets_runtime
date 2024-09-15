@@ -115,6 +115,8 @@ public:
     static bool PUBLIC_API IsMatch(const JSTaggedValue &key, const JSTaggedValue &other);
     static JSHandle<NumberDictionary> Create(const JSThread *thread,
                                     int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
+    static JSHandle<NumberDictionary> PUBLIC_API CreateInSharedHeap(
+        const JSThread *thread, int numberOfElements = OrderHashTableT::DEFAULT_ELEMENTS_NUMBER);
     // Returns the property metaData for the property at entry.
     PropertyAttributes PUBLIC_API GetAttributes(int entry) const;
     void SetAttributes(const JSThread *thread, int entry, const PropertyAttributes &metaData);

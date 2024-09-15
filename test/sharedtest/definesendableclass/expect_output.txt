@@ -42,3 +42,4 @@ child.childField = 0
 [IC] Fail to assign member in dict mode with mismatched value. err: TypeError: Cannot set sendable property with mismatched type, loopIndex: 1000
 StaticDict getter 1020
 sField
+TypeError: Cannot add property in prevent extensions
