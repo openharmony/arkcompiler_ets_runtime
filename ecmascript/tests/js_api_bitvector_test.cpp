@@ -282,7 +282,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, GetBitsByRange)
     JSHandle<JSTaggedValue> value2(thread, JSTaggedValue(endIndex));
     JSTaggedValue res = JSAPIBitVector::GetBitsByRange(thread, bitVector, value1, value2);
     JSHandle<JSAPIBitVector> getBitVector(thread, res);
-    EXPECT_EQ(getBitVector->GetLength(), JSTaggedValue(endIndex - startIndex));
+    EXPECT_EQ(getBitVector->GetLength(), endIndex - startIndex);
     for (uint32_t i = 0; i < endIndex - startIndex; i++) {
         EXPECT_EQ(getBitVector->Get(thread, i), JSTaggedValue(1));
     }
@@ -430,6 +430,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, FlipBitsByRange)
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements =
         reinterpret_cast<std::vector<std::bitset<JSAPIBitVector::BIT_SET_LENGTH>> *>(np->GetExternalPointer());
+    for (uint32_t i = startIndex; i < endIndex; i++) {
         EXPECT_EQ(TestClass::GetBit(elements, i), JSTaggedValue(0));
     }
 }
@@ -451,7 +452,7 @@ HWTEST_F_L0(JSAPIBitVectorTest, Resize)
     }
 
     JSAPIBitVector::Resize(thread, bitVector, newLength);
-    EXPECT_EQ(bitVector->GetLength(), JSTaggedValue(newLength));
+    EXPECT_EQ(bitVector->GetLength(), newLength);
 
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements =
