@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/module/js_module_source_text.h"
@@ -210,10 +211,14 @@ JSTaggedValue BuiltinsArkTools::GetLexicalEnv(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
-    auto heap = const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap());
+    JSThread *thread = info->GetThread();
+    std::string data = JsStackInfo::BuildJsStackTrace(thread, true);
+    LOG_ECMA(INFO) << "ArkTools ForceFullGC " << data;
+
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
     heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::TRIGGER_BY_JS);
     SharedHeap::GetInstance()->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::TRIGGER_BY_JS>(
-        info->GetThread());
+        thread);
     heap->GetHeapPrepare();
     return JSTaggedValue::True();
 }

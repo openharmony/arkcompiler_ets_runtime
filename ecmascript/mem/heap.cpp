@@ -1634,14 +1634,14 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
 bool Heap::CheckAndTriggerHintGC()
 {
     if (IsInBackground()) {
-        CollectGarbage(TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
+        CollectGarbage(TriggerGCType::FULL_GC, GCReason::HINT_GC);
         return true;
     }
     if (InSensitiveStatus()) {
         return false;
     }
     if (memController_->GetPredictedSurvivalRate() < SURVIVAL_RATE_THRESHOLD) {
-        CollectGarbage(TriggerGCType::FULL_GC, GCReason::EXTERNAL_TRIGGER);
+        CollectGarbage(TriggerGCType::FULL_GC, GCReason::HINT_GC);
         return true;
     }
     return false;

@@ -31,6 +31,9 @@
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 #include "ecmascript/linked_hash_table.h"
 #include "ecmascript/module/napi_module_loader.h"
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+#include "ecmascript/platform/backtrace.h"
+#endif
 #include "ecmascript/regexp/regexp_parser.h"
 #include "ecmascript/serializer/base_deserializer.h"
 #include "ecmascript/serializer/value_serializer.h"
@@ -4330,6 +4333,14 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
     CROSS_THREAD_CHECK(vm);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     if (thread != nullptr && vm->IsInitialized()) {
+#if defined(ENABLE_EXCEPTION_BACKTRACE)
+    if (thread->IsMainThreadFast()) {
+        LOG_ECMA(INFO) << "JSNApi::TriggerGC gcType: " << static_cast<int>(gcType);
+        std::ostringstream stack;
+        ecmascript::Backtrace(stack, true);
+        LOG_ECMA(INFO) << stack.str();
+    }
+#endif
         switch (gcType) {
             case TRIGGER_GC_TYPE::SEMI_GC:
                 vm->CollectGarbage(vm->GetHeap()->SelectGCType(), reason);
