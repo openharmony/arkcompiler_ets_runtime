@@ -150,6 +150,16 @@ public:
         FOLLOW = 100, // if hilog enabled follow hilog, otherwise use INFO level
     };
 
+    // This enum should follow the same value as defined in the BMS subsystem.
+    // Refer to the specification in aot-guide_zh.md.
+    enum class AOTCompileStatus {
+        NOT_COMPILED = 0,
+        COMPILE_SUCCESS = 1,
+        COMPILE_FAILED = 2,
+        COMPILE_CRASH = 3,
+        COMPILE_CANCELLED = 4,
+    };
+
     void SetGcType(GC_TYPE type)
     {
         gcType_ = type;
@@ -279,6 +289,16 @@ public:
     void SetEnableBaselineJIT(bool value)
     {
         enableBaselineJIT_ = value;
+    }
+
+    void SetAOTCompileStatusMap(const std::map<std::string, int32_t> &value)
+    {
+        aotCompileStatusMap_ = value;
+    }
+
+    const std::map<std::string, int32_t> &GetAOTCompileStatusMap() const
+    {
+        return aotCompileStatusMap_;
     }
 
 private:
@@ -430,6 +450,7 @@ private:
     std::string profileDir_ {};
     bool enableFastJIT_ {false};
     bool enableBaselineJIT_ {false};
+    std::map<std::string, int32_t> aotCompileStatusMap_;
     friend JSNApi;
 };
 

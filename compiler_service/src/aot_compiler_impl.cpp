@@ -175,7 +175,7 @@ void AotCompilerImpl::ExecuteInParentProcess(const pid_t childPid, int32_t &ret)
     } else if (WIFSIGNALED(status)) {
         int signalNumber = WTERMSIG(status);
         LOG_SA(WARN) << "child process terminated by signal: " << signalNumber;
-        ret = ERR_AOT_COMPILER_CALL_FAILED;
+        ret = signalNumber == SIGKILL ? ERR_AOT_COMPILER_CALL_CANCELLED : ERR_AOT_COMPILER_CALL_CRASH;
     } else if (WIFSTOPPED(status)) {
         int signalNumber = WSTOPSIG(status);
         LOG_SA(WARN) << "child process was stopped by signal: " << signalNumber;
@@ -220,7 +220,7 @@ int32_t AotCompilerImpl::EcmascriptAotCompiler(const std::unordered_map<std::str
     if (ret == ERR_OK_NO_AOT_FILE) {
         return ERR_OK;
     }
-    return ret ? ERR_AOT_COMPILER_CALL_FAILED : AOTLocalCodeSign(hapArgs.fileName, hapArgs.signature, sigData);
+    return ret ? ret : AOTLocalCodeSign(hapArgs.fileName, hapArgs.signature, sigData);
 #else
     LOG_SA(ERROR) << "no need to AOT compile when code signature disable";
     return ERR_AOT_COMPILER_SIGNATURE_DISABLE;

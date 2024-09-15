@@ -5002,6 +5002,21 @@ void JSNApi::PreFork(EcmaVM *vm)
     vm->PreFork();
 }
 
+void JSNApi::UpdateAOTCompileStatus(ecmascript::JSRuntimeOptions &jsOption, const RuntimeOption &option)
+{
+    // When AOT compilation failed, disable PGO and JIT
+    bool aotHasException = false;
+    for (const auto &value : option.GetAOTCompileStatusMap()) {
+        auto moduleCompileStatus = static_cast<RuntimeOption::AOTCompileStatus>(value.second);
+        if (moduleCompileStatus == RuntimeOption::AOTCompileStatus::COMPILE_FAILED ||
+            moduleCompileStatus == RuntimeOption::AOTCompileStatus::COMPILE_CRASH) {
+            aotHasException = true;
+            break;
+        }
+    }
+    jsOption.SetAOTHasException(aotHasException);
+}
+
 void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
 {
     JSRuntimeOptions &jsOption = vm->GetJSOptions();
@@ -5024,6 +5039,7 @@ void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
         ecmascript::AnFileDataManager::GetInstance()->SetDir(option.GetAnDir());
         ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
     }
+    UpdateAOTCompileStatus(jsOption, option);
 
     LOG_ECMA(INFO) << "asmint: " << jsOption.GetEnableAsmInterpreter()
                     << ", aot: " << enableAOT
