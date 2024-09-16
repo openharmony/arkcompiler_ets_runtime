@@ -1215,8 +1215,9 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, At_TWO)
     ASSERT_EQ(result, JSTaggedValue::Undefined());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, Create)
+HWTEST_F_L0(BuiltinsSharedArrayTest, Create1)
 {
+    static int32_t len = 3;
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
     JSHandle<JSObject> obj(thread, arr);
@@ -1228,14 +1229,38 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Create)
     auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, array.GetTaggedValue(), 8);
     ecmaRuntimeCallInfo1->SetFunction(array.GetTaggedValue());
     ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
-    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(3)));
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(len));
     ecmaRuntimeCallInfo1->SetCallArg(1, obj.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
     JSTaggedValue result = Array::Create(ecmaRuntimeCallInfo1);
     TestHelper::TearDownFrame(thread, prev);
-    JSTaggedValue value(static_cast<JSTaggedType>(result.GetRawData()));
-    ASSERT_TRUE(value.IsECMAObject());
+    ASSERT_TRUE(result.IsECMAObject());
+    EXPECT_EQ(JSSharedArray::Cast(result.GetTaggedObject())->GetArrayLength(), len);
+}
+
+HWTEST_F_L0(BuiltinsSharedArrayTest, Create2)
+{
+    static double len = 100;
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP) \
+        .GetValue()->GetInt(), 0);
+
+    JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetSharedArrayFunction());
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, array.GetTaggedValue(), 8);
+    ecmaRuntimeCallInfo1->SetFunction(array.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetThis(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(len));
+    ecmaRuntimeCallInfo1->SetCallArg(1, obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = Array::Create(ecmaRuntimeCallInfo1);
+    TestHelper::TearDownFrame(thread, prev);
+    ASSERT_TRUE(result.IsECMAObject());
+    EXPECT_EQ(JSSharedArray::Cast(result.GetTaggedObject())->GetArrayLength(), len);
 }
 
 // Array.isArray(arg)
@@ -1314,7 +1339,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Unscopables)
     ASSERT_TRUE(value.IsECMAObject());
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, ShrinkTo)
+HWTEST_F_L0(BuiltinsSharedArrayTest, ShrinkTo1)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(10))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
@@ -1336,7 +1361,29 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ShrinkTo)
     TestHelper::TearDownFrame(thread, prev);
 }
 
-HWTEST_F_L0(BuiltinsSharedArrayTest, ExtendTo)
+HWTEST_F_L0(BuiltinsSharedArrayTest, ShrinkTo2)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(10))->GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    std::vector<int> descVals{1, 2, 3, 4, 5};
+    auto keys = SharedArrayDefineOwnPropertyTest(thread, obj, descVals);
+
+    JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetSharedArrayFunction());
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, array.GetTaggedValue(), 6);
+    ecmaRuntimeCallInfo1->SetFunction(array.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<double>(3)));
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = Array::ShrinkTo(ecmaRuntimeCallInfo1);
+    EXPECT_EQ(result, JSTaggedValue::Undefined());
+    EXPECT_EQ(arr->GetArrayLength(), 3U);
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+HWTEST_F_L0(BuiltinsSharedArrayTest, ExtendTo1)
 {
     JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
     EXPECT_TRUE(arr != nullptr);
@@ -1347,6 +1394,26 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, ExtendTo)
     ecmaRuntimeCallInfo1->SetFunction(array.GetTaggedValue());
     ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
     ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<int32_t>(3)));
+    ecmaRuntimeCallInfo1->SetCallArg(1, obj.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result = Array::ExtendTo(ecmaRuntimeCallInfo1);
+    ASSERT_EQ(result, JSTaggedValue::Undefined());
+    EXPECT_EQ(arr->GetArrayLength(), 3U);
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+HWTEST_F_L0(BuiltinsSharedArrayTest, ExtendTo2)
+{
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))->GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+
+    JSHandle<JSFunction> array(thread->GetEcmaVM()->GetGlobalEnv()->GetSharedArrayFunction());
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, array.GetTaggedValue(), 8);
+    ecmaRuntimeCallInfo1->SetFunction(array.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetThis(obj.GetTaggedValue());
+    ecmaRuntimeCallInfo1->SetCallArg(0, JSTaggedValue(static_cast<double>(3)));
     ecmaRuntimeCallInfo1->SetCallArg(1, obj.GetTaggedValue());
 
     [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);

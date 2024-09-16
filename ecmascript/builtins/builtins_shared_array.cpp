@@ -323,7 +323,7 @@ JSTaggedValue BuiltinsSharedArray::Create(EcmaRuntimeCallInfo *argv)
     }
     JSHandle<JSTaggedValue> thisHandle = GetThis(argv);
     JSHandle<JSTaggedValue> arrayLengthValue = GetCallArg(argv, 0);
-    if (!arrayLengthValue->IsInt()) {
+    if (!arrayLengthValue->IsNumber()) {
         auto error = ContainerError::ParamError(thread, "Parameter error.Invalid array length.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -2446,7 +2446,7 @@ JSTaggedValue BuiltinsSharedArray::ShrinkTo(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     JSHandle<JSTaggedValue> newLengthValue = GetCallArg(argv, 0);
-    if (!newLengthValue->IsInt()) {
+    if (!newLengthValue->IsNumber()) {
         auto error = ContainerError::ParamError(thread, "Parameter error.Invalid array length.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
@@ -2485,7 +2485,7 @@ JSTaggedValue BuiltinsSharedArray::ExtendTo(EcmaRuntimeCallInfo *argv)
     JSHandle<JSObject> thisObjHandle = JSTaggedValue::ToObject(thread, thisHandle);
     [[maybe_unused]] ConcurrentApiScope<JSSharedArray, ModType::WRITE> scope(thread, thisHandle);
     JSHandle<JSTaggedValue> newLengthValue = GetCallArg(argv, 0);
-    if (!newLengthValue->IsInt()) {
+    if (!newLengthValue->IsNumber()) {
         auto error = ContainerError::ParamError(thread, "Parameter error.Invalid array length.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
