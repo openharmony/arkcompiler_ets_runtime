@@ -705,7 +705,16 @@ JSHandle<JSFunction> SendableClassDefiner::DefineSendableClassFromExtractor(JSTh
     JSHandle<JSHClass> constructorHClass =
         ClassInfoExtractor::CreateSendableHClass(thread, staticKeys, staticProperties, false, staticFields);
     JSHandle<Method> method(thread, Method::Cast(extractor->GetConstructorMethod().GetTaggedObject()));
-    method->SetFunctionKind(FunctionKind::CLASS_CONSTRUCTOR);
+    /*
+    * Method::SetFunctionKind can't be called here, because method will set kind when set inheritance relationship,
+    * so there is a multi-threading problem with multi-threads define sendable DERIVED class at the same time.
+    * Scenario:
+    *    A thread: define DERIVED class X [X's kind = DEFAULT --> BASE CLASS --> DERIVED CLASS], new X()
+    *    B thread: define DERIVED class X [X's kind = DEFAULT --> BASE CLASS --> DERIVED CLASS], new X()
+    * Issue:
+    *     When A thread new DERIVED class X, X's kind maybe set to BASE CLASS at B thread,
+    *     and A thread will throw error when call super().
+    */
     if (!constructorHClass->IsDictionaryMode() && staticFields > 0) {
         auto layout = JSHandle<LayoutInfo>(thread, constructorHClass->GetLayout());
         AddFieldTypeToHClass(thread, staticFieldArray, length, layout, constructorHClass, ~0U);
