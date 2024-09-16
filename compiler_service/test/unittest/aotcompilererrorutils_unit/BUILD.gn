@@ -29,6 +29,7 @@ ohos_unittest("AotCompilerErrorUtilsUnitTest") {
     "//third_party/googletest:gtest_main",
   ]
   external_deps = [
+    "ability_base:want",
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
     "c_utils:utils",
@@ -40,7 +41,6 @@ ohos_unittest("AotCompilerErrorUtilsUnitTest") {
     "icu:shared_icui18n",
     "icu:shared_icuuc",
     "ipc:ipc_core",
-    "power_manager:powermgr_client",
     "runtime_core:libarkfile_static",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
