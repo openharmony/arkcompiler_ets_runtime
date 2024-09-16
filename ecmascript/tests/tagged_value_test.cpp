@@ -30,6 +30,10 @@
 using namespace panda::ecmascript;
 
 namespace panda::test {
+constexpr uint32_t TEST_NUMBER = 1;
+constexpr uint32_t TEST_TAGGED_ARRAY_LENGTH = 1;
+const std::string TEST_STRING = "testString";
+
 class JSTaggedValueTest : public BaseTestWithScope<false> {
 public:
     JSTaggedNumber NumberFromASCII(std::string_view data)
@@ -1147,10 +1151,10 @@ HWTEST_F_L0(JSTaggedValueTest, EqualHeapObject0)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     // 1. create a heapobject which is not ecmaobject
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
 
     // 2. create a number
-    JSHandle<JSTaggedValue> testNumber = JSHandle<JSTaggedValue>(thread, JSTaggedValue(1));
+    JSHandle<JSTaggedValue> testNumber = JSHandle<JSTaggedValue>(thread, JSTaggedValue(TEST_NUMBER));
 
     // 3. compare heapobject not ecmaobject with number
     bool res = JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, array.GetTaggedValue()), testNumber);
@@ -1162,7 +1166,7 @@ HWTEST_F_L0(JSTaggedValueTest, EqualHeapObject1)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     // 1. create a heapobject which is not ecmaobject
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
 
     // 2. create a boolean
     JSHandle<JSTaggedValue> testBoolean = JSHandle<JSTaggedValue>(thread, JSTaggedValue::True());
@@ -1177,10 +1181,10 @@ HWTEST_F_L0(JSTaggedValueTest, EqualHeapObject2)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     // 1. create a heapobject which is not ecmaobject
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
 
     // 2. create a string
-    JSHandle<JSTaggedValue> testString = JSHandle<JSTaggedValue>(factory->NewFromASCII("testString"));
+    JSHandle<JSTaggedValue> testString = JSHandle<JSTaggedValue>(factory->NewFromASCII(TEST_STRING.c_str()));
 
     // 3. compare heapobject not ecmaobject with string
     bool res = JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, array.GetTaggedValue()), testString);
@@ -1192,7 +1196,7 @@ HWTEST_F_L0(JSTaggedValueTest, EqualHeapObject3)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     // 1. create a heapobject which is not ecmaobject
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
 
     // 2. create a symbol
     JSHandle<JSTaggedValue> testSymbol = JSHandle<JSTaggedValue>(factory->NewJSSymbol());
@@ -1207,13 +1211,73 @@ HWTEST_F_L0(JSTaggedValueTest, EqualHeapObject4)
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
 
     // 1. create a heapobject which is not ecmaobject
-    JSHandle<TaggedArray> array = factory->NewTaggedArray(1);
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
 
     // 2. create a bigint
-    JSHandle<JSTaggedValue> testBigInt = JSHandle<JSTaggedValue>(factory->NewBigInt(1));
+    JSHandle<JSTaggedValue> testBigInt = JSHandle<JSTaggedValue>(factory->NewBigInt(TEST_NUMBER));
 
     // 3. compare heapobject not ecmaobject with bigint
     bool res = JSTaggedValue::Equal(thread, JSHandle<JSTaggedValue>(thread, array.GetTaggedValue()), testBigInt);
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(JSTaggedValueTest, EqualNumber0)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    // 1. create a number
+    JSHandle<JSTaggedValue> testNumber = JSHandle<JSTaggedValue>(thread, JSTaggedValue(TEST_NUMBER));
+
+    // 2. create a heapobject which is not ecmaobject
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
+
+    // 3. compare heapobject not ecmaobject with number
+    bool res = JSTaggedValue::Equal(thread, testNumber, JSHandle<JSTaggedValue>(thread, array.GetTaggedValue()));
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(JSTaggedValueTest, EqualString0)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    // 1. create a string
+    JSHandle<JSTaggedValue> testString = JSHandle<JSTaggedValue>(factory->NewFromASCII(TEST_STRING.c_str()));
+
+    // 2. create a heapobject which is not ecmaobject
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
+
+    // 3. compare heapobject not ecmaobject with number
+    bool res = JSTaggedValue::Equal(thread, testString, JSHandle<JSTaggedValue>(thread, array.GetTaggedValue()));
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(JSTaggedValueTest, EqualSymbol0)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    // 1. create a symbol
+    JSHandle<JSTaggedValue> testSymbol = JSHandle<JSTaggedValue>(factory->NewJSSymbol());
+
+    // 2. create a heapobject which is not ecmaobject
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
+
+    // 3. compare heapobject not ecmaobject with number
+    bool res = JSTaggedValue::Equal(thread, testSymbol, JSHandle<JSTaggedValue>(thread, array.GetTaggedValue()));
+    EXPECT_FALSE(res);
+}
+
+HWTEST_F_L0(JSTaggedValueTest, EqualBigInt0)
+{
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+
+    // 1. create a bigint
+    JSHandle<JSTaggedValue> testBigInt = JSHandle<JSTaggedValue>(factory->NewBigInt(TEST_NUMBER));
+
+    // 2. create a heapobject which is not ecmaobject
+    JSHandle<TaggedArray> array = factory->NewTaggedArray(TEST_TAGGED_ARRAY_LENGTH);
+
+    // 3. compare heapobject not ecmaobject with number
+    bool res = JSTaggedValue::Equal(thread, testBigInt, JSHandle<JSTaggedValue>(thread, array.GetTaggedValue()));
     EXPECT_FALSE(res);
 }
 }  // namespace panda::test
