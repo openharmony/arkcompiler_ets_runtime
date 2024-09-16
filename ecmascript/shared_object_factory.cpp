@@ -510,11 +510,13 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
     obj->SetExternalPointer(externalPointer);
     obj->SetDeleter(callBack);
     obj->SetData(data);
-    obj->SetBindingSize(nativeBindingsize);
+    uint32_t fixedNativeBindingsize = nativeBindingsize < UINT32_MAX ? nativeBindingsize
+                                                                     : UINT32_MAX;
+    obj->SetBindingSize(fixedNativeBindingsize);
     obj->SetNativeFlag(flag);
 
     if (callBack != nullptr) {
-        sHeap_->IncNativeSizeAfterLastGC(nativeBindingsize);
+        sHeap_->IncNativeSizeAfterLastGC(fixedNativeBindingsize);
         vm_->PushToSharedNativePointerList(static_cast<JSNativePointer *>(header));
         // In some cases, the size of JS/TS object is too small and the native binding size is too large.
         // Check and try trigger concurrent mark here.
@@ -540,7 +542,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewSReadOnlyJSNativePointer(void* exter
     obj->SetExternalPointer(externalPointer);
     obj->SetDeleter(nullptr);
     obj->SetData(nullptr);
-    obj->SetBindingSize(0);
+    obj->SetBindingSize(0U);
     obj->SetNativeFlag(NativeFlag::NO_DIV);
     return obj;
 }
