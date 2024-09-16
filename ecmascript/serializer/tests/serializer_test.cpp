@@ -2414,15 +2414,15 @@ HWTEST_F_L0(JSSerializerTest, SerializeMultiThreadJSSharedSet)
     for (int i = 0; i < INITIALIZE_SIZE; i++) {
         JSSharedSet::Add(thread, jsSet, JSHandle<JSTaggedValue>(thread, JSTaggedValue(i)));
     }
-    constexpr uint32_t MAX_NUM_DESERIALZIERS = 10;
-    JSDeserializerTest jsDeserializerTests[MAX_NUM_DESERIALZIERS];
-    std::thread threads[MAX_NUM_DESERIALZIERS];
-    for (int32_t i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
+    constexpr uint32_t maxNumDeserializers = 10;
+    JSDeserializerTest jsDeserializerTests[maxNumDeserializers];
+    std::thread threads[maxNumDeserializers];
+    for (int32_t i = 0; i < maxNumDeserializers; i++) {
         threads[i] = std::thread(&JSDeserializerTest::JSSharedSetMultiThreadTest1,
             jsDeserializerTests[i], data.get());
     }
     ThreadSuspensionScope scope(thread);
-    for (int i = 0; i < MAX_NUM_DESERIALZIERS; i++) {
+    for (int i = 0; i < maxNumDeserializers; i++) {
         threads[i].join();
     }
     EXPECT_TRUE(jsSet->GetModRecord() == 0);
