@@ -400,6 +400,8 @@ public:
 
     void AdjustGlobalSpaceAllocLimit();
 
+    void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
+
     class ParallelMarkTask : public Task {
     public:
         ParallelMarkTask(int32_t id, SharedHeap *heap, SharedParallelMarkPhase taskPhase)
@@ -767,6 +769,13 @@ public:
         ~SharedGCScope();
     };
 
+    bool InHeapProfiler() const
+    {
+        return inHeapProfiler_;
+    }
+
+    void CheckInHeapProfiler();
+
 private:
     void ProcessAllGCListeners();
     inline void CollectGarbageFinish(bool inDaemon);
@@ -831,6 +840,7 @@ private:
     size_t incNativeSizeTriggerSharedCM_ {0};
     size_t incNativeSizeTriggerSharedGC_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
+    bool inHeapProfiler_ {false};
 };
 
 class Heap : public BaseHeap {

@@ -1109,4 +1109,51 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDump)
     ASSERT_TRUE(*u64Ptr > 0);
 }
 
+HWTEST_F_L0(HeapDumpTest, TestSharedFullGCInHeapDump)
+{
+    ObjectFactory *factory = ecmaVm_->GetFactory();
+    HeapDumpTestHelper tester(ecmaVm_);
+
+    JSHandle<JSTaggedValue> proto = ecmaVm_->GetGlobalEnv()->GetFunctionPrototype();
+    // JS_SET
+    tester.NewJSSet();
+    // JS_SHARED_SET
+    tester.NewJSSharedSet();
+    // JS_MAP
+    tester.NewJSMap();
+    // JS_SHARED_MAP
+    tester.NewJSSharedMap();
+    // JS_WEAK_SET
+    tester.NewJSWeakSet();
+    // JS_WEAK_MAP
+    tester.NewJSWeakMap();
+    // JS_ARRAY
+    factory->NewJSArray();
+    // JS_TYPED_ARRAY
+    tester.NewObject(JSTypedArray::SIZE, JSType::JS_TYPED_ARRAY, proto);
+    tester.GenerateSnapShot("testGenerateNodeName_4.heapsnapshot");
+
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Set\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"SharedSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Map\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"SharedMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"WeakSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"WeakMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"JSArray\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Typed Array\""));
+
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread_);
+
+    tester.GenerateSnapShot("testGenerateNodeName_4.heapsnapshot");
+
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Set\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"SharedSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Map\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"SharedMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"WeakSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"WeakMap\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"JSArray\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString("testGenerateNodeName_4.heapsnapshot", "\"Typed Array\""));
+}
 }

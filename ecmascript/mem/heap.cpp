@@ -95,6 +95,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
     SuspendAllScope scope(thread);
     SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
+    CheckInHeapProfiler();
     GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
     if (UNLIKELY(ShouldVerifyHeap())) {
         // pre gc heap verify
@@ -365,6 +366,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
         ThreadManagedScope runningScope(dThread_);
         SuspendAllScope scope(dThread_);
         SharedGCScope sharedGCScope;  // SharedGCScope should be after SuspendAllScope.
+        CheckInHeapProfiler();
         gcType_ = gcType;
         GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
         if (UNLIKELY(ShouldVerifyHeap())) {
@@ -420,6 +422,20 @@ bool SharedHeap::CheckOngoingConcurrentMarking()
         return true;
     }
     return false;
+}
+
+void SharedHeap::CheckInHeapProfiler()
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    Runtime::GetInstance()->GCIterateThreadList([this](JSThread *thread) {
+        if (thread->GetEcmaVM()->GetHeapProfile() != nullptr) {
+            inHeapProfiler_ = true;
+            return;
+        }
+    });
+#else
+    inHeapProfiler_ = false;
+#endif
 }
 
 void SharedHeap::Prepare(bool inTriggerGCThread)
@@ -1527,6 +1543,20 @@ void Heap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] Tagg
         base::BlockHookScope blockScope;
         profiler->MoveEvent(address, forwardAddress, size);
     }
+#endif
+}
+
+void SharedHeap::OnMoveEvent([[maybe_unused]] uintptr_t address, [[maybe_unused]] TaggedObject* forwardAddress,
+                             [[maybe_unused]] size_t size)
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    Runtime::GetInstance()->GCIterateThreadListWithoutLock([&](JSThread *thread) {
+        HeapProfilerInterface *profiler = thread->GetEcmaVM()->GetHeapProfile();
+        if (profiler != nullptr) {
+            base::BlockHookScope blockScope;
+            profiler->MoveEvent(address, forwardAddress, size);
+        }
+    });
 #endif
 }
 
