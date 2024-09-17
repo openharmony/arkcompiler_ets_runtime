@@ -111,7 +111,7 @@ private:
 
     void AllocateToDifferentSpaces();
     void AllocateMultiRegion(SparseSpace *space, size_t spaceObjSize, size_t &regionIndex);
-    Region *AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex);
+    void AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex);
     void AllocateToOldSpace(size_t oldSpaceSize);
     void AllocateToNonMovableSpace(size_t nonMovableSpaceSize);
     void AllocateToMachineCodeSpace(size_t machineCodeSpaceSize);
