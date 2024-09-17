@@ -796,7 +796,8 @@ void Gate::Print(std::string additionOp, bool inListPreview, size_t highlightIdx
 void Gate::DumpHeader(std::ostringstream &oss, const std::string& additionOp) const
 {
     auto opcode = GetOpCode();
-    ASSERT(opcode != OpCode::NOP && opcode != OpCode::DEAD);
+    ASSERT(opcode != OpCode::NOP);
+    ASSERT(opcode != OpCode::DEAD);
 
     oss << "{\"id\":" << std::to_string(id_) << ", \"op\":\"" << GateMetaData::Str(opcode) << "\", ";
     if (additionOp.compare("") != 0) {
@@ -815,7 +816,8 @@ void Gate::DumpHeader(std::ostringstream &oss, const std::string& additionOp) co
 void Gate::DumpInputs(std::ostringstream &oss, bool inListPreview, size_t highlightIdx) const
 {
     [[maybe_unused]] auto opcode = GetOpCode();
-    ASSERT(opcode != OpCode::NOP && opcode != OpCode::DEAD);
+    ASSERT(opcode != OpCode::NOP);
+    ASSERT(opcode != OpCode::DEAD);
 
     size_t idx = 0;
     auto stateSize = GetStateCount();
@@ -846,7 +848,8 @@ void Gate::DumpInputs(std::ostringstream &oss, bool inListPreview, size_t highli
 void Gate::DumpOutputs(std::ostringstream &oss, bool inListPreview) const
 {
     auto opcode = GetOpCode();
-    ASSERT(opcode != OpCode::NOP && opcode != OpCode::DEAD);
+    ASSERT(opcode != OpCode::NOP);
+    ASSERT(opcode != OpCode::DEAD);
 
     oss << ", \"out\":[";
     if (!IsFirstOutNull()) {
