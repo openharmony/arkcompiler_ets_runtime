@@ -36,4 +36,4 @@ function* values() {
     print('This code is unreachable (following `try` statement).');
   }
   
-  print(i);
+  print(i)

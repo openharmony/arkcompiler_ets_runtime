@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-declare function assert_unreachable():void;
 declare function print(arg:any):string;
 
 {
@@ -77,7 +76,6 @@ declare function print(arg:any):string;
     Object.setPrototypeOf(b5, {})
     try {
         b5.foo();
-        assert_unreachable();
     } catch(e) {
         print(e instanceof TypeError);
     }

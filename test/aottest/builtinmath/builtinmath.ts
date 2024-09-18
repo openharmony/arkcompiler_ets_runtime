@@ -30,18 +30,18 @@ len = Math.sqrt(NaN);
 print(len);
 
 len = Math.sqrt(+0); // 0
-print(len);
+print(len)
 len = Math.sqrt(Number.POSITIVE_INFINITY); // Infinity
-print(len);
+print(len)
 len = Math.sqrt(Number.NEGATIVE_INFINITY); // NaN
-print(len);
+print(len)
 len = Math.sqrt(-1); // NaN
-print(len);
+print(len)
 function sqrt()
 {
     Math.sqrt = replace;
     len = Math.sqrt(9)
-    print(len);
+    print(len)
 }
 sqrt()
 
@@ -53,7 +53,7 @@ function cos()
 {
     Math.cos = replace;
     len = Math.cos(1);
-    print(len);
+    print(len)
 }
 cos()
 

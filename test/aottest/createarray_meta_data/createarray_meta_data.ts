@@ -16,4 +16,4 @@
 let k =1;
 let arr:number[] = [-1,-1];
 let a2:number[] = [k];
-print(a2.length);
+print(a2.length)
