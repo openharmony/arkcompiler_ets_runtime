@@ -91,6 +91,7 @@ regresstest/ark-regress/mjsunit/compiler/for-stmt.js
 regresstest/ark-regress/mjsunit/compiler/regress-4389-5.js
 regresstest/ark-regress/mjsunit/compiler/regress-796041.js
 regresstest/ark-regress/mjsunit/asm/int32-tmod.js
+regresstest/ark-regress/mjsunit/regress/regress-crbug-1472541.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-403409.js 
 regresstest/ark-regress/mjsunit/regress/regress-crbug-944435.js
 regresstest/ark-regress/mjsunit/regress/regress-crbug-878845.js
