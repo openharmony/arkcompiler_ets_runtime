@@ -19,19 +19,6 @@
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/js_thread.h"
 
-// List of functions in ArkTools.GC, extension of JS engine.
-// V(name, func, length, stubIndex)
-// where BuiltinsGc::func refers to the native implementation of GC[name].
-//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
-#define BUILTIN_GC_FUNCTIONS(V)                                             \
-    V("getFreeHeapSize",                           GetFreeHeapSize,                           0, INVALID)     \
-    V("getReservedHeapSize",                       GetReservedHeapSize,                       0, INVALID)     \
-    V("getUsedHeapSize",                           GetUsedHeapSize,                           0, INVALID)     \
-    V("getObjectAddress",                          GetObjectAddress,                          1, INVALID)     \
-    V("getObjectSpaceType",                        GetObjectSpaceType,                        1, INVALID)     \
-    V("registerNativeAllocation",                  RegisterNativeAllocation,                  1, INVALID)     \
-    V("registerNativeFree",                        RegisterNativeFree,                        1, INVALID)
-
 namespace panda::ecmascript::builtins {
 class BuiltinsGc : public base::BuiltinsBase {
 public:
@@ -49,6 +36,10 @@ public:
 
     static JSTaggedValue RegisterNativeFree(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue WaitForFinishGC(EcmaRuntimeCallInfo *info);
+
+    static JSTaggedValue StartGC(EcmaRuntimeCallInfo *info);
+
     static Span<const base::BuiltinFunctionEntry> GetGcFunctions()
     {
         return Span<const base::BuiltinFunctionEntry>(GC_FUNCTIONS);
@@ -58,8 +49,20 @@ private:
 #define BUILTINS_GC_FUNCTION_ENTRY(name, method, length, id) \
     base::BuiltinFunctionEntry::Create(name, BuiltinsGc::method, length, kungfu::BuiltinsStubCSigns::id),
 
-    static constexpr std::array GC_FUNCTIONS  = {
-        BUILTIN_GC_FUNCTIONS(BUILTINS_GC_FUNCTION_ENTRY)
+// List of functions in ArkTools.GC, extension of JS engine.
+// where BuiltinsGc::func refers to the native implementation of GC[name].
+//       kungfu::BuiltinsStubCSigns::stubIndex refers to the builtin stub index, or INVALID if no stub available.
+
+    static constexpr std::array GC_FUNCTIONS = {
+        BUILTINS_GC_FUNCTION_ENTRY("getFreeHeapSize",             GetFreeHeapSize,               0, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("getReservedHeapSize",         GetReservedHeapSize,           0, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("getUsedHeapSize",             GetUsedHeapSize,               0, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("getObjectAddress",            GetObjectAddress,              1, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("getObjectSpaceType",          GetObjectSpaceType,            1, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("registerNativeAllocation",    RegisterNativeAllocation,      1, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("registerNativeFree",          RegisterNativeFree,            1, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("waitForFinishGC",             WaitForFinishGC,               0, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("startGC",                     StartGC,                       0, INVALID)
     };
 #undef BUILTINS_GC_FUNCTION_ENTRY
 };
