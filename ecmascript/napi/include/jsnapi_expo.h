@@ -99,6 +99,9 @@ using WeakFinalizeTaskCallback = std::function<void()>;
 using NativePointerCallback = void (*)(void *env, void* data, void* hint);
 using NativePointerCallbackData = std::pair<NativePointerCallback, std::tuple<void*, void*, void*>>;
 using NativePointerTaskCallback = std::function<void(std::vector<NativePointerCallbackData>& callbacks)>;
+using TriggerGCData = std::pair<void*, uint8_t>;
+using TriggerGCTaskCallback = std::function<void(TriggerGCData& data)>;
+using StartIdleMonitorCallback = std::function<void()>;
 using EcmaVM = ecmascript::EcmaVM;
 using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
@@ -1432,6 +1435,14 @@ public:
     // JSVM
     // fixme: Rename SEMI_GC to YOUNG_GC
     enum class ECMA_PUBLIC_API TRIGGER_GC_TYPE : uint8_t { SEMI_GC, OLD_GC, FULL_GC };
+    enum class ECMA_PUBLIC_API TRIGGER_IDLE_GC_TYPE : uint8_t {
+        OLD_GC = 1,
+        FULL_GC = 1 << 2,
+        SHARED_GC = 1 << 3,
+        SHARED_FULL_GC = 1 << 4,
+        LOCAL_CONCURRENT_MARK = 1 << 5,
+        LOCAL_REMARK = 1 << 6,
+    };
 
     enum class PatchErrorCode : uint8_t {
         SUCCESS = 0,
@@ -1512,6 +1523,9 @@ public:
     // Memory
     // fixme: Rename SEMI_GC to YOUNG_GC
     static void TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
+    static void TriggerIdleGC(const EcmaVM *vm, TRIGGER_IDLE_GC_TYPE gcType);
+    static void SetStartIdleMonitorCallback(const StartIdleMonitorCallback& callback);
+    static StartIdleMonitorCallback GetStartIdleMonitorCallback();
     // Exception
     static void ThrowException(const EcmaVM *vm, Local<JSValueRef> error);
     static void PrintExceptionInfo(const EcmaVM *vm);
@@ -1543,6 +1557,9 @@ public:
     static void NotifyNativeReturn(const EcmaVM *vm, const void *nativeAddress);
     static void NotifyLoadModule(const EcmaVM *vm);
     static void NotifyUIIdle(const EcmaVM *vm, int idleTime);
+    static void NotifyLooperIdleStart(const EcmaVM *vm, int64_t timestamp, int idleTime);
+    static void NotifyLooperIdleEnd(const EcmaVM *vm, int64_t timestamp);
+    static bool IsJSMainThreadOfEcmaVM(const EcmaVM *vm);
     static void SetDeviceDisconnectCallback(EcmaVM *vm, DeviceDisconnectCallback cb);
     // Serialize & Deserialize.
     static void* SerializeValue(const EcmaVM *vm, Local<JSValueRef> data, Local<JSValueRef> transfer,
@@ -1594,6 +1611,8 @@ public:
     static void SetLoop(EcmaVM *vm, void *loop);
     static void SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback);
     static void SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallback &callback);
+    static void SetTriggerGCTaskCallback(EcmaVM *vm, const TriggerGCTaskCallback& callback);
+    static void SetStartIdleMonitorCallback(EcmaVM *vm, const StartIdleMonitorCallback& callback);
     static std::string GetAssetPath(EcmaVM *vm);
     static bool InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data);
     static bool InitForConcurrentFunction(EcmaVM *vm, Local<JSValueRef> func, void *taskInfo);
@@ -1638,6 +1657,7 @@ private:
     static bool initialize_;
     static bool CreateRuntime(const RuntimeOption &option);
     static bool DestroyRuntime();
+    static StartIdleMonitorCallback startIdleMonitorCallback_;
 
     static uintptr_t GetHandleAddr(const EcmaVM *vm, uintptr_t localAddress);
     static uintptr_t GetGlobalHandleAddr(const EcmaVM *vm, uintptr_t localAddress);

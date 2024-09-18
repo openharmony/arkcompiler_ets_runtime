@@ -216,6 +216,7 @@ void ConcurrentMarker::ProcessConcurrentMarkTask(uint32_t threadId)
     heap_->GetNonMovableMarker()->ProcessMarkStack(threadId);
     if (ShouldNotifyMarkingFinished()) {
         FinishMarking();
+        heap_->GetIdleGCTrigger()->TryPostHandleMarkFinished();
     }
 }
 
