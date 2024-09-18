@@ -65,9 +65,10 @@ JSTaggedValue JSAPIBitVector::Pop(JSThread* thread, const JSHandle<JSAPIBitVecto
 
 JSTaggedValue JSAPIBitVector::Set(JSThread* thread, const uint32_t index, JSTaggedValue value)
 {
-    if (index >= GetLength()) {
+    uint32_t length = static_cast<uint32_t>(GetLength());
+    if (index >= length) {
         std::ostringstream oss;
-        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (GetLength() - 1)
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
             << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
@@ -80,9 +81,10 @@ JSTaggedValue JSAPIBitVector::Set(JSThread* thread, const uint32_t index, JSTagg
 
 JSTaggedValue JSAPIBitVector::Get(JSThread* thread, const uint32_t index)
 {
-    if (index >= GetLength()) {
+    uint32_t length = static_cast<uint32_t>(GetLength());
+    if (index >= length) {
         std::ostringstream oss;
-        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (GetLength() - 1)
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
             << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
