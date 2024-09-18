@@ -65,7 +65,7 @@ JSTaggedValue ContainersBitVector::BitVectorConstructor(EcmaRuntimeCallInfo* arg
     JSHandle<JSNativePointer> pointer = factory->NewJSNativePointer(newBitSetVector,
                                                                     ContainersBitVector::FreeBitsetVectorPointer);
     obj->SetNativePointer(thread, pointer);
-    obj->SetLength(thread, length);
+    obj->SetLength(length->GetInt());
     return obj.GetTaggedValue();
 }
 
