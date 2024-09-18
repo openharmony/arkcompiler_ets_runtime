@@ -167,13 +167,6 @@ void IreadNode::Dump(int32 indent) const
     DumpOpnd(*theMIRModule, indent);
 }
 
-void IreadoffNode::Dump(int32 indent) const
-{
-    LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
-    LogInfo::MapleLogger() << " " << offset;
-    DumpOpnd(*theMIRModule, indent);
-}
-
 void BinaryNode::Dump(int32 indent) const
 {
     BaseNode::DumpBase(0);
@@ -203,25 +196,6 @@ void CompareNode::Dump(int32 indent) const
     LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
     LogInfo::MapleLogger() << " " << GetPrimTypeName(opndType);
     BinaryOpnds::Dump(indent);
-}
-
-void DepositbitsNode::Dump(int32 indent) const
-{
-    BaseNode::DumpBase(0);
-    LogInfo::MapleLogger() << " " << static_cast<int32>(bitsOffset) << " " << static_cast<int32>(bitsSize) << " (";
-    if (GetBOpnd(0)->IsLeaf() && GetBOpnd(1)->IsLeaf()) {
-        GetBOpnd(0)->Dump(0);
-        LogInfo::MapleLogger() << ", ";
-        GetBOpnd(1)->Dump(0);
-    } else {
-        LogInfo::MapleLogger() << '\n';
-        PrintIndentation(indent + 1);
-        GetBOpnd(0)->Dump(indent + 1);
-        LogInfo::MapleLogger() << ",\n";
-        PrintIndentation(indent + 1);
-        GetBOpnd(1)->Dump(indent + 1);
-    }
-    LogInfo::MapleLogger() << ")";
 }
 
 void NaryOpnds::Dump(int32 indent) const
@@ -293,36 +267,7 @@ void NaryNode::Dump(int32 indent) const
     BaseNode::DumpBase(0);
     NaryOpnds::Dump(indent);
 }
-
-void ArrayNode::Dump(int32 indent) const
-{
-    PrintIndentation(0);
-    LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " ";
-    if (boundsCheck) {
-        LogInfo::MapleLogger() << "1 ";
-    } else {
-        LogInfo::MapleLogger() << "0 ";
-    }
-    LogInfo::MapleLogger() << GetPrimTypeName(GetPrimType());
-    LogInfo::MapleLogger() << " ";
-    GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->Dump(0);
-    NaryOpnds::Dump(indent);
-}
 #endif
-
-bool ArrayNode::IsSameBase(ArrayNode *arry)
-{
-    DEBUG_ASSERT(arry != nullptr, "null ptr check");
-    if (arry == this) {
-        return true;
-    }
-    BaseNode *curBase = this->GetBase();
-    BaseNode *otherBase = arry->GetBase();
-    if (curBase->GetOpCode() != OP_addrof || otherBase->GetOpCode() != OP_addrof) {
-        return false;
-    }
-    return static_cast<AddrofNode *>(curBase)->GetStIdx() == static_cast<AddrofNode *>(otherBase)->GetStIdx();
-}
 
 #ifdef ARK_LITECG_DEBUG
 void IntrinsicopNode::Dump(int32 indent) const
@@ -339,23 +284,6 @@ void ConstvalNode::Dump(int32) const
         LogInfo::MapleLogger() << " ";
     }
     GetConstVal()->Dump();
-}
-
-void ConststrNode::Dump(int32) const
-{
-    BaseNode::DumpBase(0);
-    const std::string kStr = GlobalTables::GetUStrTable().GetStringFromStrIdx(UStrIdx(strIdx));
-    PrintString(kStr);
-}
-
-void Conststr16Node::Dump(int32) const
-{
-    BaseNode::DumpBase(0);
-    const std::u16string kStr16 = GlobalTables::GetU16StrTable().GetStringFromStrIdx(U16StrIdx(strIdx));
-    // UTF-16 string are dumped as UTF-8 string in mpl to keep the printable chars in ascii form
-    std::string str;
-    (void)namemangler::UTF16ToUTF8(str, kStr16);
-    PrintString(str);
 }
 
 void AddrofNode::Dump(int32) const
@@ -402,24 +330,6 @@ void RegreadNode::Dump(int32) const
             LogInfo::MapleLogger() << "retval" << retValIdx;
             break;
     }
-}
-
-void AddroffuncNode::Dump(int32) const
-{
-    LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
-    MIRFunction *func = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(puIdx);
-    CHECK_FATAL(func != nullptr, "null ptr");
-    MIRSymbol *symbol = GlobalTables::GetGsymTable().GetSymbolFromStidx(func->GetStIdx().Idx());
-    if (symbol != nullptr) {
-        LogInfo::MapleLogger() << " &" << symbol->GetName();
-    }
-}
-
-void AddroflabelNode::Dump(int32) const
-{
-    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
-    LogInfo::MapleLogger() << kOpcodeInfo.GetTableItemAt(GetOpCode()).name << " " << GetPrimTypeName(GetPrimType());
-    LogInfo::MapleLogger() << " @" << theMIRModule->CurFunction()->GetLabelName(static_cast<LabelIdx>(offset));
 }
 
 void StmtNode::DumpBase(int32 indent) const
@@ -502,14 +412,6 @@ void IassignNode::Dump(int32 indent) const
         rhs->Dump(indent + 1);
     }
     LogInfo::MapleLogger() << ")\n";
-}
-
-void IassignoffNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    LogInfo::MapleLogger() << " " << GetPrimTypeName(GetPrimType()) << " " << offset;
-    BinaryOpnds::Dump(indent);
-    LogInfo::MapleLogger() << '\n';
 }
 
 void GotoNode::Dump(int32 indent) const
@@ -616,15 +518,6 @@ void NaryStmtNode::Dump(int32 indent) const
     StmtNode::DumpBase(indent);
     NaryOpnds::Dump(indent);
     LogInfo::MapleLogger() << '\n';
-}
-
-void AssertNonnullStmtNode::Dump(int32 indent) const
-{
-    StmtNode::DumpBase(indent);
-    if (theMIRModule->IsCModule()) {
-        SafetyCheckStmtNode::Dump();
-    }
-    UnaryStmtNode::DumpOpnd(indent);
 }
 
 void DumpCallReturns(const MIRModule &mod, CallReturnVector nrets, int32 indent)
@@ -737,7 +630,7 @@ void IntrinsiccallNode::Dump(int32 indent, bool newline) const
         GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdx)->Dump(indent + 1);
     }
     if (GetOpCode() == OP_intrinsiccall || GetOpCode() == OP_intrinsiccallassigned ||
-        GetOpCode() == OP_intrinsiccallwithtype || GetOpCode() == OP_intrinsiccallwithtypeassigned) {
+        GetOpCode() == OP_intrinsiccallwithtype) {
         LogInfo::MapleLogger() << " " << GetIntrinsicName(intrinsic);
     } else {
         LogInfo::MapleLogger() << " " << intrinsic;
@@ -860,120 +753,6 @@ void EmitStr(const MapleString &mplStr)
     }
 
     LogInfo::MapleLogger() << "\"\n";
-}
-
-void AsmNode::DumpOutputs(int32 indent, std::string &uStr) const
-{
-    PrintIndentation(indent + 1);
-    LogInfo::MapleLogger() << " :";
-    size_t numOutputs = asmOutputs.size();
-
-    const MIRFunction *mirFunc = theMIRModule->CurFunction();
-    if (numOutputs == 0) {
-        LogInfo::MapleLogger() << '\n';
-    } else {
-        for (size_t i = 0; i < numOutputs; i++) {
-            if (i != 0) {
-                PrintIndentation(indent + 2);  // Increase the indent by 2 bytes.
-            }
-            uStr = GlobalTables::GetUStrTable().GetStringFromStrIdx(outputConstraints[i]);
-            PrintString(uStr);
-            LogInfo::MapleLogger() << " ";
-            StIdx stIdx = asmOutputs[i].first;
-            RegFieldPair regFieldPair = asmOutputs[i].second;
-            if (!regFieldPair.IsReg()) {
-                FieldID fieldID = regFieldPair.GetFieldID();
-                LogInfo::MapleLogger() << "dassign";
-                const MIRSymbol *st = mirFunc->GetLocalOrGlobalSymbol(stIdx);
-                DEBUG_ASSERT(st != nullptr, "st is null");
-                LogInfo::MapleLogger() << (stIdx.Islocal() ? " %" : " $");
-                LogInfo::MapleLogger() << st->GetName() << " " << fieldID;
-            } else {
-                PregIdx regIdx = regFieldPair.GetPregIdx();
-                const MIRPreg *mirPreg = mirFunc->GetPregItem(static_cast<PregIdx>(regIdx));
-                DEBUG_ASSERT(mirPreg != nullptr, "mirPreg is null");
-                LogInfo::MapleLogger() << "regassign"
-                                       << " " << GetPrimTypeName(mirPreg->GetPrimType());
-                LogInfo::MapleLogger() << " %" << mirPreg->GetPregNo();
-            }
-            if (i != numOutputs - 1) {
-                LogInfo::MapleLogger() << ',';
-            }
-            LogInfo::MapleLogger() << '\n';
-        }
-    }
-}
-
-void AsmNode::DumpInputOperands(int32 indent, std::string &uStr) const
-{
-    PrintIndentation(indent + 1);
-    LogInfo::MapleLogger() << " :";
-    if (numOpnds == 0) {
-        LogInfo::MapleLogger() << '\n';
-    } else {
-        for (size_t i = 0; i < numOpnds; i++) {
-            if (i != 0) {
-                PrintIndentation(indent + 2);  // Increase the indent by 2 bytes.
-            }
-            uStr = GlobalTables::GetUStrTable().GetStringFromStrIdx(inputConstraints[i]);
-            PrintString(uStr);
-            LogInfo::MapleLogger() << " (";
-            GetNopndAt(i)->Dump(indent + 4);  // Increase the indent by 4 bytes.
-            LogInfo::MapleLogger() << ")";
-            if (i != static_cast<size_t>(static_cast<int64>(numOpnds - 1))) {
-                LogInfo::MapleLogger() << ',';
-            }
-            LogInfo::MapleLogger() << "\n";
-        }
-    }
-}
-
-void AsmNode::Dump(int32 indent) const
-{
-    srcPosition.DumpLoc(lastPrintedLineNum, lastPrintedColumnNum);
-    PrintIndentation(indent);
-    LogInfo::MapleLogger() << kOpcodeInfo.GetName(op);
-    if (GetQualifier(kASMvolatile)) {
-        LogInfo::MapleLogger() << " volatile";
-    }
-    if (GetQualifier(kASMinline)) {
-        LogInfo::MapleLogger() << " inline";
-    }
-    if (GetQualifier(kASMgoto)) {
-        LogInfo::MapleLogger() << " goto";
-    }
-    LogInfo::MapleLogger() << " { ";
-    EmitStr(asmString);
-    // print outputs
-    std::string uStr;
-    DumpOutputs(indent, uStr);
-    // print input operands
-    DumpInputOperands(indent, uStr);
-    // print clobber list
-    PrintIndentation(indent + 1);
-    LogInfo::MapleLogger() << " :";
-    for (size_t i = 0; i < clobberList.size(); i++) {
-        uStr = GlobalTables::GetUStrTable().GetStringFromStrIdx(clobberList[i]);
-        PrintString(uStr);
-        DEBUG_ASSERT(clobberList.size() > 0, "must not be zero");
-        if (i != clobberList.size() - 1) {
-            LogInfo::MapleLogger() << ',';
-        }
-    }
-    LogInfo::MapleLogger() << '\n';
-    // print labels
-    PrintIndentation(indent + 1);
-    LogInfo::MapleLogger() << " :";
-    size_t labelSize = gotoLabels.size();
-    DEBUG_ASSERT(theMIRModule->CurFunction() != nullptr, "theMIRModule->CurFunction() should not be nullptr");
-    for (size_t i = 0; i < labelSize; i++) {
-        LabelIdx offset = gotoLabels[i];
-        LogInfo::MapleLogger() << " @" << theMIRModule->CurFunction()->GetLabelName(offset);
-        if (i != labelSize - 1) {
-            LogInfo::MapleLogger() << ',';
-        }
-    }
-    LogInfo::MapleLogger() << " }\n";
 }
 
 std::string SafetyCheckStmtNode::GetFuncName() const

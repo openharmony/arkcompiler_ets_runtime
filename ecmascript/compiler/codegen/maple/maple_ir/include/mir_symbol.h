@@ -818,7 +818,7 @@ public:
         strIdxToLabIdxMap.erase(idx);
     }
 
-    MapleUnorderedSet<LabelIdx> addrTakenLabels;  // those appeared in addroflabel or MIRLblConst
+    MapleUnorderedSet<LabelIdx> addrTakenLabels;  // those appeared in MIRLblConst
     MapleUnorderedSet<LabelIdx> caseLabelSet;     // labels marking starts of switch cases
 
 private:

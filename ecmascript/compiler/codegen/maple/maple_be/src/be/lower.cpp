@@ -34,12 +34,6 @@ using namespace maple;
 
 #define TARGARM32 0
 
-BaseNode *CGLowerer::LowerIaddrof(const IreadNode &iaddrof)
-{
-    CHECK_FATAL(iaddrof.GetFieldID() == 0, "fieldID must be 0");
-    return iaddrof.Opnd(0);
-}
-
 // input node must be cvt, retype, zext or sext
 BaseNode *CGLowerer::LowerCastExpr(BaseNode &expr)
 {
@@ -115,48 +109,6 @@ void CGLowerer::LowerIassign(IassignNode &iassign, BlockNode &newBlk)
     newBlk.AddStatement(newStmt);
 }
 
-static GStrIdx NewAsmTempStrIdx()
-{
-    static uint32 strIdxCount = 0;  // to create unique temporary symbol names
-    std::string asmTempStr("asm_tempvar");
-    asmTempStr += std::to_string(++strIdxCount);
-    return GlobalTables::GetStrTable().GetOrCreateStrIdxFromName(asmTempStr);
-}
-
-void CGLowerer::LowerAsmStmt(AsmNode *asmNode, BlockNode *newBlk)
-{
-    for (size_t i = 0; i < asmNode->NumOpnds(); i++) {
-        BaseNode *opnd = LowerExpr(*asmNode, *asmNode->Opnd(i), *newBlk);
-        if (opnd->NumOpnds() == 0) {
-            asmNode->SetOpnd(opnd, i);
-            continue;
-        }
-        // introduce a temporary to store the expression tree operand
-        TyIdx tyIdxUsed = static_cast<TyIdx>(opnd->GetPrimType());
-        if (opnd->op == OP_iread) {
-            IreadNode *ireadNode = static_cast<IreadNode *>(opnd);
-            tyIdxUsed = ireadNode->GetType()->GetTypeIndex();
-        }
-        StmtNode *assignNode = nullptr;
-        BaseNode *readOpnd = nullptr;
-        PrimType type = GlobalTables::GetTypeTable().GetTypeFromTyIdx(tyIdxUsed)->GetPrimType();
-        if (CGOptions::GetInstance().GetOptimizeLevel() >= CGOptions::kLevel2) {
-            DEBUG_ASSERT(mirModule.CurFunction() != nullptr, "curFunction should not be nullptr");
-            PregIdx pregIdx = mirModule.CurFunction()->GetPregTab()->CreatePreg(type);
-            assignNode = mirBuilder->CreateStmtRegassign(type, pregIdx, opnd);
-            readOpnd = mirBuilder->CreateExprRegread(type, pregIdx);
-        } else {
-            MIRSymbol *st = mirModule.GetMIRBuilder()->CreateSymbol(tyIdxUsed, NewAsmTempStrIdx(), kStVar, kScAuto,
-                                                                    mirModule.CurFunction(), kScopeLocal);
-            assignNode = mirModule.GetMIRBuilder()->CreateStmtDassign(*st, 0, opnd);
-            readOpnd = mirBuilder->CreateExprDread(*st);
-        }
-        newBlk->AddStatement(assignNode);
-        asmNode->SetOpnd(readOpnd, i);
-    }
-    newBlk->AddStatement(asmNode);
-}
-
 BaseNode *CGLowerer::NeedRetypeWhenLowerCallAssigned(PrimType pType)
 {
     BaseNode *retNode = mirModule.GetMIRBuilder()->CreateExprRegread(pType, -kSregRetval0);
@@ -218,20 +170,13 @@ StmtNode *CGLowerer::GenCallNode(const StmtNode &stmt, PUIdx &funcCalled, CallNo
     CallNode *newCall = nullptr;
     if (stmt.GetOpCode() == OP_callassigned) {
         newCall = mirModule.GetMIRBuilder()->CreateStmtCall(origCall.GetPUIdx(), origCall.GetNopnd());
-    } else if (stmt.GetOpCode() == OP_virtualcallassigned) {
-        newCall = mirModule.GetMIRBuilder()->CreateStmtVirtualCall(origCall.GetPUIdx(), origCall.GetNopnd());
-    } else if (stmt.GetOpCode() == OP_superclasscallassigned) {
-        newCall = mirModule.GetMIRBuilder()->CreateStmtSuperclassCall(origCall.GetPUIdx(), origCall.GetNopnd());
     }
     CHECK_FATAL(newCall != nullptr, "nullptr is not expected");
     newCall->SetDeoptBundleInfo(origCall.GetDeoptBundleInfo());
     newCall->SetSrcPos(stmt.GetSrcPos());
     funcCalled = origCall.GetPUIdx();
-    CHECK_FATAL((newCall->GetOpCode() == OP_call || newCall->GetOpCode() == OP_interfacecall),
+    CHECK_FATAL((newCall->GetOpCode() == OP_call),
                 "virtual call or super class call are not expected");
-    if (newCall->GetOpCode() == OP_interfacecall) {
-        std::cerr << "interfacecall found\n";
-    }
     newCall->SetStmtAttrs(stmt.GetStmtAttrs());
     return newCall;
 }
@@ -253,11 +198,6 @@ StmtNode *CGLowerer::GenIntrinsiccallNode(const StmtNode &stmt, PUIdx &funcCalle
             if (stmt.GetOpCode() == OP_intrinsiccallassigned) {
                 newCall =
                     mirModule.GetMIRBuilder()->CreateStmtIntrinsicCall(origCall.GetIntrinsic(), origCall.GetNopnd());
-                CHECK_FATAL(newCall->GetOpCode() == OP_intrinsiccall,
-                            "intrinsicnode except intrinsiccall is not expected");
-            } else if (stmt.GetOpCode() == OP_xintrinsiccallassigned) {
-                newCall =
-                    mirModule.GetMIRBuilder()->CreateStmtXintrinsicCall(origCall.GetIntrinsic(), origCall.GetNopnd());
                 CHECK_FATAL(newCall->GetOpCode() == OP_intrinsiccall,
                             "intrinsicnode except intrinsiccall is not expected");
             } else {
@@ -423,17 +363,6 @@ BlockNode *CGLowerer::LowerCallAssignedStmt(StmtNode &stmt, bool uselvar)
             static_cast<IntrinsiccallNode *>(newCall)->SetReturnVec(*p2nRets);
             break;
         }
-        case OP_intrinsiccallwithtypeassigned: {
-            BlockNode *blockNode = LowerIntrinsiccallToIntrinsicop(stmt);
-            if (blockNode) {
-                return blockNode;
-            }
-            auto &origCall = static_cast<IntrinsiccallNode &>(stmt);
-            newCall = GenIntrinsiccallNode(stmt, funcCalled, handledAtLowerLevel, origCall);
-            p2nRets = &origCall.GetReturnVec();
-            static_cast<IntrinsiccallNode *>(newCall)->SetReturnVec(*p2nRets);
-            break;
-        }
         case OP_icallprotoassigned:
         case OP_icallassigned: {
             auto &origCall = static_cast<IcallNode &>(stmt);
@@ -541,11 +470,7 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
                 newBlk->AppendStatementsFromBlock(*LowerCallAssignedStmt(*stmt, lvar));
                 break;
             }
-            case OP_virtualcallassigned:
-            case OP_superclasscallassigned:
             case OP_intrinsiccallassigned:
-            case OP_xintrinsiccallassigned:
-            case OP_intrinsiccallwithtypeassigned:
                 newBlk->AppendStatementsFromBlock(*LowerCallAssignedStmt(*stmt));
                 break;
             case OP_intrinsiccall:
@@ -583,10 +508,6 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
             case OP_comment:
                 newBlk->AddStatement(stmt);
                 break;
-            case OP_asm: {
-                LowerAsmStmt(static_cast<AsmNode *>(stmt), newBlk);
-                break;
-            }
             default:
                 LowerStmt(*stmt, *newBlk);
                 newBlk->AddStatement(stmt);
@@ -607,39 +528,10 @@ StmtNode *CGLowerer::LowerCall(CallNode &callNode, StmtNode *&nextStmt, BlockNod
      * call $foo(constval u32 128)
      * dassign %jlt (dread agg %%retval)
      */
-    bool isArrayStore = false;
-
-    if (callNode.GetOpCode() == OP_call) {
-        MIRFunction *calleeFunc = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(callNode.GetPUIdx());
-        if ((calleeFunc->GetName() == "MCC_WriteRefField") && (callNode.Opnd(1)->GetOpCode() == OP_iaddrof)) {
-            IreadNode *addrExpr = static_cast<IreadNode *>(callNode.Opnd(1));
-            if (addrExpr->Opnd(0)->GetOpCode() == OP_array) {
-                isArrayStore = true;
-            }
-        }
-    }
 
     for (size_t i = 0; i < callNode.GetNopndSize(); ++i) {
         BaseNode *newOpnd = LowerExpr(callNode, *callNode.GetNopndAt(i), newBlk);
         callNode.SetOpnd(newOpnd, i);
-    }
-
-    if (isArrayStore && checkLoadStore) {
-        bool needCheckStore = true;
-
-        if (needCheckStore) {
-            MIRFunction *fn =
-                mirModule.GetMIRBuilder()->GetOrCreateFunction("MCC_Reflect_Check_Arraystore", TyIdx(PTY_void));
-            DEBUG_ASSERT(fn->GetFuncSymbol() != nullptr, "fn->GetFuncSymbol() should not be nullptr");
-            fn->GetFuncSymbol()->SetAppearsInCode(true);
-            beCommon.UpdateTypeTable(*fn->GetMIRFuncType());
-            fn->AllocSymTab();
-            MapleVector<BaseNode *> args(mirModule.GetMIRBuilder()->GetCurrentFuncCodeMpAllocator()->Adapter());
-            args.emplace_back(callNode.Opnd(0));
-            args.emplace_back(callNode.Opnd(kNodeThirdOpnd));
-            StmtNode *checkStoreStmt = mirModule.GetMIRBuilder()->CreateStmtCall(fn->GetPuidx(), args);
-            newBlk.AddStatement(checkStoreStmt);
-        }
     }
 
     DassignNode *dassignNode = nullptr;
@@ -736,19 +628,6 @@ void CGLowerer::CleanupBranches(MIRFunction &func) const
              */
             StmtNode *cmtB = nullptr;
             StmtNode *cmtE = nullptr;
-            bool isCleanable = true;
-            while ((next != nullptr) && (next->GetOpCode() != OP_label)) {
-                if ((next->GetOpCode() == OP_endtry)) {
-                    isCleanable = false;
-                    break;
-                }
-                next = next->GetNext();
-            }
-            if ((next != nullptr) && (!isCleanable)) {
-                prev = next->GetPrev();
-                continue;
-            }
-
             next = curr->GetNext();
 
             while ((next != nullptr) && (next->GetOpCode() != OP_label)) {
@@ -860,15 +739,7 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
         expr.SetPrimType(PTY_u8);
     }
 
-    if (expr.GetOpCode() == OP_iread && expr.Opnd(0)->GetOpCode() == OP_array) {
-        BaseNode *node = LowerExpr(expr, *expr.Opnd(0), blkNode);
-        if (node->GetOpCode() == OP_intrinsicop) {
-            auto *binNode = static_cast<IntrinsicopNode *>(node);
-            return binNode;
-        } else {
-            expr.SetOpnd(node, 0);
-        }
-    } else {
+    {
         for (size_t i = 0; i < expr.NumOpnds(); ++i) {
             expr.SetOpnd(LowerExpr(expr, *expr.Opnd(i), blkNode), i);
         }
@@ -887,11 +758,6 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
         return converted;
     }
     switch (expr.GetOpCode()) {
-        case OP_array: {
-            DEBUG_ASSERT(false, "unsupported OP_array");
-            return &expr;
-        }
-
         case OP_dread:
             return LowerDread(static_cast<DreadNode &>(expr), blkNode);
 
@@ -900,9 +766,6 @@ BaseNode *CGLowerer::LowerExpr(BaseNode &parent, BaseNode &expr, BlockNode &blkN
 
         case OP_iread:
             return LowerIread(static_cast<IreadNode &>(expr));
-
-        case OP_iaddrof:
-            return LowerIaddrof(static_cast<IreadNode &>(expr));
 
         case OP_cvt:
         case OP_retype:

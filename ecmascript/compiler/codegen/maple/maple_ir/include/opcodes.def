@@ -24,19 +24,14 @@
   // other opcodes
   OPCODE(comment, CommentNode, (OPCODEISSTMT | OPCODENOTMMPL), 0)
   OPCODE(eval, UnaryStmtNode, (OPCODEISSTMT | OPCODENOTMMPL), 8)
-  OPCODE(assertnonnull, UnaryStmtNode, (OPCODEISSTMT | OPCODENOTMMPL | OPCODEASSERTNONNULL), 8)
 // Expr & Notmmpl
   // storage access opcodes
   OPCODE(dread, AddrofNode, (OPCODENOTMMPL | OPCODEHASSSAUSE), 12)
   OPCODE(iread, IreadNode, (OPCODENOTMMPL | OPCODEHASSSAUSE), 12)
   // leaf opcodes
   OPCODE(addrof, AddrofNode, OPCODENOTMMPL, 12)
-  OPCODE(iaddrof, IreadNode, OPCODENOTMMPL, 12)
-  // N-ary expression opcodes
-  OPCODE(array, ArrayNode, (OPCODEISVARSIZE | OPCODENOTMMPL | OPCODEMAYTHROWEXCEPTION), 8)
 // Stmt
   // storage access opcodes
-  OPCODE(iassignoff, IassignoffNode, OPCODEISSTMT, 8)
   OPCODE(regassign, RegassignNode, (OPCODEISSTMT | OPCODEHASSSADEF), 8)
   // flat control flow opcodes
   OPCODE(goto, GotoNode, OPCODEISSTMT, 8)
@@ -46,34 +41,19 @@
   OPCODE(rangegoto, RangeGotoNode, OPCODEISSTMT, 8)
   // call opcodes
   OPCODE(call, CallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL), 8)
-  OPCODE(virtualcall, CallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL), 8)
-  OPCODE(superclasscall, CallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL), 8)
-  OPCODE(interfacecall, CallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL), 8)
   OPCODE(icall, IcallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL), 8)
   OPCODE(intrinsiccall, IntrinsiccallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL), 8)
   OPCODE(intrinsiccallwithtype, IntrinsiccallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL), 12)
-  OPCODE(xintrinsiccall, IntrinsiccallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL), 8)
   OPCODE(callassigned, CallNode,  (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL | OPCODEISCALLASSIGNED), 0)
-  OPCODE(virtualcallassigned, CallNode,  (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL | OPCODEISCALLASSIGNED), 0)
-  OPCODE(superclasscallassigned, CallNode,  (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL | OPCODEISCALLASSIGNED), 0)
   OPCODE(icallassigned, IcallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL | OPCODEISCALLASSIGNED), 0)
   OPCODE(intrinsiccallassigned, IntrinsiccallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL | OPCODEISCALLASSIGNED), 0)
-  OPCODE(intrinsiccallwithtypeassigned, IntrinsiccallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL | OPCODEISCALLASSIGNED), 0)
-  OPCODE(xintrinsiccallassigned, IntrinsiccallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL | OPCODEISCALLASSIGNED), 0)
-  // exception handling
-  OPCODE(endtry, StmtNode, OPCODEISSTMT, 6)
   // other opcodes
   OPCODE(label, LabelNode, OPCODEISSTMT, 8)
 // Expr
   // storage access opcodes
-  OPCODE(ireadoff, IreadoffNode, 0, 8)
   OPCODE(regread, RegreadNode, OPCODEHASSSAUSE, 8)
   // leaf opcodes
-  OPCODE(addroffunc, AddroffuncNode, 0, 8)
-  OPCODE(addroflabel, AddroflabelNode, 0, 8)
   OPCODE(constval, ConstvalNode, 0, 8)
-  OPCODE(conststr, ConststrNode, OPCODENOTMMPL, 8)
-  OPCODE(conststr16, Conststr16Node, OPCODENOTMMPL, 8)
   // type conversion expression opcodes
   OPCODE(ceil, TypeCvtNode, OPCODEISTYPECVT, 8)
   OPCODE(cvt, TypeCvtNode, OPCODEISTYPECVT, 8)
@@ -103,7 +83,6 @@
   OPCODE(band, BinaryNode, 0, 0)
   OPCODE(bior, BinaryNode, 0, 0)
   OPCODE(bxor, BinaryNode, 0, 0)
-  OPCODE(CG_array_elem_add, BinaryNode, 0, 0)
   OPCODE(eq, CompareNode, OPCODEISCOMPARE, 8)
   OPCODE(ge, CompareNode, OPCODEISCOMPARE, 8)
   OPCODE(gt, CompareNode, OPCODEISCOMPARE, 8)
@@ -111,17 +90,12 @@
   OPCODE(lt, CompareNode, OPCODEISCOMPARE, 8)
   OPCODE(ne, CompareNode, OPCODEISCOMPARE, 8)
   OPCODE(cmp, CompareNode, OPCODEISCOMPARE, 8)
-  OPCODE(cmpl, CompareNode, OPCODEISCOMPARE, 8)
-  OPCODE(cmpg, CompareNode, OPCODEISCOMPARE, 8)
   OPCODE(cand, BinaryNode, OPCODENOTMMPL, 0)
   OPCODE(cior, BinaryNode, OPCODENOTMMPL, 0)
   // N-ary expression opcodes
   OPCODE(intrinsicop, IntrinsicopNode, OPCODEISVARSIZE, 8)
   // Other expression opcodes
   OPCODE(extractbits, ExtractbitsNode, 0, 8)
-  OPCODE(depositbits, DepositbitsNode, 0, 8)
   // leaf node
-  OPCODE(asm, AsmNode, OPCODEISSTMT | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALLASSIGNED, 0)
-  OPCODE(addrofoff, addrofoffNode, 0, 12)
   OPCODE(icallproto, IcallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL), 8)
   OPCODE(icallprotoassigned, IcallNode, (OPCODEISSTMT | OPCODEISVARSIZE | OPCODEHASSSAUSE | OPCODEHASSSADEF | OPCODEISCALL | OPCODEISCALLASSIGNED), 8)

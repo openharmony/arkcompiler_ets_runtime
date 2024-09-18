@@ -40,10 +40,10 @@ uint32 MemLayout::FindLargestActualArea(int32 &aggCopySize)
     uint32 maxCopyStackSize = 0;   // Size of aggregate param stack copy requirement
     for (; stmt != nullptr; stmt = stmt->GetNext()) {
         Opcode opCode = stmt->GetOpCode();
-        if ((opCode < OP_call || opCode > OP_xintrinsiccallassigned) && opCode != OP_icallproto) {
+        if ((opCode < OP_call || opCode > OP_intrinsiccallassigned) && opCode != OP_icallproto) {
             continue;
         }
-        if (opCode == OP_intrinsiccallwithtypeassigned || opCode == OP_intrinsiccallwithtype ||
+        if (opCode == OP_intrinsiccallwithtype ||
             opCode == OP_intrinsiccallassigned || opCode == OP_intrinsiccall) {
             /*
              * Some intrinsics, such as MPL_ATOMIC_EXCHANGE_PTR, are handled by CG,

@@ -68,10 +68,7 @@ if (TARGET == "ark") {
   deps_libcg += [ ":libcgark" ]
 }
 
-src_libcglowerer = [
-  "src/be/bbt.cpp",
-  "src/be/lower.cpp",
-]
+src_libcglowerer = [ "src/be/lower.cpp" ]
 
 src_libmplbe = [
   "src/be/becommon.cpp",

@@ -30,7 +30,6 @@ constexpr uint32 kNodeThirdOpnd = 2;
 enum MirLowerPhase : uint8 { kLowerUnder, kLowerMe, kLowerExpandArray, kLowerBe, kLowerCG, kLowerLNO };
 
 constexpr uint32 kShiftLowerMe = 1U << kLowerMe;
-constexpr uint32 kShiftLowerExpandArray = 1U << kLowerExpandArray;
 constexpr uint32 kShiftLowerBe = 1U << kLowerBe;
 constexpr uint32 kShiftLowerCG = 1U << kLowerCG;
 constexpr uint32 kShiftLowerLNO = 1U << kLowerLNO;
@@ -75,10 +74,6 @@ public:
     void LowerCandCior(BlockNode &block);
     void LowerBuiltinExpect(BlockNode &block);
     void LowerFunc(MIRFunction &func);
-    void ExpandArrayMrt(MIRFunction &func);
-    IfStmtNode *ExpandArrayMrtIfBlock(IfStmtNode &node);
-    BlockNode *ExpandArrayMrtBlock(BlockNode &block);
-    void AddArrayMrtMpl(BaseNode &exp, BlockNode &newblk);
     MIRFuncType *FuncTypeFromFuncPtrExpr(BaseNode *x);
     void SetLowerME()
     {
@@ -88,11 +83,6 @@ public:
     void SetLowerLNO()
     {
         lowerPhase |= kShiftLowerLNO;
-    }
-
-    void SetLowerExpandArray()
-    {
-        lowerPhase |= kShiftLowerExpandArray;
     }
 
     void SetLowerBE()
@@ -123,11 +113,6 @@ public:
     bool IsLowerLNO() const
     {
         return lowerPhase & kShiftLowerLNO;
-    }
-
-    bool IsLowerExpandArray() const
-    {
-        return lowerPhase & kShiftLowerExpandArray;
     }
 
     bool IsLowerBE() const
