@@ -214,7 +214,8 @@ enum CommandValues {
     OPTION_COMPILER_OPT_STRING,
     OPTION_OPEN_ARK_TOOLS,
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
-    OPTION_COMPILER_EMPTY_CATCH_FUNCTION
+    OPTION_COMPILER_EMPTY_CATCH_FUNCTION,
+    OPTION_ENABLE_FORCE_IC,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
 static_assert(OPTION_SPLIT_TWO == 128); // add new option at the bottom, DO NOT modify this value
@@ -1072,6 +1073,16 @@ public:
     bool IsEnableElementsKind() const
     {
         return enableElementsKind_;
+    }
+
+    void SetEnableForceIC(bool value)
+    {
+        enableForceIC_ = value;
+    }
+
+    bool IsEnableForceIC() const
+    {
+        return enableForceIC_;
     }
 
     void SetEnablePGOProfiler(bool value)
@@ -2049,6 +2060,7 @@ private:
     bool enableValueNumbering_ {true};
     bool enableOptString_ {true};
     bool enableElementsKind_ {false};
+    bool enableForceIC_ {true};
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
