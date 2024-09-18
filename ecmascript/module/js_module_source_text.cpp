@@ -757,11 +757,23 @@ void SourceTextModule::ModuleDeclarationEnvironmentSetup(JSThread *thread,
 void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
                                                               const JSHandle<SourceTextModule> &module)
 {
+    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
+    if (enableESMTrace) {
+        CString traceInfo = "SourceTextModule::Instantiating: " +
+            module->GetEcmaModuleRecordNameString();
+        ECMA_BYTRACE_START_TRACE(HITRACE_TAG_ARK, traceInfo.c_str());
+    }
     if (IsSharedModule(module) && SharedModuleManager::GetInstance()->IsInstantiatedSModule(thread, module)) {
+        if (enableESMTrace) {
+            ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+        }
         return;
     }
     CheckResolvedIndexBinding(thread, module);
     if (module->GetImportEntries().IsUndefined()) {
+        if (enableESMTrace) {
+            ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+        }
         return;
     }
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -804,6 +816,9 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
             // need refactor
             envRec = JSSharedModule::CloneEnvForSModule(thread, module, envRec);
             module->SetEnvironment(thread, envRec);
+            if (enableESMTrace) {
+                ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+            }
             return;
         }
         // i. Let resolution be ? importedModule.ResolveExport(in.[[ImportName]], « »).
@@ -830,6 +845,9 @@ void SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(JSThread *thread,
     }
     envRec = JSSharedModule::CloneEnvForSModule(thread, module, envRec);
     module->SetEnvironment(thread, envRec);
+    if (enableESMTrace) {
+        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
+    }
 }
 
 JSHandle<JSTaggedValue> SourceTextModule::GetModuleNamespace(JSThread *thread,
