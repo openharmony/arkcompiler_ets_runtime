@@ -1380,4 +1380,46 @@ HWTEST_F_L0(PGOProfilerTest, PGODisableWithAOTFileTest)
     rmdir("ark-profiler27/");
 }
 
+HWTEST_F_L0(PGOProfilerTest, PGODisableUnderAOTFailTest)
+{
+    std::map<std::string, int32_t> mockAOTCompileStatusMap;
+    mockAOTCompileStatusMap["module1"] = 0;
+    mockAOTCompileStatusMap["module2"] = 1;
+    mockAOTCompileStatusMap["module3"] = 4;
+    RuntimeOption option;
+    {
+        // Not update existing setting when AOT compilation uninitialized or succeed
+        EcmaVM *ecmaVM = JSNApi::CreateJSVM(option);
+        RuntimeOption localOption = option;
+        localOption.SetEnableProfile(true);
+        localOption.SetAOTCompileStatusMap(mockAOTCompileStatusMap);
+        JSNApi::PreFork(ecmaVM);
+        JSNApi::PostFork(ecmaVM, localOption);
+        EXPECT_FALSE(ecmaVM->GetJSOptions().GetAOTHasException());
+        JSNApi::DestroyJSVM(ecmaVM);
+    }
+    {
+        // Disable existing setting when AOT compilation failed
+        EcmaVM *ecmaVM = JSNApi::CreateJSVM(option);
+        RuntimeOption localOption = option;
+        mockAOTCompileStatusMap["module4"] = 2;
+        localOption.SetAOTCompileStatusMap(mockAOTCompileStatusMap);
+        JSNApi::PreFork(ecmaVM);
+        JSNApi::PostFork(ecmaVM, localOption);
+        EXPECT_TRUE(ecmaVM->GetJSOptions().GetAOTHasException());
+        JSNApi::DestroyJSVM(ecmaVM);
+    }
+    {
+        // Disable existing setting when AOT compilation crashed
+        EcmaVM *ecmaVM = JSNApi::CreateJSVM(option);
+        RuntimeOption localOption = option;
+        mockAOTCompileStatusMap["module4"] = 3;
+        localOption.SetAOTCompileStatusMap(mockAOTCompileStatusMap);
+        JSNApi::PreFork(ecmaVM);
+        JSNApi::PostFork(ecmaVM, localOption);
+        EXPECT_TRUE(ecmaVM->GetJSOptions().GetAOTHasException());
+        JSNApi::DestroyJSVM(ecmaVM);
+    }
+}
+
 }  // namespace panda::test

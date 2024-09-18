@@ -1943,6 +1943,16 @@ public:
     {
         return concurrentCompile;
     }
+
+    void SetAOTHasException(bool value)
+    {
+        aotHasException_ = value;
+    }
+
+    bool GetAOTHasException() const
+    {
+        return aotHasException_;
+    }
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
@@ -2123,6 +2133,7 @@ private:
     bool asyncLoadAbcTest_ {false};
     bool forceDump_ {true};
     bool concurrentCompile {true};
+    bool aotHasException_ {false};
 };
 } // namespace panda::ecmascript
 
