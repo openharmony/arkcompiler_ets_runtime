@@ -955,25 +955,46 @@ void ModulePathHelper::ConcatOtherNormalizedOhmurl(EcmaVM *vm, const JSPandaFile
     CString currentModuleName = GetModuleNameWithBaseFile(baseFileName);
     CString pkgName = vm->GetPkgNameWithAlias(requestPath);
     CVector<CString> data = GetPkgContextInfoListElements(vm, currentModuleName, pkgName);
-    if (data.size() == 0) {
-        // When requestName contains '/', it is considered to be a file path.
-        size_t filePathPos = requestPath.find(PathHelper::SLASH_TAG);
-        if (filePathPos != CString::npos) {
-            CString alias = requestPath.substr(0, filePathPos);
-            entryPath = requestPath.substr(filePathPos + 1);
-            pkgName = vm->GetPkgNameWithAlias(alias);
-            data = GetPkgContextInfoListElements(vm, currentModuleName, pkgName);
-        }
-        if (data.size() == 0) {
-            CString outEntryPoint;
-            if (jsPandaFile->FindOhmUrlInPF(requestPath, outEntryPoint)) {
-                requestPath = outEntryPoint;
+    if (data.size() != 0) {
+        requestPath = ConcatNormalizedOhmurlWithData(data, pkgName, entryPath);
+        return;
+    }
+    // When requestName contains '/', it is considered to be a file path.
+    CString result;
+    size_t filePathPos = requestPath.find(PathHelper::SLASH_TAG);
+    if (filePathPos != CString::npos) {
+        result = ConcatOtherNormalizedOhmurlWithFilePath(vm, filePathPos, currentModuleName, requestPath);
+        // Try to get the PkgContextInfo by two levels alias
+        if (result.size() == 0) {
+            filePathPos = requestPath.find(PathHelper::SLASH_TAG, filePathPos + 1);
+            if (filePathPos != CString::npos) {
+                result = ConcatOtherNormalizedOhmurlWithFilePath(vm, filePathPos, currentModuleName, requestPath);
             }
-            ChangeTag(requestPath);
-            return;
         }
     }
-    requestPath = ConcatNormalizedOhmurlWithData(data, pkgName, entryPath);
+    if (result.size() == 0) {
+        CString outEntryPoint;
+        if (jsPandaFile->FindOhmUrlInPF(requestPath, outEntryPoint)) {
+            requestPath = outEntryPoint;
+        }
+        ChangeTag(requestPath);
+        return;
+    }
+    requestPath = result;
+}
+
+CString ModulePathHelper::ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, size_t filePathPos,
+    CString &moduleName, const CString &requestPath)
+{
+    CString result;
+    CString alias = requestPath.substr(0, filePathPos);
+    CString entryPath = requestPath.substr(filePathPos + 1);
+    CString pkgName = vm->GetPkgNameWithAlias(alias);
+    CVector<CString> data = GetPkgContextInfoListElements(vm, moduleName, pkgName);
+    if (data.size() != 0) {
+        result = ConcatNormalizedOhmurlWithData(data, pkgName, entryPath);
+    }
+    return result;
 }
 
 CString ModulePathHelper::ConcatNormalizedOhmurlWithData(CVector<CString> &data, CString &pkgName, CString &entryPath)
