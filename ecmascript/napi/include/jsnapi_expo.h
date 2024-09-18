@@ -97,8 +97,8 @@ struct HmsMap {
 using WeakRefClearCallBack = void (*)(void *);
 using WeakFinalizeTaskCallback = std::function<void()>;
 using NativePointerCallback = void (*)(void *env, void* data, void* hint);
+using NativePointerCallbackFinishNotify = std::function<void(size_t totalBindSize_)>;
 using NativePointerCallbackData = std::pair<NativePointerCallback, std::tuple<void*, void*, void*>>;
-using NativePointerTaskCallback = std::function<void(std::vector<NativePointerCallbackData>& callbacks)>;
 using EcmaVM = ecmascript::EcmaVM;
 using EcmaContext = ecmascript::EcmaContext;
 using JSThread = ecmascript::JSThread;
@@ -131,6 +131,78 @@ using QueueType = ecmascript::job::QueueType;
 #else
 #define ECMA_ASSERT(cond) static_cast<void>(0)
 #endif
+
+class ECMA_PUBLIC_API AsyncNativeCallbacksPack {
+public:
+    AsyncNativeCallbacksPack() = default;
+    ~AsyncNativeCallbacksPack() = default;
+    AsyncNativeCallbacksPack(AsyncNativeCallbacksPack&&) = default;
+    AsyncNativeCallbacksPack& operator=(AsyncNativeCallbacksPack&&) = default;
+    AsyncNativeCallbacksPack(const AsyncNativeCallbacksPack &) = default;
+    AsyncNativeCallbacksPack &operator=(const AsyncNativeCallbacksPack &) = default;
+
+    void Clear()
+    {
+        callBacks_.clear();
+        totalBindingSize_ = 0;
+        notify_ = nullptr;
+    }
+
+    bool TotallyEmpty() const
+    {
+        return callBacks_.empty() && totalBindingSize_ == 0 && notify_ == nullptr;
+    }
+
+    bool Empty() const
+    {
+        return callBacks_.empty();
+    }
+
+    void RegisterFinishNotify(NativePointerCallbackFinishNotify notify)
+    {
+        notify_ = notify;
+    }
+
+    size_t GetNumCallBacks() const
+    {
+        return callBacks_.size();
+    }
+
+    void ProcessAll()
+    {
+        for (auto &iter : callBacks_) {
+            NativePointerCallback callback = iter.first;
+            std::tuple<void*, void*, void*> &param = iter.second;
+            if (callback != nullptr) {
+                callback(std::get<0>(param), std::get<1>(param), std::get<2>(param)); // 2 is the param.
+            }
+        }
+        NotifyFinish();
+    }
+
+    size_t GetTotalBindingSize() const
+    {
+        return totalBindingSize_;
+    }
+
+    void AddCallback(NativePointerCallbackData callback, size_t bindingSize)
+    {
+        callBacks_.emplace_back(callback);
+        totalBindingSize_ += bindingSize;
+    }
+private:
+    void NotifyFinish() const
+    {
+        if (notify_ != nullptr) {
+            notify_(totalBindingSize_);
+        }
+    }
+
+    std::vector<NativePointerCallbackData> callBacks_ {};
+    size_t totalBindingSize_ {0};
+    NativePointerCallbackFinishNotify notify_ {nullptr};
+};
+using NativePointerTaskCallback = std::function<void(AsyncNativeCallbacksPack *callbacksPack)>;
 
 template<typename T>
 class ECMA_PUBLIC_API Local {  // NOLINT(cppcoreguidelines-special-member-functions, hicpp-special-member-functions)

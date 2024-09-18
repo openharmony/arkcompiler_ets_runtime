@@ -133,6 +133,7 @@ public:
             sharedHeapLimitGrowingStep_ = 80_MB;
             incObjSizeThresholdInSensitive_ = 80_MB;
             stepNativeSizeInc_ = 300_MB;
+            asyncClearNativePointerThreshold_ = 500_MB;
             maxNativeSizeInc_ = 1_GB;
         }
     }
@@ -237,6 +238,11 @@ public:
         return stepNativeSizeInc_;
     }
 
+    size_t GetAsyncClearNativePointerThreshold() const
+    {
+        return asyncClearNativePointerThreshold_;
+    }
+
     size_t GetMaxNativeSizeInc() const
     {
         return maxNativeSizeInc_;
@@ -295,6 +301,7 @@ private:
     size_t sharedHeapLimitGrowingStep_ {0};
     size_t incObjSizeThresholdInSensitive_ {0};
     size_t stepNativeSizeInc_ {0};
+    size_t asyncClearNativePointerThreshold_ {0};
     size_t maxNativeSizeInc_ {0};
     size_t maxJSSerializerSize_ {0};
     uint32_t maxStackSize_ {0};

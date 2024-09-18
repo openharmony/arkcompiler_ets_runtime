@@ -552,9 +552,10 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor &visitor)
             JSNativePointer *object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
-                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                asyncNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
-                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
+                size_t bindingSize = object->GetBindingSize();
+                asyncNativeCallbacksPack_.AddCallback(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())), bindingSize);
+                nativeAreaAllocator_->DecreaseNativeSizeStats(bindingSize, object->GetNativeFlag());
                 iter = nativePointerList_.erase(iter);
             } else {
                 ++iter;
@@ -608,9 +609,10 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor &visitor)
             JSNativePointer *object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject *>(object));
             if (fwd == nullptr) {
-                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                asyncNativeCallbacks_.emplace_back(std::make_pair(object->GetDeleter(),
-                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())));
+                size_t bindingSize = object->GetBindingSize();
+                asyncNativeCallbacksPack_.AddCallback(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())), bindingSize);
+                nativeAreaAllocator_->DecreaseNativeSizeStats(bindingSize, object->GetNativeFlag());
                 iter = nativePointerList_.erase(iter);
                 continue;
             }
