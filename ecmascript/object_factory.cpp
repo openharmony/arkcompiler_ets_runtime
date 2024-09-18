@@ -2577,9 +2577,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArray(JSHandle<TaggedArray>
     if (newLength == 0) {
         return dstElements;
     }
-    for (uint32_t i = 0; i < oldLength; i++) {
-        dstElements->Set(thread_, i, srcElements->Get(i + k));
-    }
+    dstElements->Copy(thread_, 0, k, srcElements.GetObject<TaggedArray>(), oldLength);
     for (uint32_t i = oldLength; i < newLength; i++) {
         dstElements->Set(thread_, i, JSTaggedValue::Hole());
     }
@@ -2595,9 +2593,7 @@ JSHandle<TaggedArray> ObjectFactory::NewAndCopyTaggedArraySkipBarrier(JSHandle<T
     if (newLength == 0) {
         return dstElements;
     }
-    for (uint32_t i = 0; i < oldLength; i++) {
-        dstElements->Set<false>(thread_, i, srcElements->Get(i + k));
-    }
+    dstElements->Copy<false>(thread_, 0, k, srcElements.GetObject<TaggedArray>(), oldLength);
     for (uint32_t i = oldLength; i < newLength; i++) {
         dstElements->Set(thread_, i, JSTaggedValue::Hole());
     }

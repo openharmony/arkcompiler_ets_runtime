@@ -85,4 +85,56 @@ void Barriers::UpdateShared(const JSThread *thread, TaggedObject *value, Region 
         SharedHeap::GetInstance()->GetWorkManager()->PushToLocalMarkingBuffer(localBuffer, heapValue);
     }
 }
+
+
+template <Region::RegionSpaceKind kind>
+bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* objectRegion, JSTaggedValue* dst, size_t count)
+{
+    bool allValueNotHeap = true;
+    Region::Updater updater = objectRegion->GetBatchRSetUpdater<kind>(ToUintPtr(dst));
+
+    for (size_t i = 0; i < count; i++) {
+        JSTaggedValue taggedValue = dst[i];
+        if (!taggedValue.IsHeapObject()) {
+            updater.Step();
+            continue;
+        }
+        allValueNotHeap = false;
+        const Region* valueRegion = Region::ObjectAddressToRange(taggedValue.GetTaggedObject());
+#if ECMASCRIPT_ENABLE_BARRIER_CHECK
+        ASSERT(taggedValue.GetRawData() != JSTaggedValue::VALUE_UNDEFINED);
+        if (!thread->GetEcmaVM()->GetHeap()->IsAlive(taggedValue.GetHeapObject())) {
+            LOG_FULL(FATAL) << "WriteBarrier checked value:" << taggedValue.GetRawData() << " is invalid!";
+        }
+#endif
+        if (valueRegion->InSharedSweepableSpace()) {
+#ifndef NDEBUG
+            if (UNLIKELY(taggedValue.IsWeakForHeapObject())) {
+                CHECK_NO_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
+            }
+#endif
+            updater.AddLocalToShare();
+            continue;
+        }
+        if constexpr (kind == Region::InYoung) {
+            if (valueRegion->InEdenSpace()) {
+                updater.AddNewToEden();
+                continue;
+            }
+        } else if constexpr (kind == Region::InGeneralOld) {
+            if (valueRegion->InGeneralNewSpace()) {
+                updater.AddOldToNew();
+                continue;
+            }
+        }
+        updater.Step();
+    }
+    updater.Flush();
+    return allValueNotHeap;
+}
+
+template bool BatchBitSet<Region::InYoung>(const JSThread*, Region*, JSTaggedValue*, size_t);
+template bool BatchBitSet<Region::InGeneralOld>(const JSThread*, Region*, JSTaggedValue*, size_t);
+template bool BatchBitSet<Region::Other>(const JSThread*, Region*, JSTaggedValue*, size_t);
+
 }  // namespace panda::ecmascript

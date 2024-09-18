@@ -184,4 +184,30 @@ HWTEST_F_L0(ObjectFactoryTest, NewAndCopyTaggedArray)
         EXPECT_EQ(copiedLong->Get(thread, i), JSTaggedValue::Hole());
     }
 }
+
+HWTEST_F_L0(ObjectFactoryTest, NewAndCopyTaggedArrayNeedBarrier)
+{
+    constexpr uint32_t SHORT_ELEMENT_NUMS = 20;
+    constexpr uint32_t LONG_ELEMENT_NUMS = 100;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedArray> shortTaggedarray = factory->NewTaggedArray(SHORT_ELEMENT_NUMS);
+    // init tagggedArray
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    for (uint32_t i = 0; i < SHORT_ELEMENT_NUMS; i++) {
+        JSHandle<JSFunction> newFun = factory->NewJSFunction(env);
+        shortTaggedarray->Set(thread, i, newFun);
+    }
+    JSHandle<TaggedArray> copiedShort = factory->NewAndCopyTaggedArray(shortTaggedarray, SHORT_ELEMENT_NUMS,
+                                                                       SHORT_ELEMENT_NUMS);
+    JSHandle<TaggedArray> copiedLong = factory->NewAndCopyTaggedArray(shortTaggedarray, LONG_ELEMENT_NUMS,
+                                                                       SHORT_ELEMENT_NUMS);
+    // check
+    for (uint32_t i = 0; i < SHORT_ELEMENT_NUMS; i++) {
+        EXPECT_EQ(copiedShort->Get(thread, i), shortTaggedarray->Get(thread, i));
+        EXPECT_EQ(copiedLong->Get(thread, i), shortTaggedarray->Get(thread, i));
+    }
+    for (uint32_t i = SHORT_ELEMENT_NUMS; i < LONG_ELEMENT_NUMS; i++) {
+        EXPECT_EQ(copiedLong->Get(thread, i), JSTaggedValue::Hole());
+    }
+}
 }  // namespace panda::test

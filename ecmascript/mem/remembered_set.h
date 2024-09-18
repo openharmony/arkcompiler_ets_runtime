@@ -47,6 +47,11 @@ public:
         return GCBitsetData()->SetBit<AccessType::NON_ATOMIC>((addr - begin) >> TAGGED_TYPE_SIZE_LOG);
     }
 
+    bool InsertRange(uintptr_t begin, uintptr_t addr, uint32_t mask)
+    {
+        return GCBitsetData()->SetBitRange((addr - begin) >> TAGGED_TYPE_SIZE_LOG, mask);
+    }
+
     bool AtomicInsert(uintptr_t begin, uintptr_t addr)
     {
         return GCBitsetData()->SetBit<AccessType::ATOMIC>((addr - begin) >> TAGGED_TYPE_SIZE_LOG);

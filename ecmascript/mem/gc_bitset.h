@@ -17,6 +17,7 @@
 #define ECMASCRIPT_MEM_GC_BITSET__H
 
 #include <atomic>
+#include <bitset>
 
 #include "ecmascript/base/math_helper.h"
 #include "ecmascript/mem/mem.h"
@@ -92,6 +93,8 @@ public:
 
     template <AccessType mode = AccessType::NON_ATOMIC>
     bool SetBit(uintptr_t offset);
+
+    bool SetBitRange(uintptr_t offset, uint32_t mask);
 
     void ClearBit(uintptr_t offset)
     {
@@ -229,6 +232,13 @@ private:
     }
 };
 
+inline bool GCBitset::SetBitRange(uintptr_t offset, uint32_t mask)
+{
+    size_t index = Index(offset);
+    Words()[index] |= mask;
+    return true;
+}
+
 template <>
 inline bool GCBitset::SetBit<AccessType::NON_ATOMIC>(uintptr_t offset)
 {
@@ -258,5 +268,55 @@ inline bool GCBitset::SetBit<AccessType::ATOMIC>(uintptr_t offset)
     } while (oldValue != oldValueBeforeCAS);
     return true;
 }
-}  // namespace panda::ecmascript
-#endif  // ECMASCRIPT_MEM_GC_BITSET_H
+
+template <size_t BitSetNum, typename Enable = std::enable_if_t<(BitSetNum >= 1), int>>
+class GCBitSetUpdater {
+public:
+    GCBitSetUpdater() = delete;
+
+    explicit GCBitSetUpdater(uintptr_t updateAddress)
+        : updateAddress_(updateAddress),
+          cursor_((updateAddress >> TAGGED_TYPE_SIZE_LOG) & GCBitset::BIT_PER_WORD_MASK)
+    {
+    }
+
+    NO_COPY_SEMANTIC(GCBitSetUpdater);
+
+    ARK_INLINE bool UpdateAndCheckFull(size_t setIdx)
+    {
+        ASSERT(setIdx < BitSetNum);
+        bitsets_[setIdx].set(cursor_);
+        cursor_++;
+        ASSERT(cursor_ <= GCBitset::BIT_PER_WORD);
+        return cursor_ == GCBitset::BIT_PER_WORD;
+    }
+
+    ARK_INLINE bool Step()
+    {
+        cursor_++;
+        ASSERT(cursor_ <= GCBitset::BIT_PER_WORD);
+        return cursor_ == GCBitset::BIT_PER_WORD;
+    }
+
+    template <typename Consumer>
+    ARK_INLINE void ConsumeAll(Consumer&& consume)
+    {
+        for (size_t i = 0; i < BitSetNum; i++) {
+            if (bitsets_[i].none()) {
+                continue;
+            }
+            std::invoke(std::forward<Consumer>(consume), i, updateAddress_, bitsets_[i].to_ulong());
+            bitsets_[i].reset();
+        }
+        cursor_ = 0;
+        constexpr size_t ConsumeRange = GCBitset::BIT_PER_WORD * GCBitset::BIT_PER_BYTE;
+        updateAddress_ = AlignDown(updateAddress_ + ConsumeRange, ConsumeRange);
+    }
+
+private:
+    uintptr_t updateAddress_ = 0;
+    std::bitset<GCBitset::BIT_PER_WORD> bitsets_[BitSetNum];
+    size_t cursor_ = 0;
+};
+} // namespace panda::ecmascript
+#endif  // ECMASCRIPT_MEM_GC_BITSET__H

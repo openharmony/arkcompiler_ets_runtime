@@ -246,6 +246,12 @@ inline void Region::InsertLocalToShareRSet(uintptr_t addr)
     set->Insert(ToUintPtr(this), addr);
 }
 
+template <Region::RegionSpaceKind kind>
+Region::Updater<kind> Region::GetBatchRSetUpdater(uintptr_t addr)
+{
+    return Region::Updater<kind>(addr, *this);
+}
+
 inline void Region::AtomicInsertLocalToShareRSet(uintptr_t addr)
 {
     auto set = GetOrCreateLocalToShareRememberedSet();
@@ -471,5 +477,35 @@ inline uint8_t Region::GetRegionSpaceFlag()
 {
     return packedData_.flags_.spaceFlag_;
 }
-}  // namespace panda::ecmascript
+
+template <Region::RegionSpaceKind kind>
+ARK_INLINE void Region::Updater<kind>::Flush()
+{
+    bitsetUpdater_.ConsumeAll([region = &region_](size_t idx, uintptr_t addr, uint32_t mask) {
+        if (idx == LocalToShareIdx) {
+            auto set = region->GetOrCreateLocalToShareRememberedSet();
+            set->InsertRange(ToUintPtr(region), addr, mask);
+            return;
+        }
+        if (kind == InYoung && idx == NewToEdenIdx) {
+            auto set = region->GetOrCreateNewToEdenRememberedSet();
+            set->InsertRange(ToUintPtr(region), addr, mask);
+            return;
+        }
+        if (kind == InGeneralOld && idx == OldToNewIdx) {
+            auto set = region->GetOrCreateOldToNewRememberedSet();
+            set->InsertRange(ToUintPtr(region), addr, mask);
+            return;
+        }
+    });
+}
+
+template <Region::RegionSpaceKind kind>
+ARK_INLINE void Region::Updater<kind>::Update(size_t setIdx)
+{
+    if (bitsetUpdater_.UpdateAndCheckFull(setIdx)) {
+        Flush();
+    }
+}
+} // namespace panda::ecmascript
 #endif  // ECMASCRIPT_MEM_REGION_INL_H
