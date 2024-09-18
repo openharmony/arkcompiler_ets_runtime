@@ -28,6 +28,7 @@
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/tagged_object.h"
+#include "ecmascript/platform/ecma_string_hash_helper.h"
 
 #include "libpandabase/macros.h"
 #include "securec.h"
@@ -111,7 +112,6 @@ private:
     friend class panda::test::EcmaStringEqualsTest;
 
     static constexpr int SMALL_STRING_SIZE = 128;
-    static constexpr size_t HASH_SHIFT = 5;
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, bool isConstantString = false,
@@ -133,6 +133,13 @@ private:
         size_t length, bool compressed, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, uint32_t idOffset = 0);
     static EcmaString *Concat(const EcmaVM *vm, const JSHandle<EcmaString> &left,
         const JSHandle<EcmaString> &right, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE);
+    template<typename T1, typename T2>
+    static uint32_t CalculateDataConcatHashCode(const T1 *dataFirst, size_t sizeFirst,
+                                                const T2 *dataSecond, size_t sizeSecond);
+    static uint32_t CalculateAllConcatHashCode(const JSHandle<EcmaString> &firstString,
+                                               const JSHandle<EcmaString> &secondString);
+    static uint32_t CalculateConcatHashCode(const JSHandle<EcmaString> &firstString,
+                                            const JSHandle<EcmaString> &secondString);
     static EcmaString *CopyStringToOldSpace(const EcmaVM *vm, const JSHandle<EcmaString> &original,
         uint32_t length, bool compressed);
     static EcmaString *FastSubString(const EcmaVM *vm,
@@ -646,15 +653,20 @@ private:
     template<typename T>
     static bool MemCopyChars(Span<T> &dst, size_t dstMax, Span<const T> &src, size_t count);
 
-    template<typename T>
-    static uint32_t ComputeHashForData(const T *data, size_t size, uint32_t hashSeed)
+    // To change the hash algorithm of EcmaString, please modify EcmaString::CalculateConcatHashCode
+    // and EcmaStringHashHelper::ComputeHashForDataPlatform simultaneously!!
+    template <typename T>
+    static uint32_t ComputeHashForData(const T *data, size_t size,
+                                       uint32_t hashSeed)
     {
-        uint32_t hash = hashSeed;
-        Span<const T> sp(data, size);
-        for (auto c : sp) {
-            hash = (hash << HASH_SHIFT) - hash + c;
+        if (size <= static_cast<size_t>(EcmaStringHash::MIN_SIZE_FOR_UNROLLING)) {
+            uint32_t hash = hashSeed;
+            for (uint32_t i = 0; i < size ; i++) {
+                hash = (hash << static_cast<uint32_t>(EcmaStringHash::HASH_SHIFT)) - hash + data[i];
+            }
+            return hash;
         }
-        return hash;
+        return EcmaStringHashHelper::ComputeHashForDataPlatform(data, size, hashSeed);
     }
 
     static bool IsASCIICharacter(uint16_t data)
@@ -1069,6 +1081,12 @@ public:
     explicit EcmaStringAccessor(JSTaggedValue value);
 
     explicit EcmaStringAccessor(const JSHandle<EcmaString> &strHandle);
+
+    static uint32_t CalculateAllConcatHashCode(const JSHandle<EcmaString> &firstString,
+                                               const JSHandle<EcmaString> &secondString)
+    {
+        return EcmaString::CalculateAllConcatHashCode(firstString, secondString);
+    }
 
     static EcmaString *CreateLineString(const EcmaVM *vm, size_t length, bool compressed);
 

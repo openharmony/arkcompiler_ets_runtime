@@ -16,6 +16,7 @@
 #include "ecmascript/ecma_string-inl.h"
 
 #include "ecmascript/ecma_string_table.h"
+#include "ecmascript/platform/ecma_string_hash.h"
 
 namespace panda::ecmascript {
 
@@ -500,6 +501,127 @@ std::u16string EcmaString::ToU16String(uint32_t len)
         result = base::StringHelper::Utf8ToU16String(data, length);
     }
     return result;
+}
+
+//static
+uint32_t EcmaString::CalculateAllConcatHashCode(const JSHandle<EcmaString> &firstString,
+                                                const JSHandle<EcmaString> &secondString)
+{
+    uint32_t hashCode;
+    uint32_t firstLength = firstString->GetLength();
+    uint32_t secondLength = secondString->GetLength();
+    if ((firstLength + secondLength < MAX_ELEMENT_INDEX_LEN) &&
+        firstString->IsUtf8() && secondString->IsUtf8() &&
+        firstString->IsInteger() && secondString->IsInteger()) {
+            firstString->HashIntegerString(firstLength, &hashCode, 0);
+            secondString->HashIntegerString(secondLength, &hashCode, hashCode);
+            return hashCode;
+    }
+    hashCode = EcmaString::CalculateConcatHashCode(firstString, secondString);
+    hashCode = MixHashcode(hashCode, NOT_INTEGER);
+    return hashCode;
+}
+
+// static
+template<typename T1, typename T2>
+uint32_t EcmaString::CalculateDataConcatHashCode(const T1 *dataFirst, size_t sizeFirst,
+                                                 const T2 *dataSecond, size_t sizeSecond)
+{
+    uint32_t totalHash = 0;
+    constexpr uint32_t hashShift = static_cast<uint32_t>(EcmaStringHash::HASH_SHIFT);
+    constexpr uint32_t blockSize = static_cast<size_t>(EcmaStringHash::BLOCK_SIZE);
+    // The concatenated length of the two strings is less than MIN_SIZE_FOR_UNROLLING.
+    if (sizeFirst + sizeSecond <= static_cast<size_t>(EcmaStringHash::MIN_SIZE_FOR_UNROLLING)) {
+        for (uint32_t i = 0; i < sizeFirst; i++) {
+            totalHash = (totalHash << hashShift) - totalHash + dataFirst[i];
+        }
+        for (uint32_t i = 0; i < sizeSecond; i++) {
+            totalHash = (totalHash << hashShift) - totalHash + dataSecond[i];
+        }
+        return totalHash;
+    }
+    // Process the entire block of the first string.
+    uint32_t hash[blockSize] = {0};
+    uint32_t index = 0;
+    for (; index + blockSize <= sizeFirst; index += blockSize) {
+        hash[0] = (hash[0] << hashShift) - hash[0] + dataFirst[index];
+        hash[1] = (hash[1] << hashShift) - hash[1] + dataFirst[index + 1]; // 1: the second element
+        hash[2] = (hash[2] << hashShift) - hash[2] + dataFirst[index + 2]; // 2: the third element
+        hash[3] = (hash[3] << hashShift) - hash[3] + dataFirst[index + 3]; // 3: the fourth element
+    }
+    // The remaining total string length is less than a whole block.
+    if ((sizeFirst % blockSize) + sizeSecond < blockSize) {
+        for (; index < sizeFirst; ++index) {
+            hash[0] = (hash[0] << hashShift) - hash[0] + dataFirst[index];
+        }
+        index = 0;
+    } else {
+        //Calculate the non-integral block portion at the end of the first string.
+        for (; index < sizeFirst; ++index) {
+            hash[index % blockSize] = (hash[index % blockSize] << hashShift) -
+                                        hash[index % blockSize] + dataFirst[index];
+        }
+        //Calculate the portion of the second string
+        //that starts and aligns with an integral block at the end of the first string.
+        uint32_t wholeBlockRemain = (blockSize - sizeFirst % blockSize) % blockSize;
+        index = 0;
+        for (; index < wholeBlockRemain && index < sizeSecond; ++index) {
+            uint32_t nowHashIndex = sizeFirst % blockSize + index;
+            hash[nowHashIndex] = (hash[nowHashIndex] << hashShift) - hash[nowHashIndex] + dataSecond[index];
+        }
+        // Process the entire block of the Second string.
+        for (; index + blockSize <= sizeSecond; index += blockSize) {
+            hash[0] = (hash[0] << hashShift) - hash[0] + dataSecond[index];
+            hash[1] = (hash[1] << hashShift) - hash[1] + dataSecond[index + 1]; // 1: the second element
+            hash[2] = (hash[2] << hashShift) - hash[2] + dataSecond[index + 2]; // 2: the third element
+            hash[3] = (hash[3] << hashShift) - hash[3] + dataSecond[index + 3]; // 3: the fourth element
+        }
+    }
+    for (; index < sizeSecond; ++index) {
+        hash[0] = (hash[0] << hashShift) - hash[0] + dataSecond[index];
+    }
+    for (uint32_t i = 0; i < blockSize; ++i) {
+        totalHash = (totalHash << hashShift) - totalHash + hash[i];
+    }
+    return totalHash;
+}
+
+// static
+uint32_t EcmaString::CalculateConcatHashCode(const JSHandle<EcmaString> &firstString,
+                                             const JSHandle<EcmaString> &secondString)
+{
+    bool isFirstStringUtf8 = EcmaStringAccessor(firstString).IsUtf8();
+    bool isSecondStringUtf8 = EcmaStringAccessor(secondString).IsUtf8();
+    EcmaString *firstStr = *firstString;
+    EcmaString *secondStr = *secondString;
+    CVector<uint8_t> bufFirstUint8;
+    CVector<uint8_t> bufSecondUint8;
+    CVector<uint16_t> bufFirstUint16;
+    CVector<uint16_t> bufSecondUint16;
+    if (isFirstStringUtf8 && isSecondStringUtf8) {
+        const uint8_t *dataFirst = EcmaString::GetUtf8DataFlat(firstStr, bufFirstUint8);
+        const uint8_t *dataSecond = EcmaString::GetUtf8DataFlat(secondStr, bufSecondUint8);
+        return CalculateDataConcatHashCode(dataFirst, firstStr->GetLength(),
+                                           dataSecond, secondStr->GetLength());
+    }
+    if (!isFirstStringUtf8 && isSecondStringUtf8) {
+        const uint16_t *dataFirst = EcmaString::GetUtf16DataFlat(firstStr, bufFirstUint16);
+        const uint8_t *dataSecond = EcmaString::GetUtf8DataFlat(secondStr, bufSecondUint8);
+        return CalculateDataConcatHashCode(dataFirst, firstStr->GetLength(),
+                                           dataSecond, secondStr->GetLength());
+    }
+    if (isFirstStringUtf8 && !isSecondStringUtf8) {
+        const uint8_t *dataFirst = EcmaString::GetUtf8DataFlat(firstStr, bufFirstUint8);
+        const uint16_t *dataSecond = EcmaString::GetUtf16DataFlat(secondStr, bufSecondUint16);
+        return CalculateDataConcatHashCode(dataFirst, firstStr->GetLength(),
+                                           dataSecond, secondStr->GetLength());
+    }
+    {
+        const uint16_t *dataFirst = EcmaString::GetUtf16DataFlat(firstStr, bufFirstUint16);
+        const uint16_t *dataSecond = EcmaString::GetUtf16DataFlat(secondStr, bufSecondUint16);
+        return  CalculateDataConcatHashCode(dataFirst, firstStr->GetLength(),
+                                            dataSecond, secondStr->GetLength());
+    }
 }
 
 // static

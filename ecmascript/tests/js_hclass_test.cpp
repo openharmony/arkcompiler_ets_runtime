@@ -310,8 +310,8 @@ HWTEST_F_L0(JSHClassTest, TransitionExtension)
     // find key
     std::vector<JSTaggedValue> keyVector;
     dictionary->GetAllKeysIntoVector(keyVector);
-    EXPECT_EQ(keyVector[0], keyHandle0.GetTaggedValue());
-    EXPECT_EQ(keyVector[1], preExtensionsKey.GetTaggedValue());
+    EXPECT_TRUE((keyVector[0] == keyHandle0.GetTaggedValue()) || (keyVector[0] == preExtensionsKey.GetTaggedValue()));
+    EXPECT_TRUE((keyVector[1] == keyHandle0.GetTaggedValue()) || (keyVector[1] == preExtensionsKey.GetTaggedValue()));
 }
 
 HWTEST_F_L0(JSHClassTest, TransitionProto)
