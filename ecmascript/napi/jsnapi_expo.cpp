@@ -149,6 +149,7 @@ constexpr std::string_view ENTRY_POINTER = "_GLOBAL::func_main_0";
 
 int JSNApi::vmCount_ = 0;
 bool JSNApi::initialize_ = false;
+bool JSNApi::isForked_ = false;
 static Mutex *mutex = new panda::Mutex();
 StartIdleMonitorCallback JSNApi::startIdleMonitorCallback_ = nullptr;
 
@@ -5031,6 +5032,10 @@ void JSNApi::LoadAotFile(EcmaVM *vm, const std::string &moduleName)
 
     std::string aotFileName;
     LoadAotFileInternal(vm, moduleName, aotFileName);
+    // Disable PGO for applications when an/ai file exists
+    if (isForked_) {
+        vm->DisablePGOProfilerWithAOTFile(aotFileName);
+    }
     thread->GetCurrentEcmaContext()->LoadAOTFiles(aotFileName);
 }
 
@@ -5229,6 +5234,7 @@ void JSNApi::UpdateAOTCompileStatus(ecmascript::JSRuntimeOptions &jsOption, cons
 
 void JSNApi::PostFork(EcmaVM *vm, const RuntimeOption &option)
 {
+    isForked_ = true;
     JSRuntimeOptions &jsOption = vm->GetJSOptions();
     jsOption.SetEnablePGOProfiler(option.GetEnableProfile());
     jsOption.SetEnableJIT(option.GetEnableJIT());
