@@ -4376,6 +4376,7 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
         LOG_ECMA(INFO) << stack.str();
     }
 #endif
+        auto sHeap = ecmascript::SharedHeap::GetInstance();
         switch (gcType) {
             case TRIGGER_GC_TYPE::SEMI_GC:
                 vm->CollectGarbage(vm->GetHeap()->SelectGCType(), reason);
@@ -4385,6 +4386,14 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
                 break;
             case TRIGGER_GC_TYPE::FULL_GC:
                 vm->CollectGarbage(ecmascript::TriggerGCType::FULL_GC, reason);
+                break;
+            case TRIGGER_GC_TYPE::SHARED_GC:
+                sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_GC,
+                    ecmascript::GCReason::EXTERNAL_TRIGGER>(thread);
+                break;
+            case TRIGGER_GC_TYPE::SHARED_FULL_GC:
+                sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_FULL_GC,
+                    ecmascript::GCReason::EXTERNAL_TRIGGER>(thread);
                 break;
             default:
                 break;

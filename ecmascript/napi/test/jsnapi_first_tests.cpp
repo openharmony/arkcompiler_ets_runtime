@@ -1409,6 +1409,10 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
     vm_->SetEnableForceGC(false);
     auto globalEnv = vm_->GetGlobalEnv();
     auto factory = vm_->GetFactory();
+
+    Local<StringRef> origin = StringRef::NewFromUtf8(vm_, "1");
+    ASSERT_EQ("1", origin->ToString(vm_));
+
     JSHandle<JSTaggedValue> jsFunc = globalEnv->GetArrayFunction();
     JSHandle<JSObject> objVal1 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(jsFunc), jsFunc);
     JSHandle<JSObject> objVal2 = factory->NewJSObjectByConstructor(JSHandle<JSFunction>(jsFunc), jsFunc);
@@ -1425,8 +1429,14 @@ HWTEST_F_L0(JSNApiTests, TriggerGC_OLD_GC)
     // trigger gc
     JSNApi::TRIGGER_GC_TYPE gcType = JSNApi::TRIGGER_GC_TYPE::OLD_GC;
     JSNApi::TriggerGC(vm_, gcType);
+    gcType = JSNApi::TRIGGER_GC_TYPE::SHARED_GC;
+    JSNApi::TriggerGC(vm_, gcType);
+    gcType = JSNApi::TRIGGER_GC_TYPE::SHARED_FULL_GC;
+    JSNApi::TriggerGC(vm_, gcType);
+
     EXPECT_EQ(taggedArray->GetIdx(objVal1.GetTaggedValue()), 0U);
     EXPECT_EQ(taggedArray->GetIdx(canBeGcValue), TaggedArray::MAX_ARRAY_INDEX);
+    ASSERT_EQ("1", origin->ToString(vm_));
 
     vm_->SetEnableForceGC(true);
 }

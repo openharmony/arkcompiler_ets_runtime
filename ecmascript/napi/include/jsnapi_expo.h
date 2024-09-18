@@ -1438,7 +1438,14 @@ public:
 
     // JSVM
     // fixme: Rename SEMI_GC to YOUNG_GC
-    enum class ECMA_PUBLIC_API TRIGGER_GC_TYPE : uint8_t { SEMI_GC, OLD_GC, FULL_GC };
+    enum class ECMA_PUBLIC_API TRIGGER_GC_TYPE : uint8_t {
+        SEMI_GC,
+        OLD_GC,
+        FULL_GC,
+        SHARED_GC,
+        SHARED_FULL_GC
+    };
+
     enum class ECMA_PUBLIC_API TRIGGER_IDLE_GC_TYPE : uint8_t {
         OLD_GC = 1,
         FULL_GC = 1 << 2,
