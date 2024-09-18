@@ -51,7 +51,7 @@ public:
 private:
     class EvacuationTask : public Task {
     public:
-        EvacuationTask(int32_t id, ParallelEvacuator *evacuator);
+        EvacuationTask(int32_t id, uint32_t idOrder, ParallelEvacuator *evacuator);
         ~EvacuationTask() override;
         bool Run(uint32_t threadIndex) override;
 
@@ -59,6 +59,7 @@ private:
         NO_MOVE_SEMANTIC(EvacuationTask);
 
     private:
+        uint32_t idOrder_;
         ParallelEvacuator *evacuator_;
         TlabAllocator *allocator_ {nullptr};
     };
@@ -182,7 +183,8 @@ private:
     bool ProcessWorkloads(bool isMain = false);
 
     void EvacuateSpace();
-    bool EvacuateSpace(TlabAllocator *allocation, uint32_t threadIndex, bool isMain = false);
+    bool EvacuateSpace(TlabAllocator *allocation, uint32_t threadIndex, uint32_t idOrder, bool isMain = false);
+    void UpdateRecordWeakReferenceInParallel(uint32_t idOrder);
     void EvacuateRegion(TlabAllocator *allocator, Region *region, std::unordered_set<JSTaggedType> &trackSet);
     template<bool SetEdenObject>
     inline void SetObjectFieldRSet(TaggedObject *object, JSHClass *cls);
@@ -203,8 +205,6 @@ private:
     void UpdateRecordWeakReference();
     template<TriggerGCType gcType>
     void UpdateWeakReferenceOpt();
-    template<TriggerGCType gcType>
-    void UpdateRecordWeakReferenceOpt();
     template<bool IsEdenGC>
     void UpdateRSet(Region *region);
     void UpdateNewToEdenRSetReference(Region *region);
@@ -237,6 +237,7 @@ private:
 
     uintptr_t waterLine_ = 0;
     std::unordered_set<JSTaggedType> arrayTrackInfoSets_[MAX_TASKPOOL_THREAD_NUM + 1];
+    uint32_t evacuateTaskNum_ = 0;
     std::atomic_int parallel_ = 0;
     Mutex mutex_;
     ConditionVariable condition_;

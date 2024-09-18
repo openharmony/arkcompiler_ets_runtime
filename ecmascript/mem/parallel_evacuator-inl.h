@@ -318,8 +318,13 @@ void ParallelEvacuator::SetObjectRSet(ObjectSlot slot, Region *region)
             region->InsertOldToNewRSet(slot.SlotAddress());
         }  else if (valueRegion->InSharedSweepableSpace()) {
             region->InsertLocalToShareRSet(slot.SlotAddress());
-        } else if (valueRegion->InCollectSet() || JSTaggedValue(value).IsWeakForHeapObject()) {
+        } else if (valueRegion->InCollectSet()) {
             region->InsertCrossRegionRSet(slot.SlotAddress());
+        } else if (JSTaggedValue(value).IsWeakForHeapObject()) {
+            if (heap_->IsConcurrentFullMark() && !valueRegion->InSharedHeap() &&
+                    (valueRegion->GetMarkGCBitset() == nullptr || !valueRegion->Test(value))) {
+                slot.Clear();
+            }
         }
     }
 }
