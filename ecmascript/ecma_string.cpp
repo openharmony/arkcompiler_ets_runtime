@@ -842,13 +842,37 @@ uint32_t EcmaString::ComputeHashcodeUtf16(const uint16_t *utf16Data, uint32_t le
     return MixHashcode(hash, NOT_INTEGER);
 }
 
+// drop the tail bytes if the remain length can't fill the length it represents.
+static size_t FixUtf8Len(const uint8_t* utf8, size_t utf8Len)
+{
+    constexpr size_t TWO_BYTES_LENGTH = 2;
+    constexpr size_t THREE_BYTES_LENGTH = 3;
+    size_t trimSize = 0;
+    if (utf8Len >= 1 && utf8[utf8Len - 1] >= 0xC0) {
+        // The last one char claim there are more than 1 byte next to it, it's invalid, so drop the last one.
+        trimSize = 1;
+    }
+    if (utf8Len >= TWO_BYTES_LENGTH && utf8[utf8Len - TWO_BYTES_LENGTH] >= 0xE0) {
+        // The second to last char claim there are more than 2 bytes next to it, it's invalid, so drop the last two.
+        trimSize = TWO_BYTES_LENGTH;
+    }
+    if (utf8Len >= THREE_BYTES_LENGTH && utf8[utf8Len - THREE_BYTES_LENGTH] >= 0xF0) {
+        // The third to last char claim there are more than 3 bytes next to it, it's invalid, so drop the last three.
+        trimSize = THREE_BYTES_LENGTH;
+    }
+    return utf8Len - trimSize;
+}
+
+
 /* static */
 bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len,
                                    const uint16_t *utf16Data, uint32_t utf16Len)
 {
+    size_t safeUtf8Len = FixUtf8Len(utf8Data, utf8Len);
     const uint8_t *utf8End = utf8Data + utf8Len;
+    const uint8_t *utf8SafeEnd = utf8Data + safeUtf8Len;
     const uint16_t *utf16End = utf16Data + utf16Len;
-    while (utf8Data < utf8End && utf16Data < utf16End) {
+    while (utf8Data < utf8SafeEnd && utf16Data < utf16End) {
         uint8_t src = *utf8Data;
         switch (src & 0xF0) {
             case 0xF0: {
@@ -899,8 +923,14 @@ bool EcmaString::IsUtf8EqualsUtf16(const uint8_t *utf8Data, size_t utf8Len,
                     if (*utf16Data++ != static_cast<uint16_t>(*utf8Data++)) {
                         return false;
                     }
-                } while (utf8Data < utf8End && utf16Data < utf16End && *utf8Data < 0x80);
+                } while (utf8Data < utf8SafeEnd && utf16Data < utf16End && *utf8Data < 0x80);
                 break;
+        }
+    }
+    // The remain chars should be treated as single byte char.
+    while (utf8Data < utf8End && utf16Data < utf16End) {
+        if (*utf16Data++ != static_cast<uint16_t>(*utf8Data++)) {
+            return false;
         }
     }
     return utf8Data == utf8End && utf16Data == utf16End;
