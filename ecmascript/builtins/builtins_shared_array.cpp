@@ -1981,6 +1981,10 @@ JSTaggedValue BuiltinsSharedArray::Splice(EcmaRuntimeCallInfo *argv)
     JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
     for (uint32_t i = 2; i < argc; i++) {
         JSHandle<JSTaggedValue> itemValue = GetCallArg(argv, i);
+        if (!itemValue->IsSharedType()) {
+            auto error = ContainerError::ParamError(thread, "Parameter error.Only accept sendable value.");
+            THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
+        }
         key.Update(JSTaggedValue(k));
         JSSharedArray::FastSetPropertyByValue(thread, thisObjVal, key, itemValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
