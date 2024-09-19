@@ -92,6 +92,8 @@ def parse_args():
                         default=RegressTestConfig.DEFAULT_ARK_ARCH,
                         required=False,
                         help="the root path for qemu-aarch64 or qemu-arm")
+    parser.add_argument('--disable-force-gc', action='store_true',
+                        help="Run regress tests with close force-gc")
     return parser.parse_args()
 
 
@@ -739,7 +741,7 @@ class RegressOption(Enum):
     ELEMENTS_KIND = auto()
 
 
-def get_regress_groups():
+def get_regress_groups() -> Dict[RegressOption, List[str]]:
     groups = {}
     with os.fdopen(os.open(RegressTestConfig.REGRESS_TEST_OPTIONS, os.O_RDONLY, stat.S_IRUSR), "r") as file:
         for group in json.load(file):
@@ -747,23 +749,28 @@ def get_regress_groups():
     return groups
 
 
-def get_test_options(test, test_groups):
-    def match(opt):
-        return test in test_groups[opt]
+def get_test_options(test: str, test_groups: Dict[RegressOption, List[str]], regress_option: RegressOption) -> List[str]:
+    opt_values: Dict[RegressOption, str] = {
+        RegressOption.NO_FORCE_GC: "--enable-force-gc=",
+        RegressOption.ELEMENTS_KIND: "--enable-elements-kind="
+    }
 
-    def toflag(b):
-        return "true" if b else "false"
+    def match(opt: RegressOption) -> bool:
+        return test in test_groups.get(opt, [])
 
-    opts = []
-    opts.append("--enable-force-gc=" + toflag(not match(RegressOption.NO_FORCE_GC)))
-    opts.append("--enable-elements-kind=" + toflag(match(RegressOption.ELEMENTS_KIND)))
-    return opts
+    def to_flag(b: bool) -> str:
+        return str(b).lower()
+
+    try:
+        return [opt_values.get(regress_option) + to_flag(not match(regress_option))]
+    except KeyError:
+        return []
 
 
 class RegressTestRun(RegressTestStep):
     def __init__(self, args):
         RegressTestStep.__init__(self, args, "Regress Test Run ")
-        self.test_groups = get_regress_groups()
+        self.test_groups: Dict[RegressOption, List[str]] = get_regress_groups()
 
     @staticmethod
     def run(args, test_reports: Optional[List[TestReport]] = None) -> List[TestReport]:
@@ -833,7 +840,11 @@ class RegressTestRun(RegressTestStep):
         if self.args.ark_aot:
             command.append(f"--stub-file={self.args.stub_path}")
             command.append(f"--aot-file={aot_file}")
-        command += get_test_options(test_name, self.test_groups)
+        if self.args.disable_force_gc:
+            command.append("--enable-force-gc=false")
+        else:
+            command.extend(get_test_options(test_name, self.test_groups, RegressOption.NO_FORCE_GC))
+        command.extend(get_test_options(test_name, self.test_groups, RegressOption.ELEMENTS_KIND))
         command.append(abc_file)
 
         return self.run_test_case_file(command, test_report, expect_file)
