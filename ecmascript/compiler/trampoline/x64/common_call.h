@@ -87,7 +87,6 @@ private:
                             Label *lNonCallable, Label *lNotJSFunction, Label *lJSFunctionCall);
     static void ThrowNonCallableInternal(ExtendedAssembler *assembler, Register glueReg);
     static void JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Register jsFuncReg, Label *jsCall);
-    static void JSProxyCallInternal(ExtendedAssembler *assembler, Register jsFuncReg);
     static void OptimizedCallAsmInterpreter(ExtendedAssembler *assembler);
     static void PushArgsWithArgV(ExtendedAssembler *assembler, Register jsfunc,
                                  Register actualNumArgs, Register argV, Label *pushCallThis);
