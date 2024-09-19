@@ -18,19 +18,35 @@
 #include "ecmascript/log_wrapper.h"
 
 namespace panda::ecmascript {
-const CString GetPageTagString(PageTagType type, const std::string &spaceName, const uint32_t threadId)
+const std::string GetPageTagString(PageTagType type, const std::string &spaceName, const uint32_t threadId)
 {
     switch (type) {
         case PageTagType::HEAP:
             if (threadId == 0) {
-                return CString(HEAP_TAG).append(spaceName);
+                return std::string(HEAP_TAG).append(spaceName);
             }
-            return CString(HEAP_TAG).append(std::to_string(threadId)).append(spaceName);
+            return std::string(HEAP_TAG).append(std::to_string(threadId)).append(spaceName);
         case PageTagType::MACHINE_CODE:
             if (threadId == 0) {
                 return CODE_TAG;
             }
-            return CString(CODE_TAG).append(std::to_string(threadId));
+            return std::string(CODE_TAG).append(std::to_string(threadId));
+        case PageTagType::MEMPOOL_CACHE:
+            return "ArkTS MemPoolCache";
+        default: {
+            LOG_ECMA(FATAL) << "this branch is unreachable";
+            UNREACHABLE();
+        }
+    }
+}
+
+const char *GetPageTagString(PageTagType type)
+{
+    switch (type) {
+        case PageTagType::HEAP:
+            return HEAP_TAG;
+        case PageTagType::MACHINE_CODE:
+            return CODE_TAG;
         case PageTagType::MEMPOOL_CACHE:
             return "ArkTS MemPoolCache";
         default: {

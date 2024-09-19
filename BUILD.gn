@@ -307,6 +307,10 @@ config("ark_jsruntime_common_config") {
     defines += [ "IS_PUBLIC_VERSION" ]
   }
 
+  if (is_arkui_x) {
+    defines += [ "CROSS_PLATFORM" ]
+  }
+
   if (ark_compile_mode != "release") {
     ark_profiler_features = [
       "ECMASCRIPT_SUPPORT_CPUPROFILER",

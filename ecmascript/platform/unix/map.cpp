@@ -74,10 +74,16 @@ void PagePreRead(void *mem, size_t size)
     madvise(mem, size, MADV_WILLNEED);
 }
 
-void PageTag(void *mem, size_t size, PageTagType type, const std::string &spaceName, const uint32_t threadId)
+void PageTag(void *mem, size_t size, PageTagType type, [[maybe_unused]] const std::string &spaceName,
+    [[maybe_unused]] const uint32_t threadId)
 {
-    const CString &tag = GetPageTagString(type, spaceName, threadId);
+#if defined(CROSS_PLATFORM)
+    const char *tag = GetPageTagString(type);
+    PrctlSetVMA(mem, size, tag);
+#else
+    const std::string &tag = GetPageTagString(type, spaceName, threadId);
     PrctlSetVMA(mem, size, tag.c_str());
+#endif
 }
 
 void PageClearTag(void *mem, size_t size)
