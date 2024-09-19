@@ -444,7 +444,9 @@ void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tie
     {
         JitTaskpool::GetCurrentTaskpool()->WaitForJitTaskPoolReady();
         EcmaVM *compilerVm = JitTaskpool::GetCurrentTaskpool()->GetCompilerVm();
-        std::shared_ptr<JitTask> jitTask = std::make_shared<JitTask>(vm->GetJSThread(), compilerVm->GetJSThread(),
+        std::shared_ptr<JitTask> jitTask = std::make_shared<JitTask>(vm->GetJSThread(),
+            // avoid check fail when enable multi-thread check
+            compilerVm->GetJSThreadNoCheck(),
             jit, jsFunction, tier, methodName, offset, vm->GetJSThread()->GetThreadId(), mode);
 
         jitTask->PrepareCompile();
