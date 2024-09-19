@@ -356,6 +356,9 @@ void NTypeBytecodeLowering::LowerNTypedStOwnByName(GateRef gate)
     GateRef stringId = acc_.GetValueIn(gate, 0);
     JSTaggedValue key = compilationEnv_->GetStringFromConstantPool(acc_.TryGetMethodOffset(gate),
                                                                    acc_.GetConstantValue(stringId));
+    if (key.IsUndefined()) {
+        return;
+    }
     JSHClass *hclass = JSHClass::Cast(taggedHClass.GetTaggedObject());
     int entry = JSHClass::FindPropertyEntry(compilationEnv_->GetJSThread(), hclass, key);
     if (entry == -1) {
