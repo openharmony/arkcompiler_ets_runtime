@@ -138,9 +138,10 @@ group("ark_unittest") {
   deps = []
 
   # js unittest
-  deps += [
+  deps += [  # Register the executable block name of the unit test script here
     "ecmascript/base/tests:host_unittest",
     "ecmascript/builtins/tests:host_unittest",
+    "ecmascript/compiler/codegen/maple/test:host_unittest",
     "ecmascript/containers/tests:host_unittest",
     "ecmascript/dfx/cpu_profiler/tests:host_unittest",
     "ecmascript/dfx/hprof/tests:host_unittest",

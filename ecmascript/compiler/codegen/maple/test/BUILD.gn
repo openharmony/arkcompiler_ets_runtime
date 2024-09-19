@@ -11,40 +11,57 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+import("//arkcompiler/ets_runtime/js_runtime_config.gni")
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
-cflags_cc -= [ "-Werror" ]
+module_output_path = "arkcompiler/ets_runtime"
 
-include_directories = [
-  "${MAPLE_ROOT}/tools/gtest_lib/include",
-  "${MAPLEALL_ROOT}/maple_util/include",
-  "${MAPLEALL_ROOT}/maple_driver/include",
-]
-src_mapleallUT = [
-  "cl_ut_test.cpp",
-  "triple_ut_test.cpp",
-]
-
-executable("mapleallUT") {
+host_unittest_action("mapleallUT") {
+  rtti_compile_flag = false
+  configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
+  module_out_path = module_output_path
+  include_directories = [
+    "${MAPLEALL_ROOT}/maple_be/include/cg",
+    "${MAPLEALL_ROOT}/maple_be/include/litecg",
+    "${MAPLEALL_ROOT}/maple_be/include/ad",
+    "${MAPLEALL_ROOT}/maple_be/include/be",
+    "${MAPLEALL_ROOT}/maple_ir/include/",
+    "${MAPLEALL_ROOT}/maple_util/include/",
+    "${MAPLEALL_ROOT}/mempool/include/",
+    "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include/",
+    "${MAPLEALL_ROOT}/maple_driver/include/",
+    "${MAPLEALL_ROOT}/maple_me/include/",
+    "${MAPLEALL_ROOT}/maple_phase/include/",
+    "${MAPLEALL_ROOT}/mpl2mpl/include/",
+    "${MAPLEALL_THIRD_PARTY_ROOT}/",
+  ]
+  src_mapleallUT = [ "cgbb_test.cpp" ]
   sources = src_mapleallUT
   include_dirs = include_directories
-  output_dir = "${root_out_dir}/lib/${HOST_ARCH}"
-
-  deps = [
-    "${MAPLEALL_ROOT}/maple_driver:libmaple_driver",
-    "${MAPLEALL_ROOT}/maple_ir:libmplir",
-    "${MAPLEALL_ROOT}/maple_util:libcommandline",
-    "${MAPLEALL_ROOT}/maple_util:libmplutil",
+  deps_libcg = [  # Add Link Library
     "${MAPLEALL_ROOT}/mempool:libmempool",
+    "${MAPLEALL_ROOT}/maple_phase:libmplphase",
     "${MAPLEALL_ROOT}/mpl2mpl:libmpl2mpl",
-    "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function:libsec_static",
+    "${MAPLEALL_ROOT}/maple_ir:libmplir",
+    "${MAPLEALL_ROOT}/maple_util:libmplutil",
+    "${MAPLEALL_ROOT}/maple_me:libmplme",
+    "${MAPLEALL_ROOT}/maple_be:libcg",
   ]
 
-  libs = [
-    "${MAPLE_ROOT}/tools/gtest_lib/lib/libgmock.a",
-    "${MAPLE_ROOT}/tools/gtest_lib/lib/libgmock_main.a",
-    "${MAPLE_ROOT}/tools/gtest_lib/lib/libgtest.a",
-    "${MAPLE_ROOT}/tools/gtest_lib/lib/libgtest_main.a",
-    "pthread",
-  ]
+  deps = []
+
+  # If dynamic cast is used in the source code, set COMPILE_RTTI_ to true
+  rtti_compile_flag = true
+  deps += deps_libcg
+  libs = [ "pthread" ]
+}
+group("host_unittest") {
+  testonly = true
+
+  # deps file
+  deps = [ ":mapleallUTAction" ]
+
+  if (is_mac) {
+    deps -= [ ":mapleallUTAction" ]
+  }
 }
