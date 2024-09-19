@@ -282,40 +282,34 @@ public:
 
     NO_COPY_SEMANTIC(GCBitSetUpdater);
 
-    ARK_INLINE bool UpdateAndCheckFull(size_t setIdx)
+    ARK_INLINE void Update(size_t setIdx)
     {
         ASSERT(setIdx < BitSetNum);
         bitsets_[setIdx].set(cursor_);
-        cursor_++;
-        ASSERT(cursor_ <= GCBitset::BIT_PER_WORD);
-        return cursor_ == GCBitset::BIT_PER_WORD;
     }
 
-    ARK_INLINE bool Step()
+    ARK_INLINE bool Next()
     {
         cursor_++;
         ASSERT(cursor_ <= GCBitset::BIT_PER_WORD);
         return cursor_ == GCBitset::BIT_PER_WORD;
     }
 
-    template <typename Consumer>
-    ARK_INLINE void ConsumeAll(Consumer&& consume)
+    ARK_INLINE std::array<std::bitset<GCBitset::BIT_PER_WORD>, BitSetNum> GetAndResetAll(uintptr_t& updateAddress)
     {
-        for (size_t i = 0; i < BitSetNum; i++) {
-            if (bitsets_[i].none()) {
-                continue;
-            }
-            std::invoke(std::forward<Consumer>(consume), i, updateAddress_, bitsets_[i].to_ulong());
-            bitsets_[i].reset();
-        }
+        std::array<std::bitset<GCBitset::BIT_PER_WORD>, BitSetNum> retBitsets;
+        std::swap(retBitsets, bitsets_);
+        updateAddress = updateAddress_;
+
         cursor_ = 0;
         constexpr size_t ConsumeRange = GCBitset::BIT_PER_WORD * GCBitset::BIT_PER_BYTE;
         updateAddress_ = AlignDown(updateAddress_ + ConsumeRange, ConsumeRange);
+        return retBitsets;
     }
 
 private:
     uintptr_t updateAddress_ = 0;
-    std::bitset<GCBitset::BIT_PER_WORD> bitsets_[BitSetNum];
+    std::array<std::bitset<GCBitset::BIT_PER_WORD>, BitSetNum> bitsets_;
     size_t cursor_ = 0;
 };
 } // namespace panda::ecmascript

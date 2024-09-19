@@ -189,7 +189,7 @@ public:
     enum RegionSpaceKind { InYoung, InGeneralOld, Other };
 
     template <RegionSpaceKind kind>
-    class Updater {
+    class Updater final {
     public:
         Updater(uintptr_t updateAddress, Region& region)
             : bitsetUpdater_(updateAddress),
@@ -199,34 +199,39 @@ public:
 
         NO_COPY_SEMANTIC(Updater);
 
-        ARK_INLINE void AddLocalToShare()
+        ARK_INLINE ~Updater()
         {
-            Update(LocalToShareIdx);
+            Flush();
+        }
+
+        ARK_INLINE void UpdateLocalToShare()
+        {
+            bitsetUpdater_.Update(LocalToShareIdx);
         }
 
         template <RegionSpaceKind T = kind, std::enable_if_t<T == InYoung, int>  = 0>
-        ARK_INLINE void AddNewToEden()
+        ARK_INLINE void UpdateNewToEden()
         {
-            Update(NewToEdenIdx);
+            bitsetUpdater_.Update(NewToEdenIdx);
         }
 
         template <RegionSpaceKind T = kind, std::enable_if_t<T == InGeneralOld, int>  = 0>
-        ARK_INLINE void AddOldToNew()
+        ARK_INLINE void UpdateOldToNew()
         {
-            Update(OldToNewIdx);
+            bitsetUpdater_.Update(OldToNewIdx);
         }
 
-        ARK_INLINE void Step()
+        ARK_INLINE void Next()
         {
-            if (bitsetUpdater_.Step()) {
+            if (bitsetUpdater_.Next()) {
                 Flush();
             }
         }
 
-        ARK_INLINE void Flush();
-
     private:
-        ARK_INLINE void Update(size_t setIdx);
+        ARK_INLINE void Consume(size_t idx, uintptr_t updateAddress, uint32_t mask);
+
+        ARK_INLINE void Flush();
 
         static constexpr size_t CalculateBitSetNum()
         {
@@ -935,6 +940,10 @@ private:
     RememberedSet *GetOrCreateNewToEdenRememberedSet();
     RememberedSet *GetOrCreateOldToNewRememberedSet();
     RememberedSet *GetOrCreateLocalToShareRememberedSet();
+
+    inline RememberedSet *CreateNewToEdenRememberedSet();
+    inline RememberedSet *CreateOldToNewRememberedSet();
+    inline RememberedSet *CreateLocalToShareRememberedSet();
 
     PackedData packedData_;
     NativeAreaAllocator *nativeAreaAllocator_;
