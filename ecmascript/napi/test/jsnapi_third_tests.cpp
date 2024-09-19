@@ -1312,4 +1312,15 @@ HWTEST_F_L0(JSNApiTests, NapiExternalStringCacheTest008)
     ASSERT_FALSE(value->IsUndefined());
     EXPECT_EQ(value->ToString(vm_), property);
 }
+
+HWTEST_F_L0(JSNApiTests, SetExecuteMode)
+{
+    ecmascript::ModuleManager *moduleManager = thread_->GetCurrentEcmaContext()->GetModuleManager();
+    ecmascript::ModuleExecuteMode res1 = moduleManager->GetExecuteMode();
+    EXPECT_EQ(res1, ecmascript::ModuleExecuteMode::ExecuteZipMode);
+
+    JSNApi::SetExecuteBufferMode(vm_);
+    ecmascript::ModuleExecuteMode res2 = moduleManager->GetExecuteMode();
+    EXPECT_EQ(res2, ecmascript::ModuleExecuteMode::ExecuteBufferMode);
+}
 } // namespace panda::test
