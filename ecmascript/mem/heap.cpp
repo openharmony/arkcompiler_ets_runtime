@@ -2096,7 +2096,7 @@ void Heap::NotifyHighSensitive(bool isStart)
     LOG_GC(DEBUG) << "SmartGC: set high sensitive status: " << isStart;
 }
 
-void Heap::HandleExitHighSensitiveEvent()
+bool Heap::HandleExitHighSensitiveEvent()
 {
     AppSensitiveStatus status = GetSensitiveStatus();
     if (status == AppSensitiveStatus::EXIT_HIGH_SENSITIVE
@@ -2115,7 +2115,9 @@ void Heap::HandleExitHighSensitiveEvent()
         TryTriggerIncrementalMarking();
         TryTriggerIdleCollection();
         TryTriggerConcurrentMarking();
+        return true;
     }
+    return false;
 }
 
 // On high sensitive scene, heap object size can reach to MaxHeapSize - 8M temporarily, 8M is reserved for
