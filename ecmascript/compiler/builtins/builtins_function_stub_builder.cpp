@@ -137,20 +137,17 @@ void BuiltinsFunctionStubBuilder::PrototypeBind(GateRef glue, GateRef thisValue,
     Bind(&targetIsHeapObject);
     BRANCH(IsCallable(target), &targetIsCallable, slowPath);
     Bind(&targetIsCallable);
-    BRANCH(BoolOr(IsJSFunction(target), IsBoundFunction(target)), &targetIsJSFunctionOrBound, slowPath);
+    BRANCH(IsJSOrBoundFunction(target), &targetIsJSFunctionOrBound, slowPath);
     Bind(&targetIsJSFunctionOrBound);
     {
         GateRef hclass = LoadHClass(target);
-        GateRef nameProperty = GetPropertyInlinedProps(target, hclass,
-                                                       Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX));
-        GateRef lengthProperty = GetPropertyInlinedProps(target, hclass,
-                                                         Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX));
-        GateRef nameAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                      ConstantIndex::FUNCTION_NAME_ACCESSOR);
-        GateRef lengthAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
-                                                        ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
-        BRANCH(BoolAnd(IntPtrEqual(nameProperty, nameAccessor), IntPtrEqual(lengthProperty, lengthAccessor)),
-               &targetNameAndLengthNotChange, slowPath);
+        GateRef isTargetNameAndLengthNotChange = LogicAndBuilder(env)
+            .And(IntPtrEqual(GetPropertyInlinedProps(target, hclass, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX)),
+                GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::FUNCTION_NAME_ACCESSOR)))
+            .And(IntPtrEqual(GetPropertyInlinedProps(target, hclass, Int32(JSFunction::LENGTH_INLINE_PROPERTY_INDEX)),
+                GetGlobalConstantValue(VariableType::JS_POINTER(), glue, ConstantIndex::FUNCTION_LENGTH_ACCESSOR)))
+            .Done();
+        BRANCH(isTargetNameAndLengthNotChange, &targetNameAndLengthNotChange, slowPath);
         Bind(&targetNameAndLengthNotChange);
         {
             Label numArgsMoreThan1(env);

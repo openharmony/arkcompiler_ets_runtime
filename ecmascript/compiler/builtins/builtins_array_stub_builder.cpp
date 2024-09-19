@@ -108,7 +108,7 @@ void BuiltinsArrayStubBuilder::With(GateRef glue, GateRef thisValue, GateRef num
             }
             Bind(&next);
             {
-                BRANCH(BoolOr(Int64GreaterThanOrEqual(*actualIndex, thisLen), Int64LessThan(*actualIndex, Int64(0))),
+                BRANCH(BitOr(Int64GreaterThanOrEqual(*actualIndex, thisLen), Int64LessThan(*actualIndex, Int64(0))),
                     slowPath, &notOutOfRange);
                 Bind(&notOutOfRange);
                 {
@@ -318,9 +318,7 @@ void BuiltinsArrayStubBuilder::Shift(GateRef glue, GateRef thisValue,
     Bind(&isHeapObject);
     BRANCH(HasConstructor(thisValue), slowPath, &isDefaultConstructor);
     Bind(&isDefaultConstructor);
-    GateRef isThisEcmaObject = IsEcmaObject(thisValue);
-    GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
-    BRANCH(BoolAnd(isThisEcmaObject, isThisStableJSArray), &stableJSArray, slowPath);
+    BRANCH(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
     Bind(&stableJSArray);
     {
         Label isLengthWritable(env);
@@ -444,118 +442,111 @@ void BuiltinsArrayStubBuilder::Concat(GateRef glue, GateRef thisValue, GateRef n
             Bind(&numArgsOne);
             {
                 GateRef arg0 = GetCallArg0(numArgs);
-                Label allEcmaObject(env);
                 Label allStableJsArray(env);
-                GateRef isThisEcmaObject = IsEcmaObject(thisValue);
-                GateRef isArgEcmaObject = IsEcmaObject(arg0);
-                BRANCH(BoolAnd(isThisEcmaObject, isArgEcmaObject), &allEcmaObject, slowPath);
-                Bind(&allEcmaObject);
+                GateRef isAllStableJsArray = LogicAndBuilder(env).And(IsStableJSArray(glue, thisValue))
+                    .And(IsStableJSArray(glue, arg0)).Done();
+                BRANCH(isAllStableJsArray, &allStableJsArray, slowPath);
+                Bind(&allStableJsArray);
                 {
-                    GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
-                    GateRef isArgStableJSArray = IsStableJSArray(glue, arg0);
-                    BRANCH(BoolAnd(isThisStableJSArray, isArgStableJSArray), &allStableJsArray, slowPath);
-                    Bind(&allStableJsArray);
+                    GateRef maxArrayIndex = Int64(TaggedArray::MAX_ARRAY_INDEX);
+                    GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
+                    GateRef argLen = ZExtInt32ToInt64(GetArrayLength(arg0));
+                    GateRef sumArrayLen = Int64Add(argLen, thisLen);
+                    Label isEmptyArray(env);
+                    Label notEmptyArray(env);
+                    BRANCH(Int64Equal(sumArrayLen, Int64(0)), &isEmptyArray, &notEmptyArray);
+                    Bind(&isEmptyArray);
                     {
-                        GateRef maxArrayIndex = Int64(TaggedArray::MAX_ARRAY_INDEX);
-                        GateRef thisLen = ZExtInt32ToInt64(GetArrayLength(thisValue));
-                        GateRef argLen = ZExtInt32ToInt64(GetArrayLength(arg0));
-                        GateRef sumArrayLen = Int64Add(argLen, thisLen);
-                        Label isEmptyArray(env);
-                        Label notEmptyArray(env);
-                        BRANCH(Int64Equal(sumArrayLen, Int64(0)), &isEmptyArray, &notEmptyArray);
-                        Bind(&isEmptyArray);
+                        NewObjectStubBuilder newBuilder(this);
+                        result->WriteVariable(newBuilder.CreateEmptyArray(glue));
+                        Jump(exit);
+                    }
+                    Bind(&notEmptyArray);
+                    Label notOverFlow(env);
+                    BRANCH(Int64GreaterThan(sumArrayLen, maxArrayIndex), slowPath, &notOverFlow);
+                    Bind(&notOverFlow);
+                    {
+                        Label spreadable(env);
+                        GateRef isAllConcatSpreadable = LogicAndBuilder(env).And(IsConcatSpreadable(glue, thisValue))
+                            .And(IsConcatSpreadable(glue, arg0)).Done();
+                        BRANCH(isAllConcatSpreadable, &spreadable, slowPath);
+                        Bind(&spreadable);
                         {
+                            Label setProperties(env);
+                            GateRef glueGlobalEnvOffset =
+                                IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
+                            GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
+                            auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
+                                GlobalEnv::ARRAY_FUNCTION_INDEX);
+                            GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc,
+                                IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
                             NewObjectStubBuilder newBuilder(this);
-                            result->WriteVariable(newBuilder.CreateEmptyArray(glue));
-                            Jump(exit);
-                        }
-                        Bind(&notEmptyArray);
-                        Label notOverFlow(env);
-                        BRANCH(Int64GreaterThan(sumArrayLen, maxArrayIndex), slowPath, &notOverFlow);
-                        Bind(&notOverFlow);
-                        {
-                            Label spreadable(env);
-                            GateRef isSpreadable = IsConcatSpreadable(glue, thisValue);
-                            GateRef argisSpreadable = IsConcatSpreadable(glue, arg0);
-                            BRANCH(BoolAnd(isSpreadable, argisSpreadable), &spreadable, slowPath);
-                            Bind(&spreadable);
+                            newBuilder.SetParameters(glue, 0);
+                            GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, sumArrayLen);
+                            BRANCH(TaggedIsException(newArray), exit, &setProperties);
+                            Bind(&setProperties);
                             {
-                                Label setProperties(env);
-                                GateRef glueGlobalEnvOffset =
-                                    IntPtr(JSThread::GlueData::GetGlueGlobalEnvOffset(env->Is32Bit()));
-                                GateRef glueGlobalEnv = Load(VariableType::NATIVE_POINTER(), glue, glueGlobalEnvOffset);
-                                auto arrayFunc = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                    GlobalEnv::ARRAY_FUNCTION_INDEX);
-                                GateRef intialHClass = Load(VariableType::JS_ANY(), arrayFunc,
-                                    IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-                                NewObjectStubBuilder newBuilder(this);
-                                newBuilder.SetParameters(glue, 0);
-                                GateRef newArray = newBuilder.NewJSArrayWithSize(intialHClass, sumArrayLen);
-                                BRANCH(TaggedIsException(newArray), exit, &setProperties);
-                                Bind(&setProperties);
+                                GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
+                                Store(VariableType::INT32(), glue, newArray, lengthOffset,
+                                    TruncInt64ToInt32(sumArrayLen));
+                                GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
+                                    ConstantIndex::ARRAY_LENGTH_ACCESSOR);
+                                SetPropertyInlinedProps(glue, newArray, intialHClass, accessor,
+                                    Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+                                SetExtensibleToBitfield(glue, newArray, true);
+                                DEFVARIABLE(i, VariableType::INT64(), Int64(0));
+                                DEFVARIABLE(j, VariableType::INT64(), Int64(0));
+                                DEFVARIABLE(k, VariableType::INT64(), Int64(0));
+                                Label loopHead(env);
+                                Label loopEnd(env);
+                                Label next(env);
+                                Label loopExit(env);
+                                Jump(&loopHead);
+                                LoopBegin(&loopHead);
                                 {
-                                    GateRef lengthOffset = IntPtr(JSArray::LENGTH_OFFSET);
-                                    Store(VariableType::INT32(), glue, newArray, lengthOffset,
-                                        TruncInt64ToInt32(sumArrayLen));
-                                    GateRef accessor = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
-                                        ConstantIndex::ARRAY_LENGTH_ACCESSOR);
-                                    SetPropertyInlinedProps(glue, newArray, intialHClass, accessor,
-                                        Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-                                    SetExtensibleToBitfield(glue, newArray, true);
-                                    DEFVARIABLE(i, VariableType::INT64(), Int64(0));
-                                    DEFVARIABLE(j, VariableType::INT64(), Int64(0));
-                                    DEFVARIABLE(k, VariableType::INT64(), Int64(0));
-                                    Label loopHead(env);
-                                    Label loopEnd(env);
-                                    Label next(env);
-                                    Label loopExit(env);
-                                    Jump(&loopHead);
-                                    LoopBegin(&loopHead);
-                                    {
-                                        BRANCH(Int64LessThan(*i, thisLen), &next, &loopExit);
-                                        Bind(&next);
-                                        GateRef ele = GetTaggedValueWithElementsKind(thisValue, *i);
-                                        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
-                                        SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                            Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
-                                        #else
-                                        SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                                        #endif
-                                        Jump(&loopEnd);
-                                    }
-                                    Bind(&loopEnd);
-                                    i = Int64Add(*i, Int64(1));
-                                    j = Int64Add(*j, Int64(1));
-                                    LoopEnd(&loopHead, env, glue);
-                                    Bind(&loopExit);
-                                    Label loopHead1(env);
-                                    Label loopEnd1(env);
-                                    Label next1(env);
-                                    Label loopExit1(env);
-                                    Jump(&loopHead1);
-                                    LoopBegin(&loopHead1);
-                                    {
-                                        BRANCH(Int64LessThan(*k, argLen), &next1, &loopExit1);
-                                        Bind(&next1);
-                                        GateRef ele = GetTaggedValueWithElementsKind(arg0, *k);
-                                        #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
-                                        SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                                                 Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
-                                        #else
-                                        SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
-                                                                 Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                                        #endif
-                                        Jump(&loopEnd1);
-                                    }
-                                    Bind(&loopEnd1);
-                                    k = Int64Add(*k, Int64(1));
-                                    j = Int64Add(*j, Int64(1));
-                                    LoopEnd(&loopHead1);
-                                    Bind(&loopExit1);
-                                    result->WriteVariable(newArray);
-                                    Jump(exit);
+                                    BRANCH(Int64LessThan(*i, thisLen), &next, &loopExit);
+                                    Bind(&next);
+                                    GateRef ele = GetTaggedValueWithElementsKind(thisValue, *i);
+                                    #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+                                    SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                        Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                                    #else
+                                    SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                        Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    #endif
+                                    Jump(&loopEnd);
                                 }
+                                Bind(&loopEnd);
+                                i = Int64Add(*i, Int64(1));
+                                j = Int64Add(*j, Int64(1));
+                                LoopEnd(&loopHead, env, glue);
+                                Bind(&loopExit);
+                                Label loopHead1(env);
+                                Label loopEnd1(env);
+                                Label next1(env);
+                                Label loopExit1(env);
+                                Jump(&loopHead1);
+                                LoopBegin(&loopHead1);
+                                {
+                                    BRANCH(Int64LessThan(*k, argLen), &next1, &loopExit1);
+                                    Bind(&next1);
+                                    GateRef ele = GetTaggedValueWithElementsKind(arg0, *k);
+                                    #if ECMASCRIPT_ENABLE_ELEMENTSKIND_ALWAY_GENERIC
+                                    SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                                             Int32(static_cast<uint32_t>(ElementsKind::GENERIC)));
+                                    #else
+                                    SetValueWithElementsKind(glue, newArray, ele, *j, Boolean(true),
+                                                             Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                                    #endif
+                                    Jump(&loopEnd1);
+                                }
+                                Bind(&loopEnd1);
+                                k = Int64Add(*k, Int64(1));
+                                j = Int64Add(*j, Int64(1));
+                                LoopEnd(&loopHead1);
+                                Bind(&loopExit1);
+                                result->WriteVariable(newArray);
+                                Jump(exit);
                             }
                         }
                     }
@@ -574,9 +565,9 @@ void BuiltinsArrayStubBuilder::Filter(GateRef glue, GateRef thisValue, GateRef n
     Label defaultConstr(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    GateRef thisValueIsJSArray = IsJsArray(thisValue);
-    GateRef protoIsJsArray = IsJsArray(StubBuilder::GetPrototype(glue, thisValue));
-    BRANCH(BoolAnd(thisValueIsJSArray, protoIsJsArray), &isJsArray, slowPath);
+    GateRef thisValueAndProtoIsJSArray = LogicAndBuilder(env).And(IsJsArray(thisValue))
+        .And(IsJsArray(StubBuilder::GetPrototype(glue, thisValue))).Done();
+    BRANCH(thisValueAndProtoIsJSArray, &isJsArray, slowPath);
     Bind(&isJsArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -737,9 +728,9 @@ void BuiltinsArrayStubBuilder::Map(GateRef glue, GateRef thisValue, GateRef numA
     Label defaultConstr(env);
     BRANCH(TaggedIsHeapObject(thisValue), &isHeapObject, slowPath);
     Bind(&isHeapObject);
-    GateRef thisValueIsJSArray = IsJsArray(thisValue);
-    GateRef protoIsJsArray = IsJsArray(StubBuilder::GetPrototype(glue, thisValue));
-    BRANCH(BoolAnd(thisValueIsJSArray, protoIsJsArray), &isJsArray, slowPath);
+    GateRef thisValueAndProtoIsJSArray = LogicAndBuilder(env).And(IsJsArray(thisValue))
+        .And(IsJsArray(StubBuilder::GetPrototype(glue, thisValue))).Done();
+    BRANCH(thisValueAndProtoIsJSArray, &isJsArray, slowPath);
     Bind(&isJsArray);
     BRANCH(HasConstructor(thisValue), slowPath, &defaultConstr);
     Bind(&defaultConstr);
@@ -922,7 +913,7 @@ void BuiltinsArrayStubBuilder::ForEach([[maybe_unused]] GateRef glue, GateRef th
             Label hasException0(env);
             Label hasException1(env);
             GateRef newLen = GetArrayLength(thisValue);
-            BRANCH(BoolAnd(IsStableJSArray(glue, thisValue), Int32Equal(*thisLen, newLen)),
+            BRANCH(BitAnd(IsStableJSArray(glue, thisValue), Int32Equal(*thisLen, newLen)),
                 &nextStep, &thisNotStable);
             Bind(&nextStep);
             BRANCH(Int64GreaterThanOrEqual(*i, ZExtInt32ToInt64(*thisLen)), &loopExit, &next);
@@ -1066,9 +1057,7 @@ void BuiltinsArrayStubBuilder::Pop(GateRef glue, GateRef thisValue,
     Bind(&isHeapObject);
     BRANCH(HasConstructor(thisValue), slowPath, &isDeufaltConstructor);
     Bind(&isDeufaltConstructor);
-    GateRef isThisEcmaObject = IsEcmaObject(thisValue);
-    GateRef isThisStableJSArray = IsStableJSArray(glue, thisValue);
-    BRANCH(BoolAnd(isThisEcmaObject, isThisStableJSArray), &stableJSArray, slowPath);
+    BRANCH(IsStableJSArray(glue, thisValue), &stableJSArray, slowPath);
     Bind(&stableJSArray);
 
     Label isLengthWritable(env);
@@ -1555,7 +1544,10 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, GateRef
                 Bind(&afterGettingmiddleValue);
                 {
                     Label isInt(env);
-                    BRANCH(BoolAnd(TaggedIsInt(*middleValue), TaggedIsInt(*presentValue)), &isInt, slowPath);
+                    GateRef middleVal = *middleValue;
+                    GateRef presentVal = *presentValue;
+                    BRANCH(LogicAndBuilder(env).And(TaggedIsInt(middleVal)).And(TaggedIsInt(presentVal)).Done(),
+                        &isInt, slowPath);
                     Bind(&isInt);
                     {
                         GateRef compareResult =
@@ -1584,7 +1576,7 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, GateRef
             Label shouldCopy(env);
             GateRef isGreater0 = Int64GreaterThanOrEqual(*endIndex, Int64(0));
             GateRef lessI = Int64LessThan(*endIndex, *i);
-            BRANCH(BoolAnd(isGreater0, lessI), &shouldCopy, &loopEnd);
+            BRANCH(BitAnd(isGreater0, lessI), &shouldCopy, &loopEnd);
             Bind(&shouldCopy);
             {
                 DEFVARIABLE(j, VariableType::INT64(), *i);
@@ -1695,15 +1687,15 @@ void BuiltinsArrayStubBuilder::Reduce(GateRef glue, GateRef thisValue, GateRef n
     Bind(&callbackFnHandleCallable);
     GateRef thisLenIsZero = Int32Equal(*thisLen, Int32(0));
     GateRef numArgsLessThanTwo = Int64LessThan(numArgs, IntPtr(2));
-    BRANCH(BoolAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
+    BRANCH(BitAnd(thisLenIsZero, numArgsLessThanTwo), slowPath, &noTypeError);
     Bind(&noTypeError);
     {
         DEFVARIABLE(accumulator, VariableType::JS_ANY(), Undefined());
         DEFVARIABLE(k, VariableType::INT32(), Int32(0));
-    
+
         Label updateAccumulator(env);
         Label checkForStableJSArray(env);
-    
+
         BRANCH(Int64Equal(numArgs, IntPtr(2)), &updateAccumulator, slowPath); // 2: provide initialValue param
         Bind(&updateAccumulator);
         {
@@ -1842,13 +1834,13 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     Label isInt(env);
     Label isNotInt(env);
     Label notFastKind(env);
-    GateRef elementsKindIntLB = Int32GreaterThanOrEqual(kind,
-                                                        Int32(static_cast<int32_t>(ElementsKind::INT)));
-    GateRef elementsKindIntUB = Int32LessThanOrEqual(kind,
-                                                     Int32(static_cast<int32_t>(ElementsKind::HOLE_INT)));
-    GateRef checkIntKind = BoolAnd(elementsKindIntLB, elementsKindIntUB);
     GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
-    BRANCH(BoolAnd(checkIntKind, isElementsKindEnabled), &isInt, &isNotInt);
+    GateRef checkIntKind = LogicAndBuilder(env)
+        .And(isElementsKindEnabled)
+        .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
+        .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_INT))))
+        .Done();
+    BRANCH(checkIntKind, &isInt, &isNotInt);
     Bind(&isInt);
     {
         FastReverse(glue, thisValue, thisArrLen, ElementsKind::INT, result, exit);
@@ -1857,12 +1849,12 @@ void BuiltinsArrayStubBuilder::Reverse(GateRef glue, GateRef thisValue, [[maybe_
     {
         Label isNumber(env);
         Label isNotNumber(env);
-        GateRef elementsKindNumberLB = Int32GreaterThanOrEqual(kind,
-                                                               Int32(static_cast<int32_t>(ElementsKind::NUMBER)));
-        GateRef elementsKindNumberUB = Int32LessThanOrEqual(kind,
-                                                            Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER)));
-        GateRef checkNumberKind = BoolAnd(elementsKindNumberLB, elementsKindNumberUB);
-        BRANCH(BoolAnd(checkNumberKind, isElementsKindEnabled), &isNumber, &isNotNumber);
+        GateRef checkNumberKind = LogicAndBuilder(env)
+            .And(isElementsKindEnabled)
+            .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::NUMBER))))
+            .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER))))
+            .Done();
+        BRANCH(checkNumberKind, &isNumber, &isNotNumber);
         Bind(&isNumber);
         {
             FastReverse(glue, thisValue, thisArrLen, ElementsKind::NUMBER, result, exit);
@@ -2640,7 +2632,7 @@ void BuiltinsArrayStubBuilder::Includes(GateRef glue, GateRef thisValue, GateRef
                                 GateRef value = GetTaggedValueWithElementsKind(thisValue, *from);
                                 GateRef isHole = TaggedIsHole(value);
                                 GateRef isUndef = TaggedIsUndefined(value);
-                                BRANCH(BoolOr(isHole, isUndef), slowPath, &notHoleOrUndefValue);
+                                BRANCH(BitOr(isHole, isUndef), slowPath, &notHoleOrUndefValue);
                                 Bind(&notHoleOrUndefValue);
                                 GateRef valueEqual = StubBuilder::SameValueZero(glue, searchElement, value);
                                 BRANCH(valueEqual, &valueFound, &loopEnd);
@@ -2931,9 +2923,11 @@ void BuiltinsArrayStubBuilder::Splice(GateRef glue, GateRef thisValue, GateRef n
             Label trim(env);
             Label noTrim(env);
             Bind(&trimCheck);
-            BRANCH(BoolAnd(Int32GreaterThan(oldCapacity, newCapacity),
-                Int32GreaterThan(Int32Sub(newCapacity, oldCapacity),
-                Int32(TaggedArray::MAX_END_UNUSED))), &trim, &noTrim);
+            GateRef needTrim = LogicAndBuilder(env)
+                .And(Int32GreaterThan(oldCapacity, newCapacity))
+                .And(Int32GreaterThan(Int32Sub(newCapacity, oldCapacity), Int32(TaggedArray::MAX_END_UNUSED)))
+                .Done();
+            BRANCH(needTrim, &trim, &noTrim);
             Bind(&trim);
             {
                 CallNGCRuntime(glue, RTSTUB_ID(ArrayTrim), {glue, *srcElements, ZExtInt32ToInt64(newCapacity)});
@@ -3328,7 +3322,11 @@ void BuiltinsArrayStubBuilder::CopyWithin(GateRef glue, GateRef thisValue, GateR
         Bind(&afterCalculateCount);
         {
             direction = Int64(1);
-            BRANCH(BoolAnd(Int64LessThan(*copyFrom, *copyTo), Int64LessThan(*copyTo, Int64Add(*copyFrom, *count))),
+            GateRef copyFromVal = *copyFrom;
+            GateRef copyToVal = *copyTo;
+            GateRef countVal = *count;
+            BRANCH(LogicAndBuilder(env).And(Int64LessThan(copyFromVal, copyToVal))
+                .And(Int64LessThan(copyToVal, Int64Add(copyFromVal, countVal))).Done(),
                 &needToAdjustParam, &afterAdjustParam);
             Bind(&needToAdjustParam);
             {
@@ -3904,8 +3902,9 @@ void BuiltinsArrayStubBuilder::ReduceRight(GateRef glue, GateRef thisValue, Gate
             Label notHasException0(env);
             Label hasException1(env);
             Label notHasException1(env);
-            GateRef newLen = GetArrayLength(thisValue);
-            BRANCH(BoolAnd(IsStableJSArray(glue, thisValue), Int32Equal(*thisLen, newLen)),
+            GateRef thisLenVal = *thisLen;
+            BRANCH(LogicAndBuilder(env).And(IsStableJSArray(glue, thisValue))
+                .And(Int32Equal(thisLenVal, GetArrayLength(thisValue))).Done(),
                 &nextStep, &thisNotStable);
             Bind(&nextStep);
             BRANCH(Int32GreaterThanOrEqual(*k, Int32(0)), &next, &loopExit);
@@ -4476,7 +4475,7 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                             GateRef intLen = GetInt64OfTInt(arg0);
                             GateRef isGEZero = Int64GreaterThanOrEqual(intLen, Int64(0));
                             GateRef isLEMaxLen = Int64LessThanOrEqual(intLen, Int64(JSArray::MAX_ARRAY_INDEX));
-                            BRANCH(BoolAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
+                            BRANCH(BitAnd(isGEZero, isLEMaxLen), &validIntLength, &slowPath);
                             Bind(&validIntLength);
                             {
                                 arrayLength = intLen;
@@ -4492,7 +4491,7 @@ void BuiltinsArrayStubBuilder::GenArrayConstructor(GateRef glue, GateRef nativeC
                             GateRef doubleEqual = DoubleEqual(doubleLength, intToDouble);
                             GateRef doubleLEMaxLen =
                                 DoubleLessThanOrEqual(doubleLength, Double(JSArray::MAX_ARRAY_INDEX));
-                            BRANCH(BoolAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
+                            BRANCH(BitAnd(doubleEqual, doubleLEMaxLen), &validDoubleLength, &slowPath);
                             Bind(&validDoubleLength);
                             {
                                 arrayLength = SExtInt32ToInt64(doubleToInt);

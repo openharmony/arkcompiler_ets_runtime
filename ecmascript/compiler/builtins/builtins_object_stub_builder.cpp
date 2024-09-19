@@ -226,10 +226,9 @@ void BuiltinsObjectStubBuilder::Create(Variable *result, Label *exit, Label *slo
     Label newObject(env);
 
     GateRef proto = GetCallArg0(numArgs_);
-    GateRef protoIsNull = TaggedIsNull(proto);
-    GateRef protoIsEcmaObj = IsEcmaObject(proto);
-    GateRef protoIsJSShared = TaggedIsSharedObj(proto);
-    BRANCH(BoolOr(BoolAnd(BoolNot(protoIsEcmaObj), BoolNot(protoIsNull)), protoIsJSShared), slowPath, &newObject);
+    GateRef protoCheck = LogicAndBuilder(env).And(BoolNot(IsEcmaObject(proto)))
+        .And(BoolNot(TaggedIsNull(proto))).Done();
+    BRANCH(LogicOrBuilder(env).Or(protoCheck).Or(TaggedIsSharedObj(proto)).Done(), slowPath, &newObject);
     Bind(&newObject);
     {
         Label noProperties(env);
@@ -310,7 +309,8 @@ void BuiltinsObjectStubBuilder::AssignEnumElementProperty(Variable *result, Labe
             Bind(&next);
             GateRef key = GetKeyFromDictionary<NumberDictionary>(elements, *idx);
             Label checkEnumerable(env);
-            BRANCH(BoolOr(TaggedIsUndefined(key), TaggedIsHole(key)), &loopEnd, &checkEnumerable);
+            BRANCH(LogicOrBuilder(env).Or(TaggedIsUndefined(key)).Or(TaggedIsHole(key)).Done(),
+                &loopEnd, &checkEnumerable);
             Bind(&checkEnumerable);
             {
                 GateRef attr = GetAttributesFromDictionary<NumberDictionary>(elements, *idx);
@@ -574,7 +574,7 @@ void BuiltinsObjectStubBuilder::Assign(Variable *res, Label *nextIt, Label *func
 {
     auto env = GetEnvironment();
     Label checkJsObj(env);
-    BRANCH(BoolOr(TaggedIsNull(source), TaggedIsUndefined(source)), nextIt, &checkJsObj);
+    BRANCH(TaggedIsUndefinedOrNull(source), nextIt, &checkJsObj);
     Bind(&checkJsObj);
     {
         Label fastAssign(env);
@@ -908,7 +908,9 @@ void BuiltinsObjectStubBuilder::LayoutInfoGetAllEnumKeys(GateRef end, GateRef of
         Bind(&iLessEnd);
         {
             GateRef key = GetKey(layoutInfo, *i);
-            BRANCH(BoolAnd(TaggedIsString(key), IsEnumerable(GetAttr(layoutInfo, *i))), &isEnumerable, &loopEnd);
+            GateRef iVal = *i;
+            BRANCH(LogicAndBuilder(env).And(TaggedIsString(key)).And(IsEnumerable(GetAttr(layoutInfo, iVal))).Done(),
+                &isEnumerable, &loopEnd);
             Bind(&isEnumerable);
             BRANCH(IsUninitializedProperty(object, *i, layoutInfo), &loopEnd, &initializedProp);
             Bind(&initializedProp);
@@ -1193,6 +1195,16 @@ GateRef BuiltinsObjectStubBuilder::GetEnumElementKeys(GateRef glue, GateRef obj)
     return ret;
 }
 
+GateRef BuiltinsObjectStubBuilder::IsNotSlowObjectKey(GateRef obj)
+{
+    auto env = GetEnvironment();
+    return LogicAndBuilder(env)
+        .And(IsJSObject(obj))
+        .And(BoolNot(LogicOrBuilder(env).Or(IsTypedArray(obj)).Or(IsModuleNamespace(obj))
+                                        .Or(IsJSGlobalObject(obj)).Done()))
+        .Done();
+}
+
 void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowPath)
 {
     auto env = GetEnvironment();
@@ -1207,9 +1219,7 @@ void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowP
     Bind(&noPendingException);
     Label isFast(env);
     // EnumerableOwnNames(obj)
-    GateRef isSpecialKey = BoolOr(IsTypedArray(obj), IsModuleNamespace(obj));
-    GateRef notSlowObjectKey = BoolNot(BoolOr(isSpecialKey, IsJSGlobalObject(obj)));
-    BRANCH(BoolAnd(IsJSObject(obj), notSlowObjectKey), &isFast, slowPath);
+    BRANCH(IsNotSlowObjectKey(obj), &isFast, slowPath);
     Bind(&isFast);
     {
         Label hasKeyAndEle(env);
@@ -1218,7 +1228,7 @@ void BuiltinsObjectStubBuilder::Keys(Variable *result, Label *exit, Label *slowP
         GateRef keyArray = GetAllEnumKeys(glue_, obj);
         GateRef lengthOfKeys = GetLengthOfTaggedArray(keyArray);
         GateRef lengthOfElements = GetLengthOfTaggedArray(elementArray);
-        GateRef KeyAndEle = BoolAnd(Int32NotEqual(lengthOfElements, Int32(0)), Int32NotEqual(lengthOfKeys, Int32(0)));
+        GateRef KeyAndEle = BitAnd(Int32NotEqual(lengthOfElements, Int32(0)), Int32NotEqual(lengthOfKeys, Int32(0)));
         BRANCH(KeyAndEle, &hasKeyAndEle, &nonKeyAndEle);
         Bind(&hasKeyAndEle);
         {
@@ -1295,12 +1305,14 @@ void BuiltinsObjectStubBuilder::SetPrototypeOf(Variable *result, Label *exit, La
     DEFVARIABLE(proto, VariableType::JS_ANY(), Undefined());
     Label checkJsObj(env);
     Label setProto(env);
-    BRANCH(BoolOr(TaggedIsNull(obj), TaggedIsUndefined(obj)), slowPath, &checkJsObj);
+    BRANCH(TaggedIsUndefinedOrNull(obj), slowPath, &checkJsObj);
     Bind(&checkJsObj);
     {
         Label checkProto(env);
         proto = GetCallArg1(numArgs_);
-        BRANCH(BoolOr(TaggedIsNull(*proto), IsEcmaObject(*proto)), &checkProto, slowPath);
+        GateRef protoVal = *proto;
+        BRANCH(LogicOrBuilder(env).Or(TaggedIsNull(protoVal)).Or(IsEcmaObject(protoVal)).Done(),
+            &checkProto, slowPath);
         Bind(&checkProto);
         {
             Label isEcmaObject(env);
@@ -1318,26 +1330,26 @@ void BuiltinsObjectStubBuilder::SetPrototypeOf(Variable *result, Label *exit, La
     Bind(&setProto);
     {
         Label objNotSpecial(env);
-        GateRef isShared = BoolOr(TaggedIsSharedObj(obj), TaggedIsSharedObj(*proto));
-        GateRef isProxyOrShared = BoolOr(IsJsProxy(obj), isShared);
-        GateRef isSpecialobj = BoolOr(ObjIsSpecialContainer(obj), IsModuleNamespace(obj));
-        BRANCH(BoolOr(isProxyOrShared, isSpecialobj), slowPath, &objNotSpecial);
+        GateRef protoVal = *proto;
+        GateRef isSpecialobj = LogicOrBuilder(env).Or(IsJsProxy(obj)).Or(TaggedIsSharedObj(obj))
+            .Or(TaggedIsSharedObj(protoVal)).Or(ObjIsSpecialContainer(obj)).Or(IsModuleNamespace(obj)).Done();
+        BRANCH(isSpecialobj, slowPath, &objNotSpecial);
         Bind(&objNotSpecial);
-        Label heapObject(env);
         Label isFunction(env);
         Label notFunction(env);
-        BRANCH(BoolAnd(TaggedIsHeapObject(obj), TaggedIsHeapObject(*proto)), &heapObject, &notFunction);
-        Bind(&heapObject);
-        BRANCH(BoolAnd(IsJSFunction(obj), IsJSFunction(*proto)), &isFunction, &notFunction);
+        GateRef isFunc = LogicAndBuilder(env)
+            .And(TaggedIsHeapObject(obj)).And(TaggedIsHeapObject(protoVal))
+            .And(IsJSFunction(obj)).And(IsJSFunction(protoVal))
+            .Done();
+        BRANCH(isFunc, &isFunction, &notFunction);
         Bind(&isFunction);
         {
-            Label heapObj(env);
             Label isDerivedCtor(env);
             auto protoOrHclass = Load(VariableType::JS_ANY(), obj,
                                       IntPtr(JSFunction::PROTO_OR_DYNCLASS_OFFSET));
-            BRANCH(TaggedIsHeapObject(protoOrHclass), &heapObj, &notFunction);
-            Bind(&heapObj);
-            BRANCH(BoolAnd(IsJSHClass(protoOrHclass), IsDerived(obj)), &isDerivedCtor, &notFunction);
+            GateRef isDerivedCtorCheck = LogicAndBuilder(env).And(TaggedIsHeapObject(protoOrHclass))
+                .And(IsJSHClass(protoOrHclass)).And(IsDerived(obj)).Done();
+            BRANCH(isDerivedCtorCheck, &isDerivedCtor, &notFunction);
             Bind(&isDerivedCtor);
             auto cachedJSHClass = GetPrototypeFromHClass(protoOrHclass);
             SetProtoOrHClassToFunction(glue_, obj, cachedJSHClass);
@@ -1403,7 +1415,9 @@ GateRef BuiltinsObjectStubBuilder::ObjectSetPrototype(GateRef glue, GateRef obj,
                     Label isEqual2(env);
                     Label notEqual2(env);
                     Label protoNotProxy(env);
-                    GateRef protoIsNull = BoolOr(TaggedIsNull(*tempProto), BoolNot(IsEcmaObject(*tempProto)));
+                    GateRef tempProtoVal = *tempProto;
+                    GateRef protoIsNull = LogicOrBuilder(env).Or(TaggedIsNull(tempProtoVal))
+                        .Or(BoolNot(IsEcmaObject(tempProtoVal))).Done();
                     BRANCH(protoIsNull, &isNull, &notNull);
                     Bind(&isNull);
                     {
@@ -1464,15 +1478,13 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyNames(Variable *result, Label *exi
     Bind(&noPendingException);
     {
         Label isFast(env);
-        GateRef isSpecialKey = BoolOr(IsTypedArray(obj), IsModuleNamespace(obj));
-        GateRef notSlowObjectKey = BoolNot(BoolOr(isSpecialKey, IsJSGlobalObject(obj)));
-        BRANCH(BoolAnd(IsJSObject(obj), notSlowObjectKey), &isFast, slowPath);
+        BRANCH(IsNotSlowObjectKey(obj), &isFast, slowPath);
         Bind(&isFast);
         {
             Label notDictMode(env);
-            GateRef elements = GetElementsArray(obj);
-            GateRef properties = GetPropertiesArray(obj);
-            BRANCH(BoolOr(IsDictionaryMode(elements), IsDictionaryMode(properties)), slowPath, &notDictMode);
+            GateRef isDictMode = LogicOrBuilder(env).Or(IsDictionaryMode(GetElementsArray(obj)))
+                .Or(IsDictionaryMode(GetPropertiesArray(obj))).Done();
+            BRANCH(isDictMode, slowPath, &notDictMode);
             Bind(&notDictMode);
             {
                 Label getAllElementKeys(env);
@@ -1574,15 +1586,13 @@ void BuiltinsObjectStubBuilder::GetOwnPropertySymbols(Variable *result, Label *e
     Bind(&noPendingException);
     {
         Label isFast(env);
-        GateRef isSpecialKey = BoolOr(IsTypedArray(obj), IsModuleNamespace(obj));
-        GateRef notSlowObjectKey = BoolNot(BoolOr(isSpecialKey, IsJSGlobalObject(obj)));
-        BRANCH(BoolAnd(IsJSObject(obj), notSlowObjectKey), &isFast, slowPath);
+        BRANCH(IsNotSlowObjectKey(obj), &isFast, slowPath);
         Bind(&isFast);
         {
             Label notDictMode(env);
-            GateRef elements = GetElementsArray(obj);
-            GateRef properties = GetPropertiesArray(obj);
-            BRANCH(BoolOr(IsDictionaryMode(elements), IsDictionaryMode(properties)), slowPath, &notDictMode);
+            GateRef isDictMode = LogicOrBuilder(env).Or(IsDictionaryMode(GetElementsArray(obj)))
+                .Or(IsDictionaryMode(GetPropertiesArray(obj))).Done();
+            BRANCH(isDictMode, slowPath, &notDictMode);
             Bind(&notDictMode);
             {
                 Label getAllElementKeys(env);
@@ -1843,15 +1853,13 @@ void BuiltinsObjectStubBuilder::Entries(Variable* result, Label* exit, Label* sl
     Bind(&noPendingException);
     {
         Label isFast(env);
-        GateRef isSpecialKey = BoolOr(IsTypedArray(obj), IsModuleNamespace(obj));
-        GateRef notSlowObjectKey = BoolNot(BoolOr(isSpecialKey, IsJSGlobalObject(obj)));
-        BRANCH(BoolAnd(IsJSObject(obj), notSlowObjectKey), &isFast, slowPath);
+        BRANCH(IsNotSlowObjectKey(obj), &isFast, slowPath);
         Bind(&isFast);
         {
             Label notDictMode(env);
-            GateRef elements = GetElementsArray(obj);
-            GateRef properties = GetPropertiesArray(obj);
-            BRANCH(BoolOr(IsDictionaryMode(elements), IsDictionaryMode(properties)), slowPath, &notDictMode);
+            GateRef isDictMode = LogicOrBuilder(env).Or(IsDictionaryMode(GetElementsArray(obj)))
+                .Or(IsDictionaryMode(GetPropertiesArray(obj))).Done();
+            BRANCH(isDictMode, slowPath, &notDictMode);
             Bind(&notDictMode);
             {
                 Label hasKeyAndEle(env);
@@ -1860,7 +1868,7 @@ void BuiltinsObjectStubBuilder::Entries(Variable* result, Label* exit, Label* sl
                 GateRef propertyArray = GetEnumPropertyEntries(glue_, obj, slowPath);
                 GateRef elementLen = GetLengthOfTaggedArray(elementArray);
                 GateRef propertyLen = GetLengthOfTaggedArray(propertyArray);
-                GateRef keyAndEle = BoolAnd(Int32NotEqual(elementLen, Int32(0)), Int32NotEqual(propertyLen, Int32(0)));
+                GateRef keyAndEle = BitAnd(Int32NotEqual(elementLen, Int32(0)), Int32NotEqual(propertyLen, Int32(0)));
                 BRANCH(keyAndEle, &hasKeyAndEle, &nonKeyAndEle);
                 Bind(&hasKeyAndEle);
                 {
@@ -2176,10 +2184,9 @@ GateRef BuiltinsObjectStubBuilder::TestIntegrityLevel(GateRef glue,
                     Bind(&notConfigable);
                     {
                         // 1: IntegrityLevel::FROZEN
-                        GateRef levelIsFrozen = Int32Equal(level, Int32(1));
-                        GateRef isDataDesc = BoolNot(IsAccessor(attr));
-                        BRANCH(BoolAnd(BoolAnd(levelIsFrozen, isDataDesc), IsWritable(attr)),
-                            &notFrozen, &loopEnd);
+                        GateRef isFrozen = LogicAndBuilder(env).And(Int32Equal(level, Int32(1)))
+                            .And(BoolNot(IsAccessor(attr))).And(IsWritable(attr)).Done();
+                        BRANCH(isFrozen, &notFrozen, &loopEnd);
                         Bind(&notFrozen);
                         {
                             result = False();
@@ -2219,9 +2226,7 @@ void BuiltinsObjectStubBuilder::GetOwnPropertyDescriptors(Variable *result, Labe
     Bind(&noPendingException);
     {
         Label isFast(env);
-        GateRef isSpecialKey = BoolOr(IsTypedArray(obj), IsModuleNamespace(obj));
-        GateRef notSlowObjectKey = BoolNot(BoolOr(isSpecialKey, IsJSGlobalObject(obj)));
-        BRANCH(BoolAnd(IsJSObject(obj), notSlowObjectKey), &isFast, slowPath);
+        BRANCH(IsNotSlowObjectKey(obj), &isFast, slowPath);
         Bind(&isFast);
         {
             Label notDictMode(env);

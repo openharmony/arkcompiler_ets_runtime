@@ -1868,8 +1868,11 @@ void SlowPathLowering::LowerSuperCallSpread(GateRef gate)
 
 GateRef SlowPathLowering::IsSuperFuncValid(GateRef superFunc)
 {
-    return builder_.BoolAnd(builder_.BoolAnd(builder_.TaggedIsHeapObject(superFunc), builder_.IsJSFunction(superFunc)),
-                            builder_.IsConstructor(superFunc));
+    return LogicAndBuilder(builder_.GetCurrentEnvironment())
+        .And(builder_.TaggedIsHeapObject(superFunc))
+        .And(builder_.IsJSFunction(superFunc))
+        .And(builder_.IsConstructor(superFunc))
+        .Done();
 }
 
 GateRef SlowPathLowering::IsAotOrFastCall(GateRef func, CircuitBuilder::JudgeMethodType type)
@@ -2032,53 +2035,43 @@ bool SlowPathLowering::IsDependIfStateMent(GateRef gate, size_t idx)
 
 void SlowPathLowering::LowerConditionJump(GateRef gate, bool isEqualJump)
 {
-    std::vector<GateRef> trueState;
     GateRef value = acc_.GetValueIn(gate, 0);
+
+    Label isZero(&builder_);
+    Label notZero(&builder_);
     // GET_ACC().IsFalse()
-    GateRef condition = builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE);
-    GateRef ifBranch = builder_.Branch(acc_.GetState(gate), condition, 1, 1, "checkFalse");
-    GateRef ifTrue = builder_.IfTrue(ifBranch);
-    GateRef ifFalse = builder_.IfFalse(ifBranch);
-    trueState.emplace_back(isEqualJump ? ifTrue : ifFalse);
+    Label notFalse(&builder_);
+    BRANCH_CIR(builder_.IsSpecial(value, JSTaggedValue::VALUE_FALSE), &isZero, &notFalse);
+    builder_.Bind(&notFalse);
+    {
+        // (GET_ACC().IsInt() && GET_ACC().GetInt() == 0)
+        Label isInt(&builder_);
+        Label notIntZero(&builder_);
+        BRANCH_CIR(builder_.TaggedIsInt(value), &isInt, &notIntZero);
+        builder_.Bind(&isInt);
+        BRANCH_CIR(builder_.Equal(builder_.TaggedGetInt(value), builder_.Int32(0)), &isZero, &notIntZero);
+        builder_.Bind(&notIntZero);
+        {
+            // (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0.0)
+            Label isDouble(&builder_);
+            BRANCH_CIR(builder_.TaggedIsDouble(value), &isDouble, &notZero);
+            builder_.Bind(&isDouble);
+            BRANCH_CIR(builder_.Equal(builder_.GetDoubleOfTDouble(value), builder_.Double(0.0)), &isZero, &notZero);
+            builder_.Bind(&notZero);
+        }
+    }
+    builder_.Bind(&isZero);
 
-    // (GET_ACC().IsInt() && GET_ACC().GetInt())
-    std::vector<GateRef> intFalseState;
-    ifBranch = isEqualJump ? builder_.Branch(ifFalse, builder_.TaggedIsInt(value), 1, 1, "checkInt")
-        : builder_.Branch(ifTrue, builder_.TaggedIsInt(value), 1, 1, "checkInt");
-    GateRef isInt = builder_.IfTrue(ifBranch);
-    GateRef notInt = builder_.IfFalse(ifBranch);
-    intFalseState.emplace_back(notInt);
-    condition = builder_.Equal(builder_.TaggedGetInt(value), builder_.Int32(0));
-    ifBranch = builder_.Branch(isInt, condition, 1, 1, "checkZero");
-    GateRef isZero = builder_.IfTrue(ifBranch);
-    GateRef notZero = builder_.IfFalse(ifBranch);
-    trueState.emplace_back(isEqualJump ? isZero : notZero);
-    intFalseState.emplace_back(isEqualJump ? notZero : isZero);
-    auto mergeIntState = builder_.Merge(intFalseState);
-
-    // (GET_ACC().IsDouble() && GET_ACC().GetDouble() == 0)
-    std::vector<GateRef> doubleFalseState;
-    ifBranch = builder_.Branch(mergeIntState, builder_.TaggedIsDouble(value), 1, 1, "checkDouble");
-    GateRef isDouble = builder_.IfTrue(ifBranch);
-    GateRef notDouble = builder_.IfFalse(ifBranch);
-    doubleFalseState.emplace_back(notDouble);
-    condition = builder_.Equal(builder_.GetDoubleOfTDouble(value), builder_.Double(0));
-    ifBranch = builder_.Branch(isDouble, condition, 1, 1, "checkZero");
-    GateRef isDoubleZero = builder_.IfTrue(ifBranch);
-    GateRef notDoubleZero = builder_.IfFalse(ifBranch);
-    trueState.emplace_back(isEqualJump ? isDoubleZero : notDoubleZero);
-    doubleFalseState.emplace_back(isEqualJump ? notDoubleZero : isDoubleZero);
-    auto mergeFalseState = builder_.Merge(doubleFalseState);
-
-    GateRef mergeTrueState = builder_.Merge(trueState);
+    Label &ifTrue = isEqualJump ? isZero : notZero;
+    Label &ifFalse = isEqualJump ? notZero : isZero;
     auto uses = acc_.Uses(gate);
     for (auto it = uses.begin(); it != uses.end();) {
         if (acc_.GetOpCode(*it) == OpCode::IF_TRUE) {
             acc_.SetMetaData(*it, circuit_->OrdinaryBlock());
-            it = acc_.ReplaceIn(it, mergeTrueState);
+            it = acc_.ReplaceIn(it, ifTrue.GetControl());
         } else if (acc_.GetOpCode(*it) == OpCode::IF_FALSE) {
             acc_.SetMetaData(*it, circuit_->OrdinaryBlock());
-            it = acc_.ReplaceIn(it, mergeFalseState);
+            it = acc_.ReplaceIn(it, ifFalse.GetControl());
         } else if (IsDependIfStateMent(*it, it.GetIndex())) {
             it = acc_.ReplaceIn(it, acc_.GetDep(gate));
         } else {

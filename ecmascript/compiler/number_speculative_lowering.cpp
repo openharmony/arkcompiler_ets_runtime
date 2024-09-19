@@ -768,18 +768,20 @@ GateRef NumberSpeculativeLowering::CompareDoubles(GateRef left, GateRef right)
             break;
         case TypedBinOp::TYPED_EQ:
         case TypedBinOp::TYPED_STRICTEQ: {
-            GateRef leftNotNan = builder_.BoolNot(builder_.DoubleIsNAN(left));
-            GateRef rightNotNan = builder_.BoolNot(builder_.DoubleIsNAN(right));
-            GateRef doubleEqual = builder_.DoubleEqual(left, right);
-            condition = builder_.BoolAnd(builder_.BoolAnd(leftNotNan, rightNotNan), doubleEqual);
+            condition = LogicAndBuilder(builder_.GetCurrentEnvironment())
+                .And(builder_.BoolNot(builder_.DoubleIsNAN(left)))
+                .And(builder_.BoolNot(builder_.DoubleIsNAN(right)))
+                .And(builder_.DoubleEqual(left, right))
+                .Done();
             break;
         }
         case TypedBinOp::TYPED_NOTEQ:
         case TypedBinOp::TYPED_STRICTNOTEQ: {
-            GateRef leftNotNan = builder_.DoubleIsNAN(left);
-            GateRef rightNotNan = builder_.DoubleIsNAN(right);
-            GateRef doubleNotEqual = builder_.DoubleNotEqual(left, right);
-            condition = builder_.BoolOr(builder_.BoolOr(leftNotNan, rightNotNan), doubleNotEqual);
+            condition = LogicOrBuilder(builder_.GetCurrentEnvironment())
+                .Or(builder_.DoubleIsNAN(left))
+                .Or(builder_.DoubleIsNAN(right))
+                .Or(builder_.DoubleNotEqual(left, right))
+                .Done();
             break;
         }
         default:

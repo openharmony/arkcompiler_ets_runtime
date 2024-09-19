@@ -1023,7 +1023,7 @@ void NewObjectStubBuilder::InitializeSFunction(GateRef glue, GateRef func, GateR
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
         SetMethodToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
-        BRANCH(BoolOr(HasAccessor(kind), IsBaseConstructorKind(kind)), &hasAccessOrIsBaseConstructor, &exit);
+        BRANCH(BitOr(HasAccessor(kind), IsBaseConstructorKind(kind)), &hasAccessOrIsBaseConstructor, &exit);
         Bind(&hasAccessOrIsBaseConstructor);
         {
             Branch(IsBaseConstructorKind(kind), &isBaseConstructor, &isNotBaseConstructor);
@@ -1763,7 +1763,7 @@ GateRef NewObjectStubBuilder::FastSuperAllocateThis(GateRef glue, GateRef superC
     Label callRuntime(env);
     Label newObject(env);
     Label isFunction(env);
-    
+
     BRANCH(IsJSFunction(newTarget), &isFunction, &callRuntime);
     Bind(&isFunction);
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
@@ -2127,7 +2127,7 @@ void NewObjectStubBuilder::CreateJSTypedArrayIterator(Variable *result, Label *e
     Label isTypedArray(env);
     Label throwTypeError(env);
 
-    BRANCH(BoolOr(TaggedIsHole(thisValue), TaggedIsUndefinedOrNull(thisValue)), &throwTypeError, &thisExists);
+    BRANCH(TaggedIsUndefinedOrNullOrHole(thisValue), &throwTypeError, &thisExists);
     Bind(&thisExists);
     BRANCH(IsEcmaObject(thisValue), &isEcmaObject, &throwTypeError);
     Bind(&isEcmaObject);
