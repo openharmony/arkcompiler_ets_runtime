@@ -123,6 +123,9 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
 
 bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
 {
+    if (thread->IsSharedConcurrentMarkingOrFinished() && !ObjectExceedMaxHeapSize()) {
+        return false;
+    }
     if ((OldSpaceExceedLimit() || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
         !NeedStopCollection()) {
         CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
@@ -133,6 +136,9 @@ bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
 
 bool SharedHeap::CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size)
 {
+    if (thread->IsSharedConcurrentMarkingOrFinished() && !ObjectExceedMaxHeapSize()) {
+        return false;
+    }
     if ((sHugeObjectSpace_->CommittedSizeExceed(size) || GetHeapObjectSize() > globalSpaceAllocLimit_) &&
         !NeedStopCollection()) {
         CollectGarbage<TriggerGCType::SHARED_GC, GCReason::ALLOCATION_LIMIT>(thread);
