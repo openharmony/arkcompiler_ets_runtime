@@ -514,7 +514,7 @@ JSTaggedValue JSDate::Parse(EcmaRuntimeCallInfo *argv)
 }
 
 // 20.4.3.1
-JSTaggedValue JSDate::Now()
+JSTaggedValue JSDate::Now(int64_t *sec, int64_t *usec)
 {
     // time from now is in ms.
     int64_t ans;
@@ -522,6 +522,10 @@ JSTaggedValue JSDate::Now()
     };
     gettimeofday(&tv, nullptr);
     ans = static_cast<int64_t>(tv.tv_sec) * MS_PER_SECOND + (tv.tv_usec / MS_PER_SECOND);
+    if (sec != nullptr && usec != nullptr) {
+        *sec = static_cast<int64_t>(tv.tv_sec);
+        *usec = static_cast<int64_t>(tv.tv_usec);
+    }
     return JSTaggedValue(static_cast<double>(ans));
 }
 
