@@ -97,7 +97,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
     RecursionScope recurScope(this, HeapType::SHARED_HEAP);
     CheckInHeapProfiler();
     GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
-    if (UNLIKELY(ShouldVerifyHeap())) {
+    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
         // pre gc heap verify
         LOG_ECMA(DEBUG) << "pre gc shared heap verify";
         sharedGCMarker_->MergeBackAndResetRSetWorkListHandler();
@@ -117,7 +117,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
             UNREACHABLE();
             break;
     }
-    if (UNLIKELY(ShouldVerifyHeap())) {
+    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
         // pre gc heap verify
         LOG_ECMA(DEBUG) << "after gc shared heap verify";
         SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
@@ -369,7 +369,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
         CheckInHeapProfiler();
         gcType_ = gcType;
         GetEcmaGCStats()->RecordStatisticBeforeGC(gcType, gcReason);
-        if (UNLIKELY(ShouldVerifyHeap())) {
+        if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
             // pre gc heap verify
             LOG_ECMA(DEBUG) << "pre gc shared heap verify";
             sharedGCMarker_->MergeBackAndResetRSetWorkListHandler();
@@ -390,7 +390,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
                 break;
         }
 
-        if (UNLIKELY(ShouldVerifyHeap())) {
+        if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
             // after gc heap verify
             LOG_ECMA(DEBUG) << "after gc shared heap verify";
             SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
@@ -1095,7 +1095,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         [[maybe_unused]] GcStateScope scope(thread_);
 #endif
         CHECK_NO_GC;
-        if (UNLIKELY(ShouldVerifyHeap())) {
+        if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
             // pre gc heap verify
             LOG_ECMA(DEBUG) << "pre gc heap verify";
             ProcessSharedGCRSetWorkList();
@@ -1262,7 +1262,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         SetRecordHeapObjectSizeBeforeSensitive(GetHeapObjectSize());
     }
 
-    if (UNLIKELY(ShouldVerifyHeap())) {
+    if (UNLIKELY(ShouldVerifyHeap())) { // LCOV_EXCL_BR_LINE
         // verify post gc heap verify
         LOG_ECMA(DEBUG) << "post gc heap verify";
         Verification(this, VerifyKind::VERIFY_POST_GC).VerifyAll();
