@@ -114,20 +114,21 @@ class JSStackTrace {
 public:
     JSStackTrace() = default;
     ~JSStackTrace();
-
     static JSStackTrace *GetInstance();
     static std::optional<MethodInfo> ReadMethodInfo(panda_file::MethodDataAccessor &mda);
     static CVector<MethodInfo> ReadAllMethodInfos(std::shared_ptr<JSPandaFile> jsPandaFile);
     static std::optional<CodeInfo> TranslateByteCodePc(uintptr_t realPc, const CVector<MethodInfo> &vec);
     bool GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
                         uintptr_t loadOffset, JsFunction *jsFunction);
-    static void Destory(JSStackTrace* trace);
+    static void Destory();
 private:
     bool AddMethodInfos(uintptr_t mapBase);
 
     CVector<MethodInfo> methodInfo_;
     std::unordered_map<uintptr_t, std::shared_ptr<JSPandaFile>> jsPandaFiles_;
     std::unordered_map<uintptr_t, CVector<MethodInfo>> methodInfos_;
+    static JSStackTrace *trace_;
+    static std::mutex mutex_;
 };
 
 class JSSymbolExtractor {
