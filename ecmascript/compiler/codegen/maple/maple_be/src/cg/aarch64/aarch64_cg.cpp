@@ -218,9 +218,7 @@ std::string AArch64CG::FindGCTIBPatternName(const std::string &name) const
 
 void AArch64CG::EnrollTargetPhases(MaplePhaseManager *pm) const
 {
-    if (!GetMIRModule()->IsCModule()) {
-        CGOptions::DisableCGSSA();
-    }
+    CGOptions::DisableCGSSA();
 #include "aarch64_phases.def"
 }
 

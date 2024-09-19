@@ -78,52 +78,6 @@ void X64GenProEpilog::GeneratePopCalleeSavedRegs(RegOperand &regOpnd, MemOperand
     cgFunc.GetCurBB()->AppendInsn(copyInsn);
 }
 
-void X64GenProEpilog::GeneratePushUnnamedVarargRegs()
-{
-    if (cgFunc.GetMirModule().IsCModule() && cgFunc.GetFunction().GetAttr(FUNCATTR_varargs)) {
-        X64MemLayout *memlayout = static_cast<X64MemLayout *>(cgFunc.GetMemlayout());
-        uint8 size = GetPointerSize();
-        uint32 dataSizeBits = size * kBitsPerByte;
-        int64 offset = -memlayout->GetGRSaveAreaBaseLoc();
-        if (memlayout->GetSizeOfGRSaveArea() % kX64StackPtrAlignment) {
-            offset += size; /* End of area should be aligned. Hole between VR and GR area */
-        }
-        uint32 start_regno = k6BitSize - (memlayout->GetSizeOfGRSaveArea() / size);
-        DEBUG_ASSERT(start_regno <= k6BitSize, "Incorrect starting GR regno for GR Save Area");
-
-        /* Parameter registers in x86: %rdi, %rsi, %rdx, %rcx, %r8, %r9 */
-        std::vector<X64reg> paramRegs = {RDI, RSI, RDX, RCX, R8, R9};
-        for (uint32 i = start_regno; i < paramRegs.size(); i++) {
-            MOperator mMovrmOp = x64::MOP_movq_r_m;
-            RegOperand &opndFpReg = cgFunc.GetOpndBuilder()->CreatePReg(x64::RBP, k64BitSize, kRegTyInt);
-            MemOperand &memOpnd = cgFunc.GetOpndBuilder()->CreateMem(opndFpReg, offset, dataSizeBits);
-            Insn &copyInsn = cgFunc.GetInsnBuilder()->BuildInsn(mMovrmOp, X64CG::kMd[mMovrmOp]);
-            RegOperand &regOpnd = cgFunc.GetOpndBuilder()->CreatePReg(paramRegs[i], k64BitSize, kRegTyInt);
-            copyInsn.AddOpndChain(regOpnd).AddOpndChain(memOpnd);
-            cgFunc.GetCurBB()->AppendInsn(copyInsn);
-            offset += size;
-        }
-
-        if (!CGOptions::UseGeneralRegOnly()) {
-            offset = -memlayout->GetVRSaveAreaBaseLoc();
-            start_regno = k6BitSize - (memlayout->GetSizeOfVRSaveArea() / (size * k2BitSize));
-            DEBUG_ASSERT(start_regno <= k6BitSize, "Incorrect starting GR regno for VR Save Area");
-            for (uint32 i = start_regno + static_cast<uint32>(V0); i < static_cast<uint32>(V6); i++) {
-                MOperator mMovrmOp = x64::MOP_movq_r_m;
-                RegOperand &opndFpReg = cgFunc.GetOpndBuilder()->CreatePReg(x64::RBP, k64BitSize, kRegTyInt);
-                MemOperand &memOpnd = cgFunc.GetOpndBuilder()->CreateMem(opndFpReg, offset, dataSizeBits);
-                Insn &copyInsn = cgFunc.GetInsnBuilder()->BuildInsn(mMovrmOp, X64CG::kMd[mMovrmOp]);
-                RegOperand &regOpnd =
-                    cgFunc.GetOpndBuilder()->CreatePReg(static_cast<X64reg>(i), k64BitSize, kRegTyInt);
-                copyInsn.AddOpndChain(regOpnd).AddOpndChain(memOpnd);
-
-                cgFunc.GetCurBB()->AppendInsn(copyInsn);
-                offset += (size * k2BitSize);
-            }
-        }
-    }
-}
-
 void X64GenProEpilog::GenerateProlog(BB &bb)
 {
     auto &x64CGFunc = static_cast<X64CGFunc &>(cgFunc);
@@ -159,7 +113,6 @@ void X64GenProEpilog::GenerateProlog(BB &bb)
     }
 
     GenerateCalleeSavedRegs(true);
-    GeneratePushUnnamedVarargRegs();
 
     bb.InsertAtBeginning(*x64CGFunc.GetDummyBB());
     x64CGFunc.GetDummyBB()->SetIsProEpilog(false);

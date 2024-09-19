@@ -424,12 +424,7 @@ void Emitter::EmitAsmLabel(const MIRSymbol &mirSymbol, AsmLabel label)
         }
         case kAsmType: {
             Emit(asmInfo->GetType());
-            if (GetCG()->GetMIRModule()->IsCModule() && (symName == "sys_nerr" || symName == "sys_errlist")) {
-                /* eliminate warning from deprecated C name */
-                Emit("strerror");
-            } else {
-                Emit(symName);
-            }
+            Emit(symName);
             Emit(",");
             Emit(asmInfo->GetAtobt());
             Emit("\n");
@@ -693,11 +688,7 @@ void Emitter::EmitScalarConstant(MIRConst &mirConst, bool newLine, bool flag32, 
         }
         case kConstStrConst: {
             MIRStrConst &strCt = static_cast<MIRStrConst &>(mirConst);
-            if (cg->GetMIRModule()->IsCModule()) {
-                EmitStrConstant(strCt, isIndirect);
-            } else {
-                EmitStrConstant(strCt);
-            }
+            EmitStrConstant(strCt);
             break;
         }
         case kConstStr16Const: {
@@ -1609,18 +1600,7 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
     for (size_t i = 0; i < uNum; ++i) {
         MIRConst *elemConst = arrayCt.GetConstVecItem(i);
         if (IsPrimitiveScalar(elemConst->GetType().GetPrimType())) {
-            if (cg->GetMIRModule()->IsCModule()) {
-                bool strLiteral = false;
-                if (arrayType.GetDim() == 1) {
-                    MIRType *ety = arrayType.GetElemType();
-                    if (ety->GetPrimType() == PTY_i8 || ety->GetPrimType() == PTY_u8) {
-                        strLiteral = true;
-                    }
-                }
-                EmitScalarConstant(*elemConst, true, false, strLiteral == false);
-            } else {
-                EmitScalarConstant(*elemConst);
-            }
+            EmitScalarConstant(*elemConst);
         } else if (elemConst->GetType().GetKind() == kTypeArray) {
             EmitArrayConstant(*elemConst);
         } else if (elemConst->GetKind() == kConstAddrofFunc) {
@@ -1632,10 +1612,8 @@ void Emitter::EmitArrayConstant(MIRConst &mirConst)
     DEBUG_ASSERT(static_cast<int64>(arrayType.GetSizeArrayItem(0)) > 0, "must not be zero");
     int64 iNum = (arrayType.GetSizeArrayItem(0) > 0) ? (static_cast<int64>(arrayType.GetSizeArrayItem(0)) - uNum) : 0;
     if (iNum > 0) {
-        if (!cg->GetMIRModule()->IsCModule()) {
-            CHECK_FATAL(!Globals::GetInstance()->GetBECommon()->IsEmptyOfTypeSizeTable(), "container empty check");
-            CHECK_FATAL(!arrayCt.GetConstVec().empty(), "container empty check");
-        }
+        CHECK_FATAL(!Globals::GetInstance()->GetBECommon()->IsEmptyOfTypeSizeTable(), "container empty check");
+        CHECK_FATAL(!arrayCt.GetConstVec().empty(), "container empty check");
         if (uNum > 0) {
             uint64 unInSizeInByte =
                 static_cast<uint64>(iNum) * static_cast<uint64>(Globals::GetInstance()->GetBECommon()->GetTypeSize(
@@ -1881,9 +1859,6 @@ void Emitter::EmitMetaDataSymbolWithMarkFlag(const std::vector<MIRSymbol *> &mir
                                              bool isHotFlag)
 {
 #ifdef ARK_LITECG_DEBUG
-    if (cg->GetMIRModule()->IsCModule()) {
-        return;
-    }
     if (mirSymbolVec.empty()) {
         return;
     }
@@ -2001,72 +1976,6 @@ void Emitter::EmitLocalVariable(const CGFunc &cgFunc)
 {
 #ifdef ARK_LITECG_DEBUG
     /* function local pstatic initialization */
-    if (cg->GetMIRModule()->IsCModule()) {
-        CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
-        MIRSymbolTable *lSymTab = cgFunc.GetMirModule().CurFunction()->GetSymTab();
-        if (lSymTab != nullptr) {
-            size_t lsize = lSymTab->GetSymbolTableSize();
-            for (size_t i = 0; i < lsize; i++) {
-                if (i < cgFunc.GetLSymSize() && !cg->GetMIRModule()->IsCModule()) {
-                    continue;
-                }
-                MIRSymbol *st = lSymTab->GetSymbolFromStIdx(static_cast<uint32>(i));
-                if (st != nullptr && st->GetStorageClass() == kScPstatic) {
-                    /*
-                     * Local static names can repeat.
-                     * Append the current program unit index to the name.
-                     */
-                    CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
-                    PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
-                    std::string localname = st->GetName() + std::to_string(pIdx);
-                    static std::vector<std::string> emittedLocalSym;
-                    bool found = false;
-                    for (auto name : emittedLocalSym) {
-                        if (name == localname) {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (found) {
-                        continue;
-                    }
-                    emittedLocalSym.push_back(localname);
-
-                    /* cg created data should be located in .text */
-                    /* [cgFunc.GetLSymSize(), lSymTab->GetSymbolTableSize()) -> cg created symbol */
-                    if (i < cgFunc.GetLSymSize()) {
-                        if (st->IsThreadLocal()) {
-                            (void)Emit("\t.section\t.tdata,\"awT\",@progbits\n");
-                        } else {
-                            Emit(asmInfo->GetSection());
-                            Emit(asmInfo->GetData());
-                            Emit("\n");
-                        }
-                    } else {
-                        CHECK_FATAL(st->GetStorageClass() == kScPstatic && st->GetSKind() == kStConst,
-                                    "cg should create constant!");
-                        /* cg created data should be located in .text */
-                        (void)Emit("\t.section\t.text\n");
-                    }
-                    EmitAsmLabel(*st, kAsmAlign);
-                    EmitAsmLabel(*st, kAsmLocal);
-                    MIRType *ty = st->GetType();
-                    MIRConst *ct = st->GetKonst();
-                    if (ct == nullptr) {
-                        EmitAsmLabel(*st, kAsmComm);
-                    } else if (kTypeArray == ty->GetKind()) {
-                        if (ty->GetSize() != 0) {
-                            EmitAsmLabel(*st, kAsmSyname);
-                            EmitArrayConstant(*ct);
-                        }
-                    } else {
-                        EmitAsmLabel(*st, kAsmSyname);
-                        EmitScalarConstant(*ct, true, false, true /* isIndirect */);
-                    }
-                }
-            }
-        }
-    }
 #endif
 }
 
@@ -2262,15 +2171,11 @@ void Emitter::EmitGlobalVariable()
             /* _PTR__cinf is emitted in dataDefTab and dataUndefTab */
             continue;
         } else if (mirSymbol->IsMuidTab()) {
-            if (!GetCG()->GetMIRModule()->IsCModule()) {
-                muidVec[0] = mirSymbol;
-                EmitMuidTable(muidVec, strIdx2Type, mirSymbol->GetMuidTabName());
-            }
+            muidVec[0] = mirSymbol;
+            EmitMuidTable(muidVec, strIdx2Type, mirSymbol->GetMuidTabName());
             continue;
         } else if (mirSymbol->IsCodeLayoutInfo()) {
-            if (!GetCG()->GetMIRModule()->IsCModule()) {
-                EmitFuncLayoutInfo(*mirSymbol);
-            }
+            EmitFuncLayoutInfo(*mirSymbol);
             continue;
         } else if (mirSymbol->GetName().find(kStaticFieldNamePrefixStr) == 0) {
             staticFieldsVec.emplace_back(mirSymbol);
@@ -2322,14 +2227,6 @@ void Emitter::EmitGlobalVariable()
         if (mirType == nullptr) {
             continue;
         }
-        if (GetCG()->GetMIRModule()->IsCModule() && mirSymbol->GetStorageClass() == kScExtern) {
-            /* only emit weak & initialized extern at present */
-            if (mirSymbol->IsWeak() || mirSymbol->IsConst()) {
-                EmitAsmLabel(*mirSymbol, kAsmWeak);
-            } else {
-                continue;
-            }
-        }
         /*
          * emit uninitialized global/static variables.
          * these variables store in .comm section.
@@ -2362,7 +2259,6 @@ void Emitter::EmitGlobalVariable()
 
         /* emit initialized global/static variables. */
         if (mirSymbol->GetStorageClass() == kScGlobal ||
-            (mirSymbol->GetStorageClass() == kScExtern && GetCG()->GetMIRModule()->IsCModule()) ||
             (mirSymbol->GetStorageClass() == kScFstatic && !mirSymbol->IsReadOnly())) {
             /* Emit section */
             EmitAsmLabel(*mirSymbol, kAsmType);
@@ -2443,11 +2339,7 @@ void Emitter::EmitGlobalVariable()
                         CHECK_FATAL(sizeinbits == k64BitSize, "EmitGlobalVariable: pointer must be of size 8");
                     }
                 }
-                if (cg->GetMIRModule()->IsCModule()) {
-                    EmitScalarConstant(*mirConst, true, false, true);
-                } else {
-                    EmitScalarConstant(*mirConst);
-                }
+                EmitScalarConstant(*mirConst);
             } else if (mirType->GetKind() == kTypeArray) {
                 if (mirSymbol->HasAddrOfValues()) {
                     EmitConstantTable(*mirSymbol, *mirConst, strIdx2Type);
@@ -2501,10 +2393,6 @@ void Emitter::EmitGlobalVariable()
     EmitLiterals(literalVec, strIdx2Type);
     /* emit static field std::strings */
     EmitStaticFields(staticFieldsVec);
-
-    if (GetCG()->GetMIRModule()->IsCModule()) {
-        return;
-    }
 
     EmitMuidTable(constStrVec, strIdx2Type, kMuidConststrPrefixStr);
 
@@ -2642,9 +2530,7 @@ void Emitter::EmitGlobalVariable()
 
 #if !defined(TARGARM32)
     /* finally emit __gxx_personality_v0 DW.ref */
-    if (!cg->GetMIRModule()->IsCModule()) {
-        EmitDWRef("__mpl_personality_v0");
-    }
+    EmitDWRef("__mpl_personality_v0");
 #endif
 #endif
 }

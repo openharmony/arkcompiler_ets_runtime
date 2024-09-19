@@ -209,9 +209,7 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
         } else {
             /* should refer to function attribute */
             (void)emitter->Emit("\t.globl\t").Emit(funcSt->GetName()).Emit("\n");
-            if (!currCG->GetMIRModule()->IsCModule()) {
-                (void)emitter->Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
-            }
+            (void)emitter->Emit("\t.hidden\t").Emit(funcSt->GetName()).Emit("\n");
         }
         (void)emitter->Emit("\t.type\t" + funcStName + ", %function\n");
         (void)emitter->Emit(funcStName + ":\n");
@@ -249,11 +247,6 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
             }
             /* emit bb headers */
             if (bb->GetLabIdx() != MIRLabelTable::GetDummyLabel()) {
-                if (aarchCGFunc.GetMirModule().IsCModule() && bb->IsBBNeedAlign() &&
-                    bb->GetAlignNopNum() != kAlignMovedFlag) {
-                    uint32 power = bb->GetAlignPower();
-                    (void)emitter->Emit("\t.p2align ").Emit(power).Emit("\n");
-                }
                 EmitBBHeaderLabel(funcEmitInfo, funcName, bb->GetLabIdx());
             }
 

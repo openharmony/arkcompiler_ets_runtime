@@ -48,9 +48,6 @@ void AArch64FixShortBranch::SetInsnId() const
     AArch64CGFunc *aarch64CGFunc = static_cast<AArch64CGFunc *>(cgFunc);
     FOR_ALL_BB(bb, aarch64CGFunc)
     {
-        if (aarch64CGFunc->GetMirModule().IsCModule() && bb->IsBBNeedAlign() && bb->GetAlignNopNum() != 0) {
-            i = i + CalculateAlignRange(*bb, i);
-        }
         FOR_BB_INSNS(insn, bb)
         {
             if (!insn->IsMachineInstruction()) {

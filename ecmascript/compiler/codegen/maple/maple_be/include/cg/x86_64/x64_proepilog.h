@@ -35,7 +35,6 @@ private:
     void GenerateCalleeSavedRegs(bool isPush);
     void GeneratePushCalleeSavedRegs(RegOperand &regOpnd, MemOperand &memOpnd, uint32 regSize);
     void GeneratePopCalleeSavedRegs(RegOperand &regOpnd, MemOperand &memOpnd, uint32 regSize);
-    void GeneratePushUnnamedVarargRegs();
     void GeneratePushRbpInsn();
     void GenerateMovRspToRbpInsn();
     void GenerateSubFrameSizeFromRspInsn();
