@@ -35,31 +35,31 @@
 // The following global object properties are not listed here:
 //   - parseFloat ( string ), listed in builtins_number.h instead.
 //   - parseInt ( string ), listed in builtins_number.h instead.
-#define BUILTIN_GLOBAL_FUNCTIONS_COMMON(V)                                  \
-    /* decodeURI ( encodedURI ) */                                          \
-    V("decodeURI",                DecodeURI,             1, INVALID)        \
-    /* decodeURIComponent ( encodedURIComponent ) */                        \
-    V("decodeURIComponent",       DecodeURIComponent,    1, INVALID)        \
-    /* encodeURI ( uri ) */                                                 \
-    V("encodeURI",                EncodeURI,             1, INVALID)        \
-    /* encodeURIComponent ( uriComponent ) */                               \
-    V("encodeURIComponent",       EncodeURIComponent,    1, INVALID)        \
-    /* escape ( string ), defined in B.2.1 */                               \
-    V("escape",                   Escape,                1, INVALID)        \
-    /* eval ( x ), which is NOT supported in ArkTS engine */                \
-    V("eval",                     NotSupportEval,        1, INVALID)        \
-    /* isFinite ( number ) */                                               \
-    V("isFinite",                 IsFinite,              1, GlobalIsFinite) \
-    /* isNaN ( number ) */                                                  \
-    V("isNaN",                    IsNaN,                 1, GlobalIsNan)    \
-    /* unescape ( string )*/                                                \
-    V("unescape",                 Unescape,              1, INVALID)        \
-    /* The following are ArkTS extensions */                                \
-    V("markModuleCollectable",    MarkModuleCollectable, 0, INVALID)        \
-    V("loadNativeModule",         LoadNativeModule,      0, INVALID)        \
-    V("print",                    PrintEntrypoint,       0, INVALID)        \
-    V("isSendable",               IsSendable,            0, INVALID)        \
-    V("__getCurrentModuleName__", GetCurrentModuleName,  0, INVALID)        \
+#define BUILTIN_GLOBAL_FUNCTIONS_COMMON(V)                                            \
+    /* decodeURI ( encodedURI ) */                                                    \
+    V("decodeURI",                DecodeURI,             1, INVALID)                  \
+    /* decodeURIComponent ( encodedURIComponent ) */                                  \
+    V("decodeURIComponent",       DecodeURIComponent,    1, GlobalDecodeURIComponent) \
+    /* encodeURI ( uri ) */                                                           \
+    V("encodeURI",                EncodeURI,             1, INVALID)                  \
+    /* encodeURIComponent ( uriComponent ) */                                         \
+    V("encodeURIComponent",       EncodeURIComponent,    1, INVALID)                  \
+    /* escape ( string ), defined in B.2.1 */                                         \
+    V("escape",                   Escape,                1, INVALID)                  \
+    /* eval ( x ), which is NOT supported in ArkTS engine */                          \
+    V("eval",                     NotSupportEval,        1, INVALID)                  \
+    /* isFinite ( number ) */                                                         \
+    V("isFinite",                 IsFinite,              1, GlobalIsFinite)           \
+    /* isNaN ( number ) */                                                            \
+    V("isNaN",                    IsNaN,                 1, GlobalIsNan)              \
+    /* unescape ( string )*/                                                          \
+    V("unescape",                 Unescape,              1, INVALID)                  \
+    /* The following are ArkTS extensions */                                          \
+    V("markModuleCollectable",    MarkModuleCollectable, 0, INVALID)                  \
+    V("loadNativeModule",         LoadNativeModule,      0, INVALID)                  \
+    V("print",                    PrintEntrypoint,       0, INVALID)                  \
+    V("isSendable",               IsSendable,            0, INVALID)                  \
+    V("__getCurrentModuleName__", GetCurrentModuleName,  0, INVALID)                  \
     V("__getCurrentBundleName__", GetCurrentBundleName,  0, INVALID)
 #if ECMASCRIPT_ENABLE_RUNTIME_STAT
 #define BUILTIN_GLOBAL_FUNCTIONS_RUNTIME_STAT(V)        \

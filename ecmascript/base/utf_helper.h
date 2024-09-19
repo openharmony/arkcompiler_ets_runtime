@@ -57,6 +57,8 @@ static constexpr uint8_t BIT_MASK_2 = 0xC0;
 static constexpr uint8_t BIT_MASK_3 = 0xE0;
 static constexpr uint8_t BIT_MASK_4 = 0xF0;
 static constexpr uint8_t BIT_MASK_5 = 0xF8;
+static constexpr uint8_t BIT_MASK_FF = 0xFF;
+static constexpr uint16_t BIT16_MASK = 0x3FF;
 
 static constexpr uint8_t UTF8_1B_MAX = 0x7f;
 
@@ -136,6 +138,12 @@ static inline uint32_t CombineTwoU16(uint16_t d0, uint16_t d1)
 }
 
 std::pair<int32_t, size_t> ConvertUtf8ToUnicodeChar(const uint8_t *utf8, size_t maxLen);
+
+static inline bool IsHexDigits(uint16_t ch)
+{
+    return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' && ch <= 'f');
+}
+
 }  // namespace panda::ecmascript::base::utf_helper
 
 #endif  // ECMASCRIPT_BASE_UTF_HELPER_H

@@ -193,6 +193,14 @@ public:
         return idx;
     }
 
+    static inline size_t FindFromU8ToUpper(const std::string &thisStr, uint8_t *u8Data)
+    {
+        std::string tmpStr = Utf8ToString(u8Data, 1);
+        std::transform(tmpStr.begin(), tmpStr.end(), tmpStr.begin(), [](unsigned char c) { return std::toupper(c); });
+        size_t idx = Find(thisStr, tmpStr, 0);
+        return idx;
+    }
+
     static int UnicodeFromUtf8(const uint8_t *p, int maxLen, const uint8_t **pp)
     {
         int c = *p++;

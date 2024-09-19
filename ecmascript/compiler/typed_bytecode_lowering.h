@@ -222,6 +222,8 @@ private:
     void SpeculateConditionJump(const ConditionJumpTypeInfoAccessor &tacc, bool flag);
     void SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                               BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect = false);
+    void SpeculateCallBuiltinFromGlobal(GateRef gate, const std::vector<GateRef> &args,
+                                        BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect = false);
     void DeleteConstDataIfNoUser(GateRef gate);
     bool TryLowerNewBuiltinConstructor(GateRef gate);
     bool TryLowerTypedLdobjBynameFromGloablBuiltin(GateRef gate);
@@ -233,6 +235,11 @@ private:
     const JSPandaFile* GetCalleePandaFile(GateRef gate);
 
     void AddProfiling(GateRef gate);
+
+    bool IsFuncFromGlobal(GateRef gate) const
+    {
+        return acc_.GetOpCode(gate) == OpCode::LOAD_BUILTIN_OBJECT;
+    }
 
     bool Uncheck() const
     {

@@ -18,6 +18,7 @@
 #include <sstream>
 #include <sys/time.h>
 
+#include "ecmascript/stubs/runtime_optimized_stubs-inl.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"
 #include "ecmascript/base/json_stringifier.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
@@ -3046,6 +3047,49 @@ DEF_RUNTIME_STUBS(TryGetInternString)
     RUNTIME_STUBS_HEADER(TryGetInternString);
     JSHandle<EcmaString> string = GetHArg<EcmaString>(argv, argc, 0);  // 0: means the zeroth parameter
     return RuntimeTryGetInternString(argGlue, string);
+}
+
+DEF_RUNTIME_STUBS(DecodeURIComponent)
+{
+    RUNTIME_STUBS_HEADER(DecodeURIComponent);
+    JSHandle<JSTaggedValue> arg = GetHArg<JSTaggedValue>(argv, argc, 0);
+    JSHandle<EcmaString> string = JSTaggedValue::ToString(thread, arg);
+    if (thread->HasPendingException()) {
+        return JSTaggedValue::VALUE_EXCEPTION;
+    }
+    if (EcmaStringAccessor(string).IsTreeString()) {
+        string = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(thread->GetEcmaVM(), string));
+    }
+    auto stringAcc = EcmaStringAccessor(string);
+    JSTaggedValue result;
+    if (stringAcc.IsLineString()) {
+        // line string or flatten tree string
+        if (!stringAcc.IsUtf16()) {
+            result = RuntimeDecodeURIComponent<uint8_t>(thread, string, stringAcc.GetDataUtf8());
+        } else {
+            result = RuntimeDecodeURIComponent<uint16_t>(thread, string, stringAcc.GetDataUtf16());
+        }
+    } else if (stringAcc.IsConstantString()) {
+        ASSERT(stringAcc.IsUtf8());
+        result = RuntimeDecodeURIComponent<uint8_t>(thread, string, stringAcc.GetDataUtf8());
+    } else {
+        ASSERT(stringAcc.IsSlicedString());
+        auto parent = SlicedString::Cast(string.GetTaggedValue())->GetParent();
+        auto parentStrAcc = EcmaStringAccessor(parent);
+        auto startIndex = SlicedString::Cast(string.GetTaggedValue())->GetStartIndex();
+        if (parentStrAcc.IsLineString()) {
+            if (parentStrAcc.IsUtf8()) {
+                result = RuntimeDecodeURIComponent<uint8_t>(thread, string,
+                                                            parentStrAcc.GetDataUtf8() + startIndex);
+            } else {
+                result = RuntimeDecodeURIComponent<uint16_t>(thread, string,
+                                                             parentStrAcc.GetDataUtf16() + startIndex);
+            }
+        } else {
+            result = RuntimeDecodeURIComponent<uint8_t>(thread, string, parentStrAcc.GetDataUtf8() + startIndex);
+        }
+    }
+    return result.GetRawData();
 }
 
 JSTaggedType RuntimeStubs::CreateArrayFromList([[maybe_unused]] uintptr_t argGlue, int32_t argc,

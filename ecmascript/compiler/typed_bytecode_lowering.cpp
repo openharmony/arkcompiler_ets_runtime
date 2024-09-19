@@ -1636,13 +1636,22 @@ void TypedBytecodeLowering::LowerTypedSuperCall(GateRef gate)
 void TypedBytecodeLowering::SpeculateCallBuiltin(GateRef gate, GateRef func, const std::vector<GateRef> &args,
                                                  BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect)
 {
-    if (IS_TYPED_INLINE_BUILTINS_ID(id)) {
-        return;
-    }
     if (!Uncheck()) {
         builder_.CallTargetCheck(gate, func, builder_.IntPtr(static_cast<int64_t>(id)), {args[0]});
     }
 
+    GateRef result = builder_.TypedCallBuiltin(gate, args, id, isSideEffect);
+
+    if (isThrow) {
+        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
+    } else {
+        acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), result);
+    }
+}
+
+void TypedBytecodeLowering::SpeculateCallBuiltinFromGlobal(GateRef gate, const std::vector<GateRef> &args,
+                                                           BuiltinsStubCSigns::ID id, bool isThrow, bool isSideEffect)
+{
     GateRef result = builder_.TypedCallBuiltin(gate, args, id, isSideEffect);
 
     if (isThrow) {
@@ -1903,9 +1912,17 @@ void TypedBytecodeLowering::LowerTypedCallArg1(GateRef gate)
     GateRef func = tacc.GetFunc();
     GateRef a0Value = tacc.GetValue();
     BuiltinsStubCSigns::ID id = tacc.TryGetPGOBuiltinMethodId();
-    if (!IS_INVALID_ID(id) && IS_TYPED_BUILTINS_NUMBER_ID(id)) {
+    if (!IS_INVALID_ID(id) && (IS_TYPED_BUILTINS_NUMBER_ID(id) || IS_TYPED_BUILTINS_GLOBAL_ID(id))) {
+        if (IS_TYPED_INLINE_BUILTINS_ID(id)) {
+            return;
+        }
         AddProfiling(gate);
-        SpeculateCallBuiltin(gate, func, { a0Value }, id, true);
+        if (IsFuncFromGlobal(func)) {
+            // No need to do CallTargetCheck if func is from LOAD_BUILTIN_OBJECT.
+            SpeculateCallBuiltinFromGlobal(gate, { a0Value }, id, true);
+        } else {
+            SpeculateCallBuiltin(gate, func, { a0Value }, id, true);
+        }
     } else {
         if (!tacc.IsValidCallMethodId()) {
             return;
