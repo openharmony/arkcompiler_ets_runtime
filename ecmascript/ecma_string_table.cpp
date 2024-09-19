@@ -183,8 +183,7 @@ EcmaString *EcmaStringTable::GetOrInternString(EcmaVM *vm, const JSHandle<EcmaSt
     thread = signalState ? vm->GetJSThreadNoCheck() : vm->GetJSThread();
     auto firstFlat = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, firstString));
     auto secondFlat = JSHandle<EcmaString>(thread, EcmaStringAccessor::Flatten(vm, secondString));
-    auto [hashcode, isInteger] = EcmaStringAccessor(firstFlat).ComputeRawHashcode();
-    hashcode = EcmaStringAccessor(secondFlat).ComputeHashcode(hashcode, isInteger);
+    uint32_t hashcode = EcmaStringAccessor::CalculateAllConcatHashCode(firstFlat, secondFlat);
     if (signalState) {
         return GetOrInternStringWithoutLock(thread, firstString, secondString, hashcode);
     }

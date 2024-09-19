@@ -1436,13 +1436,13 @@ HWTEST_F_L0(EcmaStringAccessorTest, StringsAreEqualUtf16_003)
 }
 
 /*
- * @tc.name: EqualToSplicedString
+ * @tc.name: EqualToSplicedString_001
  * @tc.desc: Tests whether the source string is equal to the concatenated string.
  * is within expectations.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F_L0(EcmaStringAccessorTest, EqualToSplicedString)
+HWTEST_F_L0(EcmaStringAccessorTest, EqualToSplicedString_001)
 {
     ObjectFactory* factory = instance->GetFactory();
     {
@@ -1531,6 +1531,278 @@ HWTEST_F_L0(EcmaStringAccessorTest, EqualToSplicedString)
         EXPECT_TRUE(EcmaStringAccessor(secondString).IsUtf16());
         bool result = EcmaStringAccessor(sourceString).EqualToSplicedString(*firstString, *secondString);
         EXPECT_TRUE(!result);
+    }
+}
+
+/*
+ * @tc.name: EqualToSplicedString_002
+ * @tc.desc: Tests whether the source string is equal to the concatenated string.
+ * is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(EcmaStringAccessorTest, EqualToSplicedString_002)
+{
+    ObjectFactory* factory = instance->GetFactory();
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("123A");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("123");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("A");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("A123");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("A");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("123");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("123456789A");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("123456789");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("A");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("123456789011A");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("123456789011");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("A");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+}
+
+/*
+ * @tc.name: EqualToSplicedString_003
+ * @tc.desc: Tests whether the source string is equal to the concatenated string.
+ * is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(EcmaStringAccessorTest, EqualToSplicedString_003)
+{
+    ObjectFactory* factory = instance->GetFactory();
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("12345678901");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("123456789");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("01");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("12345678901");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("1234567890");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("1");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("12345678901");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("123456789");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("01");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("12345678901");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("12345678");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("901");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("12345678901");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("1234567");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("8901");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("123456789");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("12345");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("6789");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("123456789");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("1234");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("56789");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+}
+
+/*
+ * @tc.name: EqualToSplicedString_004
+ * @tc.desc: Tests whether the source string is equal to the concatenated string.
+ * is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+
+HWTEST_F_L0(EcmaStringAccessorTest, EqualToSplicedString_004)
+{
+    ObjectFactory* factory = instance->GetFactory();
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("你好在干嘛");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("你好");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("在干嘛");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("你吃饭了么");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("你吃");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("饭了么");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("你你你你你你你你你我我我我我我我我我");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("你你你你你你你你你");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("我我我我我我我我我");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+}
+
+/*
+ * @tc.name: EqualToSplicedString_005
+ * @tc.desc: Tests whether the source string is equal to the concatenated string.
+ * is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(EcmaStringAccessorTest, EqualToSplicedString_005)
+{
+    ObjectFactory* factory = instance->GetFactory();
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("你好233");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("你");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("好233");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("你好abc");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("你好");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("abc");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("233你好");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("233");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("你好");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("abc你好");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("abc");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("你好");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("你吃饭了么abc");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("你吃");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("饭了么abc");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("你吃饭了么abc");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("你吃饭了么");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("abc");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+}
+
+/*
+ * @tc.name: EqualToSplicedString_006
+ * @tc.desc: Tests whether the source string is equal to the concatenated string.
+ * is within expectations.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(EcmaStringAccessorTest, EqualToSplicedString_006)
+{
+    ObjectFactory* factory = instance->GetFactory();
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("你好");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("你好");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("你好");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("你好");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("233");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("233");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
+    }
+
+    {
+        JSHandle<EcmaString> allString = factory->NewFromUtf8("233");
+        JSHandle<EcmaString> firstString = factory->NewFromUtf8("");
+        JSHandle<EcmaString> secondString = factory->NewFromUtf8("233");
+        JSHandle<EcmaString> ans = factory->ConcatFromString(firstString, secondString);
+        bool result = EcmaStringAccessor::StringsAreEqual(*allString, *ans);
+        EXPECT_TRUE(result);
     }
 }
 
