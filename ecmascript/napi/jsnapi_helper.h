@@ -43,7 +43,7 @@
 #endif
 
 #define CROSS_THREAD_CHECK(vm)                                                                  \
-    [[maybe_unused]] JSThread *thread = (vm)->GetAndFastCheckJSThread()
+    [[maybe_unused]] JSThread *thread = (vm)->GetJSThread()
 
 #define CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, returnVal)                              \
     CROSS_THREAD_CHECK(vm);                                                                      \

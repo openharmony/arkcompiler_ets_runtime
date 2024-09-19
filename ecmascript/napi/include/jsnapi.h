@@ -245,7 +245,7 @@ public:
         return isWorker_;
     }
 
-    void SetIsRestrictedWorker(bool isRestrictedWorker)
+    inline void SetIsRestrictedWorker(bool isRestrictedWorker)
     {
         isRestrictedWorker_ = isRestrictedWorker;
     }

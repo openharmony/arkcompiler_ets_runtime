@@ -36,7 +36,6 @@
 #include "uv.h"
 #endif
 
-
 namespace panda {
 using ecmascript::CString;
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
