@@ -532,7 +532,8 @@ void NumberSpeculativeLowering::VisitPhi(GateRef gate)
             acc_.SetMachineType(gate, MachineType::I1);
             break;
         }
-        case TypeInfo::INT32: {
+        case TypeInfo::INT32:
+        case TypeInfo::UINT32: {
             acc_.SetGateType(gate, GateType::NJSValue());
             acc_.SetMachineType(gate, MachineType::I32);
             break;
@@ -592,6 +593,7 @@ void NumberSpeculativeLowering::VisitLoadElement(GateRef gate)
         case TypedLoadOp::INT16ARRAY_LOAD_ELEMENT:
         case TypedLoadOp::UINT16ARRAY_LOAD_ELEMENT:
         case TypedLoadOp::INT32ARRAY_LOAD_ELEMENT:
+        case TypedLoadOp::UINT32ARRAY_LOAD_ELEMENT:
             acc_.SetMachineType(gate, MachineType::I32);
             acc_.SetGateType(gate, GateType::NJSValue());
             break;
