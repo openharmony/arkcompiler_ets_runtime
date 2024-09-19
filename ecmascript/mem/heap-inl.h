@@ -264,6 +264,15 @@ void Heap::MergeToOldSpaceSync(LocalSpace *localSpace)
     oldSpace_->Merge(localSpace);
 }
 
+bool Heap::InHeapProfiler()
+{
+#if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
+    return GetEcmaVM()->GetHeapProfile() != nullptr;
+#else
+    return false;
+#endif
+}
+
 TaggedObject *Heap::TryAllocateYoungGeneration(JSHClass *hclass, size_t size)
 {
     size = AlignUp(size, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
