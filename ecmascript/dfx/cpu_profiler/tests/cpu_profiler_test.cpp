@@ -66,7 +66,7 @@ private:
 }
 
 namespace panda::test {
-class CpuprofilerTest : public testing::Test {
+class CpuProfilerTest : public testing::Test {
 public:
     static void SetUpTestCase()
     {
@@ -94,7 +94,7 @@ public:
     JSThread *thread {nullptr};
 };
 
-HWTEST_F_L0(CpuprofilerTest, TestStopCpuProfilerForFile)
+HWTEST_F_L0(CpuProfilerTest, TestStopCpuProfilerForFile)
 {
     int interval = 1;
     bool ret;
@@ -108,7 +108,7 @@ HWTEST_F_L0(CpuprofilerTest, TestStopCpuProfilerForFile)
     EXPECT_FALSE(ret);
 }
 
-HWTEST_F_L0(CpuprofilerTest, TestStartCpuProfilerForFile)
+HWTEST_F_L0(CpuProfilerTest, TestStartCpuProfilerForFile)
 {
     int interval = 1;
     bool ret;
@@ -129,7 +129,7 @@ HWTEST_F_L0(CpuprofilerTest, TestStartCpuProfilerForFile)
     EXPECT_FALSE(ret);
 }
 
-HWTEST_F_L0(CpuprofilerTest, TestStopCpuProfilerForInfo)
+HWTEST_F_L0(CpuProfilerTest, TestStopCpuProfilerForInfo)
 {
     int interval = 1;
     bool ret;
@@ -149,7 +149,7 @@ HWTEST_F_L0(CpuprofilerTest, TestStopCpuProfilerForInfo)
     EXPECT_FALSE(ret);
 }
 
-HWTEST_F_L0(CpuprofilerTest, TestGetStackBeforeCallNapi)
+HWTEST_F_L0(CpuProfilerTest, TestGetStackBeforeCallNapi)
 {
     int interval = 100;
     CpuProfilerFriendTest CpuProfilerFriend(instance, interval);
@@ -159,5 +159,34 @@ HWTEST_F_L0(CpuprofilerTest, TestGetStackBeforeCallNapi)
 
     flag = CpuProfilerFriend.GetStackBeforeCallNapiTest(thread);
     EXPECT_FALSE(flag);
+}
+
+HWTEST_F_L0(CpuProfilerTest, TestCpuProfilerHasSameName)
+{
+    int interval = 500;
+
+    bool res = DFXJSNApi::StartCpuProfilerForInfo(instance, interval);
+    EXPECT_TRUE(res);
+    // The cpuprofiler_1.js only support test A->B->C, not support test A->C, B->C
+    std::string fileName = DEBUGGER_ABC_DIR "cpuprofiler_1.abc";
+    std::string entryPoint = "cpuprofiler_1";
+    res = JSNApi::Execute(instance, fileName, entryPoint);
+    ASSERT_TRUE(res);
+    std::unique_ptr<ProfileInfo> profileInfo = DFXJSNApi::StopCpuProfilerForInfo(instance);
+    size_t nodesLen = profileInfo->nodeCount;
+    std::unordered_set<std::string> functionNames;
+    // Check if the function has multiple nodes
+    for (size_t i = 0; i < nodesLen; ++i) {
+        const auto &cpuProfileNode = profileInfo->nodes[i];
+        std::string functionName = cpuProfileNode.codeEntry.functionName;
+        auto node = functionNames.find(functionName);
+        if (node == functionNames.end()) {
+            functionNames.insert(functionName);
+        } else {
+            res = false;
+            break;
+        }
+    }
+    ASSERT_TRUE(res);
 }
 }  // namespace panda::test
