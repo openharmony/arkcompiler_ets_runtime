@@ -38,6 +38,7 @@
 
 namespace panda::ecmascript {
 [[maybe_unused]] static bool g_needCheck = true;
+
 std::unordered_map<EntityId, std::string> JsStackInfo::nameMap;
 std::unordered_map<EntityId, std::vector<uint8>> JsStackInfo::machineCodeMap;
 
@@ -506,7 +507,7 @@ CVector<MethodInfo> JSStackTrace::ReadAllMethodInfos(std::shared_ptr<JSPandaFile
 {
     CVector<MethodInfo> result;
     if (jsPandaFile == nullptr) {
-        LOG_ECMA(DEBUG) << "Read all methods info in file failed, file is nullptr.";
+        LOG_ECMA(ERROR) << "Read all methods info in file failed, file is nullptr.";
         return result;
     }
     const panda_file::File *pf = jsPandaFile->GetPandaFile();
