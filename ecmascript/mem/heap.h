@@ -1222,7 +1222,7 @@ public:
 
     void NotifyHighSensitive(bool isStart);
 
-    void HandleExitHighSensitiveEvent();
+    bool HandleExitHighSensitiveEvent();
 
     bool ObjectExceedMaxHeapSize() const override;
 

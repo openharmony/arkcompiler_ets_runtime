@@ -39,7 +39,7 @@ public:
 
     void ResetWorkManager(SharedGCWorkManager *workManager);
     void MarkRoots(uint32_t threadId, SharedMarkType markType);
-    void MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm);
+    void MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, SharedMarkType markType);
     void CollectLocalVMRSet(EcmaVM *localVm);
     void MarkStringCache(uint32_t threadId);
     void MarkSerializeRoots(uint32_t threadId);
