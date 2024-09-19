@@ -589,7 +589,7 @@ void BaseDeserializer::AllocateMultiRegion(SparseSpace *space, size_t spaceObjSi
     space->ResetTopPointer(space->GetCurrentRegion()->GetEnd() - lastRegionRemainSize);
 }
 
-Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex)
+void BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, size_t spaceObjSize, size_t &regionIndex)
 {
     regionIndex = regionVector_.size();
     size_t regionAlignedSize = SerializeData::AlignUpRegionAvailableSize(spaceObjSize);
@@ -614,7 +614,6 @@ Region *BaseDeserializer::AllocateMultiSharedRegion(SharedSparseSpace *space, si
         regionNum--;
     }
     space->MergeDeserializeAllocateRegions(allocateRegions);
-    return allocateRegions.front();
 }
 
 void BaseDeserializer::AllocateToOldSpace(size_t oldSpaceSize)
@@ -673,8 +672,8 @@ void BaseDeserializer::AllocateToSharedOldSpace(size_t sOldSpaceSize)
     SharedSparseSpace *space = sheap_->GetOldSpace();
     uintptr_t object = space->AllocateNoGCAndExpand(thread_, sOldSpaceSize);
     if (UNLIKELY(object == 0U)) {
-        Region *region = AllocateMultiSharedRegion(space, sOldSpaceSize, sOldRegionIndex_);
-        sOldSpaceBeginAddr_ = region->GetBegin();
+        AllocateMultiSharedRegion(space, sOldSpaceSize, sOldRegionIndex_);
+        sOldSpaceBeginAddr_ = regionVector_[sOldRegionIndex_++]->GetBegin();
     } else {
         if (thread_->IsSharedConcurrentMarkingOrFinished()) {
             Region *region = Region::ObjectAddressToRange(object);
@@ -690,8 +689,8 @@ void BaseDeserializer::AllocateToSharedNonMovableSpace(size_t sNonMovableSpaceSi
     SharedNonMovableSpace *space = sheap_->GetNonMovableSpace();
     uintptr_t object = space->AllocateNoGCAndExpand(thread_, sNonMovableSpaceSize);
     if (UNLIKELY(object == 0U)) {
-        Region *region = AllocateMultiSharedRegion(space, sNonMovableSpaceSize, sNonMovableRegionIndex_);
-        sNonMovableSpaceBeginAddr_ = region->GetBegin();
+        AllocateMultiSharedRegion(space, sNonMovableSpaceSize, sNonMovableRegionIndex_);
+        sNonMovableSpaceBeginAddr_ = regionVector_[sNonMovableRegionIndex_++]->GetBegin();
     } else {
         if (thread_->IsSharedConcurrentMarkingOrFinished()) {
             Region *region = Region::ObjectAddressToRange(object);
