@@ -50,7 +50,6 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableArrayBoundsCheckElimination_ = runtimeOptions.IsEnableArrayBoundsCheckElimination();
     isEnableTypeLowering_ = runtimeOptions.IsEnableTypeLowering();
     isEnableEarlyElimination_ = runtimeOptions.IsEnableEarlyElimination();
-    isEnableEmptyCatchFunction_ = runtimeOptions.IsEnableEmptyCatchFunction();
     isEnableLaterElimination_ = runtimeOptions.IsEnableLaterElimination();
     isEnableValueNumbering_ = runtimeOptions.IsEnableValueNumbering();
     isEnableOptInlining_ = runtimeOptions.IsEnableOptInlining();
@@ -249,9 +248,6 @@ void AotCompilerPreprocessor::AnalyzeGraph(BCInfo &bytecodeInfo, CompilationOpti
     {
         builder.SetPreAnalysis();
         builder.BytecodeToCircuit();
-        if (builder.HasEmptyCatchBB()) {
-            emptyCatchBBMethods_.push_back(fullName);
-        }
         if (builder.HasIrreducibleLoop()) {
             irreducibleMethods_.push_back(fullName);
         }
@@ -441,10 +437,6 @@ bool AotCompilerPreprocessor::IsSkipMethod(const JSPandaFile *jsPandaFile, const
 
     std::string fullName = IRModule::GetFuncName(methodLiteral, jsPandaFile);
     if (HasSkipMethod(irreducibleMethods_, fullName)) {
-        return true;
-    }
-
-    if (HasSkipMethod(emptyCatchBBMethods_, fullName) && !cOptions.isEnableEmptyCatchFunction_) {
         return true;
     }
 

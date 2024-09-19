@@ -167,7 +167,6 @@ struct BytecodeRegion {
     ChunkVector<std::tuple<size_t, size_t, bool>> expandedPreds;
     GateRef dependCache {Circuit::NullGate()};
     BytecodeIterator bytecodeIterator_ {};
-    bool IsEmptyCatchBB {false}; // For empty catch BB
     BytecodeRegion(Chunk* chunk) : preds(chunk), succs(chunk),
         trys(chunk), catches(chunk), loopBacks(chunk), expandedPreds(chunk)
     {
@@ -602,11 +601,6 @@ public:
         return preAnalysis_;
     }
 
-    bool HasEmptyCatchBB() const
-    {
-        return hasEmptyCatchBB_;
-    }
-
     bool NeedIrreducibleLoopCheck() const
     {
         return IsPreAnalysis() || IsJitCompile();
@@ -668,7 +662,6 @@ private:
     void HandleOsrLoopBody(BytecodeRegion &osrLoopBodyBB);
     void BuildOsrCircuit();
 
-    void UpdateEmptyCatchBB();
     void UpdateCFG();
     void CollectTryPredsInfo();
     void ClearUnreachableRegion(ChunkVector<BytecodeRegion*>& pendingList);
@@ -724,8 +717,6 @@ private:
     uint32_t methodId_ {0};
     bool preAnalysis_ {false};
     std::set<const BytecodeRegion *> catchBBOfOSRLoop_{};
-    std::map<uint32_t, bool> candidateEmptyCatch_ {};
-    bool hasEmptyCatchBB_ {false};
     bool isIrreducible_ {false};
     bool isJitCompile_ {false};
     CVector<size_t> timeIn_ {};

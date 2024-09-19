@@ -90,10 +90,6 @@ void BytecodeCircuitBuilder::CollectRegionInfo(uint32_t bcIndex)
         }
         auto nextIndex = bcIndex + 1; // 1: next pc
         auto targetIndex = FindBcIndexByPc(pc + offset);
-        auto it = candidateEmptyCatch_.find(targetIndex);
-        if (it != candidateEmptyCatch_.end()) {
-            it->second = true;
-        }
         // condition branch current basic block end
         if (info.IsCondJump()) {
             regionsInfo_.InsertSplit(nextIndex);
@@ -141,7 +137,6 @@ void BytecodeCircuitBuilder::CollectTryCatchBlockInfo(ExceptionInfo &byteCodeExc
             auto pcOffset = catchBlock.GetHandlerPc();
             auto catchBlockPc = const_cast<uint8_t *>(method_->GetBytecodeArray() + pcOffset);
             auto catchBlockBcIndex = FindBcIndexByPc(catchBlockPc);
-            candidateEmptyCatch_.insert(std::pair<uint32_t, bool>(catchBlockBcIndex, false));
             regionsInfo_.InsertHead(catchBlockBcIndex);
             // try block associate catch block
             byteCodeException.back().catches.emplace_back(catchBlockPc);
@@ -386,20 +381,6 @@ void BytecodeCircuitBuilder::BuildRegions(const ExceptionInfo &byteCodeException
     BuildCircuit();
 }
 
-void BytecodeCircuitBuilder::UpdateEmptyCatchBB()
-{
-    for (size_t i = 0; i < graph_.size(); i++) {
-        auto &bb = RegionAt(i);
-        auto it = candidateEmptyCatch_.find(bb.start);
-        if (it != candidateEmptyCatch_.end()) {
-            if (it->second) {
-                bb.IsEmptyCatchBB = true;
-                hasEmptyCatchBB_ = true;
-            }
-        }
-    }
-}
-
 void BytecodeCircuitBuilder::BuildCatchBlocks(const ExceptionInfo &byteCodeException)
 {
     // try catch block associate
@@ -606,7 +587,6 @@ void BytecodeCircuitBuilder::UpdateCFG()
             catchBlock->trys.emplace_back(&bb);
         }
     }
-    UpdateEmptyCatchBB();
 }
 
 // build circuit

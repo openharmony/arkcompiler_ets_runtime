@@ -75,7 +75,6 @@ struct CompilationOptions {
     bool isEnableLaterElimination_ {true};
     bool isEnableValueNumbering_ {true};
     bool isEnableOptInlining_ {true};
-    bool isEnableEmptyCatchFunction_ {false};
     bool isEnableOptString_ {true};
     bool isEnableOptPGOType_ {true};
     bool isEnableOptTrackField_ {true};
@@ -238,7 +237,6 @@ private:
     CVector<std::unique_ptr<BytecodeInfoCollector>> bcInfoCollectors_;
     CallMethodFlagMap callMethodFlagMap_;
     AOTCompilationEnv aotCompilationEnv_;
-    CVector<std::string> emptyCatchBBMethods_;
     CVector<std::string> irreducibleMethods_;
     friend class OhosPkgArgs;
 };
