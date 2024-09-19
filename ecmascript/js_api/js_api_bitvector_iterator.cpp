@@ -47,7 +47,7 @@ JSTaggedValue JSAPIBitVectorIterator::Next(EcmaRuntimeCallInfo* argv)
     // If a has a [[TypedBitVectorName]] internal slot, then
     // Let len be the value of O’s [[BitVectorLength]] internal slot.
     ASSERT(bitVector->IsJSAPIBitVector());
-    [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, bitVector.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, bitVector);
     const uint32_t length = static_cast<uint32_t>(JSHandle<JSAPIBitVector>::Cast(bitVector)->GetSize());
     // If index >= len, then
     if (index >= length) {

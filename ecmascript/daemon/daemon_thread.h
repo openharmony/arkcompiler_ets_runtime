@@ -32,7 +32,7 @@ static constexpr uint32_t DAEMON_THREAD_INDEX = 0;
 class DaemonThread : public JSThread {
 public:
     static void CreateNewInstance();
-    static DaemonThread *GetInstance();
+    static DaemonThread *PUBLIC_API GetInstance();
     static void DestroyInstance();
 
     using ThreadId = uint32_t;

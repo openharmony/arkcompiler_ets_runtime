@@ -131,9 +131,9 @@ JSTaggedValue BuiltinsSharedMap::Has(EcmaRuntimeCallInfo *argv)
                                                                "The has method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSSharedMap *jsMap = JSSharedMap::Cast(self.GetTaggedValue().GetTaggedObject());
+    JSHandle<JSSharedMap> map(self);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    bool flag = jsMap->Has(thread, key.GetTaggedValue());
+    bool flag = JSSharedMap::Has(thread, map, key.GetTaggedValue());
     return GetTaggedBoolean(flag);
 }
 
@@ -148,9 +148,9 @@ JSTaggedValue BuiltinsSharedMap::Get(EcmaRuntimeCallInfo *argv)
                                                                "The get method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    JSSharedMap *jsMap = JSSharedMap::Cast(self.GetTaggedValue().GetTaggedObject());
+    JSHandle<JSSharedMap> map(self);
     JSHandle<JSTaggedValue> key = GetCallArg(argv, 0);
-    JSTaggedValue value = jsMap->Get(thread, key.GetTaggedValue());
+    JSTaggedValue value = JSSharedMap::Get(thread, map, key.GetTaggedValue());
     return value;
 }
 
@@ -165,7 +165,7 @@ JSTaggedValue BuiltinsSharedMap::ForEach(EcmaRuntimeCallInfo *argv)
                                                                "The forEach method cannot be bound.");
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
     }
-    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, self.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSSharedMap> scope(thread, self);
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     JSHandle<JSSharedMap> map(self);
     JSHandle<JSTaggedValue> func(GetCallArg(argv, 0));
@@ -210,8 +210,8 @@ JSTaggedValue BuiltinsSharedMap::GetSize(EcmaRuntimeCallInfo *argv)
     if (!self->IsJSSharedMap()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, "obj is not SharedMap", JSTaggedValue::Exception());
     }
-    JSSharedMap *jsMap = JSSharedMap::Cast(self.GetTaggedValue().GetTaggedObject());
-    uint32_t size = jsMap->GetSize(thread);
+    JSHandle<JSSharedMap> map(self);
+    uint32_t size = JSSharedMap::GetSize(thread, map);
     return JSTaggedValue(size);
 }
 

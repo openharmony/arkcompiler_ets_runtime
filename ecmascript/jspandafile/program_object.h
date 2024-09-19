@@ -524,7 +524,7 @@ public:
         JSHandle<Method> method = factory->NewSMethod(
             jsPandaFile, methodLiteral, constpoolHandle, entryIndex, isLoadedAOT && hasEntryIndex);
 
-        CASSetObjectToCache(thread, constpool, index, method.GetTaggedValue());
+        CASSetObjectToCache(thread, constpoolHandle.GetTaggedValue(), index, method.GetTaggedValue());
         return method.GetTaggedValue();
     }
 

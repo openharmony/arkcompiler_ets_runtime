@@ -629,6 +629,12 @@ public:
     {
         return hasKeptObjects_;
     }
+
+    void ClearCachedConstantPool()
+    {
+        cachedSharedConstpools_.clear();
+    }
+
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);
