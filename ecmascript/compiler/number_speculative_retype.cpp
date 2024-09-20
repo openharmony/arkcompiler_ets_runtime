@@ -333,10 +333,10 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::ARRAY_EVERY:
         case OpCode::ARRAY_FOR_EACH:
         case OpCode::HEAP_OBJECT_CHECK:
+        case OpCode::FINISH_ALLOCATE:
         case OpCode::ARRAY_FILTER:
         case OpCode::ARRAY_MAP:
         case OpCode::ARRAY_SLICE:
-        case OpCode::FINISH_ALLOCATE:
         case OpCode::IS_CALLABLE_CHECK:
             return VisitOthers(gate);
         default:

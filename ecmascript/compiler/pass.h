@@ -16,12 +16,14 @@
 #ifndef ECMASCRIPT_COMPILER_PASS_H
 #define ECMASCRIPT_COMPILER_PASS_H
 
+#include "ecmascript/compiler/array_bounds_check_elimination.h"
 #include "ecmascript/compiler/aot_compilation_env.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/compiler/async_function_lowering.h"
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/codegen/llvm/llvm_codegen.h"
 #include "ecmascript/compiler/combined_pass_visitor.h"
+#include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/compiler_log.h"
 #include "ecmascript/compiler/constant_folding.h"
 #include "ecmascript/compiler/dead_code_elimination.h"

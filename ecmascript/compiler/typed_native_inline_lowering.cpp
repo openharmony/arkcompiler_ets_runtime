@@ -195,6 +195,9 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
         case OpCode::ARRAY_BUFFER_IS_VIEW:
             LowerArrayBufferIsView(gate);
             break;
+        case OpCode::MAP_GET:
+            LowerToCommonStub(gate, CommonStubCSigns::JSMapGet);
+            break;
         case OpCode::BIGINT_ASINTN:
             LowerBigIntAsIntN<false>(gate);
             break;
@@ -216,9 +219,6 @@ GateRef TypedNativeInlineLowering::VisitGate(GateRef gate)
             break;
         case OpCode::NUMBER_PARSE_INT:
             LowerNumberParseInt(gate);
-            break;
-        case OpCode::MAP_GET:
-            LowerToCommonStub(gate, CommonStubCSigns::JSMapGet);
             break;
         case OpCode::DATE_GET_TIME:
             LowerDateGetTime(gate);

@@ -212,7 +212,7 @@ GateRef LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::
     Bind(&lessLable);
     {
         Label need(env);
-        BRANCH(Int32LessThanOrEqual(Int32Add(nof, Int32Div(nof, Int32(2))), capacity), &need, &exit);  // 2: half
+        BRANCH(Int32LessThanOrEqual(Int32Add(nof, Int32Div(nof, Int32(2))), capacity), &need, &exit); // 2 : div 2
         Bind(&need);
         {
             res = True();

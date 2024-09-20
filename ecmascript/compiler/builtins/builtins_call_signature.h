@@ -46,7 +46,7 @@ namespace panda::ecmascript::kungfu {
     V(Float32ArrayConstructor)                      \
     V(Float64ArrayConstructor)                      \
     V(BigInt64ArrayConstructor)                     \
-    V(BigUint64ArrayConstructor)                    \
+    V(BigUint64ArrayConstructor)
 
 #define BUILTINS_METHOD_STUB_LIST(V, T, D, K)       \
     BUILTINS_WITH_STRING_STUB_BUILDER(V)            \
@@ -237,14 +237,14 @@ namespace panda::ecmascript::kungfu {
 
 #define AOT_BUILTINS_STUB_LIST(V)                   \
     V(JsonStringify)                                    \
-    V(MapProtoIterator)                                 \
-    V(MapIteratorProtoNext)                             \
-    V(SetProtoIterator)                                 \
-    V(SetIteratorProtoNext)                             \
-    V(StringProtoIterator)                              \
-    V(ArrayProtoIterator)                               \
-    V(ArrayIteratorProtoNext)                           \
-    V(TypeArrayProtoIterator)                           \
+    V(MapProtoIterator)                           \
+    V(MapIteratorProtoNext)                           \
+    V(SetProtoIterator)                        \
+    V(SetIteratorProtoNext)                         \
+    V(StringProtoIterator)                   \
+    V(ArrayProtoIterator)                      \
+    V(ArrayIteratorProtoNext)                      \
+    V(TypeArrayProtoIterator)                      \
     V(IteratorProtoReturn)
 
 // List of builtins which will try to be inlined in TypedNativeInlineLoweringPass
@@ -398,11 +398,11 @@ public:
             case BuiltinsStubCSigns::ID::MapValues:
             case BuiltinsStubCSigns::ID::MapEntries:
             case BuiltinsStubCSigns::ID::SetHas:
-            case BuiltinsStubCSigns::ID::MapDelete:
-            case BuiltinsStubCSigns::ID::SetDelete:
             case BuiltinsStubCSigns::ID::TypedArrayEntries:
             case BuiltinsStubCSigns::ID::TypedArrayKeys:
             case BuiltinsStubCSigns::ID::TypedArrayValues:
+            case BuiltinsStubCSigns::ID::MapDelete:
+            case BuiltinsStubCSigns::ID::SetDelete:
             case BuiltinsStubCSigns::ID::SetValues:
             case BuiltinsStubCSigns::ID::SetEntries:
             case BuiltinsStubCSigns::ID::MapClear:
