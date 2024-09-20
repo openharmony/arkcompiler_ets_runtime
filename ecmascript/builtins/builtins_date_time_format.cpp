@@ -64,7 +64,7 @@ JSTaggedValue BuiltinsDateTimeFormat::DateTimeFormatConstructor(EcmaRuntimeCallI
     //    a. Perform ? DefinePropertyOrThrow(this, %Intl%.[[FallbackSymbol]], PropertyDescriptor{ [[Value]]:
     //       dateTimeFormat, [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: false }).
     //    b. Return this.
-    if (GetNewTarget(argv)->IsUndefined() && thisValue->IsJSObject()) {
+    if (newTarget->IsUndefined() && thisValue->IsJSObject()) {
         bool isInstanceOf = JSFunction::OrdinaryHasInstance(thread, env->GetDateTimeFormatFunction(), thisValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         if (isInstanceOf) {
@@ -281,6 +281,10 @@ JSTaggedValue BuiltinsDateTimeFormat::FormatRange(EcmaRuntimeCallInfo *argv)
     JSTaggedNumber valueY = JSTaggedValue::ToNumber(thread, endDate);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     double y = valueY.GetNumber();
+    // 7. If x is greater than y, throw a RangeError exception.
+    if (x > y) {
+        THROW_RANGE_ERROR_AND_RETURN(thread, "x is greater than y", JSTaggedValue::Exception());
+    }
 
     // 8. Return ? FormatDateTimeRange(dtf, x, y)
     JSHandle<JSDateTimeFormat> dtf = JSHandle<JSDateTimeFormat>::Cast(thisValue);
