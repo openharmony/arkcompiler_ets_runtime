@@ -128,6 +128,8 @@ public:
         bool canBeCompress, MemSpaceType type, bool isConstantString, uint32_t idOffset);
     EcmaString *GetOrInternStringWithSpaceType(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
                                                MemSpaceType type);
+    EcmaString *GetOrInternStringWithSpaceTypeWithoutJSHandle(EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf16Len,
+                                                              MemSpaceType type);
     EcmaString *TryGetInternString(JSThread *thread, const JSHandle<EcmaString> &string);
     void InsertStringToTableWithHashThreadUnsafe(EcmaString* string, uint32_t hashcode);
     EcmaString *InsertStringToTable(EcmaVM *vm, const JSHandle<EcmaString> &strHandle);
