@@ -608,7 +608,10 @@ void OptimizedCall::JSCallInternal(ExtendedAssembler *assembler, Register jsfunc
     }
     __ Bind(&jsProxy);
     {
-        JSProxyCallInternal(assembler, sp, jsfunc);
+        __ Ldr(method, MemoryOperand(jsfunc, JSProxy::METHOD_OFFSET));
+        __ Ldr(callField, MemoryOperand(method, Method::CALL_FIELD_OFFSET));
+        __ Ldr(actualArgC, MemoryOperand(sp, 0));
+        __ B(&callNativeMethod);
     }
     __ Bind(&nonCallable);
     {
@@ -1012,24 +1015,6 @@ void OptimizedCall::JSBoundFunctionCallInternal(ExtendedAssembler *assembler, Re
     PopJSFunctionArgs(assembler, Register(X19), Register(X19));
     PopOptimizedArgsConfigFrame(assembler);
     __ Ret();
-}
-
-void OptimizedCall::JSProxyCallInternal(ExtendedAssembler *assembler, Register sp, Register jsfunc)
-{
-    // input: x1(calltarget)
-    // output: glue:x0 argc:x1 calltarget:x2 argv:x3
-    __ Mov(Register(X2), jsfunc);
-    __ Ldr(Register(X1), MemoryOperand(sp, 0));
-    __ Add(X3, sp, Immediate(DOUBLE_SLOT_SIZE)); // get argv
-
-    Register proxyCallInternalId(X9);
-    Register baseAddress(X8);
-    Register codeAddress(X10);
-    __ Mov(baseAddress, Immediate(JSThread::GlueData::GetCOStubEntriesOffset(false)));
-    __ Mov(proxyCallInternalId, Immediate(CommonStubCSigns::JsProxyCallInternal));
-    __ Add(codeAddress, X0, baseAddress);
-    __ Ldr(codeAddress, MemoryOperand(codeAddress, proxyCallInternalId, UXTW, FRAME_SLOT_SIZE_LOG2));
-    __ Br(codeAddress);
 }
 
 // * uint64_t JSProxyCallInternalWithArgV(uintptr_t glue, JSTaggedType calltarget)
