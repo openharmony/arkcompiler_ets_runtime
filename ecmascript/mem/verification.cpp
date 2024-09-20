@@ -21,7 +21,7 @@
 namespace panda::ecmascript {
 void LogErrorForObjSlot(const BaseHeap *heap, const char *headerInfo, TaggedObject *obj, ObjectSlot slot,
                         TaggedObject *value)
-{
+{ // LCOV_EXCL_START
     TaggedObject *slotValue = slot.GetTaggedObject();
     Region *region = Region::ObjectAddressToRange(obj);
     Region *valueRegion = Region::ObjectAddressToRange(value);
@@ -61,29 +61,29 @@ void LogErrorForObj(const BaseHeap *heap, const char *headerInfo, TaggedObject *
                   << ", obj type=" << JSHClass::DumpJSType(obj->GetClass()->GetObjectType())
                   << ", obj mark bit=" << region->Test(obj);
     UNREACHABLE();
-}
+} // LCOV_EXCL_STOP
 
 // Only used for verify InactiveSemiSpace
 void VerifyObjectVisitor::VerifyInactiveSemiSpaceMarkedObject(const BaseHeap *heap, void *addr)
 {
     TaggedObject *object = reinterpret_cast<TaggedObject*>(addr);
     Region *objectRegion = Region::ObjectAddressToRange(object);
-    if (!objectRegion->InInactiveSemiSpace()) { // LOCV_EXCL_BR_LINE
+    if (!objectRegion->InInactiveSemiSpace()) { // LCOV_EXCL_START
         LogErrorForObj(heap, "Verify InactiveSemiSpaceMarkedObject: Object is not in InactiveSemiSpace.", object);
-    } else { // LOCV_EXCL_BR_LINE
+    } else {
         MarkWord word(object);
-        if (!word.IsForwardingAddress()) { // LOCV_EXCL_BR_LINE
+        if (!word.IsForwardingAddress()) {
             LogErrorForObj(heap, "Verify InactiveSemiSpaceMarkedObject: not forwarding address.", object);
         } else {
             ObjectSlot slot(ToUintPtr(object));
             TaggedObject *value = word.ToForwardingAddress();
             Region *valueRegion = Region::ObjectAddressToRange(value);
-            if (valueRegion->InInactiveSemiSpace()) { // LOCV_EXCL_BR_LINE
+            if (valueRegion->InInactiveSemiSpace()) {
                 LogErrorForObjSlot(heap, "Verify InactiveSemiSpaceMarkedObject: forwarding address, "
                     "but InactiveSemiSpace(FromSpace) Object.", object, slot, value);
             }
         }
-    }
+    } // LCOV_EXCL_STOP
 }
 
 // Verify the object body
@@ -115,19 +115,19 @@ void VerifyObjectVisitor::VisitAllObjects(TaggedObject *obj)
 void VerifyObjectVisitor::VerifyObjectSlotLegal(ObjectSlot slot, TaggedObject *object) const
 {
     JSTaggedValue value(slot.GetTaggedType());
-    if (value.IsWeak()) {
-        if (ToUintPtr(value.GetTaggedWeakRef()) < INVALID_THRESHOLD) { // LOCV_EXCL_BR_LINE
+    if (value.IsWeak()) { // LCOV_EXCL_START
+        if (ToUintPtr(value.GetTaggedWeakRef()) < INVALID_THRESHOLD) {
             LogErrorForObjSlot(heap_, "Heap verify detected an invalid value.",
                 object, slot, value.GetTaggedWeakRef());
         }
-        if (!heap_->IsAlive(value.GetTaggedWeakRef())) { // LOCV_EXCL_BR_LINE
+        if (!heap_->IsAlive(value.GetTaggedWeakRef())) {
             LogErrorForObjSlot(heap_, "Heap verify detected a dead weak object.",
                 object, slot, value.GetTaggedWeakRef());
             ++(*failCount_);
         }
     } else if (value.IsHeapObject()) {
         VerifyHeapObjectSlotLegal(slot, value, object);
-    }
+    } // LCOV_EXCL_STOP
 }
 
 void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
@@ -135,15 +135,15 @@ void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
                                                     TaggedObject *object) const
 {
     ASSERT(slotValue.IsHeapObject());
-    if (ToUintPtr(slotValue.GetTaggedObject()) < INVALID_THRESHOLD) { // LOCV_EXCL_BR_LINE
+    if (ToUintPtr(slotValue.GetTaggedObject()) < INVALID_THRESHOLD) { // LCOV_EXCL_START
         LogErrorForObjSlot(heap_, "Heap verify detected an invalid value.",
             object, slot, slotValue.GetTaggedObject());
     }
-    if (!heap_->IsAlive(slotValue.GetTaggedObject())) { // LOCV_EXCL_BR_LINE
+    if (!heap_->IsAlive(slotValue.GetTaggedObject())) {
         LogErrorForObjSlot(heap_, "Heap verify detected a dead object.",
             object, slot, slotValue.GetTaggedObject());
         ++(*failCount_);
-    }
+    } // LCOV_EXCL_STOP
     switch (verifyKind_) {
         case VerifyKind::VERIFY_PRE_GC:
         case VerifyKind::VERIFY_POST_GC:
@@ -176,9 +176,9 @@ void VerifyObjectVisitor::VerifyHeapObjectSlotLegal(ObjectSlot slot,
         case VerifyKind::VERIFY_POST_SHARED_GC:
             VerifySharedObjectReference(object, slot, slotValue.GetTaggedObject());
             break;
-        default: // LOCV_EXCL_BR_LINE
+        default: // LCOV_EXCL_START
             LOG_GC(FATAL) << "unknown verify kind:" << static_cast<size_t>(verifyKind_);
-            UNREACHABLE();
+            UNREACHABLE(); // LCOV_EXCL_STOP
     }
 }
 
@@ -188,21 +188,21 @@ void VerifyObjectVisitor::VerifyMarkEden(TaggedObject *object, ObjectSlot slot, 
     Region *valueRegion = Region::ObjectAddressToRange(value);
     JSTaggedValue value1(object);
     JSTaggedValue value2(value);
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InEdenSpace()) {
-        if (!objectRegion->TestOldToNew(slot.SlotAddress())) { // LOCV_EXCL_BR_LINE
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InEdenSpace()) { // LCOV_EXCL_START
+        if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify MarkEden: Old object, slot miss old_to_new bit.", object, slot, value);
-        } else if (!valueRegion->Test(value)) { // LOCV_EXCL_BR_LINE
+        } else if (!valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkEden: Old object, slot has old_to_new bit, miss gc_mark bit.",
                 object, slot, value);
         }
     }
     
     if (objectRegion->InYoungSpace() && valueRegion->InEdenSpace()) {
-        if (!objectRegion->TestNewToEden(slot.SlotAddress())) { // LOCV_EXCL_BR_LINE
+        if (!objectRegion->TestNewToEden(slot.SlotAddress())) {
             value1.D();
             value2.D();
             LogErrorForObjSlot(heap_, "Verify MarkEden: Young object, slot miss new_to_eden bit.", object, slot, value);
-        } else if (!valueRegion->Test(value)) { // LOCV_EXCL_BR_LINE
+        } else if (!valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkEden: Young object, slot has new_to_eden bit, miss gc_mark bit.",
                 object, slot, value);
         }
@@ -210,19 +210,19 @@ void VerifyObjectVisitor::VerifyMarkEden(TaggedObject *object, ObjectSlot slot, 
 
     if (objectRegion->Test(object)) {
         if (!objectRegion->InEdenSpace() && !objectRegion->InAppSpawnSpace()
-                && !objectRegion->InReadOnlySpace()) { // LOCV_EXCL_BR_LINE
+                && !objectRegion->InReadOnlySpace()) {
             LogErrorForObj(heap_, "Verify MarkYoung: Marked object, NOT in Eden Space", object);
         }
-        if (valueRegion->InEdenSpace() && !valueRegion->Test(value)) { // LOCV_EXCL_BR_LINE
+        if (valueRegion->InEdenSpace() && !valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkEden: Marked object, slot in EdenSpace, miss gc_mark bit.",
                 object, slot, value);
         }
         if (valueRegion->Test(value) && !(valueRegion->InEdenSpace() || valueRegion->InAppSpawnSpace()
-                || valueRegion->InReadOnlySpace() || valueRegion->InSharedHeap())) { // LOCV_EXCL_BR_LINE
+                || valueRegion->InReadOnlySpace() || valueRegion->InSharedHeap())) {
             LogErrorForObjSlot(heap_, "Verify MarkEden: Marked object, slot marked, but NOT in Eden Space.",
                 object, slot, value);
         }
-    }
+    } // LCOV_EXCL_STOP
 }
 
 
@@ -231,45 +231,45 @@ void VerifyObjectVisitor::VerifyMarkYoung(TaggedObject *object, ObjectSlot slot,
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
     ASSERT(!objectRegion->InSharedHeap());
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) {
-        if (!objectRegion->TestOldToNew(slot.SlotAddress())) { // LOCV_EXCL_BR_LINE
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) { // LCOV_EXCL_START
+        if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Old object, slot miss old_to_new bit.", object, slot, value);
-        } else if (!valueRegion->Test(value)) { // LOCV_EXCL_BR_LINE
+        } else if (!valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Old object, slot has old_to_new bit, miss gc_mark bit.",
                 object, slot, value);
         }
     }
     if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
-        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) { // LOCV_EXCL_BR_LINE
+        if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Local object, slot local_to_share bit = 0, "
                 "but SharedHeap object.", object, slot, value);
         }
     }
     if (objectRegion->Test(object)) {
         if (!objectRegion->InGeneralNewSpace() && !objectRegion->InAppSpawnSpace() &&
-            !objectRegion->InReadOnlySpace()) { // LOCV_EXCL_BR_LINE
+            !objectRegion->InReadOnlySpace()) {
             LogErrorForObj(heap_, "Verify MarkYoung: Marked object, NOT in Young/AppSpawn/ReadOnly Space", object);
         }
-        if (valueRegion->InGeneralNewSpace() && !valueRegion->Test(value)) { // LOCV_EXCL_BR_LINE
+        if (valueRegion->InGeneralNewSpace() && !valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Marked object, slot in YoungSpace, miss gc_mark bit.",
                 object, slot, value);
         }
         if (valueRegion->Test(value) &&
             !(valueRegion->InYoungSpace() || valueRegion->InAppSpawnSpace() || valueRegion->InReadOnlySpace() ||
-              valueRegion->InSharedHeap() || valueRegion->InEdenSpace())) { // LOCV_EXCL_BR_LINE
+              valueRegion->InSharedHeap() || valueRegion->InEdenSpace())) {
             LogErrorForObjSlot(heap_, "Verify MarkYoung: Marked object, slot marked, but NOT in "
                 "Young/AppSpawn/ReadOnly Space.", object, slot, value);
         }
-    }
+    } // LCOV_EXCL_STOP
 }
 
 void VerifyObjectVisitor::VerifyEvacuateEden(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (objectRegion->InGeneralOldSpace()) {
-        if (objectRegion->TestOldToNew(slot.SlotAddress())) { // LOCV_EXCL_BR_LINE
-            if (!valueRegion->InActiveSemiSpace()) { // LOCV_EXCL_BR_LINE
+    if (objectRegion->InGeneralOldSpace()) { // LCOV_EXCL_START
+        if (objectRegion->TestOldToNew(slot.SlotAddress())) {
+            if (!valueRegion->InActiveSemiSpace()) {
                 if (valueRegion->InEdenSpace()) {
                     LogErrorForObjSlot(heap_, "Verify EvacuateEden: Old object, slot old_to_new bit = 1, "
                         "but in EdenSpace object.", object, slot, value);
@@ -277,15 +277,15 @@ void VerifyObjectVisitor::VerifyEvacuateEden(TaggedObject *object, ObjectSlot sl
                 LogErrorForObjSlot(heap_, "Verify EvacuateEden: Old object, slot old_to_new bit = 1, "
                     "but NOT ActiveSpace(ToSpace) object.", object, slot, value);
             }
-        } else { // LOCV_EXCL_BR_LINE
-            if (valueRegion->InGeneralNewSpace()) { // LOCV_EXCL_BR_LINE
+        } else {
+            if (valueRegion->InGeneralNewSpace()) {
                 LogErrorForObjSlot(heap_, "Verify EvacuateEden: Old object, slot old_to_new bit = 0, "
                     "but YoungSpace object.", object, slot, value);
             }
         }
     }
     if (objectRegion->InYoungSpace()) {
-        if (objectRegion->TestNewToEden(slot.SlotAddress())) { // LOCV_EXCL_BR_LINE
+        if (objectRegion->TestNewToEden(slot.SlotAddress())) {
             if (!valueRegion->InEdenSpace()) {
                 LogErrorForObjSlot(heap_, "Verify EvacuateEden: Young object, slot young_to_eden bit = 1, "
                     "but NOT Eden object.", object, slot, value);
@@ -293,13 +293,13 @@ void VerifyObjectVisitor::VerifyEvacuateEden(TaggedObject *object, ObjectSlot sl
                 LogErrorForObjSlot(heap_, "Verify EvacuateEden: Young object, slot young_to_eden bit = 1, "
                     "but Eden object.", object, slot, value);
             }
-        } else { // LOCV_EXCL_BR_LINE
+        } else {
             if (valueRegion->InEdenSpace()) {
                 LogErrorForObjSlot(heap_, "Verify EvacuateEden: Young object, slot young_to_eden bit = 0, "
                     "but Eden object.", object, slot, value);
             }
         }
-    }
+    } // LCOV_EXCL_STOP
 }
 
 void VerifyObjectVisitor::VerifyEvacuateYoung(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
@@ -307,7 +307,7 @@ void VerifyObjectVisitor::VerifyEvacuateYoung(TaggedObject *object, ObjectSlot s
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
 
-    if (objectRegion->InGeneralOldSpace()) { // LOCV_EXCL_BR_LINE
+    if (objectRegion->InGeneralOldSpace()) { // LCOV_EXCL_START
         if (objectRegion->TestOldToNew(slot.SlotAddress())) {
             if (!valueRegion->InActiveSemiSpace()) {
                 if (valueRegion->InEdenSpace()) {
@@ -324,13 +324,13 @@ void VerifyObjectVisitor::VerifyEvacuateYoung(TaggedObject *object, ObjectSlot s
             }
         }
     }
-    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) { // LOCV_EXCL_BR_LINE
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
         if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify EvacuateYoung: Local object, slot local_to_share bit = 0, "
                 "but SharedHeap object.", object, slot, value);
         }
     }
-    if (objectRegion->InActiveSemiSpace()) { // LOCV_EXCL_BR_LINE
+    if (objectRegion->InActiveSemiSpace()) {
         if (valueRegion->InInactiveSemiSpace()) {
             LogErrorForObjSlot(heap_, "Verify EvacuateYoung: ActiveSpace object, slot in InactiveSpace(FromSpace).",
                 object, slot, value);
@@ -338,29 +338,29 @@ void VerifyObjectVisitor::VerifyEvacuateYoung(TaggedObject *object, ObjectSlot s
             LogErrorForObjSlot(heap_, "Verify EvacuateYoung: ActiveSpace object, slot in EdenSpace.",
                 object, slot, value);
         }
-    }
+    } // LCOV_EXCL_STOP
 }
 
 void VerifyObjectVisitor::VerifyMarkFull(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) { // LOCV_EXCL_BR_LINE
+    if (objectRegion->InGeneralOldSpace() && valueRegion->InGeneralNewSpace()) { // LCOV_EXCL_START
         if (!objectRegion->TestOldToNew(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify MarkFull: Old object, slot miss old_to_new bit.", object, slot, value);
         }
     }
-    if (objectRegion->Test(object)) { // LOCV_EXCL_BR_LINE
+    if (objectRegion->Test(object)) {
         if (!valueRegion->InSharedHeap() && !valueRegion->Test(value)) {
             LogErrorForObjSlot(heap_, "Verify MarkFull: Marked object, slot miss gc_mark bit.", object, slot, value);
         }
     }
-    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) { // LOCV_EXCL_BR_LINE
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) {
         if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify VerifyMarkFull: Local object, slot local_to_share bit = 0, "
                 "but SharedHeap object.", object, slot, value);
         }
-    }
+    } // LCOV_EXCL_STOP
 }
 
 void VerifyObjectVisitor::VerifyEvacuateOld([[maybe_unused]]TaggedObject *root,
@@ -381,29 +381,29 @@ void VerifyObjectVisitor::VerifySharedObjectReference(TaggedObject *object, Obje
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (objectRegion->InSharedHeap()) { // LOCV_EXCL_BR_LINE
+    if (objectRegion->InSharedHeap()) { // LCOV_EXCL_START
         if (!valueRegion->InSharedHeap()) {
             LogErrorForObjSlot(heap_, "Verify SharedObjectReference: Shared object references a local object",
                 object, slot, value);
         }
-    } else if (valueRegion->InSharedSweepableSpace()) { // LOCV_EXCL_BR_LINE
+    } else if (valueRegion->InSharedSweepableSpace()) {
         if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify SharedObjectReference: Local object, slot local_to_share bit = 0, "
                 "but SharedHeap object.", object, slot, value);
         }
-    }
+    } // LCOV_EXCL_STOP
 }
 
 void VerifyObjectVisitor::VerifySharedRSetPostFullGC(TaggedObject *object, ObjectSlot slot, TaggedObject *value) const
 {
     Region *objectRegion = Region::ObjectAddressToRange(object);
     Region *valueRegion = Region::ObjectAddressToRange(value);
-    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) { // LOCV_EXCL_BR_LINE
+    if (!objectRegion->InSharedHeap() && valueRegion->InSharedSweepableSpace()) { // LCOV_EXCL_START
         if (!objectRegion->TestLocalToShare(slot.SlotAddress())) {
             LogErrorForObjSlot(heap_, "Verify SharedRSetPostFullGC: Local object, slot local_to_share bit = 0, "
                 "but SharedHeap object.", object, slot, value);
         }
-    }
+    } // LCOV_EXCL_STOP
 }
 
 void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
@@ -417,13 +417,13 @@ void VerifyObjectVisitor::operator()(TaggedObject *obj, JSTaggedValue value)
 
     TaggedObject *object = value.GetRawTaggedObject();
     auto region = Region::ObjectAddressToRange(object);
-    if (region->InGeneralOldSpace()) {
+    if (region->InGeneralOldSpace()) { // LCOV_EXCL_START
         LOG_GC(ERROR) << "Heap object(" << slot.GetTaggedType() << ") old to new rset fail: value("
                       << slot.GetTaggedObject() << "/"
                       << JSHClass::DumpJSType(slot.GetTaggedObject()->GetClass()->GetObjectType())
                       << ")" << " in " << region->GetSpaceTypeName();
         ++(*failCount_);
-    }
+    } // LCOV_EXCL_STOP
 }
 
 void Verification::VerifyAll() const
@@ -432,10 +432,10 @@ void Verification::VerifyAll() const
     heap_->GetSweeper()->EnsureAllTaskFinished();
     size_t result = VerifyRoot();
     result += VerifyHeap();
-    if (result > 0) { // LOCV_EXCL_BR_LINE
+    if (result > 0) { // LCOV_EXCL_START
         LOG_GC(FATAL) << "Verify (type=" << static_cast<uint8_t>(verifyKind_)
                       << ") corrupted and " << result << " corruptions";
-    }
+    } // LCOV_EXCL_STOP
 }
 
 size_t Verification::VerifyRoot() const
@@ -537,10 +537,10 @@ void SharedHeapVerification::VerifyAll() const
     sHeap_->GetSweeper()->EnsureAllTaskFinished();
     size_t result = VerifyRoot();
     result += VerifyHeap();
-    if (result > 0) { // LOCV_EXCL_BR_LINE
+    if (result > 0) { // LCOV_EXCL_START
         LOG_GC(FATAL) << "Verify (type=" << static_cast<uint8_t>(verifyKind_)
                       << ") corrupted and " << result << " corruptions";
-    }
+    } // LCOV_EXCL_STOP
 }
 
 void SharedHeapVerification::VerifyMark(bool cm) const
@@ -554,10 +554,10 @@ void SharedHeapVerification::VerifyMark(bool cm) const
         heap->GetSweeper()->EnsureAllTaskFinished();
         const_cast<Heap*>(heap)->FillBumpPointerForTlab();
         auto localBuffer = const_cast<Heap*>(heap)->GetMarkingObjectLocalBuffer();
-        if (localBuffer != nullptr) { // LOCV_EXCL_BR_LINE
+        if (localBuffer != nullptr) { // LCOV_EXCL_START
             LOG_GC(FATAL) << "verify shared node not null " << cm << ':' << thread;
             UNREACHABLE();
-        }
+        } // LCOV_EXCL_STOP
         heap->IterateOverObjects([cm](TaggedObject *obj) {
             auto jsHclass = obj->GetClass();
             auto f = [cm] (ObjectSlot slot, TaggedObject *obj) {
@@ -570,21 +570,21 @@ void SharedHeapVerification::VerifyMark(bool cm) const
                 if (!valueRegion->InSharedSweepableSpace()) {
                     return;
                 }
-                if (!objectRegion->TestLocalToShare(slot.SlotAddress())) { // LOCV_EXCL_BR_LINE
+                if (!objectRegion->TestLocalToShare(slot.SlotAddress())) { // LCOV_EXCL_START
                     LOG_GC(FATAL) << "verify shared1 " << cm << ':' << slot.SlotAddress()
                                   << ' ' << value.GetTaggedObject();
                     UNREACHABLE();
                 }
-                if (!valueRegion->Test(value.GetTaggedObject())) { // LOCV_EXCL_BR_LINE
+                if (!valueRegion->Test(value.GetTaggedObject())) {
                     LOG_GC(FATAL) << "verify shared2 " << cm << ':' << slot.SlotAddress()
                                   << ' ' << value.GetTaggedObject();
                     UNREACHABLE();
                 }
-                if (value.GetTaggedObject()->GetClass()->IsFreeObject()) { // LOCV_EXCL_BR_LINE
+                if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
                     LOG_GC(FATAL) << "verify shared3 " << cm << ':' << slot.SlotAddress()
                                   << ' ' << value.GetTaggedObject();
                     UNREACHABLE();
-                }
+                } // LCOV_EXCL_STOP
             };
             ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
                 obj, jsHclass, [f](TaggedObject *root, ObjectSlot start, ObjectSlot end,
@@ -620,22 +620,22 @@ void SharedHeapVerification::VerifyMark(bool cm) const
                 return;
             }
             [[maybe_unused]] Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
-            if (!valueRegion->InSharedHeap()) { // LOCV_EXCL_BR_LINE
+            if (!valueRegion->InSharedHeap()) { // LCOV_EXCL_START
                 LOG_GC(FATAL) << "verify shared4 " << cm << ':' << slot.SlotAddress()
                               << ' ' << value.GetTaggedObject();
                 UNREACHABLE();
             }
             if (!valueRegion->InSharedReadOnlySpace()
-                    && !valueRegion->Test(value.GetTaggedObject())) { // LOCV_EXCL_BR_LINE
+                    && !valueRegion->Test(value.GetTaggedObject())) {
                 LOG_GC(FATAL) << "verify shared5 " << cm << ':' << slot.SlotAddress()
                               << ' ' << value.GetTaggedObject();
                 UNREACHABLE();
             }
-            if (value.GetTaggedObject()->GetClass()->IsFreeObject()) { // LOCV_EXCL_BR_LINE
+            if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
                 LOG_GC(FATAL) << "verify shared6 " << cm << ':' << slot.SlotAddress()
                               << ' ' << value.GetTaggedObject();
                 UNREACHABLE();
-            }
+            } // LCOV_EXCL_STOP
         };
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
             obj, jsHclass, [f](TaggedObject *root, ObjectSlot start, ObjectSlot end,
@@ -682,21 +682,21 @@ void SharedHeapVerification::VerifySweep(bool cm) const
                 if (!valueRegion->InSharedSweepableSpace()) {
                     return;
                 }
-                if (!objectRegion->TestLocalToShare(slot.SlotAddress())) { // LOCV_EXCL_BR_LINE
+                if (!objectRegion->TestLocalToShare(slot.SlotAddress())) { // LCOV_EXCL_START
                     LOG_GC(FATAL) << "verify shared7 " << cm << ':' << slot.SlotAddress()
                                   << ' ' << value.GetTaggedObject();
                     UNREACHABLE();
                 }
-                if (!valueRegion->Test(value.GetTaggedObject())) { // LOCV_EXCL_BR_LINE
+                if (!valueRegion->Test(value.GetTaggedObject())) {
                     LOG_GC(FATAL) << "verify shared8 " << cm << ':' << slot.SlotAddress()
                                   << ' ' << value.GetTaggedObject();
                     UNREACHABLE();
                 }
-                if (value.GetTaggedObject()->GetClass()->IsFreeObject()) { // LOCV_EXCL_BR_LINE
+                if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
                     LOG_GC(FATAL) << "verify shared9 " << cm << ':' << slot.SlotAddress()
                                   << ' ' << value.GetTaggedObject();
                     UNREACHABLE();
-                }
+                } // LCOV_EXCL_STOP
             };
             ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
                 obj, jsHclass, [f](TaggedObject *root, ObjectSlot start, ObjectSlot end,
@@ -724,7 +724,7 @@ void SharedHeapVerification::VerifySweep(bool cm) const
         auto jsHclass = obj->GetClass();
         auto f = [cm] (ObjectSlot slot, TaggedObject *obj) {
             [[maybe_unused]] Region *objectRegion = Region::ObjectAddressToRange(obj);
-            if (!objectRegion->Test(obj)) { // LOCV_EXCL_BR_LINE
+            if (!objectRegion->Test(obj)) { // LCOV_EXCL_START
                 LOG_GC(FATAL) << "verify shared10 " << cm << ':' << obj;
                 UNREACHABLE();
             }
@@ -733,22 +733,22 @@ void SharedHeapVerification::VerifySweep(bool cm) const
                 return;
             }
             [[maybe_unused]] Region *valueRegion = Region::ObjectAddressToRange(value.GetTaggedObject());
-            if (!valueRegion->InSharedHeap()) { // LOCV_EXCL_BR_LINE
+            if (!valueRegion->InSharedHeap()) {
                 LOG_GC(FATAL) << "verify shared11 " << cm << ':' << slot.SlotAddress()
                               << ' ' << value.GetTaggedObject();
                 UNREACHABLE();
             }
             if (!valueRegion->InSharedReadOnlySpace()
-                    && !valueRegion->Test(value.GetTaggedObject())) { // LOCV_EXCL_BR_LINE
+                    && !valueRegion->Test(value.GetTaggedObject())) {
                 LOG_GC(FATAL) << "verify shared12 " << cm << ':' << slot.SlotAddress()
                               << ' ' << value.GetTaggedObject();
                 UNREACHABLE();
             }
-            if (value.GetTaggedObject()->GetClass()->IsFreeObject()) { // LOCV_EXCL_BR_LINE
+            if (value.GetTaggedObject()->GetClass()->IsFreeObject()) {
                 LOG_GC(FATAL) << "verify shared13 " << cm << ':' << slot.SlotAddress()
                               << ' ' << value.GetTaggedObject();
                 UNREACHABLE();
-            }
+            } // LCOV_EXCL_STOP
         };
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(
             obj, jsHclass, [f](TaggedObject *root, ObjectSlot start, ObjectSlot end,
