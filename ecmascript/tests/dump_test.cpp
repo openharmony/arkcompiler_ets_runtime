@@ -719,7 +719,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::JS_DATE: {
-                CHECK_DUMP_FIELDS(JSObject::SIZE, JSDate::SIZE, 2U);
+                CHECK_DUMP_FIELDS(JSObject::SIZE, JSDate::SIZE, 4U);
                 JSHandle<JSHClass> dateClass = factory->NewEcmaHClass(JSDate::SIZE, JSType::JS_DATE, proto);
                 JSHandle<JSDate> date = JSHandle<JSDate>::Cast(factory->NewJSObjectWithInit(dateClass));
                 date->SetTimeValue(thread, JSTaggedValue(0.0));
