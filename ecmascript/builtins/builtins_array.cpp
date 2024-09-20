@@ -239,7 +239,7 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
         // fastpath for jsarray
-        if (newArrayHandle->IsJSArray() && iterator->IsJSArrayIterator()) {
+        if (newArrayHandle->IsJSArray() && items->IsJSArray() && iterator->IsJSArrayIterator()) {
             JSHandle<JSObject> arrayLikeObj = JSTaggedValue::ToObject(thread, items);
             JSHandle<JSTaggedValue> arrayLike(arrayLikeObj) ;
             int64_t len = ArrayHelper::GetArrayLength(thread, arrayLike);
