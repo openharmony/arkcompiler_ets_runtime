@@ -42,6 +42,69 @@ class C3 {
 }
 const v9 = new C3(SendableMap, '-39635');
 
-let x = "filter"["length"]
-x++
-print(x)
+function testInc() {
+    let x = "filter"["length"]
+    x++
+    print(x)
+}
+testInc()
+print(ArkTools.isAOTCompiled(testInc))
+
+function testMore() {
+    let x = "test1"["length"];
+    print(-x)
+    print(Math.trunc(x))
+    print(x % 22.3)
+    print(x + "a")
+    print(!x)
+    print(x == "6")
+    print(x || "6")
+    print(x + "6")
+    print(+x)
+    print(String(x))
+    print(Boolean(x))
+    print(Number(x))
+    let arr = new Int32Array(5).fill(x);
+    print(arr[x])
+    print(x << 1)
+    print(x >>> 1)
+
+    let xx = "test2"["0"];
+    print(-xx)
+    print(Math.trunc(xx))
+    print(xx % 22.3)
+    print(xx + "a")
+    print(!xx)
+    print(xx == "6")
+    print(xx || "6")
+    print(xx + "6")
+    print(+xx)
+    print(String(xx))
+    print(Boolean(xx))
+    print(Number(xx))
+    let arrr = new Int32Array(5).fill(xx);
+    print(arrr[xx])
+    print(xx << 1)
+    print(xx >>> 1)
+
+    let xxx = "test3"[0];
+    print(-xxx)
+    print(Math.trunc(xxx))
+    print(xxx % 22.3)
+    print(xxx + "a")
+    print(!xxx)
+    print(xxx == "6")
+    print(xxx || "6")
+    print(xxx + "6")
+    print(+xxx)
+    print(String(xxx))
+    print(Boolean(xxx))
+    print(Number(xxx))
+    let arrrr = new Int32Array(5).fill(xxx);
+    print(arrrr[xxx])
+    print(xxx << 1)
+    print(xxx >>> 1)
+}
+
+testMore()
+print(ArkTools.isAOTCompiled(testMore))
