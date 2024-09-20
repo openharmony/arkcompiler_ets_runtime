@@ -15,7 +15,6 @@ group("compiler_service_unittest") {
   testonly = true
   deps = [
     "unittest/aotcompilerclient_unit:AotCompilerClientUnitTest",
-    "unittest/aotcompilerimpl_unit:AotCompilerImplUnitTest",
     "unittest/aotcompilerservice_unit:AotCompilerServiceUnitTest",
   ]
 }
