@@ -153,6 +153,7 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
             return jsPandaFile;
         }
     }
+
 #if defined(PANDA_TARGET_PREVIEW)
     auto pf = panda_file::OpenPandaFileFromMemory(buffer, size);
 #else

@@ -411,7 +411,6 @@ JSTaggedValue BuiltinsArkTools::IsSameProfileTypeInfo(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
-    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func0 = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
     JSHandle<JSFunction> func1 = JSHandle<JSFunction>::Cast(GetCallArg(info, 1));
@@ -423,7 +422,6 @@ JSTaggedValue BuiltinsArkTools::IsProfileTypeInfoValid(EcmaRuntimeCallInfo *info
 {
     ASSERT(info);
     JSThread *thread = info->GetThread();
-    RETURN_IF_DISALLOW_ARKTOOLS(thread);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     JSHandle<JSFunction> func = JSHandle<JSFunction>::Cast(GetCallArg(info, 0));
     return JSTaggedValue(func->GetProfileTypeInfo().IsTaggedArray());
@@ -811,7 +809,7 @@ JSTaggedValue BuiltinsArkTools::HasSmiElements([[maybe_unused]] EcmaRuntimeCallI
 
 JSTaggedValue BuiltinsArkTools::HasDoubleElements([[maybe_unused]] EcmaRuntimeCallInfo *info)
 {
-    LOG_ECMA(DEBUG) << "Enter HasDoubleElements()";
+    LOG_ECMA(INFO) << "Enter HasDoubleElements()";
     ASSERT(info);
     JSThread *thread = info->GetThread();
     RETURN_IF_DISALLOW_ARKTOOLS(thread);
