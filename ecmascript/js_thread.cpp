@@ -757,8 +757,8 @@ void JSThread::TerminateExecution()
 void JSThread::CheckAndPassActiveBarrier()
 {
     ThreadStateAndFlags oldStateAndFlags;
-    oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
-    if ((oldStateAndFlags.asStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
+    oldStateAndFlags.asNonvolatileInt = glueData_.stateAndFlags_.asInt;
+    if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
         PassSuspendBarrier();
     }
 }
@@ -1264,11 +1264,11 @@ inline void JSThread::StoreState(ThreadState newState)
 {
     while (true) {
         ThreadStateAndFlags oldStateAndFlags;
-        oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
+        oldStateAndFlags.asNonvolatileInt = glueData_.stateAndFlags_.asInt;
 
         ThreadStateAndFlags newStateAndFlags;
-        newStateAndFlags.asStruct.flags = oldStateAndFlags.asStruct.flags;
-        newStateAndFlags.asStruct.state = newState;
+        newStateAndFlags.asNonvolatileStruct.flags = oldStateAndFlags.asNonvolatileStruct.flags;
+        newStateAndFlags.asNonvolatileStruct.state = newState;
 
         bool done = glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
                                                                                newStateAndFlags.asNonvolatileInt,
@@ -1284,22 +1284,22 @@ void JSThread::StoreRunningState(ThreadState newState)
     ASSERT(newState == ThreadState::RUNNING);
     while (true) {
         ThreadStateAndFlags oldStateAndFlags;
-        oldStateAndFlags.asInt = glueData_.stateAndFlags_.asInt;
-        ASSERT(oldStateAndFlags.asStruct.state != ThreadState::RUNNING);
+        oldStateAndFlags.asNonvolatileInt = glueData_.stateAndFlags_.asInt;
+        ASSERT(oldStateAndFlags.asNonvolatileStruct.state != ThreadState::RUNNING);
 
-        if (LIKELY(oldStateAndFlags.asStruct.flags == ThreadFlag::NO_FLAGS)) {
+        if (LIKELY(oldStateAndFlags.asNonvolatileStruct.flags == ThreadFlag::NO_FLAGS)) {
             ThreadStateAndFlags newStateAndFlags;
-            newStateAndFlags.asStruct.flags = oldStateAndFlags.asStruct.flags;
-            newStateAndFlags.asStruct.state = newState;
+            newStateAndFlags.asNonvolatileStruct.flags = oldStateAndFlags.asNonvolatileStruct.flags;
+            newStateAndFlags.asNonvolatileStruct.state = newState;
 
             if (glueData_.stateAndFlags_.asAtomicInt.compare_exchange_weak(oldStateAndFlags.asNonvolatileInt,
                                                                            newStateAndFlags.asNonvolatileInt,
                                                                            std::memory_order_release)) {
                 break;
             }
-        } else if ((oldStateAndFlags.asStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
+        } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::ACTIVE_BARRIER) != 0) {
             PassSuspendBarrier();
-        } else if ((oldStateAndFlags.asStruct.flags & ThreadFlag::SUSPEND_REQUEST) != 0) {
+        } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::SUSPEND_REQUEST) != 0) {
             constexpr int TIMEOUT = 100;
             ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::StoreRunningState");
             LockHolder lock(suspendLock_);

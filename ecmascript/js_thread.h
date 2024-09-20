@@ -114,6 +114,10 @@ union ThreadStateAndFlags {
         volatile uint16_t flags;
         volatile ThreadState state;
     } asStruct;
+    struct {
+        uint16_t flags;
+        ThreadState state;
+    } asNonvolatileStruct;
     volatile uint32_t asInt;
     uint32_t asNonvolatileInt;
     std::atomic<uint32_t> asAtomicInt;
