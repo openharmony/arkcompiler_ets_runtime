@@ -293,4 +293,32 @@ HWTEST_F_L0(GCTest, NotifyFinishColdStartSoonTest001)
     heap->NotifyFinishColdStartSoon();
 }
 
+HWTEST_F_L0(GCTest, NeedStopCollectionTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetOnSerializeEvent(true);
+    ASSERT_EQ(heap->NeedStopCollection(), true);
+}
+
+HWTEST_F_L0(GCTest, ReclaimTest001)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->DisableParallelGC(thread);
+    heap->Reclaim(TriggerGCType::EDEN_GC);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest001)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::IDLE);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest002)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_FULL);
+    ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
+    heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::IDLE);
+}
+
 } // namespace panda::test
