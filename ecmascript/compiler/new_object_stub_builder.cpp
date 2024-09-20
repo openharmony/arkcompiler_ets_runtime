@@ -2096,7 +2096,7 @@ void NewObjectStubBuilder::CreateJSCollectionIterator(
         // SetIterated
         GateRef iteratorOffset = IntPtr(iterOffset);
         Store(VariableType::JS_POINTER(), glue_, result->ReadVariable(), iteratorOffset, linked,
-              MemoryAttribute::NeedBarrier());
+              MemoryAttribute::UnknownBarrier());
 
         // SetIteratorNextIndex
         GateRef nextIndexOffset = IntPtr(IteratorType::NEXT_INDEX_OFFSET);
