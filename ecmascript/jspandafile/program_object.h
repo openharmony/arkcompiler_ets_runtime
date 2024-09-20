@@ -733,7 +733,7 @@ public:
             auto foundStr = jsPandaFile->GetStringData(id);
             EcmaVM *vm = thread->GetEcmaVM();
             ObjectFactory *factory = vm->GetFactory();
-            auto string = factory->GetRawStringFromStringTable(foundStr, MemSpaceType::SHARED_OLD_SPACE,
+            auto string = factory->GetRawStringFromStringTableWithoutJSHandle(foundStr, MemSpaceType::SHARED_OLD_SPACE,
                 jsPandaFile->IsFirstMergedAbc(), id.GetOffset());
             val = JSTaggedValue(string);
         }

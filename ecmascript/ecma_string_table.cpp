@@ -496,6 +496,31 @@ EcmaString *EcmaStringTable::GetOrInternStringWithSpaceType(EcmaVM *vm, const ui
     return str;
 }
 
+// used in jit thread, which unsupport create jshandle
+EcmaString *EcmaStringTable::GetOrInternStringWithSpaceTypeWithoutJSHandle(EcmaVM *vm, const uint8_t *utf8Data,
+                                                                           uint32_t utf16Len, MemSpaceType type)
+{
+    ASSERT(IsSMemSpace(type));
+    type = (type == MemSpaceType::SHARED_NON_MOVABLE) ? type : MemSpaceType::SHARED_OLD_SPACE;
+    CVector<uint16_t> u16Buffer(utf16Len);
+    utf::ConvertRegionMUtf8ToUtf16(utf8Data, u16Buffer.data(), utf::Mutf8Size(utf8Data), utf16Len, 0);
+    auto hashcode = EcmaStringAccessor::ComputeHashcodeUtf16(u16Buffer.data(), utf16Len);
+    RuntimeLockHolder locker(vm->GetJSThread(), stringTable_[GetTableId(hashcode)].mutex_);
+#if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
+    if (vm->IsCollectingScopeLockStats()) {
+        vm->IncreaseStringTableLockCount();
+    }
+#endif
+    auto result = GetStringThreadUnsafe(u16Buffer.data(), utf16Len, hashcode);
+    if (result.first != nullptr) {
+        return result.first;
+    }
+    EcmaString *str = EcmaStringAccessor::CreateFromUtf16(vm, u16Buffer.data(), utf16Len, false, type);
+    str->SetMixHashcode(hashcode);
+    InternStringThreadUnsafe(str, hashcode);
+    return str;
+}
+
 void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor)
 {
     // No need lock here, only shared gc will sweep string table, meanwhile other threads are suspended.
