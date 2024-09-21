@@ -210,7 +210,7 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
             }
             break;
-        default:
+        default: // LCOV_EXCL_BR_LINE
             LOG_GC(ERROR) << "IdleGCTrigger: this branch is unreachable";
             return;
     }
