@@ -195,7 +195,7 @@ void SourceMap::ExtractSourceMapData(const std::string& allmappings, std::shared
     curMapData->mappings_.shrink_to_fit();
 }
 
-MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targetMap)
+MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targetMap, bool& isReplaces)
 {
     if (row < 1 || col < 1) {
         LOG_ECMA(ERROR) << "SourceMap find failed, line: " << row << ", column: " << col;
@@ -211,6 +211,7 @@ MappingInfo SourceMap::Find(int32_t row, int32_t col, const SourceMapData& targe
     int32_t right = static_cast<int32_t>(targetMap.afterPos_.size()) - 1;
     int32_t res = 0;
     if (row > targetMap.afterPos_[targetMap.afterPos_.size() - 1].afterRow) {
+        isReplaces = false;
         return MappingInfo { row + 1, col + 1};
     }
     while (right - left >= 0) {
@@ -345,14 +346,19 @@ bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int
         url = tmp;
         return true;
     }
+    bool isReplaces = true;
+    bool ret = false;
     auto iterData = sourceMaps_.find(url);
     if (iterData != sourceMaps_.end()) {
         if (iterData->second == nullptr) {
             LOG_ECMA(ERROR) << "Extract mappings failed, url: " << url;
             return false;
         }
-        url = tmp;
-        return GetLineAndColumnNumbers(line, column, *(iterData->second));
+        ret = GetLineAndColumnNumbers(line, column, *(iterData->second), isReplaces);
+        if (isReplaces) {
+            url = tmp;
+        }
+        return ret;
     }
     auto iter = mappings_.find(url);
     if (iter != mappings_.end()) {
@@ -368,20 +374,23 @@ bool SourceMap::TranslateUrlPositionBySourceMap(std::string& url, int& line, int
         }
         ExtractSourceMapData(mappings.substr(FLAG_MAPPINGS_LEN, mappings.size() - FLAG_MAPPINGS_LEN - 1), modularMap);
         sourceMaps_.emplace(url, modularMap);
-        url = tmp;
-        return GetLineAndColumnNumbers(line, column, *(modularMap));
+        ret = GetLineAndColumnNumbers(line, column, *(modularMap), isReplaces);
+        if (isReplaces) {
+            url = tmp;
+        }
+        return ret;
     }
     return false;
 }
 
-bool SourceMap::GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap)
+bool SourceMap::GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap, bool& isReplaces)
 {
     int32_t offSet = 0;
     MappingInfo mapInfo;
 #if defined(WINDOWS_PLATFORM) || defined(MAC_PLATFORM)
-    mapInfo = Find(line - offSet + OFFSET_PREVIEW, column, targetMap);
+    mapInfo = Find(line - offSet + OFFSET_PREVIEW, column, targetMap, isReplaces);
 #else
-    mapInfo = Find(line - offSet, column, targetMap);
+    mapInfo = Find(line - offSet, column, targetMap, isReplaces);
 #endif
     if (mapInfo.row == 0 || mapInfo.col == 0) {
         return false;

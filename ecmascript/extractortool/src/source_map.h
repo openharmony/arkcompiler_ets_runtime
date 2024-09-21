@@ -81,9 +81,9 @@ private:
     void ExtractKeyInfo(const std::string& sourceMap, std::vector<std::string>& sourceKeyInfo);
     std::vector<std::string> HandleMappings(const std::string& mapping);
     bool VlqRevCode(const std::string& vStr, std::vector<int32_t>& ans);
-    MappingInfo Find(int32_t row, int32_t col, const SourceMapData& targetMap);
+    MappingInfo Find(int32_t row, int32_t col, const SourceMapData& targetMap, bool& isReplaces);
     void GetPosInfo(const std::string& temp, int32_t start, std::string& line, std::string& column);
-    bool GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap);
+    bool GetLineAndColumnNumbers(int& line, int& column, SourceMapData& targetMap, bool& isReplaces);
     uint32_t Base64CharToInt(char charCode);
     friend class SourceMapFriend;
 #if defined(PANDA_TARGET_OHOS)
