@@ -222,10 +222,8 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
         handleValue_.Update(tagValue);
         // a. Let value be Call(ReplacerFunction, holder, «key, value»).
         const uint32_t argsLength = 2; // 2: «key, value»
-        JSHandle<JSTaggedValue> holder = SerializeHolder(object, value);
-        RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         EcmaRuntimeCallInfo *info =
-            EcmaInterpreter::NewRuntimeCallInfo(thread_, replacer, holder, undefined, argsLength);
+            EcmaInterpreter::NewRuntimeCallInfo(thread_, replacer, object, undefined, argsLength);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
         info->SetCallArg(key.GetTaggedValue(), handleValue_.GetTaggedValue());
         tagValue = JSFunction::Call(info);
@@ -233,19 +231,6 @@ JSTaggedValue JsonStringifier::GetSerializeValue(const JSHandle<JSTaggedValue> &
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     }
     return tagValue;
-}
-
-JSHandle<JSTaggedValue> JsonStringifier::SerializeHolder(const JSHandle<JSTaggedValue> &object,
-                                                         const JSHandle<JSTaggedValue> &value)
-{
-    if (stack_.size() <= 0) {
-        JSHandle<JSObject> holder = factory_->CreateNullJSObject();
-        JSHandle<JSTaggedValue> holderKey(factory_->GetEmptyString());
-        JSObject::CreateDataPropertyOrThrow(thread_, holder, holderKey, value);
-        RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread_);
-        return JSHandle<JSTaggedValue>(holder);
-    }
-    return object;
 }
 
 JSTaggedValue JsonStringifier::SerializeJSONProperty(const JSHandle<JSTaggedValue> &value,
@@ -799,7 +784,6 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     if (UNLIKELY(value.IsAccessor())) {
                         value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                             JSHandle<JSTaggedValue>(obj));
-                        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                         jsHclass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
                     }
                     handleValue_.Update(value);

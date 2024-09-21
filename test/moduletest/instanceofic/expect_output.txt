@@ -17,5 +17,3 @@ test success
 test success
 CallbackFn is not callable
 TypeError
-false
-false
