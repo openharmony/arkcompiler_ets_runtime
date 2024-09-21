@@ -53,7 +53,10 @@ class RSetWorkListHandler;
 class SharedConcurrentMarker;
 class SharedConcurrentSweeper;
 class SharedGC;
+class SharedGCMarkerBase;
 class SharedGCMarker;
+class SharedFullGC;
+class SharedGCMovableMarker;
 class STWYoungGC;
 class ThreadLocalAllocationBuffer;
 class IdleGCTrigger;
@@ -110,6 +113,7 @@ enum class VerifyKind {
     VERIFY_POST_SHARED_GC,
     VERIFY_SHARED_GC_MARK,
     VERIFY_SHARED_GC_SWEEP,
+    VERIFY_END,
 };
 
 class BaseHeap {
@@ -392,8 +396,8 @@ public:
 
     class ParallelMarkTask : public Task {
     public:
-        ParallelMarkTask(int32_t id, SharedHeap *heap)
-            : Task(id), sHeap_(heap) {};
+        ParallelMarkTask(int32_t id, SharedHeap *heap, SharedParallelMarkPhase taskPhase)
+            : Task(id), sHeap_(heap), taskPhase_(taskPhase) {};
         ~ParallelMarkTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -402,12 +406,13 @@ public:
 
     private:
         SharedHeap *sHeap_ {nullptr};
+        SharedParallelMarkPhase taskPhase_;
     };
 
     class AsyncClearTask : public Task {
     public:
-        AsyncClearTask(int32_t id, SharedHeap *heap)
-            : Task(id), sHeap_(heap) {}
+        AsyncClearTask(int32_t id, SharedHeap *heap, TriggerGCType type)
+            : Task(id), sHeap_(heap), gcType_(type) {}
         ~AsyncClearTask() override = default;
         bool Run(uint32_t threadIndex) override;
 
@@ -415,6 +420,7 @@ public:
         NO_MOVE_SEMANTIC(AsyncClearTask);
     private:
         SharedHeap *sHeap_;
+        TriggerGCType gcType_;
     };
     bool IsMarking() const override
     {
@@ -483,7 +489,7 @@ public:
 
     bool CheckHugeAndTriggerSharedGC(JSThread *thread, size_t size);
 
-    void TryTriggerLocalConcurrentMarking(JSThread *currentThread);
+    void TryTriggerLocalConcurrentMarking();
 
     // Called when all vm is destroyed, and try to destroy daemon thread.
     void WaitAllTasksFinishedAfterAllJSThreadEliminated();
@@ -555,6 +561,11 @@ public:
     SharedReadOnlySpace *GetReadOnlySpace() const
     {
         return sReadOnlySpace_;
+    }
+
+    SharedAppSpawnSpace *GetAppSpawnSpace() const
+    {
+        return sAppSpawnSpace_;
     }
 
     void SetForceGC(bool forceGC)
@@ -678,8 +689,10 @@ public:
     }
 
     void Prepare(bool inTriggerGCThread);
-    void Reclaim();
-    void PostGCMarkingTask();
+    void Reclaim(TriggerGCType gcType);
+    void PostGCMarkingTask(SharedParallelMarkPhase sharedTaskPhase);
+    void CompactHeapBeforeFork(JSThread *thread);
+    void ReclaimForAppSpawn();
 
     SharedGCWorkManager *GetWorkManager() const
     {
@@ -690,6 +703,12 @@ public:
     {
         return sharedGCMarker_;
     }
+
+    SharedGCMovableMarker *GetSharedGCMovableMarker() const
+    {
+        return sharedGCMovableMarker_;
+    }
+    inline void SwapOldSpace();
 
     void PrepareRecordRegionsForReclaim();
 
@@ -730,15 +749,26 @@ public:
 
     size_t VerifyHeapObjects(VerifyKind verifyKind) const;
 
+    inline void MergeToOldSpaceSync(SharedLocalSpace *localSpace);
+
     void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread);
+
+    class SharedGCScope {
+    public:
+        SharedGCScope();
+        ~SharedGCScope();
+    };
+
 private:
-
+    void ProcessAllGCListeners();
     inline void CollectGarbageFinish(bool inDaemon);
+    
+    void MoveOldSpaceToAppspawn();
 
-    void ReclaimRegions();
+    void ReclaimRegions(TriggerGCType type);
 
     void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
-
+    inline TaggedObject *AllocateInSOldSpace(JSThread *thread, size_t size);
     struct SharedHeapSmartGCStats {
         /**
          * For SmartGC.
@@ -775,14 +805,18 @@ private:
     DaemonThread *dThread_ {nullptr};
     const GlobalEnvConstants *globalEnvConstants_ {nullptr};
     SharedOldSpace *sOldSpace_ {nullptr};
+    SharedOldSpace *sCompressSpace_ {nullptr};
     SharedNonMovableSpace *sNonMovableSpace_ {nullptr};
     SharedReadOnlySpace *sReadOnlySpace_ {nullptr};
     SharedHugeObjectSpace *sHugeObjectSpace_ {nullptr};
+    SharedAppSpawnSpace *sAppSpawnSpace_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
     SharedConcurrentMarker *sConcurrentMarker_ {nullptr};
     SharedConcurrentSweeper *sSweeper_ {nullptr};
     SharedGC *sharedGC_ {nullptr};
+    SharedFullGC *sharedFullGC_ {nullptr};
     SharedGCMarker *sharedGCMarker_ {nullptr};
+    SharedGCMovableMarker *sharedGCMovableMarker_ {nullptr};
     size_t growingFactor_ {0};
     size_t growingStep_ {0};
     size_t incNativeSizeTriggerSharedCM_ {0};
@@ -1435,6 +1469,7 @@ public:
 
     PUBLIC_API GCListenerId AddGCListener(FinishGCListener listener, void *data);
     PUBLIC_API void RemoveGCListener(GCListenerId listenerId);
+    void ProcessGCListeners();
 private:
     inline TaggedObject *AllocateHugeObject(size_t size);
 
@@ -1456,7 +1491,6 @@ private:
     void PrepareRecordRegionsForReclaim();
     inline void ReclaimRegions(TriggerGCType gcType);
     inline size_t CalculateCommittedCacheSize();
-    void ProcessGCListeners();
 #if defined(ECMASCRIPT_SUPPORT_SNAPSHOT) && defined(PANDA_TARGET_OHOS) && defined(ENABLE_HISYSEVENT)
     uint64_t GetCurrentTickMillseconds();
     void ThresholdReachedDump();

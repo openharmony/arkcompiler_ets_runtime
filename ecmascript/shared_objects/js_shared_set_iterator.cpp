@@ -45,7 +45,7 @@ JSTaggedValue JSSharedSetIterator::NextInternal(JSThread *thread, JSHandle<JSTag
         return JSIterator::CreateIterResultObject(thread, undefinedHandle, true).GetTaggedValue();
     }
     JSHandle<JSSharedSet> iteratedSet(thread, iter->GetIteratedSet());
-    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, *iteratedSet);
+    [[maybe_unused]] ConcurrentApiScope<JSSharedSet> scope(thread, JSHandle<JSTaggedValue>::Cast(iteratedSet));
     RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
     JSHandle<LinkedHashSet> set(thread, iteratedSet->GetLinkedSet());
 

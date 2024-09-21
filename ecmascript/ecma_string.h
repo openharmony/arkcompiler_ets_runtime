@@ -750,7 +750,7 @@ private:
     static EcmaString *TryToUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src);
 
     static EcmaString *ConvertUtf8ToLowerOrUpper(const EcmaVM *vm, const JSHandle<EcmaString> &src,
-                                                 bool toLower, FlatStringInfo &srcFlat, uint32_t startIndex = 0);
+                                                 bool toLower, uint32_t startIndex = 0);
 };
 
 // The LineEcmaString abstract class captures sequential string values, only LineEcmaString can store chars data

@@ -790,6 +790,14 @@ size_t SharedHeapVerification::VerifyRoot() const
         []([[maybe_unused]] Root type, [[maybe_unused]] ObjectSlot base, [[maybe_unused]] ObjectSlot derived,
            [[maybe_unused]] uintptr_t baseOldObject) {
     };
+    RootVisitor serializeVisitor = [this, &failCount]([[maybe_unused]] Root type, ObjectSlot slot) {
+        JSTaggedValue value(slot.GetTaggedType());
+        if (!sHeap_->IsAlive(value.GetTaggedObject())) {
+            LOG_ECMA(ERROR) << "Serialize Heap verify detected a dead object. " << value.GetTaggedObject();
+            ++failCount;
+        }
+    };
+    Runtime::GetInstance()->IterateSerializeRoot(serializeVisitor);
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
         ASSERT(!thread->IsInRunningState());
         auto vm = thread->GetEcmaVM();
@@ -813,6 +821,25 @@ size_t SharedHeapVerification::VerifyHeap() const
     if (failCount > 0) {
         LOG_GC(ERROR) << "SharedHeap VerifyHeap detects deadObject count is " << failCount;
     }
+    VerifyKind localVerifyKind = VerifyKind::VERIFY_END;
+    if (verifyKind_ == VerifyKind::VERIFY_PRE_SHARED_GC) {
+        localVerifyKind = VerifyKind::VERIFY_PRE_GC;
+    } else if (verifyKind_ == VerifyKind::VERIFY_POST_SHARED_GC) {
+        localVerifyKind = VerifyKind::VERIFY_POST_GC;
+    }
+
+    Runtime::GetInstance()->GCIterateThreadList([&, localVerifyKind](JSThread *thread) {
+        ASSERT(!thread->IsInRunningState());
+        auto vm = thread->GetEcmaVM();
+        auto localHeap = const_cast<Heap*>(vm->GetHeap());
+        localHeap->GetSweeper()->EnsureAllTaskFinished();
+        if (localVerifyKind != VerifyKind::VERIFY_END) {
+            Verification(localHeap, localVerifyKind).VerifyAll();
+        }
+        if (failCount > 0) {
+            LOG_GC(ERROR) << "SharedHeap VerifyRoot detects deadObject in local heap count is " << failCount;
+        }
+    });
     return failCount;
 }
 
