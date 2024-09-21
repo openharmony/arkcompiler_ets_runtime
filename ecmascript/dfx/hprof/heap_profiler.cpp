@@ -173,6 +173,7 @@ void HeapProfiler::DumpHeapSnapshot([[maybe_unused]] const DumpSnapShotOption &d
 
 bool HeapProfiler::DoDump(Stream *stream, Progress *progress, const DumpSnapShotOption &dumpOption)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     int32_t heapCount = 0;
     HeapSnapshot *snapshot = nullptr;
     {
@@ -636,6 +637,11 @@ void HeapProfiler::FillIdMap()
             auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
             newEntryIdMap->InsertId(addr, sequenceId);
         });
+        sHeap->GetReadOnlySpace()->IterateOverObjects([newEntryIdMap, this](TaggedObject *obj) {
+            JSTaggedType addr = ((JSTaggedValue)obj).GetRawData();
+            auto [idExist, sequenceId] = entryIdMap_->FindId(addr);
+            newEntryIdMap->InsertId(addr, sequenceId);
+        });
     }
 
     // Iterate LocalHeap Object
@@ -665,14 +671,12 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
     {
         if (dumpOption.isFullGC) {
             [[maybe_unused]] bool heapClean = ForceFullGC(vm_);
+            ForceSharedGC();
             ASSERT(heapClean);
         }
         SuspendAllScope suspendScope(vm_->GetAssociatedJSThread()); // suspend All.
-        if (dumpOption.isFullGC) {
-            DISALLOW_GARBAGE_COLLECTION;
-            const_cast<Heap *>(vm_->GetHeap())->Prepare();
-            SharedHeap::GetInstance()->Prepare(true);
-        }
+        const_cast<Heap*>(vm_->GetHeap())->Prepare();
+        SharedHeap::GetInstance()->Prepare(true);
         Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
             ASSERT(!thread->IsInRunningState());
             const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
