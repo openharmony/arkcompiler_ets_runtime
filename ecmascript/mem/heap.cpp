@@ -1113,6 +1113,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         }
         if (shouldThrowOOMError_) {
             // Force Full GC after failed Old GC to avoid OOM
+            LOG_ECMA(INFO) << "Old space is almost OOM, attempt trigger full gc to avoid OOM.";
             gcType = TriggerGCType::FULL_GC;
         }
         oldGCRequested_ = false;

@@ -603,9 +603,12 @@ void AppSpawnSpace::IterateOverMarkedObjects(const std::function<void(TaggedObje
 uintptr_t LocalSpace::Allocate(size_t size, bool isExpand)
 {
     auto object = allocator_->Allocate(size);
-    if (object == 0) {
-        if (isExpand && Expand()) {
+    if (object == 0 && isExpand) {
+        if (Expand()) {
             object = allocator_->Allocate(size);
+        } else {
+            localHeap_->ThrowOutOfMemoryErrorForDefault(localHeap_->GetJSThread(), size,
+                " LocalSpace::Allocate", false);
         }
     }
     if (object != 0) {
