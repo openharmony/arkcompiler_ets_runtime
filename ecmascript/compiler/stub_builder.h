@@ -968,9 +968,9 @@ public:
     inline void StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
     GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum,
                          GateRef hir = Circuit::NullGate());
+    GateRef GetLastLeaveFrame(GateRef glue);
     void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
                                              GateRef profileTypeInfo, GateRef slotId);
-    GateRef GetLastLeaveFrame(GateRef glue);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

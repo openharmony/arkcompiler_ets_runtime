@@ -67,7 +67,7 @@ function sin()
 {
     Math.sin = replace;
     len = Math.sin(1)
-    print(len);
+    print(len)
 }
 sin()
 
@@ -77,7 +77,7 @@ function acos()
 {
     Math.acos = replace
     len = Math.acos(0.5)
-    print(len);
+    print(len)
 }
 acos()
 
@@ -87,7 +87,7 @@ function atan()
 {
     Math.atan = replace
     len = Math.atan(2)
-    print(len);
+    print(len)
 }
 atan()
 
@@ -111,7 +111,7 @@ function abs()
 {
     Math.abs = replace
     len = Math.abs(-9.6)
-    print(len);
+    print(len)
 }
 abs()
 
@@ -131,6 +131,6 @@ function floor()
 {
     Math.floor = replace
     len = Math.floor(-9.6)
-    print(len);
+    print(len)
 }
 floor()

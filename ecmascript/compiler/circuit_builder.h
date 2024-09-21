@@ -396,6 +396,8 @@ public:
     GateRef CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
     GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool needPushArgv);
+    GateRef CallConstructCheck(GateRef callGate, GateRef depend, GateRef glue_, GateRef ctor,
+                                GateRef value, GateRef thisObj);
     GateRef CallInternal(GateRef hirGate, std::vector<GateRef> args, uint64_t pcOffset);
     GateRef TypedCallNative(GateRef hirGate, GateRef thisObj, GateRef funcId);
     GateRef IsBase(GateRef ctor);
@@ -827,8 +829,8 @@ public:
     inline GateRef IntPtrGreaterThan(GateRef x, GateRef y);
     inline GateRef IntPtrAnd(GateRef x, GateRef y);
     inline GateRef IntPtrNot(GateRef x);
-    inline GateRef IntPtrEqual(GateRef x, GateRef y);
     inline GateRef DoubleTrunc(GateRef gate, GateRef value, const char* comment = nullptr);
+    inline GateRef IntPtrEqual(GateRef x, GateRef y);
     GateRef AddWithOverflow(GateRef left, GateRef right);
     GateRef SubWithOverflow(GateRef left, GateRef right);
     GateRef MulWithOverflow(GateRef left, GateRef right);
