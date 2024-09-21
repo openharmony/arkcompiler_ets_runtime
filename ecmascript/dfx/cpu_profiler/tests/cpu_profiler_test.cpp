@@ -35,6 +35,11 @@ public:
         cpu_profiler.outToFile_ = outToFile;
     }
 
+    void SetInterval(uint32_t intervalTest)
+    {
+        cpu_profiler.interval_ = intervalTest;
+    }
+
     bool StartCpuProfilerForInfoTest()
     {
         return cpu_profiler.StartCpuProfilerForInfo();
@@ -98,13 +103,13 @@ HWTEST_F_L0(CpuprofilerTest, TestStopCpuProfilerForFile)
 {
     int interval = 1;
     bool ret;
-    CpuProfilerFriendTest CpuProfilerFriend(instance, interval);
-    ret = CpuProfilerFriend.StopCpuProfilerForFileTest();
+    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
+    ret = cpuProfilerFriend.StopCpuProfilerForFileTest();
     EXPECT_TRUE(ret);
 
-    CpuProfilerFriend.SetIsProfiling(true);
-    CpuProfilerFriend.StartCpuProfilerForInfoTest();
-    ret = CpuProfilerFriend.StopCpuProfilerForFileTest();
+    cpuProfilerFriend.SetIsProfiling(true);
+    cpuProfilerFriend.StartCpuProfilerForInfoTest();
+    ret = cpuProfilerFriend.StopCpuProfilerForFileTest();
     EXPECT_FALSE(ret);
 }
 
@@ -112,20 +117,20 @@ HWTEST_F_L0(CpuprofilerTest, TestStartCpuProfilerForFile)
 {
     int interval = 1;
     bool ret;
-    CpuProfilerFriendTest CpuProfilerFriend(instance, interval);
+    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
     std::string filename1("__CpuprofilerTest.abc");
     std::string filename2("");
     std::string filename3(PATH_MAX + 1, ' ');
 
-    ret = CpuProfilerFriend.StartCpuProfilerForFileTest(filename1);
+    ret = cpuProfilerFriend.StartCpuProfilerForFileTest(filename1);
     EXPECT_FALSE(ret);
-    ret = CpuProfilerFriend.StartCpuProfilerForFileTest(filename2);
+    ret = cpuProfilerFriend.StartCpuProfilerForFileTest(filename2);
     EXPECT_FALSE(ret);
-    ret = CpuProfilerFriend.StartCpuProfilerForFileTest(filename3);
+    ret = cpuProfilerFriend.StartCpuProfilerForFileTest(filename3);
     EXPECT_FALSE(ret);
 
-    CpuProfilerFriend.SetIsProfiling(true);
-    ret = CpuProfilerFriend.StartCpuProfilerForFileTest(filename1);
+    cpuProfilerFriend.SetIsProfiling(true);
+    ret = cpuProfilerFriend.StartCpuProfilerForFileTest(filename1);
     EXPECT_FALSE(ret);
 }
 
@@ -133,31 +138,32 @@ HWTEST_F_L0(CpuprofilerTest, TestStopCpuProfilerForInfo)
 {
     int interval = 1;
     bool ret;
-    CpuProfilerFriendTest CpuProfilerFriend(instance, interval);
+    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
     std::unique_ptr<ProfileInfo> profileInfo;
 
-    ret = CpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
+    ret = cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
     EXPECT_TRUE(ret);
 
-    CpuProfilerFriend.StartCpuProfilerForInfoTest();
-    ret = CpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
+    cpuProfilerFriend.StartCpuProfilerForInfoTest();
+    ret = cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
     EXPECT_TRUE(ret);
     
-    CpuProfilerFriend.SetIsProfiling(true);
-    CpuProfilerFriend.SetOutToFile(true);
-    ret = CpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
+    cpuProfilerFriend.SetIsProfiling(true);
+    cpuProfilerFriend.SetOutToFile(true);
+    ret = cpuProfilerFriend.StopCpuProfilerForInfoTest(profileInfo);
     EXPECT_FALSE(ret);
 }
 
 HWTEST_F_L0(CpuprofilerTest, TestGetStackBeforeCallNapi)
 {
-    int interval = 100;
-    CpuProfilerFriendTest CpuProfilerFriend(instance, interval);
+    uint32_t interval = 100;
+    CpuProfilerFriendTest cpuProfilerFriend(instance, interval);
 
-    bool flag = CpuProfilerFriend.GetStackBeforeCallNapiTest(thread);
+    bool flag = cpuProfilerFriend.GetStackBeforeCallNapiTest(thread);
     EXPECT_TRUE(flag);
-
-    flag = CpuProfilerFriend.GetStackBeforeCallNapiTest(thread);
+    
+    cpuProfilerFriend.SetInterval(UINT32_MAX);
+    flag = cpuProfilerFriend.GetStackBeforeCallNapiTest(thread);
     EXPECT_FALSE(flag);
 }
 }  // namespace panda::test
