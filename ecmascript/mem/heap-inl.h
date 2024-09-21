@@ -18,6 +18,7 @@
 
 #include "ecmascript/mem/heap.h"
 
+#include "ecmascript/js_native_pointer.h"
 #include "ecmascript/daemon/daemon_task-inl.h"
 #include "ecmascript/dfx/hprof/heap_tracker.h"
 #include "ecmascript/ecma_vm.h"
@@ -1028,6 +1029,182 @@ void SharedHeap::CollectGarbage(JSThread *thread)
     SetForceGC(true);
     WaitGCFinished(thread);
 }
+
+static void SwapBackAndPop(CVector<JSNativePointer*>& vec, CVector<JSNativePointer*>::iterator& iter)
+{
+    *iter = vec.back();
+    if (iter + 1 == vec.end()) {
+        vec.pop_back();
+        iter = vec.end();
+    } else {
+        vec.pop_back();
+    }
+}
+
+static void ShrinkWithFactor(CVector<JSNativePointer*>& vec)
+{
+    constexpr size_t SHRINK_FACTOR = 2;
+    if (vec.size() < vec.capacity() / SHRINK_FACTOR) {
+        vec.shrink_to_fit();
+    }
+}
+
+void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
+{
+    // ProcessNativeDelete should be limited to OldGC or FullGC only
+    if (!IsGeneralYoungGC()) {
+        auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
+        auto iter = nativePointerList_.begin();
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
+        while (iter != nativePointerList_.end()) {
+            JSNativePointer* object = *iter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
+            if (fwd == nullptr) {
+                size_t bindingSize = object->GetBindingSize();
+                asyncNativeCallbacksPack.AddCallback(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())), bindingSize);
+                nativeAreaAllocator_->DecreaseNativeSizeStats(bindingSize, object->GetNativeFlag());
+                SwapBackAndPop(nativePointerList_, iter);
+            } else {
+                ++iter;
+            }
+        }
+        ShrinkWithFactor(nativePointerList_);
+
+        auto& concurrentNativeCallbacks = GetEcmaVM()->GetConcurrentNativePointerCallbacks();
+        auto newIter = concurrentNativePointerList_.begin();
+        while (newIter != concurrentNativePointerList_.end()) {
+            JSNativePointer* object = *newIter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
+            if (fwd == nullptr) {
+                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+                concurrentNativeCallbacks.emplace_back(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData()));
+                SwapBackAndPop(concurrentNativePointerList_, newIter);
+            } else {
+                ++newIter;
+            }
+        }
+        ShrinkWithFactor(concurrentNativePointerList_);
+    }
+}
+
+void Heap::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
+{
+    auto& sharedNativePointerCallbacks = GetEcmaVM()->GetSharedNativePointerCallbacks();
+    auto sharedIter = sharedNativePointerList_.begin();
+    while (sharedIter != sharedNativePointerList_.end()) {
+        JSNativePointer* object = *sharedIter;
+        auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
+        if (fwd == nullptr) {
+            sharedNativePointerCallbacks.emplace_back(
+                object->GetDeleter(), std::make_pair(object->GetExternalPointer(), object->GetData()));
+            SwapBackAndPop(sharedNativePointerList_, sharedIter);
+        } else {
+            if (fwd != reinterpret_cast<TaggedObject*>(object)) {
+                *sharedIter = reinterpret_cast<JSNativePointer*>(fwd);
+            }
+            ++sharedIter;
+        }
+    }
+    ShrinkWithFactor(sharedNativePointerList_);
+}
+
+void Heap::ProcessReferences(const WeakRootVisitor& visitor)
+{
+    // process native ref should be limited to OldGC or FullGC only
+    if (!IsGeneralYoungGC()) {
+        auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
+        ResetNativeBindingSize();
+        // array buffer
+        auto iter = nativePointerList_.begin();
+        ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessReferencesNum:" + std::to_string(nativePointerList_.size()));
+        while (iter != nativePointerList_.end()) {
+            JSNativePointer* object = *iter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
+            if (fwd == nullptr) {
+                size_t bindingSize = object->GetBindingSize();
+                asyncNativeCallbacksPack.AddCallback(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())), bindingSize);
+                nativeAreaAllocator_->DecreaseNativeSizeStats(bindingSize, object->GetNativeFlag());
+                SwapBackAndPop(nativePointerList_, iter);
+                continue;
+            }
+            IncreaseNativeBindingSize(JSNativePointer::Cast(fwd));
+            if (fwd != reinterpret_cast<TaggedObject*>(object)) {
+                *iter = JSNativePointer::Cast(fwd);
+            }
+            ++iter;
+        }
+        ShrinkWithFactor(nativePointerList_);
+
+        auto& concurrentNativeCallbacks = GetEcmaVM()->GetConcurrentNativePointerCallbacks();
+        auto newIter = concurrentNativePointerList_.begin();
+        while (newIter != concurrentNativePointerList_.end()) {
+            JSNativePointer* object = *newIter;
+            auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
+            if (fwd == nullptr) {
+                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+                concurrentNativeCallbacks.emplace_back(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData()));
+                SwapBackAndPop(concurrentNativePointerList_, newIter);
+                continue;
+            }
+            IncreaseNativeBindingSize(JSNativePointer::Cast(fwd));
+            if (fwd != reinterpret_cast<TaggedObject*>(object)) {
+                *newIter = JSNativePointer::Cast(fwd);
+            }
+            ++newIter;
+        }
+        ShrinkWithFactor(concurrentNativePointerList_);
+    }
+}
+
+void Heap::PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent)
+{
+    ASSERT(!JSTaggedValue(pointer).IsInSharedHeap());
+    if (isConcurrent) {
+        concurrentNativePointerList_.emplace_back(pointer);
+    } else {
+        nativePointerList_.emplace_back(pointer);
+    }
+}
+
+void Heap::PushToSharedNativePointerList(JSNativePointer* pointer)
+{
+    ASSERT(JSTaggedValue(pointer).IsInSharedHeap());
+    sharedNativePointerList_.emplace_back(pointer);
+}
+
+void Heap::RemoveFromNativePointerList(const JSNativePointer* pointer)
+{
+    auto iter = std::find(nativePointerList_.begin(), nativePointerList_.end(), pointer);
+    if (iter != nativePointerList_.end()) {
+        JSNativePointer* object = *iter;
+        nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+        object->Destroy(thread_);
+        SwapBackAndPop(nativePointerList_, iter);
+    }
+    auto newIter = std::find(concurrentNativePointerList_.begin(), concurrentNativePointerList_.end(), pointer);
+    if (newIter != concurrentNativePointerList_.end()) {
+        JSNativePointer* object = *newIter;
+        nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
+        object->Destroy(thread_);
+        SwapBackAndPop(concurrentNativePointerList_, newIter);
+    }
+}
+
+void Heap::ClearNativePointerList()
+{
+    for (auto iter : nativePointerList_) {
+        iter->Destroy(thread_);
+    }
+    for (auto iter : concurrentNativePointerList_) {
+        iter->Destroy(thread_);
+    }
+    nativePointerList_.clear();
+}
+
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_MEM_HEAP_INL_H

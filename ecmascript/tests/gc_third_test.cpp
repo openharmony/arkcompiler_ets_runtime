@@ -160,10 +160,10 @@ HWTEST_F_L0(GCTest, CallbackTask)
             nullptr, false, 10, Concurrent::YES);
         }
     }
-    size_t number = vm->GetConcurrentNativePointerListSize();
+    size_t number = heap->concurrentNativePointerList_.size();
     EXPECT_TRUE(number > 0);
     heap->CollectGarbage(TriggerGCType::OLD_GC);
-    size_t newNumber = vm->GetConcurrentNativePointerListSize();
+    size_t newNumber = heap->concurrentNativePointerList_.size();
     EXPECT_TRUE(number > newNumber);
 }
 

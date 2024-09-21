@@ -30,6 +30,7 @@ public:
     using const_reference = const T &;
     using size_type = size_t;
     using difference_type = ptrdiff_t;
+    using propagate_on_container_swap = std::true_type;
 
     template<typename U>
     struct Rebind {

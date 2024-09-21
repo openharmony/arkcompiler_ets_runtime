@@ -220,11 +220,12 @@ public:
                 nodeNativeSizes.push_back(nativeSizeStr);
             }
         }
-        if (instance->GetNativePointerList().size() != nodeNativeSizes.size() || nodeNativeSizes.size() != nNum) {
+        const Heap* heap = instance->GetHeap();
+        if (heap->nativePointerList_.size() != nodeNativeSizes.size() || nodeNativeSizes.size() != nNum) {
             return false;
         }
         int ind = 0;
-        for (JSNativePointer *jsNp : instance->GetNativePointerList()) {
+        for (JSNativePointer* jsNp : heap->nativePointerList_) {
             if (nodeNativeSizes[ind].compare(std::to_string(jsNp->GetBindingSize())) != 0) {
                 return false;
             }

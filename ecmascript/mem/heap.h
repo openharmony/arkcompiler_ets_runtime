@@ -28,6 +28,11 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/mem/idle_gc_trigger.h"
 
+namespace panda::test {
+class GCTest_CallbackTask_Test;
+class HProfTestHelper;
+}
+
 namespace panda::ecmascript {
 class ConcurrentMarker;
 class ConcurrentSweeper;
@@ -1465,6 +1470,20 @@ public:
     PUBLIC_API GCListenerId AddGCListener(FinishGCListener listener, void *data);
     PUBLIC_API void RemoveGCListener(GCListenerId listenerId);
     void ProcessGCListeners();
+
+    inline void ProcessNativeDelete(const WeakRootVisitor& visitor);
+    inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
+    inline void ProcessReferences(const WeakRootVisitor& visitor);
+    inline void PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent);
+    inline void PushToSharedNativePointerList(JSNativePointer* pointer);
+    inline void RemoveFromNativePointerList(const JSNativePointer* pointer);
+    inline void ClearNativePointerList();
+
+    size_t GetNativePointerListSize() const
+    {
+        return nativePointerList_.size();
+    }
+
 private:
     inline TaggedObject *AllocateHugeObject(size_t size);
 
@@ -1720,6 +1739,13 @@ private:
 
     bool hasOOMDump_ {false};
     bool enableEdenGC_ {false};
+
+    CVector<JSNativePointer *> nativePointerList_;
+    CVector<JSNativePointer *> concurrentNativePointerList_;
+    CVector<JSNativePointer *> sharedNativePointerList_;
+
+    friend panda::test::HProfTestHelper;
+    friend panda::test::GCTest_CallbackTask_Test;
 };
 }  // namespace panda::ecmascript
 
