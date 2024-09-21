@@ -29,3 +29,13 @@ SendableUint8ClampedArray set proto with sendable object failed. err: TypeError:
 1
 1
 load global ic with accessor success!
+1
+change
+2
+1
+change
+function Number() { [native code] }
+function Number() { [native code] }
+change
+2
+2

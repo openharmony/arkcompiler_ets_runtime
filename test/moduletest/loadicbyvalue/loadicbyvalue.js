@@ -85,4 +85,37 @@ for (let i = 0; i < 100; i++) {
 }
 print("load ic by COWArray Success")
 
+function g(o, v) {
+    let res;
+    for (let i = 0; i < 100; i++) {
+        res = o[1];
+        if (res != v) {
+            print("Error ",res);
+        }
+    }
+    return res;
+}
+{
+    let pro = [1,1,1,1];
+    let o = { 
+        __proto__: pro };
+    o[102500] = 1;
+    o["test"] = "test";
+    print(g(o, 1));
+    Object.defineProperty(o, "1", { value: 2 });
+    print("change")
+    print(g(o, 2));
+}
+{
+    let pro = new Uint8Array(10);
+    pro[1]=1;
+    let o = { 
+        __proto__: pro };
+    o[102500] = 1;
+    o["test"] = "test";
+    print(g(o, 1));
+    Object.defineProperty(o, "1", { value: 2 });
+    print("change")
+    print(g(o, 2));
+}
 print("ic load success");
