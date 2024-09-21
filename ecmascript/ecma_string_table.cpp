@@ -277,7 +277,7 @@ EcmaString *EcmaStringTable::GetOrInternCompressedSubString(EcmaVM *vm, const JS
     }
 
     EcmaString *str = EcmaStringAccessor::CreateFromUtf8CompressedSubString(
-        vm, string, offset, utf8Len);
+        vm, string, offset, utf8Len, MemSpaceType::SHARED_OLD_SPACE);
     str->SetMixHashcode(result.second);
     InternStringThreadUnsafe(str, hashcode);
     return str;
