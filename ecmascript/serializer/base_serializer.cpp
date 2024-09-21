@@ -102,9 +102,9 @@ bool BaseSerializer::SerializeRootObject(TaggedObject *object)
 void BaseSerializer::SerializeSharedObject(TaggedObject *object)
 {
     data_->WriteEncodeFlag(EncodeFlag::SHARED_OBJECT);
-    data_->WriteUint32(sharedObjects_.size());
+    data_->WriteUint32(sharedObjChunk_->Size());
     referenceMap_.emplace(object, objectIndex_++);
-    sharedObjects_.emplace_back(static_cast<JSTaggedType>(ToUintPtr(object)));
+    sharedObjChunk_->Emplace(static_cast<JSTaggedType>(ToUintPtr(object)));
 }
 
 bool BaseSerializer::SerializeSpecialObjIndividually(JSType objectType, TaggedObject *root,
@@ -216,6 +216,9 @@ void BaseSerializer::SerializeSFunctionModule(JSFunction *func)
 {
     JSTaggedValue moduleValue = func->GetModule();
     if (moduleValue.IsHeapObject()) {
+        if (!Region::ObjectAddressToRange(moduleValue.GetTaggedObject())->InSharedHeap()) {
+            LOG_ECMA(ERROR) << "Shared function reference to local module";
+        }
         if (!SerializeReference(moduleValue.GetTaggedObject())) {
             // Module of shared function should write pointer directly when serialize
             SerializeSharedObject(moduleValue.GetTaggedObject());
