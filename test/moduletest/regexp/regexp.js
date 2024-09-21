@@ -422,6 +422,7 @@ try {
 }
 print(RegExp.prototype.toString())
 
+
 let inputString = "/vedio/av{avid}{cid}";
 let extractedContent = inputString.match(/\{([^{}]+)\}/g);
 let replacedString = inputString.replace(/\{([^{}]+)\}/g, '(uuu)').replace(/\//g, "\\/");
@@ -472,23 +473,29 @@ try {
 } catch(e) {
   print(e);
 }
+
+try {
+  let matchReg = new RegExp("@【哈哈】*^o^*|@小米（kk）",'g');
+} catch (error) {
+  print(error)
+}
 const str3 = "a-b-c";
 const re = /-/y;
 print(str3.split(re));
-
+ 
 re.lastIndex = 1;
 print(str3.split(re));
-
+ 
 re.lastIndex = -1;
 print(str3.split(re));
-
+ 
 re.lastIndex = 3;
 print(str3.split(re));
-
+ 
 print(re.test(str3));
-
+ 
 print(str3.split(/-/g));
-
+ 
 // search
 const str4 = "abc";
 let re1 = /b/;
@@ -497,7 +504,7 @@ print(str4.search(re1));
 print(str4.search(/b/y));
 print(str4.search(re1));
 print(re1.lastIndex);
-
+ 
 // check cache
 const str5 = "a-bc";
 let re2 = /-/;
@@ -506,7 +513,7 @@ print(str5.split(re2));
 print(re2.lastIndex);
 print(str5.split(re2));
 print(re2.lastIndex);
-
+ 
 const str6 = "abcabc";
 let re3 = /abc/;
 re3.lastIndex = 2;
@@ -514,7 +521,7 @@ print(str6.match(re3));
 print(re3.lastIndex);
 print(str6.match(re3));
 print(re3.lastIndex);
-
+ 
 let re4 = /abc/g;
 re4.lastIndex = 2;
 print(str6.match(re4));
@@ -533,7 +540,7 @@ print(str6.match(re4));
 print(re4.lastIndex);
 print(str6.match(re4));
 print(re4.lastIndex);
-
+ 
 let myExp = new RegExp("a+b+c");
 Object.defineProperty(myExp, "sticky", {
     value: true
@@ -580,12 +587,6 @@ print(matches);
 const matches1 = regex.exec(str10);
 print(matches1);
 
-try {
-  let matchReg = new RegExp("@【哈哈】*^o^*|@小米（kk）",'g');
-} catch (error) {
-  print(error)
-}
-
 let e = /./;
 e.exec = function() {
     return [];
@@ -609,6 +610,13 @@ delete e.exec;
 }
 
 {
+  let str = /^\s*([^;\s]*)/;
+  str.test("text/html");
+  print(RegExp.$1);
+  str.test("text/plain");
+  print(RegExp.$1);
+  str.test("text/html");
+  print(RegExp.$1);
   const v2 = /e\8Z(x)(x)(x)(x)(x)(x)(x)(x)(x)(x)\10*/misd;
   v2[1073741824] = -194290175n;
   for (let v3 = 0; v3 < 2; v3++) {
@@ -624,17 +632,6 @@ f.exec = f;
 let relpfun = reg51[Symbol.replace];
 relpfun.apply(f, [1, 2, 3, 4]);
 print("success");
-
-{
-  let str = /^\s*([^;\s]*)/;
-  str.test("text/html");
-  print(RegExp.$1);
-  str.test("text/plain");
-  print(RegExp.$1);
-  str.test("text/html");
-  print(RegExp.$1);
-}
-
 {
   let reg52 = /abc/;
   let count = 0;
@@ -647,7 +644,6 @@ print("success");
   Object.defineProperty(reg52, "ignoreCase", {
     get: function() { count++; return true; }
   });
-
   print(reg52.ignoreCase);
   print(count);
   print(reg52.global);

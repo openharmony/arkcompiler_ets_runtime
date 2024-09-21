@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,6 +19,7 @@
 #include "ecmascript/js_api/js_api_linked_list_iterator.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/object_factory.h"
+#include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_list.h"
 
 namespace panda::ecmascript {
