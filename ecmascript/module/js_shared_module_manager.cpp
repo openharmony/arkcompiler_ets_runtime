@@ -253,7 +253,7 @@ void SharedModuleManager::InsertInSModuleManager(JSThread *thread, const CString
     if (!SearchInSModuleManagerUnsafe(recordName)) {
         AddResolveImportedSModule(recordName, module.GetTaggedValue());
         StateVisit stateVisit;
-        sharedModuleMutex_.emplace(recordName, stateVisit);
+        sharedModuleMutex_.emplace(recordName, std::move(stateVisit));
     }
 }
 

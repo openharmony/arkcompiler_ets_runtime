@@ -213,15 +213,6 @@ public:
     static bool IsEvaluatedModule(JSThread *thread, StateVisit &stateVisit,
         const JSHandle<SourceTextModule> &module);
 
-    static bool IsEvaluatingModule(JSThread *thread, StateVisit &stateVisit,
-        const JSHandle<SourceTextModule> &module);
-
-    static bool IsInstaniatedModule(JSThread *thread, StateVisit &stateVisit,
-        const JSHandle<SourceTextModule> &module);
-
-    static bool WaitModuleEvaluated(JSThread *thread, StateVisit &stateVisit,
-        const JSHandle<SourceTextModule> &module);
-
     static ModuleStatus GetModuleEvaluatingType(JSThread *thread, StateVisit &stateVisit,
         const JSHandle<SourceTextModule> &module);
 
