@@ -438,7 +438,7 @@ void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
     SetRecordData(RecordData::START_COMMIT_SIZE, heap_->GetCommittedSize());
     SetRecordData(RecordData::START_EDEN_OBJ_SIZE, heap_->GetEdenSpace()->GetHeapObjectSize());
     SetRecordData(RecordData::START_YOUNG_OBJ_SIZE, heap_->GetNewSpace()->GetHeapObjectSize());
-    SetRecordData(RecordData::START_NATIVE_POINTER_NUM, heap_->GetEcmaVM()->GetNativePointerListSize());
+    SetRecordData(RecordData::START_NATIVE_POINTER_NUM, heap_->GetNativePointerListSize());
     gcType_ = GetGCType(gcType);
     reason_ = reason;
 
