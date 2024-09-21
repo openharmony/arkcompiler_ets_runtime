@@ -249,6 +249,16 @@ void EcmaVM::ResetPGOProfiler()
     }
 }
 
+void EcmaVM::DisablePGOProfilerWithAOTFile(const std::string &aotFileName)
+{
+    if (AOTFileManager::AOTFileExist(aotFileName, AOTFileManager::FILE_EXTENSION_AN) ||
+        AOTFileManager::AOTFileExist(aotFileName, AOTFileManager::FILE_EXTENSION_AI)) {
+        options_.SetEnablePGOProfiler(false);
+        PGOProfilerManager::GetInstance()->SetDisablePGO(true);
+        ResetPGOProfiler();
+    }
+}
+
 bool EcmaVM::IsEnablePGOProfiler() const
 {
     if (options_.IsWorker()) {

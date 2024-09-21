@@ -106,9 +106,10 @@ public:
         return profiler;
     }
 
+    // Return false if force disabled or never initialized
     bool IsEnable() const
     {
-        return encoder_ && encoder_->IsInitialized();
+        return !disablePGO_ && encoder_ && encoder_->IsInitialized();
     }
 
     void Destroy(std::shared_ptr<PGOProfiler> &profiler)
@@ -199,6 +200,13 @@ public:
         disableAot_ = state;
     }
 
+    // Only set flag to ensure future actions will not trigger PGO path
+    // Caller should handle existing threads and PGO data properly
+    void SetDisablePGO(bool state)
+    {
+        disablePGO_ = state;
+    }
+
     void ForceSave()
     {
         os::memory::LockHolder lock(*mutex_);
@@ -285,6 +293,7 @@ private:
     }
 
     bool disableAot_ {false};
+    bool disablePGO_ {false};
     std::unique_ptr<PGOProfilerEncoder> encoder_;
     RequestAotCallback requestAotCallback_;
     std::atomic_bool enableSignalSaving_ { false };
