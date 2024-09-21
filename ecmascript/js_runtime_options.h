@@ -214,7 +214,6 @@ enum CommandValues {
     OPTION_COMPILER_OPT_STRING,
     OPTION_OPEN_ARK_TOOLS,
     OPTION_COMPILER_OPT_FRAME_STATE_ELIMINATION,
-    OPTION_COMPILER_EMPTY_CATCH_FUNCTION,
     OPTION_ENABLE_FORCE_IC,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
@@ -1355,16 +1354,6 @@ public:
         enableOptInlining_ = value;
     }
 
-    void SetEnableEmptyCatchFunction(bool value)
-    {
-        enableEmptyCatchFunction_ = value;
-    }
-
-    bool IsEnableEmptyCatchFunction() const
-    {
-        return enableEmptyCatchFunction_;
-    }
-
     bool IsEnableOptInlining() const
     {
         return enableOptInlining_;
@@ -2064,7 +2053,6 @@ private:
     bool enableInstrcutionCombine {true};
     bool enableNewValueNumbering_ {true};
     bool enableOptInlining_ {true};
-    bool enableEmptyCatchFunction_ {false};
     bool enableOptPGOType_ {true};
     bool enableFastJIT_ {false};
     bool enableAPPJIT_ {false};

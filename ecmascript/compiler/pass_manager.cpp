@@ -136,10 +136,6 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
                 LOG_JIT(DEBUG) << "compile fail as has irreducible loop:" << methodName;
                 return false;
             }
-            if (builder_->HasEmptyCatchBB() && compilationEnv_->GetJSOptions().IsEnableAPPJIT()) {
-                LOG_JIT(DEBUG) << "compile fail as has empty catch bb:" << methodName;
-                return false;
-            }
         }
 
         CallMethodFlagMap methodFlagMap;
