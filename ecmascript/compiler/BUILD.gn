@@ -410,7 +410,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
   }
 
   if (enable_litecg_emit) {
-    defines = [ "ARK_LITECG_DEBUG" ]
+    defines += [ "ARK_LITECG_DEBUG" ]
   }
 
   deps = []

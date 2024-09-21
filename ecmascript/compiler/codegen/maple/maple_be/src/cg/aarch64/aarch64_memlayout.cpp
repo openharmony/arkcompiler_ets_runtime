@@ -89,7 +89,6 @@ void AArch64MemLayout::LayoutFormalParams()
                 SetSizeAlignForTypeIdx(ptyIdx, size, align);
                 symLoc->SetMemSegment(GetSegArgsRegPassed());
                 /* the type's alignment requirement may be smaller than a registser's byte size */
-                align = GetPointerSize();
                 segArgsRegPassed.SetSize(static_cast<uint32>(RoundUp(segArgsRegPassed.GetSize(), align)));
                 symLoc->SetOffset(segArgsRegPassed.GetSize());
                 segArgsRegPassed.SetSize(segArgsRegPassed.GetSize() + size);
