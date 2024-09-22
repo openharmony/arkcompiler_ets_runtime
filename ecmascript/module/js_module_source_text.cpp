@@ -96,8 +96,10 @@ JSHandle<JSTaggedValue> SourceTextModule::HostResolveImportedModuleWithMerge(JST
     CString moduleRequestName = ModulePathHelper::Utf8ConvertToString(moduleRequest.GetTaggedValue());
     CString requestStr = ReplaceModuleThroughFeature(thread, moduleRequestName);
 
-    CString baseFilename;
-    if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN) {
+    CString baseFilename {};
+    StageOfHotReload stageOfHotReload = thread->GetCurrentEcmaContext()->GetStageOfHotReload();
+    if (stageOfHotReload == StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN ||
+        stageOfHotReload == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
         baseFilename = thread->GetEcmaVM()->GetQuickFixManager()->GetBaseFileName(module);
     } else {
         baseFilename = module->GetEcmaModuleFilenameString();

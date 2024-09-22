@@ -12,10 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { nop } from './module.js';
+import { nop, bar } from './module.js';
 
 function foo() {
   print('base foo()');
+}
+
+function getBar() {
+    print('base bar');
+    return bar;
 }
 
 class A {

@@ -14,3 +14,4 @@
  */
 
 export let nop = undefined;
+export let bar = 'bar';
