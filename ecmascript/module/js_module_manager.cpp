@@ -418,6 +418,13 @@ bool ModuleManager::IsEvaluatedModule(const CString &referencing)
     return false;
 }
 
+// This function assumes that referencing already existed in resolvedModules_/resolvedSharedModules_.
+bool ModuleManager::IsInstantiatedModule(const CString &referencing)
+{
+    JSHandle<SourceTextModule> module = GetImportedModule(referencing);
+    return module->GetStatus() == ModuleStatus::INSTANTIATED;
+}
+
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const CString &moduleFileName,
     const CString &recordName, bool executeFromJob)
 {

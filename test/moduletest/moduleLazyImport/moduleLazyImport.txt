@@ -6,4 +6,7 @@ E.js;E;esm;E.js;xxExx
 F.js;F;esm;F.js;xxFxx
 G.js;G;esm;G.js;xxGxx
 H.js;H;esm;H.js;xxHxx
+dynamicLazySequence.js;dynamicLazySequence;esm;dynamicLazySequence.js;xxdynamicLazySequencexx
+dynamicLazySequence2.js;dynamicLazySequence2;esm;dynamicLazySequence2.js;xxdynamicLazySequence2xx
+dynamicSubFile.js;dynamicSubFile;esm;dynamicSubFile.js;xxdynamicSubFilexx
 moduleLazyImport.js;moduleLazyImport;esm;moduleLazyImport.js;xxmoduleLazyImportxx
