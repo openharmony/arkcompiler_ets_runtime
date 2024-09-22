@@ -238,9 +238,14 @@ public:
         return true;
     }
 
+    ARK_INLINE bool GetThreadCheckStatus() const
+    {
+        return options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck();
+    }
+
     ARK_INLINE JSThread *GetJSThread() const
     {
-        if (options_.EnableThreadCheck() || EcmaVM::GetMultiThreadCheck()) {
+        if (GetThreadCheckStatus()) {
             CheckThread();
         }
         return thread_;
