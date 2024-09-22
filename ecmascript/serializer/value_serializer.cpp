@@ -123,8 +123,9 @@ bool ValueSerializer::WriteValue(JSThread *thread,
     // ThreadNativeScope may trigger moving gc, so PushSerializationRoot must do before native state.
     // Push share root object to runtime map
     uint32_t index = data_->GetDataIndex();
-    if (!sharedObjects_.empty()) {
-        index = Runtime::GetInstance()->PushSerializationRoot(thread_, sharedObjects_);
+    bool chunkEmpty = sharedObjChunk_->Empty();
+    if (!chunkEmpty) {
+        index = Runtime::GetInstance()->PushSerializationRoot(thread_, std::move(sharedObjChunk_));
     }
     {
         ThreadNativeScope nativeScope(thread);
@@ -143,13 +144,13 @@ bool ValueSerializer::WriteValue(JSThread *thread,
     if (notSupport_) {
         LOG_ECMA(ERROR) << "ValueSerialize: serialize data is incomplete";
         data_->SetIncompleteData(true);
-        if (!sharedObjects_.empty()) {
+        if (!chunkEmpty) {
             // If notSupport, serializeRoot should be removed.
             Runtime::GetInstance()->RemoveSerializationRoot(thread_, index);
         }
         return false;
     }
-    if (!sharedObjects_.empty()) {
+    if (!chunkEmpty) {
         data_->SetDataIndex(index);
     }
     size_t maxSerializerSize = vm_->GetEcmaParamConfiguration().GetMaxJSSerializerSize();

@@ -21,6 +21,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
+#include "ecmascript/serializer/serialize_chunk.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
@@ -259,19 +260,22 @@ HWTEST_F_L0(GCTest, SharedGCSuspendAll)
 HWTEST_F_L0(GCTest, SerializeGCCheck)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint32_t index = 0;
     {
         [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
         JSHandle<EcmaString> key1(factory->NewFromASCII("error1"));
         JSHandle<EcmaString> key2(factory->NewFromASCII("error2"));
         JSHandle<EcmaString> msg(factory->NewFromASCII("this is error"));
-        std::vector<JSTaggedType> stringVec;
-        stringVec.push_back(reinterpret_cast<JSTaggedType>(key1.GetTaggedValue().GetTaggedObject()));
-        stringVec.push_back(reinterpret_cast<JSTaggedType>(key2.GetTaggedValue().GetTaggedObject()));
-        stringVec.push_back(reinterpret_cast<JSTaggedType>(msg.GetTaggedValue().GetTaggedObject()));
-        Runtime::GetInstance()->PushSerializationRoot(thread, stringVec);
+        auto chunk = std::make_unique<SerializationChunk>();
+        chunk->Emplace(reinterpret_cast<JSTaggedType>(key1.GetTaggedValue().GetTaggedObject()));
+        chunk->Emplace(reinterpret_cast<JSTaggedType>(key2.GetTaggedValue().GetTaggedObject()));
+        chunk->Emplace(reinterpret_cast<JSTaggedType>(msg.GetTaggedValue().GetTaggedObject()));
+        EXPECT_EQ(chunk->Size(), 3); // 3: three elements
+        index = Runtime::GetInstance()->PushSerializationRoot(thread, std::move(chunk));
     }
     auto sHeap = SharedHeap::GetInstance();
     sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    Runtime::GetInstance()->RemoveSerializationRoot(thread, index);
 };
 
 }  // namespace panda::test

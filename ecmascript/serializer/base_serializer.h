@@ -17,6 +17,7 @@
 #define ECMASCRIPT_SERIALIZER_BASE_SERIALIZER_H
 
 #include "ecmascript/mem/object_xray.h"
+#include "ecmascript/serializer/serialize_chunk.h"
 #include "ecmascript/serializer/serialize_data.h"
 
 namespace panda::ecmascript {
@@ -28,6 +29,7 @@ public:
     explicit BaseSerializer(JSThread *thread) : thread_(thread), vm_(thread->GetEcmaVM())
     {
         data_.reset(new SerializeData(thread));
+        sharedObjChunk_.reset(new SerializationChunk());
     }
     virtual ~BaseSerializer()
     {
@@ -69,8 +71,8 @@ protected:
     JSThread *thread_;
     EcmaVM *vm_;
     std::unique_ptr<SerializeData> data_;
+    std::unique_ptr<SerializationChunk> sharedObjChunk_;
     CUnorderedMap<TaggedObject *, uint32_t> referenceMap_;
-    std::vector<JSTaggedType> sharedObjects_;
     size_t objectIndex_ {0};
     static constexpr size_t PARENT_ENV_SLOT = sizeof(TaggedObject);
     static constexpr size_t SCOPE_INFO_SLOT = PARENT_ENV_SLOT * 2; // 2: the second object slot of lexical env
