@@ -76,4 +76,11 @@ void Taskpool::ForEachTask(const std::function<void(Task*)> &f)
     }
     runner_->ForEachTask(f);
 }
+
+bool Taskpool::IsDaemonThreadOrInThreadPool(std::thread::id id) const
+{
+    DaemonThread *dThread = DaemonThread::GetInstance();
+    return IsInThreadPool(id) || (dThread != nullptr
+        && dThread->GetThreadId() == JSThread::GetCurrentThreadId());
+}
 }  // namespace panda::ecmascript

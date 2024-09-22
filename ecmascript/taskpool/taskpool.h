@@ -64,12 +64,7 @@ public:
         return runner_->IsInThreadPool(id);
     }
 
-    bool PUBLIC_API IsDaemonThreadOrInThreadPool(std::thread::id id) const
-    {
-        DaemonThread *dThread = DaemonThread::GetInstance();
-        return IsInThreadPool(id) || (dThread != nullptr
-            && dThread->GetThreadId() == JSThread::GetCurrentThreadId());
-    }
+    bool PUBLIC_API IsDaemonThreadOrInThreadPool(std::thread::id id) const;
 
     void SetThreadPriority(PriorityMode mode)
     {

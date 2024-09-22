@@ -196,7 +196,7 @@ public:
         return const_cast<EcmaVM *>(vm);
     }
 
-    void PUBLIC_API CheckThread() const
+    void CheckThread() const
     {
         // Exclude GC thread
         if (thread_ == nullptr) {
