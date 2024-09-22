@@ -330,21 +330,6 @@ public:
         return sourceMapTranslateCallback_;
     }
 
-    size_t GetNativePointerListSize()
-    {
-        return nativePointerList_.size();
-    }
-
-    const CList<JSNativePointer *> GetNativePointerList() const
-    {
-        return nativePointerList_;
-    }
-
-    size_t GetConcurrentNativePointerListSize() const
-    {
-        return concurrentNativePointerList_.size();
-    }
-
     void SetResolveBufferCallback(ResolveBufferCallback cb)
     {
         resolveBufferCallback_ = cb;
@@ -863,11 +848,9 @@ private:
     Chunk chunk_;
     Heap *heap_ {nullptr};
     ObjectFactory *factory_ {nullptr};
-    CList<JSNativePointer *> nativePointerList_;
-    CList<JSNativePointer *> concurrentNativePointerList_;
+
     std::vector<NativePointerCallbackData> concurrentNativeCallbacks_ {};
     std::vector<NativePointerCallbackData> asyncNativeCallbacks_ {};
-    CList<JSNativePointer *> sharedNativePointerList_;
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
