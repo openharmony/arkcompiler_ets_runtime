@@ -25,3 +25,65 @@ a,b,c,d
 10000
 
 1,2,3,4
+{"0":1,"1":2,"2":3,"3":4,"length":4}
+defineProperty 0
+defineProperty 1
+defineProperty 2
+defineProperty 3
+set length
+get toJSON
+get 0
+get 1
+get 2
+get 3
+get length
+{"0":1,"1":2,"2":3,"3":4,"length":4}
+defineProperty 0
+defineProperty 1
+defineProperty 2
+defineProperty 3
+set length
+get toJSON
+get length
+get 0
+get 1
+get 2
+get 3
+[1,2,3,4]
+get iterator
+get length
+get 0
+get length
+get 1
+get length
+get 2
+get length
+get length
+get length
+get length
+get length
+get length
+get length
+get length
+[0,1,2,null,null,null,null,null,null,null]
+get 0
+["x",2,3,4,5]
+function Number() { [native code] }
+[null,1,null,null,null,null,null,null,null,null]
+get iterator
+get length
+get 0
+get length
+get 1
+get length
+get 2
+get length
+get length
+get length
+get length
+get length
+get length
+get length
+get length
+[0,1,2,null,null,null,null,null,null,null]
+[1,2,3]

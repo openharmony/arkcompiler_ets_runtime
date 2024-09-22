@@ -54,3 +54,152 @@ print(Array.from(v1.keys()))
     let res=Array.from(mpIter);
     print(res);
 }
+
+{
+    class MyArray1 extends Array {
+        constructor(...args) {
+            super(...args);
+            return {};
+        }
+    }
+    let arr1 = MyArray1.from([1,2,3,4]);
+    print(JSON.stringify(arr1));
+    
+    class MyArray2 extends Array {
+        constructor(...args) {
+            super(...args);
+            return new Proxy({}, {
+                get(o, k) {
+                    print("get",k);
+                    return o[k];
+                 },
+                set(o, k, v) { 
+                    print("set",k);
+                    return o[k]=v;
+                },
+                defineProperty(o, k, v) {
+                    print("defineProperty",k);
+                    return Object.defineProperty(o,k,v);
+                 }
+            });
+        }
+    }
+    let arr2 = MyArray2.from([1,2,3,4]);
+    print(JSON.stringify(arr2));
+
+    class MyArray3 extends Array {
+        constructor(...args) {
+            super(...args);
+            return new Proxy(this, {
+                get(o, k) {
+                    print("get",k);
+                    return o[k];
+                 },
+                set(o, k, v) { 
+                    print("set",k);
+                    return o[k]=v;
+                },
+                defineProperty(o, k, v) {
+                    print("defineProperty",k);
+                    return Object.defineProperty(o,k,v);
+                 }
+            });
+        }
+    }
+    let arr3 = MyArray3.from([1,2,3,4]);
+    print(JSON.stringify(arr3));
+}
+
+{
+    let arrIterBak = Array.prototype[Symbol.iterator];
+    let obj = {
+        get length() {
+            print("get length");
+            return 10;
+        },
+        set length(x) {
+            print("set length", x);
+            return true;
+        },
+        get 0() {
+            print('get 0');
+            return 0;
+        },
+        get 1() {
+            print('get 1');
+            return 1;
+        },
+        get 2() {
+            print('get 2');
+            return 2;
+        },
+        get [Symbol.iterator]() {
+            print("get iterator");
+            return arrIterBak;
+        }
+    }
+    let res = Array.from(obj);
+    print(JSON.stringify(res));
+}
+
+{
+    let arr = [1, 2, 3, 4, 5, 6];
+    Object.defineProperty(arr, 0, {
+        get() {
+            print("get 0");
+            arr.pop();
+            return "x";
+        }
+    });
+    let res = Array.from(arr);
+    print(JSON.stringify(res))
+}
+{
+    let arrIterBak = Array.prototype[Symbol.iterator];
+    let arr = new Object(1);
+    arr[1] = 1;
+    arr.length = 10;
+    arr[Symbol.iterator] = arrIterBak;
+    print(arr.constructor)
+    let res = Array.from(arr);
+    print(JSON.stringify(res))
+}
+{
+    let arrIterBak = Array.prototype[Symbol.iterator];
+    Number.prototype.__proto__ = {
+        get length() {
+            print("get length");
+            return 10;
+        },
+        set length(x) {
+            print("set length", x);
+            return true;
+        },
+        get 0() {
+            print('get 0');
+            return 0;
+        },
+        get 1() {
+            print('get 1');
+            return 1;
+        },
+        get 2() {
+            print('get 2');
+            return 2;
+        },
+        get [Symbol.iterator]() {
+            print("get iterator");
+            return arrIterBak;
+        }
+    };
+    let arr = 1
+    let res = Array.from(arr);
+    print(JSON.stringify(res))
+}
+
+{
+    let arr = [1,2,3];
+    let res = Array.from(arr.values());
+    print(JSON.stringify(res));
+}
+
