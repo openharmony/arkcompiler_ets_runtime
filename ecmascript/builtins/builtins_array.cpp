@@ -223,6 +223,35 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
         //   g. Repeat
         JSMutableHandle<JSTaggedValue> key(thread, JSTaggedValue::Undefined());
         JSMutableHandle<JSTaggedValue> mapValue(thread, JSTaggedValue::Undefined());
+        // fastpath for jsarray
+        if (newArrayHandle->IsJSArray() && items->IsJSArray() && iterator->IsJSArrayIterator()) {
+            JSHandle<JSObject> arrayLikeObj = JSTaggedValue::ToObject(thread, items);
+            JSHandle<JSTaggedValue> arrayLike(arrayLikeObj) ;
+            int64_t len = ArrayHelper::GetArrayLength(thread, arrayLike);
+            while (k < len) {
+                JSHandle<JSTaggedValue> kValue = JSArray::FastGetPropertyByValue(thread, arrayLike, k);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                if (mapping) {
+                    key.Update(JSTaggedValue(k));
+                    const uint32_t argsLength = 2; // 2: «kValue, k»
+                    EcmaRuntimeCallInfo *info =
+                        EcmaInterpreter::NewRuntimeCallInfo(thread, mapfn, thisArgHandle, undefined, argsLength);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                    info->SetCallArg(kValue.GetTaggedValue(), key.GetTaggedValue());
+                    JSTaggedValue callResult = JSFunction::Call(info);
+                    RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                    mapValue.Update(callResult);
+                } else {
+                    mapValue.Update(kValue.GetTaggedValue());
+                }
+                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapValue);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
+                k++;
+                len = ArrayHelper::GetArrayLength(thread, arrayLike);
+                thread->CheckSafepointIfSuspended();
+            }
+            return newArrayHandle.GetTaggedValue();
+        }
         while (true) {
             key.Update(JSTaggedValue(k));
             //     i. Let Pk be ToString(k).
