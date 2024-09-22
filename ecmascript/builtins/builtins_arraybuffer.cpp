@@ -13,10 +13,9 @@
  * limitations under the License.
  */
 
+#include "cstdio"
+#include "cstring"
 #include "ecmascript/builtins/builtins_arraybuffer.h"
-
-#include <typeinfo>
-
 #include "ecmascript/base/builtins_base.h"
 #include "ecmascript/base/number_helper.h"
 #include "ecmascript/builtins/builtins_bigint.h"
@@ -34,8 +33,7 @@
 #include "ecmascript/base/typed_array_helper.h"
 
 #include "securec.h"
-#include "cstdio"
-#include "cstring"
+#include <typeinfo>
 
 namespace panda::ecmascript::builtins {
 using TypedArrayHelper = base::TypedArrayHelper;
@@ -243,10 +241,6 @@ JSTaggedValue BuiltinsArrayBuffer::AllocateArrayBuffer(JSThread *thread, const J
     // 4. Let block be CreateByteDataBlock(byteLength).
     if (byteLength > INT_MAX) {
         THROW_RANGE_ERROR_AND_RETURN(thread, "Out of range", JSTaggedValue::Exception());
-    }
-    uint64_t totalNativeSize = static_cast<uint64_t>(thread->GetNativeAreaAllocator()->GetArrayBufferNativeSize());
-    if (UNLIKELY(totalNativeSize > MAX_NATIVE_SIZE_LIMIT)) {
-        THROW_RANGE_ERROR_AND_RETURN(thread, NATIVE_SIZE_OUT_OF_LIMIT_MESSAGE, JSTaggedValue::Exception());
     }
     uint32_t arrayByteLength = static_cast<uint32_t>(byteLength);
     JSHandle<JSArrayBuffer> arrayBuffer(obj);
