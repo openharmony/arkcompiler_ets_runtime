@@ -742,7 +742,6 @@ DEF_RUNTIME_STUBS(RuntimeDump)
 
 void RuntimeStubs::Dump(JSTaggedType rawValue)
 {
-    LOG_ECMA(INFO) << "[ECMAObject?] " << rawValue;
     std::ostringstream oss;
     auto value = JSTaggedValue(rawValue);
     value.Dump(oss);
