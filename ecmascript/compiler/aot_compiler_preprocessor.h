@@ -21,6 +21,8 @@
 #include "ecmascript/ecma_vm.h"
 #include "macros.h"
 #include "ecmascript/compiler/aot_compilation_env.h"
+#include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/ohos/ohos_preload_app_info.h"
 
 namespace panda::ecmascript::kungfu {
 class OhosPkgArgs;
@@ -146,6 +148,12 @@ public:
     bool MethodHasTryCatch(const JSPandaFile *jsPandaFile, const MethodLiteral *methodLiteral) const;
 
     bool HasSkipMethod(const CVector<std::string> &methodList, const std::string &methodName) const;
+
+    bool ForbidenRebuildAOT(std::string &fileName) const;
+
+    bool HasPreloadAotFile() const;
+
+    bool HasExistsAOTFiles(CompilationOptions &cOptions) const;
 
     void SetIsFastCall(CString fileDesc, uint32_t methodOffset, bool isFastCall)
     {
