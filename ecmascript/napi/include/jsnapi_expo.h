@@ -1607,8 +1607,6 @@ public:
     static std::string NormalizePath(const std::string &string);
     static void AllowCrossThreadExecution(EcmaVM *vm);
     static void SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM);
-    static void *GetEnv(EcmaVM *vm);
-    static void SetEnv(EcmaVM *vm, void *env);
     static bool IsProfiling(EcmaVM *vm);
     static void SetProfilerState(const EcmaVM *vm, bool value);
     static void SetRequestAotCallback(EcmaVM *vm, const std::function<int32_t(const std::string &bundleName,
@@ -1616,6 +1614,8 @@ public:
                     int32_t triggerMode)> &cb);
     static void SetSearchHapPathTracker(EcmaVM *vm, std::function<bool(const std::string moduleName,
                     std::string &hapPath)> cb);
+    static void *GetEnv(EcmaVM *vm);
+    static void SetEnv(EcmaVM *vm, void *env);
     static void SetMultiThreadCheck(bool multiThreadCheck = true);
     static void SetErrorInfoEnhance(bool errorInfoEnhance = true);
 
