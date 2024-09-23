@@ -1293,6 +1293,8 @@ public:
         WaitAllTasksFinished();
     }
 #endif
+    inline bool InHeapProfiler();
+
     void OnMoveEvent(uintptr_t address, TaggedObject* forwardAddress, size_t size);
 
     // add allocationInspector to each space
