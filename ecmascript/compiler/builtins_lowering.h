@@ -48,6 +48,7 @@ private:
     void LowerIteratorNext(GateRef gate, BuiltinsStubCSigns::ID id);
     void LowerIteratorReturn(GateRef gate, BuiltinsStubCSigns::ID id);
     void LowerNumberConstructor(GateRef gate);
+    void LowerGlobalDecodeURIComponent(GateRef gate);
 
     Circuit *circuit_ {nullptr};
     CircuitBuilder builder_;

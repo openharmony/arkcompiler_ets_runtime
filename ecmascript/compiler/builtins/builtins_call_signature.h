@@ -34,7 +34,8 @@ namespace panda::ecmascript::kungfu {
     BUILTINS_ARKTOOLS_STUB_BUILDER(D)
 
 #define BUILTINS_NOSTUB_LIST(V)                     \
-    V(ObjectConstructor)
+    V(ObjectConstructor)                            \
+    V(GlobalDecodeURIComponent)
 
 #define BUILTINS_METHOD_STUB_LIST(V, T, D, K)       \
     BUILTINS_WITH_STRING_STUB_BUILDER(V)            \
@@ -375,6 +376,7 @@ public:
         return (BuiltinsStubCSigns::ID::StringLocaleCompare == builtinId) ||
                (BuiltinsStubCSigns::ID::StringIteratorProtoNext == builtinId) ||
                (BuiltinsStubCSigns::ID::ArraySort == builtinId) ||
+               (BuiltinsStubCSigns::ID::GlobalDecodeURIComponent == builtinId) ||
                ((BuiltinsStubCSigns::ID::TYPED_BUILTINS_FIRST <= builtinId) &&
                (builtinId <= BuiltinsStubCSigns::ID::TYPED_BUILTINS_LAST));
     }
@@ -454,6 +456,11 @@ public:
     static bool IsTypedBuiltinNumber(ID builtinId)
     {
         return BuiltinsStubCSigns::ID::NumberConstructor == builtinId;
+    }
+
+    static bool IsTypedBuiltinGlobal(ID builtinId)
+    {
+        return BuiltinsStubCSigns::ID::GlobalDecodeURIComponent == builtinId;
     }
 
     static bool IsTypedBuiltinCallThis0(ID builtinId)
@@ -733,6 +740,8 @@ public:
                 return ConstantIndex::ARRAY_POP_INDEX;
             case BuiltinsStubCSigns::ID::ArraySlice:
                 return ConstantIndex::ARRAY_SLICE_INDEX;
+            case BuiltinsStubCSigns::ID::GlobalDecodeURIComponent:
+                return ConstantIndex::GLOBAL_DECODE_URI_COMPONENT;
             default:
                 LOG_COMPILER(INFO) << "GetConstantIndex Invalid Id:" << builtinId;
                 return ConstantIndex::INVALID;
@@ -993,6 +1002,7 @@ enum class BuiltinsArgs : size_t {
 #define IS_TYPED_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltin(id)
 #define IS_TYPED_INLINE_BUILTINS_ID(id) kungfu::BuiltinsStubCSigns::IsTypedInlineBuiltin(id)
 #define IS_TYPED_BUILTINS_NUMBER_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinNumber(id)
+#define IS_TYPED_BUILTINS_GLOBAL_ID(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinGlobal(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS0(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis0(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS1(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis1(id)
 #define IS_TYPED_BUILTINS_ID_CALL_THIS3(id) kungfu::BuiltinsStubCSigns::IsTypedBuiltinCallThis3(id)

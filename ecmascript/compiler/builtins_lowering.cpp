@@ -53,6 +53,9 @@ void BuiltinLowering::LowerTypedCallBuitin(GateRef gate)
         case BUILTINS_STUB_ID(NumberConstructor):
             LowerNumberConstructor(gate);
             break;
+        case BUILTINS_STUB_ID(GlobalDecodeURIComponent):
+            LowerGlobalDecodeURIComponent(gate);
+            break;
         default:
             break;
     }
@@ -391,6 +394,7 @@ GateRef BuiltinLowering::CheckPara(GateRef gate, GateRef funcCheck)
         case BuiltinsStubCSigns::ID::TypedArrayEntries:
         case BuiltinsStubCSigns::ID::TypedArrayKeys:
         case BuiltinsStubCSigns::ID::TypedArrayValues:
+        case BuiltinsStubCSigns::ID::GlobalDecodeURIComponent:
             // Don't need check para
             return funcCheck;
         default: {
@@ -529,5 +533,13 @@ void BuiltinLowering::LowerNumberConstructor(GateRef gate)
     }
     builder_.Bind(&exit);
     ReplaceHirWithValue(gate, *result);
+}
+
+void BuiltinLowering::LowerGlobalDecodeURIComponent(GateRef gate)
+{
+    GateRef glue = acc_.GetGlueFromArgList();
+    GateRef param = acc_.GetValueIn(gate, 0);
+    GateRef result = LowerCallRuntime(glue, gate, RTSTUB_ID(DecodeURIComponent), { param }, true);
+    ReplaceHirWithValue(gate, result);
 }
 }  // namespace panda::ecmascript::kungfu

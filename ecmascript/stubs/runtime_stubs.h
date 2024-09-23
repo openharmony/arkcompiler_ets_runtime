@@ -517,6 +517,22 @@ private:
                                           const JSHandle<ClassLiteral> &classLiteral);
     static inline JSTaggedType RuntimeTryGetInternString(uintptr_t argGlue, const JSHandle<EcmaString> &string);
     static inline void RuntimeSetPatchModule(JSThread *thread, const JSHandle<JSFunction> &func);
+    template <typename T>
+    static inline JSTaggedValue RuntimeDecodeURIComponent(JSThread *thread, const JSHandle<EcmaString> &str,
+                                                          const T *data);
+    template <typename T>
+    static inline uint16_t GetCodeUnit(Span<T> &sp, int32_t index, int32_t length);
+    template <typename T>
+    static inline JSTaggedValue DecodePercentEncoding(JSThread *thread, const JSHandle<EcmaString> &str, int32_t &k,
+                                                      int32_t strLen, std::u16string &sStr, Span<T> &sp);
+    template <typename T>
+    static inline JSTaggedValue DecodePercentEncoding(JSThread *thread, int32_t &n, int32_t &k,
+                                                      const JSHandle<EcmaString> &str, uint8_t &bb,
+                                                      std::vector<uint8_t> &oct, Span<T> &sp,
+                                                      int32_t strLen);
+    static inline JSTaggedValue UTF16EncodeCodePoint(JSThread *thread, const std::vector<uint8_t> &oct,
+                                                     const JSHandle<EcmaString> &str, std::u16string &sStr);
+    static inline uint8_t GetValueFromTwoHex(uint8_t front, uint8_t behind);
     friend class SlowRuntimeStub;
 };
 }  // namespace panda::ecmascript
