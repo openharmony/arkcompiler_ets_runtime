@@ -517,3 +517,4 @@ SubSendableArrayBuffer length: 20
 SubSendableArrayBuffer slicedSub[0]: 5
 SubSendableArrayBuffer SendableInt32Array isView: true
 SendableArrayBuffer Int8Array isView: false
+Reflect.apply slice success
