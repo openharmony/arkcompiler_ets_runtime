@@ -404,4 +404,28 @@ HWTEST_F_L0(JsStackInfoTest, TestBuildJsStackInfo)
     auto jsFrame = JsStackInfo::BuildJsStackInfo(thread);
     EXPECT_TRUE(jsFrame.empty());
 }
+
+/**
+ * @tc.name: ark_destory_local
+ * @tc.desc: Check whether the result returned through "ark_destory_local" function is within expectations;
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(JsStackInfoTest, TestArkDestoryLocal)
+{
+    auto ret = ark_destory_local(); // Direct destruct without creating Pointers
+    EXPECT_TRUE(ret);
+    auto trace = JSStackTrace::GetInstance();
+    EXPECT_TRUE(trace != nullptr);
+    ret = ark_destory_local(); // destory
+    EXPECT_TRUE(ret);
+    ret = ark_destory_local(); // multiple destory
+    EXPECT_TRUE(ret);
+
+    // Create and destruct multiple times within the process
+    trace = JSStackTrace::GetInstance();
+    EXPECT_TRUE(trace != nullptr);
+    ret = ark_destory_local();
+    EXPECT_TRUE(ret);
+}
 }  // namespace panda::test

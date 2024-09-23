@@ -31,6 +31,8 @@ namespace panda::ecmascript {
 [[maybe_unused]] static bool g_needCheck = true;
 std::unordered_map<EntityId, std::string> JsStackInfo::nameMap;
 std::unordered_map<EntityId, std::vector<uint8>> JsStackInfo::machineCodeMap;
+JSStackTrace *JSStackTrace::trace_ = nullptr;
+std::mutex JSStackTrace::mutex_;
 
 bool IsFastJitFunctionFrame(const FrameType frameType)
 {
@@ -1793,8 +1795,14 @@ bool ArkDestoryJSSymbolExtractor(uintptr_t extractorptr)
 
 JSStackTrace *JSStackTrace::GetInstance()
 {
-    static JSStackTrace *jsStackTrace = new JSStackTrace();
-    return jsStackTrace;
+    if (trace_ == nullptr) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if (trace_ == nullptr) {
+            trace_ = new JSStackTrace();
+        }
+    }
+
+    return trace_;
 }
 
 JSStackTrace::~JSStackTrace()
@@ -1844,27 +1852,29 @@ bool JSStackTrace::GetJsFrameInfo(uintptr_t byteCodePc, uintptr_t methodId, uint
     return ret;
 }
 
-void JSStackTrace::Destory(JSStackTrace* trace)
+void JSStackTrace::Destory()
 {
-    if (trace == nullptr) {
-        return;
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (trace_ != nullptr) {
+        delete trace_;
+        trace_ = nullptr;
     }
-    delete trace;
-    trace = nullptr;
 }
 
 bool ArkParseJsFrameInfoLocal(uintptr_t byteCodePc, uintptr_t methodId, uintptr_t mapBase,
                               uintptr_t loadOffset, JsFunction *jsFunction)
 {
-    bool ret =
-        JSStackTrace::GetInstance()->GetJsFrameInfo(byteCodePc, methodId, mapBase, loadOffset, jsFunction);
-    return ret;
+    auto trace = JSStackTrace::GetInstance();
+    if (trace == nullptr) {
+        LOG_ECMA(ERROR) << "JSStackTrace GetInstance failed.";
+        return false;
+    }
+    return trace->GetJsFrameInfo(byteCodePc, methodId, mapBase, loadOffset, jsFunction);
 }
 
 void ArkDestoryLocal()
 {
-    auto trace = JSStackTrace::GetInstance();
-    return JSStackTrace::Destory(trace);
+    JSStackTrace::Destory();
 }
 
 } // namespace panda::ecmascript
