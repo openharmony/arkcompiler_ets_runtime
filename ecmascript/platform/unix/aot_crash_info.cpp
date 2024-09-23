@@ -17,7 +17,7 @@
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/aot_runtime_info.h"
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#if defined JIT_ESCAPE_ENABLE
 #include "parameters.h"
 #endif
 
@@ -147,7 +147,7 @@ bool AotCrashInfo::IsJitEscape()
 
 bool AotCrashInfo::GetAotEscapeDisable()
 {
-#if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
+#if defined JIT_ESCAPE_ENABLE
         return OHOS::system::GetBoolParameter(AOT_ESCAPE_DISABLE, false);
 #endif
         return false;
