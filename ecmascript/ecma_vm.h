@@ -272,9 +272,6 @@ public:
     void ProcessNativeDelete(const WeakRootVisitor &visitor);
     void ProcessReferences(const WeakRootVisitor &visitor);
 
-    void PushToSharedNativePointerList(JSNativePointer *pointer);
-    void ProcessSharedNativeDelete(const WeakRootVisitor &visitor);
-
     SnapshotEnv *GetSnapshotEnv() const
     {
         return snapshotEnv_;
@@ -718,10 +715,6 @@ public:
 
     static int InitializeStartRealTime();
 
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
-    {
-        return sharedNativePointerCallbacks_;
-    }
 #if ECMASCRIPT_ENABLE_SCOPE_LOCK_STAT
     void ResetScopeLockStats()
     {
@@ -850,7 +843,6 @@ private:
 
     std::vector<NativePointerCallbackData> concurrentNativeCallbacks_ {};
     std::vector<NativePointerCallbackData> asyncNativeCallbacks_ {};
-    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
 

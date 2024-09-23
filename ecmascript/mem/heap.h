@@ -787,6 +787,9 @@ public:
 
     void DumpHeapSnapshotBeforeOOM(bool isFullGC, JSThread *thread);
 
+    inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
+    inline void PushToSharedNativePointerList(JSNativePointer* pointer);
+
     class SharedGCScope {
     public:
         SharedGCScope();
@@ -810,6 +813,7 @@ private:
 
     void ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GCReason gcReason, JSThread *thread);
     inline TaggedObject *AllocateInSOldSpace(JSThread *thread, size_t size);
+    inline void InvokeSharedNativePointerCallbacks();
     struct SharedHeapSmartGCStats {
         /**
          * For SmartGC.
@@ -865,6 +869,8 @@ private:
     size_t incNativeSizeTriggerSharedGC_ {0};
     std::atomic<size_t> nativeSizeAfterLastGC_ {0};
     bool inHeapProfiler_ {false};
+    CVector<JSNativePointer *> sharedNativePointerList_;
+    std::mutex sNativePointerListMutex_;
 };
 
 class Heap : public BaseHeap {
@@ -1490,10 +1496,8 @@ public:
     void ProcessGCListeners();
 
     inline void ProcessNativeDelete(const WeakRootVisitor& visitor);
-    inline void ProcessSharedNativeDelete(const WeakRootVisitor& visitor);
     inline void ProcessReferences(const WeakRootVisitor& visitor);
     inline void PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent);
-    inline void PushToSharedNativePointerList(JSNativePointer* pointer);
     inline void RemoveFromNativePointerList(const JSNativePointer* pointer);
     inline void ClearNativePointerList();
 
@@ -1740,7 +1744,6 @@ private:
 
     CVector<JSNativePointer *> nativePointerList_;
     CVector<JSNativePointer *> concurrentNativePointerList_;
-    CVector<JSNativePointer *> sharedNativePointerList_;
 
     friend panda::test::HProfTestHelper;
     friend panda::test::GCTest_CallbackTask_Test;

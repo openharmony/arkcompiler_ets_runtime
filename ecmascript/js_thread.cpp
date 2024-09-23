@@ -264,19 +264,6 @@ void JSThread::InvokeWeakNodeFreeGlobalCallBack()
     }
 }
 
-void JSThread::InvokeSharedNativePointerCallbacks()
-{
-    auto &callbacks = vm_->GetSharedNativePointerCallbacks();
-    while (!callbacks.empty()) {
-        auto callbackPair = callbacks.back();
-        callbacks.pop_back();
-        ASSERT(callbackPair.first != nullptr && callbackPair.second.first != nullptr &&
-               callbackPair.second.second != nullptr);
-        auto callback = callbackPair.first;
-        (*callback)(env_, callbackPair.second.first, callbackPair.second.second);
-    }
-}
-
 void JSThread::InvokeWeakNodeNativeFinalizeCallback()
 {
     // the second callback may lead to another GC, if this, return directly;
@@ -1244,9 +1231,6 @@ void JSThread::TransferToRunning()
     // Invoke free weak global callback when thread switch to running
     if (!weakNodeFreeGlobalCallbacks_.empty()) {
         InvokeWeakNodeFreeGlobalCallBack();
-    }
-    if (!vm_->GetSharedNativePointerCallbacks().empty()) {
-        InvokeSharedNativePointerCallbacks();
     }
     if (fullMarkRequest_) {
         fullMarkRequest_ = const_cast<Heap*>(vm_->GetHeap())->TryTriggerFullMarkBySharedLimit();

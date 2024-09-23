@@ -586,11 +586,6 @@ void EcmaVM::ProcessNativeDelete(const WeakRootVisitor& visitor)
     heap_->ProcessNativeDelete(visitor);
 }
 
-void EcmaVM::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
-{
-    heap_->ProcessSharedNativeDelete(visitor);
-}
-
 void EcmaVM::ProcessReferences(const WeakRootVisitor& visitor)
 {
     heap_->ProcessReferences(visitor);
@@ -600,11 +595,6 @@ void EcmaVM::ProcessReferences(const WeakRootVisitor& visitor)
 void EcmaVM::PushToNativePointerList(JSNativePointer* pointer, Concurrent isConcurrent)
 {
     heap_->PushToNativePointerList(pointer, isConcurrent == Concurrent::YES);
-}
-
-void EcmaVM::PushToSharedNativePointerList(JSNativePointer* pointer)
-{
-    heap_->PushToSharedNativePointerList(pointer);
 }
 
 void EcmaVM::RemoveFromNativePointerList(JSNativePointer* pointer)

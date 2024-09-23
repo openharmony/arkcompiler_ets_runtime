@@ -122,6 +122,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
         SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
     }
     CollectGarbageFinish(false, gcType);
+    InvokeSharedNativePointerCallbacks();
 }
 
 bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
@@ -402,6 +403,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
         }
         CollectGarbageFinish(true, gcType);
     }
+    InvokeSharedNativePointerCallbacks();
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
 }
 

@@ -16,6 +16,7 @@
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/mem/heap-inl.h"
+#include "ecmascript/runtime.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/jspandafile/program_object.h"
 
@@ -532,7 +533,7 @@ JSHandle<JSNativePointer> ObjectFactory::NewSJSNativePointer(void *externalPoint
 
     if (callBack != nullptr) {
         sHeap_->IncNativeSizeAfterLastGC(fixedNativeBindingsize);
-        vm_->PushToSharedNativePointerList(static_cast<JSNativePointer *>(header));
+        Runtime::GetInstance()->PushToSharedNativePointerList(static_cast<JSNativePointer *>(header));
         // In some cases, the size of JS/TS object is too small and the native binding size is too large.
         // Check and try trigger concurrent mark here.
         size_t nativeSizeAfterLastGC = sHeap_->GetNativeSizeAfterLastGC();
