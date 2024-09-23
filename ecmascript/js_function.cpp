@@ -1054,7 +1054,7 @@ void JSFunction::SetProfileTypeInfo(const JSThread *thread, const JSHandle<JSFun
     handleRaw->SetValue(thread, value, mode);
 }
 
-void JSFunction::UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<JSFunction> literalFunc,
+void JSFunction::UpdateProfileTypeInfoCell(JSThread *thread, JSHandle<FunctionTemplate> literalFunc,
                                            JSHandle<JSFunction> targetFunc)
 {
     auto profileTypeInfoCellVal = literalFunc->GetRawProfileTypeInfo();
@@ -1207,4 +1207,5 @@ void JSFunctionBase::ClearCompiledCodeFlags()
     SetCompiledCodeBit(false);
     SetIsCompiledFastCall(false);
 }
+
 }  // namespace panda::ecmascript

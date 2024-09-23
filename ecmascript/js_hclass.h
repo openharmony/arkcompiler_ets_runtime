@@ -298,6 +298,7 @@ struct Reference;
         PROFILE_TYPE_INFO_CELL_N,  /* PROFILE_TYPE_INFO_CELL_LAST /////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         EXTRA_PROFILE_TYPE_INFO,      /* //////////////////////////////////////////////////////////////////-PADDING */ \
+        FUNCTION_TEMPLATE,            /* //////////////////////////////////////////////////////////////////-PADDING */ \
                                                                                                                        \
         VTABLE,                       /* //////////////////////////////////////////////////////////////////-PADDING */ \
         AOT_LITERAL_INFO, /* //////////////////////////////////////////////////////////////////////////////-PADDING */ \
@@ -1681,6 +1682,12 @@ public:
     {
         JSType jsType = GetObjectType();
         return jsType == JSType::PROFILE_TYPE_INFO_CELL_0;
+    }
+
+    inline bool IsFunctionTemplate() const
+    {
+        JSType jsType = GetObjectType();
+        return jsType == JSType::FUNCTION_TEMPLATE;
     }
 
     inline bool IsVTable() const
