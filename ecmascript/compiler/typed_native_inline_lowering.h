@@ -84,6 +84,7 @@ private:
     void LowerNumberParseInt(GateRef gate);
     void LowerDateGetTime(GateRef gate);
     void LowerBigIntConstructor(GateRef gate);
+    GateRef BuildTaggedPointerOverflowInt32(GateRef value);
     void LowerStringSubstring(GateRef gate);
     void LowerStringSubStr(GateRef gate);
     void LowerStringSlice(GateRef gate);

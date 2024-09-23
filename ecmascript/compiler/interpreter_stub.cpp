@@ -139,8 +139,8 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         varHotnessCounter = Int32(EcmaInterpreter::METHOD_HOTNESS_THRESHOLD);                                  \
         Label initialized(env);                                                                                \
         Label callRuntime(env);                                                                                \
-        BRANCH(BoolOr(TaggedIsUndefined(*varProfileTypeInfo),                                                  \
-                   Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),                      \
+        BRANCH(BitOr(TaggedIsUndefined(*varProfileTypeInfo),                                                   \
+                     Int8Equal(interruptsFlag, Int8(VmThreadControl::VM_NEED_SUSPENSION))),                    \
             &callRuntime, &initialized);                                                                       \
         Bind(&callRuntime);                                                                                    \
         if (!(callback).IsEmpty()) {                                                                           \
@@ -161,7 +161,7 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
         }                                                                                                      \
         Bind(&initialized);                                                                                    \
         (callback).TryDump();                                                                                  \
-        (callback).TryJitCompile();                                                                    \
+        (callback).TryJitCompile();                                                                            \
         Jump(&dispatch);                                                                                       \
     }                                                                                                          \
     Bind(&dispatch);
@@ -207,19 +207,19 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
     }                                                                                             \
     Bind(&isDebugModeFalse)
 
-#define METHOD_EXIT()                                                                             \
-    GateRef isDebugModeOffset = IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())); \
-    GateRef isDebugMode = Load(VariableType::BOOL(), glue, isDebugModeOffset);                    \
-    GateRef isTracingOffset = IntPtr(JSThread::GlueData::GetIsTracingOffset(env->Is32Bit()));     \
-    GateRef isTracing = Load(VariableType::BOOL(), glue, isTracingOffset);                        \
-    Label NeedCallRuntimeTrue(env);                                                               \
-    Label NeedCallRuntimeFalse(env);                                                              \
-    BRANCH(BoolOr(isDebugMode, isTracing), &NeedCallRuntimeTrue, &NeedCallRuntimeFalse);          \
-    Bind(&NeedCallRuntimeTrue);                                                                   \
-    {                                                                                             \
-        CallRuntime(glue, RTSTUB_ID(MethodExit), {});                                             \
-        Jump(&NeedCallRuntimeFalse);                                                              \
-    }                                                                                             \
+#define METHOD_EXIT()                                                                                           \
+    Label NeedCallRuntimeTrue(env);                                                                             \
+    Label NeedCallRuntimeFalse(env);                                                                            \
+    GateRef isDebugModeOrTracing = LogicOrBuilder(env)                                                          \
+        .Or(Load(VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsDebugModeOffset(env->Is32Bit())))) \
+        .Or(Load(VariableType::BOOL(), glue, IntPtr(JSThread::GlueData::GetIsTracingOffset(env->Is32Bit()))))   \
+        .Done();                                                                                                \
+    BRANCH(isDebugModeOrTracing, &NeedCallRuntimeTrue, &NeedCallRuntimeFalse);                                  \
+    Bind(&NeedCallRuntimeTrue);                                                                                 \
+    {                                                                                                           \
+        CallRuntime(glue, RTSTUB_ID(MethodExit), {});                                                           \
+        Jump(&NeedCallRuntimeFalse);                                                                            \
+    }                                                                                                           \
     Bind(&NeedCallRuntimeFalse)
 
 #define TRY_OSR()                                                                                                    \
@@ -1618,7 +1618,8 @@ DECLARE_ASM_HANDLER(HandleSupercallspreadImm8V8)
     }
     Bind(&threadCheck);
     {
-        GateRef isError = BoolAnd(TaggedIsException(*res), HasPendingException(glue));
+        GateRef resVal = *res;
+        GateRef isError = LogicAndBuilder(env).And(TaggedIsException(resVal)).And(HasPendingException(glue)).Done();
         BRANCH(isError, &isException, &dispatch);
     }
     Bind(&isException);
@@ -2764,11 +2765,13 @@ DECLARE_ASM_HANDLER(HandleReturn)
     BRANCH(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        GateRef func = GetFunctionFromFrame(frame);
-        GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
-        GateRef isJitCompiled =
-            ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, func, *varProfileTypeInfo, callback);
-        BRANCH(BoolAnd(isProfileDumped, isJitCompiled), &tryContinue, &updateHotness);
+        GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
+        GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
+            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
+            .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, GetFunctionFromFrame(frame),
+                varProfileTypeInfoVal, callback))
+            .Done();
+        BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {
@@ -2861,11 +2864,13 @@ DECLARE_ASM_HANDLER(HandleReturnundefined)
     BRANCH(TaggedIsUndefined(*varProfileTypeInfo), &updateHotness, &isStable);
     Bind(&isStable);
     {
-        GateRef func = GetFunctionFromFrame(frame);
-        GateRef isProfileDumped = ProfilerStubBuilder(env).IsProfileTypeInfoDumped(*varProfileTypeInfo, callback);
-        GateRef isJitCompiled =
-            ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, func, *varProfileTypeInfo, callback);
-        BRANCH(BoolAnd(isProfileDumped, isJitCompiled), &tryContinue, &updateHotness);
+        GateRef varProfileTypeInfoVal = *varProfileTypeInfo;
+        GateRef isProfileDumpedAndJitCompiled = LogicAndBuilder(env)
+            .And(ProfilerStubBuilder(env).IsProfileTypeInfoDumped(varProfileTypeInfoVal, callback))
+            .And(ProfilerStubBuilder(env).IsCompiledOrTryCompile(glue, GetFunctionFromFrame(frame),
+                varProfileTypeInfoVal, callback))
+            .Done();
+        BRANCH(isProfileDumpedAndJitCompiled, &tryContinue, &updateHotness);
     }
     Bind(&updateHotness);
     {

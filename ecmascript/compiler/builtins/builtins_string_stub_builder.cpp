@@ -207,13 +207,16 @@ void BuiltinsStringStubBuilder::CodePointAt(GateRef glue, GateRef thisValue, Gat
         Bind(&flattenFastPath);
         StringInfoGateRef stringInfoGate(&thisFlat);
         GateRef first = StringAt(stringInfoGate, *pos);
-        GateRef firstIsValid = BoolOr(Int32UnsignedLessThan(first, Int32(base::utf_helper::DECODE_LEAD_LOW)),
-            Int32UnsignedGreaterThan(first, Int32(base::utf_helper::DECODE_LEAD_HIGH)));
-        BRANCH(BoolOr(firstIsValid, Int32Equal(Int32Add(*pos, Int32(1)), GetLengthFromString(thisValue))),
-            &returnFirst, &getNextChar);
+        GateRef posVal = *pos;
+        GateRef firstIsValid = LogicOrBuilder(env)
+            .Or(Int32UnsignedLessThan(first, Int32(base::utf_helper::DECODE_LEAD_LOW)))
+            .Or(Int32UnsignedGreaterThan(first, Int32(base::utf_helper::DECODE_LEAD_HIGH)))
+            .Or(Int32Equal(Int32Add(posVal, Int32(1)), GetLengthFromString(thisValue)))
+            .Done();
+        BRANCH(firstIsValid, &returnFirst, &getNextChar);
         Bind(&getNextChar);
         GateRef second = StringAt(stringInfoGate, Int32Add(*pos, Int32(1)));
-        GateRef secondIsValid = BoolOr(Int32UnsignedLessThan(second, Int32(base::utf_helper::DECODE_TRAIL_LOW)),
+        GateRef secondIsValid = BitOr(Int32UnsignedLessThan(second, Int32(base::utf_helper::DECODE_TRAIL_LOW)),
             Int32UnsignedGreaterThan(second, Int32(base::utf_helper::DECODE_TRAIL_HIGH)));
         BRANCH(secondIsValid, &returnFirst, slowPath);
         Bind(&returnFirst);
@@ -790,14 +793,13 @@ void BuiltinsStringStubBuilder::Replace(GateRef glue, GateRef thisValue, GateRef
             GateRef replaceTag = GetCallArg1(numArgs);
             BRANCH(TaggedIsHeapObject(replaceTag), &replaceIsHeapObj, slowPath);
             Bind(&replaceIsHeapObj);
-            BRANCH(BoolOr(IsJSRegExp(searchTag), IsEcmaObject(searchTag)), slowPath, &next);
+            BRANCH(LogicOrBuilder(env).Or(IsJSRegExp(searchTag)).Or(IsEcmaObject(searchTag)).Done(), slowPath, &next);
             Bind(&next);
             {
                 Label allAreStrings(env);
-                GateRef thisIsString = IsString(thisValue);
-                GateRef searchIsString = IsString(searchTag);
-                GateRef replaceIsString = IsString(replaceTag);
-                BRANCH(BoolAnd(BoolAnd(thisIsString, searchIsString), replaceIsString), &allAreStrings, slowPath);
+                GateRef allIsString = LogicAndBuilder(env).And(IsString(thisValue)).And(IsString(searchTag))
+                    .And(IsString(replaceTag)).Done();
+                BRANCH(allIsString, &allAreStrings, slowPath);
                 Bind(&allAreStrings);
                 {
                     Label replaceTagNotCallable(env);
@@ -1888,7 +1890,7 @@ void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fast
     Label notLineString(env);
     Label exit(env);
     length_ = GetLengthFromString(str);
-    BRANCH(BoolOr(IsLineString(str), IsConstantString(str)), &exit, &notLineString);
+    BRANCH(IsLiteralString(str), &exit, &notLineString);
     Bind(&notLineString);
     {
         Label isTreeString(env);
@@ -2091,7 +2093,7 @@ void BuiltinsStringStubBuilder::ToLowerCase(GateRef glue, GateRef thisValue, [[m
                             len = Int32Sub(*len, Int32(1));
                             GateRef i = Load(VariableType::INT8(), *sourceTmp);
                             // 65: means 'A', 90: means 'Z'
-                            GateRef needLower = BoolAnd(Int8GreaterThanOrEqual(i, Int8(65)),
+                            GateRef needLower = BitAnd(Int8GreaterThanOrEqual(i, Int8(65)),
                                 Int8GreaterThanOrEqual(Int8(90), i));
                             BRANCH(needLower, &toLower, &notLower);
                             Bind(&toLower);
@@ -2168,7 +2170,7 @@ GateRef BuiltinsStringStubBuilder::StringConcat(GateRef glue, GateRef leftString
         {
             GateRef leftIsUtf8 = IsUtf8String(leftString);
             GateRef rightIsUtf8 = IsUtf8String(rightString);
-            GateRef canBeCompressed = BoolAnd(leftIsUtf8, rightIsUtf8);
+            GateRef canBeCompressed = BitAnd(leftIsUtf8, rightIsUtf8);
             NewObjectStubBuilder newBuilder(this);
             newBuilder.SetParameters(glue, 0);
             GateRef isTreeOrSlicedString = Int32LessThan(newLength,
@@ -2283,9 +2285,9 @@ void BuiltinsStringStubBuilder::LocaleCompare([[maybe_unused]] GateRef glue, Gat
         GateRef locales = GetCallArg1(numArgs);
 
         GateRef options = GetCallArg2(numArgs);
-        GateRef localesIsUndef = TaggedIsUndefined(locales);
-        GateRef optionsIsUndef = TaggedIsUndefined(options);
-        GateRef cacheable = BoolAnd(BoolOr(localesIsUndef, TaggedIsString(locales)), optionsIsUndef);
+        GateRef localesIsUndefOrString =
+            LogicOrBuilder(env).Or(TaggedIsUndefined(locales)).Or(TaggedIsString(locales)).Done();
+        GateRef cacheable = LogicAndBuilder(env).And(localesIsUndefOrString).And(TaggedIsUndefined(options)).Done();
         Label optionsIsString(env);
         Label cacheAble(env);
         Label uncacheable(env);

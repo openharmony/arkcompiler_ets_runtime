@@ -582,11 +582,15 @@ void TypedNativeInlineLowering::LowerMathPow(GateRef gate)
     DEFVALUE(result, (&builder_), VariableType::FLOAT64(), nanValue);
 
     const double doubleOne = 1.0;
-    GateRef baseIsOne = builder_.DoubleEqual(builder_.FAbs(base), builder_.Double(doubleOne));
     // Base is 1.0, exponent is inf => NaN
     // Exponent is not finit, if is NaN or is Inf
-    GateRef tempIsNan = builder_.BoolAnd(baseIsOne, builder_.DoubleIsINF(exp));
-    GateRef resultIsNan = builder_.BoolOr(builder_.DoubleIsNAN(exp), tempIsNan);
+    GateRef resultIsNan = LogicOrBuilder(&env)
+        .Or(builder_.DoubleIsNAN(exp))
+        .Or(LogicAndBuilder(&env)
+            .And(builder_.DoubleEqual(builder_.FAbs(base), builder_.Double(doubleOne)))
+            .And(builder_.DoubleIsINF(exp))
+            .Done())
+        .Done();
 
     BRANCH_CIR(resultIsNan, &exit, &notNan);
     builder_.Bind(&notNan);
@@ -735,7 +739,7 @@ GateRef TypedNativeInlineLowering::BuildRounding(GateRef gate, GateRef value, Op
         Label nonZero(&builder_);
         DEFVALUE(result, (&builder_), VariableType::FLOAT64(), builder_.Double(zero));
         // 0 <= x < 0.5, return 0
-        GateRef returnZero = builder_.BoolAnd(builder_.DoubleLessThan(value, diffValue),
+        GateRef returnZero = builder_.BitAnd(builder_.DoubleLessThan(value, diffValue),
             builder_.DoubleGreaterThan(value, builder_.Double(zero)));
         BRANCH_CIR(returnZero, &exit, &nonZero);
         builder_.Bind(&nonZero);
@@ -984,7 +988,8 @@ void TypedNativeInlineLowering::LowerMathMinMaxWithIntrinsic(GateRef gate)
     Label doubleRes(&builder_);
     Label exit(&builder_);
 
-    builder_.Branch(builder_.BoolAnd(builder_.TaggedIsInt(in1), builder_.TaggedIsInt(in2)), &intRes, &doubleRes);
+    BRANCH_CIR(LogicAndBuilder(&env).And(builder_.TaggedIsInt(in1)).And(builder_.TaggedIsInt(in2)).Done(),
+        &intRes, &doubleRes);
     builder_.Bind(&intRes);
     {
         GateRef int1 = builder_.GetInt32OfTInt(in1);
@@ -1061,8 +1066,7 @@ void TypedNativeInlineLowering::LowerClz32Float64(GateRef gate)
     DEFVALUE(result, (&builder_), VariableType::INT32(), builder_.Int32(defaultReturnValue));
 
     // NaN, Inf, -Inf after ToUint32 equal 0, so we in advance know result: Clz32(0) = 32
-    auto paramCheck = builder_.BoolOr(builder_.DoubleIsNAN(param), builder_.DoubleIsINF(param));
-    builder_.Branch(paramCheck, &exit, &isFinit);
+    builder_.Branch(builder_.DoubleIsNanOrInf(param), &exit, &isFinit);
     builder_.Bind(&isFinit);
     {
         auto truncedValue = builder_.TruncInt64ToInt32(builder_.TruncFloatToInt64(param));
@@ -1216,9 +1220,9 @@ void TypedNativeInlineLowering::LowerArrayBufferIsView(GateRef gate)
     BRANCH_CIR(builder_.IsEcmaObject(arg), &isDataViewOrTypedArray, &exit);
     builder_.Bind(&isDataViewOrTypedArray);
     {
-        GateRef isDataView = builder_.CheckJSType(arg, JSType::JS_DATA_VIEW);
-        GateRef isTypedArray = builder_.TaggedObjectIsTypedArray(arg);
-        BRANCH_CIR(builder_.BoolOr(isDataView, isTypedArray), &returnTaggedTrue, &exit);
+        BRANCH_CIR(LogicOrBuilder(&env).Or(builder_.CheckJSType(arg, JSType::JS_DATA_VIEW))
+            .Or(builder_.TaggedObjectIsTypedArray(arg)).Done(),
+            &returnTaggedTrue, &exit);
     }
     builder_.Bind(&returnTaggedTrue);
     {
@@ -1270,14 +1274,13 @@ void TypedNativeInlineLowering::LowerBigIntAsIntN(GateRef gate)
 #endif // BIGINT_CONSTRUCTOR_IMPLEMENTED
 
     // Return bigint, if bigint == 0
-    GateRef lengthOffset = builder_.IntPtr(BigInt::LENGTH_OFFSET);
-    GateRef length = builder_.Load(VariableType::INT32(), bigint, lengthOffset);
-    GateRef isOneBit = builder_.Int32Equal(length, builder_.Int32(1));
-
-    GateRef dataOffset = builder_.IntPtr(BigInt::DATA_OFFSET);
-    GateRef firstDigit = builder_.Load(VariableType::INT32(), bigint, dataOffset);
-    GateRef isZero = builder_.Int32Equal(firstDigit, builder_.Int32(0));
-    BRANCH_CIR(builder_.BoolAnd(isOneBit, isZero), &returnBigInt, &notZeroBigInt);
+    GateRef isZeroBigInt = LogicAndBuilder(&env)
+        .And(builder_.Int32Equal(builder_.Load(VariableType::INT32(), bigint, builder_.IntPtr(BigInt::LENGTH_OFFSET)),
+                                 builder_.Int32(1)))
+        .And(builder_.Int32Equal(builder_.Load(VariableType::INT32(), bigint, builder_.IntPtr(BigInt::DATA_OFFSET)),
+                                 builder_.Int32(0)))
+        .Done();
+    BRANCH_CIR(isZeroBigInt, &returnBigInt, &notZeroBigInt);
 
     // Return bigint, if bits >= max_value
     builder_.Bind(&notZeroBigInt);
@@ -1582,9 +1585,10 @@ GateRef TypedNativeInlineLowering::GetValueFromBuffer(GateRef bufferIndex,
             DEFVALUE(tempRes, (&builder_), VariableType::FLOAT64(), builder_.NanValue());
             Label NaNandNotImpure(&builder_);
             Label ifLittleEndian(&builder_);
-            GateRef resIsNan = builder_.DoubleIsNAN(float64Res);
             GateRef resIsImpure = builder_.DoubleIsImpureNaN(float64Res);
-            BRANCH_CIR(builder_.BoolAnd(resIsNan, builder_.BoolNot(resIsImpure)), &passResult, &ifLittleEndian);
+            GateRef canPassResult = LogicAndBuilder(builder_.GetCurrentEnvironment())
+                .And(builder_.BoolNot(resIsImpure)).And(builder_.DoubleIsNAN(float64Res)).Done();
+            BRANCH_CIR(canPassResult, &passResult, &ifLittleEndian);
             builder_.Bind(&ifLittleEndian);
             {
                 BRANCH_CIR(builder_.BoolNot(isLittleEndian), &bigEndian, &littleEndian);
@@ -1641,7 +1645,7 @@ GateRef TypedNativeInlineLowering::SetValueInBuffer(
     Label startStore(&builder_);
     Label getInt64Value(&builder_);
     DEFVALUE(int64Value, (&builder_), VariableType::INT64(), builder_.Int64(0));
-    BRANCH_CIR(builder_.BoolOr(builder_.DoubleIsNAN(value), builder_.DoubleIsINF(value)), &startStore, &getInt64Value);
+    BRANCH_CIR(builder_.DoubleIsNanOrInf(value), &startStore, &getInt64Value);
     builder_.Bind(&getInt64Value);
     {
         int64Value = builder_.TruncFloatToInt64(value);
@@ -1907,9 +1911,12 @@ GateRef TypedNativeInlineLowering::BuildTaggedIsInteger(GateRef gate, GateRef va
         GateRef doubleTrunc = builder_.DoubleTrunc(gate, doubleVal);
         result = builder_.Equal(doubleVal, doubleTrunc);
         if (safe) {
-            GateRef doubleAbs = builder_.FAbs(doubleTrunc);
-            GateRef lessOrEqual = builder_.DoubleLessThanOrEqual(doubleAbs, builder_.Double(base::MAX_SAFE_INTEGER));
-            result = builder_.BoolAnd(*result, lessOrEqual);
+            GateRef resultVal = *result;
+            result = LogicAndBuilder(builder_.GetCurrentEnvironment())
+                .And(resultVal)
+                .And(builder_.DoubleLessThanOrEqual(builder_.FAbs(doubleTrunc),
+                                                    builder_.Double(base::MAX_SAFE_INTEGER)))
+                .Done();
         }
         builder_.Jump(&exit);
     }
@@ -2128,6 +2135,14 @@ void TypedNativeInlineLowering::LowerBigIntConstructorInt32(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
+GateRef TypedNativeInlineLowering::BuildTaggedPointerOverflowInt32(GateRef value)
+{
+    GateRef intValue = builder_.ChangeFloat64ToInt32(
+        builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(value)));
+    return builder_.BitOr(builder_.Int32LessThanOrEqual(intValue, builder_.Int32(INT32_MIN)),
+                          builder_.Int32GreaterThanOrEqual(intValue, builder_.Int32(INT32_MAX)));
+}
+
 void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -2158,13 +2173,7 @@ void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
         {
             Label slowPath(&builder_);
             Label fastPath(&builder_);
-            GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
-                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(startTag))),
-                builder_.Int32(INT32_MIN));
-            GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
-                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(startTag))),
-                builder_.Int32(INT32_MAX));
-            BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+            BRANCH_CIR(BuildTaggedPointerOverflowInt32(startTag), &slowPath, &fastPath);
             builder_.Bind(&slowPath);
             {
                 start = length;
@@ -2191,13 +2200,7 @@ void TypedNativeInlineLowering::LowerStringSubstring(GateRef gate)
             {
                 Label slowPath(&builder_);
                 Label fastPath(&builder_);
-                GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
-                    builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(endTag))),
-                    builder_.Int32(INT32_MIN));
-                GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
-                    builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(endTag))),
-                    builder_.Int32(INT32_MAX));
-                BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+                BRANCH_CIR(BuildTaggedPointerOverflowInt32(endTag), &slowPath, &fastPath);
                 builder_.Bind(&slowPath);
                 {
                     end = length;
@@ -2260,11 +2263,7 @@ void TypedNativeInlineLowering::LowerStringSubStr(GateRef gate)
         {
             Label slowPath(&builder_);
             Label fastPath(&builder_);
-            GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
-                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(intStart))), builder_.Int32(INT32_MIN));
-            GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
-                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(intStart))), builder_.Int32(INT32_MAX));
-            BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+            BRANCH_CIR(BuildTaggedPointerOverflowInt32(intStart), &slowPath, &fastPath);
             builder_.Bind(&slowPath);
             {
                 start = length;
@@ -2291,13 +2290,7 @@ void TypedNativeInlineLowering::LowerStringSubStr(GateRef gate)
             {
                 Label slowPath(&builder_);
                 Label fastPath(&builder_);
-                GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
-                    builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(lengthTag))),
-                    builder_.Int32(INT32_MIN));
-                GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
-                    builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(lengthTag))),
-                    builder_.Int32(INT32_MAX));
-                BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+                BRANCH_CIR(BuildTaggedPointerOverflowInt32(lengthTag), &slowPath, &fastPath);
                 builder_.Bind(&slowPath);
                 {
                     end = length;
@@ -2386,11 +2379,7 @@ void TypedNativeInlineLowering::LowerStringSlice(GateRef gate)
         {
             Label slowPath(&builder_);
             Label fastPath(&builder_);
-            GateRef valueLessthanMin = builder_.Int32LessThanOrEqual(builder_.ChangeFloat64ToInt32(
-                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(startTag))), builder_.Int32(INT32_MIN));
-            GateRef valueMorethanMax = builder_.Int32GreaterThanOrEqual(builder_.ChangeFloat64ToInt32(
-                builder_.CastInt64ToFloat64(builder_.ChangeTaggedPointerToInt64(startTag))), builder_.Int32(INT32_MAX));
-            BRANCH_CIR(builder_.BoolOr(valueLessthanMin, valueMorethanMax), &slowPath, &fastPath);
+            BRANCH_CIR(BuildTaggedPointerOverflowInt32(startTag), &slowPath, &fastPath);
             builder_.Bind(&slowPath);
             {
                 start = length;
@@ -2546,14 +2535,15 @@ void TypedNativeInlineLowering::LowerObjectCreate(GateRef gate)
     GateRef proto = acc_.GetValueIn(gate, 0);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
 
-    GateRef protoIsNull = builder_.TaggedIsNull(proto);
-    GateRef protoIsEcmaObj = builder_.IsEcmaObject(proto);
-    GateRef protoIsJSShared = builder_.TaggedIsSharedObj(proto);
     Label exception(&builder_);
     Label create(&builder_);
     Label exit(&builder_);
-    BRANCH_CIR(builder_.BoolOr(builder_.BoolAnd(builder_.BoolNot(protoIsEcmaObj), builder_.BoolNot(protoIsNull)),
-        protoIsJSShared),  &exception, &create);
+    GateRef protoCheck = LogicAndBuilder(&env)
+        .And(builder_.BoolNot(builder_.IsEcmaObject(proto)))
+        .And(builder_.BoolNot(builder_.TaggedIsNull(proto)))
+        .Done();
+    protoCheck = LogicOrBuilder(&env).Or(protoCheck).Or(builder_.TaggedIsSharedObj(proto)).Done();
+    BRANCH_CIR(protoCheck,  &exception, &create);
     builder_.Bind(&exception);
     {
         GateRef taggedId = builder_.Int32(GET_MESSAGE_STRING_ID(CanNotConvertNotValidObject));

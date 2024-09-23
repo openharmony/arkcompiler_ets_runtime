@@ -494,14 +494,14 @@ inline GateRef StubBuilder::Int32And(GateRef x, GateRef y)
     return env_->GetBuilder()->Int32And(x, y);
 }
 
-inline GateRef StubBuilder::BoolAnd(GateRef x, GateRef y)
+inline GateRef StubBuilder::BitAnd(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BoolAnd(x, y);
+    return env_->GetBuilder()->BitAnd(x, y);
 }
 
-inline GateRef StubBuilder::BoolOr(GateRef x, GateRef y)
+inline GateRef StubBuilder::BitOr(GateRef x, GateRef y)
 {
-    return env_->GetBuilder()->BoolOr(x, y);
+    return env_->GetBuilder()->BitOr(x, y);
 }
 
 inline GateRef StubBuilder::Int32Not(GateRef x)
@@ -613,7 +613,7 @@ inline GateRef StubBuilder::TaggedIsInt(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsDouble(GateRef x)
 {
-    return BoolAnd(TaggedIsNumber(x), BoolNot(TaggedIsInt(x)));
+    return env_->GetBuilder()->TaggedIsDouble(x);
 }
 
 inline GateRef StubBuilder::TaggedIsObject(GateRef x)
@@ -648,20 +648,7 @@ inline GateRef StubBuilder::TaggedIsSymbol(GateRef obj)
 
 inline GateRef StubBuilder::BothAreString(GateRef x, GateRef y)
 {
-    Label entryPass(env_);
-    env_->SubCfgEntry(&entryPass);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label heapObj(env_);
-    Label exit(env_);
-    GateRef isHeapObject = BoolAnd(TaggedIsHeapObject(x), TaggedIsHeapObject(y));
-    BRANCH(isHeapObject, &heapObj, &exit);
-    Bind(&heapObj);
-    result = env_->GetBuilder()->TaggedObjectBothAreString(x, y);
-    Jump(&exit);
-    Bind(&exit);
-    auto ret = *result;
-    env_->SubCfgExit();
-    return ret;
+    return env_->GetBuilder()->BothAreString(x, y);
 }
 
 inline GateRef StubBuilder::TaggedIsNumber(GateRef x)
@@ -671,7 +658,7 @@ inline GateRef StubBuilder::TaggedIsNumber(GateRef x)
 
 inline GateRef StubBuilder::TaggedIsNumeric(GateRef x)
 {
-    return BoolOr(TaggedIsNumber(x), TaggedIsBigInt(x));
+    return env_->GetBuilder()->TaggedIsNumeric(x);
 }
 
 inline GateRef StubBuilder::TaggedIsHole(GateRef x)
@@ -797,6 +784,11 @@ inline GateRef StubBuilder::DoubleIsINF(GateRef x)
     return env_->GetBuilder()->DoubleIsINF(x);
 }
 
+inline GateRef StubBuilder::DoubleIsNanOrInf(GateRef x)
+{
+    return env_->GetBuilder()->DoubleIsNanOrInf(x);
+}
+
 inline GateRef StubBuilder::DoubleAbs(GateRef x)
 {
     return env_->GetBuilder()->FAbs(x);
@@ -804,22 +796,9 @@ inline GateRef StubBuilder::DoubleAbs(GateRef x)
 
 inline GateRef StubBuilder::DoubleIsInteger(GateRef x)
 {
-    Label entry(env_);
-    env_->SubCfgEntry(&entry);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label exit(env_);
-    Label checkTrunc(env_);
-    BRANCH(BoolOr(DoubleIsNAN(x), DoubleIsINF(x)), &exit, &checkTrunc);
-    Bind(&checkTrunc);
-    {
-        GateRef truncated = DoubleTrunc(x);
-        result = DoubleEqual(x, truncated);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env_->SubCfgExit();
-    return ret;
+    GateRef notInteger = LogicOrBuilder(env_).Or(DoubleIsNAN(x)).Or(DoubleIsINF(x))
+        .Or(BoolNot(DoubleEqual(x, DoubleTrunc(x)))).Done();
+    return BoolNot(notInteger);
 }
 
 inline GateRef StubBuilder::DoubleTrunc(GateRef x)
@@ -879,6 +858,11 @@ inline GateRef StubBuilder::TaggedIsNull(GateRef x)
 inline GateRef StubBuilder::TaggedIsUndefinedOrNull(GateRef x)
 {
     return env_->GetBuilder()->TaggedIsUndefinedOrNull(x);
+}
+
+inline GateRef StubBuilder::TaggedIsUndefinedOrNullOrHole(GateRef x)
+{
+    return env_->GetBuilder()->TaggedIsUndefinedOrNullOrHole(x);
 }
 
 inline GateRef StubBuilder::TaggedIsTrue(GateRef x)
@@ -1350,7 +1334,7 @@ inline GateRef StubBuilder::IsJSFunctionBase(GateRef obj)
         Int32(static_cast<int32_t>(JSType::JS_FUNCTION_BASE)));
     GateRef less = Int32LessThanOrEqual(objectType,
         Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION)));
-    return BoolAnd(greater, less);
+    return BitAnd(greater, less);
 }
 
 inline GateRef StubBuilder::IsConstructor(GateRef object)
@@ -1412,6 +1396,11 @@ inline GateRef StubBuilder::IsConstantString(GateRef obj)
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::CONSTANT_STRING)));
 }
 
+inline GateRef StubBuilder::IsLiteralString(GateRef obj)
+{
+    return env_->GetBuilder()->IsLiteralString(obj);
+}
+
 inline GateRef StubBuilder::IsTreeString(GateRef obj)
 {
     return env_->GetBuilder()->IsTreeString(obj);
@@ -1466,7 +1455,7 @@ inline GateRef StubBuilder::IsModuleNamespace(GateRef obj)
 inline GateRef StubBuilder::ObjIsSpecialContainer(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
-    return BoolAnd(
+    return BitAnd(
         Int32GreaterThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
         Int32LessThanOrEqual(objectType, Int32(static_cast<int32_t>(JSType::JS_API_QUEUE))));
 }
@@ -1575,22 +1564,10 @@ inline GateRef StubBuilder::IsJSAPIArrayList(GateRef obj)
 
 inline GateRef StubBuilder::IsJSObjectType(GateRef obj, JSType jsType)
 {
-    auto env = GetEnvironment();
-    Label entryPass(env);
-    env->SubCfgEntry(&entryPass);
-    DEFVARIABLE(result, VariableType::BOOL(), False());
-    Label heapObj(env);
-    Label exit(env);
-    GateRef isHeapObject = TaggedIsHeapObject(obj);
-    BRANCH(isHeapObject, &heapObj, &exit);
-    Bind(&heapObj);
-    GateRef objectType = GetObjectType(LoadHClass(obj));
-    result = env_->GetBuilder()->LogicAnd(isHeapObject, Int32Equal(objectType, Int32(static_cast<int32_t>(jsType))));
-    Jump(&exit);
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
+    return LogicAndBuilder(env_)
+        .And(TaggedIsHeapObject(obj))
+        .And(Int32Equal(GetObjectType(LoadHClass(obj)), Int32(static_cast<int32_t>(jsType))))
+        .Done();
 }
 
 inline GateRef StubBuilder::IsJSRegExp(GateRef obj)
@@ -2360,7 +2337,8 @@ inline void StubBuilder::CheckUpdateSharedType(bool isDicMode, Variable *result,
 {
     auto *env = GetEnvironment();
     Label isJSShared(env);
-    BRANCH(BoolAnd(IsJSShared(receiver), SCheckModelIsCHECK), &isJSShared, executeSetProp);
+    BRANCH(LogicAndBuilder(env).And(SCheckModelIsCHECK).And(IsJSShared(receiver)).Done(),
+        &isJSShared, executeSetProp);
     Bind(&isJSShared);
     {
         Label typeMismatch(env);
@@ -2411,7 +2389,7 @@ inline GateRef StubBuilder::UpdateSOutOfBoundsForHandler(GateRef handlerInfo)
 inline GateRef StubBuilder::IsSpecialContainer(GateRef jsType)
 {
     // arraylist and vector has fast pass now
-    return BoolOr(
+    return BitOr(
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_ARRAY_LIST))),
         Int32Equal(jsType, Int32(static_cast<int32_t>(JSType::JS_API_VECTOR))));
 }
@@ -2423,7 +2401,7 @@ inline GateRef StubBuilder::IsSharedArray(GateRef jsType)
 
 inline GateRef StubBuilder::IsFastTypeArray(GateRef jsType)
 {
-    return BoolAnd(
+    return BitAnd(
         Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
         Int32LessThanOrEqual(jsType, Int32(static_cast<int32_t>(JSType::JS_FLOAT64_ARRAY))));
 }
@@ -2894,12 +2872,12 @@ inline GateRef StubBuilder::RegionInSpace(GateRef region, RegionSpaceFlag spaceB
         GateRef spaceType = Int32And(x, Int32(RegionSpaceFlag::VALID_SPACE_MASK));
         GateRef greater = Int32GreaterThanOrEqual(spaceType, Int32(spaceBegin));
         GateRef less = Int32LessThanOrEqual(spaceType, Int32(spaceEnd));
-        return BoolAnd(greater, less);
+        return BitAnd(greater, less);
     } else {
         GateRef spaceType = Int64And(x, Int64(RegionSpaceFlag::VALID_SPACE_MASK));
         GateRef greater = Int64GreaterThanOrEqual(spaceType, Int64(spaceBegin));
         GateRef less = Int64LessThanOrEqual(spaceType, Int64(spaceEnd));
-        return BoolAnd(greater, less);
+        return BitAnd(greater, less);
     }
 }
 
@@ -2922,12 +2900,12 @@ inline GateRef StubBuilder::InSharedHeap(GateRef region)
         GateRef spaceType = Int32And(x, Int32(RegionSpaceFlag::VALID_SPACE_MASK));
         GateRef greater = Int32GreaterThanOrEqual(spaceType, Int32(RegionSpaceFlag::SHARED_SPACE_BEGIN));
         GateRef less = Int32LessThanOrEqual(spaceType, Int32(RegionSpaceFlag::SHARED_SPACE_END));
-        return BoolAnd(greater, less);
+        return BitAnd(greater, less);
     } else {
         GateRef spaceType = Int64And(x, Int64(RegionSpaceFlag::VALID_SPACE_MASK));
         GateRef greater = Int64GreaterThanOrEqual(spaceType, Int64(RegionSpaceFlag::SHARED_SPACE_BEGIN));
         GateRef less = Int64LessThanOrEqual(spaceType, Int64(RegionSpaceFlag::SHARED_SPACE_END));
-        return BoolAnd(greater, less);
+        return BitAnd(greater, less);
     }
 }
 
@@ -2940,12 +2918,12 @@ inline GateRef StubBuilder::InSharedSweepableSpace(GateRef region)
         GateRef spaceType = Int32And(x, Int32(RegionSpaceFlag::VALID_SPACE_MASK));
         GateRef greater = Int32GreaterThanOrEqual(spaceType, Int32(RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_BEGIN));
         GateRef less = Int32LessThanOrEqual(spaceType, Int32(RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_END));
-        return BoolAnd(greater, less);
+        return BitAnd(greater, less);
     } else {
         GateRef spaceType = Int64And(x, Int64(RegionSpaceFlag::VALID_SPACE_MASK));
         GateRef greater = Int64GreaterThanOrEqual(spaceType, Int64(RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_BEGIN));
         GateRef less = Int64LessThanOrEqual(spaceType, Int64(RegionSpaceFlag::SHARED_SWEEPABLE_SPACE_END));
-        return BoolAnd(greater, less);
+        return BitAnd(greater, less);
     }
 }
 
@@ -3223,13 +3201,23 @@ inline GateRef StubBuilder::IsJSFunction(GateRef obj)
         Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST)));
     GateRef less = Int32LessThanOrEqual(objectType,
         Int32(static_cast<int32_t>(JSType::JS_FUNCTION_LAST)));
-    return BoolAnd(greater, less);
+    return BitAnd(greater, less);
 }
 
 inline GateRef StubBuilder::IsBoundFunction(GateRef obj)
 {
     GateRef objectType = GetObjectType(LoadHClass(obj));
     return Int32Equal(objectType, Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION)));
+}
+
+inline GateRef StubBuilder::IsJSOrBoundFunction(GateRef obj)
+{
+    GateRef objectType = GetObjectType(LoadHClass(obj));
+    GateRef greater = Int32GreaterThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_FUNCTION_FIRST)));
+    GateRef less = Int32LessThanOrEqual(objectType,
+        Int32(static_cast<int32_t>(JSType::JS_BOUND_FUNCTION)));
+    return BitAnd(greater, less);
 }
 
 inline GateRef StubBuilder::IsAOTLiteralInfo(GateRef info)
@@ -3261,13 +3249,11 @@ inline GateRef StubBuilder::IsFastCall(GateRef method)
 
 inline GateRef StubBuilder::HasPrototype(GateRef kind)
 {
-    GateRef greater = Int32GreaterThanOrEqual(kind,
-        Int32(static_cast<int32_t>(FunctionKind::BASE_CONSTRUCTOR)));
-    GateRef less = Int32LessThanOrEqual(kind,
-        Int32(static_cast<int32_t>(FunctionKind::ASYNC_GENERATOR_FUNCTION)));
-    GateRef notproxy = Int32NotEqual(kind,
-        Int32(static_cast<int32_t>(FunctionKind::BUILTIN_PROXY_CONSTRUCTOR)));
-    return BoolAnd(notproxy, BoolAnd(greater, less));
+    return LogicAndBuilder(env_)
+        .And(Int32NotEqual(kind, Int32(static_cast<int32_t>(FunctionKind::BUILTIN_PROXY_CONSTRUCTOR))))
+        .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::BASE_CONSTRUCTOR))))
+        .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(FunctionKind::ASYNC_GENERATOR_FUNCTION))))
+        .Done();
 }
 
 inline GateRef StubBuilder::HasAccessor(GateRef kind)
@@ -3276,27 +3262,27 @@ inline GateRef StubBuilder::HasAccessor(GateRef kind)
         Int32(static_cast<int32_t>(FunctionKind::NORMAL_FUNCTION)));
     GateRef less = Int32LessThanOrEqual(kind,
         Int32(static_cast<int32_t>(FunctionKind::ASYNC_FUNCTION)));
-    return BoolAnd(greater, less);
+    return BitAnd(greater, less);
 }
 
 inline GateRef StubBuilder::IsClassConstructorKind(GateRef kind)
 {
     GateRef left = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::CLASS_CONSTRUCTOR)));
     GateRef right = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::DERIVED_CONSTRUCTOR)));
-    return BoolOr(left, right);
+    return BitOr(left, right);
 }
 
 inline GateRef StubBuilder::IsGeneratorKind(GateRef kind)
 {
     GateRef left = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::ASYNC_GENERATOR_FUNCTION)));
     GateRef right = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::GENERATOR_FUNCTION)));
-    return BoolOr(left, right);
+    return BitOr(left, right);
 }
 
 inline GateRef StubBuilder::IsBaseKind(GateRef kind)
 {
     GateRef val = Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::BASE_CONSTRUCTOR)));
-    return BoolOr(val, IsGeneratorKind(kind));
+    return BitOr(val, IsGeneratorKind(kind));
 }
 
 inline GateRef StubBuilder::IsSendableFunction(GateRef method)
@@ -3526,10 +3512,7 @@ inline GateRef StubBuilder::IsStableArray(GateRef hClass)
 
 inline GateRef StubBuilder::IsTypedArray(GateRef obj)
 {
-    GateRef jsHclass = LoadHClass(obj);
-    GateRef jsType = GetObjectType(jsHclass);
-    return BoolAnd(Int32GreaterThan(jsType, Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_FIRST))),
-                   Int32GreaterThanOrEqual(Int32(static_cast<int32_t>(JSType::JS_TYPED_ARRAY_LAST)), jsType));
+    return env_->GetBuilder()->IsTypedArray(obj);
 }
 
 inline GateRef StubBuilder::GetProfileTypeInfo(GateRef jsFunc)
@@ -3547,8 +3530,8 @@ inline void StubBuilder::CheckDetectorName(GateRef glue, GateRef key, Label *fal
         VariableType::INT64(), glueGlobalEnv, GlobalEnv::FIRST_DETECTOR_SYMBOL_INDEX);
     GateRef lastDetectorName = GetGlobalEnvValue(
         VariableType::INT64(), glueGlobalEnv, GlobalEnv::LAST_DETECTOR_SYMBOL_INDEX);
-    GateRef isDetectorName = BoolAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
-                                     Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
+    GateRef isDetectorName = BitAnd(Int64UnsignedLessThanOrEqual(firstDetectorName, keyAddr),
+                                    Int64UnsignedLessThanOrEqual(keyAddr, lastDetectorName));
     Label checkCommonDetector(env_);
     BRANCH(isDetectorName, slow, &checkCommonDetector);
     Bind(&checkCommonDetector);
