@@ -5401,6 +5401,7 @@ void JSNApi::DisposeGlobalHandleAddr(const EcmaVM *vm, uintptr_t addr)
     if (addr == 0 || !reinterpret_cast<ecmascript::Node *>(addr)->IsUsing()) {
         return;
     }
+
     ecmascript::ThreadManagedScope scope(vm->GetJSThread());
     CROSS_THREAD_CHECK(vm);
     thread->DisposeGlobalHandle(addr);
@@ -5785,7 +5786,6 @@ Local<ObjectRef> JSNApi::GetModuleNameSpaceFromFile(EcmaVM *vm, const std::strin
         // need get moduleName from stack
         std::pair<std::string, std::string> moduleInfo = vm->GetCurrentModuleInfo(false);
         if (thread->HasPendingException()) {
-            ecmascript::JsStackInfo::BuildCrashInfo(thread);
             thread->GetCurrentEcmaContext()->HandleUncaughtException();
             return JSValueRef::Undefined(vm);
         }
