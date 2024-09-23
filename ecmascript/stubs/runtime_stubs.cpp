@@ -1090,9 +1090,11 @@ DEF_RUNTIME_STUBS(OptSuperCallForwardAllArgs)
     JSTaggedType *sp = reinterpret_cast<JSTaggedType *>(GetActualArgv(thread));
     JSHandle<JSTaggedValue> superFunc = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: index of super constructor
     JSHandle<JSTaggedValue> newTarget = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: index of newTarget
-    uint32_t actualArgc = GetArg(argv, argc, 2).GetInt();                       // 2: index of actual argc
-    ASSERT(actualArgc >= NUM_MANDATORY_JSFUNC_ARGS);
-    uint32_t restNumArgs = actualArgc - NUM_MANDATORY_JSFUNC_ARGS;
+    int actualArgc = GetArg(argv, argc, 2).GetInt();                            // 2: index of actual argc
+    ASSERT(actualArgc >= 0);
+    uint32_t convertedActualArgc = static_cast<uint32_t>(actualArgc);
+    ASSERT(convertedActualArgc >= NUM_MANDATORY_JSFUNC_ARGS);
+    uint32_t restNumArgs = convertedActualArgc - NUM_MANDATORY_JSFUNC_ARGS;
     uint32_t startIdx = NUM_MANDATORY_JSFUNC_ARGS;
     return RuntimeSuperCallForwardAllArgs(thread, sp, superFunc, newTarget, restNumArgs, startIdx).GetRawData();
 }
