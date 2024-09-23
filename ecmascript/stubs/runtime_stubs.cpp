@@ -258,6 +258,9 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     int32_t tarStartPos, int32_t count, int32_t elementSize)
 {
     DISALLOW_GARBAGE_COLLECTION;
+    if (count <= 0) {
+        return;
+    }
     JSTaggedValue srcBuffer = srcArray->GetViewedArrayBufferOrByteArray();
     JSTaggedValue targetBuffer = targetArray->GetViewedArrayBufferOrByteArray();
     uint32_t srcByteIndex = static_cast<uint32_t>(srcStartPos * elementSize + srcArray->GetByteOffset());
@@ -265,7 +268,7 @@ void RuntimeStubs::CopyTypedArrayBuffer(JSTypedArray *srcArray, JSTypedArray *ta
     uint8_t *srcBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(srcBuffer, srcByteIndex);
     uint8_t *targetBuf = (uint8_t *)builtins::BuiltinsArrayBuffer::GetDataPointFromBuffer(targetBuffer,
                                                                                           targetByteIndex);
-    if (count > 0 && memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
+    if (memmove_s(targetBuf, elementSize * count, srcBuf, elementSize * count) != EOK) {
         LOG_FULL(FATAL) << "memmove_s failed";
         UNREACHABLE();
     }
