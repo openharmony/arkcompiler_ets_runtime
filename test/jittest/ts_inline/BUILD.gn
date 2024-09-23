@@ -15,5 +15,6 @@ import("//arkcompiler/ets_runtime/test/test_helper.gni")
 
 host_jit_test_action("ts_inline") {
   deps = []
-  extra_option = " --log-info=trace --compiler-trace-inline=true"
+  extra_option =
+      " --log-info=trace --compiler-trace-inline=true --ark-properties=0x107c"
 }
