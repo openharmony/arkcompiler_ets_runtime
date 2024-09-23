@@ -1149,6 +1149,21 @@ void JSValueRef::GetDataViewInfo(const EcmaVM *vm,
     }
 }
 
+void JSValueRef::TryGetArrayLength(const EcmaVM *vm, bool *isArrayOrSharedArray, uint32_t *arrayLength)
+{
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    JSTaggedValue thisValue = JSNApiHelper::ToJSTaggedValue(this);
+    if (thisValue.IsJSArray()) {
+        *isArrayOrSharedArray = true;
+        *arrayLength = JSArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
+    } else if (thisValue.IsJSSharedArray()) {
+        *isArrayOrSharedArray = true;
+        *arrayLength = ecmascript::JSSharedArray::Cast(thisValue.GetTaggedObject())->GetArrayLength();
+    } else {
+        *isArrayOrSharedArray = false;
+    }
+}
+
 // ---------------------------------- DataView -----------------------------------
 Local<DataViewRef> DataViewRef::New(
     const EcmaVM *vm, Local<ArrayBufferRef> arrayBuffer, uint32_t byteOffset, uint32_t byteLength)
