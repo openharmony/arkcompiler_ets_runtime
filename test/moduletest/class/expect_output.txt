@@ -25,6 +25,3 @@ TypeError
 TypeError
 test successful!
 test privateproperty class sucecess
-TypeError
-TypeError
-TypeError
