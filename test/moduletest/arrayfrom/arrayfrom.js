@@ -197,4 +197,9 @@ print(Array.from(v1.keys()))
     print(JSON.stringify(res))
 }
 
+{
+    let arr = [1,2,3];
+    let res = Array.from(arr.values());
+    print(JSON.stringify(res));
+}
 
