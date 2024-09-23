@@ -46,7 +46,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--ark-bundle-name:                    Set ark bundle name\n"
     "--asm-interpreter:                    Enable asm interpreter. Default: 'true'\n"
     "--asm-opcode-disable-range:           Opcode range when asm interpreter is enabled.\n"
-    "--builtins-lazy:                     Load some builtins function later.This option is only valid in workervm.\n"
+    "--builtins-lazy:                      Load some builtins function later.This option is only valid in workervm.\n"
     "--compiler-log:                       Log Option For aot compiler and stub compiler,\n"
     "                                      'none': no log,\n"
     "                                      'allllircirasm' or 'all012': print all log for all methods,\n"
@@ -150,7 +150,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "                                      Format:--compile-methods=record1:m1,m2,record2:m3\n"
     "--compiler-skip-methods               Compiler skpped methods for aot. Only work in full compiling mode\n"
     "                                      Format:--compile-skip-methods=record1:m1,m2,record2:m3\n"
-    "--target-compiler-mode                The compilation mode at the device side, including partial, full and none."
+    "--target-compiler-mode                The compilation mode at the device side, including partial, full and none.\n"
     "                                      Default: ''\n"
     "--hap-path(Deprecated)                The path of the app hap. Default: ''\n"
     "--hap-abc-offset(Deprecated)          The offset of the abc file in app hap. Default: '0'\n"
@@ -179,7 +179,7 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--compiler-typed-op-profiler:         Enable Typed Opcode Statistics for aot runtime. Default: 'false'\n"
     "--compiler-opt-branch-profiling:      Enable branch profiling for aot compiler. Default: 'true'\n"
     "--test-assert:                        Set Assert Model. Default: 'false'\n"
-    "--compiler-methods-range:             Enable aot compiler to compile only in-range methods."
+    "--compiler-methods-range:             Enable aot compiler to compile only in-range methods.\n"
     "                                      Default: '0:4294967295'\n"
     "--compiler-codegen-options:           Compile options passed to codegen. Default: ''\n"
     "--compiler-opt-escape-analysis:       Enable escape analysis for aot compiler. Default: 'true'\n"
@@ -195,8 +195,8 @@ const std::string PUBLIC_API HELP_OPTION_MSG =
     "--async-load-abc:                     Enable asynchronous load abc. Default: 'true'\n"
     "--async-load-abc-test:                Enable asynchronous load abc test. Default: 'false'\n"
     "--compiler-enable-concurrent:         Enable concurrent compile(only support in ark_stub_compiler).\n"
-    "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n"
-    "                                      Default: 'true'\n\n";
+    "                                      Default: 'true'\n"
+    "--compiler-opt-frame-state-elimination: Enable frame state elimination. Default: 'true'\n\n";
 
 bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
 {
