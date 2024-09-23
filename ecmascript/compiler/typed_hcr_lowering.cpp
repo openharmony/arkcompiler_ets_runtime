@@ -416,11 +416,11 @@ void TypedHCRLowering::LowerTypedArrayCheck(GateRef gate)
     GateRef receiver = acc_.GetValueIn(gate, 0);
     builder_.HeapObjectCheck(receiver, frameState);
     GateRef receiverHClass = builder_.LoadHClass(receiver);
-    GateRef check = LogicOrBuilder(&env)
-        .Or(builder_.Equal(receiverHClass, builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex)))
-        .Or(builder_.Equal(receiverHClass, builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex)))
-        .Done();
-    builder_.DeoptCheck(check, frameState, deoptType);
+    GateRef rootHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassIndex);
+    GateRef rootOnHeapHclass = builder_.GetGlobalEnvObj(glueGlobalEnv, typedArrayRootHclassOnHeapIndex);
+    GateRef check1 = builder_.Equal(receiverHClass, rootHclass);
+    GateRef check2 = builder_.Equal(receiverHClass, rootOnHeapHclass);
+    builder_.DeoptCheck(builder_.BitOr(check1, check2), frameState, deoptType);
 
     OnHeapMode onHeapMode = accessor.GetOnHeapMode();
     if (accessor.IsAccessElement() && !OnHeap::IsNone(onHeapMode)) {
