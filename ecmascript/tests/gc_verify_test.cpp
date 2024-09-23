@@ -19,6 +19,8 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/tests/ecma_test_common.h"
 #include "ecmascript/mem/verification.h"
+#include "ecmascript/mem/partial_gc.h"
+#include "ecmascript/mem/full_gc.h"
 
 using namespace panda;
 
@@ -45,12 +47,57 @@ public:
     }
 };
 
-HWTEST_F_L0(GCTest, VerificationTest)
+HWTEST_F_L0(GCTest, VerificationTest1)
 {
     Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    auto objectFactory = thread->GetEcmaVM()->GetFactory();
-    [[maybe_unused]] JSHandle<TaggedArray> array = objectFactory->NewTaggedArray(
-                1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
-    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    heap->SetMarkType(MarkType::MARK_EDEN);
+    auto partialGc = heap->GetPartialGC();
+    partialGc->RunPhases();
+}
+
+HWTEST_F_L0(GCTest, VerificationTest2)
+{
+    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_YOUNG);
+    auto partialGc = heap->GetPartialGC();
+    partialGc->RunPhases();
+}
+
+HWTEST_F_L0(GCTest, VerificationTest3)
+{
+    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetMarkType(MarkType::MARK_FULL);
+    auto partialGc = heap->GetPartialGC();
+    partialGc->RunPhases();
+}
+
+HWTEST_F_L0(GCTest, VerificationTest4)
+{
+    Heap *heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    auto fullGc = heap->GetFullGC();
+    fullGc->RunPhases();
+}
+
+HWTEST_F_L0(GCTest, SharedHeapVerificationTest)
+{
+    SharedHeap *sHeap = SharedHeap::GetInstance();
+    JSRuntimeOptions options;
+    options.SetEnableEdenGC(true);
+    options.SetArkProperties(options.GetArkProperties() | ArkProperties::ENABLE_HEAP_VERIFY);
+    auto nativeAreaAllocator_ = std::make_unique<NativeAreaAllocator>();
+    auto heapRegionAllocator_ = std::make_unique<HeapRegionAllocator>();
+    sHeap->Initialize(nativeAreaAllocator_.get(), heapRegionAllocator_.get(), options, DaemonThread::GetInstance());
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    auto oldSizebase = sHeap->GetOldSpace()->GetHeapObjectSize();
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        factory->NewSOldSpaceTaggedArray(1024, JSTaggedValue::Undefined());
+    }
+    size_t oldSizeBefore = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizebase);
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    auto oldSizeAfter = sHeap->GetOldSpace()->GetHeapObjectSize();
+    EXPECT_TRUE(oldSizeBefore > oldSizeAfter);
 }
 } // namespace panda::test

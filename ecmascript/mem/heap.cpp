@@ -1299,7 +1299,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
 
 void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string functionName,
     bool NonMovableObjNearOOM)
-{
+{ // LCOV_EXCL_START
     GetEcmaGCStats()->PrintGCMemoryStatistic();
     std::ostringstream oss;
     if (NonMovableObjNearOOM) {
@@ -1311,7 +1311,7 @@ void BaseHeap::ThrowOutOfMemoryError(JSThread *thread, size_t size, std::string 
     }
     LOG_ECMA_MEM(ERROR) << oss.str().c_str();
     THROW_OOM_ERROR(thread, oss.str().c_str());
-}
+} // LCOV_EXCL_STOP
 
 void BaseHeap::SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName)
 {
@@ -1335,7 +1335,7 @@ void BaseHeap::SetAppFreezeFilterCallback(AppFreezeFilterCallback cb)
 
 void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, std::string functionName,
     bool NonMovableObjNearOOM)
-{
+{ // LCOV_EXCL_START
     GetEcmaGCStats()->PrintGCMemoryStatistic();
     std::ostringstream oss;
     if (NonMovableObjNearOOM) {
@@ -1351,14 +1351,14 @@ void BaseHeap::ThrowOutOfMemoryErrorForDefault(JSThread *thread, size_t size, st
 
     thread->SetException(error.GetTaggedValue());
     ecmaVm->HandleUncatchableError();
-}
+} // LCOV_EXCL_STOP
 
 void BaseHeap::FatalOutOfMemoryError(size_t size, std::string functionName)
-{
+{ // LCOV_EXCL_START
     GetEcmaGCStats()->PrintGCMemoryStatistic();
     LOG_ECMA_MEM(FATAL) << "OOM fatal when trying to allocate " << size << " bytes"
                         << " function name: " << functionName.c_str();
-}
+} // LCOV_EXCL_STOP
 
 void Heap::CheckNonMovableSpaceOOM()
 {
