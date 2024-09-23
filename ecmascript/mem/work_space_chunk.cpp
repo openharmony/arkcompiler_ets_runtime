@@ -28,7 +28,6 @@ uintptr_t WorkSpaceChunk::NewArea(size_t size)
         LOG_ECMA_MEM(FATAL) << "OOM WorkSpaceChunk : NewArea area is nullptr";
         UNREACHABLE();
     }
-    allocator_->IncreaseNativeSizeStats(size, NativeFlag::CHUNK_MEM);
     areaList_.emplace(area, area);
     return area;
 }
