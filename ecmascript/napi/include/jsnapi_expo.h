@@ -1671,6 +1671,7 @@ public:
 private:
     static int vmCount_;
     static bool initialize_;
+    static bool isForked_;
     static bool CreateRuntime(const RuntimeOption &option);
     static bool DestroyRuntime();
     static StartIdleMonitorCallback startIdleMonitorCallback_;

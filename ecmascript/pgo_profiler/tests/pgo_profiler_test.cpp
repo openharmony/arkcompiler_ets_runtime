@@ -83,6 +83,7 @@ public:
         JSPandaFileManager::GetInstance()->RemoveJSPandaFile(pf_.get());
         vm_ = nullptr;
         pf_.reset();
+        PGOProfilerManager::GetInstance()->SetDisablePGO(false);
         PGOProfilerManager::GetInstance()->Destroy();
         PGOProfilerHeader::SetStrictMatch(strictMatch_);
     }
@@ -1357,11 +1358,41 @@ HWTEST_F_L0(PGOProfilerTest, PGOObjectInfoOperatorLessThanTest)
     EXPECT_FALSE(objectInfoGreater < objectInfoLess);
 }
 
-HWTEST_F_L0(PGOProfilerTest, PGODisableWithAOTFileTest)
+HWTEST_F_L0(PGOProfilerTest, PGODisableWithAOTFileWorkloadTest)
 {
     mkdir("ark-profiler27/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     std::ofstream fWriter("ark-profiler27/tmp.an", std::fstream::app);
     fWriter.close();
+    const char *targetRecordName = "typedarray_length";
+    std::string targetAbcPath = std::string(TARGET_ABC_PATH) + targetRecordName + ".abc";
+    // Force set in advance to simulate AOT/JIT enable list check is passed in UT
+    ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
+    ecmascript::AnFileDataManager::GetInstance()->SetDir("ark-profiler27/tmp");
+    RuntimeOption option;
+    option.SetEnableProfile(true);
+    option.SetProfileDir("ark-profiler27/");
+    EcmaVM *ecmaVM = JSNApi::CreateJSVM(option);
+    JSNApi::LoadAotFile(ecmaVM, "");
+    EXPECT_TRUE(ecmaVM->IsEnablePGOProfiler());
+    auto result = JSNApi::Execute(ecmaVM, targetAbcPath, targetRecordName, false);
+    EXPECT_TRUE(result);
+    JSNApi::DestroyJSVM(ecmaVM);
+    EXPECT_TRUE(FileExist("ark-profiler27/modules.ap"));
+    unlink("ark-profiler27/modules.ap");
+    unlink("ark-profiler27/tmp.an");
+    rmdir("ark-profiler27/");
+}
+
+HWTEST_F_L0(PGOProfilerTest, PGODisableWithAOTFileAppTest)
+{
+    mkdir("ark-profiler27/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    std::ofstream fWriter("ark-profiler27/tmp.an", std::fstream::app);
+    fWriter.close();
+    const char *targetRecordName = "typedarray_length";
+    std::string targetAbcPath = std::string(TARGET_ABC_PATH) + targetRecordName + ".abc";
+    // Force set in advance to simulate AOT/JIT enable list check is passed in UT
+    ecmascript::AnFileDataManager::GetInstance()->SetEnable(true);
+    ecmascript::AnFileDataManager::GetInstance()->SetDir("ark-profiler27/tmp");
     RuntimeOption option;
     EcmaVM *ecmaVM = JSNApi::CreateJSVM(option);
     option.SetEnableProfile(true);
@@ -1369,10 +1400,8 @@ HWTEST_F_L0(PGOProfilerTest, PGODisableWithAOTFileTest)
     JSNApi::PreFork(ecmaVM);
     JSNApi::PostFork(ecmaVM, option);
     EXPECT_TRUE(ecmaVM->IsEnablePGOProfiler());
-    ecmaVM->DisablePGOProfilerWithAOTFile("ark-profiler27/tmp");
+    JSNApi::LoadAotFile(ecmaVM, "");
     EXPECT_FALSE(ecmaVM->IsEnablePGOProfiler());
-    const char *targetRecordName = "typedarray_length";
-    std::string targetAbcPath = std::string(TARGET_ABC_PATH) + targetRecordName + ".abc";
     auto result = JSNApi::Execute(ecmaVM, targetAbcPath, targetRecordName, false);
     EXPECT_TRUE(result);
     JSNApi::DestroyJSVM(ecmaVM);
