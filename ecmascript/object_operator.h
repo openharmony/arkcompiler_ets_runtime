@@ -94,6 +94,16 @@ public:
         IsFastModeField::Set(flag, &metaData_);
     }
 
+    inline void SetFoundDict(bool flag)
+    {
+        IsFoundDictField::Set(flag, &metaData_);
+    }
+
+    inline bool IsFoundDict()
+    {
+        return IsFoundDictField::Get(metaData_);
+    }
+
     inline bool IsElement() const
     {
         return key_.IsEmpty();
@@ -330,6 +340,8 @@ private:
     using HasReceiverField = IsOnPrototypeField::NextFlag;
     using IsTransitionField = HasReceiverField::NextFlag;
     using IsTSHClassField = IsTransitionField::NextFlag;
+    // found dictionary obj between receriver and holder
+    using IsFoundDictField = IsTSHClassField::NextFlag;
 
     void UpdateHolder();
     void UpdateIsTSHClass();
