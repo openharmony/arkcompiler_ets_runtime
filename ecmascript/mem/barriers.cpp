@@ -88,15 +88,14 @@ void Barriers::UpdateShared(const JSThread *thread, TaggedObject *value, Region 
 
 
 template <Region::RegionSpaceKind kind>
-bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* objectRegion, JSTaggedValue* dst, size_t count)
+ARK_NOINLINE bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* objectRegion, JSTaggedValue* dst,
+                              size_t count)
 {
     bool allValueNotHeap = true;
     Region::Updater updater = objectRegion->GetBatchRSetUpdater<kind>(ToUintPtr(dst));
-
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < count; i++, updater.Next()) {
         JSTaggedValue taggedValue = dst[i];
         if (!taggedValue.IsHeapObject()) {
-            updater.Step();
             continue;
         }
         allValueNotHeap = false;
@@ -113,23 +112,21 @@ bool BatchBitSet([[maybe_unused]] const JSThread* thread, Region* objectRegion, 
                 CHECK_NO_LOCAL_TO_SHARE_WEAK_REF_HANDLE;
             }
 #endif
-            updater.AddLocalToShare();
+            updater.UpdateLocalToShare();
             continue;
         }
         if constexpr (kind == Region::InYoung) {
             if (valueRegion->InEdenSpace()) {
-                updater.AddNewToEden();
+                updater.UpdateNewToEden();
                 continue;
             }
         } else if constexpr (kind == Region::InGeneralOld) {
             if (valueRegion->InGeneralNewSpace()) {
-                updater.AddOldToNew();
+                updater.UpdateOldToNew();
                 continue;
             }
         }
-        updater.Step();
     }
-    updater.Flush();
     return allValueNotHeap;
 }
 

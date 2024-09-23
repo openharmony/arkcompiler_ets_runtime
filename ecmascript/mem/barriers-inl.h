@@ -113,7 +113,7 @@ static inline void CopyNoOverlap(JSTaggedValue* __restrict__ dst, JSTaggedValue*
 }
 
 template <Region::RegionSpaceKind kind>
-bool BatchBitSet(const JSThread* thread, Region* objectRegion, JSTaggedValue* dst, size_t count);
+ARK_NOINLINE bool BatchBitSet(const JSThread* thread, Region* objectRegion, JSTaggedValue* dst, size_t count);
 
 template <bool needWriteBarrier, bool maybeOverlap>
 void Barriers::CopyObject(const JSThread* thread, JSTaggedValue* dst, JSTaggedValue* src, size_t count)
