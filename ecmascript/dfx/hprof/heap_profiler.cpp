@@ -324,9 +324,12 @@ void DecodeObj(RawHeapInfoArgs &rawHeapArgs, HeapSnapshot *snapshot)
         *reinterpret_cast<uint64_t *>(v->newAddr) = reinterpret_cast<uint64_t>(jsHclassItem->second->newAddr);
         auto hclassObj = reinterpret_cast<JSHClass *>(jsHclassItem->second->newAddr);
         ObjectXRay::VisitObjectBody<VisitType::OLD_GC_VISIT>(obj, hclassObj, visitor);
+    }
+    LOG_ECMA(INFO) << "ark visitor: not found obj num= " << notFoundObj.size() << ", generate nodes";
+    for (auto v : rawHeapArgs.rawObjInfoVec) {
+        TaggedObject *obj = reinterpret_cast<TaggedObject *>(v->newAddr);
         snapshot->GenerateNodeForBinMod(obj, v, rawHeapArgs.strTableIdMapNewStr);
     }
-    LOG_ECMA(INFO) << "ark visitor: not found obj num= " << notFoundObj.size();
 }
 
 static uint64_t GetFileSize(std::string &inputFilePath)
