@@ -787,3 +787,18 @@ let isviewSub = SubSendableArrayBuffer.isView(new SendableInt32Array());
 print('SubSendableArrayBuffer SendableInt32Array isView: ' + isviewSub);
 isviewSub = SendableArrayBuffer.isView(new Int8Array(10));
 print("SendableArrayBuffer Int8Array isView: " + isviewSub);
+
+function testReflectApply() {
+  try {
+    const v1 = new Uint8ClampedArray(Uint8ClampedArray, Uint8ClampedArray, Uint8ClampedArray);
+    const v5 = new SendableUint16Array(1727);
+    new SendableUint32Array(v5);
+    const v8 = [v1];
+    Reflect.apply(v1.slice, v5, v8);
+    print("Reflect.apply slice success");
+  } catch(e) {
+    print("Reflect.apply slice error: " + e);
+  }
+}
+
+testReflectApply()

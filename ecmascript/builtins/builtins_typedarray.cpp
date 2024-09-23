@@ -1519,8 +1519,12 @@ JSTaggedValue BuiltinsTypedArray::Slice(EcmaRuntimeCallInfo *argv)
         //   a. Let srcBuffer be the value of O’s [[ViewedArrayBuffer]] internal slot.
         //   b. If IsDetachedBuffer(srcBuffer) is true, throw a TypeError exception.
         JSTaggedValue srcBuffer = thisObj->GetViewedArrayBufferOrByteArray();
-        if (BuiltinsArrayBuffer::IsDetachedBuffer(srcBuffer)) {
+        if (!srcBuffer.IsSendableArrayBuffer() && BuiltinsArrayBuffer::IsDetachedBuffer(srcBuffer)) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "The ArrayBuffer of this value is detached buffer.",
+                                        JSTaggedValue::Exception());
+        }
+        if (srcBuffer.IsSendableArrayBuffer() && BuiltinsSendableArrayBuffer::IsDetachedBuffer(srcBuffer)) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "The SendableArrayBuffer of this value is detached sendable buffer.",
                                         JSTaggedValue::Exception());
         }
         //   c. Let targetBuffer be the value of A’s [[ViewedArrayBuffer]] internal slot.
