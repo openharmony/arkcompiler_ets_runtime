@@ -23,6 +23,8 @@
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_number.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
 

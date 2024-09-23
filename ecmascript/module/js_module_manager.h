@@ -104,11 +104,10 @@ public:
     {
         return isExecuteBuffer_;
     }
-    void SetExecuteMode(ModuleExecuteMode mode)
+    inline void SetExecuteMode(ModuleExecuteMode mode)
     {
         isExecuteBuffer_ = mode;
     }
-
     static CString PUBLIC_API GetRecordName(JSTaggedValue module);
     static int GetExportObjectIndex(EcmaVM *vm, JSHandle<SourceTextModule> ecmaModule, const CString &key);
 
