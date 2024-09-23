@@ -1589,10 +1589,10 @@ void TaggedDoubleList::Dump(std::ostream &os) const
     os << " - delete node num: " << std::dec << NumberOfDeletedNodes() << "\n";
     os << "head-next: ";
     // 5 : 5 first element next ptr
-    GetElement(5).Dump(os);
+    GetElement(5).D();
     os << "head-pre: ";
     // 6 : 6 first element per ptr
-    GetElement(6).Dump(os);
+    GetElement(6).D();
     os << "\n";
     int i = 0;
     int next = GetElement(5).GetInt();
@@ -1601,10 +1601,10 @@ void TaggedDoubleList::Dump(std::ostream &os) const
         GetElement(next).DumpTaggedValue(os);
         os << " next: ";
         // 1 : 1 current element next ptr offset
-        GetElement(next + 1).Dump(os);
+        GetElement(next + 1).D();
         os << " pre: ";
         // 2 : 2 current element pre ptr offset
-        GetElement(next + 2).Dump(os);
+        GetElement(next + 2).D();
         os << "\n";
         next = GetElement(next + 1).GetInt();
         i++;
@@ -1617,7 +1617,7 @@ void TaggedSingleList::Dump(std::ostream &os) const
     int capacity = NumberOfNodes();
     os << "head-next: ";
     // 5 : 5 first element next ptr
-    GetElement(5).Dump(os);
+    GetElement(5).D();
     os << "\n";
     int i = 0;
     int next = GetElement(5).GetInt();
@@ -1626,7 +1626,7 @@ void TaggedSingleList::Dump(std::ostream &os) const
         GetElement(next).DumpTaggedValue(os);
         os << " next: ";
         // 1 : 1 current element next ptr offset
-        GetElement(next + 1).Dump(os);
+        GetElement(next + 1).D();
         os << "\n";
         next = GetElement(next + 1).GetInt();
         i++;
@@ -1738,7 +1738,7 @@ void LinkedNode::Dump(std::ostream &os) const
 
     os << "\n";
 }
-
+ 
 void ConstantPool::Dump(std::ostream &os) const
 {
     DumpArrayClass(this, os);
@@ -2256,7 +2256,7 @@ void JSFinalizationRegistry::Dump(std::ostream &os) const
     GetCleanupCallback().DumpTaggedValue(os);
     os << "\n";
     os << " - NoUnregister : ";
-    GetNoUnregister().Dump(os);
+    GetNoUnregister().D();
     os << "\n";
     os << " - MaybeUnregister : ";
     LinkedHashMap *map = LinkedHashMap::Cast(GetMaybeUnregister().GetTaggedObject());
@@ -2308,10 +2308,10 @@ void JSSharedSetIterator::Dump(std::ostream &os) const
 void JSRegExpIterator::Dump(std::ostream &os) const
 {
     os << " - IteratingRegExp: ";
-    GetIteratingRegExp().Dump(os);
+    GetIteratingRegExp().D();
     os << "\n";
     os << " - IteratedString: ";
-    GetIteratedString().Dump(os);
+    GetIteratedString().D();
     os << "\n";
     os << " - Global: " << std::dec << GetGlobal() << "\n";
     os << " - Unicode: " << std::dec << GetUnicode() << "\n";
@@ -2680,16 +2680,16 @@ void JSRegExp::Dump(std::ostream &os) const
 {
     os << "\n";
     os << " - ByteCodeBuffer: ";
-    GetByteCodeBuffer().Dump(os);
+    GetByteCodeBuffer().D();
     os << "\n";
     os << " - OriginalSource: ";
-    GetOriginalSource().Dump(os);
+    GetOriginalSource().D();
     os << "\n";
     os << " - OriginalFlags: ";
-    GetOriginalFlags().Dump(os);
+    GetOriginalFlags().D();
     os << "\n";
     os << " - GroupName: ";
-    GetGroupName().Dump(os);
+    GetGroupName().D();
     os << "\n";
     os << " - Length: " << GetLength();
     os << "\n";
@@ -3257,6 +3257,15 @@ void JSAsyncGeneratorFunction::Dump(std::ostream &os) const
 
 void JSIntlBoundFunction::Dump(std::ostream &os) const
 {
+    os << " - NumberFormat: ";
+    GetNumberFormat().Dump(os);
+    os << "\n";
+    os << " - DateTimeFormat: ";
+    GetDateTimeFormat().Dump(os);
+    os << "\n";
+    os << " - Collator: ";
+    GetCollator().Dump(os);
+    os << "\n";
     JSObject::Dump(os);
 }
 

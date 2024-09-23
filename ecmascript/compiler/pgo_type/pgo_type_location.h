@@ -15,9 +15,13 @@
 #ifndef ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_ID_H
 #define ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_ID_H
 
-#include "ecmascript/jspandafile/js_pandafile.h"
+#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
+#include "ecmascript/mem/c_string.h"
 
-namespace panda::ecmascript::kungfu {
+namespace panda::ecmascript {
+class JSPandaFile;
+
+namespace kungfu {
 using ProfileType = pgo::ProfileType;
 using ProfileTyper = std::pair<ProfileType, ProfileType>;
 using ProfileTypeTuple = std::tuple<ProfileType, ProfileType, uint64_t>;
@@ -31,8 +35,7 @@ public:
     };
 
     explicit PGOTypeLocation(const JSPandaFile *jsPandaFile, uint32_t methodOffset,
-                             int32_t bcIdx)
-        : abcName_(jsPandaFile->GetNormalizedFileDesc()), methodOffset_(methodOffset), bcIdx_(bcIdx) {}
+                             int32_t bcIdx);
     explicit PGOTypeLocation(const CString &abcName, uint32_t methodOffset,
                              int32_t bcIdx)
         : abcName_(abcName), methodOffset_(methodOffset), bcIdx_(bcIdx) {}
@@ -83,4 +86,5 @@ struct HashPGOTypeLocation {
     }
 };
 }  // panda::ecmascript::kungfu
+}
 #endif // ECMASCRIPT_COMPILER_PGO_TYPE_PGO_TYPE_ID_H

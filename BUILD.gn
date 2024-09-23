@@ -668,6 +668,7 @@ ecma_source = [
   "ecmascript/compiler/pgo_type/pgo_type_manager.cpp",
   "ecmascript/compiler/pgo_type/pgo_type_parser.cpp",
   "ecmascript/compiler/pgo_type/pgo_type_recorder.cpp",
+  "ecmascript/compiler/pgo_type/pgo_type_location.cpp",
   "ecmascript/containers/containers_arraylist.cpp",
   "ecmascript/containers/containers_bitvector.cpp",
   "ecmascript/containers/containers_deque.cpp",
