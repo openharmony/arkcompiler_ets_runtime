@@ -511,7 +511,7 @@ void EcmaStringTable::SweepWeakRef(const WeakRootVisitor &visitor, uint32_t tabl
     for (auto it = table.begin(); it != table.end();) {
         auto *object = it->second;
         auto fwd = visitor(object);
-        ASSERT(!Region::ObjectAddressToRange(object)->InYoungSpace());
+        ASSERT(Region::ObjectAddressToRange(object)->InSharedHeap());
         if (fwd == nullptr) {
             LOG_ECMA(VERBOSE) << "StringTable: delete string " << std::hex << object;
             it = table.erase(it);
