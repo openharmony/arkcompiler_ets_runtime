@@ -167,9 +167,9 @@ public:
         sourceMap.ExtractSourceMapData(allmappings, curMapData);
     }
 
-    MappingInfo Find(int32_t row, int32_t col, const SourceMapData &targetMap)
+    MappingInfo Find(int32_t row, int32_t col, const SourceMapData &targetMap, bool& isReplaces)
     {
-        return sourceMap.Find(row, col, targetMap);
+        return sourceMap.Find(row, col, targetMap, isReplaces);
     }
 
     void ExtractKeyInfo(const std::string &aSourceMap, std::vector<std::string> &sourceKeyInfo)
@@ -197,9 +197,9 @@ public:
         return sourceMap.TranslateUrlPositionBySourceMap(url, line, column);
     }
 
-    bool GetLineAndColumnNumbers(int &line, int &column, SourceMapData &targetMap)
+    bool GetLineAndColumnNumbers(int &line, int &column, SourceMapData &targetMap, bool& isReplaces)
     {
-        return sourceMap.GetLineAndColumnNumbers(line, column, targetMap);
+        return sourceMap.GetLineAndColumnNumbers(line, column, targetMap, isReplaces);
     }
 
 private:
@@ -383,13 +383,16 @@ HWTEST_F_L0(SourceMapTest, FindTest)
     SourceMapFriend sourceMapFriend;
     SourceMapData targetMap;
     MappingInfo mappingInfo;
+    bool isReplaces = true;
 
-    mappingInfo = sourceMapFriend.Find(0, 1, targetMap);
+    mappingInfo = sourceMapFriend.Find(0, 1, targetMap, isReplaces);
     EXPECT_EQ(mappingInfo.row, 0);
     EXPECT_EQ(mappingInfo.col, 0);
-    mappingInfo = sourceMapFriend.Find(1, 1, targetMap);
+    EXPECT_TRUE(isReplaces);
+    mappingInfo = sourceMapFriend.Find(1, 1, targetMap, isReplaces);
     EXPECT_EQ(mappingInfo.row, 0);
     EXPECT_EQ(mappingInfo.col, 0);
+    EXPECT_TRUE(isReplaces);
 
     std::vector<SourceMapInfo> afterPos;
     SourceMapInfo info;
@@ -401,17 +404,20 @@ HWTEST_F_L0(SourceMapTest, FindTest)
     info.namesVal = 1;
     afterPos.push_back(info);
     targetMap.afterPos_ = afterPos;
-    mappingInfo = sourceMapFriend.Find(3, 3, targetMap);
+    mappingInfo = sourceMapFriend.Find(3, 3, targetMap, isReplaces);
     EXPECT_EQ(mappingInfo.row, 2);
     EXPECT_EQ(mappingInfo.col, 2);
+    EXPECT_TRUE(isReplaces);
 
-    mappingInfo = sourceMapFriend.Find(3, 2, targetMap);
+    mappingInfo = sourceMapFriend.Find(3, 2, targetMap, isReplaces);
     EXPECT_EQ(mappingInfo.row, 2);
     EXPECT_EQ(mappingInfo.col, 2);
+    EXPECT_TRUE(isReplaces);
 
-    mappingInfo = sourceMapFriend.Find(2, 2, targetMap);
+    mappingInfo = sourceMapFriend.Find(2, 2, targetMap, isReplaces);
     EXPECT_EQ(mappingInfo.row, 2);
     EXPECT_EQ(mappingInfo.col, 2);
+    EXPECT_TRUE(isReplaces);
 }
 
 HWTEST_F_L0(SourceMapTest, ExtractKeyInfoTest)
@@ -487,26 +493,30 @@ HWTEST_F_L0(SourceMapTest, GetLineAndColumnNumbersTest)
     info.namesVal = 1;
     afterPos.push_back(info);
     targetMap.afterPos_ = afterPos;
+    bool isReplaces = true;
 
     int line = 1;
     int column = 1;
-    bool result = sourceMapFriend.GetLineAndColumnNumbers(line, column, targetMap);
+    bool result = sourceMapFriend.GetLineAndColumnNumbers(line, column, targetMap, isReplaces);
     EXPECT_TRUE(result);
     EXPECT_EQ(line, 2);
     EXPECT_EQ(column, 2);
+    EXPECT_TRUE(isReplaces);
 
     line = 5;
     column = 5;
-    result = sourceMapFriend.GetLineAndColumnNumbers(line, column, targetMap);
+    result = sourceMapFriend.GetLineAndColumnNumbers(line, column, targetMap, isReplaces);
     EXPECT_TRUE(result);
     EXPECT_EQ(line, 5);
     EXPECT_EQ(column, 5);
+    EXPECT_FALSE(isReplaces);
 
     line = 99;
     column = 99;
-    result = sourceMapFriend.GetLineAndColumnNumbers(line, column, targetMap);
+    result = sourceMapFriend.GetLineAndColumnNumbers(line, column, targetMap, isReplaces);
     EXPECT_TRUE(result);
     EXPECT_EQ(line, 99);
     EXPECT_EQ(column, 99);
+    EXPECT_FALSE(isReplaces);
 }
 }

@@ -95,8 +95,6 @@ std::string JsStackInfo::BuildMethodTrace(Method *method, uint32_t pcOffset, Las
         data.push_back('?');
     }
     data.append(")\n");
-    LOG_ECMA(DEBUG) << "stack: " << data << "\nfileName: " << pandaFile->GetJSPandaFileDesc()
-                    << "\nrecordName: " << method->GetRecordNameStr();
     return data;
 }
 
