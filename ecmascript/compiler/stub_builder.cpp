@@ -1875,7 +1875,9 @@ void StubBuilder::SetSValueWithBarrier(GateRef glue, GateRef obj, GateRef offset
                 &exit, &sharedMarking);
 
             Bind(&sharedMarking);
-            CallNGCRuntime(glue, RTSTUB_ID(SharedGCMarkingBarrier), {glue, value});
+            CallNGCRuntime(
+                glue,
+                RTSTUB_ID(SharedGCMarkingBarrier), { glue, value });
             Jump(&exit);
         }
     }
@@ -1982,12 +1984,14 @@ void StubBuilder::SetNonSValueWithBarrier(GateRef glue, GateRef obj, GateRef off
         GateRef stateBitField = Load(VariableType::INT64(), glue,
                                      Int64(JSThread::GlueData::GetGCStateBitFieldOffset(isArch32)));
         GateRef state = Int64And(stateBitField, Int64(JSThread::CONCURRENT_MARKING_BITFIELD_MASK));
-        BRANCH_LIKELY(Int64Equal(state, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK))), &exit, &marking);
+        BRANCH(Int64Equal(state, Int64(static_cast<int64_t>(MarkStatus::READY_TO_MARK))), &exit, &marking);
 
         Bind(&marking);
         {
             // Check fresh region, and directly mark value instead of call runtime.
-            CallNGCRuntime(glue, RTSTUB_ID(MarkingBarrier), {glue, obj, offset, value});
+            CallNGCRuntime(
+                glue,
+                RTSTUB_ID(MarkingBarrier), { glue, obj, offset, value });
             Jump(&exit);
         }
     }
