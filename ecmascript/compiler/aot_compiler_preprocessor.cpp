@@ -492,4 +492,43 @@ std::string AotCompilerPreprocessor::GetMainPkgArgsAppSignature() const
 {
     return GetMainPkgArgs() == nullptr ? "" : GetMainPkgArgs()->GetAppSignature();
 }
+
+bool AotCompilerPreprocessor::ForbidenRebuildAOT(std::string &fileName) const
+{
+    std::string realPath;
+    if (!RealPath(fileName, realPath, false)) {
+        LOG_COMPILER(ERROR) << "Fail to get realPath: " << fileName;
+        return true;
+    }
+    if (FileExist(realPath.c_str())) {
+        LOG_COMPILER(ERROR) << "AOT file: " << realPath << " exist";
+        return true;
+    }
+    return false;
+}
+
+bool AotCompilerPreprocessor::HasPreloadAotFile() const
+{
+    std::string hapPath;
+    std::string moduleName;
+    if (GetMainPkgArgs()) {
+        hapPath = GetMainPkgArgs()->GetPath();
+        moduleName = GetMainPkgArgs()->GetModuleName();
+    }
+    std::string fileName = OhosPreloadAppInfo::GetPreloadAOTFileName(hapPath, moduleName);
+    std::string aiFileName = fileName + AOTFileManager::FILE_EXTENSION_AI;
+    std::string anFileName = fileName + AOTFileManager::FILE_EXTENSION_AN;
+    bool existsAnFile = ForbidenRebuildAOT(anFileName);
+    bool existsAiFile = ForbidenRebuildAOT(aiFileName);
+    return (existsAnFile || existsAiFile);
+}
+
+bool AotCompilerPreprocessor::HasExistsAOTFiles(CompilationOptions &cOptions) const
+{
+    std::string anFileName = cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AN;
+    std::string aiFileName = cOptions.outputFileName_ + AOTFileManager::FILE_EXTENSION_AI;
+    bool existsAnFile = ForbidenRebuildAOT(anFileName);
+    bool existsAiFile = ForbidenRebuildAOT(aiFileName);
+    return (existsAnFile || existsAiFile);
+}
 } // namespace panda::ecmascript::kungfu

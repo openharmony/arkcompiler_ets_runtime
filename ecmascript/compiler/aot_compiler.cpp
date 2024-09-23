@@ -153,6 +153,13 @@ int Main(const int argc, const char **argv)
         profilerDecoder.SetInPath(cOptions.profilerIn_);
         cPreprocessor.AOTInitialize();
         uint32_t checksum = cPreprocessor.GenerateAbcFileInfos();
+
+        if (runtimeOptions.IsTargetCompilerMode() && (cPreprocessor.HasExistsAOTFiles(cOptions) ||
+            cPreprocessor.HasPreloadAotFile())) {
+            LOG_COMPILER(ERROR) << "The AOT file already exists and will not be compiled anymore";
+            return ERR_OK;
+        }
+
         ret = cPreprocessor.GetCompilerResult();
         // Notice: lx move load pandaFileHead and verify before GeneralAbcFileInfos.
         // need support multiple abc
