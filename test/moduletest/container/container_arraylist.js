@@ -302,6 +302,22 @@ if (globalThis["ArkPrivate"] != undefined) {
     } catch (error) {
         print(error)
     }
+    
+    const v11 = new arrayList()
+    function f2(a3, a4) {
+        const o5 = {}
+        return o5;
+    }
+    const o6 = {
+        "set" : f2
+    }
+    try {
+        const v8Proxy = new Proxy(v11,o6)
+        v8Proxy[4] = "no"
+    } catch (error) {
+        print(error)
+    }
+
     if (!flag) {
         print("Test ArrayList success!!!");
     } else {

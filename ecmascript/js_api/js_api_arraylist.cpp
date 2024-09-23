@@ -431,6 +431,10 @@ bool JSAPIArrayList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIArrayL
     }
 
     uint32_t length = obj->GetLength().GetArrayLength();
+    if (length == 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+    }
     if (index >= length) {
         ASSERT(length > 0);
         std::ostringstream oss;
