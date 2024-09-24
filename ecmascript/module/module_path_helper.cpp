@@ -791,6 +791,9 @@ CString ModulePathHelper::TranslateExpressionInputWithEts(JSThread *thread, cons
 void ModulePathHelper::ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CString &requestPath)
 {
     size_t pos = requestPath.find(PathHelper::SLASH_TAG);
+    if (pos == CString::npos) {
+        return;
+    }
     CString moduleName = requestPath.substr(0, pos);
     CString outEntryPoint;
     // try get mapped module path by single level moduleName.
@@ -798,6 +801,9 @@ void ModulePathHelper::ParseCrossModuleFile(const JSPandaFile *jsPandaFile, CStr
     if (!isModuleName) {
         // retry get mapped module path by two level moduleName
         pos = requestPath.find(PathHelper::SLASH_TAG, pos + 1);
+        if (pos == CString::npos) {
+            return;
+        }
         moduleName = requestPath.substr(0, pos);
         isModuleName = jsPandaFile->FindOhmUrlInPF(moduleName, outEntryPoint);
     }
