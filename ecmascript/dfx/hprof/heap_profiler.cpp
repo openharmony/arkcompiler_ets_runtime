@@ -269,19 +269,22 @@ void ChunkDecoder::DecodeStrTable(const char *charPtr)
 
 static uint64_t CheckAndRemoveWeak(JSTaggedValue &value, uint64_t originalAddr)
 {
-    if (!value.IsWeakForHeapObject()) {
+    if (!value.IsWeak()) {
         return originalAddr;
     }
-    return reinterpret_cast<uint64_t>(value.GetWeakReferent());
+    JSTaggedValue weakValue(originalAddr);
+    weakValue.RemoveWeakTag();
+    return weakValue.GetRawData();
 }
 
 static uint64_t CheckAndAddWeak(JSTaggedValue &value, uint64_t originalAddr)
 {
-    if (!value.IsWeakForHeapObject()) {
+    if (!value.IsWeak()) {
         return originalAddr;
     }
-    value.CreateWeakRef();
-    return reinterpret_cast<uint64_t>(value.GetTaggedObject());
+    JSTaggedValue weakValue(originalAddr);
+    weakValue.CreateWeakRef();
+    return weakValue.GetRawData();
 }
 
 void DecodeObj(RawHeapInfoArgs &rawHeapArgs, HeapSnapshot *snapshot)
@@ -688,7 +691,9 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             FillIdMap();
         }
         if (dumpOption.isDumpOOM) {
-            return BinaryDump(stream, dumpOption);
+            res = BinaryDump(stream, dumpOption);
+            stream->EndOfStream();
+            return res;
         }
         // fork
         if ((pid = ForkBySyscall()) < 0) {
