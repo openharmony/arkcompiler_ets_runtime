@@ -432,6 +432,7 @@ public:
     GateRef IsJsSArray(GateRef obj);
     GateRef IsByteArray(GateRef obj);
     GateRef IsJsCOWArray(GateRef obj);
+    GateRef IsCOWArray(GateRef obj);
     GateRef IsMutantTaggedArray(GateRef elements);
     GateRef IsJSObject(GateRef obj);
     GateRef IsEnumerable(GateRef attr);
@@ -486,6 +487,7 @@ public:
     GateRef GetPrototypeHandlerHandlerInfo(GateRef object);
     GateRef GetStoreTSHandlerHolder(GateRef object);
     GateRef GetStoreTSHandlerHandlerInfo(GateRef object);
+    inline GateRef GetLengthOfJSArray(GateRef array);
     inline GateRef GetPrototype(GateRef glue, GateRef object);
     GateRef GetHasChanged(GateRef object);
     GateRef HclassIsPrototypeHandler(GateRef hClass);
@@ -499,6 +501,7 @@ public:
     GateRef OrdinaryHasInstance(GateRef glue, GateRef target, GateRef obj);
     void TryFastHasInstance(GateRef glue, GateRef instof, GateRef target, GateRef object, Label *fastPath,
                             Label *exit, Variable *result, ProfileOperation callback);
+    GateRef ConvertTaggedValueWithElementsKind(GateRef glue, GateRef value, GateRef extraKind);
     GateRef SameValue(GateRef glue, GateRef left, GateRef right);
     GateRef SameValueZero(GateRef glue, GateRef left, GateRef right);
     GateRef HasStableElements(GateRef glue, GateRef obj);

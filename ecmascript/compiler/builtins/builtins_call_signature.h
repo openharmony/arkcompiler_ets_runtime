@@ -112,6 +112,7 @@ namespace panda::ecmascript::kungfu {
     V(Includes,      Array,   Undefined())          \
     V(CopyWithin,    Array,   Undefined())          \
     V(Some,          Array,   Undefined())          \
+    V(Fill,          Array,   Undefined())          \
     V(Every,         Array,   Undefined())          \
     V(FindLastIndex, Array,   Undefined())          \
     V(FindLast,      Array,   Undefined())          \
