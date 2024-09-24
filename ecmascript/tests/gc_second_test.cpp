@@ -158,6 +158,28 @@ HWTEST_F_L0(GCTest, HighSensitiveExceedMaxHeapSize)
     EXPECT_TRUE(commitSize < thread->GetEcmaVM()->GetEcmaParamConfiguration().GetMaxHeapSize());
 }
 
+HWTEST_F_L0(GCTest, ColdStartNoConcurrentMark)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->NotifyPostFork();
+    heap->NotifyHighSensitive(true);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 500; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+        }
+    }
+    EXPECT_FALSE(heap->HandleExitHighSensitiveEvent());
+    heap->NotifyHighSensitive(false);
+    EXPECT_FALSE(heap->HandleExitHighSensitiveEvent());
+    heap->FinishStartupEvent();
+
+    heap->NotifyHighSensitive(true);
+    heap->NotifyHighSensitive(false);
+    EXPECT_TRUE(heap->HandleExitHighSensitiveEvent());
+}
+
 HWTEST_F_L0(GCTest, CallbackTask)
 {
     auto vm = thread->GetEcmaVM();
