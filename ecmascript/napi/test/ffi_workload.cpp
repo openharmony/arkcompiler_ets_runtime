@@ -3081,7 +3081,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8)
     char cs[16] = {0};
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(vm_, cs, 6);
+        uint32_t length = local->WriteUtf8(vm_, cs, 6);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3096,7 +3096,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_all)
     char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(vm_, cs, local->Length(vm_));
+        uint32_t length = local->WriteUtf8(vm_, cs, local->Length(vm_));
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3111,7 +3111,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_0)
     char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(vm_, cs, 0);
+        uint32_t length = local->WriteUtf8(vm_, cs, 0);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3126,7 +3126,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_true)
     char cs[16] = {0}; // 16 =The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(vm_, cs, 6, true);
+        uint32_t length = local->WriteUtf8(vm_, cs, 6, true);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3141,7 +3141,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf8_all_true)
     char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf8(vm_, cs, local->Length(vm_), true);
+        uint32_t length = local->WriteUtf8(vm_, cs, local->Length(vm_), true);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3156,7 +3156,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteUtf16)
     char16_t cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteUtf16(vm_, cs, 3);
+        uint32_t length = local->WriteUtf16(vm_, cs, 3);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);
@@ -3171,7 +3171,7 @@ HWTEST_F_L0(JSNApiSplTest, StringRef_WriteLatin1)
     char cs[16] = {0}; // 16 = The size of the character array
     gettimeofday(&g_beginTime, nullptr);
     for (int i = 0; i < NUM_COUNT; i++) {
-        int length = local->WriteLatin1(vm_, cs, 8);
+        uint32_t length = local->WriteLatin1(vm_, cs, 8);
         UNUSED(length);
     }
     gettimeofday(&g_endTime, nullptr);

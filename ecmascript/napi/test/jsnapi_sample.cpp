@@ -222,7 +222,7 @@ HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_StringRef_Char)
     uint32_t charSize = charObject->Length(vm_);
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject_Length : " << charSize;
     char cs[16] = {0};
-    int length = charObject->WriteLatin1(vm_, cs, 12);
+    uint32_t length = charObject->WriteLatin1(vm_, cs, 12);
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_charObject_WriteLatin1 : " << length;
     Local<StringRef> napiWrapperString = charObject->GetNapiWrapperString(vm_);
     EXPECT_EQ(napiWrapperString->Utf8Length(vm_), 13);
@@ -252,7 +252,7 @@ HWTEST_F_L0(JSNApiSampleTest, Sample_PrimitiveRef_StringRef_Char16)
     uint32_t charSize = char16tObject->Length(vm_);
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject_Length : " << charSize;
     char cs1[10] = {0};
-    int length = char16tObject->WriteLatin1(vm_, cs1, 10);
+    uint32_t length = char16tObject->WriteLatin1(vm_, cs1, 10);
     GTEST_LOG_(INFO) << "sample_primitive_StringRef_char16tObject_WriteLatin1 : " << length;
     Local<StringRef> napiWrapperString = char16tObject->GetNapiWrapperString(vm_);
     EXPECT_EQ(napiWrapperString->Utf8Length(vm_), 13);

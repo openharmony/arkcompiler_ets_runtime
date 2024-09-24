@@ -2147,7 +2147,7 @@ uint32_t StringRef::Length(const EcmaVM *vm)
     return EcmaStringAccessor(JSNApiHelper::ToJSTaggedValue(this)).GetLength();
 }
 
-int32_t StringRef::Utf8Length(const EcmaVM *vm, bool isGetBufferSize)
+size_t StringRef::Utf8Length(const EcmaVM *vm, bool isGetBufferSize)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -2155,7 +2155,7 @@ int32_t StringRef::Utf8Length(const EcmaVM *vm, bool isGetBufferSize)
     return EcmaStringAccessor(EcmaStringAccessor::Flatten(vm, strHandle)).GetUtf8Length(isGetBufferSize);
 }
 
-int StringRef::WriteUtf8(const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer)
+uint32_t StringRef::WriteUtf8(const EcmaVM *vm, char *buffer, uint32_t length, bool isWriteBuffer)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -2163,7 +2163,7 @@ int StringRef::WriteUtf8(const EcmaVM *vm, char *buffer, int length, bool isWrit
         .WriteToFlatUtf8(reinterpret_cast<uint8_t *>(buffer), length, isWriteBuffer);
 }
 
-int StringRef::WriteUtf16(const EcmaVM *vm, char16_t *buffer, int length)
+uint32_t StringRef::WriteUtf16(const EcmaVM *vm, char16_t *buffer, uint32_t length)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
@@ -2171,7 +2171,7 @@ int StringRef::WriteUtf16(const EcmaVM *vm, char16_t *buffer, int length)
         .WriteToUtf16(reinterpret_cast<uint16_t *>(buffer), length);
 }
 
-int StringRef::WriteLatin1(const EcmaVM *vm, char *buffer, int length)
+uint32_t StringRef::WriteLatin1(const EcmaVM *vm, char *buffer, uint32_t length)
 {
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());

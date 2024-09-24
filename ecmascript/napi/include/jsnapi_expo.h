@@ -867,10 +867,10 @@ public:
     std::string ToString(const EcmaVM *vm);
     std::string DebuggerToString(const EcmaVM *vm);
     uint32_t Length(const EcmaVM *vm);
-    int32_t Utf8Length(const EcmaVM *vm, bool isGetBufferSize = false);
-    int WriteUtf8(const EcmaVM *vm, char *buffer, int length, bool isWriteBuffer = false);
-    int WriteUtf16(const EcmaVM *vm, char16_t *buffer, int length);
-    int WriteLatin1(const EcmaVM *vm, char *buffer, int length);
+    size_t Utf8Length(const EcmaVM *vm, bool isGetBufferSize = false);
+    uint32_t WriteUtf8(const EcmaVM *vm, char *buffer, uint32_t length, bool isWriteBuffer = false);
+    uint32_t WriteUtf16(const EcmaVM *vm, char16_t *buffer, uint32_t length);
+    uint32_t WriteLatin1(const EcmaVM *vm, char *buffer, uint32_t length);
     static Local<StringRef> GetNapiWrapperString(const EcmaVM *vm);
     Local<TypedArrayRef> EncodeIntoUint8Array(const EcmaVM *vm);
 };
