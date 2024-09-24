@@ -104,9 +104,43 @@ public:
     void TryPostHandleMarkFinished();
     void TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType);
     template<class T>
-    bool ShouldCheckIdleOldGC(const T *baseHeap) const;
+    bool CheckIdleOrHintOldGC(const T *baseHeap) const
+    {
+        size_t heapAliveSizeAfterGC = baseHeap->GetHeapAliveSizeAfterGC();
+        if (heapAliveSizeAfterGC == 0) {
+            return false;
+        }
+        size_t expectHeapSize = std::max(static_cast<size_t>(heapAliveSizeAfterGC * IDLE_SPACE_SIZE_MIN_INC_RATIO),
+            heapAliveSizeAfterGC + IDLE_SPACE_SIZE_MIN_INC_STEP);
+        return baseHeap->GetHeapObjectSize() >= expectHeapSize;
+    }
+
     template<class T>
-    bool ShouldCheckIdleFullGC(const T *baseHeap) const;
+    bool CheckIdleOrHintFullGC(const T *baseHeap) const
+    {
+        size_t heapAliveSizeAfterGC = baseHeap->GetHeapAliveSizeAfterGC();
+        size_t expectHeapSize = std::max(static_cast<size_t>(heapAliveSizeAfterGC * IDLE_SPACE_SIZE_MIN_INC_RATIO),
+            heapAliveSizeAfterGC + IDLE_SPACE_SIZE_MIN_INC_STEP_FULL);
+        return baseHeap->GetHeapObjectSize() >= expectHeapSize;
+    }
+
+    template<class T>
+    bool HintGCInLowDegree(const T *baseHeap) const
+    {
+        return CheckIdleOrHintOldGC<T>(baseHeap);
+    }
+
+    template<class T>
+    bool HintGCInMiddleDegree(const T *baseHeap) const
+    {
+        return CheckIdleOrHintOldGC<T>(baseHeap);
+    }
+
+    template<class T>
+    bool HintGCInHighDegree(const T *baseHeap) const
+    {
+        return CheckIdleOrHintFullGC<T>(baseHeap);
+    }
 
 private:
     void PostIdleGCTask(TRIGGER_IDLE_GC_TYPE gcType);

@@ -70,7 +70,7 @@ bool IdleGCTrigger::TryTriggerIdleLocalOldGC()
     if (!IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK)) {
         return false;
     }
-    if (ShouldCheckIdleOldGC<Heap>(heap_) && ReachIdleLocalOldGCThresholds() && !heap_->NeedStopCollection()) {
+    if (CheckIdleOrHintOldGC<Heap>(heap_) && ReachIdleLocalOldGCThresholds() && !heap_->NeedStopCollection()) {
         if (heap_->GetConcurrentMarker()->IsEnabled() && heap_->CheckCanTriggerConcurrentMarking()) {
             PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
         } else {
@@ -83,7 +83,7 @@ bool IdleGCTrigger::TryTriggerIdleLocalOldGC()
 
 bool IdleGCTrigger::TryTriggerIdleSharedOldGC()
 {
-    if (ShouldCheckIdleOldGC<SharedHeap>(sHeap_) && ReachIdleSharedGCThresholds() && !heap_->NeedStopCollection()) {
+    if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && ReachIdleSharedGCThresholds() && !heap_->NeedStopCollection()) {
         PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_GC);
         return true;
     }
@@ -149,57 +149,36 @@ void IdleGCTrigger::PostIdleGCTask(TRIGGER_IDLE_GC_TYPE gcType)
     LOG_GC(DEBUG) << "IdleGCTrigger: failed to post once " << GetGCTypeName(gcType);
 }
 
-template<class T>
-bool IdleGCTrigger::ShouldCheckIdleOldGC(const T *baseHeap) const
-{
-    size_t heapAliveSizeAfterGC = baseHeap->GetHeapAliveSizeAfterGC();
-    if (heapAliveSizeAfterGC == 0) {
-        return false;
-    }
-    size_t expectHeapSize = std::max(static_cast<size_t>(heapAliveSizeAfterGC * IDLE_SPACE_SIZE_MIN_INC_RATIO),
-        heapAliveSizeAfterGC + IDLE_SPACE_SIZE_MIN_INC_STEP);
-    return baseHeap->GetHeapObjectSize() >= expectHeapSize;
-}
-
-template<class T>
-bool IdleGCTrigger::ShouldCheckIdleFullGC(const T *baseHeap) const
-{
-    size_t heapAliveSizeAfterGC = baseHeap->GetHeapAliveSizeAfterGC();
-    size_t expectHeapSize = std::max(static_cast<size_t>(heapAliveSizeAfterGC * IDLE_SPACE_SIZE_MIN_INC_RATIO),
-        heapAliveSizeAfterGC + IDLE_SPACE_SIZE_MIN_INC_STEP_FULL);
-    return baseHeap->GetHeapObjectSize() >= expectHeapSize;
-}
-
 void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
 {
     LOG_GC(DEBUG) << "IdleGCTrigger: recv once notify of " << GetGCTypeName(gcType);
     switch (gcType) {
         case TRIGGER_IDLE_GC_TYPE::OLD_GC:
-            if (ShouldCheckIdleOldGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
+            if (CheckIdleOrHintOldGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::FULL_GC:
-            if (ShouldCheckIdleFullGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
+            if (CheckIdleOrHintFullGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_GC:
-            if (ShouldCheckIdleOldGC<SharedHeap>(sHeap_) && !heap_->NeedStopCollection()) {
+            if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::IDLE>(thread_);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
-            if (ShouldCheckIdleFullGC<SharedHeap>(sHeap_) && !heap_->NeedStopCollection()) {
+            if (CheckIdleOrHintFullGC<SharedHeap>(sHeap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread_);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK:
-            if (ShouldCheckIdleOldGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
+            if (CheckIdleOrHintOldGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 TryTriggerLocalConcurrentMark();
             }

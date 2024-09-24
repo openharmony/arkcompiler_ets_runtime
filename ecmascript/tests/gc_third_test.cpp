@@ -51,14 +51,15 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
     auto getSizeAfterCreateAndCallHintGC = [this, heap] (size_t &newSize, size_t &finalSize) -> bool {
         {
             [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
-            for (int i = 0; i < 500; i++) {
+            for (int i = 0; i < 2048; i++) {
                 [[maybe_unused]] JSHandle<TaggedArray> obj = thread->GetEcmaVM()->GetFactory()->
-                    NewTaggedArray(10 * 1024, JSTaggedValue::Hole(), MemSpaceType::SEMI_SPACE);
+                    NewTaggedArray(10 * 1024, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
             }
             newSize = heap->GetCommittedSize();
         }
-
-        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 0);
+        std::vector<JSTaggedValue> vals{JSTaggedValue(static_cast<double>(2))};
+        auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, vals,
+                                                                         6);
         [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
         JSTaggedValue result = builtins::BuiltinsArkTools::HintGC(ecmaRuntimeCallInfo);
         finalSize = heap->GetCommittedSize();
@@ -80,9 +81,7 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
         heap->NotifyHighSensitive(false);
     }
     {
-        // Test HintGC() when in background.
-        heap->CollectGarbage(TriggerGCType::FULL_GC);
-        heap->ChangeGCParams(true);
+#ifdef NDEBUG
         size_t originSize = heap->GetCommittedSize();
         size_t newSize = 0;
         size_t finalSize = 0;
@@ -90,7 +89,7 @@ HWTEST_F_L0(GCTest, ArkToolsHintGC)
         EXPECT_TRUE(res);
         EXPECT_TRUE(newSize > originSize);
         EXPECT_TRUE(finalSize < newSize);
-        heap->ChangeGCParams(false);
+#endif
     }
 }
 
@@ -160,8 +159,107 @@ HWTEST_F_L0(GCTest, ObjectExceedMaxHeapSizeTest001)
 
 HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest001)
 {
+#ifdef NDEBUG
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    ASSERT_EQ(heap->CheckAndTriggerHintGC(), true);
+    heap->CollectGarbage(TriggerGCType::OLD_GC);
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::LOW, GCReason::HINT_GC), false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 4048; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                1024, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+        }
+    }
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::LOW, GCReason::HINT_GC), true);
+#endif
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest002)
+{
+#ifdef NDEBUG
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::MIDDLE, GCReason::HINT_GC), false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 4048; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                1024, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+        }
+    }
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::MIDDLE, GCReason::HINT_GC), true);
+#endif
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest003)
+{
+#ifdef NDEBUG
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->CollectGarbage(TriggerGCType::FULL_GC);
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::HIGH, GCReason::HINT_GC), false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 1049; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(
+                1024, JSTaggedValue::Hole(), MemSpaceType::OLD_SPACE);
+        }
+    }
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::HIGH, GCReason::HINT_GC), true);
+#endif
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest004)
+{
+#ifdef NDEBUG
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::OTHER>(thread);
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::LOW, GCReason::HINT_GC), false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 4048; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->
+                NewSOldSpaceTaggedArray(1024, JSTaggedValue::Undefined());
+        }
+    }
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::LOW, GCReason::HINT_GC), true);
+#endif
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest005)
+{
+#ifdef NDEBUG
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::MIDDLE, GCReason::HINT_GC), false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 4048; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->
+                NewSOldSpaceTaggedArray(1024, JSTaggedValue::Undefined());
+        }
+    }
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::MIDDLE, GCReason::HINT_GC), true);
+#endif
+}
+
+HWTEST_F_L0(GCTest, CheckAndTriggerHintGCTest006)
+{
+#ifdef NDEBUG
+    auto sHeap = SharedHeap::GetInstance();
+    sHeap->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::OTHER>(thread);
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::HIGH, GCReason::HINT_GC), false);
+    {
+        [[maybe_unused]] ecmascript::EcmaHandleScope baseScope(thread);
+        for (int i = 0; i < 2049; i++) {
+            [[maybe_unused]] JSHandle<TaggedArray> array = thread->GetEcmaVM()->GetFactory()->
+                NewSOldSpaceTaggedArray(1024, JSTaggedValue::Undefined());
+        }
+    }
+    ASSERT_EQ(heap->CheckAndTriggerHintGC(MemoryReduceDegree::HIGH, GCReason::HINT_GC), true);
+#endif
 }
 
 HWTEST_F_L0(GCTest, CalculateIdleDurationTest001)

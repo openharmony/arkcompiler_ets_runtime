@@ -1455,6 +1455,12 @@ public:
         LOCAL_REMARK = 1 << 6,
     };
 
+    enum class ECMA_PUBLIC_API MemoryReduceDegree : uint8_t {
+        LOW = 0,
+        MIDDLE,
+        HIGH,
+    };
+
     enum class PatchErrorCode : uint8_t {
         SUCCESS = 0,
         PATCH_HAS_LOADED,
@@ -1536,6 +1542,7 @@ public:
     static void TriggerGC(const EcmaVM *vm, TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
     static void TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason,
         TRIGGER_GC_TYPE gcType = TRIGGER_GC_TYPE::SEMI_GC);
+    static void HintGC(const EcmaVM *vm, MemoryReduceDegree degree, ecmascript::GCReason reason);
     static void TriggerIdleGC(const EcmaVM *vm, TRIGGER_IDLE_GC_TYPE gcType);
     static void SetStartIdleMonitorCallback(const StartIdleMonitorCallback& callback);
     static StartIdleMonitorCallback GetStartIdleMonitorCallback();

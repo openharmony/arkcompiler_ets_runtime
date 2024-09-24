@@ -33,5 +33,10 @@ print(res);
 
 print(ArkTools.forceFullGC());
 
-ArkTools.hintGC();
+// MemoryReduceDegree::LOW
+ArkTools.hintGC(0);
+// MemoryReduceDegree::MIDDLE
+ArkTools.hintGC(1);
+// MemoryReduceDegree::HIGH
+ArkTools.hintGC(2);
 print("call hintGC to make vm decide to trigger GC or do noting");

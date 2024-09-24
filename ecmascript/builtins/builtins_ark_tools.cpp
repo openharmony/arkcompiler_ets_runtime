@@ -226,8 +226,22 @@ JSTaggedValue BuiltinsArkTools::ForceFullGC(EcmaRuntimeCallInfo *info)
 JSTaggedValue BuiltinsArkTools::HintGC(EcmaRuntimeCallInfo *info)
 {
     ASSERT(info);
-    return JSTaggedValue(const_cast<Heap *>(info->GetThread()->GetEcmaVM()->GetHeap())->
-        CheckAndTriggerHintGC());
+    JSThread *thread = info->GetThread();
+    int value = 0;
+    if (info->GetArgsNumber() == 1) {
+        value = JSTaggedValue::ToInt8(thread, GetCallArg(info, 0));
+        if (value < static_cast<int>(MemoryReduceDegree::LOW)
+            || value > static_cast<int>(MemoryReduceDegree::HIGH)) {
+            CString errorMsg = "ArkTools.hintGC parameter value should be larger than "
+                               + ToCString(static_cast<int>(MemoryReduceDegree::LOW))
+                               + "and less than "
+                               + ToCString(static_cast<int>(MemoryReduceDegree::HIGH));
+            THROW_NEW_ERROR_WITH_MSG_AND_RETURN_VALUE(thread, ErrorType::ERROR, errorMsg.c_str(),
+                                                      JSTaggedValue::Exception());
+        }
+    }
+    return JSTaggedValue(const_cast<Heap *>(thread->GetEcmaVM()->GetHeap())->
+        CheckAndTriggerHintGC(MemoryReduceDegree(value), GCReason::TRIGGER_BY_JS));
 }
 
 JSTaggedValue BuiltinsArkTools::RemoveAOTFlag(EcmaRuntimeCallInfo *info)

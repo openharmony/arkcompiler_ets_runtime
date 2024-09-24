@@ -1666,18 +1666,57 @@ bool Heap::CheckAndTriggerOldGC(size_t size)
     return false;
 }
 
-bool Heap::CheckAndTriggerHintGC()
+bool Heap::CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason)
 {
-    if (IsInBackground()) {
-        CollectGarbage(TriggerGCType::FULL_GC, GCReason::HINT_GC);
-        return true;
-    }
     if (InSensitiveStatus()) {
         return false;
     }
-    if (memController_->GetPredictedSurvivalRate() < SURVIVAL_RATE_THRESHOLD) {
-        CollectGarbage(TriggerGCType::FULL_GC, GCReason::HINT_GC);
-        return true;
+    LOG_GC(INFO) << "HintGC degree:"<< static_cast<int>(degree) << " reason:" << GCStats::GCReasonToString(reason);
+    switch (degree) {
+        case MemoryReduceDegree::LOW: {
+            if (idleGCTrigger_->HintGCInLowDegree<Heap>(this)) {
+                if (CheckCanTriggerConcurrentMarking()) {
+                    markType_ = MarkType::MARK_FULL;
+                    TriggerConcurrentMarking();
+                    LOG_GC(INFO) << " MemoryReduceDegree::LOW TriggerConcurrentMark.";
+                    return true;
+                }
+            }
+            if (idleGCTrigger_->HintGCInLowDegree<SharedHeap>(sHeap_)) {
+                if (sHeap_->CheckCanTriggerConcurrentMarking(thread_)) {
+                    LOG_GC(INFO) << " MemoryReduceDegree::LOW TriggerSharedConcurrentMark.";
+                    sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::HINT_GC>(thread_);
+                    return true;
+                }
+            }
+            break;
+        }
+        case MemoryReduceDegree::MIDDLE: {
+            if (idleGCTrigger_->HintGCInMiddleDegree<Heap>(this)) {
+                CollectGarbage(TriggerGCType::FULL_GC, reason);
+                return true;
+            }
+            if (idleGCTrigger_->HintGCInMiddleDegree<SharedHeap>(sHeap_)) {
+                sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::HINT_GC>(thread_);
+                return true;
+            }
+            break;
+        }
+        case MemoryReduceDegree::HIGH: {
+            bool result = false;
+            if (idleGCTrigger_->HintGCInHighDegree<Heap>(this)) {
+                CollectGarbage(TriggerGCType::FULL_GC, reason);
+                result = true;
+            }
+            if (idleGCTrigger_->HintGCInHighDegree<SharedHeap>(sHeap_)) {
+                sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::HINT_GC>(thread_);
+                result = true;
+            }
+            return result;
+        }
+        default:
+            LOG_GC(INFO) << "HintGC invalid degree value: " << static_cast<int>(degree);
+            break;
     }
     return false;
 }
