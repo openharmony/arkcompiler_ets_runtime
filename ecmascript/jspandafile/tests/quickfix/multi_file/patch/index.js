@@ -13,10 +13,15 @@
  * limitations under the License.
  */
 
-import { nop } from './module.js';
+import { nop, bar } from './module.js';
 
 function foo() {
   print('patch foo()');
+}
+
+function getBar() {
+    print('patch bar');
+    return bar;
 }
 
 class A {
