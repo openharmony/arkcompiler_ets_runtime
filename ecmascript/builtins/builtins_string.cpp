@@ -1227,14 +1227,10 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
     int32_t searchLength = static_cast<int32_t>(EcmaStringAccessor(searchString).GetLength());
     int32_t advanceBy = std::max(1, searchLength);
     // 9. Let matchPositions be a new empty List.
-    std::u16string stringBuilder;
-    std::u16string stringPrefixString;
-    std::u16string stringRealReplaceStr;
-    std::u16string stringSuffixString;
+    JSMutableHandle<EcmaString> accumulatedResult(thread, factory->GetEmptyString());
     // 10. Let position be ! StringIndexOf(string, searchString, 0).
     int32_t pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, searchString);
     int32_t endOfLastMatch = 0;
-    bool canBeCompress = true;
     JSHandle<JSTaggedValue> undefined = globalConst->GetHandledUndefined();
     JSMutableHandle<JSTaggedValue> replHandle(thread, factory->GetEmptyString().GetTaggedValue());
     while (pos != -1) {
@@ -1269,15 +1265,8 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         JSHandle<EcmaString> prefixString(thread,
                                           EcmaStringAccessor::FastSubString(ecmaVm, thisString, endOfLastMatch,
                                                                             pos - endOfLastMatch));
-        stringPrefixString = EcmaStringAccessor(prefixString).ToU16String();
-        if (EcmaStringAccessor(prefixString).IsUtf16()) {
-            canBeCompress = false;
-        }
-        stringRealReplaceStr = EcmaStringAccessor(realReplaceStr).ToU16String();
-        if (EcmaStringAccessor(realReplaceStr).IsUtf16()) {
-            canBeCompress = false;
-        }
-        stringBuilder = stringBuilder + stringPrefixString + stringRealReplaceStr;
+        accumulatedResult.Update(JSTaggedValue(EcmaStringAccessor::Concat(ecmaVm, accumulatedResult, prefixString)));
+        accumulatedResult.Update(JSTaggedValue(EcmaStringAccessor::Concat(ecmaVm, accumulatedResult, realReplaceStr)));
         endOfLastMatch = pos + searchLength;
         pos = EcmaStringAccessor::IndexOf(ecmaVm, thisString, searchString, pos + advanceBy);
         thread->CheckSafepointIfSuspended();
@@ -1287,18 +1276,10 @@ JSTaggedValue BuiltinsString::ReplaceAll(EcmaRuntimeCallInfo *argv)
         auto thisLen = EcmaStringAccessor(thisString).GetLength();
         JSHandle<EcmaString> suffixString(thread,
             EcmaStringAccessor::FastSubString(ecmaVm, thisString, endOfLastMatch, thisLen - endOfLastMatch));
-        stringSuffixString = EcmaStringAccessor(suffixString).ToU16String();
-        if (EcmaStringAccessor(suffixString).IsUtf16()) {
-            canBeCompress = false;
-        }
-        stringBuilder = stringBuilder + stringSuffixString;
+        accumulatedResult.Update(JSTaggedValue(EcmaStringAccessor::Concat(ecmaVm, accumulatedResult, suffixString)));
     }
 
-    auto *char16tData = const_cast<char16_t *>(stringBuilder.c_str());
-    auto *uint16tData = reinterpret_cast<uint16_t *>(char16tData);
-    return canBeCompress ?
-        factory->NewFromUtf16LiteralCompress(uint16tData, stringBuilder.length()).GetTaggedValue() :
-        factory->NewFromUtf16LiteralNotCompress(uint16tData, stringBuilder.length()).GetTaggedValue();
+    return accumulatedResult.GetTaggedValue();
 }
 
 // Handle $& - match case
