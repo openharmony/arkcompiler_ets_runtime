@@ -58,6 +58,12 @@ uintptr_t ToUintPtr(FrameType frame)
     return static_cast<uintptr_t>(frame);
 }
 
+bool ReadMemFunc([[maybe_unused]] void *ctx, uintptr_t addr, uintptr_t *value)
+{
+    *value = *(reinterpret_cast<uintptr_t *>(addr));
+    return true;
+}
+
 /**
  * @tc.name: ArkFrameCheck
  * @tc.desc: Check whether the result returned through "ArkFrameCheck" function is within expectations.
@@ -427,5 +433,81 @@ HWTEST_F_L0(JsStackInfoTest, TestArkDestoryLocal)
     EXPECT_TRUE(trace != nullptr);
     ret = ark_destory_local();
     EXPECT_TRUE(ret);
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk__001)
+{
+    void *ctx = nullptr;
+    uintptr_t sp = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    uintptr_t frame[10][3];
+    uintptr_t fp[10];
+    for (int i = 0; i < 10; i++) {
+        frame[i][0] = 0;
+        frame[i][1] = 0;
+    }
+    fp[0] = reinterpret_cast<uintptr_t>(&frame[0][2]) + 8;
+    for (int i = 1; i < 10; i++) {
+        fp[i] = fp[i-1] + 24;
+    }
+    frame[0][2] = static_cast<uintptr_t>(FrameType::INTERPRETER_CONSTRUCTOR_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[0], &sp, &pc, nullptr, &isJsFrame));
+    frame[1][2] = static_cast<uintptr_t>(FrameType::INTERPRETER_FAST_NEW_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[1], &sp, &pc, nullptr, &isJsFrame));
+    frame[2][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_ARGS_CONFIG_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[2], &sp, &pc, nullptr, &isJsFrame));
+    frame[3][2] = static_cast<uintptr_t>(FrameType::ASM_INTERPRETER_ENTRY_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[3], &sp, &pc, nullptr, &isJsFrame));
+    frame[4][2] = static_cast<uintptr_t>(FrameType::BUILTIN_ENTRY_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[4], &sp, &pc, nullptr, &isJsFrame));
+    frame[5][2] = static_cast<uintptr_t>(FrameType::BUILTIN_FRAME_WITH_ARGV_STACK_OVER_FLOW_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[5], &sp, &pc, nullptr, &isJsFrame));
+    frame[6][2] = static_cast<uintptr_t>(FrameType::BASELINE_BUILTIN_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[6], &sp, &pc, nullptr, &isJsFrame));
+    frame[7][2] = static_cast<uintptr_t>(FrameType::ASM_BRIDGE_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[7], &sp, &pc, nullptr, &isJsFrame));
+    frame[8][2] = static_cast<uintptr_t>(FrameType::LEAVE_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[8], &sp, &pc, nullptr, &isJsFrame));
+    frame[9][2] = static_cast<uintptr_t>(FrameType::LEAVE_FRAME_WITH_ARGV);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[9], &sp, &pc, nullptr, &isJsFrame));
+}
+
+HWTEST_F_L0(JsStackInfoTest, TestStepArk__002)
+{
+    void *ctx = nullptr;
+    uintptr_t sp = 0;
+    uintptr_t pc = 0;
+    bool isJsFrame = true;
+    uintptr_t frame[30][3];
+    uintptr_t fp[30];
+    for (int i = 0; i < 30; i++) {
+        frame[i][0] = 0;
+        frame[i][1] = 0;
+    }
+    fp[0] = reinterpret_cast<uintptr_t>(&frame[0][2]) + 8;
+    for (int i = 1; i < 30; i++) {
+        fp[i] = fp[i-1] + 24;
+    }
+    frame[0][2] = static_cast<uintptr_t>(FrameType::BUILTIN_CALL_LEAVE_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[0], &sp, &pc, nullptr, &isJsFrame));
+    frame[1][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[1], &sp, &pc, nullptr, &isJsFrame));
+    frame[2][2] = static_cast<uintptr_t>(FrameType::ASM_INTERPRETER_BRIDGE_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[2], &sp, &pc, nullptr, &isJsFrame));
+    frame[3][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[3], &sp, &pc, nullptr, &isJsFrame));
+    frame[4][2] = static_cast<uintptr_t>(FrameType::INTERPRETER_CONSTRUCTOR_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[4], &sp, &pc, nullptr, &isJsFrame));
+    frame[5][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_ENTRY_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[5], &sp, &pc, nullptr, &isJsFrame));
+    frame[6][2] = static_cast<uintptr_t>(FrameType::ASM_BRIDGE_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[6], &sp, &pc, nullptr, &isJsFrame));
+    frame[7][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_UNFOLD_ARGV_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[7], &sp, &pc, nullptr, &isJsFrame));
+    frame[8][2] = static_cast<uintptr_t>(FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[8], &sp, &pc, nullptr, &isJsFrame));
+    frame[9][2] = 100;
+    ASSERT_TRUE(step_ark(ctx, ReadMemFunc, &fp[9], &sp, &pc, nullptr, &isJsFrame));
 }
 }  // namespace panda::test
