@@ -21,6 +21,7 @@
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/patch/quick_fix_manager.h"
+#include "ecmascript/jspandafile/program_object.h"
 
 using namespace panda::ecmascript;
 using namespace panda::panda_file;
@@ -28,6 +29,8 @@ using namespace panda::pandasm;
 
 namespace panda::test {
 using PatchErrorCode = panda::JSNApi::PatchErrorCode;
+using Program = panda::ecmascript::Program;
+using EcmaContext = panda::ecmascript::EcmaContext;
 class QuickFixTest : public testing::Test {
 public:
     static void SetUpTestCase()
@@ -157,6 +160,42 @@ HWTEST_F_L0(QuickFixTest, HotReload_Buffer)
 
     pfManager->RemoveJSPandaFile(baseFile.get());
     pfManager->RemoveJSPandaFile(patchFile.get());
+}
+
+HWTEST_F_L0(QuickFixTest, HotReload_Instantiate)
+{
+    ThreadManagedScope managedScope(thread);
+
+    CString baseFileName = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
+    std::shared_ptr<JSPandaFile> baseFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, baseFileName, "");
+    EXPECT_TRUE(baseFile != nullptr);
+
+    CString patchFileName = QUICKFIX_ABC_PATH "multi_file/patch/merge.abc";
+    std::shared_ptr<JSPandaFile> patchFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, patchFileName, "");
+    EXPECT_TRUE(patchFile != nullptr);
+
+    CString replacedRecordName = "main";
+    EcmaContext *context = thread->GetCurrentEcmaContext();
+    context->SetStageOfHotReload(StageOfHotReload::BEGIN_EXECUTE_PATCHMAIN);
+
+    ModuleManager *moduleManager = context->GetModuleManager();
+    JSHandle<JSTaggedValue> module =
+        moduleManager->HostResolveImportedModuleWithMergeForHotReload(patchFileName, replacedRecordName, false);
+    EXPECT_FALSE(module->IsHole());
+
+    JSHandle<Program> program =
+        JSPandaFileManager::GetInstance()->GenerateProgram(instance, patchFile.get(), replacedRecordName);
+    EXPECT_FALSE(program.IsEmpty());
+
+    SourceTextModule::Instantiate(thread, module, false);
+    EXPECT_TRUE(JSHandle<SourceTextModule>::Cast(module)->GetStatus() == ModuleStatus::INSTANTIATED);
+
+    context->SetStageOfHotReload(StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN);
+    JSHandle<SourceTextModule>::Cast(module)->SetStatus(ModuleStatus::UNINSTANTIATED);
+    SourceTextModule::Instantiate(thread, module, false);
+    EXPECT_TRUE(JSHandle<SourceTextModule>::Cast(module)->GetStatus() == ModuleStatus::INSTANTIATED);
 }
 
 bool QuickFixQueryFunc(
