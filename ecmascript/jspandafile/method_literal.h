@@ -349,6 +349,8 @@ public:
     static const char PUBLIC_API *GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId,
                                                 bool cpuProfiler = false);
     static std::string PUBLIC_API ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId);
+    static std::pair<std::string_view, bool> PUBLIC_API ParseFunctionNameView(const JSPandaFile* jsPandaFile,
+                                                                              EntityId methodId);
     static CString PUBLIC_API ParseFunctionNameToCString(const JSPandaFile *jsPandaFile, EntityId methodId);
 
     static uint32_t PUBLIC_API GetCodeSize(const JSPandaFile *jsPandaFile, EntityId methodId);
@@ -386,6 +388,9 @@ private:
         NUM_OF_MEMBERS
     };
     static_assert(static_cast<size_t>(Index::NUM_OF_MEMBERS) == NumOfTypes);
+
+    static std::pair<std::string_view, bool> GetMethodNameView(const JSPandaFile* jsPandaFile, EntityId methodId,
+                                                               bool cpuProfiler = false);
 
     void SetMethodId(EntityId methodId)
     {
