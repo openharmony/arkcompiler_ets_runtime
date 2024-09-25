@@ -684,11 +684,17 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
             ASSERT(!thread->IsInRunningState());
             const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->FillBumpPointerForTlab();
         });
-        if (dumpOption.isBeforeFill) {
-            FillIdMap();
-        }
+        // OOM and ThresholdReachedDump.
         if (dumpOption.isDumpOOM) {
             return BinaryDump(stream, dumpOption);
+        }
+        // ide.
+        if (dumpOption.isSync) {
+            return DoDump(stream, progress, dumpOption);
+        }
+        // hidumper do fork and fillmap.
+        if (dumpOption.isBeforeFill) {
+            FillIdMap();
         }
         // fork
         if ((pid = ForkBySyscall()) < 0) {
@@ -703,12 +709,8 @@ bool HeapProfiler::DumpHeapSnapshot(Stream *stream, const DumpSnapShotOption &du
         }
     }
     if (pid != 0) {
-        if (dumpOption.isSync) {
-            WaitProcess(pid);
-        } else {
-            std::thread thread(&WaitProcess, pid);
-            thread.detach();
-        }
+        std::thread thread(&WaitProcess, pid);
+        thread.detach();
         stream->EndOfStream();
     }
     isProfiling_ = true;
