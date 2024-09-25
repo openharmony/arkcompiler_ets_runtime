@@ -266,6 +266,7 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
             return VisitOthers(gate, GateType::UndefinedType());
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
         case OpCode::TYPED_CREATE_OBJ_WITH_BUFFER:
+        case OpCode::ARRAY_ITERATOR_BUILTIN:
             return VisitOthersWithoutConvert(gate);
         case OpCode::ARRAY_INCLUDES_INDEXOF:
             return VisitArrayIncludesIndexOf(gate);
