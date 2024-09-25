@@ -2248,7 +2248,7 @@ bool Heap::HandleExitHighSensitiveEvent()
 {
     AppSensitiveStatus status = GetSensitiveStatus();
     if (status == AppSensitiveStatus::EXIT_HIGH_SENSITIVE
-        && CASSensitiveStatus(status, AppSensitiveStatus::NORMAL_SCENE)) {
+        && CASSensitiveStatus(status, AppSensitiveStatus::NORMAL_SCENE) && !OnStartupEvent()) {
         // Set record heap obj size 0 after exit high senstive
         SetRecordHeapObjectSizeBeforeSensitive(0);
         // set overshoot size to increase gc threashold larger 8MB than current heap size.
