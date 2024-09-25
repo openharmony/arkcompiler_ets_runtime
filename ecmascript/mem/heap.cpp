@@ -2639,6 +2639,11 @@ void Heap::ThresholdReachedDump()
             g_lastHeapDumpTime = GetCurrentTickMillseconds();
             base::BlockHookScope blockScope;
             HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(ecmaVm_);
+            if (appfreezeCallback_ != nullptr && appfreezeCallback_(getprocpid())) {
+                LOG_ECMA(INFO) << "ThresholdReachedDump and avoid freeze success.";
+            } else {
+                LOG_ECMA(WARN) << "ThresholdReachedDump but avoid freeze failed.";
+            }
             GetEcmaGCKeyStats()->SendSysEventBeforeDump("thresholdReachedDump",
                                                         GetHeapLimitSize(), GetLiveObjectSize());
             DumpSnapShotOption dumpOption;
