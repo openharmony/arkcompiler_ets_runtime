@@ -23,17 +23,20 @@ namespace panda::ecmascript {
 JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo(EcmaVM *vm, CString &requestPath,
     CString &modulePath)
 {
+    LOG_ECMA(DEBUG) << "NapiModuleLoader::LoadModuleNameSpaceWithModuleInfo requestPath:" << requestPath <<
+        "," << "modulePath:" << modulePath;
     CString moduleStr = ModulePathHelper::GetModuleNameWithPath(modulePath);
     CString abcFilePath = ModulePathHelper::ConcatPandaFilePath(moduleStr);
     JSThread *thread = vm->GetJSThread();
     std::shared_ptr<JSPandaFile> curJsPandaFile;
     if (modulePath.size() != 0) {
-        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath);
-        if (curJsPandaFile == nullptr) {
+        bool isValid = JSPandaFileManager::GetInstance()->CheckFilePath(thread, abcFilePath);
+        if (!isValid) {
             CString msg = "Load file with filename '" + abcFilePath +
                 "' failed, module name '" + requestPath + "'" + ", from napi load module";
             THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
         }
+        curJsPandaFile = JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, requestPath);
         if (vm->IsNormalizedOhmUrlPack()) {
             ModulePathHelper::TranslateExpressionToNormalized(thread, curJsPandaFile.get(), abcFilePath, "",
                 requestPath);
@@ -59,13 +62,14 @@ JSHandle<JSTaggedValue> NapiModuleLoader::LoadModuleNameSpaceWithPath(JSThread *
         abcFilePath, modulePath, requestPath);
     RETURN_HANDLE_IF_ABRUPT_COMPLETION(JSTaggedValue, thread);
 
-    std::shared_ptr<JSPandaFile> jsPandaFile =
-        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entryPoint);
-    if (jsPandaFile == nullptr) {
+    bool isValid = JSPandaFileManager::GetInstance()->CheckFilePath(thread, abcFilePath);
+    if (!isValid) {
         CString msg = "Load file with filename '" + abcFilePath +
             "' failed, module name '" + requestPath + "'" + ", from napi load module";
         THROW_NEW_ERROR_AND_RETURN_HANDLE(thread, ErrorType::REFERENCE_ERROR, JSTaggedValue, msg.c_str());
     }
+    std::shared_ptr<JSPandaFile> jsPandaFile =
+        JSPandaFileManager::GetInstance()->LoadJSPandaFile(thread, abcFilePath, entryPoint);
 
     JSRecordInfo *recordInfo = nullptr;
     bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
