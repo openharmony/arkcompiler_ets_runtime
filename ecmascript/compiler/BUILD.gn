@@ -629,7 +629,8 @@ action("gen_stub_file") {
   } else {
     stub_option =
         " --stub-file=" + rebase_path(stub_file_gen_dir) + "/stub.an" +
-        " --compiler-target-triple=aarch64-unknown-linux-gnu"
+        " --compiler-target-triple=aarch64-unknown-linux-gnu" +
+        " --compiler-log=allasm" + " --log-level=info"
   }
 
   args = [
@@ -656,7 +657,10 @@ action("gen_stub_file") {
         rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
   ]
 
-  outputs = [ "$stub_file_gen_dir/stub.an" ]
+  outputs = [
+    "$stub_file_gen_dir/stub.an",
+    "$stub_file_gen_dir/stub_code_comment.txt",
+  ]
 }
 
 ohos_prebuilt_shared_library("stub.an") {
