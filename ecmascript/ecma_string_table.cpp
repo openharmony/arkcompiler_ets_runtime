@@ -40,8 +40,8 @@ std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const J
     hashCode = EcmaStringAccessor(secondString).ComputeHashcode(hashCode, isInteger);
 
     auto range = table_.equal_range(hashCode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor(foundString).EqualToSplicedString(*firstString, *secondString)) {
             return std::make_pair(foundString, hashCode);
         }
@@ -54,8 +54,8 @@ std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const u
 {
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf8(utf8Data, utf8Len, canBeCompress);
     auto range = table_.equal_range(hashCode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, canBeCompress)) {
             return std::make_pair(foundString, hashCode);
         }
@@ -68,8 +68,8 @@ std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const u
 {
     uint32_t hashCode = EcmaStringAccessor::ComputeHashcodeUtf16(const_cast<uint16_t *>(utf16Data), utf16Len);
     auto range = table_.equal_range(hashCode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
             return std::make_pair(foundString, hashCode);
         }
@@ -80,8 +80,8 @@ std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const u
 EcmaString *EcmaStringTable::GetStringWithHashThreadUnsafe(EcmaString *string, uint32_t hashcode) const
 {
     auto range = table_.equal_range(hashcode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringsAreEqual(foundString, string)) {
             return foundString;
         }
@@ -93,8 +93,8 @@ EcmaString *EcmaStringTable::GetStringThreadUnsafe(EcmaString *string) const
 {
     auto hashcode = EcmaStringAccessor(string).GetHashcode();
     auto range = table_.equal_range(hashcode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringsAreEqual(foundString, string)) {
             return foundString;
         }

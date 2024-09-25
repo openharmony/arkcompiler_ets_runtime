@@ -25,6 +25,12 @@ std::string Method::ParseFunctionName() const
     return MethodLiteral::ParseFunctionName(jsPandaFile, GetMethodId());
 }
 
+std::pair<std::string_view, bool> Method::ParseFunctionNameView() const
+{
+    const JSPandaFile *jsPandaFile = GetJSPandaFile();
+    return MethodLiteral::ParseFunctionNameView(jsPandaFile, GetMethodId());
+}
+
 const char *Method::GetMethodName() const
 {
     const JSPandaFile *jsPandaFile = GetJSPandaFile();

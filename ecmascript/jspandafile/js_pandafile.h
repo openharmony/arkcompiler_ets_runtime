@@ -134,8 +134,8 @@ public:
         return pf_;
     }
 
-    const char *GetMethodName(EntityId methodId);
-    const char *GetCpuProfilerMethodName(EntityId methodId);
+    std::pair<std::string_view, bool> GetMethodName(EntityId methodId);
+    std::pair<std::string_view, bool> GetCpuProfilerMethodName(EntityId methodId) const;
     CString GetRecordName(EntityId methodId);
     CString PUBLIC_API GetRecordNameWithBundlePack(EntityId methodIdx);
 
@@ -466,7 +466,7 @@ private:
     uint32_t constpoolIndex_ {0};
     uint32_t checksum_ {0};
     CUnorderedMap<uint32_t, MethodLiteral *> methodLiteralMap_;
-    CUnorderedMap<uint32_t, const char *> methodNameMap_;
+    CUnorderedMap<uint32_t, panda_file::File::StringData> methodNameMap_;
     CUnorderedMap<uint32_t, CString> recordNameMap_;
     Mutex methodNameMapMutex_;
     Mutex recordNameMapMutex_;

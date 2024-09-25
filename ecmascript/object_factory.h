@@ -576,6 +576,7 @@ public:
     JSHandle<EcmaString> PUBLIC_API NewFromASCII(std::string_view data);
     JSHandle<EcmaString> NewFromUtf8WithoutStringTable(std::string_view data);
     JSHandle<EcmaString> PUBLIC_API NewFromUtf8(std::string_view data);
+    JSHandle<EcmaString> NewFromUtf8(std::string_view data, bool canBeCompress);
     JSHandle<EcmaString> NewFromUtf8ReadOnly(std::string_view data);
     JSHandle<EcmaString> NewFromASCIISkippingStringTable(std::string_view data);
     JSHandle<EcmaString> NewFromUtf16WithoutStringTable(std::u16string_view data);

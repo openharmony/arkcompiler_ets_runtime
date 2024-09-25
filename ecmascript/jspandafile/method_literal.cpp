@@ -86,24 +86,31 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
 }
 
 // It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.
-std::string MethodLiteral::ParseFunctionName(const JSPandaFile *jsPandaFile, EntityId methodId)
+std::string MethodLiteral::ParseFunctionName(const JSPandaFile* jsPandaFile, EntityId methodId)
 {
-    if (jsPandaFile == nullptr) {
-        return std::string();
+    std::string_view methodName = ParseFunctionNameView(jsPandaFile, methodId).first;
+    return std::string(methodName);
+}
+
+// It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.
+std::pair<std::string_view, bool> MethodLiteral::ParseFunctionNameView(
+    const JSPandaFile* jsPandaFile, EntityId methodId)
+{
+    if (UNLIKELY(jsPandaFile == nullptr)) {
+        return {"", true};
     }
 
-    std::string_view methodName(GetMethodName(jsPandaFile, methodId));
+    auto [methodName, isASCII] = GetMethodNameView(jsPandaFile, methodId);
     if (LIKELY(methodName[0] != '#')) {
-        return std::string(methodName);
+        return {methodName, isASCII};
     }
 
     size_t index = methodName.find_last_of('#');
-    methodName = methodName.substr(index + 1);  // #...#functionName
-    if (methodName.find('^') != std::string::npos) {
-        index = methodName.find_last_of('^');
-        methodName = methodName.substr(0, index);  // #...#functionName^1
+    methodName = methodName.substr(index + 1); // #...#functionName
+    if (index = methodName.find_last_of('^'); index != std::string::npos) {
+        methodName = methodName.substr(0, index); // #...#functionName^1
     }
-    return std::string(methodName);
+    return {methodName, isASCII};
 }
 
 // It's not allowed '#' token appear in ECMA function(method) name, which discriminates same names in panda methods.
@@ -127,15 +134,22 @@ CString MethodLiteral::ParseFunctionNameToCString(const JSPandaFile *jsPandaFile
     return methodName;
 }
 
-const char *MethodLiteral::GetMethodName(const JSPandaFile *jsPandaFile, EntityId methodId, bool cpuProfiler)
+const char* MethodLiteral::GetMethodName(const JSPandaFile* jsPandaFile, EntityId methodId, bool cpuProfiler)
 {
     if (jsPandaFile == nullptr) {
         return "";
     }
+    return GetMethodNameView(jsPandaFile, methodId, cpuProfiler).first.data();
+}
+
+std::pair<std::string_view, bool> MethodLiteral::GetMethodNameView(
+    const JSPandaFile* jsPandaFile, EntityId methodId, bool cpuProfiler)
+{
+    ASSERT(jsPandaFile != nullptr && "jsPandaFile is null");
     if (cpuProfiler) {
-        return const_cast<JSPandaFile *>(jsPandaFile)->GetCpuProfilerMethodName(methodId);
+        return jsPandaFile->GetCpuProfilerMethodName(methodId);
     }
-    return const_cast<JSPandaFile *>(jsPandaFile)->GetMethodName(methodId);
+    return const_cast<JSPandaFile*>(jsPandaFile)->GetMethodName(methodId);
 }
 
 CString MethodLiteral::GetRecordName(const JSPandaFile *jsPandaFile, EntityId methodId)
