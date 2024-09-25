@@ -898,7 +898,6 @@ JSTaggedValue BuiltinsString::Normalize(EcmaRuntimeCallInfo *argv)
     JSThread *thread = argv->GetThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     auto vm = thread->GetEcmaVM();
-    ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> thisTag(JSTaggedValue::RequireObjectCoercible(thread, GetThis(argv)));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<EcmaString> thisHandle = JSTaggedValue::ToString(thread, thisTag);
@@ -915,18 +914,22 @@ JSTaggedValue BuiltinsString::Normalize(EcmaRuntimeCallInfo *argv)
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception());
         }
     }
-    JSHandle<EcmaString> nfc = JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledNfcString());
-    JSHandle<EcmaString> nfd = factory->NewFromASCII("NFD");
-    JSHandle<EcmaString> nfkc = factory->NewFromASCII("NFKC");
-    JSHandle<EcmaString> nfkd = factory->NewFromASCII("NFKD");
     UNormalizationMode uForm;
-    if (EcmaStringAccessor::StringsAreEqual(vm, formValue, nfc)) {
+    if (JSHandle<EcmaString> nfc =
+        JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledNfcString());
+        EcmaStringAccessor::StringsAreEqual(vm, formValue, nfc)) {
         uForm = UNORM_NFC;
-    } else if (EcmaStringAccessor::StringsAreEqual(vm, formValue, nfd)) {
+    } else if (JSHandle<EcmaString> nfd =
+        JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledNfdString());
+        EcmaStringAccessor::StringsAreEqual(vm, formValue, nfd)) {
         uForm = UNORM_NFD;
-    } else if (EcmaStringAccessor::StringsAreEqual(vm, formValue, nfkc)) {
+    } else if (JSHandle<EcmaString> nfkc =
+        JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledNfkcString());
+        EcmaStringAccessor::StringsAreEqual(vm, formValue, nfkc)) {
         uForm = UNORM_NFKC;
-    } else if (EcmaStringAccessor::StringsAreEqual(vm, formValue, nfkd)) {
+    } else if (JSHandle<EcmaString> nfkd =
+        JSHandle<EcmaString>::Cast(thread->GlobalConstants()->GetHandledNfkdString());
+        EcmaStringAccessor::StringsAreEqual(vm, formValue, nfkd)) {
         uForm = UNORM_NFKD;
     } else {
         THROW_RANGE_ERROR_AND_RETURN(thread, "compare not equal", JSTaggedValue::Exception());
