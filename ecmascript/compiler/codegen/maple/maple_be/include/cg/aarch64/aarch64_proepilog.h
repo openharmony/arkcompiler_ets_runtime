@@ -62,7 +62,9 @@ private:
     void AppendInstructionAllocateCallFrameDebug(AArch64reg reg0, AArch64reg reg1, RegType rty);
     void GeneratePushRegs();
     void GenerateProlog(BB &bb);
-
+    void GenerateSave();
+    void GenerateFrameTypeSave(SaveInfo &frameInfo, int32 stackSize, int64 fpToSpDistance);
+    void GenerateFunctionSave(SaveInfo &funcInfo, int32 stackSize, int64 fpToSpDistance);
     void GenerateRet(BB &bb);
     void AppendInstructionDeallocateCallFrame(AArch64reg reg0, AArch64reg reg1, RegType rty);
     void AppendInstructionDeallocateCallFrameDebug(AArch64reg reg0, AArch64reg reg1, RegType rty);

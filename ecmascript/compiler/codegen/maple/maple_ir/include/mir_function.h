@@ -30,6 +30,12 @@
 namespace maple {
 enum PointerAttr : uint32_t { kPointerUndeiced = 0x1, kPointerNull = 0x2, kPointerNoNull = 0x3 };
 
+struct SaveInfo {
+    int offset;
+    bool shouldSave;
+    int idx;
+};
+
 enum FuncAttrProp : uint32_t {
     kNoThrowException = 0x1,
     kNoRetNewlyAllocObj = 0x2,
@@ -159,6 +165,30 @@ public:
     {
         CHECK_FATAL(funcType != nullptr, "funcType is nullptr");
         funcType->SetRetTyIdx(tyidx);
+    }
+
+    void SetFrameTypeInfo(int offset, bool shouldSave, int idx)
+    {
+        frameTypeInfo.offset = offset;
+        frameTypeInfo.shouldSave = shouldSave;
+        frameTypeInfo.idx = idx;
+    }
+
+    void SetFuncInfo(int offset, bool shouldSave, int idx)
+    {
+        funcIdxInfo.offset = offset;
+        funcIdxInfo.shouldSave = shouldSave;
+        funcIdxInfo.idx = idx;
+    }
+
+    SaveInfo &GetFrameTypeInfo()
+    {
+        return frameTypeInfo;
+    }
+
+    SaveInfo &GetFuncInfo()
+    {
+        return funcIdxInfo;
     }
 
     TyIdx GetClassTyIdx() const
@@ -1469,6 +1499,8 @@ private:
     void DumpFlavorLoweredThanMmpl() const;
 #endif
     MIRFuncType *ReconstructFormals(const std::vector<MIRSymbol *> &symbols, bool clearOldArgs);
+    SaveInfo frameTypeInfo {0, false, 0};
+    SaveInfo funcIdxInfo {0, false, 0};
     MapleList<MapleString> debugComments {module->GetMPAllocator().Adapter()};
 };
 }  // namespace maple

@@ -601,8 +601,8 @@ void LiteCGIRBuilder::AssistGenPrologue(const size_t reservedSlotsSize, FrameTyp
 {
     lmirBuilder_->SetFuncFrameResverdSlot(reservedSlotsSize);
     if (circuit_->IsOsr()) {
-        SaveFrameTypeOnFrame(methodLiteral_->IsFastCall() ? FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME :
-            frameType);
+        auto osrFrameType = methodLiteral_->IsFastCall() ? FrameType::FASTJIT_FAST_CALL_FUNCTION_FRAME : frameType;
+        SaveFrameTypeOnFrame(function, osrFrameType);
         return;
     }
     auto ArgList = circuit_->GetArgRoot();
@@ -619,8 +619,8 @@ void LiteCGIRBuilder::AssistGenPrologue(const size_t reservedSlotsSize, FrameTyp
         }
         if (argth == funcIndex) {
             SaveByteCodePcOnOptJSFuncFrame(value);
-            SaveJSFuncOnOptJSFuncFrame(value);
-            SaveFrameTypeOnFrame(frameType);
+            SaveJSFuncOnOptJSFuncFrame(function, value, funcIndex);
+            SaveFrameTypeOnFrame(function, frameType);
         }
     }
 }
@@ -636,13 +636,14 @@ void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
     if (frameType == FrameType::OPTIMIZED_FRAME) {
         reservedSlotsSize = OptimizedFrame::ComputeReservedSize(slotSize_);
         lmirBuilder_->SetFuncFrameResverdSlot(reservedSlotsSize);
-        SaveFrameTypeOnFrame(frameType);
+        SaveFrameTypeOnFrame(function, frameType);
     } else if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
         reservedSlotsSize = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
         lmirBuilder_->SetFuncFrameResverdSlot(reservedSlotsSize);
         if (circuit_->IsOsr()) {
-            SaveFrameTypeOnFrame(methodLiteral_->IsFastCall() ? FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME :
-                frameType);
+            auto osrFrameType = methodLiteral_->IsFastCall() ? FrameType::OPTIMIZED_JS_FAST_CALL_FUNCTION_FRAME
+                                                             : frameType;
+            SaveFrameTypeOnFrame(function, osrFrameType);
             return;
         }
         auto ArgList = circuit_->GetArgRoot();
@@ -658,8 +659,8 @@ void LiteCGIRBuilder::GenPrologue(maple::litecg::Function &function)
                 funcIndex = static_cast<int>(CommonArgIdx::FUNC);
             }
             if (argth == funcIndex) {
-                SaveJSFuncOnOptJSFuncFrame(value);
-                SaveFrameTypeOnFrame(frameType);
+                SaveJSFuncOnOptJSFuncFrame(function, value, funcIndex);
+                SaveFrameTypeOnFrame(function, frameType);
             }
         }
     } else if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
@@ -701,30 +702,45 @@ void LiteCGIRBuilder::SaveByteCodePcOnOptJSFuncFrame(maple::litecg::Var &value)
     lmirBuilder_->AppendStmt(GetFirstBB(), stmt);
 }
 
-void LiteCGIRBuilder::SaveJSFuncOnOptJSFuncFrame(maple::litecg::Var &value)
+void LiteCGIRBuilder::SaveJSFuncOnOptJSFuncFrame(maple::litecg::Function &function, maple::litecg::Var &value,
+                                                 int funcIndex)
 {
     ASSERT(IsOptimizedJSFunction());
-    Expr fpAddr = CallingFp(false);
-    Expr frameAddr = lmirBuilder_->Cvt(fpAddr.GetType(), lmirBuilder_->i64Type, fpAddr);
-    size_t reservedOffset = 0;
-    if (circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
-        reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+    if (compCfg_->IsAArch64()) {
+        auto frameType = circuit_->GetFrameType();
+        if (frameType == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+            function.SetFuncInfo(OptimizedJSFunctionFrame::GetFunctionToFpDelta(), true, funcIndex);
+        } else if (frameType == FrameType::FASTJIT_FUNCTION_FRAME) {
+            function.SetFuncInfo(FASTJITFunctionFrame::GetFunctionToFpDelta(), true, funcIndex);
+        }
     } else {
-        reservedOffset = FASTJITFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+        Expr fpAddr = CallingFp(false);
+        Expr frameAddr = lmirBuilder_->Cvt(fpAddr.GetType(), lmirBuilder_->i64Type, fpAddr);
+        size_t reservedOffset = 0;
+        if (circuit_->GetFrameType() == FrameType::OPTIMIZED_JS_FUNCTION_FRAME) {
+            reservedOffset = OptimizedJSFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+        } else {
+            reservedOffset = FASTJITFunctionFrame::ComputeReservedJSFuncOffset(slotSize_);
+        }
+
+        Expr frameJSFuncSlotAddr =
+            lmirBuilder_->Sub(frameAddr.GetType(), frameAddr,
+                lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(slotType_, reservedOffset)));
+        Expr jsFuncAddr =
+            lmirBuilder_->Cvt(frameJSFuncSlotAddr.GetType(),
+                lmirBuilder_->CreatePtrType(slotType_), frameJSFuncSlotAddr);
+        Expr jsFuncValue = lmirBuilder_->Cvt(lmirBuilder_->i64PtrType, slotType_, lmirBuilder_->GenExprFromVar(value));
+        auto &stmt = lmirBuilder_->Iassign(jsFuncValue, jsFuncAddr, jsFuncAddr.GetType());
+        lmirBuilder_->AppendStmt(GetFirstBB(), stmt);
     }
-     
-    Expr frameJSFuncSlotAddr =
-        lmirBuilder_->Sub(frameAddr.GetType(), frameAddr,
-                          lmirBuilder_->ConstVal(lmirBuilder_->CreateIntConst(slotType_, reservedOffset)));
-    Expr jsFuncAddr =
-        lmirBuilder_->Cvt(frameJSFuncSlotAddr.GetType(), lmirBuilder_->CreatePtrType(slotType_), frameJSFuncSlotAddr);
-    Expr jsFuncValue = lmirBuilder_->Cvt(lmirBuilder_->i64PtrType, slotType_, lmirBuilder_->GenExprFromVar(value));
-    auto &stmt = lmirBuilder_->Iassign(jsFuncValue, jsFuncAddr, jsFuncAddr.GetType());
-    lmirBuilder_->AppendStmt(GetFirstBB(), stmt);
 }
 
-void LiteCGIRBuilder::SaveFrameTypeOnFrame(FrameType frameType)
+void LiteCGIRBuilder::SaveFrameTypeOnFrame(maple::litecg::Function &function, FrameType frameType)
 {
+    if (compCfg_->IsAArch64()) {
+        function.SetFrameTypeInfo(-slotSize_, true, static_cast<int>(frameType));
+        return;
+    }
     Expr fpAddr = CallingFp(false);
     Expr frameAddr = lmirBuilder_->Cvt(fpAddr.GetType(), lmirBuilder_->i64Type, fpAddr);
     Expr frameJSFuncSlotAddr = lmirBuilder_->Sub(

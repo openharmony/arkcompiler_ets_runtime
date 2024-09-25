@@ -633,6 +633,17 @@ public:
         return slotSize * slotOffset;
     }
 
+    static int GetFrmaeTypeToFpDelta()
+    {
+        return -(int)sizeof(uintptr_t);
+    }
+
+    static int GetFunctionToFpDelta()
+    {
+        int slotOffset = static_cast<int>(Index::JSFuncIndex) - static_cast<int>(Index::TypeIndex);
+        return slotOffset * JSTaggedValue::TaggedTypeSize() + GetFrmaeTypeToFpDelta();
+    }
+
     FrameType GetType() const
     {
         return type;
@@ -1878,6 +1889,17 @@ public:
     {
         size_t slotOffset = static_cast<size_t>(Index::PrevFpIndex) - static_cast<size_t>(Index::PcIndex);
         return slotSize * slotOffset;
+    }
+
+    static int GetFrmaeTypeToFpDelta()
+    {
+        return -(int)sizeof(uintptr_t);
+    }
+
+    static int GetFunctionToFpDelta()
+    {
+        int slotOffset = static_cast<int>(Index::JSFuncIndex) - static_cast<int>(Index::TypeIndex);
+        return slotOffset * JSTaggedValue::TaggedTypeSize() + GetFrmaeTypeToFpDelta();
     }
 
     FrameType GetType() const
