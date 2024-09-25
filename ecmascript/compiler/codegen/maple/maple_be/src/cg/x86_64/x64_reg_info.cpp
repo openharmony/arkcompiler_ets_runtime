@@ -123,6 +123,11 @@ Insn *X64RegInfo::BuildLdrInsn(uint32 regSize, PrimType stype, RegOperand &phyOp
     return &insn;
 }
 
+bool X64RegInfo::IsMovFromRegtoReg(MOperator mOp, Insn &insn)
+{
+    return false;
+}
+
 void X64RegInfo::FreeSpillRegMem(regno_t vrNum)
 {
     X64CGFunc *x64CGFunc = static_cast<X64CGFunc *>(GetCurrFunction());
