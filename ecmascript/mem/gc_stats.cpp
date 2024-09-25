@@ -85,6 +85,8 @@ const char *GCStats::GCReasonToString()
             return "Trigger by AbilityRuntime";
         case GCReason::TRIGGER_BY_MEM_TOOLS:
             return "Trigger by Mem tools";
+        case GCReason::TRIGGER_BY_TASKPOOL:
+            return "Trigger by taskPool";
         default:
             return "Other";
     }
