@@ -541,7 +541,6 @@ ohos_executable("ark_aot_compiler") {
   ]
 
   deps = [ ":libark_mock_stub_set" ]
-
   if (is_ohos) {
     deps += [
       ":libark_jsoptimizer",
@@ -555,7 +554,6 @@ ohos_executable("ark_aot_compiler") {
       "${MAPLEALL_ROOT}/maple_be:libcg",
     ]
   }
-
   external_deps = [ "zlib:libz" ]
   if (!is_arkui_x) {
     external_deps += [
