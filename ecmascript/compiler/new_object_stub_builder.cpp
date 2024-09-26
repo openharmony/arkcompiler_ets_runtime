@@ -2316,7 +2316,7 @@ GateRef NewObjectStubBuilder::NewJSObjectByConstructor(GateRef glue, GateRef con
         result = CallRuntime(glue, RTSTUB_ID(NewJSObjectByConstructor), { constructor, newTarget });
         Jump(&exit);
     }
-    
+
     Bind(&exit);
     auto ret = *result;
     env->SubCfgExit();
