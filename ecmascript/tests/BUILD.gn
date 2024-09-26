@@ -1407,6 +1407,7 @@ host_unittest_action("EcmaVm_052_Test") {
   sources = [
     # test file
     "gc_verify_test.cpp",
+    "idle_gc_trigger_test.cpp",
   ]
 
   configs = [
