@@ -844,7 +844,9 @@ JSTaggedValue JSStableArray::FindLastRawData(IndexOfContext &ctx, Predicate &&pr
     JSTaggedType *data = nullptr;
     JSTaggedValue elementsValue = JSHandle<JSObject>::Cast(ctx.receiver)->GetElements();
     ElementsKind kind = ElementsKind::GENERIC;
+    bool isMutant = false;
     if (elementsValue.IsMutantTaggedArray()) {
+        isMutant = true;
         JSHandle<MutantTaggedArray> elements(ctx.thread, JSHandle<JSObject>::Cast(ctx.receiver)->GetElements());
         data = elements->GetData();
         kind = JSHandle<JSObject>::Cast(ctx.receiver)->GetClass()->GetElementsKind();
@@ -859,7 +861,7 @@ JSTaggedValue JSStableArray::FindLastRawData(IndexOfContext &ctx, Predicate &&pr
     JSMutableHandle<JSTaggedValue> indexHandle(ctx.thread, JSTaggedValue::Undefined());
     for (JSTaggedType *cur = beforeLast; cur > beforeFirst; --cur) {
         JSTaggedValue convertedCur = JSTaggedValue(*cur);
-        if (elementsValue.IsMutantTaggedArray()) {
+        if (isMutant) {
             convertedCur = ElementAccessor::GetTaggedValueWithElementsKind(*cur, kind);
         }
         if (LIKELY(convertedCur.GetRawData() != JSTaggedValue::VALUE_HOLE)) {
