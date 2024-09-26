@@ -408,7 +408,8 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
     ASSERT(argv);
     JSThread *thread = argv->GetThread();
     BUILTINS_API_TRACE(thread, Number, ToString);
-    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    // NOTE: There is no heap alloc in fast path, so delay the scope.
+
     // 1. Let x be ? thisNumberValue(this value).
     JSTaggedNumber value = ThisNumberValue(thread, argv);
     // 2. ReturnIfAbrupt(x).
@@ -440,11 +441,14 @@ JSTaggedValue BuiltinsNumber::ToString(EcmaRuntimeCallInfo *argv)
         if (cacheResult != JSTaggedValue::Undefined()) {
             return cacheResult;
         }
+        // NOTE: There is no heap alloc before here, so delay the scope to here.
+        [[maybe_unused]] EcmaHandleScope handleScope(thread);
         JSHandle<EcmaString> resultJSHandle = value.ToString(thread);
         cacheTable->SetCachedResult(thread, entry, value, resultJSHandle);
         return resultJSHandle.GetTaggedValue();
     }
-
+    // NOTE: There is no heap alloc before here, so delay the scope to here.
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
     if (value.IsInt()) {
         return NumberHelper::Int32ToString(thread, value.GetInt(), radix);
     }
