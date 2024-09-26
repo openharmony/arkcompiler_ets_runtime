@@ -26,7 +26,7 @@ bool JSAPIBitVector::Push(
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
-    uint32_t length = bitVector->GetLength();
+    uint32_t length = static_cast<uint32_t>(bitVector->GetLength());
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     if ((length & TAGGED_VALUE_BIT_OFFSET) == 0) {
@@ -46,10 +46,10 @@ JSTaggedValue JSAPIBitVector::Pop(JSThread* thread, const JSHandle<JSAPIBitVecto
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
-    uint32_t lastIndex = bitVector->GetLength() - 1;
-    if (lastIndex < 0) {
+    if (bitVector->GetLength() <= 0) {
         return JSTaggedValue::Undefined();
     }
+    uint32_t lastIndex = static_cast<uint32_t>(bitVector->GetLength() - 1);
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
 
@@ -422,8 +422,8 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
     int length = bitVector->GetLength();
-    uint32_t elementsLength = ((length - 1) / BIT_SET_LENGTH) + 1;
-    uint32_t newElementsLength = ((newSize - 1) / BIT_SET_LENGTH) + 1;
+    uint32_t elementsLength = static_cast<uint32_t>((length - 1) / BIT_SET_LENGTH + 1);
+    uint32_t newElementsLength = static_cast<uint32_t>((newSize - 1) / BIT_SET_LENGTH + 1);
 
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
@@ -473,7 +473,7 @@ bool JSAPIBitVector::GetOwnProperty(
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    uint32_t length = obj->GetLength();
+    uint32_t length = static_cast<uint32_t>(obj->GetLength());
     if (index >= length) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
