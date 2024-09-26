@@ -84,7 +84,11 @@ static constexpr size_t MAX_CACHED_CHUNK_AREA_SIZE = 16_KB;
 static constexpr uint32_t WORKNODE_SPACE_SIZE = 8_KB;
 static constexpr size_t MAX_CHUNK_AREA_SIZE = 1_MB;
 static constexpr size_t MAX_REGEXP_CACHE_SIZE = 8_KB;
-
+// taskpool
+static constexpr double TRIGGER_OLDGC_OBJECT_LIMIT_RATE = 0.1;
+static constexpr double TRIGGER_OLDGC_OBJECT_SIZE_LIMIT = 20_MB;
+static constexpr double TRIGGER_OLDGC_NATIVE_LIMIT_RATE = 0.1;
+static constexpr double TRIGGER_OLDGC_NATIVE_SIZE_LIMIT = 20_MB;
 // idle gc
 static constexpr size_t IDLE_GC_YOUNG_SPACE = 3_MB;
 
