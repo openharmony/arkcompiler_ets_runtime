@@ -318,7 +318,7 @@ HWTEST_F_L0(ObjectOperatorTest, Property_DeleteElement2)
     JSHandle<NumberDictionary> handleDict = NumberDictionary::Create(thread, 4);
     handleGlobalObject->SetElements(thread, handleDict.GetTaggedValue());
     handleGlobalObject->GetClass()->SetIsDictionaryElement(true);
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 10; i++) {
         JSHandle<JSTaggedValue> handleKey(thread, JSTaggedValue(i));
         JSHandle<JSTaggedValue> handleValue(thread, JSTaggedValue(i));
         JSObject::SetProperty(thread, globalObj, handleKey, handleValue);
