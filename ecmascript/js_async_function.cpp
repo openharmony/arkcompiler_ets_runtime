@@ -185,6 +185,7 @@ JSHandle<JSTaggedValue> JSAsyncAwaitStatusFunction::AsyncFunctionAwaitRejected(
         JSHandle<CompletionRecord> completionRecord =
         factory->NewCompletionRecord(CompletionRecordType::THROW, reason);
         AsyncGeneratorHelper::Throw(thread, asyncCtxt, completionRecord);
+        thread->SetException(JSTaggedValue::Undefined());
         return JSHandle<JSTaggedValue>(thread, JSTaggedValue::Undefined());
     } else {
     // 2.Let prevContext be the running execution context.
@@ -196,7 +197,7 @@ JSHandle<JSTaggedValue> JSAsyncAwaitStatusFunction::AsyncFunctionAwaitRejected(
     JSHandle<JSObject> result = GeneratorHelper::Throw(thread, asyncCtxt, reason.GetTaggedValue());
     // 6.Assert: When we reach this step, asyncContext has already been removed from the execution context stack
     //   and prevContext is the currently running execution context.
-
+    thread->SetException(result.GetTaggedValue());
     // 7.Return Completion(result).
     return JSHandle<JSTaggedValue>::Cast(result);
     }
