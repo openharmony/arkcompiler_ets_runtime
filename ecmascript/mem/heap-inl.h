@@ -692,7 +692,7 @@ void Heap::NotifyRecordMemorySize()
     if (GetRecordObjectSize() == 0) {
         RecordOrResetObjectSize(GetHeapObjectSize());
     }
-    if (fabs(GetRecordNativeSize() - 0.0) < 1e-6) {
+    if (GetRecordNativeSize() == 0) {
         RecordOrResetNativeSize(GetNativeBindingSize());
     }
 }
