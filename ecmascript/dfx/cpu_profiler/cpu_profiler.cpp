@@ -273,6 +273,9 @@ void CpuProfiler::GetStack(FrameIterator &it)
         } else {
             methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, false, enableVMTag_);
         }
+        if (isNative) {
+            JsStackGetter::GetCallLineNumber(it, methodKey.lineNumber);
+        }
         void *methodIdentifier = JsStackGetter::GetMethodIdentifier(method, it);
         if (methodIdentifier == nullptr) {
             continue;
@@ -339,10 +342,12 @@ bool CpuProfiler::GetStackCallNapi(JSThread *thread, bool beforeCallNapi)
             } else {
                 methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, true, enableVMTag_);
             }
-            JsStackGetter::GetCallLineNumber(it, methodKey.lineNumber);
             topFrame = false;
         } else {
             methodKey.state = JsStackGetter::GetRunningState(it, vm_, isNative, false, enableVMTag_);
+        }
+        if (isNative) {
+            JsStackGetter::GetCallLineNumber(it, methodKey.lineNumber);
         }
         void *methodIdentifier = JsStackGetter::GetMethodIdentifier(method, it);
         if (methodIdentifier == nullptr) {
