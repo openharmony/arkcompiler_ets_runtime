@@ -30,7 +30,6 @@ class Heap;
 class SharedHeap;
 
 enum class GCType : int {
-    STW_YOUNG_GC = 0,
     PARTIAL_EDEN_GC,
     PARTIAL_YOUNG_GC,
     PARTIAL_OLD_GC,
@@ -110,8 +109,6 @@ public:
     const char *GetGCTypeName()
     {
         switch (gcType_) {
-            case GCType::STW_YOUNG_GC:
-                return "STWYoungGC";
             case GCType::PARTIAL_EDEN_GC:
                 return "HPP EdenGC";
             case GCType::PARTIAL_YOUNG_GC:

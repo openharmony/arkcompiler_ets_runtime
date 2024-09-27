@@ -18,7 +18,6 @@
 #include "ecmascript/mem/full_gc.h"
 #include "ecmascript/object_factory-inl.h"
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/tests/ecma_test_common.h"
 #include "ecmascript/napi/include/jsnapi_expo.h"

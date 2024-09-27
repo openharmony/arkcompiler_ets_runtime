@@ -870,7 +870,6 @@ ecma_source = [
   "ecmascript/mem/shared_heap/shared_full_gc.cpp",
   "ecmascript/mem/shared_heap/shared_gc_marker.cpp",
   "ecmascript/mem/shared_heap/shared_space.cpp",
-  "ecmascript/mem/stw_young_gc.cpp",
   "ecmascript/mem/space.cpp",
   "ecmascript/mem/sparse_space.cpp",
   "ecmascript/mem/thread_local_allocation_buffer.cpp",
