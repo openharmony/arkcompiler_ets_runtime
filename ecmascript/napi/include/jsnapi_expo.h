@@ -1567,6 +1567,7 @@ public:
     static bool ExecuteModuleFromBuffer(EcmaVM *vm, const void *data, int32_t size, const std::string &file);
     static Local<ObjectRef> GetExportObject(EcmaVM *vm, const std::string &file, const std::string &key);
     static Local<ObjectRef> GetExportObjectFromBuffer(EcmaVM *vm, const std::string &file, const std::string &key);
+    static Local<ObjectRef> GetExportObjectFromOhmUrl(EcmaVM *vm, const std::string &ohmUrl, const std::string &key);
     static Local<ObjectRef> ExecuteNativeModule(EcmaVM *vm, const std::string &key);
     static Local<ObjectRef> GetModuleNameSpaceFromFile(EcmaVM *vm, const std::string &file,
                                                        const std::string &module_path);
@@ -1590,6 +1591,9 @@ public:
      */
     static bool ExecuteModuleBufferSecure(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &filename = "",
                                           bool needUpdate = false);
+
+    static bool ExecuteSecureWithOhmUrl(EcmaVM *vm, uint8_t *data, int32_t size, const std::string &srcFilename,
+                                        const std::string &ohmUrl);
 
     // ObjectRef Operation
     static Local<ObjectRef> GetGlobalObject(const EcmaVM *vm);
@@ -1676,6 +1680,7 @@ public:
     static bool IsBundle(EcmaVM *vm);
     static void SetBundle(EcmaVM *vm, bool value);
     static bool IsNormalizedOhmUrlPack(EcmaVM *vm);
+    static bool IsOhmUrl(const std::string &srcName);
     static void SetAssetPath(EcmaVM *vm, const std::string &assetPath);
     static void SetMockModuleList(EcmaVM *vm, const std::map<std::string, std::string> &list);
     static void SetPkgNameList(EcmaVM *vm, const std::map<std::string, std::string> &list);
