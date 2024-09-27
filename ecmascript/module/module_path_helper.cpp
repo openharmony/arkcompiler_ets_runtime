@@ -1100,4 +1100,53 @@ CString ModulePathHelper::Utf8ConvertToString(JSTaggedValue str)
 {
     return EcmaStringAccessor(str).Utf8ConvertToString();
 }
+
+// check if input is ohmurl's ets/ts/js
+bool ModulePathHelper::IsOhmUrl(const CString &str)
+{
+    if (StringHelper::StringStartWith(str, ModulePathHelper::PREFIX_BUNDLE) ||
+        StringHelper::StringStartWith(str, ModulePathHelper::PREFIX_PACKAGE) ||
+        StringHelper::StringStartWith(str, ModulePathHelper::PREFIX_NORMALIZED_NOT_SO)) {
+        return true;
+    }
+    return false;
+}
+
+bool ModulePathHelper::CheckAndGetRecordName(JSThread *thread, const CString &ohmUrl, CString &recordName)
+{
+    if (StringHelper::StringStartWith(ohmUrl, PREFIX_BUNDLE)) {
+        recordName = ohmUrl.substr(PREFIX_BUNDLE_LEN);
+        return true;
+    } else if (StringHelper::StringStartWith(ohmUrl, PREFIX_PACKAGE)) {
+        recordName = ohmUrl.substr(PREFIX_PACKAGE_LEN);
+        return true;
+    } else if (StringHelper::StringStartWith(ohmUrl, PREFIX_NORMALIZED_NOT_SO)) {
+        CString str;
+        recordName = ModulePathHelper::ParseNormalizedOhmUrl(thread, str, " ", ohmUrl);
+        return true;
+    }
+    LOG_ECMA(ERROR) << "the requested OhmUrl: '" + ohmUrl +
+        ", doesn't match current OhmUrl rule, please check build result.";
+    return false;
+}
+
+/*
+ * Before: ABC: /data/storage/el1/bundle/xxx/xxx/xxx.abc
+ * Before: ETS_MODULES: /data/storage/el1/bundle/xxx/ets/modules.abc
+ */
+bool ModulePathHelper::ValidateAbcPath(const CString &baseFileName, ValidateFilePath checkMode)
+{
+    if (baseFileName.length() > BUNDLE_INSTALL_PATH_LEN &&
+        baseFileName.compare(0, BUNDLE_INSTALL_PATH_LEN, BUNDLE_INSTALL_PATH) == 0) {
+        if (checkMode == ValidateFilePath::ETS_MODULES &&
+            baseFileName.rfind(MERGE_ABC_ETS_MODULES) != CString::npos) {
+            return true;
+        }
+        if (checkMode == ValidateFilePath::ABC &&
+            baseFileName.rfind(ABC) != CString::npos) {
+            return true;
+        }
+    }
+    return false;
+}
 }  // namespace panda::ecmascript

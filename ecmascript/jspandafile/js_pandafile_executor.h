@@ -69,6 +69,10 @@ public:
                                                                    bool needUpdate = false);
     static Expected<JSTaggedValue, bool> CommonExecuteBuffer(JSThread *thread, const CString &filename,
                                                              const CString &entry, const JSPandaFile *jsPandaFile);
+    static Expected<JSTaggedValue, bool> ExecuteSecureWithOhmUrl(JSThread *thread, uint8_t *buffer,
+                                                                 size_t size, const CString &fileName,
+                                                                 const CString &entryPoint);
+
     static int ExecuteAbcFileWithSingletonPatternFlag(JSThread *thread,
         [[maybe_unused]] const CString &bundleName, const CString &moduleName, const CString &entry,
         bool isSingletonPattern);
