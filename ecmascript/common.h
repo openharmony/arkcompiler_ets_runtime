@@ -52,7 +52,12 @@ enum class GCReason : uint8_t {
     SWITCH_BACKGROUND,
     EXTERNAL_TRIGGER,
     WORKER_DESTRUCTION,
-    OTHER,
+    TRIGGER_BY_JS,
+    TRIGGER_BY_ARKUI,
+    TRIGGER_BY_ABILITY,
+    TRIGGER_BY_MEM_TOOLS,
+    TRIGGER_BY_TASKPOOL,
+    OTHER
 };
 
 enum class RequestAotMode : uint8_t {

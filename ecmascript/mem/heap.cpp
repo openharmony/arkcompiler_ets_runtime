@@ -1956,20 +1956,21 @@ bool Heap::TryTriggerFullMarkBySharedLimit()
 
 void Heap::CheckAndTriggerTaskFinishedGC()
 {
-    double objectSizeOfTaskBegin = GetRecordObjectSize();
-    double nativeSizeOfTaskBegin = static_cast<double>(GetRecordNativeSize());
-    double objectSizeOfTaskFinished = GetHeapObjectSize();
-    double nativeSizeOfTaskFinished = GetGlobalNativeSize();
-    bool objectSizeFlag = objectSizeOfTaskFinished - objectSizeOfTaskBegin > TRIGGER_OLDGC_OBJECT_SIZE_LIMIT
-        || (objectSizeOfTaskBegin != 0
-            && objectSizeOfTaskFinished/objectSizeOfTaskBegin > TRIGGER_OLDGC_OBJECT_LIMIT_RATE);
-    bool nativeSizeFlag = nativeSizeOfTaskFinished - nativeSizeOfTaskBegin > TRIGGER_OLDGC_OBJECT_SIZE_LIMIT
-        || (nativeSizeOfTaskBegin != 0
-            && nativeSizeOfTaskFinished/nativeSizeOfTaskBegin > TRIGGER_OLDGC_NATIVE_LIMIT_RATE);
+    size_t objectSizeOfTaskBegin = GetRecordObjectSize();
+    size_t objectSizeOfTaskFinished = GetHeapObjectSize();
+    size_t nativeSizeOfTaskBegin = GetRecordNativeSize();
+    size_t nativeSizeOfTaskFinished = GetGlobalNativeSize();
+    // GC would be triggered when heap size increase more than Max(20M, 10%*SizeOfTaskBegin)
+    bool objectSizeFlag = objectSizeOfTaskFinished > objectSizeOfTaskBegin &&
+        objectSizeOfTaskFinished - objectSizeOfTaskBegin > std::max(TRIGGER_OLDGC_OBJECT_SIZE_LIMIT,
+            TRIGGER_OLDGC_OBJECT_LIMIT_RATE * objectSizeOfTaskBegin);
+    bool nativeSizeFlag = nativeSizeOfTaskFinished > nativeSizeOfTaskBegin &&
+        nativeSizeOfTaskFinished - nativeSizeOfTaskBegin > std::max(TRIGGER_OLDGC_NATIVE_SIZE_LIMIT,
+            TRIGGER_OLDGC_NATIVE_LIMIT_RATE * nativeSizeOfTaskBegin);
     if (objectSizeFlag || nativeSizeFlag) {
-        panda::JSNApi::TriggerGC(GetEcmaVM(), panda::JSNApi::TRIGGER_GC_TYPE::OLD_GC);
+        CollectGarbage(TriggerGCType::OLD_GC, GCReason::TRIGGER_BY_TASKPOOL);
         RecordOrResetObjectSize(0);
-        RecordOrResetNativeSize(0.0);
+        RecordOrResetNativeSize(0);
     }
 }
 
