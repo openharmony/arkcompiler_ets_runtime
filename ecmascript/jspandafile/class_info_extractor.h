@@ -170,7 +170,8 @@ public:
 
     static void PUBLIC_API AddFieldTypeToHClass(JSThread *thread, const JSHandle<TaggedArray> &fieldTypeArray,
         uint32_t length, const JSHandle<LayoutInfo> &layout, const JSHandle<JSHClass> &hclass,
-        size_t start, std::vector<JSHandle<JSTaggedValue>> &&propertyList = std::vector<JSHandle<JSTaggedValue>>());
+        size_t start, const JSHandle<NumberDictionary> &elementsDic = JSHandle<NumberDictionary>(),
+        std::vector<JSHandle<JSTaggedValue>> &&propertyList = std::vector<JSHandle<JSTaggedValue>>());
 private:
     static SharedFieldType FromFieldType(FieldType type)
     {

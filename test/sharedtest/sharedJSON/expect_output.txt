@@ -83,4 +83,19 @@ TypeError: reviver only supports undefined for SENDABLE_JSON
 0.4799123
 0.7777334477383838
 1.23e-14
-
+ASON support MAP Test Start
+112233445566778899
+true
+SyntaxError: Unexpected MAP Prop in JSON
+SyntaxError: Unexpected MAP in JSON
+sendableMap5 size: 2
+sendableMap5 x: 你好
+sendableMap5 a: 2
+sendableMap6 arr: 1,2,3
+sendableMap6 boolA: true
+sendableMap6 boolB: false
+sendableMap6 nullText: null
+ASON parse asonstr1: 45
+ASON parse asonstr2: 89
+ASON parse asonstr3: eetrue1123
+{"123":"1","124":"123","1234":"bb","xx":"yy","aaa":"ee","success":"true"}

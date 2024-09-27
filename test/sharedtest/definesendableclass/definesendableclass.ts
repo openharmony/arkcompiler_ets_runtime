@@ -2190,3 +2190,16 @@ testChildExtendsDict(childExtendsDict);
 testICChecking(childToDict);
 testStaticDict();
 testKeys();
+
+class A {
+    constructor() {
+      "use sendable"
+    }
+    num:number = 1
+    "123":string = "123"
+}
+try {
+    let a = new A();
+} catch (e) {
+    print(e);
+}
