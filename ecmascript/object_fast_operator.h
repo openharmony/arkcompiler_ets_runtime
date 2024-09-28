@@ -116,6 +116,8 @@ public:
     static inline JSTaggedValue CallGetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue holder,
                                            JSTaggedValue value);
     static inline JSTaggedValue FastGetPropertyByPorpsIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index);
+
+    static inline int64_t TryToElementsIndex(JSTaggedValue key);
 private:
     static inline JSTaggedValue CallSetter(JSThread *thread, JSTaggedValue receiver, JSTaggedValue value,
                                            JSTaggedValue accessorValue);
@@ -152,8 +154,6 @@ private:
 
     static inline JSTaggedValue AddPropertyByIndex(JSThread *thread, JSTaggedValue receiver, uint32_t index,
                                                    JSTaggedValue value);
-
-    static inline int64_t TryToElementsIndex(JSTaggedValue key);
 
     static inline bool GetNumFromString(const char *str, int len, int *index, int *num);
 

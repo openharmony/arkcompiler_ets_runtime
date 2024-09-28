@@ -371,7 +371,7 @@ public:
                                                 uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopyTaggedArraySkipBarrier(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                            uint32_t oldLength, uint32_t k = 0);
-    JSHandle<TaggedArray> NewAndCopySNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
+    JSHandle<TaggedArray> PUBLIC_API NewAndCopySNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
     JSHandle<TaggedArray> NewAndCopyTaggedArrayByObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
                                                         uint32_t oldLength, uint32_t k = 0);
     JSHandle<MutantTaggedArray> NewAndCopyMutantTaggedArrayByObject(JSHandle<JSObject> thisObjHandle,
@@ -555,8 +555,8 @@ public:
                                bool needSetAotFlag, bool *canFastCall = nullptr);
 
     // used for creating jsobject by constructor
-    JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
-                                                const JSHandle<JSTaggedValue> &newTarget);
+    JSHandle<JSObject> PUBLIC_API NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,
+                                                           const JSHandle<JSTaggedValue> &newTarget);
     JSHandle<JSObject> NewJSObjectByConstructor(JSHandle<GlobalEnv> env,
         const JSHandle<JSFunction> &constructor, uint32_t inlinedProps);
     JSHandle<JSObject> NewJSObjectByConstructor(const JSHandle<JSFunction> &constructor,

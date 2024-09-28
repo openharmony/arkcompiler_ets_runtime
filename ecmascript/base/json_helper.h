@@ -30,10 +30,27 @@ public:
         BIGINT = 3
     };
 
-    enum class ParseOptions : uint8_t {
+    enum class BigIntMode : uint8_t {
         DEFAULT,
-        PARSEASBIGINT,
-        ALWAYSPARSEASBIGINT
+        PARSE_AS_BIGINT,
+        ALWAYS_PARSE_AS_BIGINT
+    };
+
+    enum class ParseReturnType : uint8_t {
+        OBJECT,
+        MAP
+    };
+
+    struct ParseOptions {
+        BigIntMode bigIntMode = BigIntMode::DEFAULT;
+        ParseReturnType returnType = ParseReturnType::OBJECT;
+
+        ParseOptions() = default;
+        ParseOptions(BigIntMode bigIntMode, ParseReturnType returnType)
+        {
+            this->bigIntMode = bigIntMode;
+            this->returnType = returnType;
+        }
     };
 
     static inline bool IsTypeSupportBigInt(TransformType type)

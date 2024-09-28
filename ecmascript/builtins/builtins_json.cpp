@@ -34,6 +34,8 @@ namespace panda::ecmascript::builtins {
 namespace {
 using TransformType = base::JsonHelper::TransformType;
 using ParseOptions =  base::JsonHelper::ParseOptions;
+using ParseReturnType = base::JsonHelper::ParseReturnType;
+using BigIntMode = base::JsonHelper::BigIntMode;
 
 void InitWithTransformType(JSHandle<GlobalEnv> &env, TransformType transformType,
                            JSMutableHandle<JSFunction> &constructor, SCheckMode &sCheckMode)
@@ -92,7 +94,7 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(EcmaRuntimeCallInfo *argv, Tr
 
     JSHandle<JSTaggedValue> msg = GetCallArg(argv, 0);
     JSMutableHandle<JSTaggedValue> reviverVal(thread, JSTaggedValue::Undefined());
-    ParseOptions mode {ParseOptions::DEFAULT};
+    ParseOptions parseOptions;
     if (argc == 2) {  // 2: two args
         reviverVal.Update(GetCallArg(argv, 1));
     } else if (argc == 3 && base::JsonHelper::IsTypeSupportBigInt(transformType)) { // 3: three args
@@ -103,27 +105,26 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(EcmaRuntimeCallInfo *argv, Tr
         if (options->IsECMAObject()) {
             JSHandle<JSTaggedValue> type = JSTaggedValue::GetProperty(thread, options, typeKey).GetValue();
             if (transformType == TransformType::SENDABLE && type->IsInt() && type->GetInt() == 1) { // 1: map
-                THROW_TYPE_ERROR_AND_RETURN(argv->GetThread(), GET_MESSAGE_STRING(ReturnTypeNotSupportMap),
-                                            JSTaggedValue::Exception());
+                parseOptions.returnType = ParseReturnType::MAP;
             }
             JSHandle<JSTaggedValue> modeValue = JSTaggedValue::GetProperty(thread, options, modeKey).GetValue();
             RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             if (modeValue->IsInt()) {
                 int val = modeValue->GetInt();
                 if (val == 2) { // 2: bigIntMode
-                    mode = ParseOptions::ALWAYSPARSEASBIGINT;
+                    parseOptions.bigIntMode = BigIntMode::ALWAYS_PARSE_AS_BIGINT;
                 } else if (val == 1) {
-                    mode = ParseOptions::PARSEASBIGINT;
+                    parseOptions.bigIntMode = BigIntMode::PARSE_AS_BIGINT;
                 }
             }
         }
     }
-    return ParseWithTransformType(thread->GetEcmaVM(), msg, reviverVal, transformType, mode);
+    return ParseWithTransformType(thread->GetEcmaVM(), msg, reviverVal, transformType, parseOptions);
 }
 
 JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JSTaggedValue> &msg,
                                                    JSHandle<JSTaggedValue> &reviverVal, TransformType transformType,
-                                                   ParseOptions mode)
+                                                   ParseOptions options)
 {
     JSThread *thread = vm->GetJSThread();
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
@@ -133,10 +134,10 @@ JSTaggedValue BuiltinsJson::ParseWithTransformType(const EcmaVM *vm, JSHandle<JS
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSTaggedValue> result;
     if (EcmaStringAccessor(parseString).IsUtf8()) {
-        panda::ecmascript::base::Utf8JsonParser parser(thread, transformType, mode);
+        panda::ecmascript::base::Utf8JsonParser parser(thread, transformType, options);
         result = parser.Parse(parseString);
     } else {
-        panda::ecmascript::base::Utf16JsonParser parser(thread, transformType, mode);
+        panda::ecmascript::base::Utf16JsonParser parser(thread, transformType, options);
         result = parser.Parse(*parseString);
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
