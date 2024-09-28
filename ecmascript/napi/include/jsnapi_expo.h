@@ -547,6 +547,7 @@ public:
                          void **data,
                          JSValueRef **arrayBuffer,
                          size_t *byteOffset);
+    void TryGetArrayLength(const EcmaVM *vm, bool *isArrayOrSharedArray, uint32_t *arrayLength);
 
 private:
     JSTaggedType value_;
