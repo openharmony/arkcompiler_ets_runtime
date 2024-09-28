@@ -4404,6 +4404,15 @@ void JSNApi::TriggerGC(const EcmaVM *vm, ecmascript::GCReason reason, TRIGGER_GC
     }
 }
 
+void JSNApi::HintGC(const EcmaVM *vm, MemoryReduceDegree degree, ecmascript::GCReason reason)
+{
+    CROSS_THREAD_CHECK(vm);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
+    if (thread != nullptr && vm->IsInitialized()) {
+        const_cast<ecmascript::Heap *>(vm->GetHeap())->CheckAndTriggerHintGC(degree, reason);
+    }
+}
+
 void JSNApi::TriggerIdleGC(const EcmaVM *vm, TRIGGER_IDLE_GC_TYPE gcType)
 {
     CROSS_THREAD_CHECK(vm);

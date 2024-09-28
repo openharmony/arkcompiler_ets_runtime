@@ -50,6 +50,7 @@ class IncrementalMarker;
 class JSNativePointer;
 class Marker;
 class MemController;
+class IdleGCTrigger;
 class NativeAreaAllocator;
 class ParallelEvacuator;
 class PartialGC;
@@ -75,7 +76,7 @@ using GCListenerId = std::vector<std::pair<FinishGCListener, void *>>::const_ite
 using Clock = std::chrono::high_resolution_clock;
 using AppFreezeFilterCallback = std::function<bool(const int32_t pid)>;
 using BytesAndDuration = std::pair<uint64_t, double>;
-
+using MemoryReduceDegree = panda::JSNApi::MemoryReduceDegree;
 enum class IdleTaskType : uint8_t {
     NO_TASK,
     YOUNG_GC,
@@ -1098,7 +1099,7 @@ public:
      */
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
     bool CheckAndTriggerOldGC(size_t size = 0);
-    bool CheckAndTriggerHintGC();
+    bool CheckAndTriggerHintGC(MemoryReduceDegree degree, GCReason reason = GCReason::OTHER);
     TriggerGCType SelectGCType() const;
     /*
      * Parallel GC related configurations and utilities.

@@ -129,6 +129,7 @@ public:
         }
     }
 
+    static const char *GCReasonToString(GCReason reason);
     const char *GCReasonToString();
 
     double GetAvgSurvivalRate()

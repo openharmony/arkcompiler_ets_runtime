@@ -51,7 +51,7 @@ void GCStats::PrintGCStatistic()
                         << sizeToMB(recordData_[(uint8_t)RecordData::END_COMMIT_SIZE]) << ") MB, "
                         << scopeDuration_[Scope::ScopeId::TotalGC] << "(+"
                         << GetConcurrrentMarkDuration()
-                        << ")ms, " << GCReasonToString();
+                        << ")ms, " << GCReasonToString(reason_);
         LOG_GC(INFO) << "IsInBackground: " << heap_->IsInBackground() << "; "
             << "SensitiveStatus: " << static_cast<int>(heap_->GetSensitiveStatus()) << "; "
             << "OnStartupEvent: " << heap_->OnStartupEvent() << "; "
@@ -64,7 +64,12 @@ void GCStats::PrintGCStatistic()
 
 const char *GCStats::GCReasonToString()
 {
-    switch (reason_) {
+    return GCReasonToString(reason_);
+}
+
+const char *GCStats::GCReasonToString(GCReason reason)
+{
+    switch (reason) {
         case GCReason::ALLOCATION_LIMIT:
             return "Memory reach limit";
         case GCReason::ALLOCATION_FAILED:
@@ -713,7 +718,7 @@ void SharedGCStats::PrintGCStatistic()
                      << sizeToMB(recordData_[(uint8_t)RecordData::START_COMMIT_SIZE]) << ") -> "
                      << sizeToMB(recordData_[(uint8_t)RecordData::END_OBJ_SIZE]) << " ("
                      << sizeToMB(recordData_[(uint8_t)RecordData::END_COMMIT_SIZE]) << ") MB, "
-                     << scopeDuration_[Scope::ScopeId::TotalGC] << "ms, " << GCReasonToString();
+                     << scopeDuration_[Scope::ScopeId::TotalGC] << "ms, " << GCReasonToString(reason_);
         PrintSharedGCDuration();
         PrintGCMemoryStatistic();
         PrintSharedGCSummaryStatistic();
