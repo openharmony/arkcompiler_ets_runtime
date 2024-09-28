@@ -15,6 +15,8 @@
 
 #include "ecmascript/mem/idle_gc_trigger.h"
 
+#include <algorithm>
+
 #include "ecmascript/mem/mem_controller.h"
 #include "ecmascript/mem/shared_mem_controller.h"
 #include "ecmascript/mem/concurrent_marker.h"
@@ -28,7 +30,7 @@ void IdleGCTrigger::NotifyVsyncIdleStart()
 
 void IdleGCTrigger::NotifyLooperIdleStart([[maybe_unused]] int64_t timestamp, [[maybe_unused]] int idleTime)
 {
-    LOG_GC(DEBUG) << "IdleGCTrigger: recv once looper idle time";
+    LOG_ECMA_IF(optionalLogEnabled_, DEBUG) << "IdleGCTrigger: recv once looper idle time";
     idleState_.store(true);
     if (!TryTriggerIdleLocalOldGC()) {
         TryTriggerIdleSharedOldGC();
@@ -149,6 +151,14 @@ void IdleGCTrigger::PostIdleGCTask(TRIGGER_IDLE_GC_TYPE gcType)
     LOG_GC(DEBUG) << "IdleGCTrigger: failed to post once " << GetGCTypeName(gcType);
 }
 
+bool IdleGCTrigger::CheckIdleYoungGC() const
+{
+    auto newSpace = heap_->GetNewSpace();
+    LOG_GC(DEBUG) << "IdleGCTrigger: check young GC semi Space size since gc:"
+        << newSpace->GetAllocatedSizeSinceGC(newSpace->GetTop());
+    return newSpace->GetAllocatedSizeSinceGC(newSpace->GetTop()) > IDLE_MIN_EXPECT_RECLAIM_SIZE;
+}
+
 void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
 {
     LOG_GC(DEBUG) << "IdleGCTrigger: recv once notify of " << GetGCTypeName(gcType);
@@ -163,6 +173,9 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
             if (CheckIdleOrHintFullGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 heap_->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+            } else if (CheckIdleYoungGC() && !heap_->NeedStopCollection()) {
+                LOG_GC(INFO) << "IdleGCTrigger: trigger young gc";
+                heap_->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::IDLE);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_GC:
@@ -185,8 +198,8 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
             break;
         case TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK:
             if (!heap_->NeedStopCollection()) {
-                TryTriggerHandleMarkFinished();
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
+                TryTriggerHandleMarkFinished();
             }
             break;
         default: // LCOV_EXCL_BR_LINE
