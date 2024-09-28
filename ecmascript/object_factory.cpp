@@ -1339,8 +1339,6 @@ void ObjectFactory::InitializeJSObject(const JSHandle<JSObject> &obj, const JSHa
         case JSType::JS_DATE:
             JSDate::Cast(*obj)->SetTimeValue(thread_, JSTaggedValue(0.0));
             JSDate::Cast(*obj)->SetLocalOffset(thread_, JSTaggedValue(JSDate::MAX_DOUBLE));
-            JSDate::Cast(*obj)->SetTvSec(0);
-            JSDate::Cast(*obj)->SetTvUsec(0);
             break;
         case JSType::JS_TYPED_ARRAY:
         case JSType::JS_INT8_ARRAY:

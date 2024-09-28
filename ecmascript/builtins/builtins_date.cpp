@@ -45,10 +45,8 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
 
     JSTaggedValue timeValue(0.0);
     uint32_t length = argv->GetArgsNumber();
-    int64_t sec = 0;
-    int64_t usec = 0;
     if (length == 0) {  // no value
-        timeValue = JSDate::Now(&sec, &usec);
+        timeValue = JSDate::Now();
     } else if (length == 1) {  // one value
         JSHandle<JSTaggedValue> value = GetCallArg(argv, 0);
         if (value->IsDate()) {  // The value is a date object.
@@ -80,8 +78,6 @@ JSTaggedValue BuiltinsDate::DateConstructor(EcmaRuntimeCallInfo *argv)
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSDate> dateObject = JSHandle<JSDate>::Cast(obj);
     dateObject->SetTimeValue(thread, timeValue);
-    dateObject->SetTvSec(sec);
-    dateObject->SetTvUsec(usec);
     return dateObject.GetTaggedValue();
 }
 
@@ -119,9 +115,6 @@ JSTaggedValue BuiltinsDate::GetTime(EcmaRuntimeCallInfo *argv)
         [[maybe_unused]] EcmaHandleScope handleScope(argv->GetThread());
         THROW_TYPE_ERROR_AND_RETURN(thread, "Not a Date Object", JSTaggedValue::Exception());
     }
-    auto date = JSDate::Cast(msg->GetTaggedObject());
-    LOG_ECMA(INFO) << "tv_sec: " << date->GetTvSec()
-                   << ", tv_usec: " << date->GetTvUsec();
     return JSDate::Cast(msg->GetTaggedObject())->GetTime();
 }
 
