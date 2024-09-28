@@ -976,6 +976,7 @@ void Heap::Resume(TriggerGCType gcType)
         edenSpace_->ReclaimRegions(edenSpace_->GetInitialCapacity());
         edenSpace_->Restart();
         if (IsEdenMark()) {
+            activeSemiSpace_->EnumerateRegions([](Region *region) { region->ResetRegionTypeFlag(); });
             activeSemiSpace_->SetWaterLine();
             return;
         }
