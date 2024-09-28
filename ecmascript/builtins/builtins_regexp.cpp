@@ -2361,7 +2361,8 @@ JSTaggedValue BuiltinsRegExp::RegExpInitialize(JSThread *thread, const JSHandle<
     auto getCache = regExpParserCache->GetCache(*patternStrHandle, flagsBits, groupName);
     if (getCache.first.IsHole()) {
         // String -> CString
-        CString patternStdStr = ConvertToString(*patternStrHandle, StringConvertedUsage::LOGICOPERATION);
+        bool cesu8 = !(RegExpParser::FLAG_UTF16 & flagsBits);
+        CString patternStdStr = ConvertToString(*patternStrHandle, StringConvertedUsage::LOGICOPERATION, cesu8);
         parser.Init(const_cast<char *>(reinterpret_cast<const char *>(patternStdStr.c_str())), patternStdStr.size(),
                     flagsBits);
         parser.Parse();

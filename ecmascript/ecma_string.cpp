@@ -1595,14 +1595,14 @@ std::string EcmaStringAccessor::DebuggerToStdString(StringConvertedUsage usage)
     return res;
 }
 
-CString EcmaStringAccessor::ToCString(StringConvertedUsage usage)
+CString EcmaStringAccessor::ToCString(StringConvertedUsage usage, bool cesu8)
 {
     if (string_ == nullptr) {
         return "";
     }
     bool modify = (usage != StringConvertedUsage::PRINT);
     CVector<uint8_t> buf;
-    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify);
+    Span<const uint8_t> sp = string_->ToUtf8Span(buf, modify, cesu8);
     CString res;
     res.reserve(sp.size());
     for (const auto &c : sp) {

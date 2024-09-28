@@ -100,7 +100,7 @@ struct Utf8Char {
 
 static const unsigned char firstByteMark[7] = {0x00, 0x00, 0xC0, 0xE0, 0xF0, 0xF8, 0xFC};
 
-uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index);
+uint32_t DecodeUTF16(uint16_t const *utf16, size_t len, size_t *index, bool cesu8 = false);
 
 size_t EncodeUTF8(uint32_t codepoint, uint8_t* utf8, size_t len, size_t index);
 
@@ -110,10 +110,12 @@ bool IsValidUTF8(const std::vector<uint8_t> &data);
 
 Utf8Char ConvertUtf16ToUtf8(uint16_t d0, uint16_t d1, bool modify, bool isWriteBuffer = false);
 
-size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify = true, bool isGetBufferSize = false);
+size_t Utf16ToUtf8Size(const uint16_t *utf16, uint32_t length, bool modify = true,
+                       bool isGetBufferSize = false, bool cesu8 = false);
 
-size_t PUBLIC_API ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
-                                           size_t start, bool modify = true, bool isWriteBuffer = false);
+size_t PUBLIC_API ConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len,
+                                           size_t utf8Len, size_t start, bool modify = true,
+                                           bool isWriteBuffer = false, bool cesu = false);
 
 size_t DebuggerConvertRegionUtf16ToUtf8(const uint16_t *utf16In, uint8_t *utf8Out, size_t utf16Len, size_t utf8Len,
                                         size_t start, bool modify = true, bool isWriteBuffer = false);
