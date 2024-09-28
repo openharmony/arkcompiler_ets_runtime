@@ -30,3 +30,8 @@
     print(error instanceof TypeError);
   }
 })();
+
+const options = { cause: 'a cause' };
+const proxy = new Proxy(options, { get: () => 'proxied cause'});
+const err = Error('message', proxy);
+print(err.cause);
