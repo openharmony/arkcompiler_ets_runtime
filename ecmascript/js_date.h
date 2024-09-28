@@ -93,11 +93,9 @@ public:
 
     static constexpr size_t TIME_VALUE_OFFSET = JSObject::SIZE;
     ACCESSORS(TimeValue, TIME_VALUE_OFFSET, LOCAL_TIME_OFFSET)
-    ACCESSORS(LocalOffset, LOCAL_TIME_OFFSET, TV_SEC_OFFSET)  // localoffset in min
-    ACCESSORS_PRIMITIVE_FIELD(TvSec, int64_t, TV_SEC_OFFSET, TV_USEC_OFFSET)
-    ACCESSORS_PRIMITIVE_FIELD(TvUsec, int64_t, TV_USEC_OFFSET, SIZE)
+    ACCESSORS(LocalOffset, LOCAL_TIME_OFFSET, SIZE)  // localoffset in min
 
-    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, TIME_VALUE_OFFSET, TV_SEC_OFFSET)
+    DECL_VISIT_OBJECT_FOR_JS_OBJECT(JSObject, TIME_VALUE_OFFSET, SIZE)
 
     static double MakeDay(double year, double month, double date);
     static double MakeTime(double hour, double min, double sec, double ms);
@@ -119,7 +117,7 @@ public:
     double UTCTime(double timeMs) const;
 
     // 20.4.3.1
-    static JSTaggedValue Now(int64_t *sec = nullptr, int64_t *usec = nullptr);
+    static JSTaggedValue Now();
 
     // 20.4.3.2
     static JSTaggedValue Parse(EcmaRuntimeCallInfo *argv);
