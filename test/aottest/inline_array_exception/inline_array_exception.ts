@@ -54,5 +54,53 @@ for(let i25 =  0;i25<1;i25++){
         i25 = v0.every(()=>{});
     }
 }
+
+for(let i25 =  0;i25<1;i25++){
+    for(let i = 0;i<1;i++){
+        i25 = v0.sort();
+    }
+}
+const buffer = new ArrayBuffer(16);
+for(let i25 =  0;i25<1;i25++){
+    for(let i = 0;i<1;i++){
+        i25 = ArrayBuffer.isView(buffer);
+    }
+}
+const map = new Map([[1, 'one'], [2, 'two']]);
+for(let i25 =  0;i25<1;i25++){
+    for(let i = 0;i<1;i++){
+        i25 = map.keys();
+    }
+}
+for(let i25 =  0;i25<1;i25++){
+    for(let i = 0;i<1;i++){
+        i25 = map.values();
+    }
+}
+
+for(let i25 =  0;i25<1;i25++){
+    for(let i = 0;i<1;i++){
+        i25 = map.entries();
+    }
+}
+
+const set = new Set([1, 2, 2, 3]);
+for(let i25 =  0;i25<1;i25++){
+    for(let i = 0;i<1;i++){
+        i25 = set.keys();
+    }
+}
+for(let i25 =  0;i25<1;i25++){
+    for(let i = 0;i<1;i++){
+        i25 = set.values();
+    }
+}
+
+for(let i25 =  0;i25<1;i25++){
+    for(let i = 0;i<1;i++){
+        i25 = set.entries();
+    }
+}
+
 print(arr.findIndex((num)=>{return num>2}));
 print(arr.find((num)=>{return num>2}))
