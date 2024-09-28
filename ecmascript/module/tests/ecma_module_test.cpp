@@ -953,6 +953,34 @@ HWTEST_F_L0(EcmaModuleTest, ParseAbcPathAndOhmUrl)
     ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
     EXPECT_EQ(entryPoint, res5);
     EXPECT_EQ(outFileName, "/data/storage/el1/bundle/moduleName/ets/modules.abc");
+
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    CMap<CString, CVector<CString>> entryList;
+    entryList["entry"] = {
+        "packageName", "entry",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "",
+        "entryPath", "src/main/",
+        "isSO", "false"
+    };
+    entryList["har"] = {
+        "packageName", "har",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "1.2.0",
+        "entryPath", "Index.ets",
+        "isSO", "false"
+    };
+    pkgList["entry"] = entryList;
+    instance->SetpkgContextInfoList(pkgList);
+
+    inputFileName = "com.bundleName.test/moduleName/ets/pages/index";
+    CString outRes3 = "/data/storage/el1/bundle/moduleName/ets/modules.abc";
+    CString res6 = "com.bundleName.test/com.bundleName.test/moduleName/ets/pages/index";
+    ModulePathHelper::ParseAbcPathAndOhmUrl(instance, inputFileName, outFileName, entryPoint);
+    EXPECT_EQ(entryPoint, res6);
+    EXPECT_EQ(outFileName, outRes3);
 }
 
 HWTEST_F_L0(EcmaModuleTest, CheckNativeModule)
@@ -2281,6 +2309,14 @@ HWTEST_F_L0(EcmaModuleTest, ConcatImportFileNormalizedOhmurlWithRecordName)
     EXPECT_EQ(result, entryPoint);
 
     requestPath = "./@normalized:N&&&har/Index&1.0.0";
+    entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(), baseFilename,
+        recordName, requestPath);
+    EXPECT_EQ(result, entryPoint);
+
+    requestPath = "./Test2";
+    recordName = "&entry/ets/pages/Index&";
+    result = "&entry/ets/pages/Test2&";
+    pf->InsertJSRecordInfo(result);
     entryPoint = ModulePathHelper::ConcatImportFileNormalizedOhmurlWithRecordName(thread, pf.get(), baseFilename,
         recordName, requestPath);
     EXPECT_EQ(result, entryPoint);
@@ -3629,5 +3665,234 @@ HWTEST_F_L0(EcmaModuleTest, CloneEnvForSModule1)
     module1->SetTypes(ModuleTypes::NATIVE_MODULE);
     JSHandle<TaggedArray> elements = JSSharedModule::CloneEnvForSModule(thread, module1, envRec);
     EXPECT_TRUE(elements->GetLength() == 1U);
+}
+
+HWTEST_F_L0(EcmaModuleTest, InsertInSModuleManager) {
+    SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSSourceTextModule();
+    CString recordName = "test";
+    module1->SetEcmaModuleRecordNameString(recordName);
+    manager1->InsertInSModuleManager(thread, recordName, module1);
+    EXPECT_FALSE(thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, findModuleMutexWithLock) {
+    SharedModuleManager* manager1 = SharedModuleManager::GetInstance();
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module1 = objectFactory->NewSSourceTextModule();
+    std::string baseFileNameStr = MODULE_ABC_PATH "module_unexecute.abc";
+    CString baseFileName = baseFileNameStr.c_str();
+    module1->SetEcmaModuleFilenameString(baseFileName);
+    CString recordName1 = "module_unexecute";
+    module1->SetEcmaModuleRecordNameString(recordName1);
+    manager1->InsertInSModuleManager(thread, recordName1, module1);
+    manager1->findModuleMutexWithLock(thread, module1);
+    EXPECT_FALSE(thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetRecordName3)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_module_base.abc";
+
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
+    thread->GetEcmaVM()->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_ESM_TRACE);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_module_base");
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetExportObjectIndex3)
+{
+    ThreadNativeScope nativeScope(thread);
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+
+    ModuleLogger *moduleLogger = new ModuleLogger(thread->GetEcmaVM());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    JSNApi::GetExportObject(instance, "module_test_module_test_B", "a");
+    EXPECT_TRUE(result);
+    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, GetModuleValueOutterInternal2)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
+    thread->GetEcmaVM()->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_ESM_TRACE);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+}
+
+HWTEST_F_L0(EcmaModuleTest, RemoveModule)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    thread->GetEcmaVM()->GetJSOptions().SetIsWorker(false);
+
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    module->SetTypes(ModuleTypes::APP_MODULE);
+
+    JSHandle<JSTaggedValue> res = moduleManager->TryGetImportedModule("module_test_module_test_C");
+    EXPECT_NE(res, thread->GlobalConstants()->GetHandledUndefined());
+    ModuleDeregister::RemoveModule(thread, module);
+
+    res = moduleManager->TryGetImportedModule("module_test_module_test_C");
+    EXPECT_EQ(res, thread->GlobalConstants()->GetHandledUndefined());
+}
+
+HWTEST_F_L0(EcmaModuleTest, RemoveModule2)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    thread->GetEcmaVM()->GetJSOptions().SetIsWorker(false);
+
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    module->SetTypes(ModuleTypes::OHOS_MODULE);
+    
+    JSHandle<JSTaggedValue> res = moduleManager->TryGetImportedModule("module_test_module_test_C");
+    EXPECT_NE(res, thread->GlobalConstants()->GetHandledUndefined());
+    ModuleDeregister::RemoveModule(thread, module);
+
+    res = moduleManager->TryGetImportedModule("module_test_module_test_C");
+    EXPECT_EQ(res, thread->GlobalConstants()->GetHandledUndefined());
+}
+
+HWTEST_F_L0(EcmaModuleTest, IsEvaluatedModule)
+{
+    std::string baseFileName = MODULE_ABC_PATH "module_test_module_test_C.abc";
+    JSNApi::EnableUserUncaughtErrorHandler(instance);
+    bool result = JSNApi::Execute(instance, baseFileName, "module_test_module_test_C");
+    EXPECT_TRUE(result);
+    ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
+    JSHandle<SourceTextModule> module = moduleManager->HostGetImportedModule("module_test_module_test_C");
+    StateVisit stateVisit;
+    bool res = SourceTextModule::IsEvaluatedModule(thread, stateVisit, module);
+    EXPECT_TRUE(res);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ResolveNativeStarExport2)
+{
+    ObjectFactory *objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    CString recordName = "@ohos:hilog";
+    module->SetEcmaModuleRecordNameString(recordName);
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+
+    int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
+    thread->GetEcmaVM()->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_ESM_TRACE);
+    JSHandle<JSTaggedValue> res1 = SourceTextModule::ResolveNativeStarExport(thread, module, val);
+    EXPECT_TRUE(res1->IsNull());
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModuleImpl2)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    ModuleLogger *moduleLogger = new ModuleLogger(vm);
+    thread->GetCurrentEcmaContext()->SetModuleLogger(moduleLogger);
+
+    // internal module
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, StringRef::NewFromUtf8(vm, "requireNapi"),
+        FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiUndefined));
+    module->SetEcmaModuleRecordNameString("@hms:xxxxx");
+    int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
+    thread->GetEcmaVM()->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_ESM_TRACE);
+    SourceTextModule::LoadNativeModuleImpl(vm, thread, module, ModuleTypes::INTERNAL_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+    thread->GetCurrentEcmaContext()->SetModuleLogger(nullptr);
+    delete moduleLogger;
+}
+
+HWTEST_F_L0(EcmaModuleTest, LoadNativeModule3)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    JSHandle<JSTaggedValue> val = JSHandle<JSTaggedValue>::Cast(objectFactory->NewFromUtf8("val"));
+    JSHandle<LocalExportEntry> localExportEntry =
+        objectFactory->NewLocalExportEntry(val, val, 0, SharedTypes::UNSENDABLE_MODULE);
+    JSHandle<TaggedArray> localExportEntries = objectFactory->NewTaggedArray(1);
+    localExportEntries->Set(thread, 0, localExportEntry);
+    module->SetEcmaModuleRecordNameString("@app:bundleName/moduleName/lib*.so");
+    module->SetLocalExportEntries(thread, localExportEntries);
+    module->StoreModuleValue(thread, 0, val);
+    module->SetTypes(ModuleTypes::NATIVE_MODULE);
+    Local<JSValueRef> requireNapi = StringRef::NewFromUtf8(vm, "requireNapi");
+    Local<ObjectRef> globalObject = JSNApi::GetGlobalObject(vm);
+    globalObject->Set(vm, requireNapi, FunctionRef::New(const_cast<panda::EcmaVM*>(vm), MockRequireNapiValue));
+    int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
+    thread->GetEcmaVM()->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_ESM_TRACE);
+    SourceTextModule::LoadNativeModule(thread, module, ModuleTypes::APP_MODULE);
+    EXPECT_TRUE(!thread->HasPendingException());
+}
+
+HWTEST_F_L0(EcmaModuleTest, EvaluateForConcurrent)
+{
+    // Mock create sendable function
+    auto objectFactory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+
+    uint32_t methodOffset = 100;
+    MethodLiteral *methodLiteral = new MethodLiteral(EntityId(methodOffset));
+    methodLiteral->SetIsShared(true);
+    JSHandle<Method> method = objectFactory->NewSMethod(methodLiteral);
+
+    module->SetStatus(ModuleStatus::INSTANTIATED);
+    int res = SourceTextModule::EvaluateForConcurrent(thread, module, method);
+    EXPECT_EQ(res, SourceTextModule::UNDEFINED_INDEX);
+    
+    module->SetStatus(ModuleStatus::EVALUATED);
+    res = SourceTextModule::EvaluateForConcurrent(thread, module, method);
+    EXPECT_EQ(res, SourceTextModule::UNDEFINED_INDEX);
+
+    JSHandle<JSObject> error = objectFactory->GetJSError(
+        base::ErrorType::RANGE_ERROR, "Stack overflow!", StackCheck::NO);
+    thread->SetException(error.GetTaggedValue());
+    res = SourceTextModule::EvaluateForConcurrent(thread, module, method);
+    EXPECT_EQ(res, 0);
+}
+
+HWTEST_F_L0(EcmaModuleTest, ModuleDeclarationArrayEnvironmentSetup2)
+{
+    auto vm = thread->GetEcmaVM();
+    ObjectFactory *objectFactory = vm->GetFactory();
+    JSHandle<SourceTextModule> module = objectFactory->NewSourceTextModule();
+    int arkProperties = thread->GetEcmaVM()->GetJSOptions().GetArkProperties();
+    thread->GetEcmaVM()->GetJSOptions().SetArkProperties(arkProperties | ArkProperties::ENABLE_ESM_TRACE);
+    SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(thread, module);
+    EXPECT_TRUE(!thread->HasPendingException());
+
+    module->SetStatus(ModuleStatus::EVALUATED);
+    SourceTextModule::ModuleDeclarationArrayEnvironmentSetup(thread, module);
+    EXPECT_TRUE(!thread->HasPendingException());
 }
 }  // namespace panda::test
