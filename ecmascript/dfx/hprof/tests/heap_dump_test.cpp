@@ -116,6 +116,16 @@ public:
         return ret;
     }
 
+    bool DecodeRawHeapSnashot(std::string &inputPath, std::string &outputPath)
+    {
+        HeapProfilerInterface *heapProfile = HeapProfilerInterface::GetInstance(instance);
+        fstream outputString(outputPath, std::ios::out);
+        outputString.close();
+        outputString.clear();
+        auto ret = heapProfile->GenerateHeapSnapshot(inputPath, outputPath);
+        return ret;
+    }
+
     bool MatchHeapDumpString(const std::string &filePath, std::string targetStr)
     {
         std::string line;
@@ -1109,13 +1119,24 @@ HWTEST_F_L0(HeapDumpTest, TestHeapDumpBinaryDump)
     tester.NewObject(JSPromise::SIZE, JSType::JS_PROMISE, proto);
     // ASYNC_GENERATOR_REQUEST
     factory->NewAsyncGeneratorRequest();
-    bool ret = tester.GenerateRawHeapSnashot("test_binary_dump.raw");
+    // JS_WEAK_SET
+    tester.NewJSWeakSet();
+    // JS_WEAK_MAP
+    tester.NewJSWeakMap();
+    std::string rawHeapPath("test_binary_dump.raw");
+    bool ret = tester.GenerateRawHeapSnashot(rawHeapPath);
     ASSERT_TRUE(ret);
-    std::ifstream file("test_binary_dump.raw", std::ios::binary);
+    std::ifstream file(rawHeapPath, std::ios::binary);
     std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     ASSERT_TRUE(content.size() > 0);
     auto u64Ptr = reinterpret_cast<const uint64_t *>(content.c_str());
     ASSERT_TRUE(*u64Ptr > 0);
+    std::string snapshotPath("test_binary_dump.heapsnapshot");
+    ret = tester.DecodeRawHeapSnashot(rawHeapPath, snapshotPath);
+    ASSERT_TRUE(ret);
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"SharedArrayBuffer\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakSet\""));
+    ASSERT_TRUE(tester.MatchHeapDumpString(snapshotPath, "\"WeakMap\""));
 }
 
 HWTEST_F_L0(HeapDumpTest, TestSharedFullGCInHeapDump)
