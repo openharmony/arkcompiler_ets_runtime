@@ -13,7 +13,6 @@
 
 import("//arkcompiler/ets_frontend/es2panda/es2abc_config.gni")
 import("//arkcompiler/ets_runtime/js_runtime_config.gni")
-import("$build_root/config/sanitizers/sanitizers.gni")
 import("$build_root/toolchain/toolchain.gni")
 
 group("ark_js_packages") {
@@ -474,24 +473,6 @@ config("ark_jsruntime_common_config") {
 
   if (enable_cow_array) {
     defines += [ "ENABLE_COW_ARRAY" ]
-  }
-
-  if (run_with_asan && is_linux &&
-      (current_cpu == "x86" || current_cpu == "x64")) {
-    cflags_cc += [
-      "-fno-inline-functions",
-      "-fno-inline",
-      "-fsanitize=address",
-      "-fsanitize-address-use-after-scope",
-      "-fno-omit-frame-pointer",
-      "-fsanitize=leak",
-    ]
-
-    if (!use_musl) {
-      libs = [ "$clang_base_path/lib64/clang/$clang_version/lib/linux/libclang_rt.asan-x86_64.a" ]
-    } else {
-      libs = [ "$clang_base_path/lib/clang/$clang_version/lib/x86_64-linux-ohos/libclang_rt.asan.a" ]
-    }
   }
 
   if (current_cpu == "arm") {
@@ -1167,7 +1148,8 @@ ohos_source_set("libark_jsruntime_test_set") {
   }
 
   if (is_ohos && is_standard_system) {
-    stub_an_file_path = "/system/lib64/${arkcompiler_relative_lib_path}/stub.an"
+    stub_an_file_path =
+        "${arkcompiler_lib64_path}/${arkcompiler_relative_lib_path}/stub.an"
   } else {
     stub_an_file_path =
         rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an")

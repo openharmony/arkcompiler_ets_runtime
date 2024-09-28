@@ -105,12 +105,12 @@ public:
 
     inline void AsanPoisonFreeObject() const
     {
-        ASAN_POISON_MEMORY_REGION(mem_, size_);
+        ASAN_POISON_MEMORY_REGION((const volatile void *)mem_, size_);
     }
 
     inline void AsanUnPoisonFreeObject() const
     {
-        ASAN_UNPOISON_MEMORY_REGION(mem_, size_);
+        ASAN_UNPOISON_MEMORY_REGION((const volatile void *)mem_, size_);
     }
 
     inline void SetInstalled(bool installed)

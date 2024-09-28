@@ -23,6 +23,7 @@ declare_args() {
 
   # If true, enable fuzz option. Default false.
   enable_fuzz_option = false
+  run_with_asan = false
 
   # Enable pgo for building.
   ets_runtime_feature_enable_pgo = false
@@ -67,13 +68,13 @@ if (!ark_standalone_build) {
 if (!defined(build_variant)) {
   build_variant = "root"
 }
+import("$build_root/config/sanitizers/sanitizers.gni")
 ark_root = "//arkcompiler/runtime_core"
 js_root = "//arkcompiler/ets_runtime"
 global_root = "//base/global/i18n"
 hilog_root = "//base/hiviewdfx/hilog/interfaces/native/innerkits"
 qos_root = "//foundation/resourceschedule/qos_manager"
 compile_llvm_online = false
-run_with_asan = false
 if (enable_fuzz_option) {
   run_with_asan = true
 }
@@ -90,6 +91,11 @@ if (defined(is_arkui_x) && is_arkui_x && defined(runtime_mode) &&
 asan_lib_path = "/usr/lib/llvm-10/lib/clang/10.0.0/lib/linux"
 
 # under /system/lib64 dir
+if (is_asan) {
+  arkcompiler_lib64_path = "/system/asan/lib64"
+} else {
+  arkcompiler_lib64_path = "/system/lib64"
+}
 arkcompiler_relative_lib_path = "module/arkcompiler"
 if (is_standard_system || ark_standalone_build) {
   icu_part_name = "icu"
@@ -190,7 +196,7 @@ template("libark_jsruntime_common_set") {
 
     if (is_ohos && is_standard_system) {
       stub_an_file_path =
-          "/system/lib64/${arkcompiler_relative_lib_path}/stub.an"
+          "${arkcompiler_lib64_path}/${arkcompiler_relative_lib_path}/stub.an"
     } else {
       stub_an_file_path =
           rebase_path("$root_gen_dir/arkcompiler/ets_runtime/stub.an")

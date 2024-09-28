@@ -1424,7 +1424,8 @@ void NewObjectStubBuilder::HeapAlloc(Variable *result, Label *exit, RegionSpaceF
     }
 }
 
-void NewObjectStubBuilder::AllocateInSOldPrologue(Variable *result, Label *callRuntime, Label *exit)
+void NewObjectStubBuilder::AllocateInSOldPrologue([[maybe_unused]] Variable *result,
+    Label *callRuntime, [[maybe_unused]] Label *exit)
 {
     auto env = GetEnvironment();
     Label success(env);
@@ -1473,7 +1474,8 @@ void NewObjectStubBuilder::AllocateInSOld(Variable *result, Label *exit, GateRef
     }
 }
 
-void NewObjectStubBuilder::AllocateInYoungPrologue(Variable *result, Label *callRuntime, Label *exit)
+void NewObjectStubBuilder::AllocateInYoungPrologue([[maybe_unused]] Variable *result,
+    Label *callRuntime, [[maybe_unused]] Label *exit)
 {
     auto env = GetEnvironment();
     Label success(env);
