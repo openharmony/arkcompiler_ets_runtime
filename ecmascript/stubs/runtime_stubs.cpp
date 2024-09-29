@@ -4050,6 +4050,61 @@ DEF_RUNTIME_STUBS(GetCollationValueFromIcuCollator)
     return thread->GlobalConstants()->GetDefaultString().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(IsFastRegExp)
+{
+    RUNTIME_STUBS_HEADER(IsFastRegExp);
+    JSHandle<JSObject> thisValue = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
+    JSHandle<JSTaggedValue> thisObjVal(thisValue);
+    bool result = builtins::BuiltinsRegExp::IsFastRegExp(thread, thisObjVal);
+    return JSTaggedValue(result).GetRawData();
+}
+
+DEF_RUNTIME_STUBS(GetAllFlagsInternal)
+{
+    RUNTIME_STUBS_HEADER(GetAllFlagsInternal);
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    uint8_t *flagsStr = new uint8_t[RegExpParser::FLAG_NUM + 1];  // FLAG_NUM flags + '\0'
+    if (flagsStr == nullptr) {
+        LOG_ECMA(FATAL) << "BuiltinsRegExp::GetAllFlagsInternal:flagsStr is nullptr";
+    }
+    size_t flagsLen = 0;
+    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
+    int64 bigFlagsStr = value->GetInt();
+    if (bigFlagsStr & RegExpParser::FLAG_HASINDICES) {
+        flagsStr[flagsLen] = 'd';
+        flagsLen++;
+    }
+    if (bigFlagsStr & RegExpParser::FLAG_GLOBAL) {
+        flagsStr[flagsLen] = 'g';
+        flagsLen++;
+    }
+    if (bigFlagsStr & RegExpParser::FLAG_IGNORECASE) {
+        flagsStr[flagsLen] = 'i';
+        flagsLen++;
+    }
+    if (bigFlagsStr & RegExpParser::FLAG_MULTILINE) {
+        flagsStr[flagsLen] = 'm';
+        flagsLen++;
+    }
+    if (bigFlagsStr & RegExpParser::FLAG_DOTALL) {
+        flagsStr[flagsLen] = 's';
+        flagsLen++;
+    }
+    if (bigFlagsStr & RegExpParser::FLAG_UTF16) {
+        flagsStr[flagsLen] = 'u';
+        flagsLen++;
+    }
+    if (bigFlagsStr & RegExpParser::FLAG_STICKY) {
+        flagsStr[flagsLen] = 'y';
+        flagsLen++;
+    }
+
+    flagsStr[flagsLen] = '\0';
+    JSHandle<EcmaString> flagsString = factory->NewFromUtf8(flagsStr, flagsLen);
+    delete[] flagsStr;
+    return flagsString.GetTaggedValue().GetRawData();
+}
+
 void RuntimeStubs::Initialize(JSThread *thread)
 {
 #define DEF_RUNTIME_STUB(name) kungfu::RuntimeStubCSigns::ID_##name

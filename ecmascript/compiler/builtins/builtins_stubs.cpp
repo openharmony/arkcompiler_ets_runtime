@@ -21,6 +21,7 @@
 #include "ecmascript/compiler/builtins/builtins_dataview_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_function_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_string_stub_builder.h"
+#include "ecmascript/compiler/builtins/builtins_regexp_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_number_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_proxy_stub_builder.h"
 #include "ecmascript/compiler/builtins/builtins_reflect_stub_builder.h"

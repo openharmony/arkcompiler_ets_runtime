@@ -2056,7 +2056,8 @@ void Builtins::InitializeRegExp(const JSHandle<GlobalEnv> &env)
                 FunctionLength::ZERO);
     JSHandle<JSFunction>(execFunc)->SetLexicalEnv(thread_, env);
 
-    JSHandle<JSTaggedValue> flagsGetter = CreateGetter(env, RegExp::GetFlags, "flags", FunctionLength::ZERO);
+    JSHandle<JSTaggedValue> flagsGetter = CreateGetter(env, RegExp::GetFlags, "flags", FunctionLength::ZERO,
+        kungfu::BuiltinsStubCSigns::RegExpGetFlags);
     JSHandle<JSTaggedValue> flagsKey(globalConstants->GetHandledFlagsString());
     SetGetter(regPrototype, flagsKey, flagsGetter);
     JSHandle<JSFunction>(flagsGetter)->SetLexicalEnv(thread_, env);
@@ -2887,16 +2888,19 @@ void Builtins::SetStringTagSymbol(const JSHandle<GlobalEnv> &env, const JSHandle
 }
 
 JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
-                                               std::string_view name, int length) const
+                                               std::string_view name, int length,
+                                               kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
     JSHandle<JSTaggedValue> funcName(factory_->NewFromUtf8ReadOnly(name));
-    return CreateGetter(env, func, funcName, length);
+    return CreateGetter(env, func, funcName, length, builtinId);
 }
 
 JSHandle<JSTaggedValue> Builtins::CreateGetter(const JSHandle<GlobalEnv> &env, EcmaEntrypoint func,
-                                               JSHandle<JSTaggedValue> key, int length) const
+                                               JSHandle<JSTaggedValue> key, int length,
+                                               kungfu::BuiltinsStubCSigns::ID builtinId) const
 {
-    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func));
+    JSHandle<JSFunction> function = factory_->NewJSFunction(env, reinterpret_cast<void *>(func),
+        FunctionKind::GETTER_FUNCTION, builtinId);
     JSFunction::SetFunctionLength(thread_, function, JSTaggedValue(length));
     JSHandle<JSTaggedValue> prefix = thread_->GlobalConstants()->GetHandledGetString();
     JSFunction::SetFunctionName(thread_, JSHandle<JSFunctionBase>(function), key, prefix);
