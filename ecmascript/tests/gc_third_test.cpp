@@ -20,6 +20,7 @@
 #include "ecmascript/mem/concurrent_marker.h"
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
+#include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/tests/ecma_test_common.h"
 
 using namespace panda;
@@ -417,6 +418,37 @@ HWTEST_F_L0(GCTest, CollectGarbageTest002)
     heap->SetMarkType(MarkType::MARK_FULL);
     ASSERT_EQ(heap->GetMarkType(), MarkType::MARK_FULL);
     heap->CollectGarbage(TriggerGCType::EDEN_GC, GCReason::IDLE);
+}
+
+HWTEST_F_L0(GCTest, CollectGarbageTest003)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->GetJSThread()->SetMarkStatus(MarkStatus::READY_TO_MARK);
+    heap->CollectGarbage(TriggerGCType::FULL_GC, GCReason::IDLE);
+}
+
+HWTEST_F_L0(GCTest, NeedStopCollectionTest002)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    ASSERT_EQ(heap->NeedStopCollection(), true);
+}
+
+HWTEST_F_L0(GCTest, NeedStopCollectionTest003)
+{
+    SharedHeap *heap = SharedHeap::GetInstance();
+    heap->SetSensitiveStatus(AppSensitiveStatus::ENTER_HIGH_SENSITIVE);
+    heap->GetOldSpace()->SetInitialCapacity(1000);
+    ASSERT_EQ(heap->NeedStopCollection(), false);
+}
+
+HWTEST_F_L0(GCTest, TriggerIdleCollectionTest007)
+{
+    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
+    heap->SetIdleTask(IdleTaskType::INCREMENTAL_MARK);
+    ASSERT_EQ(heap->GetIncrementalMarker()->GetIncrementalGCStates(), IncrementalGCStates::ROOT_SCAN);
+    heap->GetIncrementalMarker()->TriggerIncrementalMark(1000);
+    heap->TriggerIdleCollection(1000);
 }
 
 } // namespace panda::test
