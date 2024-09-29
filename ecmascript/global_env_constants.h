@@ -562,6 +562,9 @@ class ObjectFactory;
     V(FlagsString,                    FLAGS_INDEX,                           "flags")                       \
     V(GString,                        G_INDEX,                               "g")                           \
     V(NfcString,                      NFC_INDEX,                             "NFC")                         \
+    V(NfdString,                      NFD_INDEX,                             "NFD")                         \
+    V(NfkcString,                     NFKC_INDEX,                            "NFKC")                        \
+    V(NfkdString,                     NFKD_INDEX,                            "NFKD")                        \
     V(EntriesString,                  ENTRIES_INDEX,                         "entries")                     \
     V(LeftSquareBracketString,        LEFT_SQUARE_BRACKET_INDEX,             "[")                           \
     V(RightSquareBracketString,       RIGHT_SQUARE_BRACKET_INDEX,            "]")                           \
