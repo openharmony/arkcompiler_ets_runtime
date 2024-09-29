@@ -1176,7 +1176,7 @@ JSTaggedValue ObjectFastOperator::AddPropertyByIndex(JSThread *thread, JSTaggedV
     INTERPRETER_TRACE(thread, AddPropertyByIndex);
     [[maybe_unused]] EcmaHandleScope handleScope(thread);
     // fixme(hzzhouzebin) this makes SharedArray's frozen no sense.
-    if (UNLIKELY(!JSObject::Cast(receiver)->IsExtensible())  && !receiver.IsJSSharedArray()) {
+    if (UNLIKELY(!JSObject::Cast(receiver)->IsExtensible()) && !receiver.IsJSSharedArray()) {
         THROW_TYPE_ERROR_AND_RETURN(thread, GET_MESSAGE_STRING(SetPropertyWhenNotExtensible),
                                     JSTaggedValue::Exception());
     }

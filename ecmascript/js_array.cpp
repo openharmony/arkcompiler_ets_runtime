@@ -475,6 +475,41 @@ bool JSArray::FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedVa
                                                       value.GetTaggedValue());
 }
 
+bool JSArray::TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
+                                        const JSHandle<JSTaggedValue> &value,  SCheckMode sCheckMode)
+{
+    JSHandle<JSTaggedValue> objVal(obj);
+    if (!objVal->IsStableJSArray(thread)) {
+        // if JSArray is DictionaryMode goto slowPath
+        return JSObject::CreateDataPropertyOrThrow(thread, obj, index, value, sCheckMode);
+    }
+
+    uint32_t capacity = TaggedArray::Cast(obj->GetElements())->GetLength();
+    ElementsKind kind = obj->GetJSHClass()->GetElementsKind();
+    uint32_t len = JSHandle<JSArray>::Cast(obj)->GetArrayLength();
+    if (index > len || kind != ElementsKind::HOLE_TAGGED) {
+        // goto slowPath
+        return JSObject::CreateDataPropertyOrThrow(thread, obj, index, value, sCheckMode);
+    }
+
+    if (index == len) {
+        // append situation
+        if (!IsArrayLengthWritable(thread, obj)) {
+            THROW_TYPE_ERROR_AND_RETURN(thread, "UnWritable ArrayLength", false);
+        }
+
+        uint32_t newLen = index + 1;
+        if (newLen > capacity) {
+            // needs to expand the capacity
+            return JSObject::CreateDataPropertyOrThrow(thread, obj, index, value, sCheckMode);
+        }
+        JSHandle<JSArray>::Cast(obj)->SetArrayLength(thread, newLen);
+    }
+    
+    TaggedArray::Cast(obj->GetElements())->Set(thread, index, value);
+    return true;
+}
+
 // ecma2024 23.1.3.20 Array.prototype.sort(comparefn)
 JSTaggedValue JSArray::Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn)
 {

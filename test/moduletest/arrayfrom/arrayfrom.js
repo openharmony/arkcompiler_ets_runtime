@@ -203,3 +203,179 @@ print(Array.from(v1.keys()))
     print(JSON.stringify(res));
 }
 
+// array.from by arrayLike with mapFunc
+{
+    let res = Array.from({length : 3}, () => {});
+    print(JSON.stringify(res));
+}
+  
+{
+    let res = Array.from({length : 3}, () => ({}));
+    print(JSON.stringify(res));
+}
+  
+{
+    let res = Array.from({length : 3}, () => []);
+    print(JSON.stringify(res));
+}
+  
+{
+    let res = Array.from({length : 3}, () => [1,2,3]);
+    print(JSON.stringify(res));
+}
+  
+{
+    let res = Array.from({length : 3}, () => 0);
+    print(JSON.stringify(res));
+}
+  
+{
+    let num = 1;
+    let len = 1025;
+    let res = Array.from({length : len}, () => num);
+    print(res.length == len);
+    let flag = true;
+    for (let i = 0; i < res.length; ++i) {
+      if (res[i] != num) {
+        flag = false;
+        break;
+      }
+    }
+    if (flag) {
+      print("get JSArray from arrayLike Success");
+    }
+}
+
+{
+    function example() {
+      let res = Array.from(arguments);
+      print(JSON.stringify(res));
+    }
+    example(1, 2, 3);
+}
+  
+{
+    let arrayLike = {0:1.1, 1:12, 2:'ss', length: 3}
+    let res = Array.from(arrayLike, x => x + x);
+    print(JSON.stringify(res));
+}
+  
+{
+    let res = Array.from({length : 3}, (_, index) => [index * 2]);
+    print(JSON.stringify(res));
+}
+
+{
+    const nonConstructor = {}
+    let res = Array.from.call(nonConstructor, {length : 3}, (_, index) => [index * 2]);
+    print(JSON.stringify(res));
+}
+
+//array.from by JSArray
+{
+    const nonConstructor = {}
+    let num = 1
+    let len = 1025 // may transfer to dictionary elements type
+    let myArray = new Array(1025).fill(num)
+    let res = Array.from.call(nonConstructor, myArray);
+    print(res.length == len);
+    let flag = true;
+    for (let i = 0; i < res.length; ++i) {
+      if (res[i] != num || res.at(i) != num) {
+        flag = false;
+        break;
+      }
+    }
+    if (flag) {
+      print("get JSArray from JSArray Success!")
+    }
+}
+  
+{
+    const nonConstructor = {}
+    let myArray = new Array(1,2,3,4,5)
+    let res = Array.from.call(nonConstructor, myArray);
+    print(JSON.stringify(res));
+}
+  
+{
+    let res = Array.from([1,2,3,4,5]);
+    print(JSON.stringify(res));
+}
+
+// test for String with mapFunc
+{
+    let str = 'a'.repeat(10)
+    let res = Array.from(str, x => x + 's');
+    print(JSON.stringify(res));
+}
+  
+{
+    let len = 1025
+    const head = 'h'
+    const tail = '_tail'
+    let str = head.repeat(len)
+    let res = Array.from(str, x => x + tail);
+    let flag = true;
+    for (let i = 0; i < res.length; ++i) {
+      if (res[i] != head + tail) {
+        flag = false;
+        break;
+      }
+    }
+    if (res.length == len && flag) {
+      print("result check successfully");
+    } else {
+      print("result check failed");
+    }
+}
+  
+// test for Set with mapFunc
+{
+    let set = new Set(['test', 'for', 'array', 'from', 'set'])
+    let res = Array.from(set, x => x);
+    print(JSON.stringify(res));
+}
+  
+// test for Map with mapFunc
+{
+    let map = new Map([[1, 'test'], [2, 'for'], [3, 'array'], [4, 'from'], [5, 'map']]);
+    let res = Array.from(map, x => x);
+    print(JSON.stringify(res));
+}
+  
+// test for TypedArray with mapFunc
+{
+    let mapFunc = x => x + x;
+    let uint8Array = new Uint8Array([1, 2, 3, 4, 5, 6]);
+    let res = Array.from(uint8Array, mapFunc);
+    print(JSON.stringify(res));
+}
+  
+{
+    let mapFunc = x => x + x;
+    let uint16Array = new Uint16Array([1, 2, 3, 4, 5, 6]);
+    let res = Array.from(uint16Array, mapFunc);
+    print(JSON.stringify(res));
+}
+  
+{
+    let mapFunc = x => x + x;
+    let uint32Array = new Uint32Array([1, 2, 3, 4, 5, 6]);
+    let res = Array.from(uint32Array, mapFunc);
+    print(JSON.stringify(res));
+}
+  
+{
+    let mapFunc = x => x + x;
+    let float32Array = new Float32Array([1, 2, 3, 4, 5, 6]);
+    let res = Array.from(float32Array, mapFunc);
+    print(JSON.stringify(res));
+}
+  
+{
+    let mapFunc = x => x + x;
+    let float64Array = new Float64Array([1, 2, 3, 4, 5, 6]);
+    let res = Array.from(float64Array, mapFunc);
+    print(JSON.stringify(res));
+}
