@@ -481,6 +481,12 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
         RuntimeStubs::DebugDumpWithHint(hintStr, dumpRawData);                          \
     } while (false)
 
+#if defined(PANDA_TARGET_AMD64) || defined(PANDA_TARGET_ARM64)
+    static const unsigned int machineCodeSize = 39;
+#else
+    static const unsigned int machineCodeSize = 23;
+#endif
+
 #define NEW_OBJECT_AND_DUMP(ClassName, TypeName)                                                \
     do {                                                                                        \
         JSHandle<JSHClass> class##ClassName =                                                   \
@@ -1202,7 +1208,7 @@ HWTEST_F_L0(EcmaDumpTest, HeapProfileDump)
                 break;
             }
             case JSType::MACHINE_CODE_OBJECT: {
-                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), MachineCode::SIZE, 6U);
+                CHECK_DUMP_FIELDS(TaggedObject::TaggedObjectSize(), MachineCode::SIZE, machineCodeSize);
                 GTEST_LOG_(INFO) << "MACHINE_CODE_OBJECT not support new in MachineCodeSpace";
                 break;
             }

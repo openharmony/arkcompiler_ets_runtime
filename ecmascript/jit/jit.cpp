@@ -343,35 +343,6 @@ void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
     }
 }
 
-// Used for jit machine code reusing of inner functions have the same method to improve performance.
-void Jit::ReuseCompiledFunc(JSThread *thread, JSHandle<JSFunction> &jsFunction)
-{
-    JSHandle<ProfileTypeInfoCell> profCell(thread, jsFunction->GetRawProfileTypeInfo());
-    JSTaggedValue machineCode = profCell->GetMachineCode().GetWeakRawValue();
-    if (machineCode.IsHole()) {
-        return;
-    }
-
-    ProfileTypeInfo *profileTypeInfo = ProfileTypeInfo::Cast(profCell->GetValue().GetTaggedObject());
-    if (profileTypeInfo->GetJitHotnessThreshold() == ProfileTypeInfo::JIT_DISABLE_FLAG) {
-        // disable reuse as disable jit in deopt
-        return;
-    }
-    if (machineCode.IsUndefined()) {
-        LOG_JIT(DEBUG) << "reset fuction jit hotness count";
-        // if old gc triggered, jit hotness cnt need to be recounted
-        profileTypeInfo->SetJitHotnessCnt(0);
-        profCell->SetMachineCode(thread, JSTaggedValue::Hole());
-        return;
-    }
-    JSHandle<MachineCode> machineCodeHandle(thread, machineCode.GetTaggedObject());
-    JSHandle<Method> method(thread, Method::Cast(jsFunction->GetMethod().GetTaggedObject()));
-    uintptr_t codeAddr = machineCodeHandle->GetFuncAddr();
-    FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes *>(machineCodeHandle->GetFuncEntryDes());
-    jsFunction->SetCompiledFuncEntry(codeAddr, funcEntryDes->isFastCall_);
-    jsFunction->SetMachineCode(thread, machineCodeHandle);
-}
-
 void Jit::Compile(EcmaVM *vm, JSHandle<JSFunction> &jsFunction, CompilerTier tier,
                   int32_t offset, JitCompileMode mode)
 {

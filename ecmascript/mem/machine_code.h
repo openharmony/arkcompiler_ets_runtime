@@ -23,6 +23,7 @@
 #include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/method.h"
 #include "ecmascript/mem/jit_fort_memdesc.h"
+#include "ecmascript/deoptimizer/calleeReg.h"
 
 #include "libpandabase/macros.h"
 
@@ -72,8 +73,6 @@ using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVecto
 //      INS_SIZE_OFFSET +-----------------------------------+
 //                      |          machine payload size     | 4 bytes
 //                      +-----------------------------------+
-//                      |          FuncEntryDesc size (0)   | 4 bytes
-//                      +-----------------------------------+
 //                      |          instructions size        | 4 bytes
 //                      +-----------------------------------+
 //                      |          instructions addr        | 8 bytes (if JitFort enabled)
@@ -81,7 +80,19 @@ using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVecto
 //                      |       nativePcOffsetTable size    | 4 bytes
 //                      +-----------------------------------+
 //                      |             func addr             | 8 bytes
-//    PAYLOAD_OFFSET/   +-----------------------------------+
+//                      +-----------------------------------+
+//                      |        fp deltaprevframe sp       | 8 bytes
+//                      +-----------------------------------+
+//                      |             func size             | 4 bytes
+//                      +-----------------------------------+
+//                      |        callee register num        | 4 bytes
+//                      +-----------------------------------+
+//                      |                                   | 64 * 4 bytes (AMD64 or ARM64)
+//                      |      callee reg2offset array      | or 32 * 4 bytes (others)
+//                      |                                   |
+//                      +-----------------------------------+
+//                      |             bit field             | 4 bytes
+//                      +-----------------------------------+
 //                      |              ...                  |
 //     INSTR_OFFSET     |                                   | if JitFort enabled, will be in JitFort space
 //   (16 byte align)    |     machine instructions(text)    | instead for non-huge sized machine code objects
@@ -102,8 +113,6 @@ using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVecto
 //                      +-----------------------------------+
 //                      |          machine payload size     | 4 bytes
 //                      +-----------------------------------+
-//                      |          FuncEntryDesc size       | 4 bytes
-//                      +-----------------------------------+
 //                      |          instructions size        | 4 bytes
 //                      +-----------------------------------+
 //                      |          instructions addr        | 8 bytes (if JitFort enabled)
@@ -111,10 +120,21 @@ using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVecto
 //                      |           stack map size          | 4 bytes
 //                      +-----------------------------------+
 //                      |             func addr             | 8 bytes
-//       PAYLOAD_OFFSET +-----------------------------------+
-//       (8 byte align) |           FuncEntryDesc           |
-//                      |              ...                  |
-//       INSTR_OFFSET   +-----------------------------------+
+//                      +-----------------------------------+
+//                      |        fp deltaprevframe sp       | 8 bytes
+//                      +-----------------------------------+
+//                      |             func size             | 4 bytes
+//                      +-----------------------------------+
+//                      |        callee register num        | 4 bytes
+//                      +-----------------------------------+
+//                      |                                   | 64 * 4 bytes (AMD64 or ARM64)
+//                      |      callee reg2offset array      | or 32 * 4 bytes (others)
+//                      |                                   |
+//                      +-----------------------------------+
+//                      |             bit field             | 4 bytes
+//                      +-----------------------------------+
+//                      |                                   |
+//       INSTR_OFFSET   |                                   |
 //       (16 byte align)|     machine instructions(text)    | if JitFort enabled, will be in JitFort space
 //                      |              ...                  | instead for non-huge sized machine code objects
 //      STACKMAP_OFFSET +-----------------------------------+ and pointed to by "instuctions addr"
@@ -138,9 +158,6 @@ using JitCodeMapVisitor = std::function<void(std::map<JSTaggedType, JitCodeVecto
 //   |                  |          instructions addr        |---+      |
 //   |                  +-----------------------------------+   |      | 256 kByte (Region)
 //   |                  |               ...                 |   |      |      multiples
-//   |                  |                                   |   |      |
-//   |                  +-----------------------------------+   |      |
-//   |                  |            FuncEntryDesc          |   |      |
 //   |                  |                                   |   |      |
 //   |                  +-----------------------------------+   |      |  if JitFort is disabled
 //   |                  |             ArkStackMap           |   |      |  Jit generated native code
@@ -168,17 +185,22 @@ public:
     }
 
     static constexpr size_t INS_SIZE_OFFSET = TaggedObjectSize();
+    static constexpr size_t INT32_SIZE = sizeof(int32_t);
+    static constexpr int CalleeReg2OffsetArraySize = 2 * kungfu::MAX_CALLEE_SAVE_REIGISTER_NUM;
     ACCESSORS_PRIMITIVE_FIELD(OSROffset, int32_t, INS_SIZE_OFFSET, OSRMASK_OFFSET);
     // The high 16bit is used as the flag bit, and the low 16bit is used as the count of OSR execution times.
     ACCESSORS_PRIMITIVE_FIELD(OsrMask, uint32_t, OSRMASK_OFFSET, PAYLOADSIZE_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(PayLoadSizeInBytes, uint32_t, PAYLOADSIZE_OFFSET, FUNCENTRYDESSIZE_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(FuncEntryDesSize, uint32_t, FUNCENTRYDESSIZE_OFFSET, INSTRSIZ_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(PayLoadSizeInBytes, uint32_t, PAYLOADSIZE_OFFSET, INSTRSIZ_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(InstructionsSize, uint32_t, INSTRSIZ_OFFSET, INSTRADDR_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(InstructionsAddr, uint64_t, INSTRADDR_OFFSET, STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET);
     ACCESSORS_PRIMITIVE_FIELD(StackMapOrOffsetTableSize, uint32_t,
         STACKMAP_OR_OFFSETTABLE_SIZE_OFFSET, FUNCADDR_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(FuncAddr, uint64_t, FUNCADDR_OFFSET, PADDING_OFFSET);
-    ACCESSORS_PRIMITIVE_FIELD(Padding, uint64_t, PADDING_OFFSET, LAST_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(FuncAddr, uint64_t, FUNCADDR_OFFSET, FPDELTA_PRVE_FRAME_SP_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(FpDeltaPrevFrameSp, uintptr_t, FPDELTA_PRVE_FRAME_SP_OFFSET, FUNC_SIZE_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(FuncSize, uint32_t, FUNC_SIZE_OFFSET, CALLEE_REGISTERNUM_OFFSET);
+    ACCESSORS_PRIMITIVE_FIELD(CalleeRegisterNum, uint32_t, CALLEE_REGISTERNUM_OFFSET, CALLEE_R2O_OFFSET);
+    static constexpr size_t BIT_FIELD_OFFSET = CALLEE_R2O_OFFSET + INT32_SIZE * CalleeReg2OffsetArraySize;
+    ACCESSORS_BIT_FIELD(BitField, BIT_FIELD_OFFSET, LAST_OFFSET);
     DEFINE_ALIGN_SIZE(LAST_OFFSET);
     static constexpr size_t PAYLOAD_OFFSET = SIZE;
     static constexpr uint32_t DATA_ALIGN = 8;
@@ -187,13 +209,29 @@ public:
     static constexpr uint32_t OSR_EXECUTE_CNT_OFFSET = OSRMASK_OFFSET + 2;
     static constexpr uint16_t OSR_DEOPT_FLAG = 0x80;
 
+    void SetCalleeReg2OffsetArray(int32_t* calleeRegArray)
+    {
+        DASSERT_PRINT(calleeRegArray != nullptr, "Array pointer cannot be null.");
+        for (size_t i = 0; i < CalleeReg2OffsetArraySize; i++) {
+            Barriers::SetPrimitive<int32_t>(this, CALLEE_R2O_OFFSET + i * INT32_SIZE, calleeRegArray[i]);
+        }
+    }
+
+    int32_t GetCalleeReg2OffsetArray(int32_t calleeRegIndex) const
+    {
+        DASSERT_PRINT(calleeRegIndex < CalleeReg2OffsetArraySize, "Array index out of bounds.");
+        return Barriers::GetValue<int32_t>(this, CALLEE_R2O_OFFSET + calleeRegIndex * INT32_SIZE);
+    }
+
+    // define BitField
+    static constexpr size_t IS_FAST_CALL_BITS = 1;
+    FIRST_BIT_FIELD(BitField, IsFastCall, bool, IS_FAST_CALL_BITS);
+
     DECL_DUMP()
 
-    uintptr_t GetFuncEntryDesAddress() const
+    uintptr_t GetNonTextAddress() const
     {
-        uintptr_t paddingAddr = reinterpret_cast<const uintptr_t>(this) + PADDING_OFFSET;
-        return IsAligned(paddingAddr, TEXT_ALIGN) ? paddingAddr : reinterpret_cast<const uintptr_t>(this) +
-            PAYLOAD_OFFSET;
+        return reinterpret_cast<const uintptr_t>(this) + LAST_OFFSET;
     }
 
     uintptr_t GetText() const;
@@ -228,9 +266,8 @@ public:
     }
 
     bool IsInText(const uintptr_t pc) const;
-    uintptr_t GetFuncEntryDes() const;
 
-    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
+    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo() const;
 
     void SetOsrDeoptFlag(bool isDeopt)
     {

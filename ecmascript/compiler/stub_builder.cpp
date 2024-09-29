@@ -10216,9 +10216,12 @@ void StubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef func
             Jump(&profileTypeInfoEnd);
         }
         Bind(&slotValueNotUndefined);
-        UpdateProfileTypeInfoCellType(glue, slotValue);
-        SetRawProfileTypeInfoToFunction(glue, function, slotValue);
-        Jump(&profileTypeInfoEnd);
+        {
+            UpdateProfileTypeInfoCellType(glue, slotValue);
+            SetRawProfileTypeInfoToFunction(glue, function, slotValue);
+            TryToJitReuseCompiledFunc(glue, function, slotValue);
+            Jump(&profileTypeInfoEnd);
+        }
     }
     Bind(&profileTypeInfoEnd);
 
@@ -10260,6 +10263,53 @@ GateRef StubBuilder::Loadlocalmodulevar(GateRef glue, GateRef index, GateRef mod
     auto ret = *result;
     env->SubCfgExit();
     return ret;
+}
+
+// Used for jit machine code reusing of inner functions have the same method to improve performance.
+void StubBuilder::TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell)
+{
+    Label subEntry(env_);
+    env_->SubCfgEntry(&subEntry);
+
+    Label machineCodeIsNotHole(env_);
+    Label exitPoint(env_);
+    Label hasNotDisable(env_);
+    GateRef weakMachineCode = Load(VariableType::JS_ANY(), profileTypeInfoCell,
+                                   IntPtr(ProfileTypeInfoCell::MACHINE_CODE_OFFSET));
+    BRANCH(TaggedIsHole(weakMachineCode), &exitPoint, &machineCodeIsNotHole);
+    Bind(&machineCodeIsNotHole);
+    {
+        GateRef profileTypeInfo = Load(VariableType::JS_ANY(), profileTypeInfoCell,
+                                       IntPtr(ProfileTypeInfoCell::VALUE_OFFSET));
+        GateRef jitHotnessThreshold = ProfilerStubBuilder(env_).GetJitHotnessThreshold(profileTypeInfo);
+        BRANCH(Int32Equal(jitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &exitPoint, &hasNotDisable);
+        Bind(&hasNotDisable);
+        {
+            Label machineCodeIsUndefine(env_);
+            Label machineCodeIsNotUndefine(env_);
+            BRANCH(TaggedIsUndefined(weakMachineCode), &machineCodeIsUndefine, &machineCodeIsNotUndefine);
+            Bind(&machineCodeIsUndefine);
+            {
+                ProfilerStubBuilder(env_).SetJitHotnessCnt(glue, profileTypeInfo, Int16(0));
+                Store(VariableType::JS_POINTER(), glue, profileTypeInfoCell,
+                      IntPtr(ProfileTypeInfoCell::MACHINE_CODE_OFFSET), Hole());
+                Jump(&exitPoint);
+            }
+            Bind(&machineCodeIsNotUndefine);
+            {
+                GateRef machineCode = TaggedCastToIntPtr(RemoveTaggedWeakTag(weakMachineCode));
+                GateRef codeAddr = Load(VariableType::NATIVE_POINTER(), machineCode,
+                                        IntPtr(MachineCode::FUNCADDR_OFFSET));
+                ASSERT(IntPtrNotEqual(codeAddr, IntPtr(0)));
+                GateRef isFastCall = GetIsFastCall(machineCode);
+                SetCompiledFuncEntry(glue, jsFunc, codeAddr, ZExtInt1ToInt32(isFastCall));
+                SetMachineCodeToFunction(glue, jsFunc, machineCode);
+                Jump(&exitPoint);
+            }
+        }
+    }
+    Bind(&exitPoint);
+    env_->SubCfgExit();
 }
 
 GateRef StubBuilder::GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv)

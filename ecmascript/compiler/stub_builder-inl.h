@@ -2869,6 +2869,11 @@ inline GateRef StubBuilder::IntPtrEuqal(GateRef x, GateRef y)
     return env_->Is32Bit() ? Int32Equal(x, y) : Int64Equal(x, y);
 }
 
+inline GateRef StubBuilder::IntPtrNotEqual(GateRef x, GateRef y)
+{
+    return env_->Is32Bit() ? Int32NotEqual(x, y) : Int64NotEqual(x, y);
+}
+
 inline GateRef StubBuilder::GetBitMask(GateRef bitoffset)
 {
     // BIT_PER_WORD_MASK
@@ -3148,10 +3153,16 @@ inline void StubBuilder::SetMethodToFunction(GateRef glue, GateRef function, Gat
     Store(VariableType::JS_ANY(), glue, function, offset, value, mAttr);
 }
 
-inline void StubBuilder::SetCodeEntryToFunction(GateRef glue, GateRef function, GateRef value)
+inline void StubBuilder::SetCodeEntryToFunctionFromMethod(GateRef glue, GateRef function, GateRef method)
 {
-    GateRef methodOffset = IntPtr(Method::CODEENTRY_LITERAL_OFFSET);
-    GateRef codeEntry = Load(VariableType::NATIVE_POINTER(), value, methodOffset);
+    GateRef codeEntryOffset = IntPtr(Method::CODEENTRY_LITERAL_OFFSET);
+    GateRef codeEntry = Load(VariableType::NATIVE_POINTER(), method, codeEntryOffset);
+    GateRef funcOffset = IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET);
+    Store(VariableType::NATIVE_POINTER(), glue, function, funcOffset, codeEntry);
+}
+
+inline void StubBuilder::SetCodeEntryToFunctionFromFuncEntry(GateRef glue, GateRef function, GateRef codeEntry)
+{
     GateRef funcOffset = IntPtr(JSFunctionBase::CODE_ENTRY_OFFSET);
     Store(VariableType::NATIVE_POINTER(), glue, function, funcOffset, codeEntry);
 }
@@ -3228,6 +3239,21 @@ inline void StubBuilder::SetCompiledCodeFlagToFunction(GateRef glue, GateRef fun
     GateRef mask = Int32(JSFunctionBase::COMPILED_CODE_FASTCALL_BITS << JSFunctionBase::IsCompiledCodeBit::START_BIT);
     GateRef newVal = Int32Or(Int32And(oldVal, Int32Not(mask)), value);
     Store(VariableType::INT32(), glue, function, bitFieldOffset, newVal);
+}
+
+inline void StubBuilder::SetCompiledFuncEntry(GateRef glue, GateRef jsFunc, GateRef codeEntry, GateRef isFastCall)
+{
+    SetCodeEntryToFunctionFromFuncEntry(glue, jsFunc, codeEntry);
+    GateRef compiledCodeFastCallBits = Int32Add(Int32(1),
+                                                Int32LSL(isFastCall, Int32(JSFunctionBase::IsFastCallBit::START_BIT)));
+    SetCompiledCodeFlagToFunction(glue, jsFunc, compiledCodeFastCallBits);
+}
+
+inline GateRef StubBuilder::GetIsFastCall(GateRef machineCode)
+{
+    GateRef bitfield = Load(VariableType::INT32(), machineCode, IntPtr(MachineCode::BIT_FIELD_OFFSET));
+    return Int32And(Int32LSR(bitfield, Int32(MachineCode::IsFastCallBits::START_BIT)),
+                    Int32((1LU << MachineCode::IsFastCallBits::SIZE) - 1));
 }
 
 inline void StubBuilder::SetTaskConcurrentFuncFlagToFunction(GateRef glue, GateRef function, GateRef value)

@@ -113,22 +113,28 @@ bool MachineCode::SetNonText(const MachineCodeDesc &desc, EntityId methodId)
         return false;
     }
 
-    FuncEntryDes *funcEntry = reinterpret_cast<FuncEntryDes*>(GetFuncEntryDesAddress());
-    if (memcpy_s(funcEntry, desc.funcEntryDesSize, reinterpret_cast<uint8_t*>(desc.funcEntryDesAddr),
-        desc.funcEntryDesSize) != EOK) {
-        LOG_JIT(ERROR) << "memcpy fail in copy fast jit funcEntry";
+    FuncEntryDes *funcEntry = reinterpret_cast<FuncEntryDes*>(desc.funcEntryDesAddr);
+    if (!funcEntry) {
+        LOG_JIT(ERROR) << "funcEntry is null.";
         return false;
     }
-
     uint32_t cnt = desc.funcEntryDesSize / sizeof(FuncEntryDes);
     ASSERT(cnt <= 2); // 2: jsfunction + deoptimize stub
     for (uint32_t i = 0; i < cnt; i++) {
-        funcEntry->codeAddr_ += reinterpret_cast<uintptr_t>(textStart);
         if (methodId == EntityId(funcEntry->indexInKindOrMethodId_)) {
-            SetFuncAddr(funcEntry->codeAddr_);
+            uint64_t codeAddr = funcEntry->codeAddr_ +
+                                static_cast<uint64_t>(reinterpret_cast<uintptr_t>(textStart));
+            SetFuncAddr(codeAddr);
+            break;
         }
         funcEntry++;
     }
+
+    SetIsFastCall(funcEntry->isFastCall_);
+    SetFpDeltaPrevFrameSp(funcEntry->fpDeltaPrevFrameSp_);
+    SetFuncSize(funcEntry->funcSize_);
+    SetCalleeRegisterNum(funcEntry->calleeRegisterNum_);
+    SetCalleeReg2OffsetArray(funcEntry->CalleeReg2Offset_);
     return true;
 }
 
@@ -145,7 +151,6 @@ bool MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
 
     size_t instrSize = desc.rodataSizeBeforeTextAlign + desc.codeSizeAlign + desc.rodataSizeAfterTextAlign;
 
-    SetFuncEntryDesSize(desc.funcEntryDesSizeAlign);
     SetInstructionsSize(instrSize);
     SetStackMapOrOffsetTableSize(desc.stackMapSizeAlign);
     SetPayLoadSizeInBytes(dataSize);
@@ -165,14 +170,12 @@ bool MachineCode::SetData(const MachineCodeDesc &desc, JSHandle<Method> &method,
     }
 
     uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
-    uint32_t cnt = desc.funcEntryDesSize / sizeof(FuncEntryDes);
     uint8_t *textStart = reinterpret_cast<uint8_t*>(GetText());
     CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
     LOG_JIT(DEBUG) << "Fast JIT MachineCode :" << methodName << ", "  << " text addr:" <<
         reinterpret_cast<void*>(GetText()) << ", size:" << instrSize  <<
         ", stackMap addr:" << reinterpret_cast<void*>(stackmapAddr) <<
-        ", size:" << desc.stackMapSizeAlign <<
-        ", funcEntry addr:" << reinterpret_cast<void*>(GetFuncEntryDesAddress()) << ", count:" << cnt;
+        ", size:" << desc.stackMapSizeAlign;
 
     if (!SetPageProtect(textStart, dataSize)) {
         LOG_JIT(ERROR) << "MachineCode::SetData SetPageProtect failed";
@@ -185,7 +188,6 @@ bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
                                       JSHandle<Method> &method, size_t dataSize)
 {
     DISALLOW_GARBAGE_COLLECTION;
-    SetFuncEntryDesSize(0);
 
     size_t instrSizeAlign = desc.codeSizeAlign;
     SetInstructionsSize(instrSizeAlign);
@@ -232,7 +234,7 @@ bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
     CString methodName = method->GetRecordNameStr() + "." + CString(method->GetMethodName());
     LOG_BASELINEJIT(DEBUG) << "BaselineCode :" << methodName << ", "  << " text addr:" <<
         reinterpret_cast<void*>(GetText()) << ", size:" << instrSizeAlign  <<
-        ", stackMap addr: 0, size: 0, funcEntry addr: 0, count 0";
+        ", stackMap addr: 0, size: 0";
 
     if (!SetPageProtect(textStart, dataSize)) {
         LOG_BASELINEJIT(ERROR) << "MachineCode::SetBaseLineCodeData SetPageProtect failed";
@@ -248,50 +250,19 @@ bool MachineCode::IsInText(const uintptr_t pc) const
     return textStart <= pc && pc < textEnd;
 }
 
-uintptr_t MachineCode::GetFuncEntryDes() const
-{
-    uint32_t funcEntryCnt = GetFuncEntryDesSize() / sizeof(FuncEntryDes);
-    FuncEntryDes *funcEntryDes = reinterpret_cast<FuncEntryDes*>(GetFuncEntryDesAddress());
-    for (uint32_t i = 0; i < funcEntryCnt; i++) {
-        if (funcEntryDes->codeAddr_ == GetFuncAddr()) {
-            return reinterpret_cast<uintptr_t>(funcEntryDes);
-        }
-        funcEntryDes++;
-    }
-    UNREACHABLE();
-    return 0;
-}
-
-std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> MachineCode::CalCallSiteInfo(uintptr_t retAddr) const
+std::tuple<uint64_t, uint8_t*, int, kungfu::CalleeRegAndOffsetVec> MachineCode::CalCallSiteInfo() const
 {
     uintptr_t textStart = GetText();
     uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
     ASSERT(stackmapAddr != nullptr);
 
-    uint32_t funcEntryCnt = GetFuncEntryDesSize() / sizeof(FuncEntryDes);
-    FuncEntryDes *tmpFuncEntryDes = reinterpret_cast<FuncEntryDes*>(GetFuncEntryDesAddress());
-    FuncEntryDes *funcEntryDes = nullptr;
-    ASSERT(tmpFuncEntryDes != nullptr);
-    uintptr_t pc = retAddr - 1;  // -1: for pc
-    for (uint32_t i = 0; i < funcEntryCnt; i++) {
-        if (tmpFuncEntryDes->codeAddr_ <= pc && pc < (tmpFuncEntryDes->codeAddr_ + tmpFuncEntryDes->funcSize_)) {
-            funcEntryDes = tmpFuncEntryDes;
-            break;
-        }
-        tmpFuncEntryDes++;
-    }
-
-    if (funcEntryDes == nullptr) {
-        return {};
-    }
-
-    int delta = funcEntryDes->fpDeltaPrevFrameSp_;
+    int delta = GetFpDeltaPrevFrameSp();
     kungfu::CalleeRegAndOffsetVec calleeRegInfo;
-    for (uint32_t j = 0; j < funcEntryDes->calleeRegisterNum_; j++) {
+    for (uint32_t j = 0; j < GetCalleeRegisterNum(); j++) {
         kungfu::LLVMStackMapType::DwarfRegType reg =
-            static_cast<kungfu::LLVMStackMapType::DwarfRegType>(funcEntryDes->CalleeReg2Offset_[2 * j]);
+            static_cast<kungfu::LLVMStackMapType::DwarfRegType>(GetCalleeReg2OffsetArray(2 * j));
         kungfu::LLVMStackMapType::OffsetType offset =
-            static_cast<kungfu::LLVMStackMapType::OffsetType>(funcEntryDes->CalleeReg2Offset_[2 * j + 1]);
+            static_cast<kungfu::LLVMStackMapType::OffsetType>(GetCalleeReg2OffsetArray(2 * j + 1));
         kungfu::LLVMStackMapType::DwarfRegAndOffsetType regAndOffset = std::make_pair(reg, offset);
         calleeRegInfo.emplace_back(regAndOffset);
     }
@@ -304,15 +275,15 @@ uintptr_t MachineCode::GetText() const
     if (Jit::GetInstance()->IsEnableJitFort()) {
         return GetInstructionsAddr();
     } else {
-        return GetFuncEntryDesAddress() + GetFuncEntryDesSize();
+        return GetNonTextAddress();
     }
 }
 
 uint8_t *MachineCode::GetStackMapOrOffsetTableAddress() const
 {
     if (Jit::GetInstance()->IsEnableJitFort()) {
-        // stackmap immediately follows FuncEntryDesc area
-        return reinterpret_cast<uint8_t*>(GetFuncEntryDesAddress() + GetFuncEntryDesSize());
+        // stackmap immediately follows MachineCode NonText area
+        return reinterpret_cast<uint8_t*>(GetNonTextAddress());
     } else {
         return reinterpret_cast<uint8_t*>(GetText() + GetInstructionsSize());
     }

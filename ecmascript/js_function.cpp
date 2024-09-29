@@ -1208,4 +1208,8 @@ void JSFunctionBase::ClearCompiledCodeFlags()
     SetIsCompiledFastCall(false);
 }
 
+void JSFunction::ClearMachineCode(const JSThread *thread)
+{
+    SetMachineCode(thread, JSTaggedValue::Undefined());
+}
 }  // namespace panda::ecmascript

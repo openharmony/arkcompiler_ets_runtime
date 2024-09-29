@@ -593,6 +593,7 @@ void InterpreterStubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, G
         {
             UpdateProfileTypeInfoCellType(glue, slotValue);
             SetRawProfileTypeInfoToFunction(glue, function, slotValue, MemoryAttribute::NeedNotShareBarrier());
+            TryToJitReuseCompiledFunc(glue, function, slotValue);
         }
         Jump(&profileTypeInfoEnd);
     }

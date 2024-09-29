@@ -2793,29 +2793,12 @@ void SlowPathLowering::LowerDefineFunc(GateRef gate)
     GateRef length = acc_.GetValueIn(gate, 2);
     GateRef lexEnv = acc_.GetValueIn(gate, 3); // 3: Get current env
     GateRef slotId = acc_.GetValueIn(gate, 0);
-    StateDepend successControl;
-    StateDepend failControl;
     Label success(&builder_);
     Label failed(&builder_);
     GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::Definefunc,
         {glue_, jsFunc, builder_.TruncInt64ToInt32(methodId), builder_.TruncInt64ToInt32(length), lexEnv, slotId});
     BRANCH_CIR(builder_.TaggedIsException(result), &failed, &success);
-    builder_.Bind(&failed);
-    {
-        failControl.SetState(builder_.GetState());
-        failControl.SetDepend(builder_.GetDepend());
-    }
-    builder_.Bind(&success);
-    {
-#if ECMASCRIPT_ENABLE_IC
-        if (compilationEnv_->IsJitCompiler()) {
-            builder_.CallRuntime(glue_, RTSTUB_ID(JitReuseCompiledFunc), Gate::InvalidGateRef,
-                { result }, glue_);
-        }
-#endif
-        successControl.SetState(builder_.GetState());
-        successControl.SetDepend(builder_.GetDepend());
-    }
+    CREATE_DOUBLE_EXIT(success, failed)
     acc_.ReplaceHirWithIfBranch(gate, successControl, failControl, result);
 }
 
