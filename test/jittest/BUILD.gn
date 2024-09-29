@@ -38,6 +38,7 @@ group("ark_jit_ts_test") {
     "throw_error",
     "compiler_inline",
     "uint32_array",
+    "inc",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]

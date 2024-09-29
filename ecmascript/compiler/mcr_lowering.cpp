@@ -558,9 +558,23 @@ void MCRLowering::LowerCheckAndConvert(GateRef gate)
         case ValueType::HOLE_DOUBLE:
             LowerCheckSpecialHoleAndConvert(gate, frameState);
             break;
+        case ValueType::FLOAT64:
+            LowerCheckFloat64AndConvert(gate, frameState, &exit);
+            break;
         default:
             UNREACHABLE();
     }
+}
+
+void MCRLowering::LowerCheckFloat64AndConvert(GateRef gate, GateRef frameState, Label *exit)
+{
+    GateRef value = acc_.GetValueIn(gate, 0);
+
+    GateRef result = ConvertFloat64ToInt32(value, exit);
+    GateRef check = builder_.DoubleEqual(builder_.ChangeInt32ToFloat64(result), value);
+    builder_.DeoptCheck(check, frameState, DeoptType::INT32OVERFLOW1);
+
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 
 void MCRLowering::LowerCheckSpecialHoleAndConvert(GateRef gate, GateRef frameState)
