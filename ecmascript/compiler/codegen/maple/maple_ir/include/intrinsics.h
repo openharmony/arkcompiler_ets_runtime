@@ -19,11 +19,6 @@
 #include "intrinsic_op.h"
 
 namespace maple {
-enum IntrinProperty {
-    kIntrnIsAtomic,
-    kIntrnIsSpecial
-};
-
 enum IntrinArgType {
     kArgTyUndef,
     kArgTyVoid,
@@ -45,24 +40,12 @@ enum IntrinArgType {
     kArgTyF128
 };
 
-constexpr uint32 INTRNATOMIC = 1U << kIntrnIsAtomic;
-constexpr uint32 INTRNISSPECIAL = 1U << kIntrnIsSpecial;
 class MIRType;    // circular dependency exists, no other choice
 class MIRModule;  // circular dependency exists, no other choice
 struct IntrinDesc {
     static constexpr int kMaxArgsNum = 7;
     const char *name;
-    uint32 properties;
     IntrinArgType argTypes[1 + kMaxArgsNum];  // argTypes[0] is the return type
-    bool IsAtomic() const
-    {
-        return static_cast<bool>(properties & INTRNATOMIC);
-    }
-
-    bool IsSpecial() const
-    {
-        return static_cast<bool>(properties & INTRNISSPECIAL);
-    }
 
     MIRType *GetReturnType() const;
     MIRType *GetArgType(uint32 index) const;

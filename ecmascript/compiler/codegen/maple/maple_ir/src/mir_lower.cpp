@@ -78,8 +78,7 @@ void LowerCondGotoStmtWithBuiltinExpect(CondGotoNode &brStmt)
         }
         // opnd0 must be intrinsicop C___builtin_expect
         BaseNode *opnd0 = condExpr->Opnd(0);
-        if (opnd0->GetOpCode() != OP_intrinsicop ||
-            static_cast<IntrinsicopNode *>(opnd0)->GetIntrinsic() != INTRN_C___builtin_expect) {
+        if (opnd0->GetOpCode() != OP_intrinsicop) {
             return;
         }
         // We trust constant fold

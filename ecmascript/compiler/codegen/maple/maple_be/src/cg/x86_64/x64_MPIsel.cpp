@@ -808,8 +808,7 @@ Operand *X64MPIsel::SelectCctz(IntrinsicopNode &node, Operand &opnd0, const Base
     PrimType origPrimType = node.Opnd(0)->GetPrimType();
     RegOperand &opnd = SelectCopy2Reg(opnd0, origPrimType);
 
-    bool is64BitCtz = node.GetIntrinsic() == INTRN_C_ctz64;
-    MOperator mopBsf = is64BitCtz ? x64::MOP_bsfq_r_r : x64::MOP_bsfl_r_r;
+    MOperator mopBsf = x64::MOP_bsfl_r_r;
     Insn &bsfInsn = cgFunc->GetInsnBuilder()->BuildInsn(mopBsf, X64CG::kMd[mopBsf]);
     bsfInsn.AddOpndChain(opnd).AddOpndChain(opnd);
     cgFunc->GetCurBB()->AppendInsn(bsfInsn);

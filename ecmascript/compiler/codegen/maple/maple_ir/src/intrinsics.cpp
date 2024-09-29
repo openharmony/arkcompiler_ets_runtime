@@ -22,8 +22,8 @@ namespace maple {
 MIRType *IntrinDesc::jsValueType = nullptr;
 MIRModule *IntrinDesc::mirModule = nullptr;
 IntrinDesc IntrinDesc::intrinTable[INTRN_LAST + 1] = {
-#define DEF_MIR_INTRINSIC(X, NAME, INTRN_CLASS, RETURN_TYPE, ...) \
-    {(NAME), (INTRN_CLASS), {(RETURN_TYPE), ##__VA_ARGS__}},
+#define DEF_MIR_INTRINSIC(X, NAME, RETURN_TYPE, ...) \
+    {(NAME), {(RETURN_TYPE), ##__VA_ARGS__}},
 #include "intrinsics.def"
 #undef DEF_MIR_INTRINSIC
 };
