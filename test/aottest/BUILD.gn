@@ -340,6 +340,7 @@ group("ark_aot_ts_test") {
     "func_profile_type_info",
     "sendable",
     "webkit_call_convention",
+    "retype_isnan",
   ]
 
   if (!is_debug) {
