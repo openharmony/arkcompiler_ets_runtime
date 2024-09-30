@@ -152,7 +152,7 @@ void FreeObjectList<T>::FreeImpl(U* region, uintptr_t start, size_t size, bool i
     set->Free(start, size);
 
     if (isAdd) {
-        if (!set->isAdded_) {
+        if (set->isAdded_ == 0) {
             AddSet(set);
         } else {
             available_ += size;
@@ -218,7 +218,7 @@ template bool FreeObjectList<FreeObject>::MatchFreeObjectInSet(FreeObjectSet<Fre
 template <typename T>
 bool FreeObjectList<T>::AddSet(FreeObjectSet<T> *set)
 {
-    if (set == nullptr || set->Empty() || set->isAdded_) {
+    if (set == nullptr || set->Empty() || set->isAdded_ != 0) {
         return false;
     }
     SetType type = set->setType_;
@@ -229,7 +229,7 @@ bool FreeObjectList<T>::AddSet(FreeObjectSet<T> *set)
     if (top != nullptr) {
         top->prev_ = set;
     }
-    set->isAdded_ = true;
+    set->isAdded_ = 1; // 1: added
     set->next_ = top;
     set->prev_ = nullptr;
     if (lastSets_[type] == nullptr) {
@@ -266,7 +266,7 @@ void FreeObjectList<T>::RemoveSet(FreeObjectSet<T> *set)
     if (set->next_ != nullptr) {
         set->next_->prev_ = set->prev_;
     }
-    set->isAdded_ = false;
+    set->isAdded_ = 0;
     set->prev_ = nullptr;
     set->next_ = nullptr;
     if (sets_[type] == nullptr) {
