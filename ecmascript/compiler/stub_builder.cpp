@@ -9922,4 +9922,40 @@ void StubBuilder::UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef func
 
     env_->SubCfgExit();
 }
+
+GateRef StubBuilder::GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::NATIVE_POINTER(), NullPtr());
+    DEFVARIABLE(argvVar, VariableType::NATIVE_POINTER(), argv);
+
+    Label calcArgv(env);
+    Label hasArgv(env);
+    Label argvTaggedArrayUndef(env);
+    Label argvTaggedArrayDef(env);
+
+    BRANCH(TaggedIsUndefined(argvTaggedArray), &argvTaggedArrayUndef, &argvTaggedArrayDef);
+    Bind(&argvTaggedArrayUndef);
+
+    BRANCH(Equal(*argvVar, IntPtr(0)), &calcArgv, &hasArgv);
+    Bind(&calcArgv);
+    argvVar = CallNGCRuntime(glue, RTSTUB_ID(GetActualArgvNoGC), { glue });
+    Jump(&hasArgv);
+
+    Bind(&argvTaggedArrayDef);
+    argvVar = PtrAdd(TaggedCastToIntPtr(argvTaggedArray), IntPtr(TaggedArray::DATA_OFFSET));
+    Jump(&hasArgv);
+
+    Bind(&hasArgv);
+    result = PtrAdd(*argvVar, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * 8)); // 8: ptr size
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
 }  // namespace panda::ecmascript::kungfu

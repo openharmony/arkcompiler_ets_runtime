@@ -1278,21 +1278,15 @@ GateRef NewObjectStubBuilder::EnumerateObjectProperties(GateRef glue, GateRef ob
     return ret;
 }
 
-void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
+void NewObjectStubBuilder::FillArgumentsList(GateRef argumentsList,
     GateRef sp, GateRef startIdx, GateRef numArgs)
 {
     auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
     DEFVARIABLE(i, VariableType::INT32(), Int32(0));
-    Label setHClass(env);
-    size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(numArgs));
-    GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
-                                                ConstantIndex::ARRAY_CLASS_INDEX);
-    AllocateInYoung(result, exit, &setHClass, arrayClass);
-    Bind(&setHClass);
-    StoreHClass(glue_, result->ReadVariable(), arrayClass);
-    Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(TaggedArray::LENGTH_OFFSET), numArgs);
-    Store(VariableType::INT32(), glue_, result->ReadVariable(), IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), Int32(0));
-    // skip InitializeTaggedArrayWithSpeicalValue due to immediate setting arguments
     Label setArgumentsBegin(env);
     Label setArgumentsAgain(env);
     Label setArgumentsEnd(env);
@@ -1300,12 +1294,55 @@ void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
     LoopBegin(&setArgumentsBegin);
     GateRef idx = ZExtInt32ToPtr(Int32Add(startIdx, *i));
     GateRef argument = Load(VariableType::JS_ANY(), sp, PtrMul(IntPtr(sizeof(JSTaggedType)), idx));
-    SetValueToTaggedArray(VariableType::JS_ANY(), glue_, result->ReadVariable(), *i, argument);
+    SetValueToTaggedArray(VariableType::JS_ANY(), glue_, argumentsList, *i, argument);
     i = Int32Add(*i, Int32(1));
     BRANCH(Int32UnsignedLessThan(*i, numArgs), &setArgumentsAgain, &setArgumentsEnd);
     Bind(&setArgumentsAgain);
     LoopEnd(&setArgumentsBegin);
     Bind(&setArgumentsEnd);
+    Jump(&exit);
+    Bind(&exit);
+    env->SubCfgExit();
+    return;
+}
+
+GateRef NewObjectStubBuilder::NewArgumentsListObj(GateRef numArgs)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label setHClass(env);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+    size_ = ComputeTaggedArraySize(ZExtInt32ToPtr(numArgs));
+    GateRef arrayClass = GetGlobalConstantValue(VariableType::JS_POINTER(), glue_,
+                                                ConstantIndex::ARRAY_CLASS_INDEX);
+    AllocateInYoung(&result, &exit, &setHClass, arrayClass);
+    Bind(&setHClass);
+    StoreHClass(glue_, *result, arrayClass);
+    Store(VariableType::INT32(), glue_, *result, IntPtr(TaggedArray::LENGTH_OFFSET), numArgs);
+    Store(VariableType::INT32(), glue_, *result, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), Int32(0));
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+void NewObjectStubBuilder::NewArgumentsList(Variable *result, Label *exit,
+    GateRef sp, GateRef startIdx, GateRef numArgs)
+{
+    auto env = GetEnvironment();
+    Label hasException(env);
+    Label notException(env);
+
+    GateRef argumentsList = NewArgumentsListObj(numArgs);
+    result->WriteVariable(argumentsList);
+    Branch(TaggedIsException(argumentsList), &hasException, &notException);
+    Bind(&hasException);
+    Jump(exit);
+    Bind(&notException);
+    FillArgumentsList(argumentsList, sp, startIdx, numArgs);
     Jump(exit);
 }
 

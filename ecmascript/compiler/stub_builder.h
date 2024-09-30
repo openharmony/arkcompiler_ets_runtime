@@ -971,6 +971,7 @@ public:
                          GateRef hir = Circuit::NullGate());
     void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
                                              GateRef profileTypeInfo, GateRef slotId);
+    GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);
 
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;

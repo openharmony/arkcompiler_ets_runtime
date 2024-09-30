@@ -350,19 +350,14 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     DEFVARIABLE(actualRestNum, VariableType::INT32(), Int32(0));
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
-    GateRef startIdx = Int32Argument(2); /* 2 : 3rd parameter is index */
-    GateRef numArgs = Int32Argument(3); /* 3 : 4th parameter is index */
+    GateRef startIdx = Int32Argument(2); /* 2 : 3rd parameter is startIdx */
+    GateRef numArgs = Int32Argument(3); /* 3 : 4th parameter is numArgs */
+    GateRef argvTaggedArray = TaggedArgument(4); /* 4 : 5th parameter is argvTaggedArray */
+
     Label numArgsGreater(env);
     Label numArgsNotGreater(env);
-    Label calcArgv(env);
-    Label hasArgv(env);
     Label afterCreateArrayObj(env);
-    BRANCH(Equal(*argv, IntPtr(0)), &calcArgv, &hasArgv);
-    Bind(&calcArgv);
-    argv = CallNGCRuntime(glue, RTSTUB_ID(GetActualArgvNoGC), { glue });
-    Jump(&hasArgv);
-    Bind(&hasArgv);
-    GateRef args = PtrAdd(*argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * 8)); // 8: ptr size
+
     GateRef actualArgc = Int32Sub(numArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
     // 1. Calculate actual rest num.
     BRANCH(Int32UnsignedGreaterThan(actualArgc, startIdx), &numArgsGreater, &numArgsNotGreater);
@@ -378,6 +373,8 @@ void CopyRestArgsStubBuilder::GenerateCircuit()
     GateRef intialHClass = GetGlobalConstantValue(VariableType::JS_ANY(), glue,
                                                   ConstantIndex::ELEMENT_HOLE_TAGGED_HCLASS_INDEX);
     arrayObj = newBuilder.NewJSArrayWithSize(intialHClass, *actualRestNum);
+
+    GateRef args = GetArgumentsElements(glue, argvTaggedArray, *argv);
     newBuilder.AssignRestArg(&arrayObj, &afterCreateArrayObj, args, startIdx, *actualRestNum, intialHClass);
     Bind(&afterCreateArrayObj);
     Return(*arrayObj);
@@ -387,29 +384,33 @@ void GetUnmappedArgsStubBuilder::GenerateCircuit()
 {
     auto env = GetEnvironment();
     GateRef glue = PtrArgument(0);
-    GateRef numArgs = Int32Argument(2); /* 2 : 3rd parameter is index */
+    GateRef numArgs = Int32Argument(2); /* 2 : 3rd parameter is numArgs */
+    GateRef argvTaggedArray = TaggedArgument(3); /* 3 : 4th parameter is argvTaggedArray */
+
     DEFVARIABLE(argumentsList, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(argumentsObj, VariableType::JS_ANY(), Hole());
     DEFVARIABLE(argv, VariableType::NATIVE_POINTER(), PtrArgument(1));
     Label afterArgumentsList(env);
     Label newArgumentsObj(env);
     Label exit(env);
-    Label calcArgv(env);
-    Label hasArgv(env);
-    BRANCH(Equal(*argv, IntPtr(0)), &calcArgv, &hasArgv);
-    Bind(&calcArgv);
-    argv = CallNGCRuntime(glue, RTSTUB_ID(GetActualArgvNoGC), { glue });
-    Jump(&hasArgv);
-    Bind(&hasArgv);
-    GateRef args = PtrAdd(*argv, IntPtr(NUM_MANDATORY_JSFUNC_ARGS * 8)); // 8: ptr size
+
     GateRef actualArgc = Int32Sub(numArgs, Int32(NUM_MANDATORY_JSFUNC_ARGS));
     GateRef startIdx = Int32(0);
     NewObjectStubBuilder newBuilder(this);
     newBuilder.SetParameters(glue, 0);
-    newBuilder.NewArgumentsList(&argumentsList, &afterArgumentsList, args, startIdx, actualArgc);
-    Bind(&afterArgumentsList);
-    BRANCH(TaggedIsException(*argumentsList), &exit, &newArgumentsObj);
-    Bind(&newArgumentsObj);
+
+    Label fillArguments(env);
+    Label argumentsException(env);
+    GateRef argumentsListObj = newBuilder.NewArgumentsListObj(actualArgc);
+    argumentsList.WriteVariable(argumentsListObj);
+    Branch(TaggedIsException(*argumentsList), &argumentsException, &fillArguments);
+    Bind(&argumentsException);
+    argumentsObj.WriteVariable(*argumentsList);
+    Jump(&exit);
+    Bind(&fillArguments);
+
+    GateRef args = GetArgumentsElements(glue, argvTaggedArray, *argv);
+    newBuilder.FillArgumentsList(*argumentsList, args, startIdx, actualArgc);
     newBuilder.NewArgumentsObj(&argumentsObj, &exit, *argumentsList, actualArgc);
     Bind(&exit);
     Return(*argumentsObj);
