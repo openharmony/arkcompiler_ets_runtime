@@ -82,7 +82,7 @@ void STWYoungGC::Mark()
     }
     heap_->WaitRunningTaskFinished();
 
-    auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;  // gc thread and main thread
+    auto totalThreadCount = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;  // gc thread and main thread
     for (uint32_t i = 0; i < totalThreadCount; i++) {
         SlotNeedUpdate needUpdate(nullptr, ObjectSlot(0));
         while (workManager_->GetSlotNeedUpdate(i, &needUpdate)) {
@@ -96,7 +96,7 @@ void STWYoungGC::Sweep()
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "STWYoungGC::Sweep");
     TRACE_GC(GCStats::Scope::ScopeId::Sweep, heap_->GetEcmaVM()->GetEcmaGCStats());
     auto totalThreadCount = static_cast<uint32_t>(
-        Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1);  // gc thread and main thread
+        GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum() + 1);  // gc thread and main thread
     for (uint32_t i = 0; i < totalThreadCount; i++) {
         ProcessQueue *queue = workManager_->GetWeakReferenceQueue(i);
         while (true) {

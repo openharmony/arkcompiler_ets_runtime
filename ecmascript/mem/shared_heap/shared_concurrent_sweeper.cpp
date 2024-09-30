@@ -31,9 +31,9 @@ void SharedConcurrentSweeper::PostTask()
 {
     auto tid = DaemonThread::GetInstance()->GetThreadId();
     if (ConcurrentSweepEnabled()) {
-        Taskpool::GetCurrentTaskpool()->PostTask(
+        GCWorkerPool::GetCurrentTaskpool()->PostTask(
             std::make_unique<SweeperTask>(tid, this, SHARED_OLD_SPACE));
-        Taskpool::GetCurrentTaskpool()->PostTask(
+        GCWorkerPool::GetCurrentTaskpool()->PostTask(
             std::make_unique<SweeperTask>(tid, this, SHARED_NON_MOVABLE));
     }
 }

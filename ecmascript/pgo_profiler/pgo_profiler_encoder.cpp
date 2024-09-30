@@ -32,6 +32,7 @@
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/mutex.h"
 #include "ecmascript/platform/os.h"
+#include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript::pgo {
 void PGOProfilerEncoder::Destroy()
@@ -299,7 +300,7 @@ void PGOProfilerEncoder::TerminateSaveTask()
     if (!isProfilingInitialized_) {
         return;
     }
-    Taskpool::GetCurrentTaskpool()->TerminateTask(GLOBAL_TASK_ID, TaskType::PGO_SAVE_TASK);
+    GCWorkerPool::GetCurrentTaskpool()->TerminateTask(GLOBAL_TASK_ID, TaskType::PGO_SAVE_TASK);
 }
 
 void PGOProfilerEncoder::PostSaveTask()
@@ -307,7 +308,7 @@ void PGOProfilerEncoder::PostSaveTask()
     if (!isProfilingInitialized_) {
         return;
     }
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<SaveTask>(this, GLOBAL_TASK_ID));
+    GCWorkerPool::GetCurrentTaskpool()->PostTask(std::make_unique<SaveTask>(this, GLOBAL_TASK_ID));
 }
 
 void PGOProfilerEncoder::PostResetOutPathTask(const std::string &moduleName)
@@ -321,7 +322,7 @@ void PGOProfilerEncoder::PostResetOutPathTask(const std::string &moduleName)
     if (!hasPostModuleName_.compare_exchange_strong(hasPost, true)) {
         return;
     }
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ResetOutPathTask>(this, moduleName, GLOBAL_TASK_ID));
+    GCWorkerPool::GetCurrentTaskpool()->PostTask(std::make_unique<ResetOutPathTask>(this, moduleName, GLOBAL_TASK_ID));
 }
 
 void PGOProfilerEncoder::StartSaveTask(const SaveTask *task)

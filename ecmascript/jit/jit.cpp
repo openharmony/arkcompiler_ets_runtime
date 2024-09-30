@@ -176,7 +176,7 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
             if (enableCodeSign && shouldCompileMain) {
                 JitFort::InitJitFortResource();
             }
-            JitTaskpool::GetCurrentTaskpool()->Initialize(enableCodeSign && !shouldCompileMain);
+            JitTaskpool::GetCurrentTaskpool()->Init(enableCodeSign && !shouldCompileMain);
         }
     }
 }
@@ -189,7 +189,7 @@ void Jit::Destroy()
 
     LockHolder holder(setEnableLock_);
 
-    JitTaskpool::GetCurrentTaskpool()->Destroy();
+    JitTaskpool::GetCurrentTaskpool()->Finalize();
     initialized_ = false;
     fastJitEnable_ = false;
     baselineJitEnable_ = false;
