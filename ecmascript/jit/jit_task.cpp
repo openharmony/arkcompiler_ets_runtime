@@ -301,9 +301,9 @@ void JitTask::InstallCode()
     __builtin___clear_cache(reinterpret_cast<char *>(codeAddr), reinterpret_cast<char*>(codeAddrEnd));
 
     if (Jit::GetInstance()->IsEnableJitFort()) {
-        if (codeDesc_.memDesc) {
-            ASSERT(codeDesc_.isHugeObj == false);
-            codeDesc_.memDesc->SetInstalled(true);
+        if (!codeDesc_.isHugeObj) {
+            const Heap *heap = this->GetHostThread()->GetEcmaVM()->GetHeap();
+            heap->GetMachineCodeSpace()->MarkJitFortMemInstalled(machineCodeObj.GetObject<MachineCode>());
         }
     }
 }

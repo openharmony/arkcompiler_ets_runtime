@@ -249,11 +249,17 @@ public:
     template <VisitType visitType>
     void VisitRangeSlot(const EcmaObjectRangeVisitor &visitor)
     {
+        ASSERT(visitType == VisitType::ALL_VISIT || visitType == VisitType::OLD_GC_VISIT);
         if constexpr (visitType == VisitType::ALL_VISIT) {
             visitor(this, ObjectSlot(ToUintPtr(this)),
                 ObjectSlot(ToUintPtr(this) + GetMachineCodeObjectSize()), VisitObjectArea::RAW_DATA);
         }
+        if constexpr (visitType == VisitType::OLD_GC_VISIT) {
+            this->ProcessMarkObject();
+        }
     }
+
+    void ProcessMarkObject();
 
     size_t GetMachineCodeObjectSize()
     {

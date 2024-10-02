@@ -649,15 +649,6 @@ void Heap::ReclaimRegions(TriggerGCType gcType)
 
     inactiveSemiSpace_->ReclaimRegions(cachedSize);
     sweeper_->WaitAllTaskFinished();
-    // machinecode space is not sweeped in young GC
-    if (ecmaVm_->GetJSOptions().GetEnableJitFort()) {
-        if (machineCodeSpace_->sweepState_ != SweepState::NO_SWEEP) {
-            if (machineCodeSpace_->GetJitFort() &&
-                machineCodeSpace_->GetJitFort()->IsMachineCodeGC()) {
-                machineCodeSpace_->UpdateFortSpace();
-            }
-        }
-    }
     EnumerateNonNewSpaceRegionsWithRecord([] (Region *region) {
         region->ClearMarkGCBitset();
         region->ClearCrossRegionRSet();

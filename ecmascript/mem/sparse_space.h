@@ -68,8 +68,8 @@ public:
     bool Expand();
 
     // For sweeping
-    void PrepareSweeping();
-    void Sweep();
+    virtual void PrepareSweeping();
+    virtual void Sweep();
     virtual void AsyncSweep(bool isMain);
 
     bool TryFillSweptRegion();
@@ -84,7 +84,7 @@ public:
     void FreeRegionFromSpace(Region *region);
     Region *TryToGetSuitableSweptRegion(size_t size);
 
-    virtual void FreeRegion(Region *current, bool isMain = true);
+    void FreeRegion(Region *current, bool isMain = true);
     void FreeLiveRange(Region *current, uintptr_t freeStart, uintptr_t freeEnd, bool isMain);
 
     void DetachFreeObjectSet(Region *region);
@@ -274,11 +274,25 @@ public:
     uintptr_t GetMachineCodeObject(uintptr_t pc);
     size_t CheckMachineCodeObject(uintptr_t curPtr, uintptr_t &machineCode, uintptr_t pc);
     void AsyncSweep(bool isMain) override;
-    void FreeRegion(Region *current, bool isMain = true) override;
+    void Sweep() override;
+    void PrepareSweeping() override;
     uintptr_t Allocate(size_t size, bool allowGC = true);
     uintptr_t Allocate(size_t size, MachineCodeDesc *desc, bool allowGC = true);
-    inline void RecordLiveJitCode(MachineCode *obj);
     uintptr_t PUBLIC_API JitFortAllocate(MachineCodeDesc *desc);
+
+    inline void MarkJitFortMemAlive(MachineCode *obj)
+    {
+        if (jitFort_) {
+            jitFort_->MarkJitFortMemAlive(obj);
+        }
+    }
+
+    inline void MarkJitFortMemInstalled(MachineCode *obj)
+    {
+        if (jitFort_) {
+            jitFort_->MarkJitFortMemInstalled(obj);
+        }
+    }
 
     inline bool IsSweeping()
     {
@@ -296,13 +310,6 @@ public:
             return jitFort_->InRange(address);
         }
         return false;
-    }
-
-    void UpdateFortSpace()
-    {
-        if (jitFort_) {
-            jitFort_->UpdateFreeSpace();
-        }
     }
 
 private:

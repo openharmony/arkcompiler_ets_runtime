@@ -30,14 +30,9 @@ namespace panda::ecmascript {
 // requires a mutable heap region and does not work with Jit Fort space
 // which is immutbale execept for access by CodeSigner.
 //
-// When JIT Fort is enabled, JIT generated instructions are installed
-// in memory allocated from JitFort space, and the corresponding mutable
-// Code Cache object constains a pointer to the allocated blk.
-// The information on free and used Jit Fort space is stored outside of
-// JitFort using MemDesc which holds a pointer to a mem block in Jit Fort
-// space, size of the block, and a pointer to the next MemDesc. It is
-// used to maintain list of free mem blks in Jit Fort as well as list
-// of live (in use) mem blocks.
+// When JIT Fort is enabled, FreeObject usage is replaced by MemDesc
+// which serves same purpose as FreeObjects, but is stored outside of
+// JitFort memory space.
 //
 // To reuse FreeList allocator code for JitFort, related classes
 // (allocator/FreeObjectList/FreeObjectSet, etc) had to be changed into
