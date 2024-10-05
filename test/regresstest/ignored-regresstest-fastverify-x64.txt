@@ -7,29 +7,6 @@ regresstest/ark-regress/mjsunit/regress/regress-95113.js
 regresstest/ark-regress/mjsunit/regress/regress-reflect-construct.js
 # --- end of Issue #17827
 
-# Issue #19523
-regresstest/ark-regress/intl/segmenter/getoptionsobject.js
-
-# Issue #19330 	
-regresstest/ark-regress/mjsunit/es6/proxies-keys.js
-
-# Issue #18773
-regresstest/ark-regress/intl/locale/property.js
-regresstest/ark-regress/mjsunit/regress/regress-crbug-605862.js
-
-# Issue #19465
-regresstest/ark-regress/mjsunit/es6/typedarray-indexing.js
-
-# Issue #19479
-regresstest/ark-regress/mjsunit/compiler/regress-796041.js
-regresstest/ark-regress/mjsunit/regress/regress-crbug-138887.js
-regresstest/ark-regress/mjsunit/regress/regress-crbug-944435.js
-regresstest/ark-regress/mjsunit/regress/regress-6210.js 
-
 # Compilation error: Issue #18551
-regresstest/ark-regress/mjsunit/fixed-context-shapes-when-recompiling.js
-regresstest/ark-regress/mjsunit/compiler/minus-zero.js
-regresstest/ark-regress/mjsunit/regress/regress-818070.js
-regresstest/ark-regress/mjsunit/regress/regression-crbug-1505311.js
 regresstest/ark-regress/mjsunit/es8/async-arrow-default-function-await.js
 # --- end of #18551

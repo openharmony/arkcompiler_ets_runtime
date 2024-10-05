@@ -8,32 +8,9 @@ regresstest/ark-regress/mjsunit/compiler/regress-crbug-1226264.js
 regresstest/ark-regress/mjsunit/regress/regress-reflect-construct.js
 # --- end of Issue #17827
 
-# Issue #18424
-regresstest/ark-regress/mjsunit/compiler/regress-1068494.js
-# --- end of #18424
-
 # Compilation error: Issue #18551
-regresstest/ark-regress/mjsunit/fixed-context-shapes-when-recompiling.js
-regresstest/ark-regress/mjsunit/compiler/minus-zero.js
-regresstest/ark-regress/mjsunit/regress/regress-818070.js
-regresstest/ark-regress/mjsunit/regress/regression-crbug-1505311.js
 regresstest/ark-regress/mjsunit/es8/async-arrow-default-function-await.js
 # --- end of #18551
 
-# Issue #19413
-regresstest/ark-regress/mjsunit/compiler/regress-758096.js
-# --- end of #19413
-
 # Issue #19479
 regresstest/ark-regress/mjsunit/es6/array-concat-spreadable-function.js
-regresstest/ark-regress/intl/regress-1074578.js
-regresstest/ark-regress/intl/regress-925216.js
-# --- end of #19479
-
-# Issue #19413
-regresstest/ark-regress/mjsunit/compiler/regress-1068494.js
-# --- end of #19413
-
-# Issue #18960
-regresstest/ark-regress/mjsunit/compiler/inline-omit-arguments-object.js
-# --- end of #18960
