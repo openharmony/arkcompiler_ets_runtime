@@ -246,7 +246,7 @@ void DFXJSNApi::TriggerGC([[maybe_unused]] const EcmaVM *vm, [[maybe_unused]] ui
             return;
         }
     });
-    // triggerSharedGC
+    // triggerSharedFullGC
     TriggerSharedGCWithVm(vm);
 }
 
@@ -274,7 +274,8 @@ void DFXJSNApi::TriggerSharedGCWithVm([[maybe_unused]] const EcmaVM *vm)
         ecmascript::SharedHeap* sHeap = ecmascript::SharedHeap::GetInstance();
         JSThread *thread = vm->GetJSThread();
         ecmascript::ThreadManagedScope managedScope(thread);
-        sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_GC, ecmascript::GCReason::TRIGGER_BY_MEM_TOOLS>(thread);
+        sHeap->CollectGarbage<ecmascript::TriggerGCType::SHARED_FULL_GC,
+            ecmascript::GCReason::TRIGGER_BY_MEM_TOOLS>(thread);
         delete work;
     });
     if (ret != 0) {
