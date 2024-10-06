@@ -82,8 +82,8 @@ std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const J
     ASSERT(EcmaStringAccessor(firstString).NotTreeString());
     ASSERT(EcmaStringAccessor(secondString).NotTreeString());
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor(foundString).EqualToSplicedString(*firstString, *secondString)) {
             return std::make_pair(foundString, hashcode);
         }
@@ -95,8 +95,8 @@ std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const u
                                                                          bool canBeCompress, uint32_t hashcode) const
 {
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringIsEqualUint8Data(foundString, utf8Data, utf8Len, canBeCompress)) {
             return std::make_pair(foundString, hashcode);
         }
@@ -108,8 +108,8 @@ std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const u
                                                                          uint32_t utf16Len, uint32_t hashcode) const
 {
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringsAreEqualUtf16(foundString, utf16Data, utf16Len)) {
             return std::make_pair(foundString, hashcode);
         }
@@ -120,8 +120,8 @@ std::pair<EcmaString *, uint32_t> EcmaStringTable::GetStringThreadUnsafe(const u
 EcmaString *EcmaStringTable::GetStringWithHashThreadUnsafe(EcmaString *string, uint32_t hashcode) const
 {
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringsAreEqual(foundString, string)) {
             return foundString;
         }
@@ -132,8 +132,8 @@ EcmaString *EcmaStringTable::GetStringWithHashThreadUnsafe(EcmaString *string, u
 EcmaString *EcmaStringTable::GetStringThreadUnsafe(EcmaString *string, uint32_t hashcode) const
 {
     auto range = stringTable_[GetTableId(hashcode)].table_.equal_range(hashcode);
-    for (auto item = range.first; item != range.second; ++item) {
-        auto foundString = item->second;
+    for (auto item = range.first; item != range.second;) {
+        auto foundString = (item++)->second;
         if (EcmaStringAccessor::StringsAreEqual(foundString, string)) {
             return foundString;
         }
