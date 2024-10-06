@@ -60,8 +60,9 @@ uintptr_t LinearSpace::Allocate(size_t size, bool isPromoted)
         } else {
             size_t stepOverShootSize = localHeap_->GetEcmaParamConfiguration().GetSemiSpaceStepOvershootSize();
             size_t maxOverShootSize = std::max(initialCapacity_ / 2, stepOverShootSize); // 2: half
-            if (overShootSize_ < maxOverShootSize) {
+            if (overShootSizeForConcurrentMark_ < maxOverShootSize) {
                 overShootSize_ += stepOverShootSize;
+                overShootSizeForConcurrentMark_ += stepOverShootSize;
             }
         }
 
@@ -354,6 +355,7 @@ void SemiSpace::Initialize()
 void SemiSpace::Restart(size_t overShootSize)
 {
     overShootSize_ = overShootSize;
+    overShootSizeForConcurrentMark_ = 0;
     survivalObjectSize_ = 0;
     allocateAfterLastGC_ = 0;
     Initialize();
