@@ -103,7 +103,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
         sharedGCMarker_->MergeBackAndResetRSetWorkListHandler();
         SharedHeapVerification(this, VerifyKind::VERIFY_PRE_SHARED_GC).VerifyAll();
     }
-    switch (gcType) {
+    switch (gcType) { // LCOV_EXCL_BR_LINE
         case TriggerGCType::SHARED_GC: {
             sharedGC_->RunPhases();
             break;
@@ -321,7 +321,7 @@ bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
         case SharedParallelMarkPhase::SHARED_COMPRESS_TASK:
             sHeap_->GetSharedGCMovableMarker()->ProcessMarkStack(threadIndex);
             break;
-        default:
+        default: // LOCV_EXCL_BR_LINE
             break;
     }
     sHeap_->ReduceTaskCount();
