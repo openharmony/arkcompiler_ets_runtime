@@ -69,6 +69,23 @@ struct PatchMethodIndex {
     }
 };
 
+struct ReplacedMethod {
+    EntityId methodId;
+    CString fileName;
+    struct Hash {
+        std::size_t operator()(const ReplacedMethod &replacedMethod) const
+        {
+            return std::hash<EntityId>{}(replacedMethod.methodId) ^ std::hash<CString>{}(replacedMethod.fileName);
+        }
+    };
+
+    bool operator==(const ReplacedMethod &replacedMethod) const
+    {
+        return methodId == replacedMethod.methodId && fileName == replacedMethod.fileName;
+    }
+};
+
+
 struct PatchInfo {
     // patch file name.
     CString patchFileName;
@@ -81,7 +98,7 @@ struct PatchInfo {
     // patch replaced recordNames.
     CUnorderedSet<CString> replacedRecordNames;
     // patch replaced methods.
-    CUnorderedMap<EntityId, CString> replacedPatchMethods;
+    CUnorderedMap<ReplacedMethod, CString, ReplacedMethod::Hash> replacedPatchMethods;
 };
 
 enum class StageOfHotReload : int32_t {

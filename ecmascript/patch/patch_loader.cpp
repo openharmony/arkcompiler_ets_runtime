@@ -150,7 +150,10 @@ PatchErrorCode PatchLoader::UnloadPatchInternal(JSThread *thread, const CString 
         MethodLiteral *baseMethodLiteral = item.second;
         EntityId baseMethodId = baseMethodLiteral->GetMethodId();
         JSTaggedValue baseConstpoolValue = context->FindConstpool(baseFile.get(), baseMethodId);
-        patchInfo.replacedPatchMethods.emplace(baseMethodId, patchMethod->GetRecordNameStr());
+        // After the method replaced, the methodId is baseMethodId,
+        // and the JSPandaFile of replaced method is baseFile
+        ReplacedMethod replacedMethod {baseMethodId, baseFileName};
+        patchInfo.replacedPatchMethods.emplace(replacedMethod, patchMethod->GetRecordNameStr());
         ReplaceMethod(thread, patchMethod, baseMethodLiteral, baseConstpoolValue);
         LOG_ECMA(DEBUG) << "Replace base method: "
                        << patchMethod->GetRecordNameStr()
@@ -248,9 +251,15 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
         if (JSTaggedValue(obj).IsJSFunction()) {
             JSFunction *function = JSFunction::Cast(obj);
             EntityId methodId = Method::Cast(function->GetMethod())->GetMethodId();
-            if (replacedPatchMethods.count(methodId) > 0) {
+            const JSPandaFile *jsPandaFile = Method::Cast(function->GetMethod())->GetJSPandaFile();
+            CString fileName {};
+            if (jsPandaFile != nullptr) {
+                fileName = jsPandaFile->GetJSPandaFileDesc();
+            }
+            ReplacedMethod replacedMethod {methodId, fileName};
+            if (replacedPatchMethods.count(replacedMethod) > 0) {
                 JSHandle<JSTaggedValue> moduleRecord =
-                    thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[methodId]);
+                    thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[replacedMethod]);
                 function->SetModule(thread, moduleRecord.GetTaggedValue());
                 function->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
                                                 SKIP_BARRIER);
@@ -258,9 +267,15 @@ void PatchLoader::UpdateJSFunction(JSThread *thread, PatchInfo &patchInfo)
         } else if (JSTaggedValue(obj).IsFunctionTemplate()) {
             auto funcTemp = FunctionTemplate::Cast(obj);
             EntityId methodId = Method::Cast(funcTemp->GetMethod())->GetMethodId();
-            if (replacedPatchMethods.count(methodId) > 0) {
+            const JSPandaFile *jsPandaFile = Method::Cast(funcTemp->GetMethod())->GetJSPandaFile();
+            CString fileName {};
+            if (jsPandaFile != nullptr) {
+                fileName = jsPandaFile->GetJSPandaFileDesc();
+            }
+            ReplacedMethod replacedMethod {methodId, fileName};
+            if (replacedPatchMethods.count(replacedMethod) > 0) {
                 JSHandle<JSTaggedValue> moduleRecord =
-                    thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[methodId]);
+                    thread->GetCurrentEcmaContext()->FindPatchModule(replacedPatchMethods[replacedMethod]);
                 funcTemp->SetModule(thread, moduleRecord.GetTaggedValue());
                 funcTemp->SetRawProfileTypeInfo(thread, thread->GlobalConstants()->GetEmptyProfileTypeInfoCell(),
                                                 SKIP_BARRIER);
@@ -334,8 +349,12 @@ void PatchLoader::FindAndReplaceSameMethod(JSThread *thread, const JSPandaFile *
                 }
 
                 EntityId patchMethodId = patchMethodLiteral->GetMethodId();
+                // After the method replaced, the methodId is patchMethodId,
+                // and the JSPandaFile of replaced method is patchFile
+                CString patchFileName = patchFile->GetJSPandaFileDesc();
+                ReplacedMethod replacedMethod {patchMethodId, patchFileName};
                 JSTaggedValue patchConstpoolValue = context->FindConstpool(patchFile, patchMethodId);
-                patchInfo.replacedPatchMethods.emplace(patchMethodId, baseMethod->GetRecordNameStr());
+                patchInfo.replacedPatchMethods.emplace(replacedMethod, baseMethod->GetRecordNameStr());
                 ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
                 LOG_ECMA(DEBUG) << "Replace base method: "
                                 << baseMethod->GetRecordNameStr() << ": "
@@ -391,8 +410,12 @@ void PatchLoader::FindAndReplaceClassLiteral(JSThread *thread, const JSPandaFile
         }
 
         EntityId patchMethodId = patchMethodLiteral->GetMethodId();
+        CString patchFileName = patchFile->GetJSPandaFileDesc();
+        // After the method replaced, the methodId is patchMethodId,
+        // and the JSPandaFile of replaced method is patchFile
+        ReplacedMethod replacedMethod {patchMethodId, patchFileName};
         JSTaggedValue patchConstpoolValue = thread->GetCurrentEcmaContext()->FindConstpool(patchFile, patchMethodId);
-        patchInfo.replacedPatchMethods.emplace(patchMethodId, baseMethod->GetRecordNameStr());
+        patchInfo.replacedPatchMethods.emplace(replacedMethod, baseMethod->GetRecordNameStr());
         ReplaceMethod(thread, baseMethod, patchMethodLiteral, patchConstpoolValue);
         LOG_ECMA(DEBUG) << "Replace base method: "
                         << baseMethod->GetRecordNameStr() << ": "
