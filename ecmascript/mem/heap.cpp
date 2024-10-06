@@ -2226,7 +2226,7 @@ void Heap::TriggerIdleCollection(int idleMicroSec)
         case IdleTaskType::INCREMENTAL_MARK:
             incrementalMarker_->TriggerIncrementalMark(idleMicroSec);
             break;
-        default:
+        default: // LCOV_EXCL_BR_LINE
             break;
     }
     ClearIdleTask();

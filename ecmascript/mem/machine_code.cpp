@@ -79,7 +79,8 @@ bool MachineCode::SetText(const MachineCodeDesc &desc)
     uint8_t *pText = textStart;
     if (desc.rodataSizeBeforeTextAlign != 0) {
         if (memcpy_s(pText, desc.rodataSizeBeforeTextAlign,
-            reinterpret_cast<uint8_t*>(desc.rodataAddrBeforeText), desc.rodataSizeBeforeText) != EOK) {
+            reinterpret_cast<uint8_t*>(desc.rodataAddrBeforeText),
+            desc.rodataSizeBeforeText) != EOK) { // LCOV_EXCL_BR_LINE
             LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
             return false;
         }
@@ -94,7 +95,8 @@ bool MachineCode::SetText(const MachineCodeDesc &desc)
     pText += desc.codeSizeAlign;
     if (desc.rodataSizeAfterTextAlign != 0) {
         if (memcpy_s(pText, desc.rodataSizeAfterTextAlign,
-            reinterpret_cast<uint8_t*>(desc.rodataAddrAfterText), desc.rodataSizeAfterText) != EOK) {
+            reinterpret_cast<uint8_t*>(desc.rodataAddrAfterText),
+            desc.rodataSizeAfterText) != EOK) { // LCOV_EXCL_BR_LINE
             LOG_JIT(ERROR) << "memcpy fail in copy fast jit code";
             return false;
         }
@@ -108,7 +110,7 @@ bool MachineCode::SetNonText(const MachineCodeDesc &desc, EntityId methodId)
     uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
     if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize,
                  reinterpret_cast<uint8_t*>(desc.stackMapOrOffsetTableAddr),
-                 desc.stackMapOrOffsetTableSize) != EOK) {
+                 desc.stackMapOrOffsetTableSize) != EOK) { // LCOV_EXCL_BR_LINE
         LOG_JIT(ERROR) << "memcpy fail in copy fast jit stackmap";
         return false;
     }
@@ -224,7 +226,7 @@ bool MachineCode::SetBaselineCodeData(const MachineCodeDesc &desc,
     uint8_t *stackmapAddr = GetStackMapOrOffsetTableAddress();
     if (memcpy_s(stackmapAddr, desc.stackMapOrOffsetTableSize,
                  reinterpret_cast<uint8_t*>(desc.stackMapOrOffsetTableAddr),
-                 desc.stackMapOrOffsetTableSize) != EOK) {
+                 desc.stackMapOrOffsetTableSize) != EOK) { // LCOV_EXCL_BR_LINE
         LOG_BASELINEJIT(ERROR) << "memcpy fail in copy fast baselineJIT offsetTable";
         return false;
     }
