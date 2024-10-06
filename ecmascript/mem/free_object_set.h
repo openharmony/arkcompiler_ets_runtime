@@ -71,7 +71,7 @@ private:
     FreeObjectSet *prev_ = nullptr;
     SetType setType_ = INVALID_SET_TYPE;
     size_t available_ = 0;
-    bool isAdded_ = false;
+    uint64_t isAdded_ = 0; // 0: not added, 1: is added
     T *freeObject_ = nullptr;
     MemDescPool *memDescPool_ {nullptr};
     friend class FreeObjectList<T>;
