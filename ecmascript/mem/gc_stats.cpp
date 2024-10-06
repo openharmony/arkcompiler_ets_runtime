@@ -31,7 +31,6 @@ namespace panda::ecmascript {
 void GCStats::PrintStatisticResult()
 {
     LOG_GC(INFO) << "/******************* GCStats statistic: *******************/";
-    PrintGCSummaryStatistic(GCType::STW_YOUNG_GC);
     PrintGCSummaryStatistic(GCType::PARTIAL_EDEN_GC);
     PrintGCSummaryStatistic(GCType::PARTIAL_YOUNG_GC);
     PrintGCSummaryStatistic(GCType::PARTIAL_OLD_GC);
@@ -169,17 +168,6 @@ void GCStats::PrintGCMemoryStatistic()
                     << STATS_DESCRIPTION_FORMAT("ChunkNativeSize:")
                     << STATS_DATA_FORMAT(sizeToKB(heap_->GetNativeAreaAllocator()->GetChunkNativeSize())) << "KB";
     switch (gcType_) {
-        case GCType::STW_YOUNG_GC: {
-            double copiedRate = double(GetRecordData(RecordData::SEMI_ALIVE_SIZE)) /
-                                GetRecordData(RecordData::SEMI_COMMIT_SIZE);
-            double premotedRate = double(GetRecordData(RecordData::SEMI_PROMOTE_SIZE)) /
-                                  GetRecordData(RecordData::SEMI_COMMIT_SIZE);
-            double survivalRate = std::min(copiedRate + premotedRate, 1.0);
-            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("Young copied rate:") << STATS_DATA_FORMAT(copiedRate) << "\n"
-                << STATS_DESCRIPTION_FORMAT("Young promoted rate:") << STATS_DATA_FORMAT(premotedRate) << "\n"
-                << STATS_DESCRIPTION_FORMAT("Young survival rate:") << STATS_DATA_FORMAT(survivalRate);
-            break;
-        }
         case GCType::PARTIAL_EDEN_GC: {
             size_t commitSize = GetRecordData(RecordData::EDEN_COMMIT_SIZE);
             double copiedRate = commitSize == 0 ? 0 : (double(GetRecordData(RecordData::EDEN_ALIVE_SIZE)) / commitSize);
@@ -223,20 +211,6 @@ void GCStats::PrintGCDurationStatistic()
 {
     LOG_GC(INFO) << "/***************** GC Duration statistic: ****************/";
     switch (gcType_) {
-        case GCType::STW_YOUNG_GC:
-            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("TotalGC:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::TotalGC]) << "ms\n"
-                         << STATS_DESCRIPTION_FORMAT("Initialize:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Initialize]) << "ms\n"
-                         << STATS_DESCRIPTION_FORMAT("Mark:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Mark]) << "ms\n"
-                         << STATS_DESCRIPTION_FORMAT("MarkRoots:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::MarkRoots]) << "ms\n"
-                         << STATS_DESCRIPTION_FORMAT("Sweep:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Sweep]) << "ms\n"
-                         << STATS_DESCRIPTION_FORMAT("Finish:")
-                         << STATS_DATA_FORMAT(scopeDuration_[Scope::ScopeId::Finish]) << "ms";
-            break;
         case GCType::PARTIAL_EDEN_GC:
         case GCType::PARTIAL_YOUNG_GC:
         case GCType::PARTIAL_OLD_GC:
@@ -304,9 +278,6 @@ bool GCStats::CheckIfNeedPrint(GCType type)
 {
     uint32_t gcCount = 0;
     switch (type) {
-        case GCType::STW_YOUNG_GC:
-            gcCount = GetRecordData(RecordData::SEMI_COUNT);
-            break;
         case GCType::PARTIAL_EDEN_GC:
             gcCount = GetRecordData(RecordData::EDEN_COUNT);
             break;
@@ -338,26 +309,6 @@ void GCStats::PrintGCSummaryStatistic(GCType type)
     }
     LOG_GC(INFO) << "/***************** GC summary statistic: *****************/";
     switch (type) {
-        case GCType::STW_YOUNG_GC: {
-            double copiedRate = double(GetRecordData(RecordData::SEMI_TOTAL_ALIVE)) /
-                                GetRecordData(RecordData::SEMI_TOTAL_COMMIT);
-            double promotedRate = double(GetRecordData(RecordData::SEMI_TOTAL_PROMOTE)) /
-                                  GetRecordData(RecordData::SEMI_TOTAL_COMMIT);
-            double survivalRate = std::min(copiedRate + promotedRate, 1.0);
-            LOG_GC(INFO) << STATS_DESCRIPTION_FORMAT("STWYoungGC occurs count")
-                << STATS_DATA_FORMAT(GetRecordData(RecordData::SEMI_COUNT)) << "\n"
-                << STATS_DESCRIPTION_FORMAT("STWYoungGC max pause:")
-                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SEMI_MAX_PAUSE)) << "ms\n"
-                << STATS_DESCRIPTION_FORMAT("STWYoungGC min pause:")
-                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SEMI_MIN_PAUSE)) << "ms\n"
-                << STATS_DESCRIPTION_FORMAT("STWYoungGC average pause:")
-                << STATS_DATA_FORMAT(GetRecordDuration(RecordDuration::SEMI_TOTAL_PAUSE) /
-                                     GetRecordData(RecordData::SEMI_COUNT)) << "ms\n"
-                << STATS_DESCRIPTION_FORMAT("Young average copied rate:") << STATS_DATA_FORMAT(copiedRate) << "\n"
-                << STATS_DESCRIPTION_FORMAT("Young average promoted rate:") << STATS_DATA_FORMAT(promotedRate) << "\n"
-                << STATS_DESCRIPTION_FORMAT("Young average survival rate:") << STATS_DATA_FORMAT(survivalRate);
-            break;
-        }
         case GCType::PARTIAL_EDEN_GC: {
             size_t commitSize = GetRecordData(RecordData::EDEN_TOTAL_COMMIT);
             double copiedRate =
@@ -450,12 +401,6 @@ void GCStats::RecordStatisticBeforeGC(TriggerGCType gcType, GCReason reason)
     reason_ = reason;
 
     switch (gcType_) {
-        case GCType::STW_YOUNG_GC: {
-            size_t semiCommitSize = heap_->GetNewSpace()->GetCommittedSize();
-            SetRecordData(RecordData::SEMI_COMMIT_SIZE, semiCommitSize);
-            IncreaseRecordData(RecordData::SEMI_TOTAL_COMMIT, semiCommitSize);
-            break;
-        }
         case GCType::PARTIAL_EDEN_GC: {
             size_t edenCommitSize = heap_->GetEdenSpace()->GetCommittedSize();
             SetRecordData(RecordData::EDEN_COMMIT_SIZE, edenCommitSize);
@@ -493,26 +438,6 @@ void GCStats::RecordStatisticAfterGC()
 
     float duration = scopeDuration_[Scope::ScopeId::TotalGC];
     switch (gcType_) {
-        case GCType::STW_YOUNG_GC: {
-            if (GetRecordData(RecordData::SEMI_COUNT) == 0) {
-                SetRecordDuration(RecordDuration::SEMI_MIN_PAUSE, duration);
-                SetRecordDuration(RecordDuration::SEMI_MAX_PAUSE, duration);
-            } else {
-                SetRecordDuration(RecordDuration::SEMI_MIN_PAUSE,
-                    std::min(GetRecordDuration(RecordDuration::SEMI_MIN_PAUSE), duration));
-                SetRecordDuration(RecordDuration::SEMI_MAX_PAUSE,
-                    std::max(GetRecordDuration(RecordDuration::SEMI_MAX_PAUSE), duration));
-            }
-            IncreaseRecordData(RecordData::SEMI_COUNT);
-            IncreaseRecordDuration(RecordDuration::SEMI_TOTAL_PAUSE, duration);
-            size_t semiAliveSize = heap_->GetNewSpace()->GetHeapObjectSize();
-            SetRecordData(RecordData::SEMI_ALIVE_SIZE, semiAliveSize);
-            IncreaseRecordData(RecordData::SEMI_TOTAL_ALIVE, semiAliveSize);
-            size_t promotedSize = heap_->GetPromotedSize();
-            SetRecordData(RecordData::SEMI_PROMOTE_SIZE, promotedSize);
-            IncreaseRecordData(RecordData::SEMI_TOTAL_PROMOTE, promotedSize);
-            break;
-        }
         case GCType::PARTIAL_EDEN_GC: {
             if (GetRecordData(RecordData::EDEN_COUNT) == 0) {
                 SetRecordDuration(RecordDuration::EDEN_MIN_PAUSE, duration);

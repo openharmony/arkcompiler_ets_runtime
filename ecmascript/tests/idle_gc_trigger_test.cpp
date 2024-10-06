@@ -19,7 +19,6 @@
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/tests/test_helper.h"
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
 
 using namespace panda::ecmascript;

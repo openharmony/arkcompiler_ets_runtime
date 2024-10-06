@@ -18,7 +18,6 @@
 #include "ecmascript/tests/test_helper.h"
 
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/jit_fort_memdesc.h"
 #include "ecmascript/mem/jit_fort.h"

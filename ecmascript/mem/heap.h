@@ -62,7 +62,6 @@ class SharedGCMarkerBase;
 class SharedGCMarker;
 class SharedFullGC;
 class SharedGCMovableMarker;
-class STWYoungGC;
 class ThreadLocalAllocationBuffer;
 class JSThread;
 class DaemonThread;
@@ -947,11 +946,6 @@ public:
         }
     }
 
-    STWYoungGC *GetSTWYoungGC() const
-    {
-        return stwYoungGC_;
-    }
-
     PartialGC *GetPartialGC() const
     {
         return partialGC_;
@@ -1637,12 +1631,6 @@ private:
     /*
      * Garbage collectors collecting garbage in different scopes.
      */
-
-    /*
-     * Semi sapce GC which collects garbage only in young spaces.
-     * This is however optional for now because the partial GC also covers its functionality.
-     */
-    STWYoungGC *stwYoungGC_ {nullptr};
 
     /*
      * The mostly used partial GC which collects garbage in young spaces,

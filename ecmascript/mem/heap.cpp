@@ -30,7 +30,6 @@
 #include "ecmascript/mem/shared_heap/shared_gc.h"
 #include "ecmascript/mem/shared_heap/shared_full_gc.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
-#include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/verification.h"
 #include "ecmascript/runtime_call_id.h"
 #include "ecmascript/jit/jit.h"
@@ -767,7 +766,6 @@ void Heap::Initialize()
     concurrentMarkerEnabled = false;
 #endif
     workManager_ = new WorkManager(this, Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1);
-    stwYoungGC_ = new STWYoungGC(this, parallelGC_);
     fullGC_ = new FullGC(this);
 
     partialGC_ = new PartialGC(this);
@@ -900,10 +898,6 @@ void Heap::Destroy()
         appSpawnSpace_->Reset();
         delete appSpawnSpace_;
         appSpawnSpace_ = nullptr;
-    }
-    if (stwYoungGC_ != nullptr) {
-        delete stwYoungGC_;
-        stwYoungGC_ = nullptr;
     }
     if (partialGC_ != nullptr) {
         delete partialGC_;
@@ -1039,7 +1033,6 @@ void Heap::DisableParallelGC()
     parallelGC_ = false;
     maxEvacuateTaskCount_ = 0;
     maxMarkTaskCount_ = 0;
-    stwYoungGC_->ConfigParallelGC(false);
     sweeper_->ConfigConcurrentSweep(false);
     concurrentMarker_->ConfigConcurrentMark(false);
     Taskpool::GetCurrentTaskpool()->Destroy(GetJSThread()->GetThreadId());
@@ -1064,7 +1057,6 @@ void Heap::EnableParallelGC()
 #if ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     concurrentMarkerEnabled = false;
 #endif
-    stwYoungGC_->ConfigParallelGC(parallelGC_);
     sweeper_->ConfigConcurrentSweep(ecmaVm_->GetJSOptions().EnableConcurrentSweep());
     concurrentMarker_->ConfigConcurrentMark(concurrentMarkerEnabled);
 }
@@ -2568,7 +2560,6 @@ void Heap::UpdateWorkManager(WorkManager *workManager)
 {
     concurrentMarker_->workManager_ = workManager;
     fullGC_->workManager_ = workManager;
-    stwYoungGC_->workManager_ = workManager;
     incrementalMarker_->workManager_ = workManager;
     nonMovableMarker_->workManager_ = workManager;
     semiGCMarker_->workManager_ = workManager;

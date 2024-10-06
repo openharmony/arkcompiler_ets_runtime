@@ -136,6 +136,7 @@ HWTEST_F_L0(MemControllerTest, StartCalculationBeforeGC)
 
     sleep(1);
     memController->StartCalculationBeforeGC();
+    memController->CheckLowAllocationUsageState();
 
     double allocTimeMsAfter = memController->GetAllocTimeMs();
     size_t oldSpaceSizeAfter = memController->GetOldSpaceAllocAccumulatedSize();
