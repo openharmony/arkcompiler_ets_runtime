@@ -66,7 +66,7 @@ void QuickFixManager::LoadPatchIfNeeded(JSThread *thread, const JSPandaFile *bas
     }
 
     PatchInfo patchInfo;
-    SetCurrentBaseFileName(baseFileName);
+    patchAndBaseFileNameMap_[patchFileName.c_str()] = baseFileName;
     if (baseClassInfo_.empty()) {
         baseClassInfo_ = PatchLoader::CollectClassInfo(baseFile);
     }
@@ -104,7 +104,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread, const std::string &p
     }
 
     PatchInfo patchInfo;
-    SetCurrentBaseFileName(baseFileName.c_str());
+    patchAndBaseFileNameMap_[patchFile->GetJSPandaFileDesc()] = baseFileName.c_str();
     if (baseClassInfo_.empty()) {
         baseClassInfo_ = PatchLoader::CollectClassInfo(baseFile.get());
     }
@@ -144,7 +144,7 @@ PatchErrorCode QuickFixManager::LoadPatch(JSThread *thread,
     }
 
     PatchInfo patchInfo;
-    SetCurrentBaseFileName(baseFileName.c_str());
+    patchAndBaseFileNameMap_[patchFile->GetJSPandaFileDesc()] = baseFileName.c_str();
     if (baseClassInfo_.empty()) {
         baseClassInfo_ = PatchLoader::CollectClassInfo(baseFile.get());
     }
@@ -174,6 +174,7 @@ PatchErrorCode QuickFixManager::UnloadPatch(JSThread *thread, const std::string 
     }
 
     PatchInfo &patchInfo = methodInfos_.find(baseFileName)->second;
+    patchAndBaseFileNameMap_.erase(patchFileName.c_str());
     auto ret = PatchLoader::UnloadPatchInternal(thread, patchFileName.c_str(), baseFileName.c_str(), patchInfo);
     if (ret != PatchErrorCode::SUCCESS) {
         LOG_ECMA(ERROR) << "Unload patch fail!";
@@ -288,17 +289,17 @@ CUnorderedSet<CString> QuickFixManager::ParseStackInfo(const CString &stackInfo)
     return methodNames;
 }
 
-void QuickFixManager::SetCurrentBaseFileName(CString fileName)
-{
-    currentBaseFileName_ = fileName;
-}
-
 CString QuickFixManager::GetBaseFileName(const JSHandle<SourceTextModule> &module)
 {
     CString fileName = module->GetEcmaModuleFilenameString();
     // Return the baseFileName of the patch module
     if (fileName.find(ModulePathHelper::EXT_NAME_HQF) != std::string::npos) {
-        return currentBaseFileName_;
+        auto it = patchAndBaseFileNameMap_.find(fileName);
+        if (it != patchAndBaseFileNameMap_.end()) {
+            return it->second;
+        } else {
+            LOG_ECMA(ERROR) << "The baseFileName corresponding to " << fileName << " cannot be found.";
+        }
     }
     return fileName;
 }
