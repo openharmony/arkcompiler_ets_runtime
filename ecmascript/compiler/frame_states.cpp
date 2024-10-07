@@ -703,11 +703,12 @@ void FrameStateBuilder::MergeAssignment(const BytecodeRegion &bb, const Bytecode
                 ASSERT(!IsGateNotEmpty(next) ||
                     ((acc_.GetOpCode(next) == OpCode::VALUE_SELECTOR) &&
                     acc_.GetState(next) == mergedContext->currentState_));
-            } else {
+            } else if (!IsGateNotEmpty(mergedContext->mergeState_)) {
                 ASSERT(!IsGateNotEmpty(next) || current == next);
             }
 #endif
-            if (loopAssignment != nullptr && !loopAssignment->TestBit(i)) {
+            if (loopAssignment != nullptr && !loopAssignment->TestBit(i) &&
+                !IsGateNotEmpty(mergedContext->mergeState_)) {
                 value = current;
             } else {
                 value = MergeValue(bbNext, stateMerge, current, next, bbNext.IsLoopBack(bb));
