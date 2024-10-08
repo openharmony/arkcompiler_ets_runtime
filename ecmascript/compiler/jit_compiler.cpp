@@ -117,8 +117,8 @@ JitCompilerTask *JitCompilerTask::CreateJitCompilerTask(JitTask *jitTask)
 bool JitCompilerTask::Compile()
 {
     if (compilerTier_ == CompilerTier::BASELINE) {
-        auto baselineCompiler =
-            new (std::nothrow) BaselineCompiler(jitCompilationEnv_->GetHostThread()->GetEcmaVM());
+        auto baselineCompiler = new (std::nothrow) BaselineCompiler(jitCompilationEnv_->GetHostThread()->GetEcmaVM(),
+            jitCompilationEnv_.get());
         if (baselineCompiler == nullptr) {
             return false;
         }
@@ -165,13 +165,82 @@ bool JitCompilerTask::Finalize(JitTask *jitTask)
         return false;
     }
     if (compilerTier_ == CompilerTier::BASELINE) {
-        baselineCompiler_->CollectMemoryCodeInfos(jitTask->GetMachineCodeDesc());
-        return true;
+        return baselineCompiler_->CollectMemoryCodeInfos(jitTask->GetMachineCodeDesc());
     }
     jitCodeGenerator_->JitCreateLitecgModule();
-    passManager_->RunCg();
-    jitCodeGenerator_->GetMemoryCodeInfos(jitTask->GetMachineCodeDesc());
+    bool result = true;
+    result &= passManager_->RunCg();
+    result &= jitCodeGenerator_->GetMemoryCodeInfos(jitTask->GetMachineCodeDesc());
     ReleaseJitPassManager();
+    return result;
+}
+
+
+static ARK_INLINE bool CopyCodeToFort(MachineCodeDesc &desc)
+{
+    uint8_t *pText = reinterpret_cast<uint8_t*>(desc.instructionsAddr);
+    if (desc.rodataSizeBeforeTextAlign != 0) {
+        pText += desc.rodataSizeBeforeTextAlign;
+    }
+#ifdef JIT_ENABLE_CODE_SIGN
+    if ((uintptr_t)desc.codeSigner == 0) {
+        if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+            LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
+            return false;
+        }
+    } else {
+        LOG_JIT(DEBUG) << "Copy: "
+                       << std::hex << (uintptr_t)pText << " <- "
+                       << std::hex << (uintptr_t)desc.codeAddr << " size: " << desc.codeSize;
+        LOG_JIT(DEBUG) << "     codeSigner = " << std::hex << (uintptr_t)desc.codeSigner;
+        OHOS::Security::CodeSign::JitCodeSignerBase *signer =
+            reinterpret_cast<OHOS::Security::CodeSign::JitCodeSignerBase*>(desc.codeSigner);
+        int err = OHOS::Security::CodeSign::CopyToJitCode(
+            signer, pText, reinterpret_cast<void *>(desc.codeAddr), desc.codeSize);
+        if (err != EOK) {
+            LOG_JIT(ERROR) << "     CopyToJitCode failed, err: " << err;
+            return false;
+        } else {
+            LOG_JIT(DEBUG) << "     CopyToJitCode success!!";
+        }
+        delete reinterpret_cast<OHOS::Security::CodeSign::JitCodeSignerBase*>(desc.codeSigner);
+    }
+#else
+    if (memcpy_s(pText, desc.codeSizeAlign, reinterpret_cast<uint8_t*>(desc.codeAddr), desc.codeSize) != EOK) {
+        LOG_JIT(ERROR) << "memcpy failed in CopyToCache";
+        return false;
+    }
+#endif
+    return true;
+}
+
+ARK_INLINE bool JitCompiler::AllocFromFortAndCopy(CompilationEnv &compilationEnv, MachineCodeDesc &desc)
+{
+    ASSERT(compilationEnv.IsJitCompiler());
+    JSThread *hostThread = static_cast<JitCompilationEnv&>(compilationEnv).GetHostThread();
+    Jit::JitGCLockHolder lock(hostThread);
+
+    size_t size = JitTask::ComputePayLoadSize(desc);
+    const Heap *heap = hostThread->GetEcmaVM()->GetHeap();
+
+    if (desc.isHugeObj) {
+        Region *region = heap->GetHugeMachineCodeSpace()->AllocateFort(
+            size + MachineCode::SIZE, hostThread, &desc);
+        if (!region || !desc.instructionsAddr) {
+            return false;
+        }
+        desc.hugeObjRegion = ToUintPtr(region);
+    } else {
+        uintptr_t mem = heap->GetMachineCodeSpace()->JitFortAllocate(&desc);
+        if (mem == ToUintPtr(nullptr)) {
+            return false;
+        }
+        desc.instructionsAddr = mem;
+    }
+
+    if (!CopyCodeToFort(desc)) {
+        return false;
+    }
     return true;
 }
 

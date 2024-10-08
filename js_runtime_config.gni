@@ -54,6 +54,7 @@ if (target_cpu == "arm64") {
 }
 MAPLEALL_ROOT = "//arkcompiler/ets_runtime/ecmascript/compiler/codegen/maple"
 MAPLEALL_THIRD_PARTY_ROOT = "//third_party"
+LLVM_LIB_ROOT = "//arkcompiler/ets_runtime/ecmascript/compiler/codegen/llvm/lib"
 
 if (!ark_standalone_build) {
   build_root = "//build"
@@ -157,6 +158,9 @@ if (enable_hilog) {
 if (enable_hisysevent) {
   hiviewdfx_ext_deps += [ "hisysevent:libhisysevent" ]
 }
+
+enable_sanitize = is_ohos && is_standard_system && !ark_standalone_build &&
+                  current_toolchain != host_toolchain
 
 enable_target_compilation =
     !ark_standalone_build && !is_mac && !(defined(is_arkui_x) && is_arkui_x) &&

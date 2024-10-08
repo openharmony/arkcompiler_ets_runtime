@@ -215,10 +215,9 @@ public:
         curCompileFileName_ = fileName.c_str();
     }
 
-    void GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc);
+    bool GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc);
     void JitCreateLitecgModule();
     bool isAArch64() const;
-
 private:
     // collect aot component info
     void CollectCodeInfo(Module *module, uint32_t moduleIdx);

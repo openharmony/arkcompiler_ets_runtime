@@ -120,7 +120,7 @@ void LMIRBuilder::SetCallStmtDeoptBundleInfo(Stmt &callNode,
             deoptInfos.insert(std::pair<int32_t, MapleValue>(itr.first, MapleValue(std::get<MIRConst*>(value.data))));
         }
     }
-    if (callNode.GetOpCode() == OP_call) {
+    if (callNode.GetOpCode() == OP_call || callNode.GetOpCode() == OP_callassigned) {
         static_cast<CallNode &>(callNode).SetDeoptBundleInfo(deoptInfos);
     } else {
         static_cast<IcallNode &>(callNode).SetDeoptBundleInfo(deoptInfos);

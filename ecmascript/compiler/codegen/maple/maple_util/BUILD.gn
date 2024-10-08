@@ -36,6 +36,14 @@ include_libcommandline = [ "${MAPLEALL_ROOT}/maple_util/include" ]
 
 ohos_static_library("libmplutil") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libmplutil
   include_dirs = include_libmplutil
