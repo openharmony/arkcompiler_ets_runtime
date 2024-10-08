@@ -1314,7 +1314,12 @@ int SourceTextModule::ModuleEvaluation(JSThread *thread, const JSHandle<ModuleRe
 Expected<JSTaggedValue, bool> SourceTextModule::ModuleExecution(JSThread *thread,
     const JSHandle<SourceTextModule> &module, const void *buffer, size_t size, bool executeFromJob)
 {
-    CString moduleFilenameStr = module->GetEcmaModuleFilenameString();
+    CString moduleFilenameStr {};
+    if (thread->GetCurrentEcmaContext()->GetStageOfHotReload() == StageOfHotReload::LOAD_END_EXECUTE_PATCHMAIN) {
+        moduleFilenameStr = thread->GetEcmaVM()->GetQuickFixManager()->GetBaseFileName(module);
+    } else {
+        moduleFilenameStr = module->GetEcmaModuleFilenameString();
+    }
     std::string entryPoint;
     CString moduleRecordName = module->GetEcmaModuleRecordNameString();
     if (moduleRecordName.empty()) {
