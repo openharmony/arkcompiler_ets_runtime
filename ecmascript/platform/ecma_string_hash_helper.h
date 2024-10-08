@@ -18,7 +18,7 @@
 
 #include <cstdint>
 #include "ecmascript/platform/ecma_string_hash.h"
-#ifdef PANDA_TARGET_ARM64
+#if defined(PANDA_TARGET_ARM64) && !defined(PANDA_TARGET_MACOS)
 #include "ecmascript/platform/arm64/ecma_string_hash_internal.h"
 #else
 #include "ecmascript/platform/common/ecma_string_hash_internal.h"
