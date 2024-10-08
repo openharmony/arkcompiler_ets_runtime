@@ -84,11 +84,7 @@ bool FileStream::WriteChunk(char *data, int32_t size)
         return false;
     }
 
-    std::string str;
-    str.resize(size);
-    for (int32_t i = 0; i < size; ++i) {
-        str[i] = data[i];
-    }
+    std::string str(data, size);
 
     fileStream_ << str;
 
@@ -114,11 +110,7 @@ bool FileDescriptorStream::WriteChunk(char *data, int32_t size)
         return false;
     }
 
-    std::string str;
-    str.resize(size);
-    for (int32_t i = 0; i < size; ++i) {
-        str[i] = data[i];
-    }
+    std::string str(data, size);
     int ret = dprintf(fd_, "%s", str.c_str());
     if (ret < 0) {
         LOG_ECMA(ERROR) << "Write FD print failed, ret" << ret;
