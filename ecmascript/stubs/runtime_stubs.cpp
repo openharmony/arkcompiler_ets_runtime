@@ -480,6 +480,33 @@ DEF_RUNTIME_STUBS(PropertiesSetValue)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(TaggedArraySetValue)
+{
+    RUNTIME_STUBS_HEADER(TaggedArraySetValue);
+    JSTaggedType argReceiver = GetTArg(argv, argc, 0);  // 0: means the zeroth parameter
+    JSTaggedValue value = GetArg(argv, argc, 1);  // 1: means the first parameter
+    JSTaggedType argElement = GetTArg(argv, argc, 2);  // 2: means the second parameter
+    JSTaggedValue taggedElementIndex = GetArg(argv, argc, 3);  // 3: means the third parameter
+    JSTaggedValue taggedCapacity = GetArg(argv, argc, 4);  // 4: means the fourth parameter
+
+    int elementIndex = taggedElementIndex.GetInt();
+    int capacity = taggedCapacity.GetInt();
+    auto elements = reinterpret_cast<TaggedArray *>(argElement);
+    if (elementIndex >= capacity) {
+        if (JSObject::ShouldTransToDict(capacity, elementIndex)) {
+            return JSTaggedValue::Hole().GetRawData();
+        }
+        JSHandle<JSObject> receiverHandle(thread, reinterpret_cast<JSObject *>(argReceiver));
+        JSHandle<JSTaggedValue> valueHandle(thread, value);
+        elements = *JSObject::GrowElementsCapacity(thread, receiverHandle, elementIndex + 1);
+        receiverHandle->SetElements(thread, JSTaggedValue(elements));
+        elements->Set(thread, elementIndex, valueHandle);
+        return JSTaggedValue::Undefined().GetRawData();
+    }
+    elements->Set(thread, elementIndex, value);
+    return JSTaggedValue::Undefined().GetRawData();
+}
+
 DEF_RUNTIME_STUBS(CheckAndCopyArray)
 {
     RUNTIME_STUBS_HEADER(CheckAndCopyArray);
@@ -1318,24 +1345,6 @@ DEF_RUNTIME_STUBS(StoreICByValue)
     StoreICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(),
                              ICKind::StoreIC);
     return icRuntime.StoreMiss(receiver, propKey, value).GetRawData();
-}
-
-DEF_RUNTIME_STUBS(StoreOwnICByValue)
-{
-    RUNTIME_STUBS_HEADER(StoreOwnICByValue);
-    JSHandle<JSTaggedValue> profileTypeInfo = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> receiver = GetHArg<JSTaggedValue>(argv, argc, 1);  // 1: means the first parameter
-    JSHandle<JSTaggedValue> key = GetHArg<JSTaggedValue>(argv, argc, 2);  // 2: means the second parameter
-    JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 3);  // 3: means the third parameter
-    JSTaggedValue slotId = GetArg(argv, argc, 4);   // 4: means the fourth parameter
-    if (profileTypeInfo->IsUndefined()) {
-        return RuntimeStOwnByIndex(thread, receiver, key, value).GetRawData();
-    }
-    JSHandle<JSTaggedValue> propKey = JSTaggedValue::ToPropertyKey(thread, key);
-    RETURN_VALUE_IF_ABRUPT_COMPLETION(thread, JSTaggedValue::Exception().GetRawData());
-    StoreICRuntime icRuntime(thread, JSHandle<ProfileTypeInfo>::Cast(profileTypeInfo), slotId.GetInt(),
-                             ICKind::StoreIC);
-    return icRuntime.StoreMiss(receiver, propKey, value, true).GetRawData();
 }
 
 DEF_RUNTIME_STUBS(StOwnByValue)

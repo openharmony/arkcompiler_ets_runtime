@@ -2551,31 +2551,70 @@ void BaselineStownbyindexImm8V8Imm16StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineStownbyindexImm8V8Imm16, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineStownbyindexImm8V8Imm16, SP));
+    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineStownbyindexImm8V8Imm16, ACC));
     GateRef receiver = TaggedArgument(PARAM_INDEX(BaselineStownbyindexImm8V8Imm16, RECEIVER));
     GateRef index = Int32Argument(PARAM_INDEX(BaselineStownbyindexImm8V8Imm16, INDEX));
-    GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbyindexImm8V8Imm16, SLOTID));
-    DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
-    GateRef acc = GetAccFromFrame(frame);
 
-    AccessObjectStubBuilder builder(this);
-    GateRef result = builder.StoreOwnByIndex(
-        glue, receiver, index, acc, profileTypeInfo, slotId, callback);
-    CHECK_EXCEPTION(result);
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label slowPath(env);
+    Branch(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+    Bind(&isHeapObject);
+    Label notClassConstructor(env);
+    Branch(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    Bind(&notClassConstructor);
+    Label notClassPrototype(env);
+    Branch(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    Bind(&notClassPrototype);
+    {
+        // fast path
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
+        Label notHole(env);
+        Branch(TaggedIsHole(result), &slowPath, &notHole);
+        Bind(&notHole);
+        CHECK_EXCEPTION(result);
+    }
+    Bind(&slowPath);
+    {
+        GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex),
+                                     { receiver, IntToTaggedInt(index), acc });
+        CHECK_EXCEPTION(result);
+    }
 }
 
 void BaselineStownbyindexImm16V8Imm16StubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(PARAM_INDEX(BaselineStownbyindexImm16V8Imm16, GLUE));
     GateRef sp = PtrArgument(PARAM_INDEX(BaselineStownbyindexImm16V8Imm16, SP));
+    GateRef acc = TaggedArgument(PARAM_INDEX(BaselineStownbyindexImm16V8Imm16, ACC));
     GateRef receiver = TaggedArgument(PARAM_INDEX(BaselineStownbyindexImm16V8Imm16, RECEIVER));
     GateRef index = Int32Argument(PARAM_INDEX(BaselineStownbyindexImm16V8Imm16, INDEX));
-    GateRef slotId = Int32Argument(PARAM_INDEX(BaselineStownbyindexImm16V8Imm16, SLOTID));
-    DEFINE_PROFILE_CALLBACK(glue, sp, slotId);
 
-    GateRef acc = GetAccFromFrame(frame);
-    AccessObjectStubBuilder builder(this);
-    GateRef result = builder.StoreOwnByIndex(glue, receiver, index, acc, profileTypeInfo, slotId, callback);
-    CHECK_EXCEPTION(result);
+    auto env = GetEnvironment();
+    Label isHeapObject(env);
+    Label slowPath(env);
+    BRANCH(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
+    Bind(&isHeapObject);
+    Label notClassConstructor(env);
+    BRANCH(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
+    Bind(&notClassConstructor);
+    Label notClassPrototype(env);
+    BRANCH(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
+    Bind(&notClassPrototype);
+    {
+        // fast path
+        GateRef result = SetPropertyByIndex(glue, receiver, index, acc, true); // acc is value
+        Label notHole(env);
+        BRANCH(TaggedIsHole(result), &slowPath, &notHole);
+        Bind(&notHole);
+        CHECK_EXCEPTION(result);
+    }
+    Bind(&slowPath);
+    {
+        GateRef result = CallRuntime(glue, RTSTUB_ID(StOwnByIndex),
+                                     { receiver, IntToTaggedInt(index), acc });
+        CHECK_EXCEPTION(result);
+    }
 }
 
 void BaselineAsyncfunctionresolveV8StubBuilder::GenerateCircuit()

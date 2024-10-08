@@ -98,6 +98,7 @@ true
 true
 true
 SyntaxError: Invalid regular expression :/[\p{}]/u
+SyntaxError: nothing to repeat
 a,b,c
 a,b,c
 a,b,c
@@ -140,15 +141,14 @@ true
 8
 true
 
-SyntaxError: nothing to repeat
 null
 [object Object]
-false
-false
-success
 text/html
 text/plain
 text/html
+false
+false
+success
 false
 false
 

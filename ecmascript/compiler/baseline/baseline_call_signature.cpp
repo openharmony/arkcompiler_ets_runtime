@@ -1724,7 +1724,7 @@ DEF_CALL_SIGNATURE(BaselineStownbyindexImm8V8Imm16)
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
-        VariableType::INT32(),
+        VariableType::JS_ANY(),
         VariableType::INT32(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();
@@ -1741,7 +1741,7 @@ DEF_CALL_SIGNATURE(BaselineStownbyindexImm16V8Imm16)
         VariableType::NATIVE_POINTER(),
         VariableType::NATIVE_POINTER(),
         VariableType::JS_ANY(),
-        VariableType::INT32(),
+        VariableType::JS_ANY(),
         VariableType::INT32(),
     };
     BASELINE_STUB_CALL_SIGNATURE_COMMON_SET();

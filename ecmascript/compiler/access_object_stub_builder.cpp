@@ -329,53 +329,6 @@ GateRef AccessObjectStubBuilder::StoreObjByValue(GateRef glue, GateRef receiver,
     return ret;
 }
 
-GateRef AccessObjectStubBuilder::StoreOwnByIndex(GateRef glue, GateRef receiver, GateRef index, GateRef value,
-                                                 GateRef profileTypeInfo, GateRef slotId, ProfileOperation callback)
-{
-    auto env = GetEnvironment();
-    Label entry(env);
-    env->SubCfgEntry(&entry);
-    Label exit(env);
-    Label tryFastPath(env);
-    Label slowPath(env);
-    Label tryPreDump(env);
-
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    ICStubBuilder builder(this);
-    builder.SetParameters(glue, receiver, profileTypeInfo, value, slotId, IntToTaggedPtr(index), callback);
-    builder.StoreICByValue(&result, &tryFastPath, &tryPreDump, &exit);
-    Bind(&tryFastPath);
-    {
-        Label isHeapObject(env);
-        BRANCH(TaggedIsHeapObject(receiver), &isHeapObject, &slowPath);
-        Bind(&isHeapObject);
-        Label notClassConstructor(env);
-        BRANCH(IsClassConstructor(receiver), &slowPath, &notClassConstructor);
-        Bind(&notClassConstructor);
-        Label notClassPrototype(env);
-        BRANCH(IsClassPrototype(receiver), &slowPath, &notClassPrototype);
-        Bind(&notClassPrototype);
-        result = SetPropertyByIndex(glue, receiver, index, value, true);
-        BRANCH(TaggedIsHole(*result), &slowPath, &exit);
-    }
-    Bind(&tryPreDump);
-    {
-        callback.TryPreDump();
-        Jump(&slowPath);
-    }
-    Bind(&slowPath);
-    {
-        result = CallRuntime(glue,
-                             RTSTUB_ID(StoreOwnICByValue),
-                             {profileTypeInfo, receiver, IntToTaggedInt(index), value, IntToTaggedInt(slotId)});
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 GateRef AccessObjectStubBuilder::TryLoadGlobalByName(GateRef glue, GateRef prop, const StringIdInfo &info,
                                                      GateRef profileTypeInfo, GateRef slotId,
                                                      ProfileOperation callback)
