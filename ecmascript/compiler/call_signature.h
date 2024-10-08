@@ -630,7 +630,8 @@ private:
     V(ConvertCharToDouble)                           \
     V(ASMFastWriteBarrier)                           \
     V(ASMWriteBarrierWithEden)                       \
-    V(VerifyBarrier)
+    V(VerifyBarrier)                                 \
+    V(IsFastRegExp)
 
 #define DECL_CALL_SIGNATURE(name)                                  \
 class name##CallSignature final {                                  \
