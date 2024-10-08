@@ -1745,6 +1745,19 @@ GateRef CircuitBuilder::StringFromSingleCharCode(GateRef gate)
     return ret;
 }
 
+GateRef CircuitBuilder::StringCharCodeAt(GateRef thisValue, GateRef posTag)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret =
+        GetCircuit()->NewGate(circuit_->StringCharCodeAt(), MachineType::I64,
+            { currentControl, currentDepend, thisValue, posTag }, GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::StringSubstring(GateRef thisValue, GateRef startTag, GateRef endTag)
 {
     auto currentLabel = env_->GetCurrentLabel();

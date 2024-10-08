@@ -17,6 +17,7 @@ group("ark_aot_builtin_inlining_test") {
     "Array:ark_aot_builtin_inlining_Array_test",
     "ArrayBuffer:ark_aot_builtin_inlining_ArrayBuffer_test",
     "DataView:ark_aot_builtin_inlining_DataView_test",
+    "String:ark_aot_builtin_inlining_String_test",
     "bigint:ark_aot_builtin_inlining_bigint_test",
     "date:ark_aot_builtin_inlining_date_test",
     "function:ark_aot_builtin_inlining_function_test",

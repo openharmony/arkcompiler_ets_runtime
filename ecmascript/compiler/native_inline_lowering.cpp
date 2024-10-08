@@ -86,6 +86,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
             case BuiltinsStubCSigns::ID::StringFromCharCode:
                 TryInlineStringFromCharCode(gate, argc, skipThis);
                 break;
+            case BuiltinsStubCSigns::ID::StringCharCodeAt:
+                TryInlineStringCharCodeAt(gate, argc, skipThis);
+                break;
             case BuiltinsStubCSigns::ID::StringSubstring:
                 TryInlineStringSubstring(gate, argc, skipThis);
                 break;
@@ -433,6 +436,32 @@ void NativeInlineLowering::TryInlineStringFromCharCode(GateRef gate, size_t argc
 
     GateRef ret = builder_.StringFromSingleCharCode(tacc.GetArg0());
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
+void NativeInlineLowering::TryInlineStringCharCodeAt(GateRef gate, size_t argc, bool skipThis)
+{
+    // only inline number input, string input will be deoptimized
+    if (!skipThis) {
+        return;
+    }
+
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    GateRef posTag = (argc == 0) ? (builder_.Int32(0)) : (acc_.GetValueIn(gate, 1));
+    GateRef func = acc_.GetValueIn(gate, argc + 1);
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, func,
+                                 builder_.IntPtr(static_cast<int64_t>(BuiltinsStubCSigns::ID::StringCharCodeAt)),
+                                 {thisValue});
+        builder_.EcmaStringCheck(thisValue);
+    }
+
+    if (EnableTrace()) {
+        AddTraceLogs(gate, BuiltinsStubCSigns::ID::StringCharCodeAt);
+    }
+
+    GateRef ret = builder_.StringCharCodeAt(thisValue, posTag);
+    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineStringSubstring(GateRef gate, size_t argc, bool skipThis)

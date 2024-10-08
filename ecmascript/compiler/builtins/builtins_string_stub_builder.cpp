@@ -181,13 +181,66 @@ void BuiltinsStringStubBuilder::CharCodeAt(GateRef glue, GateRef thisValue, Gate
     CheckParamsAndGetPosition(glue, thisValue, numArgs, &pos, exit, slowPath, &posIsValid);
     Bind(&posIsValid);
     {
-        FlatStringStubBuilder thisFlat(this);
-        thisFlat.FlattenString(glue, thisValue, &flattenFastPath);
-        Bind(&flattenFastPath);
-        StringInfoGateRef stringInfoGate(&thisFlat);
-        res->WriteVariable(IntToTaggedPtr(StringAt(stringInfoGate, *pos)));
+        res->WriteVariable(FastStringCharCodeAt(glue, thisValue, *pos));
         Jump(exit);
     }
+}
+
+GateRef BuiltinsStringStubBuilder::FastStringCharCodeAt(GateRef glue, GateRef thisValue, GateRef pos)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    DEFVARIABLE(index, VariableType::INT32(), pos);
+    DEFVARIABLE(result, VariableType::JS_ANY(), Undefined());
+
+    Label exit(env);
+    Label readyStringAt(env);
+    FlatStringStubBuilder thisFlat(this);
+    thisFlat.FlattenStringWithIndex(glue, thisValue, &index, &readyStringAt);
+    Bind(&readyStringAt);
+    {
+        StringInfoGateRef stringInfoGate(&thisFlat);
+        Label isConstantString(env);
+        Label notConstantString(env);
+        Label getCharByIndex(env);
+        GateRef stringData = Circuit::NullGate();
+        BRANCH(IsConstantString(stringInfoGate.GetString()), &isConstantString, &notConstantString);
+        Bind(&isConstantString);
+        {
+            GateRef address = PtrAdd(stringInfoGate.GetString(), IntPtr(ConstantString::CONSTANT_DATA_OFFSET));
+            stringData = Load(VariableType::JS_ANY(), address, IntPtr(0));
+            Jump(&getCharByIndex);
+        }
+        Bind(&notConstantString);
+        {
+            stringData = PtrAdd(stringInfoGate.GetString(), IntPtr(LineEcmaString::DATA_OFFSET));
+            Jump(&getCharByIndex);
+        }
+        Label isUtf16(env);
+        Label isUtf8(env);
+        Bind(&getCharByIndex);
+        GateRef charPosition = Circuit::NullGate();
+        BRANCH(IsUtf16String(stringInfoGate.GetString()), &isUtf16, &isUtf8);
+        Bind(&isUtf16);
+        {
+            charPosition = PtrMul(ZExtInt32ToPtr(*index), IntPtr(sizeof(uint16_t)));
+            result = Int64ToTaggedIntPtr((ZExtInt16ToInt64(
+                Load(VariableType::INT16(), PtrAdd(stringData, charPosition)))));
+            Jump(&exit);
+        }
+        Bind(&isUtf8);
+        {
+            charPosition = PtrMul(ZExtInt32ToPtr(*index), IntPtr(sizeof(uint8_t)));
+            result = Int64ToTaggedIntPtr((ZExtInt8ToInt64(
+                Load(VariableType::INT8(), PtrAdd(stringData, charPosition)))));
+            Jump(&exit);
+        }
+    }
+    Bind(&exit);
+    auto res = *result;
+    env->SubCfgExit();
+    return res;
 }
 
 void BuiltinsStringStubBuilder::CodePointAt(GateRef glue, GateRef thisValue, GateRef numArgs,
@@ -275,11 +328,7 @@ void BuiltinsStringStubBuilder::CheckParamsAndGetPosition(GateRef glue, GateRef 
             }
             Bind(&next);
             {
-                BRANCH(Int32GreaterThanOrEqual(pos->ReadVariable(), thisLen), exit, &posNotGreaterLen);
-                Bind(&posNotGreaterLen);
-                {
-                    BRANCH(Int32LessThan(pos->ReadVariable(), Int32(0)), exit, posIsValid);
-                }
+                BRANCH(Int32UnsignedLessThan(pos->ReadVariable(), thisLen), posIsValid, exit);
             }
         }
     }
@@ -1976,6 +2025,52 @@ void FlatStringStubBuilder::FlattenString(GateRef glue, GateRef str, Label *fast
         {
             flatString_.WriteVariable(GetParentFromSlicedString(str));
             startIndex_.WriteVariable(GetStartIndexFromSlicedString(str));
+            Jump(fastPath);
+        }
+    }
+    Bind(&exit);
+    {
+        flatString_.WriteVariable(str);
+        Jump(fastPath);
+    }
+}
+
+void FlatStringStubBuilder::FlattenStringWithIndex(GateRef glue, GateRef str, Variable *index, Label *fastPath)
+{
+    // Note this method modifies "index" variable for Sliced String
+    auto env = GetEnvironment();
+    Label notLineString(env);
+    Label exit(env);
+    BRANCH(IsLiteralString(str), &exit, &notLineString);
+    Bind(&notLineString);
+    {
+        Label isTreeString(env);
+        Label notTreeString(env);
+        Label isSlicedString(env);
+        BRANCH(IsTreeString(str), &isTreeString, &notTreeString);
+        Bind(&isTreeString);
+        {
+            Label isFlat(env);
+            Label notFlat(env);
+            BRANCH(TreeStringIsFlat(str), &isFlat, &notFlat);
+            Bind(&isFlat);
+            {
+                flatString_.WriteVariable(GetFirstFromTreeString(str));
+                Jump(fastPath);
+            }
+            Bind(&notFlat);
+            {
+                flatString_.WriteVariable(CallRuntime(glue, RTSTUB_ID(SlowFlattenString), { str }));
+                Jump(fastPath);
+            }
+        }
+        Bind(&notTreeString);
+        BRANCH(IsSlicedString(str), &isSlicedString, &exit);
+        Bind(&isSlicedString);
+        {
+            flatString_.WriteVariable(GetParentFromSlicedString(str));
+            startIndex_.WriteVariable(GetStartIndexFromSlicedString(str));
+            index->WriteVariable(Int32Add(*startIndex_, index->ReadVariable()));
             Jump(fastPath);
         }
     }

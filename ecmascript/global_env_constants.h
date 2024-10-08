@@ -229,6 +229,7 @@ class ObjectFactory;
     V(JSTaggedValue, ArrayIteratorProtoNext, ARRAY_ITERATOR_PROTO_NEXT_INDEX, ecma_roots_builtins)      \
     V(JSTaggedValue, IteratorProtoReturn, ITERATOR_PROTO_RETURN_INDEX, ecma_roots_builtins)             \
     V(JSTaggedValue, StringFromCharCode, STRING_FROM_CHAR_CODE_INDEX, ecma_roots_builtins)              \
+    V(JSTaggedValue, StringCharCodeAt, STRING_CHAR_CODE_AT_INDEX, ecma_roots_builtins)                  \
     V(JSTaggedValue, StringSubstring, STRING_SUB_STRING_INDEX, ecma_roots_special)                      \
     V(JSTaggedValue, StringSubStr, STRING_SUB_STR_INDEX, ecma_roots_special)                            \
     V(JSTaggedValue, StringSlice, STRING_SLICE_INDEX, ecma_roots_special)                               \
