@@ -17,6 +17,7 @@ declare function print(arg:any):string;
 
 declare interface ArkTools {
   isAOTCompiled(args: any): boolean;
+  forceFullGC(args: any): boolean;
 }
 
 function foo(str) {
@@ -29,4 +30,5 @@ function foo(str) {
 }
 
 print(ArkTools.isAOTCompiled(foo))
+ArkTools.forceFullGC();
 print(foo("GG"))
