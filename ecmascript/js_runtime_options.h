@@ -1282,12 +1282,12 @@ public:
         return jitHotnessThreshold_;
     }
 
-    void SetJitCallThreshold(uint8_t value)
+    void SetJitCallThreshold(uint16_t value)
     {
         jitCallThreshold_ = value;
     }
 
-    uint8_t GetJitCallThreshold() const
+    uint16_t GetJitCallThreshold() const
     {
         return jitCallThreshold_;
     }
@@ -2127,7 +2127,7 @@ private:
     bool isEnableJitDfxDump_ {false};
     bool enableOSR_ {false};
     uint16_t jitHotnessThreshold_ {2};
-    uint8_t jitCallThreshold_ {0};
+    uint16_t jitCallThreshold_ {1};
     uint16_t osrHotnessThreshold_ {2};
     bool forceJitCompileMain_ {false};
     bool enableBaselineJIT_ {false};

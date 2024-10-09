@@ -1468,6 +1468,23 @@ JSTaggedValue BuiltinsArkTools::WaitAllJitCompileFinish(EcmaRuntimeCallInfo *inf
     return JSTaggedValue::True();
 }
 
+JSTaggedValue BuiltinsArkTools::IsInFastJit(EcmaRuntimeCallInfo *info)
+{
+    JSThread *thread = info->GetThread();
+    RETURN_IF_DISALLOW_ARKTOOLS(thread);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+
+    JSTaggedType *currentFrame = const_cast<JSTaggedType*>(thread->GetCurrentFrame());
+    for (FrameIterator it(currentFrame, thread); !it.Done(); it.Advance<GCVisitedFlag::VISITED>()) {
+        if (!it.IsJSFrame()) {
+            continue;
+        }
+        return (it.IsOptimizedJSFunctionFrame() || it.IsFastJitFunctionFrame() ?
+            JSTaggedValue::True() : JSTaggedValue::False());
+    }
+    return JSTaggedValue::False();
+}
+
 JSTaggedValue BuiltinsArkTools::StartRuntimeStat(EcmaRuntimeCallInfo *msg)
 {
     JSThread *thread = msg->GetThread();

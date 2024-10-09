@@ -43,9 +43,9 @@ void MethodLiteral::Initialize(const JSPandaFile *jsPandaFile, const JSThread *t
     panda_file::CodeDataAccessor cda(*pf, codeId);
     nativePointerOrBytecodeArray_ = cda.GetInstructions();
     uint32_t codeSize = cda.GetCodeSize();
-    // When triggering jit compile through the execution count of the js function, set the hotness counter value to 0
-    // to ensure that the profile type info object can be created on the first execution of the js function.
-    bool cancelThreshold = (thread != nullptr && thread->GetEcmaVM()->GetJSOptions().GetJitCallThreshold() != 0);
+    // When triggering jit compile only through the execution count of the js function, set the hotness counter
+    // value to 0, to ensure that the profile type info object can be created on the first execution of the js function.
+    bool cancelThreshold = (thread != nullptr && thread->GetEcmaVM()->GetJSOptions().GetJitHotnessThreshold() == 0);
     SetHotnessCounter(EcmaInterpreter::GetHotnessCounter(codeSize, cancelThreshold));
 
     uint32_t callType = UINT32_MAX;  // UINT32_MAX means not found

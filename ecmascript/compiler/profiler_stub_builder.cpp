@@ -862,12 +862,12 @@ void ProfilerStubBuilder::SetPreDumpPeriodIndex(GateRef glue, GateRef profileTyp
 }
 
 GateRef ProfilerStubBuilder::IsCompiledOrTryCompile(GateRef glue, GateRef func, GateRef profileTypeInfo,
-                                                    ProfileOperation callback)
+                                                    ProfileOperation callback, GateRef pc)
 {
     if (callback.IsEmpty() && callback.IsJitEmpty()) {
         return Boolean(true);
     }
-    return IsCompiledOrTryCompile(glue, func, profileTypeInfo);
+    return IsCompiledOrTryCompile(glue, func, profileTypeInfo, pc);
 }
 
 GateRef ProfilerStubBuilder::GetJitHotnessThresholdOffset(GateRef profileTypeInfo)
@@ -903,31 +903,18 @@ GateRef ProfilerStubBuilder::GetJitHotnessThreshold(GateRef profileTypeInfo)
     return ZExtInt16ToInt32(hotnessThreshold);
 }
 
-GateRef ProfilerStubBuilder::GetJitCallThresholdOffset(GateRef profileTypeInfo)
+GateRef ProfilerStubBuilder::GetJitCallCntOffset(GateRef profileTypeInfo)
 {
     GateRef bitFieldOffset = GetBitFieldOffsetFromProfileTypeInfo(profileTypeInfo);
     return PtrAdd(bitFieldOffset,
-                  IntPtr(ProfileTypeInfo::JIT_CALL_THRESHOLD_OFFSET_FROM_BITFIELD));
-}
-
-GateRef ProfilerStubBuilder::GetJitCallThreshold(GateRef profileTypeInfo)
-{
-    GateRef jitCallThresholdOffset = GetJitCallThresholdOffset(profileTypeInfo);
-    GateRef jitCallThreshold = Load(VariableType::INT8(), profileTypeInfo, jitCallThresholdOffset);
-    return ZExtInt8ToInt32(jitCallThreshold);
-}
-
-GateRef ProfilerStubBuilder::GetJitCallCntOffset(GateRef profileTypeInfo)
-{
-    GateRef jitCallThresholdOffset = GetJitCallThresholdOffset(profileTypeInfo);
-    return PtrAdd(jitCallThresholdOffset, IntPtr(ProfileTypeInfo::JIT_CALL_CNT_OFFSET_FROM_JIT_CALL_THRESHOLD));
+                  IntPtr(ProfileTypeInfo::JIT_CALL_CNT_OFFSET_FROM_BITFIELD));
 }
 
 GateRef ProfilerStubBuilder::GetJitCallCnt(GateRef profileTypeInfo)
 {
     GateRef jitCallCntOffset = GetJitCallCntOffset(profileTypeInfo);
-    GateRef jitCallCnt = Load(VariableType::INT8(), profileTypeInfo, jitCallCntOffset);
-    return ZExtInt8ToInt32(jitCallCnt);
+    GateRef jitCallCnt = Load(VariableType::INT16(), profileTypeInfo, jitCallCntOffset);
+    return ZExtInt16ToInt32(jitCallCnt);
 }
 
 GateRef ProfilerStubBuilder::GetOsrHotnessThresholdOffset(GateRef profileTypeInfo)
@@ -971,7 +958,8 @@ GateRef ProfilerStubBuilder::GetOsrHotnessCnt(GateRef profileTypeInfo)
     return ZExtInt16ToInt32(hotnessCnt);
 }
 
-GateRef ProfilerStubBuilder::IsCompiledOrTryCompile(GateRef glue, GateRef func, GateRef profileTypeInfo)
+GateRef ProfilerStubBuilder::IsCompiledOrTryCompile(GateRef glue, [[maybe_unused]] GateRef func,
+    GateRef profileTypeInfo, GateRef pc)
 {
     auto env = GetEnvironment();
     Label subEntry(env);
@@ -980,53 +968,33 @@ GateRef ProfilerStubBuilder::IsCompiledOrTryCompile(GateRef glue, GateRef func, 
     DEFVARIABLE(result, VariableType::BOOL(), False());
 
     GateRef hotnessThreshold = GetJitHotnessThreshold(profileTypeInfo);
-    GateRef hotnessCnt = GetJitHotnessCnt(profileTypeInfo);
-    GateRef jitCallThreshold = GetJitCallThreshold(profileTypeInfo);
     GateRef jitCallCnt = GetJitCallCnt(profileTypeInfo);
-    GateRef baselineJitHotnessThreshold = GetBaselineJitHotnessThreshold(profileTypeInfo);
 
     Label cmpJitHotnessCnt(env);
     Label checkJitCallThreshold(env);
     Label cmpJitCallThreshold(env);
-    Label equalJitCallThreshold(env);
-    Label notEqualJitCallThreshold(env);
-    Label incJitCallCnt(env);
+    Label jitCallNotEqualZero(env);
+    Label checkJitCallEqualZero(env);
     Label setResultAsTrue(env);
     Label exit(env);
     Label jitCheck(env);
     Label cmpBaselineJitHotnessCnt(env);
+    Label tryCompile(env);
 
-    Branch(Int32Equal(baselineJitHotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &jitCheck,
-           &cmpBaselineJitHotnessCnt);
-    Bind(&cmpBaselineJitHotnessCnt);
-    BRANCH(Int32GreaterThan(hotnessCnt, baselineJitHotnessThreshold), &jitCheck, &exit);
-    Bind(&jitCheck);
-    Branch(Int32Equal(hotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)), &setResultAsTrue, &cmpJitHotnessCnt);
-    Bind(&cmpJitHotnessCnt);
-    BRANCH(Int32GreaterThan(hotnessCnt, hotnessThreshold), &setResultAsTrue, &checkJitCallThreshold);
-    Bind(&checkJitCallThreshold);
-    BRANCH(Int32Equal(jitCallThreshold, Int32(ProfileTypeInfo::INITIAL_JIT_CALL_THRESHOLD)),
-           &exit, &cmpJitCallThreshold);
+    Branch(Int32Equal(hotnessThreshold, Int32(ProfileTypeInfo::JIT_DISABLE_FLAG)),
+        &setResultAsTrue, &cmpJitCallThreshold);
     Bind(&cmpJitCallThreshold);
-    BRANCH(Int32Equal(jitCallCnt, jitCallThreshold), &equalJitCallThreshold, &notEqualJitCallThreshold);
-    Bind(&equalJitCallThreshold);
-    {
-        DEFVARIABLE(invalidOsrOffset, VariableType::INT32(), Int32(MachineCode::INVALID_OSR_OFFSET));
-        CallRuntime(glue, RTSTUB_ID(JitCompile), { func, IntToTaggedInt(*invalidOsrOffset) });
-        GateRef newJitCallCnt = Int32Add(jitCallCnt, Int32(1));
-        GateRef jitCallCntOffset = GetJitCallCntOffset(profileTypeInfo);
-        Store(VariableType::INT8(), glue, profileTypeInfo, jitCallCntOffset, TruncInt32ToInt8(newJitCallCnt));
-        Jump(&setResultAsTrue);
-    }
-    Bind(&notEqualJitCallThreshold);
-    BRANCH(Int32LessThan(jitCallCnt, jitCallThreshold), &incJitCallCnt, &setResultAsTrue);
-    Bind(&incJitCallCnt);
-    {
-        GateRef newJitCallCnt = Int32Add(jitCallCnt, Int32(1));
-        GateRef jitCallCntOffset = GetJitCallCntOffset(profileTypeInfo);
-        Store(VariableType::INT8(), glue, profileTypeInfo, jitCallCntOffset, TruncInt32ToInt8(newJitCallCnt));
-        Jump(&exit);
-    }
+
+    BRANCH(Int32Equal(jitCallCnt, Int32(0)), &exit, &jitCallNotEqualZero);
+
+    Bind(&jitCallNotEqualZero);
+    GateRef newJitCallCnt = Int32Sub(jitCallCnt, Int32(1));
+    GateRef jitCallCntOffset = GetJitCallCntOffset(profileTypeInfo);
+    Store(VariableType::INT16(), glue, profileTypeInfo, jitCallCntOffset, TruncInt32ToInt16(newJitCallCnt));
+    BRANCH(Int32Equal(newJitCallCnt, Int32(0)), &tryCompile, &exit);
+    Bind(&tryCompile);
+    TryJitCompile(glue, {0, pc, true}, func, profileTypeInfo);
+    Jump(&exit);
     Bind(&setResultAsTrue);
     result = True();
     Jump(&exit);
@@ -1057,6 +1025,7 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, OffsetInfo offsetInfo,
     Label checkBaselineJit(env);
     Label exit(env);
     Label checkNeedIncHotnessCnt(env);
+    Label callCntEqualZero(env);
 
     GateRef jitHotnessThreshold = GetJitHotnessThreshold(profileTypeInfo);
     GateRef jitHotnessCnt = GetJitHotnessCnt(profileTypeInfo);
@@ -1086,6 +1055,9 @@ void ProfilerStubBuilder::TryJitCompile(GateRef glue, OffsetInfo offsetInfo,
     BRANCH(Int32Equal(jitHotnessCnt, jitHotnessThreshold), &equalJitThreshold, &notEqualJitThreshold);
     Bind(&equalJitThreshold);
     {
+        GateRef jitCallCnt = GetJitCallCnt(profileTypeInfo);
+        BRANCH(Int32Equal(jitCallCnt, Int32(0)), &callCntEqualZero, &exit);
+        Bind(&callCntEqualZero);
         DEFVARIABLE(varOffset, VariableType::INT32(), Int32(MachineCode::INVALID_OSR_OFFSET));
         CallRuntime(glue, RTSTUB_ID(JitCompile), { func, IntToTaggedInt(*varOffset) });
         Jump(&incJitHotnessCntAndExit);
