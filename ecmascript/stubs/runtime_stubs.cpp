@@ -784,6 +784,14 @@ DEF_RUNTIME_STUBS(NoticeThroughChainAndRefreshUser)
     return JSTaggedValue::Hole().GetRawData();
 }
 
+DEF_RUNTIME_STUBS(GetNativePcOfstForBaseline)
+{
+    RUNTIME_STUBS_HEADER(GetNativePcOfstForBaseline);
+    JSHandle<JSFunction> func = GetHArg<JSFunction>(argv, argc, 0);  // 0: means the zeroth parameter
+    uint64_t bytecodePc = static_cast<uint64_t>(GetTArg(argv, argc, 1));  // 1: means the first parameter
+    return RuntimeGetNativePcOfstForBaseline(func, bytecodePc);
+}
+
 DEF_RUNTIME_STUBS(Inc)
 {
     RUNTIME_STUBS_HEADER(Inc);

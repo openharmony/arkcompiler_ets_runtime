@@ -1334,7 +1334,7 @@ void OptimizedCall::CallOptimized(ExtendedAssembler *assembler)
     __ Br(codeAddr);
 }
 
-void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
+void OptimizedCall::DeoptEnterAsmInterpOrBaseline(ExtendedAssembler *assembler)
 {
     // rdi
     Register glueRegister = __ GlueRegister();
@@ -1381,6 +1381,52 @@ void OptimizedCall::DeoptEnterAsmInterp(ExtendedAssembler *assembler)
 
     Register callTargetRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::CALL_TARGET);
     Register methodRegister = __ CallDispatcherArgument(kungfu::CallDispatchInputs::METHOD);
+    __ Ldr(callTargetRegister, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetFunctionOffset(false)));
+    // get baseline code
+    __ Ldr(opRegister, MemoryOperand(callTargetRegister, JSFunction::BASELINECODE_OFFSET));
+    Label baselineCodeUndefined;
+    __ Cmp(opRegister, Immediate(JSTaggedValue::VALUE_UNDEFINED));
+    __ B(Condition::EQ, &baselineCodeUndefined);
+
+    // check is compiling
+    __ Cmp(opRegister, Immediate(JSTaggedValue::VALUE_HOLE));
+    __ B(Condition::EQ, &baselineCodeUndefined);
+    {
+        // get bytecode pc
+        Register bytecodePc = opRegister;
+        __ Ldr(bytecodePc, MemoryOperand(frameStateBase, AsmInterpretedFrame::GetPcOffset(false)));
+        // get func
+        Register func(X1);
+        func = callTargetRegister;
+        // save glue, callTarget
+        __ Stp(glueRegister, callTargetRegister,
+               MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        Register argC(X2);
+        Register runtimeId(X3);
+        __ Mov(argC, Immediate(2)); // 2: argc
+        __ Mov(runtimeId, Immediate(RTSTUB_ID(GetNativePcOfstForBaseline)));
+        // get native pc offset in baselinecode by bytecodePc in func
+        __ Stp(func, bytecodePc, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Stp(runtimeId, argC, MemoryOperand(currentSlotRegister, -DOUBLE_SLOT_SIZE, AddrMode::PREINDEX));
+        __ Mov(sp, currentSlotRegister);
+        __ CallAssemblerStub(RTSTUB_ID(CallRuntime), false);
+
+        // 2: skip runtimeId argc func bytecodePc
+        __ Add(sp, sp, Immediate(2 * DOUBLE_SLOT_SIZE));
+        // restore glue, callTarget
+        __ Ldp(X19, callTargetRegister, MemoryOperand(sp, DOUBLE_SLOT_SIZE, AddrMode::POSTINDEX));
+        // restore method, fp
+        __ Ldr(methodRegister, MemoryOperand(callTargetRegister, JSFunctionBase::METHOD_OFFSET));
+        __ Mov(X21, methodRegister);
+        __ Add(opRegister, sp, Immediate(AsmInterpretedFrame::GetSize(false)));
+        __ Align16(sp);
+        __ Mov(Register(FP), opRegister);
+
+        // jmp to baselinecode
+        __ Br(X0);
+    }
+
+    __ Bind(&baselineCodeUndefined);
     {
         // X19, fp, x20, x21,      x22,     x23,  x24
         // glue sp   pc  constpool  profile  acc   hotness
@@ -1450,7 +1496,7 @@ void OptimizedCall::DeoptHandlerAsm(ExtendedAssembler *assembler)
     PopAsmInterpBridgeFrame(assembler);
     __ Ret();
     __ Bind(&target);
-    DeoptEnterAsmInterp(assembler);
+    DeoptEnterAsmInterpOrBaseline(assembler);
 
     __ Bind(&stackOverflow);
     {

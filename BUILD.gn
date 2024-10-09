@@ -204,6 +204,7 @@ ohos_static_library("ark_runtime_host_unittest") {
 
       #"$js_root/test/moduletest:ark_asm_single_step_test",
       "$js_root/test/deopttest:ark_deopt_test",
+      "$js_root/test/deopttest:ark_deopt_to_baseline_test",
       "$js_root/test/moduletest:ark_asm_test",
     ]
 
