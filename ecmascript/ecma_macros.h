@@ -185,25 +185,6 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ACCESSORS_FIXED_SIZE_FIELD_ATOMIC(name, type, sizeType, offset, endOffset)                             \
-    static_assert(sizeof(type) <= sizeof(sizeType));                                                           \
-    static constexpr size_t endOffset = (offset) + sizeof(sizeType);                                           \
-    inline void Set##name(type value)                                                                          \
-    {                                                                                                          \
-        volatile auto *atomicField = reinterpret_cast<volatile std::atomic<type> *>(ToUintPtr(this) + offset); \
-        atomicField->store(value, std::memory_order_release);                                                  \
-    }                                                                                                          \
-    inline type Get##name() const                                                                              \
-    {                                                                                                          \
-        volatile auto *atomicField = reinterpret_cast<volatile std::atomic<type> *>(ToUintPtr(this) + offset); \
-        return atomicField->load(std::memory_order_acquire);                                                   \
-    }
-
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ACCESSORS_PRIMITIVE_FIELD_ATOMIC(name, type, offset, endOffset) \
-    ACCESSORS_FIXED_SIZE_FIELD_ATOMIC(name, type, type, offset, endOffset)
-
-// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define FIRST_BIT_FIELD(bitFieldName, name, type, bits) \
     using name##Bits = BitField<type, 0, bits>;         \
     SET_GET_BIT_FIELD(bitFieldName, name, type)
