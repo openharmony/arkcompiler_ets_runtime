@@ -38,10 +38,11 @@ class IdleGCTrigger {
 using TRIGGER_IDLE_GC_TYPE = panda::JSNApi::TRIGGER_IDLE_GC_TYPE;
 using Clock = std::chrono::high_resolution_clock;
 public:
-    explicit IdleGCTrigger(Heap *heap, SharedHeap *sHeap, JSThread *thread)
+    explicit IdleGCTrigger(Heap *heap, SharedHeap *sHeap, JSThread *thread, bool logEnable = false)
         : heap_(heap),
         sHeap_(sHeap),
-        thread_(thread) {};
+        thread_(thread),
+        optionalLogEnabled_(logEnable) {};
     virtual ~IdleGCTrigger() = default;
 
     bool IsIdleState() const
@@ -103,6 +104,7 @@ public:
     bool ReachIdleSharedGCThresholds();
     void TryPostHandleMarkFinished();
     void TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType);
+    bool CheckIdleYoungGC() const;
     template<class T>
     bool CheckIdleOrHintOldGC(const T *baseHeap) const
     {
@@ -112,6 +114,9 @@ public:
         }
         size_t expectHeapSize = std::max(static_cast<size_t>(heapAliveSizeAfterGC * IDLE_SPACE_SIZE_MIN_INC_RATIO),
             heapAliveSizeAfterGC + IDLE_SPACE_SIZE_MIN_INC_STEP);
+        LOG_ECMA_IF(optionalLogEnabled_, DEBUG) << "IdleGCTrigger: check old GC heapAliveSizeAfterGC:"
+            << heapAliveSizeAfterGC << ";expectHeapSize" << expectHeapSize
+            << "heapObjectSize" << baseHeap->GetHeapObjectSize();
         return baseHeap->GetHeapObjectSize() >= expectHeapSize;
     }
 
@@ -121,7 +126,22 @@ public:
         size_t heapAliveSizeAfterGC = baseHeap->GetHeapAliveSizeAfterGC();
         size_t expectHeapSize = std::max(static_cast<size_t>(heapAliveSizeAfterGC * IDLE_SPACE_SIZE_MIN_INC_RATIO),
             heapAliveSizeAfterGC + IDLE_SPACE_SIZE_MIN_INC_STEP_FULL);
-        return baseHeap->GetHeapObjectSize() >= expectHeapSize;
+        LOG_GC(DEBUG) << "IdleGCTrigger: check full GC heapAliveSizeAfterGC:" << heapAliveSizeAfterGC
+            << ";expectHeapSize:" << expectHeapSize << ";heapObjectSize:" << baseHeap->GetHeapObjectSize();
+        if (baseHeap->GetHeapObjectSize() >= expectHeapSize) {
+            return true;
+        }
+        size_t fragmentSizeAfterGC = baseHeap->GetFragmentSizeAfterGC();
+        size_t heapBasicLoss = baseHeap->GetHeapBasicLoss();
+        if (fragmentSizeAfterGC <= heapBasicLoss) {
+            return false;
+        }
+        size_t fragmentSize = fragmentSizeAfterGC - heapBasicLoss;
+        size_t expectFragmentSize = std::max(static_cast<size_t>((baseHeap->GetCommittedSize() - heapBasicLoss) *
+            IDLE_FRAGMENT_SIZE_RATIO), IDLE_MIN_EXPECT_RECLAIM_SIZE);
+        LOG_GC(DEBUG) << "IdleGCTrigger: check full GC fragmentSizeAfterGC:" << fragmentSizeAfterGC
+            << ";heapBasicLoss:" << heapBasicLoss << ";expectFragmentSize" << expectFragmentSize;
+        return fragmentSize >= expectFragmentSize;
     }
 
     template<class T>
@@ -148,6 +168,7 @@ private:
     Heap *heap_ {nullptr};
     SharedHeap *sHeap_ {nullptr};
     JSThread *thread_ {nullptr};
+    bool optionalLogEnabled_ {false};
 
     std::atomic<bool> idleState_ {false};
     uint8_t gcTaskPostedState_ {0};

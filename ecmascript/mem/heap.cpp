@@ -121,7 +121,7 @@ void SharedHeap::ForceCollectGarbageWithoutDaemonThread(TriggerGCType gcType, GC
         LOG_ECMA(DEBUG) << "after gc shared heap verify";
         SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
     }
-    CollectGarbageFinish(false);
+    CollectGarbageFinish(false, gcType);
 }
 
 bool SharedHeap::CheckAndTriggerSharedGC(JSThread *thread)
@@ -400,7 +400,7 @@ void SharedHeap::DaemonCollectGarbage([[maybe_unused]]TriggerGCType gcType, [[ma
             LOG_ECMA(DEBUG) << "after gc shared heap verify";
             SharedHeapVerification(this, VerifyKind::VERIFY_POST_SHARED_GC).VerifyAll();
         }
-        CollectGarbageFinish(true);
+        CollectGarbageFinish(true, gcType);
     }
     // Don't process weak node nativeFinalizeCallback here. These callbacks would be called after localGC.
 }
@@ -781,7 +781,7 @@ void Heap::Initialize()
     gcListeners_.reserve(16U);
     nativeSizeTriggerGCThreshold_ = config_.GetMaxNativeSizeInc();
     incNativeSizeTriggerGC_ = config_.GetStepNativeSizeInc();
-    idleGCTrigger_ = new IdleGCTrigger(this, sHeap_, thread_);
+    idleGCTrigger_ = new IdleGCTrigger(this, sHeap_, thread_, GetEcmaVM()->GetJSOptions().EnableOptionalLog());
 }
 
 void Heap::ResetTlab()
@@ -1202,7 +1202,7 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             }
             ASSERT(thread_->IsPropertyCacheCleared());
         }
-
+        UpdateHeapStatsAfterGC(gcType_);
         ClearIdleTask();
         // Adjust the old space capacity and global limit for the first partial GC with full mark.
         // Trigger full mark next time if the current survival rate is much less than half the average survival rates.
