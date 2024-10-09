@@ -31,6 +31,7 @@ declare_args() {
   ets_runtime_feature_pgo_path = ""
 
   # Defaults for fort
+  ets_runtime_support_jit_code_sign = false
   enable_jit_code_sign = false
   disable_fort_switch = false
 
@@ -166,7 +167,7 @@ if (!ark_standalone_build && !(defined(is_arkui_x) && is_arkui_x) && is_ohos &&
     is_standard_system && target_cpu == "arm64" && !is_emulator &&
     defined(global_parts_info) &&
     defined(global_parts_info.security_code_signature)) {
-  enable_jit_code_sign = false
+  enable_jit_code_sign = ets_runtime_support_jit_code_sign
 }
 ets_runtime_output_path = "ets_runtime/ets_runtime"
 
