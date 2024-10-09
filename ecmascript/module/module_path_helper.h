@@ -200,7 +200,8 @@ public:
     static CString Utf8ConvertToString(JSTaggedValue str);
 
     static CString ParseFileNameToVMAName(const CString &filename);
-
+    static CString ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, size_t filePathPos, CString &moduleName,
+                                                           const CString &requestPath);
     /*
      * Before: /data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName
