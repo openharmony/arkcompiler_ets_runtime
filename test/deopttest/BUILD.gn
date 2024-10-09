@@ -51,3 +51,16 @@ group("ark_deopt_test") {
     deps += [ "${test}:${test}AotAction" ]
   }
 }
+
+group("ark_deopt_to_baseline_test") {
+  testonly = true
+  test_list = [ "deopt_to_baseline" ]
+
+  if (is_mac) {
+    test_list -= [ "deopt_to_baseline" ]
+  }
+  deps = []
+  foreach(test, test_list) {
+    deps += [ "${test}:${test}BaselineJitAction" ]
+  }
+}

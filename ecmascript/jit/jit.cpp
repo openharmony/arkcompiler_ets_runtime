@@ -167,6 +167,7 @@ void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJ
     if (initialized_) {
         fastJitEnable_ = isEnableFastJit;
         baselineJitEnable_ = isEnableBaselineJit;
+        hotnessThreshold_ = options.GetJitHotnessThreshold();
     }
 }
 

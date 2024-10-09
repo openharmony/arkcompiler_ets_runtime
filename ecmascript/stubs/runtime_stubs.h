@@ -155,6 +155,7 @@ public:
     static inline uint32_t RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunction> &func, uintptr_t nativePc);
     static void ReverseTypedArray(JSTypedArray *typedArray);
     static void SortTypedArray(JSTypedArray *typedArray);
+    static inline uintptr_t RuntimeGetNativePcOfstForBaseline(const JSHandle<JSFunction> &func, uint64_t bytecodePos);
 private:
     static void DumpToStreamWithHint(std::ostream &out, std::string_view prompt, JSTaggedValue value);
 

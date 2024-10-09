@@ -3462,5 +3462,38 @@ uint32_t RuntimeStubs::RuntimeGetBytecodePcOfstForBaseline(const JSHandle<JSFunc
     LOG_BASELINEJIT(DEBUG) << "current bytecodePc offset: " << bytecodePcOffset;
     return bytecodePcOffset;
 }
+
+uintptr_t RuntimeStubs::RuntimeGetNativePcOfstForBaseline(const JSHandle<JSFunction> &func, uint64_t bytecodePos)
+{
+    const uint8_t *bytecodePc = reinterpret_cast<uint8_t*>(bytecodePos);
+    // Compute current nativePc according to bytecodePc
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc address: " << std::hex << reinterpret_cast<uintptr_t>(bytecodePc);
+    auto opcode = kungfu::Bytecodes::GetOpcode(bytecodePc);
+    LOG_BASELINEJIT(DEBUG) << "bytecode: " << kungfu::GetEcmaOpcodeStr(opcode);
+    const Method *thisMethod = Method::Cast(func->GetMethod().GetTaggedObject());
+    LOG_TRACE(INFO) << "deopt to baseline method name: " << thisMethod->GetMethodName();
+    const uint8_t *bytecodeStart = thisMethod->GetBytecodeArray();
+    const uint8_t *bytecodeEnd = bytecodeStart + thisMethod->GetCodeSize();
+    ASSERT(bytecodeStart < bytecodeEnd);
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc start: " << std::hex << reinterpret_cast<uintptr_t>(bytecodeStart);
+    LOG_BASELINEJIT(DEBUG) << "bytecodePc end: " << std::hex << reinterpret_cast<uintptr_t>(bytecodeEnd);
+    ASSERT(bytecodeEnd >= bytecodeStart && bytecodePc <= bytecodeEnd);
+
+    const MachineCode *machineCode = MachineCode::Cast(func->GetBaselineCode().GetTaggedObject());
+    const uintptr_t nativePcStart = machineCode->GetFuncAddr();
+    LOG_BASELINEJIT(DEBUG) << "baselineCode nativeStart address: " << std::hex << nativePcStart;
+    const uint8_t *offsetTableAddr = machineCode->GetStackMapOrOffsetTableAddress();
+    const uint32_t offsetTableSize = machineCode->GetStackMapOrOffsetTableSize();
+    uintptr_t nativePc = nativePcStart;
+    uint32_t pcOffsetIndex = 0;
+    uint8_t *bytecodetmp = const_cast<uint8_t*>(bytecodeStart);
+    while (bytecodetmp < bytecodePc && pcOffsetIndex < offsetTableSize) {
+        nativePc += static_cast<uintptr_t>(offsetTableAddr[pcOffsetIndex++]);
+        opcode = kungfu::Bytecodes::GetOpcode(bytecodetmp);
+        bytecodetmp += BytecodeInstruction::Size(opcode);
+    }
+    LOG_BASELINEJIT(DEBUG) << "baselineCode nativePc address: " << std::hex << nativePc;
+    return nativePc;
+}
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_STUBS_RUNTIME_STUBS_INL_H
