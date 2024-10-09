@@ -957,6 +957,9 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToBool(GateRef gate, GateType ga
             return builder_.ConvertUInt32ToBool(gate);
         case TypeInfo::FLOAT64:
             return builder_.ConvertFloat64ToBool(gate);
+        case TypeInfo::CHAR:
+            // CHAR refers to string of length 1, while only empty string converts to false in a boolean context.
+            return builder_.Boolean(true);
         case TypeInfo::NONE:
         case TypeInfo::TAGGED: {
             if (gateType.IsBooleanType()) {
@@ -1345,6 +1348,8 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToTagged(GateRef gate, GateType 
             return builder_.ConvertUInt32ToTaggedNumber(gate);
         case TypeInfo::FLOAT64:
             return builder_.ConvertFloat64ToTaggedDouble(gate);
+        case TypeInfo::CHAR:
+            return builder_.ConvertCharToEcmaString(gate);
         case TypeInfo::HOLE_INT:
             return builder_.CheckHoleIntAndConvertToTaggedInt(gate);
         case TypeInfo::HOLE_DOUBLE:
