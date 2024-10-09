@@ -22,20 +22,37 @@ host_unittest_action("mapleallUT") {
   module_out_path = module_output_path
   include_directories = [
     "${MAPLEALL_ROOT}/maple_be/include/cg",
+    "${MAPLEALL_ROOT}/maple_be/include/cg/aarch64",
+    "${MAPLEALL_ROOT}/maple_be/include/cg/x86_64",
     "${MAPLEALL_ROOT}/maple_be/include/litecg",
     "${MAPLEALL_ROOT}/maple_be/include/ad",
     "${MAPLEALL_ROOT}/maple_be/include/be",
     "${MAPLEALL_ROOT}/maple_ir/include/",
     "${MAPLEALL_ROOT}/maple_util/include/",
     "${MAPLEALL_ROOT}/mempool/include/",
-    "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include/",
     "${MAPLEALL_ROOT}/maple_driver/include/",
     "${MAPLEALL_ROOT}/maple_me/include/",
     "${MAPLEALL_ROOT}/maple_phase/include/",
     "${MAPLEALL_ROOT}/mpl2mpl/include/",
+    "${MAPLEALL_ROOT}/test/include/",
     "${MAPLEALL_THIRD_PARTY_ROOT}/",
+    "${MAPLEALL_THIRD_PARTY_ROOT}/bounds_checking_function/include/",
   ]
-  src_mapleallUT = [ "cgbb_test.cpp" ]
+  src_mapleallUT = [
+    "./maple_be/cg_aarch64_aarch64_abi_test.cpp",
+    "./maple_be/cg_aarch64_aarch64_isa_test.cpp",
+    "./maple_be/cg_aarch64_aarch64_operand_test.cpp",
+    "./maple_be/cg_cg_irbuilder_test.cpp",
+    "./maple_be/cg_cgbb_test.cpp",
+    "./maple_be/cg_x86_64_x64_isa_test.cpp",
+    "./maple_be/litecg_lmir_builder_test.cpp",
+    "./maple_ir/intrinsics_test.cpp",
+    "./maple_ir/mir_const_test.cpp",
+    "./maple_ir/mir_nodes_test.cpp",
+    "./maple_ir/mir_type_test.cpp",
+    "./mempool/maple_string_test.cpp",
+    "./mpl2mpl/constantfold_test.cpp",
+  ]
   sources = src_mapleallUT
   include_dirs = include_directories
   deps_libcg = [  # Add Link Library

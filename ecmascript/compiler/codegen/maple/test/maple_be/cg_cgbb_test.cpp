@@ -23,17 +23,16 @@
 #include "cgfunc.h"
 
 using namespace maplebe;
-
 using namespace std;
-
-maplebe::Insn CreateInsnObj(std::string poolName, maple::uint32 opc)
+namespace {
+static maplebe::Insn CreateInsnObj(std::string poolName, maple::uint32 opc)
 {
     MemPoolCtrler memPoolCtrler;
     MemPool memPool(memPoolCtrler, poolName);
     maplebe::Insn Insn_obj(memPool, opc);
     return Insn_obj;
 }
-maplebe::BB CreateBBObj(uint32 bbID, std::string poolName)
+static maplebe::BB CreateBBObj(uint32 bbID, std::string poolName)
 {
     // BBID bbID, MapleAllocator &mallocator
     MemPoolCtrler memPoolCtrler;
@@ -49,7 +48,6 @@ TEST(InsertInsnBefore_FUNC, t01)
     maplebe::Insn existing = CreateInsnObj("existing", 32);
     maplebe::Insn newInsn = CreateInsnObj("newInsn", 3);
 
-    /*Test Function:    Insn *BB::InsertInsnBefore(Insn &existing, Insn &newInsn)*/
     test_bb.SetFirstInsn(&existing);
     EXPECT_EQ(existing.GetPrev(), nullptr);
     maplebe::Insn *ans = test_bb.InsertInsnBefore(existing, newInsn);
@@ -64,7 +62,6 @@ TEST(InsertInsnBefore_FUNC, t01)
 
 TEST(InsertInsnAfter_FUNC, t02)
 {
-    /*Test Function:    Insn *BB::InsertInsnAfter(Insn &existing, Insn &newInsn)*/
     maplebe::BB test_bb = CreateBBObj(2, "BB_pool");
     maplebe::Insn existing = CreateInsnObj("existing", 32);
     maplebe::Insn newInsn1 = CreateInsnObj("newInsn1", 1), newInsn2 = CreateInsnObj("newInsn2", 2);
@@ -80,18 +77,9 @@ TEST(InsertInsnAfter_FUNC, t02)
     EXPECT_EQ(newInsn2.GetNext(), &newInsn1);
 }
 
-TEST(ReplaceInsn_FUNC, t03)
+TEST(RemoveInsn_FUNC, t03)
 {
-    /*Test Function:    void BB::ReplaceInsn(Insn &insn, Insn &newInsn)*/
-    maplebe::BB test_bb = CreateBBObj(3, "BB_pool");
-    maplebe::Insn insn = CreateInsnObj("insn", 3);
-    maplebe::Insn newInsn = CreateInsnObj("newInsn", 3);
-    std::cout << "insn.IsAccessRefField() = " << insn.IsAccessRefField() << std::endl;
-}
-
-TEST(RemoveInsn_FUNC, t04)
-{
-    /*Test Function:    void BB::RemoveInsn(Insn &insn)*/
+    /*void BB::RemoveInsn(Insn &insn)*/
     maplebe::BB test_bb = CreateBBObj(10, "BB_pool");
     maplebe::Insn insn = CreateInsnObj("insn", 0);
     maplebe::Insn insn1 = CreateInsnObj("insn1", 1);
@@ -108,3 +96,4 @@ TEST(RemoveInsn_FUNC, t04)
     EXPECT_EQ(test_bb.GetFirstInsn(), &insn1);
     EXPECT_EQ((*(insn.GetNext())).GetPrev(), nullptr);
 }
+}  // namespace
