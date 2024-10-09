@@ -40,7 +40,6 @@ public:
                                    const JSHandle<JSTaggedValue> &exceptionInfo,
                                    const std::string &patchFileName);
     JSTaggedValue CheckAndGetPatch(JSThread *thread, const JSPandaFile *baseFile, EntityId baseMethodId);
-    void SetCurrentBaseFileName(CString fileName);
     CString GetBaseFileName(const JSHandle<SourceTextModule> &module);
 private:
     // check whether the callback is registered.
@@ -58,7 +57,8 @@ private:
                         uint8_t **patchBuffer,
                         size_t &patchSize)> callBack_;
     CMap<uint32_t, CString> baseClassInfo_ {};
-    CString currentBaseFileName_;
+    // key: patch file name, value: base file name
+    CMap<CString, CString> patchAndBaseFileNameMap_;
     std::set<CString> checkedFiles_ {};
 };
 }  // namespace panda::ecmascript
