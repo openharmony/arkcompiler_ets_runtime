@@ -267,6 +267,11 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::CREATE_ARRAY_WITH_BUFFER:
         case OpCode::TYPED_CREATE_OBJ_WITH_BUFFER:
         case OpCode::ARRAY_ITERATOR_BUILTIN:
+        case OpCode::MAP_KEYS:
+        case OpCode::MAP_VALUES:
+        case OpCode::MAP_ENTRIES:
+        case OpCode::SET_ENTRIES:
+        case OpCode::SET_VALUES:
             return VisitOthersWithoutConvert(gate);
         case OpCode::ARRAY_INCLUDES_INDEXOF:
             return VisitArrayIncludesIndexOf(gate);
@@ -337,6 +342,8 @@ GateRef NumberSpeculativeRetype::VisitGate(GateRef gate)
         case OpCode::ARRAY_FILTER:
         case OpCode::ARRAY_MAP:
         case OpCode::ARRAY_SLICE:
+        case OpCode::ARRAY_BUFFER_IS_VIEW:
+        case OpCode::ARRAY_SORT:
         case OpCode::FINISH_ALLOCATE:
         case OpCode::IS_CALLABLE_CHECK:
             return VisitOthers(gate);
