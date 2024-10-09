@@ -74,7 +74,7 @@ void ConcurrentMarker::ReMark()
     nonMovableMarker->MarkJitCodeMap(MAIN_THREAD_INDEX);
 }
 
-void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep
+void ConcurrentMarker::HandleMarkingFinished(GCReason gcReason)  // js-thread wait for sweep
 {
     LockHolder lock(waitMarkingFinishedMutex_);
     ASSERT(markingFinished_);
@@ -86,7 +86,7 @@ void ConcurrentMarker::HandleMarkingFinished()  // js-thread wait for sweep
     } else {
         gcType = TriggerGCType::YOUNG_GC;
     }
-    heap_->CollectGarbage(gcType, GCReason::ALLOCATION_LIMIT);
+    heap_->CollectGarbage(gcType, gcReason);
 }
 
 void ConcurrentMarker::WaitMarkingFinished()  // call in EcmaVm thread, wait for mark finished

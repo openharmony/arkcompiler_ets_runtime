@@ -3379,8 +3379,8 @@ void ObjectFactory::NewObjectHook() const
 {
     CHECK_NO_HEAP_ALLOC;
 #ifndef NDEBUG
-    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized()
-        && !heap_->InSensitiveStatus()) {
+    if (vm_->GetJSOptions().EnableForceGC() && vm_->IsInitialized() && thread_->IsAllContextsInitialized() &&
+        !heap_->InSensitiveStatus() && heap_->TriggerCollectionOnNewObjectEnabled()) {
         if (vm_->GetJSOptions().ForceFullGC()) {
             vm_->CollectGarbage(TriggerGCType::YOUNG_GC);
             vm_->CollectGarbage(TriggerGCType::OLD_GC);

@@ -40,6 +40,8 @@ public:
 
     static JSTaggedValue StartGC(EcmaRuntimeCallInfo *info);
 
+    static JSTaggedValue AllocateArrayObject(EcmaRuntimeCallInfo *info);
+
     static Span<const base::BuiltinFunctionEntry> GetGcFunctions()
     {
         return Span<const base::BuiltinFunctionEntry>(GC_FUNCTIONS);
@@ -61,10 +63,14 @@ private:
         BUILTINS_GC_FUNCTION_ENTRY("getObjectSpaceType",          GetObjectSpaceType,            1, INVALID)
         BUILTINS_GC_FUNCTION_ENTRY("registerNativeAllocation",    RegisterNativeAllocation,      1, INVALID)
         BUILTINS_GC_FUNCTION_ENTRY("registerNativeFree",          RegisterNativeFree,            1, INVALID)
-        BUILTINS_GC_FUNCTION_ENTRY("waitForFinishGC",             WaitForFinishGC,               0, INVALID)
-        BUILTINS_GC_FUNCTION_ENTRY("startGC",                     StartGC,                       0, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("waitForFinishGC",             WaitForFinishGC,               1, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("startGC",                     StartGC,                       3, INVALID)
+        BUILTINS_GC_FUNCTION_ENTRY("allocateArrayObject",         AllocateArrayObject,           1, INVALID)
     };
 #undef BUILTINS_GC_FUNCTION_ENTRY
+
+    static void WaitAndHandleConcurrentMarkingFinished(Heap *heap);
+    static TriggerGCType StringToGcType(JSThread *thread, JSTaggedValue cause);
 };
 }  // namespace panda::ecmascript::builtins
 
