@@ -161,5 +161,15 @@ if (globalThis["ArkPrivate"] != undefined) {
     } catch (error) {
         print(error)
     }
+    let v22;
+    try {
+        class C11 extends Deque {
+
+        }
+        v22 = new C11()
+        v22[2295334561] = 0
+    } catch (error) {
+        print(v22.length)
+    }
 }
 export let dequeRes = "Test Deque done";
