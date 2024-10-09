@@ -296,4 +296,21 @@ HWTEST_F_L0(GCTest, StatisticHeapDetailTest)
     heap->StatisticHeapDetail();
 };
 
+HWTEST_F_L0(GCTest, Destroy)
+{
+    EcmaParamConfiguration config;
+    auto sHeap = new SharedHeap(config);
+    EXPECT_TRUE(sHeap != nullptr);
+    sHeap->Destroy();
+    delete sHeap;
+    sHeap = nullptr;
+
+    // EcmaVM ecmaVm;
+    auto heap = new Heap(thread->GetEcmaVM());
+    EXPECT_TRUE(heap != nullptr);
+    heap->Destroy();
+    delete heap;
+    heap = nullptr;
+};
+
 }  // namespace panda::test
