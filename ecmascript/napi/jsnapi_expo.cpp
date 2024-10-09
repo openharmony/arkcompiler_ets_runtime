@@ -4048,6 +4048,7 @@ std::string JSNApi::GetModuleName(EcmaVM *vm)
 
 std::pair<std::string, std::string> JSNApi::GetCurrentModuleInfo(EcmaVM *vm, bool needRecordName)
 {
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     return vm->GetCurrentModuleInfo(needRecordName);
 }
 

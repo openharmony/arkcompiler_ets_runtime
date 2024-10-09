@@ -935,11 +935,11 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
             UNREACHABLE();
         }
 #endif
-        RecursionScope recurScope(this, HeapType::LOCAL_HEAP);
         if (thread_->IsCrossThreadExecutionEnable() || GetOnSerializeEvent()) {
             ProcessGCListeners();
             return;
         }
+        RecursionScope recurScope(this, HeapType::LOCAL_HEAP);
 #if defined(ECMASCRIPT_SUPPORT_CPUPROFILER)
         [[maybe_unused]] GcStateScope scope(thread_);
 #endif

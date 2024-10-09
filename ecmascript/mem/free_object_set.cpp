@@ -51,7 +51,7 @@ void FreeObjectSet<T>::Rebuild()
 {
     freeObject_ = T::Cast(INVALID_OBJPTR);
     available_ = 0;
-    isAdded_ = false;
+    isAdded_ = 0;
     next_ = nullptr;
     prev_ = nullptr;
 }
@@ -69,7 +69,7 @@ void FreeObjectSet<MemDesc>::Rebuild()
     }
     freeObject_ = MemDesc::Cast(INVALID_OBJPTR);
     available_ = 0;
-    isAdded_ = false;
+    isAdded_ = 0;
     next_ = nullptr;
     prev_ = nullptr;
 }
