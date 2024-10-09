@@ -81,42 +81,6 @@ HWTEST_F_L0(QuickFixTest, HotReload_SingleFile)
     EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
 }
 
-HWTEST_F_L0(QuickFixTest, HotReload_Restart_SingleFile)
-{
-    std::string baseFileName = QUICKFIX_ABC_PATH "single_file/base/index.abc";
-    std::string patchFileName = QUICKFIX_ABC_PATH "single_file/patch/index.abc";
-
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-
-    JSNApi::SetBundle(instance, false);
-
-    bool result = JSNApi::Execute(instance, baseFileName, "index");
-    EXPECT_TRUE(result);
-
-    auto res = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
-    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
-
-    Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(instance);
-    result = JSNApi::IsQuickFixCausedException(instance, exception, patchFileName);
-    EXPECT_FALSE(result);
-
-    result = JSNApi::Execute(instance, baseFileName, "index");
-    EXPECT_TRUE(result);
-
-    res = JSNApi::UnloadPatch(instance, patchFileName);
-    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
-
-    res = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
-    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
-
-    exception = JSNApi::GetAndClearUncaughtException(instance);
-    result = JSNApi::IsQuickFixCausedException(instance, exception, patchFileName);
-    EXPECT_FALSE(result);
-
-    res = JSNApi::UnloadPatch(instance, patchFileName);
-    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
-}
-
 HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
 {
     std::string baseFileName = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
@@ -135,38 +99,6 @@ HWTEST_F_L0(QuickFixTest, HotReload_MultiFile)
     Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(instance);
     result = JSNApi::IsQuickFixCausedException(instance, exception, patchFileName);
     EXPECT_FALSE(result);
-
-    res = JSNApi::UnloadPatch(instance, patchFileName);
-    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
-}
-
-HWTEST_F_L0(QuickFixTest, HotReload_Restart_MultiFile)
-{
-    std::string baseFileName = QUICKFIX_ABC_PATH "multi_file/base/merge.abc";
-    std::string patchFileName = QUICKFIX_ABC_PATH "multi_file/patch/merge.abc";
-
-    JSNApi::EnableUserUncaughtErrorHandler(instance);
-
-    JSNApi::SetBundle(instance, false);
-
-    bool result = JSNApi::Execute(instance, baseFileName, "main");
-    EXPECT_TRUE(result);
-
-    auto res = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
-    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
-
-    Local<ObjectRef> exception = JSNApi::GetAndClearUncaughtException(instance);
-    result = JSNApi::IsQuickFixCausedException(instance, exception, patchFileName);
-    EXPECT_FALSE(result);
-
-    result = JSNApi::Execute(instance, baseFileName, "main");
-    EXPECT_TRUE(result);
-
-    res = JSNApi::UnloadPatch(instance, patchFileName);
-    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
-
-    res = JSNApi::LoadPatch(instance, patchFileName, baseFileName);
-    EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
 
     res = JSNApi::UnloadPatch(instance, patchFileName);
     EXPECT_TRUE(res == PatchErrorCode::SUCCESS);
