@@ -1464,6 +1464,14 @@ private:
     void ThresholdReachedDump();
 #endif
     void CleanCallBack();
+    void IncreasePendingAsyncNativeCallbackSize(size_t bindingSize)
+    {
+        pendingAsyncNativeCallbackSize_ += bindingSize;
+    }
+    void DecreasePendingAsyncNativeCallbackSize(size_t bindingSize)
+    {
+        pendingAsyncNativeCallbackSize_ -= bindingSize;
+    }
     class ParallelGCTask : public Task {
     public:
         ParallelGCTask(int32_t id, Heap *heap, ParallelGCTaskPhase taskPhase)
@@ -1650,6 +1658,7 @@ private:
     size_t globalSpaceNativeLimit_ {0};
     size_t nativeSizeTriggerGCThreshold_ {0};
     size_t incNativeSizeTriggerGC_ {0};
+    size_t asyncClearNativePointerThreshold_ {0};
     size_t nativeSizeAfterLastGC_ {0};
     size_t nativeBindingSizeAfterLastGC_ {0};
     size_t newAllocatedSharedObjectSize_ {0};
@@ -1659,6 +1668,7 @@ private:
     size_t recordNativeSize_ {0};
     // Record heap object size before enter sensitive status
     size_t recordObjSizeBeforeSensitive_ {0};
+    size_t pendingAsyncNativeCallbackSize_ {0};
     MemGrowingType memGrowingtype_ {MemGrowingType::HIGH_THROUGHPUT};
 
     // parallel evacuator task number.

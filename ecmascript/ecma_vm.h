@@ -711,9 +711,9 @@ public:
         return concurrentNativeCallbacks_;
     }
 
-    std::vector<NativePointerCallbackData> &GetAsyncNativePointerCallbacks()
+    AsyncNativeCallbacksPack &GetAsyncNativePointerCallbacksPack()
     {
-        return asyncNativeCallbacks_;
+        return asyncNativeCallbacksPack_;
     }
 
     void SetIsJitCompileVM(bool isJitCompileVM)
@@ -895,7 +895,7 @@ private:
     CList<JSNativePointer *> nativePointerList_;
     CList<JSNativePointer *> concurrentNativePointerList_;
     std::vector<NativePointerCallbackData> concurrentNativeCallbacks_ {};
-    std::vector<NativePointerCallbackData> asyncNativeCallbacks_ {};
+    AsyncNativeCallbacksPack asyncNativeCallbacksPack_;
     CList<JSNativePointer *> sharedNativePointerList_;
     std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
     // VM execution states.

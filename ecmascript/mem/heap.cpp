@@ -627,6 +627,7 @@ void Heap::Initialize()
     gcListeners_.reserve(16U);
     nativeSizeTriggerGCThreshold_ = config_.GetMaxNativeSizeInc();
     incNativeSizeTriggerGC_ = config_.GetStepNativeSizeInc();
+    asyncClearNativePointerThreshold_ = config_.GetAsyncClearNativePointerThreshold();
 }
 
 void Heap::ResetTlab()
@@ -1096,11 +1097,6 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         oldSpace_->ResetMergeSize();
         shouldThrowOOMError_ = false;
     }
-    // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
-    // even lead to another GC, so this have to invoke after this GC process.
-    thread_->InvokeWeakNodeNativeFinalizeCallback();
-    // PostTask for ProcessNativeDelete
-    CleanCallBack();
     // Update record heap object size after gc if in sensitive status
     if (GetSensitiveStatus() == AppSensitiveStatus::ENTER_HIGH_SENSITIVE) {
         SetRecordHeapObjectSizeBeforeSensitive(GetHeapObjectSize());
@@ -1111,6 +1107,13 @@ void Heap::CollectGarbage(TriggerGCType gcType, GCReason reason)
         LOG_ECMA(DEBUG) << "post gc heap verify";
         Verification(this, VerifyKind::VERIFY_POST_GC).VerifyAll();
     }
+
+    // Weak node nativeFinalizeCallback may execute JS and change the weakNodeList status,
+    // even lead to another GC, so this have to invoke after this GC process.
+    thread_->InvokeWeakNodeNativeFinalizeCallback();
+    // PostTask for ProcessNativeDelete
+    CleanCallBack();
+
     JSFinalizationRegistry::CheckAndCall(thread_);
 #if defined(ECMASCRIPT_SUPPORT_TRACING)
     auto tracing = GetEcmaVM()->GetTracing();
@@ -2217,20 +2220,27 @@ void Heap::CleanCallBack()
     }
     ASSERT(concurrentCallbacks.empty());
 
-    auto &asyncCallbacks = this->GetEcmaVM()->GetAsyncNativePointerCallbacks();
+    AsyncNativeCallbacksPack &asyncCallbacksPack = this->GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
+    if (asyncCallbacksPack.Empty()) {
+        ASSERT(asyncCallbacksPack.TotallyEmpty());
+        return;
+    }
+    AsyncNativeCallbacksPack *asyncCallbacks = new AsyncNativeCallbacksPack();
+    std::swap(*asyncCallbacks, asyncCallbacksPack);
     NativePointerTaskCallback asyncTaskCb = thread_->GetAsyncCleanTaskCallback();
-    if (asyncTaskCb != nullptr && this->GetJSThread()->IsMainThreadFast()) {
+    if (asyncTaskCb != nullptr && thread_->IsMainThreadFast() &&
+        pendingAsyncNativeCallbackSize_ < asyncClearNativePointerThreshold_) {
+        IncreasePendingAsyncNativeCallbackSize(asyncCallbacks->GetTotalBindingSize());
+        asyncCallbacks->RegisterFinishNotify([this] (size_t bindingSize) {
+            this->DecreasePendingAsyncNativeCallbackSize(bindingSize);
+        });
         asyncTaskCb(asyncCallbacks);
     } else {
-        for (auto iter : asyncCallbacks) {
-            if (iter.first != nullptr) {
-                iter.first(std::get<0>(iter.second),
-                    std::get<1>(iter.second), std::get<2>(iter.second)); // 2 is the param.
-            }
-        }
-        asyncCallbacks.clear();
+        ThreadNativeScope nativeScope(thread_);
+        asyncCallbacks->ProcessAll();
+        delete asyncCallbacks;
     }
-    ASSERT(asyncCallbacks.empty());
+    ASSERT(asyncCallbacksPack.TotallyEmpty());
 }
 
 bool Heap::DeleteCallbackTask::Run([[maybe_unused]] uint32_t threadIndex)
