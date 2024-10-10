@@ -370,7 +370,19 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test LinkedList fail: " + flag);
     }
-
+    const v6 = new LinkedList()
+    function f2(a3) {
+        return a3
+    }
+    const o5 = {
+        "get" : f2,
+    }
+    const v7 = new Proxy(v6, o5)
+    try {
+        v7[1073741823]
+    } catch (error) {
+        print(error)
+    }
     let mList = new LinkedList();
     for (let i = 1; i <= 10; ++i) {
         mList.add(i);

@@ -246,6 +246,10 @@ bool JSAPILinkedList::GetOwnProperty(JSThread *thread, const JSHandle<JSAPILinke
     }
     JSHandle<TaggedDoubleList> doubleList(thread, list->GetDoubleList());
     uint32_t length = static_cast<uint32_t>(doubleList->Length());
+    if (length == 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+    }
     if (index >= length) {
         ASSERT(length > 0);
         std::ostringstream oss;

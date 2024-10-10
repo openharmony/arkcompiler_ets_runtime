@@ -154,6 +154,10 @@ bool JSAPIStack::GetOwnProperty(JSThread *thread, const JSHandle<JSAPIStack> &ob
     }
 
     uint32_t length = static_cast<uint32_t>(obj->GetTop() + 1);
+    if (length == 0) {
+        JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, "Container is empty");
+        THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
+    }
     if (index >= length) {
         std::ostringstream oss;
         ASSERT(length > 0);
