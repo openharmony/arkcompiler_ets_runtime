@@ -55,7 +55,6 @@ enum ArkProperties {
     CPU_PROFILER_ANY_TIME_WORKER_THREAD = 1 << 18,
     ENABLE_HEAP_VERIFY = 1 << 19,
     ENABLE_MICROJOB_TRACE = 1 << 20,
-    ENABLE_INIT_OLD_SOCKET_SESSION = 1 << 21,
     // Use DISABLE to adapt to the exsiting ArkProperties in testing scripts.
     DISABLE_SHARED_CONCURRENT_MARK = 1 << 22,
     ENABLE_ESM_TRACE = 1 << 24,
@@ -614,11 +613,6 @@ public:
     bool EnableESMTrace() const
     {
         return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_ESM_TRACE) != 0;
-    }
-
-    bool EnableInitOldSocketSession() const
-    {
-        return (static_cast<uint32_t>(arkProperties_) & ArkProperties::ENABLE_INIT_OLD_SOCKET_SESSION) != 0;
     }
 
     bool EnableModuleLog() const
