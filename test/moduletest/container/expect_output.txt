@@ -12,6 +12,7 @@
 # limitations under the License.
 
 BusinessError: Container is empty
+true
 Test ArrayList success!!!
 Test Deque success!!!
 {}
