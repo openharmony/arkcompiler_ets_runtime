@@ -1183,7 +1183,7 @@ GateRef NumberSpeculativeRetype::CheckAndConvertToInt32(GateRef gate, GateType g
             break;
         }
         case TypeInfo::FLOAT64:
-            result = builder_.ConvertFloat64ToInt32(gate);
+            result = builder_.CheckFloat64AndConvertToInt32(gate);
             break;
         case TypeInfo::HOLE_INT:
             result = builder_.CheckHoleIntAndConvertToInt32(gate);

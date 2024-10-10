@@ -34,6 +34,7 @@ group("ark_jit_ts_test") {
     "fuzz_exception",
     "throw_error",
     "compiler_inline",
+    "inc",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]

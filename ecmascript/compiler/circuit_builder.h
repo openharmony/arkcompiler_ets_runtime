@@ -622,6 +622,7 @@ public:
     GateRef CheckHoleDoubleAndConvertToInt32(GateRef gate);
     GateRef CheckHoleIntAndConvertToFloat64(GateRef gate);
     GateRef CheckHoleDoubleAndConvertToFloat64(GateRef gate);
+    GateRef CheckFloat64AndConvertToInt32(GateRef gate);
     GateRef StartAllocate();
     GateRef FinishAllocate(GateRef value);
 
