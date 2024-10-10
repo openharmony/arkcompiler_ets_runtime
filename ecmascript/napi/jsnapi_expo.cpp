@@ -4246,6 +4246,7 @@ void JSNApi::SetEnv(EcmaVM *vm, void *env)
 
 void JSNApi::SynchronizVMInfo(EcmaVM *vm, const EcmaVM *hostVM)
 {
+    std::atomic_thread_fence(std::memory_order_seq_cst);
     vm->SetBundleName(hostVM->GetBundleName());
     vm->SetModuleName(hostVM->GetModuleName());
     vm->SetAssetPath(hostVM->GetAssetPath());
