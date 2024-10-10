@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,8 +17,7 @@
 #define ECMASCRIPT_COMPILER_BUILTINS_CALL_SIGNATURE_H
 
 #include "ecmascript/base/config.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/global_env_constants.h"
+#include "ecmascript/compiler/call_signature.h"
 
 namespace panda::ecmascript::kungfu {
 

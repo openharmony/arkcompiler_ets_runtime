@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -113,13 +113,8 @@ public:
     using OffsetType = kungfu::LLVMStackMapType::OffsetType;
     using VRegId = kungfu::LLVMStackMapType::VRegId;
 
-    explicit Deoptimizier(JSThread *thread, size_t depth) : thread_(thread), inlineDepth_(depth)
-    {
-        CalleeReg callreg;
-        numCalleeRegs_ = static_cast<size_t>(callreg.GetCallRegNum());
-        JSRuntimeOptions options = thread_->GetEcmaVM()->GetJSOptions();
-        traceDeopt_ = options.GetTraceDeopt();
-    }
+    explicit Deoptimizier(JSThread *thread, size_t depth);
+
     void CollectVregs(const std::vector<kungfu::ARKDeopt>& deoptBundle, size_t shift);
     template<class T>
     void AssistCollectDeoptBundleVec(FrameIterator &it, T &frame);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -20,8 +20,8 @@
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/ecma_runtime_call_info.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/regexp/regexp_executor.h"
 #include "ecmascript/regexp/regexp_parser.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::builtins {
 class BuiltinsRegExp : public base::BuiltinsBase {
@@ -357,29 +357,7 @@ public:
     }
 
     template <int N>
-    static JSTaggedValue GetCapture(JSThread *thread)
-    {
-        JSHandle<builtins::RegExpGlobalResult> globalTable(thread->GetCurrentEcmaContext()->GetRegExpGlobalResult());
-        JSTaggedValue res = globalTable->Get(CAPTURE_START_INDEX + N - 1);
-        int captureNum = globalTable->GetTotalCaptureCounts().GetInt();
-        if (res.IsHole() && (N < captureNum)) {
-            int startIndex = globalTable->GetStartOfCaptureIndex(N).GetInt();
-            int endIndex = globalTable->GetEndOfCaptureIndex(N).GetInt();
-            int len = endIndex - startIndex;
-            if (len < 0) {
-                res = JSTaggedValue::Undefined();
-            } else {
-                res = JSTaggedValue(EcmaStringAccessor::FastSubString(thread->GetEcmaVM(),
-                    JSHandle<EcmaString>(thread, EcmaString::Cast(globalTable->GetInputString())),
-                    static_cast<uint32_t>(startIndex), static_cast<uint32_t>(len)));
-            }
-            globalTable->Set(thread, CAPTURE_START_INDEX + N - 1, res);
-        } else if (res.IsHole()) {
-            res = thread->GetEcmaVM()->GetFactory()->GetEmptyString().GetTaggedValue();
-            globalTable->Set(thread, CAPTURE_START_INDEX + N - 1, res);
-        }
-        return res;
-    }
+    static JSTaggedValue GetCapture(JSThread *thread);
 
     void SetTotalCaptureCounts(JSThread *thread, JSTaggedValue counts)
     {

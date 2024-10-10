@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,11 +23,13 @@
 #include "ecmascript/base/array_helper.h"
 #include "ecmascript/builtins/builtins_regexp.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
+#include "ecmascript/debugger/js_debugger_manager.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_dictionary-inl.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/frame_handler.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 #include "ecmascript/js_arguments.h"
 #include "ecmascript/js_async_function.h"
@@ -39,9 +41,12 @@
 #include "ecmascript/js_promise.h"
 #include "ecmascript/jspandafile/class_info_extractor.h"
 #include "ecmascript/jspandafile/literal_data_extractor.h"
+#include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jspandafile/scope_info_extractor.h"
+#include "ecmascript/message_string.h"
 #include "ecmascript/module/js_module_manager.h"
 #include "ecmascript/module/js_module_source_text.h"
+#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/patch/quick_fix_helper.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/runtime.h"

@@ -22,6 +22,7 @@
 #include "ecmascript/compiler/operations_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/dfx/vm_thread_control.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_async_generator_object.h"
 
 namespace panda::ecmascript::kungfu {

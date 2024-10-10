@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,10 +14,12 @@
  */
 
 #include "ecmascript/builtins/builtins_regexp.h"
+#include "ecmascript/builtins/builtins_regexp-inl.h"
 
 #include <cmath>
 
 #include "ecmascript/ecma_string-inl.h"
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
@@ -33,6 +35,7 @@
 #include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/property_detector-inl.h"
+#include "ecmascript/regexp/regexp_executor.h"
 #include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/tagged_array-inl.h"
 

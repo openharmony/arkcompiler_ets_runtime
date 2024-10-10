@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,8 @@
 #include "ecmascript/ic/ic_runtime.h"
 
 #include "ecmascript/ic/ic_handler.h"
+#include "ecmascript/interpreter/interpreter.h"
+#include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/shared_objects/js_shared_array.h"

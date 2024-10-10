@@ -16,6 +16,7 @@
 #ifndef ECMASCRIPT_COMPILER_BUILTINS_TYPEDARRAY_STUB_BUILDER_H
 #define ECMASCRIPT_COMPILER_BUILTINS_TYPEDARRAY_STUB_BUILDER_H
 
+#include "ecmascript/compiler/builtins/builtins_stubs.h"
 #include "ecmascript/compiler/stub_builder-inl.h"
 #include "ecmascript/js_arraybuffer.h"
 #include "ecmascript/js_typed_array.h"

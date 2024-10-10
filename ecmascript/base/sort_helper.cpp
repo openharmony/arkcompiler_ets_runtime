@@ -15,6 +15,8 @@
 
 #include "ecmascript/base/sort_helper.h"
 #include "ecmascript/base/array_helper.h"
+#include "ecmascript/js_tagged_value-inl.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::base {
 void TimSort::Sort(JSThread *thread, JSHandle<TaggedArray> &elements, const JSHandle<JSTaggedValue> &fn)

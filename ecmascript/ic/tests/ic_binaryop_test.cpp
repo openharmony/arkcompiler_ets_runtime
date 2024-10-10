@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,7 +19,6 @@
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/ic/ic_binary_op.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/interpreter/slow_runtime_stub.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tests/test_helper.h"

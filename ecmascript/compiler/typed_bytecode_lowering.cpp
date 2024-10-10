@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -32,6 +32,8 @@
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/js_object-inl.h"
+#include "ecmascript/layout_info-inl.h"
 
 namespace panda::ecmascript::kungfu {
 void TypedBytecodeLowering::RunTypedBytecodeLowering()

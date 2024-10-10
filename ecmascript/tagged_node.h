@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,11 +16,11 @@
 #ifndef ECMASCRIPT_TAGGED_NODE_H
 #define ECMASCRIPT_TAGGED_NODE_H
 
-#include "ecmascript/js_thread.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/mem/tagged_object.h"
 
 namespace panda::ecmascript {
+class JSThread;
 class TaggedNode : public TaggedObject {
 public:
     void InitTaggedNode(JSThread *thread, int hash, JSHandle<JSTaggedValue> key, JSHandle<JSTaggedValue> value)

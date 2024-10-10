@@ -16,7 +16,9 @@
 #ifndef ECMASCRIPT_COMPILER_ASSEMBLER_MACRO_ASSEMBLER_H
 #define ECMASCRIPT_COMPILER_ASSEMBLER_MACRO_ASSEMBLER_H
 
+#include "ecmascript/compiler/bytecodes.h"
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/mem/native_area_allocator.h"
 
 namespace panda::ecmascript::kungfu {
 

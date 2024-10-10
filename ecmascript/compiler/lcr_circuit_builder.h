@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,9 +19,6 @@
 #include "ecmascript/compiler/circuit_builder.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
 #include "ecmascript/compiler/share_gate_meta_data.h"
-#include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/mem/region.h"
-#include "ecmascript/method.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -80,16 +77,6 @@ GateRef CircuitBuilder::IntPtrLSL(GateRef x, GateRef y)
 {
     auto ptrSize = env_->Is32Bit() ? MachineType::I32 : MachineType::I64;
     return BinaryArithmetic(circuit_->Lsl(), ptrSize, x, y);
-}
-
-GateRef CircuitBuilder::DoubleTrunc(GateRef gate, GateRef value, const char* comment)
-{
-    if (GetCompilationConfig()->IsAArch64()) {
-        return DoubleTrunc(value, comment);
-    }
-
-    GateRef glue = acc_.GetGlueFromArgList();
-    return CallNGCRuntime(glue, RTSTUB_ID(FloatTrunc), Gate::InvalidGateRef, {value}, gate, comment);
 }
 
 GateRef CircuitBuilder::Int16ToBigEndianInt16(GateRef x)
@@ -206,160 +193,6 @@ GateRef CircuitBuilder::GetBooleanOfTBoolean(GateRef x)
 {
     GateRef tagged = ChangeTaggedPointerToInt64(x);
     return TruncInt64ToInt1(tagged);
-}
-
-GateRef CircuitBuilder::GetDoubleOfTNumber(GateRef x)
-{
-    Label subentry(env_);
-    SubCfgEntry(&subentry);
-    Label isInt(env_);
-    Label isDouble(env_);
-    Label exit(env_);
-    DEFVALUE(result, env_, VariableType::FLOAT64(), Double(0));
-    BRANCH_CIR2(TaggedIsInt(x), &isInt, &isDouble);
-    Bind(&isInt);
-    {
-        result = ChangeInt32ToFloat64(GetInt32OfTInt(x));
-        Jump(&exit);
-    }
-    Bind(&isDouble);
-    {
-        result = GetDoubleOfTDouble(x);
-        Jump(&exit);
-    }
-    Bind(&exit);
-    GateRef ret = *result;
-    SubCfgExit();
-    return ret;
-}
-
-GateRef CircuitBuilder::DoubleToInt(GateRef x, Label *exit)
-{
-    Label overflow(env_);
-
-    GateRef xInt = ChangeFloat64ToInt32(x);
-    DEFVALUE(result, env_, VariableType::INT32(), xInt);
-
-    GateRef xInt64 = CastDoubleToInt64(x);
-    // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
-    GateRef exp = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-    exp = TruncInt64ToInt32(Int64LSR(exp, Int64(base::DOUBLE_SIGNIFICAND_SIZE)));
-    exp = Int32Sub(exp, Int32(base::DOUBLE_EXPONENT_BIAS));
-    GateRef bits = Int32(base::INT32_BITS - 1);
-    // exp < 32 - 1
-    BRANCH_CIR2(Int32LessThan(exp, bits), exit, &overflow);
-
-    Bind(&overflow);
-    {
-        result = CallNGCRuntime(acc_.GetGlueFromArgList(), RTSTUB_ID(DoubleToInt),
-                                Circuit::NullGate(), { x, IntPtr(base::INT32_BITS) }, Circuit::NullGate());
-        Jump(exit);
-    }
-    Bind(exit);
-    auto ret = *result;
-    return ret;
-}
-
-GateRef CircuitBuilder::DoubleToInt(GateRef glue, GateRef x, size_t typeBits)
-{
-    Label entry(env_);
-    env_->SubCfgEntry(&entry);
-    Label exit(env_);
-    Label overflow(env_);
-
-    GateRef xInt = ChangeFloat64ToInt32(x);
-    DEFVALUE(result, env_, VariableType::INT32(), xInt);
-
-    if (env_->IsAmd64()) {
-        // 0x80000000: amd64 overflow return value
-        BRANCH_CIR2(Int32Equal(xInt, Int32(0x80000000)), &overflow, &exit);
-    } else {
-        GateRef xInt64 = CastDoubleToInt64(x);
-        // exp = (u64 & DOUBLE_EXPONENT_MASK) >> DOUBLE_SIGNIFICAND_SIZE - DOUBLE_EXPONENT_BIAS
-        GateRef exp = Int64And(xInt64, Int64(base::DOUBLE_EXPONENT_MASK));
-        exp = TruncInt64ToInt32(Int64LSR(exp, Int64(base::DOUBLE_SIGNIFICAND_SIZE)));
-        exp = Int32Sub(exp, Int32(base::DOUBLE_EXPONENT_BIAS));
-        GateRef bits = Int32(typeBits - 1);
-        // exp < 32 - 1
-        BRANCH_CIR2(Int32LessThan(exp, bits), &exit, &overflow);
-    }
-    Bind(&overflow);
-    {
-        result = CallNGCRuntime(glue, RTSTUB_ID(DoubleToInt), Circuit::NullGate(), { x, IntPtr(typeBits) },
-                                Circuit::NullGate());
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env_->SubCfgExit();
-    return ret;
-}
-
-GateRef CircuitBuilder::DoubleCheckINFInRangeInt32(GateRef x)
-{
-    Label entry(env_);
-    env_->SubCfgEntry(&entry);
-    Label exit(env_);
-    Label isInfinity(env_);
-    Label positiveInf(env_);
-    Label negativeInf(env_);
-
-    DEFVALUE(result, env_, VariableType::INT32(), DoubleInRangeInt32(x));
-    GateRef Max = Double(INT32_MAX);
-    GateRef Min = Double(INT32_MIN);
-    GateRef pInfinity = Double(base::POSITIVE_INFINITY);
-    Branch(DoubleIsINF(x), &isInfinity, &exit);
-    Bind(&isInfinity);
-    {
-        Branch(DoubleEqual(x, pInfinity), &positiveInf, &negativeInf);
-        Bind(&positiveInf);
-        {
-            result = ChangeFloat64ToInt32(Max);
-            Jump(&exit);
-        }
-        Bind(&negativeInf);
-        {
-            result = ChangeFloat64ToInt32(Min);
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env_->SubCfgExit();
-    return ret;
-}
-
-GateRef CircuitBuilder::DoubleInRangeInt32(GateRef x)
-{
-    Label entry(env_);
-    env_->SubCfgEntry(&entry);
-    Label exit(env_);
-    Label overflow(env_);
-    Label checkUnderflow(env_);
-    Label underflow(env_);
-
-    DEFVALUE(result, env_, VariableType::INT32(), ChangeFloat64ToInt32(x));
-    GateRef Max = Double(INT32_MAX);
-    GateRef Min = Double(INT32_MIN);
-    Branch(DoubleGreaterThan(x, Max), &overflow, &checkUnderflow);
-    Bind(&overflow);
-    {
-        result = ChangeFloat64ToInt32(Max);
-        Jump(&exit);
-    }
-    Bind(&checkUnderflow);
-    {
-        Branch(DoubleLessThan(x, Min), &underflow, &exit);
-        Bind(&underflow);
-        {
-            result = ChangeFloat64ToInt32(Min);
-            Jump(&exit);
-        }
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env_->SubCfgExit();
-    return ret;
 }
 
 GateRef CircuitBuilder::Int32ToTaggedInt(GateRef x)

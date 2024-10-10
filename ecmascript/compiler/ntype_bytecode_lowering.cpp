@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,8 +17,11 @@
 
 #include "ecmascript/compiler/type_info_accessors.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
+#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/jit/jit.h"
+#include "ecmascript/layout_info.h"
+#include "ecmascript/lexical_env.h"
 
 namespace panda::ecmascript::kungfu {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -31,11 +31,14 @@
 #include "ecmascript/compiler/builtins/containers_stub_builder.h"
 #include "ecmascript/builtins/builtins_array.h"
 #include "ecmascript/deoptimizer/deoptimizer.h"
+#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
 #include "ecmascript/dfx/vmstat/function_call_timer.h"
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/ic/ic_runtime_stub-inl.h"
 #include "ecmascript/interpreter/interpreter_assembly.h"
+#include "ecmascript/interpreter/slow_runtime_stub.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/js_array_iterator.h"
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/js_set_iterator.h"

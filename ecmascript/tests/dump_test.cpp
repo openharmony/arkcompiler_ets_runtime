@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -121,6 +121,7 @@
 #include "ecmascript/shared_objects/js_shared_set.h"
 #include "ecmascript/shared_objects/js_shared_set_iterator.h"
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
+#include "ecmascript/stubs/runtime_stubs.h"
 #include "ecmascript/tagged_array.h"
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/tagged_hash_array.h"

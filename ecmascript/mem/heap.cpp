@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -471,6 +471,11 @@ size_t SharedHeap::VerifyHeapObjects(VerifyKind verifyKind) const
     return failCount;
 }
 
+bool SharedHeap::IsReadyToConcurrentMark() const
+{
+    return dThread_->IsReadyToConcurrentMark();
+}
+
 bool SharedHeap::NeedStopCollection()
 {
     if (!InSensitiveStatus()) {
@@ -644,6 +649,11 @@ void Heap::ProcessSharedGCRSetWorkList()
         sHeap_->GetSharedGCMarker()->ProcessThenMergeBackRSetFromBoundJSThread(sharedGCData_.rSetWorkListHandler_);
         ASSERT(sharedGCData_.rSetWorkListHandler_ == nullptr);
     }
+}
+
+const GlobalEnvConstants *Heap::GetGlobalConst() const
+{
+    return thread_->GlobalConstants();
 }
 
 void Heap::Destroy()
@@ -1394,6 +1404,11 @@ void Heap::AdjustSpaceSizeForAppSpawn()
     oldSpace_->SetMaximumCapacity(oldSpace_->GetMaximumCapacity() - committedSize);
 }
 
+bool Heap::ShouldMoveToRoSpace(JSHClass *hclass, TaggedObject *object)
+{
+    return hclass->IsString() && !Region::ObjectAddressToRange(object)->InHugeObjectSpace();
+}
+
 void Heap::AddAllocationInspectorToAllSpaces(AllocationInspector *inspector)
 {
     ASSERT(inspector != nullptr);
@@ -1813,6 +1828,11 @@ void Heap::CheckAndTriggerTaskFinishedGC()
     }
 }
 
+bool Heap::IsMarking() const
+{
+    return thread_->IsMarking();
+}
+
 void Heap::TryTriggerFullMarkBySharedSize(size_t size)
 {
     newAllocatedSharedObjectSize_ += size;
@@ -1823,6 +1843,11 @@ void Heap::TryTriggerFullMarkBySharedSize(size_t size)
             newAllocatedSharedObjectSize_ = 0;
         }
     }
+}
+
+bool Heap::IsReadyToConcurrentMark() const
+{
+    return thread_->IsReadyToConcurrentMark();
 }
 
 void Heap::IncreaseNativeBindingSize(JSNativePointer *object)

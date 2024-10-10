@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,13 +19,13 @@
 #include "ecmascript/accessor_data.h"
 #include "ecmascript/ecma_macros.h"
 #include "ecmascript/ic/profile_type_info_cell.h"
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/lexical_env.h"
+#include "ecmascript/js_object.h"
 #include "ecmascript/js_proxy.h"
 
 namespace panda::ecmascript {
 class JSThread;
 struct EcmaRuntimeCallInfo;
+struct CJSInfo;
 
 class JSFunctionBase : public JSObject {
 public:
@@ -225,11 +225,7 @@ public:
         return !protoOrHClass.IsHole();
     }
 
-    inline void SetFunctionLength(const JSThread *thread, JSTaggedValue length)
-    {
-        ASSERT(!IsPropertiesDict());
-        SetPropertyInlinedProps(thread, LENGTH_INLINE_PROPERTY_INDEX, length);
-    }
+    void SetFunctionLength(const JSThread *thread, JSTaggedValue length);
 
     inline bool IsGetterOrSetter() const
     {

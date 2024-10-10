@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -24,7 +24,6 @@
 
 #include "ecmascript/common.h"
 #include "ecmascript/ecma_macros.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/stackmap/ark_stackmap.h"
 #include "ecmascript/stackmap/ark_stackmap_builder.h"
 #include "ecmascript/stackmap/llvm/llvm_stackmap_type.h"

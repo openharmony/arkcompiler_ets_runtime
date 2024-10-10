@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -33,7 +33,9 @@
 #include "ecmascript/shared_objects/js_shared_typed_array.h"
 #include "ecmascript/js_async_function.h"
 #include "ecmascript/js_handle.h"
+#include "ecmascript/js_object-inl.h"
 #include "ecmascript/js_tagged_value.h"
+#include "ecmascript/layout_info.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/builtins/builtins_shared_array.h"
 

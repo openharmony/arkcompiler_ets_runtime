@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,10 +28,10 @@
 #include "ecmascript/compiler/ecma_opcode_des.h"
 #include "ecmascript/compiler/frame_states.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_recorder.h"
-#include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jit/jit_profiler.h"
 #include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/method_literal.h"
+#include "libpandafile/index_accessor.h"
 
 namespace panda::ecmascript::kungfu {
 struct ExceptionItem {

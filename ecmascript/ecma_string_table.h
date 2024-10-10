@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,18 +18,18 @@
 
 #include <array>
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/mem/c_containers.h"
 #include "ecmascript/mem/space.h"
 #include "ecmascript/mem/visitor.h"
 #include "ecmascript/platform/mutex.h"
-#include "ecmascript/tagged_array-inl.h"
+#include "ecmascript/tagged_array.h"
 #include "ecmascript/taskpool/task.h"
 
 namespace panda::ecmascript {
 class EcmaString;
 class EcmaVM;
 class JSPandaFile;
+class JSThread;
 
 class EcmaStringTable;
 

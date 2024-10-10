@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/module/js_dynamic_import.h"
 #include "ecmascript/base/path_helper.h"
 #include "ecmascript/builtins/builtins_promise_job.h"
+#include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/module/js_module_deregister.h"
 #include "ecmascript/module/js_module_manager.h"
