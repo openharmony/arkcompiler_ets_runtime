@@ -23,10 +23,8 @@ group("ark_jit_ts_test") {
     "typed_array",
     "while_loop",
     "exception",
+    "construct_with_normal_function",
     "data_view",
-
-    #(issue 18039)
-    #"construct_with_normal_function",
     "addition_assignment",
     "catch_with_osr",
     "jit_test_0001",

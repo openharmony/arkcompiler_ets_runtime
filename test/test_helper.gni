@@ -3854,8 +3854,8 @@ template("host_aot_assert_test_action") {
       _aot_compile_options_,
       "--script-args",
       _script_args_,
-      "--expect-sub-output",
-      "ts aot compile success",
+      "--expect-output",
+      "0",
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
@@ -3940,8 +3940,8 @@ template("host_aot_assert_test_action") {
       _aot_compile_options_,
       "--script-args",
       _script_args_,
-      "--expect-sub-output",
-      "ts aot compile success",
+      "--expect-output",
+      "0",
       "--env-path",
       rebase_path(_root_out_dir_) + "/arkcompiler/ets_runtime:" +
           rebase_path(_root_out_dir_) + "/${_icu_path_}:" +
