@@ -156,6 +156,9 @@ void SharedHeap::AdjustGlobalSpaceAllocLimit()
                                       config_.GetMaxHeapSize());
     globalSpaceConcurrentMarkLimit_ = static_cast<size_t>(globalSpaceAllocLimit_ *
                                                           TRIGGER_SHARED_CONCURRENT_MARKING_OBJECT_LIMIT_RATE);
+    constexpr double OBJECT_INCREMENT_FACTOR_FOR_MARK_LIMIT = 1.1;
+    size_t markLimitByIncrement = static_cast<size_t>(GetHeapObjectSize() * OBJECT_INCREMENT_FACTOR_FOR_MARK_LIMIT);
+    globalSpaceConcurrentMarkLimit_ = std::max(globalSpaceConcurrentMarkLimit_, markLimitByIncrement);
     LOG_ECMA_IF(optionalLogEnabled_, INFO) << "Shared gc adjust global space alloc limit to: "
         << globalSpaceAllocLimit_;
 }
