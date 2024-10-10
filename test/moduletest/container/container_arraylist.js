@@ -292,6 +292,17 @@ if (globalThis["ArkPrivate"] != undefined) {
     } catch (error) {
         print(error)
     }
+    
+    const v1 = new arrayList()
+    v1.add(1)
+    v1.add(2)
+    v1.add(3)
+    let oldLen = v1.length
+    v1.replaceAllElements((val,index,temp)=>{
+        temp.add(val)
+    })
+    print(oldLen * 2 === v1.length)
+
     if (!flag) {
         print("Test ArrayList success!!!");
     } else {
