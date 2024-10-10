@@ -48,7 +48,7 @@ public:
 
     static bool TryIncreaseTaskCounts()
     {
-        size_t taskPoolSize = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+        size_t taskPoolSize = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum();
         {
             LockHolder holder(taskCountMutex_);
             // total counts of running concurrent mark tasks should be less than taskPoolSize

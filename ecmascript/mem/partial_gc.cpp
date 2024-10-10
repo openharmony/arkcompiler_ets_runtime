@@ -53,7 +53,7 @@ void PartialGC::RunPhases()
     bool needAjustGCThreadPrio = heap_->GetGCType() == TriggerGCType::OLD_GC ||
         heap_->GetNewSpace()->GetCommittedSize() >= heap_->GetNewSpace()->GetMaximumCapacity();
     if (mainThreadInForeground && needAjustGCThreadPrio) {
-        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::STW);
+        GCWorkerPool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::STW);
     }
     markingInProgress_ = heap_->CheckOngoingConcurrentMarking();
     LOG_GC(DEBUG) << "markingInProgress_" << markingInProgress_;
@@ -73,7 +73,7 @@ void PartialGC::RunPhases()
     }
     Finish();
     if (mainThreadInForeground && needAjustGCThreadPrio) {
-        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
+        GCWorkerPool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
     }
     if (heap_->IsConcurrentFullMark()) {
         heap_->NotifyHeapAliveSizeAfterGC(heap_->GetHeapObjectSize());

@@ -260,7 +260,7 @@ void SharedHeap::Destroy()
 void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants, const JSRuntimeOptions &option)
 {
     globalEnvConstants_ = globalEnvConstants;
-    uint32_t totalThreadNum = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    uint32_t totalThreadNum = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = totalThreadNum - 1;
     sWorkManager_ = new SharedGCWorkManager(this, totalThreadNum + 1);
     sharedGCMarker_ = new SharedGCMarker(sWorkManager_);
@@ -274,7 +274,7 @@ void SharedHeap::PostInitialization(const GlobalEnvConstants *globalEnvConstants
 void SharedHeap::PostGCMarkingTask()
 {
     IncreaseTaskCount();
-    Taskpool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelMarkTask>(dThread_->GetThreadId(), this));
+    GCWorkerPool::GetCurrentTaskpool()->PostTask(std::make_unique<ParallelMarkTask>(dThread_->GetThreadId(), this));
 }
 
 bool SharedHeap::ParallelMarkTask::Run(uint32_t threadIndex)
@@ -395,7 +395,7 @@ void SharedHeap::Reclaim()
     sHugeObjectSpace_->ReclaimHugeRegion();
     if (parallelGC_) {
         clearTaskFinished_ = false;
-        Taskpool::GetCurrentTaskpool()->PostTask(
+        GCWorkerPool::GetCurrentTaskpool()->PostTask(
             std::make_unique<AsyncClearTask>(dThread_->GetThreadId(), this));
     } else {
         ReclaimRegions();
@@ -430,7 +430,7 @@ void SharedHeap::DisableParallelGC(JSThread *thread)
 
 void SharedHeap::EnableParallelGC(JSRuntimeOptions &option)
 {
-    uint32_t totalThreadNum = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    uint32_t totalThreadNum = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = totalThreadNum - 1;
     parallelGC_ = option.EnableParallelGC();
     if (auto workThreadNum = sWorkManager_->GetTotalThreadNum();
@@ -592,7 +592,7 @@ void Heap::Initialize()
 
     hugeObjectSpace_ = new HugeObjectSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
     hugeMachineCodeSpace_ = new HugeMachineCodeSpace(this, heapRegionAllocator_, oldSpaceCapacity, oldSpaceCapacity);
-    maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    maxEvacuateTaskCount_ = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum();
     maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
         maxEvacuateTaskCount_ - 1);
 
@@ -610,7 +610,7 @@ void Heap::Initialize()
 #if ECMASCRIPT_DISABLE_CONCURRENT_MARKING
     concurrentMarkerEnabled = false;
 #endif
-    workManager_ = new WorkManager(this, Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1);
+    workManager_ = new WorkManager(this, GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum() + 1);
     stwYoungGC_ = new STWYoungGC(this, parallelGC_);
     fullGC_ = new FullGC(this);
 
@@ -841,7 +841,7 @@ void Heap::Resume(TriggerGCType gcType)
     hugeMachineCodeSpace_->ReclaimHugeRegion();
     if (parallelGC_) {
         clearTaskFinished_ = false;
-        Taskpool::GetCurrentTaskpool()->PostTask(
+        GCWorkerPool::GetCurrentTaskpool()->PostTask(
             std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, gcType));
     } else {
         ReclaimRegions(gcType);
@@ -879,13 +879,13 @@ void Heap::DisableParallelGC()
     stwYoungGC_->ConfigParallelGC(false);
     sweeper_->ConfigConcurrentSweep(false);
     concurrentMarker_->ConfigConcurrentMark(false);
-    Taskpool::GetCurrentTaskpool()->Destroy(GetJSThread()->GetThreadId());
+    GCWorkerPool::GetCurrentTaskpool()->Destroy(GetJSThread()->GetThreadId());
 }
 
 void Heap::EnableParallelGC()
 {
     parallelGC_ = ecmaVm_->GetJSOptions().EnableParallelGC();
-    maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
+    maxEvacuateTaskCount_ = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum();
     if (auto totalThreadNum = workManager_->GetTotalThreadNum();
         totalThreadNum != maxEvacuateTaskCount_ + 1) {
         LOG_ECMA_MEM(WARN) << "TheadNum mismatch, totalThreadNum(workerManager): " << totalThreadNum << ", "
@@ -1942,7 +1942,7 @@ void Heap::WaitConcurrentMarkingFinished()
 void Heap::PostParallelGCTask(ParallelGCTaskPhase gcTask)
 {
     IncreaseTaskCount();
-    Taskpool::GetCurrentTaskpool()->PostTask(
+    GCWorkerPool::GetCurrentTaskpool()->PostTask(
         std::make_unique<ParallelGCTask>(GetJSThread()->GetThreadId(), this, gcTask));
 }
 
@@ -1970,7 +1970,7 @@ void Heap::ChangeGCParams(bool inBackground)
         sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::DISABLE);
         maxMarkTaskCount_ = 1;
         maxEvacuateTaskCount_ = 1;
-        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::BACKGROUND);
+        GCWorkerPool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::BACKGROUND);
     } else {
         LOG_GC(INFO) << "app is not inBackground";
         if (GetMemGrowingType() != MemGrowingType::PRESSURE) {
@@ -1980,9 +1980,9 @@ void Heap::ChangeGCParams(bool inBackground)
         concurrentMarker_->EnableConcurrentMarking(EnableConcurrentMarkType::ENABLE);
         sweeper_->EnableConcurrentSweep(EnableConcurrentSweepType::ENABLE);
         maxMarkTaskCount_ = std::min<size_t>(ecmaVm_->GetJSOptions().GetGcThreadNum(),
-            Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() - 1);
-        maxEvacuateTaskCount_ = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum();
-        Taskpool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
+            GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum() - 1);
+        maxEvacuateTaskCount_ = GCWorkerPool::GetCurrentTaskpool()->GetTotalThreadNum();
+        GCWorkerPool::GetCurrentTaskpool()->SetThreadPriority(PriorityMode::FOREGROUND);
     }
 }
 
@@ -2085,7 +2085,7 @@ void Heap::NotifyFinishColdStartSoon()
     }
 
     // post 2s task
-    Taskpool::GetCurrentTaskpool()->PostTask(
+    GCWorkerPool::GetCurrentTaskpool()->PostTask(
         std::make_unique<FinishColdStartTask>(GetJSThread()->GetThreadId(), this));
 }
 
@@ -2211,7 +2211,7 @@ void Heap::CleanCallBack()
 {
     auto &concurrentCallbacks = this->GetEcmaVM()->GetConcurrentNativePointerCallbacks();
     if (!concurrentCallbacks.empty()) {
-        Taskpool::GetCurrentTaskpool()->PostTask(
+        GCWorkerPool::GetCurrentTaskpool()->PostTask(
             std::make_unique<DeleteCallbackTask>(thread_->GetThreadId(), concurrentCallbacks)
         );
     }
