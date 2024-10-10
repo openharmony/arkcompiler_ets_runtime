@@ -37,8 +37,10 @@ public:
     {
     }
 
-    void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
-                              uint32_t moduleIndex, const CompilerLog &log);
+    std::vector<uintptr_t> GetFuncEntryPoints();
+
+    void CollectFuncEntryInfo(const std::vector<uintptr_t>& entrys, std::map<uintptr_t, std::string> &addr2name,
+                              StubFileInfo &stubInfo, uint32_t moduleIndex, const CompilerLog &log);
 
     void CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, AnFileInfo &aotInfo, uint32_t fileIndex,
                               uint32_t moduleIndex, const CompilerLog &log);
@@ -159,7 +161,7 @@ protected:
     const MethodLogList *logList_ {nullptr};
     std::ostringstream codeStream_;
 
-    void RunLLVMAssembler()
+    virtual void RunLLVMAssembler()
     {
         for (auto m : modulePackage_) {
             m.RunAssembler(*(log_), false);
@@ -243,9 +245,11 @@ enum class StubFileKind {
 
 class StubFileGenerator : public FileGenerator {
 public:
-    StubFileGenerator(const CompilerLog *log, const MethodLogList *logList, const std::string &triple)
+    StubFileGenerator(const CompilerLog* log, const MethodLogList* logList, const std::string& triple,
+                      bool concurrentCompile)
         : FileGenerator(log, logList),
-          cfg_(triple)
+          cfg_(triple),
+          concurrentCompile_(concurrentCompile)
     {
     }
     ~StubFileGenerator() override = default;
@@ -264,7 +268,8 @@ public:
     void DisassembleAsmStubs(std::map<uintptr_t, std::string> &addr2name);
     // save function funcs for aot files containing stubs
     void SaveStubFile(const std::string &filename);
-
+protected:
+    void RunLLVMAssembler() override;
 private:
     void RunAsmAssembler();
     void CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> &addr2name, uint32_t bridgeModuleIdx);
@@ -274,6 +279,7 @@ private:
     AssemblerModule asmModule_;
     CompilationConfig cfg_;
     CodeInfo::CodeSpaceOnDemand jitCodeSpace_ {};
+    bool concurrentCompile_ {false};
 };
 }  // namespace panda::ecmascript::kungfu
 #endif // ECMASCRIPT_COMPILER_FILE_GENERATORS_H

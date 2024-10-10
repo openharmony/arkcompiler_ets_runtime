@@ -144,6 +144,7 @@ public:
     void Movl(Register src, Register dst);
     void Movl(const Operand &src, Register dst);
     void Movzbq(const Operand &src, Register dst);
+    void Movzbl(const Operand &src, Register dst);
     void Movabs(uint64_t src, Register dst);
     void Shrq(Immediate src, Register dst);
     void Shr(Immediate src, Register dst);
