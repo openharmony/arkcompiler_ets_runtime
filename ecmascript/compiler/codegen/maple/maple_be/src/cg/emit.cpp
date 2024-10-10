@@ -3001,7 +3001,7 @@ void Emitter::EmitGlobalRootList(const MIRSymbol &mirSymbol)
                     CHECK_FATAL(symAddr != nullptr, "nullptr of symAddr");
                     MIRSymbol *symAddrSym =
                         GlobalTables::GetGsymTable().GetSymbolFromStidx(symAddr->GetSymbolIndex().Idx());
-                    DEBUG_ASSERT(symAddrSym != nullptr, "nullptr check");
+                    CHECK_FATAL(symAddrSym != nullptr, "nullptr check");
                     const std::string &symAddrName = symAddrSym->GetName();
                     EmitAddressString(symAddrName + "\n");
                 } else {

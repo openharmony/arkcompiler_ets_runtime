@@ -6982,7 +6982,7 @@ bool LdrStrRevPattern::CheckCondition(Insn &insn)
         if (!RegOperand::IsSameReg(lsrDst, adjacentSrc) || !RegOperand::IsSameReg(lsrSrc, currSrc)) {
             return false;
         }
-        DEBUG_ASSERT(adjacentMemOpnd != nullptr, "nullptr check");
+        CHECK_NULL_FATAL(adjacentMemOpnd);
         if (!IsAdjacentMem(*adjacentMemOpnd, *curMemOpnd)) {
             return false;
         }

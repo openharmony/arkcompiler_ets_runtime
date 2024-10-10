@@ -315,10 +315,10 @@ void AArch64AsmEmitter::Run(FuncEmitInfo &funcEmitInfo)
         (void)emitter.Emit("\t.align 3\n");
         (void)emitter.Emit(st->GetName() + ":\n");
         MIRAggConst *arrayConst = safe_cast<MIRAggConst>(st->GetKonst());
-        CHECK_FATAL(arrayConst != nullptr, "null ptr check");
+        CHECK_NULL_FATAL(cgFunc.GetMirModule().CurFunction());
         PUIdx pIdx = cgFunc.GetMirModule().CurFunction()->GetPuidx();
         char *idx = strdup(std::to_string(pIdx).c_str());
-        CHECK_FATAL(idx != nullptr, "strdup failed");
+        CHECK_FATAL(arrayConst != nullptr, "strdup failed");
         for (size_t i = 0; i < arrayConst->GetConstVec().size(); i++) {
             MIRLblConst *lblConst = safe_cast<MIRLblConst>(arrayConst->GetConstVecItem(i));
             CHECK_FATAL(lblConst != nullptr, "null ptr check");
