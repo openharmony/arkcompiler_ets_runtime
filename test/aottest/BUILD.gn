@@ -336,6 +336,7 @@ group("ark_aot_ts_test") {
     "proxy_fast_call",
     "webkit_call_convention",
     "func_profile_type_info",
+    "retype_isnan",
     "sendable",
     "retype_test",
   ]
