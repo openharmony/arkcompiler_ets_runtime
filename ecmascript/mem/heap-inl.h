@@ -235,6 +235,7 @@ TaggedObject *Heap::AllocateInGeneralNewSpace(size_t size)
 TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
 {
     auto object = AllocateYoungOrHugeObject(size);
+    ASSERT(object != nullptr);
     object->SetClass(thread_, hclass);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(GetEcmaVM(), object, size);
@@ -245,6 +246,7 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(JSHClass *hclass, size_t size)
 void BaseHeap::SetHClassAndDoAllocateEvent(JSThread *thread, TaggedObject *object, JSHClass *hclass,
                                            [[maybe_unused]] size_t size)
 {
+    ASSERT(object != nullptr);
     object->SetClass(thread, hclass);
 #if defined(ECMASCRIPT_SUPPORT_HEAPPROFILER)
     OnAllocateEvent(thread->GetEcmaVM(), object, size);
