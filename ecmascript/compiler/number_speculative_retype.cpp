@@ -600,6 +600,7 @@ GateRef NumberSpeculativeRetype::ConvertTaggedToNJSValue(GateRef gate, TypeInfo 
         case TypeInfo::INT1:
             return CheckAndConvertToBool(gate, GateType::BooleanType());
         case TypeInfo::INT32:
+        case TypeInfo::UINT32:
             return CheckAndConvertToInt32(gate, GateType::NumberType());
         case TypeInfo::FLOAT64:
             return CheckAndConvertToFloat64(gate, GateType::NumberType());
