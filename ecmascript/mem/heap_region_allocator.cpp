@@ -48,7 +48,7 @@ Region *HeapRegionAllocator::AllocateAlignedRegion(Space *space, size_t capacity
                                                          Jit::GetInstance()->IsEnableJitFort());
     void *mapMem = pool.GetMem();
     if (mapMem == nullptr) {
-        if (thread != nullptr) {
+        if (thread != nullptr && thread->GetEcmaVM()->IsInitialized()) {
             heap->ThrowOutOfMemoryErrorForDefault(thread, DEFAULT_REGION_SIZE,
                 "HeapRegionAllocator::AllocateAlignedRegion", false);
         }
