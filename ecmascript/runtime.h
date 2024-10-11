@@ -205,6 +205,7 @@ public:
 private:
     static constexpr int32_t WORKER_DESTRUCTION_COUNT = 3;
     static constexpr int32_t MIN_GC_TRIGGER_VM_COUNT = 4;
+    static constexpr uint32_t MAX_SUSPEND_RETRIES = 5000;
     Runtime() = default;
     ~Runtime();
     void SuspendAllThreadsImpl(JSThread *current);
