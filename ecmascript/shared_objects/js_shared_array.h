@@ -40,8 +40,6 @@ public:
     static bool ArraySetLength(JSThread *thread, const JSHandle<JSObject> &array, const PropertyDescriptor &desc);
     static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, const JSHandle<JSTaggedValue> &key,
                                   const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
-    static bool DefineOwnProperty(JSThread *thread, const JSHandle<JSObject> &array, uint32_t index,
-                                  const PropertyDescriptor &desc, SCheckMode sCheckMode = SCheckMode::CHECK);
 
     static bool IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key);
     static JSHandle<JSSharedArray> CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements);
@@ -151,16 +149,11 @@ public:
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn);
     static bool IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &value);
-    static JSHandle<TaggedArray> ToTaggedArray(JSThread *thread, const JSHandle<JSTaggedValue> &obj);
     static void PUBLIC_API CheckAndCopyArray(const JSThread *thread, JSHandle<JSSharedArray> obj);
     static JSHandle<TaggedArray> SetCapacity(const JSThread *thread, const JSHandle<TaggedArray> &array,
                                              uint32_t capa);
     static void SetCapacity(JSThread *thread, const JSHandle<JSObject> &array, uint32_t oldLen, uint32_t newLen,
                             bool isNew = false);
-    static void SortElements(JSThread *thread, const JSHandle<TaggedArray> &elements,
-                             const JSHandle<JSTaggedValue> &fn);
-    static void SortElementsByObject(JSThread *thread, const JSHandle<JSObject> &thisObjHandle,
-                                     const JSHandle<JSTaggedValue> &fn);
 
     static void DeleteInElementMode(const JSThread *thread, JSHandle<JSSharedArray> &obj);
 };

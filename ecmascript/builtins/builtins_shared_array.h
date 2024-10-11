@@ -25,10 +25,9 @@
 #define BUILTIN_SHARED_ARRAY_FUNCTIONS(V)                      \
     /* SharedArray.from ( items [ , mapfn [ , thisArg ] ] ) */ \
     V("from", From, 1, INVALID)                                \
-    V("create", Create, 2, INVALID)
-    // fixme(hzzhouzebin) Support later.
-    // /* SharedArray.IsArray ( arg ) */                          \
-    // V("IsArray", IsArray, 1, INVALID)                          \
+    V("create", Create, 2, INVALID)                            \
+    /* SharedArray.IsArray ( arg ) */                          \
+    V("IsArray", IsArray, 1, INVALID)                          \
     // /* SharedArray.of ( ...items ) */                          \
     // V("of", Of, 0, INVALID)
 
@@ -83,7 +82,9 @@
     V("shrinkTo", ShrinkTo, 0, INVALID)                                          \
     V("extendTo", ExtendTo, 0, INVALID)                                          \
     /* SharedArray.prototype.splice ( start, deleteCount, ...items ) */          \
-    V("splice", Splice, 2, INVALID)
+    V("splice", Splice, 2, INVALID)                                              \
+    /* SendableArray.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */  \
+    V("lastIndexOf", LastIndexOf, 1, INVALID)
     // fixme(hzzhouzebin) Support later.
     // /* SharedArray.prototype.with ( index, value ) */                            \
     // V("with", With, 2, INVALID)                                                  \
@@ -118,6 +119,7 @@ public:
     static JSTaggedValue ArrayConstructor(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue From(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Create(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue IsArray(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue Species(EcmaRuntimeCallInfo *argv);
 
     // prototype
@@ -147,6 +149,7 @@ public:
     static JSTaggedValue At(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ShrinkTo(EcmaRuntimeCallInfo *argv);
     static JSTaggedValue ExtendTo(EcmaRuntimeCallInfo *argv);
+    static JSTaggedValue LastIndexOf(EcmaRuntimeCallInfo *argv);
 
     // Excluding the '@@' internal properties
     static Span<const base::BuiltinFunctionEntry> GetSharedArrayFunctions()
@@ -199,22 +202,16 @@ private:
     };
 #undef BUILTIN_SENDABLE_ARRAY_FUNCTION_ENTRY
 
-    static JSTaggedValue IndexOfStable(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue IndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue IndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
         int64_t length, int64_t fromIndex);
 
-    static JSTaggedValue LastIndexOfStable(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue LastIndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue LastIndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
-    static JSTaggedValue ToStringImpl(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal);
 #define ARRAY_PROPERTIES_PAIR(name, func, length, id) \
     std::pair<std::string_view, bool>(name, false),
     static constexpr std::array ARRAY_PROTOTYPE_PROPERTIES = {

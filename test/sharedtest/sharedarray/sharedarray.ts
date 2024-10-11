@@ -67,14 +67,25 @@ function at() {
 
     index = 200;
     print(`An index of ${index} returns ${array1.at(index)}`); // An index of 200 returns undefined
+
+    print(`An index of null returns ${array1.at(null)}`); // An index of null returns 5
+
+    print(`An index of undefined returns ${array1.at(undefined)}`); // An index of undefined returns 5
+
+    print(`An index of undefined returns ${array1.at(true)}`); // An index of true returns 12
+
+    print(`An index of undefined returns ${array1.at(false)}`); // An index of false returns 5
+
+    index = 2871622679;
+    print(`An index of 2871622679 returns ${array1.at(index)}`); // An index of 2871622679 returns undefined
 }
 
 function entries() {
     print("Start Test entries")
     const array1 = new SendableArray<string>('a', 'b', 'c');
     const iterator = array1.entries();
-    for (const key of iterator) {
-        print("" + key); // 0, 1, 2
+    for (const [key, value] of iterator) {
+        print("" + key + "," + value); // 0 a, 1 b, 2 c
     }
 }
 
@@ -161,6 +172,23 @@ function randomUpdate() {
     const sharedArray = new SendableArray<number>(5, 12, 8, 130, 44);
     sharedArray[1] = 30
     print(sharedArray[1]);
+    try {
+        sharedArray[null] = 30
+    } catch (err) {
+        print("add element by index access failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        sharedArray[undefined] = 30
+    } catch (err) {
+        print("add element by index access failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        sharedArray[2871622679] = 30
+    } catch (err) {
+        print("add element by index access failed. err: " + err + ", code: " + err.code);
+    }
 }
 
 //  get
@@ -238,8 +266,16 @@ function concat(): void {
 
     print(array.concat(arkTSToAppend)); // [1, 3, 5, 2, 4, 6]
     print(array.concat(arkTSToAppend, arkTSToAppend1));
-    array.concat(200);
-    array.concat(201, 202);
+    print(array.concat(200));
+    print(array.concat(201, 202));
+    let arr: SendableArray<number> = array.concat(null);
+    print(arr);
+    print(arr[3]);
+    print(arr.length);
+    let arr1: SendableArray<number> = array.concat(undefined);
+    print(arr1);
+    print(arr1[3]);
+    print(arr1.length);
 }
 
 function join(): void {
@@ -248,12 +284,15 @@ function join(): void {
     print(elements.join());
     print(elements.join(''));
     print(elements.join('-'));
+    print(elements.join(null));
+    print(elements.join(undefined));
 }
 
 function shift() {
     print("Start Test shift")
     const array1 = new SendableArray<number>(2, 4, 6);
     print(array1.shift());
+    print(array1.length);
 
     const emptyArray = new SendableArray<number>();
     print(emptyArray.shift());
@@ -263,6 +302,7 @@ function unshift() {
     print("Start Test unshift")
     const array = SendableArray.from<number>([1, 2, 3]);
     print(array.unshift(4, 5));
+    print(array.length);
 }
 
 function slice() {
@@ -271,6 +311,39 @@ function slice() {
     print(animals.slice());
     print(animals.slice(2));
     print(animals.slice(2, 4));
+    try {
+        let a1 = animals.slice(1.5, 4);
+        print("slice(1.5, 4) element success");
+        print(a1);
+    } catch (err) {
+        print("slice element failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let a2 = animals.slice(8, 4);
+        print("slice(8, 4) element success");
+    } catch (err) {
+        print("slice element failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let a3 = animals.slice(8, 100);
+        print("slice(8, 100) element success");
+    } catch (err) {
+        print("slice element failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print(animals.slice(null));
+    } catch (err) {
+        print("slice element failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        print(animals.slice(undefined));
+    } catch (err) {
+        print("slice element failed. err: " + err + ", code: " + err.code);
+    }
 }
 
 function sort() {
@@ -398,6 +471,12 @@ function staticCreate() {
         print("Create with negative length success.");
     } catch (err) {
         print("Create with negative length failed. err: " + err + ", code: " + err.code);
+    }
+    try {
+        const array = SendableArray.create<number>(13107200, 1); // 13107200: 12.5MB
+        print("Create huge sendableArrayWith initialValue success.");
+    } catch (err) {
+        print("Create huge sendableArrayWith initialValue failed. err: " + err + ", code: " + err.code);
     }
     try {
         const array = SendableArray.create<number>(0x100000000, 5);
@@ -785,8 +864,64 @@ function readOutOfRange() {
     const array = new SendableArray<number>(1, 3, 5, 7);
     print("array[0]: " + array[0]);
     try {
-        array[9]
-        print("read out of range success.");
+        let value = array[9];
+        print("read out of range success " + value);
+    } catch (err) {
+        print("read out of range failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let value = array['0'];
+        print("read out of range success " + value);
+    } catch (err) {
+        print("read out of range failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let value = array[0.0];
+        print("read out of range success " + value);
+    } catch (err) {
+        print("read out of range failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let value = array[1.5]
+        print("read out of range success " + value);
+    } catch (err) {
+        print("read out of range failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let value = array[undefined]
+        print("read out of range success " + value);
+    } catch (err) {
+        print("read out of range failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let value = array[null]
+        print("read out of range success " + value);
+    } catch (err) {
+        print("read out of range failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let value = array[Symbol.toStringTag]
+        print("read out of range success " + value);
+    } catch (err) {
+        print("read out of range failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let value = array[false]
+        print("read out of range success " + value);
+    } catch (err) {
+        print("read out of range failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        let value = array[true]
+        print("read out of range success " + value);
     } catch (err) {
         print("read out of range failed. err: " + err + ", code: " + err.code);
     }
@@ -800,42 +935,111 @@ function forOf() {
     }
 }
 
-function RangeTest() {
+function sharedArrayConstructorTest(){
+    let from_arr  = [1,2,3];
+    let s_arr = new SendableArray<number>(...from_arr); // output [1,2,3]
+    print(("SendableArray ...from_arr: " + s_arr));
+    let s_arr1 = new SendableArray<number>(0, ...from_arr); // output [1,2,3]
+    print(("SendableArray ...from_arr1: " + s_arr1));
+    try {
+        print("Create from SendableArray with non-sendable array error: " + new SendableArray(from_arr));
+    } catch (err) {
+        print("Create from SendableArray with non-sendable array error failed. err: " + err + ", code: " + err.code);
+    }
+}
+
+function fromArrayConstructorTest(): void {
+    print("Start Test fromArrayConstructorTest")
+    const array1 = new SendableArray<string>('a', 'b', 'c');
+    const iterator = array1.values();
+    print(SendableArray.from<string>(iterator));
+}
+
+function DefinePropertyTest() {
+    print("Start Test DefinePropertyTest")
     let array = new SendableArray<string>('ARK');
     try {
-      Object.defineProperty(array, '0', {writable: true, configurable: true, enumerable: true, value: "321"});
-      print('defineProperty to array success');
+        Object.defineProperty(array, '0', {writable: true, configurable: true, enumerable: true, value: "321"});
+        print('defineProperty to array success');
     } catch (err) {
-      print('defineProperty to array failed. err: ' + err);
+        print('defineProperty to array failed. err: ' + err);
     }
- 
+
     try {
-      Object.defineProperty(array, '1200', {writable: true, configurable: true, enumerable: true, value: "321"});
-      print('defineProperty to array success');
+        Object.defineProperty(array, '1200', {writable: true, configurable: true, enumerable: true, value: "321"});
+        print('defineProperty to array success');
     } catch (err) {
-      print('defineProperty to array failed. err: ' + err);
+        print('defineProperty to array failed. err: ' + err);
     }
- 
+
     try {
-      Object.defineProperty(array, 0, {writable: true, configurable: true, enumerable: true, value: "321"});
-      print('defineProperty to array success');
+        Object.defineProperty(array, 0, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print('defineProperty to array success');
     } catch (err) {
-      print('defineProperty to array failed. err: ' + err);
+        print('defineProperty to array failed. err: ' + err);
     }
- 
+
     try {
-      Object.defineProperty(array, 1200, {writable: true, configurable: true, enumerable: true, value: "321"});
-      print('defineProperty to array success');
+        Object.defineProperty(array, 1200, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print('defineProperty to array success');
     } catch (err) {
-      print('defineProperty to array failed. err: ' + err);
+        print('defineProperty to array failed. err: ' + err);
     }
 
     try {
         Object.defineProperty(array, 2871622679, {writable: true, configurable: true, enumerable: true, value: "321"});
         print('defineProperty to array success');
-      } catch (err) {
+    } catch (err) {
         print('defineProperty to array failed. err: ' + err);
-      }
+    }
+    try {
+        Object.defineProperty(array, 0.0, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print('defineProperty to array success ' + array[0.0]);
+    } catch (err) {
+        print("defineProperty to array failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        Object.defineProperty(array, 1.5, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print('defineProperty to array success ' + array[1.5]);
+    } catch (err) {
+        print("defineProperty to array failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        Object.defineProperty(array, undefined, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print("defineProperty to array success " + array[undefined]);
+    } catch (err) {
+        print("defineProperty to array failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        Object.defineProperty(array, null, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print("defineProperty to array success " + array[null]);
+    } catch (err) {
+        print("defineProperty to array failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        Object.defineProperty(array, Symbol.toStringTag, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print("defineProperty to array success " + array[Symbol.toStringTag]);
+    } catch (err) {
+        print("defineProperty to array failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        Object.defineProperty(array, true, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print("defineProperty to array success " + array[null]);
+    } catch (err) {
+        print("defineProperty to array failed. err: " + err + ", code: " + err.code);
+    }
+
+    try {
+        Object.defineProperty(array, false, {writable: true, configurable: true, enumerable: true, value: "321"});
+        print("defineProperty to array success " + array[Symbol.toStringTag]);
+    } catch (err) {
+        print("defineProperty to array failed. err: " + err + ", code: " + err.code);
+    }
 }
 
 at()
@@ -907,5 +1111,7 @@ derivedForEach();
 derivedMap()
 derivedFill()
 readOutOfRange()
-forOf()
-RangeTest()
+forOf();
+sharedArrayConstructorTest()
+fromArrayConstructorTest()
+DefinePropertyTest()

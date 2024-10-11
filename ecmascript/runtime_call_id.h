@@ -302,6 +302,7 @@ namespace panda::ecmascript {
     V(SharedArray, Constructor)               \
     V(SharedArray, From)                      \
     V(SharedArray, Create)                    \
+    V(SharedArray, IsArray)                   \
     V(SharedArray, Entries)                   \
     V(SharedArray, Species)                   \
     V(SharedArray, Concat)                    \
@@ -332,6 +333,7 @@ namespace panda::ecmascript {
     V(SharedArray, With)                      \
     V(SharedArray, ShrinkTo)                  \
     V(SharedArray, ExtendTo)                  \
+    V(SharedArray, LastIndexOf)               \
     V(ArrayBuffer, Constructor)               \
     V(ArrayBuffer, Slice)                     \
     V(ArrayBuffer, Species)                   \
