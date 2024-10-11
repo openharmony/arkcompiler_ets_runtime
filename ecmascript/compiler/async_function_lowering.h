@@ -18,7 +18,9 @@
 
 #include "ecmascript/compiler/bytecode_circuit_builder.h"
 #include "ecmascript/compiler/circuit.h"
+#include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/circuit_builder.h"
+#include "ecmascript/mem/chunk_containers.h"
 
 namespace panda::ecmascript::kungfu {
 class AsyncFunctionLowering {

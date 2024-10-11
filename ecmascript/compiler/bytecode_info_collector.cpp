@@ -179,8 +179,8 @@ void BytecodeInfoCollector::CollectMethodPcsFromBC(const uint32_t insSz, const u
         auto metaData = bytecodes_.GetBytecodeMetaData(curPc);
         bool opcodeSupprotFastCall = true;
         bool opcodeSupportTypeByteCall = true;
-        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr,
-                                &opcodeSupprotFastCall, &opcodeSupportTypeByteCall);
+        CollectMethodInfoFromBC(bcIns, method, bcIndex, recordNamePtr, &opcodeSupprotFastCall,
+            &opcodeSupportTypeByteCall);
         bool vregSupportFastCall = !IsVRegUsed(bcIns, metaData, newtargetIndex);
         if (!opcodeSupprotFastCall || !vregSupportFastCall) {
             canFastCall = false;
