@@ -517,7 +517,8 @@ public:
 
         EntityId id = constpoolHandle->GetEntityId(index);
         MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(id.GetOffset());
-        ASSERT(methodLiteral != nullptr);
+        CHECK_INPUT_NULLPTR(methodLiteral,
+                            "GetMethodFromCache:methodLiteral is nullptr, offset: " + std::to_string(id.GetOffset()));
         ObjectFactory *factory = vm->GetFactory();
         JSHandle<Method> method = factory->NewSMethod(
             jsPandaFile, methodLiteral, constpoolHandle, entryIndex, isLoadedAOT && hasEntryIndex);

@@ -263,7 +263,7 @@ std::pair<JSHandle<ConstantPool>, JSHandle<ConstantPool>> PandaFileTranslator::P
                    type == ConstPoolType::CLASS_FUNCTION || type == ConstPoolType::METHOD ||
                    type == ConstPoolType::ASYNC_GENERATOR_FUNCTION);
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
-            ASSERT(methodLiteral != nullptr);
+            CHECK_INPUT_NULLPTR(methodLiteral, "ParseConstPool:methodLiteral is nullptr");
             methodLiteral->SetFunctionKind(JSPandaFile::GetFunctionKind(type));
 
             JSHandle<Method> method = factory->NewSMethod(methodLiteral);
@@ -333,7 +333,7 @@ void PandaFileTranslator::ParseFuncAndLiteralConstPool(EcmaVM *vm, const JSPanda
                    type == ConstPoolType::CLASS_FUNCTION || type == ConstPoolType::METHOD ||
                    type == ConstPoolType::ASYNC_GENERATOR_FUNCTION);
             MethodLiteral *methodLiteral = jsPandaFile->FindMethodLiteral(it.first);
-            ASSERT(methodLiteral != nullptr);
+            CHECK_INPUT_NULLPTR(methodLiteral, "ParseFuncAndLiteralConstPool:methodLiteral is nullptr");
             methodLiteral->SetFunctionKind(JSPandaFile::GetFunctionKind(type));
 
             JSHandle<Method> method = factory->NewSMethod(methodLiteral);
