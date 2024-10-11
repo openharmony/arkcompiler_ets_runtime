@@ -11,15 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-a,b,c,d,e,f
-a,b,c,1,2,3
-1,2,3,4,5,6,7,8,9
-a,b,c,1,2,3
-1,2,3,2,3
-1,2,3,2,3
-Symbol(Symbol.isConcatSpreadable)
-length
-1, undefined, 3, 4, 5
-1, 2, 3, undefined, 5
-0
-proxy defineproperty success!
+import("//arkcompiler/ets_runtime/test/test_helper.gni")
+
+host_moduletest_action("arrayconcat") {
+  deps = []
+}

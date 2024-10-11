@@ -266,6 +266,7 @@ group("ark_asm_test") {
     "arrayspliceproto",
     "arrayunshiftproto",
     "arrayfillproto",
+    "arrayconcat",
     "arrayfindlast",
     "arrayfill",
     "arrayflat",

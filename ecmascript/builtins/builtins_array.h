@@ -253,7 +253,6 @@ private:
         BUILTIN_ARRAY_PROTOTYPE_FUNCTIONS(BUILTIN_ARRAY_FUNCTION_ENTRY)
     };
 #undef BUILTIN_ARRAY_FUNCTION_ENTRY
-
     static JSTaggedValue IndexOfStable(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
     static JSTaggedValue IndexOfSlowPath(

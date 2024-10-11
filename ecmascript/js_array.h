@@ -46,10 +46,15 @@ public:
 
     static bool IsLengthString(JSThread *thread, const JSHandle<JSTaggedValue> &key);
     static bool IsProtoNotChangeJSArray(JSThread *thread, const JSHandle<JSObject> &obj);
+    static bool IsProtoNotModifiedDictionaryJSArray(JSThread *thread, const JSHandle<JSObject> &obj);
     // ecma6 7.3 Operations on Objects
     static JSHandle<JSArray> CreateArrayFromList(JSThread *thread, const JSHandle<TaggedArray> &elements);
     static JSHandle<JSArray> CreateArrayFromList(JSThread *thread, const JSHandle<JSTaggedValue> &newtarget,
                                                  const JSHandle<TaggedArray> &elements);
+    static JSTaggedValue FastConcatDictionaryArray(JSThread *thread, JSHandle<JSObject> obj,
+        JSHandle<JSObject> &newArrayHandle, JSMutableHandle<JSTaggedValue> &fromValHandle,
+        JSMutableHandle<JSTaggedValue> &toKey, int64_t &n);
+    
     // use first inlined property slot for array length
     inline uint32_t GetArrayLength() const
     {
