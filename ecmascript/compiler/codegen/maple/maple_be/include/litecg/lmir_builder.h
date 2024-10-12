@@ -546,13 +546,11 @@ public:
     Type *i16Type;
     Type *i32Type;
     Type *i64Type;
-    Type *i128Type;
     Type *u1Type;
     Type *u8Type;
     Type *u16Type;
     Type *u32Type;
     Type *u64Type;
-    Type *u128Type;
     Type *voidType;
     Type *f32Type;
     Type *f64Type;
