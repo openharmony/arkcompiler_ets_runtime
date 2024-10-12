@@ -54,8 +54,8 @@ function triple2(a: number[]) {
 let a: number[] = [1, 2, 3];
 let b: Int32Array[] = [1, 2, 3];
 let x = 3;
-print(get(a, x));
-print(get2(a, x));
+assert_equal(get(a, x), 3);
+assert_equal(get2(a, x), 0);
 
 clear1(a, 3);
 clear2(b, 3);
@@ -66,8 +66,8 @@ clear2(b, 4);
 let c: number[] = [1, 2, 3, 4];
 triple(c, 0);
 triple2(a);
-print(a[2]);
-print(c[2]);
+assert_equal(a[2], 0);
+assert_equal(c[2], 0);
 
 function TestIfCase() {
     let arr: Int32Array =  new Int32Array(1000);

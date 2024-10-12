@@ -17,7 +17,6 @@ group("aot_compatibility_test") {
   test_list = [
     "base_verification",
     "builtins_api",
-    "property_operation",
     "prototype_accessor",
     "prototype_base_verification",
   ]
@@ -26,7 +25,6 @@ group("aot_compatibility_test") {
     test_list -= [
       "base_verification",
       "builtins_api",
-      "property_operation",
       "prototype_accessor",
       "prototype_base_verification",
     ]
@@ -35,5 +33,15 @@ group("aot_compatibility_test") {
   deps = []
   foreach(test, test_list) {
     deps += [ "${test}:${test}AotAction" ]
+  }
+
+  assert_test_list = [ "property_operation" ]
+
+  if (is_mac) {
+    assert_test_list -= [ "property_operation" ]
+  }
+
+  foreach(test, assert_test_list) {
+    deps += [ "${test}:${test}AotAssertAction" ]
   }
 }
