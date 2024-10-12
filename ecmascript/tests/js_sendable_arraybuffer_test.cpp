@@ -195,4 +195,16 @@ HWTEST_F_L0(JsSendableArrayBufferTest, DetachTest003)
     arrBuf->Detach(thread);
 }
 
+HWTEST_F_L0(JsSendableArrayBufferTest, AttachTest003)
+{
+    auto vm = thread->GetEcmaVM();
+    auto factory = vm->GetFactory();
+    size_t length = 5;
+    const JSHandle<JSSendableArrayBuffer> arrBuf = factory->NewJSSendableArrayBuffer(5);
+    factory->NewJSSendableArrayBufferData(arrBuf, 5);
+    JSTaggedValue taggedValue = arrBuf->GetArrayBufferData();
+    arrBuf->Attach(thread, length + 1, taggedValue, false);
+    ASSERT_EQ(arrBuf->GetArrayBufferByteLength(), 6U);
+}
+
 } // namespace panda::test

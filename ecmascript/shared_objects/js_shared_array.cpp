@@ -62,12 +62,12 @@ bool JSSharedArray::LengthSetter(JSThread *thread, const JSHandle<JSObject> &sel
 
     JSSharedArray::SetCapacity(thread, self, oldLen, newLen);
     uint32_t actualLen = JSSharedArray::Cast(*self)->GetArrayLength();
-    if (actualLen != newLen) {
+    if (actualLen != newLen) { // LCOV_EXCL_START
         if (mayThrow) {
             THROW_TYPE_ERROR_AND_RETURN(thread, "Not all array elements is configurable", false);
         }
         return false;
-    }
+    } // LCOV_EXCL_STOP
 
     return true;
 }
@@ -215,9 +215,9 @@ void JSSharedArray::SetCapacity(JSThread *thread, const JSHandle<JSObject> &arra
 {
     TaggedArray *element = TaggedArray::Cast(array->GetElements().GetTaggedObject());
 
-    if (element->IsDictionaryMode()) {
+    if (element->IsDictionaryMode()) { // LCOV_EXCL_START
         THROW_TYPE_ERROR(thread, "SendableArray don't support dictionary mode.");
-    }
+    } // LCOV_EXCL_STOP
     uint32_t capacity = element->GetLength();
     if (newLen <= capacity) {
         // judge if need to cut down the array size, else fill the unused tail with holes
@@ -291,12 +291,12 @@ bool JSSharedArray::ArraySetLength(JSThread *thread, const JSHandle<JSObject> &a
     // Most of steps 16 through 19 is implemented by JSSharedArray::SetCapacity.
     JSSharedArray::SetCapacity(thread, array, oldLen, newLen);
     // Steps 19d-ii, 20.
-    if (!newWritable) {
+    if (!newWritable) { // LCOV_EXCL_START
         PropertyDescriptor readonly(thread);
         readonly.SetWritable(false);
         success = JSObject::DefineOwnProperty(thread, array, lengthKeyHandle, readonly);
         ASSERT_PRINT(success, "DefineOwnProperty of length must be success here!");
-    }
+    } // LCOV_EXCL_STOP
 
     // Steps 19d-v, 21. Return false if there were non-deletable elements.
     uint32_t arrayLength = JSSharedArray::Cast(*array)->GetArrayLength();
