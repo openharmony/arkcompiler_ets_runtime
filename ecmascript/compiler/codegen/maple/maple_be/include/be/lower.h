@@ -135,9 +135,6 @@ public:
     BlockNode *LowerReturn(NaryStmtNode &retNode);
     void LowerEntry(MIRFunction &func);
 
-    StmtNode *LowerCall(CallNode &call, StmtNode *&stmt, BlockNode &block, MIRType *retty = nullptr,
-                        bool uselvar = false);
-
     void CleanupBranches(MIRFunction &func) const;
 
     void LowerTypePtr(BaseNode &expr) const;

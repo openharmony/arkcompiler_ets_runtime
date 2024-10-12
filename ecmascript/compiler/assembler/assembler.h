@@ -199,7 +199,7 @@ public:
         buffer_.EmitU16(v);
     }
 
-    void EmitU32(uint32_t v)
+    ARK_INLINE void EmitU32(uint32_t v)
     {
         buffer_.EmitU32(v);
 #ifdef JIT_ENABLE_CODE_SIGN
@@ -228,7 +228,7 @@ public:
         buffer_.PutU8(offset, static_cast<int8_t>(data));
     }
 
-    void PutI32(size_t offset, int32_t data)
+    ARK_INLINE void PutI32(size_t offset, int32_t data)
     {
         buffer_.PutU32(offset, static_cast<int32_t>(data));
 #ifdef JIT_ENABLE_CODE_SIGN

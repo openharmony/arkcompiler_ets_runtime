@@ -225,6 +225,14 @@
       panda::ecmascript::JITProfiler::ProfileBytecode*;
       panda::ecmascript::JitThread::GetHostThread*;
       panda::ecmascript::Jit::TimeScope::~TimeScope*;
+      panda::ecmascript::Jit::GetInstance*;
+      panda::ecmascript::Jit::IsEnableJitFort*;
+      panda::ecmascript::Jit::IsEnableAsyncCopyToFort*;
+      panda::ecmascript::Jit::IsEnableFastJit*;
+      panda::ecmascript::Jit::IsEnableBaselineJit*;
+      panda::ecmascript::JitTask::ComputePayLoadSize*;
+      panda::ecmascript::HugeMachineCodeSpace::AllocateFort*;
+      panda::ecmascript::MachineCodeSpace::JitFortAllocate*;
       panda::ecmascript::JitFort::IsResourceAvailable*;
       panda::ecmascript::Heap::AddGCListener*;
       panda::ecmascript::Heap::RemoveGCListener*;

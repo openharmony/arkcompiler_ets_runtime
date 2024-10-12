@@ -173,6 +173,14 @@ src_libcg = [
 
 ohos_source_set("libcglowerer") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcglowerer
   include_dirs = include_directories
@@ -183,6 +191,14 @@ ohos_source_set("libcglowerer") {
 
 ohos_static_library("libmplbe") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libmplbe
   deps = deps_libmplbe
@@ -195,6 +211,14 @@ ohos_static_library("libmplbe") {
 
 ohos_source_set("libcgaarch64") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgaarch64
   include_dirs = include_directories
@@ -213,6 +237,14 @@ ohos_source_set("libcgaarch64") {
 
 ohos_source_set("libcgx8664") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgx8664
   include_dirs = include_directories
@@ -223,6 +255,14 @@ ohos_source_set("libcgx8664") {
 
 ohos_source_set("libcgx86phases") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgx86phases
   include_dirs = include_directories
@@ -233,6 +273,14 @@ ohos_source_set("libcgx86phases") {
 
 ohos_static_library("libcgark") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgark
   include_dirs = include_directories
@@ -243,6 +291,14 @@ ohos_static_library("libcgark") {
 
 ohos_source_set("libcgphases") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcgphases
   include_dirs = include_directories
@@ -253,6 +309,14 @@ ohos_source_set("libcgphases") {
 
 ohos_static_library("libcg") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libcg
   include_dirs = include_directories

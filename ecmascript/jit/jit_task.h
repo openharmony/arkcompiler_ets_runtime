@@ -231,6 +231,7 @@ public:
     {
         return mainThreadCompileTime_;
     }
+    static size_t PUBLIC_API ComputePayLoadSize(MachineCodeDesc &codeDesc);
 
     class AsyncTask : public Task {
     public:
@@ -264,11 +265,7 @@ public:
         {
             jitTask_->ReleaseSustainingJSHandle();
         }
-
-        bool AllocFromFortAndCopy();
-
     private:
-        ARK_INLINE bool CopyCodeToFort();
         std::shared_ptr<JitTask> jitTask_ { nullptr };
 
         class AsyncTaskRunScope {

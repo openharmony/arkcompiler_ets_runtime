@@ -34,6 +34,9 @@
 #include "ecmascript/compiler/jit_signcode.h"
 #endif
 #endif
+#include "ecmascript/jit/jit.h"
+#include "ecmascript/jit/jit_task.h"
+#include "ecmascript/compiler/jit_compiler.h"
 
 namespace panda::ecmascript::kungfu {
 void Module::CollectStackMapDes(ModuleSectionDes& des) const
@@ -698,11 +701,11 @@ void AOTFileGenerator::SaveEmptyAOTFile(const std::string& filename, const std::
     LOG_COMPILER(ERROR) << "create empty AOT file: " << realPath << " due to illegal AP file";
 }
 
-void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
+bool AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
 {
     if (aotInfo_.GetTotalCodeSize() == 0) {
         LOG_COMPILER(WARN) << "error: code size of generated an file is empty!";
-        return;
+        return false;
     }
 
     if (log_->OutputASM()) {
@@ -755,6 +758,12 @@ void AOTFileGenerator::GetMemoryCodeInfos(MachineCodeDesc &machineCodeDesc)
     machineCodeDesc.stackMapOrOffsetTableAddr = stackMapPtr;
     machineCodeDesc.stackMapOrOffsetTableSize = stackMapSize;
     machineCodeDesc.codeType = MachineCodeType::FAST_JIT_CODE;
+
+    if (Jit::GetInstance()->IsEnableJitFort() && Jit::GetInstance()->IsEnableAsyncCopyToFort() &&
+        JitCompiler::AllocFromFortAndCopy(*compilationEnv_, machineCodeDesc) == false) {
+        return false;
+    }
+    return true;
 }
 
 void AOTFileGenerator::JitCreateLitecgModule()

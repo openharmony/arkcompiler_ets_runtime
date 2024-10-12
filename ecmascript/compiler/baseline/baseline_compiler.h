@@ -21,6 +21,7 @@
 #include "ecmascript/mem/machine_code.h"
 #include "ecmascript/compiler/baseline/baseline_assembler.h"
 #include "ecmascript/compiler/ecma_opcode_des.h"
+#include "ecmascript/compiler/jit_compilation_env.h"
 
 namespace panda::ecmascript::kungfu {
 
@@ -59,8 +60,8 @@ private:
 
 class BaselineCompiler {
 public:
-    explicit BaselineCompiler(EcmaVM *inputVM)
-        : vm(inputVM), baselineAssembler(vm->GetJSOptions().GetTargetTriple()) {}
+    explicit BaselineCompiler(EcmaVM *inputVM, CompilationEnv *inputEnv)
+        : vm(inputVM), compilationEnv(inputEnv), baselineAssembler(vm->GetJSOptions().GetTargetTriple()) {}
 
     ~BaselineCompiler()
     {
@@ -80,13 +81,14 @@ public:
         return baselineAssembler;
     }
 
-    void CollectMemoryCodeInfos(MachineCodeDesc &codeDesc);
+    bool CollectMemoryCodeInfos(MachineCodeDesc &codeDesc);
 
     void SetPfHeaderAddr(const JSPandaFile *jsPandaFile);
 
     void GetJumpToOffsets(const uint8_t *start, const uint8_t *end, std::unordered_set<size_t> &jumpToOffsets) const;
 private:
     EcmaVM *vm = nullptr;
+    CompilationEnv *compilationEnv = nullptr;
     BaselineAssembler baselineAssembler;
     size_t bytecodeOffset = 0;
     std::unordered_map<size_t, JumpLabel*> jumpMap;

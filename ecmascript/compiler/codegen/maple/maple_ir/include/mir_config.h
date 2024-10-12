@@ -133,5 +133,9 @@ constexpr int kMirMaxLineSize = 3072;  // a max of 3K characters per line initia
 #define HAVE_STRTOD 1  // strtod in current libc
 #define HAVE_MALLOC 0  // no malloc/free in current libc
 #endif                 // MIR_FEATURE_FULL
+
+#ifndef ALWAYS_INLINE
+#define ALWAYS_INLINE __attribute__((always_inline))
+#endif
 }  // namespace maple
 #endif  // MAPLE_IR_INCLUDE_MIR_CONFIG_H

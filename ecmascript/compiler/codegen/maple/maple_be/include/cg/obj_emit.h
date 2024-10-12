@@ -193,7 +193,7 @@ public:
         exceptStartOffset = offset;
     }
 
-    void AppendLocalFixups(LocalFixup &fixup)
+    ALWAYS_INLINE void AppendLocalFixups(LocalFixup &fixup)
     {
         localFixups.push_back(&fixup);
 #ifdef JIT_ENABLE_CODE_SIGN
@@ -203,7 +203,7 @@ public:
 #endif
     }
 
-    void AppendGlobalFixups(Fixup &fixup)
+    ALWAYS_INLINE void AppendGlobalFixups(Fixup &fixup)
     {
         globalFixups.push_back(&fixup);
 #ifdef JIT_ENABLE_CODE_SIGN
@@ -257,7 +257,7 @@ public:
         return textData.size();
     }
 
-    void AppendTextData(const void *data, uint32 byteSize)
+    ALWAYS_INLINE void AppendTextData(const void *data, uint32 byteSize)
     {
         auto pdata = reinterpret_cast<const uint8 *>(data);  // data:0xa9be7c1d pdata:1d 7c be a9
         (void)textData.insert(textData.end(), pdata, pdata + byteSize);
@@ -271,7 +271,7 @@ public:
 #endif
     }
 
-    void AppendTextData(uint64 data, uint32 byteSize)
+    ALWAYS_INLINE void AppendTextData(uint64 data, uint32 byteSize)
     {
         for (size_t i = 0; i < byteSize; i++) {
             textData.push_back(static_cast<uint8>(data >> (i << k8BitShift)));
@@ -302,7 +302,7 @@ public:
         return value;
     }
 
-    void SwapTextData(const void *value, size_t index, size_t byteSize)
+    ALWAYS_INLINE void SwapTextData(const void *value, size_t index, size_t byteSize)
     {
         errno_t res = memcpy_s(textData.data() + index, byteSize, value, byteSize);
         CHECK_FATAL(res == EOK, "call memcpy_s failed");

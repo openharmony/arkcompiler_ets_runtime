@@ -2773,27 +2773,18 @@ Operand *AArch64CGFunc::SelectRetype(TypeCvtNode &node, Operand &opnd0)
     if (LIsPrimitivePointer(fromType) && LIsPrimitivePointer(toType)) {
         return &LoadIntoRegister(opnd0, toType);
     }
-    Operand::OperandType opnd0Type = opnd0.GetKind();
-    RegOperand *resOpnd = &CreateRegisterOperandOfType(toType);
-    if (IsPrimitiveInteger(fromType) || IsPrimitiveFloat(fromType)) {
-        bool isFromInt = IsPrimitiveInteger(fromType);
-        bool is64Bits = GetPrimTypeBitSize(fromType) == k64BitSize;
-        PrimType itype =
-            isFromInt ? ((GetPrimTypeBitSize(fromType) == k64BitSize) ? (IsSignedInteger(fromType) ? PTY_i64 : PTY_u64)
-                                                                      : (IsSignedInteger(fromType) ? PTY_i32 : PTY_u32))
-                      : (is64Bits ? PTY_f64 : PTY_f32);
+    // if source operand is in memory,
+    // simply read it as a value of 'toType 'into the dest operand and return
+    if (opnd0.IsMemoryAccessOperand()) {
+        return &SelectCopy(opnd0, toType, toType);
+    }
 
-        /*
-         * if source operand is in memory,
-         * simply read it as a value of 'toType 'into the dest operand
-         * and return
-         */
-        if (opnd0Type == Operand::kOpdMem) {
-            resOpnd = &SelectCopy(opnd0, toType, toType);
-            return resOpnd;
-        }
-        /* according to aarch64 encoding format, convert int to float expression */
-        bool isImm = false;
+    bool isFromInt = IsPrimitiveInteger(fromType);
+    bool is64Bits = GetPrimTypeBitSize(fromType) == k64BitSize;
+    bool isImm = false;
+    Operand *newOpnd0 = &opnd0;
+    if (opnd0.IsImmediate()) {
+        // according to aarch64 encoding format, convert int to float expression
         ImmOperand *imm = static_cast<ImmOperand *>(&opnd0);
         uint64 val = static_cast<uint64>(imm->GetValue());
         uint64 canRepreset = is64Bits ? (val & 0xffffffffffff) : (val & 0x7ffff);
@@ -2801,31 +2792,30 @@ Operand *AArch64CGFunc::SelectRetype(TypeCvtNode &node, Operand &opnd0)
         uint32 val2 = is64Bits ? (val >> 54) & 0xff : (val >> 25) & 0x1f;
         bool isSame = is64Bits ? ((val2 == 0) || (val2 == 0xff)) : ((val2 == 0) || (val2 == 0x1f));
         canRepreset = (canRepreset == 0) && ((val1 & 0x1) ^ ((val1 & 0x2) >> 1)) && isSame;
-        Operand *newOpnd0 = &opnd0;
         if (IsPrimitiveInteger(fromType) && IsPrimitiveFloat(toType) && canRepreset) {
             uint64 temp1 = is64Bits ? (val >> 63) << 7 : (val >> 31) << 7;
             uint64 temp2 = is64Bits ? val >> 48 : val >> 19;
             int64 imm8 = (temp2 & 0x7f) | temp1;
             newOpnd0 = &CreateImmOperand(imm8, k8BitSize, false, kNotVary, true);
             isImm = true;
-        } else {
-            newOpnd0 = &LoadIntoRegister(opnd0, itype);
         }
-        if ((IsPrimitiveFloat(fromType) && IsPrimitiveInteger(toType)) ||
-            (IsPrimitiveFloat(toType) && IsPrimitiveInteger(fromType))) {
-            MOperator mopFmov =  isImm ? (is64Bits ? MOP_xdfmovri : MOP_wsfmovri)
-                                       : (isFromInt
-                                            ? (is64Bits ? MOP_xvmovdr : MOP_xvmovsr)
-                                            : (is64Bits ? MOP_xvmovrd : MOP_xvmovrs));
-            GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mopFmov, *resOpnd, *newOpnd0));
-            return resOpnd;
-        } else {
-            return newOpnd0;
-        }
-    } else {
-        CHECK_FATAL(false, "NYI retype");
     }
-    return nullptr;
+    if (!isImm) {
+        bool isSigned = IsSignedInteger(fromType);
+        PrimType itype = isFromInt ? (is64Bits ? (isSigned ? PTY_i64 : PTY_u64) : (isSigned ? PTY_i32 : PTY_u32))
+                                   : (is64Bits ? PTY_f64 : PTY_f32);
+        newOpnd0 = &LoadIntoRegister(opnd0, itype);
+    }
+    if ((IsPrimitiveFloat(fromType) && IsPrimitiveInteger(toType)) ||
+        (IsPrimitiveFloat(toType) && IsPrimitiveInteger(fromType))) {
+        MOperator mopFmov =  isImm ? (is64Bits ? MOP_xdfmovri : MOP_wsfmovri)
+                                   : (isFromInt ? (is64Bits ? MOP_xvmovdr : MOP_xvmovsr)
+                                                : (is64Bits ? MOP_xvmovrd : MOP_xvmovrs));
+        RegOperand *resOpnd = &CreateRegisterOperandOfType(toType);
+        GetCurBB()->AppendInsn(GetInsnBuilder()->BuildInsn(mopFmov, *resOpnd, *newOpnd0));
+        return resOpnd;
+    }
+    return newOpnd0;
 }
 
 void AArch64CGFunc::SelectCvtFloat2Float(Operand &resOpnd, Operand &srcOpnd, PrimType fromType, PrimType toType)

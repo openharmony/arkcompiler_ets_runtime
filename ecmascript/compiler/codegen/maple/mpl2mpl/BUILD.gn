@@ -29,6 +29,14 @@ src_libmpl2mpl = [ "src/constantfold.cpp" ]
 
 ohos_static_library("libmpl2mpl") {
   stack_protector_ret = false
+  if (enable_sanitize) {
+    sanitize = {
+      cfi = true
+      cfi_cross_dso = true
+      debug = false
+    }
+    branch_protector_ret = "pac_ret"
+  }
   configs = [ "${MAPLEALL_ROOT}:mapleallcompilecfg" ]
   sources = src_libmpl2mpl
   include_dirs = include_directories

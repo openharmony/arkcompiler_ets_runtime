@@ -1044,12 +1044,17 @@ bool FmovRegPattern::CheckCondition(Insn &insn)
     if (nextInsn == nullptr) {
         return false;
     }
-    if (&insn == insn.GetBB()->GetFirstMachineInsn()) {
+    prevInsn = insn.GetPreviousMachineInsn();
+    if (prevInsn == nullptr) {
         return false;
     }
-    prevInsn = insn.GetPrev();
-    auto &curSrcRegOpnd = static_cast<RegOperand &>(insn.GetOperand(kInsnSecondOpnd));
-    auto &prevSrcRegOpnd = static_cast<RegOperand &>(prevInsn->GetOperand(kInsnSecondOpnd));
+    auto &curSrcOpnd = insn.GetOperand(kInsnSecondOpnd);
+    auto &prevSrcOpnd = prevInsn->GetOperand(kInsnSecondOpnd);
+    if (!curSrcOpnd.IsRegister() || !prevSrcOpnd.IsRegister()) {
+        return false;
+    }
+    auto &curSrcRegOpnd = static_cast<RegOperand&>(curSrcOpnd);
+    auto &prevSrcRegOpnd = static_cast<RegOperand&>(prevSrcOpnd);
     /* same src freg */
     if (curSrcRegOpnd.GetRegisterNumber() != prevSrcRegOpnd.GetRegisterNumber()) {
         return false;
@@ -1884,13 +1889,12 @@ void AndCbzBranchesToTstAArch64::Run(BB &bb, Insn &insn)
     /* build tst insn */
     Operand &andOpnd3 = insn.GetOperand(kInsnThirdOpnd);
     auto &andRegOp2 = static_cast<RegOperand &>(insn.GetOperand(kInsnSecondOpnd));
-    auto &andRegOp3 = static_cast<RegOperand &>(insn.GetOperand(kInsnThirdOpnd));
     MOperator newTstOp = MOP_undef;
     if (andOpnd3.IsRegister()) {
-        newTstOp = (andRegOp2.GetSize() <= k32BitSize && andRegOp3.GetSize() <= k32BitSize) ? MOP_wtstrr : MOP_xtstrr;
+        newTstOp = (andRegOp2.GetSize() <= k32BitSize && andOpnd3.GetSize() <= k32BitSize) ? MOP_wtstrr : MOP_xtstrr;
     } else {
         newTstOp =
-            (andRegOp2.GetSize() <= k32BitSize && andRegOp3.GetSize() <= k32BitSize) ? MOP_wtstri32 : MOP_xtstri64;
+            (andRegOp2.GetSize() <= k32BitSize && andOpnd3.GetSize() <= k32BitSize) ? MOP_wtstri32 : MOP_xtstri64;
     }
     Operand &rflag = static_cast<AArch64CGFunc *>(&cgFunc)->GetOrCreateRflag();
     Insn &newInsnTst = cgFunc.GetInsnBuilder()->BuildInsn(newTstOp, rflag, andRegOp2, andOpnd3);
