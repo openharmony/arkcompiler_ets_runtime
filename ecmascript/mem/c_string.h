@@ -56,8 +56,9 @@ CString ConvertToString(const std::string &str);
 std::string PUBLIC_API ConvertToStdString(const CString &str);
 
 // '\u0000' is skip according to holdZero
+// cesu8 means non-BMP1 codepoints should encode as 1 utf8 string
 CString PUBLIC_API ConvertToString(const ecmascript::EcmaString *s,
-    StringConvertedUsage usage = StringConvertedUsage::PRINT);
+    StringConvertedUsage usage = StringConvertedUsage::PRINT, bool cesu8 = false);
 CString ConvertToString(ecmascript::JSTaggedValue key);
 
 template<class T>

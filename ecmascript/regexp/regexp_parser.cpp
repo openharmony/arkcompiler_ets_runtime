@@ -514,13 +514,13 @@ void RegExpParser::ParseAlternative(bool isBackward)
                     uint32_t matchedChar = c0_;
                     if (c0_ > (INT8_MAX + 1)) {
                         Prev();
-                        int i = 0;
                         UChar32 c;
                         int32_t length = end_ - pc_ + 1;
                         // NOLINTNEXTLINE(hicpp-signed-bitwise)
-                        U8_NEXT(pc_, i, length, c);  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                        auto unicodeChar = base::utf_helper::ConvertUtf8ToUnicodeChar(pc_, length);
+                        c = unicodeChar.first;
                         matchedChar = static_cast<uint32_t>(c);
-                        pc_ += i;  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+                        pc_ += unicodeChar.second;  // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
                     }
                     if (IsIgnoreCase()) {
                         matchedChar = static_cast<uint32_t>(Canonicalize(static_cast<int>(matchedChar), IsUtf16()));

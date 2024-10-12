@@ -94,12 +94,12 @@ CString ConvertToString(const std::string &str)
     return res;
 }
 
-CString ConvertToString(const EcmaString *s, StringConvertedUsage usage)
+CString ConvertToString(const EcmaString *s, StringConvertedUsage usage, bool cesu8)
 {
     if (s == nullptr) {
         return CString("");
     }
-    return EcmaStringAccessor(const_cast<EcmaString *>(s)).ToCString(usage);
+    return EcmaStringAccessor(const_cast<EcmaString *>(s)).ToCString(usage, cesu8);
 }
 
 CString ConvertToString(JSTaggedValue key)

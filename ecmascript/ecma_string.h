@@ -545,17 +545,17 @@ private:
         return std::unique_ptr<uint8_t[]>(buf);
     }
 
-    Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf, bool modify = true)
+    Span<const uint8_t> ToUtf8Span(CVector<uint8_t> &buf, bool modify = true, bool cesu8 = false)
     {
         Span<const uint8_t> str;
         uint32_t strLen = GetLength();
         if (UNLIKELY(IsUtf16())) {
             CVector<uint16_t> tmpBuf;
             const uint16_t *data = EcmaString::GetUtf16DataFlat(this, tmpBuf);
-            ASSERT(base::utf_helper::Utf16ToUtf8Size(data, strLen, modify) > 0);
-            size_t len = base::utf_helper::Utf16ToUtf8Size(data, strLen, modify) - 1;
+            ASSERT(base::utf_helper::Utf16ToUtf8Size(data, strLen, modify, false, cesu8) > 0);
+            size_t len = base::utf_helper::Utf16ToUtf8Size(data, strLen, modify, false, cesu8) - 1;
             buf.reserve(len);
-            len = base::utf_helper::ConvertRegionUtf16ToUtf8(data, buf.data(), strLen, len, 0, modify);
+            len = base::utf_helper::ConvertRegionUtf16ToUtf8(data, buf.data(), strLen, len, 0, modify, false, cesu8);
             str = Span<const uint8_t>(buf.data(), len);
         } else {
             const uint8_t *data = EcmaString::GetUtf8DataFlat(this, buf);
@@ -1250,7 +1250,7 @@ public:
     std::string DebuggerToStdString(StringConvertedUsage usage = StringConvertedUsage::PRINT);
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
-    CString ToCString(StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION);
+    CString ToCString(StringConvertedUsage usage = StringConvertedUsage::LOGICOPERATION, bool cesu8 = false);
 
     // not change string data structure.
     // if string is not flat, this func has low efficiency.
