@@ -192,5 +192,18 @@ if (globalThis["ArkPrivate"] != undefined) {
     } else {
         print("Test PlainArray fail: " + res);
     }
+    const v6 = new PlainArray()
+    function f2(a3) {
+        return a3
+    }
+    const o5 = {
+        "get" : f2,
+    }
+    const v7 = new Proxy(v6, o5)
+    try {
+        v7[1073741823]
+    } catch (error) {
+        print(error)
+    }
 }
 export let plainarrayRes = "Test PlainArray done";

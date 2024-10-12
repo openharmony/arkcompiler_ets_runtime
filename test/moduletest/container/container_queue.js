@@ -149,5 +149,18 @@ if (globalThis["ArkPrivate"] != undefined) {
     } catch(error) {
         print(error);
     }
+    const v6 = new Queue()
+    function f2(a3) {
+        return a3
+    }
+    const o5 = {
+        "get" : f2,
+    }
+    const v7 = new Proxy(v6, o5)
+    try {
+        v7[1073741823]
+    } catch (error) {
+        print(error)
+    }
 }
 export let queueRes = "Test Queue done";
