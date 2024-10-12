@@ -111,8 +111,8 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleSharedOldGCTest003)
     sheap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
     sheap->NotifyHeapAliveSizeAfterGC(1);
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
-    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_GC);
-    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_GC);
+    trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
+    trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
     ASSERT_EQ(trigger->TryTriggerIdleSharedOldGC(), true);
 }
 
@@ -135,7 +135,7 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest002)
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
     trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
-    ASSERT_EQ(trigger->TryTriggerIdleLocalOldGC(), false);
+    ASSERT_EQ(trigger->TryTriggerIdleLocalOldGC(), true);
 }
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest003)
@@ -147,7 +147,7 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest003)
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
     trigger->ClearPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
     trigger->SetPostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
-    ASSERT_EQ(trigger->TryTriggerIdleLocalOldGC(), false);
+    ASSERT_EQ(trigger->TryTriggerIdleLocalOldGC(), true);
 }
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleLocalOldGCTest004)
@@ -205,17 +205,6 @@ HWTEST_F_L0(IdleGCTriggerTest, TryPostHandleMarkFinishedTest002)
     trigger->TryPostHandleMarkFinished();
 }
 
-HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest001)
-{
-    auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
-    SharedHeap *sheap = SharedHeap::GetInstance();
-    heap->NotifyHeapAliveSizeAfterGC(1);
-    heap->GetOldSpace()->SetInitialCapacity(10000);
-    heap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
-    IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
-    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::OLD_GC);
-}
-
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest002)
 {
     auto heap = const_cast<Heap *>(thread->GetEcmaVM()->GetHeap());
@@ -224,7 +213,7 @@ HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest002)
     sheap->GetOldSpace()->SetInitialCapacity(10000);
     sheap->GetOldSpace()->IncreaseLiveObjectSize(5242889);
     IdleGCTrigger *trigger = new IdleGCTrigger(heap, sheap, thread);
-    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_GC);
+    trigger->TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
 }
 
 HWTEST_F_L0(IdleGCTriggerTest, TryTriggerIdleGCTest003)

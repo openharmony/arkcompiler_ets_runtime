@@ -53,12 +53,10 @@ public:
     const char *GetGCTypeName(TRIGGER_IDLE_GC_TYPE gcType) const
     {
         switch (gcType) {
-            case TRIGGER_IDLE_GC_TYPE::OLD_GC:
-                return "old gc";
             case TRIGGER_IDLE_GC_TYPE::FULL_GC:
                 return "full gc";
-            case TRIGGER_IDLE_GC_TYPE::SHARED_GC:
-                return "shared gc";
+            case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK:
+                return "shared concurrent mark";
             case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
                 return "shared full gc";
             case TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK:

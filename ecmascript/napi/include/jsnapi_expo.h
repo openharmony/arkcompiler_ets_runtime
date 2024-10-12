@@ -1448,12 +1448,11 @@ public:
     };
 
     enum class ECMA_PUBLIC_API TRIGGER_IDLE_GC_TYPE : uint8_t {
-        OLD_GC = 1,
+        LOCAL_CONCURRENT_MARK = 1,
+        LOCAL_REMARK = 1 << 1,
         FULL_GC = 1 << 2,
-        SHARED_GC = 1 << 3,
+        SHARED_CONCURRENT_MARK = 1 << 3,
         SHARED_FULL_GC = 1 << 4,
-        LOCAL_CONCURRENT_MARK = 1 << 5,
-        LOCAL_REMARK = 1 << 6,
     };
 
     enum class ECMA_PUBLIC_API MemoryReduceDegree : uint8_t {

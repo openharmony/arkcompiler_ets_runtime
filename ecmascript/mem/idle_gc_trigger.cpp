@@ -44,6 +44,10 @@ void IdleGCTrigger::NotifyLooperIdleEnd([[maybe_unused]] int64_t timestamp)
 
 void IdleGCTrigger::TryTriggerHandleMarkFinished()
 {
+    // wait sharedGC finish
+    if (!thread_->IsReadyToSharedConcurrentMark()) {
+        return ;
+    }
     if (heap_->GetJSThread()->IsMarkFinished() && heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark()
         && !heap_->GetOnSerializeEvent() && !heap_->InSensitiveStatus()) {
         heap_->SetCanThrowOOMError(false);
@@ -64,20 +68,16 @@ void IdleGCTrigger::TryTriggerLocalConcurrentMark()
 bool IdleGCTrigger::TryTriggerIdleLocalOldGC()
 {
     if (heap_->GetJSThread()->IsMarkFinished() &&
-        heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark() &&
-        IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK)) {
+        heap_->GetConcurrentMarker()->IsTriggeredConcurrentMark()) {
         PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_REMARK);
         return true;
     }
-    if (!IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK)) {
-        return false;
+    if (!IsPossiblePostGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK) ||
+        !heap_->CheckCanTriggerConcurrentMarking()) {
+        return true;
     }
     if (CheckIdleOrHintOldGC<Heap>(heap_) && ReachIdleLocalOldGCThresholds() && !heap_->NeedStopCollection()) {
-        if (heap_->GetConcurrentMarker()->IsEnabled() && heap_->CheckCanTriggerConcurrentMarking()) {
-            PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
-        } else {
-            PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::OLD_GC);
-        }
+        PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::LOCAL_CONCURRENT_MARK);
         return true;
     }
     return false;
@@ -85,8 +85,10 @@ bool IdleGCTrigger::TryTriggerIdleLocalOldGC()
 
 bool IdleGCTrigger::TryTriggerIdleSharedOldGC()
 {
-    if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && ReachIdleSharedGCThresholds() && !heap_->NeedStopCollection()) {
-        PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_GC);
+    if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) &&
+        ReachIdleSharedGCThresholds() && !sHeap_->NeedStopCollection() &&
+        sHeap_->CheckCanTriggerConcurrentMarking(thread_)) {
+        PostIdleGCTask(TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK);
         return true;
     }
     return false;
@@ -163,12 +165,6 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
 {
     LOG_GC(DEBUG) << "IdleGCTrigger: recv once notify of " << GetGCTypeName(gcType);
     switch (gcType) {
-        case TRIGGER_IDLE_GC_TYPE::OLD_GC:
-            if (CheckIdleOrHintOldGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
-                LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
-                heap_->CollectGarbage(TriggerGCType::OLD_GC, GCReason::IDLE);
-            }
-            break;
         case TRIGGER_IDLE_GC_TYPE::FULL_GC:
             if (CheckIdleOrHintFullGC<Heap>(heap_) && !heap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
@@ -178,14 +174,15 @@ void IdleGCTrigger::TryTriggerIdleGC(TRIGGER_IDLE_GC_TYPE gcType)
                 heap_->CollectGarbage(TriggerGCType::YOUNG_GC, GCReason::IDLE);
             }
             break;
-        case TRIGGER_IDLE_GC_TYPE::SHARED_GC:
-            if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && !heap_->NeedStopCollection()) {
+        case TRIGGER_IDLE_GC_TYPE::SHARED_CONCURRENT_MARK:
+            if (CheckIdleOrHintOldGC<SharedHeap>(sHeap_) && sHeap_->CheckCanTriggerConcurrentMarking(thread_)
+                && !sHeap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
-                sHeap_->CollectGarbage<TriggerGCType::SHARED_GC, GCReason::IDLE>(thread_);
+                sHeap_->TriggerConcurrentMarking<TriggerGCType::SHARED_GC, GCReason::IDLE>(thread_);
             }
             break;
         case TRIGGER_IDLE_GC_TYPE::SHARED_FULL_GC:
-            if (CheckIdleOrHintFullGC<SharedHeap>(sHeap_) && !heap_->NeedStopCollection()) {
+            if (CheckIdleOrHintFullGC<SharedHeap>(sHeap_) && !sHeap_->NeedStopCollection()) {
                 LOG_GC(INFO) << "IdleGCTrigger: trigger " << GetGCTypeName(gcType);
                 sHeap_->CollectGarbage<TriggerGCType::SHARED_FULL_GC, GCReason::IDLE>(thread_);
             }
