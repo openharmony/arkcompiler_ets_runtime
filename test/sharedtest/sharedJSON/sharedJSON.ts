@@ -320,6 +320,15 @@ function testIndexASON()
     print(out3);
 }
 
+function testJSONBigIntZero() {
+    var opt = {
+        bigIntMode: BigIntMode.ALWAYS_PARSE_AS_BIGINT,
+    }
+    const str = '{"id":0, "bid":999}';
+    var obj = JSON.parseBigInt(str, undefined, opt);
+    print(obj.id);
+}
+
 testJSONParseSendable();
 jsonRepeatCall();
 testASONBigInt();
@@ -329,3 +338,4 @@ testJSONreviver();
 testJSONZeroDeci();
 testASONMap();
 testIndexASON();
+testJSONBigIntZero();
