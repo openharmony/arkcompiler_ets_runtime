@@ -22,8 +22,7 @@
 
 namespace panda::ecmascript::kungfu {
 class DependChains : public ChunkObject {
-public:
-    struct Node {
+public:struct Node {
         Node(GateRef gate, Node* next) : gate(gate), next(next) {}
         GateRef gate;
         Node *next;
@@ -64,7 +63,7 @@ public:
         head_ = other->head_;
         size_ = other->size_;
     }
-
+    
     GateRef GetHeadGate()
     {
         return head_->gate;
@@ -80,10 +79,10 @@ public:
         return DependChainIterator(nullptr);
     }
 
-private:
-    Node *head_{nullptr};
-    size_t size_ {0};
-    Chunk* chunk_;
+    private:
+        Node *head_{nullptr};
+        size_t size_ {0};
+        Chunk* chunk_;
 };
 }  // panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_DEPEND_CHAIN_HELPER_H

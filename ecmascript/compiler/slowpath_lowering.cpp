@@ -2686,9 +2686,9 @@ void SlowPathLowering::LowerDefineClassWithBuffer(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 6);  // 6: number of value inputs
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = acc_.GetValueIn(gate, 0);
-    GateRef proto = acc_.GetValueIn(gate, 3);
     GateRef literalId = acc_.GetValueIn(gate, 1);
     GateRef length = acc_.GetValueIn(gate, 2);  // 2: second arg
+    GateRef proto = acc_.GetValueIn(gate, 3);
     GateRef lexicalEnv = acc_.GetValueIn(gate, 4); // 4: Get current env
     GateRef sharedConstPool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef module = builder_.GetModuleFromFunction(jsFunc);
@@ -3756,9 +3756,9 @@ void SlowPathLowering::LowerDefineSendableClass(GateRef gate)
     ASSERT(acc_.GetNumValueIn(gate) == 4);
     GateRef jsFunc = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::FUNC);
     GateRef methodId = acc_.GetValueIn(gate, 0);
+    GateRef proto = acc_.GetValueIn(gate, 3);
     GateRef literalId = acc_.GetValueIn(gate, 1);
     GateRef length = acc_.GetValueIn(gate, 2);  // 2: second arg
-    GateRef proto = acc_.GetValueIn(gate, 3);
     GateRef constpool = argAcc_.GetFrameArgsIn(gate, FrameArgIdx::SHARED_CONST_POOL);
     GateRef module = builder_.GetModuleFromFunction(jsFunc);
     auto args = { proto, constpool, builder_.ToTaggedInt(methodId), builder_.ToTaggedInt(literalId),
