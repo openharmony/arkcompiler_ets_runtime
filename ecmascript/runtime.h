@@ -160,6 +160,10 @@ public:
 
     void ProcessNativeDeleteInSharedGC(const WeakRootVisitor &visitor);
 
+    void ProcessSharedNativeDelete(const WeakRootVisitor &visitor);
+    void InvokeSharedNativePointerCallbacks();
+    void PushToSharedNativePointerList(JSNativePointer *pointer);
+
     inline bool CreateStringCacheTable(uint32_t size)
     {
         constexpr int32_t MAX_SIZE = 150;
@@ -253,6 +257,11 @@ private:
         return sharedConstpoolCount_++;
     }
 
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> &GetSharedNativePointerCallbacks()
+    {
+        return sharedNativePointerCallbacks_;
+    }
+
     Mutex threadsLock_;
     ConditionVariable threadSuspendCondVar_;
     Mutex serializeLock_;
@@ -289,6 +298,9 @@ private:
     // for string cache
     JSTaggedValue *externalRegisteredStringTable_ {nullptr};
     uint32_t registeredStringTableSize_ = 0;
+
+    // for shared native pointer
+    std::vector<std::pair<NativePointerCallback, std::pair<void *, void *>>> sharedNativePointerCallbacks_ {};
 
     friend class EcmaVM;
     friend class JSThread;

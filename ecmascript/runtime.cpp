@@ -19,6 +19,7 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/mem_map_allocator.h"
 namespace panda::ecmascript {
 using PGOProfilerManager = pgo::PGOProfilerManager;
@@ -348,5 +349,28 @@ void Runtime::EraseUnusedConstpool(const JSPandaFile *jsPandaFile, int32_t index
         auto context = thread->GetCurrentEcmaContext();
         context->EraseUnusedConstpool(jsPandaFile, index, constpoolIndex);
     });
+}
+
+void Runtime::ProcessSharedNativeDelete(const WeakRootVisitor &visitor)
+{
+    SharedHeap::GetInstance()->ProcessSharedNativeDelete(visitor);
+}
+
+void Runtime::PushToSharedNativePointerList(JSNativePointer *pointer)
+{
+    SharedHeap::GetInstance()->PushToSharedNativePointerList(pointer);
+}
+
+void Runtime::InvokeSharedNativePointerCallbacks()
+{
+    auto &callbacks = GetSharedNativePointerCallbacks();
+    while (!callbacks.empty()) {
+        auto callbackPair = callbacks.back();
+        callbacks.pop_back();
+        ASSERT(callbackPair.first != nullptr && callbackPair.second.first != nullptr &&
+               callbackPair.second.second != nullptr);
+        auto callback = callbackPair.first;
+        (*callback)(nullptr, callbackPair.second.first, callbackPair.second.second);
+    }
 }
 }  // namespace panda::ecmascript

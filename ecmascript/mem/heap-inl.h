@@ -32,6 +32,7 @@
 #include "ecmascript/mem/thread_local_allocation_buffer.h"
 #include "ecmascript/mem/barriers-inl.h"
 #include "ecmascript/mem/mem_map_allocator.h"
+#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 #define CHECK_OBJ_AND_THROW_OOM_ERROR(object, size, space, message)                                         \
@@ -1043,6 +1044,45 @@ static void ShrinkWithFactor(CVector<JSNativePointer*>& vec)
     }
 }
 
+void SharedHeap::InvokeSharedNativePointerCallbacks()
+{
+    Runtime *runtime = Runtime::GetInstance();
+    if (!runtime->GetSharedNativePointerCallbacks().empty()) {
+        runtime->InvokeSharedNativePointerCallbacks();
+    }
+}
+
+void SharedHeap::PushToSharedNativePointerList(JSNativePointer* pointer)
+{
+    ASSERT(JSTaggedValue(pointer).IsInSharedHeap());
+    std::lock_guard<std::mutex> lock(sNativePointerListMutex_);
+    sharedNativePointerList_.emplace_back(pointer);
+}
+
+void SharedHeap::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
+{
+#ifndef NDEBUG
+    ASSERT(JSThread::GetCurrent()->HasLaunchedSuspendAll());
+#endif
+    auto& sharedNativePointerCallbacks = Runtime::GetInstance()->GetSharedNativePointerCallbacks();
+    auto sharedIter = sharedNativePointerList_.begin();
+    while (sharedIter != sharedNativePointerList_.end()) {
+        JSNativePointer* object = *sharedIter;
+        auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
+        if (fwd == nullptr) {
+            sharedNativePointerCallbacks.emplace_back(
+                object->GetDeleter(), std::make_pair(object->GetExternalPointer(), object->GetData()));
+            SwapBackAndPop(sharedNativePointerList_, sharedIter);
+        } else {
+            if (fwd != reinterpret_cast<TaggedObject*>(object)) {
+                *sharedIter = reinterpret_cast<JSNativePointer*>(fwd);
+            }
+            ++sharedIter;
+        }
+    }
+    ShrinkWithFactor(sharedNativePointerList_);
+}
+
 void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
 {
     // ProcessNativeDelete should be limited to OldGC or FullGC only
@@ -1080,27 +1120,6 @@ void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
         }
         ShrinkWithFactor(concurrentNativePointerList_);
     }
-}
-
-void Heap::ProcessSharedNativeDelete(const WeakRootVisitor& visitor)
-{
-    auto& sharedNativePointerCallbacks = GetEcmaVM()->GetSharedNativePointerCallbacks();
-    auto sharedIter = sharedNativePointerList_.begin();
-    while (sharedIter != sharedNativePointerList_.end()) {
-        JSNativePointer* object = *sharedIter;
-        auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
-        if (fwd == nullptr) {
-            sharedNativePointerCallbacks.emplace_back(
-                object->GetDeleter(), std::make_pair(object->GetExternalPointer(), object->GetData()));
-            SwapBackAndPop(sharedNativePointerList_, sharedIter);
-        } else {
-            if (fwd != reinterpret_cast<TaggedObject*>(object)) {
-                *sharedIter = reinterpret_cast<JSNativePointer*>(fwd);
-            }
-            ++sharedIter;
-        }
-    }
-    ShrinkWithFactor(sharedNativePointerList_);
 }
 
 void Heap::ProcessReferences(const WeakRootVisitor& visitor)
@@ -1160,12 +1179,6 @@ void Heap::PushToNativePointerList(JSNativePointer* pointer, bool isConcurrent)
     } else {
         nativePointerList_.emplace_back(pointer);
     }
-}
-
-void Heap::PushToSharedNativePointerList(JSNativePointer* pointer)
-{
-    ASSERT(JSTaggedValue(pointer).IsInSharedHeap());
-    sharedNativePointerList_.emplace_back(pointer);
 }
 
 void Heap::RemoveFromNativePointerList(const JSNativePointer* pointer)
