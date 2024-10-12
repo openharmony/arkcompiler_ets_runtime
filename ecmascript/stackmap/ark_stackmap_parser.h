@@ -58,8 +58,8 @@ private:
 #ifndef NDEBUG
     void ParseArkStackMapAndDeopt(uint8_t *ptr, uint32_t length) const;
 #endif
-    uintptr_t GetStackSlotAddress(const LLVMStackMapType::DwarfRegAndOffsetType info,
-                                  uintptr_t callSiteSp, uintptr_t callsiteFp) const;
+    uintptr_t GetStackSlotAddress(uint8_t *stackmapAddr, uintptr_t callSiteSp, uintptr_t callsiteFp,
+                                  uint32_t &offset) const;
     friend class ArkStackMapBuilder;
     bool enableLog_ {false};
 };

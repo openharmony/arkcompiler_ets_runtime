@@ -1873,15 +1873,17 @@ private:
     // dynamic callee saveregisters for arm64
 };
 
-enum class GCVisitedFlag : bool {
-    VISITED = true,
-    IGNORED = false,
-    HYBRID_STACK = true,
+enum class GCVisitedFlag : uint8_t {
+    VISITED = 0,
+    IGNORED,
+    HYBRID_STACK,
+    DEOPT,
 };
 
 class FrameIterator {
 public:
     using ConstInfo = kungfu::LLVMStackMapType::ConstInfo;
+    using CallSiteInfo = std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec>;
     explicit FrameIterator(JSTaggedType *sp, const JSThread *thread = nullptr);
     FrameType GetFrameType() const
     {
@@ -1919,7 +1921,7 @@ public:
     {
         ret = calleeRegInfo_;
     }
-    int ComputeDelta() const;
+    int ComputeDelta(const Method *method = nullptr) const;
     template <GCVisitedFlag GCVisit = GCVisitedFlag::IGNORED>
     void Advance();
     std::map<uint32_t, uint32_t> GetInlinedMethodInfo();
@@ -1942,10 +1944,8 @@ public:
     void CollectPcOffsetInfo(ConstInfo &info) const;
     void CollectMethodOffsetInfo(std::map<uint32_t, uint32_t> &info) const;
     void CollectArkDeopt(std::vector<kungfu::ARKDeopt>& deopts) const;
-    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> CalCallSiteInfo(uintptr_t retAddr) const;
-    std::tuple<uint64_t, uint8_t *, int, kungfu::CalleeRegAndOffsetVec> TryCalCallSiteInfoFromMachineCode(
-        uintptr_t retAddr) const;
-    int GetCallSiteDelta(uintptr_t retAddr) const;
+    std::pair<CallSiteInfo, bool> CalCallSiteInfo(uintptr_t retAddr, bool isDeopt) const;
+    CallSiteInfo TryCalCallSiteInfoFromMachineCode(uintptr_t retAddr) const;
 
     Method *CheckAndGetMethod() const;
     JSTaggedValue GetFunction() const;
@@ -2014,8 +2014,11 @@ private:
     uintptr_t optimizedCallSiteSp_ {0};
     uintptr_t optimizedReturnAddr_ {0};
     uint8_t *stackMapAddr_ {nullptr};
-    int fpDeltaPrevFrameSp_ {0};
     kungfu::CalleeRegAndOffsetVec calleeRegInfo_;
+
+    // in jit, delta on method is not set, get it from iterator
+    bool isJITFrame_ {false};
+    int fpDeltaPrevFrameSp_ {0};
 
     // cache current machine code, it's nonmovable
     JSTaggedType machineCode_ {JSTaggedValue::VALUE_UNDEFINED};
