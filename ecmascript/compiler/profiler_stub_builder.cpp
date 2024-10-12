@@ -109,16 +109,13 @@ void ProfilerStubBuilder::ProfileOpType(
         BRANCH(Int32LessThan(slotId, length), &icSlotValid, &exit);
         Bind(&icSlotValid);
         GateRef slotValue = GetValueFromTaggedArray(profileTypeInfo, slotId);
-        DEFVARIABLE(curType, VariableType::INT32(), type);
-        DEFVARIABLE(curCount, VariableType::INT32(), Int32(0));
+        DEFVARIABLE(curTaggedSlotValue, VariableType::INT64(), type);
         BRANCH(TaggedIsInt(slotValue), &compareLabel, &uninitialized);
         Bind(&compareLabel);
         {
-            GateRef oldSlotValue = TaggedGetInt(slotValue);
-            GateRef oldType = Int32And(oldSlotValue, Int32(PGOSampleType::AnyType()));
-            curType = Int32Or(oldType, type);
-            curCount = Int32And(oldSlotValue, Int32(0xfffffc00));   // 0xfffffc00: count bits
-            BRANCH(Int32Equal(oldType, *curType), &exit, &updateSlot);
+            GateRef oldTaggedSlotValue = ChangeTaggedPointerToInt64(slotValue);
+            curTaggedSlotValue = Int64Or(oldTaggedSlotValue, type);
+            BRANCH(Int64Equal(oldTaggedSlotValue, *curTaggedSlotValue), &exit, &updateSlot);
         }
         Bind(&uninitialized);
         {
@@ -128,8 +125,7 @@ void ProfilerStubBuilder::ProfileOpType(
         }
         Bind(&updateSlot);
         {
-            GateRef newSlotValue = Int32Or(*curCount, *curType);
-            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, IntToTaggedInt(newSlotValue));
+            SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, *curTaggedSlotValue);
             TryPreDumpInner(glue, func, profileTypeInfo);
             Jump(&exit);
         }
@@ -289,7 +285,7 @@ void ProfilerStubBuilder::ProfileCall(
                 Bind(&resetSlot);
                 {
                     // NOTICE-PGO: lx about poly
-                    GateRef nonType = IntToTaggedInt(Int32(0));
+                    GateRef nonType = TaggedInt(0);
                     SetValueToTaggedArray(VariableType::JS_ANY(), glue, profileTypeInfo, slotId, nonType);
                     TryPreDumpInner(glue, func, profileTypeInfo);
                     Jump(&exit);

@@ -105,6 +105,7 @@ public:
     GateRef Int16(int16_t value);
     GateRef Int32(int32_t value);
     GateRef Int64(int64_t value);
+    GateRef TaggedInt(int32_t value);
     GateRef StringPtr(std::string_view str);
     GateRef IntPtr(int64_t value);
     GateRef IntPtrSize();

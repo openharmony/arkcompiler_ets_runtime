@@ -66,11 +66,17 @@ inline GateRef StubBuilder::Int16(int16_t value)
 inline GateRef StubBuilder::Int32(int32_t value)
 {
     return env_->GetBuilder()->Int32(value);
-};
+}
 
 inline GateRef StubBuilder::Int64(int64_t value)
 {
     return env_->GetBuilder()->Int64(value);
+}
+
+inline GateRef StubBuilder::TaggedInt(int32_t value)
+{
+    JSTaggedType value64 = static_cast<JSTaggedType>(value) | JSTaggedValue::TAG_INT;
+    return env_->GetBuilder()->Int64(value64);
 }
 
 inline GateRef StubBuilder::StringPtr(std::string_view str)
@@ -81,7 +87,7 @@ inline GateRef StubBuilder::StringPtr(std::string_view str)
 inline GateRef StubBuilder::IntPtr(int64_t value)
 {
     return env_->Is32Bit() ? Int32(value) : Int64(value);
-};
+}
 
 inline GateRef StubBuilder::IntPtrSize()
 {
