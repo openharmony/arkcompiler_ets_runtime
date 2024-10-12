@@ -35,7 +35,7 @@ bool JSAPIBitVector::Push(
     JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector, const JSHandle<JSTaggedValue>& value)
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
-        bitVector.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(bitVector));
     uint32_t length = bitVector->GetLength().GetArrayLength();
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
@@ -55,7 +55,7 @@ bool JSAPIBitVector::Push(
 JSTaggedValue JSAPIBitVector::Pop(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector)
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
-        bitVector.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(bitVector));
     uint32_t lastIndex = bitVector->GetLength().GetArrayLength() - 1;
     if (lastIndex < 0) {
         return JSTaggedValue::Undefined();
@@ -164,7 +164,7 @@ JSTaggedValue JSAPIBitVector::SetBitsByRange(JSThread* thread, const JSHandle<JS
     const JSHandle<JSTaggedValue>& value, const JSHandle<JSTaggedValue>& start, const JSHandle<JSTaggedValue>& end)
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
-        bitVector.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
     int32_t length = bitVector->GetLength().GetInt();
@@ -196,7 +196,7 @@ JSTaggedValue JSAPIBitVector::GetBitsByRange(JSThread* thread, const JSHandle<JS
     const JSHandle<JSTaggedValue>& start, const JSHandle<JSTaggedValue>& end)
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
-        bitVector.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
     int32_t length = bitVector->GetLength().GetInt();
@@ -238,7 +238,7 @@ JSTaggedValue JSAPIBitVector::SetAllBits(
     JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector, const JSHandle<JSTaggedValue>& value)
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
-        bitVector.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(bitVector));
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     int size = static_cast<int>(elements->size());
@@ -257,7 +257,7 @@ JSTaggedValue JSAPIBitVector::SetAllBits(
 JSTaggedValue JSAPIBitVector::GetBitCountByRange(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector,
     const JSHandle<JSTaggedValue>& value, const JSHandle<JSTaggedValue>& start, const JSHandle<JSTaggedValue>& end)
 {
-    [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, bitVector.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
     int32_t length = bitVector->GetLength().GetInt();
@@ -294,7 +294,7 @@ JSTaggedValue JSAPIBitVector::GetBitCountByRange(JSThread* thread, const JSHandl
 int JSAPIBitVector::GetIndexOf(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector,
     const JSHandle<JSTaggedValue>& value, const JSHandle<JSTaggedValue>& start, const JSHandle<JSTaggedValue>& end)
 {
-    [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, bitVector.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
     int32_t length = bitVector->GetLength().GetInt();
@@ -330,7 +330,7 @@ int JSAPIBitVector::GetIndexOf(JSThread* thread, const JSHandle<JSAPIBitVector>&
 int JSAPIBitVector::GetLastIndexOf(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector,
     const JSHandle<JSTaggedValue>& value, const JSHandle<JSTaggedValue>& start, const JSHandle<JSTaggedValue>& end)
 {
-    [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, bitVector.GetTaggedValue().GetTaggedObject());
+    [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
     int32_t length = bitVector->GetLength().GetInt();
@@ -366,7 +366,7 @@ int JSAPIBitVector::GetLastIndexOf(JSThread* thread, const JSHandle<JSAPIBitVect
 JSTaggedValue JSAPIBitVector::FlipBitByIndex(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVector, int index)
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
-        bitVector.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(bitVector));
     if (index >= bitVector->GetLength().GetInt()) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (bitVector->GetLength().GetInt() - 1)
@@ -389,7 +389,7 @@ JSTaggedValue JSAPIBitVector::FlipBitsByRange(JSThread* thread, const JSHandle<J
     const JSHandle<JSTaggedValue>& start, const JSHandle<JSTaggedValue>& end)
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
-        bitVector.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
     int32_t length = bitVector->GetLength().GetInt();
@@ -428,7 +428,7 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
         THROW_NEW_ERROR_AND_RETURN(thread, error);
     }
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
-        bitVector.GetTaggedValue().GetTaggedObject());
+        JSHandle<JSTaggedValue>::Cast(bitVector));
     int length = bitVector->GetLength().GetInt();
     uint32_t elementsLength = ((length - 1) / BIT_SET_LENGTH) + 1;
     uint32_t newElementsLength = ((newSize - 1) / BIT_SET_LENGTH) + 1;
