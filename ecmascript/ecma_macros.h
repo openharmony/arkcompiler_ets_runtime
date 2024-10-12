@@ -185,6 +185,24 @@
     }
 
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ACCESSORS_PRIMITIVE_FIELD_ATOMIC(name, type, offset)                                                     \
+    inline void AtomicSet##name(type value)                                                                      \
+    {                                                                                                            \
+        volatile auto *atomicField = reinterpret_cast<volatile std::atomic<type> *>(ToUintPtr(this) + (offset)); \
+        atomicField->store(value, std::memory_order_release);                                                    \
+    }                                                                                                            \
+    inline type AtomicGet##name() const                                                                          \
+    {                                                                                                            \
+        volatile auto *atomicField = reinterpret_cast<volatile std::atomic<type> *>(ToUintPtr(this) + (offset)); \
+        return atomicField->load(std::memory_order_acquire);                                                     \
+    }
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ACCESSORS_PRIMITIVE_FIELD_HAS_ATOMIC_INTERFACE(name, type, offset, endOffset) \
+    ACCESSORS_PRIMITIVE_FIELD(name, type, offset, endOffset)                          \
+    ACCESSORS_PRIMITIVE_FIELD_ATOMIC(name, type, offset)
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define FIRST_BIT_FIELD(bitFieldName, name, type, bits) \
     using name##Bits = BitField<type, 0, bits>;         \
     SET_GET_BIT_FIELD(bitFieldName, name, type)
