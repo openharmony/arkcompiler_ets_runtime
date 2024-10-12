@@ -185,6 +185,7 @@ namespace panda::ecmascript {
     V(NumberHelperStringToDouble)              \
     V(GetStringToListCacheArray)               \
     V(FastArraySort)                           \
+    V(FastArraySortString)                     \
     V(StringToNumber)                          \
     V(StringGetStart)                          \
     V(StringGetEnd)                            \

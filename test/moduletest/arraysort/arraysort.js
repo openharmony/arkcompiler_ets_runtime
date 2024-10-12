@@ -340,4 +340,39 @@ arr.sort();
 //for cmp return type is double
 let arr34 = [2.63, 1.67];
 print(arr34.sort((a, b)=> a - b));
-print("sort Test Success!")
+print("sort Test Success!");
+
+// String toSorted
+{
+	let array1 = new Array();
+    for (let i = 0; i < 1; i++) array1[i] = `string.${i}`;
+    print(array1.toSorted());
+    
+    array1 = new Array();
+    for (let i = 0; i < 2; i++) array1[i] = `string.${i}`;
+    print(array1.toSorted());
+
+    array1 = new Array();
+    for (let i = 0; i < 2; i++) array1[i] = `string.${1 - i}`;
+    print(array1.toSorted());
+  
+    array1 = new Array();
+    array1[0] = `a`;
+    array1[1] = `b`;
+    array1[2] = `c`;
+    array1[3] = `d`;
+    array1[4] = `e`;
+    array1[5] = `f`;
+    array1[6] = `g`;
+    print(array1.toSorted());
+
+    array1 = new Array();
+    array1[6] = `a`;
+    array1[5] = `b`;
+    array1[4] = `c`;
+    array1[3] = `d`;
+    array1[2] = `e`;
+    array1[1] = `f`;
+    array1[0] = `g`;
+    print(array1.toSorted());
+}

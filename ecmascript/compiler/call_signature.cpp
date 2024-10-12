@@ -1744,6 +1744,21 @@ DEF_CALL_SIGNATURE(FastArraySort)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(FastArraySortString)
+{
+    // 2 : 2 input parameters
+    CallSignature fastArraySortString("FastArraySortString", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::INT32());
+    *callSign = fastArraySortString;
+    std::array<VariableType, 3> params = { // 3 : 3 input parameters
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY(),
+        VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
 DEF_CALL_SIGNATURE(StringToNumber)
 {
     // 4 : 4 input parameters
