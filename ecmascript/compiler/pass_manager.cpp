@@ -122,7 +122,8 @@ bool JitPassManager::Compile(JSHandle<ProfileTypeInfo> &profileTypeInfo,
                 fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
         }
 
-        PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
+        PGOProfilerDecoder defDecoder;
+        PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : &defDecoder;
 
         builder_ = new BytecodeCircuitBuilder(jsPandaFile, methodLiteral, methodPCInfo,
             circuit_, ctx_->GetByteCodes(), enableMethodLog && log_->OutputCIR(),
@@ -301,7 +302,8 @@ bool PassManager::Compile(JSPandaFile *jsPandaFile, const std::string &fileName,
         Circuit circuit(compilationEnv_->GetNativeAreaAllocator(), ctx.GetAOTModule()->GetDebugInfo(),
                         fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
 
-        PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : nullptr;
+        PGOProfilerDecoder defDecoder;
+        PGOProfilerDecoder *decoder = passOptions_->EnableOptPGOType() ? &profilerDecoder_ : &defDecoder;
 
         BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, &circuit,
                                        ctx.GetByteCodes(), enableMethodLog && log_->OutputCIR(),

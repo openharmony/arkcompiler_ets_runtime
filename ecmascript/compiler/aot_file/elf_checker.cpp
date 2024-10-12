@@ -81,6 +81,7 @@ ElfChecker::ElfChecker(const void* data, int len) : elfLen_(len), elfErrorCode_(
     }
     elfData_ = new char[len];
     if (memcpy_s(elfData_, len, data, len) != 0) {
+        delete[] elfData_;
         elfData_ = nullptr;
         return;
     }

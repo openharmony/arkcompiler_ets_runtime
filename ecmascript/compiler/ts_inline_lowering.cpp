@@ -221,9 +221,13 @@ void TSInlineLowering::InlineCall(MethodInfo &methodInfo, MethodPcInfo &methodPC
     if (compilationEnv_->IsJitCompiler()) {
         profiler = compilationEnv_->GetPGOProfiler()->GetJITProfile();
     }
+
+    PGOProfilerDecoder defDecoder;
+    PGOProfilerDecoder *decoder = (ctx_->GetPfDecoder() != nullptr) ? ctx_->GetPfDecoder() : &defDecoder;
+
     BytecodeCircuitBuilder builder(jsPandaFile, method, methodPCInfo,
                                    circuit_, ctx_->GetByteCodes(), IsLogEnabled(),
-                                   enableTypeLowering_, fullName, recordName, ctx_->GetPfDecoder(), true, profiler);
+                                   enableTypeLowering_, fullName, recordName, decoder, true, profiler);
     {
         if (enableTypeLowering_) {
             BuildFrameStateChain(info, builder);

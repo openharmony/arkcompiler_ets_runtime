@@ -239,7 +239,8 @@ void AotCompilerPreprocessor::AnalyzeGraph(BCInfo &bytecodeInfo, CompilationOpti
     Circuit circuit(vm_->GetNativeAreaAllocator(), ctx.GetAOTModule()->GetDebugInfo(),
                     fullName.c_str(), cmpCfg->Is64Bit(), FrameType::OPTIMIZED_JS_FUNCTION_FRAME);
 
-    PGOProfilerDecoder *decoder = cOptions.isEnableOptPGOType_ ? &profilerDecoder : nullptr;
+    PGOProfilerDecoder defDecoder;
+    PGOProfilerDecoder *decoder = cOptions.isEnableOptPGOType_ ? &profilerDecoder : &defDecoder;
 
     BytecodeCircuitBuilder builder(jsPandaFile, methodLiteral, methodPCInfo, &circuit,
                                     ctx.GetByteCodes(), false,
