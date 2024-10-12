@@ -26,8 +26,8 @@ void BuiltinsRegExpStubBuilder::GetFlags(GateRef glue, GateRef thisValue,
     BRANCH(IsEcmaObject(thisValue), &isEcmaObject, slowPath);
     Bind(&isEcmaObject);
     Label fastRegExpPath(env);
-    GateRef fastRegExp = CallRuntime(glue, RTSTUB_ID(IsFastRegExp), { thisValue });
-    BRANCH(TaggedIsTrue(fastRegExp), slowPath, &fastRegExpPath);
+    GateRef fastRegExp = CallNGCRuntime(glue, RTSTUB_ID(IsFastRegExp), {glue, thisValue});
+    BRANCH(fastRegExp, slowPath, &fastRegExpPath);
     Bind(&fastRegExpPath);
     {
         Label hasException(env);

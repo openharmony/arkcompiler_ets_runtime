@@ -532,6 +532,8 @@ private:
                                                       int32_t strLen);
     static inline JSTaggedValue UTF16EncodeCodePoint(JSThread *thread, const std::vector<uint8_t> &oct,
                                                      const JSHandle<EcmaString> &str, std::u16string &sStr);
+    static inline bool IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue);
+
     static inline uint8_t GetValueFromTwoHex(uint8_t front, uint8_t behind);
     friend class SlowRuntimeStub;
 };

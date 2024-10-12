@@ -696,6 +696,33 @@ print(1 == result.length);
 print('9' == result[0]);
 
 // test getFlags
+Object.defineProperty(RegExp.prototype, "global", {
+  value: true
+})
 const res = /abc/giymsud;
 res.lastIndex = -1;
 print(res.flags);
+const res1 = /abc/g;
+res1.lastIndex = -1;
+print(res1.flags);
+const res2 = /abc/i;
+res2.lastIndex = -1;
+print(res2.flags);
+const res3 = /abc/y;
+res3.lastIndex = -1;
+print(res3.flags);
+const res4 = /abc/m;
+res4.lastIndex = -1;
+print(res4.flags);
+const res5 = /abc/s;
+res5.lastIndex = -1;
+print(res5.flags);
+const res6 = /abc/u;
+res6.lastIndex = -1;
+print(res6.flags);
+const res7 = /abc/d;
+res7.lastIndex = -1;
+print(res7.flags);
+const res8 = /abc/;
+res8.lastIndex = -1;
+print(res8.flags);

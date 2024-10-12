@@ -1820,6 +1820,21 @@ DEF_CALL_SIGNATURE(StringGetEnd)
     callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
 }
 
+DEF_CALL_SIGNATURE(IsFastRegExp)
+{
+    // 3 : 3 input parameters
+    CallSignature isFastRegExp("IsFastRegExp", 0, 2,
+        ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL());
+    *callSign = isFastRegExp;
+    std::array<VariableType, 2> params = { // 2 : 2 input parameters
+        VariableType::NATIVE_POINTER(),
+        VariableType::JS_ANY()
+    };
+    callSign->SetParameters(params.data());
+    callSign->SetGCLeafFunction(true);
+    callSign->SetTargetKind(CallSignature::TargetKind::RUNTIME_STUB_NO_GC);
+}
+
 #define PUSH_CALL_ARGS_AND_DISPATCH_SIGNATURE_COMMON(name)                  \
     /* 1 : 1 input parameters */                                            \
     CallSignature signature(#name, 0, 1,                                    \

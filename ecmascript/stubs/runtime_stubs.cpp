@@ -3882,6 +3882,15 @@ void RuntimeStubs::ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newL
     array->Trim(thread, length);
 }
 
+bool RuntimeStubs::IsFastRegExp(uintptr_t argGlue, JSTaggedValue thisValue)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    [[maybe_unused]] EcmaHandleScope handleScope(thread);
+    JSHandle<JSTaggedValue> thisObjVal(thread, thisValue);
+    return builtins::BuiltinsRegExp::IsFastRegExp(thread, thisObjVal);
+}
+
 DEF_RUNTIME_STUBS(ArrayForEachContinue)
 {
     RUNTIME_STUBS_HEADER(ArrayForEachContinue);
@@ -4050,58 +4059,37 @@ DEF_RUNTIME_STUBS(GetCollationValueFromIcuCollator)
     return thread->GlobalConstants()->GetDefaultString().GetRawData();
 }
 
-DEF_RUNTIME_STUBS(IsFastRegExp)
-{
-    RUNTIME_STUBS_HEADER(IsFastRegExp);
-    JSHandle<JSObject> thisValue = GetHArg<JSObject>(argv, argc, 0);  // 0: means the zeroth parameter
-    JSHandle<JSTaggedValue> thisObjVal(thisValue);
-    bool result = builtins::BuiltinsRegExp::IsFastRegExp(thread, thisObjVal);
-    return JSTaggedValue(result).GetRawData();
-}
-
 DEF_RUNTIME_STUBS(GetAllFlagsInternal)
 {
     RUNTIME_STUBS_HEADER(GetAllFlagsInternal);
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    uint8_t *flagsStr = new uint8_t[RegExpParser::FLAG_NUM + 1];  // FLAG_NUM flags + '\0'
-    if (flagsStr == nullptr) {
-        LOG_ECMA(FATAL) << "BuiltinsRegExp::GetAllFlagsInternal:flagsStr is nullptr";
-    }
-    size_t flagsLen = 0;
+
     JSHandle<JSTaggedValue> value = GetHArg<JSTaggedValue>(argv, argc, 0);  // 0: means the zeroth parameter
     int64 bigFlagsStr = value->GetInt();
+    std::string strFlags = "";
+    strFlags.reserve(RegExpParser::FLAG_NUM);
     if (bigFlagsStr & RegExpParser::FLAG_HASINDICES) {
-        flagsStr[flagsLen] = 'd';
-        flagsLen++;
+        strFlags += "d";
     }
     if (bigFlagsStr & RegExpParser::FLAG_GLOBAL) {
-        flagsStr[flagsLen] = 'g';
-        flagsLen++;
+        strFlags += "g";
     }
     if (bigFlagsStr & RegExpParser::FLAG_IGNORECASE) {
-        flagsStr[flagsLen] = 'i';
-        flagsLen++;
+        strFlags += "i";
     }
     if (bigFlagsStr & RegExpParser::FLAG_MULTILINE) {
-        flagsStr[flagsLen] = 'm';
-        flagsLen++;
+        strFlags += "m";
     }
     if (bigFlagsStr & RegExpParser::FLAG_DOTALL) {
-        flagsStr[flagsLen] = 's';
-        flagsLen++;
+        strFlags += "s";
     }
     if (bigFlagsStr & RegExpParser::FLAG_UTF16) {
-        flagsStr[flagsLen] = 'u';
-        flagsLen++;
+        strFlags += "u";
     }
     if (bigFlagsStr & RegExpParser::FLAG_STICKY) {
-        flagsStr[flagsLen] = 'y';
-        flagsLen++;
+        strFlags += "y";
     }
-
-    flagsStr[flagsLen] = '\0';
-    JSHandle<EcmaString> flagsString = factory->NewFromUtf8(flagsStr, flagsLen);
-    delete[] flagsStr;
+    JSHandle<EcmaString> flagsString = factory->NewFromUtf8(std::string_view(strFlags));
     return flagsString.GetTaggedValue().GetRawData();
 }
 

@@ -189,7 +189,8 @@ namespace panda::ecmascript {
     V(StringGetStart)                          \
     V(StringGetEnd)                            \
     V(ArrayTrim)                               \
-    V(CopyTypedArrayBuffer)
+    V(CopyTypedArrayBuffer)                    \
+    V(IsFastRegExp)
 
 #define RUNTIME_STUB_WITH_GC_LIST(V)            \
     V(AddElementInternal)                       \
@@ -480,7 +481,6 @@ namespace panda::ecmascript {
     V(OptSuperCallForwardAllArgs)               \
     V(GetCollationValueFromIcuCollator)         \
     V(DecodeURIComponent)                       \
-    V(IsFastRegExp)                             \
     V(GetAllFlagsInternal)
 
 
