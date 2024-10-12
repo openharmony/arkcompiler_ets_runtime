@@ -930,10 +930,7 @@ void PGORecordDetailInfos::ProcessToText(std::ofstream &stream) const
     }
     for (auto iter = recordInfos_.begin(); iter != recordInfos_.end(); iter++) {
         const CString recordName(recordPool_->GetName(iter->first));
-        if (recordName.empty()) {
-            LOG_ECMA(ERROR) << "record name is empty, " << iter->first.GetTypeString();
-            continue;
-        }
+        ASSERT(!recordName.empty());
         auto methodInfos = iter->second;
         methodInfos->ProcessToText(hotnessThreshold_, recordName, stream);
     }
