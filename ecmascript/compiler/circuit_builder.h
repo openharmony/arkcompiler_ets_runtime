@@ -664,7 +664,7 @@ public:
     GateRef MonoStorePropertyLookUpProto(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
                                          GateRef value);
     GateRef MonoStoreProperty(GateRef receiver, GateRef plrGate, GateRef jsFunc, size_t hclassIndex,
-                              GateRef value, GateRef keyIndex, GateRef frameState);
+                              GateRef value, GateRef keyIndex, GateRef isProto, GateRef frameState);
     GateRef TypedCreateObjWithBuffer(std::vector<GateRef> &valueIn);
     template<TypedLoadOp Op>
     GateRef ConvertJSArrayHoleAsUndefined(GateRef receiver);

@@ -3180,25 +3180,34 @@ void TypedHCRLowering::LowerMonoStoreProperty(GateRef gate, GateRef glue)
     GateRef unsharedConstPool = acc_.GetValueIn(gate, 3); // 3: constPool
     GateRef value = acc_.GetValueIn(gate, 4); // 4: value
     GateRef keyIndex = acc_.GetValueIn(gate, 5); // 5: keyIndex
+    bool isPrototype = acc_.TryGetValue(acc_.GetValueIn(gate, 6)); // 6: proto flag Index
     PropertyLookupResult plr(acc_.TryGetValue(propertyLookupResult));
     bool noBarrier = acc_.IsNoBarrier(gate);
     auto receiverHC = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
-    auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
     // transition happened
     Label exit(&builder_);
     Label notProto(&builder_);
     Label isProto(&builder_);
     auto newHolderHC = builder_.LoadHClassFromConstpool(unsharedConstPool, acc_.GetConstantValue(hclassIndex));
-    builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
-    builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
-        BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
-    builder_.Bind(&isProto);
+    if (compilationEnv_->IsAotCompiler()) {
+        auto prototype = builder_.LoadConstOffset(VariableType::JS_ANY(), receiverHC, JSHClass::PROTOTYPE_OFFSET);
+        builder_.StoreConstOffset(VariableType::JS_ANY(), newHolderHC, JSHClass::PROTOTYPE_OFFSET, prototype);
+    }
+    if (!isPrototype) {
+        builder_.DeoptCheck(builder_.BoolNot(builder_.IsProtoTypeHClass(receiverHC)), frameState,
+                            DeoptType::PROTOTYPECHANGED2);
+    } else {
+        builder_.Branch(builder_.IsProtoTypeHClass(receiverHC), &isProto, &notProto,
+            BranchWeight::ONE_WEIGHT, BranchWeight::DEOPT_WEIGHT, "isProtoTypeHClass");
+        builder_.Bind(&isProto);
 
-    GateRef propKey = builder_.GetObjectByIndexFromConstPool(glue, gate, frameState, keyIndex, ConstPoolType::STRING);
-    builder_.CallRuntime(glue, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
-        { receiverHC, newHolderHC, propKey }, gate);
-    builder_.Jump(&notProto);
-    builder_.Bind(&notProto);
+        GateRef propKey =
+            builder_.GetObjectByIndexFromConstPool(glue, gate, frameState, keyIndex, ConstPoolType::STRING);
+        builder_.CallRuntime(glue, RTSTUB_ID(UpdateAOTHClass), Gate::InvalidGateRef,
+            { receiverHC, newHolderHC, propKey }, gate);
+        builder_.Jump(&notProto);
+        builder_.Bind(&notProto);
+    }
     MemoryAttribute mAttr = MemoryAttribute::NeedBarrierAndAtomic();
     builder_.StoreConstOffset(VariableType::JS_ANY(), receiver, TaggedObject::HCLASS_OFFSET, newHolderHC, mAttr);
     if (!plr.IsInlinedProps()) {
