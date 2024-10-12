@@ -338,6 +338,23 @@ public:
     void SetMachineCodeOutOfMemoryError(JSThread *thread, size_t size, std::string functionName);
     void SetAppFreezeFilterCallback(AppFreezeFilterCallback cb);
 
+#ifndef NDEBUG
+    bool TriggerCollectionOnNewObjectEnabled() const
+    {
+        return triggerCollectionOnNewObject_;
+    };
+
+    void EnableTriggerCollectionOnNewObject()
+    {
+        triggerCollectionOnNewObject_ = true;
+    }
+
+    void DisableTriggerCollectionOnNewObject()
+    {
+        triggerCollectionOnNewObject_ = false;
+    }
+#endif
+
 protected:
     void FatalOutOfMemoryError(size_t size, std::string functionName);
 
@@ -400,6 +417,9 @@ protected:
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
     int32_t recursionDepth_ {0};
+#ifndef NDEBUG
+    bool triggerCollectionOnNewObject_ {true};
+#endif
 };
 
 class SharedHeap : public BaseHeap {

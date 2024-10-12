@@ -58,5 +58,10 @@ try {
 
 ArkTools.GC.registerNativeFree(100);
 ArkTools.GC.registerNativeAllocation(20000);
-ArkTools.GC.waitForFinishGC();
-ArkTools.GC.startGC();
+
+let gcId = ArkTools.GC.startGC("old", function () {
+    print("start concurrent mark");
+}, false);
+ArkTools.GC.waitForFinishGC(gcId);
+
+ArkTools.GC.allocateArrayObject(10);
