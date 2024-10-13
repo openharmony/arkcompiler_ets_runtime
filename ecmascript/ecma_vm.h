@@ -676,9 +676,9 @@ public:
         return concurrentNativeCallbacks_;
     }
 
-    std::vector<NativePointerCallbackData> &GetAsyncNativePointerCallbacks()
+    AsyncNativeCallbacksPack &GetAsyncNativePointerCallbacksPack()
     {
-        return asyncNativeCallbacks_;
+        return asyncNativeCallbacksPack_;
     }
 
     void SetIsJitCompileVM(bool isJitCompileVM)
@@ -842,7 +842,7 @@ private:
     ObjectFactory *factory_ {nullptr};
 
     std::vector<NativePointerCallbackData> concurrentNativeCallbacks_ {};
-    std::vector<NativePointerCallbackData> asyncNativeCallbacks_ {};
+    AsyncNativeCallbacksPack asyncNativeCallbacksPack_ {};
     // VM execution states.
     JSThread *thread_ {nullptr};
 

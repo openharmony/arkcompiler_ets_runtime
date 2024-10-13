@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "ecmascript/checkpoint/thread_state_transition.h"
 #include "ecmascript/module/js_module_deregister.h"
 
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
@@ -28,6 +29,8 @@ void ModuleDeregister::FreeModuleRecord([[maybe_unused]] void *env, void *pointe
         return;
     }
     auto thread = reinterpret_cast<JSThread* >(hint);
+    ThreadManagedScope managedScope(thread);
+    [[maybe_unused]] EcmaHandleScope scope(thread);
 
     // pointer is module's name, which will be deregistered.
     JSTaggedValue moduleVal =

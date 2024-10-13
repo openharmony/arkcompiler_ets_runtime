@@ -1089,16 +1089,17 @@ void Heap::ProcessNativeDelete(const WeakRootVisitor& visitor)
 {
     // ProcessNativeDelete should be limited to OldGC or FullGC only
     if (!IsGeneralYoungGC()) {
-        auto& asyncNativeCallbacks = GetEcmaVM()->GetAsyncNativePointerCallbacks();
+        auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
         auto iter = nativePointerList_.begin();
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "ProcessNativeDeleteNum:" + std::to_string(nativePointerList_.size()));
         while (iter != nativePointerList_.end()) {
             JSNativePointer* object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
             if (fwd == nullptr) {
-                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                asyncNativeCallbacks.emplace_back(object->GetDeleter(),
-                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData()));
+                size_t bindingSize = object->GetBindingSize();
+                asyncNativeCallbacksPack.AddCallback(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())), bindingSize);
+                nativeAreaAllocator_->DecreaseNativeSizeStats(bindingSize, object->GetNativeFlag());
                 SwapBackAndPop(nativePointerList_, iter);
             } else {
                 ++iter;
@@ -1128,7 +1129,7 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
 {
     // process native ref should be limited to OldGC or FullGC only
     if (!IsGeneralYoungGC()) {
-        auto& asyncNativeCallbacks = GetEcmaVM()->GetAsyncNativePointerCallbacks();
+        auto& asyncNativeCallbacksPack = GetEcmaVM()->GetAsyncNativePointerCallbacksPack();
         ResetNativeBindingSize();
         // array buffer
         auto iter = nativePointerList_.begin();
@@ -1137,9 +1138,10 @@ void Heap::ProcessReferences(const WeakRootVisitor& visitor)
             JSNativePointer* object = *iter;
             auto fwd = visitor(reinterpret_cast<TaggedObject*>(object));
             if (fwd == nullptr) {
-                nativeAreaAllocator_->DecreaseNativeSizeStats(object->GetBindingSize(), object->GetNativeFlag());
-                asyncNativeCallbacks.emplace_back(object->GetDeleter(),
-                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData()));
+                size_t bindingSize = object->GetBindingSize();
+                asyncNativeCallbacksPack.AddCallback(std::make_pair(object->GetDeleter(),
+                    std::make_tuple(thread_->GetEnv(), object->GetExternalPointer(), object->GetData())), bindingSize);
+                nativeAreaAllocator_->DecreaseNativeSizeStats(bindingSize, object->GetNativeFlag());
                 SwapBackAndPop(nativePointerList_, iter);
                 continue;
             }
