@@ -643,6 +643,8 @@ std::optional<int> SourceTextModule::HandleInnerModuleInstantiation(JSThread *th
 int SourceTextModule::InnerModuleInstantiation(JSThread *thread, const JSHandle<ModuleRecord> &moduleRecord,
     CVector<JSHandle<SourceTextModule>> &stack, int index, bool executeFromJob)
 {
+    // Add a safepoint here to check if a suspension is needed.
+    thread->CheckSafepointIfSuspended();
     // 1. If module is not a Source Text Module Record, then
     if (!moduleRecord.GetTaggedValue().IsSourceTextModule()) {
         //  a. Perform ? module.Instantiate().
