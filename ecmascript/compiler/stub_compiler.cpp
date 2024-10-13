@@ -137,7 +137,7 @@ bool StubCompiler::BuildStubModuleAndSave() const
     MethodLogList *logList = GetLogList();
 
     NativeAreaAllocator allocator;
-    StubFileGenerator generator(log, logList, triple_);
+    StubFileGenerator generator(log, logList, triple_, concurrentCompile_);
 
     LOG_COMPILER(INFO) << "=============== compiling bytecode handler stubs ===============";
     LOptions stubOp(optLevel_, FPFlag::ELIM_FP, relocMode_);
@@ -206,10 +206,12 @@ int main(const int argc, const char **argv)
     size_t relocMode = runtimeOptions.GetRelocMode();
     std::string logOption = runtimeOptions.GetCompilerLogOption();
     std::string methodsList = runtimeOptions.GetMethodsListForLog();
+    bool concurrentCompile = runtimeOptions.IsConcurrentCompile();
 
     panda::ecmascript::kungfu::CompilerLog logOpt(logOption);
     panda::ecmascript::kungfu::MethodLogList logList(methodsList);
-    panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, optLevel, relocMode, &logOpt, &logList);
+    panda::ecmascript::kungfu::StubCompiler compiler(triple, stubFile, optLevel, relocMode, &logOpt, &logList,
+                                                     concurrentCompile);
 
     bool res = compiler.BuildStubModuleAndSave();
     LOG_COMPILER(INFO) << "stub compiler run finish, result condition(T/F):" << std::boolalpha << res;

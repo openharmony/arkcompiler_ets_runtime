@@ -79,7 +79,9 @@ using FastCallAotEntryType = JSTaggedValue (*)(uintptr_t glue, uint32_t argc, co
     V(CallGetter)                            \
     V(CallContainersArgs2)                   \
     V(CallContainersArgs3)                   \
-    V(CallReturnWithArgv)
+    V(CallReturnWithArgv)                    \
+    V(ASMFastWriteBarrier)                   \
+    V(ASMWriteBarrierWithEden)
 
 #define BASELINE_TRAMPOLINE_LIST(V)                   \
     V(CallArg0AndCheckToBaseline)                     \

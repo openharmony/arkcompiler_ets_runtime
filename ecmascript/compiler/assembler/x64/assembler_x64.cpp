@@ -1268,6 +1268,16 @@ void AssemblerX64::Movzbq(const Operand &src, Register dst)
     EmitOperand(dst, src);
 }
 
+void AssemblerX64::Movzbl(const Operand &src, Register dst)
+{
+    EmitRexPrefixl(dst, src);
+    // 0F B6 : Movzx r64, r/m16
+    EmitU8(0x0F);
+    EmitU8(0xB6);
+    // 0F B6 /r: Movzx r64, r/m16
+    EmitOperand(dst, src);
+}
+
 void AssemblerX64::Btq(Immediate src, Register dst)
 {
     EmitRexPrefixW(dst);

@@ -152,6 +152,8 @@ GateRef CircuitBuilder::Call(const CallSignature* cs, GateRef glue, GateRef targ
         meta = circuit_->FastCallOptimized(numValuesIn, isNoGC);
     } else if (cs->IsBaselineStub()) {
         meta = circuit_->BaselineCall(numValuesIn);
+    } else if (cs->IsASMCallBarrierStub()) {
+        meta = circuit_->ASMCallBarrier(numValuesIn);
     } else {
         LOG_ECMA(FATAL) << "unknown call operator";
         UNREACHABLE();

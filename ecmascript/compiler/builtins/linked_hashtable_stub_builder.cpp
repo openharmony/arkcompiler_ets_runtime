@@ -625,10 +625,10 @@ void LinkedHashTableStubBuilder<LinkedHashTableType, LinkedHashTableObject>::Sto
     GateRef table;
     if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashMap>) {
         table = Create(Int32(LinkedHashMap::MIN_CAPACITY));
-        Store(VariableType::JS_ANY(), glue_, *returnValue, Int32(JSMap::LINKED_MAP_OFFSET), table);
+        Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSMap::LINKED_MAP_OFFSET), table);
     } else if constexpr (std::is_same_v<LinkedHashTableType, LinkedHashSet>) {
         table = Create(Int32(LinkedHashSet::MIN_CAPACITY));
-        Store(VariableType::JS_ANY(), glue_, *returnValue, Int32(JSSet::LINKED_SET_OFFSET), table);
+        Store(VariableType::JS_ANY(), glue_, *returnValue, IntPtr(JSSet::LINKED_SET_OFFSET), table);
     }
 }
 
