@@ -25,8 +25,7 @@ group("ark_jit_ts_test") {
     "exception",
     "data_view",
 
-    #(issue 18039)
-    #"construct_with_normal_function",
+    "construct_with_normal_function",
     "addition_assignment",
     "catch_with_osr",
     "jit_test_0001",
