@@ -105,7 +105,6 @@ public:
 
     void Dump() const DUMP_API_ATTR;
 
-    void Destroy() override {};
 private:
     static constexpr uint32_t ASMSTUB_MODULE_NUM = 4;
 

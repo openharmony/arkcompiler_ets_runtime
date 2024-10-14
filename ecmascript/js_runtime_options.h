@@ -211,7 +211,6 @@ enum CommandValues {
     OPTION_COMPILER_PGO_FORCE_DUMP,
     OPTION_COMPILER_OPT_STRING,
     OPTION_OPEN_ARK_TOOLS,
-    OPTION_COMPILER_ENABLE_CONCURRENT,
     OPTION_COMPILER_EMPTY_CATCH_FUNCTION,
 };
 static_assert(OPTION_SPLIT_ONE == 64); // add new option at the bottom, DO NOT modify this value
@@ -1927,15 +1926,6 @@ public:
         forceDump_ = value;
     }
 
-    void SetConcurrentCompile(bool value)
-    {
-        concurrentCompile = value;
-    }
-
-    bool IsConcurrentCompile() const
-    {
-        return concurrentCompile;
-    }
 public:
     static constexpr int32_t MAX_APP_COMPILE_METHOD_SIZE = 4_KB;
 
@@ -2114,7 +2104,6 @@ private:
     bool asyncLoadAbc_ {true};
     bool asyncLoadAbcTest_ {false};
     bool forceDump_ {true};
-    bool concurrentCompile {true};
 };
 } // namespace panda::ecmascript
 

@@ -83,37 +83,28 @@ void Module::CollectAnStackMapDes(ModuleSectionDes& des, uint64_t textOffset,
     des.EraseSec(ElfSecName::LLVM_STACKMAP);
 }
 
-std::vector<uintptr_t> Module::GetFuncEntryPoints()
+void Module::CollectFuncEntryInfo(std::map<uintptr_t, std::string> &addr2name, StubFileInfo &stubInfo,
+                                  uint32_t moduleIndex, const CompilerLog &log)
 {
-    std::vector<uintptr_t> entrys;
     if (irModule_->GetModuleKind() != MODULE_LLVM) {
-        std::cout << "GetFuncEntryPoints is not supported for litecg currently" << std::endl;
-        return entrys;
+        std::cout << "CollectFuncEntryInfo is not supported for litecg currently" << std::endl;
+        return;
     }
-    LLVMModule *llvmModule = static_cast<LLVMModule *>(irModule_);
-    LLVMAssembler *assembler = static_cast<LLVMAssembler *>(assembler_);
+    LLVMModule *llvmModule = static_cast<LLVMModule*>(irModule_);
+    LLVMAssembler *assembler = static_cast<LLVMAssembler*>(assembler_);
     auto engine = assembler->GetEngine();
-
+    auto callSigns = llvmModule->GetCSigns();
+    std::vector<uintptr_t> entrys;
     for (size_t j = 0; j < llvmModule->GetFuncCount(); j++) {
         LLVMValueRef func = llvmModule->GetFunction(j);
         ASSERT(func != nullptr);
         uintptr_t entry = reinterpret_cast<uintptr_t>(LLVMGetPointerToGlobal(engine, func));
         entrys.push_back(entry);
     }
-    return entrys;
-}
-
-void Module::CollectFuncEntryInfo(const std::vector<uintptr_t>& entrys, std::map<uintptr_t, std::string> &addr2name,
-                                  StubFileInfo &stubInfo, uint32_t moduleIndex, const CompilerLog &log)
-{
-    LLVMModule *llvmModule = static_cast<LLVMModule*>(irModule_);
-    LLVMAssembler *assembler = static_cast<LLVMAssembler*>(assembler_);
     auto codeBuff = assembler->GetSectionAddr(ElfSecName::TEXT);
-    auto callSigns = llvmModule->GetCSigns();
-    const size_t funcCount = entrys.size();
+    const size_t funcCount = llvmModule->GetFuncCount();
     funcCount_ = funcCount;
     startIndex_ = stubInfo.GetEntrySize();
-
     for (size_t j = 0; j < funcCount; j++) {
         auto cs = callSigns[j];
         LLVMValueRef func = llvmModule->GetFunction(j);
@@ -367,31 +358,8 @@ void StubFileGenerator::CollectAsmStubCodeInfo(std::map<uintptr_t, std::string> 
 void StubFileGenerator::CollectCodeInfo()
 {
     std::map<uintptr_t, std::string> stubAddr2Name;
-    std::vector<std::vector<uintptr_t>> entryPoints(modulePackage_.size());
-
-    if (!concurrentCompile_) {
-        for (size_t i = 0; i < modulePackage_.size(); ++i) {
-            entryPoints[i] = modulePackage_[i].GetFuncEntryPoints();
-        }
-    } else if (!modulePackage_.empty()) {
-        // For first module, run it in current thread.
-        // For others, run them in child threads and wait for finish.
-        std::vector<std::thread> threads;
-        for (size_t i = 1; i < modulePackage_.size(); ++i) {
-            threads.emplace_back([&, i]() {
-                entryPoints[i] = modulePackage_[i].GetFuncEntryPoints();
-            });
-        }
-        entryPoints[0] = modulePackage_[0].GetFuncEntryPoints();
-        for (auto& t : threads) {
-            if (t.joinable()) {
-                t.join();
-            }
-        }
-    }
-
-    for (size_t i = 0; i < modulePackage_.size(); ++i) {
-        modulePackage_[i].CollectFuncEntryInfo(entryPoints[i], stubAddr2Name, stubInfo_, i, GetLog());
+    for (size_t i = 0; i < modulePackage_.size(); i++) {
+        modulePackage_[i].CollectFuncEntryInfo(stubAddr2Name, stubInfo_, i, GetLog());
         ModuleSectionDes des;
         modulePackage_[i].CollectModuleSectionDes(des);
         stubInfo_.AddModuleDes(des);
@@ -517,31 +485,6 @@ Module* StubFileGenerator::AddModule(NativeAreaAllocator *allocator, const std::
     LLVMAssembler* ass = new LLVMAssembler(m, jitCodeSpace_, option);
     modulePackage_.emplace_back(Module(m, ass));
     return &modulePackage_.back();
-}
-
-void StubFileGenerator::RunLLVMAssembler()
-{
-    if (!concurrentCompile_) {
-        for (auto &m: modulePackage_) {
-            m.RunAssembler(*(this->log_), false);
-        }
-    } else if (!modulePackage_.empty()) {
-        // For first module, run it in current thread.
-        // For others, run them in child threads and wait for finish.
-        std::vector<std::thread> threads;
-        for (size_t i = 1; i < modulePackage_.size(); ++i) {
-            const CompilerLog &log = *(this->log_);
-            threads.emplace_back([&, i] {
-                modulePackage_[i].RunAssembler(log, false);
-            });
-        }
-        modulePackage_[0].RunAssembler(*(this->log_), false);
-        for (auto& t : threads) {
-            if (t.joinable()) {
-                t.join();
-            }
-        }
-    }
 }
 
 void StubFileGenerator::RunAsmAssembler()
