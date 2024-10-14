@@ -14,12 +14,6 @@
  */
 #include "ecmascript/stackmap/llvm/llvm_stackmap_parser.h"
 
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/compiler/assembler/assembler.h"
-#include "ecmascript/frames.h"
-#include "ecmascript/mem/slots.h"
-#include "ecmascript/mem/visitor.h"
-
 using namespace panda::ecmascript;
 
 namespace panda::ecmascript::kungfu {

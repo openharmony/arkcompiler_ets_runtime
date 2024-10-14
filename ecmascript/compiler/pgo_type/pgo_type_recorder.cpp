@@ -15,7 +15,6 @@
 
 #include "ecmascript/compiler/pgo_type/pgo_type_recorder.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
 namespace panda::ecmascript::kungfu {
 using PGOType = pgo::PGOType;

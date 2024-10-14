@@ -16,11 +16,8 @@
 #include "ecmascript/js_set_iterator.h"
 
 #include "ecmascript/builtins/builtins_errors.h"
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_set.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

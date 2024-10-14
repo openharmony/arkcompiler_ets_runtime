@@ -15,7 +15,6 @@
 
 #include <iomanip>
 
-#include "ecmascript/ecma_macros.h"
 #include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript {

@@ -16,12 +16,7 @@
 #include "ecmascript/regexp/regexp_parser.h"
 
 #include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/regexp/regexp_opcode.h"
 #include "libpandabase/utils/utils.h"
-#include "securec.h"
-#include "unicode/uchar.h"
-#include "unicode/usetiter.h"
 #define _NO_DEBUG_
 
 namespace panda::ecmascript {

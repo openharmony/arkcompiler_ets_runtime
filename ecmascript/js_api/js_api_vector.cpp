@@ -17,13 +17,7 @@
 
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_api/js_api_vector_iterator.h"
-#include "ecmascript/js_handle.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 static const uint32_t MAX_VALUE = 0x7fffffff;

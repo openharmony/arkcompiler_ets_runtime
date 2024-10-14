@@ -14,7 +14,6 @@
  */
 #include "ecmascript/compiler/aot_file/binary_buffer_parser.h"
 #include "ecmascript/compiler/compiler_log.h"
-#include "securec.h"
 
 namespace panda::ecmascript {
 void BinaryBufferParser::ParseBuffer(void *dst, uint32_t count)

@@ -15,14 +15,6 @@
 
 #include "ecmascript/ic/ic_compare_op.h"
 
-#include "ecmascript/accessor_data.h"
-#include "ecmascript/base/error_helper.h"
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/ecma_runtime_call_info.h"
-#include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/tagged_object-inl.h"
 #include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript {

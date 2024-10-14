@@ -16,9 +16,6 @@
 #include "ecmascript/ecma_string-inl.h"
 
 #include "ecmascript/ecma_string_table.h"
-#include "ecmascript/js_symbol.h"
-#include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
 

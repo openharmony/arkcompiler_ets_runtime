@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/compiler/aot_file/an_file_data_manager.h"
-#include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
 #include "ecmascript/js_file_path.h"
 #include "ecmascript/platform/file.h"
 

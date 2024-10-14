@@ -15,18 +15,7 @@
 
 #include "ecmascript/mem/parallel_evacuator-inl.h"
 
-#include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/mem/barriers-inl.h"
-#include "ecmascript/mem/clock_scope.h"
-#include "ecmascript/mem/concurrent_sweeper.h"
-#include "ecmascript/mem/gc_bitset.h"
-#include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/mem/mem.h"
-#include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/tlab_allocator-inl.h"
-#include "ecmascript/mem/visitor.h"
-#include "ecmascript/mem/gc_stats.h"
-#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript {

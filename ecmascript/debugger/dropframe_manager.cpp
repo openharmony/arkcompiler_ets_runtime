@@ -15,10 +15,6 @@
 
 #include "ecmascript/debugger/dropframe_manager.h"
 
-#include "ecmascript/frames.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/global_handle_collection.h"
-#include "ecmascript/interpreter/frame_handler.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/jobs/micro_job_queue.h"
 

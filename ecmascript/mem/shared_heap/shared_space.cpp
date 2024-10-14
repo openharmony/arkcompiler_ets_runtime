@@ -16,9 +16,6 @@
 #include "ecmascript/mem/shared_heap/shared_space.h"
 
 #include "ecmascript/js_hclass-inl.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/mem/allocator-inl.h"
-#include "ecmascript/mem/free_object_set.h"
 #include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"

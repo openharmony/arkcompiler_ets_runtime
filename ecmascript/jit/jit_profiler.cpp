@@ -18,29 +18,10 @@
 #include <cstdint>
 #include <memory>
 
-#include "ecmascript/compiler/codegen/maple/maple_util/include/profile_type.h"
 #include "ecmascript/compiler/jit_compilation_env.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
-#include "ecmascript/elements.h"
 #include "ecmascript/enum_conversion.h"
-#include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/ic/profile_type_info.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/patch/patch_loader.h"
-#include "ecmascript/pgo_profiler/pgo_context.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
-#include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
-#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
-#include "ecmascript/pgo_profiler/types/pgo_type_generator.h"
-#include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "ecmascript/module/js_module_source_text.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
-#include "macros.h"
 
 namespace panda::ecmascript {
 using namespace pgo;

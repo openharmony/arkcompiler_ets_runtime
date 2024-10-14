@@ -16,7 +16,6 @@
 #include "ecmascript/mem/mem_controller.h"
 
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/parallel_evacuator.h"
 
 namespace panda::ecmascript {

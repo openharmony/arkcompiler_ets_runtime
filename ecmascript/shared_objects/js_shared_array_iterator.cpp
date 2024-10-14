@@ -16,15 +16,8 @@
 #include "ecmascript/shared_objects/js_shared_array_iterator.h"
 
 #include "ecmascript/base/typed_array_helper-inl.h"
-#include "ecmascript/base/typed_array_helper.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
-#include "ecmascript/shared_objects/js_shared_typed_array.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

@@ -16,10 +16,6 @@
 #include "ecmascript/js_relative_time_format.h"
 #include "ecmascript/object_factory-inl.h"
 
-#include "unicode/decimfmt.h"
-#include "unicode/numfmt.h"
-#include "unicode/unum.h"
-
 namespace panda::ecmascript {
 // 14.1.1 InitializeRelativeTimeFormat ( relativeTimeFormat, locales, options )
 JSHandle<JSRelativeTimeFormat> JSRelativeTimeFormat::InitializeRelativeTimeFormat(

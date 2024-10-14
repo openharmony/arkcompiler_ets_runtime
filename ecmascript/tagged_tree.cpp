@@ -15,9 +15,6 @@
 
 #include "ecmascript/tagged_tree.h"
 
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/object_factory.h"
-
 namespace panda::ecmascript {
 template<typename Derived>
 JSHandle<Derived> TaggedTree<Derived>::Create(const JSThread *thread, int numberOfElements)

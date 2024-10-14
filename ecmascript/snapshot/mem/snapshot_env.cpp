@@ -15,7 +15,6 @@
 
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 
 namespace panda::ecmascript {

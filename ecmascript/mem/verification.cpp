@@ -15,12 +15,7 @@
 
 #include "ecmascript/mem/verification.h"
 
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/mem/concurrent_sweeper.h"
-#include "ecmascript/mem/heap-inl.h"
 #include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
-#include "ecmascript/mem/slots.h"
-#include "ecmascript/mem/visitor.h"
 #include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {

@@ -16,7 +16,6 @@
 #include "ecmascript/jspandafile/accessor/module_data_accessor.h"
 #include "ecmascript/global_env_constants-inl.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/shared_objects/js_shared_array.h"
 
 namespace panda::ecmascript {

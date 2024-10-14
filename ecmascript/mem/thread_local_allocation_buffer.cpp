@@ -12,8 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "ecmascript/free_object.h"
 #include "ecmascript/mem/thread_local_allocation_buffer.h"
 
 namespace panda::ecmascript {

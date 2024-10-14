@@ -14,13 +14,7 @@
  */
 
 #include "ecmascript/pgo_profiler/ap_file/pgo_method_type_set.h"
-#include "ecmascript/base/bit_helper.h"
-#include "ecmascript/common.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/ap_file/pgo_file_info.h"
-#include "ecmascript/pgo_profiler/pgo_context.h"
-#include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "ecmascript/pgo_profiler/types/pgo_profiler_type.h"
 
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;

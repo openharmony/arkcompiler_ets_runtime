@@ -15,18 +15,10 @@
 
 #include "ecmascript/jspandafile/literal_data_extractor.h"
 
-#include "ecmascript/base/string_helper.h"
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/patch/quick_fix_helper.h"
-#include "ecmascript/patch/quick_fix_manager.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 using LiteralTag = panda_file::LiteralTag;

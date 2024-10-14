@@ -16,17 +16,6 @@
 #include "ecmascript/ecma_string_table.h"
 
 #include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/heap.h"
-#include "ecmascript/mem/space.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/platform/mutex.h"
-#include "ecmascript/runtime.h"
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
 

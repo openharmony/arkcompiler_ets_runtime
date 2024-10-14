@@ -15,18 +15,8 @@
 
 #include "ecmascript/base/error_helper.h"
 #include "ecmascript/base/builtins_base.h"
-#include "ecmascript/base/error_type.h"
-#include "ecmascript/base/number_helper.h"
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/frame_handler.h"
-#include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript::base {
 JSTaggedValue ErrorHelper::ErrorCommonToString(EcmaRuntimeCallInfo *argv, const ErrorType &errorType)

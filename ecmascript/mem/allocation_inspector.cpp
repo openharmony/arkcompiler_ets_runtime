@@ -16,8 +16,6 @@
 #include "allocation_inspector.h"
 
 #include "ecmascript/dfx/hprof/heap_sampling.h"
-#include "ecmascript/mem/assert_scope.h"
-#include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {
 void AllocationInspector::Step([[maybe_unused]] Address object, [[maybe_unused]] size_t size)

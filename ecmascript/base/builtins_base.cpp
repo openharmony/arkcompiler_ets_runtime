@@ -14,7 +14,6 @@
  */
 
 #include "ecmascript/base/builtins_base.h"
-#include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::base {

@@ -15,19 +15,10 @@
 
 #include "ecmascript/js_async_generator_object.h"
 #include "ecmascript/async_generator_helper.h"
-#include "ecmascript/accessor_data.h"
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/builtins/builtins_promise.h"
-#include "ecmascript/ecma_string.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_promise.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_queue.h"
-#include "ecmascript/generator_helper.h"
 #include "ecmascript/js_iterator.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_function.h"
 
 
 namespace panda::ecmascript {

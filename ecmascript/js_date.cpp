@@ -19,7 +19,6 @@
 #include <regex>
 #include <sys/time.h>
 
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/date_parse.h"
 #include "ecmascript/object_fast_operator-inl.h"
 #include "ecmascript/platform/time.h"

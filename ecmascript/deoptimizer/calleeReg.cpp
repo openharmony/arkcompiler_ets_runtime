@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 #include "ecmascript/deoptimizer/calleeReg.h"
-#include "libpandabase/macros.h"
 #include <iostream>
 
 namespace panda::ecmascript::kungfu {

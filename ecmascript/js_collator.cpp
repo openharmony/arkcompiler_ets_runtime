@@ -17,12 +17,7 @@
 
 #include "ecmascript/intl/locale_helper.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/barriers-inl.h"
-#include "ecmascript/object_factory-inl.h"
 #include "ecmascript/ecma_string-inl.h"
-
-#include "unicode/udata.h"
 
 namespace panda::ecmascript {
 // NOLINTNEXTLINE (readability-identifier-naming, fuchsia-statically-constructed-objects)

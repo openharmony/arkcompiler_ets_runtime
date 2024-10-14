@@ -15,8 +15,6 @@
 
 #include "ecmascript/js_arguments.h"
 
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_array-inl.h"
 

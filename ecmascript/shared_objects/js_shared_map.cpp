@@ -15,9 +15,7 @@
 
 #include "ecmascript/shared_objects/js_shared_map.h"
 
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/shared_objects/concurrent_api_scope.h"
 
 namespace panda::ecmascript {
