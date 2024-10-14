@@ -30,7 +30,6 @@
         ],
         "deps": {
             "components": [
-              "ability_base",
               "faultloggerd",
               "init",
               "hitrace",
