@@ -23,7 +23,7 @@ namespace panda::ecmascript {
         BLOCK_SIZE = 4,
         HASH_SHIFT = 5,
         HASH_MULTIPLY = 31,
-        MIN_SIZE_FOR_UNROLLING = 16,
+        MIN_SIZE_FOR_UNROLLING = 128,
     };
 }  // namespace panda::ecmascript
 #endif  // ECMASCRIPT_PLATFORM_ECMA_STRING_HASH_H
