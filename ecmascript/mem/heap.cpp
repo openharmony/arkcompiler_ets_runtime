@@ -616,6 +616,7 @@ void Heap::Initialize()
     gcListeners_.reserve(16U);
     nativeSizeTriggerGCThreshold_ = config_.GetMaxNativeSizeInc();
     incNativeSizeTriggerGC_ = config_.GetStepNativeSizeInc();
+    nativeSizeOvershoot_ = config_.GetNativeSizeOvershoot();
     idleGCTrigger_ = new IdleGCTrigger(this, sHeap_, thread_);
     asyncClearNativePointerThreshold_ = config_.GetAsyncClearNativePointerThreshold();
 }
