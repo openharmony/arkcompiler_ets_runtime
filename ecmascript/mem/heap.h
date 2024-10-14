@@ -597,6 +597,11 @@ public:
         return sOldSpace_;
     }
 
+    SharedOldSpace *GetCompressSpace() const
+    {
+        return sCompressSpace_;
+    }
+
     SharedNonMovableSpace *GetNonMovableSpace() const
     {
         return sNonMovableSpace_;
@@ -938,6 +943,11 @@ public:
     OldSpace *GetOldSpace() const
     {
         return oldSpace_;
+    }
+
+    OldSpace *GetCompressSpace() const
+    {
+        return compressSpace_;
     }
 
     NonMovableSpace *GetNonMovableSpace() const
