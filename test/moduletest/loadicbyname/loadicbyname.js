@@ -139,3 +139,77 @@ for(let i=0;i<2;i++){
     print(g)
 }
 print("load global ic with accessor success!");
+
+function func1(o, v) {
+  let  res;
+  for (let i = 0; i < 100; i++) {
+      res=o.x;
+      if (res != v) {
+          print("Error");
+      }
+  }
+  return res;
+}
+{
+  let pro = {
+      get x() {
+          return 1;
+      }
+  }
+  let o = {
+      __proto__: pro
+  };
+  o[102500] = 1;
+  o["test"] = "test";
+  print(func1(o, 1));
+  Object.defineProperty(o, "x", { value: 2 });
+  print("change")
+  print(func1(o, 2));
+}
+
+{
+  let pro = {
+      get x() {
+          return 1;
+      }
+  }
+  let pro2 = {
+      __proto__: pro
+  };
+  let o = {
+      __proto__: pro2
+  };
+  pro2[102500] = 1;
+  pro2["test"] = "test";
+  print(func1(o, 1));
+  Object.defineProperty(pro2, "x", { value: 2 });
+  print("change")
+  func1(o, 2);
+}
+
+{
+  function getNumber(o) {
+      let res;
+      for (let i = 0; i < 100; i++) {
+        res=o.Number;
+      }
+      return res;
+  }
+  let pro = globalThis
+  let pro2 = {
+      __proto__: pro
+  };
+  let o = {
+      __proto__: pro2
+  };
+  pro2[102500] = 1;
+  pro2["test"] = "test";
+  for (let i = 0; i < 2; i++) {
+      print(getNumber(o))
+  }
+  Object.defineProperty(o, "Number", { value: 2 });
+  print("change")
+  for (let i = 0; i < 2; i++) {
+      print(getNumber(o))
+  }
+}
