@@ -115,7 +115,7 @@ ohos_source_set("libark_llvmcodegen_set") {
   stack_protector_ret = false
   public_configs = [
     "$js_root:include_llvm",
-    "$js_root:ark_jsruntime_public_config",
+    "$js_root:ark_jsruntime_common_config",
     ":libark_llvmcodegen_set_config",
   ]
   sources = [ "llvm_interface.cpp" ]
