@@ -593,9 +593,8 @@ size_t FrameStateBuilder::GetNumOfStatePreds(const BytecodeRegion &bb)
 }
 
 GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
-    [[maybe_unused]]GateRef stateMerge, GateRef currentValue, GateRef nextValue, bool isLoopBack)
+    GateRef currentValue, GateRef nextValue, bool isLoopBack, bool changedInLoop)
 {
-    ASSERT(IsGateNotEmpty(stateMerge));
     ASSERT(IsGateNotEmpty(currentValue));
     auto mergedContext = GetMergedBbContext(bb.id);
     GateRef result = currentValue;
@@ -620,8 +619,9 @@ GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
         }
         result = nextValue;
     } else if (currentValue != nextValue) {
+        bool needMergeValues = IsGateNotEmpty(mergedContext->mergeState_);
         // build value selector for merge.
-        if (IsGateNotEmpty(mergedContext->mergeState_)) {
+        if (needMergeValues) {
             size_t numOfIns = acc_.GetNumIns(mergedContext->mergeState_);
             auto inList = std::vector<GateRef>(numOfIns + 1, Circuit::NullGate());  // 1: state
             auto phi = circuit_->NewGate(
@@ -637,7 +637,10 @@ GateRef FrameStateBuilder::MergeValue(const BytecodeRegion &bb,
             mergeValueSelector = result = phi;
         }
         // build value selector for loop begin.
-        if (IsGateNotEmpty(mergedContext->loopBackState_)) {
+        // If the register value of the corresponding bit is changed in the loop or
+        // there is a state that needs to be merged (e.g.Multiple values or branches need to be merged into a phi node)
+        // need to create or update the phi node.
+        if (IsGateNotEmpty(mergedContext->loopBackState_) && (changedInLoop || needMergeValues)) {
             size_t numOfIns = acc_.GetNumIns(mergedContext->loopBackState_);
             auto inList = std::vector<GateRef>(numOfIns + 1, Circuit::NullGate());  // 1: state
             auto phi = circuit_->NewGate(
@@ -685,9 +688,8 @@ MergeStateDependInfo FrameStateBuilder::GetCorrespondingState(const BytecodeRegi
 void FrameStateBuilder::MergeAssignment(const BytecodeRegion &bb, const BytecodeRegion &bbNext)
 {
     auto mergedContext = GetMergedBbContext(bbNext.id);
-    auto mergeInfo = GetCorrespondingState(bb, bbNext);
-    auto stateMerge = mergeInfo.state;
-    ASSERT(acc_.IsCFGMerge(stateMerge));
+    [[maybe_unused]] auto mergeInfo = GetCorrespondingState(bb, bbNext);
+    ASSERT(acc_.IsCFGMerge(mergeInfo.state));
     auto liveout = GetFrameLiveoutBefore(bbNext.id);
     auto *loopAssignment = GetLoopAssignment(bbNext);
     for (size_t i = 0; i < numVregs_; i++) {
@@ -707,12 +709,8 @@ void FrameStateBuilder::MergeAssignment(const BytecodeRegion &bb, const Bytecode
                 ASSERT(!IsGateNotEmpty(next) || current == next);
             }
 #endif
-            if (loopAssignment != nullptr && !loopAssignment->TestBit(i) &&
-                !IsGateNotEmpty(mergedContext->mergeState_)) {
-                value = current;
-            } else {
-                value = MergeValue(bbNext, stateMerge, current, next, bbNext.IsLoopBack(bb));
-            }
+            bool changedInLoop = loopAssignment != nullptr && loopAssignment->TestBit(i);
+            value = MergeValue(bbNext, current, next, bbNext.IsLoopBack(bb), changedInLoop);
             mergedContext->SetValuesAt(i, value);
         }
     }
