@@ -1046,7 +1046,6 @@ config("include_llvm") {
       }
     }
   }
-  cflags_cc = [ "-DARK_GC_SUPPORT" ]
 }
 
 if (is_mingw) {
@@ -1108,7 +1107,8 @@ libark_jsruntime_common_set("libark_jsruntime_set") {
 }
 
 libark_jsruntime_common_set("libark_jsruntime_arm_set") {
-  if (enable_sanitize) {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
       ubsan = true
     }
@@ -1119,7 +1119,8 @@ libark_jsruntime_intl_common_set("libark_js_intl_set") {
 }
 
 libark_jsruntime_intl_common_set("libark_js_intl_arm_set") {
-  if (enable_sanitize) {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
       ubsan = true
     }
@@ -1222,7 +1223,8 @@ ohos_source_set("libark_jsruntime_test_set") {
 
 ohos_source_set("libark_jsruntime_static") {
   stack_protector_ret = false
-  if (enable_sanitize) {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
       ubsan = true
     }
@@ -1265,7 +1267,8 @@ ohos_source_set("libark_jsruntime_static") {
 
 ohos_shared_library("libark_jsruntime") {
   stack_protector_ret = false
-  if (enable_sanitize) {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
       ubsan = true
     }

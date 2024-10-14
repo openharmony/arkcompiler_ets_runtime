@@ -39,6 +39,11 @@
 #include "llvm-c/DisassemblerTypes.h"
 #include "llvm-c/Target.h"
 #include "llvm-c/Transforms/PassManagerBuilder.h"
+#if defined(PANDA_TARGET_MACOS)
+#include "llvm/CodeGen/BuiltinGCs.h"
+#else
+#include "llvm/IR/BuiltinGCs.h"
+#endif
 #include "llvm/DebugInfo/DWARF/DWARFContext.h"
 #include "llvm/DebugInfo/DIContext.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
@@ -46,7 +51,7 @@
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Verifier.h"
-#include "lib/llvm_interface.h"
+#include "llvm/Transforms/Scalar.h"
 
 #include "ecmascript/compiler/aot_file/aot_file_info.h"
 #include "ecmascript/compiler/call_signature.h"
@@ -429,7 +434,7 @@ void LLVMAssembler::BuildAndRunPasses()
 
     // add pass into pass managers
     LLVMPassManagerBuilderPopulateFunctionPassManager(pmBuilder, funcPass);
-    llvm::unwrap(modPass)->add(LLVMCreateRewriteStatepointsForGCLegacyPass()); // rs4gc pass added
+    llvm::unwrap(modPass)->add(llvm::createRewriteStatepointsForGCLegacyPass()); // rs4gc pass added
     LLVMPassManagerBuilderPopulateModulePassManager(pmBuilder, modPass1);
 
     LLVMRunPassManager(modPass, module_);
@@ -458,7 +463,7 @@ void LLVMAssembler::BuildAndRunPassesFastMode()
 
     // add pass into pass managers
     LLVMPassManagerBuilderPopulateFunctionPassManager(pmBuilder, funcPass);
-    llvm::unwrap(modPass)->add(LLVMCreateRewriteStatepointsForGCLegacyPass()); // rs4gc pass added
+    llvm::unwrap(modPass)->add(llvm::createRewriteStatepointsForGCLegacyPass()); // rs4gc pass added
 
     LLVMInitializeFunctionPassManager(funcPass);
     for (LLVMValueRef fn = LLVMGetFirstFunction(module_); fn; fn = LLVMGetNextFunction(fn)) {
@@ -553,7 +558,7 @@ void LLVMAssembler::Initialize(LOptions option)
         UNREACHABLE();
     }
 
-    LLVMLinkAllBuiltinGCs();
+    llvm::linkAllBuiltinGCs();
     LLVMInitializeMCJITCompilerOptions(&options_, sizeof(options_));
     options_.OptLevel = option.optLevel;
     // NOTE: Just ensure that this field still exists for PIC option
