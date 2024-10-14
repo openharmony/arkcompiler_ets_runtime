@@ -679,8 +679,9 @@ GateRef TypedNativeInlineLowering::BuildDoubleAbs(GateRef value)
 GateRef TypedNativeInlineLowering::BuildTNumberAbs(GateRef param)
 {
     ASSERT(!acc_.GetGateType(param).IsNJSValueType());
+    Label entry(&builder_);
+    builder_.SubCfgEntry(&entry);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.HoleConstant());
-
     Label exit(&builder_);
     Label isInt(&builder_);
     Label notInt(&builder_);
@@ -713,7 +714,9 @@ GateRef TypedNativeInlineLowering::BuildTNumberAbs(GateRef param)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    return *result;
+    GateRef res = *result;
+    builder_.SubCfgExit();
+    return res;
 }
 
 void TypedNativeInlineLowering::LowerAbs(GateRef gate)
