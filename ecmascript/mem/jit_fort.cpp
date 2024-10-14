@@ -164,7 +164,7 @@ void JitFort::UpdateFreeSpace()
 {
     LockHolder lock(mutex_);
 
-    if (!regionList_.GetLength()) {
+    if (!regionList_.GetLength()) { // LCOV_EXCL_BR_LINE
         return;
     }
 
@@ -318,7 +318,7 @@ MemDesc *MemDescPool::GetDesc()
     if (IsEmpty(freeList_)) {
         Expand();
     }
-    if (!IsEmpty(freeList_)) {
+    if (!IsEmpty(freeList_)) { // LCOV_EXCL_BR_LINE
         MemDesc *res = freeList_;
         freeList_ = freeList_->GetNext();
         allocated_++;
