@@ -3665,13 +3665,6 @@ inline GateRef StubBuilder::GetArrayBufferData(GateRef buffer)
     return Load(VariableType::JS_ANY(), buffer, offset);
 }
 
-inline GateRef StubBuilder::GetLastLeaveFrame(GateRef glue)
-{
-    bool isArch32 = GetEnvironment()->Is32Bit();
-    GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(isArch32));
-    return Load(VariableType::NATIVE_POINTER(), glue, spOffset);
-}
-
 inline GateRef StubBuilder::GetPropertiesCache(GateRef glue)
 {
     GateRef currentContextOffset = IntPtr(JSThread::GlueData::GetCurrentContextOffset(env_->Is32Bit()));
@@ -3712,6 +3705,12 @@ inline GateRef StubBuilder::HashFromHclassAndKey(GateRef glue, GateRef cls, Gate
     GateRef clsHash = Int32LSR(ChangeIntPtrToInt32(TaggedCastToIntPtr(cls)), Int32(3));  // skip 8bytes
     GateRef keyHash = GetKeyHashCode(glue, key, hir);
     return Int32And(Int32Xor(clsHash, keyHash), Int32(PropertiesCache::CACHE_LENGTH_MASK));
+}
+inline GateRef StubBuilder::GetLastLeaveFrame(GateRef glue)
+{
+    bool isArch32 = GetEnvironment()->Is32Bit();
+    GateRef spOffset = IntPtr(JSThread::GlueData::GetLeaveFrameOffset(isArch32));
+    return Load(VariableType::NATIVE_POINTER(), glue, spOffset);
 }
 
 inline GateRef StubBuilder::OrdinaryNewJSObjectCreate(GateRef glue, GateRef proto)

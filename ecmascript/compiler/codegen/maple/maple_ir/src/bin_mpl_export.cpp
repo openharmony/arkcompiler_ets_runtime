@@ -885,10 +885,10 @@ void BinaryMplExport::WriteSeField()
                 const std::string &funcStr = GlobalTables::GetStrTable().GetStringFromStrIdx(func2SE.first);
                 auto *funcSymbol = GlobalTables::GetGsymTable().GetSymbolFromStrIdx(
                     GlobalTables::GetStrTable().GetStrIdxFromName(funcStr));
-                DEBUG_ASSERT(funcSymbol != nullptr, "nullptr check");
                 MIRFunction *func = (funcSymbol != nullptr)
                                         ? GetMIRModule().GetMIRBuilder()->GetFunctionFromSymbol(*funcSymbol)
                                         : nullptr;
+                DEBUG_ASSERT(func != nullptr, "nullptr check");
                 OutputType(func->GetReturnTyIdx());
             }
             ++size;

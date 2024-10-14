@@ -955,7 +955,6 @@ public:
     inline GateRef GetAccessorHasChanged(GateRef obj);
     inline GateRef ComputeTaggedTypedArraySize(GateRef elementSize, GateRef length);
     GateRef ChangeTaggedPointerToInt64(GateRef x);
-    GateRef GetLastLeaveFrame(GateRef glue);
     inline GateRef GetPropertiesCache(GateRef glue);
     GateRef GetIndexFromPropertiesCache(GateRef glue, GateRef cache, GateRef cls, GateRef key,
                                         GateRef hir = Circuit::NullGate());
@@ -969,6 +968,7 @@ public:
     inline void StoreWithoutBarrier(VariableType type, GateRef base, GateRef offset, GateRef value);
     GateRef BinarySearch(GateRef glue, GateRef layoutInfo, GateRef key, GateRef propsNum,
                          GateRef hir = Circuit::NullGate());
+    GateRef GetLastLeaveFrame(GateRef glue);
     void UpdateProfileTypeInfoCellToFunction(GateRef glue, GateRef function,
                                              GateRef profileTypeInfo, GateRef slotId);
     GateRef GetArgumentsElements(GateRef glue, GateRef argvTaggedArray, GateRef argv);

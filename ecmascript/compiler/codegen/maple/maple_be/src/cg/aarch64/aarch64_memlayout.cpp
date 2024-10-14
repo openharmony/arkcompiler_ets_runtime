@@ -86,10 +86,10 @@ uint32 AArch64MemLayout::ComputeStackSpaceRequirementForCall(StmtNode &stmt, int
                 DEBUG_ASSERT(ty->GetKind() == kTypePointer, "expect pointer");
                 ty = GlobalTables::GetTypeTable().GetTypeFromTyIdx(static_cast<MIRPtrType *>(ty)->GetPointedTyIdx());
                 if (iread->GetFieldID() != 0) {
-                    CHECK_NULL_FATAL(ty);
                     DEBUG_ASSERT(ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeClass ||
                                      ty->GetKind() == kTypeUnion,
                                  "expect struct or class");
+                    CHECK_NULL_FATAL(ty);
                     if (ty->GetKind() == kTypeStruct || ty->GetKind() == kTypeUnion) {
                         ty = static_cast<MIRStructType *>(ty)->GetFieldType(iread->GetFieldID());
                     } else {
