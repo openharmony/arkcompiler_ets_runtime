@@ -108,6 +108,7 @@ void PartialGC::Finish()
     }
     if (heap_->IsConcurrentFullMark()) {
         heap_->GetSweeper()->TryFillSweptRegion();
+        heap_->SetFullMarkRequestedState(false);
     }
 }
 
