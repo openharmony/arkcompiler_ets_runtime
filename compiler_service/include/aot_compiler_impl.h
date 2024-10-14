@@ -26,6 +26,7 @@
 namespace OHOS::ArkCompiler {
 class AotCompilerImpl {
 public:
+    static constexpr int32_t AOT_COMPILE_STOP_LEVEL = 2;
     static AotCompilerImpl &GetInstance();
     /**
      * @brief ecmascript aot_compiler
@@ -45,6 +46,8 @@ public:
 
     void HandleScreenOn();
 
+    void HandleThermalLevelChanged(const int32_t level);
+
 private:
     inline int32_t FindArgsIdxToInteger(const std::unordered_map<std::string, std::string> &argsMap,
                                         const std::string &keyName, int32_t &bundleID);
@@ -58,6 +61,7 @@ private:
     int32_t AOTLocalCodeSign(const std::string &fileName, const std::string &appSignature,
                              std::vector<int16_t> &sigData);
     void InitState(const pid_t childPid);
+    void AddExpandArgs(std::vector<std::string> &argVector);
     void ResetState();
     void PauseAotCompiler();
     void AllowAotCompiler();
@@ -84,6 +88,7 @@ private:
         pid_t childPid = -1;
     } state_;
     std::atomic<bool> allowAotCompiler_ {true};
+    int32_t thermalLevel_ {0};
 };
 } // namespace OHOS::ArkCompiler
 #endif  // OHOS_ARKCOMPILER_AOTCOMPILER_IMPL_H

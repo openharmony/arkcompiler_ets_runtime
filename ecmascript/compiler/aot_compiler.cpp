@@ -33,7 +33,6 @@
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/filesystem.h"
-#include "ecmascript/platform/os.h"
 
 #include "ecmascript/compiler/aot_compiler_stats.h"
 
@@ -92,13 +91,6 @@ int Main(const int argc, const char **argv)
     if (!retOpt) {
         LOG_COMPILER(ERROR) << AotCompilerPreprocessor::GetHelper();
         return ERR_HELP;
-    }
-
-    if (runtimeOptions.WasSetDeviceState()) {
-        bool deviceIsScreenOff = runtimeOptions.GetDeviceState();
-        if (!deviceIsScreenOff) {
-            BindSmallCpuCore();
-        }
     }
 
     bool ret = true;

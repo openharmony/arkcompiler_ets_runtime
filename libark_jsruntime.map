@@ -131,6 +131,7 @@
       panda::ecmascript::BigInt::DoubleToBigInt*;
       panda::ecmascript::BigInt::Int32ToBigInt*;
       panda::ecmascript::BindSmallCpuCore*;
+      panda::ecmascript::BindMidCpuCore*;
       panda::ecmascript::SetSecurityLabel*;
       panda::ecmascript::ClassHelper::MatchFieldType*;
       panda::ecmascript::ConvertToStdString*;
