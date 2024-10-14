@@ -61,7 +61,6 @@ public:
     };
 
     static constexpr uint32_t RECORD_ID_FOR_BUNDLE = 1;
-    static constexpr uint32_t HUGE_ABC_ID = 500;
 
     static PUBLIC_API const ProfileType PROFILE_TYPE_NONE;
 
@@ -336,9 +335,6 @@ public:
 
     void UpdateAbcId(ApEntityId abcId)
     {
-        if (abcId > HUGE_ABC_ID) {
-            LOG_ECMA(FATAL) << "huge abcId: " << abcId;  // only for debug purpose, do not merge to release version
-        }
         type_ = AbcIdBits::Update(type_, abcId);
     }
 
