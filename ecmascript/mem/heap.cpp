@@ -786,6 +786,7 @@ void Heap::Initialize()
     gcListeners_.reserve(16U);
     nativeSizeTriggerGCThreshold_ = config_.GetMaxNativeSizeInc();
     incNativeSizeTriggerGC_ = config_.GetStepNativeSizeInc();
+    nativeSizeOvershoot_ = config_.GetNativeSizeOvershoot();
     asyncClearNativePointerThreshold_ = config_.GetAsyncClearNativePointerThreshold();
     idleGCTrigger_ = new IdleGCTrigger(this, sHeap_, thread_, GetEcmaVM()->GetJSOptions().EnableOptionalLog());
 }

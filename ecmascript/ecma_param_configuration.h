@@ -98,6 +98,7 @@ public:
             sharedHeapLimitGrowingStep_ = 20_MB;
             incObjSizeThresholdInSensitive_ = 40_MB;
             stepNativeSizeInc_ = 256_MB;
+            nativeSizeOvershoot_ = 80_MB;
             maxNativeSizeInc_ = 768_MB;
         } else if (maxHeapSize_ < HIGH_MEMORY) { // 128_MB ~ 256_MB
             minSemiSpaceSize_ = 2_MB;
@@ -121,6 +122,7 @@ public:
             sharedHeapLimitGrowingStep_ = 40_MB;
             incObjSizeThresholdInSensitive_ = 40_MB;
             stepNativeSizeInc_ = 256_MB;
+            nativeSizeOvershoot_ = 80_MB;
             maxNativeSizeInc_ = 768_MB;
         }  else { // 256_MB ~ 384_MB
             minSemiSpaceSize_ = 2_MB;
@@ -144,6 +146,7 @@ public:
             sharedHeapLimitGrowingStep_ = 80_MB;
             incObjSizeThresholdInSensitive_ = 80_MB;
             stepNativeSizeInc_ = 300_MB;
+            nativeSizeOvershoot_ = 100_MB;
             asyncClearNativePointerThreshold_ = 500_MB;
             maxNativeSizeInc_ = 1_GB;
         }
@@ -249,6 +252,11 @@ public:
         return stepNativeSizeInc_;
     }
 
+    size_t GetNativeSizeOvershoot() const
+    {
+        return nativeSizeOvershoot_;
+    }
+
     size_t GetAsyncClearNativePointerThreshold() const
     {
         return asyncClearNativePointerThreshold_;
@@ -312,6 +320,7 @@ private:
     size_t sharedHeapLimitGrowingStep_ {0};
     size_t incObjSizeThresholdInSensitive_ {0};
     size_t stepNativeSizeInc_ {0};
+    size_t nativeSizeOvershoot_ {0};
     size_t asyncClearNativePointerThreshold_ {0};
     size_t maxNativeSizeInc_ {0};
     size_t maxJSSerializerSize_ {0};
