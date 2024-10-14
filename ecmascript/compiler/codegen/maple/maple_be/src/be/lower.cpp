@@ -159,12 +159,7 @@ void CGLowerer::LowerCallStmt(StmtNode &stmt, StmtNode *&nextStmt, BlockNode &ne
     }
 
     if (newStmt->GetOpCode() == OP_call || newStmt->GetOpCode() == OP_icall || newStmt->GetOpCode() == OP_icallproto) {
-        auto &callNode = static_cast<NaryStmtNode&>(*newStmt);
-        for (size_t i = 0; i < callNode.GetNopndSize(); ++i) {
-            BaseNode *newOpnd = LowerExpr(callNode, *callNode.GetNopndAt(i), newBlk);
-            callNode.SetOpnd(newOpnd, i);
-        }
-        newStmt = &callNode;
+        newStmt = LowerCall(static_cast<CallNode &>(*newStmt), nextStmt, newBlk, retty, uselvar);
     }
     newStmt->SetSrcPos(stmt.GetSrcPos());
     newBlk.AddStatement(newStmt);
@@ -524,6 +519,43 @@ BlockNode *CGLowerer::LowerBlock(BlockNode &block)
         newBlk->AddStatement(node);
     }
     return newBlk;
+}
+
+StmtNode *CGLowerer::LowerCall(CallNode &callNode, StmtNode *&nextStmt, BlockNode &newBlk, MIRType *retTy, bool uselvar)
+{
+    /*
+     * nextStmt in-out
+     * call $foo(constval u32 128)
+     * dassign %jlt (dread agg %%retval)
+     */
+
+    for (size_t i = 0; i < callNode.GetNopndSize(); ++i) {
+        BaseNode *newOpnd = LowerExpr(callNode, *callNode.GetNopndAt(i), newBlk);
+        callNode.SetOpnd(newOpnd, i);
+    }
+
+    DassignNode *dassignNode = nullptr;
+    if ((nextStmt != nullptr) && (nextStmt->GetOpCode() == OP_dassign)) {
+        dassignNode = static_cast<DassignNode *>(nextStmt);
+    }
+
+    /* if nextStmt is not a dassign stmt, return */
+    if (dassignNode == nullptr) {
+        return &callNode;
+    }
+
+    if (!uselvar && retTy && beCommon.GetTypeSize(retTy->GetTypeIndex().GetIdx()) <= k16ByteSize) {
+        /* return structure fitting in one or two regs. */
+        return &callNode;
+    }
+
+    if (callNode.op == OP_icall || callNode.op == OP_icallproto) {
+        if (retTy == nullptr) {
+            return &callNode;
+        }
+    }
+
+    return &callNode;
 }
 
 void CGLowerer::LowerTypePtr(BaseNode &node) const

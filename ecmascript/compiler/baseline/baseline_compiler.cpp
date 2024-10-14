@@ -16,7 +16,6 @@
 #include "ecmascript/compiler/baseline/baseline_compiler.h"
 #include "ecmascript/compiler/bytecode_info_collector.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/compiler/jit_compiler.h"
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"
 #include "ecmascript/compiler/jit_signcode.h"
@@ -107,7 +106,7 @@ void BaselineCompiler::SetPfHeaderAddr(const JSPandaFile *jsPandaFile)
     pfHeaderAddr = pandaFile->GetBase();
 }
 
-static ARK_INLINE void SetupCodeSigner([[maybe_unused]] EcmaVM *vm)
+static void SetupCodeSigner([[maybe_unused]] EcmaVM *vm)
 {
 #ifdef JIT_ENABLE_CODE_SIGN
     bool enableCodeSign = !vm->GetJSOptions().GetDisableCodeSign();
@@ -177,7 +176,7 @@ void BaselineCompiler::Compile(const JSPandaFile *jsPandaFile, const MethodLiter
     }
 }
 
-bool BaselineCompiler::CollectMemoryCodeInfos(MachineCodeDesc &codeDesc)
+void BaselineCompiler::CollectMemoryCodeInfos(MachineCodeDesc &codeDesc)
 {
     codeDesc.codeAddr = reinterpret_cast<uint64_t>(GetBaselineAssembler().GetBuffer());
     codeDesc.codeSize = GetBaselineAssembler().GetBufferSize();
@@ -193,11 +192,6 @@ bool BaselineCompiler::CollectMemoryCodeInfos(MachineCodeDesc &codeDesc)
         codeDesc.codeSigner = reinterpret_cast<uintptr_t>(singleton->GetCodeSigner());
     }
 #endif
-    if (Jit::GetInstance()->IsEnableJitFort() && Jit::GetInstance()->IsEnableAsyncCopyToFort() &&
-        JitCompiler::AllocFromFortAndCopy(*compilationEnv, codeDesc) == false) {
-        return false;
-    }
-    return true;
 }
 
 void BaselineCompiler::GetJumpToOffsets(const uint8_t *start, const uint8_t *end,

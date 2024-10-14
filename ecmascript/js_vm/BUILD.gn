@@ -24,7 +24,8 @@ if (ark_standalone_build) {
 }
 
 ohos_executable("ark_js_vm") {
-  if (enable_sanitize) {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
       ubsan = true
     }

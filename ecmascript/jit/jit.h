@@ -59,11 +59,11 @@ public:
     void SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit);
     bool PUBLIC_API IsEnableFastJit() const;
     bool PUBLIC_API IsEnableBaselineJit() const;
-    bool PUBLIC_API IsEnableJitFort() const;
+    bool IsEnableJitFort() const;
     void SetEnableJitFort(bool isEnableJitFort);
     bool IsDisableCodeSign() const;
     void SetDisableCodeSign(bool isEnableCodeSign);
-    bool PUBLIC_API IsEnableAsyncCopyToFort() const;
+    bool IsEnableAsyncCopyToFort() const;
     void SetEnableAsyncCopyToFort(bool isEnableiAsyncCopyToFort);
     void Initialize();
 

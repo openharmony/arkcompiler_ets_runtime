@@ -320,7 +320,7 @@ public:
     uintptr_t Allocate(size_t objectSize, JSThread *thread, void *desc,
         AllocateEventType allocType = AllocateEventType::NORMAL);
     uintptr_t Allocate(size_t objectSize, JSThread *thread);
-    Region *PUBLIC_API AllocateFort(size_t objectSize, JSThread *thread, void *desc);
+    Region *AllocateFort(size_t objectSize, JSThread *thread, void *desc);
 };
 
 }  // namespace panda::ecmascript

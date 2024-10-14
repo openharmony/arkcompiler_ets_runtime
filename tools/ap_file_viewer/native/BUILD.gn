@@ -20,7 +20,8 @@ ohos_shared_library("profDumpJson") {
 }
 
 ohos_static_library("profDumpJsonStatic") {
-  if (enable_sanitize) {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
       ubsan = true
     }

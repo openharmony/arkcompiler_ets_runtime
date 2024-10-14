@@ -17,6 +17,53 @@ if (defined(timeout)) {
 } else {
   _timeout_ = 1200
 }
+config("include_llvm") {
+  if (compile_llvm_online) {
+    include_dirs = [
+      "//third_party/third_party_llvm-project/build/include",
+      "//third_party/third_party_llvm-project/llvm/include/",
+    ]
+  } else {
+    if (is_mingw) {
+      include_dirs = [
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/llvm/include",
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/build/include",
+      ]
+    } else if (is_mac) {
+      if (host_cpu == "arm64") {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_arm64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_arm64/build/include",
+        ]
+      } else {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_x64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_x64/build/include",
+        ]
+      }
+    } else {
+      if (host_cpu == "arm64" && host_os == "linux") {
+        include_dirs = [
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_linux_aarch64/llvm/include",
+          "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_linux_aarch64/build/include",
+        ]
+      } else {
+        if (current_cpu == "arm64") {
+          include_dirs = [
+            "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/llvm/include",
+            "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/include",
+          ]
+        } else {
+          include_dirs = [
+            "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/llvm/include",
+            "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/include",
+          ]
+        }
+      }
+    }
+  }
+  cflags_cc = [ "-DARK_GC_SUPPORT" ]
+}
 
 config("include_maple") {
   include_dirs = [
@@ -178,7 +225,103 @@ config("libark_jsoptimizer_set_config") {
     cflags_c = [ "-DIS_RELEASE_VERSION" ]
     cflags_cc = [ "-DIS_RELEASE_VERSION" ]
   }
-  libs = []
+
+  if (compile_llvm_online) {
+    lib_dirs = [ "//third_party/third_party_llvm-project/build/lib" ]
+  } else {
+    if (is_mingw) {
+      lib_dirs = [
+        "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_windows/build/lib",
+        "//prebuilts/mingw-w64/ohos/linux-x86_64/clang-mingw/x86_64-w64-mingw32",
+      ]
+    } else if (is_mac) {
+      if (host_cpu == "arm64") {
+        lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_arm64/build/lib" ]
+      } else {
+        lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_darwin_x64/build/lib" ]
+      }
+    } else {
+      if (host_cpu == "arm64" && host_os == "linux") {
+        lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_linux_aarch64/build/lib" ]
+      } else {
+        if (current_cpu == "arm64") {
+          lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/lib" ]
+        } else {
+          lib_dirs = [
+            "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts/build/lib",
+          ]
+        }
+      }
+    }
+  }
+
+  libs = [
+    "LLVMTarget",
+    "LLVMObject",
+    "LLVMMC",
+    "LLVMSupport",
+    "LLVMCore",
+    "LLVMExecutionEngine",
+    "LLVMInterpreter",
+    "LLVMMCJIT",
+    "LLVMExegesis",
+    "LLVMRuntimeDyld",
+    "LLVMInstCombine",
+    "LLVMAnalysis",
+    "LLVMScalarOpts",
+    "LLVMBinaryFormat",
+    "LLVMDebugInfoDWARF",
+    "LLVMRemarks",
+    "LLVMTextAPI",
+    "LLVMScalarOpts",
+    "LLVMTransformUtils",
+    "LLVMBitReader",
+    "LLVMAsmPrinter",
+    "LLVMProfileData",
+    "LLVMBitstreamReader",
+    "LLVMSelectionDAG",
+    "LLVMGlobalISel",
+    "LLVMLTO",
+    "LLVMCFGuard",
+    "LLVMVectorize",
+    "LLVMDemangle",
+    "LLVMipo",
+    "LLVMInstrumentation",
+    "LLVMDebugInfoCodeView",
+    "LLVMAggressiveInstCombine",
+    "LLVMAsmParser",
+    "LLVMMCParser",
+    "LLVMMIRParser",
+    "LLVMMCDisassembler",
+    "LLVMCodeGen",
+    "LLVMTransformUtils",
+    "LLVMIRReader",
+    "LLVMAArch64Utils",
+    "LLVMAArch64CodeGen",
+    "LLVMAArch64Info",
+    "LLVMAArch64Desc",
+    "LLVMAArch64Disassembler",
+    "LLVMAArch64AsmParser",
+    "LLVMFrontendOpenMP",
+    "LLVMBitWriter",
+  ]
+
+  if (!is_mac && !is_ios) {
+    libs += [ "LLVMParts" ]
+  }
+
+  # Only support compiling aarch64 target at device-side(arm64 platform).
+  # So these os-related libs of x86 are not needed on arm64 platform.
+  if (is_mac || current_cpu != "arm64") {
+    libs += [
+      "LLVMX86AsmParser",
+      "LLVMX86CodeGen",
+      "LLVMX86Desc",
+      "LLVMX86Disassembler",
+      "LLVMX86Info",
+    ]
+  }
+
   if (is_mingw) {
     libs += [
       "kernel32",
@@ -203,7 +346,7 @@ ohos_source_set("libark_jsoptimizer_set") {
     sources += [ "$js_root/ecmascript/platform/unix/code_sign.cpp" ]
   }
   public_configs = [
-    "$js_root:include_llvm",
+    ":include_llvm",
     "$js_root:ark_jsruntime_compiler_config",
     "$js_root:ark_jsruntime_public_config",
     ":libark_jsoptimizer_set_config",
@@ -216,7 +359,6 @@ ohos_source_set("libark_jsoptimizer_set") {
   } else {
     deps += [ "$ark_root/libpandafile:arkfile_header_deps" ]
   }
-  deps += [ "${LLVM_LIB_ROOT}:libark_llvmcodegen_set" ]
 
   # hiviewdfx libraries
   external_deps += hiviewdfx_ext_deps
@@ -233,14 +375,6 @@ config("enable_maple_config") {
 
 ohos_source_set("libark_jsoptimizer_set_with_maple") {
   stack_protector_ret = false
-  if (enable_sanitize) {
-    sanitize = {
-      cfi = true
-      cfi_cross_dso = true
-      debug = false
-    }
-    branch_protector_ret = "pac_ret"
-  }
   sources = libark_jsoptimizer_sources
   if (enable_local_code_sign) {
     sources += [ "$js_root/ecmascript/platform/unix/ohos/code_sign.cpp" ]
@@ -257,7 +391,7 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
     "codegen/maple/litecg_ir_builder.cpp",
   ]
   public_configs = [
-    "$js_root:include_llvm",
+    ":include_llvm",
     ":include_maple",
     "$js_root:ark_jsruntime_compiler_config",
     "$js_root:ark_jsruntime_public_config",
@@ -281,11 +415,6 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
   }
 
   deps = []
-  if (is_ohos) {
-    deps += [ "${LLVM_LIB_ROOT}:libark_llvmcodegen" ]
-  } else {
-    deps += [ "${LLVM_LIB_ROOT}:libark_llvmcodegen_set" ]
-  }
   if (!is_arkui_x) {
     external_deps += [ "runtime_core:arkfile_header_deps" ]
   } else {
@@ -301,7 +430,8 @@ ohos_source_set("libark_jsoptimizer_set_with_maple") {
 
 ohos_source_set("libark_stub_set") {
   stack_protector_ret = false
-  if (enable_sanitize) {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
       ubsan = true
     }
@@ -331,14 +461,11 @@ ohos_source_set("libark_mock_stub_set") {
 
 ohos_shared_library("libark_jsoptimizer") {
   stack_protector_ret = false
-  if (enable_sanitize) {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
-      cfi = true
-      cfi_cross_dso = true
-      debug = false
       ubsan = true
     }
-    branch_protector_ret = "pac_ret"
   }
   deps = [
     ":libark_jsoptimizer_set_with_maple",
@@ -379,7 +506,7 @@ ohos_executable("ark_stub_compiler") {
   include_dirs = [ "$target_gen_dir" ]
 
   configs = [
-    "$js_root:include_llvm",
+    ":include_llvm",
     "$js_root:ark_jsruntime_compiler_config",
     "$js_root:ark_jsruntime_public_config",
   ]
@@ -423,14 +550,15 @@ ohos_executable("ark_stub_compiler") {
 }
 
 ohos_executable("ark_aot_compiler") {
-  if (enable_sanitize) {
+  if (is_ohos && is_standard_system && current_toolchain != host_toolchain &&
+      !ark_standalone_build) {
     sanitize = {
       ubsan = true
     }
   }
   sources = [ "aot_compiler.cpp" ]
   configs = [
-    "$js_root:include_llvm",
+    ":include_llvm",
     ":include_maple",
     "$js_root:ark_jsruntime_compiler_config",
     "$js_root:ark_jsruntime_public_config",
