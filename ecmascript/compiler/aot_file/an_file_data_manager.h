@@ -38,7 +38,7 @@ public:
     bool SafeTryReadLock();
     bool SafeInsideStub(uintptr_t pc);
     bool SafeInsideAOT(uintptr_t pc);
-    AOTFileInfo::CallSiteInfo SafeCalCallSiteInfo(uintptr_t retAddr);
+    AOTFileInfo::CallSiteInfo SafeCalCallSiteInfo(uintptr_t retAddr, bool isDeopt);
     static void DestroyFileMapMem(MemMap &fileMapMem);
     void SafeDestroyAllData();
     void SafeDestroyAnData(const std::string &fileName);
