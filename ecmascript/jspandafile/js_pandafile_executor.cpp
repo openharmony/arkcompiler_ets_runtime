@@ -435,6 +435,42 @@ Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteModuleBufferSecure(JST
     return CommonExecuteBuffer(thread, name, entry, jsPandaFile.get());
 }
 
+/*
+ * filename: data/storage/el1/bundle/moduleName/ets/modules.abc
+ * Ohmurl:   1. @bundle:bundleName/moduleName@namespace/ets/pages/Index
+ *           2. @package:pkg_modules/.ohpm/pkgName/pkg_modules/pkgName/xxx/xxx
+ *           3. @normalized:N&moduleName&bundleName&entryPath&version
+ *           4. @normalized:N&moduleName&bundleName&entryPath&
+ */
+Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSecureWithOhmUrl(JSThread *thread, uint8_t *buffer,
+    size_t size, const CString &filename, const CString &entryPoint)
+{
+    LOG_ECMA(DEBUG) << "JSPandaFileExecutor::ExecuteSecureWithOhmUrl with secure buffer filename:" << filename <<
+                        ", entryPoint:" << entryPoint;
+    CString traceInfo = "JSPandaFileExecutor::ExecuteSecureWithOhmUrl " + filename;
+    ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, traceInfo.c_str());
+
+    std::shared_ptr<JSPandaFile> jsPandaFile = JSPandaFileManager::GetInstance()->
+        LoadJSPandaFileSecure(thread, filename, entryPoint, buffer, size);
+    if (jsPandaFile == nullptr) {
+#ifdef FUZZ_TEST
+        CString msg = "jsPandaFile is nullptr";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+#else
+        LOG_FULL(FATAL) << "Load current file's panda file failed. Current file is " << filename <<
+                           ", entrypoint is:" << entryPoint;
+#endif
+    }
+    AbcBufferCacheScope bufferScope(thread, filename, buffer, size, AbcBufferType::SECURE_BUFFER);
+    JSRecordInfo *recordInfo = nullptr;
+    bool hasRecord = jsPandaFile->CheckAndGetRecordInfo(entryPoint, &recordInfo);
+    if (!hasRecord) {
+        CString msg = "Cannot find module '" + entryPoint + "' , which is application Entry Point";
+        THROW_REFERENCE_ERROR_AND_RETURN(thread, msg.c_str(), Unexpected(false));
+    }
+    return CommonExecuteBuffer(thread, filename, entryPoint, jsPandaFile.get());
+}
+
 Expected<JSTaggedValue, bool> JSPandaFileExecutor::ExecuteSpecialModule(JSThread *thread, const CString &recordName,
     const CString &filename, const JSPandaFile *jsPandaFile, const JSRecordInfo* recordInfo)
 {

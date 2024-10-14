@@ -57,6 +57,8 @@ namespace panda::ecmascript {
 using PathHelper = base::PathHelper;
 using StringHelper = base::StringHelper;
 
+enum ValidateFilePath { ABC, ETS_MODULES };
+
 class ModulePathHelper {
 public:
     static constexpr char EXT_NAME_ABC[] = ".abc";
@@ -203,6 +205,9 @@ public:
     static CString ParseFileNameToVMAName(const CString &filename);
     static CString ConcatOtherNormalizedOhmurlWithFilePath(EcmaVM *vm, size_t filePathPos, CString &moduleName,
                                                            const CString &requestPath);
+    static bool IsOhmUrl(const CString &str);
+    static bool CheckAndGetRecordName(JSThread *thread, const CString &ohmUrl, CString &recordName);
+    static bool ValidateAbcPath(const CString &baseFileName, ValidateFilePath checkMode);
     /*
      * Before: /data/storage/el1/bundle/moduleName/ets/modules.abc
      * After:  bundle/moduleName
@@ -356,21 +361,6 @@ public:
         // Delete the prefix "lib" and suffix ".so".
         soName = soName.substr(SO_PREFIX_LEN, soName.size() - SO_PREFIX_LEN - SO_SUFFIX_LEN);
         return soName;
-    }
-
-    /*
-     * Before: /data/storage/el1/xxx/xxx/xxx/xxx.abc
-     */
-    inline static bool ValidateAbcPath(const CString &baseFileName)
-    {
-        CString bundleSubInstallName(BUNDLE_SUB_INSTALL_PATH);
-        size_t startStrLen = bundleSubInstallName.length();
-        if (baseFileName.length() > startStrLen && baseFileName.compare(0, startStrLen, bundleSubInstallName) == 0) {
-            if (baseFileName.rfind(ABC) != CString::npos) {
-                return true;
-            }
-        }
-        return false;
     }
 };
 } // namespace panda::ecmascript
