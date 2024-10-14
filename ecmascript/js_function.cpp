@@ -277,19 +277,21 @@ JSTaggedValue JSFunction::NameGetter(JSThread *thread, const JSHandle<JSObject> 
     if (target->IsNativeWithCallField()) {
         return JSTaggedValue::Undefined();
     }
-    std::string funcName = target->ParseFunctionName();
+    auto [funcName, isASCII] = target->ParseFunctionNameView();
     if (funcName.empty()) {
         return thread->GlobalConstants()->GetEmptyString();
     }
+    ObjectFactory* factory = thread->GetEcmaVM()->GetFactory();
+    const JSHandle<EcmaString> nameHdl = factory->NewFromUtf8(funcName, isASCII);
     if (JSHandle<JSFunction>::Cast(self)->GetFunctionKind() == FunctionKind::GETTER_FUNCTION) {
-        funcName.insert(0, "get ");
+        return factory->ConcatFromString(
+            JSHandle<EcmaString>(thread->GlobalConstants()->GetHandledGetWithSpaceString()), nameHdl).GetTaggedValue();
     }
     if (JSHandle<JSFunction>::Cast(self)->GetFunctionKind() == FunctionKind::SETTER_FUNCTION) {
-        funcName.insert(0, "set ");
+        return factory->ConcatFromString(
+            JSHandle<EcmaString>(thread->GlobalConstants()->GetHandledSetWithSpaceString()), nameHdl).GetTaggedValue();
     }
-
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    return factory->NewFromStdString(funcName).GetTaggedValue();
+    return nameHdl.GetTaggedValue();
 }
 
 JSTaggedValue JSFunction::LengthGetter(JSThread *thread, const JSHandle<JSObject> &self)

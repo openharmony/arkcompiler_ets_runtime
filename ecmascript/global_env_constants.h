@@ -298,6 +298,8 @@ class ObjectFactory;
     V(ValueString,                    VALUE_STRING_INDEX,                    "value")                       \
     V(SetString,                      SET_STRING_INDEX,                      "set")                         \
     V(GetString,                      GET_STRING_INDEX,                      "get")                         \
+    V(SetWithSpaceString,             SET_SPACE_STRING_INDEX,                "set ")                         \
+    V(GetWithSpaceString,             GET_SPACE_STRING_INDEX,                "get ")                         \
     V(WritableString,                 WRITABLE_STRING_INDEX,                 "writable")                    \
     V(EnumerableString,               ENUMERABLE_STRING_INDEX,               "enumerable")                  \
     V(ConfigurableString,             CONFIGURABLE_STRING_INDEX,             "configurable")                \

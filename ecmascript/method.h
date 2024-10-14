@@ -446,6 +446,7 @@ public:
     const char *PUBLIC_API GetMethodName() const;
     const char *PUBLIC_API GetMethodName(const JSPandaFile *file) const;
     std::string PUBLIC_API ParseFunctionName() const;
+    std::pair<std::string_view, bool> PUBLIC_API ParseFunctionNameView() const;
     const CString PUBLIC_API GetRecordNameStr() const;
 
     uint32_t FindCatchBlock(uint32_t pc) const;

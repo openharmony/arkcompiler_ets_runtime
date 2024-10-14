@@ -106,8 +106,6 @@ private:
     friend class FlatStringInfo;
     friend class NameDictionary;
 
-    static constexpr int SMALL_STRING_SIZE = 128;
-
     static EcmaString *CreateEmptyString(const EcmaVM *vm);
     static EcmaString *CreateFromUtf8(const EcmaVM *vm, const uint8_t *utf8Data, uint32_t utf8Len,
         bool canBeCompress, MemSpaceType type = MemSpaceType::SHARED_OLD_SPACE, bool isConstantString = false,
@@ -342,15 +340,8 @@ private:
             }
             return true;
         }
-        if (size < SMALL_STRING_SIZE) {
-            for (size_t i = 0; i < size; i++) {
-                if (str1[i] != str2[i]) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return memcmp(str1.data(), str2.data(), size * sizeof(T)) == 0;
+
+        return !memcmp(str1.data(), str2.data(), size * sizeof(T));
     }
 
     // Converts utf8Data to utf16 and compare it with given utf16_data.

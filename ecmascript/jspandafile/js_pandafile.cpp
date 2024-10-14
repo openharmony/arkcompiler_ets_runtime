@@ -395,29 +395,28 @@ CString JSPandaFile::GetNormalizedFileDesc() const
     return GetNormalizedFileDesc(desc_);
 }
 
-const char *JSPandaFile::GetMethodName(EntityId methodId)
+std::pair<std::string_view, bool> JSPandaFile::GetMethodName(EntityId methodId)
 {
     LockHolder lock(methodNameMapMutex_);
     uint32_t id = methodId.GetOffset();
     auto iter = methodNameMap_.find(id);
     if (iter != methodNameMap_.end()) {
-        return iter->second;
+        panda_file::StringData sd = iter->second;
+        return {std::string_view(utf::Mutf8AsCString(sd.data), sd.utf16_length), sd.is_ascii};
     }
 
     panda_file::MethodDataAccessor mda(*pf_, methodId);
     auto sd = GetStringData(mda.GetNameId());
-    auto name = utf::Mutf8AsCString(sd.data);
-    methodNameMap_.emplace(id, name);
-
-    return name;
+    methodNameMap_.emplace(id, sd);
+    return {std::string_view(utf::Mutf8AsCString(sd.data), sd.utf16_length), sd.is_ascii};
 }
 
-const char *JSPandaFile::GetCpuProfilerMethodName(EntityId methodId)
+std::pair<std::string_view, bool> JSPandaFile::GetCpuProfilerMethodName(EntityId methodId) const
 {
     panda_file::MethodDataAccessor mda(*pf_, methodId);
     auto sd = GetStringData(mda.GetNameId());
-    auto name = utf::Mutf8AsCString(sd.data);
-    return name;
+    std::string_view strView(utf::Mutf8AsCString(sd.data), sd.utf16_length);
+    return {strView, sd.is_ascii};
 }
 
 CString JSPandaFile::GetRecordName(EntityId methodId)
