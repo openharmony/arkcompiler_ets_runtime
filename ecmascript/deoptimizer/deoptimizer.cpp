@@ -572,8 +572,8 @@ void Deoptimizier::ClearCompiledCodeStatusWhenDeopt(JSFunction *func, Method *me
         func->SetCodeEntry(entry);
         method->ClearAOTStatusWhenDeopt(entry);
         func->ClearCompiledCodeFlags();
-        func->ClearMachineCode(thread_);
         ResetJitHotness(func);
+        func->ClearMachineCode(thread_);
     }  // Do not change the func code entry if the method is not aot or deopt has happened already
 }
 
