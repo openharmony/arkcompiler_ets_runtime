@@ -443,10 +443,9 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     [[maybe_unused]] LocalScope scope(vm);
     
     auto exportObject = LoadNativeModuleImpl(vm, thread, requiredModule, moduleType);
-    bool enableESMTrace = thread->GetEcmaVM()->GetJSOptions().EnableESMTrace();
-    CString fileName = requiredModule->GetEcmaModuleFilenameString();
-    CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(fileName);
     if (UNLIKELY(exportObject->IsUndefined())) {
+        CString fileName = requiredModule->GetEcmaModuleFilenameString();
+        CString moduleName = ModulePathHelper::GetModuleNameWithBaseFile(fileName);
         LOG_FULL(ERROR) << "export objects of native so is undefined, so name is " << moduleName;
         return false;
     }
@@ -457,9 +456,6 @@ bool SourceTextModule::LoadNativeModule(JSThread *thread, const JSHandle<SourceT
     }
     ASSERT(!thread->HasPendingException());
     requiredModule->StoreModuleValue(thread, 0, JSNApiHelper::ToJSHandle(exportObject));
-    if (enableESMTrace) {
-        ECMA_BYTRACE_FINISH_TRACE(HITRACE_TAG_ARK);
-    }
     return true;
 }
 
