@@ -840,6 +840,9 @@ void Heap::Resume(TriggerGCType gcType)
     hugeObjectSpace_->ReclaimHugeRegion();
     hugeMachineCodeSpace_->ReclaimHugeRegion();
     if (parallelGC_) {
+        if (gcType == TriggerGCType::OLD_GC) {
+            isCSetClearing_.store(true, std::memory_order_release);
+        }
         clearTaskFinished_ = false;
         GCWorkerPool::GetCurrentTaskpool()->PostTask(
             std::make_unique<AsyncClearTask>(GetJSThread()->GetThreadId(), this, gcType));
