@@ -207,7 +207,9 @@ TaggedObject *Heap::AllocateYoungOrHugeObject(size_t size)
     } else {
         object = AllocateInGeneralNewSpace(size);
         if (object == nullptr) {
-            CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
+            if (!HandleExitHighSensitiveEvent()) {
+                CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
+            }
             object = AllocateInGeneralNewSpace(size);
             if (object == nullptr) {
                 CollectGarbage(SelectGCType(), GCReason::ALLOCATION_FAILED);
