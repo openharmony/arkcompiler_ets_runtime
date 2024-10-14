@@ -1724,6 +1724,7 @@ private:
     bool fullMarkRequested_ {false};
     bool oldSpaceLimitAdjusted_ {false};
     bool enableIdleGC_ {false};
+    std::atomic_bool isCSetClearing_ {false};
     HeapMode mode_ { HeapMode::NORMAL };
 
     /*

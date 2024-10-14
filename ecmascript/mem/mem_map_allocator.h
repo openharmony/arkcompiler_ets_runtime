@@ -80,7 +80,7 @@ public:
     {
         LockHolder lock(lock_);
         size_t size = regularMapCommitted_.size();
-        return size > (cachedSize / REGULAR_MMAP_SIZE) ? true : false;
+        return size >= (cachedSize / REGULAR_MMAP_SIZE) ? true : false;
     }
 
     int ShouldFreeMore(size_t cachedSize)
