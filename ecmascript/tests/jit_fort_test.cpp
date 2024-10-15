@@ -101,6 +101,15 @@ HWTEST_F_L0(JitFortTest, UpdateFreeSpaceTest001)
     jitFort->UpdateFreeSpace();
 }
 
+HWTEST_F_L0(JitFortTest, UpdateFreeSpaceTest002)
+{
+    JitFort *jitFort = new JitFort();
+    jitFort->SetMachineCodeGC(false);
+    ASSERT_EQ(jitFort->IsMachineCodeGC(), false);
+    ASSERT_NE(jitFort, nullptr);
+    jitFort->UpdateFreeSpace();
+}
+
 HWTEST_F_L0(JitFortTest, GetDescTest001)
 {
     MemDescPool *pool = new MemDescPool(1, 1);
