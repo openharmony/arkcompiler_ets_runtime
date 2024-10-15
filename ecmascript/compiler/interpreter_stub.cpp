@@ -176,19 +176,19 @@ void name##StubBuilder::GenerateCircuitImpl(GateRef glue, GateRef sp, GateRef pc
 
 #define CHECK_EXCEPTION_WITH_JUMP(res, jump)                                              \
     CheckExceptionWithJump(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter, \
-		           res, jump)
+                           res, jump)
 
 #define CHECK_EXCEPTION_WITH_ACC(res, offset)                                             \
     CheckExceptionWithVar(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,  \
-		          res, offset)
+                          res, offset)
 
 #define CHECK_EXCEPTION_WITH_VARACC(res, offset)                                              \
     CheckExceptionWithVar(glue, sp, pc, constpool, profileTypeInfo, *varAcc, hotnessCounter,  \
-		          res, offset)
+                          res, offset)
 
 #define CHECK_PENDING_EXCEPTION(res, offset)                                              \
     CheckPendingException(glue, sp, pc, constpool, profileTypeInfo, acc, hotnessCounter,  \
-		          res, offset)
+                          res, offset)
 
 #define METHOD_ENTRY(func)                                                                        \
     auto env = GetEnvironment();                                                                  \
@@ -5621,7 +5621,7 @@ DECLARE_ASM_HANDLER(HandleDefinePropertyByNameImm8Id16V8)
 {
     auto env = GetEnvironment();
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    DEFINE_BY_NAME(Boolean(true));
+    DEFINE_BY_NAME(Boolean(false));
     CHECK_EXCEPTION_WITH_ACC(*result, INT_PTR(DEFINEPROPERTYBYNAME_IMM8_ID16_V8));
 }
 
