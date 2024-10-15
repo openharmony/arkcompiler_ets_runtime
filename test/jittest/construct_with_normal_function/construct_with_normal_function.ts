@@ -43,8 +43,11 @@ function test() {
     }
     new Son()
 }
+test()
 
-for (let i = 0; i < 4000; i++) {
-    test()
-}
+ArkTools.jitCompileAsync(test);
+let res = ArkTools.waitJitCompileFinish(test);
+print(res)
+
+test()
 print("execute successful.")
