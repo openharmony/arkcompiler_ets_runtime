@@ -70,9 +70,6 @@ public:
     static inline JSTaggedValue StoreICByValue(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
                                                JSTaggedValue receiver, JSTaggedValue key, JSTaggedValue value,
                                                uint32_t slotId);
-    static inline JSTaggedValue StoreOwnICByValue(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
-                                                  JSTaggedValue receiver, JSTaggedValue key,
-                                                  JSTaggedValue value, uint32_t slotId);
     static inline JSTaggedValue LoadElement(JSObject *receiver, JSTaggedValue key);
     static inline JSTaggedValue LoadStringElement(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
     static inline JSTaggedValue LoadTypedArrayElement(JSThread *thread, JSTaggedValue receiver, JSTaggedValue key);
@@ -86,8 +83,7 @@ public:
     static inline JSTaggedValue LoadValueMiss(JSThread *thread, ProfileTypeInfo *profileTypeInfo,
         JSTaggedValue receiver, JSTaggedValue key, uint32_t slotId, ICKind kind);
     static inline JSTaggedValue StoreMiss(JSThread *thread, ProfileTypeInfo *profileTypeInfo, JSTaggedValue receiver,
-                                          JSTaggedValue key, JSTaggedValue value, uint32_t slotId,
-                                          ICKind kind, bool isOwn = false);
+                                          JSTaggedValue key, JSTaggedValue value, uint32_t slotId, ICKind kind);
 };
 }  // namespace panda::ecmascript
 

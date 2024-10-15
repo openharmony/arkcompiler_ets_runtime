@@ -352,7 +352,7 @@ JSTaggedValue LoadICRuntime::LoadTypedArrayValueMiss(JSHandle<JSTaggedValue> rec
 }
 
 JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHandle<JSTaggedValue> key,
-                                        JSHandle<JSTaggedValue> value, bool isOwn)
+                                        JSHandle<JSTaggedValue> value)
 {
     ICKind kind = GetICKind();
     if (IsValueIC(kind)) {
@@ -403,7 +403,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
         return resSetter;
     }
 
-    ObjectOperator op(GetThread(), receiver, key, isOwn ? OperatorType::OWN : OperatorType::PROTOTYPE_CHAIN);
+    ObjectOperator op(GetThread(), receiver, key);
     if (!op.IsFound()) {
         if (kind == ICKind::NamedGlobalStoreIC) {
             PropertyAttributes attr = PropertyAttributes::Default(true, true, false);
@@ -412,14 +412,7 @@ JSTaggedValue StoreICRuntime::StoreMiss(JSHandle<JSTaggedValue> receiver, JSHand
             return SlowRuntimeStub::ThrowReferenceError(GetThread(), key.GetTaggedValue(), " is not defined");
         }
     }
-    bool success = false;
-    if (isOwn) {
-        bool enumerable = !(receiver->IsClassPrototype() || receiver->IsClassConstructor());
-        PropertyDescriptor desc(thread_, value, true, enumerable, true);
-        success = JSObject::DefineOwnProperty(thread_, &op, desc);
-    } else {
-        success = JSObject::SetProperty(&op, value, true);
-    }
+    bool success = JSObject::SetProperty(&op, value, true);
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread_);
     // ic-switch
     if (!GetThread()->GetEcmaVM()->ICEnabled()) {

@@ -2593,41 +2593,6 @@ GateRef StubBuilder::LoadStringElement(GateRef glue, GateRef receiver, GateRef k
     return ret;
 }
 
-GateRef StubBuilder::TaggedArraySetValue(GateRef glue, GateRef receiver, GateRef value, GateRef index, GateRef capacity)
-{
-    auto env = GetEnvironment();
-    Label entryPass(env);
-    env->SubCfgEntry(&entryPass);
-    DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    Label indexGreaterLen(env);
-    Label storeElement(env);
-    Label isTransToDict(env);
-    Label notTransToDict(env);
-    Label exit(env);
-    BRANCH(Int32GreaterThanOrEqual(index, capacity), &indexGreaterLen, &storeElement);
-    Bind(&indexGreaterLen);
-    {
-        BRANCH(ShouldTransToDict(capacity, index), &isTransToDict, &notTransToDict);
-        Bind(&isTransToDict);
-        result = Hole();
-        Jump(&exit);
-        Bind(&notTransToDict);
-        GrowElementsCapacity(glue, receiver, Int32Add(index, Int32(1)));
-        Jump(&storeElement);
-    }
-    Bind(&storeElement);
-    {
-        SetValueWithElementsKind(glue, receiver, value, index, Boolean(true),
-            Int32(static_cast<int32_t>(ElementsKind::NONE)));
-        result = Undefined();
-        Jump(&exit);
-    }
-    Bind(&exit);
-    auto ret = *result;
-    env->SubCfgExit();
-    return ret;
-}
-
 GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handler,
                                     bool updateHandler, GateRef profileTypeInfo, GateRef slotId)
 {
@@ -2725,20 +2690,28 @@ GateRef StubBuilder::ICStoreElement(GateRef glue, GateRef receiver, GateRef key,
             {
                 GateRef elements = GetElementsArray(receiver);
                 GateRef capacity = GetLengthOfTaggedArray(elements);
-                BRANCH(Int32GreaterThanOrEqual(index, capacity), &indexGreaterCapacity, &storeElement);
-                Bind(&indexGreaterCapacity);
+                BRANCH(Int32GreaterThanOrEqual(index, capacity), &callRuntime, &storeElement);
+                Bind(&callRuntime);
                 {
-                    result = TaggedArraySetValue(glue, receiver, value, index, capacity);
+                    result = CallRuntime(glue,
+                        RTSTUB_ID(TaggedArraySetValue),
+                        { receiver, value, elements, IntToTaggedInt(index),
+                          IntToTaggedInt(capacity) });
                     Label transition(env);
                     BRANCH(TaggedIsHole(*result), &exit, &transition);
                     Bind(&transition);
                     {
                         Label hole(env);
+                        Label notHole(env);
                         DEFVARIABLE(kind, VariableType::INT32(), Int32(static_cast<int32_t>(ElementsKind::NONE)));
-                        BRANCH(Int32GreaterThan(index, capacity), &hole, &exit);
+                        BRANCH(Int32GreaterThan(index, capacity), &hole, &notHole);
                         Bind(&hole);
                         {
                             kind = Int32(static_cast<int32_t>(ElementsKind::HOLE));
+                            Jump(&notHole);
+                        }
+                        Bind(&notHole);
+                        {
                             SetValueWithElementsKind(glue, receiver, value, index, Boolean(true), *kind);
                             Jump(&exit);
                         }

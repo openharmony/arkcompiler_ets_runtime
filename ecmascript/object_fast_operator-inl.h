@@ -152,7 +152,6 @@ JSTaggedValue ObjectFastOperator::TryFastHasProperty(JSThread *thread, JSTaggedV
             auto string = thread->GetEcmaVM()->GetFactory()->InternString(keyHandle);
             EcmaStringAccessor(string).SetInternString();
             keyHandle.Update(JSTaggedValue(string));
-            // Maybe moved by GC
             key = keyHandle.GetTaggedValue();
             receiver = receiverHandler.GetTaggedValue();
         }
@@ -187,7 +186,6 @@ JSTaggedValue ObjectFastOperator::TryFastGetPropertyByValue(JSThread *thread, JS
             auto string = thread->GetEcmaVM()->GetFactory()->InternString(keyHandle);
             EcmaStringAccessor(string).SetInternString();
             keyHandle.Update(JSTaggedValue(string));
-            // Maybe moved by GC
             key = keyHandle.GetTaggedValue();
             receiver = receiverHandler.GetTaggedValue();
         }

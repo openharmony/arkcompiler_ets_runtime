@@ -631,7 +631,6 @@ public:
         GateRef glue, GateRef receiver, GateRef holder, GateRef handler, ProfileOperation callback);
     GateRef StoreICWithHandler(GateRef glue, GateRef receiver, GateRef holder,
                                GateRef value, GateRef handler, ProfileOperation callback = ProfileOperation());
-    GateRef TaggedArraySetValue(GateRef glue, GateRef receiver, GateRef value, GateRef index, GateRef capacity);
     GateRef ICStoreElement(GateRef glue, GateRef receiver, GateRef key, GateRef value, GateRef handlerInfo,
                            bool updateHandler = false, GateRef profileTypeInfo = Gate::InvalidGateRef,
                            GateRef slotId = Gate::InvalidGateRef);
