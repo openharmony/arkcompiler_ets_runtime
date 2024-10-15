@@ -1205,6 +1205,8 @@ HWTEST_F_L0(JSNApiTests, GetValueDouble)
     ASSERT_FALSE(nativeValue->GetValueDouble(isNumber));
     isNumber = false;
     ASSERT_FALSE(nativeValue->GetValueDouble(isNumber));
+
+    delete nativeValue;
 }
 
 
@@ -1223,6 +1225,8 @@ HWTEST_F_L0(JSNApiTests, GetValueInt32)
     ASSERT_FALSE(nativeValue->GetValueInt32(isNumber));
     isNumber = false;
     ASSERT_FALSE(nativeValue->GetValueInt32(isNumber));
+
+    delete nativeValue;
 }
 
 
@@ -1241,6 +1245,8 @@ HWTEST_F_L0(JSNApiTests, GetValueUint32)
     ASSERT_FALSE(nativeValue->GetValueUint32(isNumber));
     isNumber = false;
     ASSERT_FALSE(nativeValue->GetValueUint32(isNumber));
+
+    delete nativeValue;
 }
 
 
@@ -1259,6 +1265,8 @@ HWTEST_F_L0(JSNApiTests, GetValueInt64)
     ASSERT_FALSE(nativeValue->GetValueInt64(isNumber));
     isNumber = false;
     ASSERT_FALSE(nativeValue->GetValueInt64(isNumber));
+
+    delete nativeValue;
 }
 
 
@@ -1277,6 +1285,8 @@ HWTEST_F_L0(JSNApiTests, GetValueBool)
     ASSERT_FALSE(nativeValue->GetValueBool(isNumber));
     isNumber = false;
     ASSERT_FALSE(nativeValue->GetValueBool(isNumber));
+
+    delete nativeValue;
 }
 
 
@@ -1635,9 +1645,12 @@ HWTEST_F_L0(JSNApiTests, PromiseRejectInfo)
     Local<JSValueRef> promise(toStringPromise);
     Local<StringRef> toStringReason = StringRef::NewFromUtf8(vm_, TEST_NUM1);
     Local<JSValueRef> reason(toStringReason);
-    void *data = static_cast<void *>(new std::string(TEST_VALUE));
+    std::string* str = new std::string(TEST_VALUE);
+    void *data = static_cast<void *>(str);
     PromiseRejectInfo promisereject(promise, reason, PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT, data);
     EXPECT_EQ(promisereject.GetOperation(), PromiseRejectInfo::PROMISE_REJECTION_EVENT::REJECT);
+
+    delete str;
 }
 
 /**
@@ -1785,6 +1798,8 @@ HWTEST_F_L0(JSNApiTests, JSNApi_StartDebugger)
 
     option->libraryPath = ARK_DEBUGGER_LIB_PATH;
     EXPECT_FALSE(JSNApi::StartDebugger(vm_, *option));
+
+    delete option;
 }
 
 /**
@@ -1804,6 +1819,8 @@ HWTEST_F_L0(JSNApiTests, JSNApi_StartDebuggerForOldProcess)
 
     option->libraryPath = ARK_DEBUGGER_LIB_PATH;
     EXPECT_FALSE(JSNApi::StartDebuggerForOldProcess(vm_, *option, 1, debuggerPostTask));
+
+    delete option;
 }
 
 /**
@@ -1824,6 +1841,8 @@ HWTEST_F_L0(JSNApiTests, JSNApi_StartDebuggerForSocketPair)
     ecmascript::tooling::JsDebuggerManager *jsDebuggerManager = new ecmascript::tooling::JsDebuggerManager(vm_);
     ecmascript::tooling::JsDebuggerManager::AddJsDebuggerManager(tid, jsDebuggerManager);
     EXPECT_FALSE(JSNApi::StartDebuggerForSocketPair(tid, socketfd));
+
+    delete jsDebuggerManager;
 }
 
 /**
@@ -1850,6 +1869,8 @@ HWTEST_F_L0(JSNApiTests, JSNApi_NotifyDebugMode)
 
     option->libraryPath = ARK_DEBUGGER_LIB_PATH;
     EXPECT_FALSE(JSNApi::NotifyDebugMode(tid, vm_, *option, instanceId, debuggerPostTask, debugApp));
+
+    delete option;
 }
 
 /**
@@ -1872,6 +1893,8 @@ HWTEST_F_L0(JSNApiTests, JSNApi_StoreDebugInfo)
 
     option->libraryPath = ARK_DEBUGGER_LIB_PATH;
     EXPECT_FALSE(JSNApi::StoreDebugInfo(tid, vm_, *option, debuggerPostTask, debugApp));
+
+    delete option;
 }
 
 /**
