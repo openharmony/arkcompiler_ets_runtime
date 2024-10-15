@@ -167,7 +167,9 @@ class MAD {
 public:
     MAD()
     {
+        InitUnits();
         InitParallelism();
+        InitReservation();
         InitBypass();
     }
 
@@ -175,7 +177,9 @@ public:
 
     using BypassVector = std::vector<Bypass *>;
 
+    void InitUnits() const;
     void InitParallelism() const;
+    void InitReservation() const;
     void InitBypass() const;
     bool IsFullIssued() const;
     int GetLatency(const Insn &def, const Insn &use) const;
