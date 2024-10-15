@@ -3147,6 +3147,21 @@ IterationKind TypedNativeInlineLowering::GetArrayIterKindFromBuilin(BuiltinsStub
     }
 }
 
+void TypedNativeInlineLowering::ReplaceGateWithPendingException(
+    GateRef gate, GateRef glue, GateRef state, GateRef depend, GateRef value)
+{
+    GateRef condition = builder_.HasPendingException(glue);
+    auto ifBranch = builder_.Branch(state, condition, 1, BranchWeight::DEOPT_WEIGHT, "checkException");
+    GateRef ifTrue = builder_.IfTrue(ifBranch);
+    GateRef ifFalse = builder_.IfFalse(ifBranch);
+    GateRef eDepend = builder_.DependRelay(ifTrue, depend);
+    GateRef sDepend = builder_.DependRelay(ifFalse, depend);
+    StateDepend success(ifFalse, sDepend);
+    StateDepend exception(ifTrue, eDepend);
+    acc_.ReplaceHirWithIfBranch(gate, success, exception, value);
+}
+
+
 void TypedNativeInlineLowering::LowerArrayForEach(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
@@ -3158,16 +3173,16 @@ void TypedNativeInlineLowering::LowerArrayForEach(GateRef gate)
     Label loopHead(&builder_);
     Label loopEnd(&builder_);
     Label exit(&builder_);
-    Label NotHole(&builder_);
+    Label noPendingException(&builder_);
     Label merge(&builder_);
     DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
     DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(*i)));
     DEFVALUE(value, (&builder_), VariableType::JS_ANY(), builder_.Hole());
     BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopHead, &exit);
     builder_.LoopBegin(&loopHead);
-    GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), thisValue, JSObject::ELEMENTS_OFFSET);
-    value = builder_.GetValueFromTaggedArray(element, *i);
     {
+        GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), thisValue, JSObject::ELEMENTS_OFFSET);
+        value = builder_.GetValueFromTaggedArray(element, *i);
         GateRef nativeCall = builder_.CallInternal(gate,
                                                    {glue,
                                                     builder_.Int64(6),
@@ -3180,17 +3195,19 @@ void TypedNativeInlineLowering::LowerArrayForEach(GateRef gate)
                                                     thisValue},
                                                    acc_.TryGetPcOffset(gate));
         builder_.SetDepend(nativeCall);
-        i = builder_.Int32Add(*i, builder_.Int32(1));
-        propKey = builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(*i));
-        builder_.Jump(&merge);
+        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        builder_.Bind(&noPendingException);
+        {
+            i = builder_.Int32Add(*i, builder_.Int32(1));
+            propKey = builder_.ToTaggedIntPtr(builder_.SExtInt32ToInt64(*i));
+            BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopEnd, &exit);
+        }
     }
-    builder_.Bind(&merge);
-    BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopEnd, &exit);
     builder_.Bind(&loopEnd);
     builder_.LoopEnd(&loopHead);
 
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), builder_.UndefineConstant());
+    ReplaceGateWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), builder_.UndefineConstant());
 }
 
 void TypedNativeInlineLowering::LowerArrayFindOrFindIndex(GateRef gate)
@@ -3207,20 +3224,21 @@ void TypedNativeInlineLowering::LowerArrayFindOrFindIndex(GateRef gate)
     Label loopHead(&builder_);
     Label loopEnd(&builder_);
     Label exit(&builder_);
-    Label afterLoop(&builder_);
+    Label noFindElement(&builder_);
     Label findElement(&builder_);
     Label returnNotFind(&builder_);
     Label returnFind(&builder_);
     Label quit(&builder_);
+    Label noPendingException(&builder_);
     DEFVALUE(i, (&builder_), VariableType::INT32(), builder_.Int32(0));
     DEFVALUE(value, (&builder_), VariableType::JS_ANY(), builder_.Hole());
     DEFVALUE(res, (&builder_), VariableType::INT32(), builder_.Int32(-1));
     DEFVALUE(findRes, (&builder_), VariableType::JS_ANY(), builder_.UndefineConstant());
     BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopHead, &exit);
     builder_.LoopBegin(&loopHead);
-    GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), thisValue, JSObject::ELEMENTS_OFFSET);
-    value = builder_.GetValueFromTaggedArray(element, *i);
     {
+        GateRef element = builder_.LoadConstOffset(VariableType::JS_POINTER(), thisValue, JSObject::ELEMENTS_OFFSET);
+        value = builder_.GetValueFromTaggedArray(element, *i);
         GateRef nativeCall = builder_.CallInternal(gate,
                                                    {glue,
                                                     builder_.Int64(6),
@@ -3233,13 +3251,20 @@ void TypedNativeInlineLowering::LowerArrayFindOrFindIndex(GateRef gate)
                                                     thisValue},
                                                    acc_.TryGetPcOffset(gate));
         builder_.SetDepend(nativeCall);
-        BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(nativeCall)), &findElement, &afterLoop);
+        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        builder_.Bind(&noPendingException);
+        {
+            BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(nativeCall)), &findElement, &noFindElement);
+            builder_.Bind(&noFindElement);
+            {
+                i = builder_.Int32Add(*i, builder_.Int32(1));
+                BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopEnd, &exit);
+            }
+        }
     }
-    builder_.Bind(&afterLoop);
-    i = builder_.Int32Add(*i, builder_.Int32(1));
-    BRANCH_CIR(builder_.Int32LessThan(*i, length), &loopEnd, &exit);
     builder_.Bind(&loopEnd);
     builder_.LoopEnd(&loopHead);
+
     builder_.Bind(&findElement);
     {
         res = *i;
@@ -3248,9 +3273,9 @@ void TypedNativeInlineLowering::LowerArrayFindOrFindIndex(GateRef gate)
     }
     builder_.Bind(&exit);
     if (builtinsID == BuiltinsStubCSigns::ID::ArrayFind) {
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *findRes);
+        ReplaceGateWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *findRes);
     } else {
-        acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
+        ReplaceGateWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *res);
     }
 }
 
@@ -3277,6 +3302,7 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
     Label exit(&builder_);
     Label needTrim(&builder_);
     Label quit(&builder_);
+    Label noPendingException(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     DEFVALUE(i, (&builder_), VariableType::INT64(), builder_.Int64(0));
     DEFVALUE(toIndex, (&builder_), VariableType::INT64(), builder_.Int64(0));
@@ -3297,8 +3323,8 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
     GateRef newArrayEles = builder_.GetElementsArray(newArray);
     builder_.Jump(&loopHead);
     builder_.LoopBegin(&loopHead);
-    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
     {
+        kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
         GateRef callJs = builder_.CallInternal(gate,
                                                {glue,
                                                 builder_.Int64(6),
@@ -3311,25 +3337,29 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
                                                 thisValue},
                                                pcOffset);
         builder_.SetDepend(callJs);
-        BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(callJs)), &returnTrue, &afterLoop);
-        builder_.Bind(&returnTrue);
+        BRANCH_CIR(builder_.HasPendingException(glue), &quit, &noPendingException);
+        builder_.Bind(&noPendingException);
         {
-            builtinsArrayStubBuilder.SetValueWithElementsKind(
-                glue,
-                newArray,
-                *kValue,
-                *toIndex,
-                builder_.Boolean(true),
-                builder_.Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-            toIndex = builder_.Int64Add(*toIndex, builder_.Int64(1));
-            builder_.Jump(&afterLoop);
+            BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(callJs)), &returnTrue, &afterLoop);
+            builder_.Bind(&returnTrue);
+            {
+                builtinsArrayStubBuilder.SetValueWithElementsKind(
+                    glue,
+                    newArray,
+                    *kValue,
+                    *toIndex,
+                    builder_.Boolean(true),
+                    builder_.Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+                toIndex = builder_.Int64Add(*toIndex, builder_.Int64(1));
+                builder_.Jump(&afterLoop);
+            }
         }
-    }
-    builder_.Bind(&afterLoop);
-    {
-        i = builder_.Int64Add(*i, builder_.Int64(1));
-        propKey = builder_.ToTaggedIntPtr(*i);
-        BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &exit);
+        builder_.Bind(&afterLoop);
+        {
+            i = builder_.Int64Add(*i, builder_.Int64(1));
+            propKey = builder_.ToTaggedIntPtr(*i);
+            BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &exit);
+        }
     }
     builder_.Bind(&loopEnd);
     builder_.LoopEnd(&loopHead);
@@ -3347,7 +3377,7 @@ void TypedNativeInlineLowering::LowerArrayFilter(GateRef gate)
         builder_.Jump(&quit);
     }
     builder_.Bind(&quit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    ReplaceGateWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
@@ -3367,11 +3397,11 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
     Label notHole(&builder_);
     Label loopHead(&builder_);
     Label loopEnd(&builder_);
-    Label afterLoop(&builder_);
     Label returnTrue(&builder_);
     Label exit(&builder_);
     Label needTrim(&builder_);
     Label finish(&builder_);
+    Label noPendingException(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     DEFVALUE(i, (&builder_), VariableType::INT64(), builder_.Int64(0));
     DEFVALUE(toIndex, (&builder_), VariableType::INT64(), builder_.Int64(0));
@@ -3391,8 +3421,8 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
     GateRef newArray = builtinsArrayStubBuilder.NewArray(glue, length);
     builder_.Jump(&loopHead);
     builder_.LoopBegin(&loopHead);
-    kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
     {
+        kValue = builtinsArrayStubBuilder.GetTaggedValueWithElementsKind(thisValue, *i);
         GateRef callJs = builder_.CallInternal(gate,
                                                {glue,
                                                 builder_.Int64(6),
@@ -3405,6 +3435,8 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
                                                 thisValue},
                                                pcOffset);
         builder_.SetDepend(callJs);
+        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        builder_.Bind(&noPendingException);
         {
             builtinsArrayStubBuilder.SetValueWithElementsKind(
                 glue,
@@ -3414,14 +3446,11 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
                 builder_.Boolean(true),
                 builder_.Int32(static_cast<uint32_t>(ElementsKind::NONE)));
             toIndex = builder_.Int64Add(*toIndex, builder_.Int64(1));
-            builder_.Jump(&afterLoop);
+            
+            i = builder_.Int64Add(*i, builder_.Int64(1));
+            propKey = builder_.ToTaggedIntPtr(*i);
+            BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &finish);
         }
-    }
-    builder_.Bind(&afterLoop);
-    {
-        i = builder_.Int64Add(*i, builder_.Int64(1));
-        propKey = builder_.ToTaggedIntPtr(*i);
-        BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &finish);
     }
     builder_.Bind(&loopEnd);
     builder_.LoopEnd(&loopHead);
@@ -3432,7 +3461,7 @@ void TypedNativeInlineLowering::LowerArrayMap(GateRef gate)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    ReplaceGateWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerArraySome(GateRef gate)
@@ -3454,6 +3483,7 @@ void TypedNativeInlineLowering::LowerArraySome(GateRef gate)
     Label afterLoop(&builder_);
     Label exit(&builder_);
     Label findElement(&builder_);
+    Label noPendingException(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.TaggedFalse());
     DEFVALUE(i, (&builder_), VariableType::INT64(), builder_.Int64(0));
     DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(*i));
@@ -3480,15 +3510,17 @@ void TypedNativeInlineLowering::LowerArraySome(GateRef gate)
                                                 thisValue},
                                                pcOffset);
         builder_.SetDepend(callJs);
+        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        builder_.Bind(&noPendingException);
         {
             BRANCH_CIR(builder_.TaggedIsTrue(builder_.FastToBoolean(callJs)), &findElement, &afterLoop);
+            builder_.Bind(&afterLoop);
+            {
+                i = builder_.Int64Add(*i, builder_.Int64(1));
+                propKey = builder_.ToTaggedIntPtr(*i);
+                BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &exit);
+            }
         }
-    }
-    builder_.Bind(&afterLoop);
-    {
-        i = builder_.Int64Add(*i, builder_.Int64(1));
-        propKey = builder_.ToTaggedIntPtr(*i);
-        BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &exit);
     }
     builder_.Bind(&loopEnd);
     builder_.LoopEnd(&loopHead);
@@ -3499,7 +3531,7 @@ void TypedNativeInlineLowering::LowerArraySome(GateRef gate)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    ReplaceGateWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerArrayEvery(GateRef gate)
@@ -3521,6 +3553,7 @@ void TypedNativeInlineLowering::LowerArrayEvery(GateRef gate)
     Label afterLoop(&builder_);
     Label exit(&builder_);
     Label callResultNotTrue(&builder_);
+    Label noPendingException(&builder_);
     DEFVALUE(result, (&builder_), VariableType::JS_ANY(), builder_.TaggedTrue());
     DEFVALUE(i, (&builder_), VariableType::INT64(), builder_.Int64(0));
     DEFVALUE(propKey, (&builder_), VariableType::JS_ANY(), builder_.ToTaggedIntPtr(*i));
@@ -3547,15 +3580,17 @@ void TypedNativeInlineLowering::LowerArrayEvery(GateRef gate)
                                                 thisValue},
                                                pcOffset);
         builder_.SetDepend(callJs);
+        BRANCH_CIR(builder_.HasPendingException(glue), &exit, &noPendingException);
+        builder_.Bind(&noPendingException);
         {
             BRANCH_CIR(builder_.TaggedIsFalse(builder_.FastToBoolean(callJs)), &callResultNotTrue, &afterLoop);
+            builder_.Bind(&afterLoop);
+            {
+                i = builder_.Int64Add(*i, builder_.Int64(1));
+                propKey = builder_.ToTaggedIntPtr(*i);
+                BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &exit);
+            }
         }
-    }
-    builder_.Bind(&afterLoop);
-    {
-        i = builder_.Int64Add(*i, builder_.Int64(1));
-        propKey = builder_.ToTaggedIntPtr(*i);
-        BRANCH_CIR(builder_.Int64LessThan(*i, length), &loopEnd, &exit);
     }
     builder_.Bind(&loopEnd);
     builder_.LoopEnd(&loopHead);
@@ -3566,7 +3601,7 @@ void TypedNativeInlineLowering::LowerArrayEvery(GateRef gate)
         builder_.Jump(&exit);
     }
     builder_.Bind(&exit);
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *result);
+    ReplaceGateWithPendingException(gate, glue, builder_.GetState(), builder_.GetDepend(), *result);
 }
 
 void TypedNativeInlineLowering::LowerArrayPop(GateRef gate)
