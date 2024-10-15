@@ -292,6 +292,11 @@ public:
         return kind >= FunctionKind::NORMAL_FUNCTION && kind <= FunctionKind::ASYNC_FUNCTION;
     }
 
+    inline static bool IsBaseConstructorKind(FunctionKind kind)
+    {
+        return kind == FunctionKind::BASE_CONSTRUCTOR;
+    }
+
     inline bool IsClassConstructor() const
     {
         return GetClass()->IsClassConstructor();

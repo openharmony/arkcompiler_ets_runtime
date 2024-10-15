@@ -784,7 +784,7 @@ GateRef NewObjectStubBuilder::LoadSHClassFromMethod(GateRef glue, GateRef method
         Bind(&isNormal);
         {
             hclass = GetGlobalEnvValue(VariableType::JS_ANY(), glueGlobalEnv,
-                                       GlobalEnv::SHARED_FUNCTION_CLASS_WITHOUT_PROTO);
+                                       GlobalEnv::SHARED_FUNCTION_CLASS_WITH_PROTO);
             Jump(&exit);
         }
         Bind(&notNormal);
@@ -992,7 +992,9 @@ void NewObjectStubBuilder::InitializeSFunction(GateRef glue, GateRef func, GateR
     Label entry(env);
     env->SubCfgEntry(&entry);
     Label exit(env);
-    Label hasAccess(env);
+    Label hasAccessOrIsBaseConstructor(env);
+    Label isBaseConstructor(env);
+    Label isNotBaseConstructor(env);
 
     DEFVARIABLE(thisObj, VariableType::JS_ANY(), Undefined());
     GateRef hclass = LoadHClass(func);
@@ -1021,12 +1023,24 @@ void NewObjectStubBuilder::InitializeSFunction(GateRef glue, GateRef func, GateR
         SetWorkNodePointerToFunction(glue, func, NullPtr(), MemoryAttribute::NoBarrier());
         SetMethodToFunction(glue, func, Undefined(), MemoryAttribute::NoBarrier());
 
-        BRANCH(HasAccessor(kind), &hasAccess, &exit);
-        Bind(&hasAccess);
+        BRANCH(BitOr(HasAccessor(kind), IsBaseConstructorKind(kind)), &hasAccessOrIsBaseConstructor, &exit);
+        Bind(&hasAccessOrIsBaseConstructor);
         {
+            Branch(IsBaseConstructorKind(kind), &isBaseConstructor, &isNotBaseConstructor);
+            Bind(&isBaseConstructor);
+            {
+                auto funcprotoAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
+                                                                ConstantIndex::FUNCTION_PROTOTYPE_ACCESSOR);
+                SetPropertyInlinedProps(glue, func, hclass, funcprotoAccessor,
+                                        Int32(JSFunction::PROTOTYPE_INLINE_PROPERTY_INDEX),
+                                        VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
+                Jump(&isNotBaseConstructor);
+            }
+            Bind(&isNotBaseConstructor);
             auto funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                        ConstantIndex::FUNCTION_NAME_ACCESSOR);
-            SetPropertyInlinedProps(glue, func, hclass, funcAccessor, Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
+            SetPropertyInlinedProps(glue, func, hclass, funcAccessor,
+                                    Int32(JSFunction::NAME_INLINE_PROPERTY_INDEX),
                                     VariableType::JS_ANY(), MemoryAttribute::NoBarrier());
             funcAccessor = GetGlobalConstantValue(VariableType::JS_POINTER(), glue,
                                                   ConstantIndex::FUNCTION_LENGTH_ACCESSOR);
