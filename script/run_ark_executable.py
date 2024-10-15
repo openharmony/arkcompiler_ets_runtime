@@ -23,6 +23,7 @@ Description: run script
 
 import argparse
 import os
+import stat
 import subprocess
 import sys
 import time
@@ -118,6 +119,14 @@ def process_open(args: object) -> [str, object]:
     return [cmd, subp]
 
 
+def generate_stub_code_comment(out_str:str):
+    flags = os.O_WRONLY | os.O_CREAT
+    mode = stat.S_IWUSR | stat.S_IRUSR
+    fd = os.open('./gen/arkcompiler/ets_runtime/stub_code_comment.txt', flags, mode)
+    with os.fdopen(fd, "w") as code_comment_file:
+        code_comment_file.write(out_str)
+
+
 def judge_output(args: object):
     """run executable and judge is success or not."""
     start_time = time.time()
@@ -131,6 +140,7 @@ def judge_output(args: object):
 
     out_str = out.decode('UTF-8', errors="ignore")
     err_str = err.decode('UTF-8', errors="ignore")
+    generate_stub_code_comment(out_str)
     returncode = str(subp.returncode)
     if args.expect_output:
         if returncode != args.expect_output:
@@ -144,7 +154,6 @@ def judge_output(args: object):
                 + "]\n>>>>> But got: [" + returncode + "]")
             raise RuntimeError("Run [" + cmd + "] failed!")
     elif args.expect_sub_output:
-        out_str = out.decode('UTF-8', errors="ignore")
         if out_str.find(args.expect_sub_output) == -1 or returncode != "0":
             print(">>>>> ret <<<<<")
             print(returncode)
@@ -158,7 +167,6 @@ def judge_output(args: object):
             # skip license header
             expect_output = ''.join(file.readlines()[13:])
             file.close()
-            out_str = out.decode('UTF-8', errors="ignore")
             result_cmp = compare_line_by_line(expect_output, out_str)
             if result_cmp or returncode != "0":
                 print(">>>>> ret <<<<<")
