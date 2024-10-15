@@ -35,19 +35,26 @@ namespace OHOS {
         RuntimeOption option;
         JSRuntimeOptions runtimeOptions;
 
-        uint32_t pathLen = *reinterpret_cast<const uint32_t*>(data);
+        uint32_t pathLen = 0;
+        size_t maxByteLen = 4;
+        if (size > maxByteLen) {
+            size = maxByteLen;
+        }
+        if (memcpy_s(&pathLen, maxByteLen, data, size) != EOK) {
+            std::cout << "memcpy_s failed!";
+            UNREACHABLE();
+        }
         data += UINT32_SIZE;
         size -= UINT32_SIZE;
-
-        std::string hapPath(reinterpret_cast<const char*>(data), pathLen);
+        std::string hapPath(data, data + size);
         data += pathLen;
         size -= pathLen;
 
-        uint32_t offset = *reinterpret_cast<const uint32_t*>(data);
+        uint32_t offset = pathLen + MIN_SIZE_REQUIRED;
         data += UINT32_SIZE;
         size -= UINT32_SIZE;
 
-        uint32_t fileSize = *reinterpret_cast<const uint32_t*>(data);
+        uint32_t fileSize = offset + MIN_SIZE_REQUIRED;
         data += UINT32_SIZE;
         size -= UINT32_SIZE;
 
