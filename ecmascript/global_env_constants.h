@@ -289,6 +289,7 @@ class ObjectFactory;
     V(JSTaggedValue, ArraySome, ARRAY_SOME_INDEX, ecma_roots_builtins)                                  \
     V(JSTaggedValue, ArrayEvery, ARRAY_EVERY_INDEX, ecma_roots_builtins)                                \
     V(JSTaggedValue, ArrayPop, ARRAY_POP_INDEX, ecma_roots_builtins)                                    \
+    V(JSTaggedValue, ArrayPush, ARRAY_PUSH_INDEX, ecma_roots_builtins)                                    \
     V(JSTaggedValue, ArraySlice, ARRAY_SLICE_INDEX, ecma_roots_builtins)                                \
     V(JSTaggedValue, GloablDecodeURIComponent, GLOBAL_DECODE_URI_COMPONENT, ecma_roots_builtins)
 

@@ -577,6 +577,7 @@ private:
     V(JSMapValues)                              \
     V(JSSetHas)                                 \
     V(JSSetAdd)                                 \
+    V(GrowElementsCapacity)                     \
     V(CreateJSTypedArrayEntries)                \
     V(CreateJSTypedArrayKeys)                   \
     V(CreateJSTypedArrayValues)                 \

@@ -1248,12 +1248,12 @@ GateRef TypedHCRLowering::BuildTypedArrayLoadElement(GateRef receiver, GateRef o
 void TypedHCRLowering::LowerStringLoadElement(GateRef gate)
 {
     Environment env(gate, circuit_, &builder_);
-    GateRef glue = acc_.GetGlueFromArgList();
     GateRef receiver = acc_.GetValueIn(gate, 0);
     GateRef index = acc_.GetValueIn(gate, 1);
 
-    GateRef result = builder_.CallStub(glue, gate, CommonStubCSigns::GetSingleCharCodeByIndex,
-                                       { glue, receiver, index });
+    BuiltinsStringStubBuilder builder(&env);
+    GateRef result = builder.GetSingleCharCodeByIndex(receiver, index);
+
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 

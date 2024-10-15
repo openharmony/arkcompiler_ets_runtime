@@ -447,6 +447,7 @@ public:
     GateRef IsConfigable(GateRef attr);
     GateRef IsDefaultAttribute(GateRef attr);
     GateRef IsArrayLengthWritable(GateRef glue, GateRef receiver);
+    GateRef IsArrayLengthWritableForNonDictMode(GateRef receiver);
     GateRef IsAccessor(GateRef attr);
     GateRef IsInlinedProperty(GateRef attr);
     GateRef IsField(GateRef attr);
@@ -590,8 +591,8 @@ public:
     GateRef UpdateSOutOfBoundsForHandler(GateRef handlerInfo);
     void RestoreElementsKindToGeneric(GateRef glue, GateRef jsHClass);
     GateRef GetTaggedValueWithElementsKind(GateRef receiver, GateRef index);
-    void FastSetValueWithElementsKind(GateRef glue, GateRef elements, GateRef rawValue,
-                                      GateRef index, ElementsKind kind);
+    void FastSetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef elements, GateRef rawValue,
+                                      GateRef index, ElementsKind kind, bool needTransition = false);
     GateRef SetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef rawValue, GateRef index,
                                      GateRef needTransition, GateRef extraKind);
     GateRef CopyJSArrayToTaggedArrayArgs(GateRef glue, GateRef srcObj);

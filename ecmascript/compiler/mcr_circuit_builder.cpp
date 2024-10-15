@@ -2005,6 +2005,20 @@ GateRef CircuitBuilder::ArrayPop(GateRef thisValue, GateRef frameState)
     return ret;
 }
 
+GateRef CircuitBuilder::ArrayPush(GateRef thisValue, GateRef value)
+{
+    auto currentLabel = env_->GetCurrentLabel();
+    auto currentControl = currentLabel->GetControl();
+    auto currentDepend = currentLabel->GetDepend();
+    GateRef ret = GetCircuit()->NewGate(circuit_->ArrayPush(),
+                                        MachineType::I64,
+                                        {currentControl, currentDepend, thisValue, value},
+                                        GateType::AnyType());
+    currentLabel->SetControl(ret);
+    currentLabel->SetDepend(ret);
+    return ret;
+}
+
 GateRef CircuitBuilder::ArraySlice(GateRef thisValue, GateRef startIndex, GateRef endIndex, GateRef frameState)
 {
     auto currentLabel = env_->GetCurrentLabel();

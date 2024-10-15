@@ -27,6 +27,7 @@
 #include "ecmascript/compiler/new_object_stub_builder.h"
 #include "ecmascript/compiler/profiler_stub_builder.h"
 #include "ecmascript/compiler/rt_call_signature.h"
+#include "ecmascript/elements.h"
 #include "ecmascript/global_env_constants.h"
 #include "ecmascript/ic/properties_cache.h"
 #include "ecmascript/js_api/js_api_arraylist.h"
@@ -1111,7 +1112,26 @@ GateRef StubBuilder::ComputeNonInlinedFastPropsCapacity(GateRef glue, GateRef ol
     env->SubCfgExit();
     return ret;
 }
-
+#if ENABLE_NEXT_OPTIMIZATION
+GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::INT32(), Int32(0));
+    GateRef newL = Int32Add(oldLength, Int32LSR(oldLength, Int32(1)));
+    // Handle small array edge cases: for small arrays, 1.5 times expansion may not provide sufficient growth,
+    // so adding a fixed value (like 16) avoids frequent capacity expansion in the short term.
+    newL = Int32Add(newL, Int32(16));
+    result = newL;
+    Jump(&exit);
+    Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+#else
 GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
 {
     auto env = GetEnvironment();
@@ -1136,7 +1156,7 @@ GateRef StubBuilder::ComputeElementCapacity(GateRef oldLength)
     env->SubCfgExit();
     return ret;
 }
-
+#endif
 GateRef StubBuilder::CallGetterHelper(
     GateRef glue, GateRef receiver, GateRef holder, GateRef accessor, ProfileOperation callback, GateRef hir)
 {
@@ -4064,12 +4084,26 @@ GateRef StubBuilder::IsArrayLengthWritable(GateRef glue, GateRef receiver)
     }
     Bind(&notDicMode);
     {
-        GateRef layoutInfo = GetLayoutFromHClass(hclass);
-        GateRef attr = GetPropAttrFromLayoutInfo(layoutInfo, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
-        result = IsWritable(attr);
+        result = IsArrayLengthWritableForNonDictMode(receiver);
         Jump(&exit);
     }
     Bind(&exit);
+    auto ret = *result;
+    env->SubCfgExit();
+    return ret;
+}
+
+GateRef StubBuilder::IsArrayLengthWritableForNonDictMode(GateRef receiver)
+{
+    auto env = GetEnvironment();
+    Label subEntry(env);
+    env->SubCfgEntry(&subEntry);
+    Label exit(env);
+    DEFVARIABLE(result, VariableType::BOOL(), False());
+    GateRef hclass = LoadHClass(receiver);
+    GateRef layoutInfo = GetLayoutFromHClass(hclass);
+    GateRef attr = GetPropAttrFromLayoutInfo(layoutInfo, Int32(JSArray::LENGTH_INLINE_PROPERTY_INDEX));
+    result = IsWritable(attr);
     auto ret = *result;
     env->SubCfgExit();
     return ret;
@@ -9809,13 +9843,16 @@ GateRef StubBuilder::SetValueWithElementsKind(GateRef glue, GateRef receiver, Ga
     return ret;
 }
 
-void StubBuilder::FastSetValueWithElementsKind(GateRef glue, GateRef elements, GateRef rawValue,
-                                               GateRef index, ElementsKind kind)
+void StubBuilder::FastSetValueWithElementsKind(GateRef glue, GateRef receiver, GateRef elements, GateRef rawValue,
+                                               GateRef index, ElementsKind kind, bool needTransition)
 {
     auto env = GetEnvironment();
     Label entryPass(env);
     env->SubCfgEntry(&entryPass);
     Label exit(env);
+    if (needTransition) {
+        TransitToElementsKind(glue, receiver, rawValue, Int32(static_cast<uint32_t>(ElementsKind::NONE)));
+    }
     if (kind == ElementsKind::INT || kind == ElementsKind::NUMBER) {
         SetValueToTaggedArray(VariableType::INT64(), glue, elements, index, rawValue);
         Jump(&exit);

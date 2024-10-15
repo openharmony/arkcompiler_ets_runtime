@@ -16,6 +16,7 @@
 #include "ecmascript/builtins/builtins_number.h"
 #include "ecmascript/builtins/builtins_string.h"
 #include "ecmascript/base/number_helper.h"
+#include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
 #include "ecmascript/compiler/circuit_builder_helper.h"
@@ -382,6 +383,9 @@ void NativeInlineLowering::RunNativeInlineLowering()
                 break;
             case BuiltinsStubCSigns::ID::ArrayPop:
                 TryInlineArrayPop(gate, argc, id, skipThis);
+                break;
+            case BuiltinsStubCSigns::ID::ArrayPush:
+                TryInlineArrayPush(gate, argc, id, skipThis);
                 break;
             case BuiltinsStubCSigns::ID::ArraySlice:
                 TryInlineArraySlice(gate, argc, id, skipThis);
@@ -1788,6 +1792,30 @@ void NativeInlineLowering::TryInlineArrayPop(GateRef gate, size_t argc, Builtins
     GateRef ret = builder_.ArrayPop(thisValue, acc_.GetFrameState(gate));
     ReplaceGateWithPendingException(gate, ret);
 }
+
+void NativeInlineLowering::TryInlineArrayPush(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
+{
+    // To ensure that the Inline code is as small as possible,
+    // FastPath only processes the case when the number of elements to push equals 1
+    // and elementsKinds is not enabled.
+    if (!skipThis || argc != 1 || enableElementsKind_) {
+        return;
+    }
+    Environment env(gate, circuit_, &builder_);
+    if (!Uncheck()) {
+        builder_.CallTargetCheck(gate, acc_.GetValueIn(gate, argc + 1), builder_.IntPtr(static_cast<int64_t>(id)));
+    }
+    GateRef thisValue = acc_.GetValueIn(gate, 0);
+    ElementsKind kind = acc_.TryGetArrayElementsKind(thisValue);
+    if (EnableTrace()) {
+        AddTraceLogs(gate, id);
+    }
+    builder_.StableArrayCheck(thisValue, kind, ArrayMetaDataAccessor::Mode::CALL_BUILTIN_METHOD);
+    builder_.BuiltinPrototypeHClassCheck(thisValue, BuiltinTypeId::ARRAY, kind, false);
+    GateRef ret = builder_.ArrayPush(thisValue, acc_.GetValueIn(gate, 1));
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
+}
+
 
 void NativeInlineLowering::TryInlineArraySlice(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
 {

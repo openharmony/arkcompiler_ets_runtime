@@ -166,6 +166,7 @@ namespace panda::ecmascript::kungfu {
     V(ArrayIncludesIndexOf, ARRAY_INCLUDES_INDEXOF, GateFlags::NO_WRITE,  1, 1, 5)              \
     V(ArrayIteratorBuiltin, ARRAY_ITERATOR_BUILTIN, GateFlags::NONE_FLAG,  1, 1, 2)             \
     V(ArrayPop, ARRAY_POP, GateFlags::NONE_FLAG, 1, 1, 2)                                       \
+    V(ArrayPush, ARRAY_PUSH, GateFlags::NONE_FLAG, 1, 1, 2)                                     \
     V(ArraySlice, ARRAY_SLICE, GateFlags::NONE_FLAG, 1, 1, 4)                                   \
     V(ArraySort, ARRAY_SORT, GateFlags::NONE_FLAG, 1, 1, 2)                                     \
     MCR_BINARY_GATE_META_DATA_CACHE_LIST(V)
