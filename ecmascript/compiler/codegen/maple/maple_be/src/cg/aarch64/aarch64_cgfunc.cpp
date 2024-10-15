@@ -1232,7 +1232,7 @@ void AArch64CGFunc::SelectDassignoff(DassignoffNode &stmt, Operand &opnd0)
                         ? MOP_wstrh
                         : ((size == k32BitSize) ? MOP_wstr : ((size == k64BitSize) ? MOP_xstr : MOP_undef));
     CHECK_FATAL(mOp != MOP_undef, "illegal size for dassignoff");
-    DEBUG_ASSERT(symbol != nullptr, "nullptr check");
+    CHECK_NULL_FATAL(symbol);
     MemOperand *memOpnd = &GetOrCreateMemOpnd(*symbol, offset, size);
     if ((memOpnd->GetMemVaryType() == kNotVary) &&
         (IsImmediateOffsetOutOfRange(*memOpnd, size) || (offset % k8BitSize != 0))) {
@@ -2674,7 +2674,7 @@ Operand &AArch64CGFunc::SelectAddrofFunc(AddroffuncNode &expr, const BaseNode &p
                             : (instrSize == k4ByteSize) ? PTY_u32 : (instrSize == k2ByteSize) ? PTY_u16 : PTY_u8;
     Operand &operand = GetOrCreateResOperand(parent, primType);
     MIRFunction *mirFunction = GlobalTables::GetFunctionTable().GetFunctionFromPuidx(expr.GetPUIdx());
-    DEBUG_ASSERT(mirFunction->GetFuncSymbol() != nullptr, "nullptr check");
+    CHECK_NULL_FATAL(mirFunction->GetFuncSymbol());
     SelectAddrof(operand, CreateStImmOperand(*mirFunction->GetFuncSymbol(), 0, 0));
     return operand;
 }
@@ -3615,7 +3615,7 @@ Operand &AArch64CGFunc::SelectCGArrayElemAdd(BinaryNode &node, const BaseNode &p
         case OP_addrof: {
             AddrofNode *addrofNode = static_cast<AddrofNode *>(opnd0);
             CHECK_NULL_FATAL(mirModule.CurFunction());
-            DEBUG_ASSERT(mirModule.CurFunction()->GetLocalOrGlobalSymbol(addrofNode->GetStIdx()) != nullptr, "nullptr check");
+            CHECK_NULL_FATAL(mirModule.CurFunction()->GetLocalOrGlobalSymbol(addrofNode->GetStIdx()));
             MIRSymbol &symbol = *mirModule.CurFunction()->GetLocalOrGlobalSymbol(addrofNode->GetStIdx());
             DEBUG_ASSERT(addrofNode->GetFieldID() == 0, "For debug SelectCGArrayElemAdd.");
 
@@ -7193,7 +7193,7 @@ void AArch64CGFunc::SelectMemCopy(const MemOperand &destOpnd, const MemOperand &
                                   BaseNode *destNode, BaseNode *srcNode)
 {
     if (size > kParmMemcpySize) {
-        DEBUG_ASSERT(ExtractMemBaseAddr(srcOpnd) != nullptr, "nullptr check");
+        CHECK_NULL_FATAL(ExtractMemBaseAddr(srcOpnd));
         SelectLibMemCopy(*ExtractMemBaseAddr(destOpnd), *ExtractMemBaseAddr(srcOpnd), size);
         return;
     }
