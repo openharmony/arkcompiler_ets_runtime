@@ -38,6 +38,7 @@ group("ark_jit_ts_test") {
     "compiler_inline",
     "uint32_array",
     "inc",
+    "uncheck_float64_to_int32",
   ]
 
   deps = [ "pgo_roottype_test:pgo_roottype_test" ]
