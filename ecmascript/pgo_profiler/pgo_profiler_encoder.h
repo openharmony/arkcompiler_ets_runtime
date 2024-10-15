@@ -111,8 +111,10 @@ private:
     std::unique_ptr<PGOPandaFileInfos> pandaFileInfos_;
     std::shared_ptr<PGOAbcFilePool> abcFilePool_;
     std::shared_ptr<PGORecordDetailInfos> globalRecordInfos_;
-    Mutex mutex_;
+    // rwLock_ is used to protect the pandaFileInfos_ and abcFilePool_
     RWLock rwLock_;
+    // mutex_ is used to protect the others
+    Mutex mutex_;
     std::atomic_bool hasPostModuleName_ {false};
     std::string moduleName_;
     std::string bundleName_;
