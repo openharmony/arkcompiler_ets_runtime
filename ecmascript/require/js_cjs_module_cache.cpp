@@ -34,7 +34,7 @@ JSHandle<CjsModuleCache> CjsModuleCache::PutIfAbsentAndReset(const JSThread *thr
     JSHandle<CjsModuleCache> newDictionary(HashTable::GrowHashTable(thread, dictionary));
 
     // Compute the key object.
-    int hash = static_cast<int>(Hash(key.GetTaggedValue()));
+    uint32_t hash = Hash(key.GetTaggedValue());
     entry = newDictionary->FindInsertIndex(hash);
     newDictionary->SetEntry(thread, entry, key, value);
     newDictionary->IncreaseEntries(thread);
