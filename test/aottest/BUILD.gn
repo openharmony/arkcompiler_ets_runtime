@@ -347,6 +347,7 @@ group("ark_aot_ts_test") {
     "webkit_call_convention",
     "retype_isnan",
     "inline_abs",
+    "retype_test",
   ]
 
   if (!is_debug) {
