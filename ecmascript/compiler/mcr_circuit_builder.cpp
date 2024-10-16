@@ -120,6 +120,10 @@ GateRef CircuitBuilder::StableArrayCheck(GateRef gate, ElementsKind kind, ArrayM
 
 GateRef CircuitBuilder::ElementsKindCheck(GateRef receiver, ElementsKind kind, ArrayMetaDataAccessor::Mode mode)
 {
+    // If elements kind is hole, no ElementsKindCheck is required.
+    if (Elements::IsHole(kind)) {
+        return Circuit::NullGate();
+    }
     auto currentLabel = env_->GetCurrentLabel();
     auto currentControl = currentLabel->GetControl();
     auto currentDepend = currentLabel->GetDepend();

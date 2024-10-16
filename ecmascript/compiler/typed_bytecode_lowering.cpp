@@ -1292,6 +1292,7 @@ GateRef TypedBytecodeLowering::LoadJSArrayByIndex(const LoadBulitinObjTypeInfoAc
     if (!Uncheck()) {
         if (!acc_.IsCreateArray(receiver)) {
             builder_.StableArrayCheck(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
+            builder_.ElementsKindCheck(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_ELEMENT);
         }
         GateRef length = builder_.LoadArrayLength(receiver, kind, ArrayMetaDataAccessor::Mode::LOAD_LENGTH);
         propKey = builder_.IndexCheck(length, propKey);

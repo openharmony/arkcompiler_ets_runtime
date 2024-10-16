@@ -221,6 +221,9 @@ GateRef TypedHCRLowering::VisitGate(GateRef gate)
         case OpCode::ECMA_OBJECT_CHECK:
             LowerEcmaObjectCheck(gate);
             break;
+        case OpCode::ELEMENTSKIND_CHECK:
+            LowerElementskindCheck(gate);
+            break;
         default:
             break;
     }
@@ -3544,4 +3547,23 @@ void TypedHCRLowering::LowerEcmaObjectCheck(GateRef gate)
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
 
+void TypedHCRLowering::LowerElementskindCheck(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    GateRef frameState = acc_.GetFrameState(gate);
+    ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
+    ElementsKind kind = accessor.GetElementsKind();
+    GateRef check = Circuit::NullGate();
+    GateRef receiver = acc_.GetValueIn(gate, 0);
+    GateRef hclass = builder_.LoadConstOffset(VariableType::JS_POINTER(), receiver, TaggedObject::HCLASS_OFFSET);
+
+    if (Elements::IsComplex(kind)) {
+        check = builder_.Int32GreaterThanOrEqual(builder_.Int32(static_cast<int32_t>(kind)),
+                                                 builder_.GetElementsKindByHClass(hclass));
+    } else {
+        check = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)), builder_.GetElementsKindByHClass(hclass));
+    }
+    builder_.DeoptCheck(check, frameState, DeoptType::INCONSISTENTELEMENTSKIND);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
 }  // namespace panda::ecmascript::kungfu

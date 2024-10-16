@@ -43,7 +43,6 @@ private:
     void LowerIsMarkerCellValid(GateRef gate);
     void LowerIsSpecificObjectType(GateRef gate);
     void LowerHClassStableArrayCheck(GateRef gate);
-    void LowerElementskindCheck(GateRef gate);
     void LowerGetConstPool(GateRef gate);
     void LowerGetUnsharedConstpool(GateRef gate);
     void LowerLoadConstOffset(GateRef gate);

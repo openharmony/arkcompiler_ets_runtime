@@ -229,6 +229,7 @@ private:
     void LowerStringFromSingleCharCode(GateRef gate, GateRef glue);
     void LowerMigrateArrayWithKind(GateRef gate);
     void LowerEcmaObjectCheck(GateRef gate);
+    void LowerElementskindCheck(GateRef gate);
 
     GateRef LowerCallRuntime(GateRef glue, GateRef hirGate, int index, const std::vector<GateRef> &args,
                              bool useLabel = false);

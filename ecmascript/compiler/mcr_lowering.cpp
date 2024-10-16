@@ -43,9 +43,6 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::HEAP_OBJECT_CHECK:
             LowerHeapObjectCheck(gate);
             break;
-        case OpCode::ELEMENTSKIND_CHECK:
-            LowerElementskindCheck(gate);
-            break;
         case OpCode::LOAD_CONST_OFFSET:
             LowerLoadConstOffset(gate);
             break;
@@ -294,43 +291,8 @@ void MCRLowering::LowerHClassStableArrayCheck(GateRef gate)
     GateRef frameState = acc_.GetFrameState(gate);
     GateRef hclass = acc_.GetValueIn(gate, 0);
 
-    GateRef check = Circuit::NullGate();
-    GateRef stableCheck = builder_.IsStableElements(hclass);
-    ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
-    ElementsKind kind = accessor.GetElementsKind();
-    if (accessor.IsLoadElement() && !Elements::IsHole(kind)) {
-        if (Elements::IsComplex(kind)) {
-            GateRef elementsKindCheck = builder_.Int32GreaterThanOrEqual(builder_.Int32(static_cast<int32_t>(kind)),
-                                                                         builder_.GetElementsKindByHClass(hclass));
-            check = builder_.BitAnd(stableCheck, elementsKindCheck);
-        } else {
-            GateRef elementsKindCheck = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)),
-                                                       builder_.GetElementsKindByHClass(hclass));
-            check = builder_.BitAnd(stableCheck, elementsKindCheck);
-        }
-    } else {
-        check = stableCheck;
-    }
+    GateRef check = builder_.IsStableElements(hclass);
     builder_.DeoptCheck(check, frameState, DeoptType::NOTSARRAY2);
-
-    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
-}
-
-void MCRLowering::LowerElementskindCheck(GateRef gate)
-{
-    Environment env(gate, circuit_, &builder_);
-    GateRef frameState = acc_.GetFrameState(gate);
-    GateRef hclass = acc_.GetValueIn(gate, 0);
-    ArrayMetaDataAccessor accessor = acc_.GetArrayMetaDataAccessor(gate);
-    ElementsKind kind = accessor.GetElementsKind();
-    GateRef check = builder_.Equal(builder_.Int32(static_cast<int32_t>(kind)),
-                                   builder_.GetElementsKindByHClass(hclass));
-
-    if (accessor.IsLoadElement()) {
-        builder_.DeoptCheck(check, frameState, DeoptType::ELEMENSKINDMISMATCHEDATLOAD);
-    } else {
-        builder_.DeoptCheck(check, frameState, DeoptType::ELEMENSKINDMISMATCHEDATSTORE);
-    }
 
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
 }
