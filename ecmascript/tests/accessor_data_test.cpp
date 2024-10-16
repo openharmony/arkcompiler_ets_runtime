@@ -48,8 +48,8 @@ HWTEST_F_L0(AccessorDataTest, AccessorData_Cast)
     JSHandle<JSHClass> internalAccClassHandle =
         factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
     TaggedObject *internalAccObject = factory->NewObject(internalAccClassHandle);
-    AccessorData::Cast(internalAccObject)->SetGetter(thread, JSTaggedValue::Undefined());
-    AccessorData::Cast(internalAccObject)->SetSetter(thread, JSTaggedValue::Undefined());
+    InternalAccessor::Cast(internalAccObject)->SetGetter(nullptr);
+    InternalAccessor::Cast(internalAccObject)->SetSetter(nullptr);
     EXPECT_TRUE(JSTaggedValue(internalAccObject).IsInternalAccessor());
     AccessorData *internalAcc = AccessorData::Cast(internalAccObject);
     EXPECT_TRUE(JSTaggedValue(internalAcc).IsInternalAccessor());
@@ -83,8 +83,8 @@ HWTEST_F_L0(AccessorDataTest, IsInternal)
     JSHandle<JSHClass> internalAccClass =
         factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
     TaggedObject *internalAccObject = factory->NewObject(internalAccClass);
-    AccessorData::Cast(internalAccObject)->SetGetter(thread, JSTaggedValue::Undefined());
-    AccessorData::Cast(internalAccObject)->SetSetter(thread, JSTaggedValue::Undefined());
+    InternalAccessor::Cast(internalAccObject)->SetGetter(nullptr);
+    InternalAccessor::Cast(internalAccObject)->SetSetter(nullptr);
     AccessorData *internalAcc = AccessorData::Cast(internalAccObject);
     EXPECT_EQ(internalAcc->IsInternal(), true);
 }
@@ -112,11 +112,12 @@ HWTEST_F_L0(AccessorDataTest, HasSetter)
     // 2.Create internal AccessorData object by NewInternalAccessor function.
     void *setter = nullptr;
     void *getter = nullptr;
-    JSHandle<AccessorData> internalAccHandle = factory->NewInternalAccessor(setter, getter);
+    JSHandle<InternalAccessor> internalAccHandle = JSHandle<InternalAccessor>::Cast(
+        factory->NewInternalAccessor(setter, getter));
     EXPECT_EQ(internalAccHandle->HasSetter(), false);
-    internalAccHandle->SetSetter(thread, JSTaggedValue::Undefined());
+    internalAccHandle->SetSetter(nullptr);
     EXPECT_EQ(internalAccHandle->HasSetter(), false);
-    internalAccHandle->SetSetter(thread, normalFunction);
+    internalAccHandle->SetSetter(JSFunction::PrototypeSetter);
     EXPECT_EQ(internalAccHandle->HasSetter(), true);
 
     // 3.Create normal AccessorData object from dynamic class.
@@ -125,7 +126,6 @@ HWTEST_F_L0(AccessorDataTest, HasSetter)
     TaggedObject *accObject = factory->NewObject(accClass);
     AccessorData *acc = AccessorData::Cast(accObject);
     acc->SetGetter(thread, JSTaggedValue::Undefined());
-    EXPECT_EQ(acc->HasSetter(), true);
     acc->SetSetter(thread, JSTaggedValue::Undefined());
     EXPECT_EQ(acc->HasSetter(), false);
     acc->SetSetter(thread, normalFunction);
@@ -135,12 +135,11 @@ HWTEST_F_L0(AccessorDataTest, HasSetter)
     JSHandle<JSHClass> internalAccClass =
         factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullHandle);
     TaggedObject *internalAccObject = factory->NewObject(internalAccClass);
-    AccessorData *internalAcc = AccessorData::Cast(internalAccObject);
-    internalAcc->SetGetter(thread, JSTaggedValue::Undefined());
-    EXPECT_EQ(internalAcc->HasSetter(), true);
-    internalAcc->SetSetter(thread, JSTaggedValue::Undefined());
+    InternalAccessor *internalAcc = InternalAccessor::Cast(internalAccObject);
+    internalAcc->SetGetter(nullptr);
+    internalAcc->SetSetter(nullptr);
     EXPECT_EQ(internalAcc->HasSetter(), false);
-    internalAcc->SetSetter(thread, normalFunction);
+    internalAcc->SetSetter(JSFunction::PrototypeSetter);
     EXPECT_EQ(internalAcc->HasSetter(), true);
 }
 
@@ -165,21 +164,16 @@ HWTEST_F_L0(AccessorDataTest, CallInternalSet)
     JSHandle<JSTaggedValue> nullPrototypeHandle(thread, JSTaggedValue::Null());
     JSHandle<JSHClass> accClass1 =
         factory->NewEcmaHClass(JSObject::SIZE, JSType::INTERNAL_ACCESSOR, nullPrototypeHandle);
-    JSHandle<AccessorData> accObject1(thread, factory->NewObject(accClass1));
-    accObject1->SetGetter(thread, JSTaggedValue::Undefined());
-    accObject1->SetSetter(thread, JSTaggedValue::Undefined());
-    JSHandle<JSNativePointer> prototypeGetterFuncNativePtrHandle =
-        factory->NewJSNativePointer(reinterpret_cast<void *>(JSFunction::PrototypeGetter), nullptr, nullptr, true);
-    accObject1->SetGetter(thread, prototypeGetterFuncNativePtrHandle);
+    JSHandle<InternalAccessor> internal(thread, factory->NewObject(accClass1));
+    JSHandle<AccessorData> accObject1 = JSHandle<AccessorData>::Cast(internal);
+    internal->SetGetter(JSFunction::PrototypeGetter);
 
     JSTaggedValue valNullPrototype = accObject1->CallInternalGet(thread, JSHandle<JSObject>::Cast(funcTagVal1));
     EXPECT_NE(valNullPrototype.GetRawData(), JSTaggedValue::Undefined().GetRawData());
 
     // Call the CallInternalSet method to set new prototype.
     JSHandle<JSTaggedValue> undefPrototypeHandle(thread, JSTaggedValue::Undefined());
-    JSHandle<JSNativePointer> prototypeSetterFuncNativePtrHandle =
-        factory->NewJSNativePointer(reinterpret_cast<void *>(JSFunction::PrototypeSetter), nullptr, nullptr, true);
-    accObject1->SetSetter(thread, prototypeSetterFuncNativePtrHandle);
+    internal->SetSetter(JSFunction::PrototypeSetter);
     bool res1 = accObject1->CallInternalSet(thread, JSHandle<JSObject>::Cast(funcTagVal1), undefPrototypeHandle);
     EXPECT_TRUE(res1);
 

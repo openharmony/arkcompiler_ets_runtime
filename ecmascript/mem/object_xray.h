@@ -472,8 +472,12 @@ public:
                 GlobalEnv::Cast(object)->VisitRangeSlot<visitType>(visitor);
                 break;
             case JSType::ACCESSOR_DATA:
-            case JSType::INTERNAL_ACCESSOR:
                 AccessorData::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                break;
+            case JSType::INTERNAL_ACCESSOR:
+                if constexpr (visitType == VisitType::ALL_VISIT) {
+                    InternalAccessor::Cast(object)->VisitRangeSlot<visitType>(visitor);
+                }
                 break;
             case JSType::SYMBOL:
                 JSSymbol::Cast(object)->VisitRangeSlot<visitType>(visitor);
