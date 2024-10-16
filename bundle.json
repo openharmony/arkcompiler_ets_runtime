@@ -3,7 +3,7 @@
     "version": "",
     "description": "支持应用TS/JS语言代码的运行，行为符合ArkUI框架需要的Strict模式的ES2015标准",
     "homePage": "https://gitee.com/openharmony",
-    "license": "Apache Liscense 2.0",
+    "license": "Apache License 2.0",
     "publishAs": "code-segment",
     "scripts": {},
     "dirs": [],
