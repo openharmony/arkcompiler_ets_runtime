@@ -371,7 +371,7 @@ public:
                                                 uint32_t oldLength, uint32_t k = 0);
     JSHandle<TaggedArray> NewAndCopyTaggedArraySkipBarrier(JSHandle<TaggedArray> &srcElements, uint32_t newLength,
                                                            uint32_t oldLength, uint32_t k = 0);
-    JSHandle<TaggedArray> PUBLIC_API NewAndCopySNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
+    JSHandle<TaggedArray> NewAndCopySNameDictionary(JSHandle<TaggedArray> &srcElements, uint32_t length);
     JSHandle<TaggedArray> NewAndCopyTaggedArrayByObject(JSHandle<JSObject> thisObjHandle, uint32_t newLength,
                                                         uint32_t oldLength, uint32_t k = 0);
     JSHandle<MutantTaggedArray> NewAndCopyMutantTaggedArrayByObject(JSHandle<JSObject> thisObjHandle,
