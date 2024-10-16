@@ -18,7 +18,7 @@
 
 namespace maple {
 enum MIRIntrinsicID {
-#define DEF_MIR_INTRINSIC(STR, NAME, INTRN_CLASS, RETURN_TYPE, ...) INTRN_##STR,
+#define DEF_MIR_INTRINSIC(STR, NAME, RETURN_TYPE, ...) INTRN_##STR,
 #include "intrinsics.def"
 #undef DEF_MIR_INTRINSIC
 };
