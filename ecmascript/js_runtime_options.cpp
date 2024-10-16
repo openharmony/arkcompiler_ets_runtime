@@ -1201,14 +1201,6 @@ bool JSRuntimeOptions::ParseCommand(const int argc, const char **argv)
                     return false;
                 }
                 break;
-            case OPTION_COMPILER_MEMORY_ANALYSIS:
-                ret = ParseBoolParam(&argBool);
-                if (ret) {
-                    SetEnableMemoryAnalysis(argBool);
-                } else {
-                    return false;
-                }
-                break;
             case OPTION_COMPILER_CHECK_PGO_VERSION:
                 ret = ParseBoolParam(&argBool);
                 if (ret) {

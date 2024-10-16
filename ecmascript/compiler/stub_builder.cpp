@@ -1872,7 +1872,7 @@ void StubBuilder::SetSValueWithBarrier(GateRef glue, GateRef obj, GateRef offset
                                          Int64(JSThread::GlueData::GetSharedGCStateBitFieldOffset(isArch32)));
             GateRef state = Int64And(stateBitField, Int64(JSThread::SHARED_CONCURRENT_MARKING_BITFIELD_MASK));
             BRANCH(Int64Equal(state, Int64(static_cast<int64_t>(SharedMarkStatus::READY_TO_CONCURRENT_MARK))),
-                   &exit, &sharedMarking);
+                &exit, &sharedMarking);
 
             Bind(&sharedMarking);
             CallNGCRuntime(glue, RTSTUB_ID(SharedGCMarkingBarrier), {glue, value});

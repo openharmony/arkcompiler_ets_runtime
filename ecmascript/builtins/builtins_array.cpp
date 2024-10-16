@@ -503,8 +503,8 @@ JSTaggedValue BuiltinsArray::Concat(EcmaRuntimeCallInfo *argv)
     uint32_t arrayLen = 0;
     JSTaggedValue newArray = JSArray::ArraySpeciesCreate(thread, thisObjHandle, JSTaggedNumber(arrayLen));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
-    if (!(newArray.IsECMAObject() || newArray.IsUndefined())) {
-        THROW_TYPE_ERROR_AND_RETURN(thread, "array must be object or undefined.", JSTaggedValue::Exception());
+    if (newArray.IsNull()) {
+        THROW_TYPE_ERROR_AND_RETURN(thread, "array not return null.", JSTaggedValue::Exception());
     }
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
     JSHandle<JSObject> newArrayHandle(thread, newArray);

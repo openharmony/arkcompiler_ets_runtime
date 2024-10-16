@@ -65,8 +65,8 @@ CompilationOptions::CompilationOptions(JSRuntimeOptions &runtimeOptions)
     isEnableOptBranchProfiling_ = runtimeOptions.IsEnableBranchProfiling();
     optBCRange_ = runtimeOptions.GetOptCodeRange();
     isEnableEscapeAnalysis_ = runtimeOptions.IsEnableEscapeAnalysis();
-    isEnableInductionVariableAnalysis_ = runtimeOptions.IsEnableInductionVariableAnalysis();
     isEnableVerifierPass_ = !runtimeOptions.IsTargetCompilerMode();
+    isEnableInductionVariableAnalysis_ = runtimeOptions.IsEnableInductionVariableAnalysis();
     isEnableBaselinePgo_ = runtimeOptions.IsEnableBaselinePgo();
     std::string optionSelectMethods = runtimeOptions.GetCompilerSelectMethods();
     std::string optionSkipMethods = runtimeOptions.GetCompilerSkipMethods();
@@ -143,6 +143,8 @@ void AotCompilerPreprocessor::HandleTargetModeInfo(CompilationOptions &cOptions)
     vmOpt.SetFastAOTCompileMode(true);
     vmOpt.SetOptLevel(DEFAULT_OPT_LEVEL);
     cOptions.optLevel_ = DEFAULT_OPT_LEVEL;
+    cOptions.isEnableOptTrackField_ = false;
+    cOptions.isEnableLoweringBuiltin_ = false;
 }
 
 bool AotCompilerPreprocessor::MethodHasTryCatch(const JSPandaFile *jsPandaFile,
