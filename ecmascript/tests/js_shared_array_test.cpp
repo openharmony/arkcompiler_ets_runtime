@@ -1,0 +1,122 @@
+/*
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "ecmascript/ecma_string.h"
+#include "ecmascript/ecma_vm.h"
+#include "ecmascript/global_env.h"
+#include "ecmascript/shared_objects/js_shared_array.h"
+#include "ecmascript/js_tagged_value.h"
+#include "ecmascript/object_factory.h"
+#include "ecmascript/tests/test_helper.h"
+
+using namespace panda;
+
+using namespace panda::ecmascript;
+
+namespace panda::test {
+class JSSharedArrayTest : public BaseTestWithScope<false> {
+};
+
+HWTEST_F_L0(JSSharedArrayTest, SetCapacityTest001)
+{
+    JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(0))
+                                                 .GetTaggedValue()
+                                                 .GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSTaggedValue> obj(thread, arr);
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, obj, lengthKeyHandle, SCheckMode::SKIP).GetValue()->GetInt(), 0);
+
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+    JSHandle<TaggedArray> values(factory->NewTaggedArray(5));
+    for (int i = 0; i < 5; i++)
+    {
+        values->Set(thread, i, JSTaggedValue(i + 1));
+    }
+    JSHandle<TaggedArray> result(JSSharedArray::SetCapacity(thread, values, 10U));
+    JSHandle<JSSharedArray> sharedArray(JSSharedArray::CreateArrayFromList(thread, result));
+    EXPECT_EQ(sharedArray->GetArrayLength(), 10U);
+}
+
+HWTEST_F_L0(JSSharedArrayTest, SetCapacityTest002)
+{
+    JSSharedArray *sharedArray = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(5))
+                                                         .GetTaggedValue()
+                                                         .GetTaggedObject());
+    EXPECT_TRUE(sharedArray != nullptr);
+    JSHandle<JSObject> obj(thread, sharedArray);
+    JSSharedArray::SetCapacity(thread, obj, 5U, 10U);
+    EXPECT_EQ(sharedArray->GetArrayLength(), 10U);
+}
+
+HWTEST_F_L0(JSSharedArrayTest, SetCapacityTest003)
+{
+    JSSharedArray *sharedArray = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(5))
+                                                         .GetTaggedValue()
+                                                         .GetTaggedObject());
+    EXPECT_TRUE(sharedArray != nullptr);
+    JSHandle<JSObject> obj(thread, sharedArray);
+    JSSharedArray::SetCapacity(thread, obj, 10U, 5U);
+    EXPECT_EQ(sharedArray->GetArrayLength(), 5U);
+}
+
+HWTEST_F_L0(JSSharedArrayTest, PropertyKeyToArrayIndex)
+{
+    auto ecmaVM = thread->GetEcmaVM();
+    ObjectFactory *factory = ecmaVM->GetFactory();
+    JSHandle<TaggedArray> values(factory->NewTaggedArray(5));
+    for (int i = 0; i < 5; i++)
+    {
+        values->Set(thread, i, JSTaggedValue(i + 1));
+    }
+    JSHandle<JSTaggedValue> key(thread, JSTaggedValue(5));
+    JSHandle<JSTaggedValue> key1(thread, JSTaggedValue(-1));
+    uint32_t output = 5;
+    ASSERT_TRUE(JSSharedArray::PropertyKeyToArrayIndex(thread, key, &output));
+    ASSERT_FALSE(JSSharedArray::PropertyKeyToArrayIndex(thread, key1, &output));
+}
+
+HWTEST_F_L0(JSSharedArrayTest, ArraySetLength)
+{
+    // bool JSSharedArray::ArraySetLength(JSThread *thread,
+    //  const JSHandle<JSObject> &array, const PropertyDescriptor &desc)
+    JSHandle<JSTaggedValue> lengthKeyHandle = thread->GlobalConstants()->GetHandledLengthString();
+    JSSharedArray *arr = JSSharedArray::Cast(JSSharedArray::ArrayCreate(thread, JSTaggedNumber(1))
+                                                 .GetTaggedValue()
+                                                 .GetTaggedObject());
+    EXPECT_TRUE(arr != nullptr);
+    JSHandle<JSObject> obj(thread, arr);
+    PropertyDescriptor desc1(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(0)), true, true, true);
+    ASSERT_FALSE(JSSharedArray::ArraySetLength(thread, obj, desc1));
+    EXPECT_EQ(JSSharedArray::GetProperty(thread, JSHandle<JSTaggedValue>(obj), lengthKeyHandle, SCheckMode::SKIP)
+                  .GetValue()
+                  ->GetInt(),
+              1);
+
+    std::vector<int> vals{1, 2, 3, 4, 5};
+    std::vector<JSHandle<JSTaggedValue>> keys;
+    for (size_t i = 0; i < vals.size(); i++)
+    {
+        keys.push_back(JSHandle<JSTaggedValue>(thread, JSTaggedValue(static_cast<int>(i))));
+        PropertyDescriptor desc0(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(vals[i])), true, true, true);
+        EXPECT_TRUE(desc0.IsWritable());
+        JSSharedArray::DefineOwnProperty(thread, obj, keys[i], desc0);
+    }
+    PropertyDescriptor desc2(thread, JSHandle<JSTaggedValue>(thread, JSTaggedValue(6)), true, true, true);
+    EXPECT_TRUE(desc1.IsWritable());
+    ASSERT_FALSE(JSSharedArray::ArraySetLength(thread, obj, desc2));
+}
+} // namespace panda::test
