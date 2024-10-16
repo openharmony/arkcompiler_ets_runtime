@@ -49,7 +49,6 @@ void SharedGCMarkerBase::MarkLocalVMRoots(uint32_t threadId, EcmaVM *localVm, Sh
     Heap *heap = const_cast<Heap*>(localVm->GetHeap());
     if (markType != SharedMarkType::CONCURRENT_MARK_REMARK) {
         heap->GetSweeper()->EnsureAllTaskFinished();
-        heap->WaitClearTaskFinished();
     }
     ObjectXRay::VisitVMRoots(
         localVm,
