@@ -3371,9 +3371,7 @@ void SlowPathLowering::LowerCallInternal(GateRef gate)
     DEFVALUE(res, (&builder_), VariableType::JS_ANY(), builder_.Undefined());
     LowerFastCall(gate, glue_, func, argc, args, argsFastCall, &res, &exit, false);
     builder_.Bind(&exit);
-    GateRef stateInGate = builder_.GetState();
-    GateRef depend = builder_.GetDepend();
-    ReplaceHirWithPendingException(gate, stateInGate, depend, *res);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), *res);
 }
 
 void SlowPathLowering::LowerCallNew(GateRef gate)

@@ -1547,7 +1547,7 @@ void NativeInlineLowering::TryInlineArrayForEach(GateRef gate, size_t argc, Buil
     } else {
         ret = builder_.ArrayForEach(thisValue, callBackFn, acc_.GetValueIn(gate, 2), pcOffset); // 2:provide using This
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArrayFindOrFindIndex(GateRef gate,
@@ -1588,7 +1588,7 @@ void NativeInlineLowering::TryInlineArrayFindOrFindIndex(GateRef gate,
         ret = builder_.ArrayFindOrFindIndex(
             thisValue, callBackFn, acc_.GetValueIn(gate, 2), callIDRef, pcOffset); // 2:provide using This
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArrayFilter(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -1624,7 +1624,7 @@ void NativeInlineLowering::TryInlineArrayFilter(GateRef gate, size_t argc, Built
         ret = builder_.ArrayFilter(
             thisValue, callBackFn, acc_.GetValueIn(gate, 2), frameState, pcOffset); //2: provide usingThis
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArrayMap(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -1660,7 +1660,7 @@ void NativeInlineLowering::TryInlineArrayMap(GateRef gate, size_t argc, Builtins
         ret = builder_.ArrayMap(
             thisValue, callBackFn, acc_.GetValueIn(gate, 2), frameState, pcOffset); //2: provide usingThis
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArraySome(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -1694,7 +1694,7 @@ void NativeInlineLowering::TryInlineArraySome(GateRef gate, size_t argc, Builtin
     } else {
         ret = builder_.ArraySome(thisValue, callBackFn, acc_.GetValueIn(gate, 2), pcOffset); //2: provide usingThis
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArrayEvery(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)
@@ -1728,7 +1728,7 @@ void NativeInlineLowering::TryInlineArrayEvery(GateRef gate, size_t argc, Builti
     } else {
         ret = builder_.ArrayEvery(thisValue, callBackFn, acc_.GetValueIn(gate, 2), pcOffset); //2: provide usingThis
     }
-    acc_.ReplaceHirAndDeleteIfException(gate, builder_.GetStateDepend(), ret);
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), ret);
 }
 
 void NativeInlineLowering::TryInlineArrayPop(GateRef gate, size_t argc, BuiltinsStubCSigns::ID id, bool skipThis)

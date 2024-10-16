@@ -51,6 +51,7 @@ private:
         return ((kind == TARDOU_ARRNUM || kind == NONE) && callID == BuiltinsStubCSigns::ID::ArrayIncludes);
     }
 
+    void ReplaceGateWithPendingException(GateRef gate, GateRef glue, GateRef state, GateRef depend, GateRef value);
     void LowerGeneralUnaryMath(GateRef gate, RuntimeStubCSigns::ID stubId);
     void LowerMathAtan2(GateRef gate);
     void LowerTrunc(GateRef gate);
