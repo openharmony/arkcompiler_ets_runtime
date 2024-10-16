@@ -534,11 +534,10 @@ action("gen_stub_file") {
         "/thirdparty/bounds_checking_function:" +
         rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
   ]
-
-  outputs = [
-    "$stub_file_gen_dir/stub.an",
-    "$stub_file_gen_dir/stub_code_comment.txt",
-  ]
+  outputs = [ "$stub_file_gen_dir/stub.an" ]
+  if (is_ohos) {
+    outputs += [ "$stub_file_gen_dir/stub_code_comment.txt" ]
+  }
 }
 
 ohos_prebuilt_shared_library("stub.an") {
