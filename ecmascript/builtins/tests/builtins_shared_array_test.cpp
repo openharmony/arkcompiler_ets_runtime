@@ -1633,6 +1633,7 @@ HWTEST_F_L0(BuiltinsSharedArrayTest, Every)
     TestHelper::TearDownFrame(thread, prev);
 
     ASSERT_EQ(result2.GetRawData(), JSTaggedValue::True().GetRawData());
+    EXPECT_EQ(JSSharedArrayIterator::Next(ecmaRuntimeCallInfo1), JSTaggedValue::Exception());
 }
 
 }  // namespace panda::test

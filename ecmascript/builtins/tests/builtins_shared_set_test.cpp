@@ -404,4 +404,41 @@ HWTEST_F_L0(BuiltinsSharedSetTest, GetValue)
     EXPECT_EQ(IterationKind::KEY_AND_VALUE, iter2->GetIterationKind());
 }
 
+HWTEST_F_L0(BuiltinsSharedSetTest, KEY_AND_VALUE_Next)
+{
+    JSHandle<JSTaggedValue> index0(thread, JSTaggedValue(0));
+    JSHandle<JSTaggedValue> index1(thread, JSTaggedValue(1));
+    JSHandle<JSSharedSetIterator> setIterator;
+    JSHandle<JSSharedSet> jsSet(thread, CreateBuiltinsSharedSet(thread));
+    EXPECT_TRUE(*jsSet != nullptr);
+
+    for (int i = 0; i < 3; i++) {  // 3 : 3 default numberOfElements
+        JSHandle<JSTaggedValue> key(thread, JSTaggedValue(i));
+        JSSharedSet::Add(thread, jsSet, key);
+    }
+    // set IterationKind(key or value)
+    JSHandle<JSTaggedValue> setIteratorValue =
+        JSSharedSetIterator::CreateSetIterator(thread, JSHandle<JSTaggedValue>(jsSet), IterationKind::KEY_AND_VALUE);
+    setIterator = JSHandle<JSSharedSetIterator>(setIteratorValue);
+    std::vector<JSTaggedValue> args{JSTaggedValue::Undefined()};
+    auto ecmaRuntimeCallInfo =
+        TestHelper::CreateEcmaRuntimeCallInfo(thread, args, 6, setIteratorValue.GetTaggedValue());
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+
+    for (int i = 0; i <= 3; i++) { // 3 : 3 default numberOfElements
+        JSTaggedValue result = JSSharedSetIterator::Next(ecmaRuntimeCallInfo);
+        JSHandle<JSTaggedValue> resultObj(thread, result);
+        if (i < 3) {
+            JSHandle<JSArray> arrayList(thread, JSIterator::IteratorValue(thread, resultObj).GetTaggedValue());
+            EXPECT_EQ(setIterator->GetNextIndex(), static_cast<uint32_t>(i+1));
+            EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(arrayList), index0).GetValue()->GetInt(), i);
+            EXPECT_EQ(JSArray::GetProperty(thread, JSHandle<JSTaggedValue>(arrayList), index1).GetValue()->GetInt(), i);
+        }
+        else {
+            EXPECT_EQ(JSIterator::IteratorValue(thread, resultObj).GetTaggedValue(), JSTaggedValue::Undefined());
+        }
+    }
+    TestHelper::TearDownFrame(thread, prev);
+}
+
 }  // namespace panda::test
