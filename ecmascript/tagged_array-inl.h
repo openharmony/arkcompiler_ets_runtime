@@ -72,6 +72,7 @@ template <bool needBarrier>
 inline void TaggedArray::Copy(const JSThread* thread, uint32_t dstStart, uint32_t srcStart,
                               const TaggedArray* srcArray, uint32_t count)
 {
+    DISALLOW_GARBAGE_COLLECTION;
     ASSERT((dstStart + count <= GetLength()) && "TaggedArray::Copy dst count is out of range");
     ASSERT((srcStart + count <= srcArray->GetLength()) && "TaggedArray::Copy src count is out of range");
     size_t taggedTypeSize = JSTaggedValue::TaggedTypeSize();
