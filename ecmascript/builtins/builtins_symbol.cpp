@@ -15,6 +15,7 @@
 
 #include "ecmascript/builtins/builtins_symbol.h"
 
+#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/symbol_table.h"
@@ -91,18 +92,19 @@ JSTaggedValue BuiltinsSymbol::SymbolDescriptiveString(JSThread *thread, JSTagged
     JSHandle<JSTaggedValue> descHandle(thread, symbolObject->GetDescription());
 
     // If desc is undefined, let desc be the empty string.
-
+    JSHandle<SingleCharTable> singleCharTable(thread, thread->GetSingleCharTable());
+    auto constants = thread->GlobalConstants();
     if (descHandle->IsUndefined()) {
-        JSHandle<EcmaString> leftHandle(factory->NewFromASCII("Symbol("));
-        JSHandle<EcmaString> rightHandle(factory->NewFromASCII(")"));
+        JSHandle<EcmaString> leftHandle = JSHandle<EcmaString>::Cast(constants->GetHandledSymbolLeftParentheses());
+        JSHandle<EcmaString> rightHandle(thread, singleCharTable->GetStringFromSingleCharTable(')'));
         JSHandle<EcmaString> str = factory->ConcatFromString(leftHandle, rightHandle);
         return str.GetTaggedValue();
     }
     // Assert: Type(desc) is String.
     ASSERT(descHandle->IsString());
     // Return the result of concatenating the strings "Symbol(", desc, and ")".
-    JSHandle<EcmaString> leftHandle(factory->NewFromASCII("Symbol("));
-    JSHandle<EcmaString> rightHandle(factory->NewFromASCII(")"));
+    JSHandle<EcmaString> leftHandle = JSHandle<EcmaString>::Cast(constants->GetHandledSymbolLeftParentheses());
+    JSHandle<EcmaString> rightHandle(thread, singleCharTable->GetStringFromSingleCharTable(')'));
     JSHandle<EcmaString> stringLeft =
         factory->ConcatFromString(leftHandle, JSTaggedValue::ToString(thread, descHandle));
     RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);

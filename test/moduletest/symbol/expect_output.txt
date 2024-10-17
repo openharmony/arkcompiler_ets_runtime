@@ -14,3 +14,5 @@
 test Symbol.prototype.toString successful !!!
 test Symbol.prototype.valueOf successful !!!
 {"at":true,"copyWithin":true,"entries":true,"fill":true,"find":true,"findIndex":true,"findLast":true,"findLastIndex":true,"flat":true,"flatMap":true,"includes":true,"keys":true,"values":true,"toReversed":true,"toSorted":true,"toSpliced":true}
+Symbol(foo)
+Symbol(foo)

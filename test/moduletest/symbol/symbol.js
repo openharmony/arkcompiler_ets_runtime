@@ -33,3 +33,7 @@ try {
     print("test Symbol.prototype.valueOf successful !!!");
 }
 print(JSON.stringify(Array.prototype[Symbol.unscopables]));
+
+print(Symbol('foo').toString());
+
+print(Symbol.for("foo").toString());

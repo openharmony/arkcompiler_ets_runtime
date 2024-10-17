@@ -629,7 +629,8 @@ class ObjectFactory;
     V(AppSpawnFullGcCause,            APP_SPAWN_FULL_GC_CAUSE,               "app_spawn_full")              \
     V(SharedGcCause,                    SHARED_GC_CAUSE,                       "shared")                      \
     V(SharedFullGcCause,                SHARED_FULL_GC_CAUSE,                  "shared_full")                 \
-    V(AppSpawnSharedFullGcCause,      APP_SPAWN_SHARED_FULL_GC_CAUSE,        "app_spawn_shared_full")
+    V(AppSpawnSharedFullGcCause,      APP_SPAWN_SHARED_FULL_GC_CAUSE,        "app_spawn_shared_full")       \
+    V(SymbolLeftParentheses,          SYMBOL_LEFT_PARENTHESES,               "Symbol(")
 
 /* GlobalConstant */
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
