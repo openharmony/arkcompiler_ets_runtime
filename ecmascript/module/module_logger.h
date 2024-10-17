@@ -46,6 +46,7 @@ public:
                               int32_t index);
     void InsertParentModule(JSHandle<SourceTextModule> currentModule, JSHandle<SourceTextModule> requiredModule);
     void InsertEntryPointModule(JSHandle<SourceTextModule> currentModule);
+    void PrintModuleLoadInfo();
 
 private:
     static constexpr const int MILLISECONDS_PER_SEC = 1000;
@@ -62,13 +63,12 @@ private:
     bool CreateResultFile(std::string &path) const; // first time
     bool OpenResultFile(std::string &path) const;
     ModuleLoadInfo *GetModuleLoadInfo(const CString &recordName);
-    void PrintModuleLoadInfo();
+
     void PrintSummary() const;
     void PrintUsedFileInfo() const;
     void PrintUnusedFileInfo() const;
     void ProcessModuleExecuteTime();
     static std::string ToStringWithPrecision(const double num, const uint8_t n);
-
     EcmaVM *vm_ {nullptr};
     CUnorderedMap<CString, ModuleLoadInfo*> jsModuleLoadInfo_ {};
     uint32_t totalFileNumber_ {0};
