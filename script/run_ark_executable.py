@@ -122,7 +122,11 @@ def process_open(args: object) -> [str, object]:
 def generate_stub_code_comment(out_str:str):
     flags = os.O_WRONLY | os.O_CREAT
     mode = stat.S_IWUSR | stat.S_IRUSR
-    fd = os.open('./gen/arkcompiler/ets_runtime/stub_code_comment.txt', flags, mode)
+    dir_path = './gen/arkcompiler/ets_runtime/'
+    if not os.path.exists(dir_path):
+        return
+    file_path = dir_path + 'stub_code_comment.txt'
+    fd = os.open(file_path, flags, mode)
     with os.fdopen(fd, "w") as code_comment_file:
         code_comment_file.write(out_str)
 
