@@ -14,11 +14,7 @@
  */
 
 #include "ecmascript/pgo_profiler/types/pgo_profile_type.h"
-#include "ecmascript/log.h"
-#include "ecmascript/log_wrapper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_info.h"
-#include "ecmascript/pgo_profiler/pgo_utils.h"
-#include "macros.h"
 
 namespace panda::ecmascript::pgo {
 const ProfileType ProfileType::PROFILE_TYPE_NONE = ProfileType(0, 0);

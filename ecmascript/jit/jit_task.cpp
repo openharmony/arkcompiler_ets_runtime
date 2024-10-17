@@ -14,17 +14,9 @@
  */
 
 #include "ecmascript/jit/jit_task.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/compiler/aot_file/func_entry_des.h"
-#include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/ic/profile_type_info.h"
-#include "ecmascript/patch/patch_loader.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include "ecmascript/ohos/jit_tools.h"
-#include "ecmascript/dfx/dump_code/jit_dump_elf.h"
-#include "ecmascript/platform/aot_crash_info.h"
 #ifdef JIT_ENABLE_CODE_SIGN
 #include "jit_buffer_integrity.h"
 #endif

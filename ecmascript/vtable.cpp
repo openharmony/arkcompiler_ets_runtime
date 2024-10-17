@@ -14,8 +14,8 @@
  */
 
 #include "ecmascript/vtable.h"
-#include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/layout_info-inl.h"
+#include "ecmascript/js_hclass-inl.h"
 
 namespace panda::ecmascript {
 VTable::Tuple VTable::CreateTuple(const JSThread *thread, JSTaggedValue phc,

@@ -16,12 +16,6 @@
 #include "ecmascript/debugger/js_debugger.h"
 #include <memory>
 
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/interpreter/fast_runtime_stub-inl.h"
-#include "ecmascript/interpreter/frame_handler.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 
 namespace panda::ecmascript::tooling {

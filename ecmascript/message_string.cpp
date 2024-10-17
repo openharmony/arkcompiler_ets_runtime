@@ -17,8 +17,6 @@
 
 #include <array>
 
-#include "libpandabase/macros.h"
-
 namespace panda::ecmascript {
 // NOLINTNEXTLINE(fuchsia-statically-constructed-objects)
 static std::array<std::string, MessageString::MAX_MESSAGE_COUNT> g_messageString = {

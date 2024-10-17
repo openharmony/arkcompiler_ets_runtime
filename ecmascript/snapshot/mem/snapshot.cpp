@@ -17,20 +17,7 @@
 
 #include <cerrno>
 
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/jobs/micro_job_queue.h"
-#include "ecmascript/js_hclass.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/mem/c_containers.h"
-#include "ecmascript/mem/heap.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/snapshot/mem/snapshot_env.h"
 
 namespace panda::ecmascript {
 void Snapshot::Serialize(const CString &fileName)

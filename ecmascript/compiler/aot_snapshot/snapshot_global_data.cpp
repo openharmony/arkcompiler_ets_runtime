@@ -16,9 +16,7 @@
 #include "ecmascript/compiler/aot_snapshot/snapshot_global_data.h"
 
 #include "ecmascript/compiler/aot_snapshot/aot_snapshot_constants.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::kungfu {
 JSHandle<ConstantPool> ReviseData::GetConstantPoolFromSnapshotData(JSThread *thread,

@@ -16,10 +16,8 @@
 #include "ecmascript/jspandafile/scope_info_extractor.h"
 
 #include "ecmascript/interpreter/frame_handler.h"
-#include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/jspandafile/program_object.h"
 #include "ecmascript/object_factory-inl.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 JSTaggedValue ScopeInfoExtractor::GenerateScopeInfo(JSThread *thread, uint16_t scopeId)

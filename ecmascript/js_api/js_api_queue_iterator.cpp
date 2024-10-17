@@ -15,11 +15,8 @@
 
 #include "ecmascript/js_api/js_api_queue_iterator.h"
 
-#include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/js_api/js_api_queue.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

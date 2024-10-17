@@ -15,22 +15,9 @@
 
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 
-#include "ecmascript/base/path_helper.h"
-#include "ecmascript/common.h"
-#include "ecmascript/compiler/aot_file/an_file_data_manager.h"
-#include "ecmascript/compiler/aot_file/aot_file_manager.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_file_path.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/c_containers.h"
-#include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/module/js_shared_module_manager.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/patch/quick_fix_manager.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {

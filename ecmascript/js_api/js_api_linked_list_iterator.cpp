@@ -15,14 +15,8 @@
 
 #include "ecmascript/js_api/js_api_linked_list_iterator.h"
 
-#include "ecmascript/base/typed_array_helper.h"
-#include "ecmascript/base/typed_array_helper-inl.h"
-#include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/global_env.h"
-#include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/tagged_list.h"
 
 namespace panda::ecmascript {

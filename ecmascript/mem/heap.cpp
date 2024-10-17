@@ -13,27 +13,12 @@
  * limitations under the License.
  */
 
-#include "ecmascript/mem/heap-inl.h"
-
 #include <chrono>
 #include <thread>
 
 #include "ecmascript/base/block_hook_scope.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/ecma_string_table.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/free_object.h"
-#include "ecmascript/js_finalization_registry.h"
-#include "ecmascript/js_native_pointer.h"
-#include "ecmascript/mem/assert_scope.h"
-#include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/concurrent_sweeper.h"
-#include "ecmascript/mem/full_gc.h"
 #include "ecmascript/mem/incremental_marker.h"
-#include "ecmascript/mem/linear_space.h"
-#include "ecmascript/mem/mark_stack.h"
-#include "ecmascript/mem/mem_controller.h"
-#include "ecmascript/mem/native_area_allocator.h"
 #include "ecmascript/mem/partial_gc.h"
 #include "ecmascript/mem/parallel_evacuator.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
@@ -43,11 +28,7 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/mem/stw_young_gc.h"
 #include "ecmascript/mem/verification.h"
-#include "ecmascript/mem/work_manager.h"
-#include "ecmascript/mem/gc_stats.h"
-#include "ecmascript/mem/gc_key_stats.h"
 #include "ecmascript/runtime_call_id.h"
-#include "ecmascript/runtime_lock.h"
 #include "ecmascript/jit/jit.h"
 #include "ecmascript/ohos/ohos_params.h"
 #if !WIN_OR_MAC_OR_IOS_PLATFORM

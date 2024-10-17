@@ -16,16 +16,9 @@
 #include "containers_hashmap.h"
 
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_api/js_api_hashmap.h"
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/tagged_hash_array.h"
-#include "ecmascript/tagged_node.h"
-#include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersHashMap::HashMapConstructor(EcmaRuntimeCallInfo *argv)

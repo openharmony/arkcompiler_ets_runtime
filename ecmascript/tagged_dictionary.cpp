@@ -15,9 +15,7 @@
 
 #include "ecmascript/tagged_dictionary.h"
 #include "ecmascript/ecma_string-inl.h"
-#include "ecmascript/filter_helper.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/tagged_hash_table.h"
 
 namespace panda::ecmascript {
 int NameDictionary::Hash(const JSTaggedValue &key)

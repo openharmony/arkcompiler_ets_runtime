@@ -15,12 +15,7 @@
 
 #include "ecmascript/template_string.h"
 
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/js_tagged_value.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/template_map.h"
 
 namespace panda::ecmascript {

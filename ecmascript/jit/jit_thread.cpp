@@ -14,9 +14,6 @@
  */
 
 #include "ecmascript/jit/jit_thread.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/runtime.h"
 
 namespace panda::ecmascript {
 JitThread::JitThread(JitVM *jitVM) : JSThread(jitVM, ThreadType::JIT_THREAD) {};

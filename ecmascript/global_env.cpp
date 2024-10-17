@@ -16,20 +16,9 @@
 #include "ecmascript/global_env.h"
 
 #include "ecmascript/global_dictionary.h"
-#include "ecmascript/builtins/builtins_promise_handler.h"
-#include "ecmascript/ic/ic_handler.h"
-#include "ecmascript/ic/proto_change_details.h"
-#include "ecmascript/jobs/micro_job_queue.h"
-#include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/js_generator_object.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_promise.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/symbol_table.h"
 #include "ecmascript/ecma_string_table.h"
 #include "ecmascript/template_map.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_realm.h"
 
 namespace panda::ecmascript {
 void GlobalEnv::Init(JSThread *thread)

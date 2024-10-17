@@ -16,9 +16,6 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
 #include <fstream>
 
-#include "ecmascript/log.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/mem/mem.h"
 #include "ecmascript/platform/file.h"
 namespace panda::ecmascript::pgo {
 namespace {

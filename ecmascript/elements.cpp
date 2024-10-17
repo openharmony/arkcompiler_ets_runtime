@@ -14,8 +14,6 @@
  */
 
 #include "ecmascript/elements.h"
-#include "ecmascript/base/bit_helper.h"
-#include "ecmascript/global_env_constants.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/tagged_array-inl.h"
 

@@ -14,13 +14,10 @@
  */
 
 #include "ecmascript/dfx/vmstat/opt_code_profiler.h"
-#include "ecmascript/dfx/vmstat/jit_warmup_profiler.h"
 #include <iomanip>
-#include "ecmascript/base/config.h"
 
 #include "ecmascript/js_function.h"
-#include "ecmascript/method.h"
-#include "ecmascript/js_handle.h"
+#include "ecmascript/jspandafile/js_pandafile.h"
 
 namespace panda::ecmascript {
 using EcmaOpcode = kungfu::EcmaOpcode;

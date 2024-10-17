@@ -16,10 +16,7 @@
 #include "ecmascript/mem/gc_stats.h"
 
 #include <iomanip>
-#include "ecmascript/common.h"
-#include "ecmascript/mem/heap.h"
 #include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/mem/mem.h"
 
 constexpr int DESCRIPTION_LENGTH = 25;
 constexpr int DATA_LENGTH = 8;

@@ -14,19 +14,8 @@
  */
 
 #include "ecmascript/mem/stw_young_gc.h"
-
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/mem/clock_scope.h"
 #include "ecmascript/mem/concurrent_marker.h"
-#include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/mem/mark_stack.h"
-#include "ecmascript/mem/mem.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
-#include "ecmascript/mem/space-inl.h"
-#include "ecmascript/mem/tlab_allocator-inl.h"
-#include "ecmascript/mem/visitor.h"
-#include "ecmascript/mem/gc_stats.h"
-#include "ecmascript/ecma_string_table.h"
 #include "ecmascript/runtime_call_id.h"
 
 namespace panda::ecmascript {

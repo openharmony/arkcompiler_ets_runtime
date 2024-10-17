@@ -16,7 +16,6 @@
 #include "ecmascript/js_api/js_api_tree_set.h"
 
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/js_tagged_value.h"
 #include "ecmascript/tagged_tree.h"
 
 namespace panda::ecmascript {

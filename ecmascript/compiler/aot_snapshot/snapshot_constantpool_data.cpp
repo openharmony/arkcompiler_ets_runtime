@@ -15,11 +15,8 @@
 
 #include "ecmascript/compiler/aot_snapshot/snapshot_constantpool_data.h"
 
-#include "ecmascript/compiler/pgo_type/pgo_type_location.h"
 #include "ecmascript/compiler/pgo_type/pgo_type_manager.h"
 #include "ecmascript/jspandafile/program_object.h"
-#include "ecmascript/ts_types/global_type_info.h"
-#include "ecmascript/global_env_constants-inl.h"
 
 namespace panda::ecmascript::kungfu {
 uint64_t BaseSnapshotInfo::GetItemKey(uint32_t constantPoolId, uint32_t constantPoolIdx)

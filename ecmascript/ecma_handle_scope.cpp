@@ -16,7 +16,6 @@
 #include "ecmascript/ecma_handle_scope.h"
 
 #include "ecmascript/ecma_context.h"
-#include "ecmascript/mem/assert_scope.h"
 
 namespace panda::ecmascript {
 EcmaHandleScope::EcmaHandleScope(JSThread *thread) : thread_(thread)

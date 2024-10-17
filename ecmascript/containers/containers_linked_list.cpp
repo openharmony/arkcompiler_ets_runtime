@@ -16,14 +16,10 @@
 #include "ecmascript/containers/containers_linked_list.h"
 
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_api/js_api_linked_list.h"
 #include "ecmascript/js_api/js_api_linked_list_iterator.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/tagged_list.h"
 
 namespace panda::ecmascript::containers {
 JSTaggedValue ContainersLinkedList::LinkedListConstructor(EcmaRuntimeCallInfo *argv)

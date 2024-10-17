@@ -15,13 +15,7 @@
 
 #include "ecmascript/js_api/js_api_hashmap_iterator.h"
 
-#include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/containers/containers_errors.h"
-#include "ecmascript/js_api/js_api_hashmap.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_node.h"
-#include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

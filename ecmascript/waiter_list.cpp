@@ -15,8 +15,6 @@
 
 #include "ecmascript/waiter_list.h"
 
-#include "ecmascript/base/number_helper.h"
-
 namespace panda::ecmascript {
 // --------------------------WaiterList------------------------------
 void WaiterList::AddNode(WaiterListNode *node)

@@ -16,7 +16,6 @@
 #include "ecmascript/module/napi_module_loader.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/module/js_module_manager.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_executor.h"
 

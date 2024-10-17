@@ -19,12 +19,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include "ecmascript/base/config.h"
-#include "ecmascript/dfx/cpu_profiler/cpu_profiler.h"
 #include "ecmascript/dfx/cpu_profiler/samples_record.h"
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/log_wrapper.h"
-
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "c/executor_task.h"
 #endif

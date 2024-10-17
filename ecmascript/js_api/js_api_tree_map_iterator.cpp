@@ -15,12 +15,10 @@
 
 #include "ecmascript/js_api/js_api_tree_map_iterator.h"
 
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/containers/containers_errors.h"
 #include "ecmascript/js_api/js_api_tree_map.h"
 #include "ecmascript/js_array.h"
 #include "ecmascript/tagged_tree.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

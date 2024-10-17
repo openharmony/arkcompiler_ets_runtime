@@ -18,9 +18,7 @@
 #include "ecmascript/builtins/builtins_errors.h"
 #include "ecmascript/element_accessor-inl.h"
 #include "ecmascript/js_array.h"
-#include "ecmascript/js_map.h"
 #include "ecmascript/linked_hash_table.h"
-#include "ecmascript/object_factory.h"
 
 namespace panda::ecmascript {
 using BuiltinsBase = base::BuiltinsBase;

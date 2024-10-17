@@ -14,13 +14,7 @@
  */
 
 #include "ecmascript/regexp/regexp_executor.h"
-
-#include "ecmascript/base/string_helper.h"
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/mem/c_string.h"
-#include "ecmascript/mem/dyn_chunk.h"
-#include "ecmascript/regexp/regexp_opcode.h"
-#include "securec.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 using RegExpState = RegExpExecutor::RegExpState;

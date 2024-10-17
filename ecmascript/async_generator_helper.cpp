@@ -16,9 +16,6 @@
 #include "ecmascript/async_generator_helper.h"
 #include "ecmascript/builtins/builtins_promise.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
-#include "ecmascript/js_iterator.h"
-#include "ecmascript/js_promise.h"
-#include "ecmascript/tagged_queue.h"
 
 namespace panda::ecmascript {
 using BuiltinsPromise = builtins::BuiltinsPromise;

@@ -12,11 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/incremental_marker.h"
 #include "ecmascript/mem/parallel_marker-inl.h"
-#include "ecmascript/mem/visitor.h"
 
 namespace panda::ecmascript {
 Marker::Marker(Heap *heap) : heap_(heap), workManager_(heap->GetWorkManager()) {}

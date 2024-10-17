@@ -16,12 +16,8 @@
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include <memory>
 
-#include "ecmascript/base/file_header.h"
-#include "ecmascript/jspandafile/js_pandafile.h"
-#include "ecmascript/jspandafile/method_literal.h"
-#include "ecmascript/log_wrapper.h"
-#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 #include "ecmascript/platform/file.h"
+#include "ecmascript/pgo_profiler/pgo_profiler_info.h"
 
 namespace panda::ecmascript::pgo {
 bool PGOProfilerDecoder::Load(const std::shared_ptr<PGOAbcFilePool> &externalAbcFilePool)

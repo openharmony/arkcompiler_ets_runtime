@@ -15,8 +15,6 @@
 
 
 #include "ecmascript/platform/aot_crash_info.h"
-#include "ecmascript/ohos/enable_aot_list_helper.h"
-#include "ecmascript/ohos/aot_runtime_info.h"
 #if defined(PANDA_TARGET_OHOS) && !defined(STANDALONE_MODE)
 #include "parameters.h"
 #endif

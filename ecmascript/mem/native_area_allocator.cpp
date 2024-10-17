@@ -16,7 +16,6 @@
 #include "ecmascript/mem/native_area_allocator.h"
 
 #include "ecmascript/platform/os.h"
-#include "libpandabase/os/mem.h"
 
 namespace panda::ecmascript {
 Area *NativeAreaAllocator::AllocateArea(size_t capacity)

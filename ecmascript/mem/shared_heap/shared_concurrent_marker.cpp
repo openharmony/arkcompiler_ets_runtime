@@ -16,20 +16,9 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 
 #include "ecmascript/checkpoint/thread_state_transition.h"
-#include "ecmascript/ecma_string_table.h"
-#include "ecmascript/mem/allocator-inl.h"
-#include "ecmascript/mem/clock_scope.h"
-#include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/mem/mark_stack.h"
-#include "ecmascript/mem/mark_word.h"
 #include "ecmascript/mem/shared_heap/shared_gc_marker-inl.h"
-#include "ecmascript/mem/space-inl.h"
 #include "ecmascript/mem/verification.h"
-#include "ecmascript/mem/visitor.h"
-#include "ecmascript/mem/gc_stats.h"
 #include "ecmascript/mem/verification.h"
-#include "ecmascript/mem/shared_heap/shared_concurrent_sweeper.h"
-#include "ecmascript/taskpool/taskpool.h"
 
 namespace panda::ecmascript {
 SharedConcurrentMarker::SharedConcurrentMarker(EnableConcurrentMarkType type)

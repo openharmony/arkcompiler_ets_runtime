@@ -16,7 +16,6 @@
 #include "ecmascript/dfx/hprof/heap_tracker.h"
 
 #include "ecmascript/dfx/hprof/heap_snapshot.h"
-#include "ecmascript/mem/space.h"
 
 namespace panda::ecmascript {
 static constexpr int32_t MILLI_TO_MICRO = 1000;

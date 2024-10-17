@@ -15,14 +15,8 @@
 
 #include "ecmascript/mem/heap_region_allocator.h"
 
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/jit/jit.h"
-#include "ecmascript/mem/heap-inl.h"
-#include "ecmascript/mem/mark_stack.h"
 #include "ecmascript/mem/mem_map_allocator.h"
-#include "ecmascript/mem/region.h"
-#include "ecmascript/mem/space-inl.h"
-#include "ecmascript/platform/map.h"
 
 namespace panda::ecmascript {
 constexpr size_t PANDA_POOL_ALIGNMENT_IN_BYTES = 256_KB;
