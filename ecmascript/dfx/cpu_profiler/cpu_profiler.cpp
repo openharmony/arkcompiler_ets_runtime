@@ -22,7 +22,7 @@
 
 #include "ecmascript/compiler/aot_file/aot_file_manager.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
-#include "ecmascript/platform/ffrt.h"
+#include "ecmascript/platform/ffrt_adapter.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "c/executor_task.h"
