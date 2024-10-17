@@ -133,6 +133,8 @@ GateRef MCRLowering::VisitGate(GateRef gate)
         case OpCode::IS_CALLABLE_CHECK:
             LowerIsCallableCheck(gate);
             break;
+        case OpCode::STRING_ADD:
+            LowerStringAdd(gate);
         default:
             break;
     }
@@ -1299,5 +1301,17 @@ void MCRLowering::LowerIsCallableCheck(GateRef gate)
         .And(builder_.IsCallable(func)).Done();
     builder_.DeoptCheck(isCallable, frameState, DeoptType::NOTCALLABLE);
     acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), Circuit::NullGate());
+}
+
+void MCRLowering::LowerStringAdd(GateRef gate)
+{
+    Environment env(gate, circuit_, &builder_);
+    // 2: number of value inputs
+    ASSERT(acc_.GetNumValueIn(gate) == 2);
+    auto status = acc_.GetStringStatus(gate);
+
+    GateRef result = builder_.CallStub(glue_, gate, CommonStubCSigns::StringAdd,
+        { glue_, acc_.GetValueIn(gate, 0), acc_.GetValueIn(gate, 1), builder_.Int32(status) });
+    acc_.ReplaceGate(gate, builder_.GetState(), builder_.GetDepend(), result);
 }
 }  // namespace panda::ecmascript

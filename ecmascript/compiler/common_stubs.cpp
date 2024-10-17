@@ -1060,6 +1060,18 @@ void FastStringAddStubBuilder::GenerateCircuit()
     Return(result);
 }
 
+void StringAddStubBuilder::GenerateCircuit()
+{
+    GateRef glue = PtrArgument(0);
+    GateRef str1 = TaggedArgument(1);
+    GateRef str2 = TaggedArgument(2);       // 2: 3rd argument
+    GateRef status = Int32Argument(3);      // 3: 4th argument
+
+    BuiltinsStringStubBuilder builtinsStringStubBuilder(this);
+    GateRef result = builtinsStringStubBuilder.StringAdd(glue, str1, str2, status);
+    Return(result);
+}
+
 void DeleteObjectPropertyStubBuilder::GenerateCircuit()
 {
     GateRef glue = PtrArgument(0);
