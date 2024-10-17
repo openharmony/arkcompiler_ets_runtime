@@ -285,7 +285,6 @@
       panda::ecmascript::ObjectFactory::NewSJsonFixedArray*;
       panda::ecmascript::ObjectFactory::NewSMethod*;
       panda::ecmascript::ObjectFactory::NewFromStdString*;
-      panda::ecmascript::ObjectFactory::NewAndCopySNameDictionary*;
       panda::ecmascript::ObjectOperator::UpdateDetector*;
       panda::ecmascript::PageMap*;
       panda::ecmascript::PageSize*;
