@@ -1279,6 +1279,32 @@ int NumberHelper::GetMinmumDigits(double d, int *decimalPoint, char *buf)
     return digits;
 }
 
+bool NumberHelper::StringToInt64(const std::string& str, int64_t& value)
+{
+    if (str.empty()) {
+        return false;
+    }
+
+    char *end;
+    errno = 0;
+    value = std::strtoll(str.c_str(), &end, 0); // Automatic check of the number system
+
+    // If no number is converted
+    if (end == str.c_str()) {
+        return false;
+    }
+    // If there is a range error (too large or to small)
+    if (errno == ERANGE && (value == LLONG_MAX || value == LLONG_MIN)) {
+        return false;
+    }
+    // If the character string contains non-digit chaaracters
+    if (*end != '\0') {
+        return false;
+    }
+
+    return true;
+}
+
 uint64_t RandomGenerator::XorShift64(uint64_t *pVal)
 {
     uint64_t x = *pVal;
