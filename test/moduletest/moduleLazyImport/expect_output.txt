@@ -26,3 +26,7 @@ foo5
 instance 3
 E func
 H
+this is dynamicLazySequence
+this is dynamicSubFile
+this is dynamicLazySequence2
+dynamicSubFile

@@ -219,7 +219,8 @@ JSTaggedValue BuiltinsPromiseJob::DynamicImportJob(EcmaRuntimeCallInfo *argv)
     }
     // Loading request module.
     thread->GetEcmaVM()->PushToDeregisterModuleList(entryPoint);
-    if (!moduleManager->IsModuleLoaded(moduleName)) {
+    // IsInstantiatedModule is for lazy module to execute
+    if (!moduleManager->IsModuleLoaded(moduleName) || moduleManager->IsInstantiatedModule(moduleName)) {
         if (!JSPandaFileExecutor::ExecuteFromAbcFile(thread, fileName.c_str(), entryPoint.c_str(), false, true)) {
             CString msg = "Cannot execute request dynamic-imported module : " + entryPoint;
             JSTaggedValue error = factory->GetJSError(ErrorType::REFERENCE_ERROR, msg.c_str(),

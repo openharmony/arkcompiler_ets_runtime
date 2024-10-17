@@ -65,6 +65,8 @@ public:
     bool IsModuleLoaded(const CString &referencing);
 
     bool IsEvaluatedModule(const CString &referencing);
+    bool IsInstantiatedModule(const CString &referencing);
+    bool IsLocalModuleInstantiated(const CString &referencing);
 
     JSHandle<JSTaggedValue> ResolveNativeModule(const CString &moduleRequest, const CString &baseFileName,
         ModuleTypes moduleType);

@@ -34,7 +34,9 @@ JSTaggedValue DynamicImport::ExecuteNativeOrJsonModule(JSThread *thread, const C
 {
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     JSMutableHandle<JSTaggedValue> requiredModule(thread, thread->GlobalConstants()->GetUndefined());
-    if (moduleManager->IsLocalModuleLoaded(specifierString)) {
+    // IsInstantiatedModule is for lazy module to execute
+    if (moduleManager->IsLocalModuleLoaded(specifierString) &&
+        (!moduleManager->IsLocalModuleInstantiated(specifierString))) {
         ModuleDeregister::ReviseLoadedModuleCount(thread, specifierString);
         JSHandle<SourceTextModule> moduleRecord =
             moduleManager->HostGetImportedModule(specifierString);
