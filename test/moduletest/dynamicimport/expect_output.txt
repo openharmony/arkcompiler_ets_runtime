@@ -18,4 +18,6 @@ undefined
 {}
 TypeError
 dynamicImport Json
+native module
+native module
 
