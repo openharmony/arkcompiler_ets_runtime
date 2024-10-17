@@ -570,12 +570,6 @@ void BytecodeCircuitBuilder::UpdateCFG()
         auto &bb = RegionAt(i);
         bb.preds.clear();
         bb.trys.clear();
-        ChunkVector<BytecodeRegion *> newSuccs(circuit_->chunk());
-        for (const auto &succ: bb.succs) {
-            newSuccs.emplace_back(succ);
-        }
-        bb.succs.clear();
-        bb.succs.insert(bb.succs.end(), newSuccs.begin(), newSuccs.end());
     }
     for (size_t i = 0; i < graph_.size(); i++) {
         auto &bb = RegionAt(i);

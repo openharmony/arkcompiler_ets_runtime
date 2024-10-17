@@ -239,7 +239,7 @@ private:
     void DumpLiveState();
     size_t GetNumOfStatePreds(const BytecodeRegion &bb);
     GateRef MergeValue(const BytecodeRegion &bb,
-        GateRef stateMerge, GateRef currentValue, GateRef nextValue, bool isLoopBack);
+        GateRef currentValue, GateRef nextValue, bool isLoopBack, bool changedInLoop);
     void NewMerge(const BytecodeRegion &bbNext);
     void MergeStateDepend(const BytecodeRegion &bb, const BytecodeRegion &bbNext);
     void CopyLiveoutValues(const BytecodeRegion &bbNext, FrameContext* dest, FrameContext* src);
