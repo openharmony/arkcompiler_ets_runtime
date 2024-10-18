@@ -50,9 +50,9 @@ export class XTexture {
   }
   loadTextureFromImage(path, keepdata = false) {
     if (path === 'CUSTOM_TEXTURE_1') {
-      var rid = this.ximages.length;
+      let rid = this.ximages.length;
 
-      var texture = gl.createTexture();
+      let texture = gl.createTexture();
       XTexture.initTextureStatus(texture);
 
       let tmp = new Uint8Array([255, 255, 255, 255]);
@@ -76,12 +76,12 @@ export class XTexture {
           return i;
         }
       }
-      var rid = this.ximages.length;
+      let rid = this.ximages.length;
       this.ximages[rid] = { stat: 0, path: path, tex: null };
-      var image = new Image();
+      let image = new Image();
       image.src = path; //"http://localhost:8910/"+
       image.onload = function () {
-        var texture = gl.createTexture();
+        let texture = gl.createTexture();
         XTexture.initTextureStatus(texture);
 
         gl.texImage2D(
@@ -154,15 +154,15 @@ export class XTexture {
   }
 
   PutTexture(tex, w, h) {
-    var rid = this.ximages.length;
+    let rid = this.ximages.length;
     this.ximages[rid] = { stat: 1, path: 'put' + rid, tex: tex, w: w, h: h };
     return rid;
   }
 
   loadTexture(width, height) {
-    var rid = this.ximages.length;
+    let rid = this.ximages.length;
 
-    var texture = gl.createTexture();
+    let texture = gl.createTexture();
     XTexture.initTextureStatus(texture);
     gl.texImage2D(
       gl.TEXTURE_2D,

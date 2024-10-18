@@ -18,14 +18,14 @@ import { X2DFast } from './graphics/X2DFast.js';
 import { Scr } from './XDefine.js';
 import { XTools } from './XTools.js';
 
-export var gl;
-var Mouse = {
+export let gl;
+const Mouse = {
   MOUSE_LEFT: 0,
   MOUSE_RILLER: 1,
   MOUSE_RIGHT: 2,
 };
 
-var MouseEvent = {
+const MouseEvent = {
   LEFT_CLICK: 1,
   LEFT_MOVE: 2,
   LEFT_RELEASE: 3,
