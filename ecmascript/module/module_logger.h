@@ -47,6 +47,7 @@ public:
     void InsertParentModule(JSHandle<SourceTextModule> currentModule, JSHandle<SourceTextModule> requiredModule);
     void InsertEntryPointModule(JSHandle<SourceTextModule> currentModule);
     void PrintModuleLoadInfo();
+    static std::string ToStringWithPrecision(const double num, const uint8_t n);
 
 private:
     static constexpr const int MILLISECONDS_PER_SEC = 1000;
@@ -68,7 +69,6 @@ private:
     void PrintUsedFileInfo() const;
     void PrintUnusedFileInfo() const;
     void ProcessModuleExecuteTime();
-    static std::string ToStringWithPrecision(const double num, const uint8_t n);
     EcmaVM *vm_ {nullptr};
     CUnorderedMap<CString, ModuleLoadInfo*> jsModuleLoadInfo_ {};
     uint32_t totalFileNumber_ {0};

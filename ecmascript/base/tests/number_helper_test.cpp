@@ -510,7 +510,7 @@ HWTEST_F_L0(NumberHelperTest, DoubleToExponential01)
     resultStr = factory->NewFromASCII("1e+2");
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToExponential(thread, 123.456, radix));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr6, resultStr), 0);
-    
+
     radix = 2;
     resultStr = factory->NewFromASCII("1.2e+2");
     JSHandle<EcmaString> handleEcmaStr7(thread, NumberHelper::DoubleToExponential(thread, 123.456, radix));
@@ -741,7 +741,7 @@ HWTEST_F_L0(NumberHelperTest, DoubleToASCII_001)
     JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToASCII(thread,
                                         0.10000000000000001, digit, flags));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr1, resultStr), 0);
-    
+
     digit = 2;
     resultStr = factory->NewFromASCII("0.01");
     JSHandle<EcmaString> handleEcmaStr2(thread, NumberHelper::DoubleToASCII(thread,
@@ -774,7 +774,7 @@ HWTEST_F_L0(NumberHelperTest, DoubleToASCII_001)
 #endif
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToASCII(thread, 1.25, digit, flags));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr6, resultStr), 0);
-    
+
     digit = 1;
 #ifdef PANDA_TARGET_ARM32
     resultStr = factory->NewFromASCII("-1.2");
@@ -806,7 +806,7 @@ HWTEST_F_L0(NumberHelperTest, DoubleToASCII_002)
     JSHandle<EcmaString> handleEcmaStr1(thread, NumberHelper::DoubleToASCII(thread,
                                         1.2345000000000001e-08, digit, flags));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr1, resultStr), 0);
-    
+
     digit = 2;
     flags = 1;
 #ifdef PANDA_TARGET_ARM32
@@ -844,7 +844,7 @@ HWTEST_F_L0(NumberHelperTest, DoubleToASCII_002)
     JSHandle<EcmaString> handleEcmaStr6(thread, NumberHelper::DoubleToASCII(thread,
                                         -5.5499999999999998e-07, digit, flags));
     EXPECT_EQ(EcmaStringAccessor::Compare(instance, handleEcmaStr6, resultStr), 0);
-    
+
     digit = 2;
     flags = 1;
     resultStr = factory->NewFromASCII("-12");

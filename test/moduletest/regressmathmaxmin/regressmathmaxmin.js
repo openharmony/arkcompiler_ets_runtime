@@ -45,7 +45,7 @@ function object_factory(flag_index, value, expected_flags) {
     return obj;
 }
 
-// assertEquals(-Infinity, Math.max());
+
 print(Math.max());
 
 resetFlags(1);
@@ -80,7 +80,7 @@ print(Math.max(object_factory(0,   2, [0, 0, 0]),
                object_factory(2,   1, [1, 1, 0])));
 assertFlags([1, 1, 1]);
 
-// assertEquals(+Infinity, Math.min());
+
 print(Math.min());
 
 resetFlags(1);
