@@ -128,3 +128,11 @@ function fun1(n) {
 
 print(fun1(100));
 print(fun1(1));
+
+const v0 = [4.0, 3.0, -1.7976931348623157e+308, 1000000000.0];
+const v3 = { __proto__: v0 };
+const v4 = { __proto__: v3 };
+v4[3] = v4;
+v0[1] = v0;
+v3.splice(0, 0);
+print(v3.length);

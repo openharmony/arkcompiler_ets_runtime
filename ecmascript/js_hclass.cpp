@@ -688,6 +688,10 @@ bool JSHClass::TransitToElementsKindUncheck(const JSThread *thread, const JSHand
             auto hclassVal = thread->GlobalConstants()->GetGlobalConstantObject(index);
             JSHClass *hclass = JSHClass::Cast(hclassVal.GetTaggedObject());
             obj->SynchronizedSetClass(thread, hclass);
+#if ECMASCRIPT_ENABLE_IC
+            JSHClass::NotifyHclassChanged(thread, JSHandle<JSHClass>(thread, objHclass),
+                                          JSHandle<JSHClass>(thread, hclass));
+#endif
             return true;
         }
         LOG_ECMA(FATAL) << "Unknown newKind: " << static_cast<int32_t>(newKind);
