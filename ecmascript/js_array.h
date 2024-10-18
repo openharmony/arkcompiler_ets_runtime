@@ -104,6 +104,10 @@ public:
     static bool FastSetPropertyByValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                        const JSHandle<JSTaggedValue> &key, const JSHandle<JSTaggedValue> &value);
 
+    static bool TryFastCreateDataProperty(JSThread *thread, const JSHandle<JSObject> &obj, uint32_t index,
+                                          const JSHandle<JSTaggedValue> &value,
+                                          SCheckMode sCheckMode = SCheckMode::CHECK);
+
     static JSTaggedValue Sort(JSThread *thread, const JSHandle<JSTaggedValue> &obj, const JSHandle<JSTaggedValue> &fn);
     static bool IncludeInSortedValue(JSThread *thread, const JSHandle<JSTaggedValue> &obj,
                                      const JSHandle<JSTaggedValue> &value);

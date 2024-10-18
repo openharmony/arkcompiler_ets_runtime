@@ -259,7 +259,7 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
                 } else {
                     mapValue.Update(kValue.GetTaggedValue());
                 }
-                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapValue);
+                JSArray::TryFastCreateDataProperty(thread, newArrayHandle, k, mapValue);
                 RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
                 k++;
                 len = ArrayHelper::GetArrayLength(thread, arrayLike);
@@ -308,8 +308,11 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
             //     ix. Let defineStatus be CreateDataPropertyOrThrow(A, Pk, mappedValue).
             //     x. If defineStatus is an abrupt completion, return IteratorClose(iterator, defineStatus).
             //     xi. Increase k by 1.
-            JSHandle<JSTaggedValue> defineStatus(
-                thread, JSTaggedValue(JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, key, mapValue)));
+            bool createRes = newArrayHandle->IsJSArray() ?
+                                JSArray::TryFastCreateDataProperty(thread, newArrayHandle, k, mapValue) :
+                                JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, key, mapValue);
+                                
+            JSHandle<JSTaggedValue> defineStatus(thread, JSTaggedValue(createRes));
             RETURN_VALUE_IF_ABRUPT_COMPLETION(thread,
                 JSIterator::IteratorClose(thread, iterator, defineStatus).GetTaggedValue());
             k++;
@@ -373,7 +376,7 @@ JSTaggedValue BuiltinsArray::From(EcmaRuntimeCallInfo *argv)
         } else {
             mapValue.Update(kValue.GetTaggedValue());
         }
-        JSObject::CreateDataPropertyOrThrow(thread, newArrayHandle, k, mapValue);
+        JSArray::TryFastCreateDataProperty(thread, newArrayHandle, k, mapValue);
         RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
         k++;
         thread->CheckSafepointIfSuspended();

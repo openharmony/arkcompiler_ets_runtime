@@ -87,3 +87,27 @@ get length
 get length
 [0,1,2,null,null,null,null,null,null,null]
 [1,2,3]
+[null,null,null]
+[{},{},{}]
+[[],[],[]]
+[[1,2,3],[1,2,3],[1,2,3]]
+[0,0,0]
+true
+get JSArray from arrayLike Success
+[1,2,3]
+[2.2,24,"ssss"]
+[[0],[2],[4]]
+[[0],[2],[4]]
+true
+get JSArray from JSArray Success!
+[1,2,3,4,5]
+[1,2,3,4,5]
+["as","as","as","as","as","as","as","as","as","as"]
+result check successfully
+["test","for","array","from","set"]
+[[1,"test"],[2,"for"],[3,"array"],[4,"from"],[5,"map"]]
+[2,4,6,8,10,12]
+[2,4,6,8,10,12]
+[2,4,6,8,10,12]
+[2,4,6,8,10,12]
+[2,4,6,8,10,12]

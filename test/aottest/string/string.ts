@@ -53,6 +53,6 @@ print(cpu.add(b));
 //this is a case from a fuzz test
 let v0 = 2 >= 1;
 let v1 = "hello"
-let v2 = v1.substring(1, v1);
+let v2 = v1.substring(v0, v1);
 print(v2)
 
