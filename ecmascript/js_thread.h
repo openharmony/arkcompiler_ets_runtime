@@ -21,7 +21,7 @@
 #include <string>
 #include <cstdint>
 
-#include "ecmascript/platform/ffrt.h"
+#include "ecmascript/platform/ffrt_adapter.h"
 #include "ecmascript/base/aligned_struct.h"
 #include "ecmascript/builtin_entries.h"
 #include "ecmascript/daemon/daemon_task.h"
@@ -37,6 +37,7 @@
 #if defined(ENABLE_FFRT_INTERFACES)
 #include "ffrt.h"
 #include "c/executor_task.h"
+#include "ecmascript/platform/ffrt_mutex.h"
 #endif
 
 namespace panda::ecmascript {
@@ -1609,9 +1610,14 @@ private:
     CVector<EcmaContext *> contexts_;
     EcmaContext *currentContext_ {nullptr};
 
+#if defined(ENABLE_FFRT_INTERFACES)
+    FFRTMutex suspendLock_;
+    FFRTConditionVariable suspendCondVar_;
+#else
     Mutex suspendLock_;
-    int32_t suspendCount_ {0};
     ConditionVariable suspendCondVar_;
+#endif
+    int32_t suspendCount_ {0};
     SuspendBarrier *suspendBarrier_ {nullptr};
 
     uint64_t jobId_ {0};
