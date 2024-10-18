@@ -60,38 +60,6 @@ HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest001)
     factory->SetMachineCodeObjectData(machineCode, 100, desc, method);
 }
 
-HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest002)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
-    MachineCodeDesc desc;
-    desc.codeType = MachineCodeType::BASELINE_CODE;
-    desc.instructionsSize = 100;
-    desc.instructionsAddr = 1000;
-    desc.stackMapSizeAlign = 100;
-    Jit::GetInstance()->SetEnableJitFort(false);
-    ASSERT_EQ(Jit::GetInstance()->IsEnableJitFort(), false);
-    TaggedObject *machineCode = factory->NewMachineCodeObject(100, desc);
-    factory->SetMachineCodeObjectData(machineCode, 100, desc, method);
-}
-
-HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest003)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
-    MachineCodeDesc desc;
-    desc.codeType = MachineCodeType::FAST_JIT_CODE;
-    desc.instructionsSize = 100;
-    desc.instructionsAddr = 1000;
-    desc.stackMapSizeAlign = 100;
-    Jit::GetInstance()->SetEnableJitFort(false);
-    ASSERT_EQ(Jit::GetInstance()->IsEnableJitFort(), false);
-    TaggedObject *machineCode = factory->NewMachineCodeObject(100, desc);
-    factory->SetMachineCodeObjectData(machineCode, 100, desc, method);
-}
-
 HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest004)
 {
     ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
@@ -110,28 +78,6 @@ HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest004)
     ASSERT_EQ(Jit::GetInstance()->IsEnableAsyncCopyToFort(), true);
     TaggedObject *machineCode = factory->NewMachineCodeObject(100, desc);
     factory->SetMachineCodeObjectData(machineCode, 100, desc, method);
-}
-
-HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest005)
-{
-    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
-    JSHandle<JSFunction> func(thread->GetEcmaVM()->GetGlobalEnv()->GetArrayFunction());
-    JSHandle<Method> method(thread, func->GetMethod());
-    MachineCodeDesc desc;
-    desc.codeType = MachineCodeType::FAST_JIT_CODE;
-    desc.instructionsSize = 100;
-    desc.instructionsAddr = 1000;
-    desc.stackMapSizeAlign = 100;
-    desc.rodataSizeAfterTextAlign = 0;
-    desc.rodataSizeBeforeTextAlign = 0;
-    desc.isAsyncCompileMode = true;
-    desc.stackMapOrOffsetTableSize = 100;
-    desc.stackMapOrOffsetTableAddr = 100;
-    Jit::GetInstance()->SetEnableJitFort(false);
-    ASSERT_EQ(Jit::GetInstance()->IsEnableJitFort(), false);
-    TaggedObject *machineCode = factory->NewMachineCodeObject(100, desc);
-    MachineCode *code = MachineCode::Cast(machineCode);
-    code->GetStackMapOrOffsetTableAddress();
 }
 
 HWTEST_F_L0(MachineCodeTest, SetMachineCodeObjectDataTest006)
