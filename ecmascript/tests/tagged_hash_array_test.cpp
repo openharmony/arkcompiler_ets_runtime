@@ -435,6 +435,43 @@ HWTEST_F_L0(TaggedHashArrayTest, RemoveRBTreeNode)
 }
 
 /**
+ * @tc.name: RemoveRBTreeNode
+ * @tc.desc: Call "Create" function Create TaggedHashArray object and "SetVal" function to add a key value pair to
+ *           the taggedharray object,The value set is the RBTreeNode object,call "RemoveNode" function to delete a
+ *           node, check if it can be hole then return.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F_L0(TaggedHashArrayTest, RemoveRBTreeRootNode)
+{
+    constexpr int32_t numOfElement = 1;
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<TaggedHashArray> taggedHashArray(thread, TaggedHashArray::Create(thread, numOfElement));
+    std::string myKey("mykey");
+    std::string myValue("myvalue");
+    HashCommon1(thread, taggedHashArray, myKey, myValue, static_cast<uint32_t>(numOfElement));
+
+    JSHandle<JSTaggedValue> myKey0(factory->NewFromStdString(myKey + std::to_string(0)));
+    auto keyHash = TaggedNode::Hash(thread, myKey0.GetTaggedValue());
+    uint32_t keyHashIndex = static_cast<uint32_t>(numOfElement - 1) & keyHash;
+    JSHandle<RBTreeNode> hashTreeNode(thread, taggedHashArray->Get(keyHashIndex));
+    EXPECT_EQ(taggedHashArray->GetLength(), numOfElement);
+
+    // before remove the root node, there is one non-hole node in the tree
+    int treeNodeNumber = CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex), 0);
+    EXPECT_EQ(treeNodeNumber, numOfElement);
+    CString value = EcmaStringAccessor(hashTreeNode->GetValue()).ToCString();
+    std::string myVlaue0("myvalue0");
+    EXPECT_EQ(value, myVlaue0.c_str());
+
+    // after remove the root node, the tree is empty and there is a hole node in the hash array.
+    taggedHashArray->RemoveNode(thread, keyHash, myKey0.GetTaggedValue());
+    treeNodeNumber = CheckRBTreeNodeNums(taggedHashArray->Get(keyHashIndex), 0);
+    EXPECT_EQ(treeNodeNumber, 0);
+    EXPECT_TRUE(taggedHashArray->Get(keyHashIndex).IsHole());
+}
+
+/**
  * @tc.name: ResetLinkNodeSize
  * @tc.desc: Call "Create" function Create TaggedHashArray object and "SetVal" function to add a key value pair to
  *           the taggedharray object,The value set is the LinkedNode object,call "RemoveNode" function to delete a
