@@ -1990,7 +1990,7 @@ void FpSpConstProp::PropInCopy(DUInsnInfo &useDUInfo, Insn &useInsn, MOperator o
 
 void FpSpConstProp::Optimize(Insn &insn)
 {
-    DEBUG_ASSERT(replaced != nullptr, "nullptr check");
+    CHECK_FATAL(replaced != nullptr, "nullptr check");
     for (auto &useInsnInfo : replaced->GetAllUseInsns()) {
         Insn *useInsn = useInsnInfo.second->GetInsn();
         MOperator useMop = useInsn->GetMachineOpcode();
@@ -2108,7 +2108,7 @@ bool A64PregCopyPattern::CheckMultiUsePoints(const Insn *defInsn) const
     CHECK_FATAL(dstOpnd.IsRegister(), "dstOpnd must be register");
     VRegVersion *defVersion = optSsaInfo->FindSSAVersion(static_cast<RegOperand &>(dstOpnd).GetRegisterNumber());
     /* use: (phi) or (mov preg) */
-    DEBUG_ASSERT(defVersion != nullptr, "nullptr check");
+    CHECK_FATAL(defVersion != nullptr, "nullptr check");
     for (auto &useInfoIt : defVersion->GetAllUseInsns()) {
         DUInsnInfo *useInfo = useInfoIt.second;
         CHECK_FATAL(useInfo, "get useDUInfo failed");

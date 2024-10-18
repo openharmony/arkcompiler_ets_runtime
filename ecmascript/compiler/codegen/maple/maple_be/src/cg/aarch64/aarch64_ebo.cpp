@@ -253,7 +253,7 @@ OpndInfo *AArch64Ebo::OperandInfoDef(BB &currentBB, Insn &currentInsn, Operand &
             memInfo->SetBaseInfo(*OperandInfoUse(currentBB, *base));
         }
         if (offset != nullptr && offset->IsRegister()) {
-            DEBUG_ASSERT(OperandInfoUse(currentBB, *offset) != nullptr, "nullptr check");
+            CHECK_FATAL(OperandInfoUse(currentBB, *offset) != nullptr, "nullptr check");
             memInfo->SetOffsetInfo(*OperandInfoUse(currentBB, *offset));
         }
     }
@@ -623,7 +623,7 @@ bool AArch64Ebo::ValidPatternForCombineExtAndLoad(OpndInfo *prevOpndInfo, Insn *
     MemOperand *memOpnd = static_cast<MemOperand *>(prevInsn->GetMemOpnd());
     DEBUG_ASSERT(!prevInsn->IsStorePair(), "do not do this opt for str pair");
     DEBUG_ASSERT(!prevInsn->IsLoadPair(), "do not do this opt for ldr pair");
-    DEBUG_ASSERT(memOpnd != nullptr, "nullptr check");
+    CHECK_NULL_FATAL(memOpnd);
     if (memOpnd->GetAddrMode() == MemOperand::kAddrModeBOi &&
         !a64CGFunc->IsOperandImmValid(newMop, prevInsn->GetMemOpnd(), kInsnSecondOpnd)) {
         return false;

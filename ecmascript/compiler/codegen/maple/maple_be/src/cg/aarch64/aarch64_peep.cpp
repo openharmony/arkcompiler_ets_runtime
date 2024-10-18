@@ -585,11 +585,8 @@ bool LdrCmpPattern::SetInsns()
         return false;
     }
     prevCmp = bne2->GetPreviousMachineInsn();
-    if (prevCmp == nullptr) {
-        return false;
-    }
     prevLdr2 = prevCmp->GetPreviousMachineInsn();
-    if (prevLdr2 == nullptr) {
+    if (prevCmp == nullptr || prevLdr2 == nullptr) {
         return false;
     }
     if (!IsLdr(prevCmp->GetPreviousMachineInsn())) {

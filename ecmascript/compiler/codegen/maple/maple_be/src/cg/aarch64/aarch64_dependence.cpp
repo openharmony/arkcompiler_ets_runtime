@@ -496,7 +496,7 @@ bool AArch64DepAnalysis::NeedBuildDepsMem(const MemOperand &memOpnd, const MemOp
                                           const Insn &memInsn) const
 {
     auto *memOpndOfmemInsn = static_cast<MemOperand *>(memInsn.GetMemOpnd());
-    DEBUG_ASSERT(memOpndOfmemInsn != nullptr, "nullptr check");
+    CHECK_NULL_FATAL(memOpndOfmemInsn);
     if (!NoAlias(memOpnd, *memOpndOfmemInsn) ||
         ((nextMemOpnd != nullptr) && !NoAlias(*nextMemOpnd, *memOpndOfmemInsn))) {
         return true;

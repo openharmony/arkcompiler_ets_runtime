@@ -62,7 +62,7 @@ bool CgRegSavesOpt::PhaseRun(maplebe::CGFunc &f)
     MemPool *memPool = GetPhaseMemPool();
     RegSavesOpt *regSavesOpt = nullptr;
 #if TARGAARCH64
-    DEBUG_ASSERT(dom != nullptr, "nullptr check");
+    CHECK_FATAL(dom != nullptr, "nullptr check");
     regSavesOpt = memPool->New<AArch64RegSavesOpt>(f, *memPool, *dom, *pdom, *loop);
 #elif || TARGRISCV64
     regSavesOpt = memPool->New<Riscv64RegSavesOpt>(f, *memPool);
