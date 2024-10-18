@@ -97,7 +97,8 @@ void SharedGC::Sweep()
         }
         return nullptr;
     };
-    Runtime::GetInstance()->GetEcmaStringTable()->SweepWeakReference(gcUpdateWeak);
+    auto stringTableCleaner = Runtime::GetInstance()->GetEcmaStringTable()->GetCleaner();
+    stringTableCleaner->PostSweepWeakRefTask(gcUpdateWeak);
     Runtime::GetInstance()->ProcessNativeDeleteInSharedGC(gcUpdateWeak);
 
     Runtime::GetInstance()->GCIterateThreadList([&](JSThread *thread) {
@@ -107,6 +108,7 @@ void SharedGC::Sweep()
         const_cast<Heap*>(thread->GetEcmaVM()->GetHeap())->ResetTlab();
     });
 
+    stringTableCleaner->JoinAndWaitSweepWeakRefTask(gcUpdateWeak);
     sHeap_->GetSweeper()->Sweep();
     sHeap_->GetSweeper()->PostTask();
 }

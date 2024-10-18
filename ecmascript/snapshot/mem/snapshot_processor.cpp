@@ -1328,8 +1328,9 @@ void SnapshotProcessor::DeserializeString(uintptr_t stringBegin, uintptr_t strin
         size_t strSize = EcmaStringAccessor(str).ObjectSize();
         strSize = AlignUp(strSize, static_cast<size_t>(MemAlignment::MEM_ALIGN_OBJECT));
         {
-            RuntimeLockHolder locker(thread, stringTable->mutex_);
             auto hashcode = EcmaStringAccessor(str).GetHashcode();
+            RuntimeLockHolder locker(thread,
+                stringTable->stringTable_[EcmaStringTable::GetTableId(hashcode)].mutex_);
             auto strFromTable = stringTable->GetStringWithHashThreadUnsafe(str, hashcode);
             if (strFromTable) {
                 deserializeStringVector_.emplace_back(thread, strFromTable);

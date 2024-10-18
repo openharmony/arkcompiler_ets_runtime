@@ -43,7 +43,7 @@ protected:
 private:
     void UpdateRecordWeakReference();
 
-    SharedHeap *sHeap_  {nullptr};
+    SharedHeap *sHeap_ {nullptr};
     SharedGCWorkManager *sWorkManager_ {nullptr};
     bool markingInProgress_ {false};
 };
