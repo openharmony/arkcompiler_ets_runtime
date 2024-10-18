@@ -23,6 +23,10 @@
 #include "ecmascript/tagged_dictionary.h"
 
 namespace panda::ecmascript {
+enum class ModuleExecuteMode {
+    ExecuteZipMode,
+    ExecuteBufferMode
+};
 class ModuleManager {
 public:
     explicit ModuleManager(EcmaVM *vm);
@@ -96,11 +100,11 @@ public:
     JSHandle<JSTaggedValue> TryGetImportedModule(const CString& referencing);
     void Iterate(const RootVisitor &v);
 
-    bool GetExecuteMode() const
+    ModuleExecuteMode GetExecuteMode() const
     {
         return isExecuteBuffer_;
     }
-    inline void SetExecuteMode(bool mode)
+    inline void SetExecuteMode(ModuleExecuteMode mode)
     {
         isExecuteBuffer_ = mode;
     }
@@ -176,7 +180,7 @@ private:
 
     EcmaVM *vm_ {nullptr};
     CUnorderedMap<CString, JSTaggedValue> resolvedModules_;
-    bool isExecuteBuffer_ {false};
+    ModuleExecuteMode isExecuteBuffer_ {ModuleExecuteMode::ExecuteZipMode};
     CVector<CString> InstantiatingSModuleList_;
 
     friend class EcmaVM;

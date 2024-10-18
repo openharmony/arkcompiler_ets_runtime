@@ -3919,6 +3919,14 @@ void JSNApi::SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
     vm->SetpkgContextInfoList(pkgContextInfoList);
 }
 
+// Only used for env created by napi to set module execution mode
+void JSNApi::SetExecuteBufferMode(const EcmaVM *vm)
+{
+    ecmascript::ModuleManager *moduleManager =
+        vm->GetAssociatedJSThread()->GetCurrentEcmaContext()->GetModuleManager();
+    moduleManager->SetExecuteMode(ecmascript::ModuleExecuteMode::ExecuteBufferMode);
+}
+
 bool JSNApi::InitForConcurrentThread(EcmaVM *vm, ConcurrentCallback cb, void *data)
 {
     vm->SetConcurrentCallback(cb, data);
