@@ -785,7 +785,6 @@ bool JsonStringifier::SerializeKeys(const JSHandle<JSObject> &obj, const JSHandl
                     if (UNLIKELY(value.IsAccessor())) {
                         value = JSObject::CallGetter(thread_, AccessorData::Cast(value.GetTaggedObject()),
                             JSHandle<JSTaggedValue>(obj));
-                        RETURN_VALUE_IF_ABRUPT_COMPLETION(thread_, false);
                         jsHclass = JSHandle<JSHClass>(thread_, obj->GetJSHClass());
                     }
                     handleValue_.Update(value);
