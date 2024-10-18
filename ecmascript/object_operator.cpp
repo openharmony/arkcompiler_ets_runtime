@@ -552,7 +552,7 @@ void ObjectOperator::LookupPropertyInlinedProps(const JSHandle<JSObject> &obj)
 
         JSTaggedValue value(dict->GetBox(entry));
         auto attr = dict->GetAttributes(entry).GetValue();
-        SetFound(entry, value, attr, true);
+        SetFound(entry, value, attr, !IsFoundDict());
         return;
     }
 
@@ -581,10 +581,10 @@ void ObjectOperator::LookupPropertyInlinedProps(const JSHandle<JSObject> &obj)
             value = array->Get(entry);
         }
 
-        SetFound(entry, value, attr.GetValue(), true);
+        SetFound(entry, value, attr.GetValue(), !IsFoundDict());
         return;
     }
-
+    SetFoundDict(true);
     NameDictionary *dict = NameDictionary::Cast(array);
     int entry = dict->FindEntry(key_.GetTaggedValue());
     if (entry == -1) {
@@ -983,7 +983,7 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
         bool status = JSPrimitiveRef::StringGetIndexProperty(thread_, obj, elementIndex_, &desc);
         if (status) {
             PropertyAttributes attr(desc);
-            SetFound(elementIndex_, desc.GetValue().GetTaggedValue(), attr.GetValue(), true);
+            SetFound(elementIndex_, desc.GetValue().GetTaggedValue(), attr.GetValue(), !IsFoundDict());
             return;
         }
     }
@@ -994,7 +994,7 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
                 JSHandle<JSTaggedValue>::Cast(obj), elementIndex_).GetValue().GetTaggedValue();
             RETURN_IF_ABRUPT_COMPLETION(thread_);
             if (!val.IsHole()) {
-                SetFound(elementIndex_, val, PropertyAttributes::GetDefaultAttributes(), true);
+                SetFound(elementIndex_, val, PropertyAttributes::GetDefaultAttributes(), !IsFoundDict());
             }
             return;
         }
@@ -1012,8 +1012,9 @@ void ObjectOperator::LookupElementInlinedProps(const JSHandle<JSObject> &obj)
             if (value.IsHole()) {
                 return;
             }
-            SetFound(elementIndex_, value, PropertyAttributes::GetDefaultAttributes(), true);
+            SetFound(elementIndex_, value, PropertyAttributes::GetDefaultAttributes(), !IsFoundDict());
         } else {
+            SetFoundDict(true);
             NumberDictionary *dictionary = NumberDictionary::Cast(obj->GetElements().GetTaggedObject());
             JSTaggedValue key(static_cast<int>(elementIndex_));
             int entry = dictionary->FindEntry(key);
