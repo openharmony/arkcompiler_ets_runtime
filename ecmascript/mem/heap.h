@@ -27,6 +27,7 @@
 #include "ecmascript/mem/sparse_space.h"
 #include "ecmascript/mem/work_manager.h"
 #include "ecmascript/taskpool/taskpool.h"
+#include "ecmascript/mem/idle_gc_trigger.h"
 
 namespace panda::ecmascript {
 class ConcurrentMarker;
@@ -55,6 +56,7 @@ class SharedGC;
 class SharedGCMarker;
 class STWYoungGC;
 class ThreadLocalAllocationBuffer;
+class IdleGCTrigger;
 
 using IdleNotifyStatusCallback = std::function<void(bool)>;
 using FinishGCListener = void (*)(void *);
@@ -264,21 +266,6 @@ public:
         return heapAliveSizeAfterGC_;
     }
 
-    void updateIdleGCTimePoint()
-    {
-        lastIdleGCTimestamp_ = Clock::now();
-    }
-
-    bool ShouldCheckIdleGC() const
-    {
-        if (heapAliveSizeAfterGC_ == 0 || GetCommittedSize() <= MIN_BACKGROUNG_GC_LIMIT) {
-            return false;
-        }
-        bool reachMinGrowSize = GetHeapObjectSize() - heapAliveSizeAfterGC_ > (GetCommittedSize() >
-            IDLE_GC_SMALL_SIZE_LIMIT ? IDLE_GC_LARGE_INCREASE_SIZE : IDLE_GC_SMALL_INCREASE_SIZE);
-        return reachMinGrowSize;
-    }
-
     size_t GetGlobalSpaceAllocLimit() const
     {
         return globalSpaceAllocLimit_;
@@ -378,7 +365,6 @@ protected:
     // ONLY used for heap verification.
     bool shouldVerifyHeap_ {false};
     bool isVerifying_ {false};
-    Clock::time_point lastIdleGCTimestamp_;
     int32_t recursionDepth_ {0};
 };
 
@@ -972,6 +958,11 @@ public:
         return sharedGCData_.sharedConcurrentMarkingLocalBuffer_;
     }
 
+    IdleGCTrigger *GetIdleGCTrigger() const
+    {
+        return idleGCTrigger_;
+    }
+
     void SetRSetWorkListHandler(RSetWorkListHandler *handler)
     {
         ASSERT((sharedGCData_.rSetWorkListHandler_ == nullptr) != (handler == nullptr));
@@ -1052,7 +1043,6 @@ public:
      */
     void CollectGarbage(TriggerGCType gcType, GCReason reason = GCReason::OTHER);
     bool CheckAndTriggerOldGC(size_t size = 0);
-    void CheckAndTriggerGCForIdle(int idletime);
     bool CheckAndTriggerHintGC();
     TriggerGCType SelectGCType() const;
     /*
@@ -1686,6 +1676,8 @@ private:
      * The listeners which are called at the end of GC
      */
     std::vector<std::pair<FinishGCListener, void *>> gcListeners_;
+
+    IdleGCTrigger *idleGCTrigger_ {nullptr};
 
     bool hasOOMDump_ {false};
     bool enableEdenGC_ {false};

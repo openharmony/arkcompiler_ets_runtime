@@ -195,7 +195,7 @@ double MemController::CalculateAverageSpeed(const base::GCRingBuffer<BytesAndDur
         initial);
     uint64_t bytes = sum.first;
     double durations = sum.second;
-    if (durations == 0.0) {
+    if (fabs(durations) <= 1e-6) {
         return 0;
     }
     double speed = bytes / durations;
