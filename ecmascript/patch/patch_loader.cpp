@@ -457,7 +457,8 @@ void PatchLoader::SaveBaseMethodInfo(PatchInfo &patchInfo, const JSPandaFile *ba
 {
     CUnorderedMap<BaseMethodIndex, MethodLiteral *, BaseMethodIndex::Hash> &baseMethodInfo = patchInfo.baseMethodInfo;
     MethodLiteral *baseMethodLiteral = baseFile->FindMethodLiteral(baseMethodId.GetOffset());
-    ASSERT(baseMethodLiteral != nullptr);
+    CHECK_INPUT_NULLPTR(baseMethodLiteral, "SaveBaseMethodInfo:baseMethodLiteral is nullptr, offset: "
+                                            + std::to_string(baseMethodId.GetOffset()));
     baseMethodInfo.emplace(indexs, baseMethodLiteral);
 }
 

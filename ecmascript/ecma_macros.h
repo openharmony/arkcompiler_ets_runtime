@@ -710,4 +710,10 @@
         break;                            \
     }
 
+#define CHECK_INPUT_NULLPTR(ptr, msg)     \
+    if ((ptr) == nullptr) {               \
+        LOG_FULL(FATAL) << (msg);         \
+        UNREACHABLE();                    \
+    }
+
 #endif  // ECMASCRIPT_ECMA_MACROS_H
