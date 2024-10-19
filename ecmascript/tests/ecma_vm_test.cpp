@@ -65,6 +65,26 @@ HWTEST_F_L0(EcmaVMTest, CreateEcmaVMInTwoWays)
         EXPECT_TRUE(options1Out.GetArkProperties() != options2Out.GetArkProperties());
         EXPECT_TRUE(options2Out.GetHeapSize() == 500_MB);
 
+        options2.SetAsmOpcodeDisableRange("1,10");
+        options2.ParseAsmInterOption();
+        EXPECT_TRUE(options2.GetAsmInterParsedOption().handleStart == 1); // 1 targer start
+        EXPECT_TRUE(options2.GetAsmInterParsedOption().handleEnd == 10); // 10 targer end
+
+        options2.SetAsmOpcodeDisableRange("0x1,0xa");
+        options2.ParseAsmInterOption();
+        EXPECT_TRUE(options2.GetAsmInterParsedOption().handleStart == 1); // 1 targer start
+        EXPECT_TRUE(options2.GetAsmInterParsedOption().handleEnd == 10); // 10 targer end
+
+        options2.SetAsmOpcodeDisableRange(",");
+        options2.ParseAsmInterOption();
+        EXPECT_TRUE(options2.GetAsmInterParsedOption().handleStart == 0);
+        EXPECT_TRUE(options2.GetAsmInterParsedOption().handleEnd == kungfu::BYTECODE_STUB_END_ID);
+
+        options2.SetAsmOpcodeDisableRange("@,@");
+        options2.ParseAsmInterOption();
+        EXPECT_TRUE(options2.GetAsmInterParsedOption().handleStart == 0);
+        EXPECT_TRUE(options2.GetAsmInterParsedOption().handleEnd == kungfu::BYTECODE_STUB_END_ID);
+
         JSNApi::DestroyJSVM(ecmaVm2);
     });
     t1.join();

@@ -25,6 +25,7 @@
 #include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/mem/mem_common.h"
 #include "libpandabase/os/file.h"
+#include "ecmascript/base/number_helper.h"
 
 namespace {
 constexpr size_t DEFAULT_OPT_LEVEL = 3;  // 3: default opt level
@@ -713,8 +714,18 @@ public:
         if (pos != std::string::npos) {
             std::string strStart = strAsmOpcodeDisableRange.substr(0, pos);
             std::string strEnd = strAsmOpcodeDisableRange.substr(pos + 1);
-            int start = strStart.empty() ? 0 : std::stoi(strStart);
-            int end = strEnd.empty() ? kungfu::BYTECODE_STUB_END_ID : std::stoi(strEnd);
+            int64_t inputStart;
+            int64_t inputEnd;
+            if (!base::NumberHelper::StringToInt64(strStart, inputStart)) {
+                inputStart = 0;
+                LOG_ECMA_IF(!strStart.empty(), INFO) << "when get start, strStart is " << strStart;
+            }
+            if (!base::NumberHelper::StringToInt64(strEnd, inputEnd)) {
+                inputEnd = kungfu::BYTECODE_STUB_END_ID;
+                LOG_ECMA_IF(!strStart.empty(), INFO) << "when get end, strEnd is " << strEnd;
+            }
+            int start = static_cast<int>(inputStart);
+            int end = static_cast<int>(inputEnd);
             if (start >= 0 && start < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && end >= 0 &&
                 end < kungfu::BytecodeStubCSigns::NUM_OF_ALL_NORMAL_STUBS && start <= end) {
                 asmInterParsedOption_.handleStart = start;

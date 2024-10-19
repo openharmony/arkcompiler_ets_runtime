@@ -187,6 +187,7 @@ public:
     static void DoubleToASCIIWithFlag(std::string& buf, double valueNumber, int digits, int flags);
     static void ToASCIIWithNegative(std::string& tmpbuf, int digitNumber, int n, const std::string& buf);
     static void ToASCIIWithGreatThanZero(std::string& tmpbuf, int digitNumber, int number, const std::string& buf);
+    static bool StringToInt64(const std::string& str, int64_t& value);
 private:
     static char Carry(char current, int radix);
     static double Strtod(const char *str, int exponent, uint8_t radix);
