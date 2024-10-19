@@ -91,7 +91,6 @@ inline int PageProtectProt([[maybe_unused]] bool disable_codesign)
 
 static constexpr char HEAP_TAG[] = "ArkTS Heap";
 static constexpr char CODE_TAG[] = "ArkTS Code";
-static const std::string EMPTY_STRING = "";
 MemMap PUBLIC_API PageMap(size_t size, int prot = PAGE_PROT_NONE, size_t alignment = 0, void *addr = nullptr,
     int flags = 0);
 void PUBLIC_API PageUnmap(MemMap it);
@@ -99,7 +98,7 @@ MemMap PUBLIC_API MachineCodePageMap(size_t size, int prot = PAGE_PROT_NONE, siz
 void PUBLIC_API MachineCodePageUnmap(MemMap it);
 void PageRelease(void *mem, size_t size);
 void PUBLIC_API PagePreRead(void *mem, size_t size);
-void PageTag(void *mem, size_t size, PageTagType type, const std::string &spaceName = EMPTY_STRING,
+void PageTag(void *mem, size_t size, PageTagType type, const std::string &spaceName = "",
              const uint32_t threadId = 0);
 void PageClearTag(void *mem, size_t size);
 const std::string GetPageTagString(PageTagType type, const std::string &spaceName, const uint32_t threadId = 0);

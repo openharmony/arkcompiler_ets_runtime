@@ -27,6 +27,7 @@
 namespace panda::ecmascript::builtins {
 using ArrayHelper = base::ArrayHelper;
 using TypedArrayHelper = base::TypedArrayHelper;
+const CString STRING_SEPERATOR = ",";
 
 // 22.1.1
 JSTaggedValue BuiltinsArray::ArrayConstructor(EcmaRuntimeCallInfo *argv)

@@ -23,6 +23,8 @@
 #include "ecmascript/dfx/tracing/tracing.h"
 
 namespace panda::ecmascript {
+const std::string JS_PATH = "entry/build/default/cache/default/default@CompileArkTS/esmodule/debug/";
+
 SamplesRecord::SamplesRecord()
 {
     profileInfo_ = std::make_unique<struct ProfileInfo>();

@@ -104,7 +104,6 @@ void *PageMapExecFortSpace(void *addr, size_t size, int prot)
 
 void SetSecurityLabel(const std::string& path)
 {
-    const std::string dataLevel = DEFAULT_DATA_LEVEL;
     auto xattrValueSize = getxattr(path.c_str(), XATTR_KEY, nullptr, 0);
     if (xattrValueSize == static_cast<ssize_t>(DEFAULT_DATA_LENGTH)) {
         char xattrValue[DEFAULT_DATA_LENGTH + 1];
@@ -112,8 +111,8 @@ void SetSecurityLabel(const std::string& path)
         xattrValue[DEFAULT_DATA_LENGTH] = '\0';
     }
 
-    if (setxattr(path.c_str(), XATTR_KEY, dataLevel.c_str(), dataLevel.size(), 0) < 0) {
-        LOG_ECMA(WARN) << "set label failed! level: " << dataLevel << ", file: " << path;
+    if (setxattr(path.c_str(), XATTR_KEY, DEFAULT_DATA_LEVEL.data(), DEFAULT_DATA_LEVEL.size(), 0) < 0) {
+        LOG_ECMA(WARN) << "set label failed! level: " << DEFAULT_DATA_LEVEL << ", file: " << path;
     }
 }
 }  // namespace panda::ecmascript

@@ -23,7 +23,7 @@
 
 namespace panda::ecmascript {
 const char XATTR_KEY[] = {"user.security"};
-const std::string DEFAULT_DATA_LEVEL = "s1";
+constexpr std::string_view DEFAULT_DATA_LEVEL = "s1";
 const int DEFAULT_DATA_LENGTH = 2;
 size_t MallocUsableSize(void *p);
 uint32_t NumberOfCpuCore();

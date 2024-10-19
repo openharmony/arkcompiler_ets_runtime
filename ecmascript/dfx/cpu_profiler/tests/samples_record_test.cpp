@@ -276,7 +276,7 @@ HWTEST_F_L0(SamplesRecordTest, TranslateUrlPositionBySourceMapTest)
     sourceMapTranslateCallback_ = [](const std::string&, int, int) { return false; };
     samplesRecord.sourceMapTranslateCallbackTest(sourceMapTranslateCallback_);
     samplesRecord.TranslateUrlPositionBySourceMapTest(entry4);
-    EXPECT_EQ(entry4.url, JS_PATH + "some_key.js");
+    EXPECT_EQ(entry4.url, "entry/build/default/cache/default/default@CompileArkTS/esmodule/debug/some_key.js");
 
     FrameInfo entry5;
     entry5.url = "entry/some_key.other";
