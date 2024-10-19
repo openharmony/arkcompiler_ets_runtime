@@ -1032,6 +1032,32 @@ HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized2)
     EXPECT_EQ(result, "@normalized:N&&&har/src/main/Test&1.2.0");
 }
 
+HWTEST_F_L0(EcmaModuleTest, TranslateExpressionToNormalized5)
+{
+    CMap<CString, CMap<CString, CVector<CString>>> pkgList;
+    CMap<CString, CVector<CString>> entryList;
+    entryList["har"] = {
+        "packageName", "har",
+        "bundleName", "",
+        "moduleName", "",
+        "version", "1.2.0",
+        "entryPath", "./Index.ets",
+        "isSO", "false"
+    };
+    pkgList["entry"] = entryList;
+    instance->SetpkgContextInfoList(pkgList);
+
+    CMap<CString, CString> aliasMap;
+    aliasMap["@ohos/library"] = "har";
+    instance->SetPkgAliasList(aliasMap);
+
+    CString requestPath = "@ohos/library/src/main/ets/Test";
+    CString baseFileName = "/data/storage/el1/bundle/entry/ets/modules.abc";
+    CString result = ModulePathHelper::TranslateExpressionToNormalized(thread, nullptr, baseFileName, "",
+        requestPath);
+    EXPECT_EQ(result, "@normalized:N&&&har/src/main/ets/Test&1.2.0");
+}
+
 HWTEST_F_L0(EcmaModuleTest, SplitNormalizedRecordName)
 {
     CString requestPath = "&har/Index&1.0.0";
