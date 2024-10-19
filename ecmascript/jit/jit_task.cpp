@@ -376,7 +376,7 @@ void JitTask::CloneProfileTypeInfo()
 JitTask::~JitTask()
 {
     ReleaseSustainingJSHandle();
-    jit_->DeleteJitCompile(compilerTask_);
+    jit_->DeleteJitCompilerTask(compilerTask_);
     jit_->DecJitTaskCnt(hostThread_);
 }
 

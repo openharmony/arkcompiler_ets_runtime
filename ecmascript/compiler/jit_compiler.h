@@ -30,7 +30,7 @@ PUBLIC_API void InitJitCompiler(JSRuntimeOptions options);
 PUBLIC_API void *CreateJitCompilerTask(JitTask *jitTask);
 PUBLIC_API bool JitCompile(void *compiler, JitTask *jitTask);
 PUBLIC_API bool JitFinalize(void *compiler, JitTask *jitTask);
-PUBLIC_API void DeleteJitCompile(void *handle);
+PUBLIC_API void DeleteJitCompilerTask(void *handle);
 };
 
 struct JitCompilationOptions {

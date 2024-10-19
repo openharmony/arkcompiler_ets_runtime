@@ -20,17 +20,32 @@
 #include "ecmascript/checkpoint/thread_state_transition.h"
 
 namespace panda::ecmascript {
-void (*Jit::initJitCompiler_)(JSRuntimeOptions options) = nullptr;
-bool(*Jit::jitCompile_)(void*, JitTask*) = nullptr;
-bool(*Jit::jitFinalize_)(void*, JitTask*) = nullptr;
-void*(*Jit::createJitCompilerTask_)(JitTask*) = nullptr;
-void(*Jit::deleteJitCompile_)(void*) = nullptr;
-void *Jit::libHandle_ = nullptr;
 
 Jit *Jit::GetInstance()
 {
     static Jit instance_;
     return &instance_;
+}
+
+void Jit::CreateJitResources()
+{
+    if (jitResources_ == nullptr) {
+        jitResources_ = std::make_unique<JitResources>();
+        jitResources_->ResolveLib();
+    }
+}
+
+bool Jit::IsLibResourcesResolved() const
+{
+    if (jitResources_ != nullptr) {
+        return jitResources_->IsLibResolved();
+    }
+    return false;
+}
+
+void Jit::PreFork()
+{
+    CreateJitResources();
 }
 
 void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
@@ -46,10 +61,12 @@ void Jit::SetJitEnablePostFork(EcmaVM *vm, const std::string &bundleName)
 
         options.SetEnableJitFrame(ohos::JitTools::GetJitFrameEnable());
         options.SetEnableAPPJIT(true);
+        isApp_ = true;
         // for app threshold
         uint32_t defaultSize = 3000;
         uint32_t threshold = ohos::JitTools::GetJitHotnessThreshold(defaultSize);
         options.SetJitHotnessThreshold(threshold);
+        hotnessThreshold_ = threshold;
         bundleName_ = bundleName;
         isEnableAppPGO_ = pgo::PGOProfilerManager::GetInstance()->IsEnable();
 
@@ -135,70 +152,36 @@ void Jit::ConfigJitFortOptions(EcmaVM *vm)
 void Jit::SetEnableOrDisable(const JSRuntimeOptions &options, bool isEnableFastJit, bool isEnableBaselineJit)
 {
     LockHolder holder(setEnableLock_);
+    bool enableJit = isEnableFastJit || isEnableBaselineJit;
+    if (enableJit) {
+        CreateJitResources();
+    }
 
-    bool needInitialize = false;
-    if (!isEnableFastJit) {
-        fastJitEnable_ = false;
-    } else {
-        needInitialize = true;
+    if (IsLibResourcesResolved()) {
+        jitDfx_ = JitDfx::GetInstance();
+        jitDfx_->Init(options, bundleName_);
+        jitResources_->InitJitEnv(options);
+        initialized_ = true;
     }
-    if (!isEnableBaselineJit) {
-        baselineJitEnable_ = false;
-    } else {
-        needInitialize = true;
-    }
-    if (!needInitialize) {
-        return;
-    }
-    if (!initialized_) {
-        Initialize();
-    }
+
     if (initialized_) {
-        bool jitEnable = false;
-        if (isEnableFastJit && !fastJitEnable_) {
-            fastJitEnable_ = true;
-            jitEnable = true;
-        }
-        if (isEnableBaselineJit && !baselineJitEnable_) {
-            baselineJitEnable_ = true;
-            jitEnable = true;
-        }
-        if (jitEnable) {
-            jitDfx_ = JitDfx::GetInstance();
-            jitDfx_->Init(options, bundleName_);
-
-            isApp_ = options.IsEnableAPPJIT();
-            hotnessThreshold_ = options.GetJitHotnessThreshold();
-            if (initJitCompiler_ != nullptr) {
-                initJitCompiler_(options);
-            }
-            bool enableCodeSign = !ohos::JitTools::GetCodeSignDisable(options.GetDisableCodeSign());
-            bool shouldCompileMain =
-                options.IsEnableForceJitCompileMain() || options.IsEnableForceBaselineCompileMain();
-            if (enableCodeSign && shouldCompileMain) {
-                JitFort::InitJitFortResource();
-            }
-            JitTaskpool::GetCurrentTaskpool()->Initialize(enableCodeSign && !shouldCompileMain);
-        }
+        fastJitEnable_ = isEnableFastJit;
+        baselineJitEnable_ = isEnableBaselineJit;
     }
 }
 
 void Jit::Destroy()
 {
+    LockHolder holder(setEnableLock_);
     if (!initialized_) {
         return;
     }
 
-    LockHolder holder(setEnableLock_);
-
-    JitTaskpool::GetCurrentTaskpool()->Destroy();
     initialized_ = false;
     fastJitEnable_ = false;
     baselineJitEnable_ = false;
-    if (libHandle_ != nullptr) {
-        CloseLib(libHandle_);
-        libHandle_ = nullptr;
-    }
+    jitResources_->Destroy();
+    jitResources_ = nullptr;
 }
 
 bool Jit::IsEnableFastJit() const
@@ -241,68 +224,8 @@ void Jit::SetEnableAsyncCopyToFort(bool isEnableAsyncCopyToFort)
     isEnableAsyncCopyToFort_ = isEnableAsyncCopyToFort;
 }
 
-void Jit::Initialize()
-{
-#if defined(OHOS_UNIT_TEST)
-#else
-    static const std::string CREATEJITCOMPILETASK = "CreateJitCompilerTask";
-    static const std::string JITCOMPILEINIT = "InitJitCompiler";
-    static const std::string JITCOMPILE = "JitCompile";
-    static const std::string JITFINALIZE = "JitFinalize";
-    static const std::string DELETEJITCOMPILE = "DeleteJitCompile";
-    static const std::string LIBARK_JSOPTIMIZER = "libark_jsoptimizer.so";
-
-    libHandle_ = LoadLib(LIBARK_JSOPTIMIZER);
-    if (libHandle_ == nullptr) {
-        char *error = LoadLibError();
-        LOG_JIT(ERROR) << "jit dlopen libark_jsoptimizer.so failed, as:" <<
-            ((error == nullptr) ? "unknown error" : error);
-        return;
-    }
-
-    initJitCompiler_ = reinterpret_cast<void(*)(JSRuntimeOptions)>(FindSymbol(libHandle_, JITCOMPILEINIT.c_str()));
-    if (initJitCompiler_ == nullptr) {
-        LOG_JIT(ERROR) << "jit can't find symbol initJitCompiler";
-        return;
-    }
-    jitCompile_ = reinterpret_cast<bool(*)(void*, JitTask*)>(FindSymbol(libHandle_, JITCOMPILE.c_str()));
-    if (jitCompile_ == nullptr) {
-        LOG_JIT(ERROR) << "jit can't find symbol jitCompile";
-        return;
-    }
-
-    jitFinalize_ = reinterpret_cast<bool(*)(void*, JitTask*)>(FindSymbol(libHandle_, JITFINALIZE.c_str()));
-    if (jitFinalize_ == nullptr) {
-        LOG_JIT(ERROR) << "jit can't find symbol jitFinalize";
-        return;
-    }
-
-    createJitCompilerTask_ = reinterpret_cast<void*(*)(JitTask*)>(FindSymbol(libHandle_,
-        CREATEJITCOMPILETASK.c_str()));
-    if (createJitCompilerTask_ == nullptr) {
-        LOG_JIT(ERROR) << "jit can't find symbol createJitCompilertask";
-        return;
-    }
-
-    deleteJitCompile_ = reinterpret_cast<void(*)(void*)>(FindSymbol(libHandle_, DELETEJITCOMPILE.c_str()));
-    if (deleteJitCompile_ == nullptr) {
-        LOG_JIT(ERROR) << "jit can't find symbol deleteJitCompile";
-        return;
-    }
-#endif
-    initialized_= true;
-    return;
-}
-
 Jit::~Jit()
 {
-}
-
-void Jit::DeleteJitCompile(void *compiler)
-{
-    if (deleteJitCompile_ != nullptr) {
-        deleteJitCompile_(compiler);
-    }
 }
 
 void Jit::CountInterpExecFuncs(JSHandle<JSFunction> &jsFunction)
@@ -424,22 +347,22 @@ void Jit::InstallTasks(JSThread *jsThread)
 
 bool Jit::JitCompile(void *compiler, JitTask *jitTask)
 {
-    ASSERT(jitCompile_ != nullptr);
-    return jitCompile_(compiler, jitTask);
+    return jitResources_->Compile(compiler, jitTask);
 }
 
 bool Jit::JitFinalize(void *compiler, JitTask *jitTask)
 {
-    ASSERT(jitFinalize_ != nullptr);
-    return jitFinalize_(compiler, jitTask);
+    return jitResources_->Finalize(compiler, jitTask);
 }
 
 void *Jit::CreateJitCompilerTask(JitTask *jitTask)
 {
-    if (createJitCompilerTask_ == nullptr) {
-        return nullptr;
-    }
-    return createJitCompilerTask_(jitTask);
+    return jitResources_->CreateJitCompilerTask(jitTask);
+}
+
+void Jit::DeleteJitCompilerTask(void *compiler)
+{
+    jitResources_->DeleteJitCompilerTask(compiler);
 }
 
 void Jit::ClearTask(const std::function<bool(Task *task)> &checkClear)
