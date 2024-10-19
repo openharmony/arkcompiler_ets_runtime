@@ -244,6 +244,15 @@ public:
         *addr = handle.GetTaggedValue();
     }
 };
+
+template<typename>
+struct IsJSHandle : std::false_type {};
+
+template<typename Value>
+struct IsJSHandle<JSHandle<Value>> : std::true_type {};
+
+template<typename Value>
+struct IsJSHandle<JSMutableHandle<Value>> : std::true_type {};
 }  // namespace panda::ecmascript
 
 #endif  // ECMASCRIPT_JSHANDLE_H

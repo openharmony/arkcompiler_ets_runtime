@@ -20,17 +20,27 @@
 #include "ecmascript/mem/barriers-inl.h"
 
 namespace panda::ecmascript {
-template<typename T>
-inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSHandle<T> &value)
+template<bool needBarrier, typename T>
+inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const T &value)
 {
     ASSERT(idx < GetLength());
     size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
 
-    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    if (value.GetTaggedValue().IsHeapObject()) {
-        Barriers::SetObject<true>(thread, GetData(), offset, value.GetTaggedValue().GetRawData());
-    } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
-        Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetTaggedValue().GetRawData());
+    if constexpr (std::is_same_v<T, JSTaggedValue>) {
+        if (needBarrier && value.IsHeapObject()) {
+            Barriers::SetObject<true>(thread, GetData(), offset, value.GetRawData());
+        } else {
+            Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetRawData());
+        }
+    } else if constexpr (IsJSHandle<T>::value) {
+        auto taggedValue = value.GetTaggedValue();
+        if (taggedValue.IsHeapObject()) {
+            Barriers::SetObject<true>(thread, GetData(), offset, taggedValue.GetRawData());
+        } else {
+            Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, taggedValue.GetRawData());
+        }
+    } else {
+        static_assert(!std::is_same_v<T, T>, "T must be either JSTaggedValue or JSHandle<>");
     }
 }
 
@@ -53,20 +63,6 @@ MAYBE_INLINE JSTaggedValue TaggedArray::Get(uint32_t idx) const
 }
 
 #undef MAYBE_INLINE
-
-template <bool needBarrier>
-inline void TaggedArray::Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value)
-{
-    ASSERT(idx < GetLength());
-    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
-
-    // NOLINTNEXTLINE(readability-braces-around-statements, bugprone-suspicious-semicolon)
-    if (needBarrier && value.IsHeapObject()) {
-        Barriers::SetObject<true>(thread, GetData(), offset, value.GetRawData());
-    } else {  // NOLINTNEXTLINE(readability-misleading-indentation)
-        Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetRawData());
-    }
-}
 
 template <bool needBarrier>
 inline void TaggedArray::Copy(const JSThread* thread, uint32_t dstStart, uint32_t srcStart,

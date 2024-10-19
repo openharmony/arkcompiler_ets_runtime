@@ -17,6 +17,7 @@
 #define ECMASCRIPT_TAGGED_ARRAY_H
 
 #include "ecmascript/ecma_macros.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/barriers.h"
 #include "ecmascript/mem/visitor.h"
@@ -39,18 +40,14 @@ public:
     uint32_t GetIdx(const JSTaggedValue &value) const;
     JSTaggedValue GetBit(uint32_t idx, uint32_t bitOffset) const;
 
-    template<typename T>
-    inline void Set(const JSThread *thread, uint32_t idx, const JSHandle<T> &value);
+    template<bool needBarrier = true, typename T = JSTaggedValue>
+    inline void Set(const JSThread *thread, uint32_t idx, const T &value);
 
-    template <bool needBarrier = true>
-    inline void Set(const JSThread *thread, uint32_t idx, const JSTaggedValue &value);
+    void SetBit(const JSThread* thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue &value);
 
     template <bool needBarrier = true>
     inline void Copy(const JSThread* thread, uint32_t dstStart, uint32_t srcStart,
                                   const TaggedArray *srcArray, uint32_t count);
-
-    void Set(uint32_t idx, const JSTaggedValue &value);
-    void SetBit(const JSThread* thread, uint32_t idx, uint32_t bitOffset, const JSTaggedValue& value);
 
     static JSHandle<TaggedArray> Append(const JSThread *thread, const JSHandle<TaggedArray> &first,
                                                const JSHandle<TaggedArray> &second);

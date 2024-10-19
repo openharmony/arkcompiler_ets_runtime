@@ -47,6 +47,15 @@ inline uint32_t LayoutInfo::GetAttrIndex(int index) const
     return (static_cast<uint32_t>(index) << ELEMENTS_INDEX_LOG2) + ATTR_INDEX_OFFSET;
 }
 
+inline void LayoutInfo::SetWithoutBarrier(uint32_t idx, const JSTaggedValue &value)
+{
+    ASSERT(idx < GetLength());
+    ASSERT(!value.IsHeapObject());
+    size_t offset = JSTaggedValue::TaggedTypeSize() * idx;
+
+    Barriers::SetPrimitive<JSTaggedType>(GetData(), offset, value.GetRawData());
+}
+
 inline void LayoutInfo::SetPropertyInit(const JSThread *thread, int index, const JSTaggedValue &key,
                                         const PropertyAttributes &attr)
 {
@@ -193,7 +202,7 @@ inline void LayoutInfo::UpdateTrackTypeAttr(int index, const PropertyAttributes 
     PropertyAttributes oldAttr(TaggedArray::Get(fixedIdx));
     oldAttr.SetNormalAttr(attr.GetNormalAttr());
     oldAttr.SetIsPGODumped(false);
-    TaggedArray::Set(fixedIdx, oldAttr.GetTaggedValue());
+    SetWithoutBarrier(fixedIdx, oldAttr.GetTaggedValue());
 }
 
 inline void LayoutInfo::SetIsPGODumped(int index)
@@ -201,7 +210,7 @@ inline void LayoutInfo::SetIsPGODumped(int index)
     uint32_t fixedIdx = GetAttrIndex(index);
     PropertyAttributes attr(TaggedArray::Get(fixedIdx));
     attr.SetIsPGODumped(true);
-    TaggedArray::Set(fixedIdx, attr.GetTaggedValue());
+    SetWithoutBarrier(fixedIdx, attr.GetTaggedValue());
 }
 
 template<bool checkDuplicateKeys /* = false*/>
