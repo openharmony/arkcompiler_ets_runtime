@@ -81,6 +81,11 @@ public:
     static const uint32_t MAX_ARRAY_INDEX = MAX_ELEMENT_INDEX;
     DECL_DUMP()
 
+    static uint32_t GetInlinedPropertyOffset(uint32_t index)
+    {
+        return JSArray::SIZE + index * JSTaggedValue::TaggedTypeSize();
+    }
+
     static int32_t GetArrayLengthOffset()
     {
         return LENGTH_OFFSET;

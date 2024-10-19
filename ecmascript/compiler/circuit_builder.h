@@ -318,10 +318,12 @@ public:
     void SetKeysOfForInIterator(GateRef glue, GateRef iter, GateRef keys);
     void SetObjectOfForInIterator(GateRef glue, GateRef iter, GateRef object);
     void SetCachedHclassOfForInIterator(GateRef glue, GateRef iter, GateRef hclass);
-    void IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index);
+    void IncreaseIteratorIndex(GateRef glue, GateRef iter, GateRef index);
+    void IncreaseArrayIteratorIndex(GateRef glue, GateRef iter, GateRef index);
     void SetNextIndexOfArrayIterator(GateRef glue, GateRef iter, GateRef nextIndex);
     void SetIteratedArrayOfArrayIterator(GateRef glue, GateRef iter, GateRef iteratedArray);
     void SetBitFieldOfArrayIterator(GateRef glue, GateRef iter, GateRef kind);
+    GateRef GetArrayIterationKind(GateRef iter);
     GateRef GetHasChanged(GateRef object);
     GateRef GetAccessorHasChanged(GateRef object);
     GateRef HasDeleteProperty(GateRef hClass);
@@ -700,6 +702,7 @@ public:
     inline GateRef TaggedIsException(GateRef x);
     inline GateRef TaggedIsSpecial(GateRef x);
     inline GateRef TaggedIsHeapObject(GateRef x);
+    inline GateRef TaggedIsArrayIterator(GateRef obj);
     inline GateRef TaggedIsAsyncGeneratorObject(GateRef x);
     inline GateRef TaggedIsJSGlobalObject(GateRef x);
     inline GateRef TaggedIsGeneratorObject(GateRef x);

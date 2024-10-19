@@ -664,6 +664,14 @@ GateRef CircuitBuilder::GetCachedHclassFromForInIterator(GateRef iter)
     return Load(VariableType::JS_ANY(), iter, offset);
 }
 
+GateRef CircuitBuilder::GetArrayIterationKind(GateRef iter)
+{
+    static_assert(JSArrayIterator::SIZE - JSArrayIterator::BIT_FIELD_OFFSET <= sizeof(uint32_t));
+    GateRef bitfield = Load(VariableType::INT32(), iter, IntPtr(JSArrayIterator::BIT_FIELD_OFFSET));
+    GateRef mask = Int32((1LLU << JSArrayIterator::ITERATION_KIND_BITS) - 1);
+    return Int32And(bitfield, mask);
+}
+
 void CircuitBuilder::SetLengthOfForInIterator(GateRef glue, GateRef iter, GateRef length)
 {
     GateRef offset = IntPtr(JSForInIterator::LENGTH_OFFSET);
@@ -712,7 +720,15 @@ void CircuitBuilder::SetBitFieldOfArrayIterator(GateRef glue, GateRef iter, Gate
     Store(VariableType::INT32(), glue, iter, offset, kind);
 }
 
-void CircuitBuilder::IncreaseInteratorIndex(GateRef glue, GateRef iter, GateRef index)
+void CircuitBuilder::IncreaseArrayIteratorIndex(GateRef glue, GateRef iter, GateRef index)
+{
+    static_assert(JSArrayIterator::BIT_FIELD_OFFSET - JSArrayIterator::NEXT_INDEX_OFFSET <= sizeof(uint32_t));
+    GateRef newIndex = Int32Add(index, Int32(1));
+    GateRef offset = IntPtr(JSArrayIterator::NEXT_INDEX_OFFSET);
+    Store(VariableType::INT32(), glue, iter, offset, newIndex);
+}
+
+void CircuitBuilder::IncreaseIteratorIndex(GateRef glue, GateRef iter, GateRef index)
 {
     GateRef newIndex = Int32Add(index, Int32(1));
     GateRef offset = IntPtr(JSForInIterator::INDEX_OFFSET);
