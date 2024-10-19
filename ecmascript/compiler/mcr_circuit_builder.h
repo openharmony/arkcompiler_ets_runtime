@@ -124,6 +124,26 @@ GateRef CircuitBuilder::IsSpecialSlicedString(GateRef obj)
     return ret;
 }
 
+GateRef CircuitBuilder::TaggedIsArrayIterator(GateRef obj)
+{
+    Label entry(env_);
+    SubCfgEntry(&entry);
+    Label exit(env_);
+    DEFVALUE(result, env_, VariableType::BOOL(), False());
+    Label isHeapObject(env_);
+    Branch(TaggedIsHeapObject(obj), &isHeapObject, &exit);
+    Bind(&isHeapObject);
+    {
+        result = Int32Equal(GetObjectType(LoadHClass(obj)),
+                            Int32(static_cast<int32_t>(JSType::JS_ARRAY_ITERATOR)));
+        Jump(&exit);
+    }
+    Bind(&exit);
+    auto ret = *result;
+    SubCfgExit();
+    return ret;
+}
+
 GateRef CircuitBuilder::TaggedIsBigInt(GateRef obj)
 {
     Label entry(env_);

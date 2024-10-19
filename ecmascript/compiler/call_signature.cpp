@@ -2868,6 +2868,16 @@ DEF_CALL_SIGNATURE(StringIteratorNext)
     UNARY_CALL_SIGNATURE(StringIteratorNext)
 }
 
+DEF_CALL_SIGNATURE(ArrayIteratorNext)
+{
+    UNARY_CALL_SIGNATURE(ArrayIteratorNext)
+}
+
+DEF_CALL_SIGNATURE(GetIterator)
+{
+    UNARY_CALL_SIGNATURE(GetIterator)
+}
+
 DEF_CALL_SIGNATURE(JSMapHas)
 {
     *callSign = CallSignature("JSMapHas", 0, ArgumentsOrder::DEFAULT_ORDER, VariableType::BOOL(),

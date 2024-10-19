@@ -365,12 +365,21 @@ DECLARE_BUILTINS(stubName)                                                      
     Return(*res);                                                                                   \
 }
 
+#if ENABLE_NEXT_OPTIMIZATION
+    #define NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)                                        \
+        V(ArrayIteratorProtoNext,  ArrayIteratorNext, Array, Undefined())
+#else
+    #define NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)
+#endif
+
 #define AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)                                                 \
     V(StringLocaleCompare,              LocaleCompare,      String, Undefined())                  \
     V(StringIteratorProtoNext,  StringIteratorNext, String, Undefined())                          \
-    V(ArraySort,           Sort,               Array,  Undefined())
+    V(ArraySort,           Sort,               Array,  Undefined())                               \
+    NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(V)
 
 AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD(DECLARE_AOT_AND_BUILTINS_STUB_BUILDER)
+#undef NEXT_AOT_AND_BUILTINS_STUB_LIST_WITH_METHOD
 #undef AOT_AND_BUILTINS_STUB_LIST
 #undef DECLARE_AOT_AND_BUILTINS_STUB_BUILDER
 

@@ -1005,7 +1005,8 @@ void SlowPathLowering::LowerStGlobalVar(GateRef gate)
 
 void SlowPathLowering::LowerGetIterator(GateRef gate)
 {
-    auto result = LowerCallRuntime(gate, RTSTUB_ID(GetIterator), {acc_.GetValueIn(gate, 0)}, true);
+    auto result = builder_.CallStub(glue_, gate, CommonStubCSigns::GetIterator,
+        { glue_, acc_.GetValueIn(gate, 0) });
     ReplaceHirWithValue(gate, result);
 }
 
@@ -2170,7 +2171,7 @@ void SlowPathLowering::LowerGetNextPropName(GateRef gate)
     builder_.Bind(&fastGetKey);
     {
         result = builder_.GetValueFromTaggedArray(keys, index);
-        builder_.IncreaseInteratorIndex(glue_, iter, index);
+        builder_.IncreaseIteratorIndex(glue_, iter, index);
         builder_.Jump(&exit);
     }
     builder_.Bind(&slowpath);

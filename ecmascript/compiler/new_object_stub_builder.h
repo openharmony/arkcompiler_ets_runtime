@@ -136,6 +136,9 @@ public:
     GateRef NewProfileTypeInfoCell(GateRef glue, GateRef value);
     GateRef GetElementSizeFromType(GateRef glue, GateRef type);
     GateRef GetOnHeapHClassFromType(GateRef glue, GateRef type);
+    void CreateJSIteratorResult(GateRef glue, Variable *res, GateRef value, GateRef done, Label *exit);
+    void CreateJSIteratorResultForEntry(GateRef glue, Variable *res, GateRef key, GateRef value, Label *exit);
+
 private:
     static constexpr int MAX_TAGGED_ARRAY_LENGTH = 50;
     GateRef LoadTrackInfo(GateRef glue, GateRef jsFunc, TraceIdInfo traceIdInfo,
