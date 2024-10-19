@@ -55,25 +55,21 @@ public:
         return jitFortSize_;
     }
 
-    inline bool  IsMachineCodeGC()
-    {
-        return isMachineCodeGC_.load(std::memory_order_acquire);
-    }
-
-    inline void SetMachineCodeGC(bool flag)
-    {
-        LOG_JIT(DEBUG) << "SetMachineCodeGC " << flag;
-        isMachineCodeGC_.store(flag, std::memory_order_release);
-    }
-
     bool InRange(uintptr_t address) const;
-    MemDesc *RecordLiveJitCode(uintptr_t addr, size_t size, bool installed = true);
-    MemDesc *RecordLiveJitCodeNoLock(uintptr_t addr, size_t size, bool installed = false);
     void CollectFreeRanges(JitFortRegion  *region);
-    void SortLiveMemDescList();
     void UpdateFreeSpace();
+
     JitFortRegion *ObjectAddressToRange(uintptr_t objAddress);
     static void InitJitFortResource();
+    void PrepareSweeping();
+    void AsyncSweep();
+    void Sweep();
+    void MarkJitFortMemAlive(MachineCode *obj);
+    void MarkJitFortMemAwaitInstall(uintptr_t addr, size_t size);
+    void MarkJitFortMemInstalled(MachineCode *obj);
+    void FreeRegion(JitFortRegion *region);
+    uint32_t AddrToFortRegionIdx(uint64_t addr);
+    size_t FortAllocSize(size_t instrSize);
     PUBLIC_API static bool IsResourceAvailable();
 
 private:
@@ -90,27 +86,62 @@ private:
     size_t jitFortSize_ {0};
 
     // Fort regions
+    static constexpr uint32_t FORT_BUF_ALIGN = 32;
+    static constexpr uint32_t FORT_BUF_ALIGN_LOG2 = base::MathHelper::GetIntLog2(FORT_BUF_ALIGN);
+    static constexpr size_t FORT_BUF_ADDR_MASK = FORT_BUF_ALIGN - 1;
     static constexpr size_t MAX_JIT_FORT_REGIONS = JIT_FORT_REG_SPACE_MAX/DEFAULT_REGION_SIZE;
     std::array<JitFortRegion *, MAX_JIT_FORT_REGIONS>regions_;
     size_t nextFreeRegionIdx_ {0};
     EcmaList<JitFortRegion> regionList_ {}; // regions in use by Jit Fort allocator
 
-    // Jit Fort MemDesc to track live code blocks in Jit Fort space
-    std::vector<MemDesc*>liveJitCodeBlks_;
     MemDescPool *memDescPool_ {nullptr};
 
     bool freeListUpdated_ {false};  // use atomic if not mutext protected
     Mutex mutex_;
     Mutex liveJitCodeBlksLock_;
-    std::atomic<bool> isMachineCodeGC_ {false};
+    std::atomic<bool> isSweeping_ {false};
     friend class HugeMachineCodeSpace;
+};
+
+class JitFortGCBitset : public GCBitset {
+public:
+    JitFortGCBitset() = default;
+    ~JitFortGCBitset() = default;
+
+    NO_COPY_SEMANTIC(JitFortGCBitset);
+    NO_MOVE_SEMANTIC(JitFortGCBitset);
+
+    template <typename Visitor>
+    void IterateMarkedBitsConst(uintptr_t regionAddr, size_t bitsetSize, Visitor visitor);
+    void MarkStartAddr(bool awaitInstall, uintptr_t startAddr, uint32_t index, uint32_t &word);
+    void MarkEndAddr(bool awaitInstall, uintptr_t endAddr, uint32_t index, uint32_t &word);
+
+    size_t WordCount(size_t size) const
+    {
+        return size >> BYTE_PER_WORD_LOG2;
+    }
+
+    inline void ClearMark(uintptr_t addr)
+    {
+        ClearBit((addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+    }
+
+    inline bool Test(uintptr_t addr)
+    {
+        return TestBit((addr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+    }
 };
 
 class JitFortRegion : public Region {
 public:
     JitFortRegion(NativeAreaAllocator *allocator, uintptr_t allocateBase, uintptr_t end,
         RegionSpaceFlag spaceType, MemDescPool *pool) : Region(allocator, allocateBase, end, spaceType),
-        memDescPool_(pool) {}
+        memDescPool_(pool)
+    {
+        markGCBitset_ = new(reinterpret_cast<void *>(gcBitSet_)) JitFortGCBitset();
+        markGCBitset_->Clear(bitsetSize_);
+        InitializeFreeObjectSets();
+    }
 
     void InitializeFreeObjectSets()
     {
@@ -155,11 +186,34 @@ public:
         return prev_;
     }
 
+    inline JitFortGCBitset *GetGCBitset()
+    {
+        return markGCBitset_;
+    }
+
+    inline size_t GetGCBitsetSize()
+    {
+        return bitsetSize_;
+    }
+
+    inline bool AtomicMark(void *address)
+    {
+        auto addrPtr = reinterpret_cast<uintptr_t>(address);
+        ASSERT(InRange(addrPtr));
+        return markGCBitset_->SetBit<AccessType::ATOMIC>(
+            (addrPtr & DEFAULT_REGION_MASK) >> TAGGED_TYPE_SIZE_LOG);
+    }
+
 private:
     Span<FreeObjectSet<MemDesc> *> fortFreeObjectSets_;
     JitFortRegion *next_ {nullptr};
     JitFortRegion *prev_ {nullptr};
     MemDescPool *memDescPool_ {nullptr};
+
+    static constexpr int FORT_REGION_BITSET_SIZE = 4096;
+    size_t bitsetSize_ {FORT_REGION_BITSET_SIZE};
+    alignas(uint64_t) uint8_t gcBitSet_[FORT_REGION_BITSET_SIZE];
+    alignas(uint64_t) JitFortGCBitset *markGCBitset_ {nullptr};
 };
 
 }  // namespace panda::ecmascript

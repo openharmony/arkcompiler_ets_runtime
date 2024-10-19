@@ -32,6 +32,7 @@ void SparseSpace::Initialize()
 {
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
     AddRegion(region);
 
     allocator_->Initialize(region);
@@ -92,6 +93,7 @@ bool SparseSpace::Expand()
     }
     JSThread *thread = localHeap_->GetJSThread();
     Region *region = heapRegionAllocator_->AllocateAlignedRegion(this, DEFAULT_REGION_SIZE, thread, localHeap_);
+    region->SetLocalHeap(reinterpret_cast<uintptr_t>(localHeap_));
     AddRegion(region);
     allocator_->AddFree(region);
     return true;
@@ -632,10 +634,28 @@ MachineCodeSpace::~MachineCodeSpace()
     }
 }
 
-inline void MachineCodeSpace::RecordLiveJitCode(MachineCode *obj)
+void MachineCodeSpace::PrepareSweeping()
 {
+    SparseSpace::PrepareSweeping();
     if (jitFort_) {
-        jitFort_->RecordLiveJitCode(obj->GetInstructionsAddr(), obj->GetInstructionsSize());
+        jitFort_->PrepareSweeping();
+    }
+}
+
+void MachineCodeSpace::Sweep()
+{
+    SparseSpace::Sweep();
+    if (jitFort_) {
+        jitFort_->Sweep();
+    }
+}
+
+void MachineCodeSpace::AsyncSweep(bool isMain)
+{
+    LockHolder holder(asyncSweepMutex_);
+    SparseSpace::AsyncSweep(isMain);
+    if (jitFort_) {
+        jitFort_->AsyncSweep();
     }
 }
 
@@ -645,52 +665,7 @@ uintptr_t MachineCodeSpace::JitFortAllocate(MachineCodeDesc *desc)
         jitFort_ = new JitFort();
     }
     localHeap_->GetSweeper()->EnsureTaskFinishedNoCheck(spaceType_);
-    while (jitFort_->IsMachineCodeGC()) {};
     return jitFort_->Allocate(desc);
-}
-
-// Record info on JitFort mem allocated to live MachineCode objects
-void MachineCodeSpace::FreeRegion(Region *current, bool isMain)
-{
-    LOG_JIT(DEBUG) << "MachineCodeSpace FreeRegion: " << current << " isMain " << isMain;
-    uintptr_t freeStart = current->GetBegin();
-    current->IterateAllMarkedBits([this, &current, &freeStart, isMain](void *mem) {
-        ASSERT(current->InRange(ToUintPtr(mem)));
-        auto header = reinterpret_cast<TaggedObject *>(mem);
-        auto klass = header->GetClass();
-        auto size = klass->SizeFromJSHClass(header);
-
-        uintptr_t freeEnd = ToUintPtr(mem);
-        if (freeStart != freeEnd) {
-            FreeLiveRange(current, freeStart, freeEnd, isMain);
-        }
-        freeStart = freeEnd + size;
-        RecordLiveJitCode(reinterpret_cast<MachineCode *>(mem));
-    });
-    uintptr_t freeEnd = current->GetEnd();
-    if (freeStart != freeEnd) {
-        FreeLiveRange(current, freeStart, freeEnd, isMain);
-    }
-    if (jitFort_) {
-        jitFort_->SetMachineCodeGC(true);
-    }
-}
-
-void MachineCodeSpace::AsyncSweep(bool isMain)
-{
-    LockHolder holder(asyncSweepMutex_);
-    Region *current = GetSweepingRegionSafe();
-    while (current != nullptr) {
-        FreeRegion(current, isMain);
-        // Main thread sweeping region is added;
-        if (!isMain) {
-            AddSweptRegionSafe(current);
-        } else {
-            current->MergeOldToNewRSetForCS();
-            current->MergeLocalToShareRSetForCS();
-        }
-        current = GetSweepingRegionSafe();
-    }
 }
 
 uintptr_t MachineCodeSpace::Allocate(size_t size, bool allowGC)

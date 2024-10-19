@@ -68,48 +68,6 @@ HWTEST_F_L0(JitFortTest, AllocateTest001)
     jitFort->Allocate(&desc);
 }
 
-HWTEST_F_L0(JitFortTest, RecordLiveJitCodeNoLockTest001)
-{
-    JitFort *jitFort = new JitFort();
-    jitFort->RecordLiveJitCodeNoLock(1, 1);
-    MemDesc *desc = jitFort->RecordLiveJitCodeNoLock(1, 1);
-    ASSERT_EQ(desc, nullptr);
-}
-
-HWTEST_F_L0(JitFortTest, RecordLiveJitCodeNoLockTest002)
-{
-    JitFort *jitFort = new JitFort();
-    MemDesc *desc = jitFort->RecordLiveJitCodeNoLock(1, 1);
-    ASSERT_NE(desc, nullptr);
-}
-
-HWTEST_F_L0(JitFortTest, SortLiveMemDescLisTest001)
-{
-    JitFort *jitFort = new JitFort();
-    MemDesc *desc = jitFort->RecordLiveJitCodeNoLock(1, 1);
-    ASSERT_EQ(jitFort->IsMachineCodeGC(), false);
-    ASSERT_NE(desc, nullptr);
-    jitFort->SortLiveMemDescList();
-}
-
-HWTEST_F_L0(JitFortTest, UpdateFreeSpaceTest001)
-{
-    JitFort *jitFort = new JitFort();
-    jitFort->SetMachineCodeGC(true);
-    ASSERT_EQ(jitFort->IsMachineCodeGC(), true);
-    ASSERT_NE(jitFort, nullptr);
-    jitFort->UpdateFreeSpace();
-}
-
-HWTEST_F_L0(JitFortTest, UpdateFreeSpaceTest002)
-{
-    JitFort *jitFort = new JitFort();
-    jitFort->SetMachineCodeGC(false);
-    ASSERT_EQ(jitFort->IsMachineCodeGC(), false);
-    ASSERT_NE(jitFort, nullptr);
-    jitFort->UpdateFreeSpace();
-}
-
 HWTEST_F_L0(JitFortTest, GetDescTest001)
 {
     MemDescPool *pool = new MemDescPool(1, 1);
@@ -124,65 +82,11 @@ HWTEST_F_L0(JitFortTest, MemDescPoolFreeTest001)
     pool->~MemDescPool();
 }
 
-HWTEST_F_L0(JitFortTest, CollectFreeRangesTest001)
-{
-    JitFort *jitFort = new JitFort();
-    jitFort->AddRegion();
-    jitFort->AddRegion();
-    JitFortRegion *region = jitFort->GetRegionList();
-    jitFort->CollectFreeRanges(region);
-    ASSERT_NE(region, nullptr);
-    ASSERT_TRUE(region->GetBegin() > 0);
-}
-
-HWTEST_F_L0(JitFortTest, CollectFreeRangesTest002)
-{
-    JitFort *jitFort = new JitFort();
-    jitFort->AddRegion();
-    jitFort->AddRegion();
-    JitFortRegion *region = jitFort->GetRegionList();
-    jitFort->RecordLiveJitCodeNoLock(region->GetBegin(), 10);
-    jitFort->CollectFreeRanges(region);
-    ASSERT_NE(region, nullptr);
-    ASSERT_TRUE(region->GetBegin() > 0);
-}
-
-HWTEST_F_L0(JitFortTest, CollectFreeRangesTest003)
-{
-    JitFort *jitFort = new JitFort();
-    jitFort->AddRegion();
-    jitFort->AddRegion();
-    JitFortRegion *region = jitFort->GetRegionList();
-    jitFort->RecordLiveJitCodeNoLock(region->GetBegin(), 10, true);
-    jitFort->CollectFreeRanges(region);
-    ASSERT_NE(region, nullptr);
-    ASSERT_TRUE(region->GetBegin() > 0);
-}
-
-HWTEST_F_L0(JitFortTest, CollectFreeRangesTest004)
-{
-    JitFort *jitFort = new JitFort();
-    jitFort->AddRegion();
-    jitFort->AddRegion();
-    JitFortRegion *region = jitFort->GetRegionList();
-    jitFort->RecordLiveJitCodeNoLock(region->GetBegin() + 1, 10, true);
-    jitFort->CollectFreeRanges(region);
-    ASSERT_NE(region, nullptr);
-    ASSERT_TRUE(region->GetBegin() > 0);
-}
-
 HWTEST_F_L0(JitFortTest, InitRegionTest001)
 {
     JitFort *jitFort = new JitFort();
     ASSERT_NE(jitFort, nullptr);
     jitFort->InitRegions();
-}
-
-HWTEST_F_L0(JitFortTest, RecordLiveJitCodeTest001)
-{
-    JitFort *jitFort = new JitFort();
-    MemDesc *desc = jitFort->RecordLiveJitCode(1, 1);
-    ASSERT_NE(desc, nullptr);
 }
 
 HWTEST_F_L0(JitFortTest, InRangeTest001)

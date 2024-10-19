@@ -263,4 +263,18 @@ uint8_t *MachineCode::GetStackMapOrOffsetTableAddress() const
     }
 }
 
+void MachineCode::ProcessMarkObject()
+{
+    Region *region = Region::ObjectAddressToRange(this);
+    Heap *localHeap = reinterpret_cast<Heap *>(region->GetLocalHeap());
+    if (!localHeap) {
+        // it is a huge machine code object. skip
+        return;
+    }
+    ASSERT(localHeap->GetMachineCodeSpace());
+    if (localHeap->GetMachineCodeSpace()) {
+        localHeap->GetMachineCodeSpace()->MarkJitFortMemAlive(this);
+    }
+}
+
 }  // namespace panda::ecmascript

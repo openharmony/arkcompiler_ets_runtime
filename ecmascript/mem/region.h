@@ -815,6 +815,17 @@ public:
         packedData_.localToShareSet_ = nullptr;
     }
 
+    void SetLocalHeap(uintptr_t localHeap)
+    {
+        ASSERT(localHeap != (uintptr_t)nullptr);
+        localHeap_ = localHeap;
+    }
+
+    uintptr_t GetLocalHeap(void)
+    {
+        return localHeap_;
+    }
+
     // should call in js-thread
     void MergeOldToNewRSetForCS();
     void MergeLocalToShareRSetForCS();
@@ -965,6 +976,7 @@ private:
     // snapshotdata_ is used to encode the region for snapshot. Its upper 32 bits are used to store the size of
     // the huge object, and the lower 32 bits are used to store the region index
     uint64_t snapshotData_;
+    uintptr_t localHeap_ {0};
 
     friend class Snapshot;
     friend class SnapshotProcessor;

@@ -67,7 +67,6 @@ void JitFort::InitRegions()
         uintptr_t end = mem + DEFAULT_REGION_SIZE;
         JitFortRegion *region = new JitFortRegion(nullptr, mem, end, RegionSpaceFlag::IN_MACHINE_CODE_SPACE,
             memDescPool_);
-        region->InitializeFreeObjectSets();
         regions_[i] = region;
     }
     AddRegion();
@@ -84,11 +83,17 @@ bool JitFort::AddRegion()
     return false;
 }
 
+// Fort buf allocation is in multiples of FORT_BUF_ALIGN
+size_t JitFort::FortAllocSize(size_t instrSize)
+{
+    return(AlignUp(instrSize, FORT_BUF_ALIGN));
+}
+
 uintptr_t JitFort::Allocate(MachineCodeDesc *desc)
 {
     LockHolder lock(mutex_);
 
-    size_t size = desc->instructionsSize;
+    size_t size = FortAllocSize(desc->instructionsSize);
     auto ret = allocator_->Allocate(size);
     if (ret == ToUintPtr(nullptr)) {
         if (AddRegion()) {
@@ -103,136 +108,116 @@ uintptr_t JitFort::Allocate(MachineCodeDesc *desc)
     // Record allocation to keep it from being collected by the next
     // JitFort::UpdateFreeSpace in case corresponding Machine code object is not
     // marked for sweep yet by then.
-    desc->memDesc = RecordLiveJitCodeNoLock(ret, size);
+    ASSERT((ret & FORT_BUF_ADDR_MASK) == 0);
+    MarkJitFortMemAwaitInstall(ret, size);
     LOG_JIT(DEBUG) << "JitFort:: Allocate " << (void *)ret << " - " << (void *)(ret+size-1) <<
-        " size " << size << " MachineCodeGC " << IsMachineCodeGC();
+        " size " << size << " instructionsSize " << desc->instructionsSize;
     return ret;
 }
 
-MemDesc *JitFort::RecordLiveJitCodeNoLock(uintptr_t addr, size_t size, bool installed)
+// Called by GC thread during Mark to mark Fort buf alive.
+// Encoding details in GCBitset for marking live Fort buffers:
+//   Begin of a live Fort buf:
+//     - 10: a live Jit Fort buf that has been installed
+//     - 11: a live Jit Fort buf that has not been installed yet
+//   End of a live Fort buf:
+//     - 01
+// This encoding requires 4 GCBitset bits to mark a live JitFort
+// buffer, which makes the minimum Fort buffer allocation size 32 bytes.
+void JitFort::MarkJitFortMemAlive(MachineCode *obj)
 {
-    // check duplicate
-    for (size_t i = 0; i < liveJitCodeBlks_.size(); ++i) {
-        if (liveJitCodeBlks_[i]->GetBegin() == addr && liveJitCodeBlks_[i]->Available() == size) {
-            LOG_JIT(DEBUG) << "RecordLiveJitCode duplicate " << (void *)addr << " size " << size;
-            return nullptr;
-        }
-        if (liveJitCodeBlks_[i]->GetBegin() == addr) { // LOCV_EXCL_BR_LINE
-            LOG_JIT(FATAL) << "RecordLiveJitCode duplicate addr " << std::hex << addr << std::dec << " size " <<
-                size << " existing entry size " << liveJitCodeBlks_[i]->Available() << std::endl;
-            return nullptr;
-        }
-    }
-    MemDesc *desc = memDescPool_->GetDescFromPool();
-    ASSERT(desc != NULL);
-    desc->SetMem(addr);
-    desc->SetSize(size);
-    desc->SetInstalled(installed);
-    liveJitCodeBlks_.emplace_back(desc);
-    return desc;
+    size_t size = FortAllocSize(obj->GetInstructionsSize());
+    uintptr_t addr = obj->GetText();
+    uintptr_t endAddr = addr + size - 1;
+    uint32_t regionIdx = AddrToFortRegionIdx(addr);
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(addr));
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(endAddr));
+    LOG_JIT(DEBUG) << "MarkFortMemAlive: addr " << (void *)addr << " size " << size
+        << " regionIdx " << regionIdx << " instructionsSize " << obj->GetInstructionsSize();
 }
 
-MemDesc *JitFort::RecordLiveJitCode(uintptr_t addr, size_t size, bool installed)
+// Called by Jit Compile thread during JitFort Allocate to mark Fort buf
+// awaiting install. Need mutex (JitGCLockHolder) for region gcBitset access.
+// See JitFort::MarkJitFortMemAlive comments for mark bit encoding in GC bitset.
+void JitFort::MarkJitFortMemAwaitInstall(uintptr_t addr, size_t size)
 {
-    LockHolder lock(mutex_);
-    return RecordLiveJitCodeNoLock(addr, size, installed);
+    uintptr_t endAddr = addr + size - 1;
+    uint32_t regionIdx = AddrToFortRegionIdx(addr);
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(addr));
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(addr + sizeof(uint64_t))); // mark next bit
+    regions_[regionIdx]->AtomicMark(reinterpret_cast<void *>(endAddr));
+    LOG_JIT(DEBUG) << "MarkFortMemAwaitInstall: addr " << (void *)addr << " size " << size
+        << " regionIdx " << regionIdx;
 }
 
-void JitFort::SortLiveMemDescList()
+// Called by JS/Main thread during SafePoint to clear Fort buf AwaitInstall bit
+// See JitFort::MarkJitFortMemAlive comments for mark bit encoding in GC bitset.
+void JitFort::MarkJitFortMemInstalled(MachineCode *obj)
 {
-    if (liveJitCodeBlks_.size()) {
-        std::sort(liveJitCodeBlks_.begin(), liveJitCodeBlks_.end(), [](MemDesc *first, MemDesc *second) {
-            return first->GetBegin() < second->GetBegin();  // ascending order
-        });
-    }
+    size_t size = FortAllocSize(obj->GetInstructionsSize());
+    uintptr_t addr = obj->GetText();
+    uint32_t regionIdx = AddrToFortRegionIdx(addr);
+    regions_[regionIdx]->GetGCBitset()->ClearMark(addr + sizeof(uint64_t)); // clear next bit
+    LOG_JIT(DEBUG) << "MarkFortMemInstalled: addr " << (void *)addr << " size " << size
+        << " regionIdx " << regionIdx << " instructionsSize " << obj->GetInstructionsSize();
+}
+
+uint32_t JitFort::AddrToFortRegionIdx(uint64_t addr)
+{
+    ASSERT(InRange(addr));
+    uint32_t regionIdx = ((addr - JitFortBegin()) & ~(DEFAULT_REGION_MASK)) >> REGION_SIZE_LOG2;
+    ASSERT(regionIdx < MAX_JIT_FORT_REGIONS);
+    return regionIdx;
 }
 
 /*
- * UpdateFreeSpace updates JitFort allocator free object list by go through mem blocks
- * in use (liveJitCodeBlks_) in Jit fort space and putting free space in between into
- * allocator free list .
- *
- * This is to be done once when an old or full GC Sweep finishes, and needs to be mutext
- * protected because if concurrent sweep is enabled, this func may be called simulatneously
- * from a GC worker thread when Old/Full GC Seep finishes (AsyncClearTask), or from main/JS
- * thread AllocateMachineCode if an Old/Full GC is in progress.
- *
- * The following must be done before calling UpdateFreeSpace:
- * - MachineCodeSpace::FreeRegion completed (whether sync or aync) on all regions
-*/
+ * Called from GC worker thread duing Old/Full GC Sweep (AsyncSweep). Mutex is needed
+ * to ensure exclusive access to JitFort memory by GC thread when it frees JitFort mem
+ * blocks, and by Jit compiled thread when it allocates Fort mem.
+ */
 void JitFort::UpdateFreeSpace()
 {
+    if (!Jit::GetInstance()->IsEnableJitFort()) {
+        return;
+    }
+
     LockHolder lock(mutex_);
 
     if (!regionList_.GetLength()) { // LCOV_EXCL_BR_LINE
         return;
     }
-
-    if (!IsMachineCodeGC()) {
-        return;
-    }
-
     LOG_JIT(DEBUG) << "UpdateFreeSpace enter: " << "Fort space allocated: "
         << allocator_->GetAllocatedSize()
-        << " available: " << allocator_->GetAvailableSize()
-        << " liveJitCodeBlks: " << liveJitCodeBlks_.size();
+        << " available: " << allocator_->GetAvailableSize();
     allocator_->RebuildFreeList();
-    SortLiveMemDescList();
-    auto region = regionList_.GetFirst();
+    JitFortRegion *region = regionList_.GetFirst();
     while (region) {
-        CollectFreeRanges(region);
+        FreeRegion(region);
         region = region->GetNext();
     }
     LOG_JIT(DEBUG) << "UpdateFreeSpace exit: allocator_->GetAvailableSize  "
         << allocator_->GetAvailableSize();
-
-    SetMachineCodeGC(false);
 }
 
-void JitFort::CollectFreeRanges(JitFortRegion *region)
+void JitFort::FreeRegion(JitFortRegion *region)
 {
-    LOG_JIT(DEBUG) << "region " << (void*)(region->GetBegin());
+    LOG_JIT(DEBUG) << "JitFort FreeRegion " << (void*)(region->GetBegin());
+
     uintptr_t freeStart = region->GetBegin();
-    for (auto it = liveJitCodeBlks_.begin(); it !=  liveJitCodeBlks_.end();) {
-        MemDesc* desc = *it;
-        if (desc->GetBegin() < region->GetBegin()) {
-            // Skip entries for fort mem awaiting installation that's already processed
-            // by a previous call to CollectFreeRange. Do not use desc->IsInstalled()
-            // to check here because an entry's IsInstalled flag can change from false to
-            // true (if JSThread installs its corresponding MachineCode object) during
-            // the time a GC thread runs UpdateFreeSpace
-            it++;
-            continue;
-        }
-        if (desc->GetBegin() >= region->GetBegin() && desc->GetBegin() < region->GetEnd()) {
-            uintptr_t freeEnd = desc->GetBegin();
-            LOG_JIT(DEBUG) << " freeStart = " << (void *)freeStart
-                << " freeEnd = "<< (void*)freeEnd
-                << " desc->GetBegin() = " << (void *)(desc->GetBegin())
-                << " desc->GetEnd() = " << (void *)(desc->GetEnd());
-            if (freeStart != freeEnd && freeEnd <= freeStart) { // LOCV_EXCL_BR_LINE
-                    LOG_JIT(FATAL) << "CollectFreeRanges Abort: freeEnd smaller than freeStart";
-                    return;
-            }
+    region->GetGCBitset()->IterateMarkedBitsConst(
+        region->GetBegin(), region->GetGCBitsetSize(),
+        [this, &region, &freeStart](void *mem, size_t size) {
+            ASSERT(region->InRange(ToUintPtr(mem)));
+            (void) region;
+            uintptr_t freeEnd = ToUintPtr(mem);
             if (freeStart != freeEnd) {
                 allocator_->Free(freeStart, freeEnd - freeStart, true);
             }
-            freeStart = freeEnd + desc->Available();
-            if (desc->IsInstalled()) {
-                it = liveJitCodeBlks_.erase(it);
-                memDescPool_->ReturnDescToPool(desc);
-            } else {
-                // retain liveJitCodeBlks entry for fort mem awaiting installation to keep from being freed
-                it++;
-            }
-        } else {
-            break;
-        }
-    }
+            freeStart = freeEnd + size;
+        });
     uintptr_t freeEnd = region->GetEnd();
     if (freeStart != freeEnd) {
         allocator_->Free(freeStart, freeEnd - freeStart, true);
-        LOG_JIT(DEBUG) << " freeStart = " << (void *)freeStart << " freeEnd = " << (void*)freeEnd;
     }
 }
 
@@ -242,19 +227,86 @@ bool JitFort::InRange(uintptr_t address) const
         address <= (jitFortBegin_ + jitFortSize_ - 1);
 }
 
+void JitFort::PrepareSweeping()
+{
+    isSweeping_.store(false, std::memory_order_release);
+}
+
+// concurrent sweep - only one of the AsyncSweep task will do JitFort sweep
+void JitFort::AsyncSweep()
+{
+    bool expect = false;
+    if (isSweeping_.compare_exchange_strong(expect, true, std::memory_order_seq_cst)) {
+        LOG_JIT(DEBUG) << "JitFort::AsyncSweep";
+        UpdateFreeSpace();
+    }
+}
+
+// non-concurrent sweep
+void JitFort::Sweep()
+{
+    LOG_JIT(DEBUG) << "JitFort::Sweep";
+    UpdateFreeSpace();
+}
+
 // Used by JitFort::UpdateFreeSpace call path to find corresponding
 // JitFortRegion for a free block in JitFort space, in order to put the blk into
 // the corresponding free set of the JitFortRegion the free block belongs.
-JitFortRegion *JitFort::ObjectAddressToRange(uintptr_t objAddress)
+JitFortRegion *JitFort::ObjectAddressToRange(uintptr_t addr)
 {
-    JitFortRegion *region = GetRegionList();
-    while (region != nullptr) {
-        if (objAddress >= region->GetBegin() && objAddress < region->GetEnd()) {
-            return region;
-        }
-        region = region->GetNext();
+    return regions_[AddrToFortRegionIdx(addr)];
+}
+
+void JitFortGCBitset::MarkStartAddr(bool awaitInstall, uintptr_t startAddr, uint32_t index, uint32_t &word)
+{
+    if (!awaitInstall) {
+        ClearMark(startAddr);
+        word &= ~(1u << index);
+    } else {
+        word &= ~(1u << index);
+        word &= ~(1u << (index+1));
     }
-    return region;
+}
+
+void JitFortGCBitset::MarkEndAddr(bool awaitInstall, uintptr_t endAddr, uint32_t index, uint32_t &word)
+{
+    if (!awaitInstall) {
+        ClearMark(endAddr - 1);
+    }
+    word &= ~(1u << index);
+}
+
+// See JitFort::MarkJitFortMemAlive comments for mark bit encoding in JitFort GC bitset.
+template <typename Visitor>
+void JitFortGCBitset::IterateMarkedBitsConst(uintptr_t regionAddr, size_t bitsetSize, Visitor visitor)
+{
+    bool awaitInstall = false;
+    uintptr_t startAddr = 0;
+    uintptr_t endAddr = 0;
+
+    auto words = Words();
+    uint32_t wordCount = WordCount(bitsetSize);
+    uint32_t index = BIT_PER_WORD;
+    for (uint32_t i = 0; i < wordCount; i++) {
+        uint32_t word = words[i];
+        while (word != 0) {
+            index = static_cast<uint32_t>(__builtin_ctz(word));
+            ASSERT(index < BIT_PER_WORD);
+            if (!startAddr) {
+                startAddr = regionAddr + (index << TAGGED_TYPE_SIZE_LOG);
+                awaitInstall = Test(regionAddr + ((index+1) << TAGGED_TYPE_SIZE_LOG));
+                MarkStartAddr(awaitInstall, startAddr, index, word);
+            } else {
+                endAddr = regionAddr + ((index+1) << TAGGED_TYPE_SIZE_LOG);
+                LOG_JIT(DEBUG) << "Live Jit Mem " << (void *)startAddr << " size " << endAddr-startAddr;
+                visitor(reinterpret_cast<void *>(startAddr), endAddr - startAddr);
+                MarkEndAddr(awaitInstall, endAddr, index, word);
+                awaitInstall = false;
+                startAddr = 0;
+            }
+        }
+        regionAddr += TAGGED_TYPE_SIZE * BIT_PER_WORD;
+    }
 }
 
 bool JitFort::isResourceAvailable_ = true;
