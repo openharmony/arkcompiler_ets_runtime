@@ -308,7 +308,8 @@ std::shared_ptr<JSPandaFile> AotCompilerPreprocessor::CreateAndVerifyJSPandaFile
         auto pkgArgsIter = pkgsArgs_.find(fileName);
         if (pkgArgsIter == pkgsArgs_.end()) {
             jsPandaFile = jsPandaFileManager->OpenJSPandaFile(fileName.c_str());
-        } else if (!(pkgArgsIter->second->GetJSPandaFile(runtimeOptions_, jsPandaFile))) {
+        } else if (!(pkgArgsIter->second->GetJSPandaFile(runtimeOptions_, jsPandaFile,
+            pkgArgsIter->second->GetPkgFd()))) {
             return nullptr;
         }
     } else {

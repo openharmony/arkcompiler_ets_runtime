@@ -30,6 +30,7 @@
 #include "ecmascript/napi/include/jsnapi.h"
 #include "ecmascript/ohos/enable_aot_list_helper.h"
 #include "ecmascript/ohos/ohos_pkg_args.h"
+#include "ecmascript/ohos/ohos_pkg_verifier.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/file.h"
 #include "ecmascript/platform/filesystem.h"
@@ -119,6 +120,12 @@ int Main(const int argc, const char **argv)
         AotCompilerPreprocessor cPreprocessor(vm, runtimeOptions, pkgArgsMap, profilerDecoder, pandaFileNames);
         if (!cPreprocessor.HandleTargetCompilerMode(cOptions) || !cPreprocessor.HandlePandaFileNames(argc, argv)) {
             return ERR_HELP;
+        }
+
+        // Need to verify package information to prevent abnormal input of information
+        if (!ohos::OhosPkgVerifier::VerifyPkgInfo(cPreprocessor, cOptions)) {
+            LOG_COMPILER(ERROR) << "hap verify wrong";
+            return ERR_FAIL;
         }
 
         if (IsExistsPkgInfo(cPreprocessor)) {
