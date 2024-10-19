@@ -567,6 +567,7 @@ public:
     GateRef GetInlinedPropertiesFromHClass(GateRef hClass);
     void ThrowTypeAndReturn(GateRef glue, int messageId, GateRef val);
     GateRef GetValueFromTaggedArray(GateRef elements, GateRef index);
+    GateRef GetDataPtrInTaggedArray(GateRef array);
     GateRef GetUnsharedConstpoolIndex(GateRef constpool);
     GateRef GetUnsharedConstpoolFromGlue(GateRef glue, GateRef constpool);
     GateRef GetUnsharedConstpool(GateRef array, GateRef index);
@@ -1025,6 +1026,23 @@ public:
     void TryToJitReuseCompiledFunc(GateRef glue, GateRef jsFunc, GateRef profileTypeInfoCell);
     GateRef GetIsFastCall(GateRef machineCode);
 
+    enum OverlapKind {
+        // NotOverlap means the source and destination memory are not overlap,
+        // or overlap but the start of source is larger than destination.
+        // then we will copy the memory from left to right.
+        NotOverlap,
+        // MustOverlap mean the source and destination memory are overlap,
+        // and the start of source is lesser than destination.
+        // then we will copy the memory from right to left.
+        MustOverlap,
+        // Unknown means all the kinds above are possible, it will select the suitable one in runtime.
+        Unknown,
+    };
+    template <OverlapKind kind>
+    void ArrayCopy(GateRef glue, GateRef src, GateRef dst, GateRef length,
+                   MemoryAttribute mAttr = MemoryAttribute::Default());
+protected:
+    static constexpr int LOOP_UNROLL_FACTOR = 2;
 private:
     using BinaryOperation = std::function<GateRef(Environment*, GateRef, GateRef)>;
     template<OpCode Op>

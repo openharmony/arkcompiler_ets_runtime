@@ -816,7 +816,6 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
     env->SubCfgEntry(&subEntry);
     Label exit(env);
     DEFVARIABLE(result, VariableType::JS_ANY(), Hole());
-    DEFVARIABLE(index, VariableType::INT32(), Int32(0));
     NewObjectStubBuilder newBuilder(this);
     Label emptyArray(env);
     Label notEmptyArray(env);
@@ -856,40 +855,24 @@ GateRef NewObjectStubBuilder::CopyArray(GateRef glue, GateRef elements, GateRef 
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::LENGTH_OFFSET), newLen);
             GateRef oldExtractLen = GetExtractLengthOfTaggedArray(elements);
             Store(VariableType::INT32(), glue, *array, IntPtr(TaggedArray::EXTRA_LENGTH_OFFSET), oldExtractLen);
-            Label loopHead(env);
-            Label loopEnd(env);
-            Label afterLoop(env);
-            Label storeValue(env);
-            Jump(&loopHead);
-            LoopBegin(&loopHead);
+            Label afterCopy(env);
+
+            Label copyToTaggedArray(env);
+            Label copyToMutantTaggedArray(env);
+            BRANCH(checkIsMutantTaggedArray, &copyToMutantTaggedArray, &copyToTaggedArray);
+            Bind(&copyToTaggedArray);
             {
-                BRANCH(Int32UnsignedLessThan(*index, newLen), &storeValue, &afterLoop);
-                Bind(&storeValue);
-                {
-                    Label storeToTaggedArray(env);
-                    Label storeToMutantTaggedArray(env);
-                    Label finishStore(env);
-                    BRANCH(checkIsMutantTaggedArray, &storeToMutantTaggedArray, &storeToTaggedArray);
-                    Bind(&storeToMutantTaggedArray);
-                    {
-                        GateRef value = GetValueFromMutantTaggedArray(elements, *index);
-                        SetValueToTaggedArray(VariableType::INT64(), glue, *array, *index, value);
-                        Jump(&finishStore);
-                    }
-                    Bind(&storeToTaggedArray);
-                    {
-                        GateRef value = GetValueFromTaggedArray(elements, *index);
-                        SetValueToTaggedArray(VariableType::JS_ANY(), glue, *array, *index, value);
-                        Jump(&finishStore);
-                    }
-                    Bind(&finishStore);
-                    index = Int32Add(*index, Int32(1));
-                    Jump(&loopEnd);
-                }
+                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), GetDataPtrInTaggedArray(*array),
+                                      newLen);
+                Jump(&afterCopy);
             }
-            Bind(&loopEnd);
-            LoopEnd(&loopHead, env, glue);
-            Bind(&afterLoop);
+            Bind(&copyToMutantTaggedArray);
+            {
+                ArrayCopy<NotOverlap>(glue, GetDataPtrInTaggedArray(elements), GetDataPtrInTaggedArray(*array), newLen,
+                                      MemoryAttribute::NoBarrier());
+                Jump(&afterCopy);
+            }
+            Bind(&afterCopy);
             {
                 result = *array;
                 Jump(&exit);

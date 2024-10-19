@@ -10347,4 +10347,145 @@ GateRef StubBuilder::GetArgumentsElements(GateRef glue, GateRef argvTaggedArray,
     return ret;
 }
 
+using CopyKind = StubBuilder::OverlapKind;
+
+template <>
+void StubBuilder::ArrayCopy<CopyKind::NotOverlap>(GateRef glue, GateRef src, GateRef dst, GateRef length,
+                                                  MemoryAttribute mAttr)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+
+    Label begin(env);
+    Label storeValue(env);
+    Label endLoop(env);
+    Label storeHead(env);
+    Label enterLoop(env);
+    DEFVARIABLE(offset, VariableType::INT32(), Int32(0));
+
+    const auto tSize = static_cast<int32_t>(JSTaggedValue::TaggedTypeSize());
+    static_assert((tSize & (tSize - 1)) == 0 && "TaggedTypeSize must be power of 2");
+    static_assert(LOOP_UNROLL_FACTOR == 2 && "changing LOOP_UNROLL_FACTOR also need fix the logic here");
+
+    GateRef remainder = Int32And(length, Int32(LOOP_UNROLL_FACTOR - 1));
+    BRANCH_NO_WEIGHT(Int32NotEqual(remainder, Int32(0)), &storeHead, &enterLoop);
+    Bind(&storeHead);
+    {
+        // Now use 2 as loop unroll factor, so only store once if reminder is not 0.
+        // But if using other loop unroll factor, the store head should also be refactored.
+        GateRef value = Load(VariableType::JS_ANY(), src);
+        Store(VariableType::JS_ANY(), glue, dst, IntPtr(0), value, mAttr);
+        offset = Int32(tSize);
+        Jump(&enterLoop);
+    }
+    Bind(&enterLoop);
+    {
+        Jump(&begin);
+    }
+    LoopBegin(&begin);
+    {
+        BRANCH_LIKELY(Int32UnsignedLessThan(*offset, Int32Mul(length, Int32(tSize))), &storeValue, &exit);
+        Bind(&storeValue);
+        {
+            GateRef off1 = ZExtInt32ToPtr(*offset);
+            GateRef off2 = PtrAdd(off1, IntPtr(tSize));
+            GateRef value1 = Load(VariableType::JS_ANY(), src, off1);
+            GateRef value2 = Load(VariableType::JS_ANY(), src, off2);
+            Store(VariableType::JS_ANY(), glue, dst, off1, value1, mAttr);
+            Store(VariableType::JS_ANY(), glue, dst, off2, value2, mAttr);
+            offset = Int32Add(*offset, Int32(LOOP_UNROLL_FACTOR * tSize));
+            Jump(&endLoop);
+        }
+        Bind(&endLoop);
+        LoopEnd(&begin);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+template <>
+void StubBuilder::ArrayCopy<CopyKind::MustOverlap>(GateRef glue, GateRef src, GateRef dst, GateRef length,
+                                                   MemoryAttribute mAttr)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    Label begin(env);
+    Label storeValue(env);
+    Label endLoop(env);
+    Label storeEnd(env);
+    Label enterLoop(env);
+
+    const auto tSize = static_cast<int32_t>(JSTaggedValue::TaggedTypeSize());
+    static_assert((tSize & (tSize - 1)) == 0 && "TaggedTypeSize must be power of 2");
+    static_assert(LOOP_UNROLL_FACTOR == 2 && "changing LOOP_UNROLL_FACTOR also need fix the logic here");
+
+    DEFVARIABLE(offset, VariableType::INT32(), Int32Mul(length, Int32(tSize)));
+    GateRef remainder = Int32And(length, Int32(LOOP_UNROLL_FACTOR - 1));
+    BRANCH_NO_WEIGHT(Int32NotEqual(remainder, Int32(0)), &storeEnd, &enterLoop);
+    Bind(&storeEnd);
+    {
+        // Now use 2 as loop unroll factor, so only store once if reminder is not 0.
+        // But if using other loop unroll factor, the store head should also be refactored.
+        offset = Int32Sub(*offset, Int32(tSize));
+        GateRef value = Load(VariableType::JS_ANY(), src, ZExtInt32ToPtr(*offset));
+        Store(VariableType::JS_ANY(), glue, dst, ZExtInt32ToPtr(*offset), value, mAttr);
+        Jump(&enterLoop);
+    }
+    Bind(&enterLoop);
+    {
+        Jump(&begin);
+    }
+    LoopBegin(&begin);
+    {
+        BRANCH_LIKELY(Int32UnsignedGreaterThan(*offset, Int32(0)), &storeValue, &exit);
+        Bind(&storeValue);
+        {
+            offset = Int32Sub(*offset, Int32(LOOP_UNROLL_FACTOR * tSize));
+            GateRef off1 = ZExtInt32ToPtr(*offset);
+            GateRef off2 = PtrAdd(off1, IntPtr(tSize));
+            GateRef value1 = Load(VariableType::JS_ANY(), src, off1);
+            GateRef value2 = Load(VariableType::JS_ANY(), src, off2);
+            Store(VariableType::JS_ANY(), glue, dst, off1, value1, mAttr);
+            Store(VariableType::JS_ANY(), glue, dst, off2, value2, mAttr);
+            Jump(&endLoop);
+        }
+        Bind(&endLoop);
+        LoopEnd(&begin);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
+
+template <>
+void StubBuilder::ArrayCopy<CopyKind::Unknown>(GateRef glue, GateRef src, GateRef dst, GateRef length,
+                                               MemoryAttribute mAttr)
+{
+    auto env = GetEnvironment();
+    Label entry(env);
+    env->SubCfgEntry(&entry);
+    Label exit(env);
+    GateRef needRightToLeft = LogicAndBuilder(env)
+                              .And(IntPtrGreaterThan(dst, src))
+                              .And(IntPtrGreaterThan(PtrAdd(src, ZExtInt32ToPtr(length)), dst))
+                              .Done();
+    Label leftToRight(env);
+    Label rightToLeft(env);
+    BRANCH_NO_WEIGHT(needRightToLeft, &rightToLeft, &leftToRight);
+    Bind(&rightToLeft);
+    {
+        ArrayCopy<MustOverlap>(glue, src, dst, length, mAttr);
+        Jump(&exit);
+    }
+    Bind(&leftToRight);
+    {
+        ArrayCopy<NotOverlap>(glue, src, dst, length, mAttr);
+        Jump(&exit);
+    }
+    Bind(&exit);
+    env->SubCfgExit();
+}
 }  // namespace panda::ecmascript::kungfu

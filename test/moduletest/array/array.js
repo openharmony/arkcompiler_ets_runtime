@@ -1929,6 +1929,16 @@ testCases.forEach(({ array, target }) => {
     let newLength4 = arrayWithUndefined.unshift("x");
     print(newLength4);
     print(arrayWithUndefined);
+
+    let arrayWithHole = [1, 2, ,4];
+    let newLength5 = arrayWithHole.unshift(5, 6, 7);
+    print(newLength5);
+    print(arrayWithHole);
+
+    let arrayWithHole1 = [1, 2, ,4];
+    let newLength6 = arrayWithHole1.unshift(5, 6, 7, 8);
+    print(newLength6);
+    print(arrayWithHole1);
 }
 
 /*

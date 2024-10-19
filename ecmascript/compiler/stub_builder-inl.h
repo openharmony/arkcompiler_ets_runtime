@@ -2326,6 +2326,11 @@ inline GateRef StubBuilder::GetValueFromTaggedArray(GateRef array, GateRef index
     return Load(VariableType::JS_ANY(), array, dataOffset);
 }
 
+inline GateRef StubBuilder::GetDataPtrInTaggedArray(GateRef array)
+{
+    return PtrAdd(array, IntPtr(TaggedArray::DATA_OFFSET));
+}
+
 inline GateRef StubBuilder::GetUnsharedConstpoolIndex(GateRef constpool)
 {
     GateRef constPoolSize = GetLengthOfTaggedArray(constpool);
