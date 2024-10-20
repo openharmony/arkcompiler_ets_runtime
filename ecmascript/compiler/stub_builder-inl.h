@@ -3302,6 +3302,11 @@ inline GateRef StubBuilder::IsBaseKind(GateRef kind)
     return BitOr(val, IsGeneratorKind(kind));
 }
 
+inline GateRef StubBuilder::IsBaseConstructorKind(GateRef kind)
+{
+    return Int32Equal(kind, Int32(static_cast<int32_t>(FunctionKind::BASE_CONSTRUCTOR)));
+}
+
 inline GateRef StubBuilder::IsSendableFunction(GateRef method)
 {
     GateRef fieldOffset = IntPtr(Method::EXTRA_LITERAL_INFO_OFFSET);
