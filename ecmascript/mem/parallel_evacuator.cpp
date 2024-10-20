@@ -94,14 +94,18 @@ void ParallelEvacuator::EvacuateSpace()
     if (heap_->IsParallelGCEnabled()) {
         LockHolder holder(mutex_);
         parallel_ = CalculateEvacuationThreadNum();
-        for (int i = 0; i < parallel_; i++) {
+        ASSERT(parallel_ >= 0);
+        evacuateTaskNum_ = static_cast<uint32_t>(parallel_);
+        for (uint32_t i = 1; i <= evacuateTaskNum_; i++) {
             Taskpool::GetCurrentTaskpool()->PostTask(
-                std::make_unique<EvacuationTask>(heap_->GetJSThread()->GetThreadId(), this));
+                std::make_unique<EvacuationTask>(heap_->GetJSThread()->GetThreadId(), i, this));
         }
+    } else {
+        evacuateTaskNum_ = 0;
     }
     {
         GCStats::Scope sp2(GCStats::Scope::ScopeId::EvacuateRegion, heap_->GetEcmaVM()->GetEcmaGCStats());
-        EvacuateSpace(allocator_, MAIN_THREAD_INDEX, true);
+        EvacuateSpace(allocator_, MAIN_THREAD_INDEX, 0, true);
     }
 
     {
@@ -114,8 +118,10 @@ void ParallelEvacuator::EvacuateSpace()
     }
 }
 
-bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadIndex, bool isMain)
+bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadIndex, uint32_t idOrder, bool isMain)
 {
+    UpdateRecordWeakReferenceInParallel(idOrder);
+
     auto &arrayTrackInfoSet = ArrayTrackInfoSet(threadIndex);
     DrainWorkloads(evacuateWorkloadSet_, [&](std::unique_ptr<Workload> &region) {
         EvacuateRegion(allocator, region->GetRegion(), arrayTrackInfoSet);
@@ -128,6 +134,30 @@ bool ParallelEvacuator::EvacuateSpace(TlabAllocator *allocator, uint32_t threadI
         }
     }
     return true;
+}
+
+void ParallelEvacuator::UpdateRecordWeakReferenceInParallel(uint32_t idOrder)
+{
+    auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
+    for (uint32_t i = idOrder; i < totalThreadCount; i += (evacuateTaskNum_ + 1)) {
+        ProcessQueue *queue = heap_->GetWorkManager()->GetWeakReferenceQueue(i);
+        while (true) {
+            auto obj = queue->PopBack();
+            if (UNLIKELY(obj == nullptr)) {
+                break;
+            }
+            ObjectSlot slot(ToUintPtr(obj));
+            JSTaggedType value = slot.GetTaggedType();
+            if (JSTaggedValue(value).IsWeak()) {
+                ASSERT(heap_->IsConcurrentFullMark());
+                Region *objectRegion = Region::ObjectAddressToRange(value);
+                if (!objectRegion->InGeneralNewSpaceOrCSet() && !objectRegion->InSharedHeap() &&
+                        (objectRegion->GetMarkGCBitset() == nullptr || !objectRegion->Test(value))) {
+                    slot.Clear();
+                }
+            }
+        }
+    }
 }
 
 void ParallelEvacuator::EvacuateRegion(TlabAllocator *allocator, Region *region,
@@ -258,7 +288,7 @@ void ParallelEvacuator::UpdateReference()
     {
         GCStats::Scope sp2(GCStats::Scope::ScopeId::UpdateWeekRef, heap_->GetEcmaVM()->GetEcmaGCStats());
         if (heap_->IsEdenMark()) {
-            UpdateWeakReference();
+            UpdateWeakReferenceOpt<TriggerGCType::EDEN_GC>();
         } else if (heap_->IsYoungMark()) {
             UpdateWeakReferenceOpt<TriggerGCType::YOUNG_GC>();
         } else {
@@ -369,36 +399,23 @@ void ParallelEvacuator::UpdateWeakReference()
 }
 
 template<TriggerGCType gcType>
-void ParallelEvacuator::UpdateRecordWeakReferenceOpt()
-{
-    auto totalThreadCount = Taskpool::GetCurrentTaskpool()->GetTotalThreadNum() + 1;
-    for (uint32_t i = 0; i < totalThreadCount; i++) {
-        ProcessQueue *queue = heap_->GetWorkManager()->GetWeakReferenceQueue(i);
-
-        while (true) {
-            auto obj = queue->PopBack();
-            if (UNLIKELY(obj == nullptr)) {
-                break;
-            }
-            ObjectSlot slot(ToUintPtr(obj));
-            JSTaggedValue value(slot.GetTaggedType());
-            if (value.IsHeapObject()) {
-                UpdateWeakObjectSlotOpt<gcType>(value, slot);
-            }
-        }
-    }
-}
-
-template<TriggerGCType gcType>
 void ParallelEvacuator::UpdateWeakReferenceOpt()
 {
     MEM_ALLOCATE_AND_GC_TRACE(heap_->GetEcmaVM(), UpdateWeakReference);
     ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "GC::UpdateWeakReference");
-    UpdateRecordWeakReferenceOpt<gcType>();
     WeakRootVisitor gcUpdateWeak = [](TaggedObject *header) -> TaggedObject* {
         Region *objectRegion = Region::ObjectAddressToRange(reinterpret_cast<TaggedObject *>(header));
         ASSERT(objectRegion != nullptr);
-        if constexpr (gcType == TriggerGCType::YOUNG_GC) {
+        if constexpr (gcType == TriggerGCType::EDEN_GC) {
+            if (!objectRegion->InEdenSpace()) {
+                return header;
+            }
+            MarkWord markWord(header);
+            if (markWord.IsForwardingAddress()) {
+                return markWord.ToForwardingAddress();
+            }
+            return nullptr;
+        } else if constexpr (gcType == TriggerGCType::YOUNG_GC) {
             if (!objectRegion->InGeneralNewSpace()) {
                 return header;
             }
@@ -451,7 +468,6 @@ void ParallelEvacuator::UpdateRSet(Region *region)
     }
     region->IterateAllOldToNewBits(cb);
     if (heap_->IsYoungMark()) {
-        region->DeleteCrossRegionRSet();
         return;
     }
     if constexpr (IsEdenGC) {
@@ -462,7 +478,10 @@ void ParallelEvacuator::UpdateRSet(Region *region)
     } else {
         region->IterateAllCrossRegionBits([this](void *mem) {
             ObjectSlot slot(ToUintPtr(mem));
-            UpdateObjectSlotOpt<TriggerGCType::OLD_GC>(slot);
+            JSTaggedType value = slot.GetTaggedType();
+            if (JSTaggedValue(value).IsHeapObject() && Region::ObjectAddressToRange(value)->InCollectSet()) {
+                UpdateObjectSlotOpt<TriggerGCType::OLD_GC>(slot);
+            }
         });
     }
     region->DeleteCrossRegionRSet();
@@ -659,8 +678,9 @@ void ParallelEvacuator::WorkloadSet::Clear()
     indexCursor_.store(0, std::memory_order_relaxed);
     remainingWorkloadNum_.store(0, std::memory_order_relaxed);
 }
-ParallelEvacuator::EvacuationTask::EvacuationTask(int32_t id, ParallelEvacuator *evacuator)
-    : Task(id), evacuator_(evacuator)
+
+ParallelEvacuator::EvacuationTask::EvacuationTask(int32_t id, uint32_t idOrder, ParallelEvacuator *evacuator)
+    : Task(id), idOrder_(idOrder), evacuator_(evacuator)
 {
     allocator_ = new TlabAllocator(evacuator->heap_);
 }
@@ -672,7 +692,7 @@ ParallelEvacuator::EvacuationTask::~EvacuationTask()
 
 bool ParallelEvacuator::EvacuationTask::Run(uint32_t threadIndex)
 {
-    return evacuator_->EvacuateSpace(allocator_, threadIndex);
+    return evacuator_->EvacuateSpace(allocator_, threadIndex, idOrder_);
 }
 
 bool ParallelEvacuator::UpdateReferenceTask::Run([[maybe_unused]] uint32_t threadIndex)
