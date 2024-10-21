@@ -186,6 +186,7 @@ JSHandle<JSHClass> ObjectFactory::NewEcmaReadOnlyHClass(JSHClass *hclass, uint32
     NewObjectHook();
     uint32_t classSize = JSHClass::SIZE;
     auto *newClass = static_cast<JSHClass *>(heap_->AllocateReadOnlyOrHugeObject(hclass, classSize));
+    ASSERT(newClass != nullptr);
     newClass->Initialize(thread_, size, type, inlinedProps);
 
     return JSHandle<JSHClass>(thread_, newClass);
