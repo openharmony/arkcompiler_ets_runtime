@@ -1544,17 +1544,42 @@ GateRef BuiltinsArrayStubBuilder::DoSort(GateRef glue, GateRef receiver, GateRef
                 Bind(&afterGettingmiddleValue);
                 {
                     Label isInt(env);
+                    Label notInt(env);
+                    Label exchangeIndex(env);
                     GateRef middleVal = *middleValue;
                     GateRef presentVal = *presentValue;
-                    BRANCH(LogicAndBuilder(env).And(TaggedIsInt(middleVal)).And(TaggedIsInt(presentVal)).Done(),
-                        &isInt, slowPath);
+                    DEFVARIABLE(compareResult, VariableType::INT32(), Int32(0));
+                    GateRef intBool = LogicAndBuilder(env)
+                                        .And(TaggedIsInt(middleVal))
+                                        .And(TaggedIsInt(presentVal))
+                                        .Done();
+                    BRANCH(intBool, &isInt, &notInt);
                     Bind(&isInt);
                     {
-                        GateRef compareResult =
+                        compareResult =
                             CallNGCRuntime(glue, RTSTUB_ID(FastArraySort), {*middleValue, *presentValue});
+                        Jump(&exchangeIndex);
+                    }
+                    Bind(&notInt);
+                    {
+                        Label isString(env);
+                        GateRef strBool = LogicAndBuilder(env)
+                                        .And(TaggedIsString(middleVal))
+                                        .And(TaggedIsString(presentVal))
+                                        .Done();
+                        BRANCH(strBool, &isString, slowPath);
+                        Bind(&isString);
+                        {
+                            compareResult = CallNGCRuntime(glue,
+                                RTSTUB_ID(FastArraySortString), {glue, *middleValue, *presentValue});
+                            Jump(&exchangeIndex);
+                        }
+                    }
+                    Bind(&exchangeIndex);
+                    {
                         Label less0(env);
                         Label greater0(env);
-                        BRANCH(Int32LessThanOrEqual(compareResult, Int32(0)), &less0, &greater0);
+                        BRANCH(Int32LessThanOrEqual(*compareResult, Int32(0)), &less0, &greater0);
                         Bind(&greater0);
                         {
                             endIndex = middleIndex;

@@ -143,6 +143,7 @@ public:
     static JSTaggedValue NumberHelperStringToDouble(EcmaString *str);
     static JSTaggedValue GetStringToListCacheArray(uintptr_t argGlue);
     static int FastArraySort(JSTaggedType x, JSTaggedType y);
+    static int FastArraySortString(uintptr_t argGlue, JSTaggedValue x, JSTaggedValue y);
     static JSTaggedValue StringToNumber(JSTaggedType numberString, int32_t radix);
     static void ArrayTrim(uintptr_t argGlue, TaggedArray *array, int64_t newLength);
     static double TimeClip(double time);

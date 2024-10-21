@@ -3851,6 +3851,15 @@ int RuntimeStubs::FastArraySort(JSTaggedType x, JSTaggedType y)
     return JSTaggedValue::IntLexicographicCompare(JSTaggedValue(x), JSTaggedValue(y));
 }
 
+int RuntimeStubs::FastArraySortString(uintptr_t argGlue, JSTaggedValue x, JSTaggedValue y)
+{
+    DISALLOW_GARBAGE_COLLECTION;
+    auto thread = JSThread::GlueToJSThread(argGlue);
+    JSHandle<EcmaString> valueX(thread, x);
+    JSHandle<EcmaString> valueY(thread, y);
+    return static_cast<int>(EcmaStringAccessor::Compare(thread->GetEcmaVM(), valueX, valueY));
+}
+
 DEF_RUNTIME_STUBS(LocaleCompareCacheable)
 {
     RUNTIME_STUBS_HEADER(LocaleCompareCacheable);
