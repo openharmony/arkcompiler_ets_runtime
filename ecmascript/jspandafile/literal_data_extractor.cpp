@@ -285,7 +285,8 @@ JSHandle<JSFunction> LiteralDataExtractor::DefineMethodInLiteral(JSThread *threa
     ObjectFactory *factory = vm->GetFactory();
 
     auto methodLiteral = jsPandaFile->FindMethodLiteral(offset);
-    ASSERT(methodLiteral != nullptr);
+    CHECK_INPUT_NULLPTR(methodLiteral,
+                        "DefineMethodInLiteral:methodLiteral is nullptr, offset: " + std::to_string(offset));
     FunctionKind literalKind = methodLiteral->GetFunctionKind();
     if (literalKind == FunctionKind::NONE_FUNCTION || classKind == ClassKind::SENDABLE) {
         methodLiteral->SetFunctionKind(kind);
