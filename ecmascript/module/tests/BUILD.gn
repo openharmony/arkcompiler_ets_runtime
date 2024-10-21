@@ -22,6 +22,10 @@ test_js_files = [
   "module_test_module_test_A",
   "module_test_module_test_B",
   "module_test_module_test_C",
+  "module_unexecute",
+  "module_unexecute_A",
+  "module_unexecute_B",
+  "module_unexecute_C",
 ]
 
 foreach(file, test_js_files) {
@@ -36,6 +40,9 @@ foreach(file, test_js_files) {
     extra_args = []
     if (file == "module_test_module_test_A") {
       extra_args += [ "--commonjs" ]
+    } else if (file == "module_unexecute_C") {
+      extra_args += [ "--commonjs" ]
+      extra_args += [ "--merge-abc" ]
     } else {
       extra_args += [ "--module" ]
       extra_args += [ "--merge-abc" ]

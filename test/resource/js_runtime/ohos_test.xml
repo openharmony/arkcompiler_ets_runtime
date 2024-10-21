@@ -188,11 +188,6 @@
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
         </preparer>
     </target>
-    <target name="BuiltinsNatural_007_Test">
-        <preparer>
-            <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>
-        </preparer>
-    </target>
     <target name="BuiltinsSharedObject_Test">
         <preparer>
             <option name="push" value="test/test/libark_jsruntime_test.so -> /data/test" src="out"/>

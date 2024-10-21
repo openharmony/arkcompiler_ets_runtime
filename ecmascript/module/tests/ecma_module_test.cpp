@@ -1715,5 +1715,4 @@ HWTEST_F_L0(EcmaModuleTest, ToStringWithPrecision)
     std::string res = ModuleLogger::ToStringWithPrecision(4.550, 3);
     EXPECT_EQ(res, "4.55");
 }
-
 }  // namespace panda::test

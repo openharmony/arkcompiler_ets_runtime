@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,19 +13,5 @@
  * limitations under the License.
  */
 
-class Test {
-  constructor(a) {
-    this.a = a;
-  }
-
-  fun1() {
-    print('hello world');
-  }
-
-  fun2() {
-    print('hello world1');
-  }
-}
-
-let test = new Test('555');
-module.exports.test = test;
+let stringOut = 'module execute';
+export {stringOut};
