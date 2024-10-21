@@ -63,7 +63,8 @@ std::shared_ptr<JSPandaFile> JSPandaFileManager::LoadJSPandaFile(JSThread *threa
     EcmaVM *vm = thread->GetEcmaVM();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
     std::unique_ptr<const panda_file::File> pf;
-    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode() && !vm->IsRestrictedWorkerThread()) {
+    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode() == ModuleExecuteMode::ExecuteBufferMode &&
+        !vm->IsRestrictedWorkerThread()) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
 #if defined(PANDA_TARGET_WINDOWS) || defined(PANDA_TARGET_MACOS)
@@ -568,7 +569,7 @@ bool JSPandaFileManager::CheckFilePath(JSThread *thread, const CString &fileName
     }
     EcmaVM *vm = thread->GetEcmaVM();
     ModuleManager *moduleManager = thread->GetCurrentEcmaContext()->GetModuleManager();
-    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode()) {
+    if (!vm->IsBundlePack() && moduleManager->GetExecuteMode() == ModuleExecuteMode::ExecuteBufferMode) {
         ResolveBufferCallback resolveBufferCallback = vm->GetResolveBufferCallback();
         if (resolveBufferCallback == nullptr) {
             LOG_FULL(ERROR) << "When checking file path, resolveBufferCallback is nullptr";

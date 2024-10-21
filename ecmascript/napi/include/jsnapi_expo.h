@@ -1680,6 +1680,7 @@ public:
     static void SetModuleInfo(EcmaVM *vm, const std::string &assetPath, const std::string &entryPoint);
     static void SetpkgContextInfoList(EcmaVM *vm, const std::map<std::string,
         std::vector<std::vector<std::string>>> &list);
+    static void SetExecuteBufferMode(const EcmaVM *vm);
     static void SetLoop(EcmaVM *vm, void *loop);
     static void SetWeakFinalizeTaskCallback(EcmaVM *vm, const WeakFinalizeTaskCallback &callback);
     static void SetAsyncCleanTaskCallback(EcmaVM *vm, const NativePointerTaskCallback &callback);
