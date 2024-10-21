@@ -418,6 +418,19 @@ bool ModuleManager::IsEvaluatedModule(const CString &referencing)
     return false;
 }
 
+// This function assumes that referencing already existed in resolvedModules_/resolvedSharedModules_.
+bool ModuleManager::IsInstantiatedModule(const CString &referencing)
+{
+    JSHandle<SourceTextModule> module = GetImportedModule(referencing);
+    return module->GetStatus() == ModuleStatus::INSTANTIATED;
+}
+
+bool ModuleManager::IsLocalModuleInstantiated(const CString &referencing)
+{
+    JSHandle<SourceTextModule> module = HostGetImportedModule(referencing);
+    return module->GetStatus() == ModuleStatus::INSTANTIATED;
+}
+
 JSHandle<JSTaggedValue> ModuleManager::HostResolveImportedModuleWithMerge(const CString &moduleFileName,
     const CString &recordName, bool executeFromJob)
 {
@@ -845,7 +858,8 @@ JSHandle<JSTaggedValue> ModuleManager::ExecuteCjsModule(JSThread *thread, const 
 JSHandle<JSTaggedValue> ModuleManager::GetModuleNameSpaceFromFile(
     JSThread *thread, const CString &recordName, const CString &baseFileName)
 {
-    if (!IsLocalModuleLoaded(recordName)) {
+    // IsInstantiatedModule is for lazy module to execute
+    if (!IsLocalModuleLoaded(recordName) || IsLocalModuleInstantiated(recordName)) {
         if (!ecmascript::JSPandaFileExecutor::ExecuteFromAbcFile(
             thread, baseFileName, recordName, false, true)) {
             LOG_ECMA(ERROR) << "LoadModuleNameSpaceFromFile:Cannot execute module: "<< baseFileName <<

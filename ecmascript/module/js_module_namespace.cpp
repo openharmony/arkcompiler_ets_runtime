@@ -117,22 +117,11 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             ASSERT(!targetModule.IsUndefined());
             JSHandle<SourceTextModule> module(thread, targetModule);
             ModuleTypes moduleType = module->GetTypes();
-            ModuleStatus status = module->GetStatus();
             if (UNLIKELY(SourceTextModule::IsNativeModule(moduleType))) {
-                // if module is marked lazy, it's status now is INSTANTIATED, need evaluate before get value.
-                if (status == ModuleStatus::INSTANTIATED) {
-                    SourceTextModule::EvaluateNativeModule(thread, module, moduleType);
-                }
                 result = ModuleManagerHelper::GetModuleValue(thread, module, resolvedBind->GetBindingName());
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(
                     thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
             } else {
-                // if module is marked lazy, it's status now is INSTANTIATED, need evaluate before get value.
-                if (status == ModuleStatus::INSTANTIATED) {
-                    SourceTextModule::Evaluate(thread, module, nullptr);
-                    RETURN_VALUE_IF_ABRUPT_COMPLETION(
-                        thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
-                }
                 result = module->GetModuleValue(thread, resolvedBind->GetBindingName(), true);
             }
             break;
@@ -144,23 +133,12 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
             ASSERT(!targetModule.IsUndefined());
             JSHandle<SourceTextModule> module(thread, targetModule);
             ModuleTypes moduleType = module->GetTypes();
-            ModuleStatus status = module->GetStatus();
             if (UNLIKELY(SourceTextModule::IsNativeModule(moduleType))) {
-                // if module is marked lazy, it's status now is INSTANTIATED, need evaluate before get value.
-                if (status == ModuleStatus::INSTANTIATED) {
-                    SourceTextModule::EvaluateNativeModule(thread, module, moduleType);
-                }
                 result = ModuleManagerHelper::GetNativeOrCjsModuleValue(
                     thread, targetModule, resolvedBind->GetIndex());
                 RETURN_VALUE_IF_ABRUPT_COMPLETION(
                     thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
             } else {
-                // if module is marked lazy, it's status now is INSTANTIATED, need evaluate before get value.
-                if (status == ModuleStatus::INSTANTIATED) {
-                    SourceTextModule::Evaluate(thread, module, nullptr);
-                    RETURN_VALUE_IF_ABRUPT_COMPLETION(
-                        thread, OperationResult(thread, JSTaggedValue::Exception(), PropertyMetaData(false)));
-                }
                 result = module->GetModuleValue(thread, resolvedBind->GetIndex(), true);
             }
             break;
@@ -176,6 +154,7 @@ OperationResult ModuleNamespace::GetProperty(JSThread *thread, const JSHandle<JS
     }
     return OperationResult(thread, result, PropertyMetaData(true));
 }
+
 JSHandle<TaggedArray> ModuleNamespace::OwnPropertyKeys(JSThread *thread, const JSHandle<JSTaggedValue> &obj)
 {
     ASSERT(obj->IsModuleNamespace());
