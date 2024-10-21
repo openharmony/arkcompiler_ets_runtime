@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -135,6 +135,54 @@ HWTEST_F_L0(BuiltinsSendableArrayBufferTest, slice3)
         thread, JSTaggedValue(static_cast<int32_t>(1)), JSTaggedValue(static_cast<int32_t>(-2)), JSTaggedValue(7));
 }
 
+// slice :this is not obj
+HWTEST_F_L0(BuiltinsSendableArrayBufferTest, slice4)
+{
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(JSTaggedValue::Undefined());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsSendableArrayBuffer::Slice(ecmaRuntimeCallInfo);
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue::Exception().GetRawData());
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+// slice :this is not sendable array
+HWTEST_F_L0(BuiltinsSendableArrayBufferTest, slice5)
+{
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsArrayBuffer(thread, 10);
+    JSHandle<JSArrayBuffer> arrBuf(
+        thread, JSArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(arrBuf.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsSendableArrayBuffer::Slice(ecmaRuntimeCallInfo);
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue::Exception().GetRawData());
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+// slice :this is detach sendable array
+HWTEST_F_L0(BuiltinsSendableArrayBufferTest, slice6)
+{
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsSendableArrayBuffer(thread, 10);
+    JSHandle<JSSendableArrayBuffer> arrBuf(
+        thread, JSSendableArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    arrBuf->SetArrayBufferData(thread, JSTaggedValue::Null());
+
+    auto ecmaRuntimeCallInfo = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo->SetThis(arrBuf.GetTaggedValue());
+
+    [[maybe_unused]] auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo);
+    JSTaggedValue result = BuiltinsSendableArrayBuffer::Slice(ecmaRuntimeCallInfo);
+    ASSERT_EQ(result.GetRawData(), JSTaggedValue::Exception().GetRawData());
+    TestHelper::TearDownFrame(thread, prev);
+}
+
 // IsView(new SharedTypedArray())
 HWTEST_F_L0(BuiltinsSendableArrayBufferTest, IsView1)
 {
@@ -232,5 +280,88 @@ HWTEST_F_L0(BuiltinsSendableArrayBufferTest, IsDetachBuffer3)
     arrBuf->SetArrayBufferData(thread, JSTaggedValue(1));
     bool result = BuiltinsSendableArrayBuffer::IsDetachedBuffer(tagged);
     ASSERT_EQ(JSTaggedValue(result).GetRawData(), JSTaggedValue(false).GetRawData());
+}
+
+// AllocateSendableArrayBuffer: bytelength is greater than INT_MAX
+HWTEST_F_L0(BuiltinsSendableArrayBufferTest, AllocateSendableArrayBuffer1)
+{
+    uint64_t byteLength = static_cast<uint64_t>(INT_MAX) + 1;
+
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> arrayBuffer(thread, env->GetSBuiltininArrayBufferFunction().GetTaggedValue());
+    JSTaggedValue result = BuiltinsSendableArrayBuffer::AllocateSendableArrayBuffer(
+        thread, JSHandle<JSTaggedValue>(arrayBuffer), byteLength);
+    ASSERT_EQ(JSTaggedValue(result).GetRawData(), JSTaggedValue::Exception().GetRawData());
+}
+
+// AllocateSendableArrayBuffer
+HWTEST_F_L0(BuiltinsSendableArrayBufferTest, AllocateSendableArrayBuffer2)
+{
+    uint32_t byteLength = 8;
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> arrayBuffer(thread, env->GetSBuiltininArrayBufferFunction().GetTaggedValue());
+    JSTaggedValue result = BuiltinsSendableArrayBuffer::AllocateSendableArrayBuffer(
+        thread, JSHandle<JSTaggedValue>(arrayBuffer), byteLength);
+    ASSERT_TRUE(result.IsECMAObject());
+}
+
+HWTEST_F_L0(BuiltinsSendableArrayBufferTest, CloneArrayBuffer1)
+{
+    uint32_t srcByteOffset = 0;
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsSendableArrayBuffer(thread, 5);
+    JSHandle<JSSendableArrayBuffer> arrBuf(
+        thread, JSSendableArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(tagged.GetRawData())));
+    arrBuf->SetArrayBufferData(thread, JSTaggedValue::Null());
+    JSHandle<JSTaggedValue> constructor(thread, JSTaggedValue::Undefined());
+    JSTaggedValue result = BuiltinsSendableArrayBuffer::CloneArrayBuffer(
+        thread, JSHandle<JSTaggedValue>(thread, tagged), srcByteOffset, constructor);
+    ASSERT_EQ(JSTaggedValue(result).GetRawData(), JSTaggedValue::Exception().GetRawData());
+}
+
+HWTEST_F_L0(BuiltinsSendableArrayBufferTest, CloneArrayBuffer2)
+{
+    uint32_t srcByteOffset = 0;
+
+    ObjectFactory *factory = thread->GetEcmaVM()->GetFactory();
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+    JSHandle<JSFunction> arrayBuffer(thread, env->GetSBuiltininArrayBufferFunction().GetTaggedValue());
+
+    JSHandle<ByteArray> byteArray = factory->NewByteArray(5, 8);
+    JSTaggedValue result = BuiltinsSendableArrayBuffer::CloneArrayBuffer(
+        thread, JSHandle<JSTaggedValue>(byteArray), srcByteOffset, JSHandle<JSTaggedValue>(arrayBuffer));
+
+    JSHandle<JSSendableArrayBuffer> arrBuf(
+        thread, JSSendableArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData())));
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(arrBuf.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = BuiltinsSendableArrayBuffer::GetByteLength(ecmaRuntimeCallInfo1);
+
+    ASSERT_EQ(result1.GetRawData(), JSTaggedValue(40).GetRawData());
+    TestHelper::TearDownFrame(thread, prev);
+}
+
+HWTEST_F_L0(BuiltinsSendableArrayBufferTest, CloneArrayBuffer3)
+{
+    uint32_t srcByteOffset = 0;
+
+    JSHandle<GlobalEnv> env = thread->GetEcmaVM()->GetGlobalEnv();
+
+    JSTaggedValue tagged = BuiltTestUtil::CreateBuiltinsSendableArrayBuffer(thread, 6);
+    JSHandle<JSFunction> arrayBuffer(thread, env->GetSBuiltininArrayBufferFunction().GetTaggedValue());
+    JSTaggedValue result = BuiltinsSendableArrayBuffer::CloneArrayBuffer(
+        thread, JSHandle<JSTaggedValue>(thread, tagged), srcByteOffset, JSHandle<JSTaggedValue>(arrayBuffer));
+
+    JSHandle<JSSendableArrayBuffer> arrBuf(
+        thread, JSSendableArrayBuffer::Cast(reinterpret_cast<TaggedObject *>(result.GetRawData())));
+    auto ecmaRuntimeCallInfo1 = TestHelper::CreateEcmaRuntimeCallInfo(thread, JSTaggedValue::Undefined(), 4);
+    ecmaRuntimeCallInfo1->SetFunction(JSTaggedValue::Undefined());
+    ecmaRuntimeCallInfo1->SetThis(arrBuf.GetTaggedValue());
+    auto prev = TestHelper::SetupFrame(thread, ecmaRuntimeCallInfo1);
+    JSTaggedValue result1 = BuiltinsSendableArrayBuffer::GetByteLength(ecmaRuntimeCallInfo1);
+
+    ASSERT_EQ(result1.GetRawData(), JSTaggedValue(6).GetRawData());
+    TestHelper::TearDownFrame(thread, prev);
 }
 }  // namespace panda::test
