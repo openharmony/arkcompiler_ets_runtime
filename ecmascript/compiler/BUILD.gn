@@ -511,6 +511,12 @@ action("gen_stub_file") {
         " --compiler-log=allasm" + " --log-level=info"
   }
 
+  if (host_cpu == "arm64") {
+    llvm_lib_dir = "//prebuilts/clang/ohos/linux-aarch64/llvm/lib/"
+  } else {
+    llvm_lib_dir = "//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"
+  }
+
   args = [
     "--script-file",
     rebase_path(root_out_dir_with_host_toolchain) +
@@ -531,8 +537,7 @@ action("gen_stub_file") {
         "/resourceschedule/frame_aware_sched:" +
         rebase_path(root_out_dir_with_host_toolchain) + "/hiviewdfx/hilog:" +
         rebase_path(root_out_dir_with_host_toolchain) +
-        "/thirdparty/bounds_checking_function:" +
-        rebase_path("//prebuilts/clang/ohos/linux-x86_64/llvm/lib/"),
+        "/thirdparty/bounds_checking_function:" + rebase_path(llvm_lib_dir),
   ]
   outputs = [ "$stub_file_gen_dir/stub.an" ]
   if (is_ohos) {

@@ -30,7 +30,11 @@ config("libark_llvmcodegen_set_config") {
       }
     } else {
       if (host_cpu == "arm64" && host_os == "linux") {
-        lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_linux_aarch64/build/lib" ]
+        if (current_os == "ohos") {
+          lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/lib" ]
+        } else {
+          lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_linux_aarch64/build/lib" ]
+        }
       } else {
         if (current_cpu == "arm64") {
           lib_dirs = [ "//prebuilts/ark_tools/ark_js_prebuilts/llvm_prebuilts_aarch64/build/lib" ]
