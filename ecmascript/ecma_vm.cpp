@@ -444,6 +444,7 @@ void EcmaVM::CheckThread() const
 {
     if (thread_ == nullptr) {
         LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+        UNREACHABLE();
     }
     // Exclude the threads in GCWorkerPool and Taskpool
     if (!(GCWorkerPool::GetCurrentTaskpool()->IsDaemonThreadOrInThreadPool() ||
@@ -452,6 +453,7 @@ void EcmaVM::CheckThread() const
             LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
                                 << " thread:" << thread_->GetThreadId()
                                 << " currentThread:" << JSThread::GetCurrentThreadId();
+        UNREACHABLE();
     }
 }
 
