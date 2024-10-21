@@ -1044,6 +1044,11 @@ GateRef CircuitBuilder::ElementsKindIsHeapKind(GateRef kind)
     return BitOr(overString, isHoleOrNone);
 }
 
+GateRef CircuitBuilder::ElementsKindHasHole(GateRef kind)
+{
+    return Int32NotEqual(Int32And(kind, Int32(static_cast<uint32_t>(ElementsKind::HOLE))), Int32(0));
+}
+
 GateRef CircuitBuilder::LoadBuiltinObject(size_t offset)
 {
     auto currentLabel = env_->GetCurrentLabel();

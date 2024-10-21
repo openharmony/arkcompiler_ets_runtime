@@ -51,12 +51,13 @@ BUILTINS_WITH_ARRAY_STUB_BUILDER(DECLARE_BUILTINS_ARRAY_STUB_BUILDER)
 
     GateRef IsConcatSpreadable(GateRef glue, GateRef obj);
 
+    void InitializeArray(GateRef glue, GateRef count, Variable *result, GateRef intialHClass);
+
     GateRef NewArray(GateRef glue, GateRef count);
 
-    GateRef CalculatePositionWithLength(GateRef position, GateRef length);
+    GateRef NewArrayWithHClass(GateRef glue, GateRef hclass);
 
-    GateRef DoReverse(GateRef glue, GateRef thisValue, GateRef receiver, GateRef receiverState,
-        Variable *result, Label *exit);
+    GateRef CalculatePositionWithLength(GateRef position, GateRef length);
 
     GateRef DoSort(GateRef glue, GateRef receiver, GateRef receiverState,
         Variable *result, Label *exit, Label *slowPath, GateRef hir = Circuit::NullGate());
@@ -74,6 +75,8 @@ private:
         uint32_t maxLength, JsArrayRequirements requirements);
     GateRef CreateSpliceDeletedArray(GateRef glue, GateRef thisValue, GateRef actualDeleteCount,
         GateRef intialHClass, GateRef start);
+    void DoReverse(GateRef glue, GateRef fromArray, GateRef toArray, bool holeToUndefined, bool getWithKind,
+                   MemoryAttribute mAttr);
 };
 }  // namespace panda::ecmascript::kungfu
 #endif  // ECMASCRIPT_COMPILER_BUILTINS_ARRAY_STUB_BUILDER_H

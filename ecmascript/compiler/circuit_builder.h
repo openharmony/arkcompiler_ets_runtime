@@ -271,6 +271,7 @@ public:
     GateRef ElementsKindIsIntOrHoleInt(GateRef kind);
     GateRef ElementsKindIsNumOrHoleNum(GateRef kind);
     GateRef ElementsKindIsHeapKind(GateRef kind);
+    GateRef ElementsKindHasHole(GateRef kind);
 
     GateRef LoadBuiltinObject(size_t offset);
 
