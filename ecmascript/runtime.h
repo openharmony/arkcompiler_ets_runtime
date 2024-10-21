@@ -31,10 +31,6 @@
 #include <list>
 #include <memory>
 
-#if defined(ENABLE_FFRT_INTERFACES)
-#include "ecmascript/platform/ffrt_mutex.h"
-#endif
-
 namespace panda::ecmascript {
 class Runtime {
 public:
@@ -69,11 +65,7 @@ public:
     template<class Callback>
     void GCIterateThreadList(const Callback &cb)
     {
-#if defined(ENABLE_FFRT_INTERFACES)
-        FFRTLockHolder lock(threadsLock_);
-#else
         LockHolder lock(threadsLock_);
-#endif
         GCIterateThreadListWithoutLock(cb);
     }
 
@@ -271,13 +263,8 @@ private:
         return sharedNativePointerCallbacks_;
     }
 
-#if defined(ENABLE_FFRT_INTERFACES)
-    FFRTMutex threadsLock_;
-    FFRTConditionVariable threadSuspendCondVar_;
-#else
     Mutex threadsLock_;
     ConditionVariable threadSuspendCondVar_;
-#endif
     Mutex serializeLock_;
     std::list<JSThread*> threads_;
     uint32_t suspendNewCount_ {0};

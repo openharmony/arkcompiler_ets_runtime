@@ -753,11 +753,7 @@ void JSThread::CheckAndPassActiveBarrier()
 bool JSThread::PassSuspendBarrier()
 {
     // Use suspendLock_ to avoid data-race between suspend-all-thread and suspended-threads.
-#if defined(ENABLE_FFRT_INTERFACES)
-    FFRTLockHolder hock(suspendLock_);
-#else
     LockHolder lock(suspendLock_);
-#endif
     if (suspendBarrier_ != nullptr) {
         suspendBarrier_->PassStrongly();
         suspendBarrier_ = nullptr;
@@ -1156,11 +1152,7 @@ void JSThread::UpdateState(ThreadState newState)
 
 void JSThread::SuspendThread(bool internalSuspend, SuspendBarrier* barrier)
 {
-#if defined(ENABLE_FFRT_INTERFACES)
-    FFRTLockHolder hock(suspendLock_);
-#else
     LockHolder lock(suspendLock_);
-#endif
     if (!internalSuspend) {
         // do smth here if we want to combine internal and external suspension
     }
@@ -1181,11 +1173,7 @@ void JSThread::SuspendThread(bool internalSuspend, SuspendBarrier* barrier)
 
 void JSThread::ResumeThread(bool internalSuspend)
 {
-#if defined(ENABLE_FFRT_INTERFACES)
-    FFRTLockHolder hock(suspendLock_);
-#else
     LockHolder lock(suspendLock_);
-#endif
     if (!internalSuspend) {
         // do smth here if we want to combine internal and external suspension
     }
@@ -1206,11 +1194,7 @@ void JSThread::WaitSuspension()
     UpdateState(ThreadState::IS_SUSPENDED);
     {
         ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::WaitSuspension");
-#if defined(ENABLE_FFRT_INTERFACES)
-        FFRTLockHolder lock(suspendLock_);
-#else
         LockHolder lock(suspendLock_);
-#endif
         while (suspendCount_ > 0) {
             suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
             // we need to do smth if Runtime is terminating at this point
@@ -1302,11 +1286,7 @@ void JSThread::StoreRunningState(ThreadState newState)
         } else if ((oldStateAndFlags.asNonvolatileStruct.flags & ThreadFlag::SUSPEND_REQUEST) != 0) {
             constexpr int TIMEOUT = 100;
             ECMA_BYTRACE_NAME(HITRACE_TAG_ARK, "SuspendTime::StoreRunningState");
-#if defined(ENABLE_FFRT_INTERFACES)
-            FFRTLockHolder lock(suspendLock_);
-#else
             LockHolder lock(suspendLock_);
-#endif
             while (suspendCount_ > 0) {
                 suspendCondVar_.TimedWait(&suspendLock_, TIMEOUT);
             }
