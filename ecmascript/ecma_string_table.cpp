@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,6 +18,7 @@
 #include "ecmascript/ecma_string-inl.h"
 #include "ecmascript/runtime_lock.h"
 #include "ecmascript/debugger/js_debugger_manager.h"
+#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript {
 void EcmaStringTableCleaner::PostSweepWeakRefTask(const WeakRootVisitor &visitor)

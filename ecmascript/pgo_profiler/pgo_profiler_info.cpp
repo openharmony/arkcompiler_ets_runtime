@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2023-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,6 +22,7 @@
 #include "ecmascript/js_thread.h"
 #include "ecmascript/ohos/framework_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_manager.h"
+#include "libpandafile/bytecode_instruction-inl.h"
 
 namespace panda::ecmascript::pgo {
 using StringHelper = base::StringHelper;

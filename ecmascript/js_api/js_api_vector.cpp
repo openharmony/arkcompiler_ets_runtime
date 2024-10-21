@@ -22,6 +22,9 @@
 #include <codecvt>
 #include <locale>
 
+#include <codecvt>
+#include <locale>
+
 namespace panda::ecmascript {
 static const uint32_t MAX_VALUE = 0x7fffffff;
 static const uint32_t MAX_ARRAY_SIZE = MAX_VALUE - 8;

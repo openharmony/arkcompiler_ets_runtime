@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,10 +15,13 @@
 
 #include "ecmascript/compiler/bytecode_info_collector.h"
 
-#include "ecmascript/interpreter/interpreter-inl.h"
+#include "ecmascript/jspandafile/literal_data_extractor.h"
 #include "ecmascript/module/module_path_helper.h"
 #include "ecmascript/pgo_profiler/pgo_profiler_decoder.h"
 #include "libpandafile/code_data_accessor.h"
+#include "libpandafile/class_data_accessor-inl.h"
+#include "libpandafile/index_accessor.h"
+#include "libpandafile/method_data_accessor-inl.h"
 
 namespace panda::ecmascript::kungfu {
 template<class T, class... Args>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 #include "ecmascript/js_map_iterator.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/linked_hash_table.h"
+#include "ecmascript/js_array.h"
 #include "ecmascript/js_map.h"
 #include "ecmascript/tests/test_helper.h"
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,11 +21,11 @@
 #include "ecmascript/common.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_tagged_value.h"
-#include "ecmascript/js_thread.h"
 #include "ecmascript/tagged_array.h"
 
 namespace panda::ecmascript {
 struct EcmaRuntimeCallInfo;
+class JSThread;
 using EcmaEntrypoint = JSTaggedValue (*)(EcmaRuntimeCallInfo *);
 
 struct EcmaRuntimeCallInfo : public base::AlignedStruct<base::AlignedPointer::Size(),

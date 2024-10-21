@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,11 +16,11 @@
 #ifndef ECMASCRIPT_GLOBAL_ENV_H
 #define ECMASCRIPT_GLOBAL_ENV_H
 
+#include "ecmascript/accessor_data.h"
 #include "ecmascript/js_global_object.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/lexical_env.h"
-#include "ecmascript/js_handle.h"
+#include "ecmascript/js_thread.h"
 #include "ecmascript/global_env_constants-inl.h"
+#include "ecmascript/js_handle.h"
 #include "ecmascript/global_env_fields.h"
 #include "ecmascript/snapshot/mem/snapshot_env.h"
 

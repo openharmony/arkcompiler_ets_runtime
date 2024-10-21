@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,8 +16,9 @@
 #ifndef ECMASCRIPT_JSPANDAFILE_METHOD_LITERAL_H
 #define ECMASCRIPT_JSPANDAFILE_METHOD_LITERAL_H
 
+#include <set>
+
 #include "ecmascript/base/aligned_struct.h"
-#include "ecmascript/compiler/share_gate_meta_data.h"
 #include "ecmascript/js_function_kind.h"
 #include "ecmascript/js_tagged_value.h"
 #include "ecmascript/mem/c_string.h"

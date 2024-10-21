@@ -19,12 +19,15 @@
 #include <array>
 
 #include "ecmascript/mem/mem_common.h"
+#include "ecmascript/mem/region.h"
 #include "ecmascript/mem/machine_code.h"
 
 namespace panda::ecmascript {
 
 class JitFortRegion;
 class JitFortMemDescPool;
+template <typename T>
+class FreeListAllocator;
 
 class JitFort {
 public:

@@ -20,6 +20,8 @@
 
 #include <codecvt>
 
+#include <codecvt>
+
 namespace panda::ecmascript {
 using ContainerError = containers::ContainerError;
 using ErrorFlag = containers::ErrorFlag;

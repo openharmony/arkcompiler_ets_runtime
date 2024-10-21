@@ -16,6 +16,7 @@
 #include "ecmascript/builtins/builtins_shared_set.h"
 
 #include "ecmascript/ecma_vm.h"
+#include "ecmascript/js_function.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 

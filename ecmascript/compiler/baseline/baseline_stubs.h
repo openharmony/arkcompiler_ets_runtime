@@ -17,52 +17,12 @@
 #define ECMASCRIPT_COMPILER_BASELINE_BASELINE_STUBS_H
 
 #include "ecmascript/compiler/baseline/baseline_compiler_builtins.h"
+#include "ecmascript/compiler/baseline/baseline_stub_csigns.h"
 #include "ecmascript/compiler/stub_builder.h"
 #include "ecmascript/base/config.h"
-#include "ecmascript/compiler/bc_call_signature.h"
 #include "ecmascript/compiler/profiler_operation.h"
-#include "ecmascript/compiler/rt_call_signature.h"
-#include "ecmascript/compiler/circuit_builder_helper.h"
 
 namespace panda::ecmascript::kungfu {
-
-#define DEFINE_PARAMETERS(...)  \
-    enum ParameterIndex {       \
-        ##__VA_ARGS__,          \
-        PARAMETER_COUNT         \
-    };
-
-#define BASELINE_STUB_ID_LIST(V)      \
-    BASELINE_COMPILER_BUILTIN_LIST(V)
-
-class BaselineStubCSigns {
-public:
-    enum ID {
-#define DEF_STUB_ID(name) name,
-        BASELINE_STUB_ID_LIST(DEF_STUB_ID)
-#undef DEF_STUB_ID
-        NUM_OF_STUBS
-    };
-
-    static void Initialize();
-
-    static void GetCSigns(std::vector<const CallSignature*>& callSigns);
-
-    static const CallSignature *Get(size_t index)
-    {
-        ASSERT(index < NUM_OF_STUBS);
-        return &callSigns_[index];
-    }
-
-    static const std::string &GetName(size_t index)
-    {
-        ASSERT(index < NUM_OF_STUBS);
-        return callSigns_[index].GetName();
-    }
-
-private:
-    static CallSignature callSigns_[NUM_OF_STUBS];
-};
 
 class BaselineStubBuilder : public StubBuilder {
 public:

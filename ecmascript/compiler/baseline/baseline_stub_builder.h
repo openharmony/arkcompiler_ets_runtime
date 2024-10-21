@@ -27,6 +27,7 @@ namespace panda::ecmascript::kungfu {
 
 class BaselineStubBuilder : public StubBuilder {
 public:
+    static_assert(false);
     BaselineStubBuilder(CallSignature *callSignature, Environment *env)
         : StubBuilder(callSignature, env) {}
     ~BaselineStubBuilder() override = default;

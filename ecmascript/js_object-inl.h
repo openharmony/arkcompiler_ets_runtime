@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,6 +23,7 @@
 #include "ecmascript/js_hclass-inl.h"
 #include "ecmascript/js_tagged_value-inl.h"
 #include "ecmascript/js_typed_array.h"
+#include "ecmascript/object_operator.h"
 #include "ecmascript/tagged_array-inl.h"
 #include "ecmascript/tagged_queue.h"
 #include "ecmascript/tagged_dictionary.h"
@@ -55,11 +56,6 @@ inline void JSObject::FillElementsWithHoles(const JSThread *thread, uint32_t sta
     for (uint32_t i = start; i < end; i++) {
         ElementAccessor::Set(thread, thisObj, i, holeHandle, false);
     }
-}
-
-inline JSHClass *JSObject::GetJSHClass() const
-{
-    return GetClass();
 }
 
 inline uint32_t JSObject::GetNonInlinedFastPropsCapacity() const

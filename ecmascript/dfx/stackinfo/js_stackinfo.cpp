@@ -16,6 +16,7 @@
 #include <sys/time.h>
 
 #include "ecmascript/dfx/stackinfo/js_stackinfo.h"
+#include "ecmascript/jit/jit.h"
 #include "ecmascript/platform/aot_crash_info.h"
 #include "ecmascript/platform/os.h"
 #include "ecmascript/stubs/runtime_stubs-inl.h"

@@ -15,6 +15,7 @@
 
 #include "ecmascript/module/module_tools.h"
 
+#include "ecmascript/ecma_context.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/module/js_shared_module.h"
 #include "ecmascript/module/module_logger.h"

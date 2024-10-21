@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -17,7 +17,6 @@
 
 #include "ecmascript/compiler/builtins/builtins_call_signature.h"
 #include "ecmascript/compiler/circuit_builder-inl.h"
-#include "ecmascript/compiler/common_stubs.h"
 #include "ecmascript/compiler/hcr_circuit_builder.h"
 #include "ecmascript/compiler/lcr_circuit_builder.h"
 #include "ecmascript/compiler/mcr_circuit_builder.h"
@@ -33,6 +32,7 @@
 #include "ecmascript/js_primitive_ref.h"
 #include "ecmascript/js_thread.h"
 #include "ecmascript/jspandafile/program_object.h"
+#include "ecmascript/lexical_env.h"
 #include "ecmascript/mem/region.h"
 #include "ecmascript/message_string.h"
 #include "ecmascript/method.h"

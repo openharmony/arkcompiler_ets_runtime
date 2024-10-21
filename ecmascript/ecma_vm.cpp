@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -38,6 +38,7 @@
 #include "ecmascript/mem/shared_heap/shared_concurrent_marker.h"
 #include "ecmascript/module/module_logger.h"
 #include "ecmascript/pgo_profiler/pgo_trace.h"
+#include "ecmascript/regexp/regexp_parser_cache.h"
 #include "ecmascript/runtime.h"
 #include "ecmascript/snapshot/mem/snapshot.h"
 #include "ecmascript/stubs/runtime_stubs.h"
@@ -230,6 +231,11 @@ bool EcmaVM::IsEnableFastJit() const
 bool EcmaVM::IsEnableBaselineJit() const
 {
     return GetJit()->IsEnableBaselineJit();
+}
+
+uint32_t EcmaVM::GetTid() const
+{
+    return thread_->GetThreadId();
 }
 
 Jit *EcmaVM::GetJit() const
@@ -457,6 +463,34 @@ void EcmaVM::CheckThread() const
     }
 }
 
+JSThread *EcmaVM::GetAndFastCheckJSThread() const
+{
+    if (thread_ == nullptr) {
+        LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+    }
+    if (thread_->GetThreadId() != JSThread::GetCurrentThreadId() && !thread_->IsCrossThreadExecutionEnable()) {
+        LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                                << " thread:" << thread_->GetThreadId()
+                                << " currentThread:" << JSThread::GetCurrentThreadId();
+    }
+    return thread_;
+}
+
+bool EcmaVM::CheckSingleThread() const
+{
+    if (thread_ == nullptr) {
+        LOG_FULL(FATAL) << "Fatal: ecma_vm has been destructed! vm address is: " << this;
+        return false;
+    }
+    if (thread_->GetThreadId() != JSThread::GetCurrentThreadId()) {
+        LOG_FULL(FATAL) << "Fatal: ecma_vm cannot run in multi-thread!"
+                        << " thread:" << thread_->GetThreadId()
+                        << " currentThread:" << JSThread::GetCurrentThreadId();
+        return false;
+    }
+    return true;
+}
+
 JSTaggedValue EcmaVM::FastCallAot(size_t actualNumArgs, JSTaggedType *args, const JSTaggedType *prevFp)
 {
     INTERPRETER_TRACE(thread_, ExecuteAot);
@@ -514,6 +548,21 @@ JSHandle<JSTaggedValue> EcmaVM::GetEcmaUncaughtException() const
     }
     JSHandle<JSTaggedValue> exceptionHandle(thread_, thread_->GetException());
     return exceptionHandle;
+}
+
+void EcmaVM::PrintAOTSnapShotStats()
+{
+    static constexpr int nameRightAdjustment = 30;
+    static constexpr int numberRightAdjustment = 30;
+    LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << "AOT Snapshot Genre"
+                    << std::setw(numberRightAdjustment) << "Count";
+    LOG_ECMA(ERROR) << "==========================================================================";
+    for (const auto &iter: aotSnapShotStatsMap_) {
+        LOG_ECMA(ERROR) << std::right << std::setw(nameRightAdjustment) << iter.first
+                        << std::setw(numberRightAdjustment) << iter.second;
+    }
+    LOG_ECMA(ERROR) << "==========================================================================";
+    aotSnapShotStatsMap_.clear();
 }
 
 void EcmaVM::PrintJSErrorInfo(const JSHandle<JSTaggedValue> &exceptionInfo) const

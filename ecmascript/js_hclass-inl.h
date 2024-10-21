@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,17 +18,14 @@
 
 #include "ecmascript/js_hclass.h"
 
+#include "ecmascript/js_bigint.h"
+#include "ecmascript/layout_info.h"
 #include "ecmascript/layout_info-inl.h"
 #include "ecmascript/byte_array.h"
 #include "ecmascript/mem/assert_scope.h"
 #include "ecmascript/transitions_dictionary.h"
 
 namespace panda::ecmascript {
-inline JSHClass *JSHClass::Cast(const TaggedObject *object)
-{
-    ASSERT(JSTaggedValue(object).IsJSHClass());
-    return static_cast<JSHClass *>(const_cast<TaggedObject *>(object));
-}
 
 bool JSHClass::ProtoIsFastJSArray(const JSThread *thread, const JSHandle<JSTaggedValue> proto,
                                   const JSHandle<JSHClass> hclass)

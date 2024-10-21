@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2022-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,7 +23,6 @@
 #include "ecmascript/ecma_vm.h"
 #include "ecmascript/js_handle.h"
 #include "ecmascript/js_hclass.h"
-#include "ecmascript/mem/heap.h"
 
 namespace panda::ecmascript {
 inline void TaggedObject::SetClassWithoutBarrier(JSHClass *hclass)
@@ -39,11 +38,6 @@ inline void TaggedObject::SetClass(const JSThread *thread, JSHClass *hclass)
 inline void TaggedObject::SetClass(const JSThread *thread, JSHandle<JSHClass> hclass)
 {
     SetClass(thread, *hclass);
-}
-
-inline JSHClass *TaggedObject::GetClass() const
-{
-    return reinterpret_cast<JSHClass *>(class_);
 }
 
 inline void TaggedObject::SynchronizedSetClass(const JSThread *thread, JSHClass *hclass)

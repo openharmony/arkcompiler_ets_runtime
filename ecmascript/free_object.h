@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,13 +16,15 @@
 #ifndef ECMASCRIPT_FREE_OBJECT_H
 #define ECMASCRIPT_FREE_OBJECT_H
 
-#include "ecmascript/js_hclass-inl.h"
+#include "ecmascript/js_hclass.h"
 #include "ecmascript/mem/barriers.h"
-#include "ecmascript/mem/tagged_object-inl.h"
+#include "ecmascript/mem/tagged_object.h"
 
 #define INVALID_OBJECT ((FreeObject *) JSTaggedValue::NULL_POINTER)
 
 namespace panda::ecmascript {
+class BaseHeap;
+
 class FreeObject : public TaggedObject {
 public:
     static FreeObject *Cast(uintptr_t object)
@@ -53,47 +55,15 @@ public:
         }
     }
 
-    inline uint32_t Available() const
-    {
-        auto hclass = GetClass();
-        if (hclass->IsFreeObjectWithShortField()) {
-            return hclass->GetObjectSize();
-        }
-        ASSERT(GetSize().IsInt());
-        return GetSize().GetInt();
-    }
+    uint32_t Available() const;
 
-    inline bool IsFreeObject() const
-    {
-        return GetClass()->IsFreeObject();
-    }
+    bool IsFreeObject() const;
 
     // Before operating any freeobject, need to mark unpoison when is_asan is true.
-    inline void AsanUnPoisonFreeObject() const
-    {
-#ifdef ARK_ASAN_ON
-        ASAN_UNPOISON_MEMORY_REGION(this, NEXT_OFFSET);
-        if (GetClass()->IsFreeObjectWithOneField()) {
-            ASAN_UNPOISON_MEMORY_REGION(this, SIZE_OFFSET);
-        } else if (GetClass()->IsFreeObjectWithTwoField()) {
-            ASAN_UNPOISON_MEMORY_REGION(this, SIZE);
-        }
-#endif
-    }
+    void AsanUnPoisonFreeObject() const;
 
     // After operating any freeobject, need to marked poison again when is_asan is true
-    inline void AsanPoisonFreeObject() const
-    {
-#ifdef ARK_ASAN_ON
-        if (GetClass()->IsFreeObjectWithNoneField()) {
-            ASAN_POISON_MEMORY_REGION(this, NEXT_OFFSET);
-        } else if (GetClass()->IsFreeObjectWithOneField()) {
-            ASAN_POISON_MEMORY_REGION(this, SIZE_OFFSET);
-        } else if (GetClass()->IsFreeObjectWithTwoField()) {
-            ASAN_POISON_MEMORY_REGION(this, SIZE);
-        }
-#endif
-    }
+    void AsanPoisonFreeObject() const;
 
     static constexpr size_t NEXT_OFFSET = TaggedObjectSize();
     ACCESSORS_FIXED_SIZE_FIELD(Next, FreeObject *, JSTaggedType, NEXT_OFFSET, SIZE_OFFSET)
