@@ -40,10 +40,20 @@ class AsmAssembler : public Assembler {
 public:
     explicit AsmAssembler(const std::string &outputFileName) : Assembler()
     {
-        outStream.open(outputFileName, std::ios::trunc);
+        outFStream.open(outputFileName, std::ios::trunc);
     }
 
     ~AsmAssembler() = default;
+
+    void CloseOutput() override
+    {
+        Assembler::CloseOutput();
+
+        auto options = maplebe::CGOptions::GetInstance();
+        options.GetLogStream() << "~~~~~~~~~~~~~~ LiteCG x64 disasm begin ~~~~~~~~~~~~~~\n";
+        options.GetLogStream() << outStream.str();
+        options.GetLogStream() << "~~~~~~~~~~~~~~ LiteCG x64 disasm end  ~~~~~~~~~~~~~~~\n";
+    }
 
     void InitialFileInfo(const std::string &inputFileName) override;
     void EmitFunctionHeader(int64 symIdx, SymbolAttr funcAttr, const std::string *secName) override;
@@ -73,6 +83,8 @@ public:
     void EmitDIDebugInfoSectionAbbrevId(bool verbose, uint32 abbrevId, const std::string &dieTagName, uint32 offset,
                                         uint32 size) override;
     void EmitDIFormSpecification(unsigned int dwform) override;
+    void EmitDebugComment(const char* comment) override;
+
     /* EmitDIAttrValue */
     void EmitDwFormString(const std::string &name) override;
     void EmitDwFormStrp(uint32 strLabelId, size_t strTableSize) override;
@@ -363,9 +375,7 @@ public:
 private:
     void EmitComment(std::string comment)
     {
-        Emit("\t//  ");
-        Emit(comment);
-        Emit("\n");
+        EmitDebugComment(comment.c_str());
     }
 
     void EmitSizeDirective(uint8 elemSize, int64 value, bool isSymbol, bool isLocal = false)

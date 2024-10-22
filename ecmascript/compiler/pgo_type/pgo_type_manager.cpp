@@ -311,6 +311,7 @@ JSTaggedValue PGOTypeManager::QueryHClass(ProfileType rootType, ProfileType chil
             result = JSTaggedValue(hclassIter->second);
         }
     }
+    // Can return real hclass of object or prototype of it
     return result;
 }
 

@@ -500,6 +500,8 @@ public:
 
     void SetFuncFrameResverdSlot(int slot);
     void SetFuncFramePointer(const String &val);
+    void SetCurrentDebugComment(const std::string& comment);
+    void ClearCurrentDebugComment();
 
 public:
     // helper classes for compound IR entity building

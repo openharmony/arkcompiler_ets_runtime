@@ -341,16 +341,35 @@ public:
     virtual void GlobalLock() {}
     virtual void GlobalUnlock() {}
 
+    void SetCurrentDebugComment(const std::string &comment)
+    {
+        currComment = GetMirModule().CurFunction()->AddNewDebugComment(comment);
+    }
+
+    void ClearCurrentDebugComment()
+    {
+        currComment = nullptr;
+    }
+
 private:
     MIRSymbol *GetOrCreateGlobalDecl(const std::string &str, TyIdx tyIdx, bool &created) const;
     MIRSymbol *GetOrCreateLocalDecl(const std::string &str, TyIdx tyIdx, MIRSymbolTable &symbolTable,
                                     bool &created) const;
+    template <class T, typename... Arguments>
+    T *NewNode(Arguments &&... args)
+    {
+        static_assert(std::is_base_of_v<BaseNode, T>);
+        T *stmt =  GetCurrentFuncCodeMp()->New<T>(args...);
+        stmt->SetDebugComment(currComment);
+        return stmt;
+    }
 
     MIRModule *mirModule;
     MapleSet<TyIdx> incompleteTypeRefedSet;
     // <className strIdx, fieldname strIdx, typename strIdx, attr list strIdx>
     std::vector<std::tuple<uint32, uint32, uint32, uint32>> extraFieldsTuples;
     unsigned int lineNum = 0;
+    const MapleString *currComment { nullptr };
 };
 
 class MIRBuilderExt : public MIRBuilder {

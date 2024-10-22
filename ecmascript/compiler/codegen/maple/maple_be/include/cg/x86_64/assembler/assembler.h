@@ -22,9 +22,11 @@
 
 #include <cassert>
 #include <fstream>
+#include <sstream>
 #include <unordered_map>
 #include <vector>
 #include <string>
+#include "cg_option.h"
 #include "operand.h"
 #include "stackmap.h"
 
@@ -59,10 +61,11 @@ public:
     Assembler() = default;
     virtual ~Assembler() = default;
 
-    void CloseOutput()
+    virtual void CloseOutput()
     {
-        if (outStream.is_open()) {
-            outStream.close();
+        if (outFStream.is_open()) {
+            outFStream << outStream.str();
+            outFStream.close();
         }
     }
 
@@ -135,6 +138,7 @@ public:
     virtual void EmitDIDebugInfoSectionAbbrevId(bool verbose, uint32 abbrevId, const std::string &dieTagName,
                                                 uint32 offset, uint32 size) = 0;
     virtual void EmitDIFormSpecification(unsigned int dwform) = 0;
+    virtual void EmitDebugComment(const char* comment) = 0;
     /* EmitDIAttrValue */
     virtual void EmitDwFormString(const std::string &name) = 0;
     /* strTableSize is used to calculate unique id for the debug string */
@@ -382,10 +386,12 @@ public:
     virtual void SetLastModulePC(uint32 pc) = 0;
 
 protected:
-    std::ofstream outStream;
+    std::ostringstream outStream;
+    std::ofstream outFStream;
     std::string fileName;
     std::unordered_map<int64, const std::string> globalSymMap; /* store global variable symbols */
     std::unordered_map<int64, const std::string> localSymMap;  /* store local variable symbols for each function */
+    std::string currDbgComment;
 };
 } /* namespace assembler */
 
