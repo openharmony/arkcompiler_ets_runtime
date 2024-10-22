@@ -393,7 +393,7 @@ public:
                                   GateRef constPoolIndex);
     GateRef CreateArguments(ElementsKind kind, CreateArgumentsAccessor::Mode mode, GateRef restIdx);
     GateRef Construct(GateRef hirGate, std::vector<GateRef> args);
-    GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool needPushArgv);
+    GateRef CallNew(GateRef hirGate, std::vector<GateRef> args, bool needPushArgv = false);
     GateRef CallConstructCheck(GateRef callGate, GateRef depend, GateRef glue_, GateRef ctor,
                                 GateRef value, GateRef thisObj);
     GateRef CallInternal(GateRef hirGate, std::vector<GateRef> args, uint64_t pcOffset);
@@ -413,6 +413,7 @@ public:
     GateRef GetSendableParentEnv(GateRef object);
     GateRef GetPropertiesFromLexicalEnv(GateRef object, GateRef index);
     GateRef GetPropertiesFromSendableEnv(GateRef object, GateRef index);
+    GateRef Float32ArrayConstructor(GateRef hirGate, std::vector<GateRef> args);
 
     // call operation
     GateRef CallPrivateGetter(GateRef hirGate, GateRef receiver, GateRef accessor, const char* comment = nullptr);
