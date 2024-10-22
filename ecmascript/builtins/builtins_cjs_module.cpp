@@ -15,12 +15,8 @@
 
 #include "ecmascript/builtins/builtins_cjs_module.h"
 
-#include "ecmascript/base/builtins_base.h"
 #include "ecmascript/interpreter/interpreter-inl.h"
 #include "ecmascript/module/module_path_helper.h"
-#include "ecmascript/platform/file.h"
-#include "ecmascript/require/js_cjs_module.h"
-#include "ecmascript/require/js_require_manager.h"
 
 namespace panda::ecmascript::builtins {
 

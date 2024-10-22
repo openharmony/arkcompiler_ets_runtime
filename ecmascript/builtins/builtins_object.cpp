@@ -16,17 +16,8 @@
 #include "ecmascript/builtins/builtins_object.h"
 
 #include "ecmascript/builtins/builtins_map.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
-#include "ecmascript/js_array.h"
-#include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_object.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_realm.h"
-#include "ecmascript/message_string.h"
-#include "ecmascript/object_factory.h"
 #include "ecmascript/object_fast_operator-inl.h"
 
 namespace panda::ecmascript::builtins {

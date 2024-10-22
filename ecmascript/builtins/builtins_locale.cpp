@@ -16,9 +16,7 @@
 #include "ecmascript/builtins/builtins_locale.h"
 
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
-#include "ecmascript/js_locale.h"
 #include "ecmascript/object_factory-inl.h"
 
 namespace panda::ecmascript::builtins {

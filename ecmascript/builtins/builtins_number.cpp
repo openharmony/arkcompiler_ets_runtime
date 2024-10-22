@@ -15,20 +15,8 @@
 
 #include "ecmascript/builtins/builtins_number.h"
 
-#include "ecmascript/base/number_helper.h"
-#include "ecmascript/ecma_context.h"
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_handle.h"
-#include "ecmascript/js_hclass.h"
 #include "ecmascript/js_primitive_ref.h"
-#include "ecmascript/js_tagged_number.h"
-#include "ecmascript/tagged_array-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/mem/c_containers.h"
-#include "ecmascript/object_factory.h"
-#include "ecmascript/tagged_hash_table.h"
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_number_format.h"
 #else

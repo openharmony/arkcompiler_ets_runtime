@@ -17,7 +17,6 @@
 
 #include "ecmascript/base/atomic_helper.h"
 #include "ecmascript/base/typed_array_helper-inl.h"
-#include "ecmascript/ecma_context.h"
 #include "libpandabase/utils/time.h"
 #include "ecmascript/checkpoint/thread_state_transition.h"
 

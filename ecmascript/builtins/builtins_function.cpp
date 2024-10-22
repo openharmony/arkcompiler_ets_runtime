@@ -15,14 +15,10 @@
 
 #include "ecmascript/builtins/builtins_function.h"
 
-#include "ecmascript/ecma_vm.h"
-#include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/jspandafile/js_pandafile_manager.h"
 #include "ecmascript/js_arguments.h"
-#include "ecmascript/js_stable_array.h"
 #include "ecmascript/object_fast_operator-inl.h"
-#include "ecmascript/tagged_array-inl.h"
 
 namespace panda::ecmascript::builtins {
 // ecma 19.2.1 Function (p1, p2, ... , pn, body)

@@ -15,15 +15,10 @@
 
 #include "ecmascript/builtins/builtins_date.h"
 
-#include "ecmascript/ecma_macros.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_function.h"
-#include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
-#include "ecmascript/js_thread.h"
-#include "ecmascript/tagged_array.h"
+
 #ifdef ARK_SUPPORT_INTL
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_date_time_format.h"

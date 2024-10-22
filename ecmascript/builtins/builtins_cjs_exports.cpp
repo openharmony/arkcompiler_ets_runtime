@@ -15,9 +15,6 @@
 
 #include "ecmascript/builtins/builtins_cjs_exports.h"
 
-#include "ecmascript/base/builtins_base.h"
-#include "ecmascript/require/js_cjs_exports.h"
-
 namespace panda::ecmascript::builtins {
 JSTaggedValue BuiltinsCjsExports::CjsExportsConstructor(EcmaRuntimeCallInfo *argv)
 {

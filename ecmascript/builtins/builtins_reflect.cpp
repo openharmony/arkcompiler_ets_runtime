@@ -17,7 +17,6 @@
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_object-inl.h"
-#include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript::builtins {
 // ecma 26.1.1 Reflect.apply (target, thisArgument, argumentsList)

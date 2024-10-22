@@ -16,13 +16,11 @@
 #include "builtins_date_time_format.h"
 
 #include "ecmascript/intl/locale_helper.h"
-#include "ecmascript/ecma_vm.h"
 #include "ecmascript/global_env.h"
 #include "ecmascript/js_date.h"
 #include "ecmascript/js_date_time_format.h"
 #include "ecmascript/js_function.h"
 #include "ecmascript/js_intl.h"
-#include "ecmascript/mem/barriers-inl.h"
 
 namespace panda::ecmascript::builtins {
 // 13.2.1 Intl.DateTimeFormat ( [ locales [ , options ] ] )

@@ -15,8 +15,6 @@
 
 #include "ecmascript/builtins/builtins_shared_async_function.h"
 
-#include "ecmascript/ecma_macros.h"
-
 namespace panda::ecmascript::builtins {
 // ecma2017 25.5.1.1 AsyncFunction (p1, p2, ... , pn, body)
 JSTaggedValue BuiltinsSharedAsyncFunction::SharedAsyncFunctionConstructor(EcmaRuntimeCallInfo *argv)
