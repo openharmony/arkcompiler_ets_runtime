@@ -130,7 +130,6 @@ Throwing.prototype.valueOf = function() {
     }
     return this.value;
 }
-//aot: [trace] Check Type: ProtoTypeChanged2
 let throwingObj = new Throwing();
 
 try {
