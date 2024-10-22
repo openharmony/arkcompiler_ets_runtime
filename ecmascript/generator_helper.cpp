@@ -17,6 +17,7 @@
 
 #include "ecmascript/interpreter/interpreter.h"
 #include "ecmascript/js_iterator.h"
+#include "ecmascript/js_tagged_value-inl.h"
 
 namespace panda::ecmascript {
 JSHandle<JSObject> GeneratorHelper::Next(JSThread *thread, const JSHandle<GeneratorContext> &genContext,
