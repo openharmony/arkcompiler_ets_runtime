@@ -173,14 +173,10 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
     Label isHeapObject(env);
     Label isJsArray(env);
     Label isStableJsArray(env);
-    Label isGeneric(env);
     Label notOverRange(env);
     Label numNotEqualZero(env);
     Label numLessThanOrEqualThree(env);
-    Label loopHead(env);
-    Label next(env);
-    Label loopEnd(env);
-    Label loopExit(env);
+    Label afterCopy(env);
     Label grow(env);
     Label setValue(env);
     Label matchCls(env);
@@ -207,69 +203,48 @@ void BuiltinsArrayStubBuilder::Unshift(GateRef glue, GateRef thisValue, GateRef 
     // 3 : max param num
     BRANCH(Int64LessThanOrEqual(numArgs, IntPtr(3)), &numLessThanOrEqualThree, slowPath);
     Bind(&numLessThanOrEqualThree);
+    GateRef capacity = ZExtInt32ToInt64(GetLengthOfTaggedArray(GetElementsArray(thisValue)));
+    BRANCH(Int64GreaterThan(newLen, capacity), &grow, &setValue);
+    Bind(&grow);
     {
-        DEFVARIABLE(elements, VariableType::JS_ANY(), GetElementsArray(thisValue));
-        GateRef capacity = ZExtInt32ToInt64(GetLengthOfTaggedArray(*elements));
-        BRANCH(Int64GreaterThan(newLen, capacity), &grow, &setValue);
-        Bind(&grow);
+        GrowElementsCapacity(glue, thisValue, TruncInt64ToInt32(newLen));
+        Jump(&setValue);
+    }
+    Bind(&setValue);
+    {
+        Label elementsKindEnabled(env);
+        GateRef elements = GetElementsArray(thisValue);
+        GateRef arrayStart = GetDataPtrInTaggedArray(elements);
+        GateRef moveTo = PtrAdd(arrayStart, PtrMul(numArgs, IntPtr(JSTaggedValue::TaggedTypeSize())));
+        GateRef isElementsKindEnabled = IsEnableElementsKind(glue);
+        Label isIntOrNumber(env);
+        Label isTagged(env);
+        BRANCH_NO_WEIGHT(isElementsKindEnabled, &elementsKindEnabled, &isTagged);
+        Bind(&elementsKindEnabled);
         {
-            elements = CallRuntime(glue, RTSTUB_ID(JSObjectGrowElementsCapacity), {thisValue, IntToTaggedInt(newLen)});
-            Jump(&setValue);
-        }
-        Bind(&setValue);
-        {
-            DEFVARIABLE(fromKey, VariableType::INT64(), Int64Sub(thisLen, Int64(1)));
-            DEFVARIABLE(toKey, VariableType::INT64(), Int64Sub(newLen, Int64(1)));
-            DEFVARIABLE(ele, VariableType::JS_ANY(), Hole());
-            Label eleIsHole(env);
-            Label hasProperty(env);
-            Label notHasProperty(env);
-            Label hasException0(env);
-            Label notHasException0(env);
-            Jump(&loopHead);
-            LoopBegin(&loopHead);
+            GateRef kind = GetElementsKindFromHClass(LoadHClass(thisValue));
+            GateRef isInt = LogicAndBuilder(env)
+                            .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::INT))))
+                            .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_INT))))
+                            .Done();
+            GateRef isNumber = LogicAndBuilder(env)
+                               .And(Int32GreaterThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::NUMBER))))
+                               .And(Int32LessThanOrEqual(kind, Int32(static_cast<int32_t>(ElementsKind::HOLE_NUMBER))))
+                               .Done();
+            GateRef isIntOrNumberKind = LogicOrBuilder(env).Or(isInt).Or(isNumber).Done();
+            BRANCH_NO_WEIGHT(isIntOrNumberKind, &isIntOrNumber, &isTagged);
+            Bind(&isIntOrNumber);
             {
-                BRANCH(Int64GreaterThanOrEqual(*fromKey, Int64(0)), &next, &loopExit);
-                Bind(&next);
-                {
-                    ele = GetTaggedValueWithElementsKind(thisValue, *fromKey);
-                    BRANCH(TaggedIsHole(*ele), &eleIsHole, &notHasException0);
-                    Bind(&eleIsHole);
-                    {
-                        GateRef hasProp = CallRuntime(glue, RTSTUB_ID(HasProperty),
-                            { thisValue, IntToTaggedInt(*fromKey) });
-                        BRANCH(TaggedIsTrue(hasProp), &hasProperty, &notHasProperty);
-                        Bind(&hasProperty);
-                        {
-                            ele = FastGetPropertyByIndex(glue, thisValue, TruncInt64ToInt32(*fromKey),
-                                ProfileOperation());
-                            BRANCH(HasPendingException(glue), &hasException0, &notHasException0);
-                            Bind(&hasException0);
-                            {
-                                result->WriteVariable(Exception());
-                                Jump(exit);
-                            }
-                        }
-                        Bind(&notHasProperty);
-                        {
-                            SetValueWithElementsKind(glue, thisValue, Hole(), *toKey, Boolean(false),
-                                Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                            Jump(&loopEnd);
-                        }
-                    }
-                    Bind(&notHasException0);
-                    {
-                        SetValueWithElementsKind(glue, thisValue, *ele, *toKey, Boolean(false),
-                            Int32(static_cast<uint32_t>(ElementsKind::NONE)));
-                        Jump(&loopEnd);
-                    }
-                }
+                ArrayCopy<MustOverlap>(glue, arrayStart, moveTo, TruncInt64ToInt32(thisLen),
+                                       MemoryAttribute::NoBarrier());
+                Jump(&afterCopy);
             }
-            Bind(&loopEnd);
-            fromKey = Int64Sub(*fromKey, Int64(1));
-            toKey = Int64Sub(*toKey, Int64(1));
-            LoopEnd(&loopHead);
-            Bind(&loopExit);
+            Bind(&isTagged);
+            {
+                ArrayCopy<MustOverlap>(glue, arrayStart, moveTo, TruncInt64ToInt32(thisLen));
+                Jump(&afterCopy);
+            }
+            Bind(&afterCopy);
             {
                 GateRef value0 = GetCallArg0(numArgs);
                 // 0 : the first Element position
