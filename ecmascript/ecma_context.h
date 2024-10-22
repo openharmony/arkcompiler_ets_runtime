@@ -624,6 +624,7 @@ public:
     {
         return hasKeptObjects_;
     }
+
 private:
     void CJSExecution(JSHandle<JSFunction> &func, JSHandle<JSTaggedValue> &thisArg,
                       const JSPandaFile *jsPandaFile, std::string_view entryPoint);

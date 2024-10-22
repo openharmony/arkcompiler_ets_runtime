@@ -107,4 +107,11 @@ SubSubSendableMap [key, value][for-of]: [1, one]
 SubSubSendableMap [key, value][for-of]: [2, two]
 SubSubSendableMap [key, value][for-of]: [3, three]
 SubSubSendableMap Delete Scenario[forEach]: BusinessError: Concurrent modification exception, errCode: 10200201
+=== An iterable object to convert to an ArkTS Map begin===
+map size is 5
+map key[forEach]:key:0, value:value0
+map key[forEach]:key:1, value:value1
+map key[forEach]:key:2, value:value2
+map key[forEach]:key:3, value:value3
+map key[forEach]:key:4, value:value4
 ===Class inheritance test end ===

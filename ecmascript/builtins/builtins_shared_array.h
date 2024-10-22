@@ -26,8 +26,8 @@
     /* SharedArray.from ( items [ , mapfn [ , thisArg ] ] ) */ \
     V("from", From, 1, INVALID)                                \
     V("create", Create, 2, INVALID)                            \
-    /* SharedArray.IsArray ( arg ) */                          \
-    V("IsArray", IsArray, 1, INVALID)                          \
+    /* SharedArray.isArray ( arg ) */                          \
+    V("isArray", IsArray, 1, INVALID)                          \
     // /* SharedArray.of ( ...items ) */                          \
     // V("of", Of, 0, INVALID)
 
@@ -100,8 +100,6 @@
     // V("findLast", FindLast, 1, INVALID)                                          \
     // /* SharedArray.prototype.findLastIndex ( predicate [ , thisArg ] ) */        \
     // V("findLastIndex", FindLastIndex, 1, INVALID)                                \
-    // /* SharedArray.prototype.lastIndexOf ( searchElement [ , fromIndex ] ) */    \
-    // V("lastIndexOf", LastIndexOf, 1, INVALID)                                    \
     // /* SharedArray.prototype.some ( callbackfn [ , thisArg ] ) */                \
     // V("some", Some, 1, INVALID)                                                  \
     // /* SharedArray.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] ) */ \
@@ -204,16 +202,18 @@ private:
 
     static JSTaggedValue IndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
+
     static JSTaggedValue IndexOfSlowPath(
         EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal,
         int64_t length, int64_t fromIndex);
 
-    static JSTaggedValue LastIndexOfSlowPath(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisHandle);
-    static JSTaggedValue LastIndexOfSlowPath(
-        EcmaRuntimeCallInfo *argv, JSThread *thread, const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
+    static JSTaggedValue LastIndexOfSlowPath(EcmaRuntimeCallInfo *argv, JSThread *thread,
+                                             const JSHandle<JSTaggedValue> &thisHandle);
+    static JSTaggedValue LastIndexOfSlowPath(EcmaRuntimeCallInfo *argv, JSThread *thread,
+                                             const JSHandle<JSTaggedValue> &thisObjVal, int64_t fromIndex);
 #define ARRAY_PROPERTIES_PAIR(name, func, length, id) \
     std::pair<std::string_view, bool>(name, false),
+
     static constexpr std::array ARRAY_PROTOTYPE_PROPERTIES = {
         std::pair<std::string_view, bool>("length", false),
         std::pair<std::string_view, bool>("constructor", false),

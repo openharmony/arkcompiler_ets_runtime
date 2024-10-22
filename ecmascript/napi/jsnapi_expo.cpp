@@ -1323,8 +1323,8 @@ Local<JSValueRef> SendableMapRef::Get(const EcmaVM *vm, Local<JSValueRef> key)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, JSValueRef::Undefined(vm));
     ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
-    return JSNApiHelper::ToLocal<JSValueRef>(
-        JSHandle<JSTaggedValue>(thread, map->Get(thread, JSNApiHelper::ToJSTaggedValue(*key))));
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread,
+        ecmascript::JSSharedMap::Get(thread, map, JSNApiHelper::ToJSTaggedValue(*key))));
 }
 
 Local<JSValueRef> SendableMapRef::Get(const EcmaVM *vm, const char *utf8)
@@ -1334,7 +1334,7 @@ Local<JSValueRef> SendableMapRef::Get(const EcmaVM *vm, const char *utf8)
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> key(factory->NewFromUtf8(utf8));
-    auto result = JSHandle<JSTaggedValue>(thread, map->Get(thread, key.GetTaggedValue()));
+    auto result = JSHandle<JSTaggedValue>(thread, ecmascript::JSSharedMap::Get(thread, map, key.GetTaggedValue()));
     return JSNApiHelper::ToLocal<JSValueRef>(result);
 }
 
@@ -1361,7 +1361,7 @@ bool SendableMapRef::Has(const EcmaVM *vm, Local<JSValueRef> key)
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, false);
     ecmascript::ThreadManagedScope managedScope(thread);
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
-    bool result = map->Has(thread, JSNApiHelper::ToJSTaggedValue(*key));
+    bool result = ecmascript::JSSharedMap::Has(thread, map, JSNApiHelper::ToJSTaggedValue(*key));
     return result;
 }
 
@@ -1372,7 +1372,7 @@ bool SendableMapRef::Has(const EcmaVM *vm, const char *utf8)
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
     ObjectFactory *factory = vm->GetFactory();
     JSHandle<JSTaggedValue> key(factory->NewFromUtf8(utf8));
-    bool result = map->Has(thread, key.GetTaggedValue());
+    bool result = ecmascript::JSSharedMap::Has(thread, map, key.GetTaggedValue());
     return result;
 }
 
@@ -1398,15 +1398,16 @@ uint32_t SendableMapRef::GetSize(const EcmaVM *vm)
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
-    return map->GetSize(thread);
+    return ecmascript::JSSharedMap::GetSize(thread, map);
 }
 
 uint32_t SendableMapRef::GetTotalElements(const EcmaVM *vm)
 {
     CROSS_THREAD_AND_EXCEPTION_CHECK_WITH_RETURN(vm, 0);
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
+    ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
-    return static_cast<int>((map->GetSize(thread))) +
+    return static_cast<int>(ecmascript::JSSharedMap::GetSize(thread, map)) +
            LinkedHashMap::Cast(map->GetLinkedMap().GetTaggedObject())->NumberOfDeletedElements();
 }
 
@@ -1416,7 +1417,8 @@ Local<JSValueRef> SendableMapRef::GetKey(const EcmaVM *vm, int entry)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(map, FATAL);
-    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, map->GetKey(thread, entry)));
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread,
+        ecmascript::JSSharedMap::GetKey(thread, map, entry)));
 }
 
 Local<JSValueRef> SendableMapRef::GetValue(const EcmaVM *vm, int entry)
@@ -1425,7 +1427,8 @@ Local<JSValueRef> SendableMapRef::GetValue(const EcmaVM *vm, int entry)
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedMap> map(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(map, FATAL);
-    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread, map->GetValue(thread, entry)));
+    return JSNApiHelper::ToLocal<JSValueRef>(JSHandle<JSTaggedValue>(thread,
+        ecmascript::JSSharedMap::GetValue(thread, map, entry)));
 }
 
 Local<SendableMapIteratorRef> SendableMapRef::GetEntries(const EcmaVM *vm)
@@ -1486,7 +1489,7 @@ uint32_t SendableSetRef::GetSize(const EcmaVM *vm)
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedSet> set(JSNApiHelper::ToJSHandle(this));
-    return set->GetSize(thread);
+    return ecmascript::JSSharedSet::GetSize(thread, set);
 }
 
 uint32_t SendableSetRef::GetTotalElements(const EcmaVM *vm)
@@ -1495,7 +1498,7 @@ uint32_t SendableSetRef::GetTotalElements(const EcmaVM *vm)
     DCHECK_SPECIAL_VALUE_WITH_RETURN(this, 0);
     ecmascript::ThreadManagedScope managedScope(vm->GetJSThread());
     JSHandle<ecmascript::JSSharedSet> set(JSNApiHelper::ToJSHandle(this));
-    return static_cast<int>(set->GetSize(thread)) +
+    return static_cast<int>(ecmascript::JSSharedSet::GetSize(thread, set)) +
            LinkedHashSet::Cast(set->GetLinkedSet().GetTaggedObject())->NumberOfDeletedElements();
 }
 
@@ -1506,7 +1509,7 @@ Local<JSValueRef> SendableSetRef::GetValue(const EcmaVM *vm, int entry)
     JSHandle<ecmascript::JSSharedSet> set(JSNApiHelper::ToJSHandle(this));
     LOG_IF_SPECIAL(set, FATAL);
     return JSNApiHelper::ToLocal<JSValueRef>(
-        JSHandle<JSTaggedValue>(thread, set->GetValue(thread, entry)));
+        JSHandle<JSTaggedValue>(thread, ecmascript::JSSharedSet::GetValue(thread, set, entry)));
 }
 
 void SendableSetRef::Add(const EcmaVM *vm, Local<JSValueRef> value)

@@ -323,4 +323,19 @@ try {
 } catch (e) {
   print('SubSubSendableSet Delete Scenario[forEach]: ' + e + ', errCode: ' + e.code);
 }
+
+print("=== An iterable object to convert to an ArkTS Set  begin===")
+sharedSet.clear();
+FillSet(sharedSet);
+try {
+  
+  const iterator = sharedSet.entries();
+  let sharedSet1: SendableSet = new SendableSet<>(iterator);
+  sharedSet1.forEach((key: number, _: number, set: SendableSet) => {
+    print("set key[forEach]: " + key);
+  })
+} catch (e) {
+  print("SendableSetConstructor Scenario[next()]: " + e);
+}
+
 print("===Class inheritance test end ===");
