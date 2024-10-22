@@ -36,7 +36,7 @@ bool JSAPIBitVector::Push(
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
-    uint32_t length = bitVector->GetLength().GetArrayLength();
+    uint32_t length = static_cast<uint32_t>(bitVector->GetLength());
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
     if ((length & TAGGED_VALUE_BIT_OFFSET) == 0) {
@@ -48,7 +48,7 @@ bool JSAPIBitVector::Push(
     } else {
         SetBit(elements, length, value.GetTaggedValue());
     }
-    bitVector->SetLength(thread, JSTaggedValue(++length));
+    bitVector->SetLength(++length);
     return true;
 }
 
@@ -56,10 +56,10 @@ JSTaggedValue JSAPIBitVector::Pop(JSThread* thread, const JSHandle<JSAPIBitVecto
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
-    uint32_t lastIndex = bitVector->GetLength().GetArrayLength() - 1;
-    if (lastIndex < 0) {
+    if (bitVector->GetLength() <= 0) {
         return JSTaggedValue::Undefined();
     }
+    uint32_t lastIndex = static_cast<uint32_t>(bitVector->GetLength() - 1);
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
 
@@ -69,15 +69,16 @@ JSTaggedValue JSAPIBitVector::Pop(JSThread* thread, const JSHandle<JSAPIBitVecto
     } else {
         SetBit(elements, lastIndex, JSTaggedValue(0));
     }
-    bitVector->SetLength(thread, JSTaggedValue(lastIndex));
+    bitVector->SetLength(lastIndex);
     return bit;
 }
 
 JSTaggedValue JSAPIBitVector::Set(JSThread* thread, const uint32_t index, JSTaggedValue value)
 {
-    if (index >= GetLength().GetArrayLength()) {
+    uint32_t length = static_cast<uint32_t>(GetLength());
+    if (index >= length) {
         std::ostringstream oss;
-        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (GetLength().GetArrayLength() - 1)
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
             << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
@@ -90,9 +91,10 @@ JSTaggedValue JSAPIBitVector::Set(JSThread* thread, const uint32_t index, JSTagg
 
 JSTaggedValue JSAPIBitVector::Get(JSThread* thread, const uint32_t index)
 {
-    if (index >= GetLength().GetArrayLength()) {
+    uint32_t length = static_cast<uint32_t>(GetLength());
+    if (index >= length) {
         std::ostringstream oss;
-        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (GetLength().GetArrayLength() - 1)
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (length - 1)
             << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
@@ -107,7 +109,7 @@ bool JSAPIBitVector::Has(JSThread* thread, const JSHandle<JSAPIBitVector>& bitVe
 {
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
-    int32_t length = bitVector->GetLength().GetInt();
+    int32_t length = bitVector->GetLength();
     int32_t size = length > endIndex ? endIndex : length;
     if (endIndex < 0 || endIndex > length) {
         std::ostringstream oss;
@@ -167,7 +169,7 @@ JSTaggedValue JSAPIBitVector::SetBitsByRange(JSThread* thread, const JSHandle<JS
         JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
-    int32_t length = bitVector->GetLength().GetInt();
+    int32_t length = bitVector->GetLength();
     int32_t size = length > endIndex ? endIndex : length;
     if (endIndex < 0 || endIndex > length) {
         std::ostringstream oss;
@@ -199,7 +201,7 @@ JSTaggedValue JSAPIBitVector::GetBitsByRange(JSThread* thread, const JSHandle<JS
         JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
-    int32_t length = bitVector->GetLength().GetInt();
+    int32_t length = bitVector->GetLength();
     int32_t size = length > endIndex ? endIndex : length;
     if (endIndex < 0 || endIndex > length) {
         std::ostringstream oss;
@@ -228,7 +230,7 @@ JSTaggedValue JSAPIBitVector::GetBitsByRange(JSThread* thread, const JSHandle<JS
         JSTaggedValue value = GetBit(srcElements, index + startIndex);
         SetBit(dstElements, index, value);
     }
-    newBitVector->SetLength(thread, JSTaggedValue(dstLength));
+    newBitVector->SetLength(dstLength);
     newBitVector->SetNativePointer(thread, dstNp);
 
     return newBitVector.GetTaggedValue();
@@ -260,7 +262,7 @@ JSTaggedValue JSAPIBitVector::GetBitCountByRange(JSThread* thread, const JSHandl
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
-    int32_t length = bitVector->GetLength().GetInt();
+    int32_t length = bitVector->GetLength();
     int32_t size = length > endIndex ? endIndex : length;
     int32_t count = 0;
     if (endIndex < 0 || endIndex > length) {
@@ -297,7 +299,7 @@ int JSAPIBitVector::GetIndexOf(JSThread* thread, const JSHandle<JSAPIBitVector>&
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
-    int32_t length = bitVector->GetLength().GetInt();
+    int32_t length = bitVector->GetLength();
     int32_t size = length > endIndex ? endIndex : length;
     if (endIndex < 0 || endIndex > length) {
         std::ostringstream oss;
@@ -333,7 +335,7 @@ int JSAPIBitVector::GetLastIndexOf(JSThread* thread, const JSHandle<JSAPIBitVect
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector> scope(thread, JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
-    int32_t length = bitVector->GetLength().GetInt();
+    int32_t length = bitVector->GetLength();
     int32_t size = length > endIndex ? endIndex : length;
     if (endIndex < 0 || endIndex > length) {
         std::ostringstream oss;
@@ -367,9 +369,9 @@ JSTaggedValue JSAPIBitVector::FlipBitByIndex(JSThread* thread, const JSHandle<JS
 {
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
-    if (index >= bitVector->GetLength().GetInt()) {
+    if (index >= bitVector->GetLength()) {
         std::ostringstream oss;
-        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (bitVector->GetLength().GetInt() - 1)
+        oss << "The value of \"index\" is out of range. It must be >= 0 && <= " << (bitVector->GetLength() - 1)
             << ". Received value is: " << index;
         JSTaggedValue error = ContainerError::BusinessError(thread, ErrorFlag::RANGE_ERROR, oss.str().c_str());
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, JSTaggedValue::Exception());
@@ -392,7 +394,7 @@ JSTaggedValue JSAPIBitVector::FlipBitsByRange(JSThread* thread, const JSHandle<J
         JSHandle<JSTaggedValue>::Cast(bitVector));
     int32_t startIndex = JSTaggedValue::ToInt32(thread, start);
     int32_t endIndex = JSTaggedValue::ToInt32(thread, end);
-    int32_t length = bitVector->GetLength().GetInt();
+    int32_t length = bitVector->GetLength();
     int32_t size = length > endIndex ? endIndex : length;
     if (endIndex < 0 || endIndex > length) {
         std::ostringstream oss;
@@ -429,9 +431,9 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
     }
     [[maybe_unused]] ConcurrentApiScope<JSAPIBitVector, ModType::WRITE> scope(thread,
         JSHandle<JSTaggedValue>::Cast(bitVector));
-    int length = bitVector->GetLength().GetInt();
-    uint32_t elementsLength = ((length - 1) / BIT_SET_LENGTH) + 1;
-    uint32_t newElementsLength = ((newSize - 1) / BIT_SET_LENGTH) + 1;
+    int length = bitVector->GetLength();
+    uint32_t elementsLength = static_cast<uint32_t>((length - 1) / BIT_SET_LENGTH + 1);
+    uint32_t newElementsLength = static_cast<uint32_t>((newSize - 1) / BIT_SET_LENGTH + 1);
 
     JSHandle<JSNativePointer> np(thread, bitVector->GetNativePointer());
     auto elements = reinterpret_cast<std::vector<std::bitset<BIT_SET_LENGTH>>*>(np->GetExternalPointer());
@@ -445,12 +447,12 @@ void JSAPIBitVector::Resize(JSThread* thread, const JSHandle<JSAPIBitVector>& bi
     } else if (elementsLength > newElementsLength) {
         elements->resize(newElementsLength);
     }
-    bitVector->SetLength(thread, JSTaggedValue(newSize));
+    bitVector->SetLength(newSize);
 }
 
 JSHandle<TaggedArray> JSAPIBitVector::OwnKeys(JSThread* thread, const JSHandle<JSAPIBitVector>& obj)
 {
-    uint32_t numOfElements = static_cast<uint32_t>(obj->GetLength().GetInt());
+    uint32_t numOfElements = static_cast<uint32_t>(obj->GetLength());
     JSHandle<TaggedArray> keyArray = thread->GetEcmaVM()->GetFactory()->NewTaggedArray(numOfElements);
 
     if (numOfElements > 0) {
@@ -481,7 +483,7 @@ bool JSAPIBitVector::GetOwnProperty(
         THROW_NEW_ERROR_AND_RETURN_VALUE(thread, error, false);
     }
 
-    uint32_t length = obj->GetLength().GetArrayLength();
+    uint32_t length = static_cast<uint32_t>(obj->GetLength());
     if (index >= length) {
         std::ostringstream oss;
         oss << "The value of \"index\" is out of range. It must be > " << (length - 1)
@@ -506,7 +508,7 @@ JSTaggedValue JSAPIBitVector::GetIteratorObj(JSThread* thread, const JSHandle<JS
 OperationResult JSAPIBitVector::GetProperty(
     JSThread* thread, const JSHandle<JSAPIBitVector>& obj, const JSHandle<JSTaggedValue>& key)
 {
-    int length = obj->GetLength().GetInt();
+    int length = obj->GetLength();
     int index = key->GetInt();
     if (index < 0 || index >= length) {
         std::ostringstream oss;
@@ -522,7 +524,7 @@ OperationResult JSAPIBitVector::GetProperty(
 bool JSAPIBitVector::SetProperty(JSThread* thread, const JSHandle<JSAPIBitVector>& obj,
     const JSHandle<JSTaggedValue>& key, const JSHandle<JSTaggedValue>& value)
 {
-    int length = obj->GetLength().GetInt();
+    int length = obj->GetLength();
     int index = key->GetInt();
     if (index < 0 || index >= length) {
         return false;
