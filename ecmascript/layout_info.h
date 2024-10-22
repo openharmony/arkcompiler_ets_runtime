@@ -56,6 +56,7 @@ public:
     void SetNumberOfElements(const JSThread *thread, int properties);
     uint32_t GetKeyIndex(int index) const;
     uint32_t GetAttrIndex(int index) const;
+    void SetWithoutBarrier(uint32_t idx, const JSTaggedValue &value);
     void SetPropertyInit(const JSThread *thread, int index, const JSTaggedValue &key, const PropertyAttributes &attr);
     void SetKey(const JSThread *thread, int index, const JSTaggedValue &key);
     void SetNormalAttr(const JSThread *thread, int index, const PropertyAttributes &attr);
