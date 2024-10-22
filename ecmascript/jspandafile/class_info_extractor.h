@@ -114,11 +114,11 @@ public:
                                                          JSHandle<ClassInfoExtractor> &extractor,
                                                          const JSHandle<JSTaggedValue> &lexenv);
 
-    static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread,
+    static JSHandle<JSFunction> DefineClassWithIHClass(JSThread *thread, const JSHandle<JSTaggedValue> &base,
                                                        JSHandle<ClassInfoExtractor> &extractor,
                                                        const JSHandle<JSTaggedValue> &lexenv,
-                                                       const JSHandle<JSTaggedValue> &ihclass,
-                                                       const JSHandle<JSHClass> &constructorHClass);
+                                                       const JSHandle<JSTaggedValue> &prototypeOrHClassVal,
+                                                       const JSHandle<JSTaggedValue> &constructorHClassVal);
 
     static bool PUBLIC_API MatchFieldType(SharedFieldType fieldType, JSTaggedValue value);
 private:
