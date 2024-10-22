@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "ecmascript/platform/ffrt_adapter.h"
+#include "ecmascript/platform/ffrt.h"
 #include "libpandabase/os/thread.h"
 
 #if defined(ENABLE_FFRT_INTERFACES)

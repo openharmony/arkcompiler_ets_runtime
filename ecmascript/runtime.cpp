@@ -134,11 +134,7 @@ void Runtime::DestroyIfLastVm()
 
 void Runtime::RegisterThread(JSThread* newThread)
 {
-#if defined(ENABLE_FFRT_INTERFACES)
-    FFRTLockHolder lock(threadsLock_);
-#else
     LockHolder lock(threadsLock_);
-#endif
     ASSERT(std::find(threads_.begin(), threads_.end(), newThread) == threads_.end());
     threads_.emplace_back(newThread);
     // send all current suspended requests to the new thread
@@ -150,11 +146,7 @@ void Runtime::RegisterThread(JSThread* newThread)
 // Note: currently only called when thread is to be destroyed.
 void Runtime::UnregisterThread(JSThread* thread)
 {
-#if defined(ENABLE_FFRT_INTERFACES)
-    FFRTLockHolder lock(threadsLock_);
-#else
     LockHolder lock(threadsLock_);
-#endif
     ASSERT(std::find(threads_.begin(), threads_.end(), thread) != threads_.end());
     ASSERT(!thread->IsInRunningState());
     threads_.remove(thread);
@@ -187,11 +179,7 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
     SuspendBarrier barrier;
     for (uint32_t iterCount = 1U;; ++iterCount) {
         {
-#if defined(ENABLE_FFRT_INTERFACES)
-            FFRTLockHolder lock(threadsLock_);
-#else
             LockHolder lock(threadsLock_);
-#endif
             if (suspendNewCount_ == 0) {
                 suspendNewCount_++;
                 if (threads_.size() == 1) {
@@ -230,11 +218,7 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
             }
         }
         if (iterCount < MAX_SUSPEND_RETRIES) {
-#if defined(ENABLE_FFRT_INTERFACES)
-            FFRTLockHolder lock(threadsLock_);
-#else
             LockHolder lock(threadsLock_);
-#endif
             if (suspendNewCount_ != 0) {
                 // Someone has already suspended all threads.
                 // Wait until it finishes.
@@ -250,11 +234,7 @@ void Runtime::SuspendAllThreadsImpl(JSThread *current)
 
 void Runtime::ResumeAllThreadsImpl(JSThread *current)
 {
-#if defined(ENABLE_FFRT_INTERFACES)
-    FFRTLockHolder lock(threadsLock_);
-#else
     LockHolder lock(threadsLock_);
-#endif
     if (suspendNewCount_ > 0) {
         suspendNewCount_--;
     }
