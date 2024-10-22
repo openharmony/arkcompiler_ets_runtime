@@ -1781,6 +1781,7 @@
         "mjsunit/enumeration-order.js",
         "mjsunit/deopt-minus-zero.js",
         "mjsunit/object-get-own-property-names.js",
+        "mjsunit/array-join-separator-tostring-side-effects.js",
         "mjsunit/unicodelctest-no-optimization.js",
         "mjsunit/clone-ic-regression-crbug-1466315.js",
         "mjsunit/mjsunit-assertion-error.js",

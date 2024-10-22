@@ -477,18 +477,24 @@ JSTaggedValue JSStableArray::JoinUseTreeString(const JSThread* thread, const JSH
     return vec.front().GetTaggedValue();
 }
 
-JSTaggedValue JSStableArray::Join(JSThread *thread, JSHandle<JSArray> receiver,
-                                  JSHandle<EcmaString> sepStringHandle, int64_t length)
+JSTaggedValue JSStableArray::Join(JSHandle<JSArray> receiver, EcmaRuntimeCallInfo *argv)
 {
+    JSThread *thread = argv->GetThread();
+    uint32_t length = receiver->GetArrayLength();
+    JSHandle<JSTaggedValue> sepHandle = base::BuiltinsBase::GetCallArg(argv, 0);
     int sep = ',';
     uint32_t sepLength = 1;
+    JSHandle<EcmaString> sepStringHandle;
     auto context = thread->GetCurrentEcmaContext();
     JSHandle<JSTaggedValue> receiverValue = JSHandle<JSTaggedValue>::Cast(receiver);
-    SetSepValue(sepStringHandle, sep, sepLength);
-    auto factory = thread->GetEcmaVM()->GetFactory();
-    bool noCircular = context->JoinStackPushFastPath(receiverValue);
-    if (!noCircular) {
-        return factory->GetEmptyString().GetTaggedValue();
+    if (!sepHandle->IsUndefined()) {
+        if (sepHandle->IsString()) {
+            sepStringHandle = JSHandle<EcmaString>::Cast(sepHandle);
+        } else {
+            sepStringHandle = JSTaggedValue::ToString(thread, sepHandle);
+            RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
+        }
+        SetSepValue(sepStringHandle, sep, sepLength);
     }
     if (length == 0) {
         const GlobalEnvConstants *globalConst = thread->GlobalConstants();
@@ -517,7 +523,7 @@ JSTaggedValue JSStableArray::Join(JSThread *thread, JSHandle<JSArray> receiver,
             element = ElementAccessor::Get(obj, k);
             if (element.IsHole() && JSTaggedValue::HasProperty(thread, receiverValue, k)) {
                 element = JSArray::FastGetPropertyByValue(thread, receiverValue, k).GetTaggedValue();
-                RETURN_EXCEPTION_AND_POP_JOINSTACK(thread, receiverValue);
+                RETURN_EXCEPTION_IF_ABRUPT_COMPLETION(thread);
             }
         }
         if (!element.IsUndefinedOrNull() && !element.IsHole()) {
